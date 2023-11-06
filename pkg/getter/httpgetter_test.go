@@ -18,7 +18,6 @@ package getter
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -338,7 +337,7 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 	insecureSkipTLSverify := false
 
 	// Server 2 that will actually fulfil the request.
-	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "localhost-crt.pem"), filepath.Join(cd, "key.pem")
+	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "localhost-cert.pem"), filepath.Join(cd, "key.pem")
 	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca, insecureSkipTLSverify)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "can't create TLS config for client"))
@@ -394,7 +393,7 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 			t.Error(err)
 		}
 
-		b, err := ioutil.ReadAll(buf)
+		b, err := io.ReadAll(buf)
 		if err != nil {
 			t.Error(err)
 		}
@@ -415,7 +414,7 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 			t.Error(err)
 		}
 
-		b, err := ioutil.ReadAll(buf)
+		b, err := io.ReadAll(buf)
 		if err != nil {
 			t.Error(err)
 		}
@@ -436,7 +435,7 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 			t.Error(err)
 		}
 
-		b, err := ioutil.ReadAll(buf)
+		b, err := io.ReadAll(buf)
 		if err != nil {
 			t.Error(err)
 		}
