@@ -382,7 +382,8 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 	t.Run("Test with TLS", func(t *testing.T) {
 		g, err := NewHTTPGetter(
 			WithURL(u.String()),
-			WithTLSClientConfig(pub, priv, ca),
+			WithTLSClientConfig("", "", ca),
+			WithInsecureSkipVerifyTLS(insecureSkipTLSverify),
 		)
 		if err != nil {
 			t.Fatal(err)
