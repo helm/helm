@@ -157,6 +157,17 @@ func TestSQLList(t *testing.T) {
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("sql expectations weren't met: %v", err)
 	}
+
+	// Check if release having both system and custom labels, this is needed to ensure that selector filtering would work.
+	rls := ssd[0]
+	_, ok := rls.Labels["name"]
+	if !ok {
+		t.Fatalf("Expected 'name' label in results, actual %v", rls.Labels)
+	}
+	_, ok = rls.Labels["key1"]
+	if !ok {
+		t.Fatalf("Expected 'key1' label in results, actual %v", rls.Labels)
+	}
 }
 
 func TestSqlCreate(t *testing.T) {
