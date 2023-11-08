@@ -1,0 +1,19 @@
+{
+  "$id": "https://helm.sh/schemas/addresses",
+  "type": "array",
+  "description": "List of addresses",
+  "items": {
+    "properties": {
+      "city": {
+        "type": "string"
+      },
+      "number": {
+        "type": "number"
+      },
+      "street": {
+        "type": "string"
+      }
+    },
+    "type": "object"
+  }
+}

@@ -33,7 +33,29 @@ func TestValidateAgainstSingleSchema(t *testing.T) {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
 
-	if err := ValidateAgainstSingleSchema(values, schema); err != nil {
+	if err := ValidateAgainstSingleSchema(values, schema, make([][]byte, 0)); err != nil {
+		t.Errorf("Error validating Values against Schema: %s", err)
+	}
+}
+
+func TestValidateAgainstSchemaWithExtras(t *testing.T) {
+	values, err := ReadValuesFile("./testdata/test-values.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	schema, err := os.ReadFile("./testdata/test-values-with-extra.schema.json")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	extra, err := os.ReadFile("./testdata/test-values-extra.schema.json")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+
+	extraSchemas := make([][]byte, 1)
+	extraSchemas[0] = extra
+
+	if err := ValidateAgainstSingleSchema(values, schema, extraSchemas); err != nil {
 		t.Errorf("Error validating Values against Schema: %s", err)
 	}
 }
@@ -49,7 +71,7 @@ func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
 	}
 
 	var errString string
-	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
+	if err := ValidateAgainstSingleSchema(values, schema, make([][]byte, 0)); err == nil {
 		t.Fatalf("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
@@ -73,7 +95,7 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	}
 
 	var errString string
-	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
+	if err := ValidateAgainstSingleSchema(values, schema, make([][]byte, 0)); err == nil {
 		t.Fatalf("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
