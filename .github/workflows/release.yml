@@ -51,6 +51,17 @@ jobs:
           connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           extra_args: '--pattern helm-*'
 
+      - name: Login to Docker Hub
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # pin@3.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker images
+        uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # pin@5.0.0
+        with:
+          args: release --clean
+
   canary-release:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'

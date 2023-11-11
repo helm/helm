@@ -1,0 +1,79 @@
+archives:   # goreleaser should only build Docker images
+  - format: binary # https://goreleaser.com/customization/archive/#disable-archiving
+builds:
+  - env:
+      - CGO_ENABLED=0
+      - GOFLAGS=-trimpath
+      - GO111MODULE=on
+    binary: helm
+    main: ./cmd/helm
+    ldflags:
+      - -s -w -X main.build={{.Version}} -extldflags "-static"
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+dockers:
+  - image_templates:
+      - "helm/helm:{{ .Version }}-amd64"
+      - "helm/helm:{{ .Major }}.{{ .Minor }}-amd64"
+      - "helm/helm:{{ .Major }}-amd64"
+      - "helm/helm:latest-amd64"
+    use: buildx
+    skip_push: false
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.description=The Kubernetes Package Manager"
+      - "--label=org.opencontainers.image.licenses=Apache-2.0"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--build-arg=BUILDKIT_MULTI_PLATFORM=1"
+  - image_templates:
+      - "helm/helm:{{ .Version }}-arm64"
+      - "helm/helm:{{ .Major }}.{{ .Minor }}-arm64"
+      - "helm/helm:{{ .Major }}-arm64"
+      - "helm/helm:latest-arm64"
+    use: buildx
+    skip_push: false
+    goarch: arm64
+    build_flag_templates:
+      - "--platform=linux/arm64/v8"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.description=The Kubernetes Package Manager"
+      - "--label=org.opencontainers.image.licenses=Apache-2.0"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--build-arg=BUILDKIT_MULTI_PLATFORM=1"
+docker_manifests:
+  - id: patch
+    name_template: "helm/helm:{{ .Version }}"
+    image_templates:
+      - "helm/helm:{{ .Version }}-amd64"
+      - "helm/helm:{{ .Version }}-arm64"
+    skip_push: false
+    use: docker
+  - id: minor
+    name_template: "helm/helm:{{ .Major }}.{{ .Minor }}"
+    image_templates:
+      - "helm/helm:{{ .Version }}-amd64"
+      - "helm/helm:{{ .Version }}-arm64"
+    skip_push: false
+    use: docker
+  - id: major
+    name_template: "helm/helm:{{ .Major }}"
+    image_templates:
+      - "helm/helm:{{ .Version }}-amd64"
+      - "helm/helm:{{ .Version }}-arm64"
+    skip_push: false
+    use: docker
+  - id: latest
+    name_template: "helm/helm:latest"
+    image_templates:
+      - "helm/helm:{{ .Version }}-amd64"
+      - "helm/helm:{{ .Version }}-arm64"
+    skip_push: false
+    use: docker

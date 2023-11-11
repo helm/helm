@@ -46,6 +46,20 @@ To rapidly get Helm up and running, start with the [Quick Start Guide](https://h
 See the [installation guide](https://helm.sh/docs/intro/install/) for more options,
 including installing pre-releases.
 
+## Docker
+Package subdirectory mychart:
+```shell
+docker run --rm -v $PWD:/out helm/helm package mychart
+```
+Package /tmp/mychart (outside of working directory):
+```shell
+docker run --rm -v /tmp:/in -v $PWD:/out helm/helm package /in/mychart
+```
+Integrate helm binary into own Dockerfile for CI workflow:
+```dockerfile
+COPY --from=helm/helm --chown=1000:1000 --chmod=0555 /bin/helm /usr/local/bin/
+```
+
 ## Docs
 
 Get started with the [Quick Start guide](https://helm.sh/docs/intro/quickstart/) or plunge into the [complete documentation](https://helm.sh/docs)

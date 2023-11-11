@@ -1,3 +1,4 @@
+# .gitignore
 *.exe
 *.swp
 .DS_Store
@@ -6,8 +7,24 @@
 .vimrc
 .vscode/
 _dist/
-dist/
 bin/
 vendor/
 # Ignores charts pulled for dependency build tests
 cmd/helm/testdata/testcharts/issue-7233/charts/*
+
+# .dockerignore
+.git/
+.circleci/
+.github/
+scripts/
+testdata/
+dist/
+.dockerignore
+.gitignore
+.goreleaser.yaml
+*.md
+KEYS
+LICENSE
+OWNERS
+Dockerfile
+Makefile

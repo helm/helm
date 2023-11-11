@@ -26,6 +26,8 @@ LDFLAGS     := -w -s
 GOFLAGS     :=
 CGO_ENABLED ?= 0
 
+GORELEASER_FLAGS ?= --clean
+
 # Rebuild the binary if any of these files change
 SRC := $(shell find . -type f -name '*.go' -print) go.mod go.sum
 
@@ -177,6 +179,10 @@ dist:
 		$(DIST_DIRS) tar -zcf helm-${VERSION}-{}.tar.gz {} \; && \
 		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
 	)
+
+.PHONY: goreleaser
+goreleaser:
+	goreleaser release $(GORELEASER_FLAGS)
 
 .PHONY: fetch-dist
 fetch-dist:
