@@ -145,6 +145,14 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 	var tag string
 	var err error
 
+	if strings.Contains(u.Path, ":") {
+		v := strings.Split(u.Path, ":")[1]
+		if version != "" && v != version {
+			return nil, errors.Errorf("chart ref version mismatch: %s, %s", version, v)
+		}
+		return u, nil
+	}
+
 	// Evaluate whether an explicit version has been provided. Otherwise, determine version to use
 	_, errSemVer := semver.NewVersion(version)
 	if errSemVer == nil {

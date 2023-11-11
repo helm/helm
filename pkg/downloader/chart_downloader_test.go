@@ -53,6 +53,8 @@ func TestResolveChartRef(t *testing.T) {
 		{name: "full URL, file", ref: "file:///foo-1.2.3.tgz", fail: true},
 		{name: "invalid", ref: "invalid-1.2.3", fail: true},
 		{name: "not found", ref: "nosuchthing/invalid-1.2.3", fail: true},
+		{name: "ref with tag", ref: "oci://example.com/helm-charts/nginx:15.4.2", expect: "oci://example.com/helm-charts/nginx:15.4.2"},
+		{name: "oci ref", ref: "oci://example.com/helm-charts/nginx", version: "15.4.2", expect: "oci://example.com/helm-charts/nginx:15.4.2"},
 	}
 
 	c := ChartDownloader{
