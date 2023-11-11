@@ -530,3 +530,62 @@ func TestHTTPTransportOption(t *testing.T) {
 		t.Fatal("transport.TLSClientConfig should not be set")
 	}
 }
+
+func TestHTTPIfModifiedSinceOption(t *testing.T) {
+	sinceNow := time.Now()
+	sinceNowExpected := sinceNow.Format(time.RFC1123)
+
+	tests := []struct {
+		name          string
+		since         *time.Time
+		sinceExpected string
+	}{
+		{
+			name:          "If-Modified-Since option set",
+			since:         &sinceNow,
+			sinceExpected: sinceNowExpected,
+		},
+		{
+			name: "If-Modified-Since option not set",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var g Getter
+			var err error
+
+			if tt.since == nil {
+				g, err = NewHTTPGetter()
+			} else {
+				g, err = NewHTTPGetter(
+					WithIfModifiedSince(*tt.since),
+				)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotSince, found := r.Header["If-Modified-Since"]
+				if tt.since != nil && !found {
+					t.Errorf("Header If-Modified-Since was expected but was not set")
+				}
+
+				if tt.since != nil && gotSince[0] != tt.sinceExpected {
+					t.Errorf("Expected '%s', got '%s'", tt.sinceExpected, gotSince)
+				}
+
+				if tt.since == nil && found {
+					t.Errorf("Header If-Modified-Since was not expected but was set")
+				}
+			}))
+			defer srv.Close()
+
+			_, err = g.Get(srv.URL, WithURL(srv.URL))
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
