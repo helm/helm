@@ -15,6 +15,9 @@ dependencies:
         parent: imported-chart1
       - child: SC1data
         parent: overridden-chart1
+      - child: SC1data
+        parent: child-overridden-chart1
+        overwrite: true
       - child: imported-chartA
         parent: imported-chartA
       - child: imported-chartA-B

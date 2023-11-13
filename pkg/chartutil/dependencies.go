@@ -249,7 +249,11 @@ func processImportValues(c *chart.Chart, merge bool) error {
 	if err != nil {
 		return err
 	}
-	b := make(map[string]interface{})
+	// Imports can be lower or higher precedence from the primary chart
+	// beforeParent are applied first, with lower precedence
+	beforeParent := []map[string]interface{}{}
+	// afterParent are applied last, with higher precedence
+	afterParent := []map[string]interface{}{}
 	// import values from each dependency if specified in import-values
 	for _, r := range c.Metadata.Dependencies {
 		var outiv []interface{}
@@ -258,11 +262,18 @@ func processImportValues(c *chart.Chart, merge bool) error {
 			case map[string]interface{}:
 				child := iv["child"].(string)
 				parent := iv["parent"].(string)
-
-				outiv = append(outiv, map[string]string{
+				var overwrite bool
+				if o, f := iv["overwrite"]; f {
+					overwrite = o.(bool)
+				}
+				m := map[string]interface{}{
 					"child":  child,
 					"parent": parent,
-				})
+				}
+				if overwrite {
+					m["overwrite"] = overwrite
+				}
+				outiv = append(outiv, m)
 
 				// get child table
 				vv, err := cvals.Table(r.Name + "." + child)
@@ -270,15 +281,14 @@ func processImportValues(c *chart.Chart, merge bool) error {
 					log.Printf("Warning: ImportValues missing table from chart %s: %v", r.Name, err)
 					continue
 				}
-				// create value map from child to be merged into parent
-				if merge {
-					b = MergeTables(b, pathToMap(parent, vv.AsMap()))
+				if overwrite {
+					afterParent = append(afterParent, pathToMap(parent, vv.AsMap()))
 				} else {
-					b = CoalesceTables(b, pathToMap(parent, vv.AsMap()))
+					beforeParent = append(beforeParent, pathToMap(parent, vv.AsMap()))
 				}
 			case string:
 				child := "exports." + iv
-				outiv = append(outiv, map[string]string{
+				outiv = append(outiv, map[string]interface{}{
 					"child":  child,
 					"parent": ".",
 				})
@@ -287,16 +297,20 @@ func processImportValues(c *chart.Chart, merge bool) error {
 					log.Printf("Warning: ImportValues missing table: %v", err)
 					continue
 				}
-				if merge {
-					b = MergeTables(b, vm.AsMap())
-				} else {
-					b = CoalesceTables(b, vm.AsMap())
-				}
+				beforeParent = append(beforeParent, vm.AsMap())
 			}
 		}
 		r.ImportValues = outiv
 	}
 
+	b := make(map[string]interface{})
+	for _, mv := range beforeParent {
+		if merge {
+			b = MergeTables(b, mv)
+		} else {
+			b = CoalesceTables(b, mv)
+		}
+	}
 	// Imported values from a child to a parent chart have a lower priority than
 	// the parents values. This enables parent charts to import a large section
 	// from a child and then override select parts. This is why b is merged into
@@ -305,15 +319,23 @@ func processImportValues(c *chart.Chart, merge bool) error {
 		// deep copying the cvals as there are cases where pointers can end
 		// up in the cvals when they are copied onto b in ways that break things.
 		cvals = deepCopyMap(cvals)
-		c.Values = MergeTables(cvals, b)
+		b = MergeTables(cvals, b)
 	} else {
 		// Trimming the nil values from cvals is needed for backwards compatibility.
 		// Previously, the b value had been populated with cvals along with some
 		// overrides. This caused the coalescing functionality to remove the
 		// nil/null values. This trimming is for backwards compat.
 		cvals = trimNilValues(cvals)
-		c.Values = CoalesceTables(cvals, b)
+		b = CoalesceTables(cvals, b)
 	}
+	for _, mv := range afterParent {
+		if merge {
+			b = MergeTables(mv, b)
+		} else {
+			b = CoalesceTables(mv, b)
+		}
+	}
+	c.Values = b
 
 	return nil
 }

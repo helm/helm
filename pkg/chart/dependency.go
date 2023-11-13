@@ -66,6 +66,31 @@ func (d *Dependency) Validate() error {
 	if d.Alias != "" && !aliasNameFormat.MatchString(d.Alias) {
 		return ValidationErrorf("dependency %q has disallowed characters in the alias", d.Name)
 	}
+	for _, riv := range d.ImportValues {
+		switch iv := riv.(type) {
+		case map[string]interface{}:
+			for k, v := range iv {
+				switch k {
+				case "child":
+					if _, ok := v.(string); !ok {
+						return ValidationErrorf("dependency %q has invalid importValues; child must be a string", d.Name)
+					}
+				case "parent":
+					if _, ok := v.(string); !ok {
+						return ValidationErrorf("dependency %q has invalid importValues; parent must be a string", d.Name)
+					}
+				case "overwrite":
+					if _, ok := v.(bool); !ok {
+						return ValidationErrorf("dependency %q has invalid importValues; overwrite must be a boolean", d.Name)
+					}
+				}
+			}
+		case string:
+			// String is always valid
+		default:
+			return ValidationErrorf("dependency %q has invalid importValues of type %T", d.Name, iv)
+		}
+	}
 	return nil
 }
 

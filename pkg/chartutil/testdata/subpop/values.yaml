@@ -10,6 +10,12 @@ overridden-chart1:
   SC1string: "pollywog"
   SPextra2: 42
 
+child-overridden-chart1:
+  SC1bool: false
+  SC1float: 3.141592
+  SC1int: 99
+  SC1string: "pollywog"
+  SPextra2: 42
 
 imported-chartA:
   SPextra3: 1.337

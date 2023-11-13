@@ -190,6 +190,15 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["overridden-chart1.SC1string"] = "pollywog"
 	e["overridden-chart1.SPextra2"] = "42"
 
+	// These values are imported from the child chart to the parent. Parent values are present.
+	// Child is configred to take precedence
+	e["child-overridden-chart1.SC1bool"] = "true"
+	e["child-overridden-chart1.SC1float"] = "3.14"
+	e["child-overridden-chart1.SC1int"] = "100"
+	e["child-overridden-chart1.SC1string"] = "dollywood"
+	e["child-overridden-chart1.SC1extra1"] = "11"
+	e["child-overridden-chart1.SPextra2"] = "42"
+
 	e["overridden-chartA.SCAbool"] = "true"
 	e["overridden-chartA.SCAfloat"] = "41.3"
 	e["overridden-chartA.SCAint"] = "808"
