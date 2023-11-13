@@ -19,6 +19,7 @@ package cmd
 import (
 	"testing"
 
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -56,6 +57,15 @@ func TestUninstall(t *testing.T) {
 			cmd:    "uninstall aeneas --keep-history",
 			golden: "output/uninstall-keep-history.txt",
 			rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "aeneas"})},
+		},
+		{
+			name:   "keep history with earlier deployed release",
+			cmd:    "uninstall aeneas --keep-history",
+			golden: "output/uninstall-keep-history-earlier-deployed.txt",
+			rels: []*release.Release{
+				release.Mock(&release.MockReleaseOptions{Name: "aeneas", Version: 1, Status: common.StatusDeployed}),
+				release.Mock(&release.MockReleaseOptions{Name: "aeneas", Version: 2, Status: common.StatusFailed}),
+			},
 		},
 		{
 			name:   "wait",
