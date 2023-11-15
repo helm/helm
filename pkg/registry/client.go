@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"sort"
 	"strings"
@@ -60,7 +59,9 @@ type (
 		out                io.Writer
 		authorizer         auth.Client
 		registryAuthorizer *registryauth.Client
-		resolver           remotes.Resolver
+		resolver           func(ref registry.Reference) (remotes.Resolver, error)
+		httpClient         *http.Client
+		plainHTTP          bool
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -71,7 +72,7 @@ type (
 // NewClient returns a new registry client with config
 func NewClient(options ...ClientOption) (*Client, error) {
 	client := &Client{
-		out: ioutil.Discard,
+		out: io.Discard,
 	}
 	for _, option := range options {
 		option(client)
@@ -86,15 +87,29 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		}
 		client.authorizer = authClient
 	}
-	if client.resolver == nil {
+
+	resolverFn := client.resolver // copy for avoiding recursive call
+	client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
+		if resolverFn != nil {
+			// validate if the resolverFn returns a valid resolver
+			if resolver, err := resolverFn(ref); resolver != nil && err == nil {
+				return resolver, nil
+			}
+		}
 		headers := http.Header{}
 		headers.Set("User-Agent", version.GetUserAgent())
 		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
+		if client.httpClient != nil {
+			opts = append(opts, auth.WithResolverClient(client.httpClient))
+		}
+		if client.plainHTTP {
+			opts = append(opts, auth.WithResolverPlainHTTP())
+		}
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {
 			return nil, err
 		}
-		client.resolver = resolver
+		return resolver, nil
 	}
 
 	// allocate a cache if option is set
@@ -104,6 +119,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	if client.registryAuthorizer == nil {
 		client.registryAuthorizer = &registryauth.Client{
+			Client: client.httpClient,
 			Header: http.Header{
 				"User-Agent": {version.GetUserAgent()},
 			},
@@ -166,6 +182,28 @@ func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 	}
 }
 
+// ClientOptHTTPClient returns a function that sets the httpClient setting on a client options set
+func ClientOptHTTPClient(httpClient *http.Client) ClientOption {
+	return func(client *Client) {
+		client.httpClient = httpClient
+	}
+}
+
+func ClientOptPlainHTTP() ClientOption {
+	return func(c *Client) {
+		c.plainHTTP = true
+	}
+}
+
+// ClientOptResolver returns a function that sets the resolver setting on a client options set
+func ClientOptResolver(resolver remotes.Resolver) ClientOption {
+	return func(client *Client) {
+		client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
+			return resolver, nil
+		}
+	}
+}
+
 type (
 	// LoginOption allows specifying various settings on login
 	LoginOption func(*loginOperation)
@@ -174,6 +212,9 @@ type (
 		username string
 		password string
 		insecure bool
+		certFile string
+		keyFile  string
+		caFile   string
 	}
 )
 
@@ -189,6 +230,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		auth.WithLoginUsername(operation.username),
 		auth.WithLoginSecret(operation.password),
 		auth.WithLoginUserAgent(version.GetUserAgent()),
+		auth.WithLoginTLS(operation.certFile, operation.keyFile, operation.caFile),
 	}
 	if operation.insecure {
 		authorizerLoginOpts = append(authorizerLoginOpts, auth.WithLoginInsecure())
@@ -212,6 +254,15 @@ func LoginOptBasicAuth(username string, password string) LoginOption {
 func LoginOptInsecure(insecure bool) LoginOption {
 	return func(operation *loginOperation) {
 		operation.insecure = insecure
+	}
+}
+
+// LoginOptTLSClientConfig returns a function that sets the TLS settings on login.
+func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
+	return func(operation *loginOperation) {
+		operation.certFile = certFile
+		operation.keyFile = keyFile
+		operation.caFile = caFile
 	}
 }
 
@@ -241,21 +292,21 @@ type (
 
 	// PullResult is the result returned upon successful pull.
 	PullResult struct {
-		Manifest *descriptorPullSummary         `json:"manifest"`
-		Config   *descriptorPullSummary         `json:"config"`
-		Chart    *descriptorPullSummaryWithMeta `json:"chart"`
-		Prov     *descriptorPullSummary         `json:"prov"`
+		Manifest *DescriptorPullSummary         `json:"manifest"`
+		Config   *DescriptorPullSummary         `json:"config"`
+		Chart    *DescriptorPullSummaryWithMeta `json:"chart"`
+		Prov     *DescriptorPullSummary         `json:"prov"`
 		Ref      string                         `json:"ref"`
 	}
 
-	descriptorPullSummary struct {
+	DescriptorPullSummary struct {
 		Data   []byte `json:"-"`
 		Digest string `json:"digest"`
 		Size   int64  `json:"size"`
 	}
 
-	descriptorPullSummaryWithMeta struct {
-		descriptorPullSummary
+	DescriptorPullSummaryWithMeta struct {
+		DescriptorPullSummary
 		Meta *chart.Metadata `json:"meta"`
 	}
 
@@ -300,7 +351,11 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 
 	var descriptors, layers []ocispec.Descriptor
-	registryStore := content.Registry{Resolver: c.resolver}
+	remotesResolver, err := c.resolver(parsedRef)
+	if err != nil {
+		return nil, err
+	}
+	registryStore := content.Registry{Resolver: remotesResolver}
 
 	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, parsedRef.String(), memoryStore, "",
 		oras.WithPullEmptyNameAllowed(),
@@ -354,16 +409,16 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		}
 	}
 	result := &PullResult{
-		Manifest: &descriptorPullSummary{
+		Manifest: &DescriptorPullSummary{
 			Digest: manifest.Digest.String(),
 			Size:   manifest.Size,
 		},
-		Config: &descriptorPullSummary{
+		Config: &DescriptorPullSummary{
 			Digest: configDescriptor.Digest.String(),
 			Size:   configDescriptor.Size,
 		},
-		Chart: &descriptorPullSummaryWithMeta{},
-		Prov:  &descriptorPullSummary{},
+		Chart: &DescriptorPullSummaryWithMeta{},
+		Prov:  &DescriptorPullSummary{},
 		Ref:   parsedRef.String(),
 	}
 	var getManifestErr error
@@ -474,6 +529,7 @@ type (
 	pushOperation struct {
 		provData   []byte
 		strictMode bool
+		test       bool
 	}
 )
 
@@ -527,7 +583,9 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		descriptors = append(descriptors, provDescriptor)
 	}
 
-	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, nil, descriptors...)
+	ociAnnotations := generateOCIAnnotations(meta, operation.test)
+
+	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, ociAnnotations, descriptors...)
 	if err != nil {
 		return nil, err
 	}
@@ -536,7 +594,11 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 
-	registryStore := content.Registry{Resolver: c.resolver}
+	remotesResolver, err := c.resolver(parsedRef)
+	if err != nil {
+		return nil, err
+	}
+	registryStore := content.Registry{Resolver: remotesResolver}
 	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, parsedRef.String(), registryStore, "",
 		oras.WithNameValidation(nil))
 	if err != nil {
@@ -590,6 +652,13 @@ func PushOptStrictMode(strictMode bool) PushOption {
 	}
 }
 
+// PushOptTest returns a function that sets whether test setting on push
+func PushOptTest(test bool) PushOption {
+	return func(operation *pushOperation) {
+		operation.test = test
+	}
+}
+
 // Tags provides a sorted list all semver compliant tags for a given repository
 func (c *Client) Tags(ref string) ([]string, error) {
 	parsedReference, err := registry.ParseReference(ref)
@@ -600,23 +669,14 @@ func (c *Client) Tags(ref string) ([]string, error) {
 	repository := registryremote.Repository{
 		Reference: parsedReference,
 		Client:    c.registryAuthorizer,
+		PlainHTTP: c.plainHTTP,
 	}
 
 	var registryTags []string
 
-	for {
-		registryTags, err = registry.Tags(ctx(c.out, c.debug), &repository)
-		if err != nil {
-			// Fallback to http based request
-			if !repository.PlainHTTP && strings.Contains(err.Error(), "server gave HTTP response") {
-				repository.PlainHTTP = true
-				continue
-			}
-			return nil, err
-		}
-
-		break
-
+	registryTags, err = registry.Tags(ctx(c.out, c.debug), &repository)
+	if err != nil {
+		return nil, err
 	}
 
 	var tagVersions []*semver.Version

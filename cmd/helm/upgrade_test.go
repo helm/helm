@@ -18,13 +18,12 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -33,7 +32,7 @@ import (
 
 func TestUpgradeCmd(t *testing.T) {
 
-	tmpChart := ensure.TempDir(t)
+	tmpChart := t.TempDir()
 	cfile := &chart.Chart{
 		Metadata: &chart.Metadata{
 			APIVersion:  chart.APIVersionV1,
@@ -358,8 +357,8 @@ func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
 }
 
 func prepareMockRelease(releaseName string, t *testing.T) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
-	tmpChart := ensure.TempDir(t)
-	configmapData, err := ioutil.ReadFile("testdata/testcharts/upgradetest/templates/configmap.yaml")
+	tmpChart := t.TempDir()
+	configmapData, err := os.ReadFile("testdata/testcharts/upgradetest/templates/configmap.yaml")
 	if err != nil {
 		t.Fatalf("Error loading template yaml %v", err)
 	}
@@ -430,4 +429,32 @@ func TestUpgradeFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "upgrade", false)
 	checkFileCompletion(t, "upgrade myrelease", true)
 	checkFileCompletion(t, "upgrade myrelease repo/chart", false)
+}
+
+func TestUpgradeInstallWithLabels(t *testing.T) {
+	releaseName := "funny-bunny-labels"
+	_, _, chartPath := prepareMockRelease(releaseName, t)
+
+	defer resetEnv()()
+
+	store := storageFixture()
+
+	expectedLabels := map[string]string{
+		"key1": "val1",
+		"key2": "val2",
+	}
+	cmd := fmt.Sprintf("upgrade %s --install --labels key1=val1,key2=val2 '%s'", releaseName, chartPath)
+	_, _, err := executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	updatedRel, err := store.Get(releaseName, 1)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !reflect.DeepEqual(updatedRel.Labels, expectedLabels) {
+		t.Errorf("Expected {%v}, got {%v}", expectedLabels, updatedRel.Labels)
+	}
 }

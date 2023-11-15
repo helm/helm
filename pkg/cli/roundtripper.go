@@ -40,6 +40,9 @@ func (rt *retryingRoundTripper) roundTrip(req *http.Request, retry int, prevResp
 	if rtErr != nil {
 		return resp, rtErr
 	}
+	if resp.StatusCode < 500 {
+		return resp, rtErr
+	}
 	if resp.Header.Get("content-type") != "application/json" {
 		return resp, rtErr
 	}

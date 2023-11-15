@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -82,7 +82,7 @@ func TestValidate(t *testing.T) {
 					nil,
 				},
 			},
-			ValidationError("dependency cannot be an empty list"),
+			ValidationError("dependencies must not contain empty or null nodes"),
 		},
 		{
 			&Metadata{
@@ -94,7 +94,7 @@ func TestValidate(t *testing.T) {
 					nil,
 				},
 			},
-			ValidationError("maintainer cannot be an empty list"),
+			ValidationError("maintainers must not contain empty or null nodes"),
 		},
 		{
 			&Metadata{APIVersion: "v2", Name: "test", Version: "1.2.3.4"},

@@ -17,7 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -28,7 +28,7 @@ func TestValidateAgainstSingleSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
-	schema, err := ioutil.ReadFile("./testdata/test-values.schema.json")
+	schema, err := os.ReadFile("./testdata/test-values.schema.json")
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
@@ -43,7 +43,7 @@ func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
-	schema, err := ioutil.ReadFile("./testdata/test-values-invalid.schema.json")
+	schema, err := os.ReadFile("./testdata/test-values-invalid.schema.json")
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
@@ -67,7 +67,7 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
-	schema, err := ioutil.ReadFile("./testdata/test-values.schema.json")
+	schema, err := os.ReadFile("./testdata/test-values.schema.json")
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
