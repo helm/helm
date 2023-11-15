@@ -30,7 +30,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/Masterminds/sprig/v3"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -174,7 +173,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 	}
 	if len(totalItems) > 0 {
 		// Give time for the CRD to be recognized.
-		if err := i.cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
+		if err := i.cfg.KubeClient.Wait(totalItems, i.Timeout); err != nil {
 			return err
 		}
 
