@@ -133,7 +133,7 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 					return errors.Wrapf(err, "unable to get pod info for %s", h.Name)
 				}
 
-				if container, ok := pod.Annotations["helm.sh/hook-logs-container"]; ok {
+				if container, ok := pod.Annotations["kubectl.kubernetes.io/default-container"]; ok {
 					podLogOptions.Container = container
 				}
 
