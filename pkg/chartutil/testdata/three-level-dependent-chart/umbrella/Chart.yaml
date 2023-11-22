@@ -17,3 +17,18 @@ dependencies:
 - name: app4
   version: 0.1.0
   condition: app4.enabled
+- name: app5
+  version: 0.1.0
+  condition: app5.enabled
+- name: app6
+  version: 0.1.0
+  condition: app5.enabled
+- name: app7
+  version: 0.1.0
+  condition: app5.enabled
+- name: values
+  condition: profile.enabled
+  import-values:
+  - defaults
+  repository: file://charts/values
+  version: 0.1.0
