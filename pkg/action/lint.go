@@ -86,7 +86,7 @@ func HasWarningsOrErrors(result *LintResult) bool {
 	return len(result.Errors) > 0
 }
 
-func lintChart(path string, vals map[string]interface{}, name, namespace string, strict bool) (support.Linter, error) {
+func lintChart(path string, vals map[string]interface{}, releaseName, namespace string, strict bool) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 
@@ -125,5 +125,5 @@ func lintChart(path string, vals map[string]interface{}, name, namespace string,
 		return linter, errors.Wrap(err, "unable to check Chart.yaml file in chart")
 	}
 
-	return lint.All(chartPath, vals, name, namespace, strict), nil
+	return lint.All(chartPath, vals, releaseName, namespace, strict), nil
 }

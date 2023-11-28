@@ -90,3 +90,98 @@ func TestSearchHubOutputCompletion(t *testing.T) {
 func TestSearchHubFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "search hub", true) // File completion may be useful when inputting a keyword
 }
+
+func TestSearchHubCmd_FailOnNoResponseTests(t *testing.T) {
+	var (
+		searchResult            = `{"data":[]}`
+		noResultFoundErr        = "Error: no results found\n"
+		noResultFoundWarn       = "No results found\n"
+		noResultFoundWarnInList = "[]\n"
+	)
+
+	type testCase struct {
+		name     string
+		cmd      string
+		response string
+		expected string
+		wantErr  bool
+	}
+
+	var tests = []testCase{
+		{
+			name:     "Search hub with no results in response",
+			cmd:      `search hub maria`,
+			response: searchResult,
+			expected: noResultFoundWarn,
+			wantErr:  false,
+		},
+		{
+			name:     "Search hub with no results in response and output JSON",
+			cmd:      `search hub maria --output json`,
+			response: searchResult,
+			expected: noResultFoundWarnInList,
+			wantErr:  false,
+		},
+		{
+			name:     "Search hub with no results in response and output YAML",
+			cmd:      `search hub maria --output yaml`,
+			response: searchResult,
+			expected: noResultFoundWarnInList,
+			wantErr:  false,
+		},
+		{
+			name:     "Search hub with no results in response and --fail-on-no-result enabled, expected failure",
+			cmd:      `search hub maria --fail-on-no-result`,
+			response: searchResult,
+			expected: noResultFoundErr,
+			wantErr:  true,
+		},
+		{
+			name:     "Search hub with no results in response, output JSON and --fail-on-no-result enabled, expected failure",
+			cmd:      `search hub maria --fail-on-no-result --output json`,
+			response: searchResult,
+			expected: noResultFoundErr,
+			wantErr:  true,
+		},
+		{
+			name:     "Search hub with no results in response, output YAML and --fail-on-no-result enabled, expected failure",
+			cmd:      `search hub maria --fail-on-no-result --output yaml`,
+			response: searchResult,
+			expected: noResultFoundErr,
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup a mock search service
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintln(w, tt.response)
+			}))
+			defer ts.Close()
+
+			// Add mock server URL to command
+			tt.cmd += " --endpoint " + ts.URL
+
+			storage := storageFixture()
+
+			_, out, err := executeActionCommandC(storage, tt.cmd)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("expected error due to no record in response, got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error, got %q", err)
+				}
+			}
+
+			if out != tt.expected {
+				t.Errorf("expected and actual output did not match\n"+
+					"expected: %q\n"+
+					"actual  : %q",
+					tt.expected, out)
+			}
+		})
+	}
+}

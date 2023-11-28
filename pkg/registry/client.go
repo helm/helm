@@ -87,23 +87,17 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		}
 		client.authorizer = authClient
 	}
+
+	resolverFn := client.resolver // copy for avoiding recursive call
 	client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
-		headers := http.Header{}
-		headers.Set("User-Agent", version.GetUserAgent())
-		dockerClient, ok := client.authorizer.(*dockerauth.Client)
-		if ok {
-			username, password, err := dockerClient.Credential(ref.Registry)
-			if err != nil {
-				return nil, errors.New("unable to retrieve credentials")
-			}
-			// A blank returned username and password value is a bearer token
-			if username == "" && password != "" {
-				headers.Set("Authorization", fmt.Sprintf("Bearer %s", password))
-			} else {
-				headers.Set("Authorization", fmt.Sprintf("Basic %s", basicAuth(username, password)))
+		if resolverFn != nil {
+			// validate if the resolverFn returns a valid resolver
+			if resolver, err := resolverFn(ref); resolver != nil && err == nil {
+				return resolver, nil
 			}
 		}
-
+		headers := http.Header{}
+		headers.Set("User-Agent", version.GetUserAgent())
 		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
 		if client.httpClient != nil {
 			opts = append(opts, auth.WithResolverClient(client.httpClient))
@@ -117,6 +111,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		}
 		return resolver, nil
 	}
+
 	// allocate a cache if option is set
 	var cache registryauth.Cache
 	if client.enableCache {
@@ -134,6 +129,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 				if !ok {
 					return registryauth.EmptyCredential, errors.New("unable to obtain docker client")
 				}
+
 				username, password, err := dockerClient.Credential(reg)
 				if err != nil {
 					return registryauth.EmptyCredential, errors.New("unable to retrieve credentials")
@@ -196,6 +192,15 @@ func ClientOptHTTPClient(httpClient *http.Client) ClientOption {
 func ClientOptPlainHTTP() ClientOption {
 	return func(c *Client) {
 		c.plainHTTP = true
+	}
+}
+
+// ClientOptResolver returns a function that sets the resolver setting on a client options set
+func ClientOptResolver(resolver remotes.Resolver) ClientOption {
+	return func(client *Client) {
+		client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
+			return resolver, nil
+		}
 	}
 }
 
@@ -287,21 +292,21 @@ type (
 
 	// PullResult is the result returned upon successful pull.
 	PullResult struct {
-		Manifest *descriptorPullSummary         `json:"manifest"`
-		Config   *descriptorPullSummary         `json:"config"`
-		Chart    *descriptorPullSummaryWithMeta `json:"chart"`
-		Prov     *descriptorPullSummary         `json:"prov"`
+		Manifest *DescriptorPullSummary         `json:"manifest"`
+		Config   *DescriptorPullSummary         `json:"config"`
+		Chart    *DescriptorPullSummaryWithMeta `json:"chart"`
+		Prov     *DescriptorPullSummary         `json:"prov"`
 		Ref      string                         `json:"ref"`
 	}
 
-	descriptorPullSummary struct {
+	DescriptorPullSummary struct {
 		Data   []byte `json:"-"`
 		Digest string `json:"digest"`
 		Size   int64  `json:"size"`
 	}
 
-	descriptorPullSummaryWithMeta struct {
-		descriptorPullSummary
+	DescriptorPullSummaryWithMeta struct {
+		DescriptorPullSummary
 		Meta *chart.Metadata `json:"meta"`
 	}
 
@@ -404,16 +409,16 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		}
 	}
 	result := &PullResult{
-		Manifest: &descriptorPullSummary{
+		Manifest: &DescriptorPullSummary{
 			Digest: manifest.Digest.String(),
 			Size:   manifest.Size,
 		},
-		Config: &descriptorPullSummary{
+		Config: &DescriptorPullSummary{
 			Digest: configDescriptor.Digest.String(),
 			Size:   configDescriptor.Size,
 		},
-		Chart: &descriptorPullSummaryWithMeta{},
-		Prov:  &descriptorPullSummary{},
+		Chart: &DescriptorPullSummaryWithMeta{},
+		Prov:  &DescriptorPullSummary{},
 		Ref:   parsedRef.String(),
 	}
 	var getManifestErr error
@@ -588,6 +593,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	if err := memoryStore.StoreManifest(parsedRef.String(), manifest, manifestData); err != nil {
 		return nil, err
 	}
+
 	remotesResolver, err := c.resolver(parsedRef)
 	if err != nil {
 		return nil, err

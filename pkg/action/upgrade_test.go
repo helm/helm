@@ -19,10 +19,12 @@ package action
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/storage/driver"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -306,6 +308,59 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 	})
 }
 
+func TestUpgradeRelease_ResetThenReuseValues(t *testing.T) {
+	is := assert.New(t)
+
+	t.Run("reset then reuse values should work with values", func(t *testing.T) {
+		upAction := upgradeAction(t)
+
+		existingValues := map[string]interface{}{
+			"name":        "value",
+			"maxHeapSize": "128m",
+			"replicas":    2,
+		}
+		newValues := map[string]interface{}{
+			"name":        "newValue",
+			"maxHeapSize": "512m",
+			"cpu":         "12m",
+		}
+		newChartValues := map[string]interface{}{
+			"memory": "256m",
+		}
+		expectedValues := map[string]interface{}{
+			"name":        "newValue",
+			"maxHeapSize": "512m",
+			"cpu":         "12m",
+			"replicas":    2,
+		}
+
+		rel := releaseStub()
+		rel.Name = "nuketown"
+		rel.Info.Status = release.StatusDeployed
+		rel.Config = existingValues
+
+		err := upAction.cfg.Releases.Create(rel)
+		is.NoError(err)
+
+		upAction.ResetThenReuseValues = true
+		// setting newValues and upgrading
+		res, err := upAction.Run(rel.Name, buildChart(withValues(newChartValues)), newValues)
+		is.NoError(err)
+
+		// Now make sure it is actually upgraded
+		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
+		is.NoError(err)
+
+		if updatedRes == nil {
+			is.Fail("Updated Release is nil")
+			return
+		}
+		is.Equal(release.StatusDeployed, updatedRes.Info.Status)
+		is.Equal(expectedValues, updatedRes.Config)
+		is.Equal(newChartValues, updatedRes.Chart.Values)
+	})
+}
+
 func TestUpgradeRelease_Pending(t *testing.T) {
 	req := require.New(t)
 
@@ -386,5 +441,97 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	is.NoError(err)
 	// Should have rolled back to the previous
 	is.Equal(updatedRes.Info.Status, release.StatusDeployed)
+}
 
+func TestMergeCustomLabels(t *testing.T) {
+	var tests = [][3]map[string]string{
+		{nil, nil, map[string]string{}},
+		{map[string]string{}, map[string]string{}, map[string]string{}},
+		{map[string]string{"k1": "v1", "k2": "v2"}, nil, map[string]string{"k1": "v1", "k2": "v2"}},
+		{nil, map[string]string{"k1": "v1", "k2": "v2"}, map[string]string{"k1": "v1", "k2": "v2"}},
+		{map[string]string{"k1": "v1", "k2": "v2"}, map[string]string{"k1": "null", "k2": "v3"}, map[string]string{"k2": "v3"}},
+	}
+	for _, test := range tests {
+		if output := mergeCustomLabels(test[0], test[1]); !reflect.DeepEqual(test[2], output) {
+			t.Errorf("Expected {%v}, got {%v}", test[2], output)
+		}
+	}
+}
+
+func TestUpgradeRelease_Labels(t *testing.T) {
+	is := assert.New(t)
+	upAction := upgradeAction(t)
+
+	rel := releaseStub()
+	rel.Name = "labels"
+	// It's needed to check that suppressed release would keep original labels
+	rel.Labels = map[string]string{
+		"key1": "val1",
+		"key2": "val2.1",
+	}
+	rel.Info.Status = release.StatusDeployed
+
+	err := upAction.cfg.Releases.Create(rel)
+	is.NoError(err)
+
+	upAction.Labels = map[string]string{
+		"key1": "null",
+		"key2": "val2.2",
+		"key3": "val3",
+	}
+	// setting newValues and upgrading
+	res, err := upAction.Run(rel.Name, buildChart(), nil)
+	is.NoError(err)
+
+	// Now make sure it is actually upgraded and labels were merged
+	updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
+	is.NoError(err)
+
+	if updatedRes == nil {
+		is.Fail("Updated Release is nil")
+		return
+	}
+	is.Equal(release.StatusDeployed, updatedRes.Info.Status)
+	is.Equal(mergeCustomLabels(rel.Labels, upAction.Labels), updatedRes.Labels)
+
+	// Now make sure it is suppressed release still contains original labels
+	initialRes, err := upAction.cfg.Releases.Get(res.Name, 1)
+	is.NoError(err)
+
+	if initialRes == nil {
+		is.Fail("Updated Release is nil")
+		return
+	}
+	is.Equal(initialRes.Info.Status, release.StatusSuperseded)
+	is.Equal(initialRes.Labels, rel.Labels)
+}
+
+func TestUpgradeRelease_SystemLabels(t *testing.T) {
+	is := assert.New(t)
+	upAction := upgradeAction(t)
+
+	rel := releaseStub()
+	rel.Name = "labels"
+	// It's needed to check that suppressed release would keep original labels
+	rel.Labels = map[string]string{
+		"key1": "val1",
+		"key2": "val2.1",
+	}
+	rel.Info.Status = release.StatusDeployed
+
+	err := upAction.cfg.Releases.Create(rel)
+	is.NoError(err)
+
+	upAction.Labels = map[string]string{
+		"key1":  "null",
+		"key2":  "val2.2",
+		"owner": "val3",
+	}
+	// setting newValues and upgrading
+	_, err = upAction.Run(rel.Name, buildChart(), nil)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+
+	is.Equal(fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
 }

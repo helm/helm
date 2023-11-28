@@ -45,7 +45,7 @@ var (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values map[string]interface{}, name, namespace string, strict bool) {
+func Templates(linter *support.Linter, values map[string]interface{}, releaseName, namespace string, strict bool) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
@@ -66,7 +66,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, name, name
 	}
 
 	options := chartutil.ReleaseOptions{
-		Name:      name,
+		Name:      releaseName,
 		Namespace: namespace,
 	}
 

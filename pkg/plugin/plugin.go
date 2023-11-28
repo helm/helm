@@ -121,10 +121,10 @@ func getPlatformCommand(cmds []PlatformCommand) []string {
 	eq := strings.EqualFold
 	for _, c := range cmds {
 		if eq(c.OperatingSystem, runtime.GOOS) {
-			command = strings.Split(os.ExpandEnv(c.Command), " ")
+			command = strings.Split(c.Command, " ")
 		}
 		if eq(c.OperatingSystem, runtime.GOOS) && eq(c.Architecture, runtime.GOARCH) {
-			return strings.Split(os.ExpandEnv(c.Command), " ")
+			return strings.Split(c.Command, " ")
 		}
 	}
 	return command
@@ -148,16 +148,19 @@ func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string, error) {
 		parts = getPlatformCommand(p.Metadata.PlatformCommand)
 	}
 	if platCmdLen == 0 || parts == nil {
-		parts = strings.Split(os.ExpandEnv(p.Metadata.Command), " ")
+		parts = strings.Split(p.Metadata.Command, " ")
 	}
 	if len(parts) == 0 || parts[0] == "" {
 		return "", nil, fmt.Errorf("no plugin command is applicable")
 	}
 
-	main := parts[0]
+	main := os.ExpandEnv(parts[0])
 	baseArgs := []string{}
 	if len(parts) > 1 {
-		baseArgs = parts[1:]
+		for _, cmdpart := range parts[1:] {
+			cmdexp := os.ExpandEnv(cmdpart)
+			baseArgs = append(baseArgs, cmdexp)
+		}
 	}
 	if !p.Metadata.IgnoreFlags {
 		baseArgs = append(baseArgs, extraArgs...)

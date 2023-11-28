@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -38,6 +39,7 @@ type Uninstall struct {
 
 	DisableHooks        bool
 	DryRun              bool
+	IgnoreNotFound      bool
 	KeepHistory         bool
 	Wait                bool
 	DeletionPropagation string
@@ -73,6 +75,9 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 
 	rels, err := u.cfg.Releases.History(name)
 	if err != nil {
+		if u.IgnoreNotFound {
+			return nil, nil
+		}
 		return nil, errors.Wrapf(err, "uninstall: Release not loaded: %s", name)
 	}
 	if len(rels) < 1 {
