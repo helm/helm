@@ -334,11 +334,9 @@ func trimNilValues(vals map[string]interface{}) map[string]interface{} {
 	valsCopyMap := valsCopy.(map[string]interface{})
 	for key, val := range valsCopyMap {
 		if val == nil {
-			log.Printf("trim deleting %q", key)
 			// Iterate over the values and remove nil keys
 			delete(valsCopyMap, key)
 		} else if istable(val) {
-			log.Printf("trim copying %q", key)
 			// Recursively call into ourselves to remove keys from inner tables
 			valsCopyMap[key] = trimNilValues(val.(map[string]interface{}))
 		}
