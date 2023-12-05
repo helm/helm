@@ -62,6 +62,9 @@ const notesFileSuffix = "NOTES.txt"
 
 const defaultDirectoryPermission = 0755
 
+// Default timeout for CRD
+const defaultTimeout = 60 * time.Second
+
 // Install performs an installation operation.
 type Install struct {
 	cfg *Configuration
@@ -172,8 +175,15 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		totalItems = append(totalItems, res...)
 	}
 	if len(totalItems) > 0 {
+		//  If the timeout provided is greater than the default timeout
+		//  use the provided timeout as the maximum timeout.
+		crdMaxTimeout := defaultTimeout
+		if i.Timeout > defaultTimeout {
+			crdMaxTimeout = i.Timeout
+		}
+
 		// Give time for the CRD to be recognized.
-		if err := i.cfg.KubeClient.Wait(totalItems, i.Timeout); err != nil {
+		if err := i.cfg.KubeClient.Wait(totalItems, crdMaxTimeout); err != nil {
 			return err
 		}
 
