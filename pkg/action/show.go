@@ -139,10 +139,10 @@ func (s *Show) Run(chartpath string) (string, error) {
 	if s.OutputFormat == ShowCRDs || s.OutputFormat == ShowAll {
 		crds := s.chart.CRDObjects()
 		if len(crds) > 0 {
-			if s.OutputFormat == ShowAll && !bytes.HasPrefix(crds[0].File.Data, []byte("---")) {
-				fmt.Fprintln(&out, "---")
-			}
 			for _, crd := range crds {
+				if !bytes.HasPrefix(crd.File.Data, []byte("---")) {
+					fmt.Fprintln(&out, "---")
+				}
 				fmt.Fprintf(&out, "%s\n", string(crd.File.Data))
 			}
 		}
