@@ -197,6 +197,7 @@ func TestDownloadTo(t *testing.T) {
 		},
 	}
 	cname := "/signtest-0.1.0.tgz"
+	// Distinguish the server's file directory from the downloaded directory.
 	dest := srv.Root() + "/dest"
 	os.Mkdir(dest, 0755)
 
