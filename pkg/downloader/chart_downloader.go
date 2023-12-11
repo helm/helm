@@ -97,11 +97,6 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		return "", nil, err
 	}
 
-	data, err := g.Get(u.String(), c.Options...)
-	if err != nil {
-		return "", nil, err
-	}
-
 	name := filepath.Base(u.Path)
 	if u.Scheme == registry.OCIScheme {
 		idx := strings.LastIndexByte(name, ':')
@@ -109,8 +104,22 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	}
 
 	destfile := filepath.Join(dest, name)
-	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
-		return destfile, nil, err
+	_, err = os.Stat(destfile)
+
+	// If the required chart is already cached, there is no need to download it again
+	if err != nil {
+		if os.IsNotExist(err) {
+			data, err := g.Get(u.String(), c.Options...)
+			if err != nil {
+				return "", nil, err
+			}
+
+			if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
+				return destfile, nil, err
+			}
+		} else {
+			return destfile, nil, err
+		}
 	}
 
 	// If provenance is requested, verify it.

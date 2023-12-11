@@ -197,7 +197,9 @@ func TestDownloadTo(t *testing.T) {
 		},
 	}
 	cname := "/signtest-0.1.0.tgz"
-	dest := srv.Root()
+	dest := srv.Root() + "/dest"
+	os.Mkdir(dest, 0755)
+
 	where, v, err := c.DownloadTo(srv.URL()+cname, "", dest)
 	if err != nil {
 		t.Fatal(err)
@@ -248,7 +250,8 @@ func TestDownloadTo_TLS(t *testing.T) {
 		Options: []getter.Option{},
 	}
 	cname := "test/signtest"
-	dest := srv.Root()
+	dest := srv.Root() + "/dest"
+	os.Mkdir(dest, 0755)
 	where, v, err := c.DownloadTo(cname, "", dest)
 	if err != nil {
 		t.Fatal(err)
