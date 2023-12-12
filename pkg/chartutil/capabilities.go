@@ -32,7 +32,7 @@ var (
 	// The Kubernetes version can be set by LDFLAGS. In order to do that the value
 	// must be a string.
 	k8sVersionMajor = "1"
-	k8sVersionMinor = "20"
+	k8sVersionMinor = "26"
 
 	// DefaultVersionSet is the default version set, which includes only Core V1 ("v1").
 	DefaultVersionSet = allKnownVersions()
