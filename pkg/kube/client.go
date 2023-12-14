@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	goerrors "errors"
 	"fmt"
 	"io"
 	"os"
@@ -37,7 +38,6 @@ import (
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -539,7 +539,7 @@ func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) 
 }
 
 func perform(infos ResourceList, fn func(*resource.Info) error) error {
-	var result error
+	var result []error
 
 	if len(infos) == 0 {
 		return ErrNoObjectsVisited
@@ -551,11 +551,11 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 	for range infos {
 		err := <-errs
 		if err != nil {
-			result = multierror.Append(result, err)
+			result = append(result, err)
 		}
 	}
 
-	return result
+	return goerrors.Join(result...)
 }
 
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.
