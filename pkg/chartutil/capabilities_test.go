@@ -42,20 +42,20 @@ func TestDefaultVersionSet(t *testing.T) {
 
 func TestDefaultCapabilities(t *testing.T) {
 	kv := DefaultCapabilities.KubeVersion
-	if kv.String() != "v1.26.0" {
-		t.Errorf("Expected default KubeVersion.String() to be v1.26.0, got %q", kv.String())
+	if kv.String() != "v1.28.0" {
+		t.Errorf("Expected default KubeVersion.String() to be v1.28.0, got %q", kv.String())
 	}
-	if kv.Version != "v1.26.0" {
-		t.Errorf("Expected default KubeVersion.Version to be v1.26.0, got %q", kv.Version)
+	if kv.Version != "v1.28.0" {
+		t.Errorf("Expected default KubeVersion.Version to be v1.28.0, got %q", kv.Version)
 	}
-	if kv.GitVersion() != "v1.26.0" {
-		t.Errorf("Expected default KubeVersion.GitVersion() to be v1.26.0, got %q", kv.Version)
+	if kv.GitVersion() != "v1.28.0" {
+		t.Errorf("Expected default KubeVersion.GitVersion() to be v1.28.0, got %q", kv.Version)
 	}
 	if kv.Major != "1" {
 		t.Errorf("Expected default KubeVersion.Major to be 1, got %q", kv.Major)
 	}
-	if kv.Minor != "26" {
-		t.Errorf("Expected default KubeVersion.Minor to be 26, got %q", kv.Minor)
+	if kv.Minor != "28" {
+		t.Errorf("Expected default KubeVersion.Minor to be 28, got %q", kv.Minor)
 	}
 }
 
