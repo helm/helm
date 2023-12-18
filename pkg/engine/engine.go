@@ -40,16 +40,17 @@ type Engine struct {
 	Strict bool
 	// In LintMode, some 'required' template values may be missing, so don't fail
 	LintMode bool
-	// the rest config to connect to the kubernetes api
-	config *rest.Config
+	// optional provider of clients to talk to the Kubernetes API
+	clientProvider *ClientProvider
 	// EnableDNS tells the engine to allow DNS lookups when rendering templates
 	EnableDNS bool
 }
 
 // New creates a new instance of Engine using the passed in rest config.
 func New(config *rest.Config) Engine {
+	var clientProvider ClientProvider = clientProviderFromConfig{config}
 	return Engine{
-		config: config,
+		clientProvider: &clientProvider,
 	}
 }
 
@@ -85,10 +86,21 @@ func Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, erro
 
 // RenderWithClient takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
-// functions that interact with the client
+// functions that interact with the client.
 func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config) (map[string]string, error) {
+	var clientProvider ClientProvider = clientProviderFromConfig{config}
 	return Engine{
-		config: config,
+		clientProvider: &clientProvider,
+	}.Render(chrt, values)
+}
+
+// RenderWithClientProvider takes a chart, optional values, and value overrides, and attempts to
+// render the Go templates using the default options. This engine is client aware and so can have template
+// functions that interact with the client.
+// This function differs from RenderWithClient in that it lets you customize the way a dynamic client is constructed.
+func RenderWithClientProvider(chrt *chart.Chart, values chartutil.Values, clientProvider ClientProvider) (map[string]string, error) {
+	return Engine{
+		clientProvider: &clientProvider,
 	}.Render(chrt, values)
 }
 
@@ -194,8 +206,8 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 
 	// If we are not linting and have a cluster connection, provide a Kubernetes-backed
 	// implementation.
-	if !e.LintMode && e.config != nil {
-		funcMap["lookup"] = NewLookupFunction(e.config)
+	if !e.LintMode && e.clientProvider != nil {
+		funcMap["lookup"] = newLookupFunction(*e.clientProvider)
 	}
 
 	// When DNS lookups are not enabled override the sprig function and return
