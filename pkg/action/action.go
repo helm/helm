@@ -23,6 +23,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -172,11 +173,27 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		//
 		// We return the files as a big blob of data to help the user debug parser
 		// errors.
+		lineCount := 0
+		offset := 0
 		for name, content := range files {
 			if strings.TrimSpace(content) == "" {
 				continue
 			}
+			if strings.Contains(err.Error(), name) {
+				re := regexp.MustCompile(`line \d+`)
+				line := re.FindString(err.Error())
+				if line != "" {
+					lineNumber, err := strconv.Atoi(strings.Split(line, " ")[1])
+					if err == nil {
+						offset = lineCount + 2 + lineNumber // 2 accounts for the header this adds after
+					}
+				}
+			}
 			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
+			lineCount += strings.Count(content, "\n") + 3 // 3 accounts for the header and newline between manifests
+		}
+		if offset != 0 {
+			err = fmt.Errorf("YAML parse error on line %d of complete output: %w", offset, err)
 		}
 		return hs, b, "", err
 	}
