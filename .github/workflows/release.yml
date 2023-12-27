@@ -46,6 +46,7 @@ jobs:
           AZURE_STORAGE_CONNECTION_STRING: "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
           AZURE_STORAGE_CONTAINER_NAME: "${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}"
         with:
+          overwrite: 'true'
           source_dir: _dist
           container_name: ${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
           connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
