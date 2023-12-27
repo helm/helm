@@ -32,13 +32,22 @@ jobs:
 
       - name: Build Helm Binaries
         run: |
+          set -eu -o pipefail
+
           make build-cross
           make dist checksum VERSION="${{ github.ref_name }}"
-      
+
       - name: Set latest version
         run: |
+          set -eu -o pipefail
+
+          mkdir -p _dist_versions
+
           # Push the latest semver tag, excluding prerelease tags
-          git tag | sort -r --version-sort | grep '^v[0-9]' | grep -v '-' | head -n1 > _dist/helm-latest-version
+          LATEST_VERSION="$(git tag | sort -r --version-sort | grep '^v[0-9]' | grep -v '-' | head -n1)"
+          echo "LATEST_VERSION=${LATEST_VERSION}"
+          echo "${LATEST_VERSION}" > _dist_versions/helm-latest-version
+          echo "${LATEST_VERSION}" > _dist_versions/helm3-latest-version
 
       - name: Upload Binaries
         uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
@@ -50,6 +59,17 @@ jobs:
           container_name: ${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
           connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           extra_args: '--pattern helm-*'
+
+      - name: Upload Version tag files
+        uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
+          AZURE_STORAGE_CONTAINER_NAME: "${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}"
+        with:
+          overwrite: 'true'
+          source_dir: _dist_versions
+          container_name: ${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
+          connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
 
   canary-release:
     runs-on: ubuntu-latest
