@@ -145,11 +145,25 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 	var tag string
 	var err error
 
-	if strings.Contains(u.Path, ":") {
-		v := strings.Split(u.Path, ":")[1]
+	// Remove digest if provided
+	v := u.Path
+	digestProvided := false
+	lastIndex := strings.LastIndex(v, "@")
+	if lastIndex >= 0 {
+		v = v[:lastIndex]
+		digestProvided = true
+	}
+
+	// Isolate tag
+	firstIndex := strings.Index(v, ":")
+	if firstIndex >= 0 {
+		v := v[firstIndex+1:]
 		if version != "" && v != version {
 			return nil, errors.Errorf("chart ref version mismatch: %s, %s", version, v)
 		}
+		return u, nil
+	}
+	if digestProvided {
 		return u, nil
 	}
 
