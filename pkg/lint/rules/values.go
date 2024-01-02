@@ -42,6 +42,12 @@ func Values(linter *support.Linter) {
 func ValuesWithOverrides(linter *support.Linter, values map[string]interface{}) {
 	file := "values.yaml"
 	vf := filepath.Join(linter.ChartDir, file)
+
+	// When flag is enabled, update the file name with full path
+	if linter.EnableFullPath {
+		file = vf
+	}
+
 	fileExists := linter.RunLinterRule(support.InfoSev, file, validateValuesFileExistence(vf))
 
 	if !fileExists {
