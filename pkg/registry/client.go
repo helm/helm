@@ -29,6 +29,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/containerd/containerd/remotes"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -53,6 +54,8 @@ storing semantic versions, Helm adopts the convention of changing plus (+) to
 an underscore (_) in chart version tags when pushing to a registry and back to
 a plus (+) when pulling from a registry.`
 
+var errDeprecatedRemote = errors.New("providing github.com/containerd/containerd/remotes.Resolver via ClientOptResolver is no longer suported")
+
 type (
 	// Client works with OCI-compliant registries
 	Client struct {
@@ -65,6 +68,7 @@ type (
 		credentialsStore credentials.Store
 		httpClient       *http.Client
 		plainHTTP        bool
+		err              error // pass any errors from the ClientOption functions
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -79,6 +83,9 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	for _, option := range options {
 		option(client)
+		if client.err != nil {
+			return nil, client.err
+		}
 	}
 	if client.credentialsFile == "" {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
@@ -183,17 +190,26 @@ func ClientOptPlainHTTP() ClientOption {
 	}
 }
 
+func ClientOptResolver(_ remotes.Resolver) ClientOption {
+	return func(c *Client) {
+		c.err = errDeprecatedRemote
+	}
+}
+
 type (
 	// LoginOption allows specifying various settings on login
-	LoginOption func(host string, client *Client) error
+	LoginOption func(*loginOperation)
+
+	loginOperation struct {
+		host   string
+		client *Client
+	}
 )
 
 // Login logs into a registry
 func (c *Client) Login(host string, options ...LoginOption) error {
 	for _, option := range options {
-		if err := option(host, c); err != nil {
-			return fmt.Errorf("configuring login option: %w", err)
-		}
+		option(&loginOperation{host, c})
 	}
 
 	reg, err := remote.NewRegistry(host)
@@ -225,17 +241,15 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 
 // LoginOptBasicAuth returns a function that sets the username/password settings on login
 func LoginOptBasicAuth(username string, password string) LoginOption {
-	return func(host string, client *Client) error {
-		client.authorizer.Credential = auth.StaticCredential(host, auth.Credential{Username: username, Password: password})
-		return nil
+	return func(o *loginOperation) {
+		o.client.authorizer.Credential = auth.StaticCredential(o.host, auth.Credential{Username: username, Password: password})
 	}
 }
 
 // LoginOptBasicAuth returns a function that allows plaintext (HTTP) login
 func LoginOptPlainText(isPlainText bool) LoginOption {
-	return func(host string, client *Client) error {
-		client.plainHTTP = isPlainText
-		return nil
+	return func(o *loginOperation) {
+		o.client.plainHTTP = isPlainText
 	}
 }
 
@@ -267,33 +281,32 @@ func ensureTLSConfig(client *auth.Client) (*tls.Config, error) {
 
 // LoginOptInsecure returns a function that sets the insecure setting on login
 func LoginOptInsecure(insecure bool) LoginOption {
-	return func(_ string, client *Client) error {
-		tlsConfig, err := ensureTLSConfig(client.authorizer)
+	return func(o *loginOperation) {
+		tlsConfig, err := ensureTLSConfig(o.client.authorizer)
 
 		if err != nil {
-			return err
+			panic(err)
 		}
 
 		tlsConfig.InsecureSkipVerify = insecure
-		return nil
 	}
 }
 
 // LoginOptTLSClientConfig returns a function that sets the TLS settings on login.
 func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
-	return func(_ string, client *Client) error {
+	return func(o *loginOperation) {
 		if (certFile == "" || keyFile == "") && caFile == "" {
-			return nil
+			return
 		}
-		tlsConfig, err := ensureTLSConfig(client.authorizer)
+		tlsConfig, err := ensureTLSConfig(o.client.authorizer)
 		if err != nil {
-			return err
+			panic(err)
 		}
 
 		if certFile != "" && keyFile != "" {
 			authCert, err := tls.LoadX509KeyPair(certFile, keyFile)
 			if err != nil {
-				return err
+				panic(err)
 			}
 			tlsConfig.Certificates = []tls.Certificate{authCert}
 		}
@@ -302,15 +315,13 @@ func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
 			certPool := x509.NewCertPool()
 			ca, err := os.ReadFile(caFile)
 			if err != nil {
-				return err
+				panic(err)
 			}
 			if !certPool.AppendCertsFromPEM(ca) {
-				return fmt.Errorf("unable to parse CA file: %q", caFile)
+				panic(fmt.Errorf("unable to parse CA file: %q", caFile))
 			}
 			tlsConfig.RootCAs = certPool
 		}
-
-		return nil
 	}
 }
 
