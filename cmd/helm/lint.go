@@ -149,6 +149,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&client.WithSubcharts, "with-subcharts", false, "lint dependent charts")
 	f.BoolVar(&client.Quiet, "quiet", false, "print only warnings and errors")
 	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for capabilities and deprecation checks")
+	f.BoolVar(&client.EnableFullPath, "full-path", false, "print full path in warnings and errors")
 	addValueOptionsFlags(f, valueOpts)
 
 	return cmd
