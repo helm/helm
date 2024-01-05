@@ -17,19 +17,9 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # pin@4.1.0
         with:
-          go-version: '1.20'
-      - name: Install golangci-lint
-        run: |
-          curl -sSLO https://github.com/golangci/golangci-lint/releases/download/v$GOLANGCI_LINT_VERSION/golangci-lint-$GOLANGCI_LINT_VERSION-linux-amd64.tar.gz
-          shasum -a 256 golangci-lint-$GOLANGCI_LINT_VERSION-linux-amd64.tar.gz | grep "^$GOLANGCI_LINT_SHA256  " > /dev/null
-          tar -xf golangci-lint-$GOLANGCI_LINT_VERSION-linux-amd64.tar.gz
-          sudo mv golangci-lint-$GOLANGCI_LINT_VERSION-linux-amd64/golangci-lint /usr/local/bin/golangci-lint
-          rm -rf golangci-lint-$GOLANGCI_LINT_VERSION-linux-amd64*
-        env:
-          GOLANGCI_LINT_VERSION: '1.51.2'
-          GOLANGCI_LINT_SHA256: '4de479eb9d9bc29da51aec1834e7c255b333723d38dbd56781c68e5dddc6a90b'
-      - name: Test style
-        run: make test-style
+          go-version: '1.21'
+      - name: Test source headers are present
+        run: make test-source-headers
       - name: Run unit tests
         run: make test-coverage
       - name: Test build

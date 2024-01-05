@@ -1,0 +1,22 @@
+name: golangci-lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  golangci:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
+
+      - name: Setup Go
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # pin@4.1.0
+        with:
+          go-version: "1.21"
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc #pin@3.7.0
+        with:
+          version: v1.55
