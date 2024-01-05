@@ -44,6 +44,9 @@ const defaultMaxHistory = 10
 // defaultBurstLimit sets the default client-side throttling limit
 const defaultBurstLimit = 100
 
+// defaultQPS sets the default QPS value to 0 to to use library defaults unless specified
+const defaultQPS = float32(0)
+
 // EnvSettings describes all of the environment settings.
 type EnvSettings struct {
 	namespace string
@@ -83,6 +86,8 @@ type EnvSettings struct {
 	MaxHistory int
 	// BurstLimit is the default client-side throttling limit.
 	BurstLimit int
+	// QPS is queries per second which may be used to avoid throttling.
+	QPS float32
 }
 
 func New() *EnvSettings {
@@ -102,6 +107,7 @@ func New() *EnvSettings {
 		RepositoryConfig:          envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
 		RepositoryCache:           envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
+		QPS:                       envFloat32Or("HELM_QPS", defaultQPS),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -119,6 +125,7 @@ func New() *EnvSettings {
 		ImpersonateGroup: &env.KubeAsGroups,
 		WrapConfigFn: func(config *rest.Config) *rest.Config {
 			config.Burst = env.BurstLimit
+			config.QPS = env.QPS
 			config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
 				return &retryingRoundTripper{wrapped: rt}
 			})
@@ -146,6 +153,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
 	fs.IntVar(&s.BurstLimit, "burst-limit", s.BurstLimit, "client-side default throttling limit")
+	fs.Float32Var(&s.QPS, "qps", s.QPS, "queries per second used when communicating with the Kubernetes API, not including bursting")
 }
 
 func envOr(name, def string) string {
@@ -179,6 +187,18 @@ func envIntOr(name string, def int) int {
 	return ret
 }
 
+func envFloat32Or(name string, def float32) float32 {
+	if name == "" {
+		return def
+	}
+	envVal := envOr(name, strconv.FormatFloat(float64(def), 'f', 2, 32))
+	ret, err := strconv.ParseFloat(envVal, 32)
+	if err != nil {
+		return def
+	}
+	return float32(ret)
+}
+
 func envCSV(name string) (ls []string) {
 	trimmed := strings.Trim(os.Getenv(name), ", ")
 	if trimmed != "" {
@@ -201,6 +221,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_NAMESPACE":         s.Namespace(),
 		"HELM_MAX_HISTORY":       strconv.Itoa(s.MaxHistory),
 		"HELM_BURST_LIMIT":       strconv.Itoa(s.BurstLimit),
+		"HELM_QPS":               strconv.FormatFloat(float64(s.QPS), 'f', 2, 32),
 
 		// broken, these are populated from helm flags and not kubeconfig.
 		"HELM_KUBECONTEXT":                  s.KubeContext,
