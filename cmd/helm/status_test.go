@@ -32,7 +32,7 @@ func TestStatusCmd(t *testing.T) {
 			Name:      "flummoxed-chickadee",
 			Namespace: "default",
 			Info:      info,
-			Chart:     &chart.Chart{},
+			Chart:     &chart.Chart{Metadata: &chart.Metadata{Name: "name", Version: "1.2.3", AppVersion: "3.2.1"}},
 			Hooks:     hooks,
 		}}
 	}
@@ -68,6 +68,24 @@ func TestStatusCmd(t *testing.T) {
 			Status: release.StatusDeployed,
 			Notes:  "release notes",
 		}),
+	}, {
+		name:   "get status of a deployed release with resources",
+		cmd:    "status --show-resources flummoxed-chickadee",
+		golden: "output/status-with-resources.txt",
+		rels: releasesMockWithStatus(
+			&release.Info{
+				Status: release.StatusDeployed,
+			},
+		),
+	}, {
+		name:   "get status of a deployed release with resources in json",
+		cmd:    "status --show-resources flummoxed-chickadee -o json",
+		golden: "output/status-with-resources.json",
+		rels: releasesMockWithStatus(
+			&release.Info{
+				Status: release.StatusDeployed,
+			},
+		),
 	}, {
 		name:   "get status of a deployed release with test suite",
 		cmd:    "status flummoxed-chickadee",

@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -90,13 +89,13 @@ func TestLoadDirWithSymlink(t *testing.T) {
 func TestBomTestData(t *testing.T) {
 	testFiles := []string{"frobnitz_with_bom/.helmignore", "frobnitz_with_bom/templates/template.tpl", "frobnitz_with_bom/Chart.yaml"}
 	for _, file := range testFiles {
-		data, err := ioutil.ReadFile("testdata/" + file)
+		data, err := os.ReadFile("testdata/" + file)
 		if err != nil || !bytes.HasPrefix(data, utf8bom) {
 			t.Errorf("Test file has no BOM or is invalid: testdata/%s", file)
 		}
 	}
 
-	archive, err := ioutil.ReadFile("testdata/frobnitz_with_bom.tgz")
+	archive, err := os.ReadFile("testdata/frobnitz_with_bom.tgz")
 	if err != nil {
 		t.Fatalf("Error reading archive frobnitz_with_bom.tgz: %s", err)
 	}

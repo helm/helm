@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -64,14 +63,15 @@ Repositories are managed with 'helm repo' commands.
 const searchMaxScore = 25
 
 type searchRepoOptions struct {
-	versions     bool
-	regexp       bool
-	devel        bool
-	version      string
-	maxColWidth  uint
-	repoFile     string
-	repoCacheDir string
-	outputFormat output.Format
+	versions       bool
+	regexp         bool
+	devel          bool
+	version        string
+	maxColWidth    uint
+	repoFile       string
+	repoCacheDir   string
+	outputFormat   output.Format
+	failOnNoResult bool
 }
 
 func newSearchRepoCmd(out io.Writer) *cobra.Command {
@@ -94,6 +94,8 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&o.devel, "devel", false, "use development versions (alpha, beta, and release candidate releases), too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.StringVar(&o.version, "version", "", "search using semantic versioning constraints on repositories you have added")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
+	f.BoolVar(&o.failOnNoResult, "fail-on-no-result", false, "search fails if no results are found")
+
 	bindOutputFlag(cmd, &o.outputFormat)
 
 	return cmd
@@ -124,7 +126,7 @@ func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 		return err
 	}
 
-	return o.outputFormat.Write(out, &repoSearchWriter{data, o.maxColWidth})
+	return o.outputFormat.Write(out, &repoSearchWriter{data, o.maxColWidth, o.failOnNoResult})
 }
 
 func (o *searchRepoOptions) setupSearchedVersion() {
@@ -205,12 +207,18 @@ type repoChartElement struct {
 }
 
 type repoSearchWriter struct {
-	results     []*search.Result
-	columnWidth uint
+	results        []*search.Result
+	columnWidth    uint
+	failOnNoResult bool
 }
 
 func (r *repoSearchWriter) WriteTable(out io.Writer) error {
 	if len(r.results) == 0 {
+		// Fail if no results found and --fail-on-no-result is enabled
+		if r.failOnNoResult {
+			return fmt.Errorf("no results found")
+		}
+
 		_, err := out.Write([]byte("No results found\n"))
 		if err != nil {
 			return fmt.Errorf("unable to write results: %s", err)
@@ -235,6 +243,11 @@ func (r *repoSearchWriter) WriteYAML(out io.Writer) error {
 }
 
 func (r *repoSearchWriter) encodeByFormat(out io.Writer, format output.Format) error {
+	// Fail if no results found and --fail-on-no-result is enabled
+	if len(r.results) == 0 && r.failOnNoResult {
+		return fmt.Errorf("no results found")
+	}
+
 	// Initialize the array so no results returns an empty array instead of null
 	chartList := make([]repoChartElement, 0, len(r.results))
 
@@ -259,7 +272,7 @@ func compListChartsOfRepo(repoName string, prefix string) []string {
 	var charts []string
 
 	path := filepath.Join(settings.RepositoryCache, helmpath.CacheChartsFile(repoName))
-	content, err := ioutil.ReadFile(path)
+	content, err := os.ReadFile(path)
 	if err == nil {
 		scanner := bufio.NewScanner(bytes.NewReader(content))
 		for scanner.Scan() {

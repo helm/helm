@@ -53,6 +53,11 @@ func TestLintCmdWithQuietFlag(t *testing.T) {
 		name:   "lint chart with warning using --quiet flag",
 		cmd:    "lint --quiet testdata/testcharts/chart-with-only-crds",
 		golden: "output/lint-quiet-with-warning.txt",
+	}, {
+		name:      "lint non-existent chart using --quiet flag",
+		cmd:       "lint --quiet thischartdoesntexist/",
+		golden:    "",
+		wantError: true,
 	}}
 	runTestCmd(t, tests)
 

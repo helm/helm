@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"os"
 	"path"
@@ -34,6 +34,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
@@ -69,8 +70,10 @@ type Install struct {
 	ChartPathOptions
 
 	ClientOnly               bool
+	Force                    bool
 	CreateNamespace          bool
 	DryRun                   bool
+	DryRunOption             string
 	DisableHooks             bool
 	Replace                  bool
 	Wait                     bool
@@ -89,6 +92,7 @@ type Install struct {
 	SubNotes                 bool
 	DisableOpenAPIValidation bool
 	IncludeCRDs              bool
+	Labels                   map[string]string
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
@@ -96,6 +100,8 @@ type Install struct {
 	APIVersions chartutil.VersionSet
 	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
 	IsUpgrade bool
+	// Enable DNS lookups when rendering templates
+	EnableDNS bool
 	// Used by helm template to add the release as part of OutputDir path
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
@@ -110,6 +116,7 @@ type ChartPathOptions struct {
 	CertFile              string // --cert-file
 	KeyFile               string // --key-file
 	InsecureSkipTLSverify bool   // --insecure-skip-verify
+	PlainHTTP             bool   // --plain-http
 	Keyring               string // --keyring
 	Password              string // --password
 	PassCredentialsAll    bool   // --pass-credentials
@@ -131,6 +138,16 @@ func NewInstall(cfg *Configuration) *Install {
 	in.ChartPathOptions.registryClient = cfg.RegistryClient
 
 	return in
+}
+
+// SetRegistryClient sets the registry client for the install action
+func (i *Install) SetRegistryClient(registryClient *registry.Client) {
+	i.ChartPathOptions.registryClient = registryClient
+}
+
+// GetRegistryClient get the registry client.
+func (i *Install) GetRegistryClient() *registry.Client {
+	return i.ChartPathOptions.registryClient
 }
 
 func (i *Install) installCRDs(crds []chart.CRD) error {
@@ -156,22 +173,38 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		totalItems = append(totalItems, res...)
 	}
 	if len(totalItems) > 0 {
-		// Invalidate the local cache, since it will not have the new CRDs
-		// present.
-		discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient()
-		if err != nil {
-			return err
-		}
-		i.cfg.Log("Clearing discovery cache")
-		discoveryClient.Invalidate()
 		// Give time for the CRD to be recognized.
-
 		if err := i.cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
 			return err
 		}
 
-		// Make sure to force a rebuild of the cache.
-		discoveryClient.ServerGroups()
+		// If we have already gathered the capabilities, we need to invalidate
+		// the cache so that the new CRDs are recognized. This should only be
+		// the case when an action configuration is reused for multiple actions,
+		// as otherwise it is later loaded by ourselves when getCapabilities
+		// is called later on in the installation process.
+		if i.cfg.Capabilities != nil {
+			discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient()
+			if err != nil {
+				return err
+			}
+
+			i.cfg.Log("Clearing discovery cache")
+			discoveryClient.Invalidate()
+
+			_, _ = discoveryClient.ServerGroups()
+		}
+
+		// Invalidate the REST mapper, since it will not have the new CRDs
+		// present.
+		restMapper, err := i.cfg.RESTClientGetter.ToRESTMapper()
+		if err != nil {
+			return err
+		}
+		if resettable, ok := restMapper.(meta.ResettableRESTMapper); ok {
+			i.cfg.Log("Clearing REST mapper cache")
+			resettable.Reset()
+		}
 	}
 	return nil
 }
@@ -186,6 +219,9 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 }
 
 // Run executes the installation with Context
+//
+// When the task is cancelled through ctx, the function returns and the install
+// proceeds in the background.
 func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
@@ -198,15 +234,20 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, err
 	}
 
-	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
+	if err := chartutil.ProcessDependenciesWithMerge(chrt, vals); err != nil {
 		return nil, err
+	}
+
+	var interactWithRemote bool
+	if !i.isDryRun() || i.DryRunOption == "server" || i.DryRunOption == "none" || i.DryRunOption == "false" {
+		interactWithRemote = true
 	}
 
 	// Pre-install anything in the crd/ directory. We do this before Helm
 	// contacts the upstream server and builds the capabilities object.
 	if crds := chrt.CRDObjects(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
 		// On dry run, bail here
-		if i.DryRun {
+		if i.isDryRun() {
 			i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
 		} else if err := i.installCRDs(crds); err != nil {
 			return nil, err
@@ -221,7 +262,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 			i.cfg.Capabilities.KubeVersion = *i.KubeVersion
 		}
 		i.cfg.Capabilities.APIVersions = append(i.cfg.Capabilities.APIVersions, i.APIVersions...)
-		i.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: ioutil.Discard}
+		i.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard}
 
 		mem := driver.NewMemory()
 		mem.SetNamespace(i.Namespace)
@@ -240,7 +281,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	// special case for helm template --is-upgrade
-	isUpgrade := i.IsUpgrade && i.DryRun
+	isUpgrade := i.IsUpgrade && i.isDryRun()
 	options := chartutil.ReleaseOptions{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
@@ -253,10 +294,14 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, err
 	}
 
-	rel := i.createRelease(chrt, vals)
+	if driver.ContainsSystemLabels(i.Labels) {
+		return nil, fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
+	}
+
+	rel := i.createRelease(chrt, vals, i.Labels)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, i.DryRun)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithRemote, i.EnableDNS)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -292,12 +337,12 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	if !i.ClientOnly && !isUpgrade && len(resources) > 0 {
 		toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace)
 		if err != nil {
-			return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
+			return nil, errors.Wrap(err, "Unable to continue with install")
 		}
 	}
 
 	// Bail out here if it is a dry run
-	if i.DryRun {
+	if i.isDryRun() {
 		rel.Info.Description = "Dry run complete"
 		return rel, nil
 	}
@@ -343,23 +388,48 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		// not working.
 		return rel, err
 	}
-	rChan := make(chan resultMessage)
-	doneChan := make(chan struct{})
-	defer close(doneChan)
-	go i.performInstall(rChan, rel, toBeAdopted, resources)
-	go i.handleContext(ctx, rChan, doneChan, rel)
-	result := <-rChan
-	//start preformInstall go routine
-	return result.r, result.e
+
+	rel, err = i.performInstallCtx(ctx, rel, toBeAdopted, resources)
+	if err != nil {
+		rel, err = i.failRelease(rel, err)
+	}
+	return rel, err
 }
 
-func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) {
+func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {
+	type Msg struct {
+		r *release.Release
+		e error
+	}
+	resultChan := make(chan Msg, 1)
 
+	go func() {
+		rel, err := i.performInstall(rel, toBeAdopted, resources)
+		resultChan <- Msg{rel, err}
+	}()
+	select {
+	case <-ctx.Done():
+		err := ctx.Err()
+		return rel, err
+	case msg := <-resultChan:
+		return msg.r, msg.e
+	}
+}
+
+// isDryRun returns true if Upgrade is set to run as a DryRun
+func (i *Install) isDryRun() bool {
+	if i.DryRun || i.DryRunOption == "client" || i.DryRunOption == "server" || i.DryRunOption == "true" {
+		return true
+	}
+	return false
+}
+
+func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {
+	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
-			i.reportToRun(c, rel, fmt.Errorf("failed pre-install: %s", err))
-			return
+			return rel, fmt.Errorf("failed pre-install: %s", err)
 		}
 	}
 
@@ -367,35 +437,28 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 	// do an update, but it's not clear whether we WANT to do an update if the re-use is set
 	// to true, since that is basically an upgrade operation.
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
-		if _, err := i.cfg.KubeClient.Create(resources); err != nil {
-			i.reportToRun(c, rel, err)
-			return
-		}
+		_, err = i.cfg.KubeClient.Create(resources)
 	} else if len(resources) > 0 {
-		if _, err := i.cfg.KubeClient.Update(toBeAdopted, resources, false); err != nil {
-			i.reportToRun(c, rel, err)
-			return
-		}
+		_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force)
+	}
+	if err != nil {
+		return rel, err
 	}
 
 	if i.Wait {
 		if i.WaitForJobs {
-			if err := i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout); err != nil {
-				i.reportToRun(c, rel, err)
-				return
-			}
+			err = i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout)
 		} else {
-			if err := i.cfg.KubeClient.Wait(resources, i.Timeout); err != nil {
-				i.reportToRun(c, rel, err)
-				return
-			}
+			err = i.cfg.KubeClient.Wait(resources, i.Timeout)
+		}
+		if err != nil {
+			return rel, err
 		}
 	}
 
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
-			i.reportToRun(c, rel, fmt.Errorf("failed post-install: %s", err))
-			return
+			return rel, fmt.Errorf("failed post-install: %s", err)
 		}
 	}
 
@@ -416,25 +479,9 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 		i.cfg.Log("failed to record the release: %s", err)
 	}
 
-	i.reportToRun(c, rel, nil)
+	return rel, nil
 }
-func (i *Install) handleContext(ctx context.Context, c chan<- resultMessage, done chan struct{}, rel *release.Release) {
-	select {
-	case <-ctx.Done():
-		err := ctx.Err()
-		i.reportToRun(c, rel, err)
-	case <-done:
-		return
-	}
-}
-func (i *Install) reportToRun(c chan<- resultMessage, rel *release.Release, err error) {
-	i.Lock.Lock()
-	if err != nil {
-		rel, err = i.failRelease(rel, err)
-	}
-	c <- resultMessage{r: rel, e: err}
-	i.Lock.Unlock()
-}
+
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
 	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
 	if i.Atomic {
@@ -456,17 +503,18 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 //
 // Roughly, this will return an error if name is
 //
-//	- empty
-//	- too long
-//	- already in use, and not deleted
-//	- used by a deleted release, and i.Replace is false
+//   - empty
+//   - too long
+//   - already in use, and not deleted
+//   - used by a deleted release, and i.Replace is false
 func (i *Install) availableName() error {
 	start := i.ReleaseName
 
 	if err := chartutil.ValidateReleaseName(start); err != nil {
 		return errors.Wrapf(err, "release name %q", start)
 	}
-	if i.DryRun {
+	// On dry run, bail here
+	if i.isDryRun() {
 		return nil
 	}
 
@@ -484,7 +532,7 @@ func (i *Install) availableName() error {
 }
 
 // createRelease creates a new release object
-func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{}) *release.Release {
+func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{}, labels map[string]string) *release.Release {
 	ts := i.cfg.Now()
 	return &release.Release{
 		Name:      i.ReleaseName,
@@ -497,6 +545,7 @@ func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{
 			Status:        release.StatusUnknown,
 		},
 		Version: 1,
+		Labels:  labels,
 	}
 }
 
@@ -673,8 +722,6 @@ OUTER:
 //
 // If 'verify' was set on ChartPathOptions, this will attempt to also verify the chart.
 func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (string, error) {
-	// If there is no registry client and the name is in an OCI registry return
-	// an error and a lookup will not occur.
 	if registry.IsOCI(name) && c.registryClient == nil {
 		return "", fmt.Errorf("unable to lookup chart %q, missing registry client", name)
 	}
@@ -706,6 +753,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 			getter.WithPassCredentialsAll(c.PassCredentialsAll),
 			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
 			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
+			getter.WithPlainHTTP(c.PlainHTTP),
 		},
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,

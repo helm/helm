@@ -18,7 +18,7 @@ package main // import "helm.sh/helm/v3/cmd/helm"
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -106,10 +106,10 @@ func loadReleasesInMemory(actionConfig *action.Configuration) {
 		return
 	}
 
-	actionConfig.KubeClient = &kubefake.PrintingKubeClient{Out: ioutil.Discard}
+	actionConfig.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard}
 
 	for _, path := range filePaths {
-		b, err := ioutil.ReadFile(path)
+		b, err := os.ReadFile(path)
 		if err != nil {
 			log.Fatal("Unable to read memory driver data", err)
 		}

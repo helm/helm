@@ -21,6 +21,7 @@ import (
 	"time"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	migrate "github.com/rubenv/sql-migrate"
 
 	rspb "helm.sh/helm/v3/pkg/release"
 )
@@ -62,6 +63,8 @@ func TestSQLGet(t *testing.T) {
 			),
 		).RowsWillBeClosed()
 
+	mockGetReleaseCustomLabels(mock, key, namespace, rel.Labels)
+
 	got, err := sqlDriver.Get(key)
 	if err != nil {
 		t.Fatalf("Failed to get release: %v", err)
@@ -77,38 +80,42 @@ func TestSQLGet(t *testing.T) {
 }
 
 func TestSQLList(t *testing.T) {
-	body1, _ := encodeRelease(releaseStub("key-1", 1, "default", rspb.StatusUninstalled))
-	body2, _ := encodeRelease(releaseStub("key-2", 1, "default", rspb.StatusUninstalled))
-	body3, _ := encodeRelease(releaseStub("key-3", 1, "default", rspb.StatusDeployed))
-	body4, _ := encodeRelease(releaseStub("key-4", 1, "default", rspb.StatusDeployed))
-	body5, _ := encodeRelease(releaseStub("key-5", 1, "default", rspb.StatusSuperseded))
-	body6, _ := encodeRelease(releaseStub("key-6", 1, "default", rspb.StatusSuperseded))
+	releases := []*rspb.Release{}
+	releases = append(releases, releaseStub("key-1", 1, "default", rspb.StatusUninstalled))
+	releases = append(releases, releaseStub("key-2", 1, "default", rspb.StatusUninstalled))
+	releases = append(releases, releaseStub("key-3", 1, "default", rspb.StatusDeployed))
+	releases = append(releases, releaseStub("key-4", 1, "default", rspb.StatusDeployed))
+	releases = append(releases, releaseStub("key-5", 1, "default", rspb.StatusSuperseded))
+	releases = append(releases, releaseStub("key-6", 1, "default", rspb.StatusSuperseded))
 
 	sqlDriver, mock := newTestFixtureSQL(t)
 
 	for i := 0; i < 3; i++ {
 		query := fmt.Sprintf(
-			"SELECT %s FROM %s WHERE %s = $1 AND %s = $2",
+			"SELECT %s, %s, %s FROM %s WHERE %s = $1 AND %s = $2",
+			sqlReleaseTableKeyColumn,
+			sqlReleaseTableNamespaceColumn,
 			sqlReleaseTableBodyColumn,
 			sqlReleaseTableName,
 			sqlReleaseTableOwnerColumn,
 			sqlReleaseTableNamespaceColumn,
 		)
 
+		rows := mock.NewRows([]string{
+			sqlReleaseTableBodyColumn,
+		})
+		for _, r := range releases {
+			body, _ := encodeRelease(r)
+			rows.AddRow(body)
+		}
 		mock.
 			ExpectQuery(regexp.QuoteMeta(query)).
 			WithArgs(sqlReleaseDefaultOwner, sqlDriver.namespace).
-			WillReturnRows(
-				mock.NewRows([]string{
-					sqlReleaseTableBodyColumn,
-				}).
-					AddRow(body1).
-					AddRow(body2).
-					AddRow(body3).
-					AddRow(body4).
-					AddRow(body5).
-					AddRow(body6),
-			).RowsWillBeClosed()
+			WillReturnRows(rows).RowsWillBeClosed()
+
+		for _, r := range releases {
+			mockGetReleaseCustomLabels(mock, "", r.Namespace, r.Labels)
+		}
 	}
 
 	// list all deleted releases
@@ -150,6 +157,17 @@ func TestSQLList(t *testing.T) {
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("sql expectations weren't met: %v", err)
 	}
+
+	// Check if release having both system and custom labels, this is needed to ensure that selector filtering would work.
+	rls := ssd[0]
+	_, ok := rls.Labels["name"]
+	if !ok {
+		t.Fatalf("Expected 'name' label in results, actual %v", rls.Labels)
+	}
+	_, ok = rls.Labels["key1"]
+	if !ok {
+		t.Fatalf("Expected 'key1' label in results, actual %v", rls.Labels)
+	}
 }
 
 func TestSqlCreate(t *testing.T) {
@@ -181,6 +199,23 @@ func TestSqlCreate(t *testing.T) {
 		ExpectExec(regexp.QuoteMeta(query)).
 		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, int(time.Now().Unix())).
 		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	labelsQuery := fmt.Sprintf(
+		"INSERT INTO %s (%s,%s,%s,%s) VALUES ($1,$2,$3,$4)",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+	)
+
+	mock.MatchExpectationsInOrder(false)
+	for k, v := range filterSystemLabels(rel.Labels) {
+		mock.
+			ExpectExec(regexp.QuoteMeta(labelsQuery)).
+			WithArgs(key, rel.Namespace, k, v).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
 	mock.ExpectCommit()
 
 	if err := sqlDriver.Create(key, rel); err != nil {
@@ -316,7 +351,9 @@ func TestSqlQuery(t *testing.T) {
 	sqlDriver, mock := newTestFixtureSQL(t)
 
 	query := fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3 AND %s = $4",
+		"SELECT %s, %s, %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3 AND %s = $4",
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
 		sqlReleaseTableBodyColumn,
 		sqlReleaseTableName,
 		sqlReleaseTableNameColumn,
@@ -345,8 +382,12 @@ func TestSqlQuery(t *testing.T) {
 			),
 		).RowsWillBeClosed()
 
+	mockGetReleaseCustomLabels(mock, "", deployedRelease.Namespace, deployedRelease.Labels)
+
 	query = fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3",
+		"SELECT %s, %s, %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3",
+		sqlReleaseTableKeyColumn,
+		sqlReleaseTableNamespaceColumn,
 		sqlReleaseTableBodyColumn,
 		sqlReleaseTableName,
 		sqlReleaseTableNameColumn,
@@ -366,6 +407,9 @@ func TestSqlQuery(t *testing.T) {
 				deployedReleaseBody,
 			),
 		).RowsWillBeClosed()
+
+	mockGetReleaseCustomLabels(mock, "", supersededRelease.Namespace, supersededRelease.Labels)
+	mockGetReleaseCustomLabels(mock, "", deployedRelease.Namespace, deployedRelease.Labels)
 
 	_, err := sqlDriver.Query(labelSetUnknown)
 	if err == nil {
@@ -447,6 +491,20 @@ func TestSqlDelete(t *testing.T) {
 		ExpectExec(regexp.QuoteMeta(deleteQuery)).
 		WithArgs(key, namespace).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mockGetReleaseCustomLabels(mock, key, namespace, rel.Labels)
+
+	deleteLabelsQuery := fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = $1 AND %s = $2",
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+	)
+	mock.
+		ExpectExec(regexp.QuoteMeta(deleteLabelsQuery)).
+		WithArgs(key, namespace).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
 	mock.ExpectCommit()
 
 	deletedRelease, err := sqlDriver.Delete(key)
@@ -459,5 +517,76 @@ func TestSqlDelete(t *testing.T) {
 
 	if !reflect.DeepEqual(rel, deletedRelease) {
 		t.Errorf("Expected release {%v}, got {%v}", rel, deletedRelease)
+	}
+}
+
+func mockGetReleaseCustomLabels(mock sqlmock.Sqlmock, key string, namespace string, labels map[string]string) {
+	query := fmt.Sprintf(
+		regexp.QuoteMeta("SELECT %s, %s FROM %s WHERE %s = $1 AND %s = $2"),
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+	)
+
+	eq := mock.ExpectQuery(query).
+		WithArgs(key, namespace)
+
+	returnRows := mock.NewRows([]string{
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+	})
+	for k, v := range labels {
+		returnRows.AddRow(k, v)
+	}
+	eq.WillReturnRows(returnRows).RowsWillBeClosed()
+}
+
+func TestSqlChechkAppliedMigrations(t *testing.T) {
+	cases := []struct {
+		migrationsToApply    []*migrate.Migration
+		appliedMigrationsIds []string
+		expectedResult       bool
+		errorExplanation     string
+	}{
+		{
+			migrationsToApply:    []*migrate.Migration{{Id: "init1"}, {Id: "init2"}, {Id: "init3"}},
+			appliedMigrationsIds: []string{"1", "2", "init1", "3", "init2", "4", "5"},
+			expectedResult:       false,
+			errorExplanation:     "Has found one migration id \"init3\" as applied, that was not applied",
+		},
+		{
+			migrationsToApply:    []*migrate.Migration{{Id: "init1"}, {Id: "init2"}, {Id: "init3"}},
+			appliedMigrationsIds: []string{"1", "2", "init1", "3", "init2", "4", "init3", "5"},
+			expectedResult:       true,
+			errorExplanation:     "Has not found one or more migration ids, that was applied",
+		},
+		{
+			migrationsToApply:    []*migrate.Migration{{Id: "init"}},
+			appliedMigrationsIds: []string{"1", "2", "3", "inits", "4", "tinit", "5"},
+			expectedResult:       false,
+			errorExplanation:     "Has found single \"init\", that was not applied",
+		},
+		{
+			migrationsToApply:    []*migrate.Migration{{Id: "init"}},
+			appliedMigrationsIds: []string{"1", "2", "init", "3", "init2", "4", "init3", "5"},
+			expectedResult:       true,
+			errorExplanation:     "Has not found single migration id \"init\", that was applied",
+		},
+	}
+	for i, c := range cases {
+		sqlDriver, mock := newTestFixtureSQL(t)
+		rows := sqlmock.NewRows([]string{"id", "applied_at"})
+		for _, id := range c.appliedMigrationsIds {
+			rows.AddRow(id, time.Time{})
+		}
+		mock.
+			ExpectQuery("").
+			WillReturnRows(rows)
+		mock.ExpectCommit()
+		if sqlDriver.checkAlreadyApplied(c.migrationsToApply) != c.expectedResult {
+			t.Errorf("Test case: %v, Expected: %v, Have: %v, Explanation: %v", i, c.expectedResult, !c.expectedResult, c.errorExplanation)
+		}
 	}
 }

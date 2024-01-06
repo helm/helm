@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package repo implements the Helm Chart Repository.
+/*
+Package repo implements the Helm Chart Repository.
 
 A chart repository is an HTTP server that provides information on charts. A local
 repository cache is an on-disk representation of a chart repository.
@@ -83,9 +84,9 @@ The format of a repository.yaml file is:
 
 This file maps three bits of information about a repository:
 
-	- The name the user uses to refer to it
-	- The fully qualified URL to the repository (index.yaml will be appended)
-    - The name of the local cachefile
+  - The name the user uses to refer to it
+  - The fully qualified URL to the repository (index.yaml will be appended)
+  - The name of the local cachefile
 
 The format for both files was changed after Helm v2.0.0-Alpha.4. Helm is not
 backwards compatible with those earlier versions.

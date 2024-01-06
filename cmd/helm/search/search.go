@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package search provides client-side repository searching.
+/*
+Package search provides client-side repository searching.
 
 This supports building an in-memory search index based on the contents of
 multiple repositories, and then using string matching or regular expressions
@@ -146,11 +147,10 @@ func (i *Index) SearchLiteral(term string, threshold int) []*Result {
 	term = strings.ToLower(term)
 	buf := []*Result{}
 	for k, v := range i.lines {
-		lk := strings.ToLower(k)
 		lv := strings.ToLower(v)
 		res := strings.Index(lv, term)
 		if score := i.calcScore(res, lv); res != -1 && score < threshold {
-			parts := strings.Split(lk, verSep) // Remove version, if it is there.
+			parts := strings.Split(k, verSep) // Remove version, if it is there.
 			buf = append(buf, &Result{Name: parts[0], Score: score, Chart: i.charts[k]})
 		}
 	}

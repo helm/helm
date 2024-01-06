@@ -22,6 +22,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ErrPluginNotAFolder indicates that the plugin path is not a folder.
+var ErrPluginNotAFolder = errors.New("expected plugin to be a folder")
+
 // LocalInstaller installs plugins from the filesystem.
 type LocalInstaller struct {
 	base
@@ -43,6 +46,14 @@ func NewLocalInstaller(source string) (*LocalInstaller, error) {
 //
 // Implements Installer.
 func (i *LocalInstaller) Install() error {
+	stat, err := os.Stat(i.Source)
+	if err != nil {
+		return err
+	}
+	if !stat.IsDir() {
+		return ErrPluginNotAFolder
+	}
+
 	if !isPlugin(i.Source) {
 		return ErrMissingMetadata
 	}

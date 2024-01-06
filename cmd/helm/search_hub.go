@@ -54,6 +54,7 @@ type searchHubOptions struct {
 	maxColWidth    uint
 	outputFormat   output.Format
 	listRepoURL    bool
+	failOnNoResult bool
 }
 
 func newSearchHubCmd(out io.Writer) *cobra.Command {
@@ -72,6 +73,7 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.searchEndpoint, "endpoint", "https://hub.helm.sh", "Hub instance to query for charts")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
 	f.BoolVar(&o.listRepoURL, "list-repo-url", false, "print charts repository URL")
+	f.BoolVar(&o.failOnNoResult, "fail-on-no-result", false, "search fails if no results are found")
 
 	bindOutputFlag(cmd, &o.outputFormat)
 
@@ -91,7 +93,7 @@ func (o *searchHubOptions) run(out io.Writer, args []string) error {
 		return fmt.Errorf("unable to perform search against %q", o.searchEndpoint)
 	}
 
-	return o.outputFormat.Write(out, newHubSearchWriter(results, o.searchEndpoint, o.maxColWidth, o.listRepoURL))
+	return o.outputFormat.Write(out, newHubSearchWriter(results, o.searchEndpoint, o.maxColWidth, o.listRepoURL, o.failOnNoResult))
 }
 
 type hubChartRepo struct {
@@ -108,12 +110,13 @@ type hubChartElement struct {
 }
 
 type hubSearchWriter struct {
-	elements    []hubChartElement
-	columnWidth uint
-	listRepoURL bool
+	elements       []hubChartElement
+	columnWidth    uint
+	listRepoURL    bool
+	failOnNoResult bool
 }
 
-func newHubSearchWriter(results []monocular.SearchResult, endpoint string, columnWidth uint, listRepoURL bool) *hubSearchWriter {
+func newHubSearchWriter(results []monocular.SearchResult, endpoint string, columnWidth uint, listRepoURL, failOnNoResult bool) *hubSearchWriter {
 	var elements []hubChartElement
 	for _, r := range results {
 		// Backwards compatibility for Monocular
@@ -126,11 +129,16 @@ func newHubSearchWriter(results []monocular.SearchResult, endpoint string, colum
 
 		elements = append(elements, hubChartElement{url, r.Relationships.LatestChartVersion.Data.Version, r.Relationships.LatestChartVersion.Data.AppVersion, r.Attributes.Description, hubChartRepo{URL: r.Attributes.Repo.URL, Name: r.Attributes.Repo.Name}})
 	}
-	return &hubSearchWriter{elements, columnWidth, listRepoURL}
+	return &hubSearchWriter{elements, columnWidth, listRepoURL, failOnNoResult}
 }
 
 func (h *hubSearchWriter) WriteTable(out io.Writer) error {
 	if len(h.elements) == 0 {
+		// Fail if no results found and --fail-on-no-result is enabled
+		if h.failOnNoResult {
+			return fmt.Errorf("no results found")
+		}
+
 		_, err := out.Write([]byte("No results found\n"))
 		if err != nil {
 			return fmt.Errorf("unable to write results: %s", err)
@@ -165,6 +173,11 @@ func (h *hubSearchWriter) WriteYAML(out io.Writer) error {
 }
 
 func (h *hubSearchWriter) encodeByFormat(out io.Writer, format output.Format) error {
+	// Fail if no results found and --fail-on-no-result is enabled
+	if len(h.elements) == 0 && h.failOnNoResult {
+		return fmt.Errorf("no results found")
+	}
+
 	// Initialize the array so no results returns an empty array instead of null
 	chartList := make([]hubChartElement, 0, len(h.elements))
 
