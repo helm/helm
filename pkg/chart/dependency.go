@@ -53,6 +53,9 @@ type Dependency struct {
 // the chart. This check must be done at load time before the dependency's charts are
 // loaded.
 func (d *Dependency) Validate() error {
+	if d == nil {
+		return ValidationError("dependencies must not contain empty or null nodes")
+	}
 	d.Name = sanitizeString(d.Name)
 	d.Version = sanitizeString(d.Version)
 	d.Repository = sanitizeString(d.Repository)

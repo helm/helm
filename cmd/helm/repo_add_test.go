@@ -18,7 +18,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,7 +27,6 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/helmpath"
 	"helm.sh/helm/v3/pkg/helmpath/xdg"
 	"helm.sh/helm/v3/pkg/repo"
@@ -48,7 +47,7 @@ func TestRepoAddCmd(t *testing.T) {
 	}
 	defer srv2.Stop()
 
-	tmpdir := filepath.Join(ensure.TempDir(t), "path-component.yaml/data")
+	tmpdir := filepath.Join(t.TempDir(), "path-component.yaml/data")
 	err = os.MkdirAll(tmpdir, 0777)
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +87,7 @@ func TestRepoAdd(t *testing.T) {
 	}
 	defer ts.Stop()
 
-	rootDir := ensure.TempDir(t)
+	rootDir := t.TempDir()
 	repoFile := filepath.Join(rootDir, "repositories.yaml")
 
 	const testRepoName = "test-name"
@@ -102,7 +101,7 @@ func TestRepoAdd(t *testing.T) {
 	}
 	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
-	if err := o.run(ioutil.Discard); err != nil {
+	if err := o.run(io.Discard); err != nil {
 		t.Error(err)
 	}
 
@@ -126,11 +125,11 @@ func TestRepoAdd(t *testing.T) {
 
 	o.forceUpdate = true
 
-	if err := o.run(ioutil.Discard); err != nil {
+	if err := o.run(io.Discard); err != nil {
 		t.Errorf("Repository was not updated: %s", err)
 	}
 
-	if err := o.run(ioutil.Discard); err != nil {
+	if err := o.run(io.Discard); err != nil {
 		t.Errorf("Duplicate repository name was added")
 	}
 }
@@ -145,8 +144,8 @@ func TestRepoAddCheckLegalName(t *testing.T) {
 
 	const testRepoName = "test-hub/test-name"
 
-	rootDir := ensure.TempDir(t)
-	repoFile := filepath.Join(ensure.TempDir(t), "repositories.yaml")
+	rootDir := t.TempDir()
+	repoFile := filepath.Join(t.TempDir(), "repositories.yaml")
 
 	o := &repoAddOptions{
 		name:               testRepoName,
@@ -159,7 +158,7 @@ func TestRepoAddCheckLegalName(t *testing.T) {
 
 	wantErrorMsg := fmt.Sprintf("repository name (%s) contains '/', please specify a different name without '/'", testRepoName)
 
-	if err := o.run(ioutil.Discard); err != nil {
+	if err := o.run(io.Discard); err != nil {
 		if wantErrorMsg != err.Error() {
 			t.Fatalf("Actual error %s, not equal to expected error %s", err, wantErrorMsg)
 		}
@@ -170,25 +169,25 @@ func TestRepoAddCheckLegalName(t *testing.T) {
 
 func TestRepoAddConcurrentGoRoutines(t *testing.T) {
 	const testName = "test-name"
-	repoFile := filepath.Join(ensure.TempDir(t), "repositories.yaml")
+	repoFile := filepath.Join(t.TempDir(), "repositories.yaml")
 	repoAddConcurrent(t, testName, repoFile)
 }
 
 func TestRepoAddConcurrentDirNotExist(t *testing.T) {
 	const testName = "test-name-2"
-	repoFile := filepath.Join(ensure.TempDir(t), "foo", "repositories.yaml")
+	repoFile := filepath.Join(t.TempDir(), "foo", "repositories.yaml")
 	repoAddConcurrent(t, testName, repoFile)
 }
 
 func TestRepoAddConcurrentNoFileExtension(t *testing.T) {
 	const testName = "test-name-3"
-	repoFile := filepath.Join(ensure.TempDir(t), "repositories")
+	repoFile := filepath.Join(t.TempDir(), "repositories")
 	repoAddConcurrent(t, testName, repoFile)
 }
 
 func TestRepoAddConcurrentHiddenFile(t *testing.T) {
 	const testName = "test-name-4"
-	repoFile := filepath.Join(ensure.TempDir(t), ".repositories")
+	repoFile := filepath.Join(t.TempDir(), ".repositories")
 	repoAddConcurrent(t, testName, repoFile)
 }
 
@@ -211,14 +210,14 @@ func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 				forceUpdate:        false,
 				repoFile:           repoFile,
 			}
-			if err := o.run(ioutil.Discard); err != nil {
+			if err := o.run(io.Discard); err != nil {
 				t.Error(err)
 			}
 		}(fmt.Sprintf("%s-%d", testName, i))
 	}
 	wg.Wait()
 
-	b, err := ioutil.ReadFile(repoFile)
+	b, err := os.ReadFile(repoFile)
 	if err != nil {
 		t.Error(err)
 	}
@@ -254,7 +253,7 @@ func TestRepoAddWithPasswordFromStdin(t *testing.T) {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
 
-	tmpdir := ensure.TempDir(t)
+	tmpdir := t.TempDir()
 	repoFile := filepath.Join(tmpdir, "repositories.yaml")
 
 	store := storageFixture()

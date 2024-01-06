@@ -162,13 +162,13 @@ func (i HTTPInstaller) Path() string {
 	return helmpath.DataPath("plugins", i.PluginName)
 }
 
-// CleanJoin resolves dest as a subpath of root.
+// cleanJoin resolves dest as a subpath of root.
 //
 // This function runs several security checks on the path, generating an error if
 // the supplied `dest` looks suspicious or would result in dubious behavior on the
 // filesystem.
 //
-// CleanJoin assumes that any attempt by `dest` to break out of the CWD is an attempt
+// cleanJoin assumes that any attempt by `dest` to break out of the CWD is an attempt
 // to be malicious. (If you don't care about this, use the securejoin-filepath library.)
 // It will emit an error if it detects paths that _look_ malicious, operating on the
 // assumption that we don't actually want to do anything with files that already

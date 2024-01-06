@@ -17,7 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -30,7 +29,6 @@ import (
 func TestPassphraseFileFetcher(t *testing.T) {
 	secret := "secret"
 	directory := ensure.TempFile(t, "passphrase-file", []byte(secret))
-	defer os.RemoveAll(directory)
 
 	fetcher, err := passphraseFileFetcher(path.Join(directory, "passphrase-file"), nil)
 	if err != nil {
@@ -50,7 +48,6 @@ func TestPassphraseFileFetcher(t *testing.T) {
 func TestPassphraseFileFetcher_WithLineBreak(t *testing.T) {
 	secret := "secret"
 	directory := ensure.TempFile(t, "passphrase-file", []byte(secret+"\n\n."))
-	defer os.RemoveAll(directory)
 
 	fetcher, err := passphraseFileFetcher(path.Join(directory, "passphrase-file"), nil)
 	if err != nil {
@@ -68,10 +65,9 @@ func TestPassphraseFileFetcher_WithLineBreak(t *testing.T) {
 }
 
 func TestPassphraseFileFetcher_WithInvalidStdin(t *testing.T) {
-	directory := ensure.TempDir(t)
-	defer os.RemoveAll(directory)
+	directory := t.TempDir()
 
-	stdin, err := ioutil.TempFile(directory, "non-existing")
+	stdin, err := os.CreateTemp(directory, "non-existing")
 	if err != nil {
 		t.Fatal("Unable to create test file", err)
 	}

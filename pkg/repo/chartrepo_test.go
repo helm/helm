@@ -18,7 +18,6 @@ package repo
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -31,7 +30,6 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
@@ -148,10 +146,9 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Problem loading chart repository from %s: %v", repoURL, err)
 	}
-	repo.CachePath = ensure.TempDir(t)
-	defer os.RemoveAll(repo.CachePath)
+	repo.CachePath = t.TempDir()
 
-	tempIndexFile, err := ioutil.TempFile("", "test-repo")
+	tempIndexFile, err := os.CreateTemp("", "test-repo")
 	if err != nil {
 		t.Fatalf("Failed to create temp index file: %v", err)
 	}
@@ -266,7 +263,7 @@ func verifyIndex(t *testing.T, actual *IndexFile) {
 // startLocalServerForTests Start the local helm server
 func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 	if handler == nil {
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			return nil, err
 		}
@@ -281,7 +278,7 @@ func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 // startLocalTLSServerForTests Start the local helm server with TLS
 func startLocalTLSServerForTests(handler http.Handler) (*httptest.Server, error) {
 	if handler == nil {
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			return nil, err
 		}
@@ -350,7 +347,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 func TestErrorFindChartInRepoURL(t *testing.T) {
 
 	g := getter.All(&cli.EnvSettings{
-		RepositoryCache: ensure.TempDir(t),
+		RepositoryCache: t.TempDir(),
 	})
 
 	if _, err := FindChartInRepoURL("http://someserver/something", "nginx", "", "", "", "", g); err == nil {
@@ -385,35 +382,21 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 }
 
 func TestResolveReferenceURL(t *testing.T) {
-	chartURL, err := ResolveReferenceURL("http://localhost:8123/charts/", "nginx-0.2.0.tgz")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	if chartURL != "http://localhost:8123/charts/nginx-0.2.0.tgz" {
-		t.Errorf("%s", chartURL)
-	}
-
-	chartURL, err = ResolveReferenceURL("http://localhost:8123/charts-with-no-trailing-slash", "nginx-0.2.0.tgz")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	if chartURL != "http://localhost:8123/charts-with-no-trailing-slash/nginx-0.2.0.tgz" {
-		t.Errorf("%s", chartURL)
-	}
-
-	chartURL, err = ResolveReferenceURL("http://localhost:8123", "https://charts.helm.sh/stable/nginx-0.2.0.tgz")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	if chartURL != "https://charts.helm.sh/stable/nginx-0.2.0.tgz" {
-		t.Errorf("%s", chartURL)
-	}
-
-	chartURL, err = ResolveReferenceURL("http://localhost:8123/charts%2fwith%2fescaped%2fslash", "nginx-0.2.0.tgz")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	if chartURL != "http://localhost:8123/charts%2fwith%2fescaped%2fslash/nginx-0.2.0.tgz" {
-		t.Errorf("%s", chartURL)
+	for _, tt := range []struct {
+		baseURL, refURL, chartURL string
+	}{
+		{"http://localhost:8123/charts/", "nginx-0.2.0.tgz", "http://localhost:8123/charts/nginx-0.2.0.tgz"},
+		{"http://localhost:8123/charts-with-no-trailing-slash", "nginx-0.2.0.tgz", "http://localhost:8123/charts-with-no-trailing-slash/nginx-0.2.0.tgz"},
+		{"http://localhost:8123", "https://charts.helm.sh/stable/nginx-0.2.0.tgz", "https://charts.helm.sh/stable/nginx-0.2.0.tgz"},
+		{"http://localhost:8123/charts%2fwith%2fescaped%2fslash", "nginx-0.2.0.tgz", "http://localhost:8123/charts%2fwith%2fescaped%2fslash/nginx-0.2.0.tgz"},
+		{"http://localhost:8123/charts?with=queryparameter", "nginx-0.2.0.tgz", "http://localhost:8123/charts/nginx-0.2.0.tgz?with=queryparameter"},
+	} {
+		chartURL, err := ResolveReferenceURL(tt.baseURL, tt.refURL)
+		if err != nil {
+			t.Errorf("unexpected error in ResolveReferenceURL(%q, %q): %s", tt.baseURL, tt.refURL, err)
+		}
+		if chartURL != tt.chartURL {
+			t.Errorf("expected ResolveReferenceURL(%q, %q) to equal %q, got %q", tt.baseURL, tt.refURL, tt.chartURL, chartURL)
+		}
 	}
 }

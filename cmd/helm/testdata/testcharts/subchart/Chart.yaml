@@ -29,6 +29,9 @@ dependencies:
         parent: imported-chartA-B
       - child: exports.SCBexported2
         parent: exports.SCBexported2
+      # - child: exports.configmap
+      #   parent: configmap
+      - configmap
       - SCBexported1
 
     tags:

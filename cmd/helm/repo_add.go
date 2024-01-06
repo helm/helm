@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -134,7 +133,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		return err
 	}
 
-	b, err := ioutil.ReadFile(o.repoFile)
+	b, err := os.ReadFile(o.repoFile)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -213,7 +212,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 
 	f.Update(&c)
 
-	if err := f.WriteFile(o.repoFile, 0644); err != nil {
+	if err := f.WriteFile(o.repoFile, 0600); err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "%q has been added to your repositories\n", o.name)
