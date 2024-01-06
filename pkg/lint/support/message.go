@@ -39,6 +39,8 @@ type Linter struct {
 	// The highest severity of all the failing lint rules
 	HighestSeverity int
 	ChartDir        string
+	// EnableFullPath enables printing full path of file in messages
+	EnableFullPath bool
 }
 
 // Message describes an error encountered while linting.

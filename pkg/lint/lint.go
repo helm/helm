@@ -24,11 +24,15 @@ import (
 )
 
 // All runs all of the available linters on the given base directory.
-func All(basedir string, values map[string]interface{}, namespace string, strict bool) support.Linter {
+func All(basedir string, values map[string]interface{},
+	namespace string, strict, enableFullPath bool) support.Linter {
 	// Using abs path to get directory context
 	chartDir, _ := filepath.Abs(basedir)
 
-	linter := support.Linter{ChartDir: chartDir}
+	linter := support.Linter{
+		ChartDir:       chartDir,
+		EnableFullPath: enableFullPath,
+	}
 	rules.Chartfile(&linter)
 	rules.ValuesWithOverrides(&linter, values)
 	rules.Templates(&linter, values, namespace, strict)
