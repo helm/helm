@@ -45,7 +45,7 @@ var (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values map[string]interface{}, namespace string, strict bool) {
+func Templates(linter *support.Linter, values map[string]interface{}, namespace string, _ bool) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 

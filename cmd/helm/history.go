@@ -184,7 +184,7 @@ func min(x, y int) int {
 	return y
 }
 
-func compListRevisions(toComplete string, cfg *action.Configuration, releaseName string) ([]string, cobra.ShellCompDirective) {
+func compListRevisions(_ string, cfg *action.Configuration, releaseName string) ([]string, cobra.ShellCompDirective) {
 	client := action.NewHistory(cfg)
 
 	var revisions []string

@@ -662,7 +662,7 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 }
 
 // Get release custom labels from database
-func (s *SQL) getReleaseCustomLabels(key string, namespace string) (map[string]string, error) {
+func (s *SQL) getReleaseCustomLabels(key string, _ string) (map[string]string, error) {
 	query, args, err := s.statementBuilder.
 		Select(sqlCustomLabelsTableKeyColumn, sqlCustomLabelsTableValueColumn).
 		From(sqlCustomLabelsTableName).
