@@ -128,10 +128,19 @@ func (md *Metadata) Validate() error {
 
 	// Aliases need to be validated here to make sure that the alias name does
 	// not contain any illegal characters.
+	dependencies := map[string]*Dependency{}
 	for _, dependency := range md.Dependencies {
 		if err := dependency.Validate(); err != nil {
 			return err
 		}
+		key := dependency.Name
+		if dependency.Alias != "" {
+			key = dependency.Alias
+		}
+		if dependencies[key] != nil {
+			return ValidationErrorf("more than one dependency with name or alias %q", key)
+		}
+		dependencies[key] = dependency
 	}
 	return nil
 }
