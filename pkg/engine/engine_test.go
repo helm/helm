@@ -948,8 +948,6 @@ func TestRenderTplTemplateNames(t *testing.T) {
 			{Name: "templates/default-name", Data: []byte(`{{tpl "{{ .Template.Name }}" .}}`)},
 			{Name: "templates/modified-basepath", Data: []byte(`{{tpl "{{ .Template.BasePath }}" .Values.dot}}`)},
 			{Name: "templates/modified-name", Data: []byte(`{{tpl "{{ .Template.Name }}" .Values.dot}}`)},
-			// Current implementation injects the 'tpl' template as if it were a template file, and
-			// so only BasePath and Name make it through.
 			{Name: "templates/modified-field", Data: []byte(`{{tpl "{{ .Template.Field }}" .Values.dot}}`)},
 		},
 	}
@@ -979,7 +977,7 @@ func TestRenderTplTemplateNames(t *testing.T) {
 		"TplTemplateNames/templates/default-name":      "TplTemplateNames/templates/default-name",
 		"TplTemplateNames/templates/modified-basepath": "path/to/template",
 		"TplTemplateNames/templates/modified-name":     "name-of-template",
-		"TplTemplateNames/templates/modified-field":    "",
+		"TplTemplateNames/templates/modified-field":    "extra-field",
 	}
 	for file, expect := range expects {
 		if out[file] != expect {
@@ -1001,13 +999,17 @@ func TestRenderTplRedefines(t *testing.T) {
 				`{{define "manifest"}}original-in-manifest{{end}}` +
 					`before: {{include "manifest" .}}\n{{tpl .Values.manifestText .}}\nafter: {{include "manifest" .}}`,
 			)},
-			// The current implementation replaces the manifest text and re-parses, so a
-			// partial template defined only in the manifest invoking tpl cannot be accessed
-			// by that tpl call.
-			//{Name: "templates/manifest-only", Data: []byte(
-			//	`{{define "manifest-only"}}only-in-manifest{{end}}` +
-			//		`before: {{include "manifest-only" .}}\n{{tpl .Values.manifestOnlyText .}}\nafter: {{include "manifest-only" .}}`,
-			//)},
+			{Name: "templates/manifest-only", Data: []byte(
+				`{{define "manifest-only"}}only-in-manifest{{end}}` +
+					`before: {{include "manifest-only" .}}\n{{tpl .Values.manifestOnlyText .}}\nafter: {{include "manifest-only" .}}`,
+			)},
+			{Name: "templates/nested", Data: []byte(
+				`{{define "nested"}}original-in-manifest{{end}}` +
+					`{{define "nested-outer"}}original-outer-in-manifest{{end}}` +
+					`before: {{include "nested" .}} {{include "nested-outer" .}}\n` +
+					`{{tpl .Values.nestedText .}}\n` +
+					`after: {{include "nested" .}} {{include "nested-outer" .}}`,
+			)},
 		},
 	}
 	v := chartutil.Values{
@@ -1015,6 +1017,12 @@ func TestRenderTplRedefines(t *testing.T) {
 			"partialText":      `{{define "partial"}}redefined-in-tpl{{end}}tpl: {{include "partial" .}}`,
 			"manifestText":     `{{define "manifest"}}redefined-in-tpl{{end}}tpl: {{include "manifest" .}}`,
 			"manifestOnlyText": `tpl: {{include "manifest-only" .}}`,
+			"nestedText": `{{define "nested"}}redefined-in-tpl{{end}}` +
+				`{{define "nested-outer"}}redefined-outer-in-tpl{{end}}` +
+				`before-inner-tpl: {{include "nested" .}} {{include "nested-outer" . }}\n` +
+				`{{tpl .Values.innerText .}}\n` +
+				`after-inner-tpl: {{include "nested" .}} {{include "nested-outer" . }}`,
+			"innerText": `{{define "nested"}}redefined-in-inner-tpl{{end}}inner-tpl: {{include "nested" .}} {{include "nested-outer" . }}`,
 		},
 		"Chart": c.Metadata,
 		"Release": chartutil.Values{
@@ -1028,9 +1036,14 @@ func TestRenderTplRedefines(t *testing.T) {
 	}
 
 	expects := map[string]string{
-		"TplRedefines/templates/partial":  `before: original-in-partial\ntpl: original-in-partial\nafter: original-in-partial`,
-		"TplRedefines/templates/manifest": `before: original-in-manifest\ntpl: redefined-in-tpl\nafter: original-in-manifest`,
-		//"TplRedefines/templates/manifest-only": `before: only-in-manifest\ntpl: only-in-manifest\nafter: only-in-manifest`,
+		"TplRedefines/templates/partial":       `before: original-in-partial\ntpl: redefined-in-tpl\nafter: original-in-partial`,
+		"TplRedefines/templates/manifest":      `before: original-in-manifest\ntpl: redefined-in-tpl\nafter: original-in-manifest`,
+		"TplRedefines/templates/manifest-only": `before: only-in-manifest\ntpl: only-in-manifest\nafter: only-in-manifest`,
+		"TplRedefines/templates/nested": `before: original-in-manifest original-outer-in-manifest\n` +
+			`before-inner-tpl: redefined-in-tpl redefined-outer-in-tpl\n` +
+			`inner-tpl: redefined-in-inner-tpl redefined-outer-in-tpl\n` +
+			`after-inner-tpl: redefined-in-tpl redefined-outer-in-tpl\n` +
+			`after: original-in-manifest original-outer-in-manifest`,
 	}
 	for file, expect := range expects {
 		if out[file] != expect {
