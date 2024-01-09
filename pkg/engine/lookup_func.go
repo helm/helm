@@ -39,9 +39,28 @@ type lookupFunc = func(apiversion string, resource string, namespace string, nam
 // This function is considered deprecated, and will be renamed in Helm 4. It will no
 // longer be a public function.
 func NewLookupFunction(config *rest.Config) lookupFunc {
-	return func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error) {
+	return newLookupFunction(clientProviderFromConfig{config: config})
+}
+
+type ClientProvider interface {
+	// GetClientFor returns a dynamic.NamespaceableResourceInterface suitable for interacting with resources
+	// corresponding to the provided apiVersion and kind, as well as a boolean indicating whether the resources
+	// are namespaced.
+	GetClientFor(apiVersion, kind string) (dynamic.NamespaceableResourceInterface, bool, error)
+}
+
+type clientProviderFromConfig struct {
+	config *rest.Config
+}
+
+func (c clientProviderFromConfig) GetClientFor(apiVersion, kind string) (dynamic.NamespaceableResourceInterface, bool, error) {
+	return getDynamicClientOnKind(apiVersion, kind, c.config)
+}
+
+func newLookupFunction(clientProvider ClientProvider) lookupFunc {
+	return func(apiversion string, kind string, namespace string, name string) (map[string]interface{}, error) {
 		var client dynamic.ResourceInterface
-		c, namespaced, err := getDynamicClientOnKind(apiversion, resource, config)
+		c, namespaced, err := clientProvider.GetClientFor(apiversion, kind)
 		if err != nil {
 			return map[string]interface{}{}, err
 		}

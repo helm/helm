@@ -24,6 +24,12 @@ import (
 	"testing"
 	"text/template"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic/fake"
+
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 )
@@ -204,7 +210,7 @@ func TestRenderInternals(t *testing.T) {
 	}
 }
 
-func TestRenderWIthDNS(t *testing.T) {
+func TestRenderWithDNS(t *testing.T) {
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:    "moby",
@@ -237,6 +243,178 @@ func TestRenderWIthDNS(t *testing.T) {
 		if out[fp] == "" {
 			t.Errorf("Expected IP address, got %q", out[fp])
 		}
+	}
+}
+
+type kindProps struct {
+	shouldErr  error
+	gvr        schema.GroupVersionResource
+	namespaced bool
+}
+
+type testClientProvider struct {
+	t       *testing.T
+	scheme  map[string]kindProps
+	objects []runtime.Object
+}
+
+func (p *testClientProvider) GetClientFor(apiVersion, kind string) (dynamic.NamespaceableResourceInterface, bool, error) {
+	props := p.scheme[path.Join(apiVersion, kind)]
+	if props.shouldErr != nil {
+		return nil, false, props.shouldErr
+	}
+	return fake.NewSimpleDynamicClient(runtime.NewScheme(), p.objects...).Resource(props.gvr), props.namespaced, nil
+}
+
+var _ ClientProvider = &testClientProvider{}
+
+// makeUnstructured is a convenience function for single-line creation of Unstructured objects.
+func makeUnstructured(apiVersion, kind, name, namespace string) *unstructured.Unstructured {
+	ret := &unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": apiVersion,
+		"kind":       kind,
+		"metadata": map[string]interface{}{
+			"name": name,
+		},
+	}}
+	if namespace != "" {
+		ret.Object["metadata"].(map[string]interface{})["namespace"] = namespace
+	}
+	return ret
+}
+
+func TestRenderWithClientProvider(t *testing.T) {
+	provider := &testClientProvider{
+		t: t,
+		scheme: map[string]kindProps{
+			"v1/Namespace": {
+				gvr: schema.GroupVersionResource{
+					Version:  "v1",
+					Resource: "namespaces",
+				},
+			},
+			"v1/Pod": {
+				gvr: schema.GroupVersionResource{
+					Version:  "v1",
+					Resource: "pods",
+				},
+				namespaced: true,
+			},
+		},
+		objects: []runtime.Object{
+			makeUnstructured("v1", "Namespace", "default", ""),
+			makeUnstructured("v1", "Pod", "pod1", "default"),
+			makeUnstructured("v1", "Pod", "pod2", "ns1"),
+			makeUnstructured("v1", "Pod", "pod3", "ns1"),
+		},
+	}
+
+	type testCase struct {
+		template string
+		output   string
+	}
+	cases := map[string]testCase{
+		"ns-single": {
+			template: `{{ (lookup "v1" "Namespace" "" "default").metadata.name }}`,
+			output:   "default",
+		},
+		"ns-list": {
+			template: `{{ (lookup "v1" "Namespace" "" "").items | len }}`,
+			output:   "1",
+		},
+		"ns-missing": {
+			template: `{{ (lookup "v1" "Namespace" "" "absent") }}`,
+			output:   "map[]",
+		},
+		"pod-single": {
+			template: `{{ (lookup "v1" "Pod" "default" "pod1").metadata.name }}`,
+			output:   "pod1",
+		},
+		"pod-list": {
+			template: `{{ (lookup "v1" "Pod" "ns1" "").items | len }}`,
+			output:   "2",
+		},
+		"pod-all": {
+			template: `{{ (lookup "v1" "Pod" "" "").items | len }}`,
+			output:   "3",
+		},
+		"pod-missing": {
+			template: `{{ (lookup "v1" "Pod" "" "ns2") }}`,
+			output:   "map[]",
+		},
+	}
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "moby",
+			Version: "1.2.3",
+		},
+		Values: map[string]interface{}{},
+	}
+
+	for name, exp := range cases {
+		c.Templates = append(c.Templates, &chart.File{
+			Name: path.Join("templates", name),
+			Data: []byte(exp.template),
+		})
+	}
+
+	vals := map[string]interface{}{
+		"Values": map[string]interface{}{},
+	}
+
+	v, err := chartutil.CoalesceValues(c, vals)
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+
+	out, err := RenderWithClientProvider(c, v, provider)
+	if err != nil {
+		t.Errorf("Failed to render templates: %s", err)
+	}
+
+	for name, want := range cases {
+		t.Run(name, func(t *testing.T) {
+			key := path.Join("moby/templates", name)
+			if out[key] != want.output {
+				t.Errorf("Expected %q, got %q", want, out[key])
+			}
+		})
+	}
+}
+
+func TestRenderWithClientProvider_error(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "moby",
+			Version: "1.2.3",
+		},
+		Templates: []*chart.File{
+			{Name: "templates/error", Data: []byte(`{{ lookup "v1" "Error" "" "" }}`)},
+		},
+		Values: map[string]interface{}{},
+	}
+
+	vals := map[string]interface{}{
+		"Values": map[string]interface{}{},
+	}
+
+	v, err := chartutil.CoalesceValues(c, vals)
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+
+	provider := &testClientProvider{
+		t: t,
+		scheme: map[string]kindProps{
+			"v1/Error": {
+				shouldErr: fmt.Errorf("kaboom"),
+			},
+		},
+	}
+	_, err = RenderWithClientProvider(c, v, provider)
+	if err == nil || !strings.Contains(err.Error(), "kaboom") {
+		t.Errorf("Expected error from client provider when rendering, got %q", err)
 	}
 }
 
