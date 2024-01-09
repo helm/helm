@@ -28,14 +28,15 @@ type GetMetadata struct {
 }
 
 type Metadata struct {
-	Name       string `json:"name" yaml:"name"`
-	Chart      string `json:"chart" yaml:"chart"`
-	Version    string `json:"version" yaml:"version"`
-	AppVersion string `json:"appVersion" yaml:"appVersion"`
-	Namespace  string `json:"namespace" yaml:"namespace"`
-	Revision   int    `json:"revision" yaml:"revision"`
-	Status     string `json:"status" yaml:"status"`
-	DeployedAt string `json:"deployedAt" yaml:"deployedAt"`
+	Name        string            `json:"name" yaml:"name"`
+	Chart       string            `json:"chart" yaml:"chart"`
+	Version     string            `json:"version" yaml:"version"`
+	AppVersion  string            `json:"appVersion" yaml:"appVersion"`
+	Namespace   string            `json:"namespace" yaml:"namespace"`
+	Revision    int               `json:"revision" yaml:"revision"`
+	Status      string            `json:"status" yaml:"status"`
+	DeployedAt  string            `json:"deployedAt" yaml:"deployedAt"`
+	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 }
 
 // NewGetMetadata creates a new GetMetadata object with the given configuration.
@@ -57,13 +58,14 @@ func (g *GetMetadata) Run(name string) (*Metadata, error) {
 	}
 
 	return &Metadata{
-		Name:       rel.Name,
-		Chart:      rel.Chart.Metadata.Name,
-		Version:    rel.Chart.Metadata.Version,
-		AppVersion: rel.Chart.Metadata.AppVersion,
-		Namespace:  rel.Namespace,
-		Revision:   rel.Version,
-		Status:     rel.Info.Status.String(),
-		DeployedAt: rel.Info.LastDeployed.Format(time.RFC3339),
+		Name:        rel.Name,
+		Chart:       rel.Chart.Metadata.Name,
+		Version:     rel.Chart.Metadata.Version,
+		AppVersion:  rel.Chart.Metadata.AppVersion,
+		Namespace:   rel.Namespace,
+		Revision:    rel.Version,
+		Status:      rel.Info.Status.String(),
+		DeployedAt:  rel.Info.LastDeployed.Format(time.RFC3339),
+		Annotations: rel.Chart.Metadata.Annotations,
 	}, nil
 }
