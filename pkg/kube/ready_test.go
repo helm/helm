@@ -283,7 +283,7 @@ func Test_ReadyChecker_statefulSetReady(t *testing.T) {
 		{
 			name: "statefulset is ready when current revision for current replicas does not match update revision for updated replicas when using partition !=0",
 			args: args{
-				sts: newStatefulSetWithUpdateRevision("foo", 3, 2, 3, 3, "foo-bbbbbbb"),
+				sts: newStatefulSetWithUpdateRevision("foo", 3, 2, 3, 3, "foo-bbbbbbb", true),
 			},
 			want: true,
 		},
@@ -461,6 +461,12 @@ func Test_ReadyChecker_volumeReady(t *testing.T) {
 			}
 		})
 	}
+}
+
+func newStatefulSetWithUpdateRevision(name string, replicas, partition, readyReplicas, updatedReplicas int, updateRevision string, generationInSync bool) *appsv1.StatefulSet {
+	ss := newStatefulSet(name, replicas, partition, readyReplicas, updatedReplicas, generationInSync)
+	ss.Status.UpdateRevision = updateRevision
+	return ss
 }
 
 func newDaemonSet(name string, maxUnavailable, numberReady, desiredNumberScheduled, updatedNumberScheduled int, generationInSync bool) *appsv1.DaemonSet {
