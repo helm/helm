@@ -115,7 +115,7 @@ type CustomGetter struct {
 	repoUrls []string
 }
 
-func (g *CustomGetter) Get(href string, options ...getter.Option) (*bytes.Buffer, error) {
+func (g *CustomGetter) Get(href string, _ ...getter.Option) (*bytes.Buffer, error) {
 	index := &IndexFile{
 		APIVersion: "v1",
 		Generated:  time.Now(),

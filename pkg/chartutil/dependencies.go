@@ -59,9 +59,8 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath s
 					if bv, ok := vv.(bool); ok {
 						r.Enabled = bv
 						break
-					} else {
-						log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value", c, r.Name)
 					}
+					log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value", c, r.Name)
 				} else if _, ok := err.(ErrNoValue); !ok {
 					// this is a real error
 					log.Printf("Warning: PathValue returned error %v", err)
