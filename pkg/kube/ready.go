@@ -90,13 +90,6 @@ type ReadyChecker struct {
 // IsReady will fetch the latest state of the object from the server prior to
 // performing readiness checks, and it will return any error encountered.
 func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, error) {
-	var (
-		// This defaults to true, otherwise we get to a point where
-		// things will always return false unless one of the objects
-		// that manages pods has been hit
-		ok  = true
-		err error
-	)
 	switch value := AsVersioned(v).(type) {
 	case *corev1.Pod:
 		pod, err := c.client.CoreV1().Pods(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
