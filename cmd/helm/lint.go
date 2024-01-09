@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/lint/support"
@@ -44,6 +45,7 @@ or recommendation, it will emit [WARNING] messages.
 func newLintCmd(out io.Writer) *cobra.Command {
 	client := action.NewLint()
 	valueOpts := &values.Options{}
+	var kubeVersion string
 
 	cmd := &cobra.Command{
 		Use:   "lint PATH",
@@ -54,6 +56,15 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				paths = args
 			}
+
+			if kubeVersion != "" {
+				parsedKubeVersion, err := chartutil.ParseKubeVersion(kubeVersion)
+				if err != nil {
+					return fmt.Errorf("invalid kube version '%s': %s", kubeVersion, err)
+				}
+				client.KubeVersion = parsedKubeVersion
+			}
+
 			if client.WithSubcharts {
 				for _, p := range paths {
 					filepath.Walk(filepath.Join(p, "charts"), func(path string, info os.FileInfo, err error) error {
@@ -137,6 +148,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Strict, "strict", false, "fail on lint warnings")
 	f.BoolVar(&client.WithSubcharts, "with-subcharts", false, "lint dependent charts")
 	f.BoolVar(&client.Quiet, "quiet", false, "print only warnings and errors")
+	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for capabilities and deprecation checks")
 	addValueOptionsFlags(f, valueOpts)
 
 	return cmd
