@@ -11,7 +11,7 @@ GOBIN         = $(shell go env GOPATH)/bin
 endif
 GOX           = $(GOBIN)/gox
 GOIMPORTS     = $(GOBIN)/goimports
-ARCH          = $(shell uname -p)
+ARCH          = $(shell go env GOARCH)
 
 ACCEPTANCE_DIR:=../acceptance-testing
 # To specify the subset of acceptance tests to run. '.' means all tests
