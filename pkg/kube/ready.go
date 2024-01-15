@@ -99,7 +99,7 @@ func (c *ReadyChecker) getResourceWatch(ctx context.Context, resource *resource.
 	case *batchv1.Job:
 		return c.client.BatchV1().Jobs(resource.Namespace).Watch(ctx, listOpts)
 	default:
-		return nil, fmt.Errorf("can't get watch for resoure of type %T - not implemented", resourceType)
+		return nil, fmt.Errorf("can't get watch for resource of type %T - not implemented", resourceType)
 	}
 }
 
