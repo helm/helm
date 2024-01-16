@@ -37,9 +37,9 @@ the latest charts that satisfy the dependencies, and clean up old dependencies.
 On successful update, this will generate a lock file that can be used to
 rebuild the dependencies to an exact version.
 
-Dependencies are not required to be represented in 'Chart.yaml'. For that
-reason, an update command will not remove charts unless they are (a) present
-in the Chart.yaml file, but (b) at the wrong version.
+Dependencies are not required to be represented in 'Chart.yaml'. Adding dependencies will remove
+all .tgz charts when calling 'helm dep up'. The update (up) command will not remove charts unless
+they are recognized as an up-to-date version of a chart dependency declared in 'Chart.yaml'.
 `
 
 // newDependencyUpdateCmd creates a new dependency update command.
