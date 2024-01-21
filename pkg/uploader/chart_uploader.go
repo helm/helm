@@ -24,6 +24,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/pusher"
 	"helm.sh/helm/v3/pkg/registry"
+	"strings"
 )
 
 // ChartUploader handles uploading a chart.
@@ -48,6 +49,12 @@ func (c *ChartUploader) UploadTo(ref, remote string) error {
 	if u.Scheme == "" {
 		return fmt.Errorf("scheme prefix missing from remote (e.g. \"%s://\")", registry.OCIScheme)
 	}
+
+	// See: https://github.com/helm/helm/issues/12728
+	path := strings.SplitN(u.Path, ":", 2)
+	if len(path) > 1 {
+		return fmt.Errorf("Version tag \"%s\" need not be passed for remote", path[1])
+	} 
 
 	p, err := c.Pushers.ByScheme(u.Scheme)
 	if err != nil {
