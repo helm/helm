@@ -129,7 +129,7 @@ func getAliasDependency(charts []*chart.Chart, dep *chart.Dependency) *chart.Cha
 
 // processDependencyEnabled removes disabled charts from dependencies
 func processDependencyEnabled(c *chart.Chart, v map[string]interface{}, path string) error {
-	if c.Metadata.Dependencies == nil {
+	if c.Metadata.Dependencies == nil && len(c.Dependencies()) == 0 {
 		return nil
 	}
 
