@@ -17,16 +17,19 @@ limitations under the License.
 package repo // import "helm.sh/helm/v3/pkg/repo"
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/gofrs/flock"
 	"io"
 	"log"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
@@ -116,6 +119,8 @@ func (r *ChartRepository) Load() error {
 // DownloadIndexFile fetches the index from a repository.
 func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	indexURL, err := ResolveReferenceURL(r.Config.URL, "index.yaml")
+	chartsFName := filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
+	idxFName := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
 	if err != nil {
 		return "", err
 	}
@@ -146,14 +151,36 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	for name := range indexFile.Entries {
 		fmt.Fprintln(&charts, name)
 	}
-	chartsFile := filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
-	os.MkdirAll(filepath.Dir(chartsFile), 0755)
-	os.WriteFile(chartsFile, []byte(charts.String()), 0644)
+
+	// Lock index file, so that nobody can ready index during update operation
+	idxExclLock := flock.New(idxFName + ".lock")
+	idxCtxt, idxCncl := context.WithTimeout(context.Background(), 30*time.Second)
+	defer idxCncl()
+	idxExclLockSuccess, err := idxExclLock.TryLockContext(idxCtxt, 2*time.Second)
+	if err != nil || !idxExclLockSuccess {
+		return idxFName, err
+	}
+	defer func(indexFlock *flock.Flock) {
+		_ = indexFlock.Unlock()
+	}(idxExclLock)
+	chartsExclLock := flock.New(chartsFName + ".lock")
+	chartsCtxt, chartsCncl := context.WithTimeout(context.Background(), 30*time.Second)
+	defer chartsCncl()
+	chartsExclLockSuccess, err := chartsExclLock.TryLockContext(chartsCtxt, 2*time.Second)
+	if err != nil || !chartsExclLockSuccess {
+		return idxFName, err
+	}
+	defer func(chartsFlock *flock.Flock) {
+		_ = chartsFlock.Unlock()
+	}(chartsExclLock)
+
+	os.MkdirAll(filepath.Dir(filepath.Dir(chartsFName)), 0755)
+	os.WriteFile(chartsFName, []byte(charts.String()), 0644)
 
 	// Create the index file in the cache directory
-	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
-	os.MkdirAll(filepath.Dir(fname), 0755)
-	return fname, os.WriteFile(fname, index, 0644)
+	//fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
+	os.MkdirAll(filepath.Dir(idxFName), 0755)
+	return idxFName, os.WriteFile(idxFName, index, 0644)
 }
 
 // Index generates an index for the chart repository and writes an index.yaml file.

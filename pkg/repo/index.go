@@ -18,7 +18,9 @@ package repo
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"github.com/gofrs/flock"
 	"log"
 	"os"
 	"path"
@@ -104,6 +106,15 @@ func NewIndexFile() *IndexFile {
 
 // LoadIndexFile takes a file at the given path and returns an IndexFile object
 func LoadIndexFile(path string) (*IndexFile, error) {
+	// Read-Lock file so that it's not updated by other helm process during repo update process
+	rLock := flock.New(path + ".lock")
+	lCtx, lCncl := context.WithTimeout(context.Background(), 30*time.Second)
+	defer lCncl()
+	rLockSuccess, err := rLock.TryRLockContext(lCtx, 2*time.Second)
+	if err != nil || !rLockSuccess {
+		return nil, err
+	}
+	defer rLock.Unlock()
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
