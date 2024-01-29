@@ -18,6 +18,7 @@ package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"testing"
 
@@ -250,6 +251,15 @@ func (mock *MockSecretsInterface) Delete(_ context.Context, name string, _ metav
 	}
 	delete(mock.objects, name)
 	return nil
+}
+
+// MockSQLFuzzyTime is an int wrapper that represents a unix timestamp int and matches both the int provided and int+1 to reduce test flakes
+type MockSQLFuzzyTime int64
+
+// Match satisfies sqlmock.Argument interface for MockSQLFuzzyTime
+func (msft MockSQLFuzzyTime) Match(v driver.Value) bool {
+	val, ok := v.(int64)
+	return ok && (MockSQLFuzzyTime(val) == msft || MockSQLFuzzyTime(val) == msft+1)
 }
 
 // newTestFixtureSQL mocks the SQL database (for testing purposes)
