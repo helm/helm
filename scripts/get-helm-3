@@ -261,9 +261,9 @@ fail_trap() {
 # testVersion tests the installed client to make sure it is working.
 testVersion() {
   set +e
-  HELM="$(command -v $BINARY_NAME)"
+  HELM="$(command -v $HELM_INSTALL_DIR/$BINARY_NAME)"
   if [ "$?" = "1" ]; then
-    echo "$BINARY_NAME not found. Is $HELM_INSTALL_DIR on your "'$PATH?'
+    echo "$BINARY_NAME not found or can not be executed"
     exit 1
   fi
   set -e
