@@ -63,7 +63,7 @@ func Main() {
 	kube.ManagedFieldsManager = "helm"
 
 	actionConfig := new(action.Configuration)
-	cmd, err := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
+	cmd, err := NewRootCmd(actionConfig, os.Stdout, os.Args[1:])
 	if err != nil {
 		warning("%+v", err)
 		os.Exit(1)
