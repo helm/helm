@@ -45,7 +45,12 @@ var (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values map[string]interface{}, namespace string, strict bool) {
+func Templates(linter *support.Linter, values map[string]interface{}, namespace string, _ bool) {
+	TemplatesWithKubeVersion(linter, values, namespace, nil)
+}
+
+// TemplatesWithKubeVersion lints the templates in the Linter, allowing to specify the kubernetes version.
+func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
@@ -70,6 +75,11 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		Namespace: namespace,
 	}
 
+	caps := chartutil.DefaultCapabilities.Copy()
+	if kubeVersion != nil {
+		caps.KubeVersion = *kubeVersion
+	}
+
 	// lint ignores import-values
 	// See https://github.com/helm/helm/issues/9658
 	if err := chartutil.ProcessDependenciesWithMerge(chart, values); err != nil {
@@ -80,7 +90,8 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 	if err != nil {
 		return
 	}
-	valuesToRender, err := chartutil.ToRenderValues(chart, cvals, options, nil)
+
+	valuesToRender, err := chartutil.ToRenderValues(chart, cvals, options, caps)
 	if err != nil {
 		linter.RunLinterRule(support.ErrorSev, fpath, err)
 		return
@@ -150,7 +161,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 					// NOTE: set to warnings to allow users to support out-of-date kubernetes
 					// Refs https://github.com/helm/helm/issues/8596
 					linter.RunLinterRule(support.WarningSev, fpath, validateMetadataName(yamlStruct))
-					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct))
+					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct, kubeVersion))
 
 					linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(yamlStruct, renderedContent))
 					linter.RunLinterRule(support.ErrorSev, fpath, validateListAnnotations(yamlStruct, renderedContent))

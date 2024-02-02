@@ -151,6 +151,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 			Description: fmt.Sprintf("Rollback to %d", previousVersion),
 		},
 		Version:  currentRelease.Version + 1,
+		Labels:   previousRelease.Labels,
 		Manifest: previousRelease.Manifest,
 		Hooks:    previousRelease.Hooks,
 	}

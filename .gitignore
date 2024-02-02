@@ -6,6 +6,7 @@
 .vimrc
 .vscode/
 _dist/
+_dist_versions/
 bin/
 vendor/
 # Ignores charts pulled for dependency build tests

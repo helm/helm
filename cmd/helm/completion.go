@@ -210,6 +210,6 @@ func runCompletionPowershell(out io.Writer, cmd *cobra.Command) error {
 }
 
 // Function to disable file completion
-func noCompletions(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func noCompletions(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }

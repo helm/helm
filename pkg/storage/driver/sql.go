@@ -19,6 +19,7 @@ package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -137,7 +138,7 @@ func (s *SQL) ensureDBSetup() error {
 				Up: []string{
 					fmt.Sprintf(`
 						CREATE TABLE %s (
-							%s VARCHAR(67),
+							%s VARCHAR(90),
 							%s VARCHAR(64) NOT NULL,
 							%s TEXT NOT NULL,
 							%s VARCHAR(64) NOT NULL,
@@ -367,6 +368,9 @@ func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 		if release.Labels, err = s.getReleaseCustomLabels(record.Key, record.Namespace); err != nil {
 			s.Log("failed to get release %s/%s custom labels: %v", record.Namespace, record.Key, err)
 			return nil, err
+		}
+		for k, v := range getReleaseSystemLabels(release) {
+			release.Labels[k] = v
 		}
 
 		if filter(release) {
@@ -658,7 +662,7 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 }
 
 // Get release custom labels from database
-func (s *SQL) getReleaseCustomLabels(key string, namespace string) (map[string]string, error) {
+func (s *SQL) getReleaseCustomLabels(key string, _ string) (map[string]string, error) {
 	query, args, err := s.statementBuilder.
 		Select(sqlCustomLabelsTableKeyColumn, sqlCustomLabelsTableValueColumn).
 		From(sqlCustomLabelsTableName).
@@ -680,4 +684,14 @@ func (s *SQL) getReleaseCustomLabels(key string, namespace string) (map[string]s
 	}
 
 	return filterSystemLabels(labelsMap), nil
+}
+
+// Rebuild system labels from release object
+func getReleaseSystemLabels(rls *rspb.Release) map[string]string {
+	return map[string]string{
+		"name":    rls.Name,
+		"owner":   sqlReleaseDefaultOwner,
+		"status":  rls.Info.Status.String(),
+		"version": strconv.Itoa(rls.Version),
+	}
 }

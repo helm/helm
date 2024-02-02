@@ -65,4 +65,4 @@ Notable differences from .gitignore:
   - The evaluation of escape sequences has not been tested for compatibility
   - There is no support for '\\!' as a special leading sequence for files that begin with `!`
 */
-package ignore // import "helm.sh/helm/v3/internal/ignore"
+package ignore // import "helm.sh/helm/v3/pkg/ignore"
