@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -491,6 +492,51 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	is.Equal(err, driver.ErrReleaseNotFound)
 
 }
+
+type testPostRenderer struct {
+	injectedStr string
+}
+
+func (p *testPostRenderer) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {
+	out := bytes.NewBuffer(nil)
+	out.WriteString(fmt.Sprintf("# %v\n", p.injectedStr))
+	out.Write(renderedManifests.Bytes())
+	return out, nil
+}
+
+func TestInstallRelease_WithPostRenderer_EnabledForMain(t *testing.T) {
+	injectedStr := "Added by post-renderer"
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.PostRenderer = &testPostRenderer{injectedStr}
+	res, err := instAction.Run(buildChart(), map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+	is.Contains(res.Manifest, injectedStr)
+	for _, hook := range res.Hooks {
+		is.NotContains(hook.Manifest, injectedStr)
+	}
+}
+
+func TestInstallRelease_WithPostRenderer_EnabledAll(t *testing.T) {
+	mainInjectedStr := "Added by main post-renderer"
+	hooksInjectedStr := "Added by hooks post-renderer"
+
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.PostRenderer = &testPostRenderer{mainInjectedStr}
+	instAction.PostRendererHooks = &testPostRenderer{hooksInjectedStr}
+	res, err := instAction.Run(buildChart(), map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+	is.Contains(res.Manifest, mainInjectedStr)
+	for _, hook := range res.Hooks {
+		is.Contains(hook.Manifest, hooksInjectedStr)
+	}
+}
+
 func TestNameTemplate(t *testing.T) {
 	testCases := []nameTemplateTestCase{
 		// Just a straight up nop please

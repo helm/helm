@@ -136,6 +136,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Namespace = client.Namespace
 					instClient.Atomic = client.Atomic
 					instClient.PostRenderer = client.PostRenderer
+					instClient.PostRendererHooks = client.PostRendererHooks
 					instClient.DisableOpenAPIValidation = client.DisableOpenAPIValidation
 					instClient.SubNotes = client.SubNotes
 					instClient.Description = client.Description
@@ -266,7 +267,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
-	bindPostRenderFlag(cmd, &client.PostRenderer)
+	bindPostRenderFlag(cmd, &client.PostRenderer, &client.PostRendererHooks)
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 2 {
