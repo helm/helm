@@ -68,7 +68,9 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			registryClient, err := newRegistryClient(o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSverify, o.plainHTTP)
+			registryClient, err := newRegistryClient(
+				o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSverify, o.plainHTTP, "", "",
+			)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
