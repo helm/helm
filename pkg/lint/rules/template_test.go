@@ -119,6 +119,15 @@ func TestMultiTemplateFail(t *testing.T) {
 	}
 }
 
+func TestGenerateName(t *testing.T) {
+	linter := support.Linter{ChartDir: "./testdata/generate-name"}
+	Templates(&linter, values, namespace, strict)
+	res := linter.Messages
+	if len(res) != 0 {
+		t.Fatalf("Unexpected error: %s", res[0].Err)
+	}
+}
+
 func TestValidateMetadataName(t *testing.T) {
 	tests := []struct {
 		obj     *K8sYamlStruct

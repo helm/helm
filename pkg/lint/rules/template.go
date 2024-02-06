@@ -32,6 +32,7 @@ import (
 	apipath "k8s.io/apimachinery/pkg/api/validation/path"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/apiserver/pkg/storage/names"
 
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -230,11 +231,15 @@ func validateYamlContent(err error) error {
 func validateMetadataName(obj *K8sYamlStruct) error {
 	fn := validateMetadataNameFunc(obj)
 	allErrs := field.ErrorList{}
-	for _, msg := range fn(obj.Metadata.Name, false) {
-		allErrs = append(allErrs, field.Invalid(field.NewPath("metadata").Child("name"), obj.Metadata.Name, msg))
+	name := obj.Metadata.Name
+	if len(name) == 0 && len(obj.Metadata.GenerateName) != 0 {
+		name = names.SimpleNameGenerator.GenerateName(obj.Metadata.GenerateName)
+	}
+	for _, msg := range fn(name, false) {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("metadata").Child("name"), name, msg))
 	}
 	if len(allErrs) > 0 {
-		return errors.Wrapf(allErrs.ToAggregate(), "object name does not conform to Kubernetes naming requirements: %q", obj.Metadata.Name)
+		return errors.Wrapf(allErrs.ToAggregate(), "object name does not conform to Kubernetes naming requirements: %q", name)
 	}
 	return nil
 }
@@ -346,6 +351,7 @@ type K8sYamlStruct struct {
 }
 
 type k8sYamlMetadata struct {
-	Namespace string
-	Name      string
+	Namespace    string
+	Name         string
+	GenerateName string
 }
