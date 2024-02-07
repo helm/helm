@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
@@ -296,7 +297,6 @@ func TestPerform(t *testing.T) {
 		name       string
 		reader     io.Reader
 		count      int
-		err        bool
 		errMessage string
 	}{
 		{
@@ -306,31 +306,33 @@ func TestPerform(t *testing.T) {
 		}, {
 			name:       "Empty manifests",
 			reader:     strings.NewReader(""),
-			err:        true,
 			errMessage: "no objects visited",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			results := []*resource.Info{}
+			var (
+				results   = make([]*resource.Info, 0, tt.count)
+				resultsMu sync.Mutex
+			)
 
 			fn := func(info *resource.Info) error {
+				resultsMu.Lock()
+				defer resultsMu.Unlock()
+
 				results = append(results, info)
 				return nil
 			}
 
 			c := newTestClient(t)
 			infos, err := c.Build(tt.reader, false)
-			if err != nil && err.Error() != tt.errMessage {
-				t.Errorf("Error while building manifests: %v", err)
+			if err != nil {
+				t.Errorf("unexpected error while building manifests: %v", err)
 			}
 
 			err = perform(infos, fn)
-			if (err != nil) != tt.err {
-				t.Errorf("expected error: %v, got %v", tt.err, err)
-			}
-			if err != nil && err.Error() != tt.errMessage {
+			if tt.errMessage != "" && (err == nil || err.Error() != tt.errMessage) {
 				t.Errorf("expected error message: %v, got %v", tt.errMessage, err)
 			}
 

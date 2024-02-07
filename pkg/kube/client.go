@@ -506,7 +506,7 @@ func rdelete(c *Client, resources ResourceList, propagation metav1.DeletionPropa
 		}
 		errs = append(errs, err)
 	}
-	if errs != nil {
+	if len(errs) != 0 {
 		return nil, errs
 	}
 	return res, nil
