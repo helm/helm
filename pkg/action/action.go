@@ -368,6 +368,7 @@ func (cfg *Configuration) recordRelease(r *release.Release) {
 // Init initializes the action configuration
 func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog) error {
 	kc := kube.New(getter)
+	kc.Namespace = namespace
 	kc.Log = log
 
 	lazyClient := &lazyClient{
