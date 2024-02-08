@@ -400,3 +400,19 @@ func TestResolveReferenceURL(t *testing.T) {
 		}
 	}
 }
+
+func TestEntry_URLWithTrailingSlash(t *testing.T) {
+	urlWithTrailingSlash := "http://someserver/something/"
+	e := Entry{URL: urlWithTrailingSlash}
+
+	if e.URLWithTrailingSlash() != urlWithTrailingSlash {
+		t.Errorf("Expected unchanged repository URL")
+	}
+
+	urlWithoutTrailingSlash := strings.TrimSuffix(urlWithTrailingSlash, "/")
+	e = Entry{URL: urlWithoutTrailingSlash}
+
+	if e.URLWithTrailingSlash() != urlWithTrailingSlash {
+		t.Errorf("Expected repository URL with trailing slash")
+	}
+}
