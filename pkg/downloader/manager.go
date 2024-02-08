@@ -197,7 +197,7 @@ func (m *Manager) Update() error {
 	}
 
 	// Now we need to fetch every package here into charts/
-	if err := m.downloadAll(lock.Dependencies); err != nil {
+	if err := m.batchDownloadAll(lock.Dependencies); err != nil {
 		return err
 	}
 
@@ -371,6 +371,181 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		return saveError
 	}
 	return nil
+}
+
+func (m *Manager) batchDownloadAll(deps []*chart.Dependency) error {
+	repos, err := m.loadChartRepositories()
+	if err != nil {
+		return err
+	}
+
+	destPath := filepath.Join(m.ChartPath, "charts")
+	tmpPath := filepath.Join(m.ChartPath, "tmpcharts")
+
+	// Check if 'charts' directory is not actally a directory. If it does not exist, create it.
+	if fi, err := os.Stat(destPath); err == nil {
+		if !fi.IsDir() {
+			return errors.Errorf("%q is not a directory", destPath)
+		}
+	} else if os.IsNotExist(err) {
+		if err := os.MkdirAll(destPath, 0755); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("unable to retrieve file info for '%s': %v", destPath, err)
+	}
+
+	// Prepare tmpPath
+	if err := os.MkdirAll(tmpPath, 0755); err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpPath)
+
+	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
+	var saveError error
+	churls := make(map[string]struct{})
+	chartDownloaderCache := make(map[ChartDownloaderCacheKey][]DownloadEntry)
+	for _, dep := range deps {
+		// No repository means the chart is in charts directory
+		if dep.Repository == "" {
+			fmt.Fprintf(m.Out, "Dependency %s did not declare a repository. Assuming it exists in the charts directory\n", dep.Name)
+			// NOTE: we are only validating the local dependency conforms to the constraints. No copying to tmpPath is necessary.
+			chartPath := filepath.Join(destPath, dep.Name)
+			ch, err := loader.LoadDir(chartPath)
+			if err != nil {
+				return fmt.Errorf("unable to load chart '%s': %v", chartPath, err)
+			}
+
+			constraint, err := semver.NewConstraint(dep.Version)
+			if err != nil {
+				return fmt.Errorf("dependency %s has an invalid version/constraint format: %s", dep.Name, err)
+			}
+
+			v, err := semver.NewVersion(ch.Metadata.Version)
+			if err != nil {
+				return fmt.Errorf("invalid version %s for dependency %s: %s", dep.Version, dep.Name, err)
+			}
+
+			if !constraint.Check(v) {
+				saveError = fmt.Errorf("dependency %s at version %s does not satisfy the constraint %s", dep.Name, ch.Metadata.Version, dep.Version)
+				break
+			}
+			continue
+		}
+		if strings.HasPrefix(dep.Repository, "file://") {
+			if m.Debug {
+				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
+			}
+			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version, tmpPath)
+			if err != nil {
+				saveError = err
+				break
+			}
+			dep.Version = ver
+			continue
+		}
+
+		// Any failure to resolve/download a chart should fail:
+		// https://github.com/helm/helm/issues/1439
+		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		if err != nil {
+			saveError = errors.Wrapf(err, "could not find %s", churl)
+			break
+		}
+
+		if _, ok := churls[churl]; ok {
+			fmt.Fprintf(m.Out, "Already processed %s from repo %s\n", dep.Name, dep.Repository)
+			continue
+		}
+
+		version := ""
+		isOCI := false
+		if registry.IsOCI(churl) {
+			churl, version, err = parseOCIRef(churl)
+			if err != nil {
+				return errors.Wrapf(err, "could not parse OCI reference")
+			}
+			isOCI = true
+		}
+
+		chartDownloaderCacheKey := ChartDownloaderCacheKey{
+			Username:              username,
+			Password:              password,
+			InSecureSkipTLSVerify: insecureskiptlsverify,
+			PassCredentialsAll:    passcredentialsall,
+			CAFile:                caFile,
+			CertFile:              certFile,
+			KeyFile:               keyFile,
+			IsOCI:                 isOCI,
+			Version:               version,
+		}
+		if _, ok := chartDownloaderCache[chartDownloaderCacheKey]; !ok {
+			chartDownloaderCache[chartDownloaderCacheKey] = []DownloadEntry{}
+		}
+		chartDownloaderCache[chartDownloaderCacheKey] = append(chartDownloaderCache[chartDownloaderCacheKey], DownloadEntry{
+			Ref:     churl,
+			Version: version,
+		})
+		churls[churl] = struct{}{}
+	}
+
+	if saveError == nil {
+		for chartDownloaderCacheKey, downloadEntries := range chartDownloaderCache {
+
+			//fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
+
+			dl := ChartDownloader{
+				Out:              m.Out,
+				Verify:           m.Verify,
+				Keyring:          m.Keyring,
+				RepositoryConfig: m.RepositoryConfig,
+				RepositoryCache:  m.RepositoryCache,
+				RegistryClient:   m.RegistryClient,
+				Getters:          m.Getters,
+				Options: []getter.Option{
+					getter.WithBasicAuth(chartDownloaderCacheKey.Username, chartDownloaderCacheKey.Password),
+					getter.WithPassCredentialsAll(chartDownloaderCacheKey.PassCredentialsAll),
+					getter.WithInsecureSkipVerifyTLS(chartDownloaderCacheKey.InSecureSkipTLSVerify),
+					getter.WithTLSClientConfig(chartDownloaderCacheKey.CertFile, chartDownloaderCacheKey.KeyFile, chartDownloaderCacheKey.CAFile),
+				},
+			}
+
+			if chartDownloaderCacheKey.IsOCI {
+				dl.Options = append(dl.Options,
+					getter.WithRegistryClient(m.RegistryClient),
+					getter.WithTagName(chartDownloaderCacheKey.Version))
+			}
+
+			if _, _, err = dl.DownloadAllTo(downloadEntries, tmpPath); err != nil {
+				saveError = errors.Wrapf(err, "could not download %v", downloadEntries)
+				break
+			}
+		}
+	}
+
+	// TODO: this should probably be refactored to be a []error, so we can capture and provide more information rather than "last error wins".
+	if saveError == nil {
+		// now we can move all downloaded charts to destPath and delete outdated dependencies
+		if err := m.safeMoveDeps(deps, tmpPath, destPath); err != nil {
+			return err
+		}
+	} else {
+		fmt.Fprintln(m.Out, "Save error occurred: ", saveError)
+		return saveError
+	}
+	return nil
+}
+
+type ChartDownloaderCacheKey struct {
+	Username              string
+	Password              string
+	InSecureSkipTLSVerify bool
+	PassCredentialsAll    bool
+	CAFile                string
+	CertFile              string
+	KeyFile               string
+	IsOCI                 bool
+	Version               string
 }
 
 func parseOCIRef(chartRef string) (string, string, error) {

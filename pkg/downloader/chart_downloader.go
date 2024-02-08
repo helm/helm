@@ -141,6 +141,73 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	return destfile, ver, nil
 }
 
+func (c *ChartDownloader) DownloadAllTo(downloadEntries []DownloadEntry, dest string) ([]string, []*provenance.Verification, error) {
+	indexFileCache := make(map[string]*repo.IndexFile)
+	var destFiles []string
+	var verifications []*provenance.Verification
+	for _, downloadEntry := range downloadEntries {
+		u, err := c.resolveChartVersionWithIndexFileCache(downloadEntry.Ref, downloadEntry.Version, indexFileCache)
+		if err != nil {
+			return destFiles, verifications, err
+		}
+
+		g, err := c.Getters.ByScheme(u.Scheme)
+		if err != nil {
+			return destFiles, verifications, err
+		}
+
+		data, err := g.Get(u.String(), c.Options...)
+		if err != nil {
+			return destFiles, verifications, err
+		}
+
+		name := filepath.Base(u.Path)
+		if u.Scheme == registry.OCIScheme {
+			idx := strings.LastIndexByte(name, ':')
+			name = fmt.Sprintf("%s-%s.tgz", name[:idx], name[idx+1:])
+		}
+
+		destfile := filepath.Join(dest, name)
+		destFiles = append(destFiles, destfile)
+		if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
+			return destFiles, verifications, err
+		}
+
+		// If provenance is requested, verify it.
+		ver := &provenance.Verification{}
+		if c.Verify > VerifyNever {
+			body, err := g.Get(u.String() + ".prov")
+			if err != nil {
+				if c.Verify == VerifyAlways {
+					return destFiles, verifications, errors.Errorf("failed to fetch provenance %q", u.String()+".prov")
+				}
+				fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", downloadEntry.Ref, err)
+				continue
+			}
+			provfile := destfile + ".prov"
+			if err := fileutil.AtomicWriteFile(provfile, body, 0644); err != nil {
+				return destFiles, verifications, err
+			}
+
+			if c.Verify != VerifyLater {
+				ver, err = VerifyChart(destfile, c.Keyring)
+				if err != nil {
+					// Fail always in this case, since it means the verification step
+					// failed.
+					return destFiles, verifications, err
+				}
+			}
+		}
+		verifications = append(verifications, ver)
+	}
+	return destFiles, verifications, nil
+}
+
+type DownloadEntry struct {
+	Ref     string
+	Version string
+}
+
 func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, error) {
 	var tag string
 	var err error
@@ -190,6 +257,10 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 //   - If version is empty, this will return the URL for the latest version
 //   - If no version can be found, an error is returned
 func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, error) {
+	return c.resolveChartVersionWithIndexFileCache(ref, version, make(map[string]*repo.IndexFile))
+}
+
+func (c *ChartDownloader) resolveChartVersionWithIndexFileCache(ref, version string, indexFileCache map[string]*repo.IndexFile) (*url.URL, error) {
 	u, err := url.Parse(ref)
 	if err != nil {
 		return nil, errors.Errorf("invalid chart URL format: %s", ref)
@@ -211,7 +282,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 		// we want to find the repo in case we have special SSL cert config
 		// for that repo.
 
-		rc, err := c.scanReposForURL(ref, rf)
+		rc, err := c.scanReposForURLWithIndexFileCache(ref, rf, indexFileCache)
 		if err != nil {
 			// If there is no special config, return the default HTTP client and
 			// swallow the error.
@@ -371,6 +442,12 @@ func pickChartRepositoryConfigByName(name string, cfgs []*repo.Entry) (*repo.Ent
 func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry, error) {
 	// FIXME: This is far from optimal. Larger installations and index files will
 	// incur a performance hit for this type of scanning.
+	return c.scanReposForURLWithIndexFileCache(u, rf, make(map[string]*repo.IndexFile))
+}
+
+func (c *ChartDownloader) scanReposForURLWithIndexFileCache(u string, rf *repo.File, indexFileCache map[string]*repo.IndexFile) (*repo.Entry, error) {
+	// FIXME: This is far from optimal. Larger installations and index files will
+	// incur a performance hit for this type of scanning.
 	for _, rc := range rf.Repositories {
 		r, err := repo.NewChartRepository(rc, c.Getters)
 		if err != nil {
@@ -378,9 +455,14 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 		}
 
 		idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
-		i, err := repo.LoadIndexFile(idxFile)
-		if err != nil {
-			return nil, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
+		i, ok := indexFileCache[idxFile]
+		if !ok {
+			var err error
+			i, err = repo.LoadIndexFile(idxFile)
+			if err != nil {
+				return nil, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
+			}
+			indexFileCache[idxFile] = i
 		}
 
 		for _, entry := range i.Entries {
