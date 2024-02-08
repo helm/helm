@@ -35,16 +35,17 @@ import (
 type Rollback struct {
 	cfg *Configuration
 
-	Version       int
-	Timeout       time.Duration
-	Wait          bool
-	WaitForJobs   bool
-	DisableHooks  bool
-	DryRun        bool
-	Recreate      bool // will (if true) recreate pods after a rollback.
-	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
-	CleanupOnFail bool
-	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
+	Version                 int
+	Timeout                 time.Duration
+	Wait                    bool
+	WaitForJobs             bool
+	DisableHooks            bool
+	DryRun                  bool
+	Recreate                bool // will (if true) recreate pods after a rollback.
+	Force                   bool // will (if true) force resource upgrade through uninstall/recreate if needed
+	CleanupOnFail           bool
+	MaxHistory              int  // MaxHistory limits the maximum number of revisions saved per release
+	EnableOpenAPIValidation bool // EnableOpenAPIValidation controls whether OpenAPI validation is enforced.
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -160,18 +161,20 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 }
 
 func (r *Rollback) performRollback(currentRelease, targetRelease *release.Release) (*release.Release, error) {
-	if r.DryRun {
-		r.cfg.Log("dry run for %s", targetRelease.Name)
-		return targetRelease, nil
-	}
 
-	current, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), false)
+	current, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), r.EnableOpenAPIValidation)
 	if err != nil {
 		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
 	}
-	target, err := r.cfg.KubeClient.Build(bytes.NewBufferString(targetRelease.Manifest), false)
+
+	target, err := r.cfg.KubeClient.Build(bytes.NewBufferString(targetRelease.Manifest), r.EnableOpenAPIValidation)
 	if err != nil {
 		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
+	}
+
+	if r.DryRun {
+		r.cfg.Log("dry run for %s", targetRelease.Name)
+		return targetRelease, nil
 	}
 
 	// pre-rollback hooks
