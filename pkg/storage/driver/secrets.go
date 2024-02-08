@@ -177,7 +177,7 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
-	lbs.set("modifiedAt", strconv.Itoa(int(time.Now().Unix())))
+	lbs.set("modifiedAt", strconv.FormatInt(time.Now().Unix(), 10))
 
 	// create a new secret object to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)
