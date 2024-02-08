@@ -625,20 +625,20 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 
 			if tc.Input == nil {
 				if result != nil {
-					t.Error("")
+					t.Error("expected nil result for nil input")
 				}
 				return
 			}
 
 			if tc.ErrorSkipped {
 				if result != nil {
-					t.Error("")
+					t.Error("expected nil result for skipped error")
 				}
 				return
 			}
 
 			if tc.Input != result {
-				t.Error("")
+				t.Error("expected the result equal to input")
 			}
 
 		})
