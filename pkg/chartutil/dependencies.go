@@ -119,6 +119,15 @@ func getAliasDependency(charts []*chart.Chart, dep *chart.Dependency) *chart.Cha
 		md := *c.Metadata
 		out.Metadata = &md
 
+		if md.Dependencies != nil {
+			dependencies := make([]*chart.Dependency, len(md.Dependencies))
+			for i := range md.Dependencies {
+				d := *md.Dependencies[i]
+				dependencies[i] = &d
+			}
+			md.Dependencies = dependencies
+		}
+
 		if dep.Alias != "" {
 			md.Name = dep.Alias
 		}
