@@ -1,0 +1,48 @@
+---
+# Source: chart-with-subchart-global/charts/dep1/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: RELEASE-NAME-dep1
+  labels:
+    helm.sh/chart: dep1-0.1.0
+    app.kubernetes.io/name: dep1
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    some-annotation: dep1
+    test: global
+spec:
+  rules:
+    - host: "localhost1"
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: RELEASE-NAME-dep1
+              servicePort: 80
+---
+# Source: chart-with-subchart-global/charts/dep2/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: RELEASE-NAME-dep2
+  labels:
+    helm.sh/chart: dep2-0.1.0
+    app.kubernetes.io/name: dep2
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    some-annotation: dep2
+    test: global
+spec:
+  rules:
+    - host: "localhost2"
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: RELEASE-NAME-dep2
+              servicePort: 80
