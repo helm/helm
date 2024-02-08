@@ -49,6 +49,12 @@ type PlatformCommand struct {
 	Command         string `json:"command"`
 }
 
+type PlatformHook struct {
+	OperatingSystem string `json:"os"`
+	Architecture    string `json:"arch"`
+	Hooks           Hooks  `json:"hooks"`
+}
+
 // Metadata describes a plugin.
 //
 // This is the plugin equivalent of a chart.Metadata.
@@ -91,7 +97,8 @@ type Metadata struct {
 	IgnoreFlags bool `json:"ignoreFlags"`
 
 	// Hooks are commands that will run on events.
-	Hooks Hooks
+	PlatformHook []PlatformHook `json:"platformHook"`
+	Hooks        Hooks
 
 	// Downloaders field is used if the plugin supply downloader mechanism
 	// for special protocols.
@@ -166,6 +173,51 @@ func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string, error) {
 		baseArgs = append(baseArgs, extraArgs...)
 	}
 	return main, baseArgs, nil
+}
+
+// The following rules will apply to processing the Plugin.PlatformHook.Hooks:
+// If hook name exists in platformHook, do the following:
+// - If both OS and Arch match the current platform, search will stop and the command will be prepared for execution
+// - If OS matches and there is no more specific match, the hook will be prepared for execution
+// - If no OS/Arch match is found, return nil
+func getPlatformHook(platformHooks []PlatformHook, event string) []string {
+	var hookCommand []string
+	eq := strings.EqualFold
+	for _, p := range platformHooks {
+		if hook, ok := p.Hooks[event]; ok {
+			if eq(p.OperatingSystem, runtime.GOOS) {
+				hookCommand = strings.Split(os.ExpandEnv(hook), " ")
+			}
+			if eq(p.OperatingSystem, runtime.GOOS) && eq(p.Architecture, runtime.GOARCH) {
+				return strings.Split(os.ExpandEnv(hook), " ")
+			}
+		}
+	}
+	return hookCommand
+}
+
+// PrepareHook takes a Plugin.PlatformHook.Hooks, a Plugin.Hooks and an event and will apply the following processing:
+// - If platformHook is present, it will be searched first
+// - If both OS and Arch match the current platform, search for required hook name. If exists, search will stop and the hook will be prepared for execution
+// - If OS matches and there is no more specific match, the hook will be prepared for execution
+// - If no OS/Arch match is found, the default hook will be prepared for execution
+// - If no hook is present and no matches are found in platformHook, will exit with an error
+//
+// The result is suitable to pass to exec.Command.
+func (p *Plugin) PrepareHook(event string) ([]string, error) {
+	var parts []string
+	platCmdLen := len(p.Metadata.PlatformHook)
+	if platCmdLen > 0 {
+		parts = getPlatformHook(p.Metadata.PlatformHook, event)
+	}
+	if platCmdLen == 0 || parts == nil {
+		parts = strings.Split(os.ExpandEnv(p.Metadata.Hooks[event]), " ")
+	}
+	if len(parts) == 0 || parts[0] == "" {
+		return nil, fmt.Errorf("no plugin hook is applicable")
+	}
+
+	return parts, nil
 }
 
 // validPluginName is a regular expression that validates plugin names.
