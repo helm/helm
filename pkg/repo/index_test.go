@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -594,5 +595,52 @@ func TestAddFileIndexEntriesNil(t *testing.T) {
 		if err := i.MustAdd(x.md, x.filename, x.baseURL, x.digest); err == nil {
 			t.Errorf("expected err to be non-nil when entries not initialized")
 		}
+	}
+}
+
+func TestIgnoreSkippableChartValidationError(t *testing.T) {
+	type TestCase struct {
+		Input        error
+		ErrorSkipped bool
+	}
+	testCases := map[string]TestCase{
+		"nil": {
+			Input: nil,
+		},
+		"generic_error": {
+			Input: fmt.Errorf("foo"),
+		},
+		"non_skipped_validation_error": {
+			Input: chart.ValidationError("chart.metadata.type must be application or library"),
+		},
+		"skipped_validation_error": {
+			Input:        chart.ValidationErrorf("more than one dependency with name or alias %q", "foo"),
+			ErrorSkipped: true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := ignoreSkippableChartValidationError(tc.Input)
+
+			if tc.Input == nil {
+				if result != nil {
+					t.Error("")
+				}
+				return
+			}
+
+			if tc.ErrorSkipped {
+				if result != nil {
+					t.Error("")
+				}
+				return
+			}
+
+			if tc.Input != result {
+				t.Error("")
+			}
+
+		})
 	}
 }
