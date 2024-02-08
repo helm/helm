@@ -83,6 +83,15 @@ func FindSource(location string) (Installer, error) {
 	return installer, err
 }
 
+// FindSourceWithVersion determines the correct Installer for the given source with provided version.
+func FindSourceWithVersion(location, version string) (Installer, error) {
+	installer, err := existingVCSRepoWithVersion(location, version)
+	if err != nil && err.Error() == "Cannot detect VCS" {
+		return installer, errors.New("cannot get information about plugin source")
+	}
+	return installer, err
+}
+
 // isLocalReference checks if the source exists on the filesystem.
 func isLocalReference(source string) bool {
 	_, err := os.Stat(source)

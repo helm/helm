@@ -29,16 +29,21 @@ import (
 )
 
 type pluginUpdateOptions struct {
-	names []string
+	names map[string]string
 }
+
+const pluginUpdateDesc = `
+This command allows you to update one or more Helm plugins.
+`
 
 func newPluginUpdateCmd(out io.Writer) *cobra.Command {
 	o := &pluginUpdateOptions{}
 
 	cmd := &cobra.Command{
-		Use:     "update <plugin>...",
+		Use:     "update <plugin[:version]>...",
 		Aliases: []string{"up"},
 		Short:   "update one or more Helm plugins",
+		Long:    pluginUpdateDesc,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compListPlugins(toComplete, args), cobra.ShellCompDirectiveNoFileComp
 		},
@@ -56,7 +61,14 @@ func (o *pluginUpdateOptions) complete(args []string) error {
 	if len(args) == 0 {
 		return errors.New("please provide plugin name to update")
 	}
-	o.names = args
+	o.names = make(map[string]string)
+	for _, arg := range args {
+		if strings.ContainsAny(arg, ":") {
+			o.names[arg[:strings.LastIndex(arg, ":")]] = arg[strings.LastIndex(arg, ":")+1:]
+		} else {
+			o.names[arg] = ""
+		}
+	}
 	return nil
 }
 
@@ -68,10 +80,9 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 		return err
 	}
 	var errorPlugins []string
-
-	for _, name := range o.names {
+	for name, version := range o.names {
 		if found := findPlugin(plugins, name); found != nil {
-			if err := updatePlugin(found); err != nil {
+			if err := updatePlugin(found, version); err != nil {
 				errorPlugins = append(errorPlugins, fmt.Sprintf("Failed to update plugin %s, got error (%v)", name, err))
 			} else {
 				fmt.Fprintf(out, "Updated plugin: %s\n", name)
@@ -86,7 +97,7 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 	return nil
 }
 
-func updatePlugin(p *plugin.Plugin) error {
+func updatePlugin(p *plugin.Plugin, version string) error {
 	exactLocation, err := filepath.EvalSymlinks(p.Dir)
 	if err != nil {
 		return err
@@ -96,7 +107,13 @@ func updatePlugin(p *plugin.Plugin) error {
 		return err
 	}
 
-	i, err := installer.FindSource(absExactLocation)
+	var i installer.Installer
+
+	if version != "" {
+		i, err = installer.FindSourceWithVersion(absExactLocation, version)
+	} else {
+		i, err = installer.FindSource(absExactLocation)
+	}
 	if err != nil {
 		return err
 	}

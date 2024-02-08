@@ -47,6 +47,19 @@ func existingVCSRepo(location string) (Installer, error) {
 	return i, nil
 }
 
+func existingVCSRepoWithVersion(location, version string) (Installer, error) {
+	repo, err := vcs.NewRepo("", location)
+	if err != nil {
+		return nil, err
+	}
+	i := &VCSInstaller{
+		Repo:    repo,
+		Version: version,
+		base:    newBase(repo.Remote()),
+	}
+	return i, nil
+}
+
 // NewVCSInstaller creates a new VCSInstaller.
 func NewVCSInstaller(source, version string) (*VCSInstaller, error) {
 	key, err := cache.Key(source)
@@ -82,6 +95,8 @@ func (i *VCSInstaller) Install() error {
 		if err := i.setVersion(i.Repo, ref); err != nil {
 			return err
 		}
+	} else if err := updateToLatest(i.Repo); err != nil {
+		return err
 	}
 
 	if !isPlugin(i.Repo.LocalPath()) {
@@ -98,7 +113,15 @@ func (i *VCSInstaller) Update() error {
 	if i.Repo.IsDirty() {
 		return errors.New("plugin repo was modified")
 	}
-	if err := i.Repo.Update(); err != nil {
+	ref, err := i.solveVersion(i.Repo)
+	if err != nil {
+		return err
+	}
+	if ref != "" {
+		if err := i.setVersion(i.Repo, ref); err != nil {
+			debug(err.Error())
+		}
+	} else if err := updateToLatest(i.Repo); err != nil {
 		return err
 	}
 	if !isPlugin(i.Repo.LocalPath()) {
@@ -139,7 +162,6 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 		if constraint.Check(v) {
 			// If the constraint passes get the original reference
 			ver := v.Original()
-			debug("setting to %s", ver)
 			return ver, nil
 		}
 	}
@@ -173,4 +195,20 @@ func getSemVers(refs []string) []*semver.Version {
 		}
 	}
 	return sv
+}
+
+func updateToLatest(repo vcs.Repo) error {
+	refs, err := repo.Tags()
+	if err != nil {
+		return err
+	}
+	debug("found refs: %s", refs)
+
+	// Convert and filter the list to semver.Version instances
+	semvers := getSemVers(refs)
+
+	// Sort semver list
+	sort.Sort(sort.Reverse(semver.Collection(semvers)))
+	latest := semvers[0].Original()
+	return repo.UpdateVersion(latest)
 }
