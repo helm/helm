@@ -1,0 +1,26 @@
+# Kubernetes Service settings
+service:
+  externalPort: 9898
+
+ingress:
+  enabled: true
+  className: myclassname
+  additionalLabels: {}
+  annotations: {}
+  hosts:
+    - host: myhost1.local
+      paths:
+        - path: /
+          name: mypath1
+          pathType: mypathtype1
+    - host: myhost2.local
+      paths:
+        - path: /
+          name: mypath2
+          pathType: mypathtype2
+    - host: myhost3.local
+      paths:
+        - path: /
+          name: mypath3
+          pathType: mypathtype3
+  tls: []
