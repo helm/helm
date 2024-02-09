@@ -68,11 +68,16 @@ func TestTemplateCmd(t *testing.T) {
 		},
 		{
 			name:   "check chart with dependency which is an app chart acting as a library chart",
-			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/chart-with-template-lib-dep"),
-			golden: "output/template-chart-with-template-lib-dep.txt",
+			cmd:    fmt.Sprintf("template '%s' --set ingress.enabled=true --set ingress.hosts[1].host=changed_host.com", "testdata/testcharts/chart-with-ingress-with-map-host"),
+			golden: "output/template-chart-with-ingress-with-map-host.txt",
 		},
 		{
-			name:   "check chart with dependency which is an app chart archive acting as a library chart",
+			name:   "check chart with map type ingress host and set ingress.hosts[1].host=changed_host.com",
+			cmd:    fmt.Sprintf("template '%s' --set ingress.enabled=true --set ingress.hosts[1].host=changed_host.com", "testdata/testcharts/chart-with-ingress-with-list-host"),
+			golden: "output/template-chart-with-ingress-with-list-host.txt",
+		},
+		{
+			name:   "check chart with list type ingress host and set ingress.hosts[1].host=changed_host.com",
 			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/chart-with-template-lib-archive-dep"),
 			golden: "output/template-chart-with-template-lib-archive-dep.txt",
 		},

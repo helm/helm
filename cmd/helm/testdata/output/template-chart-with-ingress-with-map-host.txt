@@ -1,0 +1,39 @@
+---
+# Source: chart-with-ingress-with-map-host/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chart-with-ingress-with-map-host
+spec:
+  ingressClassName: myclassname
+  rules:
+    - host: "myhost1.local"
+      http:
+        paths:
+          - path: /
+            pathType: mypathtype1
+            backend:
+              service:
+                name: mypath1
+                port:
+                  number: 9898
+    - host: "changed_host.com"
+      http:
+        paths:
+          - path: /
+            pathType: mypathtype2
+            backend:
+              service:
+                name: mypath2
+                port:
+                  number: 9898
+    - host: "myhost3.local"
+      http:
+        paths:
+          - path: /
+            pathType: mypathtype3
+            backend:
+              service:
+                name: mypath3
+                port:
+                  number: 9898
