@@ -19,6 +19,7 @@ package chartutil
 import (
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
@@ -285,8 +286,48 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 			} else {
 				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
 			}
+		} else if islist(val) {
+			if islist(dv) {
+				dst[key] = coalesceListsFullKey(printf, dv.([]interface{}), val.([]interface{}), fullkey, merge)
+			} else {
+				printf("warning: cannot overwrite list with non list for %s (%v)", fullkey, val)
+			}
 		} else if istable(dv) && val != nil {
 			printf("warning: destination for %s is a table. Ignoring non-table value (%v)", fullkey, val)
+		}
+	}
+	return dst
+}
+
+// coalesceListsFullKey merges a source list into a destination list.
+//
+// dest is considered authoritative.
+func coalesceListsFullKey(printf printFn, dst, src []interface{}, prefix string, merge bool) []interface{} {
+	// When --reuse-values is set but there are no modifications yet, return new values
+	if src == nil {
+		return dst
+	}
+	if dst == nil {
+		return src
+	}
+	// Because dest has higher precedence than src, dest values override src
+	// values.
+	for key, val := range src {
+		if key == len(dst) {
+			dst = append(dst, val)
+		} else if dst[key] == nil {
+			dst[key] = val
+		} else if istable(val) && istable(dst[key]) {
+			dst[key] = coalesceTablesFullKey(
+				printf,
+				dst[key].(map[string]interface{}),
+				val.(map[string]interface{}),
+				prefix,
+				merge,
+			)
+		} else {
+			fullkey := concatPrefix(prefix, strconv.Itoa(key))
+			printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
 		}
 	}
 	return dst
