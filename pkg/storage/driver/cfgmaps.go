@@ -18,6 +18,7 @@ package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -160,7 +161,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
-	lbs.set("createdAt", strconv.Itoa(int(time.Now().Unix())))
+	lbs.set("createdAt", fmt.Sprintf("%v", time.Now().Unix()))
 
 	// create a new configmap to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)
@@ -188,7 +189,7 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
-	lbs.set("modifiedAt", strconv.Itoa(int(time.Now().Unix())))
+	lbs.set("modifiedAt", fmt.Sprintf("%v", time.Now().Unix()))
 
 	// create a new configmap object to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)
