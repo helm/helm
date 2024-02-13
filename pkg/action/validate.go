@@ -76,7 +76,7 @@ func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
 	return requireUpdate, err
 }
 
-func existingResourceConflict(resources kube.ResourceList, releaseName, releaseNamespace string, forceAdopt bool) (kube.ResourceList, error) {
+func existingResourceConflict(resources kube.ResourceList, releaseName, releaseNamespace string, takeOwnership bool) (kube.ResourceList, error) {
 	var requireUpdate kube.ResourceList
 
 	err := resources.Visit(func(info *resource.Info, err error) error {
@@ -93,7 +93,7 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 			return errors.Wrapf(err, "could not get information about the resource %s", resourceString(info))
 		}
 
-		if !forceAdopt {
+		if !takeOwnership {
 			// Allow adoption of the resource if it is managed by Helm and is annotated with correct release name and namespace.
 			if err := checkOwnership(existing, releaseName, releaseNamespace); err != nil {
 				return fmt.Errorf("%s exists and cannot be imported into the current release: %s", resourceString(info), err)
