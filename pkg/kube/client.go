@@ -417,6 +417,17 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 
 		originalInfo := original.Get(info)
 		if originalInfo == nil {
+			annotations, err := metadataAccessor.Annotations(info.Object)
+			if err != nil {
+				c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
+			}
+
+			// Since the target resource remains due to resource policy but is not in the original release
+			if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
+				c.Log("Skipping update of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
+				return nil
+			}
+
 			kind := info.Mapping.GroupVersionKind.Kind
 			return errors.Errorf("no %s with the name %q found", kind, info.Name)
 		}
