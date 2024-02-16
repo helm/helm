@@ -29,7 +29,7 @@ import (
 	"sync"
 	"time"
 
-	jsonpatch "github.com/evanphx/json-patch"
+	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/pkg/errors"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
