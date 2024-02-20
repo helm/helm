@@ -138,3 +138,43 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	is.Error(err)
 	is.Contains(err.Error(), "failed to delete release: come-fail-away")
 }
+
+func TestUninstallRelease_ReturnsAllErrors(t *testing.T) {
+	is := assert.New(t)
+
+	unAction := uninstallAction(t)
+	unAction.DisableHooks = true
+	unAction.DryRun = false
+	unAction.Wait = false
+	unAction.DeletionPropagation = "foreground"
+
+	rel := releaseStub()
+	rel.Name = "come-fail-away"
+	rel.Manifest = `{
+		"apiVersion": "v1",
+		"kind": "Secret",
+		"metadata": {
+		  "name": "secret"
+		},
+		"type": "Opaque",
+		"data": {
+		  "password": "password"
+		}
+	}`
+	unAction.cfg.Releases.Create(rel)
+	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.DeleteWithPropagationError = fmt.Errorf("uninstall error")
+	failer.BuildDummy = true
+	unAction.cfg.KubeClient = failer
+
+	_, err := unAction.Run(rel.Name)
+	is.Error(err)
+	is.Contains(err.Error(), "failed to delete release: come-fail-away")
+	uninstallErr, ok := err.(uninstallError)
+	if !ok {
+		t.Errorf("Expected returned error to be of type uninstallError: got %v(%T)", err, err)
+	}
+
+	is.Len(uninstallErr.uninstallErrors, 1)
+	is.Contains(uninstallErr.uninstallErrors[0].Error(), "uninstall error")
+}
