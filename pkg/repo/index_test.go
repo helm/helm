@@ -69,6 +69,10 @@ entries:
     name: grafana
   foo:
   -
+  bar:
+  - digest: "sha256:1234567890abcdef"
+    urls:
+    - https://charts.helm.sh/stable/alpine-1.0.0.tgz
 `
 )
 

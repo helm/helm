@@ -359,6 +359,10 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 				log.Printf("skipping loading invalid entry for chart %q from %s: empty entry", name, source)
 				continue
 			}
+			// When metadata section missing, initialize with no data
+			if cvs[idx].Metadata == nil {
+				cvs[idx].Metadata = &chart.Metadata{}
+			}
 			if cvs[idx].APIVersion == "" {
 				cvs[idx].APIVersion = chart.APIVersionV1
 			}
