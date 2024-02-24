@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	std_errors "errors"
 	"fmt"
 	"io"
 	"os"
@@ -37,7 +38,6 @@ import (
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -551,7 +551,7 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 	for range infos {
 		err := <-errs
 		if err != nil {
-			result = multierror.Append(result, err)
+			result = std_errors.Join(result, err)
 		}
 	}
 
