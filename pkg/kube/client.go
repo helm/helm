@@ -386,7 +386,7 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 // occurs, a Result will still be returned with the error, containing all
 // resource updates, creations, and deletions that were attempted. These can be
 // used for cleanup or other logging purposes.
-func (c *Client) Update(original, target ResourceList, force bool) (*Result, error) {
+func (c *Client) Update(original, target ResourceList, force bool, recreateImmutableResources bool) (*Result, error) {
 	updateErrors := []string{}
 	res := &Result{}
 
@@ -422,8 +422,31 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
-			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
-			updateErrors = append(updateErrors, err.Error())
+
+			var errorMessage error
+
+			if force {
+				errorMessage = errors.Wrap(err, "failed to replace object")
+			} else {
+				errorMessage = errors.Wrapf(err, "cannot patch %q with kind %s", info.Name, info.Mapping.GroupVersionKind.Kind)
+			}
+
+			if statusError, isStatusError := err.(*apierrors.StatusError); recreateImmutableResources && isStatusError && statusError.ErrStatus.Code == 422 {
+				if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
+					c.Log("Failed to delete %q, err: %s", info.ObjectName(), err)
+				} else {
+					if err := createResource(info); err != nil {
+						errorMessage = errors.Wrap(err, "failed to create resource")
+					} else {
+						errorMessage = nil
+					}
+				}
+			}
+
+			if errorMessage != nil {
+				c.Log("error updating the resource or replacing object %q:\n\t %v", info.Name, errorMessage)
+				updateErrors = append(updateErrors, err.Error())
+			}
 		}
 		// Because we check for errors later, append the info regardless
 		res.Updated = append(res.Updated, info)
@@ -671,7 +694,8 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		var err error
 		obj, err = helper.Replace(target.Namespace, target.Name, true, target.Object)
 		if err != nil {
-			return errors.Wrap(err, "failed to replace object")
+			//errors.Wrap(err, "failed to replace object")
+			return err
 		}
 		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
@@ -693,7 +717,8 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		c.Log("Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
-			return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
+			//return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
+			return err
 		}
 	}
 

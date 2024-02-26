@@ -78,6 +78,11 @@ func TestRollbackCmd(t *testing.T) {
 		golden:    "output/rollback-no-args.txt",
 		rels:      rels,
 		wantError: true,
+	}, {
+		name:   "rollback a release with recreate-immutable-resources option ",
+		cmd:    "rollback funny-honey 1 --recreate-immutable-resources",
+		golden: "output/rollback.txt",
+		rels:   rels,
 	}}
 	runTestCmd(t, tests)
 }

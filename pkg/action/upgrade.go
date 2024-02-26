@@ -78,6 +78,8 @@ type Upgrade struct {
 	//
 	// This should be used with caution.
 	Force bool
+	// Recreate resources will try to delete and create resources ONLY during upgrade if it receives statusError with code 422
+	RecreateImmutableResources bool
 	// ResetValues will reset the values to the chart's built-ins rather than merging with existing.
 	ResetValues bool
 	// ReuseValues will re-use the user's last supplied values.
@@ -407,7 +409,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
 	}
 
-	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
+	results, err := u.cfg.KubeClient.Update(current, target, u.Force, u.RecreateImmutableResources)
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
@@ -513,6 +515,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		rollin.Recreate = u.Recreate
 		rollin.Force = u.Force
 		rollin.Timeout = u.Timeout
+		rollin.RecreateImmutableResources = u.RecreateImmutableResources
 		if rollErr := rollin.Run(rel.Name); rollErr != nil {
 			return rel, errors.Wrapf(rollErr, "an error occurred while rolling back the release. original upgrade error: %s", err)
 		}
