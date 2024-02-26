@@ -301,8 +301,8 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 	e["app3.service.port"] = "9090"
 	e["app4.service.port"] = "1234"
 	e["app5.service.port"] = "9090"
-    e["app6.service.port"] = "9090"
-    e["app7.service.port"] = "9090"
+	e["app6.service.port"] = "9090"
+	e["app7.service.port"] = "9090"
 	if err := processDependencyImportValues(c, true); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
