@@ -85,7 +85,7 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 
     $ helm install --set foo=bar --set foo=newbar  myredis ./redis
 
-Similarly, in the following example 'foo' is set to '["four"]': 
+Similarly, in the following example 'foo' is set to '["four"]':
 
     $ helm install --set-json='foo=["one", "two", "three"]' --set-json='foo=["four"]' myredis ./redis
 
@@ -167,6 +167,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
 	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
+	f.StringVar(&client.CreateNamespaceMetadata, "create-namespace-metadata", "", "Add namespace metadata as json-formatted string when creating the namespace with --create-namespace.")
 	// --dry-run options with expected outcome:
 	// - Not set means no dry run and server is contacted.
 	// - Set with no value, a value of client, or a value of true and the server is not contacted

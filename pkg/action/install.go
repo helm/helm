@@ -19,6 +19,7 @@ package action
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
@@ -72,6 +73,7 @@ type Install struct {
 	ClientOnly               bool
 	Force                    bool
 	CreateNamespace          bool
+	CreateNamespaceMetadata  string
 	DryRun                   bool
 	DryRunOption             string
 	DisableHooks             bool
@@ -359,6 +361,11 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 					"name": i.Namespace,
 				},
 			},
+		}
+		if len(i.CreateNamespaceMetadata) > 0 {
+			if err := json.Unmarshal([]byte(i.CreateNamespaceMetadata), &ns.ObjectMeta); err != nil {
+				return nil, errors.Wrap(err, "unable to unmarshal namespace metadata")
+			}
 		}
 		buf, err := yaml.Marshal(ns)
 		if err != nil {

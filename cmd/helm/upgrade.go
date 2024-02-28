@@ -79,6 +79,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 	var createNamespace bool
+	var createNamespaceMetadata string
 
 	cmd := &cobra.Command{
 		Use:   "upgrade [RELEASE] [CHART]",
@@ -123,6 +124,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					}
 					instClient := action.NewInstall(cfg)
 					instClient.CreateNamespace = createNamespace
+					instClient.CreateNamespaceMetadata = createNamespaceMetadata
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.Force = client.Force
 					instClient.DryRun = client.DryRun
@@ -239,6 +241,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.BoolVar(&createNamespace, "create-namespace", false, "if --install is set, create the release namespace if not present")
+	f.StringVar(&createNamespaceMetadata, "create-namespace-metadata", "", "Add namespace metadata as json-formatted string when creating the namespace with --create-namespace.")
 	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
