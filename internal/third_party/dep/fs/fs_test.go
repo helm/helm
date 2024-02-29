@@ -92,6 +92,7 @@ func TestCopyDir(t *testing.T) {
 		fi       os.FileInfo
 	}{
 		{path: "myfile", contents: "hello world"},
+		{path: filepath.Join(".git", "file"), contents: ".git file"},
 		{path: filepath.Join("subdir", "file"), contents: "subdir file"},
 	}
 
@@ -120,13 +121,13 @@ func TestCopyDir(t *testing.T) {
 	}
 
 	destdir := filepath.Join(dir, "dest")
-	if err := CopyDir(srcdir, destdir); err != nil {
+	if err := CopyDir(srcdir, destdir, []string{}); err != nil {
 		t.Fatal(err)
 	}
 
 	// Compare copy against structure indicated in 'files'
 	for _, file := range files {
-		fn := filepath.Join(srcdir, file.path)
+		fn := filepath.Join(destdir, file.path)
 		dn := filepath.Dir(fn)
 		dirOK, err := IsDir(dn)
 		if err != nil {
@@ -154,6 +155,16 @@ func TestCopyDir(t *testing.T) {
 			t.Fatalf("expected %s: %#v\n to be the same mode as %s: %#v",
 				file.path, file.fi.Mode(), fn, gotinfo.Mode())
 		}
+	}
+	os.RemoveAll(destdir)
+	if err := CopyDir(srcdir, destdir, []string{".git"}); err != nil {
+		t.Fatal(err)
+	}
+	destdirGit := filepath.Join(destdir, ".git")
+	dirOK, _ := IsDir(destdirGit)
+
+	if dirOK {
+		t.Fatalf("expected %s to not be copied", destdirGit)
 	}
 }
 
@@ -183,7 +194,7 @@ func TestCopyDirFail_SrcInaccessible(t *testing.T) {
 	dir := t.TempDir()
 
 	dstdir = filepath.Join(dir, "dst")
-	if err := CopyDir(srcdir, dstdir); err == nil {
+	if err := CopyDir(srcdir, dstdir, []string{}); err == nil {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 }
@@ -218,7 +229,7 @@ func TestCopyDirFail_DstInaccessible(t *testing.T) {
 	})
 	defer cleanup()
 
-	if err := CopyDir(srcdir, dstdir); err == nil {
+	if err := CopyDir(srcdir, dstdir, []string{}); err == nil {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 }
@@ -236,7 +247,7 @@ func TestCopyDirFail_SrcIsNotDir(t *testing.T) {
 
 	dstdir = filepath.Join(dir, "dst")
 
-	if err = CopyDir(srcdir, dstdir); err == nil {
+	if err = CopyDir(srcdir, dstdir, []string{}); err == nil {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 
@@ -262,7 +273,7 @@ func TestCopyDirFail_DstExists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = CopyDir(srcdir, dstdir); err == nil {
+	if err = CopyDir(srcdir, dstdir, []string{}); err == nil {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 
@@ -312,7 +323,7 @@ func TestCopyDirFailOpen(t *testing.T) {
 
 	dstdir = filepath.Join(dir, "dst")
 
-	if err = CopyDir(srcdir, dstdir); err == nil {
+	if err = CopyDir(srcdir, dstdir, []string{}); err == nil {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 }
