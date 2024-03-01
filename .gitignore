@@ -5,6 +5,7 @@
 .idea/
 .vimrc
 .vscode/
+.devcontainer/
 _dist/
 _dist_versions/
 bin/
