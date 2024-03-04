@@ -1,16 +1,16 @@
 module helm.sh/helm/v3
 
-go 1.20
+go 1.21
 
 require (
 	github.com/BurntSushi/toml v1.3.2
-	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Masterminds/vcs v1.13.3
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535
-	github.com/containerd/containerd v1.7.11
+	github.com/containerd/containerd v1.7.12
 	github.com/cyphar/filepath-securejoin v0.2.4
 	github.com/distribution/distribution/v3 v3.0.0-20221208165359-362910506bc2
 	github.com/evanphx/json-patch v5.7.0+incompatible

@@ -714,15 +714,21 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			var entry repo.ChartVersions
 			entry, err = findEntryByName(name, cr)
 			if err != nil {
+				// TODO: Where linting is skipped in this function we should
+				// refactor to remove naked returns while ensuring the same
+				// behavior
+				//nolint:nakedret
 				return
 			}
 			var ve *repo.ChartVersion
 			ve, err = findVersionedEntry(version, entry)
 			if err != nil {
+				//nolint:nakedret
 				return
 			}
 			url, err = normalizeURL(repoURL, ve.URLs[0])
 			if err != nil {
+				//nolint:nakedret
 				return
 			}
 			username = cr.Config.Username
@@ -732,6 +738,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			caFile = cr.Config.CAFile
 			certFile = cr.Config.CertFile
 			keyFile = cr.Config.KeyFile
+			//nolint:nakedret
 			return
 		}
 	}

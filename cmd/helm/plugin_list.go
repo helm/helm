@@ -75,7 +75,7 @@ func filterPlugins(plugins []*plugin.Plugin, ignoredPluginNames []string) []*plu
 }
 
 // Provide dynamic auto-completion for plugin names
-func compListPlugins(toComplete string, ignoredPluginNames []string) []string {
+func compListPlugins(_ string, ignoredPluginNames []string) []string {
 	var pNames []string
 	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
 	if err == nil && len(plugins) > 0 {

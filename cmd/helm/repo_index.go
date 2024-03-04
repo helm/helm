@@ -76,7 +76,7 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (i *repoIndexOptions) run(out io.Writer) error {
+func (i *repoIndexOptions) run(_ io.Writer) error {
 	path, err := filepath.Abs(i.dir)
 	if err != nil {
 		return err
