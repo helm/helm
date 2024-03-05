@@ -34,6 +34,7 @@ import (
 	"helm.sh/helm/v3/internal/test"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/kube"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -760,4 +761,44 @@ func TestInstallWithSystemLabels(t *testing.T) {
 	}
 
 	is.Equal(fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
+}
+
+func TestInstall_RunWithContext_CreateNamespace(t *testing.T) {
+	client := &fakeKubeClient{}
+	instAction := installAction(t)
+	instAction.CreateNamespace = true
+	instAction.Namespace = "test-namespace"
+	instAction.CreateNamespaceMetadata = `{"labels":{"example":"true"},"annotations":{"example-annotation":"value"}}`
+	instAction.cfg.KubeClient = client
+
+	_, err := instAction.Run(buildChart(), nil)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	expectedResult := "apiVersion: v1\nkind: Namespace\nmetadata:\n  annotations:\n    example-annotation: value\n  creationTimestamp: null\n  labels:\n    example: \"true\"\n    name: test-namespace\n  name: test-namespace\nspec: {}\nstatus: {}\n"
+	for _, manifest := range client.Manifests {
+		if manifest == expectedResult {
+			return
+		}
+	}
+
+	t.Fatalf("Expected namespace manifest not found in %v", client.Manifests)
+}
+
+type fakeKubeClient struct {
+	kubefake.FailingKubeClient
+
+	Manifests []string
+}
+
+func (f *fakeKubeClient) Build(reader io.Reader, validate bool) (kube.ResourceList, error) {
+	b, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	f.Manifests = append(f.Manifests, string(b))
+
+	return nil, nil
 }
