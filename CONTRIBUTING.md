@@ -59,9 +59,17 @@ By making a contribution to this project, I certify that:
 
 Then you just add a line to every git commit message:
 
-    Signed-off-by: Joe Smith <joe.smith@example.com>
+``` text
+Signed-off-by: Joe Smith <joe.smith@example.com>
+```
 
 Use your real name (sorry, no pseudonyms or anonymous contributions.)
+
+To ensure you are using the correct email address you can run the following command:
+
+``` bash
+git config user.email
+```
 
 If you set your `user.name` and `user.email` git configs, you can sign your commit automatically
 with `git commit -s`.
@@ -69,7 +77,7 @@ with `git commit -s`.
 Note: If your git config information is set properly then viewing the `git log` information for your
  commit will look something like this:
 
-```
+``` text
 Author: Joe Smith <joe.smith@example.com>
 Date:   Thu Feb 2 11:41:15 2018 -0800
 
