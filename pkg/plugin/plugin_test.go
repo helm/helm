@@ -353,6 +353,11 @@ func TestSetupEnvWithSpace(t *testing.T) {
 }
 
 func TestValidatePluginData(t *testing.T) {
+	// A mock plugin missing any metadata.
+	mockMissingMeta := &Plugin{
+		Dir: "no-such-dir",
+	}
+
 	for i, item := range []struct {
 		pass bool
 		plug *Plugin
@@ -363,6 +368,7 @@ func TestValidatePluginData(t *testing.T) {
 		{false, mockPlugin("$foo -bar")}, // Test leading chars
 		{false, mockPlugin("foo -bar ")}, // Test trailing chars
 		{false, mockPlugin("foo\nbar")},  // Test newline
+		{false, mockMissingMeta},         // Test if the metadata section missing
 	} {
 		err := validatePluginData(item.plug, fmt.Sprintf("test-%d", i))
 		if item.pass && err != nil {
