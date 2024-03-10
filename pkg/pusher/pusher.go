@@ -116,7 +116,7 @@ var ociProvider = Provider{
 
 // All finds all of the registered pushers as a list of Provider instances.
 // Currently, just the built-in pushers are collected.
-func All(settings *cli.EnvSettings) Providers {
+func All(_ *cli.EnvSettings) Providers {
 	result := Providers{ociProvider}
 	return result
 }
