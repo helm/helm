@@ -322,6 +322,27 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	is.Equal(release.StatusFailed, res.Info.Status)
 }
 
+func TestInstallRelease_FailedTimeout(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.ReleaseName = "failed-timeout"
+	instAction.Wait = true
+	instAction.WaitForJobs = true
+	instAction.DisableHooks = true
+	instAction.Timeout = 5 * time.Second
+	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitError = fmt.Errorf("I timed out")
+	instAction.cfg.KubeClient = failer
+
+	vals := map[string]interface{}{}
+	start := time.Now()
+	res, err := instAction.Run(buildChart(), vals)
+	is.Equal(instAction.Timeout, time.Since(start).Round(time.Second))
+	is.Error(err)
+	is.Contains(res.Info.Description, "failed: I timed out")
+	is.Equal(release.StatusFailed, res.Info.Status)
+}
+
 func TestInstallRelease_ReplaceRelease(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -404,6 +425,56 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
 	is.Equal(goroutines, runtime.NumGoroutine())
 }
+
+func TestInstallRelease_Wait_Interrupted_Hooks(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.ReleaseName = "interrupted-hooks-release"
+	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WatchUntilReadyError = fmt.Errorf("I timed out")
+	instAction.cfg.KubeClient = failer
+	instAction.Wait = true
+	instAction.HookTimeout = 5 * time.Second
+	instAction.Timeout = 3 * time.Second
+	vals := map[string]interface{}{}
+
+	start := time.Now()
+	res, err := instAction.Run(buildChart(withPreInstallHook()), vals)
+	executionTime := time.Since(start)
+	is.Equal(instAction.HookTimeout, executionTime.Round(time.Second))
+	is.Error(err)
+	is.Contains(res.Info.Description, "Release \"interrupted-hooks-release\" failed: failed pre-install: I timed out")
+	is.Equal(res.Info.Status, release.StatusFailed)
+
+	is.Len(res.Hooks, 1)
+	is.Equal(res.Hooks[0].Manifest, manifestWithPreInstallHook)
+	is.Equal(res.Hooks[0].Events[0], release.HookPreInstall)
+}
+
+func TestInstallRelease_Wait_TimeoutUsedWhenHookTimeoutNotSet(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	instAction.ReleaseName = "interrupted-hooks-release"
+	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WatchUntilReadyError = fmt.Errorf("I timed out")
+	instAction.cfg.KubeClient = failer
+	instAction.Wait = true
+	instAction.Timeout = 3 * time.Second
+	vals := map[string]interface{}{}
+
+	start := time.Now()
+	res, err := instAction.Run(buildChart(withPreInstallHook()), vals)
+	executionTime := time.Since(start)
+	is.Equal(instAction.Timeout, executionTime.Round(time.Second))
+	is.Error(err)
+	is.Contains(res.Info.Description, "Release \"interrupted-hooks-release\" failed: failed pre-install: I timed out")
+	is.Equal(res.Info.Status, release.StatusFailed)
+
+	is.Len(res.Hooks, 1)
+	is.Equal(res.Hooks[0].Manifest, manifestWithPreInstallHook)
+	is.Equal(res.Hooks[0].Events[0], release.HookPreInstall)
+}
+
 func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)

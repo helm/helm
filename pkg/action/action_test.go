@@ -64,6 +64,30 @@ metadata:
 data:
   name: value`
 
+var manifestWithPreInstallHook = `kind: ConfigMap
+metadata:
+  name: test-cm-2
+  annotations:
+    "helm.sh/hook": pre-install
+data:
+  name: value`
+
+var manifestWithPreUpgradeHook = `kind: ConfigMap
+metadata:
+  name: test-cm-2
+  annotations:
+    "helm.sh/hook": pre-upgrade
+data:
+  name: value`
+
+var manifestWithPreDeleteHook = `kind: ConfigMap
+  metadata:
+	name: test-cm-2
+	annotations:
+	  "helm.sh/hook": pre-delete
+  data:
+	name: value`
+
 var manifestWithTestHook = `kind: Pod
   metadata:
 	name: finding-nemo,
@@ -179,6 +203,36 @@ func withDependency(dependencyOpts ...chartOption) chartOption {
 func withMetadataDependency(dependency chart.Dependency) chartOption {
 	return func(opts *chartOptions) {
 		opts.Metadata.Dependencies = append(opts.Metadata.Dependencies, &dependency)
+	}
+}
+
+func withPreInstallHook() chartOption {
+	return func(opts *chartOptions) {
+		hookTemplates := []*chart.File{
+			// This adds pre-install hook.
+			{Name: "templates/pre-install-hook", Data: []byte(manifestWithPreInstallHook)},
+		}
+		opts.Templates = hookTemplates
+	}
+}
+
+func withPreUpgradeHook() chartOption {
+	return func(opts *chartOptions) {
+		hookTemplates := []*chart.File{
+			// This adds pre-install hook.
+			{Name: "templates/pre-upgrade-hook", Data: []byte(manifestWithPreUpgradeHook)},
+		}
+		opts.Templates = hookTemplates
+	}
+}
+
+func withPreDeleteHook() chartOption {
+	return func(opts *chartOptions) {
+		hookTemplates := []*chart.File{
+			// This adds pre-install hook.
+			{Name: "templates/pre-delete-hook", Data: []byte(manifestWithPreDeleteHook)},
+		}
+		opts.Templates = hookTemplates
 	}
 }
 
