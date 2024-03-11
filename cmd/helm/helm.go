@@ -17,7 +17,6 @@ limitations under the License.
 package main // import "helm.sh/helm/v3/cmd/helm"
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -31,6 +30,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
+	helmcmd "helm.sh/helm/v3/pkg/cmd"
 	"helm.sh/helm/v3/pkg/kube"
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
@@ -43,18 +43,6 @@ func init() {
 	log.SetFlags(log.Lshortfile)
 }
 
-func debug(format string, v ...interface{}) {
-	if settings.Debug {
-		format = fmt.Sprintf("[debug] %s\n", format)
-		log.Output(2, fmt.Sprintf(format, v...))
-	}
-}
-
-func warning(format string, v ...interface{}) {
-	format = fmt.Sprintf("WARNING: %s\n", format)
-	fmt.Fprintf(os.Stderr, format, v...)
-}
-
 func main() {
 	// Setting the name of the app for managedFields in the Kubernetes client.
 	// It is set here to the full name of "helm" so that renaming of helm to
@@ -63,16 +51,16 @@ func main() {
 	kube.ManagedFieldsManager = "helm"
 
 	actionConfig := new(action.Configuration)
-	cmd, err := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
+	cmd, err := helmcmd.NewRootCmd(actionConfig, settings, os.Stdout, os.Args[1:])
 	if err != nil {
-		warning("%+v", err)
+		helmcmd.Warning("%+v", err)
 		os.Exit(1)
 	}
 
 	// run when each command's execute method is called
 	cobra.OnInitialize(func() {
 		helmDriver := os.Getenv("HELM_DRIVER")
-		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, helmcmd.Debug); err != nil {
 			log.Fatal(err)
 		}
 		if helmDriver == "memory" {
@@ -81,10 +69,10 @@ func main() {
 	})
 
 	if err := cmd.Execute(); err != nil {
-		debug("%+v", err)
+		helmcmd.Debug("%+v", err)
 		switch e := err.(type) {
-		case pluginError:
-			os.Exit(e.code)
+		case helmcmd.PluginError:
+			os.Exit(e.Code)
 		default:
 			os.Exit(1)
 		}
