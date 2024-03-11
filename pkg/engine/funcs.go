@@ -68,6 +68,8 @@ func funcMap() template.FuncMap {
 		"fromJson":      fromJSON,
 		"fromJsonArray": fromJSONArray,
 
+		"omitted": omitted,
+
 		// Duration helpers
 		"mustToDuration":       mustToDuration,
 		"durationSeconds":      durationSeconds,
@@ -268,6 +270,12 @@ func fromJSONArray(str string) []any {
 	}
 	return a
 }
+
+func omitted(a, b interface{}) interface{} {
+	if b == nil {
+		return a
+	}
+	return b
 
 // -----------------------------------------------------------------------------
 // Duration helpers (numeric and time.Duration returns)
