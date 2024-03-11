@@ -72,6 +72,10 @@ parameters, and existing values will be merged with any values set via '--values
 or '--set' flags. Priority is given to new values.
 
     $ helm upgrade --reuse-values --set foo=bar --set foo=newbar redis ./redis
+
+The --dry-run flag will output all generated chart manifests, including Secrets
+which can contain sensitive values. Please carefully consider how and when this
+flag is used.
 `
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {

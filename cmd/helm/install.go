@@ -94,7 +94,11 @@ And in the following example, 'foo' is set to '{"key1":"value1","key2":"bar"}':
     $ helm install --set-json='foo={"key1":"value1","key2":"value2"}' --set-json='foo.key2="bar"' myredis ./redis
 
 To check the generated manifests of a release without installing the chart,
-the '--debug' and '--dry-run' flags can be combined.
+the --debug and --dry-run flags can be combined.
+
+The --dry-run flag will output all generated chart manifests, including Secrets
+which can contain sensitive values. Please carefully consider how and when this
+flag is used.
 
 If --verify is set, the chart MUST have a provenance file, and the provenance
 file MUST pass all verification steps.
