@@ -81,7 +81,7 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 		Use:   "repo [keyword]",
 		Short: "search repositories for a keyword in charts",
 		Long:  searchRepoDesc,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			o.repoFile = settings.RepositoryConfig
 			o.repoCacheDir = settings.RepositoryCache
 			return o.run(out, args)

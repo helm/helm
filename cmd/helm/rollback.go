@@ -46,7 +46,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "roll back a release to a previous revision",
 		Long:  rollbackDesc,
 		Args:  require.MinimumNArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
 				return compListReleases(toComplete, args, cfg)
 			}
@@ -57,7 +57,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			if len(args) > 1 {
 				ver, err := strconv.Atoi(args[1])
 				if err != nil {

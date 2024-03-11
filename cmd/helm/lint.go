@@ -51,7 +51,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 		Use:   "lint PATH",
 		Short: "examine a chart for possible issues",
 		Long:  longLintHelp,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			paths := []string{"."}
 			if len(args) > 0 {
 				paths = args
@@ -67,7 +67,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 
 			if client.WithSubcharts {
 				for _, p := range paths {
-					filepath.Walk(filepath.Join(p, "charts"), func(path string, info os.FileInfo, err error) error {
+					filepath.Walk(filepath.Join(p, "charts"), func(path string, info os.FileInfo, _ error) error {
 						if info != nil {
 							if info.Name() == "Chart.yaml" {
 								paths = append(paths, filepath.Dir(path))

@@ -47,10 +47,10 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short:      "uninstall a release",
 		Long:       uninstallDesc,
 		Args:       require.MinimumNArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compListReleases(toComplete, args, cfg)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			validationErr := validateCascadeFlag(client)
 			if validationErr != nil {
 				return validationErr
