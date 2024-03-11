@@ -28,7 +28,7 @@ import (
 )
 
 // execHook executes all of the hooks for the given hook event.
-func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, timeout time.Duration) error {
+func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, timeout time.Duration, openAPIValidation bool) error {
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
@@ -56,7 +56,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			return err
 		}
 
-		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
+		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), openAPIValidation)
 		if err != nil {
 			return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
 		}
