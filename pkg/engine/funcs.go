@@ -55,6 +55,8 @@ func funcMap() template.FuncMap {
 		"fromJson":      fromJSON,
 		"fromJsonArray": fromJSONArray,
 
+		"omitted": omitted,
+
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the
 		// integrity of the linter.
@@ -173,4 +175,11 @@ func fromJSONArray(str string) []interface{} {
 		a = []interface{}{err.Error()}
 	}
 	return a
+}
+
+func omitted(a, b interface{}) interface{} {
+	if b == nil {
+		return a
+	}
+	return b
 }

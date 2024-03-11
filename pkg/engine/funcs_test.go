@@ -95,6 +95,14 @@ func TestFuncs(t *testing.T) {
 		expect: `[error unmarshaling JSON: while decoding JSON: json: cannot unmarshal object into Go value of type []interface {}]`,
 		vars:   `hello: world`,
 	}, {
+		tpl:    `{{ .hello | omitted 'yes' }}`,
+		expect: `false`,
+		vars:   map[string]bool{"hello": false},
+	}, {
+		tpl:    `{{ .value | omitted 'yes' }}`,
+		expect: `yes`,
+		vars:   map[string]bool{"hello": false},
+	}, {
 		// This should never result in a network lookup. Regression for #7955
 		tpl:    `{{ lookup "v1" "Namespace" "" "unlikelynamespace99999999" }}`,
 		expect: `map[]`,
