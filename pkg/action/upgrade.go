@@ -110,6 +110,8 @@ type Upgrade struct {
 	Lock sync.Mutex
 	// Enable DNS lookups when rendering templates
 	EnableDNS bool
+	// TakeOwnership will skip the check for helm annotations and adopt all existing resources.
+	TakeOwnership bool
 }
 
 type resultMessage struct {
@@ -329,7 +331,12 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		}
 	}
 
-	toBeUpdated, err := existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
+	var toBeUpdated kube.ResourceList
+	if u.TakeOwnership {
+		toBeUpdated, err = requireAdoption(toBeCreated)
+	} else {
+		toBeUpdated, err = existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
+	}
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to continue with update")
 	}
