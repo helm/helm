@@ -174,18 +174,25 @@ Loop:
 	processDependencyTags(c.Metadata.Dependencies, cvals)
 	processDependencyConditions(c.Metadata.Dependencies, cvals, path)
 	// make a map of charts to remove
-	rm := map[string]struct{}{}
+	rm := map[string][]string{}
 	for _, r := range c.Metadata.Dependencies {
 		if !r.Enabled {
 			// remove disabled chart
-			rm[r.Name] = struct{}{}
+			rm[r.Name] = append(rm[r.Name], r.Version)
 		}
 	}
 	// don't keep disabled charts in new slice
 	cd := []*chart.Chart{}
 	copy(cd, c.Dependencies()[:0])
 	for _, n := range c.Dependencies() {
-		if _, ok := rm[n.Metadata.Name]; !ok {
+		keep := true
+		for _, ver := range rm[n.Metadata.Name] {
+			if n.Metadata.Version == ver || IsCompatibleRange(ver, n.Metadata.Version) {
+				keep = false
+				break
+			}
+		}
+		if keep {
 			cd = append(cd, n)
 		}
 	}
@@ -193,11 +200,17 @@ Loop:
 	cdMetadata := []*chart.Dependency{}
 	copy(cdMetadata, c.Metadata.Dependencies[:0])
 	for _, n := range c.Metadata.Dependencies {
-		if _, ok := rm[n.Name]; !ok {
+		keep := true
+		for _, ver := range rm[n.Name] {
+			if n.Version == ver || IsCompatibleRange(ver, n.Version) {
+				keep = false
+				break
+			}
+		}
+		if keep {
 			cdMetadata = append(cdMetadata, n)
 		}
 	}
-
 	// recursively call self to process sub dependencies
 	for _, t := range cd {
 		subpath := path + t.Metadata.Name + "."
