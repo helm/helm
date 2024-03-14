@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
@@ -113,6 +114,40 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 		return nil, errors.Wrapf(err, "error loading %s", path)
 	}
 	return i, nil
+}
+
+type cacheEntry struct {
+	indexFile *IndexFile
+	err       error
+	lock      sync.RWMutex
+}
+
+var cache sync.Map
+
+// LoadIndexFileWithCaching is a wrapper around LoadIndexFile
+// it adds an internal global cache to avoid reading the same file multiple times
+func LoadIndexFileWithCaching(path string) (*IndexFile, error) {
+	// assume the entry is not cached, prepare a newEntry
+	newEntry := &cacheEntry{}
+	// lock to avoid threading issues in case of multiple loads in parallel
+	newEntry.lock.Lock()
+
+	// check if index already in cache, add newEntry atomically if not-cached
+	if v, loaded := cache.LoadOrStore(path, newEntry); loaded {
+		// We hit the cache. newEntry is not needed anymore
+		newEntry.lock.Unlock()
+		entry := v.(*cacheEntry)
+		// wait for RLock on cached entry
+		// LoadIndexFile might not have completed yet in another go-routine
+		entry.lock.RLock()
+		defer entry.lock.RUnlock()
+		return entry.indexFile, entry.err
+	}
+	// no entry found in cache
+	// LoadIndexFile while holding the write-lock
+	newEntry.indexFile, newEntry.err = LoadIndexFile(path)
+	defer newEntry.lock.Unlock()
+	return newEntry.indexFile, newEntry.err
 }
 
 // MustAdd adds a file to the index
