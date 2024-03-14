@@ -320,7 +320,8 @@ func (c *Client) WaitForDelete(resources ResourceList, timeout time.Duration) er
 	return w.waitForDeletedResources(resources)
 }
 
-func (c *Client) namespace() string {
+// GetNamespace returns the namespace set in the client (in kube config), or if that is missing, it returns "default"
+func (c *Client) GetNamespace() string {
 	if c.Namespace != "" {
 		return c.Namespace
 	}
@@ -334,7 +335,7 @@ func (c *Client) namespace() string {
 func (c *Client) newBuilder() *resource.Builder {
 	return c.Factory.NewBuilder().
 		ContinueOnError().
-		NamespaceParam(c.namespace()).
+		NamespaceParam(c.GetNamespace()).
 		DefaultNamespace().
 		Flatten()
 }
@@ -825,7 +826,7 @@ func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration)
 		return v1.PodUnknown, err
 	}
 	to := int64(timeout)
-	watcher, err := client.CoreV1().Pods(c.namespace()).Watch(context.Background(), metav1.ListOptions{
+	watcher, err := client.CoreV1().Pods(c.GetNamespace()).Watch(context.Background(), metav1.ListOptions{
 		FieldSelector:  fmt.Sprintf("metadata.name=%s", name),
 		TimeoutSeconds: &to,
 	})

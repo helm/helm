@@ -70,6 +70,10 @@ type Interface interface {
 
 	// IsReachable checks whether the client is able to connect to the cluster.
 	IsReachable() error
+
+	// GetNamespace returns the namespace set in the client (in kube config).
+	// Or if that is missing, it returns "default"
+	GetNamespace() string
 }
 
 // InterfaceExt is introduced to avoid breaking backwards compatibility for Interface implementers.

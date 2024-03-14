@@ -127,6 +127,13 @@ func (p *PrintingKubeClient) DeleteWithPropagationPolicy(resources kube.Resource
 	return &kube.Result{Deleted: resources}, nil
 }
 
+// GetNamespace returns the namespace set in the client.
+//
+// This is not required by the PrintingKubeClient, but to implement (pkg/kube).Interface
+func (p *PrintingKubeClient) GetNamespace() string {
+	return ""
+}
+
 func bufferize(resources kube.ResourceList) io.Reader {
 	var builder strings.Builder
 	for _, info := range resources {
