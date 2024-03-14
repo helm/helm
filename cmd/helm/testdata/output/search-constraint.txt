@@ -1,2 +1,2 @@
-NAME          	CHART VERSION	APP VERSION	DESCRIPTION                    
-testing/alpine	0.1.0        	1.2.3      	Deploy a basic Alpine Linux pod
+NAME          	CHART VERSION	APP VERSION	DESCRIPTION                    	CREATED             
+testing/alpine	0.1.0        	1.2.3      	Deploy a basic Alpine Linux pod	2018-06-27T10:00:18Z

@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/gosuri/uitable"
@@ -227,9 +228,9 @@ func (r *repoSearchWriter) WriteTable(out io.Writer) error {
 	}
 	table := uitable.New()
 	table.MaxColWidth = r.columnWidth
-	table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION")
+	table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION", "CREATED")
 	for _, r := range r.results {
-		table.AddRow(r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description)
+		table.AddRow(r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description, r.Chart.Created.Format(time.RFC3339))
 	}
 	return output.EncodeTable(out, table)
 }
