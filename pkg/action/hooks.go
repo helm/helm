@@ -39,7 +39,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		}
 	}
 
-	// hooke are pre-ordered by kind, so keep order stable
+	// hooks are pre-ordered by kind, so keep order stable
 	sort.Stable(hookByWeight(executingHooks))
 
 	for _, h := range executingHooks {
@@ -106,6 +106,39 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	}
 
 	return nil
+}
+
+func (cfg *Configuration) hasPostInstallHooks(rl *release.Release) bool {
+	for _, h := range rl.Hooks {
+		for _, e := range h.Events {
+			if e == release.HookPostInstall {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (cfg *Configuration) hasPostUpgradeHooks(rl *release.Release) bool {
+	for _, h := range rl.Hooks {
+		for _, e := range h.Events {
+			if e == release.HookPostUpgrade {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (cfg *Configuration) hasPostRollbackHooks(rl *release.Release) bool {
+	for _, h := range rl.Hooks {
+		for _, e := range h.Events {
+			if e == release.HookPostRollback {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // hookByWeight is a sorter for hooks
