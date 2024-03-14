@@ -175,6 +175,12 @@ func TestUpgradeCmd(t *testing.T) {
 			wantError: true,
 			rels:      []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusPendingInstall)},
 		},
+		{
+			name:   "install a previously uninstalled release with '--keep-history' using 'upgrade --install'",
+			cmd:    fmt.Sprintf("upgrade funny-bunny -i '%s'", chartPath),
+			golden: "output/upgrade-uninstalled-with-keep-history.txt",
+			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusUninstalled)},
+		},
 	}
 	runTestCmd(t, tests)
 }
