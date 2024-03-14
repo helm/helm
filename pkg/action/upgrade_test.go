@@ -535,3 +535,54 @@ func TestUpgradeRelease_SystemLabels(t *testing.T) {
 
 	is.Equal(fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
 }
+
+func TestUpgradeRelease_DryRun(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "previous-release"
+	rel.Info.Status = release.StatusDeployed
+	req.NoError(upAction.cfg.Releases.Create(rel))
+
+	upAction.DryRun = true
+	vals := map[string]interface{}{}
+
+	ctx, done := context.WithCancel(context.Background())
+	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
+	done()
+	req.NoError(err)
+	is.Equal(release.StatusPendingUpgrade, res.Info.Status)
+	is.Contains(res.Manifest, "kind: Secret")
+
+	lastRelease, err := upAction.cfg.Releases.Last(rel.Name)
+	req.NoError(err)
+	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+	is.Equal(1, lastRelease.Version)
+
+	// Test the case for hiding the secret to ensure it is not displayed
+	upAction.HideSecret = true
+	vals = map[string]interface{}{}
+
+	ctx, done = context.WithCancel(context.Background())
+	res, err = upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
+	done()
+	req.NoError(err)
+	is.Equal(release.StatusPendingUpgrade, res.Info.Status)
+	is.NotContains(res.Manifest, "kind: Secret")
+
+	lastRelease, err = upAction.cfg.Releases.Last(rel.Name)
+	req.NoError(err)
+	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+	is.Equal(1, lastRelease.Version)
+
+	// Ensure in a dry run mode when using HideSecret
+	upAction.DryRun = false
+	vals = map[string]interface{}{}
+
+	ctx, done = context.WithCancel(context.Background())
+	_, err = upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
+	done()
+	req.Error(err)
+}

@@ -255,6 +255,46 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	is.Equal(res.Info.Description, "Dry run complete")
 }
 
+func TestInstallRelease_DryRunHiddenSecret(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+
+	// First perform a normal dry-run with the secret and confirm its presence.
+	instAction.DryRun = true
+	vals := map[string]interface{}{}
+	res, err := instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+	is.Contains(res.Manifest, "---\n# Source: hello/templates/secret.yaml\napiVersion: v1\nkind: Secret")
+
+	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
+	is.Error(err)
+	is.Equal(res.Info.Description, "Dry run complete")
+
+	// Perform a dry-run where the secret should not be present
+	instAction.HideSecret = true
+	vals = map[string]interface{}{}
+	res2, err := instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	is.NotContains(res2.Manifest, "---\n# Source: hello/templates/secret.yaml\napiVersion: v1\nkind: Secret")
+
+	_, err = instAction.cfg.Releases.Get(res2.Name, res2.Version)
+	is.Error(err)
+	is.Equal(res2.Info.Description, "Dry run complete")
+
+	// Ensure there is an error when HideSecret True but not in a dry-run mode
+	instAction.DryRun = false
+	vals = map[string]interface{}{}
+	_, err = instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
+	if err == nil {
+		t.Fatalf("Did not get expected an error when dry-run false and hide secret is true")
+	}
+}
+
 // Regression test for #7955
 func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	is := assert.New(t)
