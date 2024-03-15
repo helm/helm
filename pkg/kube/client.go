@@ -694,9 +694,14 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 		// send patch to server
 		if isCRDOrUnstructured {
-			// CRDs and Unstructured resources do not support strategic merge patch, so just replace it
-			c.Log("Custom or Unstructured Resouce Replace %s %q in namespace %s ", kind, target.Name, target.Namespace)
-			obj, err = helper.Replace(target.Namespace, target.Name, true, target.Object)
+			// CRDs and Unstructured resources do not support strategic merge patch, so just SSA patch them. Why don't use replace because it too voilent.
+			unStructData, errEncode := runtime.Encode(unstructured.UnstructuredJSONScheme, target.Object)
+			if errEncode != nil {
+				return cmdutil.AddSourceToErr("serverside-apply", target.Source, err)
+			}
+			ssaForce := true
+			c.Log("Custom or Unstructured SSA Patch %s %q in namespace %s ", kind, target.Name, target.Namespace)
+			obj, err = helper.Patch(target.Namespace, target.Name, types.ApplyPatchType, unStructData, &metav1.PatchOptions{Force: &ssaForce})
 		} else {
 			c.Log("Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
 			obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
