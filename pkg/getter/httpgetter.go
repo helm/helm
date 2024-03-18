@@ -69,10 +69,7 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 		return nil, errors.Wrap(err, "Unable to parse URL getting from")
 	}
 
-	// Host on URL (returned from url.Parse) contains the port if present.
-	// This check ensures credentials are not passed between different
-	// services on different ports.
-	if g.opts.passCredentialsAll || (u1.Scheme == u2.Scheme && u1.Host == u2.Host) {
+	if g.opts.passCredentialsAll || urlutil.SchemeHostAndPortMatches(u1, u2) {
 		if g.opts.username != "" && g.opts.password != "" {
 			req.SetBasicAuth(g.opts.username, g.opts.password)
 		}
