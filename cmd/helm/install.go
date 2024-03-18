@@ -132,7 +132,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var outfmt output.Format
 
 	cmd := &cobra.Command{
-		Use:   "install [NAME] [CHART]",
+		Use:   "install NAME CHART",
 		Short: "install a chart",
 		Long:  installDesc,
 		Args:  require.MinimumNArgs(1),
