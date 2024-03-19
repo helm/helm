@@ -99,6 +99,14 @@ func TestFuncs(t *testing.T) {
 		tpl:    `{{ lookup "v1" "Namespace" "" "unlikelynamespace99999999" }}`,
 		expect: `map[]`,
 		vars:   `["one", "two"]`,
+	}, {
+		tpl:    `{{ toSeconds .duration }}`,
+		expect: "3600",
+		vars:   map[string]interface{}{"duration": "1h"},
+	}, {
+		tpl:    `{{ toMilliSeconds .duration }}`,
+		expect: "3600000",
+		vars:   map[string]interface{}{"duration": "1h"},
 	}}
 
 	for _, tt := range tests {
