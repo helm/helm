@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"helm.sh/helm/v3/pkg/lint/rules"
 
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint"
@@ -126,5 +127,5 @@ func lintChart(path string, vals map[string]interface{}, releaseName, namespace 
 		return linter, errors.Wrap(err, "unable to check Chart.yaml file in chart")
 	}
 
-	return lint.AllWithKubeVersion(chartPath, vals, releaseName, namespace, kubeVersion), nil
+	return lint.AllWithKubeVersion(chartPath, vals, namespace, kubeVersion, rules.WithReleaseName(releaseName)), nil
 }

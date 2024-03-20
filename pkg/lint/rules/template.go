@@ -45,12 +45,12 @@ var (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values map[string]interface{}, releaseName, namespace string, _ bool) {
-	TemplatesWithKubeVersion(linter, values, releaseName, namespace, nil)
+func Templates(linter *support.Linter, values map[string]interface{}, namespace string, _ bool, opts ...TemplateOption) {
+	TemplatesWithKubeVersion(linter, values, namespace, nil, opts...)
 }
 
 // TemplatesWithKubeVersion lints the templates in the Linter, allowing to specify the kubernetes version.
-func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, releaseName, namespace string, kubeVersion *chartutil.KubeVersion) {
+func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, opts ...TemplateOption) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
@@ -70,8 +70,13 @@ func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interfac
 		return
 	}
 
+	o := defaultTemplateOptions
+	for _, optFn := range opts {
+		optFn(o)
+	}
+
 	options := chartutil.ReleaseOptions{
-		Name:      releaseName,
+		Name:      o.releaseName,
 		Namespace: namespace,
 	}
 
