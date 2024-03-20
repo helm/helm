@@ -27,7 +27,7 @@ import (
 // All runs all of the available linters on the given base directory.
 // Deprecated, use AllWithOptions instead.
 func All(basedir string, values map[string]interface{}, namespace string, _ bool) support.Linter {
-	return AllWithOptions(basedir, values, namespace, nil)
+	return AllWithOptions(basedir, values, namespace)
 }
 
 // AllWithKubeVersion runs all the available linters on the given base directory, allowing to specify the kubernetes version.
