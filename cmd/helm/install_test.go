@@ -252,6 +252,22 @@ func TestInstall(t *testing.T) {
 			cmd:    fmt.Sprintf("install aeneas test/reqtest --username username --password password --repository-config %s --repository-cache %s", repoFile, srv.Root()),
 			golden: "output/install.txt",
 		},
+		{
+			name:   "dry-run displaying secret",
+			cmd:    "install secrets testdata/testcharts/chart-with-secret --dry-run",
+			golden: "output/install-dry-run-with-secret.txt",
+		},
+		{
+			name:   "dry-run hiding secret",
+			cmd:    "install secrets testdata/testcharts/chart-with-secret --dry-run --hide-secret",
+			golden: "output/install-dry-run-with-secret-hidden.txt",
+		},
+		{
+			name:      "hide-secret error without dry-run",
+			cmd:       "install secrets testdata/testcharts/chart-with-secret --hide-secret",
+			wantError: true,
+			golden:    "output/install-hide-secret.txt",
+		},
 	}
 
 	runTestCmd(t, tests)

@@ -19,19 +19,25 @@ package lint // import "helm.sh/helm/v3/pkg/lint"
 import (
 	"path/filepath"
 
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint/rules"
 	"helm.sh/helm/v3/pkg/lint/support"
 )
 
 // All runs all of the available linters on the given base directory.
-func All(basedir string, values map[string]interface{}, releaseName, namespace string, strict bool) support.Linter {
+func All(basedir string, values map[string]interface{}, releaseName, namespace string, _ bool) support.Linter {
+	return AllWithKubeVersion(basedir, values, releaseName, namespace, nil)
+}
+
+// AllWithKubeVersion runs all the available linters on the given base directory, allowing to specify the kubernetes version.
+func AllWithKubeVersion(basedir string, values map[string]interface{}, releaseName, namespace string, kubeVersion *chartutil.KubeVersion) support.Linter {
 	// Using abs path to get directory context
 	chartDir, _ := filepath.Abs(basedir)
 
 	linter := support.Linter{ChartDir: chartDir}
 	rules.Chartfile(&linter)
 	rules.ValuesWithOverrides(&linter, values)
-	rules.Templates(&linter, values, releaseName, namespace, strict)
+	rules.TemplatesWithKubeVersion(&linter, values, releaseName, namespace, kubeVersion)
 	rules.Dependencies(&linter)
 	return linter
 }

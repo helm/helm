@@ -123,7 +123,7 @@ func filterRepos(repos []*repo.Entry, ignoredRepoNames []string) []*repo.Entry {
 }
 
 // Provide dynamic auto-completion for repo names
-func compListRepos(prefix string, ignoredRepoNames []string) []string {
+func compListRepos(_ string, ignoredRepoNames []string) []string {
 	var rNames []string
 
 	f, err := repo.LoadFile(settings.RepositoryConfig)
