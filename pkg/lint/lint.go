@@ -25,19 +25,32 @@ import (
 )
 
 // All runs all of the available linters on the given base directory.
-func All(basedir string, values map[string]interface{}, namespace string, _ bool, opts ...rules.TemplateOption) support.Linter {
-	return AllWithKubeVersion(basedir, values, namespace, nil, opts...)
+// Deprecated, use AllWithOptions instead.
+func All(basedir string, values map[string]interface{}, namespace string, _ bool) support.Linter {
+	return AllWithOptions(basedir, values, namespace, nil)
 }
 
 // AllWithKubeVersion runs all the available linters on the given base directory, allowing to specify the kubernetes version.
-func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, opts ...rules.TemplateOption) support.Linter {
+// Deprecated, use AllWithOptions instead.
+func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) support.Linter {
+	return AllWithOptions(basedir, values, namespace, WithKubeVersion(kubeVersion))
+}
+
+// AllWithOptions runs all the available linters on the given base directory, allowing to specify different options.
+func AllWithOptions(basedir string, values map[string]interface{}, namespace string, options ...LinterOption) support.Linter {
 	// Using abs path to get directory context
 	chartDir, _ := filepath.Abs(basedir)
 
 	linter := support.Linter{ChartDir: chartDir}
+
+	for _, optFn := range options {
+		optFn(&linter)
+	}
+
 	rules.Chartfile(&linter)
 	rules.ValuesWithOverrides(&linter, values)
-	rules.TemplatesWithKubeVersion(&linter, values, namespace, kubeVersion, opts...)
+	rules.TemplatesV2(&linter, values, namespace)
 	rules.Dependencies(&linter)
+
 	return linter
 }

@@ -51,11 +51,10 @@ var values = map[string]interface{}{"nameOverride": "", "httpPort": 80}
 
 const defaultName = "test-release"
 const namespace = "testNamespace"
-const strict = false
 
 func TestTemplateParsing(t *testing.T) {
-	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter, values, defaultName, namespace, strict)
+	linter := support.Linter{ChartDir: templateTestBasedir, ReleaseName: defaultName}
+	TemplatesV2(&linter, values, namespace)
 	res := linter.Messages
 
 	if len(res) != 1 {
@@ -77,8 +76,8 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 	os.Rename(wrongTemplatePath, ignoredTemplatePath)
 	defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
 
-	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter, values, defaultName, namespace, strict)
+	linter := support.Linter{ChartDir: templateTestBasedir, ReleaseName: defaultName}
+	TemplatesV2(&linter, values, namespace)
 	res := linter.Messages
 
 	if len(res) != 0 {
@@ -87,8 +86,8 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 }
 
 func TestV3Fail(t *testing.T) {
-	linter := support.Linter{ChartDir: "./testdata/v3-fail"}
-	Templates(&linter, values, defaultName, namespace, strict)
+	linter := support.Linter{ChartDir: "./testdata/v3-fail", ReleaseName: defaultName}
+	TemplatesV2(&linter, values, namespace)
 	res := linter.Messages
 
 	if len(res) != 3 {
@@ -107,8 +106,8 @@ func TestV3Fail(t *testing.T) {
 }
 
 func TestMultiTemplateFail(t *testing.T) {
-	linter := support.Linter{ChartDir: "./testdata/multi-template-fail"}
-	Templates(&linter, values, defaultName, namespace, strict)
+	linter := support.Linter{ChartDir: "./testdata/multi-template-fail", ReleaseName: defaultName}
+	TemplatesV2(&linter, values, namespace)
 	res := linter.Messages
 
 	if len(res) != 1 {
@@ -227,8 +226,8 @@ func TestDeprecatedAPIFails(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
-	Templates(&linter, values, defaultName, namespace, strict)
+	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name()), ReleaseName: defaultName}
+	TemplatesV2(&linter, values, namespace)
 	if l := len(linter.Messages); l != 1 {
 		for i, msg := range linter.Messages {
 			t.Logf("Message %d: %s", i, msg)
@@ -282,9 +281,10 @@ func TestStrictTemplateParsingMapError(t *testing.T) {
 		t.Fatal(err)
 	}
 	linter := &support.Linter{
-		ChartDir: filepath.Join(dir, ch.Metadata.Name),
+		ChartDir:    filepath.Join(dir, ch.Metadata.Name),
+		ReleaseName: defaultName,
 	}
-	Templates(linter, ch.Values, defaultName, namespace, strict)
+	TemplatesV2(linter, ch.Values, namespace)
 	if len(linter.Messages) != 0 {
 		t.Errorf("expected zero messages, got %d", len(linter.Messages))
 		for i, msg := range linter.Messages {
@@ -412,8 +412,8 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
-	Templates(&linter, values, defaultName, namespace, strict)
+	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name()), ReleaseName: defaultName}
+	TemplatesV2(&linter, values, namespace)
 	if l := len(linter.Messages); l > 0 {
 		for i, msg := range linter.Messages {
 			t.Logf("Message %d: %s", i, msg)

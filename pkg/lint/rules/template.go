@@ -45,12 +45,20 @@ var (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values map[string]interface{}, namespace string, _ bool, opts ...TemplateOption) {
-	TemplatesWithKubeVersion(linter, values, namespace, nil, opts...)
+// Deprecated, use TemplatesV2 instead.
+func Templates(linter *support.Linter, values map[string]interface{}, namespace string, _ bool) {
+	TemplatesV2(linter, values, namespace)
 }
 
 // TemplatesWithKubeVersion lints the templates in the Linter, allowing to specify the kubernetes version.
-func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, opts ...TemplateOption) {
+// Deprecated, use TemplatesV2 instead.
+func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) {
+	linter.KubeVersion = kubeVersion
+	TemplatesV2(linter, values, namespace)
+}
+
+// TemplatesV2 lints the templates in the Linter.
+func TemplatesV2(linter *support.Linter, values map[string]interface{}, namespace string) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
@@ -70,19 +78,14 @@ func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interfac
 		return
 	}
 
-	o := defaultTemplateOptions
-	for _, optFn := range opts {
-		optFn(o)
-	}
-
 	options := chartutil.ReleaseOptions{
-		Name:      o.releaseName,
+		Name:      linter.ReleaseName,
 		Namespace: namespace,
 	}
 
 	caps := chartutil.DefaultCapabilities.Copy()
-	if kubeVersion != nil {
-		caps.KubeVersion = *kubeVersion
+	if linter.KubeVersion != nil {
+		caps.KubeVersion = *linter.KubeVersion
 	}
 
 	// lint ignores import-values
@@ -166,7 +169,7 @@ func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interfac
 					// NOTE: set to warnings to allow users to support out-of-date kubernetes
 					// Refs https://github.com/helm/helm/issues/8596
 					linter.RunLinterRule(support.WarningSev, fpath, validateMetadataName(yamlStruct))
-					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct, kubeVersion))
+					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct, linter.KubeVersion))
 
 					linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(yamlStruct, renderedContent))
 					linter.RunLinterRule(support.ErrorSev, fpath, validateListAnnotations(yamlStruct, renderedContent))
