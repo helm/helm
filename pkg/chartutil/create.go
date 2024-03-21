@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"k8s.io/utils/strings/slices"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -547,13 +548,24 @@ spec:
 var Stderr io.Writer = os.Stderr
 
 // CreateFrom creates a new chart, but scaffolds it from the src chart.
+// Deprecated: Use CreateFromWithOverride
+// TODO Helm 4: Fold CreateFromWithOverride back into CreateFrom
 func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
+	return CreateFromWithOverride(chartfile.Name, dest, src, chartfile)
+}
+
+// CreateFromWithOverride creates a new chart, but scaffolds it from the src chart and
+// provides the option to override the chart's metadata (Chart.yaml).
+func CreateFromWithOverride(name, dest, src string, override *chart.Metadata) error {
 	schart, err := loader.Load(src)
 	if err != nil {
 		return errors.Wrapf(err, "could not load %s", src)
 	}
 
-	schart.Metadata = chartfile
+	// Override the chart's metadata if the user requested it
+	if err := setMetadata(schart, name, override); err != nil {
+		return errors.Wrap(err, "setting metadata")
+	}
 
 	var updatedTemplates []*chart.File
 
@@ -574,12 +586,12 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 	}
 	schart.Values = m
 
-	// SaveDir looks for the file values.yaml when saving rather than the values
-	// key in order to preserve the comments in the YAML. The name placeholder
-	// needs to be replaced on that file.
+	// SaveDir looks for the files values.yaml and Chart.yaml when saving rather than the values
+	// and metadata keys in order to preserve the comments in the YAML. The name placeholder
+	// needs to be replaced on these files.
 	for _, f := range schart.Raw {
-		if f.Name == ValuesfileName {
-			f.Data = transform(string(f.Data), schart.Name())
+		if slices.Contains([]string{ValuesfileName, ChartfileName}, f.Name) {
+			f.Data = transform(string(f.Data), name)
 		}
 	}
 
@@ -719,5 +731,41 @@ func validateChartName(name string) error {
 	if !chartName.MatchString(name) {
 		return fmt.Errorf("chart name must match the regular expression %q", chartName.String())
 	}
+	return nil
+}
+
+func setMetadata(schart *chart.Chart, name string, override *chart.Metadata) error {
+	// Override the source chart's metadata and raw chart file content
+	// if the user provided a chart.Metadata struct
+	if override != nil {
+		schart.Metadata = override
+		for _, f := range schart.Raw {
+			if f.Name == ChartfileName {
+				metadataBytes, err := yaml.Marshal(schart.Metadata)
+				if err != nil {
+					return errors.Wrap(err, "marshalling metadata override")
+				}
+
+				f.Data = metadataBytes
+				break
+			}
+		}
+
+		return nil
+	}
+
+	// Unmarshal Chart.yaml from source directory while replacing
+	// all <CHARTNAME> placeholders if no override was requested
+	for _, f := range schart.Raw {
+		if f.Name == ChartfileName {
+			var m chart.Metadata
+			if err := yaml.Unmarshal(transform(string(f.Data), name), &m); err != nil {
+				return errors.Wrap(err, "transforming charts file")
+			}
+			schart.Metadata = &m
+			break
+		}
+	}
+
 	return nil
 }
