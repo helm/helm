@@ -169,6 +169,12 @@ func TestUpgradeCmd(t *testing.T) {
 			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusFailed)},
 		},
 		{
+			name:   "upgrade skip empty release",
+			cmd:    fmt.Sprintf("upgrade --skip-empty funny-bunny '%s' ", chartPath),
+			golden: "output/upgrade-with-skip.txt",
+			rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "funny-bunny", Version: 2, Chart: ch, Status: release.StatusDeployed})},
+		},
+		{
 			name:      "upgrade a pending install release",
 			cmd:       fmt.Sprintf("upgrade funny-bunny '%s'", chartPath),
 			golden:    "output/upgrade-with-pending-install.txt",
