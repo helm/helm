@@ -38,6 +38,7 @@ type Dependency struct {
 	Keyring     string
 	SkipRefresh bool
 	ColumnWidth uint
+	PlainHTTP   bool
 }
 
 // NewDependency creates a new Dependency object with the given configuration.

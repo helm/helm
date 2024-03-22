@@ -66,7 +66,8 @@ func (suite *InsecureTLSRegistryClientTestSuite) Test_3_Tags() {
 
 func (suite *InsecureTLSRegistryClientTestSuite) Test_4_Logout() {
 	err := suite.RegistryClient.Logout("this-host-aint-real:5000")
-	suite.NotNil(err, "error logging out of registry that has no entry")
+	// in oras-credentials-go removing a nonexisting credential causes no errors
+	suite.Nil(err, "no error logging out of registry that has no entry")
 
 	err = suite.RegistryClient.Logout(suite.DockerRegistryHost)
 	suite.Nil(err, "no error logging out of registry")
