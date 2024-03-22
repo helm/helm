@@ -166,10 +166,10 @@ func NewRegistryClientWithTLS(out io.Writer, certFile, keyFile, caFile string, i
 }
 
 // generateOCIAnnotations will generate OCI annotations to include within the OCI manifest
-func generateOCIAnnotations(meta *chart.Metadata, test bool) map[string]string {
+func generateOCIAnnotations(meta *chart.Metadata, creationTime string) map[string]string {
 
 	// Get annotations from Chart attributes
-	ociAnnotations := generateChartOCIAnnotations(meta, test)
+	ociAnnotations := generateChartOCIAnnotations(meta, creationTime)
 
 	// Copy Chart annotations
 annotations:
@@ -190,7 +190,7 @@ annotations:
 }
 
 // getChartOCIAnnotations will generate OCI annotations from the provided chart
-func generateChartOCIAnnotations(meta *chart.Metadata, test bool) map[string]string {
+func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[string]string {
 	chartOCIAnnotations := map[string]string{}
 
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationDescription, meta.Description)
@@ -198,9 +198,11 @@ func generateChartOCIAnnotations(meta *chart.Metadata, test bool) map[string]str
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationVersion, meta.Version)
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationURL, meta.Home)
 
-	if !test {
-		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationCreated, helmtime.Now().UTC().Format(time.RFC3339))
+	if len(creationTime) == 0 {
+		creationTime = helmtime.Now().UTC().Format(time.RFC3339)
 	}
+
+	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationCreated, creationTime)
 
 	if len(meta.Sources) > 0 {
 		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationSource, meta.Sources[0])

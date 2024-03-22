@@ -29,6 +29,8 @@ import (
 
 func TestGenerateOCIChartAnnotations(t *testing.T) {
 
+	nowString := helmtime.Now().Format(time.RFC3339)
+
 	tests := []struct {
 		name   string
 		chart  *chart.Metadata
@@ -43,6 +45,7 @@ func TestGenerateOCIChartAnnotations(t *testing.T) {
 			map[string]string{
 				"org.opencontainers.image.title":   "oci",
 				"org.opencontainers.image.version": "0.0.1",
+				"org.opencontainers.image.created": nowString,
 			},
 		},
 		{
@@ -56,6 +59,7 @@ func TestGenerateOCIChartAnnotations(t *testing.T) {
 			map[string]string{
 				"org.opencontainers.image.title":       "oci",
 				"org.opencontainers.image.version":     "0.0.1",
+				"org.opencontainers.image.created":     nowString,
 				"org.opencontainers.image.description": "OCI Helm Chart",
 				"org.opencontainers.image.url":         "https://helm.sh",
 			},
@@ -76,6 +80,7 @@ func TestGenerateOCIChartAnnotations(t *testing.T) {
 			map[string]string{
 				"org.opencontainers.image.title":       "oci",
 				"org.opencontainers.image.version":     "0.0.1",
+				"org.opencontainers.image.created":     nowString,
 				"org.opencontainers.image.description": "OCI Helm Chart",
 				"org.opencontainers.image.url":         "https://helm.sh",
 				"org.opencontainers.image.authors":     "John Snow",
@@ -95,6 +100,7 @@ func TestGenerateOCIChartAnnotations(t *testing.T) {
 			map[string]string{
 				"org.opencontainers.image.title":       "oci",
 				"org.opencontainers.image.version":     "0.0.1",
+				"org.opencontainers.image.created":     nowString,
 				"org.opencontainers.image.description": "OCI Helm Chart",
 				"org.opencontainers.image.url":         "https://helm.sh",
 				"org.opencontainers.image.authors":     "John Snow (john@winterfell.com)",
@@ -115,6 +121,7 @@ func TestGenerateOCIChartAnnotations(t *testing.T) {
 			map[string]string{
 				"org.opencontainers.image.title":       "oci",
 				"org.opencontainers.image.version":     "0.0.1",
+				"org.opencontainers.image.created":     nowString,
 				"org.opencontainers.image.description": "OCI Helm Chart",
 				"org.opencontainers.image.url":         "https://helm.sh",
 				"org.opencontainers.image.authors":     "John Snow (john@winterfell.com), Jane Snow",
@@ -133,6 +140,7 @@ func TestGenerateOCIChartAnnotations(t *testing.T) {
 			map[string]string{
 				"org.opencontainers.image.title":       "oci",
 				"org.opencontainers.image.version":     "0.0.1",
+				"org.opencontainers.image.created":     nowString,
 				"org.opencontainers.image.description": "OCI Helm Chart",
 				"org.opencontainers.image.source":      "https://github.com/helm/helm",
 			},
@@ -141,7 +149,7 @@ func TestGenerateOCIChartAnnotations(t *testing.T) {
 
 	for _, tt := range tests {
 
-		result := generateChartOCIAnnotations(tt.chart, true)
+		result := generateChartOCIAnnotations(tt.chart, nowString)
 
 		if !reflect.DeepEqual(tt.expect, result) {
 			t.Errorf("%s: expected map %v, got %v", tt.name, tt.expect, result)
@@ -151,6 +159,8 @@ func TestGenerateOCIChartAnnotations(t *testing.T) {
 }
 
 func TestGenerateOCIAnnotations(t *testing.T) {
+
+	nowString := helmtime.Now().Format(time.RFC3339)
 
 	tests := []struct {
 		name   string
@@ -166,6 +176,7 @@ func TestGenerateOCIAnnotations(t *testing.T) {
 			map[string]string{
 				"org.opencontainers.image.title":   "oci",
 				"org.opencontainers.image.version": "0.0.1",
+				"org.opencontainers.image.created": nowString,
 			},
 		},
 		{
@@ -183,6 +194,7 @@ func TestGenerateOCIAnnotations(t *testing.T) {
 				"org.opencontainers.image.title":       "oci",
 				"org.opencontainers.image.version":     "0.0.1",
 				"org.opencontainers.image.description": "OCI Helm Chart",
+				"org.opencontainers.image.created":     nowString,
 				"extrakey":                             "extravlue",
 				"anotherkey":                           "anothervalue",
 			},
@@ -203,6 +215,7 @@ func TestGenerateOCIAnnotations(t *testing.T) {
 				"org.opencontainers.image.title":       "oci",
 				"org.opencontainers.image.version":     "0.0.1",
 				"org.opencontainers.image.description": "OCI Helm Chart",
+				"org.opencontainers.image.created":     nowString,
 				"extrakey":                             "extravlue",
 			},
 		},
@@ -210,7 +223,7 @@ func TestGenerateOCIAnnotations(t *testing.T) {
 
 	for _, tt := range tests {
 
-		result := generateOCIAnnotations(tt.chart, true)
+		result := generateOCIAnnotations(tt.chart, nowString)
 
 		if !reflect.DeepEqual(tt.expect, result) {
 			t.Errorf("%s: expected map %v, got %v", tt.name, tt.expect, result)
@@ -220,12 +233,16 @@ func TestGenerateOCIAnnotations(t *testing.T) {
 }
 
 func TestGenerateOCICreatedAnnotations(t *testing.T) {
+
+	nowTime := helmtime.Now()
+	nowTimeString := nowTime.Format(time.RFC3339)
+
 	chart := &chart.Metadata{
 		Name:    "oci",
 		Version: "0.0.1",
 	}
 
-	result := generateOCIAnnotations(chart, false)
+	result := generateOCIAnnotations(chart, nowTimeString)
 
 	// Check that created annotation exists
 	if _, ok := result[ocispec.AnnotationCreated]; !ok {
@@ -235,6 +252,24 @@ func TestGenerateOCICreatedAnnotations(t *testing.T) {
 	// Verify value of created artifact in RFC3339 format
 	if _, err := helmtime.Parse(time.RFC3339, result[ocispec.AnnotationCreated]); err != nil {
 		t.Errorf("%s annotation with value '%s' not in RFC3339 format", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated])
+	}
+
+	// Verify default creation time set
+	result = generateOCIAnnotations(chart, "")
+
+	// Check that created annotation exists
+	if _, ok := result[ocispec.AnnotationCreated]; !ok {
+		t.Errorf("%s annotation not created", ocispec.AnnotationCreated)
+	}
+
+	if createdTimeAnnotation, err := helmtime.Parse(time.RFC3339, result[ocispec.AnnotationCreated]); err != nil {
+		t.Errorf("%s annotation with value '%s' not in RFC3339 format", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated])
+
+		// Verify creation annotation after time test began
+		if !nowTime.Before(createdTimeAnnotation) {
+			t.Errorf("%s annotation with value '%s' not configured properly. Annotation value is not after %s", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated], nowTimeString)
+		}
+
 	}
 
 }
