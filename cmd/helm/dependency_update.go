@@ -40,6 +40,12 @@ rebuild the dependencies to an exact version.
 Dependencies are not required to be represented in 'Chart.yaml'. For that
 reason, an update command will not remove charts unless they are (a) present
 in the Chart.yaml file, but (b) at the wrong version.
+
+By default all dependencies will be updated to the latest version in the specified
+range.  For projects with an existing 'Chart.lock' file, one or more dependencies
+can be selected for update without affecting other dependencies by using the
+'-d/--dependency' option.  Only the selected dependencies will be updated in
+'Chart.lock' and the remaining dependencies will be unaffected.
 `
 
 // newDependencyUpdateCmd creates a new dependency update command.
@@ -62,6 +68,7 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 				ChartPath:        chartpath,
 				Keyring:          client.Keyring,
 				SkipUpdate:       client.SkipRefresh,
+				Dependencies:     client.SelectedDependencies,
 				Getters:          getter.All(settings),
 				RegistryClient:   cfg.RegistryClient,
 				RepositoryConfig: settings.RepositoryConfig,
@@ -79,6 +86,7 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	f.StringSliceVarP(&client.SelectedDependencies, "dependency", "d", []string{}, "update a single dependency by name, requires an existing Chart.lock file")
 
 	return cmd
 }

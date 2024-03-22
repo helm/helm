@@ -598,3 +598,44 @@ func TestKey(t *testing.T) {
 		}
 	}
 }
+
+func TestGetDependenciesToResolve(t *testing.T) {
+	chartReq := []*chart.Dependency{
+		{
+			Name:    "foo",
+			Version: "1.x",
+		},
+		{
+			Name:    "bar",
+			Version: "2.1.x",
+		},
+	}
+	chartLock := &chart.Lock{
+		Dependencies: []*chart.Dependency{
+			{
+				Name:    "foo",
+				Version: "1.5",
+			},
+			{
+				Name:    "bar",
+				Version: "2.1.2",
+			},
+		},
+	}
+	selectedDeps := []string{
+		"foo",
+	}
+	depsToResolve, err := dependenciesToResolve(chartReq, chartLock, selectedDeps)
+	if err != nil {
+		t.Errorf("failed to get dependency list with error: %v", err)
+	}
+	if len(depsToResolve) != 2 {
+		t.Errorf("incorrect number of deps expected 2, got %v", depsToResolve)
+	}
+	if depsToResolve[0].Version != "1.x" {
+		t.Errorf("incorrect version set for dependency '%s', expected 1.x, got %s", depsToResolve[0].Name, depsToResolve[0].Version)
+	}
+	if depsToResolve[1].Version != "2.1.2" {
+		t.Errorf("incorrect version set for dependency '%s', expected 2.1.2, got %s", depsToResolve[1].Name, depsToResolve[1].Version)
+	}
+}
