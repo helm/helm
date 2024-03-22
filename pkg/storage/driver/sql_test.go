@@ -546,31 +546,31 @@ func mockGetReleaseCustomLabels(mock sqlmock.Sqlmock, key string, namespace stri
 func TestSqlChechkAppliedMigrations(t *testing.T) {
 	cases := []struct {
 		migrationsToApply    []*migrate.Migration
-		appliedMigrationsIds []string
+		appliedMigrationsIDs []string
 		expectedResult       bool
 		errorExplanation     string
 	}{
 		{
 			migrationsToApply:    []*migrate.Migration{{Id: "init1"}, {Id: "init2"}, {Id: "init3"}},
-			appliedMigrationsIds: []string{"1", "2", "init1", "3", "init2", "4", "5"},
+			appliedMigrationsIDs: []string{"1", "2", "init1", "3", "init2", "4", "5"},
 			expectedResult:       false,
 			errorExplanation:     "Has found one migration id \"init3\" as applied, that was not applied",
 		},
 		{
 			migrationsToApply:    []*migrate.Migration{{Id: "init1"}, {Id: "init2"}, {Id: "init3"}},
-			appliedMigrationsIds: []string{"1", "2", "init1", "3", "init2", "4", "init3", "5"},
+			appliedMigrationsIDs: []string{"1", "2", "init1", "3", "init2", "4", "init3", "5"},
 			expectedResult:       true,
 			errorExplanation:     "Has not found one or more migration ids, that was applied",
 		},
 		{
 			migrationsToApply:    []*migrate.Migration{{Id: "init"}},
-			appliedMigrationsIds: []string{"1", "2", "3", "inits", "4", "tinit", "5"},
+			appliedMigrationsIDs: []string{"1", "2", "3", "inits", "4", "tinit", "5"},
 			expectedResult:       false,
 			errorExplanation:     "Has found single \"init\", that was not applied",
 		},
 		{
 			migrationsToApply:    []*migrate.Migration{{Id: "init"}},
-			appliedMigrationsIds: []string{"1", "2", "init", "3", "init2", "4", "init3", "5"},
+			appliedMigrationsIDs: []string{"1", "2", "init", "3", "init2", "4", "init3", "5"},
 			expectedResult:       true,
 			errorExplanation:     "Has not found single migration id \"init\", that was applied",
 		},
@@ -578,7 +578,7 @@ func TestSqlChechkAppliedMigrations(t *testing.T) {
 	for i, c := range cases {
 		sqlDriver, mock := newTestFixtureSQL(t)
 		rows := sqlmock.NewRows([]string{"id", "applied_at"})
-		for _, id := range c.appliedMigrationsIds {
+		for _, id := range c.appliedMigrationsIDs {
 			rows.AddRow(id, time.Time{})
 		}
 		mock.

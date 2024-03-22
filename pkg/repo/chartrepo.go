@@ -96,7 +96,7 @@ func (r *ChartRepository) Load() error {
 	// FIXME: Why are we recursively walking directories?
 	// FIXME: Why are we not reading the repositories.yaml to figure out
 	// what repos to use?
-	filepath.Walk(r.Config.Name, func(path string, f os.FileInfo, err error) error {
+	filepath.Walk(r.Config.Name, func(path string, f os.FileInfo, _ error) error {
 		if !f.IsDir() {
 			if strings.Contains(f.Name(), "-index.yaml") {
 				i, err := LoadIndexFile(path)

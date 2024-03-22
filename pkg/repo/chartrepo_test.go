@@ -132,7 +132,7 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	repoName := "gcs-repo"
 	repoURL := "gs://some-gcs-bucket"
 	myCustomGetter := &CustomGetter{}
-	customGetterConstructor := func(options ...getter.Option) (getter.Getter, error) {
+	customGetterConstructor := func(_ ...getter.Option) (getter.Getter, error) {
 		return myCustomGetter, nil
 	}
 	providers := getter.Providers{{
@@ -267,7 +267,7 @@ func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 		if err != nil {
 			return nil, err
 		}
-		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Write(fileBytes)
 		})
 	}
@@ -282,7 +282,7 @@ func startLocalTLSServerForTests(handler http.Handler) (*httptest.Server, error)
 		if err != nil {
 			return nil, err
 		}
-		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Write(fileBytes)
 		})
 	}

@@ -64,7 +64,7 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 		Use:   "hub [KEYWORD]",
 		Short: "search for charts in the Artifact Hub or your own hub instance",
 		Long:  searchHubDesc,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			return o.run(out, args)
 		},
 	}

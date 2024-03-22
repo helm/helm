@@ -106,7 +106,7 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 		Short:   "list the dependencies for the given chart",
 		Long:    dependencyListDesc,
 		Args:    require.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			chartpath := "."
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])

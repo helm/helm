@@ -50,7 +50,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "push a chart to remote",
 		Long:  pushDesc,
 		Args:  require.MinimumNArgs(2),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
 				// Do file completion for the chart file to push
 				return nil, cobra.ShellCompDirectiveDefault
@@ -67,7 +67,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			registryClient, err := newRegistryClient(o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSverify, o.plainHTTP)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)

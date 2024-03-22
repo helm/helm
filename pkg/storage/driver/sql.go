@@ -98,9 +98,9 @@ func (s *SQL) Name() string {
 // Check if all migrations al
 func (s *SQL) checkAlreadyApplied(migrations []*migrate.Migration) bool {
 	// make map (set) of ids for fast search
-	migrationsIds := make(map[string]struct{})
+	migrationsIDs := make(map[string]struct{})
 	for _, migration := range migrations {
-		migrationsIds[migration.Id] = struct{}{}
+		migrationsIDs[migration.Id] = struct{}{}
 	}
 
 	// get list of applied migrations
@@ -113,15 +113,15 @@ func (s *SQL) checkAlreadyApplied(migrations []*migrate.Migration) bool {
 	}
 
 	for _, record := range records {
-		if _, ok := migrationsIds[record.Id]; ok {
+		if _, ok := migrationsIDs[record.Id]; ok {
 			s.Log("checkAlreadyApplied: found previous migration (Id: %v) applied at %v", record.Id, record.AppliedAt)
-			delete(migrationsIds, record.Id)
+			delete(migrationsIDs, record.Id)
 		}
 	}
 
 	// check if all migrations appliyed
-	if len(migrationsIds) != 0 {
-		for id := range migrationsIds {
+	if len(migrationsIDs) != 0 {
+		for id := range migrationsIDs {
 			s.Log("checkAlreadyApplied: find unapplied migration (id: %v)", id)
 		}
 		return false

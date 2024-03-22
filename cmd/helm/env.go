@@ -36,7 +36,7 @@ func newEnvCmd(out io.Writer) *cobra.Command {
 		Short: "helm client environment information",
 		Long:  envHelp,
 		Args:  require.MaximumNArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
 				keys := getSortedEnvVarKeys()
 				return keys, cobra.ShellCompDirectiveNoFileComp
@@ -44,7 +44,7 @@ func newEnvCmd(out io.Writer) *cobra.Command {
 
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, args []string) {
 			envVars := settings.EnvVars()
 
 			if len(args) == 0 {

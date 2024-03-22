@@ -49,7 +49,7 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 		Short: "rebuild the charts/ directory based on the Chart.lock file",
 		Long:  dependencyBuildDesc,
 		Args:  require.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			chartpath := "."
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])

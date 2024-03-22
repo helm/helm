@@ -57,10 +57,10 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 		Short:   "update information of available charts locally from chart repositories",
 		Long:    updateDesc,
 		Args:    require.MinimumNArgs(0),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compListRepos(toComplete, args), cobra.ShellCompDirectiveNoFileComp
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			o.repoFile = settings.RepositoryConfig
 			o.repoCache = settings.RepositoryCache
 			o.names = args

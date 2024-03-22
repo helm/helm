@@ -36,7 +36,7 @@ func newRegistryLogoutCmd(cfg *action.Configuration, out io.Writer) *cobra.Comma
 		Long:              registryLogoutDesc,
 		Args:              require.MinimumNArgs(1),
 		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			hostname := args[0]
 			return action.NewRegistryLogout(cfg).Run(out, hostname)
 		},

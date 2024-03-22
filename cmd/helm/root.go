@@ -100,7 +100,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	addKlogFlags(flags)
 
 	// Setup shell completion for the namespace flag
-	err := cmd.RegisterFlagCompletionFunc("namespace", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("namespace", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		if client, err := actionConfig.KubernetesClientSet(); err == nil {
 			// Choose a long enough timeout that the user notices something is not working
 			// but short enough that the user is not made to wait very long
@@ -123,7 +123,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	}
 
 	// Setup shell completion for the kube-context flag
-	err = cmd.RegisterFlagCompletionFunc("kube-context", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err = cmd.RegisterFlagCompletionFunc("kube-context", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		cobra.CompDebugln("About to get the different kube-contexts", settings.Debug)
 
 		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()

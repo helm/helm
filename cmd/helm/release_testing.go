@@ -48,13 +48,13 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 		Short: "run tests for a release",
 		Long:  releaseTestHelp,
 		Args:  require.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 			return compListReleases(toComplete, args, cfg)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
 			notName := regexp.MustCompile(`^!\s?name=`)
 			for _, f := range filter {

@@ -46,13 +46,13 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "download the values file for a named release",
 		Long:  getValuesHelp,
 		Args:  require.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 			return compListReleases(toComplete, args, cfg)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			vals, err := client.Run(args[0])
 			if err != nil {
 				return err
@@ -63,7 +63,7 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.IntVar(&client.Version, "revision", 0, "get the named release with revision")
-	err := cmd.RegisterFlagCompletionFunc("revision", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("revision", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 1 {
 			return compListRevisions(toComplete, cfg, args[0])
 		}

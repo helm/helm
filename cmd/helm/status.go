@@ -58,13 +58,13 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "display the status of the named release",
 		Long:  statusHelp,
 		Args:  require.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 			return compListReleases(toComplete, args, cfg)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 
 			// When the output format is a table the resources should be fetched
 			// and displayed as a table. When YAML or JSON the resources will be
@@ -88,7 +88,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f.IntVar(&client.Version, "revision", 0, "if set, display the status of the named release with revision")
 
-	err := cmd.RegisterFlagCompletionFunc("revision", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("revision", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 1 {
 			return compListRevisions(toComplete, cfg, args[0])
 		}

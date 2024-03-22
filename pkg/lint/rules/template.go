@@ -275,10 +275,10 @@ func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
 	case "certificatesigningrequest":
 		// No validation.
 		// https://github.com/kubernetes/kubernetes/blob/v1.20.0/pkg/apis/certificates/validation/validation.go#L137-L140
-		return func(name string, prefix bool) []string { return nil }
+		return func(_ string, _ bool) []string { return nil }
 	case "role", "clusterrole", "rolebinding", "clusterrolebinding":
 		// https://github.com/kubernetes/kubernetes/blob/v1.20.0/pkg/apis/rbac/validation/validation.go#L32-L34
-		return func(name string, prefix bool) []string {
+		return func(name string, _ bool) []string {
 			return apipath.IsValidPathSegmentName(name)
 		}
 	default:

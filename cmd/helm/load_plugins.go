@@ -301,7 +301,7 @@ func addPluginCommands(plugin *plugin.Plugin, baseCmd *cobra.Command, cmds *plug
 			// to the dynamic completion script of the plugin.
 			DisableFlagParsing: true,
 			// A Run is required for it to be a valid command without subcommands
-			Run: func(cmd *cobra.Command, args []string) {},
+			Run: func(_ *cobra.Command, _ []string) {},
 		}
 		baseCmd.AddCommand(subCmd)
 		addPluginCommands(plugin, subCmd, &cmd)

@@ -44,7 +44,7 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 		Short: "verify that a chart at the given path has been signed and is valid",
 		Long:  verifyDesc,
 		Args:  require.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
 				// Allow file completion when completing the argument for the path
 				return nil, cobra.ShellCompDirectiveDefault
@@ -52,7 +52,7 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 			// No more completions, so disable file completion
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			err := client.Run(args[0])
 			if err != nil {
 				return err
