@@ -143,6 +143,9 @@ func (mock *MockConfigMapsInterface) Create(_ context.Context, cfgmap *v1.Config
 	if object, ok := mock.objects[name]; ok {
 		return object, apierrors.NewAlreadyExists(v1.Resource("tests"), name)
 	}
+	if name == "large-chart.v1" {
+		return nil, apierrors.NewRequestEntityTooLargeError("Request entity too large: limit is 3145728")
+	}
 	mock.objects[name] = cfgmap
 	return cfgmap, nil
 }
