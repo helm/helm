@@ -175,6 +175,26 @@ func ClientOptWriter(out io.Writer) ClientOption {
 	}
 }
 
+// ClientOptAuthorizer returns a function that sets the authorizer setting on a client options set. This
+// can be used to override the default authorization mechanism.
+//
+// Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
+func ClientOptAuthorizer(authorizer auth.Client) ClientOption {
+	return func(client *Client) {
+		client.authorizer = authorizer
+	}
+}
+
+// ClientOptRegistryAuthorizer returns a function that sets the registry authorizer setting on a client options set. This
+// can be used to override the default authorization mechanism.
+//
+// Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
+func ClientOptRegistryAuthorizer(registryAuthorizer *registryauth.Client) ClientOption {
+	return func(client *Client) {
+		client.registryAuthorizer = registryAuthorizer
+	}
+}
+
 // ClientOptCredentialsFile returns a function that sets the credentialsFile setting on a client options set
 func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 	return func(client *Client) {
