@@ -244,6 +244,9 @@ func (s *EnvSettings) Namespace() string {
 	if ns, _, err := s.config.ToRawKubeConfigLoader().Namespace(); err == nil {
 		return ns
 	}
+	if s.namespace != "" {
+		return s.namespace
+	}
 	return "default"
 }
 
