@@ -77,7 +77,7 @@ func newDocsCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (o *docsOptions) run(out io.Writer) error {
+func (o *docsOptions) run(_ io.Writer) error {
 	switch o.docTypeString {
 	case "markdown", "mdown", "md":
 		if o.generateHeaders {

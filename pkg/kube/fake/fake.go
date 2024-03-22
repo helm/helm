@@ -22,6 +22,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/resource"
 
@@ -37,10 +38,12 @@ type FailingKubeClient struct {
 	GetError                         error
 	WaitError                        error
 	DeleteError                      error
+	DeleteWithPropagationError       error
 	WatchUntilReadyError             error
 	UpdateError                      error
 	BuildError                       error
 	BuildTableError                  error
+	BuildDummy                       bool
 	BuildUnstructuredError           error
 	WaitAndGetCompletedPodPhaseError error
 	WaitDuration                     time.Duration
@@ -116,6 +119,9 @@ func (f *FailingKubeClient) Build(r io.Reader, _ bool) (kube.ResourceList, error
 	if f.BuildError != nil {
 		return []*resource.Info{}, f.BuildError
 	}
+	if f.BuildDummy {
+		return createDummyResourceList(), nil
+	}
 	return f.PrintingKubeClient.Build(r, false)
 }
 
@@ -133,4 +139,22 @@ func (f *FailingKubeClient) WaitAndGetCompletedPodPhase(s string, d time.Duratio
 		return v1.PodSucceeded, f.WaitAndGetCompletedPodPhaseError
 	}
 	return f.PrintingKubeClient.WaitAndGetCompletedPodPhase(s, d)
+}
+
+// DeleteWithPropagationPolicy returns the configured error if set or prints
+func (f *FailingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceList, policy metav1.DeletionPropagation) (*kube.Result, []error) {
+	if f.DeleteWithPropagationError != nil {
+		return nil, []error{f.DeleteWithPropagationError}
+	}
+	return f.PrintingKubeClient.DeleteWithPropagationPolicy(resources, policy)
+}
+
+func createDummyResourceList() kube.ResourceList {
+	var resInfo resource.Info
+	resInfo.Name = "dummyName"
+	resInfo.Namespace = "dummyNamespace"
+	var resourceList kube.ResourceList
+	resourceList.Append(&resInfo)
+	return resourceList
+
 }

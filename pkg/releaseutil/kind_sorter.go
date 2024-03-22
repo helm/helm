@@ -29,6 +29,7 @@ type KindSortOrder []string
 //
 // Those occurring earlier in the list get installed before those occurring later in the list.
 var InstallOrder KindSortOrder = []string{
+	"PriorityClass",
 	"Namespace",
 	"NetworkPolicy",
 	"ResourceQuota",
@@ -105,6 +106,7 @@ var UninstallOrder KindSortOrder = []string{
 	"ResourceQuota",
 	"NetworkPolicy",
 	"Namespace",
+	"PriorityClass",
 }
 
 // sort manifests by kind.
@@ -130,7 +132,7 @@ func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.H
 	return h
 }
 
-func lessByKind(a interface{}, b interface{}, kindA string, kindB string, o KindSortOrder) bool {
+func lessByKind(_ interface{}, _ interface{}, kindA string, kindB string, o KindSortOrder) bool {
 	ordering := make(map[string]int, len(o))
 	for v, k := range o {
 		ordering[k] = v

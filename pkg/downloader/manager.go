@@ -248,7 +248,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	destPath := filepath.Join(m.ChartPath, "charts")
 	tmpPath := filepath.Join(m.ChartPath, "tmpcharts")
 
-	// Check if 'charts' directory is not actally a directory. If it does not exist, create it.
+	// Check if 'charts' directory is not actually a directory. If it does not exist, create it.
 	if fi, err := os.Stat(destPath); err == nil {
 		if !fi.IsDir() {
 			return errors.Errorf("%q is not a directory", destPath)
@@ -667,6 +667,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 		if err != nil {
 			return err
 		}
+		r.CachePath = m.RepositoryCache
 		wg.Add(1)
 		go func(r *repo.ChartRepository) {
 			if _, err := r.DownloadIndexFile(); err != nil {
@@ -713,15 +714,21 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			var entry repo.ChartVersions
 			entry, err = findEntryByName(name, cr)
 			if err != nil {
+				// TODO: Where linting is skipped in this function we should
+				// refactor to remove naked returns while ensuring the same
+				// behavior
+				//nolint:nakedret
 				return
 			}
 			var ve *repo.ChartVersion
 			ve, err = findVersionedEntry(version, entry)
 			if err != nil {
+				//nolint:nakedret
 				return
 			}
 			url, err = normalizeURL(repoURL, ve.URLs[0])
 			if err != nil {
+				//nolint:nakedret
 				return
 			}
 			username = cr.Config.Username
@@ -731,6 +738,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			caFile = cr.Config.CAFile
 			certFile = cr.Config.CertFile
 			keyFile = cr.Config.KeyFile
+			//nolint:nakedret
 			return
 		}
 	}

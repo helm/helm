@@ -43,8 +43,8 @@ type Engine struct {
 	Strict bool
 	// In LintMode, some 'required' template values may be missing, so don't fail
 	LintMode bool
-	// the rest config to connect to the kubernetes api
-	config *rest.Config
+	// optional provider of clients to talk to the Kubernetes API
+	clientProvider *ClientProvider
 	// EnableDNS tells the engine to allow DNS lookups when rendering templates
 	EnableDNS bool
 	// usedValues is the set of values that are references in a chart
@@ -55,10 +55,11 @@ type Engine struct {
 
 // New creates a new instance of Engine using the passed in rest config.
 func New(config *rest.Config) Engine {
+	var clientProvider ClientProvider = clientProviderFromConfig{config}
 	return Engine{
-		config: config,
 		usedValues: sets.New[string](),
 		providedValues: sets.New[string](),
+		clientProvider: &clientProvider,
 	}
 }
 
@@ -94,12 +95,24 @@ func Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, erro
 
 // RenderWithClient takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
-// functions that interact with the client
+// functions that interact with the client.
 func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config) (map[string]string, error) {
+	var clientProvider ClientProvider = clientProviderFromConfig{config}
 	e := &Engine{
-		config: config,
+		clientProvider: &clientProvider,
 		usedValues: sets.New[string](),
 		providedValues: sets.New[string](),
+	}
+	return e.Render(chrt, values)
+}
+
+// RenderWithClientProvider takes a chart, optional values, and value overrides, and attempts to
+// render the Go templates using the default options. This engine is client aware and so can have template
+// functions that interact with the client.
+// This function differs from RenderWithClient in that it lets you customize the way a dynamic client is constructed.
+func RenderWithClientProvider(chrt *chart.Chart, values chartutil.Values, clientProvider ClientProvider) (map[string]string, error) {
+	e := &Engine{
+		clientProvider: &clientProvider,
 	}
 	return e.Render(chrt, values)
 }
@@ -124,13 +137,10 @@ func warnWrap(warn string) string {
 	return warnStartDelim + warn + warnEndDelim
 }
 
-// initFunMap creates the Engine's FuncMap and adds context-specific functions.
-func (e *Engine) initFunMap(t *template.Template, referenceTpls map[string]renderable) {
-	funcMap := funcMap()
-	includedNames := make(map[string]int)
-
-	// Add the 'include' function here so we can close over t.
-	funcMap["include"] = func(name string, data interface{}) (string, error) {
+// 'include' needs to be defined in the scope of a 'tpl' template as
+// well as regular file-loaded templates.
+func includeFun(t *template.Template, includedNames map[string]int) func(string, interface{}) (string, error) {
+	return func(name string, data interface{}) (string, error) {
 		var buf strings.Builder
 		if v, ok := includedNames[name]; ok {
 			if v > recursionMaxNums {
@@ -144,33 +154,62 @@ func (e *Engine) initFunMap(t *template.Template, referenceTpls map[string]rende
 		includedNames[name]--
 		return buf.String(), err
 	}
+}
 
-	// Add the 'tpl' function here
-	funcMap["tpl"] = func(tpl string, vals chartutil.Values) (string, error) {
-		basePath, err := vals.PathValue("Template.BasePath")
+// As does 'tpl', so that nested calls to 'tpl' see the templates
+// defined by their enclosing contexts.
+func tplFun(parent *template.Template, includedNames map[string]int, strict bool) func(string, interface{}) (string, error) {
+	return func(tpl string, vals interface{}) (string, error) {
+		t, err := parent.Clone()
 		if err != nil {
-			return "", errors.Wrapf(err, "cannot retrieve Template.Basepath from values inside tpl function: %s", tpl)
+			return "", errors.Wrapf(err, "cannot clone template")
 		}
 
-		templateName, err := vals.PathValue("Template.Name")
-		if err != nil {
-			return "", errors.Wrapf(err, "cannot retrieve Template.Name from values inside tpl function: %s", tpl)
+		// Re-inject the missingkey option, see text/template issue https://github.com/golang/go/issues/43022
+		// We have to go by strict from our engine configuration, as the option fields are private in Template.
+		// TODO: Remove workaround (and the strict parameter) once we build only with golang versions with a fix.
+		if strict {
+			t.Option("missingkey=error")
+		} else {
+			t.Option("missingkey=zero")
 		}
 
-		templates := map[string]renderable{
-			templateName.(string): {
-				tpl:      tpl,
-				vals:     vals,
-				basePath: basePath.(string),
-			},
+		// Re-inject 'include' so that it can close over our clone of t;
+		// this lets any 'define's inside tpl be 'include'd.
+		t.Funcs(template.FuncMap{
+			"include": includeFun(t, includedNames),
+			"tpl":     tplFun(t, includedNames, strict),
+		})
+
+		// We need a .New template, as template text which is just blanks
+		// or comments after parsing out defines just addes new named
+		// template definitions without changing the main template.
+		// https://pkg.go.dev/text/template#Template.Parse
+		// Use the parent's name for lack of a better way to identify the tpl
+		// text string. (Maybe we could use a hash appended to the name?)
+		t, err = t.New(parent.Name()).Parse(tpl)
+		if err != nil {
+			return "", errors.Wrapf(err, "cannot parse template %q", tpl)
 		}
 
-		result, err := e.renderWithReferences(templates, referenceTpls)
-		if err != nil {
+		var buf strings.Builder
+		if err := t.Execute(&buf, vals); err != nil {
 			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
 		}
-		return result[templateName.(string)], nil
+
+		// See comment in renderWithReferences explaining the <no value> hack.
+		return strings.ReplaceAll(buf.String(), "<no value>", ""), nil
 	}
+}
+
+// initFunMap creates the Engine's FuncMap and adds context-specific functions.
+func (e Engine) initFunMap(t *template.Template) {
+	funcMap := funcMap()
+	includedNames := make(map[string]int)
+
+	// Add the template-rendering functions here so we can close over t.
+	funcMap["include"] = includeFun(t, includedNames)
+	funcMap["tpl"] = tplFun(t, includedNames, e.Strict)
 
 	// Add the `required` function here so we can use lintMode
 	funcMap["required"] = func(warn string, val interface{}) (interface{}, error) {
@@ -206,8 +245,8 @@ func (e *Engine) initFunMap(t *template.Template, referenceTpls map[string]rende
 
 	// If we are not linting and have a cluster connection, provide a Kubernetes-backed
 	// implementation.
-	if !e.LintMode && e.config != nil {
-		funcMap["lookup"] = NewLookupFunction(e.config)
+	if !e.LintMode && e.clientProvider != nil {
+		funcMap["lookup"] = newLookupFunction(*e.clientProvider)
 	}
 
 	// When DNS lookups are not enabled override the sprig function and return
@@ -222,26 +261,7 @@ func (e *Engine) initFunMap(t *template.Template, referenceTpls map[string]rende
 }
 
 // render takes a map of templates/values and renders them.
-// When this function errors, it must return a map[string]string{}.
-func (e *Engine) render(tpls map[string]renderable) (map[string]string, error) {
-	rendered, err := e.renderWithReferences(tpls, tpls)
-	if err != nil {
-		return map[string]string{}, err
-	}
-
-	if e.Strict && e.LintMode {
-		unused := setDifferenceWithParents(e.providedValues, e.usedValues)
-		if unused.Len() > 0 {
-			return map[string]string{}, fmt.Errorf("there are unused fields in values files %+v", sets.List(unused))
-		}
-	}
-
-	return rendered, nil
-}
-
-// renderWithReferences takes a map of templates/values to render, and a map of
-// templates which can be referenced within them.
-func (e *Engine) renderWithReferences(tpls, referenceTpls map[string]renderable) (rendered map[string]string, err error) {
+func (e *Engine) render(tpls map[string]renderable) (rendered map[string]string, err error) {
 	// Basically, what we do here is start with an empty parent template and then
 	// build up a list of templates -- one for each file. Once all of the templates
 	// have been parsed, we loop through again and execute every template.
@@ -263,28 +283,16 @@ func (e *Engine) renderWithReferences(tpls, referenceTpls map[string]renderable)
 		t.Option("missingkey=zero")
 	}
 
-	e.initFunMap(t, referenceTpls)
+	e.initFunMap(t)
 
 	// We want to parse the templates in a predictable order. The order favors
 	// higher-level (in file system) templates over deeply nested templates.
 	keys := sortTemplates(tpls)
-	referenceKeys := sortTemplates(referenceTpls)
 
 	for _, filename := range keys {
 		r := tpls[filename]
 		if _, err := t.New(filename).Parse(r.tpl); err != nil {
 			return map[string]string{}, cleanupParseError(filename, err)
-		}
-	}
-
-	// Adding the reference templates to the template context
-	// so they can be referenced in the tpl function
-	for _, filename := range referenceKeys {
-		if t.Lookup(filename) == nil {
-			r := referenceTpls[filename]
-			if _, err := t.New(filename).Parse(r.tpl); err != nil {
-				return map[string]string{}, cleanupParseError(filename, err)
-			}
 		}
 	}
 
@@ -310,6 +318,13 @@ func (e *Engine) renderWithReferences(tpls, referenceTpls map[string]renderable)
 		// is set. Since missing=error will never get here, we do not need to handle
 		// the Strict case.
 		rendered[filename] = strings.ReplaceAll(buf.String(), "<no value>", "")
+	}
+
+	if e.Strict && e.LintMode {
+		unused := setDifferenceWithParents(e.providedValues, e.usedValues)
+		if unused.Len() > 0 {
+			return map[string]string{}, fmt.Errorf("there are unused fields in values files %+v", sets.List(unused))
+		}
 	}
 
 	return rendered, nil
@@ -419,6 +434,9 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 
 	newParentID := c.ChartFullPath()
 	for _, t := range c.Templates {
+		if t == nil {
+			continue
+		}
 		if !isTemplateValid(c, t.Name) {
 			continue
 		}

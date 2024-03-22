@@ -13,7 +13,7 @@ chance to try to fix the issue before it is exploited in the wild.
 
 ## Sign Your Work
 
-The sign-off is a simple line at the end of the explanation for a commit. All commits needs to be
+The sign-off is a simple line at the end of the explanation for a commit. All commits need to be
 signed. Your signature certifies that you wrote the patch or otherwise have the right to contribute
 the material. The rules are pretty simple, if you can certify the below (from
 [developercertificate.org](https://developercertificate.org/)):
@@ -195,7 +195,7 @@ below.
       See [Proposing an Idea](#proposing-an-idea). Smaller quality-of-life enhancements are exempt.
     - Issues that are labeled as `feature` or `bug` should be connected to the PR that resolves it.
     - Whoever is working on a `feature` or `bug` issue (whether a maintainer or someone from the
-      community), should either assign the issue to themself or make a comment in the issue saying
+      community), should either assign the issue to themselves or make a comment in the issue saying
       that they are taking it.
     - `proposal` and `support/question` issues should stay open until resolved or if they have not
       been active for more than 30 days. This will help keep the issue queue to a manageable size

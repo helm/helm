@@ -195,6 +195,13 @@ func withSampleTemplates() chartOption {
 	}
 }
 
+func withSampleSecret() chartOption {
+	return func(opts *chartOptions) {
+		sampleSecret := &chart.File{Name: "templates/secret.yaml", Data: []byte("apiVersion: v1\nkind: Secret\n")}
+		opts.Templates = append(opts.Templates, sampleSecret)
+	}
+}
+
 func withSampleIncludingIncorrectTemplates() chartOption {
 	return func(opts *chartOptions) {
 		sampleTemplates := []*chart.File{

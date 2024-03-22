@@ -86,11 +86,12 @@ func TestPlatformPrepareCommand(t *testing.T) {
 			Name:    "test",
 			Command: "echo -n os-arch",
 			PlatformCommand: []PlatformCommand{
-				{OperatingSystem: "linux", Architecture: "i386", Command: "echo -n linux-i386"},
+				{OperatingSystem: "linux", Architecture: "386", Command: "echo -n linux-386"},
 				{OperatingSystem: "linux", Architecture: "amd64", Command: "echo -n linux-amd64"},
 				{OperatingSystem: "linux", Architecture: "arm64", Command: "echo -n linux-arm64"},
 				{OperatingSystem: "linux", Architecture: "ppc64le", Command: "echo -n linux-ppc64le"},
 				{OperatingSystem: "linux", Architecture: "s390x", Command: "echo -n linux-s390x"},
+				{OperatingSystem: "linux", Architecture: "riscv64", Command: "echo -n linux-riscv64"},
 				{OperatingSystem: "windows", Architecture: "amd64", Command: "echo -n win-64"},
 			},
 		},
@@ -98,8 +99,8 @@ func TestPlatformPrepareCommand(t *testing.T) {
 	var osStrCmp string
 	os := runtime.GOOS
 	arch := runtime.GOARCH
-	if os == "linux" && arch == "i386" {
-		osStrCmp = "linux-i386"
+	if os == "linux" && arch == "386" {
+		osStrCmp = "linux-386"
 	} else if os == "linux" && arch == "amd64" {
 		osStrCmp = "linux-amd64"
 	} else if os == "linux" && arch == "arm64" {
@@ -108,6 +109,8 @@ func TestPlatformPrepareCommand(t *testing.T) {
 		osStrCmp = "linux-ppc64le"
 	} else if os == "linux" && arch == "s390x" {
 		osStrCmp = "linux-s390x"
+	} else if os == "linux" && arch == "riscv64" {
+		osStrCmp = "linux-riscv64"
 	} else if os == "windows" && arch == "amd64" {
 		osStrCmp = "win-64"
 	} else {
@@ -125,7 +128,7 @@ func TestPartialPlatformPrepareCommand(t *testing.T) {
 			Name:    "test",
 			Command: "echo -n os-arch",
 			PlatformCommand: []PlatformCommand{
-				{OperatingSystem: "linux", Architecture: "i386", Command: "echo -n linux-i386"},
+				{OperatingSystem: "linux", Architecture: "386", Command: "echo -n linux-386"},
 				{OperatingSystem: "windows", Architecture: "amd64", Command: "echo -n win-64"},
 			},
 		},
@@ -134,7 +137,7 @@ func TestPartialPlatformPrepareCommand(t *testing.T) {
 	os := runtime.GOOS
 	arch := runtime.GOARCH
 	if os == "linux" {
-		osStrCmp = "linux-i386"
+		osStrCmp = "linux-386"
 	} else if os == "windows" && arch == "amd64" {
 		osStrCmp = "win-64"
 	} else {
@@ -166,7 +169,7 @@ func TestNoMatchPrepareCommand(t *testing.T) {
 		Metadata: &Metadata{
 			Name: "test",
 			PlatformCommand: []PlatformCommand{
-				{OperatingSystem: "no-os", Architecture: "amd64", Command: "echo -n linux-i386"},
+				{OperatingSystem: "no-os", Architecture: "amd64", Command: "echo -n linux-386"},
 			},
 		},
 	}
@@ -329,7 +332,32 @@ func TestSetupEnv(t *testing.T) {
 	}
 }
 
+func TestSetupEnvWithSpace(t *testing.T) {
+	name := "sureshdsk"
+	base := filepath.Join("testdata/helm home/helm/plugins", name)
+
+	s := cli.New()
+	s.PluginsDirectory = "testdata/helm home/helm/plugins"
+
+	SetupPluginEnv(s, name, base)
+	for _, tt := range []struct {
+		name, expect string
+	}{
+		{"HELM_PLUGIN_NAME", name},
+		{"HELM_PLUGIN_DIR", base},
+	} {
+		if got := os.Getenv(tt.name); got != tt.expect {
+			t.Errorf("Expected $%s=%q, got %q", tt.name, tt.expect, got)
+		}
+	}
+}
+
 func TestValidatePluginData(t *testing.T) {
+	// A mock plugin missing any metadata.
+	mockMissingMeta := &Plugin{
+		Dir: "no-such-dir",
+	}
+
 	for i, item := range []struct {
 		pass bool
 		plug *Plugin
@@ -340,6 +368,7 @@ func TestValidatePluginData(t *testing.T) {
 		{false, mockPlugin("$foo -bar")}, // Test leading chars
 		{false, mockPlugin("foo -bar ")}, // Test trailing chars
 		{false, mockPlugin("foo\nbar")},  // Test newline
+		{false, mockMissingMeta},         // Test if the metadata section missing
 	} {
 		err := validatePluginData(item.plug, fmt.Sprintf("test-%d", i))
 		if item.pass && err != nil {
