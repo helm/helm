@@ -609,27 +609,29 @@ func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) erro
 	return err
 }
 
-func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
+func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, bool, error) {
+	isCRDOrUnstructured := false
+
 	oldData, err := json.Marshal(current)
 	if err != nil {
-		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing current configuration")
+		return nil, types.StrategicMergePatchType, isCRDOrUnstructured, errors.Wrap(err, "serializing current configuration")
 	}
 	newData, err := json.Marshal(target.Object)
 	if err != nil {
-		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing target configuration")
+		return nil, types.StrategicMergePatchType, isCRDOrUnstructured, errors.Wrap(err, "serializing target configuration")
 	}
 
 	// Fetch the current object for the three way merge
 	helper := resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
 	currentObj, err := helper.Get(target.Namespace, target.Name)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return nil, types.StrategicMergePatchType, errors.Wrapf(err, "unable to get data for current object %s/%s", target.Namespace, target.Name)
+		return nil, types.StrategicMergePatchType, isCRDOrUnstructured, errors.Wrapf(err, "unable to get data for current object %s/%s", target.Namespace, target.Name)
 	}
 
 	// Even if currentObj is nil (because it was not found), it will marshal just fine
 	currentData, err := json.Marshal(currentObj)
 	if err != nil {
-		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing live configuration")
+		return nil, types.StrategicMergePatchType, isCRDOrUnstructured, errors.Wrap(err, "serializing live configuration")
 	}
 
 	// Get a versioned object
@@ -647,16 +649,17 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	if isUnstructured || isCRD {
 		// fall back to generic JSON merge patch
 		patch, err := jsonpatch.CreateMergePatch(oldData, newData)
-		return patch, types.MergePatchType, err
+		isCRDOrUnstructured = true
+		return patch, types.MergePatchType, isCRDOrUnstructured, err
 	}
 
 	patchMeta, err := strategicpatch.NewPatchMetaFromStruct(versionedObject)
 	if err != nil {
-		return nil, types.StrategicMergePatchType, errors.Wrap(err, "unable to create patch metadata from object")
+		return nil, types.StrategicMergePatchType, isCRDOrUnstructured, errors.Wrap(err, "unable to create patch metadata from object")
 	}
 
 	patch, err := strategicpatch.CreateThreeWayMergePatch(oldData, newData, currentData, patchMeta, true)
-	return patch, types.StrategicMergePatchType, err
+	return patch, types.StrategicMergePatchType, isCRDOrUnstructured, err
 }
 
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
@@ -675,7 +678,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
-		patch, patchType, err := createPatch(target, currentObj)
+		patch, patchType, isCRDOrUnstructured, err := createPatch(target, currentObj)
 		if err != nil {
 			return errors.Wrap(err, "failed to create patch")
 		}
@@ -690,8 +693,19 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 			return nil
 		}
 		// send patch to server
-		c.Log("Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
-		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
+		if isCRDOrUnstructured {
+			// CRDs and Unstructured resources do not support strategic merge patch, so just SSA patch them. Why don't use replace because it too voilent.
+			unStructData, errEncode := runtime.Encode(unstructured.UnstructuredJSONScheme, target.Object)
+			if errEncode != nil {
+				return cmdutil.AddSourceToErr("serverside-apply", target.Source, err)
+			}
+			ssaForce := true
+			c.Log("Custom or Unstructured SSA Patch %s %q in namespace %s ", kind, target.Name, target.Namespace)
+			obj, err = helper.Patch(target.Namespace, target.Name, types.ApplyPatchType, unStructData, &metav1.PatchOptions{Force: &ssaForce})
+		} else {
+			c.Log("Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
+			obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
+		}
 		if err != nil {
 			return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
 		}
