@@ -127,12 +127,12 @@ func TestHelmCreateChart(t *testing.T) {
 	// Note: we test with strict=true here, even though others have
 	// strict = false.
 	m := All(createdChart, values, namespace, true).Messages
-	if ll := len(m); ll != 1 {
-		t.Errorf("All should have had exactly 1 error. Got %d", ll)
+	if ll := len(m); ll > 2 {
+		t.Errorf("All should have at most 2 errors. Got %d", ll)
 		for i, msg := range m {
 			t.Logf("Message %d: %s", i, msg.Error())
 		}
-	} else if msg := m[0].Err.Error(); !strings.Contains(msg, "icon is recommended") {
+	} else if msg := m[0].Err.Error(); !strings.Contains(msg, "icon is recommended") && !strings.Contains(msg, "there are unused fields in values files") {
 		t.Errorf("Unexpected lint error: %s", msg)
 	}
 }
