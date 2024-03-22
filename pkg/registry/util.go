@@ -18,7 +18,6 @@ package registry // import "helm.sh/helm/v3/pkg/registry"
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,9 +29,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	orascontext "oras.land/oras-go/pkg/context"
-	"oras.land/oras-go/pkg/registry"
+	"oras.land/oras-go/v2/registry"
 
 	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/pkg/chart"
@@ -103,17 +100,6 @@ func extractChartMeta(chartData []byte) (*chart.Metadata, error) {
 		return nil, err
 	}
 	return ch.Metadata, nil
-}
-
-// ctx retrieves a fresh context.
-// disable verbose logging coming from ORAS (unless debug is enabled)
-func ctx(out io.Writer, debug bool) context.Context {
-	if !debug {
-		return orascontext.Background()
-	}
-	ctx := orascontext.WithLoggerFromWriter(context.Background(), out)
-	orascontext.GetLogger(ctx).Logger.SetLevel(logrus.DebugLevel)
-	return ctx
 }
 
 // parseReference will parse and validate the reference, and clean tags when

@@ -65,10 +65,17 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
 			}
+
+			registryClient, err := newDefaultRegistryClient(client.PlainHTTP)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+			man.RegistryClient = registryClient
+
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible
 			}
-			err := man.Build()
+			err = man.Build()
 			if e, ok := err.(downloader.ErrRepoNotFound); ok {
 				return fmt.Errorf("%s. Please add the missing repos via 'helm repo add'", e.Error())
 			}
@@ -80,6 +87,7 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
 
 	return cmd
 }
