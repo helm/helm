@@ -67,7 +67,11 @@ func (f *FailingKubeClient) Get(resources kube.ResourceList, related bool) (map[
 
 // Waits the amount of time defined on f.WaitDuration, then returns the configured error if set or prints.
 func (f *FailingKubeClient) Wait(resources kube.ResourceList, d time.Duration) error {
-	time.Sleep(f.WaitDuration)
+	if f.WaitDuration != 0*time.Second {
+		time.Sleep(f.WaitDuration)
+	} else {
+		time.Sleep(d)
+	}
 	if f.WaitError != nil {
 		return f.WaitError
 	}
@@ -76,6 +80,11 @@ func (f *FailingKubeClient) Wait(resources kube.ResourceList, d time.Duration) e
 
 // WaitWithJobs returns the configured error if set or prints
 func (f *FailingKubeClient) WaitWithJobs(resources kube.ResourceList, d time.Duration) error {
+	if f.WaitDuration != 0*time.Second {
+		time.Sleep(f.WaitDuration)
+	} else {
+		time.Sleep(d)
+	}
 	if f.WaitError != nil {
 		return f.WaitError
 	}
@@ -98,8 +107,9 @@ func (f *FailingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, [
 	return f.PrintingKubeClient.Delete(resources)
 }
 
-// WatchUntilReady returns the configured error if set or prints
+// WatchUntilReady waits for the duration provided and returns the configured error if set or prints
 func (f *FailingKubeClient) WatchUntilReady(resources kube.ResourceList, d time.Duration) error {
+	time.Sleep(d)
 	if f.WatchUntilReadyError != nil {
 		return f.WatchUntilReadyError
 	}

@@ -19,6 +19,7 @@ package action
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -137,4 +138,51 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	_, err := unAction.Run(rel.Name)
 	is.Error(err)
 	is.Contains(err.Error(), "failed to delete release: come-fail-away")
+}
+
+func TestUninstallRelease_Wait_Interrupted_Hooks(t *testing.T) {
+	is := assert.New(t)
+	unAction := uninstallAction(t)
+	rel := releaseStub()
+	rel.Name = "interrupted-hooks-release"
+	rel.Info.Status = release.StatusDeployed
+	rel.Chart = buildChart(withPreDeleteHook())
+	unAction.cfg.Releases.Create(rel)
+	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WatchUntilReadyError = fmt.Errorf("I timed out")
+	unAction.cfg.KubeClient = failer
+	unAction.Wait = true
+	unAction.HookTimeout = 5 * time.Second
+	unAction.Timeout = 3 * time.Second
+
+	start := time.Now()
+	res, err := unAction.Run(rel.Name)
+	executionTime := time.Since(start)
+	is.Equal(unAction.HookTimeout, executionTime.Round(time.Second))
+	is.Error(err)
+	is.Contains(res.Release.Info.Description, "Deletion in progress (or silently failed)")
+	is.Equal(res.Release.Info.Status, release.StatusUninstalling)
+}
+
+func TestUninstallRelease_Wait_TimeoutUsedWhenHookTimeoutNotSet(t *testing.T) {
+	is := assert.New(t)
+	unAction := uninstallAction(t)
+	rel := releaseStub()
+	rel.Name = "interrupted-hooks-release"
+	rel.Info.Status = release.StatusDeployed
+	rel.Chart = buildChart(withPreDeleteHook())
+	unAction.cfg.Releases.Create(rel)
+	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WatchUntilReadyError = fmt.Errorf("I timed out")
+	unAction.cfg.KubeClient = failer
+	unAction.Wait = true
+	unAction.Timeout = 3 * time.Second
+
+	start := time.Now()
+	res, err := unAction.Run(rel.Name)
+	executionTime := time.Since(start)
+	is.Equal(unAction.Timeout, executionTime.Round(time.Second))
+	is.Error(err)
+	is.Contains(res.Release.Info.Description, "Deletion in progress (or silently failed)")
+	is.Equal(res.Release.Info.Status, release.StatusUninstalling)
 }

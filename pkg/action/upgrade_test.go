@@ -114,6 +114,30 @@ func TestUpgradeRelease_WaitForJobs(t *testing.T) {
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
 
+func TestUpgradeRelease_FailedTimeout(t *testing.T) {
+	is := assert.New(t)
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "failed-timeout"
+	rel.Info.Status = release.StatusDeployed
+	upAction.cfg.Releases.Create(rel)
+	upAction.Wait = true
+	upAction.WaitForJobs = true
+	upAction.DisableHooks = true
+	upAction.Timeout = 5 * time.Second
+	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WaitError = fmt.Errorf("I timed out")
+	upAction.cfg.KubeClient = failer
+
+	vals := map[string]interface{}{}
+	start := time.Now()
+	res, err := upAction.Run(rel.Name, buildChart(), vals)
+	is.Equal(upAction.Timeout, time.Since(start).Round(time.Second))
+	is.Error(err)
+	is.Contains(res.Info.Description, "failed: I timed out")
+	is.Equal(release.StatusFailed, res.Info.Status)
+}
+
 func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
@@ -408,6 +432,61 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	is.Contains(res.Info.Description, "Upgrade \"interrupted-release\" failed: context canceled")
 	is.Equal(res.Info.Status, release.StatusFailed)
 
+}
+
+func TestUpgradeRelease_Wait_Interrupted_Hooks(t *testing.T) {
+	is := assert.New(t)
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "interrupted-hooks-release"
+	rel.Info.Status = release.StatusDeployed
+	upAction.cfg.Releases.Create(rel)
+	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WatchUntilReadyError = fmt.Errorf("I timed out")
+	upAction.cfg.KubeClient = failer
+	upAction.Wait = true
+	upAction.HookTimeout = 5 * time.Second
+	upAction.Timeout = 3 * time.Second
+	vals := map[string]interface{}{}
+
+	start := time.Now()
+	res, err := upAction.Run(rel.Name, buildChart(withPreUpgradeHook()), vals)
+	executionTime := time.Since(start)
+	is.Equal(upAction.HookTimeout, executionTime.Round(time.Second))
+	is.Error(err)
+	is.Contains(res.Info.Description, "Upgrade \"interrupted-hooks-release\" failed: pre-upgrade hooks failed: I timed out")
+	is.Equal(res.Info.Status, release.StatusFailed)
+
+	is.Len(res.Hooks, 1)
+	is.Equal(res.Hooks[0].Manifest, manifestWithPreUpgradeHook)
+	is.Equal(res.Hooks[0].Events[0], release.HookPreUpgrade)
+}
+
+func TestUpgradeRelease_Wait_TimeoutUsedWhenHookTimeoutNotSet(t *testing.T) {
+	is := assert.New(t)
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "interrupted-hooks-release"
+	rel.Info.Status = release.StatusDeployed
+	upAction.cfg.Releases.Create(rel)
+	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.WatchUntilReadyError = fmt.Errorf("I timed out")
+	upAction.cfg.KubeClient = failer
+	upAction.Wait = true
+	upAction.Timeout = 3 * time.Second
+	vals := map[string]interface{}{}
+
+	start := time.Now()
+	res, err := upAction.Run(rel.Name, buildChart(withPreUpgradeHook()), vals)
+	executionTime := time.Since(start)
+	is.Equal(upAction.Timeout, executionTime.Round(time.Second))
+	is.Error(err)
+	is.Contains(res.Info.Description, "Upgrade \"interrupted-hooks-release\" failed: pre-upgrade hooks failed: I timed out")
+	is.Equal(res.Info.Status, release.StatusFailed)
+
+	is.Len(res.Hooks, 1)
+	is.Equal(res.Hooks[0].Manifest, manifestWithPreUpgradeHook)
+	is.Equal(res.Hooks[0].Events[0], release.HookPreUpgrade)
 }
 
 func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
