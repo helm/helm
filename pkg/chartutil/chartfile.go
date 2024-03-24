@@ -37,6 +37,17 @@ func LoadChartfile(filename string) (*chart.Metadata, error) {
 	return y, err
 }
 
+// StrictLoadChartFile loads a Chart.yaml into a *chart.Metadata using a strict unmarshaling
+func StrictLoadChartfile(filename string) (*chart.Metadata, error) {
+	b, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	y := new(chart.Metadata)
+	err = yaml.UnmarshalStrict(b, y)
+	return y, err
+}
+
 // SaveChartfile saves the given metadata as a Chart.yaml file at the given path.
 //
 // 'filename' should be the complete path and filename ('foo/Chart.yaml')
