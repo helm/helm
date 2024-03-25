@@ -54,6 +54,21 @@ func NewTempServerWithCleanup(t *testing.T, glob string) (*Server, error) {
 	return srv, err
 }
 
+// Set up a server with multiple fake repo
+func NewTempServerWithCleanupAndMultipleRepos(t *testing.T, glob string) (*Server, error) {
+	srv, tdir, err := NewTempServerWithMultipleRepos(glob)
+	urls := []string{srv.URL(), "http://foobarbazz:9001"}
+	if err := setTestingRepositories(urls, filepath.Join(tdir, "repositories.yaml")); err != nil {
+		panic(err)
+	}
+	if _, err := srv.CopyCharts(glob); err != nil {
+		srv.Stop()
+		return srv, err
+	}
+	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
+	return srv, err
+}
+
 // Set up a fake repo with basic auth enabled
 func NewTempServerWithCleanupAndBasicAuth(t *testing.T, glob string) *Server {
 	srv, err := NewTempServerWithCleanup(t, glob)
@@ -264,6 +279,23 @@ func NewTempServer(glob string) (*Server, error) {
 	return srv, nil
 }
 
+func NewTempServerWithMultipleRepos(glob string) (*Server, string, error) {
+	tdir, err := ioutil.TempDir("", "helm-repotest-")
+	if err != nil {
+		return nil, tdir, err
+	}
+	srv := NewServer(tdir)
+
+	if glob != "" {
+		if _, err := srv.CopyCharts(glob); err != nil {
+			srv.Stop()
+			return srv, tdir, err
+		}
+	}
+
+	return srv, tdir, nil
+}
+
 // NewServer creates a repository server for testing.
 //
 // docroot should be a temp dir managed by the caller.
@@ -423,4 +455,17 @@ func setTestingRepository(url, fname string) error {
 		URL:  url,
 	})
 	return r.WriteFile(fname, 0640)
+}
+
+// setTestingRepository sets up a testing repository.yaml with only the given URL.
+func setTestingRepositories(urls []string, fname string) error {
+	r := repo.NewFile()
+	for _, url := range urls {
+		r.Add(&repo.Entry{
+			Name: "test",
+			URL:  url,
+		})
+	}
+
+	return r.WriteFile(fname, 0644)
 }
