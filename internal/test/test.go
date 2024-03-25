@@ -92,5 +92,7 @@ func update(filename string, in []byte) error {
 }
 
 func normalize(in []byte) []byte {
-	return bytes.Replace(in, []byte("\r\n"), []byte("\n"), -1)
+	in = bytes.Replace(in, []byte("\r\n"), []byte("\n"), -1)
+	// Trim trailing space
+	return bytes.Replace(in, []byte(" \n"), []byte("\n"), -1)
 }

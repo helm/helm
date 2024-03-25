@@ -4,6 +4,9 @@ LAST DEPLOYED: Fri Sep  2 22:04:05 1977
 NAMESPACE: default
 STATUS: deployed
 REVISION: 3
+CHART: chart-with-subchart-update
+VERSION: 0.0.1
+APP_VERSION:
 TEST SUITE: None
 NOTES:
 PARENT NOTES
