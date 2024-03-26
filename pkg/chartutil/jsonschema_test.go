@@ -20,6 +20,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"helm.sh/helm/v3/pkg/chart"
 )
 
@@ -40,26 +42,16 @@ func TestValidateAgainstSingleSchema(t *testing.T) {
 
 func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
 	values, err := ReadValuesFile("./testdata/test-values.yaml")
-	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
-	}
+	assert.NoError(t, err)
+
 	schema, err := os.ReadFile("./testdata/test-values-invalid.schema.json")
-	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
-	}
+	assert.NoError(t, err)
 
-	var errString string
-	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
-		t.Fatalf("Expected an error, but got nil")
-	} else {
-		errString = err.Error()
-	}
-
-	expectedErrString := "unable to validate schema: runtime error: invalid " +
-		"memory address or nil pointer dereference"
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
-	}
+	assert.ErrorContains(
+		t,
+		ValidateAgainstSingleSchema(values, schema),
+		"does not validate with https://json-schema.org/draft/2020-12/schema#/type: expected object or boolean, but got number",
+	)
 }
 
 func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
@@ -79,8 +71,8 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := `- (root): employmentInfo is required
-- age: Must be greater than or equal to 0
+	expectedErrString := `- (root): missing properties: 'employmentInfo'
+- age: must be >= 0 but found -5
 `
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
@@ -159,7 +151,7 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 	}
 
 	expectedErrString := `subchart:
-- (root): age is required
+- (root): missing properties: 'age'
 `
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)

@@ -22,8 +22,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/xeipuuv/gojsonschema"
 	"sigs.k8s.io/yaml"
+
+	"github.com/santhosh-tekuri/jsonschema/v5"
 
 	"helm.sh/helm/v3/pkg/chart"
 )
@@ -73,21 +74,44 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error
 	if bytes.Equal(valuesJSON, []byte("null")) {
 		valuesJSON = []byte("{}")
 	}
-	schemaLoader := gojsonschema.NewBytesLoader(schemaJSON)
-	valuesLoader := gojsonschema.NewBytesLoader(valuesJSON)
 
-	result, err := gojsonschema.Validate(schemaLoader, valuesLoader)
+	var rawInterface interface{}
+	if err = yaml.Unmarshal(valuesJSON, &rawInterface); err != nil {
+		return err
+	}
+
+	schema, err := jsonschema.CompileString("values.schema.json", string(schemaJSON))
 	if err != nil {
 		return err
 	}
 
-	if !result.Valid() {
-		var sb strings.Builder
-		for _, desc := range result.Errors() {
-			sb.WriteString(fmt.Sprintf("- %s\n", desc))
+	if err = schema.Validate(rawInterface); err != nil {
+		var jsonschemaError *jsonschema.ValidationError
+		if errors.As(err, &jsonschemaError) {
+			return errors.New(processErrorMessage(jsonschemaError))
 		}
-		return errors.New(sb.String())
+
+		return err
 	}
 
 	return nil
+}
+
+func processErrorMessage(error *jsonschema.ValidationError) string {
+	var sb strings.Builder
+
+	if error.KeywordLocation != "" {
+		location := error.InstanceLocation
+		if location == "" {
+			location = "(root)"
+		}
+
+		sb.WriteString(fmt.Sprintf("- %s: %s\n", strings.TrimPrefix(location, "/"), error.Message))
+	}
+
+	for _, cause := range error.Causes {
+		sb.WriteString(processErrorMessage(cause))
+	}
+
+	return sb.String()
 }
