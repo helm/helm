@@ -54,6 +54,8 @@ const (
 	IgnorefileName = ".helmignore"
 	// IngressFileName is the name of the example ingress file.
 	IngressFileName = TemplatesDir + sep + "ingress.yaml"
+	// HttpRouteFileName is the name of the example HTTPRoute file.
+	HttpRouteFileName = TemplatesDir + sep + "httproute.yaml"
 	// DeploymentName is the name of the example deployment file.
 	DeploymentName = TemplatesDir + sep + "deployment.yaml"
 	// ServiceName is the name of the example service file.
@@ -162,6 +164,41 @@ ingress:
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
+
+# -- How the service is exposed via gateway-apis HTTPRoute.
+httpRoute:
+  # -- HTTPRoute enabled.
+  enabled: false
+  # -- HTTPRoute annotations.
+  annotations: {}
+  # -- Which Gateways this Route is attached to
+  parentRefs:
+  - name: gateway
+    sectionName: http
+  # -- Hostnames matching HTTP header.
+  hostnames:
+  - "example.com"
+  # -- List of rules and filters applied.
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /headers
+  #   filters:
+  #   - type: RequestHeaderModifier
+  #     requestHeaderModifier:
+  #       set:
+  #       - name: My-Overwrite-Header
+  #         value: this-is-the-only-value
+  #       remove:
+  #       - User-Agent
+  # - matches:
+  #   - path:
+  #       type: PathPrefix
+  #       value: /echo
+  #     headers:
+  #     - name: version
+  #       value: v2
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -295,6 +332,50 @@ spec:
               servicePort: {{ $svcPort }}
               {{- end }}
           {{- end }}
+    {{- end }}
+{{- end }}
+`
+
+const defaultHttpRoute = `{{- if .Values.httpRoute.enabled -}}
+{{- $fullName := include "<CHARTNAME>.fullname" . -}}
+{{- $svcPort := .Values.service.port -}}
+{{- if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1" -}}
+apiVersion: gateway.networking.k8s.io/v1
+{{- else -}}
+apiVersion: gateway.networking.k8s.io/v1alpha2
+{{- end }}
+kind: HTTPRoute
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
+  {{- with .Values.httpRoute.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+    {{- with .Values.httpRoute.parentRefs }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.httpRoute.hostnames }}
+  hostnames:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range .Values.httpRoute.rules }}
+    {{- with .matches }}
+    - matches:
+      {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .filters }}
+      filters:
+      {{- toYaml . | nindent 8 }}
+    {{- end }}
+      backendRefs:
+        - name: {{ $fullName }}
+          port: {{ $svcPort }}
+          weight: 1
     {{- end }}
 {{- end }}
 `
@@ -645,6 +726,11 @@ func Create(name, dir string) (string, error) {
 			// ingress.yaml
 			path:    filepath.Join(cdir, IngressFileName),
 			content: transform(defaultIngress, name),
+		},
+		{
+			// httproute.yaml
+			path:    filepath.Join(cdir, HttpRouteFileName),
+			content: transform(defaultHttpRoute, name),
 		},
 		{
 			// deployment.yaml
