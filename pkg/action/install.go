@@ -69,11 +69,14 @@ type Install struct {
 
 	ChartPathOptions
 
-	ClientOnly               bool
-	Force                    bool
-	CreateNamespace          bool
-	DryRun                   bool
-	DryRunOption             string
+	ClientOnly      bool
+	Force           bool
+	CreateNamespace bool
+	DryRun          bool
+	DryRunOption    string
+	// HideSecret can be set to true when DryRun is enabled in order to hide
+	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
+	HideSecret               bool
 	DisableHooks             bool
 	Replace                  bool
 	Wait                     bool
@@ -231,6 +234,11 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		}
 	}
 
+	// HideSecret must be used with dry run. Otherwise, return an error.
+	if !i.isDryRun() && i.HideSecret {
+		return nil, errors.New("Hiding Kubernetes secrets requires a dry-run mode")
+	}
+
 	if err := i.availableName(); err != nil {
 		return nil, err
 	}
@@ -314,6 +322,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		i.PostRendererHooks,
 		interactWithRemote,
 		i.EnableDNS,
+    i.HideSecret,
 	)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {

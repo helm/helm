@@ -114,7 +114,8 @@ func (cfg *Configuration) renderResources(
 	mainPostRenderer postrender.PostRenderer,
 	hooksPostRenderer postrender.PostRenderer,
 	interactWithRemote,
-	enableDNS bool,
+	enableDNS,
+  hideSecret bool,
 ) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
@@ -212,7 +213,11 @@ func (cfg *Configuration) renderResources(
 
 	for _, m := range manifests {
 		if outputDir == "" {
-			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+			if hideSecret && m.Head.Kind == "Secret" && m.Head.Version == "v1" {
+				fmt.Fprintf(b, "---\n# Source: %s\n# HIDDEN: The Secret output has been suppressed\n", m.Name)
+			} else {
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+			}
 		} else {
 			newDir := outputDir
 			if useReleaseName {

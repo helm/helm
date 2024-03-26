@@ -16,6 +16,7 @@ limitations under the License.
 package chart
 
 import (
+	"path/filepath"
 	"strings"
 	"unicode"
 
@@ -110,6 +111,11 @@ func (md *Metadata) Validate() error {
 	if md.Name == "" {
 		return ValidationError("chart.metadata.name is required")
 	}
+
+	if md.Name != filepath.Base(md.Name) {
+		return ValidationErrorf("chart.metadata.name %q is invalid", md.Name)
+	}
+
 	if md.Version == "" {
 		return ValidationError("chart.metadata.version is required")
 	}

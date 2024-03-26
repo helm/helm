@@ -72,6 +72,10 @@ parameters, and existing values will be merged with any values set via '--values
 or '--set' flags. Priority is given to new values.
 
     $ helm upgrade --reuse-values --set foo=bar --set foo=newbar redis ./redis
+
+The --dry-run flag will output all generated chart manifests, including Secrets
+which can contain sensitive values. To hide Kubernetes Secrets use the
+--hide-secret flag. Please carefully consider how and when these flags are used.
 `
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -143,6 +147,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.DependencyUpdate = client.DependencyUpdate
 					instClient.Labels = client.Labels
 					instClient.EnableDNS = client.EnableDNS
+					instClient.HideSecret = client.HideSecret
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
@@ -243,6 +248,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
+	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
 	f.Lookup("dry-run").NoOptDefVal = "client"
 	f.BoolVar(&client.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.MarkDeprecated("recreate-pods", "functionality will no longer be updated. Consult the documentation for other methods to recreate pods")

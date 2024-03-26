@@ -74,6 +74,9 @@ type Upgrade struct {
 	DryRun bool
 	// DryRunOption controls whether the operation is prepared, but not executed with options on whether or not to interact with the remote cluster.
 	DryRunOption string
+	// HideSecret can be set to true when DryRun is enabled in order to hide
+	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
+	HideSecret bool
 	// Force will, if set to `true`, ignore certain warnings and perform the upgrade anyway.
 	//
 	// This should be used with caution.
@@ -193,6 +196,11 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, errMissingChart
 	}
 
+	// HideSecret must be used with dry run. Otherwise, return an error.
+	if !u.isDryRun() && u.HideSecret {
+		return nil, nil, errors.New("Hiding Kubernetes secrets requires a dry-run mode")
+	}
+
 	// finds the last non-deleted release with the given name
 	lastRelease, err := u.cfg.Releases.Last(name)
 	if err != nil {
@@ -273,6 +281,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		u.PostRendererHooks,
 		interactWithRemote,
 		u.EnableDNS,
+    u.HideSecret,
 	)
 	if err != nil {
 		return nil, nil, err
