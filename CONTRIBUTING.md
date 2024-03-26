@@ -129,27 +129,6 @@ For a quick summary of our backward compatibility guidelines for releases betwee
 - Go libraries inside of `pkg/` SHOULD remain backward compatible, though code inside of `cmd/` and
   `internal/` may be changed from release to release without notice.
 
-## Support Contract for Helm 2
-
-With Helm 2's current release schedule, we want to take into account any migration issues for users
-due to the upcoming holiday shopping season and tax season. We also want to clarify what actions may
-occur after the support contract ends for Helm 2, so that users will not be surprised or caught off
-guard.
-
-After Helm 2.15.0 is released, Helm 2 will go into "maintenance mode". We will continue to accept
-bug fixes and fix any security issues that arise, but no new features will be accepted for Helm 2.
-All feature development will be moved over to Helm 3.
-
-6 months after Helm 3.0.0's public release, Helm 2 will stop accepting bug fixes. Only security
-issues will be accepted.
-
-12 months after Helm 3.0.0's public release, support for Helm 2 will formally end. Download links
-for the Helm 2 client through Google Cloud Storage, the Docker image for Tiller stored in Google
-Container Registry, and the Google Cloud buckets for the stable and incubator chart repositories may
-no longer work at any point. Client downloads through `get.helm.sh` will continue to work, and we
-will distribute a Tiller image that will be made available at an alternative location which can be
-updated with `helm init --tiller-image`.
-
 ## Issues
 
 Issues are used as the primary method for tracking anything to do with the Helm project.
