@@ -21,12 +21,14 @@ import (
 	"os"
 	"testing"
 
+	"fortio.org/assert"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/stretchr/testify/suite"
 )
 
 type HTTPRegistryClientTestSuite struct {
 	TestSuite
+	VariableThatShouldStartAtFive int
 }
 
 func (suite *HTTPRegistryClientTestSuite) SetupSuite() {
@@ -61,6 +63,19 @@ func (suite *HTTPRegistryClientTestSuite) Test_4_ManInTheMiddle() {
 	_, err := suite.RegistryClient.Pull(ref)
 	suite.NotNil(err)
 	suite.True(errdefs.IsFailedPrecondition(err))
+}
+
+func (suite *HTTPRegistryClientTestSuite) SetupTest() {
+	suite.VariableThatShouldStartAtFive = 5
+}
+
+func (suite *HTTPRegistryClientTestSuite) TestExample() {
+	if suite.Equal(5, suite.VariableThatShouldStartAtFive) {
+		assert.Equal(suite.T(), 5, suite.VariableThatShouldStartAtFive)
+	} else {
+		suite.T().Error("VariableThatShouldStartAtFive is not set to 5")
+	}
+
 }
 
 func TestHTTPRegistryClientTestSuite(t *testing.T) {
