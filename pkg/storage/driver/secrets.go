@@ -35,8 +35,12 @@ import (
 
 var _ Driver = (*Secrets)(nil)
 
-// SecretsDriverName is the string name of the driver.
-const SecretsDriverName = "Secret"
+const (
+	// SecretsDriverName is the string name of the driver.
+	SecretsDriverName = "Secret"
+	// ListPaginationLimit is the number of Secrets we fetch in a single API call.
+	ListPaginationLimit = int64(300)
+)
 
 // Secrets is a wrapper around an implementation of a kubernetes
 // SecretsInterface.
@@ -79,14 +83,35 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 // List fetches all releases and returns the list releases such
 // that filter(release) == true. An error is returned if the
 // secret fails to retrieve the releases.
+// We read `ListPaginationLimit` Secrets at a time so as not to overwhelm the
+// `api-server` in a cluster with many releases; fixes
+// https://github.com/helm/helm/issues/7997
 func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 	lsel := kblabels.Set{"owner": "helm"}.AsSelector()
-	opts := metav1.ListOptions{LabelSelector: lsel.String()}
+	opts := metav1.ListOptions{LabelSelector: lsel.String(), Limit: ListPaginationLimit}
 
+	// Perform an initial list
 	list, err := secrets.impl.List(context.Background(), opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "list: failed to list")
 	}
+
+	// Fetch more results from the server by making recursive paginated calls
+	isContinue := list.Continue
+	for isContinue != "" {
+		secrets.Log("list: fetched %d secrets, more to fetch..\n", ListPaginationLimit)
+		opts = metav1.ListOptions{LabelSelector: lsel.String(), Limit: ListPaginationLimit, Continue: isContinue}
+		batch, err := secrets.impl.List(context.Background(), opts)
+		if err != nil {
+			return nil, errors.Wrap(err, "list: failed to perform paginated listing")
+		}
+
+		// Append the results to the initial list
+		list.Items = append(list.Items, batch.Items...)
+
+		isContinue = batch.Continue
+	}
+	secrets.Log("list: fetched %d releases\n", len(list.Items))
 
 	var results []*rspb.Release
 
