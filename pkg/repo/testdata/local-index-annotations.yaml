@@ -2,6 +2,30 @@ apiVersion: v1
 entries:
   nginx:
     - urls:
+        - https://charts.helm.sh/stable/nginx-0.3.0+abc.tgz
+      name: nginx
+      description: string
+      version: 0.3.0+abc
+      home: https://github.com/something/else
+      digest: "sha256:1234567890abcdef"
+      keywords:
+        - popular
+        - web server
+        - proxy
+      apiVersion: v2
+    - urls:
+        - https://charts.helm.sh/stable/nginx-0.3.0.tgz
+      name: nginx
+      description: string
+      version: 0.3.0
+      home: https://github.com/something/else
+      digest: "sha256:1234567890abcdef"
+      keywords:
+        - popular
+        - web server
+        - proxy
+      apiVersion: v2
+    - urls:
         - https://charts.helm.sh/stable/nginx-0.2.0.tgz
       name: nginx
       description: string

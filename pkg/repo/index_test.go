@@ -367,8 +367,8 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 	}
 
 	nginx, ok := i.Entries["nginx"]
-	if !ok || len(nginx) != 2 {
-		t.Fatalf("Expected 2 nginx entries")
+	if !ok || len(nginx) != 4 {
+		t.Fatalf("Expected 4 nginx entries, got %d", len(nginx))
 	}
 
 	expects := []*ChartVersion{
@@ -384,6 +384,34 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 			URLs: []string{
 				"https://charts.helm.sh/stable/alpine-1.0.0.tgz",
 				"http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz",
+			},
+			Digest: "sha256:1234567890abcdef",
+		},
+		{
+			Metadata: &chart.Metadata{
+				APIVersion:  "v2",
+				Name:        "nginx",
+				Description: "string",
+				Version:     "0.3.0+abc",
+				Keywords:    []string{"popular", "web server", "proxy"},
+				Home:        "https://github.com/something/else",
+			},
+			URLs: []string{
+				"https://charts.helm.sh/stable/nginx-0.3.0+abc.tgz",
+			},
+			Digest: "sha256:1234567890abcdef",
+		},
+		{
+			Metadata: &chart.Metadata{
+				APIVersion:  "v2",
+				Name:        "nginx",
+				Description: "string",
+				Version:     "0.3.0",
+				Keywords:    []string{"popular", "web server", "proxy"},
+				Home:        "https://github.com/something/else",
+			},
+			URLs: []string{
+				"https://charts.helm.sh/stable/nginx-0.3.0.tgz",
 			},
 			Digest: "sha256:1234567890abcdef",
 		},

@@ -297,7 +297,7 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	chartURL, err := FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "", "", "", "", true, false, getter.All(&cli.EnvSettings{}))
+	chartURL, err := FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "0.2.0", "", "", "", true, false, getter.All(&cli.EnvSettings{}))
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -331,7 +331,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	if chartURL != "https://charts.helm.sh/stable/nginx-0.2.0.tgz" {
+	if chartURL != "https://charts.helm.sh/stable/nginx-0.3.0+abc.tgz" {
 		t.Errorf("%s is not the valid URL", chartURL)
 	}
 
@@ -341,6 +341,15 @@ func TestFindChartInRepoURL(t *testing.T) {
 	}
 	if chartURL != "https://charts.helm.sh/stable/nginx-0.1.0.tgz" {
 		t.Errorf("%s is not the valid URL", chartURL)
+	}
+
+	chartURL, err = FindChartInRepoURL(srv.URL, "nginx", "0.3.0", "", "", "", getter.All(&cli.EnvSettings{}))
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	expectedChartVersionURL := "https://charts.helm.sh/stable/nginx-0.3.0.tgz"
+	if chartURL != expectedChartVersionURL {
+		t.Errorf("Expected version - '%s' (because it was requested), actual - %s", expectedChartVersionURL, chartURL)
 	}
 }
 
