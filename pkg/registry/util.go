@@ -127,6 +127,12 @@ func parseReference(raw string) (registry.Reference, error) {
 	// NOTE: Passing immediately to the reference parser will fail since (+)
 	// signs are an invalid tag character, and simply replacing all plus (+)
 	// occurrences could invalidate other portions of the URI
+	digest := ""
+	lastIndex := strings.LastIndex(raw, "@")
+	if lastIndex >= 0 {
+		digest = raw[lastIndex:]
+		raw = raw[:lastIndex]
+	}
 	parts := strings.Split(raw, ":")
 	if len(parts) > 1 && !strings.Contains(parts[len(parts)-1], "/") {
 		tag := parts[len(parts)-1]
@@ -138,6 +144,7 @@ func parseReference(raw string) (registry.Reference, error) {
 		}
 	}
 
+	raw += digest
 	return registry.ParseReference(raw)
 }
 
