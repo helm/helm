@@ -64,7 +64,7 @@ var ResourceDependencyOrder KindSortOrder = []string{
 
 // addListKind adds the List equivalent for each resource kind in the list.
 func addListKind(resources KindSortOrder) KindSortOrder {
-	output := make(KindSortOrder, 2*len(resources))
+	output := make(KindSortOrder, 0, 2*len(resources))
 	for _, resource := range resources {
 		output = append(output, resource)
 		output = append(output, resource+"List")
