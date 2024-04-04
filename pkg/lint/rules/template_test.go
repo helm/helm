@@ -53,17 +53,44 @@ const namespace = "testNamespace"
 const strict = false
 
 func TestTemplateParsing(t *testing.T) {
-	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter, values, namespace, strict)
-	res := linter.Messages
+	t.Run("template parsing", func(t *testing.T) {
+		linter := support.Linter{ChartDir: templateTestBasedir}
+		Templates(&linter, values, namespace, strict)
+		res := linter.Messages
 
-	if len(res) != 1 {
-		t.Fatalf("Expected one error, got %d, %v", len(res), res)
-	}
+		if len(res) != 1 {
+			t.Fatalf("Expected one error, got %d, %v", len(res), res)
+		}
 
-	if !strings.Contains(res[0].Err.Error(), "deliberateSyntaxError") {
-		t.Errorf("Unexpected error: %s", res[0])
-	}
+		if !strings.Contains(res[0].Err.Error(), "deliberateSyntaxError") {
+			t.Errorf("Unexpected error: %s", res[0])
+		}
+	})
+
+	t.Run("template parsing with --full-path enabled", func(t *testing.T) {
+		linter := support.Linter{
+			ChartDir:       templateTestBasedir,
+			EnableFullPath: true,
+		}
+		Templates(&linter, values, namespace, strict)
+		res := linter.Messages
+
+		if len(res) != 1 {
+			t.Fatalf("Expected one error, got %d, %v", len(res), res)
+		}
+
+		if !strings.Contains(res[0].Err.Error(), "deliberateSyntaxError") {
+			t.Errorf("Unexpected error: %s", res[0])
+		}
+
+		// Validate if full paths are returns in linter messages
+		for _, msg := range linter.Messages {
+			if !strings.HasPrefix(msg.Path, filepath.Clean(linter.ChartDir)) {
+				t.Errorf("Full path is missing or incorrect: %s\n"+
+					"Expected path prefix: %s", msg.Path, linter.ChartDir)
+			}
+		}
+	})
 }
 
 var wrongTemplatePath = filepath.Join(templateTestBasedir, "templates", "fail.yaml")
@@ -72,51 +99,141 @@ var ignoredTemplatePath = filepath.Join(templateTestBasedir, "fail.yaml.ignored"
 // Test a template with all the existing features:
 // namespaces, partial templates
 func TestTemplateIntegrationHappyPath(t *testing.T) {
-	// Rename file so it gets ignored by the linter
-	os.Rename(wrongTemplatePath, ignoredTemplatePath)
-	defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
+	t.Run("template integration happy path", func(t *testing.T) {
+		// Rename file so it gets ignored by the linter
+		os.Rename(wrongTemplatePath, ignoredTemplatePath)
+		defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
 
-	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter, values, namespace, strict)
-	res := linter.Messages
+		linter := support.Linter{ChartDir: templateTestBasedir}
+		Templates(&linter, values, namespace, strict)
+		res := linter.Messages
 
-	if len(res) != 0 {
-		t.Fatalf("Expected no error, got %d, %v", len(res), res)
-	}
+		if len(res) != 0 {
+			t.Fatalf("Expected no error, got %d, %v", len(res), res)
+		}
+	})
+
+	t.Run("template integration happy path with --full-path enabled", func(t *testing.T) {
+		// Rename file so it gets ignored by the linter
+		os.Rename(wrongTemplatePath, ignoredTemplatePath)
+		defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
+
+		linter := support.Linter{
+			ChartDir:       templateTestBasedir,
+			EnableFullPath: true,
+		}
+		Templates(&linter, values, namespace, strict)
+		res := linter.Messages
+
+		if len(res) != 0 {
+			t.Fatalf("Expected no error, got %d, %v", len(res), res)
+		}
+
+		// Validate if full paths are returns in linter messages
+		cleanedChartDir := filepath.Clean(linter.ChartDir)
+		for _, msg := range linter.Messages {
+			if !strings.HasPrefix(msg.Path, cleanedChartDir) {
+				t.Errorf("Full path is missing or incorrect: %s\n"+
+					"Expected path prefix: %s", msg.Path, cleanedChartDir)
+			}
+		}
+	})
 }
 
 func TestV3Fail(t *testing.T) {
-	linter := support.Linter{ChartDir: "./testdata/v3-fail"}
-	Templates(&linter, values, namespace, strict)
-	res := linter.Messages
+	t.Run("v3 fail", func(t *testing.T) {
+		linter := support.Linter{ChartDir: "./testdata/v3-fail"}
+		Templates(&linter, values, namespace, strict)
+		res := linter.Messages
 
-	if len(res) != 3 {
-		t.Fatalf("Expected 3 errors, got %d, %v", len(res), res)
-	}
+		if len(res) != 3 {
+			t.Fatalf("Expected 3 errors, got %d, %v", len(res), res)
+		}
 
-	if !strings.Contains(res[0].Err.Error(), ".Release.Time has been removed in v3") {
-		t.Errorf("Unexpected error: %s", res[0].Err)
-	}
-	if !strings.Contains(res[1].Err.Error(), "manifest is a crd-install hook") {
-		t.Errorf("Unexpected error: %s", res[1].Err)
-	}
-	if !strings.Contains(res[2].Err.Error(), "manifest is a crd-install hook") {
-		t.Errorf("Unexpected error: %s", res[2].Err)
-	}
+		if !strings.Contains(res[0].Err.Error(), ".Release.Time has been removed in v3") {
+			t.Errorf("Unexpected error: %s", res[0].Err)
+		}
+		if !strings.Contains(res[1].Err.Error(), "manifest is a crd-install hook") {
+			t.Errorf("Unexpected error: %s", res[1].Err)
+		}
+		if !strings.Contains(res[2].Err.Error(), "manifest is a crd-install hook") {
+			t.Errorf("Unexpected error: %s", res[2].Err)
+		}
+	})
+
+	t.Run("v3 fail with --full-path enabled", func(t *testing.T) {
+		linter := support.Linter{
+			ChartDir:       "./testdata/v3-fail",
+			EnableFullPath: true,
+		}
+		Templates(&linter, values, namespace, strict)
+		res := linter.Messages
+
+		if len(res) != 3 {
+			t.Fatalf("Expected 3 errors, got %d, %v", len(res), res)
+		}
+
+		if !strings.Contains(res[0].Err.Error(), ".Release.Time has been removed in v3") {
+			t.Errorf("Unexpected error: %s", res[0].Err)
+		}
+		if !strings.Contains(res[1].Err.Error(), "manifest is a crd-install hook") {
+			t.Errorf("Unexpected error: %s", res[1].Err)
+		}
+		if !strings.Contains(res[2].Err.Error(), "manifest is a crd-install hook") {
+			t.Errorf("Unexpected error: %s", res[2].Err)
+		}
+
+		// Validate if full paths are returns in linter messages
+		cleanedChartDir := filepath.Clean(linter.ChartDir)
+		for _, msg := range linter.Messages {
+			if !strings.HasPrefix(msg.Path, cleanedChartDir) {
+				t.Errorf("Full path is missing or incorrect: %s\n"+
+					"Expected path prefix: %s", msg.Path, cleanedChartDir)
+			}
+		}
+	})
 }
 
 func TestMultiTemplateFail(t *testing.T) {
-	linter := support.Linter{ChartDir: "./testdata/multi-template-fail"}
-	Templates(&linter, values, namespace, strict)
-	res := linter.Messages
+	t.Run("multiple template fail", func(t *testing.T) {
+		linter := support.Linter{ChartDir: "./testdata/multi-template-fail"}
+		Templates(&linter, values, namespace, strict)
+		res := linter.Messages
 
-	if len(res) != 1 {
-		t.Fatalf("Expected 1 error, got %d, %v", len(res), res)
-	}
+		if len(res) != 1 {
+			t.Fatalf("Expected 1 error, got %d, %v", len(res), res)
+		}
 
-	if !strings.Contains(res[0].Err.Error(), "object name does not conform to Kubernetes naming requirements") {
-		t.Errorf("Unexpected error: %s", res[0].Err)
-	}
+		if !strings.Contains(res[0].Err.Error(), "object name does not conform to Kubernetes naming requirements") {
+			t.Errorf("Unexpected error: %s", res[0].Err)
+		}
+	})
+
+	t.Run("multiple template fail with --full-path enabled", func(t *testing.T) {
+		linter := support.Linter{
+			ChartDir:       "./testdata/multi-template-fail",
+			EnableFullPath: true,
+		}
+		Templates(&linter, values, namespace, strict)
+		res := linter.Messages
+
+		if len(res) != 1 {
+			t.Fatalf("Expected 1 error, got %d, %v", len(res), res)
+		}
+
+		if !strings.Contains(res[0].Err.Error(), "object name does not conform to Kubernetes naming requirements") {
+			t.Errorf("Unexpected error: %s", res[0].Err)
+		}
+
+		// Validate if full paths are returns in linter messages
+		cleanedChartDir := filepath.Clean(linter.ChartDir)
+		for _, msg := range linter.Messages {
+			if !strings.HasPrefix(msg.Path, cleanedChartDir) {
+				t.Errorf("Full path is missing or incorrect: %s\n"+
+					"Expected path prefix: %s", msg.Path, cleanedChartDir)
+			}
+		}
+	})
 }
 
 func TestValidateMetadataName(t *testing.T) {
@@ -226,19 +343,49 @@ func TestDeprecatedAPIFails(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
-	Templates(&linter, values, namespace, strict)
-	if l := len(linter.Messages); l != 1 {
-		for i, msg := range linter.Messages {
-			t.Logf("Message %d: %s", i, msg)
+	t.Run("deprecated API fails", func(t *testing.T) {
+		linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
+		Templates(&linter, values, namespace, strict)
+		if l := len(linter.Messages); l != 1 {
+			for i, msg := range linter.Messages {
+				t.Logf("Message %d: %s", i, msg)
+			}
+			t.Fatalf("Expected 1 lint error, got %d", l)
 		}
-		t.Fatalf("Expected 1 lint error, got %d", l)
-	}
 
-	err := linter.Messages[0].Err.(deprecatedAPIError)
-	if err.Deprecated != "apps/v1beta1 Deployment" {
-		t.Errorf("Surprised to learn that %q is deprecated", err.Deprecated)
-	}
+		err := linter.Messages[0].Err.(deprecatedAPIError)
+		if err.Deprecated != "apps/v1beta1 Deployment" {
+			t.Errorf("Surprised to learn that %q is deprecated", err.Deprecated)
+		}
+	})
+
+	t.Run("deprecated API fails with --full-path enabled", func(t *testing.T) {
+		linter := support.Linter{
+			ChartDir:       filepath.Join(tmpdir, mychart.Name()),
+			EnableFullPath: true,
+		}
+		Templates(&linter, values, namespace, strict)
+		if l := len(linter.Messages); l != 1 {
+			for i, msg := range linter.Messages {
+				t.Logf("Message %d: %s", i, msg)
+			}
+			t.Fatalf("Expected 1 lint error, got %d", l)
+		}
+
+		err := linter.Messages[0].Err.(deprecatedAPIError)
+		if err.Deprecated != "apps/v1beta1 Deployment" {
+			t.Errorf("Surprised to learn that %q is deprecated", err.Deprecated)
+		}
+
+		// Validate if full paths are returns in linter messages
+		cleanedChartDir := filepath.Clean(linter.ChartDir)
+		for _, msg := range linter.Messages {
+			if !strings.HasPrefix(msg.Path, cleanedChartDir) {
+				t.Errorf("Full path is missing or incorrect: %s\n"+
+					"Expected path prefix: %s", msg.Path, cleanedChartDir)
+			}
+		}
+	})
 }
 
 const manifest = `apiVersion: v1
@@ -280,16 +427,43 @@ func TestStrictTemplateParsingMapError(t *testing.T) {
 	if err := chartutil.SaveDir(&ch, dir); err != nil {
 		t.Fatal(err)
 	}
-	linter := &support.Linter{
-		ChartDir: filepath.Join(dir, ch.Metadata.Name),
-	}
-	Templates(linter, ch.Values, namespace, strict)
-	if len(linter.Messages) != 0 {
-		t.Errorf("expected zero messages, got %d", len(linter.Messages))
-		for i, msg := range linter.Messages {
-			t.Logf("Message %d: %q", i, msg)
+
+	t.Run("strict template parsing map error", func(t *testing.T) {
+		linter := &support.Linter{
+			ChartDir: filepath.Join(dir, ch.Metadata.Name),
 		}
-	}
+
+		Templates(linter, ch.Values, namespace, strict)
+		if len(linter.Messages) != 0 {
+			t.Errorf("expected zero messages, got %d", len(linter.Messages))
+			for i, msg := range linter.Messages {
+				t.Logf("Message %d: %q", i, msg)
+			}
+		}
+	})
+
+	t.Run("strict template parsing map error with --full-path enabled", func(t *testing.T) {
+		linter := &support.Linter{
+			ChartDir:       filepath.Join(dir, ch.Metadata.Name),
+			EnableFullPath: true,
+		}
+
+		cleanedChartDir := filepath.Clean(linter.ChartDir)
+
+		Templates(linter, ch.Values, namespace, strict)
+		if len(linter.Messages) != 0 {
+			t.Errorf("expected zero messages, got %d", len(linter.Messages))
+			for i, msg := range linter.Messages {
+				t.Logf("Message %d: %q", i, msg)
+
+				// Validate if full paths are returns in linter messages
+				if !strings.HasPrefix(msg.Path, cleanedChartDir) {
+					t.Errorf("Full path is missing or incorrect: %s\n"+
+						"Expected path prefix: %s", msg.Path, cleanedChartDir)
+				}
+			}
+		}
+	})
 }
 
 func TestValidateMatchSelector(t *testing.T) {
@@ -411,14 +585,38 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
-	Templates(&linter, values, namespace, strict)
-	if l := len(linter.Messages); l > 0 {
-		for i, msg := range linter.Messages {
-			t.Logf("Message %d: %s", i, msg)
+	t.Run("empty manifests", func(t *testing.T) {
+		linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
+		Templates(&linter, values, namespace, strict)
+		if l := len(linter.Messages); l > 0 {
+			for i, msg := range linter.Messages {
+				t.Logf("Message %d: %s", i, msg)
+			}
+			t.Fatalf("Expected 0 lint errors, got %d", l)
 		}
-		t.Fatalf("Expected 0 lint errors, got %d", l)
-	}
+	})
+
+	t.Run("empty manifests with --full-path enabled", func(t *testing.T) {
+		linter := support.Linter{
+			ChartDir:       filepath.Join(tmpdir, mychart.Name()),
+			EnableFullPath: true,
+		}
+		Templates(&linter, values, namespace, strict)
+
+		cleanedChartDir := filepath.Clean(linter.ChartDir)
+		if l := len(linter.Messages); l > 0 {
+			for i, msg := range linter.Messages {
+				t.Logf("Message %d: %s", i, msg)
+
+				// Validate if full paths are returns in linter messages
+				if !strings.HasPrefix(msg.Path, cleanedChartDir) {
+					t.Errorf("Full path is missing or incorrect: %s\n"+
+						"Expected path prefix: %s", msg.Path, cleanedChartDir)
+				}
+			}
+			t.Fatalf("Expected 0 lint errors, got %d", l)
+		}
+	})
 }
 func TestValidateListAnnotations(t *testing.T) {
 	md := &K8sYamlStruct{

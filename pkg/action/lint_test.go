@@ -17,6 +17,11 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -30,31 +35,46 @@ var (
 )
 
 func TestLintChart(t *testing.T) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to determine the current working directory")
+	}
+
+	// Actual directory that `helm lint` uses
+	helmLintTempDirPrefix := `/tmp/helm-lint`
+
 	tests := []struct {
-		name      string
-		chartPath string
-		err       bool
+		name              string
+		chartPath         string
+		chartName         string
+		err               bool
+		enableFullPath    bool
+		isCompressedChart bool
 	}{
 		{
 			name:      "decompressed-chart",
 			chartPath: "testdata/charts/decompressedchart/",
 		},
 		{
-			name:      "archived-chart-path",
-			chartPath: "testdata/charts/compressedchart-0.1.0.tgz",
+			name:              "archived-chart-path",
+			chartPath:         "testdata/charts/compressedchart-0.1.0.tgz",
+			isCompressedChart: true,
 		},
 		{
-			name:      "archived-chart-path-with-hyphens",
-			chartPath: "testdata/charts/compressedchart-with-hyphens-0.1.0.tgz",
+			name:              "archived-chart-path-with-hyphens",
+			chartPath:         "testdata/charts/compressedchart-with-hyphens-0.1.0.tgz",
+			isCompressedChart: true,
 		},
 		{
-			name:      "archived-tar-gz-chart-path",
-			chartPath: "testdata/charts/compressedchart-0.1.0.tar.gz",
+			name:              "archived-tar-gz-chart-path",
+			chartPath:         "testdata/charts/compressedchart-0.1.0.tar.gz",
+			isCompressedChart: true,
 		},
 		{
-			name:      "invalid-archived-chart-path",
-			chartPath: "testdata/charts/invalidcompressedchart0.1.0.tgz",
-			err:       true,
+			name:              "invalid-archived-chart-path",
+			chartPath:         "testdata/charts/invalidcompressedchart0.1.0.tgz",
+			isCompressedChart: true,
+			err:               true,
 		},
 		{
 			name:      "chart-missing-manifest",
@@ -70,19 +90,105 @@ func TestLintChart(t *testing.T) {
 			chartPath: "testdata/charts/chart-with-schema-negative",
 		},
 		{
-			name:      "pre-release-chart",
-			chartPath: "testdata/charts/pre-release-chart-0.1.0-alpha.tgz",
+			name:              "pre-release-chart",
+			chartPath:         "testdata/charts/pre-release-chart-0.1.0-alpha.tgz",
+			isCompressedChart: true,
+		},
+		{
+			name:           "decompressed-chart-enable-full-path",
+			chartPath:      "testdata/charts/decompressedchart/",
+			enableFullPath: true,
+		},
+		{
+			name:              "archived-chart-path-enable-full-path",
+			chartPath:         "testdata/charts/compressedchart-0.1.0.tgz",
+			chartName:         "compressedchart",
+			enableFullPath:    true,
+			isCompressedChart: true,
+		},
+		{
+			name:              "archived-chart-path-with-hyphens-enable-full-path",
+			chartPath:         "testdata/charts/compressedchart-with-hyphens-0.1.0.tgz",
+			chartName:         "compressedchart-with-hyphens",
+			enableFullPath:    true,
+			isCompressedChart: true,
+		},
+		{
+			name:              "archived-tar-gz-chart-path-enable-full-path",
+			chartPath:         "testdata/charts/compressedchart-0.1.0.tar.gz",
+			chartName:         "compressedchart",
+			enableFullPath:    true,
+			isCompressedChart: true,
+		},
+		{
+			name:              "invalid-archived-chart-path-enable-full-path",
+			chartPath:         "testdata/charts/invalidcompressedchart0.1.0.tgz",
+			err:               true,
+			enableFullPath:    true,
+			isCompressedChart: true,
+		},
+		{
+			name:           "chart-missing-manifest-enable-full-path",
+			chartPath:      "testdata/charts/chart-missing-manifest",
+			err:            true,
+			enableFullPath: true,
+		},
+		{
+			name:           "chart-with-schema-enable-full-path",
+			chartPath:      "testdata/charts/chart-with-schema",
+			enableFullPath: true,
+		},
+		{
+			name:           "chart-with-schema-negative-enable-full-path",
+			chartPath:      "testdata/charts/chart-with-schema-negative",
+			enableFullPath: true,
+		},
+		{
+			name:              "pre-release-chart-enable-full-path",
+			chartPath:         "testdata/charts/pre-release-chart-0.1.0-alpha.tgz",
+			chartName:         "pre-release-chart",
+			enableFullPath:    true,
+			isCompressedChart: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, nil, false)
+			result, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, nil, tt.enableFullPath)
 			switch {
 			case err != nil && !tt.err:
 				t.Errorf("%s", err)
 			case err == nil && tt.err:
 				t.Errorf("Expected a chart parsing error")
+			}
+
+			// Check for full path if enabled
+			for _, msg := range result.Messages {
+				if tt.enableFullPath {
+					if tt.isCompressedChart {
+						tempPathPrefixPattern := fmt.Sprintf("^%s[0-9]*/%s/.*",
+							helmLintTempDirPrefix, tt.chartName)
+
+						re, err := regexp.Compile(tempPathPrefixPattern)
+						if err != nil {
+							t.Fatalf("Unexpected error parsing regex pattern %q: %v",
+								tempPathPrefixPattern, err)
+						}
+
+						if !re.Match([]byte(msg.Path)) {
+							t.Fatalf("Full path is missing or incorrect: %s\nExpected to match pattern: %s",
+								msg.Path, tempPathPrefixPattern)
+						}
+
+						continue
+					}
+
+					pathPrefix := filepath.Join(workingDir, tt.chartPath)
+					if !strings.HasPrefix(msg.Path, pathPrefix) {
+						t.Fatalf("Full path is missing or incorrect: %s\nExpected to have prefix: %s",
+							msg.Path, pathPrefix)
+					}
+				}
 			}
 		})
 	}
@@ -124,21 +230,103 @@ func TestNonExistentChart(t *testing.T) {
 
 func TestLint_MultipleCharts(t *testing.T) {
 	testCharts := []string{chart2MultipleChartLint, chart1MultipleChartLint}
-	testLint := NewLint()
-	if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
-		t.Error(result.Errors)
+	chartFile := "Chart.yaml"
+	chartFile1FullPath, err := filepath.Abs(
+		filepath.Join(chart1MultipleChartLint, chartFile))
+	if err != nil {
+		t.Fatalf("Failed to determine the full path of %s in %s",
+			chartFile, chart1MultipleChartLint)
 	}
+	chartFile2FullPath, err := filepath.Abs(
+		filepath.Join(chart2MultipleChartLint, chartFile))
+	if err != nil {
+		t.Fatalf("Failed to determine the full path of %s in %s",
+			chartFile, chart2MultipleChartLint)
+	}
+
+	t.Run("multiple charts", func(t *testing.T) {
+		testLint := NewLint()
+		if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
+			t.Error(result.Errors)
+		}
+	})
+
+	t.Run("multiple charts with --full-path enabled", func(t *testing.T) {
+		testLint := NewLint()
+		testLint.EnableFullPath = true
+
+		result := testLint.Run(testCharts, values)
+		if len(result.Errors) > 0 {
+			t.Error(result.Errors)
+		}
+
+		var file1Found, file2Found bool
+		for _, msg := range result.Messages {
+			switch msg.Path {
+			case chartFile1FullPath:
+				file1Found = true
+			case chartFile2FullPath:
+				file2Found = true
+			default:
+				t.Errorf("Unexpected path in linter message: %s", msg.Path)
+			}
+		}
+
+		if !file1Found || !file2Found {
+			t.Errorf("Missing either of the chart's path (%s, %s)",
+				chartFile1FullPath, chartFile2FullPath)
+		}
+	})
 }
 
 func TestLint_EmptyResultErrors(t *testing.T) {
 	testCharts := []string{chart2MultipleChartLint}
-	testLint := NewLint()
-	if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
-		t.Error("Expected no error, got more")
+	chartFile := "Chart.yaml"
+	chartFileFullPath, err := filepath.Abs(
+		filepath.Join(chart2MultipleChartLint, chartFile))
+	if err != nil {
+		t.Fatalf("Failed to determine the full path of %s in %s",
+			chartFile, chart2MultipleChartLint)
 	}
+
+	t.Run("empty result errors", func(t *testing.T) {
+		testLint := NewLint()
+		if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
+			t.Error("Expected no error, got more")
+		}
+	})
+
+	t.Run("empty result errors with --full-path enabled", func(t *testing.T) {
+		testLint := NewLint()
+		testLint.EnableFullPath = true
+
+		result := testLint.Run(testCharts, values)
+		if len(result.Errors) > 0 {
+			t.Errorf("Incorrect number of linter errors\nExpected: 0\nGot:      %d",
+				len(result.Errors))
+		}
+
+		if len(result.Messages) != 1 {
+			t.Errorf("Incorrect number of linter messages\nExpected: 1\nGot:      %d",
+				len(result.Messages))
+		}
+
+		if result.Messages[0].Path != chartFileFullPath {
+			t.Errorf("Mismatch of path in log message\nExpected: %s\nGot:      %s",
+				chartFileFullPath, result.Messages[0].Path)
+		}
+	})
 }
 
 func TestLint_ChartWithWarnings(t *testing.T) {
+	valuesFile := "values.yaml"
+	valuesFileFullPath, err := filepath.Abs(
+		filepath.Join(chartWithNoTemplatesDir, valuesFile))
+	if err != nil {
+		t.Fatalf("Failed to determine the full path of %s in %s",
+			valuesFile, chartWithNoTemplatesDir)
+	}
+
 	t.Run("should pass when not strict", func(t *testing.T) {
 		testCharts := []string{chartWithNoTemplatesDir}
 		testLint := NewLint()
@@ -154,6 +342,48 @@ func TestLint_ChartWithWarnings(t *testing.T) {
 		testLint.Strict = true
 		if result := testLint.Run(testCharts, values); len(result.Errors) != 0 {
 			t.Error("expected no errors, but got", len(result.Errors))
+		}
+	})
+
+	t.Run("should pass when not strict with --full-path enabled", func(t *testing.T) {
+		testCharts := []string{chartWithNoTemplatesDir}
+		testLint := NewLint()
+		testLint.Strict = false
+		testLint.EnableFullPath = true
+
+		result := testLint.Run(testCharts, values)
+		if len(result.Errors) > 0 {
+			t.Error("Expected no error, got more")
+		}
+
+		if len(result.Messages) == 0 {
+			t.Errorf("Missing linter message for values file")
+		}
+
+		if result.Messages[0].Path != valuesFileFullPath {
+			t.Errorf("Mismatch of path in log message\nExpected: %s\nGot:      %s",
+				valuesFileFullPath, result.Messages[0].Path)
+		}
+	})
+
+	t.Run("should pass with no errors when strict with --full-path enabled", func(t *testing.T) {
+		testCharts := []string{chartWithNoTemplatesDir}
+		testLint := NewLint()
+		testLint.Strict = true
+		testLint.EnableFullPath = true
+
+		result := testLint.Run(testCharts, values)
+		if len(result.Errors) != 0 {
+			t.Error("expected no errors, but got", len(result.Errors))
+		}
+
+		if len(result.Messages) == 0 {
+			t.Errorf("Missing linter message for values file")
+		}
+
+		if result.Messages[0].Path != valuesFileFullPath {
+			t.Errorf("Mismatch of path in log message\nExpected: %s\nGot:      %s",
+				valuesFileFullPath, result.Messages[0].Path)
 		}
 	})
 }

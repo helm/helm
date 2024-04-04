@@ -19,11 +19,13 @@ package rules
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"helm.sh/helm/v3/internal/test/ensure"
+	"helm.sh/helm/v3/pkg/lint/support"
 )
 
 var nonExistingValuesFilePath = filepath.Join("/fake/dir", "values.yaml")
@@ -50,6 +52,10 @@ const testSchema = `
   }
 }
 `
+const (
+	goodChartDir     = "testdata/goodone"
+	badValuesFileDir = "testdata/badvaluesfile"
+)
 
 func TestValidateValuesYamlNotDirectory(t *testing.T) {
 	_ = os.Mkdir(nonExistingValuesFilePath, os.ModePerm)
@@ -166,4 +172,118 @@ func createTestingSchema(t *testing.T, dir string) string {
 		t.Fatalf("Failed to write schema to tmpdir: %s", err)
 	}
 	return schemafile
+}
+
+func TestValuesWithOverrides(t *testing.T) {
+	tests := []struct {
+		name               string
+		chartDir           string
+		values             map[string]interface{}
+		enableFullPath     bool
+		pathToErrSubstring map[string]string
+	}{
+		{
+			name:     "good chart",
+			chartDir: goodChartDir,
+			values: map[string]interface{}{
+				"name": "not-very-goodone-here",
+				"tag":  "test",
+			},
+			enableFullPath:     false,
+			pathToErrSubstring: map[string]string{}},
+		{
+			name:     "good chart with --full-path enabled",
+			chartDir: goodChartDir,
+			values: map[string]interface{}{
+				"name": "not-very-goodone-here",
+				"tag":  "test",
+			},
+			enableFullPath:     true,
+			pathToErrSubstring: map[string]string{},
+		},
+		{
+			name:     "chart not found",
+			chartDir: "some-non-existing-path",
+			values: map[string]interface{}{
+				"name": "chart-not-found",
+				"tag":  "test",
+			},
+			enableFullPath: false,
+			pathToErrSubstring: map[string]string{
+				`values.yaml`: `file does not exist`,
+			},
+		},
+		{
+			name:     "chart not found with --full-path enabled",
+			chartDir: "some-non-existing-path",
+			values: map[string]interface{}{
+				"name": "chart-not-found",
+				"tag":  "test",
+			},
+			enableFullPath: true,
+			pathToErrSubstring: map[string]string{
+				`some-non-existing-path/values.yaml`: `file does not exist`,
+			},
+		},
+		{
+			name:     "bad values file",
+			chartDir: badValuesFileDir,
+			values: map[string]interface{}{
+				"name": "bad value",
+				"tag":  "test",
+			},
+			enableFullPath: false,
+			pathToErrSubstring: map[string]string{
+				`values.yaml`: `unable to parse YAML`,
+			},
+		},
+		{
+			name:     "bad values file with --full-path enabled",
+			chartDir: badValuesFileDir,
+			values: map[string]interface{}{
+				"name": "bad value",
+				"tag":  "test",
+			},
+			enableFullPath: true,
+			pathToErrSubstring: map[string]string{
+				filepath.Join(badValuesFileDir, `values.yaml`): `unable to parse YAML`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			linter := support.Linter{
+				ChartDir:       tt.chartDir,
+				EnableFullPath: tt.enableFullPath,
+			}
+			ValuesWithOverrides(&linter, tt.values)
+
+			if len(linter.Messages) != len(tt.pathToErrSubstring) {
+				for _, msg := range linter.Messages {
+					t.Log(msg.Path, msg.Err)
+				}
+
+				t.Fatalf("Mismatch of linter messages count\nExpected: %d\nGot:      %d",
+					len(tt.pathToErrSubstring), len(linter.Messages))
+			}
+
+			for path, errMsg := range tt.pathToErrSubstring {
+				found := false
+				for _, msg := range linter.Messages {
+					if msg.Path == path && strings.Contains(msg.Err.Error(), errMsg) {
+						found = true
+
+						break
+					}
+				}
+
+				if !found {
+					t.Errorf("Path or error substring not found in linter messages\n"+
+						"Path:      %q\nSubstring: %q\nMessages:  %v",
+						path, errMsg, linter.Messages)
+				}
+			}
+		})
+	}
 }
