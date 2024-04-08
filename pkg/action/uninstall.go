@@ -41,6 +41,7 @@ type Uninstall struct {
 	DryRun              bool
 	IgnoreNotFound      bool
 	KeepHistory         bool
+	KeepResources       bool
 	Wait                bool
 	DeletionPropagation string
 	Timeout             time.Duration
@@ -119,23 +120,31 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		u.cfg.Log("uninstall: Failed to store updated release: %s", err)
 	}
 
-	deletedResources, kept, errs := u.deleteRelease(rel)
-	if errs != nil {
-		u.cfg.Log("uninstall: Failed to delete release: %s", errs)
-		return nil, errors.Errorf("failed to delete release: %s", name)
-	}
+	var errs []error
 
-	if kept != "" {
-		kept = "These resources were kept due to the resource policy:\n" + kept
-	}
-	res.Info = kept
+	if !u.KeepResources {
+		var deletedResources kube.ResourceList
+		var kept string
+		deletedResources, kept, errs = u.deleteRelease(rel)
+		if errs != nil {
+			u.cfg.Log("uninstall: Failed to delete release: %s", errs)
+			return nil, errors.Errorf("failed to delete release: %s", name)
+		}
 
-	if u.Wait {
-		if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceExt); ok {
-			if err := kubeClient.WaitForDelete(deletedResources, u.Timeout); err != nil {
-				errs = append(errs, err)
+		if kept != "" {
+			kept = "These resources were kept due to the resource policy:\n" + kept
+		}
+		res.Info = kept
+
+		if u.Wait {
+			if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceExt); ok {
+				if err := kubeClient.WaitForDelete(deletedResources, u.Timeout); err != nil {
+					errs = append(errs, err)
+				}
 			}
 		}
+	} else {
+		res.Info = "Associated resources were kept because --keep-resources was set"
 	}
 
 	if !u.DisableHooks {
