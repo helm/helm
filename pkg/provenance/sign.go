@@ -295,6 +295,52 @@ func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
 	return ver, nil
 }
 
+func (s *Signatory) VerifyArchive(archive *hapi.Archive) (*Verification, error) {
+	ver := &Verification{}
+	for _, fname := range []string{archive.FileName(), archive.ProvFileName()} {
+		if fi, err := os.Stat(fname); err != nil {
+			return ver, err
+		} else if fi.IsDir() {
+			return ver, errors.Errorf("%s cannot be a directory", fname)
+		}
+	}
+
+	// First verify the signature
+	sig, err := s.decodeSignature(archive.ProvFileName())
+	if err != nil {
+		return ver, errors.Wrap(err, "failed to decode signature")
+	}
+
+	by, err := s.verifySignature(sig)
+	if err != nil {
+		return ver, err
+	}
+	ver.SignedBy = by
+
+	// Second, verify the hash of the tarball.
+	sum, err := DigestFile(archive.FileName())
+	if err != nil {
+		return ver, err
+	}
+	_, sums, err := parseMessageBlock(sig.Plaintext)
+	if err != nil {
+		return ver, err
+	}
+
+	sum = "sha256:" + sum
+	if sha, ok := sums.Files[archive.SignatureFileName()]; !ok {
+		return ver, errors.Errorf("provenance does not contain a SHA for a file named %q", archive.SignatureFileName())
+	} else if sha != sum {
+		return ver, errors.Errorf("sha256 sum does not match for %s: %q != %q", archive.SignatureFileName(), sha, sum)
+	}
+	ver.FileHash = sum
+	ver.FileName = archive.SignatureFileName()
+
+	// TODO: when image signing is added, verify that here.
+
+	return ver, nil
+}
+
 func (s *Signatory) decodeSignature(filename string) (*clearsign.Block, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
