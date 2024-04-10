@@ -18,10 +18,12 @@ package getter
 import (
 	"bytes"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -83,18 +85,64 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 		return nil, err
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("failed to fetch %s : %s", href, resp.Status)
+	// Define the maximum number of retries
+	maxRetries := 20
+
+	// Define retryable status codes
+	retryableCodes := map[int]bool{
+		http.StatusBadGateway:         true, // 502
+		http.StatusServiceUnavailable: true, // 503
 	}
 
-	buf := bytes.NewBuffer(nil)
-	_, err = io.Copy(buf, resp.Body)
-	return buf, err
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		resp, err := client.Do(req)
+
+		if err != nil {
+			if attempt < (maxRetries - 1) {
+				fmt.Printf("Error: %v\n", err)
+				// Sleep for a short duration before retrying
+				time.Sleep(1 * time.Second)
+				continue
+			}
+
+			return nil, err
+		}
+
+		respStatus := resp.Status
+		defer resp.Body.Close()
+
+		// Check the status code
+		if _, ok := retryableCodes[resp.StatusCode]; ok {
+			if attempt < (maxRetries - 1) {
+				fmt.Printf("Received retryable status code: %v\n", resp.StatusCode)
+				// Close the response body
+				resp.Body.Close()
+				// Sleep for a short duration before retrying
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			return nil, errors.Errorf("failed to fetch %s : %s", href, respStatus)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			if attempt < (maxRetries - 1) {
+				fmt.Printf("Received non-OK status code: %v\n", resp.StatusCode)
+				// Close the response body
+				resp.Body.Close()
+				// Sleep for a short duration before retrying
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			return nil, errors.Errorf("failed to fetch %s : %s", href, respStatus)
+		}
+
+		// Process the response
+		buf := bytes.NewBuffer(nil)
+		_, err = io.Copy(buf, resp.Body)
+		return buf, err
+	}
+
+	return nil, fmt.Errorf("maximum retries exceeded")
 }
 
 // NewHTTPGetter constructs a valid http/https client as a Getter
