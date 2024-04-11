@@ -54,8 +54,8 @@ const (
 	IgnorefileName = ".helmignore"
 	// IngressFileName is the name of the example ingress file.
 	IngressFileName = TemplatesDir + sep + "ingress.yaml"
-	// HttpRouteFileName is the name of the example HTTPRoute file.
-	HttpRouteFileName = TemplatesDir + sep + "httproute.yaml"
+	// HTTPRouteFileName is the name of the example HTTPRoute file.
+	HTTPRouteFileName = TemplatesDir + sep + "httproute.yaml"
 	// DeploymentName is the name of the example deployment file.
 	DeploymentName = TemplatesDir + sep + "deployment.yaml"
 	// ServiceName is the name of the example service file.
@@ -335,7 +335,7 @@ spec:
 {{- end }}
 `
 
-const defaultHttpRoute = `{{- if .Values.httpRoute.enabled -}}
+const defaultHTTPRoute = `{{- if .Values.httpRoute.enabled -}}
 {{- $fullName := include "<CHARTNAME>.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
 {{- if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1" -}}
@@ -755,8 +755,8 @@ func Create(name, dir string) (string, error) {
 		},
 		{
 			// httproute.yaml
-			path:    filepath.Join(cdir, HttpRouteFileName),
-			content: transform(defaultHttpRoute, name),
+			path:    filepath.Join(cdir, HTTPRouteFileName),
+			content: transform(defaultHTTPRoute, name),
 		},
 		{
 			// deployment.yaml
