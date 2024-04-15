@@ -338,11 +338,7 @@ spec:
 const defaultHTTPRoute = `{{- if .Values.httpRoute.enabled -}}
 {{- $fullName := include "<CHARTNAME>.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
-{{- if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1" -}}
 apiVersion: gateway.networking.k8s.io/v1
-{{- else -}}
-apiVersion: gateway.networking.k8s.io/v1alpha2
-{{- end }}
 kind: HTTPRoute
 metadata:
   name: {{ $fullName }}
