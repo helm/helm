@@ -47,19 +47,26 @@ func newPluginCmd(out io.Writer) *cobra.Command {
 
 // runHook will execute a plugin hook.
 func runHook(p *plugin.Plugin, event string) error {
-	hook := p.Metadata.Hooks[event]
-	if hook == "" {
+	var cmd string
+	var cmdArgs []string
+
+	plugin.SetupPluginEnv(settings, p.Metadata.Name, p.Dir)
+
+	command := p.Metadata.Hooks[event]
+	if command != "" {
+		cmd = "sh"
+		cmdArgs = []string{"-c", command}
+	}
+
+	main, argv, err := plugin.PrepareCommands(p.Metadata.PlatformHooks[event], cmd, cmdArgs, false, []string{})
+	if err != nil {
 		return nil
 	}
 
-	prog := exec.Command("sh", "-c", hook)
-	// TODO make this work on windows
-	// I think its ... ¯\_(ツ)_/¯
-	// prog := exec.Command("cmd", "/C", p.Metadata.Hooks.Install())
+	prog := exec.Command(main, argv...)
 
 	debug("running %s hook: %s", event, prog)
 
-	plugin.SetupPluginEnv(settings, p.Metadata.Name, p.Dir)
 	prog.Stdout, prog.Stderr = os.Stdout, os.Stderr
 	if err := prog.Run(); err != nil {
 		if eerr, ok := err.(*exec.ExitError); ok {

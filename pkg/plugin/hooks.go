@@ -25,5 +25,8 @@ const (
 	Update = "update"
 )
 
+// PlatformHooks is a map of events to a command for a particular operating system and architecture.
+type PlatformHooks map[string][]PlatformCommand
+
 // Hooks is a map of events to commands.
 type Hooks map[string]string
