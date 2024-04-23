@@ -39,13 +39,13 @@ func newPluginUpdateCmd(out io.Writer) *cobra.Command {
 		Use:     "update <plugin>...",
 		Aliases: []string{"up"},
 		Short:   "update one or more Helm plugins",
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compListPlugins(toComplete, args), cobra.ShellCompDirectiveNoFileComp
 		},
-		PreRunE: func(cmd *cobra.Command, args []string) error {
+		PreRunE: func(_ *cobra.Command, args []string) error {
 			return o.complete(args)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return o.run(out)
 		},
 	}

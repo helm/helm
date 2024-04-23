@@ -54,7 +54,7 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 		Long:              registryLoginDesc,
 		Args:              require.MinimumNArgs(1),
 		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			hostname := args[0]
 
 			username, password, err := getUsernamePassword(o.username, o.password, o.passwordFromStdinOpt)
