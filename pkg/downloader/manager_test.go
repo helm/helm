@@ -284,7 +284,7 @@ version: 0.1.0`
 		Version:    "0.1.0",
 	}
 
-	err = m.downloadAll([]*chart.Dependency{badLocalDep})
+	err = m.downloadAll([]*chart.Dependency{badLocalDep}, make(map[string]string))
 	if err == nil {
 		t.Fatal("Expected error for bad dependency name")
 	}
