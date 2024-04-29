@@ -18,7 +18,6 @@ package repo
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -31,7 +30,6 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
@@ -117,7 +115,7 @@ type CustomGetter struct {
 	repoUrls []string
 }
 
-func (g *CustomGetter) Get(href string, options ...getter.Option) (*bytes.Buffer, error) {
+func (g *CustomGetter) Get(href string, _ ...getter.Option) (*bytes.Buffer, error) {
 	index := &IndexFile{
 		APIVersion: "v1",
 		Generated:  time.Now(),
@@ -134,7 +132,7 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	repoName := "gcs-repo"
 	repoURL := "gs://some-gcs-bucket"
 	myCustomGetter := &CustomGetter{}
-	customGetterConstructor := func(options ...getter.Option) (getter.Getter, error) {
+	customGetterConstructor := func(_ ...getter.Option) (getter.Getter, error) {
 		return myCustomGetter, nil
 	}
 	providers := getter.Providers{{
@@ -148,10 +146,9 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Problem loading chart repository from %s: %v", repoURL, err)
 	}
-	repo.CachePath = ensure.TempDir(t)
-	defer os.RemoveAll(repo.CachePath)
+	repo.CachePath = t.TempDir()
 
-	tempIndexFile, err := ioutil.TempFile("", "test-repo")
+	tempIndexFile, err := os.CreateTemp("", "test-repo")
 	if err != nil {
 		t.Fatalf("Failed to create temp index file: %v", err)
 	}
@@ -266,11 +263,11 @@ func verifyIndex(t *testing.T, actual *IndexFile) {
 // startLocalServerForTests Start the local helm server
 func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 	if handler == nil {
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			return nil, err
 		}
-		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Write(fileBytes)
 		})
 	}
@@ -281,11 +278,11 @@ func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 // startLocalTLSServerForTests Start the local helm server with TLS
 func startLocalTLSServerForTests(handler http.Handler) (*httptest.Server, error) {
 	if handler == nil {
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			return nil, err
 		}
-		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Write(fileBytes)
 		})
 	}
@@ -350,7 +347,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 func TestErrorFindChartInRepoURL(t *testing.T) {
 
 	g := getter.All(&cli.EnvSettings{
-		RepositoryCache: ensure.TempDir(t),
+		RepositoryCache: t.TempDir(),
 	})
 
 	if _, err := FindChartInRepoURL("http://someserver/something", "nginx", "", "", "", "", g); err == nil {

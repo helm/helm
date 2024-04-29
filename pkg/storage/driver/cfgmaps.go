@@ -78,6 +78,7 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 		cfgmaps.Log("get: failed to decode data %q: %s", key, err)
 		return nil, err
 	}
+	r.Labels = filterSystemLabels(obj.ObjectMeta.Labels)
 	// return the release object
 	return r, nil
 }
@@ -145,6 +146,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 			cfgmaps.Log("query: failed to decode release: %s", err)
 			continue
 		}
+		rls.Labels = item.ObjectMeta.Labels
 		results = append(results, rls)
 	}
 	return results, nil
@@ -157,6 +159,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
+	lbs.fromMap(rls.Labels)
 	lbs.set("createdAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new configmap to hold the release
@@ -184,6 +187,7 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
+	lbs.fromMap(rls.Labels)
 	lbs.set("modifiedAt", strconv.Itoa(int(time.Now().Unix())))
 
 	// create a new configmap object to hold the release
@@ -220,13 +224,12 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
 //
 // The following labels are used within each configmap:
 //
-//    "modifiedAt"     - timestamp indicating when this configmap was last modified. (set in Update)
-//    "createdAt"      - timestamp indicating when this configmap was created. (set in Create)
-//    "version"        - version of the release.
-//    "status"         - status of the release (see pkg/release/status.go for variants)
-//    "owner"          - owner of the configmap, currently "helm".
-//    "name"           - name of the release.
-//
+//	"modifiedAt"     - timestamp indicating when this configmap was last modified. (set in Update)
+//	"createdAt"      - timestamp indicating when this configmap was created. (set in Create)
+//	"version"        - version of the release.
+//	"status"         - status of the release (see pkg/release/status.go for variants)
+//	"owner"          - owner of the configmap, currently "helm".
+//	"name"           - name of the release.
 func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigMap, error) {
 	const owner = "helm"
 
@@ -239,6 +242,9 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigM
 	if lbs == nil {
 		lbs.init()
 	}
+
+	// apply custom labels
+	lbs.fromMap(rls.Labels)
 
 	// apply labels
 	lbs.set("name", rls.Name)

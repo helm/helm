@@ -18,7 +18,6 @@ package rules // import "helm.sh/helm/v3/pkg/lint/rules"
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -106,6 +105,10 @@ func validateChartYamlFormat(chartFileError error) error {
 func validateChartName(cf *chart.Metadata) error {
 	if cf.Name == "" {
 		return errors.New("name is required")
+	}
+	name := filepath.Base(cf.Name)
+	if name != cf.Name {
+		return fmt.Errorf("chart name %q is invalid", cf.Name)
 	}
 	return nil
 }
@@ -200,7 +203,7 @@ func validateChartType(cf *chart.Metadata) error {
 // in a generic form of a map[string]interface{}, so that the type
 // of the values can be checked
 func loadChartFileForTypeCheck(filename string) (map[string]interface{}, error) {
-	b, err := ioutil.ReadFile(filename)
+	b, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

@@ -25,6 +25,8 @@ import (
 var chartPath = "testdata/testcharts/subchart"
 
 func TestTemplateCmd(t *testing.T) {
+	deletevalchart := "testdata/testcharts/issue-9027"
+
 	tests := []cmdTestCase{
 		{
 			name:   "check name",
@@ -130,6 +132,34 @@ func TestTemplateCmd(t *testing.T) {
 			name:   "template skip-tests",
 			cmd:    fmt.Sprintf(`template '%s' --skip-tests`, chartPath),
 			golden: "output/template-skip-tests.txt",
+		},
+		{
+			// This test case is to ensure the case where specified dependencies
+			// in the Chart.yaml and those where the Chart.yaml don't have them
+			// specified are the same.
+			name:   "ensure nil/null values pass to subcharts delete values",
+			cmd:    fmt.Sprintf("template '%s'", deletevalchart),
+			golden: "output/issue-9027.txt",
+		},
+		{
+			// Ensure that parent chart values take precedence over imported values
+			name:   "template with imported subchart values ensuring import",
+			cmd:    fmt.Sprintf("template '%s' --set configmap.enabled=true --set subchartb.enabled=true", chartPath),
+			golden: "output/template-subchart-cm.txt",
+		},
+		{
+			// Ensure that user input values take precedence over imported
+			// values from sub-charts.
+			name:   "template with imported subchart values set with --set",
+			cmd:    fmt.Sprintf("template '%s' --set configmap.enabled=true --set subchartb.enabled=true --set configmap.value=baz", chartPath),
+			golden: "output/template-subchart-cm-set.txt",
+		},
+		{
+			// Ensure that user input values take precedence over imported
+			// values from sub-charts when passed by file
+			name:   "template with imported subchart values set with --set",
+			cmd:    fmt.Sprintf("template '%s' -f %s/extra_values.yaml", chartPath, chartPath),
+			golden: "output/template-subchart-cm-set-file.txt",
 		},
 	}
 	runTestCmd(t, tests)

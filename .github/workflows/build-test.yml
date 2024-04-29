@@ -1,0 +1,26 @@
+name: build-test
+on:
+  push:
+    branches:
+      - 'main'
+      - 'release-**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
+      - name: Setup Go
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # pin@5.0.0
+        with:
+          go-version: '1.21'
+      - name: Test source headers are present
+        run: make test-source-headers
+      - name: Run unit tests
+        run: make test-coverage
+      - name: Test build
+        run: make build

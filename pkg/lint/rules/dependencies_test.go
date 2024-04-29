@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,11 +16,9 @@ limitations under the License.
 package rules
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint/support"
@@ -78,9 +76,69 @@ func TestValidateDependencyInMetadata(t *testing.T) {
 	}
 }
 
+func TestValidateDependenciesUnique(t *testing.T) {
+	tests := []struct {
+		chart chart.Chart
+	}{
+		{chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:       "badchart",
+				Version:    "0.1.0",
+				APIVersion: "v2",
+				Dependencies: []*chart.Dependency{
+					{
+						Name: "foo",
+					},
+					{
+						Name: "foo",
+					},
+				},
+			},
+		}},
+		{chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:       "badchart",
+				Version:    "0.1.0",
+				APIVersion: "v2",
+				Dependencies: []*chart.Dependency{
+					{
+						Name:  "foo",
+						Alias: "bar",
+					},
+					{
+						Name: "bar",
+					},
+				},
+			},
+		}},
+		{chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:       "badchart",
+				Version:    "0.1.0",
+				APIVersion: "v2",
+				Dependencies: []*chart.Dependency{
+					{
+						Name:  "foo",
+						Alias: "baz",
+					},
+					{
+						Name:  "bar",
+						Alias: "baz",
+					},
+				},
+			},
+		}},
+	}
+
+	for _, tt := range tests {
+		if err := validateDependenciesUnique(&tt.chart); err == nil {
+			t.Errorf("chart should have been flagged for dependency shadowing")
+		}
+	}
+}
+
 func TestDependencies(t *testing.T) {
-	tmp := ensure.TempDir(t)
-	defer os.RemoveAll(tmp)
+	tmp := t.TempDir()
 
 	c := chartWithBadDependencies()
 	err := chartutil.SaveDir(&c, tmp)

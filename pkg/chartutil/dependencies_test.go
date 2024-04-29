@@ -181,6 +181,9 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["imported-chartA-B.SPextra5"] = "k8s"
 	e["imported-chartA-B.SC1extra5"] = "tiller"
 
+	// These values are imported from the child chart to the parent. Parent
+	// values take precedence over imported values. This enables importing a
+	// large section from a child chart and overriding a selection from it.
 	e["overridden-chart1.SC1bool"] = "false"
 	e["overridden-chart1.SC1float"] = "3.141592"
 	e["overridden-chart1.SC1int"] = "99"
@@ -193,6 +196,9 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["overridden-chartA.SCAstring"] = "jabberwocky"
 	e["overridden-chartA.SPextra4"] = "true"
 
+	// These values are imported from the child chart to the parent. Parent
+	// values take precedence over imported values. This enables importing a
+	// large section from a child chart and overriding a selection from it.
 	e["overridden-chartA-B.SCAbool"] = "true"
 	e["overridden-chartA-B.SCAfloat"] = "41.3"
 	e["overridden-chartA-B.SCAint"] = "808"
@@ -212,7 +218,7 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["SCBexported2A"] = "blaster"
 	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
-	if err := processDependencyImportValues(c); err != nil {
+	if err := processDependencyImportValues(c, false); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 	cc := Values(c.Values)
@@ -225,17 +231,43 @@ func TestProcessDependencyImportValues(t *testing.T) {
 		switch pv := pv.(type) {
 		case float64:
 			if s := strconv.FormatFloat(pv, 'f', -1, 64); s != vv {
-				t.Errorf("failed to match imported float value %v with expected %v", s, vv)
+				t.Errorf("failed to match imported float value %v with expected %v for key %q", s, vv, kk)
 			}
 		case bool:
 			if b := strconv.FormatBool(pv); b != vv {
-				t.Errorf("failed to match imported bool value %v with expected %v", b, vv)
+				t.Errorf("failed to match imported bool value %v with expected %v for key %q", b, vv, kk)
 			}
 		default:
 			if pv != vv {
-				t.Errorf("failed to match imported string value %q with expected %q", pv, vv)
+				t.Errorf("failed to match imported string value %q with expected %q for key %q", pv, vv, kk)
 			}
 		}
+	}
+
+	// Since this was processed with coalescing there should be no null values.
+	// Here we verify that.
+	_, err := cc.PathValue("ensurenull")
+	if err == nil {
+		t.Error("expect nil value not found but found it")
+	}
+	switch xerr := err.(type) {
+	case ErrNoValue:
+		// We found what we expected
+	default:
+		t.Errorf("expected an ErrNoValue but got %q instead", xerr)
+	}
+
+	c = loadChart(t, "testdata/subpop")
+	if err := processDependencyImportValues(c, true); err != nil {
+		t.Fatalf("processing import values dependencies %v", err)
+	}
+	cc = Values(c.Values)
+	val, err := cc.PathValue("ensurenull")
+	if err != nil {
+		t.Error("expect value but ensurenull was not found")
+	}
+	if val != nil {
+		t.Errorf("expect nil value but got %q instead", val)
 	}
 }
 
@@ -244,10 +276,25 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 
 	e := make(map[string]string)
 
+	// The order of precedence should be:
+	// 1. User specified values (e.g CLI)
+	// 2. Parent chart values
+	// 3. Imported values
+	// 4. Sub-chart values
+	// The 4 app charts here deal with things differently:
+	// - app1 has a port value set in the umbrella chart. It does not import any
+	//   values so the value from the umbrella chart should be used.
+	// - app2 has a value in the app chart and imports from the library. The
+	//   app chart value should take precedence.
+	// - app3 has no value in the app chart and imports the value from the library
+	//   chart. The library chart value should be used.
+	// - app4 has a value in the app chart and does not import the value from the
+	//   library chart. The app charts value should be used.
 	e["app1.service.port"] = "3456"
 	e["app2.service.port"] = "8080"
-
-	if err := processDependencyImportValues(c); err != nil {
+	e["app3.service.port"] = "9090"
+	e["app4.service.port"] = "1234"
+	if err := processDependencyImportValues(c, true); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 	cc := Values(c.Values)
@@ -274,7 +321,7 @@ func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 	c := loadChart(t, "testdata/import-values-from-enabled-subchart/parent-chart")
 	nameOverride := "parent-chart-prod"
 
-	if err := processDependencyImportValues(c); err != nil {
+	if err := processDependencyImportValues(c, true); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 

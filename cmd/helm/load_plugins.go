@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -129,7 +128,8 @@ func callPluginExecutable(pluginName string, main string, argv []string, out io.
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	prog := exec.Command(main, argv...)
+	mainCmdExp := os.ExpandEnv(main)
+	prog := exec.Command(mainCmdExp, argv...)
 	prog.Env = env
 	prog.Stdin = os.Stdin
 	prog.Stdout = out
@@ -301,7 +301,7 @@ func addPluginCommands(plugin *plugin.Plugin, baseCmd *cobra.Command, cmds *plug
 			// to the dynamic completion script of the plugin.
 			DisableFlagParsing: true,
 			// A Run is required for it to be a valid command without subcommands
-			Run: func(cmd *cobra.Command, args []string) {},
+			Run: func(_ *cobra.Command, _ []string) {},
 		}
 		baseCmd.AddCommand(subCmd)
 		addPluginCommands(plugin, subCmd, &cmd)
@@ -311,7 +311,7 @@ func addPluginCommands(plugin *plugin.Plugin, baseCmd *cobra.Command, cmds *plug
 // loadFile takes a yaml file at the given path, parses it and returns a pluginCommand object
 func loadFile(path string) (*pluginCommand, error) {
 	cmds := new(pluginCommand)
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return cmds, fmt.Errorf("file (%s) not provided by plugin. No plugin auto-completion possible", path)
 	}

@@ -17,15 +17,19 @@ package pusher
 
 import (
 	"fmt"
-	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v3/pkg/time/ctime"
 )
 
 // OCIPusher is the default OCI backend handler
@@ -59,8 +63,15 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	}
 
 	client := pusher.opts.registryClient
+	if client == nil {
+		c, err := pusher.newRegistryClient()
+		if err != nil {
+			return err
+		}
+		client = c
+	}
 
-	chartBytes, err := ioutil.ReadFile(chartRef)
+	chartBytes, err := os.ReadFile(chartRef)
 	if err != nil {
 		return err
 	}
@@ -68,7 +79,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	var pushOpts []registry.PushOption
 	provRef := fmt.Sprintf("%s.prov", chartRef)
 	if _, err := os.Stat(provRef); err == nil {
-		provBytes, err := ioutil.ReadFile(provRef)
+		provBytes, err := os.ReadFile(provRef)
 		if err != nil {
 			return err
 		}
@@ -79,28 +90,67 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 		path.Join(strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme)), meta.Metadata.Name),
 		meta.Metadata.Version)
 
+	chartCreationTime := ctime.Created(stat)
+	pushOpts = append(pushOpts, registry.PushOptCreationTime(chartCreationTime.Format(time.RFC3339)))
+
 	_, err = client.Push(chartBytes, ref, pushOpts...)
 	return err
 }
 
 // NewOCIPusher constructs a valid OCI client as a Pusher
 func NewOCIPusher(ops ...Option) (Pusher, error) {
-	registryClient, err := registry.NewClient(
-		registry.ClientOptEnableCache(true),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	client := OCIPusher{
-		opts: options{
-			registryClient: registryClient,
-		},
-	}
+	var client OCIPusher
 
 	for _, opt := range ops {
 		opt(&client.opts)
 	}
 
 	return &client, nil
+}
+
+func (pusher *OCIPusher) newRegistryClient() (*registry.Client, error) {
+	if (pusher.opts.certFile != "" && pusher.opts.keyFile != "") || pusher.opts.caFile != "" || pusher.opts.insecureSkipTLSverify {
+		tlsConf, err := tlsutil.NewClientTLS(pusher.opts.certFile, pusher.opts.keyFile, pusher.opts.caFile, pusher.opts.insecureSkipTLSverify)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't create TLS config for client")
+		}
+
+		registryClient, err := registry.NewClient(
+			registry.ClientOptHTTPClient(&http.Client{
+				// From https://github.com/google/go-containerregistry/blob/31786c6cbb82d6ec4fb8eb79cd9387905130534e/pkg/v1/remote/options.go#L87
+				Transport: &http.Transport{
+					Proxy: http.ProxyFromEnvironment,
+					DialContext: (&net.Dialer{
+						// By default we wrap the transport in retries, so reduce the
+						// default dial timeout to 5s to avoid 5x 30s of connection
+						// timeouts when doing the "ping" on certain http registries.
+						Timeout:   5 * time.Second,
+						KeepAlive: 30 * time.Second,
+					}).DialContext,
+					ForceAttemptHTTP2:     true,
+					MaxIdleConns:          100,
+					IdleConnTimeout:       90 * time.Second,
+					TLSHandshakeTimeout:   10 * time.Second,
+					ExpectContinueTimeout: 1 * time.Second,
+					TLSClientConfig:       tlsConf,
+				},
+			}),
+			registry.ClientOptEnableCache(true),
+		)
+		if err != nil {
+			return nil, err
+		}
+		return registryClient, nil
+	}
+
+	opts := []registry.ClientOption{registry.ClientOptEnableCache(true)}
+	if pusher.opts.plainHTTP {
+		opts = append(opts, registry.ClientOptPlainHTTP())
+	}
+
+	registryClient, err := registry.NewClient(opts...)
+	if err != nil {
+		return nil, err
+	}
+	return registryClient, nil
 }

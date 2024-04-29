@@ -32,7 +32,7 @@ func TestStatusCmd(t *testing.T) {
 			Name:      "flummoxed-chickadee",
 			Namespace: "default",
 			Info:      info,
-			Chart:     &chart.Chart{},
+			Chart:     &chart.Chart{Metadata: &chart.Metadata{Name: "name", Version: "1.2.3", AppVersion: "3.2.1"}},
 			Hooks:     hooks,
 		}}
 	}

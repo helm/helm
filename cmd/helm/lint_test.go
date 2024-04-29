@@ -53,9 +53,42 @@ func TestLintCmdWithQuietFlag(t *testing.T) {
 		name:   "lint chart with warning using --quiet flag",
 		cmd:    "lint --quiet testdata/testcharts/chart-with-only-crds",
 		golden: "output/lint-quiet-with-warning.txt",
+	}, {
+		name:      "lint non-existent chart using --quiet flag",
+		cmd:       "lint --quiet thischartdoesntexist/",
+		golden:    "",
+		wantError: true,
 	}}
 	runTestCmd(t, tests)
 
+}
+
+func TestLintCmdWithKubeVersionFlag(t *testing.T) {
+	testChart := "testdata/testcharts/chart-with-deprecated-api"
+	tests := []cmdTestCase{{
+		name:      "lint chart with deprecated api version using kube version flag",
+		cmd:       fmt.Sprintf("lint --kube-version 1.22.0 %s", testChart),
+		golden:    "output/lint-chart-with-deprecated-api.txt",
+		wantError: false,
+	}, {
+		name:      "lint chart with deprecated api version using kube version and strict flag",
+		cmd:       fmt.Sprintf("lint --kube-version 1.22.0 --strict %s", testChart),
+		golden:    "output/lint-chart-with-deprecated-api-strict.txt",
+		wantError: true,
+	}, {
+		// the test builds will use the default k8sVersionMinor const in deprecations.go and capabilities.go
+		// which is "20"
+		name:      "lint chart with deprecated api version without kube version",
+		cmd:       fmt.Sprintf("lint %s", testChart),
+		golden:    "output/lint-chart-with-deprecated-api-old-k8s.txt",
+		wantError: false,
+	}, {
+		name:      "lint chart with deprecated api version with older kube version",
+		cmd:       fmt.Sprintf("lint --kube-version 1.21.0 --strict %s", testChart),
+		golden:    "output/lint-chart-with-deprecated-api-old-k8s.txt",
+		wantError: false,
+	}}
+	runTestCmd(t, tests)
 }
 
 func TestLintFileCompletion(t *testing.T) {

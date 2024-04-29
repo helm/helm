@@ -23,7 +23,6 @@ import (
 var (
 	values                  = make(map[string]interface{})
 	namespace               = "testNamespace"
-	strict                  = false
 	chart1MultipleChartLint = "testdata/charts/multiplecharts-lint-chart-1"
 	chart2MultipleChartLint = "testdata/charts/multiplecharts-lint-chart-2"
 	corruptedTgzChart       = "testdata/charts/corrupted-compressed-chart.tgz"
@@ -78,7 +77,7 @@ func TestLintChart(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, strict)
+			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, nil)
 			switch {
 			case err != nil && !tt.err:
 				t.Errorf("%s", err)
@@ -149,12 +148,12 @@ func TestLint_ChartWithWarnings(t *testing.T) {
 		}
 	})
 
-	t.Run("should fail with errors when strict", func(t *testing.T) {
+	t.Run("should pass with no errors when strict", func(t *testing.T) {
 		testCharts := []string{chartWithNoTemplatesDir}
 		testLint := NewLint()
 		testLint.Strict = true
-		if result := testLint.Run(testCharts, values); len(result.Errors) != 1 {
-			t.Error("expected one error, but got", len(result.Errors))
+		if result := testLint.Run(testCharts, values); len(result.Errors) != 0 {
+			t.Error("expected no errors, but got", len(result.Errors))
 		}
 	})
 }

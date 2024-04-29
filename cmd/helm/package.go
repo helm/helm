@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -56,7 +55,7 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Use:   "package [CHART_PATH] [...]",
 		Short: "package a chart directory into a chart archive",
 		Long:  packageDesc,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errors.Errorf("need at least one argument, the path to the chart")
 			}
@@ -87,7 +86,7 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 				if client.DependencyUpdate {
 					downloadManager := &downloader.Manager{
-						Out:              ioutil.Discard,
+						Out:              io.Discard,
 						ChartPath:        path,
 						Keyring:          client.Keyring,
 						Getters:          p,

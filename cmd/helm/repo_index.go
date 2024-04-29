@@ -43,6 +43,7 @@ type repoIndexOptions struct {
 	dir   string
 	url   string
 	merge string
+	json  bool
 }
 
 func newRepoIndexCmd(out io.Writer) *cobra.Command {
@@ -53,7 +54,7 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 		Short: "generate an index file given a directory containing packaged charts",
 		Long:  repoIndexDesc,
 		Args:  require.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
 				// Allow file completion when completing the argument for the directory
 				return nil, cobra.ShellCompDirectiveDefault
@@ -61,7 +62,7 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 			// No more completions, so disable file completion
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			o.dir = args[0]
 			return o.run(out)
 		},
@@ -70,20 +71,21 @@ func newRepoIndexCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&o.url, "url", "", "url of chart repository")
 	f.StringVar(&o.merge, "merge", "", "merge the generated index into the given index")
+	f.BoolVar(&o.json, "json", false, "output in JSON format")
 
 	return cmd
 }
 
-func (i *repoIndexOptions) run(out io.Writer) error {
+func (i *repoIndexOptions) run(_ io.Writer) error {
 	path, err := filepath.Abs(i.dir)
 	if err != nil {
 		return err
 	}
 
-	return index(path, i.url, i.merge)
+	return index(path, i.url, i.merge, i.json)
 }
 
-func index(dir, url, mergeTo string) error {
+func index(dir, url, mergeTo string, json bool) error {
 	out := filepath.Join(dir, "index.yaml")
 
 	i, err := repo.IndexDirectory(dir, url)
@@ -95,7 +97,7 @@ func index(dir, url, mergeTo string) error {
 		var i2 *repo.IndexFile
 		if _, err := os.Stat(mergeTo); os.IsNotExist(err) {
 			i2 = repo.NewIndexFile()
-			i2.WriteFile(mergeTo, 0644)
+			writeIndexFile(i2, mergeTo, json)
 		} else {
 			i2, err = repo.LoadIndexFile(mergeTo)
 			if err != nil {
@@ -105,5 +107,12 @@ func index(dir, url, mergeTo string) error {
 		i.Merge(i2)
 	}
 	i.SortEntries()
+	return writeIndexFile(i, out, json)
+}
+
+func writeIndexFile(i *repo.IndexFile, out string, json bool) error {
+	if json {
+		return i.WriteJSONFile(out, 0644)
+	}
 	return i.WriteFile(out, 0644)
 }

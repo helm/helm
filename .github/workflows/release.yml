@@ -1,0 +1,102 @@
+name: release
+on:
+  create:
+    tags:
+      - v*
+  push:
+    branches:
+      - main
+
+# Note the only differences between release and canary-release jobs are:
+# - only canary passes --overwrite flag
+# - the VERSION make variable passed to 'make dist checksum' is expected to
+#   be "canary" if the job is triggered by a push to "main" branch. If the
+#   job is triggered by a tag push, VERSION should be the tag ref.
+jobs:
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # pin@5.0.0
+        with:
+          go-version: '1.21'
+
+      - name: Run unit tests
+        run: make test-coverage
+
+      - name: Build Helm Binaries
+        run: |
+          set -eu -o pipefail
+
+          make build-cross
+          make dist checksum VERSION="${{ github.ref_name }}"
+
+      - name: Set latest version
+        run: |
+          set -eu -o pipefail
+
+          mkdir -p _dist_versions
+
+          # Push the latest semver tag, excluding prerelease tags
+          LATEST_VERSION="$(git tag | sort -r --version-sort | grep '^v[0-9]' | grep -v '-' | head -n1)"
+          echo "LATEST_VERSION=${LATEST_VERSION}"
+          echo "${LATEST_VERSION}" > _dist_versions/helm-latest-version
+          echo "${LATEST_VERSION}" > _dist_versions/helm3-latest-version
+
+      - name: Upload Binaries
+        uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
+          AZURE_STORAGE_CONTAINER_NAME: "${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}"
+        with:
+          source_dir: _dist
+          container_name: ${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
+          connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          extra_args: '--pattern helm-*'
+
+      - name: Upload Version tag files
+        uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
+          AZURE_STORAGE_CONTAINER_NAME: "${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}"
+        with:
+          overwrite: 'true'
+          source_dir: _dist_versions
+          container_name: ${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
+          connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+
+  canary-release:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
+
+      - name: Setup Go
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # pin@5.0.0
+        with:
+          go-version: '1.21'
+
+      - name: Run unit tests
+        run: make test-coverage
+
+      - name: Build Helm Binaries
+        run: |
+          make build-cross
+          make dist checksum VERSION="canary"
+
+      - name: Upload Binaries
+        uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
+        with:
+          source_dir: _dist
+          container_name: ${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
+          connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          extra_args: '--pattern helm-*'
+          # WARNING: this will overwrite existing blobs in your blob storage
+          overwrite: 'true'

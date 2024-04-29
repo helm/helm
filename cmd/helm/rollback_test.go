@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
+	"reflect"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -64,6 +66,12 @@ func TestRollbackCmd(t *testing.T) {
 		cmd:    "rollback funny-honey",
 		golden: "output/rollback-no-revision.txt",
 		rels:   rels,
+	}, {
+		name:      "rollback a release with non-existent version",
+		cmd:       "rollback funny-honey 3",
+		golden:    "output/rollback-non-existent-version.txt",
+		rels:      rels,
+		wantError: true,
 	}, {
 		name:      "rollback a release without release name",
 		cmd:       "rollback",
@@ -114,4 +122,45 @@ func TestRollbackFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "rollback", false)
 	checkFileCompletion(t, "rollback myrelease", false)
 	checkFileCompletion(t, "rollback myrelease 1", false)
+}
+
+func TestRollbackWithLabels(t *testing.T) {
+	labels1 := map[string]string{"operation": "install", "firstLabel": "firstValue"}
+	labels2 := map[string]string{"operation": "upgrade", "secondLabel": "secondValue"}
+
+	releaseName := "funny-bunny-labels"
+	rels := []*release.Release{
+		{
+			Name:    releaseName,
+			Info:    &release.Info{Status: release.StatusSuperseded},
+			Chart:   &chart.Chart{},
+			Version: 1,
+			Labels:  labels1,
+		},
+		{
+			Name:    releaseName,
+			Info:    &release.Info{Status: release.StatusDeployed},
+			Chart:   &chart.Chart{},
+			Version: 2,
+			Labels:  labels2,
+		},
+	}
+	storage := storageFixture()
+	for _, rel := range rels {
+		if err := storage.Create(rel); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, _, err := executeActionCommandC(storage, fmt.Sprintf("rollback %s 1", releaseName))
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+	updatedRel, err := storage.Get(releaseName, 3)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	if !reflect.DeepEqual(updatedRel.Labels, labels1) {
+		t.Errorf("Expected {%v}, got {%v}", labels1, updatedRel.Labels)
+	}
 }

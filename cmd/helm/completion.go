@@ -103,7 +103,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		Long:              bashCompDesc,
 		Args:              require.NoArgs,
 		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runCompletionBash(out, cmd)
 		},
 	}
@@ -115,7 +115,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		Long:              zshCompDesc,
 		Args:              require.NoArgs,
 		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runCompletionZsh(out, cmd)
 		},
 	}
@@ -127,7 +127,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		Long:              fishCompDesc,
 		Args:              require.NoArgs,
 		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runCompletionFish(out, cmd)
 		},
 	}
@@ -139,7 +139,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		Long:              powershellCompDesc,
 		Args:              require.NoArgs,
 		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runCompletionPowershell(out, cmd)
 		},
 	}
@@ -210,6 +210,6 @@ func runCompletionPowershell(out io.Writer, cmd *cobra.Command) error {
 }
 
 // Function to disable file completion
-func noCompletions(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func noCompletions(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }

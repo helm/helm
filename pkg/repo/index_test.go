@@ -19,7 +19,8 @@ package repo
 import (
 	"bufio"
 	"bytes"
-	"io/ioutil"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -38,6 +39,7 @@ const (
 	annotationstestfile = "testdata/local-index-annotations.yaml"
 	chartmuseumtestfile = "testdata/chartmuseum-index.yaml"
 	unorderedTestfile   = "testdata/local-index-unordered.yaml"
+	jsonTestfile        = "testdata/local-index.json"
 	testRepo            = "test-repo"
 	indexWithDuplicates = `
 apiVersion: v1
@@ -68,6 +70,10 @@ entries:
     name: grafana
   foo:
   -
+  bar:
+  - digest: "sha256:1234567890abcdef"
+    urls:
+    - https://charts.helm.sh/stable/alpine-1.0.0.tgz
 `
 )
 
@@ -85,6 +91,8 @@ func TestIndexFile(t *testing.T) {
 		{&chart.Metadata{APIVersion: "v2", Name: "cutter", Version: "0.2.0"}, "cutter-0.2.0.tgz", "http://example.com/charts", "sha256:1234567890abc"},
 		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.9+alpha"}, "setter-0.1.9+alpha.tgz", "http://example.com/charts", "sha256:1234567890abc"},
 		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.9+beta"}, "setter-0.1.9+beta.tgz", "http://example.com/charts", "sha256:1234567890abc"},
+		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.8"}, "setter-0.1.8.tgz", "http://example.com/charts", "sha256:1234567890abc"},
+		{&chart.Metadata{APIVersion: "v2", Name: "setter", Version: "0.1.8+beta"}, "setter-0.1.8+beta.tgz", "http://example.com/charts", "sha256:1234567890abc"},
 	} {
 		if err := i.MustAdd(x.md, x.filename, x.baseURL, x.digest); err != nil {
 			t.Errorf("unexpected error adding to index: %s", err)
@@ -123,6 +131,11 @@ func TestIndexFile(t *testing.T) {
 	if err != nil || cv.Metadata.Version != "0.1.9+alpha" {
 		t.Errorf("Expected version: 0.1.9+alpha")
 	}
+
+	cv, err = i.Get("setter", "0.1.8")
+	if err != nil || cv.Metadata.Version != "0.1.8" {
+		t.Errorf("Expected version: 0.1.8")
+	}
 }
 
 func TestLoadIndex(t *testing.T) {
@@ -138,6 +151,10 @@ func TestLoadIndex(t *testing.T) {
 		{
 			Name:     "chartmuseum index file",
 			Filename: chartmuseumtestfile,
+		},
+		{
+			Name:     "JSON index file",
+			Filename: jsonTestfile,
 		},
 	}
 
@@ -273,7 +290,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created charts file: %#v", err)
 		}
 
-		b, err := ioutil.ReadFile(idx)
+		b, err := os.ReadFile(idx)
 		if err != nil {
 			t.Fatalf("error reading charts file: %#v", err)
 		}
@@ -282,7 +299,7 @@ func TestDownloadIndexFile(t *testing.T) {
 
 	t.Run("should not decode the path in the repo url while downloading index", func(t *testing.T) {
 		chartRepoURLPath := "/some%2Fpath/test"
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -326,7 +343,7 @@ func TestDownloadIndexFile(t *testing.T) {
 			t.Fatalf("error finding created charts file: %#v", err)
 		}
 
-		b, err := ioutil.ReadFile(idx)
+		b, err := os.ReadFile(idx)
 		if err != nil {
 			t.Fatalf("error reading charts file: %#v", err)
 		}
@@ -433,7 +450,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 }
 
 func verifyLocalChartsFile(t *testing.T, chartsContent []byte, indexContent *IndexFile) {
-	var expected, real []string
+	var expected, reald []string
 	for chart := range indexContent.Entries {
 		expected = append(expected, chart)
 	}
@@ -441,12 +458,12 @@ func verifyLocalChartsFile(t *testing.T, chartsContent []byte, indexContent *Ind
 
 	scanner := bufio.NewScanner(bytes.NewReader(chartsContent))
 	for scanner.Scan() {
-		real = append(real, scanner.Text())
+		reald = append(reald, scanner.Text())
 	}
-	sort.Strings(real)
+	sort.Strings(reald)
 
-	if strings.Join(expected, " ") != strings.Join(real, " ") {
-		t.Errorf("Cached charts file content unexpected. Expected:\n%s\ngot:\n%s", expected, real)
+	if strings.Join(expected, " ") != strings.Join(reald, " ") {
+		t.Errorf("Cached charts file content unexpected. Expected:\n%s\ngot:\n%s", expected, reald)
 	}
 }
 
@@ -533,9 +550,30 @@ func TestIndexWrite(t *testing.T) {
 	testpath := filepath.Join(dir, "test")
 	i.WriteFile(testpath, 0600)
 
-	got, err := ioutil.ReadFile(testpath)
+	got, err := os.ReadFile(testpath)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), "clipper-0.1.0.tgz") {
+		t.Fatal("Index files doesn't contain expected content")
+	}
+}
+
+func TestIndexJSONWrite(t *testing.T) {
+	i := NewIndexFile()
+	if err := i.MustAdd(&chart.Metadata{APIVersion: "v2", Name: "clipper", Version: "0.1.0"}, "clipper-0.1.0.tgz", "http://example.com/charts", "sha256:1234567890"); err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	dir := t.TempDir()
+	testpath := filepath.Join(dir, "test")
+	i.WriteJSONFile(testpath, 0600)
+
+	got, err := os.ReadFile(testpath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !json.Valid(got) {
+		t.Fatal("Index files doesn't contain valid JSON")
 	}
 	if !strings.Contains(string(got), "clipper-0.1.0.tgz") {
 		t.Fatal("Index files doesn't contain expected content")
@@ -557,5 +595,52 @@ func TestAddFileIndexEntriesNil(t *testing.T) {
 		if err := i.MustAdd(x.md, x.filename, x.baseURL, x.digest); err == nil {
 			t.Errorf("expected err to be non-nil when entries not initialized")
 		}
+	}
+}
+
+func TestIgnoreSkippableChartValidationError(t *testing.T) {
+	type TestCase struct {
+		Input        error
+		ErrorSkipped bool
+	}
+	testCases := map[string]TestCase{
+		"nil": {
+			Input: nil,
+		},
+		"generic_error": {
+			Input: fmt.Errorf("foo"),
+		},
+		"non_skipped_validation_error": {
+			Input: chart.ValidationError("chart.metadata.type must be application or library"),
+		},
+		"skipped_validation_error": {
+			Input:        chart.ValidationErrorf("more than one dependency with name or alias %q", "foo"),
+			ErrorSkipped: true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := ignoreSkippableChartValidationError(tc.Input)
+
+			if tc.Input == nil {
+				if result != nil {
+					t.Error("expected nil result for nil input")
+				}
+				return
+			}
+
+			if tc.ErrorSkipped {
+				if result != nil {
+					t.Error("expected nil result for skipped error")
+				}
+				return
+			}
+
+			if tc.Input != result {
+				t.Error("expected the result equal to input")
+			}
+
+		})
 	}
 }
