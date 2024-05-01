@@ -57,8 +57,8 @@ type (
 		enableCache bool
 		// path to repository config file e.g. ~/.docker/config.json
 		credentialsFile    string
-		username		   string
-		password		   string
+		username           string
+		password           string
 		out                io.Writer
 		authorizer         auth.Client
 		registryAuthorizer *registryauth.Client
@@ -140,7 +140,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 				"User-Agent": {version.GetUserAgent()},
 			},
 			Cache: cache,
-			Credential: func(ctx context.Context, reg string) (registryauth.Credential, error) {
+			Credential: func(_ context.Context, reg string) (registryauth.Credential, error) {
 				if client.username != "" && client.password != "" {
 					return registryauth.Credential{
 						Username: client.username,
@@ -229,7 +229,7 @@ func ClientOptPlainHTTP() ClientOption {
 // ClientOptResolver returns a function that sets the resolver setting on a client options set
 func ClientOptResolver(resolver remotes.Resolver) ClientOption {
 	return func(client *Client) {
-		client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
+		client.resolver = func(_ registry.Reference) (remotes.Resolver, error) {
 			return resolver, nil
 		}
 	}
@@ -558,9 +558,9 @@ type (
 	}
 
 	pushOperation struct {
-		provData   []byte
-		strictMode bool
-		test       bool
+		provData     []byte
+		strictMode   bool
+		creationTime string
 	}
 )
 
@@ -614,7 +614,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		descriptors = append(descriptors, provDescriptor)
 	}
 
-	ociAnnotations := generateOCIAnnotations(meta, operation.test)
+	ociAnnotations := generateOCIAnnotations(meta, operation.creationTime)
 
 	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, ociAnnotations, descriptors...)
 	if err != nil {
@@ -683,10 +683,10 @@ func PushOptStrictMode(strictMode bool) PushOption {
 	}
 }
 
-// PushOptTest returns a function that sets whether test setting on push
-func PushOptTest(test bool) PushOption {
+// PushOptCreationDate returns a function that sets the creation time
+func PushOptCreationTime(creationTime string) PushOption {
 	return func(operation *pushOperation) {
-		operation.test = test
+		operation.creationTime = creationTime
 	}
 }
 

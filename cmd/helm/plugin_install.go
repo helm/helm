@@ -44,7 +44,7 @@ func newPluginInstallCmd(out io.Writer) *cobra.Command {
 		Long:    pluginInstallDesc,
 		Aliases: []string{"add"},
 		Args:    require.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
 				// We do file completion, in case the plugin is local
 				return nil, cobra.ShellCompDirectiveDefault
@@ -52,10 +52,10 @@ func newPluginInstallCmd(out io.Writer) *cobra.Command {
 			// No more completion once the plugin path has been specified
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
-		PreRunE: func(cmd *cobra.Command, args []string) error {
+		PreRunE: func(_ *cobra.Command, args []string) error {
 			return o.complete(args)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return o.run(out)
 		},
 	}

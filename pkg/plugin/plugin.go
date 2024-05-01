@@ -175,6 +175,10 @@ var validPluginName = regexp.MustCompile("^[A-Za-z0-9_-]+$")
 
 // validatePluginData validates a plugin's YAML data.
 func validatePluginData(plug *Plugin, filepath string) error {
+	// When metadata section missing, initialize with no data
+	if plug.Metadata == nil {
+		plug.Metadata = &Metadata{}
+	}
 	if !validPluginName.MatchString(plug.Metadata.Name) {
 		return fmt.Errorf("invalid plugin name at %q", filepath)
 	}

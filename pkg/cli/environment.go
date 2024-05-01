@@ -44,7 +44,7 @@ const defaultMaxHistory = 10
 // defaultBurstLimit sets the default client-side throttling limit
 const defaultBurstLimit = 100
 
-// defaultQPS sets the default QPS value to 0 to to use library defaults unless specified
+// defaultQPS sets the default QPS value to 0 to use library defaults unless specified
 const defaultQPS = float32(0)
 
 // EnvSettings describes all of the environment settings.
@@ -243,6 +243,9 @@ func (s *EnvSettings) EnvVars() map[string]string {
 func (s *EnvSettings) Namespace() string {
 	if ns, _, err := s.config.ToRawKubeConfigLoader().Namespace(); err == nil {
 		return ns
+	}
+	if s.namespace != "" {
+		return s.namespace
 	}
 	return "default"
 }
