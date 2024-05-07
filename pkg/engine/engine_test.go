@@ -98,6 +98,7 @@ func TestRender(t *testing.T) {
 			{Name: "templates/test3", Data: []byte("{{.noValue}}")},
 			{Name: "templates/test4", Data: []byte("{{toJson .Values}}")},
 			{Name: "templates/test5", Data: []byte("{{getHostByName \"helm.sh\"}}")},
+			{Name: "templates/test6", Data: []byte("{{ .Values.config | toToml }}")},
 		},
 		Values: map[string]interface{}{"outer": "DEFAULT", "inner": "DEFAULT"},
 	}
@@ -108,6 +109,9 @@ func TestRender(t *testing.T) {
 			"inner": "inn",
 			"global": map[string]interface{}{
 				"callme": "Ishmael",
+			},
+			"config": map[string]interface{}{
+				"bar": 9,
 			},
 		},
 	}
@@ -125,8 +129,9 @@ func TestRender(t *testing.T) {
 		"moby/templates/test1": "Spouter Inn",
 		"moby/templates/test2": "ishmael",
 		"moby/templates/test3": "",
-		"moby/templates/test4": `{"global":{"callme":"Ishmael"},"inner":"inn","outer":"spouter"}`,
+		"moby/templates/test4": `{"config":{"bar":9},"global":{"callme":"Ishmael"},"inner":"inn","outer":"spouter"}`,
 		"moby/templates/test5": "",
+		"moby/templates/test6": "bar = 9\n",
 	}
 
 	for name, data := range expect {

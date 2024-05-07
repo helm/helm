@@ -161,6 +161,12 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("template '%s' -f %s/extra_values.yaml", chartPath, chartPath),
 			golden: "output/template-subchart-cm-set-file.txt",
 		},
+		{
+			// Ensure that toToml processes integers as ints, and not floats
+			name:   "template with toToml processing an integer",
+			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/issue-12987"),
+			golden: "output/issue-12987.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }

@@ -1,0 +1,4 @@
+---
+# Source: issue-12987/templates/object.yaml
+data:
+  bar = 9
