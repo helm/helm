@@ -17,7 +17,13 @@ limitations under the License.
 package action
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -181,4 +187,50 @@ func mergeStrStrMaps(current, desired map[string]string) map[string]string {
 		result[k] = desiredVal
 	}
 	return result
+}
+
+func chartAtPath(path string) bool {
+	fi, err := os.Stat(path)
+	if err != nil {
+		// give up, can't do any of the other checks
+		return false
+	}
+	if fi.IsDir() {
+		// if path is a directory, check for Chart.yaml inside
+		cy, err := os.Stat(filepath.Join(path, "Chart.yaml"))
+		if err != nil {
+			// directory without a Chart.yaml is not a valid chart
+			return false
+		}
+		return cy.Mode().IsRegular()
+	}
+	if !fi.Mode().IsRegular() {
+		// if path isn't a regular file, it cannot be a valid chart
+		return false
+	}
+	// if path is a file, try to peek inside as an archive and look for Chart.yaml
+	buf, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer buf.Close()
+	gz, err := gzip.NewReader(buf)
+	if err != nil {
+		return false
+	}
+	tr := tar.NewReader(gz)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break // End of archive
+		}
+		if err != nil {
+			return false
+		}
+		_, f := filepath.Split(hdr.Name)
+		if strings.Compare(f, "Chart.yaml") == 0 {
+			return true
+		}
+	}
+	return false
 }
