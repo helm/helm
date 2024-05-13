@@ -69,9 +69,9 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		r, err := u.cfg.releaseContent(name, 0)
 		switch {
 		case err == nil:
-			return &release.UninstallReleaseResponse{Release: r}, nil
-		case u.IgnoreNotFound && errors.As(err, &driver.ErrReleaseNotFound):
 			fallthrough
+		case u.IgnoreNotFound && errors.As(err, &driver.ErrReleaseNotFound):
+			return &release.UninstallReleaseResponse{Release: r}, nil
 		default:
 			return &release.UninstallReleaseResponse{}, err
 		}
