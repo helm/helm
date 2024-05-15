@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
@@ -51,7 +52,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			h.DeletePolicies = []release.HookDeletePolicy{release.HookBeforeHookCreation}
 		}
 
-		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation); err != nil {
+		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation, timeout); err != nil {
 			return err
 		}
 
@@ -88,7 +89,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			h.LastRun.Phase = release.HookPhaseFailed
 			// If a hook is failed, check the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if err := cfg.deleteHookByPolicy(h, release.HookFailed); err != nil {
+			if err := cfg.deleteHookByPolicy(h, release.HookFailed, timeout); err != nil {
 				return err
 			}
 			return err
@@ -99,7 +100,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	// If all hooks are successful, check the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
 	for _, h := range executingHooks {
-		if err := cfg.deleteHookByPolicy(h, release.HookSucceeded); err != nil {
+		if err := cfg.deleteHookByPolicy(h, release.HookSucceeded, timeout); err != nil {
 			return err
 		}
 	}
@@ -120,7 +121,7 @@ func (x hookByWeight) Less(i, j int) bool {
 }
 
 // deleteHookByPolicy deletes a hook if the hook policy instructs it to
-func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.HookDeletePolicy) error {
+func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.HookDeletePolicy, timeout time.Duration) error {
 	// Never delete CustomResourceDefinitions; this could cause lots of
 	// cascading garbage collection.
 	if h.Kind == "CustomResourceDefinition" {
@@ -134,6 +135,13 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 		_, errs := cfg.KubeClient.Delete(resources)
 		if len(errs) > 0 {
 			return errors.New(joinErrors(errs))
+		}
+
+		//wait for resources until they are deleted to avoid conflicts
+		if kubeClient, ok := cfg.KubeClient.(kube.InterfaceExt); ok {
+			if err := kubeClient.WaitForDelete(resources, timeout); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

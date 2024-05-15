@@ -91,6 +91,7 @@ func TestPlatformPrepareCommand(t *testing.T) {
 				{OperatingSystem: "linux", Architecture: "arm64", Command: "echo -n linux-arm64"},
 				{OperatingSystem: "linux", Architecture: "ppc64le", Command: "echo -n linux-ppc64le"},
 				{OperatingSystem: "linux", Architecture: "s390x", Command: "echo -n linux-s390x"},
+				{OperatingSystem: "linux", Architecture: "riscv64", Command: "echo -n linux-riscv64"},
 				{OperatingSystem: "windows", Architecture: "amd64", Command: "echo -n win-64"},
 			},
 		},
@@ -108,6 +109,8 @@ func TestPlatformPrepareCommand(t *testing.T) {
 		osStrCmp = "linux-ppc64le"
 	} else if os == "linux" && arch == "s390x" {
 		osStrCmp = "linux-s390x"
+	} else if os == "linux" && arch == "riscv64" {
+		osStrCmp = "linux-riscv64"
 	} else if os == "windows" && arch == "amd64" {
 		osStrCmp = "win-64"
 	} else {
@@ -350,6 +353,11 @@ func TestSetupEnvWithSpace(t *testing.T) {
 }
 
 func TestValidatePluginData(t *testing.T) {
+	// A mock plugin missing any metadata.
+	mockMissingMeta := &Plugin{
+		Dir: "no-such-dir",
+	}
+
 	for i, item := range []struct {
 		pass bool
 		plug *Plugin
@@ -360,6 +368,7 @@ func TestValidatePluginData(t *testing.T) {
 		{false, mockPlugin("$foo -bar")}, // Test leading chars
 		{false, mockPlugin("foo -bar ")}, // Test trailing chars
 		{false, mockPlugin("foo\nbar")},  // Test newline
+		{false, mockMissingMeta},         // Test if the metadata section missing
 	} {
 		err := validatePluginData(item.plug, fmt.Sprintf("test-%d", i))
 		if item.pass && err != nil {

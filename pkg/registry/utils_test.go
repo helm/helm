@@ -216,9 +216,12 @@ func initCompromisedRegistryTestServer() string {
 }
 
 func testPush(suite *TestSuite) {
+
+	testingChartCreationTime := "1977-09-02T22:04:05Z"
+
 	// Bad bytes
 	ref := fmt.Sprintf("%s/testrepo/testchart:1.2.3", suite.DockerRegistryHost)
-	_, err := suite.RegistryClient.Push([]byte("hello"), ref, PushOptTest(true))
+	_, err := suite.RegistryClient.Push([]byte("hello"), ref, PushOptCreationTime(testingChartCreationTime))
 	suite.NotNil(err, "error pushing non-chart bytes")
 
 	// Load a test chart
@@ -229,20 +232,20 @@ func testPush(suite *TestSuite) {
 
 	// non-strict ref (chart name)
 	ref = fmt.Sprintf("%s/testrepo/boop:%s", suite.DockerRegistryHost, meta.Version)
-	_, err = suite.RegistryClient.Push(chartData, ref, PushOptTest(true))
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptCreationTime(testingChartCreationTime))
 	suite.NotNil(err, "error pushing non-strict ref (bad basename)")
 
 	// non-strict ref (chart name), with strict mode disabled
-	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false), PushOptTest(true))
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false), PushOptCreationTime(testingChartCreationTime))
 	suite.Nil(err, "no error pushing non-strict ref (bad basename), with strict mode disabled")
 
 	// non-strict ref (chart version)
 	ref = fmt.Sprintf("%s/testrepo/%s:latest", suite.DockerRegistryHost, meta.Name)
-	_, err = suite.RegistryClient.Push(chartData, ref, PushOptTest(true))
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptCreationTime(testingChartCreationTime))
 	suite.NotNil(err, "error pushing non-strict ref (bad tag)")
 
 	// non-strict ref (chart version), with strict mode disabled
-	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false), PushOptTest(true))
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false), PushOptCreationTime(testingChartCreationTime))
 	suite.Nil(err, "no error pushing non-strict ref (bad tag), with strict mode disabled")
 
 	// basic push, good ref
@@ -251,7 +254,7 @@ func testPush(suite *TestSuite) {
 	meta, err = extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
-	_, err = suite.RegistryClient.Push(chartData, ref, PushOptTest(true))
+	_, err = suite.RegistryClient.Push(chartData, ref, PushOptCreationTime(testingChartCreationTime))
 	suite.Nil(err, "no error pushing good ref")
 
 	_, err = suite.RegistryClient.Pull(ref)
@@ -269,7 +272,7 @@ func testPush(suite *TestSuite) {
 
 	// push with prov
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
-	result, err := suite.RegistryClient.Push(chartData, ref, PushOptProvData(provData), PushOptTest(true))
+	result, err := suite.RegistryClient.Push(chartData, ref, PushOptProvData(provData), PushOptCreationTime(testingChartCreationTime))
 	suite.Nil(err, "no error pushing good ref with prov")
 
 	_, err = suite.RegistryClient.Pull(ref)
@@ -281,12 +284,12 @@ func testPush(suite *TestSuite) {
 	suite.Equal(ref, result.Ref)
 	suite.Equal(meta.Name, result.Chart.Meta.Name)
 	suite.Equal(meta.Version, result.Chart.Meta.Version)
-	suite.Equal(int64(684), result.Manifest.Size)
+	suite.Equal(int64(742), result.Manifest.Size)
 	suite.Equal(int64(99), result.Config.Size)
 	suite.Equal(int64(973), result.Chart.Size)
 	suite.Equal(int64(695), result.Prov.Size)
 	suite.Equal(
-		"sha256:b57e8ffd938c43253f30afedb3c209136288e6b3af3b33473e95ea3b805888e6",
+		"sha256:fbbade96da6050f68f94f122881e3b80051a18f13ab5f4081868dd494538f5c2",
 		result.Manifest.Digest)
 	suite.Equal(
 		"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580",
@@ -354,12 +357,12 @@ func testPull(suite *TestSuite) {
 	suite.Equal(ref, result.Ref)
 	suite.Equal(meta.Name, result.Chart.Meta.Name)
 	suite.Equal(meta.Version, result.Chart.Meta.Version)
-	suite.Equal(int64(684), result.Manifest.Size)
+	suite.Equal(int64(742), result.Manifest.Size)
 	suite.Equal(int64(99), result.Config.Size)
 	suite.Equal(int64(973), result.Chart.Size)
 	suite.Equal(int64(695), result.Prov.Size)
 	suite.Equal(
-		"sha256:b57e8ffd938c43253f30afedb3c209136288e6b3af3b33473e95ea3b805888e6",
+		"sha256:fbbade96da6050f68f94f122881e3b80051a18f13ab5f4081868dd494538f5c2",
 		result.Manifest.Digest)
 	suite.Equal(
 		"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580",
@@ -370,7 +373,7 @@ func testPull(suite *TestSuite) {
 	suite.Equal(
 		"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256",
 		result.Prov.Digest)
-	suite.Equal("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}],\"annotations\":{\"org.opencontainers.image.description\":\"A Helm chart for Kubernetes\",\"org.opencontainers.image.title\":\"signtest\",\"org.opencontainers.image.version\":\"0.1.0\"}}",
+	suite.Equal("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}],\"annotations\":{\"org.opencontainers.image.created\":\"1977-09-02T22:04:05Z\",\"org.opencontainers.image.description\":\"A Helm chart for Kubernetes\",\"org.opencontainers.image.title\":\"signtest\",\"org.opencontainers.image.version\":\"0.1.0\"}}",
 		string(result.Manifest.Data))
 	suite.Equal("{\"name\":\"signtest\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\",\"apiVersion\":\"v1\"}",
 		string(result.Config.Data))

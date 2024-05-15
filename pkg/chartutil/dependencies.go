@@ -59,9 +59,8 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath s
 					if bv, ok := vv.(bool); ok {
 						r.Enabled = bv
 						break
-					} else {
-						log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value", c, r.Name)
 					}
+					log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value", c, r.Name)
 				} else if _, ok := err.(ErrNoValue); !ok {
 					// this is a real error
 					log.Printf("Warning: PathValue returned error %v", err)
@@ -334,11 +333,9 @@ func trimNilValues(vals map[string]interface{}) map[string]interface{} {
 	valsCopyMap := valsCopy.(map[string]interface{})
 	for key, val := range valsCopyMap {
 		if val == nil {
-			log.Printf("trim deleting %q", key)
 			// Iterate over the values and remove nil keys
 			delete(valsCopyMap, key)
 		} else if istable(val) {
-			log.Printf("trim copying %q", key)
 			// Recursively call into ourselves to remove keys from inner tables
 			valsCopyMap[key] = trimNilValues(val.(map[string]interface{}))
 		}

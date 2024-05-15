@@ -124,7 +124,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 				"User-Agent": {version.GetUserAgent()},
 			},
 			Cache: cache,
-			Credential: func(ctx context.Context, reg string) (registryauth.Credential, error) {
+			Credential: func(_ context.Context, reg string) (registryauth.Credential, error) {
 				dockerClient, ok := client.authorizer.(*dockerauth.Client)
 				if !ok {
 					return registryauth.EmptyCredential, errors.New("unable to obtain docker client")
@@ -198,7 +198,7 @@ func ClientOptPlainHTTP() ClientOption {
 // ClientOptResolver returns a function that sets the resolver setting on a client options set
 func ClientOptResolver(resolver remotes.Resolver) ClientOption {
 	return func(client *Client) {
-		client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
+		client.resolver = func(_ registry.Reference) (remotes.Resolver, error) {
 			return resolver, nil
 		}
 	}
@@ -527,9 +527,9 @@ type (
 	}
 
 	pushOperation struct {
-		provData   []byte
-		strictMode bool
-		test       bool
+		provData     []byte
+		strictMode   bool
+		creationTime string
 	}
 )
 
@@ -583,7 +583,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		descriptors = append(descriptors, provDescriptor)
 	}
 
-	ociAnnotations := generateOCIAnnotations(meta, operation.test)
+	ociAnnotations := generateOCIAnnotations(meta, operation.creationTime)
 
 	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, ociAnnotations, descriptors...)
 	if err != nil {
@@ -652,10 +652,10 @@ func PushOptStrictMode(strictMode bool) PushOption {
 	}
 }
 
-// PushOptTest returns a function that sets whether test setting on push
-func PushOptTest(test bool) PushOption {
+// PushOptCreationDate returns a function that sets the creation time
+func PushOptCreationTime(creationTime string) PushOption {
 	return func(operation *pushOperation) {
-		operation.test = test
+		operation.creationTime = creationTime
 	}
 }
 
