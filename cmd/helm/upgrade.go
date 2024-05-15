@@ -128,6 +128,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
 					}
 					instClient := action.NewInstall(cfg)
+					instClient.TakeOwnership = client.TakeOwnership
 					instClient.CreateNamespace = createNamespace
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.Force = client.Force
@@ -280,6 +281,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
+	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "take ownership will ignore the check for helm annotations and take ownership of the resources")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
