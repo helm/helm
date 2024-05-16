@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # pin@v4.1.6
         with:
           fetch-depth: 0
 
@@ -76,7 +76,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout source code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # pin@v4.1.6
 
       - name: Setup Go
         uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # pin@5.0.1
