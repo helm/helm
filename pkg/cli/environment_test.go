@@ -111,6 +111,14 @@ func TestEnvSettings(t *testing.T) {
 			kubeTLSServer: "example.org",
 			kubeInsecure:  true,
 		},
+		{
+			name:       "invalid kubeconfig",
+			ns:         "testns",
+			args:       "--namespace=testns --kubeconfig=/path/to/fake/file",
+			maxhistory: defaultMaxHistory,
+			burstLimit: defaultBurstLimit,
+			qps:        defaultQPS,
+		},
 	}
 
 	for _, tt := range tests {
