@@ -46,6 +46,11 @@ func TestValidate(t *testing.T) {
 			ValidationError("chart.metadata.name \"../../test\" is invalid"),
 		},
 		{
+			"chart without name (namespace)",
+			&Metadata{Name: "../../namespace/test", APIVersion: "v2", Version: "1.0"},
+			ValidationError("chart.metadata.name \"../../namespace/test\" is invalid"),
+		},
+		{
 			"chart without version",
 			&Metadata{Name: "test", APIVersion: "v2"},
 			ValidationError("chart.metadata.version is required"),
@@ -176,6 +181,11 @@ func TestValidate(t *testing.T) {
 			"version invalid",
 			&Metadata{APIVersion: "v2", Name: "test", Version: "1.2.3.4"},
 			ValidationError("chart.metadata.version \"1.2.3.4\" is invalid"),
+		},
+		{
+			"namespaced chart",
+			&Metadata{Name: "namespace/test", APIVersion: "v2", Version: "1.0", Type: "application"},
+			nil,
 		},
 	}
 
