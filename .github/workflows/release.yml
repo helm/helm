@@ -34,7 +34,7 @@ jobs:
         run: |
           set -eu -o pipefail
 
-          make build-cross
+          make build-cross VERSION="${{ github.ref_name }}"
           make dist checksum VERSION="${{ github.ref_name }}"
 
       - name: Set latest version
