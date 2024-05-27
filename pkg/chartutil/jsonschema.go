@@ -18,11 +18,13 @@ package chartutil
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/xeipuuv/gojsonschema"
+	"github.com/qri-io/jsonschema"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -56,12 +58,6 @@ func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) err
 
 // ValidateAgainstSingleSchema checks that values does not violate the structure laid out in this schema
 func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error) {
-	defer func() {
-		if r := recover(); r != nil {
-			reterr = fmt.Errorf("unable to validate schema: %s", r)
-		}
-	}()
-
 	valuesData, err := yaml.Marshal(values)
 	if err != nil {
 		return err
@@ -73,18 +69,22 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error
 	if bytes.Equal(valuesJSON, []byte("null")) {
 		valuesJSON = []byte("{}")
 	}
-	schemaLoader := gojsonschema.NewBytesLoader(schemaJSON)
-	valuesLoader := gojsonschema.NewBytesLoader(valuesJSON)
 
-	result, err := gojsonschema.Validate(schemaLoader, valuesLoader)
+	chartSchema := &jsonschema.Schema{}
+	err = json.Unmarshal(schemaJSON, chartSchema)
+	if err != nil {
+		return fmt.Errorf("Failed to unmarshal JSON schema: %w", err)
+	}
+
+	errs, err := chartSchema.ValidateBytes(context.Background(), valuesJSON)
 	if err != nil {
 		return err
 	}
 
-	if !result.Valid() {
+	if len(errs) > 0 {
 		var sb strings.Builder
-		for _, desc := range result.Errors() {
-			sb.WriteString(fmt.Sprintf("- %s\n", desc))
+		for _, keyError := range errs {
+			sb.WriteString(fmt.Sprintf("- %s: %s\n", keyError.PropertyPath, keyError.Message))
 		}
 		return errors.New(sb.String())
 	}
