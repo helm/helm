@@ -115,7 +115,7 @@ Helm maintains a strong commitment to backward compatibility. All of our changes
 formats are backward compatible from one major release to the next. No features, flags, or commands
 are removed or substantially modified (unless we need to fix a security issue).
 
-We also remain committed to not changing publicly accessible Go library definitions inside of the `pkg/` directory of our source code in a non-backwards-compatible way. For more on
+We also remain committed to not changing publicly accessible Go library definitions inside of the `pkg/` directory of our source code in a non-backwards-compatible way.
 
 For more details on Helm’s minor and patch release backwards-compatibility rules, please read [HIP-0004](https://github.com/helm/community/blob/main/hips/hip-0004.md)
 
