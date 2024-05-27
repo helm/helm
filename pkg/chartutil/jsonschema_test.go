@@ -166,3 +166,21 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
 	}
 }
+
+func TestValidateAgainstBraceBug(t *testing.T) {
+	schemaJSON, err := os.ReadFile("./testdata/test-values-invalidBraceBug.schema.json")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	values := map[string]interface{}{
+		"image": map[string]interface{}{
+			"repository": "nginx",
+			"pullPolicy": "Always",
+		},
+	}
+
+	if err := ValidateAgainstSingleSchema(values, schemaJSON); err == nil {
+		t.Error("The invalid schema should cause the validation to fail")
+	}
+
+}
