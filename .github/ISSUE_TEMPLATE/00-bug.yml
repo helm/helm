@@ -1,0 +1,74 @@
+# https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository#creating-issue-forms
+# https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-githubs-form-schema
+name: Bugs
+description: Create a report to help us improve.
+title: "Title"
+labels:
+  - bug
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping us improve! 🙏 
+        Please answer these questions and provide as much information as possible about your problem.
+
+  - type: input
+    id: helm-version
+    attributes:
+      label: Helm version
+      description: |
+        What version of Helm are you using (`helm version`)?
+      placeholder: ex. v3.12.3
+    validations:
+      required: true
+
+  - type: input
+    id: kubectl-version
+    attributes:
+      label: Kubectl version
+      description: |
+        What version of Kubectl are you using (`kubectl version`)?
+      placeholder: ex. v4.5.4
+    validations:
+      required: true
+
+  - type: dropdown
+    id: is-reproducible
+    attributes:
+      label: Can this bug be reproduced with the latest release?
+      options:
+        - Option Yes
+        - Option No
+    validations:
+      required: true
+
+  - type: input
+    id: could-platform
+    attributes:
+      label: Cloud Provider/Platform
+      placeholder: ex. AKS, GKE, Minikube
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-did-you-do
+    attributes:
+      label: "What did you do?"
+      description: "If possible, provide a recipe for reproducing the error."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: "What did you see happen?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: "What did you expect to see?"
+    validations:
+      required: true
