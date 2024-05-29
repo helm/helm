@@ -25,19 +25,19 @@ import (
 )
 
 // All runs all of the available linters on the given base directory.
-func All(basedir string, values map[string]interface{}, namespace string, _ bool) support.Linter {
-	return AllWithKubeVersion(basedir, values, namespace, nil)
+func All(basedir string, values map[string]interface{}, namespace string, quiet bool) support.Linter {
+	return AllWithKubeVersion(basedir, values, namespace, nil, quiet)
 }
 
 // AllWithKubeVersion runs all the available linters on the given base directory, allowing to specify the kubernetes version.
-func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) support.Linter {
+func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, quiet bool) support.Linter {
 	// Using abs path to get directory context
 	chartDir, _ := filepath.Abs(basedir)
 
 	linter := support.Linter{ChartDir: chartDir}
 	rules.Chartfile(&linter)
 	rules.ValuesWithOverrides(&linter, values)
-	rules.TemplatesWithKubeVersion(&linter, values, namespace, kubeVersion)
+	rules.TemplatesWithKubeVersion(&linter, values, namespace, kubeVersion, quiet)
 	rules.Dependencies(&linter)
 	return linter
 }
