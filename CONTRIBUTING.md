@@ -66,6 +66,12 @@ Use your real name (sorry, no pseudonyms or anonymous contributions.)
 If you set your `user.name` and `user.email` git configs, you can sign your commit automatically
 with `git commit -s`.
 
+The following command will update your git config with `user.email`:
+
+``` bash
+git config --global user.email joe.smith@example.com
+```
+
 Note: If your git config information is set properly then viewing the `git log` information for your
  commit will look something like this:
 
