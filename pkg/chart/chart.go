@@ -51,6 +51,8 @@ type Chart struct {
 	// Files are miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
 	Files []*File `json:"files"`
+	// specify whether index override is being used for this chart
+	IndexOverride bool
 
 	parent       *Chart
 	dependencies []*Chart
