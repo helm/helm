@@ -35,14 +35,19 @@ import (
 //
 // It provides the implementation of 'helm package'.
 type Package struct {
-	Sign             bool
-	Key              string
-	Keyring          string
-	PassphraseFile   string
-	Version          string
-	AppVersion       string
-	Destination      string
-	DependencyUpdate bool
+	CertFile              string
+	KeyFile               string
+	CaFile                string
+	InsecureSkipTLSverify bool
+	PlainHTTP             bool
+	Sign                  bool
+	Key                   string
+	Keyring               string
+	PassphraseFile        string
+	Version               string
+	AppVersion            string
+	Destination           string
+	DependencyUpdate      bool
 
 	RepositoryConfig string
 	RepositoryCache  string

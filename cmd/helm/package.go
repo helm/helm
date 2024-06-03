@@ -84,6 +84,12 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					return err
 				}
 
+				cfg.RegistryClient, err = newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+					client.InsecureSkipTLSverify, client.PlainHTTP)
+				if err != nil {
+					return fmt.Errorf("missing registry client: %w", err)
+				}
+
 				if client.DependencyUpdate {
 					downloadManager := &downloader.Manager{
 						Out:              io.Discard,
@@ -119,6 +125,11 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.AppVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&client.Destination, "destination", "d", ".", "location to write the chart.")
 	f.BoolVarP(&client.DependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
+	f.StringVar(&client.CertFile, "cert-file", "", "identify registry client using this SSL certificate file")
+	f.StringVar(&client.KeyFile, "key-file", "", "identify registry client using this SSL key file")
+	f.StringVar(&client.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&client.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for remote sources")
+	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use insecure HTTP connections for remote sources")
 
 	return cmd
 }
