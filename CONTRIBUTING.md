@@ -72,6 +72,12 @@ The following command will update your git config with `user.email`:
 git config --global user.email joe.smith@example.com
 ```
 
+This command will update your git config with `user.name`:
+
+``` bash
+git config --global user.name "Joe Smith"
+```
+
 Note: If your git config information is set properly then viewing the `git log` information for your
  commit will look something like this:
 
