@@ -40,6 +40,8 @@ type Release struct {
 	// Labels of the release.
 	// Disabled encoding into Json cause labels are stored in storage driver metadata field.
 	Labels map[string]string `json:"-"`
+	// Skipped indicates if release was skipped.
+	Skipped bool
 }
 
 // SetStatus is a helper for setting the status on a release.
