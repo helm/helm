@@ -12,3 +12,12 @@ ingress:
     - host: myhost2.local
     - host: myhost3.local
   tls: []
+
+certificate:
+  create: true
+  issuerRef:
+    kind: ClusterIssuer
+    name: self-signed
+  dnsNames:
+    - podinfo
+    - [myhost1.local, myhost2.local, myhost3.local]
