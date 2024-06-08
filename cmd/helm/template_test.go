@@ -72,8 +72,13 @@ func TestTemplateCmd(t *testing.T) {
 			golden: "output/template-chart-with-ingress-with-map-host.txt",
 		},
 		{
-			name:   "check chart with map type ingress host and set ingress.hosts[1].host=changed_host.com",
-			cmd:    fmt.Sprintf("template '%s' --set ingress.enabled=true --set ingress.hosts[1].host=changed_host.com", "testdata/testcharts/chart-with-ingress-with-list-host"),
+			name: "check chart with map type ingress host and set ingress.hosts[1].host=changed_host.com and -f values.yaml",
+			cmd: fmt.Sprintf(
+				"template '%s' %s %s",
+				"testdata/testcharts/chart-with-ingress-with-list-host",
+				"--set ingress.enabled=true --set ingress.hosts[1].host=changed_host.com",
+				"--set certificate.dnsNames[1][1]=changed_dns_host.local",
+			),
 			golden: "output/template-chart-with-ingress-with-list-host.txt",
 		},
 		{

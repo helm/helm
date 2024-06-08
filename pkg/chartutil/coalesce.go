@@ -312,36 +312,34 @@ func coalesceListsFullKey(printf printFn, dst, src []interface{}, prefix string,
 	// Because dest has higher precedence than src, dest values override src
 	// values.
 	for key, val := range src {
+		fullkey := concatPrefix(prefix, fmt.Sprintf("%v", key))
+
 		if key == len(dst) {
 			dst = append(dst, val)
 		} else if dst[key] == nil {
 			dst[key] = val
 		} else if istable(val) {
 			if !istable(dst[key]) {
-				fullkey := concatPrefix(prefix, fmt.Sprintf("%v", key))
 				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
 			}
 			dst[key] = coalesceTablesFullKey(
 				printf,
 				dst[key].(map[string]interface{}),
 				val.(map[string]interface{}),
-				prefix,
+				fullkey,
 				merge,
 			)
 		} else if islist(val) {
 			if !islist(dst[key]) {
-				fullkey := concatPrefix(prefix, fmt.Sprintf("%v", key))
 				printf("warning: cannot overwrite list with non list for %s (%v)", fullkey, val)
 			}
 			dst[key] = coalesceListsFullKey(
 				printf,
 				dst[key].([]interface{}),
 				val.([]interface{}),
-				prefix,
+				fullkey,
 				merge,
 			)
-		} else {
-			dst[key] = val
 		}
 	}
 	return dst

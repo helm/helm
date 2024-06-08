@@ -10,3 +10,16 @@ spec:
     - host: "myhost1.local"
     - host: "changed_host.com"
     - host: "myhost3.local"
+---
+# Source: chart-with-ingress-with-list-host/templates/certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: chart-with-ingress-with-list-host
+spec:
+  dnsNames:
+    - "podinfo"
+    - "[myhost1.local changed_dns_host.local myhost3.local]"
+  issuerRef:
+    kind: ClusterIssuer
+    name: self-signed
