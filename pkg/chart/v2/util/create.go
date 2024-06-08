@@ -192,7 +192,7 @@ httpRoute:
     # namespace: default
   # -- Hostnames matching HTTP header.
   hostnames:
-  - "example.com"
+  - chart-example.local
   # -- List of rules and filters applied.
   rules:
   - matches:
