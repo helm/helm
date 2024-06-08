@@ -19,7 +19,6 @@ package chartutil
 import (
 	"fmt"
 	"log"
-	"strconv"
 
 	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
@@ -317,7 +316,11 @@ func coalesceListsFullKey(printf printFn, dst, src []interface{}, prefix string,
 			dst = append(dst, val)
 		} else if dst[key] == nil {
 			dst[key] = val
-		} else if istable(val) && istable(dst[key]) {
+		} else if istable(val) {
+			if !istable(dst[key]) {
+				fullkey := concatPrefix(prefix, fmt.Sprintf("%v", key))
+				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
+			}
 			dst[key] = coalesceTablesFullKey(
 				printf,
 				dst[key].(map[string]interface{}),
@@ -325,9 +328,20 @@ func coalesceListsFullKey(printf printFn, dst, src []interface{}, prefix string,
 				prefix,
 				merge,
 			)
+		} else if islist(val) {
+			if !islist(dst[key]) {
+				fullkey := concatPrefix(prefix, fmt.Sprintf("%v", key))
+				printf("warning: cannot overwrite list with non list for %s (%v)", fullkey, val)
+			}
+			dst[key] = coalesceListsFullKey(
+				printf,
+				dst[key].([]interface{}),
+				val.([]interface{}),
+				prefix,
+				merge,
+			)
 		} else {
-			fullkey := concatPrefix(prefix, strconv.Itoa(key))
-			printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
+			dst[key] = val
 		}
 	}
 	return dst
