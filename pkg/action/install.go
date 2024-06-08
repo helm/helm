@@ -755,7 +755,10 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 				return "", err
 			}
 		}
-		return abs, nil
+
+		if isChartDir, _ := chartutil.IsChartDir(abs); isChartDir {
+			return abs, nil
+		}
 	}
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
 		return name, errors.Errorf("path %q not found", name)
