@@ -97,8 +97,6 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		h.LastRun.Phase = release.HookPhaseSucceeded
 	}
 
-	cfg.recordRelease(rl)
-
 	// If all hooks are successful, check the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
 	for _, h := range executingHooks {
