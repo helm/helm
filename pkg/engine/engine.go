@@ -186,7 +186,7 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
 		}
 
-		// Supress INFO messages if quiet mode is enabled
+		// Suppress INFO messages if quiet mode is enabled
 		if quiet {
 			return strings.ReplaceAll(buf.String(), "[INFO]", ""), nil
 		}
