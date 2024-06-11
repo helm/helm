@@ -66,7 +66,6 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			StartedAt: helmtime.Now(),
 			Phase:     release.HookPhaseRunning,
 		}
-		cfg.recordRelease(rl)
 
 		// As long as the implementation of WatchUntilReady does not panic, HookPhaseFailed or HookPhaseSucceeded
 		// should always be set by this function. If we fail to do that for any reason, then HookPhaseUnknown is
@@ -96,6 +95,8 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		}
 		h.LastRun.Phase = release.HookPhaseSucceeded
 	}
+
+	cfg.recordRelease(rl)
 
 	// If all hooks are successful, check the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
