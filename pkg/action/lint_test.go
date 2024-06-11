@@ -18,6 +18,8 @@ package action
 
 import (
 	"testing"
+
+	"helm.sh/helm/v3/pkg/lint/support"
 )
 
 var (
@@ -165,7 +167,7 @@ func TestLint_ChartWithInfo(t *testing.T) {
 		testLint.Quiet = true
 		result := testLint.Run(testCharts, values)
 		for _, message := range result.Messages {
-			if message.Severity < 3 {
+			if message.Severity < support.WarningSev {
 				t.Error("expected no INFO(1) or UNKNOWN(0) messages, but got \nSeverity:", message.Severity, "\nError:", message.Err)
 			}
 		}
