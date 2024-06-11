@@ -54,7 +54,7 @@ func NewLint() *Lint {
 // Run executes 'helm Lint' against the given chart.
 func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 	lowestTolerance := support.ErrorSev
-	if l.Strict {
+	if l.Strict || l.Quiet {
 		lowestTolerance = support.WarningSev
 	}
 	result := &LintResult{}
@@ -65,11 +65,12 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 			continue
 		}
 
-		result.Messages = append(result.Messages, linter.Messages...)
 		result.TotalChartsLinted++
 		for _, msg := range linter.Messages {
+			// Unknown(0), Info(1), Warning(2), Error(3)
 			if msg.Severity >= lowestTolerance {
 				result.Errors = append(result.Errors, msg.Err)
+				result.Messages = append(result.Messages, msg)
 			}
 		}
 	}
