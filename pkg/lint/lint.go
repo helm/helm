@@ -25,12 +25,17 @@ import (
 )
 
 // All runs all of the available linters on the given base directory.
-func All(basedir string, values map[string]interface{}, namespace string, quiet bool) support.Linter {
-	return AllWithKubeVersion(basedir, values, namespace, nil, quiet)
+func All(basedir string, values map[string]interface{}, namespace string, _ bool) support.Linter {
+	return AllWithKubeVersion(basedir, values, namespace, nil)
 }
 
 // AllWithKubeVersion runs all the available linters on the given base directory, allowing to specify the kubernetes version.
-func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, quiet bool) support.Linter {
+func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) support.Linter {
+	return AllWithKubeVersionAndQuiet(basedir, values, namespace, kubeVersion, false)
+}
+
+// AllWithKubeVersionAndQuiet allows the quiet flag to be passed to the linter
+func AllWithKubeVersionAndQuiet(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, quiet bool) support.Linter {
 	// Using abs path to get directory context
 	chartDir, _ := filepath.Abs(basedir)
 

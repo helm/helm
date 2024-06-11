@@ -126,5 +126,5 @@ func lintChart(path string, vals map[string]interface{}, namespace string, kubeV
 		return linter, errors.Wrap(err, "unable to check Chart.yaml file in chart")
 	}
 
-	return lint.AllWithKubeVersion(chartPath, vals, namespace, kubeVersion, quiet), nil
+	return lint.AllWithKubeVersionAndQuiet(chartPath, vals, namespace, kubeVersion, quiet), nil
 }
