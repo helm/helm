@@ -24,12 +24,84 @@ import (
 
 	kubefake "helm.sh/helm/v3/pkg/kube/fake"
 	"helm.sh/helm/v3/pkg/release"
+	rspb "helm.sh/helm/v3/pkg/release"
 )
 
 func uninstallAction(t *testing.T) *Uninstall {
 	config := actionConfigFixture(t)
+
 	unAction := NewUninstall(config)
 	return unAction
+}
+
+func getPreDeleteRelease(exitCode uint8) *rspb.Release {
+	rel := releaseStub()
+	rel.Name = "chart-with-pre-delete-hook"
+	rel.Manifest = fmt.Sprintf(`{
+		"apiVersion": "v1",
+		"kind": "Pod",
+		"metadata": {
+			"name": "release-name-assert-job",
+			"labels": {
+				"app.kubernetes.io/managed-by": "service",
+				"app.kubernetes.io/instance": "release-name",
+				"app.kubernetes.io/version": "1.0.0",
+				"helm.sh/chart": "pre-delete-hook-chart"
+			},
+			"annotations": {
+				"helm.sh/hook": "pre-delete",
+				"helm.sh/hook-weight": "5",
+				"helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"
+			}
+		},
+		"spec": {
+			"restartPolicy": "Never",
+			"containers": [
+				{
+					"name": "assert-chart-removal",
+					"image": "alpine:latest",
+					"command": [
+						"/bin/ash"
+					],
+					"args": [
+						"-c",
+						"#!/bin/ash\nexit %v\n"
+					]
+				}
+			]
+		}
+	}`, exitCode)
+
+	return rel
+}
+
+func uninstallWithPreDeleteHookSetup(t *testing.T, shouldError bool) ([]*rspb.Release, *assert.Assertions) {
+	unAction := uninstallAction(t)
+	kc, ok := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	if !ok {
+		t.Fatalf("Failed casting KubeClient to FailingKubeClient")
+	}
+
+	if shouldError {
+		kc.CreateError = fmt.Errorf("Could not delete Pod")
+	}
+
+	var errorCode uint8 = 0
+
+	if shouldError {
+		errorCode = 0
+	}
+	rel := getPreDeleteRelease(uint8(errorCode))
+	unAction.cfg.Releases.Create(rel)
+	unAction.Run(rel.Name)
+
+	rels, _ := unAction.cfg.Releases.List(func(rl *rspb.Release) bool {
+		return rl.Info.Status == release.StatusDeployed
+	})
+
+	is := assert.New(t)
+
+	return rels, is
 }
 
 func TestUninstallRelease_ignoreNotFound(t *testing.T) {
@@ -41,6 +113,18 @@ func TestUninstallRelease_ignoreNotFound(t *testing.T) {
 	res, err := unAction.Run("release-non-exist")
 	is.Nil(res)
 	is.NoError(err)
+}
+
+func TestUninstallWithPreDeleteHookFailure(t *testing.T) {
+	releases, is := uninstallWithPreDeleteHookSetup(t, true)
+
+	is.Len(releases, 1)
+}
+
+func TestUninstallWithPreDeleteHookSuccess(t *testing.T) {
+	releases, is := uninstallWithPreDeleteHookSetup(t, false)
+
+	is.Len(releases, 0)
 }
 
 func TestUninstallRelease_deleteRelease(t *testing.T) {

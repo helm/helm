@@ -100,9 +100,6 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	u.cfg.Log("uninstall: Deleting %s", name)
-	rel.Info.Status = release.StatusUninstalling
-	rel.Info.Deleted = helmtime.Now()
-	rel.Info.Description = "Deletion in progress (or silently failed)"
 	res := &release.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
@@ -115,6 +112,10 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 
 	// From here on out, the release is currently considered to be in StatusUninstalling
 	// state.
+	rel.Info.Status = release.StatusUninstalling
+	rel.Info.Deleted = helmtime.Now()
+	rel.Info.Description = "Deletion in progress (or silently failed)"
+
 	if err := u.cfg.Releases.Update(rel); err != nil {
 		u.cfg.Log("uninstall: Failed to store updated release: %s", err)
 	}
