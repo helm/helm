@@ -97,6 +97,8 @@ type Upgrade struct {
 	CleanupOnFail bool
 	// SubNotes determines whether sub-notes are rendered in the chart.
 	SubNotes bool
+	// HideNotes determines whether notes are output during upgrade
+	HideNotes bool
 	// Description is the description of this operation
 	Description string
 	Labels      map[string]string
