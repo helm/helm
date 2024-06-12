@@ -390,20 +390,34 @@ func TestDependentChartAliases(t *testing.T) {
 	c := loadChart(t, "testdata/dependent-chart-alias")
 	req := c.Metadata.Dependencies
 
-	if len(c.Dependencies()) != 2 {
-		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
+	if len(c.Dependencies()) != 3 {
+		t.Fatalf("expected 3 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
 	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
-	if len(c.Dependencies()) != 3 {
+	if len(c.Dependencies()) != 5 {
 		t.Fatal("expected alias dependencies to be added")
 	}
 
 	if len(c.Dependencies()) != len(c.Metadata.Dependencies) {
 		t.Fatalf("expected number of chart dependencies %d, but got %d", len(c.Metadata.Dependencies), len(c.Dependencies()))
+	}
+
+	for _, dep := range c.Dependencies() {
+		if len(dep.Metadata.Dependencies) == 0 {
+			continue
+		}
+		if len(dep.Dependencies()) != len(dep.Metadata.Dependencies) {
+			t.Fatalf("subchart %s: expected number of dependencies %d, but got %d", dep.Name(), len(dep.Metadata.Dependencies), len(dep.Dependencies()))
+		}
+		for i := range dep.Dependencies() {
+			if dep.Metadata.Dependencies[i].Name != dep.Dependencies()[i].Name() {
+				t.Fatalf("subchart %s: expected name %s, but got %s", dep.Name(), dep.Metadata.Dependencies[i].Name, dep.Dependencies()[i].Name())
+			}
+		}
 	}
 
 	aliasChart := getAliasDependency(c.Dependencies(), req[2])
