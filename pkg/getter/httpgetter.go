@@ -53,6 +53,8 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 		return nil, err
 	}
 
+	req.Header.Set("Accept", "application/gzip,application/octet-stream")
+
 	req.Header.Set("User-Agent", version.GetUserAgent())
 	if g.opts.userAgent != "" {
 		req.Header.Set("User-Agent", g.opts.userAgent)
