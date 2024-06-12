@@ -35,6 +35,7 @@ import (
 // It provides the implementation of 'helm dependency' and its respective subcommands.
 type Dependency struct {
 	Verify      bool
+	Untar       bool
 	Keyring     string
 	SkipRefresh bool
 	ColumnWidth uint
