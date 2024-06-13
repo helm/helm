@@ -379,9 +379,14 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 		clientFn:  kc.Factory.KubernetesClientSet,
 	}
 
+	if helmDriver == "" {
+		helmDriver = "secrets"
+	}
+
+	log("init: using %s storage driver", helmDriver)
 	var store *storage.Storage
 	switch helmDriver {
-	case "secret", "secrets", "":
+	case "secret", "secrets":
 		d := driver.NewSecrets(newSecretClient(lazyClient))
 		d.Log = log
 		store = storage.Init(d)
