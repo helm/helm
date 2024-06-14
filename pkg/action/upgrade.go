@@ -115,6 +115,8 @@ type Upgrade struct {
 	Lock sync.Mutex
 	// Enable DNS lookups when rendering templates
 	EnableDNS bool
+	// DisableFetchingAPIVersions controls whether Capabilities.APIVersions is fetched from the API server
+	DisableFetchingAPIVersions bool
 }
 
 type resultMessage struct {
@@ -254,7 +256,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		IsUpgrade: true,
 	}
 
-	caps, err := u.cfg.getCapabilities()
+	caps, err := u.cfg.getCapabilities(!u.DisableFetchingAPIVersions)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -269,7 +271,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		interactWithRemote = true
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithRemote, u.EnableDNS, u.HideSecret)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithRemote, u.EnableDNS, u.HideSecret, !u.DisableFetchingAPIVersions)
 	if err != nil {
 		return nil, nil, err
 	}

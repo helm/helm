@@ -103,11 +103,11 @@ type Configuration struct {
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //
 //	This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS, hideSecret, fetchApiVersions bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
-	caps, err := cfg.getCapabilities()
+	caps, err := cfg.getCapabilities(fetchApiVersions)
 	if err != nil {
 		return hs, b, "", err
 	}
@@ -243,7 +243,7 @@ type RESTClientGetter interface {
 type DebugLog func(format string, v ...interface{})
 
 // capabilities builds a Capabilities from discovery information.
-func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
+func (cfg *Configuration) getCapabilities(fetchApiVersions bool) (*chartutil.Capabilities, error) {
 	if cfg.Capabilities != nil {
 		return cfg.Capabilities, nil
 	}
@@ -262,14 +262,20 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	// We trap that error here and print a warning. But since the discovery client continues
 	// building the API object, it is correctly populated with all valid APIs.
 	// See https://github.com/kubernetes/kubernetes/issues/72051#issuecomment-521157642
-	apiVersions, err := GetVersionSet(dc)
-	if err != nil {
-		if discovery.IsGroupDiscoveryFailedError(err) {
-			cfg.Log("WARNING: The Kubernetes server has an orphaned API service. Server reports: %s", err)
-			cfg.Log("WARNING: To fix this, kubectl delete apiservice <service-name>")
-		} else {
-			return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+	var apiVersions chartutil.VersionSet
+	if fetchApiVersions {
+		apiVersions, err = GetVersionSet(dc)
+		if err != nil {
+			if discovery.IsGroupDiscoveryFailedError(err) {
+				cfg.Log("WARNING: The Kubernetes server has an orphaned API service. Server reports: %s", err)
+				cfg.Log("WARNING: To fix this, kubectl delete apiservice <service-name>")
+			} else {
+				return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+			}
 		}
+	} else {
+		cfg.Log("WARNING: Fetching Kubernetes server-supported API versions is disabled; built-in template object Capabilities.APIVersions will contain the default version set")
+		apiVersions = chartutil.DefaultVersionSet
 	}
 
 	cfg.Capabilities = &chartutil.Capabilities{

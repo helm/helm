@@ -112,6 +112,8 @@ type Install struct {
 	PostRenderer   postrender.PostRenderer
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
+	// DisableFetchingAPIVersions controls whether Capabilities.APIVersions is fetched from the API server
+	DisableFetchingAPIVersions bool
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -284,7 +286,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// the user doesn't have to specify both
 	i.Wait = i.Wait || i.Atomic
 
-	caps, err := i.cfg.getCapabilities()
+	caps, err := i.cfg.getCapabilities(!i.DisableFetchingAPIVersions)
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +312,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	rel := i.createRelease(chrt, vals, i.Labels)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithRemote, i.EnableDNS, i.HideSecret)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithRemote, i.EnableDNS, i.HideSecret, !i.DisableFetchingAPIVersions)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()

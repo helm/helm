@@ -150,6 +150,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Labels = client.Labels
 					instClient.EnableDNS = client.EnableDNS
 					instClient.HideSecret = client.HideSecret
+					instClient.DisableFetchingAPIVersions = client.DisableFetchingAPIVersions
 
 					if isReleaseUninstalled(versions) {
 						instClient.Replace = true
@@ -278,6 +279,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
+	f.BoolVar(&client.DisableFetchingAPIVersions, "disable-fetching-api-versions", false, "if set, the upgrade process will populate the built-in Capabilities.APIVersions template object with a default version set instead of fetching the full set from the Kubernetes API server")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
