@@ -172,4 +172,12 @@ func TestLint_ChartWithInfo(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("should pass with INFO messages without quiet", func(t *testing.T) {
+		testCharts := []string{chart1MultipleChartLint}
+		testLint := NewLint()
+		if result := testLint.Run(testCharts, values); len(result.Errors) != 0 {
+			t.Error("expected no errors, but got", len(result.Errors))
+		}
+	})
 }
