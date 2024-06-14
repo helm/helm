@@ -8,6 +8,7 @@
 - [Blood Orange](https://bloodorange.io)
 - [IBM](https://www.ibm.com)
 - [Microsoft](https://microsoft.com)
+- [Octopus Deploy](https://octopus.com/)
 - [Qovery](https://www.qovery.com/)
 - [Samsung SDS](https://www.samsungsds.com/)
 - [Softonic](https://hello.softonic.com/)
