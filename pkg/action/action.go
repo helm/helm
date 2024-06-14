@@ -381,9 +381,11 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 
 	if helmDriver == "" {
 		helmDriver = "secrets"
+		log("init: using default storage driver %s", helmDriver)
+	} else {
+		log("init: using %s storage driver", helmDriver)
 	}
 
-	log("init: using %s storage driver", helmDriver)
 	var store *storage.Storage
 	switch helmDriver {
 	case "secret", "secrets":
