@@ -156,6 +156,7 @@ func NewRegistryClientWithTLS(out io.Writer, certFile, keyFile, caFile string, i
 		ClientOptHTTPClient(&http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConf,
+				Proxy:           http.ProxyFromEnvironment,
 			},
 		}),
 	)
