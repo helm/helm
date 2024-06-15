@@ -22,9 +22,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"helm.sh/helm/v3/internal/fileutil"
 	"helm.sh/helm/v3/internal/urlutil"
@@ -369,30 +371,55 @@ func pickChartRepositoryConfigByName(name string, cfgs []*repo.Entry) (*repo.Ent
 // will return the first one it finds. Order is determined by the order of repositories
 // in the repositories.yaml file.
 func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry, error) {
-	// FIXME: This is far from optimal. Larger installations and index files will
-	// incur a performance hit for this type of scanning.
-	for _, rc := range rf.Repositories {
+	var (
+		g      errgroup.Group
+		result *repo.Entry
+		once   sync.Once
+	)
+
+	scanRepo := func(rc *repo.Entry) error {
 		r, err := repo.NewChartRepository(rc, c.Getters)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
 		i, err := repo.LoadIndexFile(idxFile)
 		if err != nil {
-			return nil, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
+			return errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
 		}
 
 		for _, entry := range i.Entries {
 			for _, ver := range entry {
 				for _, dl := range ver.URLs {
 					if urlutil.Equal(u, dl) {
-						return rc, nil
+						once.Do(func() {
+							result = rc
+						})
+						return nil
 					}
 				}
 			}
 		}
+
+		return nil
 	}
+
+	for _, rc := range rf.Repositories {
+		rc := rc
+		g.Go(func() error {
+			return scanRepo(rc)
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	if result != nil {
+		return result, nil
+	}
+
 	// This means that there is no repo file for the given URL.
 	return nil, ErrNoOwnerRepo
 }
