@@ -116,15 +116,22 @@ func (o *repoUpdateOptions) run(out io.Writer) error {
 
 func updateCharts(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool) error {
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
-	var wg sync.WaitGroup
-	var repoFailList []string
+
+	var (
+		wg           sync.WaitGroup
+		mu           sync.Mutex
+		repoFailList []string
+	)
+
 	for _, re := range repos {
 		wg.Add(1)
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
 			if _, err := re.DownloadIndexFile(); err != nil {
+				mu.Lock()
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
 				repoFailList = append(repoFailList, re.Config.URL)
+				mu.Unlock()
 			} else {
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)
 			}
