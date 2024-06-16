@@ -246,7 +246,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 
 	destPath := filepath.Join(m.ChartPath, "charts")
-	tmpPath := filepath.Join(m.ChartPath, "tmpcharts")
+	tmpPath := filepath.Join(m.ChartPath, fmt.Sprintf("tmpcharts-%d", os.Getpid()))
 
 	// Check if 'charts' directory is not actually a directory. If it does not exist, create it.
 	if fi, err := os.Stat(destPath); err == nil {
