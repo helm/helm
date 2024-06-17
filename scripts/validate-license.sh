@@ -15,18 +15,13 @@
 # limitations under the License.
 set -euo pipefail
 IFS=$'\n\t'
-
+# removed -not to reduce complexity
+# This function searches for files in the current directory and its subdirectories, excluding specific directories (vendor, testdata, and third_party), and then prints the files with .go or .sh extensions
 find_files() {
-  find . -not \( \
-    \( \
-      -wholename './vendor' \
-      -o -wholename '*testdata*' \
-      -o -wholename '*third_party*' \
-    \) -prune \
-  \) \
-  \( -name '*.go' -o -name '*.sh' \)
+  find . \
+    \( -path './vendor' -o -path '*/testdata/*' -o -path '*/third_party/*' \) -prune -o \
+    \( -name '*.go' -o -name '*.sh' \) -print
 }
-
 # Use "|| :" to ignore the error code when grep returns empty
 failed_license_header=($(find_files | xargs grep -L 'Licensed under the Apache License, Version 2.0 (the "License")' || :))
 if (( ${#failed_license_header[@]} > 0 )); then
