@@ -363,14 +363,18 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return upgradedRelease, nil
 	}
 
+	// TODOS here
+	// ensure that when we do a RunWithContext and the context is cancelled, we should remove all the existing go routines
 	u.cfg.Log("creating upgraded release for %s", upgradedRelease.Name)
 	if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
 		return nil, err
 	}
+
 	rChan := make(chan resultMessage)
 	ctxChan := make(chan resultMessage)
 	doneChan := make(chan interface{})
 	defer close(doneChan)
+
 	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease)
 	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
 	select {

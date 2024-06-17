@@ -412,6 +412,8 @@ func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, t
 	}
 	resultChan := make(chan Msg, 1)
 
+	// TODOS we are not handling context here
+	// figure out a way to handle the context
 	go func() {
 		rel, err := i.performInstall(rel, toBeAdopted, resources)
 		resultChan <- Msg{rel, err}

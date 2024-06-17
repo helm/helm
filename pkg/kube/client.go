@@ -83,15 +83,38 @@ type Client struct {
 	Namespace string
 
 	kubeClient *kubernetes.Clientset
+
+	// context used to cancel the running task
+	ctx context.Context
 }
 
 var addToScheme sync.Once
 
+type Option func(*Client)
+
+func WithContext(ctx context.Context) Option {
+	return func(c *Client) {
+		c.ctx = ctx
+	}
+}
+
 // New creates a new Client.
-func New(getter genericclioptions.RESTClientGetter) *Client {
+func New(getter genericclioptions.RESTClientGetter, opts ...Option) *Client {
+
+	client := &Client{}
+
+	for _, opt := range opts {
+		opt(client)
+	}
+
+	if client.ctx == nil {
+		client.ctx = context.TODO()
+	}
+
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
+
 	// Add CRDs to the scheme. They are missing by default.
 	addToScheme.Do(func() {
 		if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
@@ -102,10 +125,11 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 			panic(err)
 		}
 	})
-	return &Client{
-		Factory: cmdutil.NewFactory(getter),
-		Log:     nopLogger,
-	}
+
+	client.Factory = cmdutil.NewFactory(getter)
+	client.Log = nopLogger
+
+	return client
 }
 
 var nopLogger = func(_ string, _ ...interface{}) {}
@@ -307,6 +331,7 @@ func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) err
 		c:       checker,
 		log:     c.Log,
 		timeout: timeout,
+		ctx:     c.ctx,
 	}
 	return w.waitForResources(resources)
 }
@@ -316,6 +341,7 @@ func (c *Client) WaitForDelete(resources ResourceList, timeout time.Duration) er
 	w := waiter{
 		log:     c.Log,
 		timeout: timeout,
+		ctx:     c.ctx,
 	}
 	return w.waitForDeletedResources(resources)
 }
