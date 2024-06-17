@@ -38,6 +38,13 @@ import (
 	deploymentutil "helm.sh/helm/v3/internal/third_party/k8s.io/kubernetes/deployment/util"
 )
 
+type PodError struct {
+	PodName   string
+	Container string
+	Reason    string
+	Message   string
+}
+
 // ReadyCheckerOption is a function that configures a ReadyChecker.
 type ReadyCheckerOption func(*ReadyChecker)
 
@@ -94,6 +101,9 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 	case *corev1.Pod:
 		pod, err := c.client.CoreV1().Pods(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
 		if err != nil || !c.isPodReady(pod) {
+			if err == nil {
+				err = c.getPodFailedError(pod)
+			}
 			return false, err
 		}
 	case *batchv1.Job:
@@ -202,6 +212,40 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 		}
 	}
 	return true, nil
+}
+
+func (c *ReadyChecker) getPodFailedError(pod *corev1.Pod) error {
+	podErrors := make([]PodError, 0)
+	if pod.Status.Phase == corev1.PodFailed {
+		containerStatuses := pod.Status.ContainerStatuses
+		if pod.Status.InitContainerStatuses != nil {
+			containerStatuses = append(containerStatuses, pod.Status.InitContainerStatuses...)
+		}
+
+		for _, cs := range containerStatuses {
+			if cs.State.Terminated != nil {
+				podErrors = append(podErrors, PodError{
+					PodName:   pod.Name,
+					Container: cs.Name,
+					Reason:    cs.State.Terminated.Reason,
+					Message:   cs.State.Terminated.Message,
+				})
+			} else if cs.State.Waiting != nil {
+				podErrors = append(podErrors, PodError{
+					PodName:   pod.Name,
+					Container: cs.Name,
+					Reason:    cs.State.Waiting.Reason,
+					Message:   cs.State.Waiting.Message,
+				})
+			}
+		}
+	}
+
+	if len(podErrors) > 0 {
+		return fmt.Errorf("%+v", podErrors)
+	}
+
+	return nil
 }
 
 func (c *ReadyChecker) podsReadyForObject(ctx context.Context, namespace string, obj runtime.Object) (bool, error) {
