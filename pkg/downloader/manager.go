@@ -830,8 +830,6 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 		mu sync.Mutex
 	)
 	for _, re := range rf.Repositories {
-		re := re
-
 		g.Go(func() error {
 			lname := re.Name
 			idxFile := filepath.Join(m.RepositoryCache, helmpath.CacheIndexFile(lname))
