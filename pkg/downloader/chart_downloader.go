@@ -406,7 +406,6 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 	}
 
 	for _, rc := range rf.Repositories {
-		rc := rc
 		g.Go(func() error {
 			return scanRepo(rc)
 		})
