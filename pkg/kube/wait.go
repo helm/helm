@@ -52,6 +52,10 @@ type waiter struct {
 func (w *waiter) waitForResources(created ResourceList) error {
 	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
 
+	if w.ctx == nil {
+		w.ctx = context.Background()
+	}
+
 	ctx, cancel := context.WithTimeout(w.ctx, w.timeout)
 	defer cancel()
 

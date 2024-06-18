@@ -320,8 +320,39 @@ func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 	return w.waitForResources(resources)
 }
 
-// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
+// WaitWithJobs wait up to the given timeout for the specified resources to be ready or until the context is Done, including jobs.
 func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
+	cs, err := c.getKubeClient()
+	if err != nil {
+		return err
+	}
+	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true), CheckJobs(true))
+	w := waiter{
+		c:       checker,
+		log:     c.Log,
+		timeout: timeout,
+	}
+	return w.waitForResources(resources)
+}
+
+// WaitWithContext waits up to the given timeout for the specified resources to be ready or until the context is Done.
+func (c *Client) WaitWithContext(ctx context.Context, resources ResourceList, timeout time.Duration) error {
+	cs, err := c.getKubeClient()
+	if err != nil {
+		return err
+	}
+	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
+	w := waiter{
+		c:       checker,
+		log:     c.Log,
+		timeout: timeout,
+		ctx:     ctx,
+	}
+	return w.waitForResources(resources)
+}
+
+// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
+func (c *Client) WaitWithJobsWithContext(ctx context.Context, resources ResourceList, timeout time.Duration) error {
 	cs, err := c.getKubeClient()
 	if err != nil {
 		return err
