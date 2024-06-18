@@ -17,6 +17,7 @@ limitations under the License.
 package kube
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -37,6 +38,13 @@ type Interface interface {
 
 	// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
 	WaitWithJobs(resources ResourceList, timeout time.Duration) error
+
+	// WaitWithContext waits up to the given timeout for the specified resources to be ready or until the context is Done.
+	WaitWithContext(ctx context.Context, resources ResourceList, timeout time.Duration) error
+
+	// WaitWithJobsWithContext waits up to the given timeout for the specified resources to be ready or until the context is Done
+	// including jobs.
+	WaitWithJobsWithContext(ctx context.Context, resources ResourceList, timeout time.Duration) error
 
 	// Delete destroys one or more resources.
 	Delete(resources ResourceList) (*Result, []error)

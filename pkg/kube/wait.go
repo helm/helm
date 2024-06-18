@@ -42,6 +42,9 @@ type waiter struct {
 	c       ReadyChecker
 	timeout time.Duration
 	log     func(string, ...interface{})
+
+	// ctx used to to cancel and avoid go routines leaking
+	ctx context.Context
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, Services and
@@ -49,7 +52,11 @@ type waiter struct {
 func (w *waiter) waitForResources(created ResourceList) error {
 	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
 
-	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
+	if w.ctx == nil {
+		w.ctx = context.Background()
+	}
+
+	ctx, cancel := context.WithTimeout(w.ctx, w.timeout)
 	defer cancel()
 
 	numberOfErrors := make([]int, len(created))

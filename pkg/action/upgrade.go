@@ -367,11 +367,13 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
 		return nil, err
 	}
+
 	rChan := make(chan resultMessage)
 	ctxChan := make(chan resultMessage)
 	doneChan := make(chan interface{})
 	defer close(doneChan)
-	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease)
+
+	go u.releasingUpgrade(ctx, rChan, upgradedRelease, current, target, originalRelease)
 	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
 	select {
 	case result := <-rChan:
@@ -405,7 +407,7 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 		return
 	}
 }
-func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
+func (u *Upgrade) releasingUpgrade(ctx context.Context, c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
@@ -439,13 +441,13 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 			"waiting for release %s resources (created: %d updated: %d  deleted: %d)",
 			upgradedRelease.Name, len(results.Created), len(results.Updated), len(results.Deleted))
 		if u.WaitForJobs {
-			if err := u.cfg.KubeClient.WaitWithJobs(target, u.Timeout); err != nil {
+			if err := u.cfg.KubeClient.WaitWithJobsWithContext(ctx, target, u.Timeout); err != nil {
 				u.cfg.recordRelease(originalRelease)
 				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
 				return
 			}
 		} else {
-			if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
+			if err := u.cfg.KubeClient.WaitWithContext(ctx, target, u.Timeout); err != nil {
 				u.cfg.recordRelease(originalRelease)
 				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
 				return
