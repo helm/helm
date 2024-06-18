@@ -83,34 +83,12 @@ type Client struct {
 	Namespace string
 
 	kubeClient *kubernetes.Clientset
-
-	// context used to cancel the running task
-	ctx context.Context
 }
 
 var addToScheme sync.Once
 
-type Option func(*Client)
-
-func WithContext(ctx context.Context) Option {
-	return func(c *Client) {
-		c.ctx = ctx
-	}
-}
-
 // New creates a new Client.
-func New(getter genericclioptions.RESTClientGetter, opts ...Option) *Client {
-
-	client := &Client{}
-
-	for _, opt := range opts {
-		opt(client)
-	}
-
-	if client.ctx == nil {
-		client.ctx = context.TODO()
-	}
-
+func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
@@ -126,10 +104,10 @@ func New(getter genericclioptions.RESTClientGetter, opts ...Option) *Client {
 		}
 	})
 
-	client.Factory = cmdutil.NewFactory(getter)
-	client.Log = nopLogger
-
-	return client
+	return &Client{
+		Factory: cmdutil.NewFactory(getter),
+		Log:     nopLogger,
+	}
 }
 
 var nopLogger = func(_ string, _ ...interface{}) {}
@@ -372,7 +350,6 @@ func (c *Client) WaitForDelete(resources ResourceList, timeout time.Duration) er
 	w := waiter{
 		log:     c.Log,
 		timeout: timeout,
-		ctx:     c.ctx,
 	}
 	return w.waitForDeletedResources(resources)
 }
