@@ -92,7 +92,6 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
-
 	// Add CRDs to the scheme. They are missing by default.
 	addToScheme.Do(func() {
 		if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
@@ -103,7 +102,6 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 			panic(err)
 		}
 	})
-
 	return &Client{
 		Factory: cmdutil.NewFactory(getter),
 		Log:     nopLogger,
