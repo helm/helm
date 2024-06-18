@@ -362,7 +362,7 @@ func (c *Client) WaitWithJobsWithContext(ctx context.Context, resources Resource
 		c:       checker,
 		log:     c.Log,
 		timeout: timeout,
-		ctx:     c.ctx,
+		ctx:     ctx,
 	}
 	return w.waitForResources(resources)
 }
