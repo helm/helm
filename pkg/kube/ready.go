@@ -38,11 +38,11 @@ import (
 	deploymentutil "helm.sh/helm/v3/internal/third_party/k8s.io/kubernetes/deployment/util"
 )
 
-type PodError struct {
-	PodName   string
-	Container string
-	Reason    string
-	Message   string
+type podError struct {
+	podName   string
+	container string
+	reason    string
+	message   string
 }
 
 // ReadyCheckerOption is a function that configures a ReadyChecker.
@@ -215,7 +215,7 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 }
 
 func (c *ReadyChecker) getPodFailedError(pod *corev1.Pod) error {
-	podErrors := make([]PodError, 0)
+	podErrors := make([]podError, 0)
 	if pod.Status.Phase == corev1.PodFailed {
 		containerStatuses := pod.Status.ContainerStatuses
 		if pod.Status.InitContainerStatuses != nil {
@@ -224,18 +224,18 @@ func (c *ReadyChecker) getPodFailedError(pod *corev1.Pod) error {
 
 		for _, cs := range containerStatuses {
 			if cs.State.Terminated != nil {
-				podErrors = append(podErrors, PodError{
-					PodName:   pod.Name,
-					Container: cs.Name,
-					Reason:    cs.State.Terminated.Reason,
-					Message:   cs.State.Terminated.Message,
+				podErrors = append(podErrors, podError{
+					podName:   pod.Name,
+					container: cs.Name,
+					reason:    cs.State.Terminated.Reason,
+					message:   cs.State.Terminated.Message,
 				})
 			} else if cs.State.Waiting != nil {
-				podErrors = append(podErrors, PodError{
-					PodName:   pod.Name,
-					Container: cs.Name,
-					Reason:    cs.State.Waiting.Reason,
-					Message:   cs.State.Waiting.Message,
+				podErrors = append(podErrors, podError{
+					podName:   pod.Name,
+					container: cs.Name,
+					reason:    cs.State.Waiting.Reason,
+					message:   cs.State.Waiting.Message,
 				})
 			}
 		}
