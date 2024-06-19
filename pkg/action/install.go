@@ -332,7 +332,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	// It is safe to use "force" here because these are resources currently rendered by the chart.
-	err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
+	err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, rel.Labels, true))
 	if err != nil {
 		return nil, err
 	}
