@@ -40,6 +40,8 @@ type registryPushOptions struct {
 	caFile                string
 	insecureSkipTLSverify bool
 	plainHTTP             bool
+	password              string
+	username              string
 }
 
 func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -69,7 +71,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			registryClient, err := newRegistryClient(
-				o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSverify, o.plainHTTP, "", "",
+				o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSverify, o.plainHTTP, o.username, o.password,
 			)
 
 			if err != nil {
@@ -99,6 +101,8 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart upload")
 	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart upload")
+	f.StringVar(&o.username, "username", "", "chart repository username where to locate the requested chart")
+	f.StringVar(&o.password, "password", "", "chart repository password where to locate the requested chart")
 
 	return cmd
 }
