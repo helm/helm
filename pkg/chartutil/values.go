@@ -171,6 +171,24 @@ func istable(v interface{}) bool {
 	return ok
 }
 
+func isNonEmptyTable(val interface{}) bool {
+	table, ok := val.(map[string]interface{})
+	if !ok {
+		return false
+	}
+
+	return len(table) > 0
+}
+
+func isNonEmptyString(val interface{}) bool {
+	stringContent, ok := val.(string)
+	if !ok {
+		return false
+	}
+
+	return stringContent != ""
+}
+
 // PathValue takes a path that traverses a YAML structure and returns the value at the end of that path.
 // The path starts at the root of the YAML structure and is comprised of YAML keys separated by periods.
 // Given the following YAML data the value at path "chapter.one.title" is "Loomings".

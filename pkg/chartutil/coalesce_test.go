@@ -694,6 +694,72 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 
 }
 
+func TestCoalesceValuesWarningsWithEmptyDefaultMaps(t *testing.T) {
+
+	c := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "level1"},
+		Values: map[string]interface{}{
+			"something": map[string]interface{}{
+				"somethingElse": []interface{}{},
+			},
+		},
+	})
+
+	vals := map[string]interface{}{
+		"something": map[string]interface{}{
+			"somethingElse": map[string]interface{}{},
+		},
+	}
+
+	warnings := make([]string, 0)
+	printf := func(format string, v ...interface{}) {
+		t.Logf(format, v...)
+		warnings = append(warnings, fmt.Sprintf(format, v...))
+	}
+
+	_, err := coalesce(printf, c, vals, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("vals: %v", vals)
+	assert.NotContains(t, warnings, "warning: destination for level1.something.somethingElse is a table. Ignoring non-table value ([])")
+}
+
+func TestCoalesceValuesWarningsWithEmptyStringDefault(t *testing.T) {
+
+	c := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "level1"},
+		Values: map[string]interface{}{
+			"auth": map[string]interface{}{
+				"existingSecret": "",
+			},
+		},
+	})
+
+	vals := map[string]interface{}{
+		"auth": map[string]interface{}{
+			"existingSecret": map[string]interface{}{
+				"name": "secretName",
+			},
+		},
+	}
+
+	warnings := make([]string, 0)
+	printf := func(format string, v ...interface{}) {
+		t.Logf(format, v...)
+		warnings = append(warnings, fmt.Sprintf(format, v...))
+	}
+
+	_, err := coalesce(printf, c, vals, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("vals: %v", vals)
+	assert.NotContains(t, warnings, "warning: destination for level1.auth.existingSecret is a table. Ignoring non-table value ()")
+}
+
 func TestConcatPrefix(t *testing.T) {
 	assert.Equal(t, "b", concatPrefix("", "b"))
 	assert.Equal(t, "a.b", concatPrefix("a", "b"))
