@@ -213,6 +213,93 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+func TestDelete(t *testing.T) {
+	listA := newPodList("starfish", "otter", "squid", "jellyfish")
+	listA.Items[0].Annotations = map[string]string{
+		ResourceDeletionPolicyAnno: "foreground",
+	}
+	listA.Items[1].Annotations = map[string]string{
+		ResourceDeletionPolicyAnno: "orphan",
+	}
+	listA.Items[2].Annotations = map[string]string{
+		ResourceDeletionPolicyAnno: "background",
+	}
+	listA.Items[3].Annotations = map[string]string{
+		ResourceDeletionPolicyAnno: "oops",
+	}
+
+	var actions []string
+
+	c := newTestClient(t)
+	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			b, err := io.ReadAll(req.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Body.Close()
+			actions = append(actions, p+":"+m)
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/jellyfish" && m == "DELETE" && string(b) == "{\"propagationPolicy\":\"Background\"}\n":
+				return newResponse(200, &listA.Items[3])
+			case p == "/namespaces/default/pods/squid" && m == "DELETE" && string(b) == "{\"propagationPolicy\":\"Background\"}\n":
+				return newResponse(200, &listA.Items[2])
+			case p == "/namespaces/default/pods/otter" && m == "DELETE" && string(b) == "{\"propagationPolicy\":\"Orphan\"}\n":
+				return newResponse(200, &listA.Items[1])
+			case p == "/namespaces/default/pods/starfish" && m == "DELETE" && string(b) == "{\"propagationPolicy\":\"Foreground\"}\n":
+				return newResponse(200, &listA.Items[0])
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+	first, err := c.Build(objBody(&listA), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, errs := c.Delete(first)
+	if len(errs) > 0 {
+		t.Fatal(errs)
+	}
+
+	if len(result.Created) != 0 {
+		t.Errorf("expected 0 resource created, got %d", len(result.Created))
+	}
+	if len(result.Updated) != 0 {
+		t.Errorf("expected 0 resource updated, got %d", len(result.Updated))
+	}
+	if len(result.Deleted) != 4 {
+		t.Errorf("expected 4 resource deleted, got %d", len(result.Deleted))
+	}
+
+	expectedActions := []string{
+		"/namespaces/default/pods/squid:DELETE",
+		"/namespaces/default/pods/starfish:DELETE",
+		"/namespaces/default/pods/otter:DELETE",
+		"/namespaces/default/pods/jellyfish:DELETE",
+	}
+	if len(expectedActions) != len(actions) {
+		t.Fatalf("unexpected number of requests, expected %d, got %d", len(expectedActions), len(actions))
+	}
+	for _, v := range expectedActions {
+		found := false
+		for _, action := range actions {
+			if action == v {
+				found = true
+			}
+		}
+
+		if !found {
+			t.Errorf("expected %s request got %#v", v, actions)
+		}
+	}
+}
+
 func TestBuild(t *testing.T) {
 	tests := []struct {
 		name      string
