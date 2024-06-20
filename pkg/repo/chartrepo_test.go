@@ -92,7 +92,7 @@ func TestIndex(t *testing.T) {
 	}
 
 	tempIndexPath := filepath.Join(testRepository, indexPath)
-	actual, err := LoadIndexFile(tempIndexPath)
+	actual, err := LoadIndexFileWithCaching(tempIndexPath)
 	defer os.Remove(tempIndexPath) // clean up
 	if err != nil {
 		t.Errorf("Error loading index file %v", err)
@@ -104,7 +104,7 @@ func TestIndex(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error performing re-index: %s\n", err)
 	}
-	second, err := LoadIndexFile(tempIndexPath)
+	second, err := LoadIndexFileWithCaching(tempIndexPath)
 	if err != nil {
 		t.Errorf("Error re-loading index file %v", err)
 	}

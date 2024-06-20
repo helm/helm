@@ -826,7 +826,7 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 	for _, re := range rf.Repositories {
 		lname := re.Name
 		idxFile := filepath.Join(m.RepositoryCache, helmpath.CacheIndexFile(lname))
-		index, err := repo.LoadIndexFile(idxFile)
+		index, err := repo.LoadIndexFileWithCaching(idxFile)
 		if err != nil {
 			return indices, err
 		}

@@ -122,7 +122,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		var ok bool
 		found := true
 		if !registry.IsOCI(d.Repository) {
-			repoIndex, err := repo.LoadIndexFile(filepath.Join(r.cachepath, helmpath.CacheIndexFile(repoName)))
+			repoIndex, err := repo.LoadIndexFileWithCaching(filepath.Join(r.cachepath, helmpath.CacheIndexFile(repoName)))
 			if err != nil {
 				return nil, errors.Wrapf(err, "no cached repository for %s found. (try 'helm repo update')", repoName)
 			}
