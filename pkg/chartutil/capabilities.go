@@ -53,7 +53,7 @@ var (
 type Capabilities struct {
 	// KubeVersion is the Kubernetes version.
 	KubeVersion KubeVersion
-	// APIversions are supported Kubernetes API versions.
+	// APIVersions are supported Kubernetes API versions.
 	APIVersions VersionSet
 	// HelmVersion is the build information for this helm version
 	HelmVersion helmversion.BuildInfo

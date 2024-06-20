@@ -196,13 +196,9 @@ func joinErrors(errs []error) string {
 // deleteRelease deletes the release and returns list of delete resources and manifests that were kept in the deletion process
 func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, string, []error) {
 	var errs []error
-	caps, err := u.cfg.getCapabilities()
-	if err != nil {
-		return nil, rel.Manifest, []error{errors.Wrap(err, "could not get apiVersions from Kubernetes")}
-	}
 
 	manifests := releaseutil.SplitManifests(rel.Manifest)
-	_, files, err := releaseutil.SortManifests(manifests, caps.APIVersions, releaseutil.UninstallOrder)
+	_, files, err := releaseutil.SortManifests(manifests, nil, releaseutil.UninstallOrder)
 	if err != nil {
 		// We could instead just delete everything in no particular order.
 		// FIXME: One way to delete at this point would be to try a label-based

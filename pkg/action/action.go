@@ -165,7 +165,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	hs, manifests, err := releaseutil.SortManifests(files, caps.APIVersions, releaseutil.InstallOrder)
+	hs, manifests, err := releaseutil.SortManifests(files, nil, releaseutil.InstallOrder)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.
