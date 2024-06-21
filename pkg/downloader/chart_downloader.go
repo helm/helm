@@ -16,6 +16,7 @@ limitations under the License.
 package downloader
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/url"
@@ -367,35 +368,47 @@ func pickChartRepositoryConfigByName(name string, cfgs []*repo.Entry) (*repo.Ent
 // Charts are not required to be included in an index before they are valid. So
 // be mindful of this case.
 //
-// The same URL can technically exist in two or more repositories. This algorithm
-// will return the first one it finds. Order is determined by the order of repositories
-// in the repositories.yaml file.
+// The same URL can technically exist in multiple repositories.
+// This algorithm will return one of them based on concurrent processing,
+// without regard to the order specified in the repositories.yaml file.
 func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry, error) {
 	var (
 		g      errgroup.Group
 		result *repo.Entry
 		once   sync.Once
 	)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	scanRepo := func(rc *repo.Entry) error {
 		r, err := repo.NewChartRepository(rc, c.Getters)
 		if err != nil {
+			cancel()
 			return err
 		}
 
 		idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
 		i, err := repo.LoadIndexFile(idxFile)
 		if err != nil {
+			cancel()
 			return errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
 		}
 
 		for _, entry := range i.Entries {
 			for _, ver := range entry {
 				for _, dl := range ver.URLs {
+					select {
+					case <-ctx.Done():
+						return nil
+					default:
+					}
 					if urlutil.Equal(u, dl) {
-						once.Do(func() {
-							result = rc
-						})
+						once.Do(
+							func() {
+								result = rc
+								cancel()
+							},
+						)
 						return nil
 					}
 				}
