@@ -116,7 +116,7 @@ type Install struct {
 
 // ChartPathOptions captures common options used for controlling chart paths
 type ChartPathOptions struct {
-	CaFile                string // --ca-file
+	CAFile                string // --ca-file
 	CertFile              string // --cert-file
 	KeyFile               string // --key-file
 	InsecureSkipTLSverify bool   // --insecure-skip-verify
@@ -760,9 +760,10 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		Getters: getter.All(settings),
 		Options: []getter.Option{
 			getter.WithPassCredentialsAll(c.PassCredentialsAll),
-			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
+			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CAFile),
 			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
 			getter.WithPlainHTTP(c.PlainHTTP),
+			getter.WithBasicAuth(c.Username, c.Password),
 		},
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
@@ -778,7 +779,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	}
 	if c.RepoURL != "" {
 		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(c.RepoURL, c.Username, c.Password, name, version,
-			c.CertFile, c.KeyFile, c.CaFile, c.InsecureSkipTLSverify, c.PassCredentialsAll, getter.All(settings))
+			c.CertFile, c.KeyFile, c.CAFile, c.InsecureSkipTLSverify, c.PassCredentialsAll, getter.All(settings))
 		if err != nil {
 			return "", err
 		}
