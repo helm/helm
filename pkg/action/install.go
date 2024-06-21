@@ -39,6 +39,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v3/internal/urlutil"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
@@ -795,10 +796,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 			return "", err
 		}
 
-		// Host on URL (returned from url.Parse) contains the port if present.
-		// This check ensures credentials are not passed between different
-		// services on different ports.
-		if c.PassCredentialsAll || (u1.Scheme == u2.Scheme && u1.Host == u2.Host) {
+		if c.PassCredentialsAll || urlutil.SchemeHostAndPortMatches(u1, u2) {
 			dl.Options = append(dl.Options, getter.WithBasicAuth(c.Username, c.Password))
 		} else {
 			dl.Options = append(dl.Options, getter.WithBasicAuth("", ""))

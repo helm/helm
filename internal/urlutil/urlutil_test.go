@@ -16,7 +16,10 @@ limitations under the License.
 
 package urlutil
 
-import "testing"
+import (
+	"net/url"
+	"testing"
+)
 
 func TestURLJoin(t *testing.T) {
 	tests := []struct {
@@ -35,6 +38,34 @@ func TestURLJoin(t *testing.T) {
 			t.Errorf("%s: error %q", tt.name, err)
 		} else if got != tt.expect {
 			t.Errorf("%s: expected %q, got %q", tt.name, tt.expect, got)
+		}
+	}
+}
+
+func TestSchemeHostAndPortMatches(t *testing.T) {
+	for _, tt := range []struct {
+		a, b  string
+		match bool
+	}{
+		{"http://example.com", "http://example.com", true},
+		{"https://example.com", "https://example.com", true},
+		{"http://example.com", "https://example.com", false},
+		{"https://example.com", "http://example.com", false},
+		{"http://example.com:80", "http://example.com:80", true},
+		{"https://example.com:443", "https://example.com:443", true},
+		{"http://example.com:1234", "http://example.com:5678", false},
+		{"https://example.com:1234", "https://example.com:5678", false},
+		{"http://example.com:80", "http://example.com", true},
+		{"https://example.com:443", "https://example.com", true},
+		{"http://example.com:80", "https://example.com", false},
+		{"https://example.com:443", "http://example.com", false},
+		{"http://example.com:1234", "http://example.com", false},
+		{"https://example.com:1234", "https://example.com", false},
+	} {
+		u1, _ := url.Parse(tt.a)
+		u2, _ := url.Parse(tt.b)
+		if tt.match != SchemeHostAndPortMatches(u1, u2) {
+			t.Errorf("Expected %q==%q to be %t", tt.a, tt.b, tt.match)
 		}
 	}
 }
