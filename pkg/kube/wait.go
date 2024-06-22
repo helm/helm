@@ -63,6 +63,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 			ready, err := w.c.IsReady(ctx, v)
 
 			if waitRetries > 0 && w.isRetryableError(err, v) {
+				waitRetries--
 				numberOfErrors[i]++
 				if numberOfErrors[i] > waitRetries {
 					w.log("Max number of retries reached")
