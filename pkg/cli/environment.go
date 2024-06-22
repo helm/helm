@@ -112,7 +112,7 @@ func New() *EnvSettings {
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
 	// bind to kubernetes config flags
-	env.config = &genericclioptions.ConfigFlags{
+	config := &genericclioptions.ConfigFlags{
 		Namespace:        &env.namespace,
 		Context:          &env.KubeContext,
 		BearerToken:      &env.KubeToken,
@@ -133,6 +133,11 @@ func New() *EnvSettings {
 			return config
 		},
 	}
+	if env.BurstLimit != defaultBurstLimit {
+		config = config.WithDiscoveryBurst(env.BurstLimit)
+	}
+	env.config = config
+
 	return env
 }
 

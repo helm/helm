@@ -24,7 +24,7 @@ require (
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/moby/term v0.5.0
-	github.com/opencontainers/image-spec v1.1.0-rc5
+	github.com/opencontainers/image-spec v1.1.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
 	github.com/rubenv/sql-migrate v1.5.2
@@ -44,7 +44,7 @@ require (
 	k8s.io/client-go v0.30.0
 	k8s.io/klog/v2 v2.120.1
 	k8s.io/kubectl v0.30.0
-	oras.land/oras-go v1.2.4
+	oras.land/oras-go v1.2.5
 	sigs.k8s.io/yaml v1.4.0
 )
 
@@ -65,14 +65,14 @@ require (
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/docker/cli v24.0.6+incompatible // indirect
-	github.com/docker/distribution v2.8.2+incompatible // indirect
-	github.com/docker/docker v24.0.9+incompatible // indirect
+	github.com/distribution/reference v0.5.0 // indirect
+	github.com/docker/cli v25.0.1+incompatible // indirect
+	github.com/docker/distribution v2.8.3+incompatible // indirect
+	github.com/docker/docker v25.0.5+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
-	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
-	github.com/docker/go-units v0.5.0 // indirect
 	github.com/docker/libtrust v0.0.0-20150114040149-fa567046d9b1 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect
@@ -123,7 +123,6 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
-	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
