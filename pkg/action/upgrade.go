@@ -102,11 +102,13 @@ type Upgrade struct {
 	// Description is the description of this operation
 	Description string
 	Labels      map[string]string
-	// PostRender is an optional post-renderer
+	// PostRender is an optional post-renderer that runs on manifests and CRDs.
 	//
 	// If this is non-nil, then after templates are rendered, they will be sent to the
 	// post renderer before sending to the Kubernetes API server.
 	PostRenderer postrender.PostRenderer
+	// PostRendererHooks is similar to PostRenderer, except it runs only on hooks.
+	PostRendererHooks postrender.PostRenderer
 	// DisableOpenAPIValidation controls whether OpenAPI validation is enforced.
 	DisableOpenAPIValidation bool
 	// Get missing dependencies
@@ -269,7 +271,20 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		interactWithRemote = true
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithRemote, u.EnableDNS, u.HideSecret)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(
+		chart,
+		valuesToRender,
+		"",
+		"",
+		u.SubNotes,
+		false,
+		false,
+		u.PostRenderer,
+		u.PostRendererHooks,
+		interactWithRemote,
+		u.EnableDNS,
+    u.HideSecret,
+	)
 	if err != nil {
 		return nil, nil, err
 	}

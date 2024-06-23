@@ -37,9 +37,11 @@ import (
 )
 
 const (
-	outputFlag         = "output"
-	postRenderFlag     = "post-renderer"
-	postRenderArgsFlag = "post-renderer-args"
+	outputFlag              = "output"
+	postRenderMainFlag      = "post-renderer"
+	postRenderMainArgsFlag  = "post-renderer-args"
+	postRenderHooksFlag     = "post-renderer-hooks"
+	postRenderHooksArgsFlag = "post-renderer-hooks-args"
 )
 
 func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
@@ -115,10 +117,14 @@ func (o *outputValue) Set(s string) error {
 	return nil
 }
 
-func bindPostRenderFlag(cmd *cobra.Command, varRef *postrender.PostRenderer) {
-	p := &postRendererOptions{varRef, "", []string{}}
-	cmd.Flags().Var(&postRendererString{p}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
-	cmd.Flags().Var(&postRendererArgsSlice{p}, postRenderArgsFlag, "an argument to the post-renderer (can specify multiple)")
+func bindPostRenderFlag(cmd *cobra.Command, mainRef *postrender.PostRenderer, hooksRef *postrender.PostRenderer) {
+	mainOptions := &postRendererOptions{mainRef, "", []string{}}
+	cmd.Flags().Var(&postRendererString{mainOptions}, postRenderMainFlag, "the path to an executable to be used for post rendering CRDs and manifests. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
+	cmd.Flags().Var(&postRendererArgsSlice{mainOptions}, postRenderMainArgsFlag, "an argument to the main post-renderer (can specify multiple)")
+
+	hooksOptions := &postRendererOptions{hooksRef, "", []string{}}
+	cmd.Flags().Var(&postRendererString{hooksOptions}, postRenderHooksFlag, "the path to an executable to be used for post rendering hooks. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
+	cmd.Flags().Var(&postRendererArgsSlice{hooksOptions}, postRenderHooksArgsFlag, "an argument to the hooks post-renderer (can specify multiple)")
 }
 
 type postRendererOptions struct {
