@@ -815,6 +815,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	if err != nil {
 		return "", err
 	}
+	c.RepoURL = dl.RepositoryURL
 
 	lname, err := filepath.Abs(filename)
 	if err != nil {

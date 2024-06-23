@@ -190,6 +190,11 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if client.ChartPathOptions.RepoURL != "" {
+				ch.Metadata.RepoURL = client.ChartPathOptions.RepoURL
+			} else {
+				ch.Metadata.RepoURL = "path"
+			}
 			if req := ch.Metadata.Dependencies; req != nil {
 				if err := action.CheckDependencies(ch, req); err != nil {
 					err = errors.Wrap(err, "An error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies")
