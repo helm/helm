@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/strvals"
 )
 
 func concatPrefix(a, b string) string {
@@ -219,6 +220,8 @@ func coalesceValues(printf printFn, c *chart.Chart, v map[string]interface{}, pr
 		}
 	}
 
+	processListKeyOverride(printf, subPrefix, v, vc)
+
 	for key, val := range vc {
 		if value, ok := v[key]; ok {
 			if value == nil && !merge {
@@ -246,6 +249,68 @@ func coalesceValues(printf printFn, c *chart.Chart, v map[string]interface{}, pr
 			// If the key is not in v, copy it from nv.
 			v[key] = val
 		}
+	}
+}
+
+func processListKeyOverride(printf printFn, subPrefix string, v map[string]interface{}, vc map[string]interface{}) {
+	// if there are list override fields in v, we need to combine them with the lists in vc
+	for key, val := range v {
+		listKeyName, t := strvals.FindListRune(key)
+
+		// if this is not a list key override, potential to recur
+		if listKeyName == "" {
+			if vcValue, vcHasKey := vc[key]; vcHasKey {
+				nestedV, vIsNested := val.(map[string]interface{})
+				nestedVC, vcIsNested := vcValue.(map[string]interface{})
+				if vIsNested && vcIsNested {
+					processListKeyOverride(printf, subPrefix+key, nestedV, nestedVC)
+				}
+			}
+			continue
+		}
+
+		// remove list key the dict, if it should be merged it will be handled
+		delete(v, key)
+		// process any lists to merge. there is an index field if this is a listKeyName
+		// if the list key name is also in the values, then ignore this list key
+		if _, ok := v[listKeyName]; ok {
+			continue
+		}
+		baseKeyValue, ok := vc[listKeyName]
+		// if the list key is not in the base list, do nothing
+		if !ok {
+			printf(
+				"warning: list override key %s.%s is invalid because there is no underlying key %s in the base values",
+				subPrefix, key, listKeyName)
+			continue
+		}
+		baseKeyList, ok := baseKeyValue.([]interface{})
+		if !ok {
+			printf(
+				"warning: list override key %s.%s is invalid because base values key %s is not a list",
+				subPrefix, key, listKeyName)
+			continue
+		}
+		overrideAtIdx, err := t.ParseListIndex()
+		if err != nil {
+			printf(
+				"warning: list override key %s.%s is invalid - %s",
+				subPrefix, key, err)
+			continue
+		}
+		baseKeyListLen := len(baseKeyList)
+		if baseKeyListLen-1 < overrideAtIdx {
+			printf(
+				"warning: list override key %s.%s is invalid because provided index is too big for base %s list length of %d",
+				subPrefix, key, listKeyName, baseKeyListLen)
+			continue
+		}
+		// we do not merge nested maps within list overrides because `coalesceValues` does not have a direct recursive call
+		// avoid mutating
+		destination := make([]interface{}, len(baseKeyList))
+		copy(destination, baseKeyList)
+		destination[overrideAtIdx] = val
+		v[listKeyName] = destination
 	}
 }
 

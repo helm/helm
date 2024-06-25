@@ -16,6 +16,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -38,6 +39,7 @@ func ProcessDependencies(c *chart.Chart, v Values) error {
 // It is similar to ProcessDependencies but it does not remove nil values during
 // the import/export handling process.
 func ProcessDependenciesWithMerge(c *chart.Chart, v Values) error {
+	fmt.Printf("\nProcessing...\n")
 	if err := processDependencyEnabled(c, v, ""); err != nil {
 		return err
 	}
@@ -161,7 +163,6 @@ Loop:
 		}
 	}
 	c.SetDependencies(chartDependencies...)
-
 	// set all to true
 	for _, lr := range c.Metadata.Dependencies {
 		lr.Enabled = true

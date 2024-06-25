@@ -147,6 +147,26 @@ func newParser(sc *bytes.Buffer, data map[string]interface{}, stringBool bool) *
 	return &parser{sc: sc, data: data, reader: stringConverter}
 }
 
+// determine whether the provided string has an open bracket for a list rune
+func FindListRune(in string) (string, *parser) {
+	var t *parser
+	found := ""
+
+	scanner := bytes.NewBufferString(in)
+	t = newParser(scanner, map[string]interface{}{}, false)
+
+	stop := runeSet([]rune{'['})
+
+	// as long as we dont hit eof, we are good. and we've seeked to open bracket
+	v, _, err := runesUntil(t.sc, stop)
+
+	if err == nil {
+		found = string(v)
+	}
+
+	return found, t
+}
+
 func newJSONParser(sc *bytes.Buffer, data map[string]interface{}) *parser {
 	return &parser{sc: sc, data: data, reader: nil, isjsonval: true}
 }
@@ -166,6 +186,19 @@ func (t *parser) parse() error {
 		}
 		return err
 	}
+}
+
+// read string index and validate it
+func (t *parser) ParseListIndex() (int, error) {
+	idx, err := t.keyIndex()
+	if err != nil {
+		return 0, errors.New("failed to find a valid index")
+	}
+	if idx < 0 {
+		return 0, errors.New("index cannot be negative")
+	}
+
+	return idx, nil
 }
 
 func runeSet(r []rune) map[rune]bool {

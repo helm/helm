@@ -17,6 +17,7 @@ limitations under the License.
 package values
 
 import (
+	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -57,7 +58,9 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 			return nil, errors.Wrapf(err, "failed to parse %s", filePath)
 		}
 		// Merge with the previous map
-		base = mergeMaps(base, currentMap)
+		if base, err = mergeMaps(base, currentMap); err != nil {
+			return nil, errors.Errorf("failed merging values files: %s", err)
+		}
 	}
 
 	// User specified a value via --set-json
@@ -72,6 +75,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 		if err := strvals.ParseInto(value, base); err != nil {
 			return nil, errors.Wrap(err, "failed parsing --set data")
 		}
+
 	}
 
 	// User specified a value via --set-string
@@ -105,23 +109,62 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 	return base, nil
 }
 
-func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
+func mergeMaps(a, b map[string]interface{}) (map[string]interface{}, error) {
 	out := make(map[string]interface{}, len(a))
+	var err error
 	for k, v := range a {
 		out[k] = v
 	}
 	for k, v := range b {
-		if v, ok := v.(map[string]interface{}); ok {
+		listKeyName, t := strvals.FindListRune(k)
+		if listKeyName != "" { // to allow list overrides - no merging within lists
+			// ignore list index if there is the plain key in the same list already
+			if _, ok := b[listKeyName]; ok {
+				continue
+			}
+			overrideIdx, err := t.ParseListIndex()
+
+			if err != nil {
+				return out, fmt.Errorf("invalid key format %s for list override - %s", k, err)
+			}
+			// we can't assume that baseValue exists because we still have to merge to the base layer
+			baseValue, hasBaseValue := out[listKeyName]
+			var bvList []interface{}
+			var ok bool
+			if hasBaseValue {
+				if bvList, ok = baseValue.([]interface{}); !ok {
+					return out, fmt.Errorf("invalid key %s - the underlying value in the base layer is not a list", k)
+				}
+			}
+			if bvList == nil {
+				// if there is no underlying list, preserve the index override for the base values
+				out[k] = v
+			} else {
+				// validate index and list merge operation
+				if len(bvList)-1 < overrideIdx {
+					return out, fmt.Errorf("invalid key format %s - index %d does not exist in the destination list", listKeyName, overrideIdx)
+				}
+				// copy the list so that we don't mutate the input
+				destination := make([]interface{}, len(bvList))
+				copy(destination, bvList)
+				destination[overrideIdx] = v
+				out[listKeyName] = destination
+				continue
+			}
+		} else if v, ok := v.(map[string]interface{}); ok {
 			if bv, ok := out[k]; ok {
 				if bv, ok := bv.(map[string]interface{}); ok {
-					out[k] = mergeMaps(bv, v)
+					out[k], err = mergeMaps(bv, v)
+					if err != nil {
+						return out, fmt.Errorf("failed to merge values - %s", err)
+					}
 					continue
 				}
 			}
 		}
 		out[k] = v
 	}
-	return out
+	return out, err
 }
 
 // readFile load a file from stdin, the local directory, or a remote file with a url.

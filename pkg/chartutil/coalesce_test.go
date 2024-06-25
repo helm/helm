@@ -367,6 +367,168 @@ func TestMergeValues(t *testing.T) {
 	is.Equal(valsCopy, vals)
 }
 
+func TestMergeValuesListOverride(t *testing.T) {
+	is := assert.New(t)
+	expectedNonListOutput := map[string]interface{}{
+		"testing": "notAList",
+	}
+	var validListOverrideValues = []byte(`
+"testing[0]":
+  foo: bar
+  these: values
+  will: override
+`)
+	expectedValidListOverrideOutput := map[string]interface{}{
+		"testing": []interface{}{
+			map[string]interface{}{
+				"foo":   "bar",
+				"these": "values",
+				"will":  "override",
+			},
+			"itemTwo",
+			"itemThree",
+		},
+	}
+	var outOfBoundsOverrideValues = []byte(`
+testing[10]:
+  foo: bar
+  these: values
+  would: "override on valid index"
+`)
+	var malformedOverrideValues = []byte(`
+testing[]:
+  foo: bar
+  these: values
+  will: override
+`)
+
+	var conflictingIndexValues = []byte(`
+testing[0]:
+  this: "will be ignored"
+testing:
+  - "This will completely override lower layer"
+`)
+	expectedConflictingIndexOutput := map[string]interface{}{
+		"testing": []interface{}{
+			"This will completely override lower layer",
+		},
+	}
+
+	var recursiveOverrideValues = []byte(`
+header:
+  testing[0]:
+    override: "occurs"
+
+`)
+	expectedRecursiveOutput := map[string]interface{}{
+		"header": map[string]interface{}{
+			"testing": []interface{}{
+				map[string]interface{}{"override": "occurs"},
+				"this one stays",
+			},
+		},
+	}
+
+	validListOverrideVals, err := ReadValues(validListOverrideValues)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	standardBaseValues := map[string]interface{}{
+		"testing": []interface{}{
+			map[string]interface{}{
+				"foo":  "this will be overridden",
+				"this": "non-conflicting key will also be gone",
+			},
+			"itemTwo",
+			"itemThree",
+		},
+	}
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "spouter"},
+		Values:   standardBaseValues,
+	}
+	vals, err := MergeValues(c, validListOverrideVals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	is.Equal(expectedValidListOverrideOutput, vals.AsMap())
+
+	// index out of bounds for merge
+	oobListOverrideVals, err := ReadValues(outOfBoundsOverrideValues)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vals, err = MergeValues(c, oobListOverrideVals)
+	is.Equal(standardBaseValues, vals.AsMap()) // should be unchanged
+
+	// malformed index
+	malformedOverideVals, err := ReadValues(malformedOverrideValues)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vals, err = MergeValues(c, malformedOverideVals)
+	is.Equal(standardBaseValues, vals.AsMap()) // should be unchanged
+
+	// conflicting list set
+	conflictingIndexVals, err := ReadValues(conflictingIndexValues)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vals, err = MergeValues(c, conflictingIndexVals)
+	is.Equal(expectedConflictingIndexOutput, vals.AsMap()) // should be unchanged
+
+	// no underlying key
+	noKeyBaseC := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "nonLister"},
+		Values: map[string]interface{}{
+			"other key": "some value",
+		},
+	}
+	validListOverrideVals, err = ReadValues(validListOverrideValues)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vals, err = MergeValues(noKeyBaseC, validListOverrideVals)
+	is.Equal(map[string]interface{}{
+		"other key": "some value",
+	}, vals.AsMap()) // should be unchanged
+
+	// merge on top of non-list
+	nonListBaseC := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "nonLister"},
+		Values: map[string]interface{}{
+			"testing": "notAList",
+		},
+	}
+	validListOverrideVals, err = ReadValues(validListOverrideValues)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vals, err = MergeValues(nonListBaseC, validListOverrideVals)
+	is.Equal(expectedNonListOutput, vals.AsMap()) // should be unchanged
+
+	// recursive list override
+	recursiveBaseC := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "nonLister"},
+		Values: map[string]interface{}{
+			"header": map[string]interface{}{
+				"testing": []interface{}{
+					"this one goes",
+					"this one stays",
+				},
+			},
+		},
+	}
+	recursiveOverrideVals, err := ReadValues(recursiveOverrideValues)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vals, err = MergeValues(recursiveBaseC, recursiveOverrideVals)
+	is.Equal(expectedRecursiveOutput, vals.AsMap()) // should be unchanged
+}
+
 func TestCoalesceTables(t *testing.T) {
 	dst := map[string]interface{}{
 		"name": "Ishmael",
