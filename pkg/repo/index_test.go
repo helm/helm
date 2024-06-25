@@ -62,6 +62,87 @@ entries:
       home: https://github.com/something
       digest: "sha256:1234567890abcdef"
 `
+
+	indexWithDuplicateDependencies = `
+apiVersion: v1
+entries:
+  leading-duplicate-dependency:
+  - apiVersion: v2
+    name: leading-duplicate-dependency
+    appVersion: 1.0.1
+    version: 1.0.1+34
+    description: high version with duplicate dependency, low version normal
+    dependencies:
+    - name: bar
+      repository: https://foo.bar.com/artifactory/proj-foo-bar
+      version: 1.2.3+123
+    - name: bar
+      repository: https://foo.bar.com/artifactory/proj-foo-bar
+      version: 1.2.3+123
+  - apiVersion: v2
+    name: leading-duplicate-dependency
+    appVersion: 1.0.0
+    version: 1.0.0+23
+    description: high version with duplicate dependency, low version normal
+    dependencies:
+    - name: bar
+      repository: https://foo.bar.com/artifactory/proj-foo-bar
+      version: 1.2.3+123
+  trailing-duplicate-dependency:
+  - apiVersion: v2
+    name: trailing-duplicate-dependency
+    appVersion: 1.0.1
+    version: 1.0.1+34
+    description: low version with duplicate dependency, high version normal
+    dependencies:
+    - name: bar
+      repository: https://foo.bar.com/artifactory/proj-foo-bar
+      version: 1.2.3+123
+  - apiVersion: v2
+    name: trailing-duplicate-dependency
+    appVersion: 1.0.0
+    version: 1.0.0+23
+    description: low version with duplicate dependency, high version normal
+    dependencies:
+    - name: bar
+      repository: https://foo.bar.com/artifactory/proj-foo-bar
+      version: 1.2.3+123
+    - name: bar
+      repository: https://foo.bar.com/artifactory/proj-foo-bar
+      version: 1.2.3+123
+  mid-duplicate-dependency:
+  - apiVersion: v2
+    name: mid-duplicate-dependency
+    appVersion: 1.0.2
+    version: 1.0.2+56
+    description: mid version with duplicate dependency, high/low version normal
+    dependencies:
+    - name: bar
+      repository: https://foo.bar.com/artifactory/proj-foo-bar
+      version: 1.2.3+123
+  - apiVersion: v2
+    name: mid-duplicate-dependency
+    appVersion: 1.0.1
+    version: 1.0.1+34
+    description: mid version with duplicate dependency, high/low version normal
+    dependencies:
+    - name: bar
+      repository: https://foo.bar.com/artifactory/proj-foo-bar
+      version: 1.2.3+123
+    - name: bar
+      repository: https://foo.bar.com/artifactory/proj-foo-bar
+      version: 1.2.3+123
+  - apiVersion: v2
+    name: mid-duplicate-dependency
+    appVersion: 1.0.0
+    version: 1.0.0+23
+    description: mid version with duplicate dependency, high/low version normal
+    dependencies:
+    - name: bar
+      repository: https://foo.bar.com/artifactory/proj-foo-bar
+      version: 1.2.3+123
+`
+
 	indexWithEmptyEntry = `
 apiVersion: v1
 entries:
@@ -175,6 +256,27 @@ func TestLoadIndex(t *testing.T) {
 func TestLoadIndex_Duplicates(t *testing.T) {
 	if _, err := loadIndex([]byte(indexWithDuplicates), "indexWithDuplicates"); err == nil {
 		t.Errorf("Expected an error when duplicate entries are present")
+	}
+}
+
+func TestLoadIndex_DuplicateDependencies(t *testing.T) {
+	i, err := loadIndex([]byte(indexWithDuplicateDependencies), "indexWithDuplicateDependencies")
+	if err != nil {
+		t.Errorf("Unexpected error: Duplicate dependencies should not fail loadIndex() but we got %s.", err)
+	}
+	validationErrors := 0
+	testCharts := []string{"leading-duplicate-dependency", "trailing-duplicate-dependency", "mid-duplicate-dependency"}
+	for _, name := range testCharts {
+		cvs := i.Entries[name]
+		for idx := len(cvs) - 1; idx >= 0; idx-- {
+			if err := cvs[idx].Validate(); err != nil {
+				t.Logf("Unexpected error: Invalid helm chart with duplicate dependencies is not excluded yet [%q %q: %s].", name, cvs[idx].Version, err)
+				validationErrors++
+			}
+		}
+	}
+	if validationErrors != 0 {
+		t.Errorf("Unexpected error: Invalid helm charts with duplicate dependencies are not fully excluded: %v invalid helm charts.", validationErrors)
 	}
 }
 

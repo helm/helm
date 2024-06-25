@@ -371,6 +371,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}
 		}
+		i.Entries[name] = cvs
 	}
 	i.SortEntries()
 	if i.APIVersion == "" {
