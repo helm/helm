@@ -25,19 +25,32 @@ import (
 )
 
 // All runs all of the available linters on the given base directory.
+// Deprecated, use AllWithOptions instead.
 func All(basedir string, values map[string]interface{}, namespace string, _ bool) support.Linter {
-	return AllWithKubeVersion(basedir, values, namespace, nil)
+	return AllWithOptions(basedir, values, namespace)
 }
 
 // AllWithKubeVersion runs all the available linters on the given base directory, allowing to specify the kubernetes version.
+// Deprecated, use AllWithOptions instead.
 func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) support.Linter {
+	return AllWithOptions(basedir, values, namespace, WithKubeVersion(kubeVersion))
+}
+
+// AllWithOptions runs all the available linters on the given base directory, allowing to specify different options.
+func AllWithOptions(basedir string, values map[string]interface{}, namespace string, options ...LinterOption) support.Linter {
 	// Using abs path to get directory context
 	chartDir, _ := filepath.Abs(basedir)
 
 	linter := support.Linter{ChartDir: chartDir}
+
+	for _, optFn := range options {
+		optFn(&linter)
+	}
+
 	rules.Chartfile(&linter)
 	rules.ValuesWithOverrides(&linter, values)
-	rules.TemplatesWithKubeVersion(&linter, values, namespace, kubeVersion)
+	rules.TemplatesV2(&linter, values, namespace)
 	rules.Dependencies(&linter)
+
 	return linter
 }
