@@ -22,23 +22,53 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
+
+	"gopkg.in/yaml.v3"
 )
 
 type execRender struct {
 	binaryPath string
 	args       []string
+	incHooks   bool
 }
 
 // NewExec returns a PostRenderer implementation that calls the provided binary.
 // It returns an error if the binary cannot be found. If the path does not
 // contain any separators, it will search in $PATH, otherwise it will resolve
 // any relative paths to a fully qualified path
-func NewExec(binaryPath string, args ...string) (PostRenderer, error) {
+func NewExec(binaryPath string, incHooks bool, args ...string) (PostRenderer, error) {
 	fullPath, err := getFullPath(binaryPath)
 	if err != nil {
 		return nil, err
 	}
-	return &execRender{fullPath, args}, nil
+	return &execRender{fullPath, args, incHooks}, nil
+}
+
+func (p *execRender) IncHooks() bool {
+	return p.incHooks
+}
+
+func (p *execRender) RunIncHooks(renderedFiles map[string]string) (modifiedFiles map[string]string, err error) {
+	// Serialize rendered files into a YAML buffer
+	originalManifests, err := yaml.Marshal(renderedFiles)
+	if err != nil {
+		return modifiedFiles, fmt.Errorf("error while generating post renderer input: %w", err)
+	}
+	originalManifestsBuffer := bytes.NewBuffer(originalManifests)
+
+	// Run the post-renderer on the YAML data
+	updatedManifests, err := p.Run(originalManifestsBuffer)
+	if err != nil {
+		return modifiedFiles, fmt.Errorf("error while running post render on files: %w", err)
+	}
+
+	// Load the post-rendered manifests back into a list of rendered files
+	renderedFiles = make(map[string]string)
+	err = yaml.Unmarshal(updatedManifests.Bytes(), &renderedFiles)
+	if err != nil {
+		return modifiedFiles, fmt.Errorf("error while parsing post renderer output: %w", err)
+	}
+	return renderedFiles, nil
 }
 
 // Run the configured binary for the post render
