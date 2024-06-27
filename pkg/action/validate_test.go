@@ -17,6 +17,11 @@ limitations under the License.
 package action
 
 import (
+	"archive/tar"
+	"compress/gzip"
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/kube"
@@ -120,4 +125,98 @@ func TestSetMetadataVisitor(t *testing.T) {
 	err = resources.Visit(setMetadataVisitor("rel-b", "ns-a", false))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `Deployment "baz" in namespace "" cannot be owned`)
+}
+
+func TestChartAtPath(t *testing.T) {
+	is := assert.New(t)
+	cases := map[string]struct{
+		path func() string
+		result bool
+	}{
+		"empty-dir": {
+			result: false,
+			path: func() string {
+				return t.TempDir()
+			},
+		},
+		"empty-file": {
+			result: false,
+			path: func() string {
+				fp := filepath.Join(t.TempDir(), "notachart")
+				f, err := os.Create(fp)
+				if err!= nil {
+					t.Skip()
+				}
+				f.Close()
+				return fp
+			},
+		},
+		"dir-with-chart-yaml": {
+			result: true,
+			path: func() string {
+				d := t.TempDir()
+				fp := filepath.Join(d, "Chart.yaml")
+				f, err := os.Create(fp)
+				if err!= nil {
+					t.Skip()
+				}
+				f.Close()
+				return d
+			},
+		},
+		"chart-archive": {
+			result: true,
+			path: func() string {
+				d1 := t.TempDir()
+				fp := filepath.Join(d1, "Chart.yaml")
+				f, err := os.Create(fp)
+				if err!= nil {
+					t.Skip()
+				}
+				f.Close()
+
+				d2 := t.TempDir()
+				ap := filepath.Join(d2, "chart.tar.gz")
+				ar, err := os.Create(ap)
+				if err!= nil {
+					t.Skip(err)
+				}
+				defer ar.Close()
+				gz := gzip.NewWriter(ar)
+				defer gz.Close()
+				tr := tar.NewWriter(gz)
+				defer tr.Close()
+
+				ch, err := os.Open(fp)
+				if err != nil {
+					t.Skip(err)
+				}
+				defer ch.Close()
+				fi, err := ch.Stat()
+				if err != nil {
+					t.Skip(err)
+				}
+				h := &tar.Header{
+					Name:    fp,
+					Size:    fi.Size(),
+					Mode:    int64(fi.Mode()),
+					ModTime: fi.ModTime(),
+				}
+				err = tr.WriteHeader(h)
+				if err != nil {
+					t.Skip(err)
+				}
+				_, err = io.Copy(tr, ch)
+				if err != nil {
+					t.Skip(err)
+				}
+				return ap
+			},
+		},
+	}
+	for k, v := range cases {
+		t.Run(k, func(t *testing.T) {
+			is.Equal(chartAtPath(v.path()), v.result, k)
+		})
+	}
 }

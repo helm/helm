@@ -738,7 +738,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
 
-	if _, err := os.Stat(name); err == nil {
+	if chartAtPath(name) {
 		abs, err := filepath.Abs(name)
 		if err != nil {
 			return abs, err
