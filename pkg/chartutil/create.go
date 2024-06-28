@@ -211,6 +211,346 @@ tolerations: []
 affinity: {}
 `
 
+const defaultSchema = `{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "title": "%s",
+    "description": "The default scheme for the chart values.",
+    "type": "object",
+    "required": [
+        "replicaCount",
+        "image",
+        "serviceAccount",
+        "service"
+    ],
+    "properties": {
+        "replicaCount": {
+            "description": "Number of desired pods.",
+            "type": "integer",
+            "default": 1,
+            "minimum": 0
+        },
+        "image": {
+            "description": "Container image parameters.",
+            "type": "object",
+            "required": [
+                "repository"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "repository": {
+                    "description": "Image repository. Path to the image with registry(quay.io) or without(nginx) for docker.io.",
+                    "type": "string"
+                },
+                "pullPolicy": {
+                    "description": "Image pull policy. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated.",
+                    "type": "string",
+                    "enum": [
+                        "Never",
+                        "IfNotPresent",
+                        "Always"
+                    ],
+                    "default": "IfNotPresent"
+                },
+                "tag": {
+                    "description": "Use chart appVersion by default.",
+                    "type": "string",
+                    "default": ""
+                }
+            }
+        },
+        "imagePullSecrets": {
+            "description": "The property allows you to configure multiple image pull secrets.",
+            "type": "array",
+            "default": [],
+            "items": {
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "Specifies the Secret name of the image pull secret.",
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "nameOverride": {
+            "description": "Override value for the name of the Helm chart.",
+            "type": "string",
+            "default": ""
+        },
+        "fullnameOverride": {
+            "description": "Override value for the fully qualified app name.",
+            "type": "string",
+            "default": ""
+        },
+        "serviceAccount": {
+            "description": "Contains properties related to the service account configuration.",
+            "type": "object",
+            "required": ["create"],
+            "properties": {
+                "create": {
+                    "description": "Specifies whether a service account should be created.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "annotations": {
+                    "description": "Annotations to add to the service account.",
+                    "type": "object",
+                    "default": {}
+                },
+                "name": {
+                    "description": "The name of the service account to use. If not set and create is true, a name is generated using the fullname template.",
+                    "type": "string",
+                    "default": ""
+                }
+            }
+        },
+        "podAnnotations": {
+            "description": "Annotations to add to the pods.",
+            "type": "object"
+        },
+        "podSecurityContext": {
+            "description": "Pod security context configuration.",
+            "type": "object",
+            "properties": {
+                "fsGroup": {
+                    "description": "The fsGroup value for the pod's security context.",
+                    "type": "integer",
+                    "default": 65534
+                },
+                "runAsUser": {
+                    "description": "The UID to run the pod's containers as.",
+                    "type": "integer"
+                },
+                "runAsGroup": {
+                    "description": "The GID to run the pod's containers as.",
+                    "type": "integer"
+                }
+            }
+        },
+        "securityContext": {
+            "description": "Security context for the container.",
+            "type": "object",
+            "properties": {
+                "capabilities": {
+                    "description": "Specifies the capabilities to be dropped by the container.",
+                    "type": "object",
+                    "properties": {
+                        "drop": {
+                            "description": "List of capabilities to be dropped.",
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "readOnlyRootFilesystem": {
+                    "description": "Specifies whether the root file system should be mounted as read-only.",
+                    "type": "boolean"
+                },
+                "runAsUser": {
+                    "description": "Specifies the UID (User ID) to run the container as.",
+                    "type": "integer"
+                },
+                "runAsNonRoot": {
+                    "description": "Specifies whether to run the container as a non-root user.",
+                    "type": "boolean"
+                },
+                "runAsGroup": {
+                    "description": "Specifies the GID (Group ID) to run the container as.",
+                    "type": "integer"
+                }
+            }
+        },
+        "service": {
+            "description": "Service configuration.",
+            "type": "object",
+            "required": ["type", "port"],
+            "properties": {
+                "annotations": {
+                    "description": "Annotations to add to the service.",
+                    "type": "object"
+                },
+                "type": {
+                    "description": "Service type.",
+                    "type": "string"
+                },
+                "port": {
+                    "description": "Port number for the service.",
+                    "type": "integer"
+                },
+                "clusterPort": {
+                    "description": "Port number for the cluster.",
+                    "type": "integer"
+                },
+                "loadBalancerIP": {
+                    "description": "External IP to assign when the service type is LoadBalancer.",
+                    "type": "string"
+                },
+                "loadBalancerSourceRanges": {
+                    "description": "IP ranges to allow access to the loadBalancerIP.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "nodePort": {
+                    "description": "Specific nodePort to force when service type is NodePort.",
+                    "type": "integer"
+                }        
+            }
+        },
+        "ingress": {
+            "description": "Ingress configuration.",
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "description": "Indicates if Ingress is enabled.",
+                    "type": "boolean"
+                },
+                "className": {
+                    "description": "Ingress class name.",
+                    "type": "string"
+                },
+                "annotations": {
+                    "description": "Annotations to add to the Ingress.",
+                    "type": "object"
+                },
+                "hosts": {
+                    "description": "Host and path configuration for the Ingress.",
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "host": {
+                                "description": "Host name for the Ingress.",
+                                "type": "string"
+                            },
+                            "paths": {
+                                "description": "Path configuration for the Ingress.",
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "path": {
+                                            "description": "Path for the Ingress.",
+                                            "type": "string"
+                                        },
+                                        "pathType": {
+                                            "description": "Path type for the Ingress.",
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "tls": {
+                    "description": "TLS configuration for the Ingress.",
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "secretName": {
+                                "description": "Name of the secret for TLS.",
+                                "type": "string"
+                            },
+                            "hosts": {
+                                "description": "Host names for the TLS configuration.",
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "resources": {
+            "description": "Resource limits and requests for the Container.",
+            "type": "object",
+            "properties": {
+                "limits": {
+                    "description": "Resource limits for the Container.",
+                    "type": "object",
+                    "properties": {
+                        "cpu": {
+                            "description": "CPU request for the Container.",
+                            "type": "string"
+                        },
+                        "memory": {
+                            "description": "Memory request for the Container.",
+                            "type": "string"
+                        }
+                    }
+                },
+                "requests": {
+                    "description": "Resource requests for the Container.",
+                    "type": "object",
+                    "properties": {
+                        "cpu": {
+                            "description": "CPU request for the Container.",
+                            "type": "string"
+                        },
+                        "memory": {
+                            "description": "Memory request for the Container.",
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "autoscaling": {
+            "description": "Configuration for autoscaling the resource based on resource utilization.",
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "description": "Specifies whether autoscaling is enabled.",
+                    "type": "boolean"
+                },
+                "minReplicas": {
+                    "description": "Minimum number of replicas for the resource.",
+                    "type": "integer"
+                },
+                "maxReplicas": {
+                    "description": "Maximum number of replicas for the resource.",
+                    "type": "integer"
+                },
+                "targetCPUUtilizationPercentage": {
+                    "description": "Target CPU utilization percentage for autoscaling.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                },
+                "targetMemoryUtilizationPercentage": {
+                    "description": "Target memory utilization percentage for autoscaling.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                }
+            }
+        },
+        "nodeSelector": {
+            "description": "Node selector for pod assignment.",
+            "type": "object"
+        },
+        "tolerations": {
+            "description": "Tolerations for pod assignment.",
+            "type": "array"
+        },
+        "affinity": {
+            "description": "Affinity rules for pod assignment.",
+            "type": "object"
+        }
+    }
+}
+`
+
 const defaultIgnore = `# Patterns to ignore when building packages.
 # This supports shell glob matching, relative path matching, and
 # negation (prefixed with !). Only one pattern per line.
@@ -635,6 +975,11 @@ func Create(name, dir string) (string, error) {
 			// values.yaml
 			path:    filepath.Join(cdir, ValuesfileName),
 			content: []byte(fmt.Sprintf(defaultValues, name)),
+		},
+		{
+			// values.schema.json
+			path:    filepath.Join(cdir, SchemafileName),
+			content: []byte(fmt.Sprintf(defaultSchema, name)),
 		},
 		{
 			// .helmignore
