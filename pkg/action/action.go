@@ -381,6 +381,10 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 
 	var store *storage.Storage
 	switch helmDriver {
+	case "multisecret", "multisecrets":
+		d := driver.NewMultiSecrets(newMultiSecretClient(lazyClient))
+		d.Log = log
+		store = storage.Init(d)
 	case "secret", "secrets", "":
 		d := driver.NewSecrets(newSecretClient(lazyClient))
 		d.Log = log
