@@ -20,6 +20,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -271,6 +272,19 @@ func namedReleaseStub(name string, status release.Status) *release.Release {
 			},
 		},
 	}
+}
+
+func Test_chartNeedsAPIVersions(t *testing.T) {
+	is := assert.New(t)
+	is.Equal(chartNeedsAPIVersions(nil), false)
+	ch := &chart.Chart{Metadata: &chart.Metadata{APIVersion: "v1", Name: "test", Version: "0.1.0"}}
+	is.Equal(chartNeedsAPIVersions(ch), false)
+	ch.Templates = append(ch.Templates, &chart.File{Name: "templates/hello", Data: []byte("hello: world")})
+	is.Equal(chartNeedsAPIVersions(ch), false)
+	ch.Templates = append(ch.Templates, &chart.File{Name: "templates/kube-version", Data: []byte("{{ .Capabilities.KubeVersion }}")})
+	is.Equal(chartNeedsAPIVersions(ch), false)
+	ch.Templates = append(ch.Templates, &chart.File{Name: "templates/api-versions", Data: []byte("{{ .Capabilities.APIVersions }}")})
+	is.Equal(chartNeedsAPIVersions(ch), true)
 }
 
 func TestGetVersionSet(t *testing.T) {

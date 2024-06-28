@@ -196,7 +196,7 @@ func joinErrors(errs []error) string {
 // deleteRelease deletes the release and returns list of delete resources and manifests that were kept in the deletion process
 func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, string, []error) {
 	var errs []error
-	caps, err := u.cfg.getCapabilities()
+	caps, err := u.cfg.getCapabilities(rel.Chart)
 	if err != nil {
 		return nil, rel.Manifest, []error{errors.Wrap(err, "could not get apiVersions from Kubernetes")}
 	}

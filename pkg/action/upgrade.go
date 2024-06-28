@@ -254,7 +254,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		IsUpgrade: true,
 	}
 
-	caps, err := u.cfg.getCapabilities()
+	caps, err := u.cfg.getCapabilities(chart)
 	if err != nil {
 		return nil, nil, err
 	}
