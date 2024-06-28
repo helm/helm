@@ -69,6 +69,14 @@ func (d *Dependency) Validate() error {
 	return nil
 }
 
+func (d *Dependency) ActualName() string {
+	if d.Alias != "" {
+		return d.Alias
+	} else {
+		return d.Name
+	}
+}
+
 // Lock is a lock file for dependencies.
 //
 // It represents the state that the dependencies should be in.

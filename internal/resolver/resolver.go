@@ -73,6 +73,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				Name:       d.Name,
 				Repository: "",
 				Version:    d.Version,
+				Alias:      d.Alias,
 			}
 			continue
 		}
@@ -102,17 +103,19 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				Name:       d.Name,
 				Repository: d.Repository,
 				Version:    ch.Metadata.Version,
+				Alias:      d.Alias,
 			}
 			continue
 		}
 
-		repoName := repoNames[d.Name]
+		repoName := repoNames[d.ActualName()]
 		// if the repository was not defined, but the dependency defines a repository url, bypass the cache
 		if repoName == "" && d.Repository != "" {
 			locked[i] = &chart.Dependency{
 				Name:       d.Name,
 				Repository: d.Repository,
 				Version:    d.Version,
+				Alias:      d.Alias,
 			}
 			continue
 		}
@@ -171,6 +174,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			Name:       d.Name,
 			Repository: d.Repository,
 			Version:    version,
+			Alias:      d.Alias,
 		}
 		// The version are already sorted and hence the first one to satisfy the constraint is used
 		for _, ver := range vs {

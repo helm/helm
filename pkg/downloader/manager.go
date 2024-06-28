@@ -352,7 +352,15 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				getter.WithTagName(version))
 		}
 
-		if _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
+		archive := chart.Archive{
+			Name:    dep.Name,
+			Version: dep.Version,
+			Alias:   dep.Alias,
+			URL:     churl,
+			Dir:     tmpPath,
+		}
+
+		if _, _, err = dl.DownloadArchiveTo(&archive); err != nil {
 			saveError = errors.Wrapf(err, "could not download %s", churl)
 			break
 		}
@@ -585,12 +593,12 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Repository from local path: %s\n", dd.Repository)
 			}
-			reposMap[dd.Name] = dd.Repository
+			reposMap[dd.ActualName()] = dd.Repository
 			continue
 		}
 
 		if registry.IsOCI(dd.Repository) {
-			reposMap[dd.Name] = dd.Repository
+			reposMap[dd.ActualName()] = dd.Repository
 			continue
 		}
 
@@ -605,7 +613,7 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 				break
 			} else if urlutil.Equal(repo.URL, dd.Repository) {
 				found = true
-				reposMap[dd.Name] = repo.Name
+				reposMap[dd.ActualName()] = repo.Name
 				break
 			}
 		}

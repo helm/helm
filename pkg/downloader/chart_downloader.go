@@ -17,6 +17,7 @@ package downloader
 
 import (
 	"fmt"
+	"helm.sh/helm/v3/pkg/chart"
 	"io"
 	"net/url"
 	"os"
@@ -139,6 +140,62 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		}
 	}
 	return destfile, ver, nil
+}
+
+func (c *ChartDownloader) DownloadArchiveTo(archive *chart.Archive) (string, *provenance.Verification, error) {
+	u, err := c.ResolveChartVersion(archive.URL, archive.Version)
+	if err != nil {
+		return "", nil, err
+	}
+
+	g, err := c.Getters.ByScheme(u.Scheme)
+	if err != nil {
+		return "", nil, err
+	}
+
+	data, err := g.Get(u.String(), c.Options...)
+	if err != nil {
+		return "", nil, err
+	}
+
+	name := filepath.Base(u.Path)
+	if u.Scheme == registry.OCIScheme {
+		idx := strings.LastIndexByte(name, ':')
+		name = fmt.Sprintf("%s-%s.tgz", name[:idx], name[idx+1:])
+	}
+
+	//destfile := archive.FileName()
+
+	if err := fileutil.AtomicWriteFile(archive.FileName(), data, 0644); err != nil {
+		return archive.FileName(), nil, err
+	}
+
+	// If provenance is requested, verify it.
+	ver := &provenance.Verification{}
+	if c.Verify > VerifyNever {
+		body, err := g.Get(u.String() + ".prov")
+		if err != nil {
+			if c.Verify == VerifyAlways {
+				return archive.FileName(), ver, errors.Errorf("failed to fetch provenance %q", u.String()+".prov")
+			}
+			fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", archive.URL, err)
+			return archive.FileName(), ver, nil
+		}
+		//provfile := destfile + ".prov"
+		if err := fileutil.AtomicWriteFile(archive.ProvFileName(), body, 0644); err != nil {
+			return archive.FileName(), nil, err
+		}
+
+		if c.Verify != VerifyLater {
+			ver, err = VerifyChartArchive(archive, c.Keyring)
+			if err != nil {
+				// Fail always in this case, since it means the verification step
+				// failed.
+				return archive.FileName(), ver, err
+			}
+		}
+	}
+	return archive.FileName(), ver, nil
 }
 
 func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, error) {
@@ -328,6 +385,30 @@ func VerifyChart(path, keyring string) (*provenance.Verification, error) {
 		return nil, errors.Wrap(err, "failed to load keyring")
 	}
 	return sig.Verify(path, provfile)
+}
+
+func VerifyChartArchive(archive *chart.Archive, keyring string) (*provenance.Verification, error) {
+	// For now, error out if it's not a tar file.
+	path := archive.FileName()
+	switch fi, err := os.Stat(path); {
+	case err != nil:
+		return nil, err
+	case fi.IsDir():
+		return nil, errors.New("unpacked charts cannot be verified")
+	case !isTar(path):
+		return nil, errors.New("chart must be a tgz file")
+	}
+
+	provfile := archive.ProvFileName()
+	if _, err := os.Stat(provfile); err != nil {
+		return nil, errors.Wrapf(err, "could not load provenance file %s", provfile)
+	}
+
+	sig, err := provenance.NewFromKeyring(keyring, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load keyring")
+	}
+	return sig.VerifyArchive(archive)
 }
 
 // isTar tests whether the given file is a tar file.
