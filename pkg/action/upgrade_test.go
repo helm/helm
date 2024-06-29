@@ -546,7 +546,7 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	rel.Info.Status = release.StatusDeployed
 	req.NoError(upAction.cfg.Releases.Create(rel))
 
-	upAction.DryRun = true
+	upAction.markAsClientOnly()
 	vals := map[string]interface{}{}
 
 	ctx, done := context.WithCancel(context.Background())
@@ -577,8 +577,8 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
 	is.Equal(1, lastRelease.Version)
 
-	// Ensure in a dry run mode when using HideSecret
-	upAction.DryRun = false
+	// Ensure there is an error when HideSecret True but not in a dry-run mode
+	upAction.DryRunOption = ""
 	vals = map[string]interface{}{}
 
 	ctx, done = context.WithCancel(context.Background())

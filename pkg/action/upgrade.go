@@ -70,8 +70,6 @@ type Upgrade struct {
 	WaitForJobs bool
 	// DisableHooks disables hook processing if set to true.
 	DisableHooks bool
-	// DryRun controls whether the operation is prepared, but not executed.
-	DryRun bool
 	// DryRunOption controls whether the operation is prepared, but not executed with options on whether or not to interact with the remote cluster.
 	DryRunOption string
 	// HideSecret can be set to true when DryRun is enabled in order to hide
@@ -184,10 +182,15 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 
 // isDryRun returns true if Upgrade is set to run as a DryRun
 func (u *Upgrade) isDryRun() bool {
-	if u.DryRun || u.DryRunOption == "client" || u.DryRunOption == "server" || u.DryRunOption == "true" {
+	if u.DryRunOption == "client" || u.DryRunOption == "server" || u.DryRunOption == "true" {
 		return true
 	}
 	return false
+}
+
+// markAsClientOnly sets Upgrade.DryRunOption to "client"
+func (u *Upgrade) markAsClientOnly() {
+	u.DryRunOption = "client"
 }
 
 // prepareUpgrade builds an upgraded release for an upgrade operation.

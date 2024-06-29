@@ -69,10 +69,8 @@ type Install struct {
 
 	ChartPathOptions
 
-	ClientOnly      bool
 	Force           bool
 	CreateNamespace bool
-	DryRun          bool
 	DryRunOption    string
 	// HideSecret can be set to true when DryRun is enabled in order to hide
 	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
@@ -99,7 +97,7 @@ type Install struct {
 	Labels                   map[string]string
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
-	// (for things like templating). These are ignored if ClientOnly is false
+	// (for things like templating). These are ignored if markAsClientOnly is false
 	KubeVersion *chartutil.KubeVersion
 	APIVersions chartutil.VersionSet
 	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
@@ -228,7 +226,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 // proceeds in the background.
 func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
-	if !i.ClientOnly {
+	if !i.isClientOnly() {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
 			return nil, err
 		}
@@ -254,7 +252,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 
 	// Pre-install anything in the crd/ directory. We do this before Helm
 	// contacts the upstream server and builds the capabilities object.
-	if crds := chrt.CRDObjects(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
+	if crds := chrt.CRDObjects(); !i.isClientOnly() && !i.SkipCRDs && len(crds) > 0 {
 		// On dry run, bail here
 		if i.isDryRun() {
 			i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
@@ -263,7 +261,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		}
 	}
 
-	if i.ClientOnly {
+	if i.isClientOnly() {
 		// Add mock objects in here so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
 		i.cfg.Capabilities = chartutil.DefaultCapabilities.Copy()
@@ -276,7 +274,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		mem := driver.NewMemory()
 		mem.SetNamespace(i.Namespace)
 		i.cfg.Releases = storage.Init(mem)
-	} else if !i.ClientOnly && len(i.APIVersions) > 0 {
+	} else if !i.isClientOnly() && len(i.APIVersions) > 0 {
 		i.cfg.Log("API Version list given outside of client only mode, this list will be ignored")
 	}
 
@@ -343,7 +341,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// we'll end up in a state where we will delete those resources upon
 	// deleting the release because the manifest will be pointing at that
 	// resource
-	if !i.ClientOnly && !isUpgrade && len(resources) > 0 {
+	if !i.isClientOnly() && !isUpgrade && len(resources) > 0 {
 		toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "Unable to continue with install")
@@ -427,10 +425,18 @@ func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, t
 
 // isDryRun returns true if Upgrade is set to run as a DryRun
 func (i *Install) isDryRun() bool {
-	if i.DryRun || i.DryRunOption == "client" || i.DryRunOption == "server" || i.DryRunOption == "true" {
+	if i.DryRunOption == "client" || i.DryRunOption == "server" || i.DryRunOption == "true" {
 		return true
 	}
 	return false
+}
+
+func (i *Install) isClientOnly() bool {
+	return i.DryRunOption == "client" || i.DryRunOption == "true"
+}
+
+func (i *Install) markAsClientOnly() {
+	i.DryRunOption = "client"
 }
 
 func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {
