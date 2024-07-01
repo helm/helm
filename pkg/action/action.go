@@ -17,12 +17,14 @@ limitations under the License.
 package action
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -176,6 +178,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 			if strings.TrimSpace(content) == "" {
 				continue
 			}
+			content = addLineNumbers(content)
 			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
 		}
 		return hs, b, "", err
@@ -230,6 +233,45 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	}
 
 	return hs, b, notes, nil
+}
+
+// getResourceLines separates a resource into individual lines
+func getResourceLines(resource string) []string {
+	result := []string{}
+	in := strings.NewReader(resource)
+	scanner := bufio.NewScanner(in)
+	for scanner.Scan() {
+		result = append(result, scanner.Text())
+	}
+
+	return result
+}
+
+// addLineNumbers numbers the lines of a resource
+func addLineNumbers(resource string) string {
+	resourceLines := getResourceLines(resource)
+	lineFormat := getNumberedLineFormat(len(resourceLines))
+	var result bytes.Buffer
+
+	for index, line := range resourceLines {
+		lineNumber := index + 1
+		lineWithNum := fmt.Sprintf(lineFormat, lineNumber, line)
+		fmt.Fprintln(&result, lineWithNum)
+	}
+	return result.String()
+}
+
+// getNumberedLineFormat determines which format to use
+// when printing lines of a resource based on the
+// max possible number of digits
+func getNumberedLineFormat(maxLineNumber int) string {
+	strBuilder := strings.Builder{}
+	numDigits := len(strconv.Itoa(maxLineNumber))
+	// Format is like "%3d %s"
+	strBuilder.WriteString("%")
+	strBuilder.WriteString(strconv.Itoa(numDigits))
+	strBuilder.WriteString("d %s")
+	return strBuilder.String()
 }
 
 // RESTClientGetter gets the rest client
