@@ -46,6 +46,7 @@ type options struct {
 	registryClient        *registry.Client
 	timeout               time.Duration
 	transport             *http.Transport
+	proxyUrl              string
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -121,7 +122,11 @@ func WithRegistryClient(client *registry.Client) Option {
 		opts.registryClient = client
 	}
 }
-
+func WithProxyUrl(proxyUrl string) Option {
+	return func(opts *options) {
+		opts.proxyUrl = proxyUrl
+	}
+}
 func WithUntar() Option {
 	return func(opts *options) {
 		opts.unTar = true
@@ -170,10 +175,10 @@ type Providers []Provider
 // ByScheme returns a Provider that handles the given scheme.
 //
 // If no provider handles this scheme, this will return an error.
-func (p Providers) ByScheme(scheme string) (Getter, error) {
+func (p Providers) ByScheme(scheme string, options ...Option) (Getter, error) {
 	for _, pp := range p {
 		if pp.Provides(scheme) {
-			return pp.New()
+			return pp.New(options...)
 		}
 	}
 	return nil, errors.Errorf("scheme %q not supported", scheme)
