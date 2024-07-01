@@ -738,18 +738,28 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
 
-	if _, err := os.Stat(name); err == nil {
+	if fileInfo, err := os.Stat(name); err == nil {
 		abs, err := filepath.Abs(name)
 		if err != nil {
 			return abs, err
 		}
+
 		if c.Verify {
 			if _, err := downloader.VerifyChart(abs, c.Keyring); err != nil {
 				return "", err
 			}
 		}
-		return abs, nil
+
+		if fileInfo.IsDir() {
+			// If a local directory is not a chart, we'll try to use remote chart
+			if isChartDir, _ := chartutil.IsChartDir(abs); isChartDir {
+				return abs, nil
+			}
+		} else {
+			return abs, nil
+		}
 	}
+
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
 		return name, errors.Errorf("path %q not found", name)
 	}
