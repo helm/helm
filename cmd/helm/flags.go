@@ -60,7 +60,7 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 	f.StringVar(&c.Password, "password", "", "chart repository password where to locate the requested chart")
 	f.StringVar(&c.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&c.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
-	f.BoolVar(&c.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
+	f.BoolVar(&c.InsecureSkipTLSVerify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
 	f.BoolVar(&c.PlainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
 	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&c.PassCredentialsAll, "pass-credentials", false, "pass credentials to all domains")
@@ -107,11 +107,11 @@ func (o *outputValue) Type() string {
 }
 
 func (o *outputValue) Set(s string) error {
-	outfmt, err := output.ParseFormat(s)
+	outFmt, err := output.ParseFormat(s)
 	if err != nil {
 		return err
 	}
-	*o = outputValue(outfmt)
+	*o = outputValue(outFmt)
 	return nil
 }
 
@@ -240,9 +240,9 @@ func addKlogFlags(fs *pflag.FlagSet) {
 		if fs.Lookup(fl.Name) != nil {
 			return
 		}
-		newflag := pflag.PFlagFromGoFlag(fl)
-		newflag.Hidden = true
-		fs.AddFlag(newflag)
+		newFlag := pflag.PFlagFromGoFlag(fl)
+		newFlag.Hidden = true
+		fs.AddFlag(newFlag)
 	})
 }
 

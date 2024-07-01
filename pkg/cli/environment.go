@@ -17,7 +17,7 @@ limitations under the License.
 /*
 Package cli describes the operating environment for the Helm CLI.
 
-Helm's environment encapsulates all of the service dependencies Helm has.
+Helm's environment encapsulates all the service dependencies Helm has.
 These dependencies are expressed as interfaces so that alternate implementations
 (mocks, etc.) can be easily generated.
 */
@@ -47,7 +47,7 @@ const defaultBurstLimit = 100
 // defaultQPS sets the default QPS value to 0 to use library defaults unless specified
 const defaultQPS = float32(0)
 
-// EnvSettings describes all of the environment settings.
+// EnvSettings describes all the environment settings.
 type EnvSettings struct {
 	namespace string
 	config    *genericclioptions.ConfigFlags
@@ -72,7 +72,7 @@ type EnvSettings struct {
 	// KubeTLSServerName overrides the name to use for server certificate validation.
 	// If it is not provided, the hostname used to contact the server is used
 	KubeTLSServerName string
-	// Debug indicates whether or not Helm is running in Debug mode.
+	// Debug indicates whether Helm is running in Debug mode.
 	Debug bool
 	// RegistryConfig is the path to the registry config file.
 	RegistryConfig string
@@ -80,7 +80,7 @@ type EnvSettings struct {
 	RepositoryConfig string
 	// RepositoryCache is the path to the repository cache directory.
 	RepositoryCache string
-	// PluginsDirectory is the path to the plugins directory.
+	// PluginsDirectory is the path to the plugins' directory.
 	PluginsDirectory string
 	// MaxHistory is the max release history maintained.
 	MaxHistory int

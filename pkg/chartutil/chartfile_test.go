@@ -24,19 +24,19 @@ import (
 
 const testfile = "testdata/chartfiletest.yaml"
 
-func TestLoadChartfile(t *testing.T) {
-	f, err := LoadChartfile(testfile)
+func TestLoadChartFile(t *testing.T) {
+	f, err := LoadChartFile(testfile)
 	if err != nil {
 		t.Errorf("Failed to open %s: %s", testfile, err)
 		return
 	}
-	verifyChartfile(t, f, "frobnitz")
+	verifyChartFile(t, f, "frobnitz")
 }
 
-func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
+func verifyChartFile(t *testing.T, f *chart.Metadata, name string) {
 
 	if f == nil { //nolint:staticcheck
-		t.Fatal("Failed verifyChartfile because f is nil")
+		t.Fatal("Failed verifyChartFile because f is nil")
 	}
 
 	if f.APIVersion != chart.APIVersionV1 { //nolint:staticcheck

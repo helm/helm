@@ -160,7 +160,7 @@ func TestDownload(t *testing.T) {
 		if r.UserAgent() != defaultUserAgent {
 			t.Errorf("Expected '%s', got '%s'", defaultUserAgent, r.UserAgent())
 		}
-		fmt.Fprint(w, expect)
+		_, _ = fmt.Fprint(w, expect)
 	}))
 	defer srv.Close()
 
@@ -187,7 +187,7 @@ func TestDownload(t *testing.T) {
 		if r.UserAgent() != expectedUserAgent {
 			t.Errorf("Expected '%s', got '%s'", expectedUserAgent, r.UserAgent())
 		}
-		fmt.Fprint(w, expect)
+		_, _ = fmt.Fprint(w, expect)
 	}))
 
 	defer basicAuthSrv.Close()
@@ -217,7 +217,7 @@ func TestDownload(t *testing.T) {
 		if ok || username == "username" || password == "password" {
 			t.Errorf("Expected request to not include but got '%v', '%s', '%s'", ok, username, password)
 		}
-		fmt.Fprint(w, expect)
+		_, _ = fmt.Fprint(w, expect)
 	}))
 
 	defer crossAuthSrv.Close()
@@ -252,7 +252,7 @@ func TestDownload(t *testing.T) {
 		if !ok || username != "username" || password != "password" {
 			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
 		}
-		fmt.Fprint(w, expect)
+		_, _ = fmt.Fprint(w, expect)
 	}))
 
 	defer crossAuthSrv.Close()

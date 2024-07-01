@@ -335,7 +335,7 @@ func trimNilValues(vals map[string]interface{}) map[string]interface{} {
 		if val == nil {
 			// Iterate over the values and remove nil keys
 			delete(valsCopyMap, key)
-		} else if istable(val) {
+		} else if isTable(val) {
 			// Recursively call into ourselves to remove keys from inner tables
 			valsCopyMap[key] = trimNilValues(val.(map[string]interface{}))
 		}

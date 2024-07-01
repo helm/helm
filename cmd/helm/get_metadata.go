@@ -33,7 +33,7 @@ type metadataWriter struct {
 }
 
 func newGetMetadataCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	var outfmt output.Format
+	var outFmt output.Format
 	client := action.NewGetMetadata(cfg)
 
 	cmd := &cobra.Command{
@@ -51,7 +51,7 @@ func newGetMetadataCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			return outfmt.Write(out, &metadataWriter{releaseMetadata})
+			return outFmt.Write(out, &metadataWriter{releaseMetadata})
 		},
 	}
 
@@ -68,7 +68,7 @@ func newGetMetadataCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 		log.Fatal(err)
 	}
 
-	bindOutputFlag(cmd, &outfmt)
+	bindOutputFlag(cmd, &outFmt)
 
 	return cmd
 }

@@ -37,15 +37,15 @@ func collectPlugins(settings *cli.EnvSettings) (Providers, error) {
 		return nil, err
 	}
 	var result Providers
-	for _, plugin := range plugins {
-		for _, downloader := range plugin.Metadata.Downloaders {
+	for _, plg := range plugins {
+		for _, downloader := range plg.Metadata.Downloaders {
 			result = append(result, Provider{
 				Schemes: downloader.Protocols,
 				New: NewPluginGetter(
 					downloader.Command,
 					settings,
-					plugin.Metadata.Name,
-					plugin.Dir,
+					plg.Metadata.Name,
+					plg.Dir,
 				),
 			})
 		}

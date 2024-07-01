@@ -104,7 +104,7 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				fmt.Fprintf(out, "Successfully packaged chart and saved it to: %s\n", p)
+				_, _ = fmt.Fprintf(out, "Successfully packaged chart and saved it to: %s\n", p)
 			}
 			return nil
 		},

@@ -74,7 +74,7 @@ func (o *repoRemoveOptions) run(out io.Writer) error {
 		if err := removeRepoCache(o.repoCache, name); err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "%q has been removed from your repositories\n", name)
+		_, _ = fmt.Fprintf(out, "%q has been removed from your repositories\n", name)
 	}
 
 	return nil
@@ -83,7 +83,7 @@ func (o *repoRemoveOptions) run(out io.Writer) error {
 func removeRepoCache(root, name string) error {
 	idx := filepath.Join(root, helmpath.CacheChartsFile(name))
 	if _, err := os.Stat(idx); err == nil {
-		os.Remove(idx)
+		_ = os.Remove(idx)
 	}
 
 	idx = filepath.Join(root, helmpath.CacheIndexFile(name))

@@ -38,20 +38,20 @@ import (
 var chartName = regexp.MustCompile("^[a-zA-Z0-9._-]+$")
 
 const (
-	// ChartfileName is the default Chart file name.
-	ChartfileName = "Chart.yaml"
-	// ValuesfileName is the default values file name.
-	ValuesfileName = "values.yaml"
-	// SchemafileName is the default values schema file name.
-	SchemafileName = "values.schema.json"
+	// ChartFileName is the default Chart file name.
+	ChartFileName = "Chart.yaml"
+	// ValuesFileName is the default values file name.
+	ValuesFileName = "values.yaml"
+	// SchemaFileName is the default values schema file name.
+	SchemaFileName = "values.schema.json"
 	// TemplatesDir is the relative directory name for templates.
 	TemplatesDir = "templates"
 	// ChartsDir is the relative directory name for charts dependencies.
 	ChartsDir = "charts"
 	// TemplatesTestsDir is the relative directory name for tests.
 	TemplatesTestsDir = TemplatesDir + sep + "tests"
-	// IgnorefileName is the name of the Helm ignore file.
-	IgnorefileName = ".helmignore"
+	// IgnoreFileName is the name of the Helm ignore file.
+	IgnoreFileName = ".helmignore"
 	// IngressFileName is the name of the example ingress file.
 	IngressFileName = TemplatesDir + sep + "ingress.yaml"
 	// DeploymentName is the name of the example deployment file.
@@ -76,7 +76,7 @@ const maxChartNameLength = 250
 
 const sep = string(filepath.Separator)
 
-const defaultChartfile = `apiVersion: v2
+const defaultChartFile = `apiVersion: v2
 name: %s
 description: A Helm chart for Kubernetes
 
@@ -578,7 +578,7 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 	// key in order to preserve the comments in the YAML. The name placeholder
 	// needs to be replaced on that file.
 	for _, f := range schart.Raw {
-		if f.Name == ValuesfileName {
+		if f.Name == ValuesFileName {
 			f.Data = transform(string(f.Data), schart.Name())
 		}
 	}
@@ -628,17 +628,17 @@ func Create(name, dir string) (string, error) {
 	}{
 		{
 			// Chart.yaml
-			path:    filepath.Join(cdir, ChartfileName),
-			content: []byte(fmt.Sprintf(defaultChartfile, name)),
+			path:    filepath.Join(cdir, ChartFileName),
+			content: []byte(fmt.Sprintf(defaultChartFile, name)),
 		},
 		{
 			// values.yaml
-			path:    filepath.Join(cdir, ValuesfileName),
+			path:    filepath.Join(cdir, ValuesFileName),
 			content: []byte(fmt.Sprintf(defaultValues, name)),
 		},
 		{
 			// .helmignore
-			path:    filepath.Join(cdir, IgnorefileName),
+			path:    filepath.Join(cdir, IgnoreFileName),
 			content: []byte(defaultIgnore),
 		},
 		{
@@ -686,7 +686,7 @@ func Create(name, dir string) (string, error) {
 	for _, file := range files {
 		if _, err := os.Stat(file.path); err == nil {
 			// There is no handle to a preferred output stream here.
-			fmt.Fprintf(Stderr, "WARNING: File %q already exists. Overwriting.\n", file.path)
+			_, _ = fmt.Fprintf(Stderr, "WARNING: File %q already exists. Overwriting.\n", file.path)
 		}
 		if err := writeFile(file.path, file.content); err != nil {
 			return cdir, err

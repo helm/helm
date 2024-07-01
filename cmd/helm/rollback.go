@@ -70,7 +70,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintf(out, "Rollback was a success! Happy Helming!\n")
+			_, _ = fmt.Fprintf(out, "Rollback was a success! Happy Helming!\n")
 			return nil
 		},
 	}

@@ -108,9 +108,9 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		name = fmt.Sprintf("%s-%s.tgz", name[:idx], name[idx+1:])
 	}
 
-	destfile := filepath.Join(dest, name)
-	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
-		return destfile, nil, err
+	destFile := filepath.Join(dest, name)
+	if err := fileutil.AtomicWriteFile(destFile, data, 0644); err != nil {
+		return destFile, nil, err
 	}
 
 	// If provenance is requested, verify it.
@@ -119,26 +119,26 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		body, err := g.Get(u.String() + ".prov")
 		if err != nil {
 			if c.Verify == VerifyAlways {
-				return destfile, ver, errors.Errorf("failed to fetch provenance %q", u.String()+".prov")
+				return destFile, ver, errors.Errorf("failed to fetch provenance %q", u.String()+".prov")
 			}
-			fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
-			return destfile, ver, nil
+			_, _ = fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
+			return destFile, ver, nil
 		}
-		provfile := destfile + ".prov"
-		if err := fileutil.AtomicWriteFile(provfile, body, 0644); err != nil {
-			return destfile, nil, err
+		provFile := destFile + ".prov"
+		if err := fileutil.AtomicWriteFile(provFile, body, 0644); err != nil {
+			return destFile, nil, err
 		}
 
 		if c.Verify != VerifyLater {
-			ver, err = VerifyChart(destfile, c.Keyring)
+			ver, err = VerifyChart(destFile, c.Keyring)
 			if err != nil {
 				// Fail always in this case, since it means the verification step
 				// failed.
-				return destfile, ver, err
+				return destFile, ver, err
 			}
 		}
 	}
-	return destfile, ver, nil
+	return destFile, ver, nil
 }
 
 func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, error) {

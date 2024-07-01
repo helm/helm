@@ -29,7 +29,7 @@ var searchResult = `{"data":[{"id":"stable/phpmyadmin","type":"chart","attribute
 func TestSearch(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		fmt.Fprintln(w, searchResult)
+		_, _ = fmt.Fprintln(w, searchResult)
 	}))
 	defer ts.Close()
 

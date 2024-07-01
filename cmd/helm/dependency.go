@@ -107,11 +107,11 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 		Long:    dependencyListDesc,
 		Args:    require.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			chartpath := "."
+			chartPath := "."
 			if len(args) > 0 {
-				chartpath = filepath.Clean(args[0])
+				chartPath = filepath.Clean(args[0])
 			}
-			return client.List(chartpath, out)
+			return client.List(chartPath, out)
 		},
 	}
 

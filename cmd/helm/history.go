@@ -52,7 +52,7 @@ The historical release set is printed as a formatted table, e.g:
 
 func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewHistory(cfg)
-	var outfmt output.Format
+	var outFmt output.Format
 
 	cmd := &cobra.Command{
 		Use:     "history RELEASE_NAME",
@@ -72,13 +72,13 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			return outfmt.Write(out, history)
+			return outFmt.Write(out, history)
 		},
 	}
 
 	f := cmd.Flags()
 	f.IntVar(&client.Max, "max", 256, "maximum number of revision to include in history")
-	bindOutputFlag(cmd, &outfmt)
+	bindOutputFlag(cmd, &outFmt)
 
 	return cmd
 }
@@ -136,7 +136,7 @@ func getHistory(client *action.History, name string) (releaseHistory, error) {
 func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 	for i := len(rls) - 1; i >= 0; i-- {
 		r := rls[i]
-		c := formatChartname(r.Chart)
+		c := formatChartName(r.Chart)
 		s := r.Info.Status.String()
 		v := r.Version
 		d := r.Info.Description
@@ -159,7 +159,7 @@ func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 	return history
 }
 
-func formatChartname(c *chart.Chart) string {
+func formatChartName(c *chart.Chart) string {
 	if c == nil || c.Metadata == nil {
 		// This is an edge case that has happened in prod, though we don't
 		// know how: https://github.com/helm/helm/issues/1347
@@ -177,22 +177,15 @@ func formatAppVersion(c *chart.Chart) string {
 	return c.AppVersion()
 }
 
-func min(x, y int) int {
-	if x < y {
-		return x
-	}
-	return y
-}
-
 func compListRevisions(_ string, cfg *action.Configuration, releaseName string) ([]string, cobra.ShellCompDirective) {
 	client := action.NewHistory(cfg)
 
 	var revisions []string
 	if hist, err := client.Run(releaseName); err == nil {
-		for _, release := range hist {
-			appVersion := fmt.Sprintf("App: %s", release.Chart.Metadata.AppVersion)
-			chartDesc := fmt.Sprintf("Chart: %s-%s", release.Chart.Metadata.Name, release.Chart.Metadata.Version)
-			revisions = append(revisions, fmt.Sprintf("%s\t%s, %s", strconv.Itoa(release.Version), appVersion, chartDesc))
+		for _, rel := range hist {
+			appVersion := fmt.Sprintf("App: %s", rel.Chart.Metadata.AppVersion)
+			chartDesc := fmt.Sprintf("Chart: %s-%s", rel.Chart.Metadata.Name, rel.Chart.Metadata.Version)
+			revisions = append(revisions, fmt.Sprintf("%s\t%s, %s", strconv.Itoa(rel.Version), appVersion, chartDesc))
 		}
 		return revisions, cobra.ShellCompDirectiveNoFileComp
 	}

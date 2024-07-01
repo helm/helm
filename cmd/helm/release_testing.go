@@ -39,7 +39,7 @@ The tests to be run are defined in the chart that was installed.
 
 func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewReleaseTesting(cfg)
-	var outfmt = output.Table
+	var outFmt = output.Table
 	var outputLogs bool
 	var filter []string
 
@@ -66,19 +66,19 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 			}
 			rel, runErr := client.Run(args[0])
 			// We only return an error if we weren't even able to get the
-			// release, otherwise we keep going so we can print status and logs
+			// release, otherwise we keep going, so we can print status and logs
 			// if requested
 			if runErr != nil && rel == nil {
 				return runErr
 			}
 
-			if err := outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes}); err != nil {
+			if err := outFmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes}); err != nil {
 				return err
 			}
 
 			if outputLogs {
 				// Print a newline to stdout to separate the output
-				fmt.Fprintln(out)
+				_, _ = fmt.Fprintln(out)
 				if err := client.GetPodLogs(out, rel); err != nil {
 					return err
 				}

@@ -46,17 +46,17 @@ func TestCreate(t *testing.T) {
 	}
 
 	for _, f := range []string{
-		ChartfileName,
+		ChartFileName,
 		DeploymentName,
 		HelpersName,
-		IgnorefileName,
+		IgnoreFileName,
 		NotesName,
 		ServiceAccountName,
 		ServiceName,
 		TemplatesDir,
 		TemplatesTestsDir,
 		TestConnectionName,
-		ValuesfileName,
+		ValuesFileName,
 	} {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 			t.Errorf("Expected %s file: %s", f, err)
@@ -90,8 +90,8 @@ func TestCreateFrom(t *testing.T) {
 	}
 
 	for _, f := range []string{
-		ChartfileName,
-		ValuesfileName,
+		ChartFileName,
+		ValuesFileName,
 		filepath.Join(TemplatesDir, "placeholder.tpl"),
 	} {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {

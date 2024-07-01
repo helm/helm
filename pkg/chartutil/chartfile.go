@@ -26,8 +26,8 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 )
 
-// LoadChartfile loads a Chart.yaml file into a *chart.Metadata.
-func LoadChartfile(filename string) (*chart.Metadata, error) {
+// LoadChartFile loads a Chart.yaml file into a *chart.Metadata.
+func LoadChartFile(filename string) (*chart.Metadata, error) {
 	b, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -37,10 +37,10 @@ func LoadChartfile(filename string) (*chart.Metadata, error) {
 	return y, err
 }
 
-// SaveChartfile saves the given metadata as a Chart.yaml file at the given path.
+// SaveChartFile saves the given metadata as a Chart.yaml file at the given path.
 //
 // 'filename' should be the complete path and filename ('foo/Chart.yaml')
-func SaveChartfile(filename string, cf *chart.Metadata) error {
+func SaveChartFile(filename string, cf *chart.Metadata) error {
 	// Pull out the dependencies of a v1 Chart, since there's no way
 	// to tell the serializer to skip a field for just this use case
 	savedDependencies := cf.Dependencies
@@ -67,14 +67,14 @@ func IsChartDir(dirName string) (bool, error) {
 		return false, errors.Errorf("%q is not a directory", dirName)
 	}
 
-	chartYaml := filepath.Join(dirName, ChartfileName)
+	chartYaml := filepath.Join(dirName, ChartFileName)
 	if _, err := os.Stat(chartYaml); os.IsNotExist(err) {
-		return false, errors.Errorf("no %s exists in directory %q", ChartfileName, dirName)
+		return false, errors.Errorf("no %s exists in directory %q", ChartFileName, dirName)
 	}
 
 	chartYamlContent, err := os.ReadFile(chartYaml)
 	if err != nil {
-		return false, errors.Errorf("cannot read %s in directory %q", ChartfileName, dirName)
+		return false, errors.Errorf("cannot read %s in directory %q", ChartFileName, dirName)
 	}
 
 	chartContent := new(chart.Metadata)
@@ -82,10 +82,10 @@ func IsChartDir(dirName string) (bool, error) {
 		return false, err
 	}
 	if chartContent == nil {
-		return false, errors.Errorf("chart metadata (%s) missing", ChartfileName)
+		return false, errors.Errorf("chart metadata (%s) missing", ChartFileName)
 	}
 	if chartContent.Name == "" {
-		return false, errors.Errorf("invalid chart (%s): name must not be empty", ChartfileName)
+		return false, errors.Errorf("invalid chart (%s): name must not be empty", ChartFileName)
 	}
 
 	return true, nil

@@ -36,7 +36,7 @@ func TestUpdateCmd(t *testing.T) {
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
 	updater := func(repos []*repo.ChartRepository, out io.Writer, _ bool) error {
 		for _, re := range repos {
-			fmt.Fprintln(out, re.Config.Name)
+			_, _ = fmt.Fprintln(out, re.Config.Name)
 		}
 		return nil
 	}
@@ -61,7 +61,7 @@ func TestUpdateCmdMultiple(t *testing.T) {
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
 	updater := func(repos []*repo.ChartRepository, out io.Writer, _ bool) error {
 		for _, re := range repos {
-			fmt.Fprintln(out, re.Config.Name)
+			_, _ = fmt.Fprintln(out, re.Config.Name)
 		}
 		return nil
 	}
@@ -87,7 +87,7 @@ func TestUpdateCmdInvalid(t *testing.T) {
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
 	updater := func(repos []*repo.ChartRepository, out io.Writer, _ bool) error {
 		for _, re := range repos {
-			fmt.Fprintln(out, re.Config.Name)
+			_, _ = fmt.Fprintln(out, re.Config.Name)
 		}
 		return nil
 	}
@@ -104,7 +104,10 @@ func TestUpdateCmdInvalid(t *testing.T) {
 func TestUpdateCustomCacheCmd(t *testing.T) {
 	rootDir := t.TempDir()
 	cachePath := filepath.Join(rootDir, "updcustomcache")
-	os.Mkdir(cachePath, os.ModePerm)
+	err := os.Mkdir(cachePath, os.ModePerm)
+	if err != nil {
+		t.Fatalf("error creating custom cache directory: %v", err)
+	}
 
 	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
 	if err != nil {
@@ -145,7 +148,7 @@ func TestUpdateCharts(t *testing.T) {
 	}
 
 	b := bytes.NewBuffer(nil)
-	updateCharts([]*repo.ChartRepository{r}, b, false)
+	_ = updateCharts([]*repo.ChartRepository{r}, b, false)
 
 	got := b.String()
 	if strings.Contains(got, "Unable to get an update") {

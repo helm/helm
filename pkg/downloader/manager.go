@@ -267,13 +267,13 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 	defer os.RemoveAll(tmpPath)
 
-	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
+	_, _ = fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
 	var saveError error
 	churls := make(map[string]struct{})
 	for _, dep := range deps {
 		// No repository means the chart is in charts directory
 		if dep.Repository == "" {
-			fmt.Fprintf(m.Out, "Dependency %s did not declare a repository. Assuming it exists in the charts directory\n", dep.Name)
+			_, _ = fmt.Fprintf(m.Out, "Dependency %s did not declare a repository. Assuming it exists in the charts directory\n", dep.Name)
 			// NOTE: we are only validating the local dependency conforms to the constraints. No copying to tmpPath is necessary.
 			chartPath := filepath.Join(destPath, dep.Name)
 			ch, err := loader.LoadDir(chartPath)
@@ -299,7 +299,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		}
 		if strings.HasPrefix(dep.Repository, "file://") {
 			if m.Debug {
-				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
+				_, _ = fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
 			}
 			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version, tmpPath)
 			if err != nil {
@@ -319,11 +319,11 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		}
 
 		if _, ok := churls[churl]; ok {
-			fmt.Fprintf(m.Out, "Already downloaded %s from repo %s\n", dep.Name, dep.Repository)
+			_, _ = fmt.Fprintf(m.Out, "Already downloaded %s from repo %s\n", dep.Name, dep.Repository)
 			continue
 		}
 
-		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
+		_, _ = fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
 
 		dl := ChartDownloader{
 			Out:              m.Out,
@@ -367,7 +367,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			return err
 		}
 	} else {
-		fmt.Fprintln(m.Out, "Save error occurred: ", saveError)
+		_, _ = fmt.Fprintln(m.Out, "Save error occurred: ", saveError)
 		return saveError
 	}
 	return nil
@@ -424,24 +424,24 @@ func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) er
 		destfile := filepath.Join(dest, filename)
 		existsInSourceDirectory[filename] = true
 		if _, err := loader.LoadFile(sourcefile); err != nil {
-			fmt.Fprintf(m.Out, "Could not verify %s for moving: %s (Skipping)", sourcefile, err)
+			_, _ = fmt.Fprintf(m.Out, "Could not verify %s for moving: %s (Skipping)", sourcefile, err)
 			continue
 		}
 		// NOTE: no need to delete the dest; os.Rename replaces it.
 		if err := fs.RenameWithFallback(sourcefile, destfile); err != nil {
-			fmt.Fprintf(m.Out, "Unable to move %s to charts dir %s (Skipping)", sourcefile, err)
+			_, _ = fmt.Fprintf(m.Out, "Unable to move %s to charts dir %s (Skipping)", sourcefile, err)
 			continue
 		}
 	}
 
-	fmt.Fprintln(m.Out, "Deleting outdated charts")
+	_, _ = fmt.Fprintln(m.Out, "Deleting outdated charts")
 	// find all files that exist in dest that do not exist in source; delete them (outdated dependencies)
 	for _, file := range destFiles {
 		if !file.IsDir() && !existsInSourceDirectory[file.Name()] {
 			fname := filepath.Join(dest, file.Name())
 			ch, err := loader.LoadFile(fname)
 			if err != nil {
-				fmt.Fprintf(m.Out, "Could not verify %s for deletion: %s (Skipping)\n", fname, err)
+				_, _ = fmt.Fprintf(m.Out, "Could not verify %s for deletion: %s (Skipping)\n", fname, err)
 				continue
 			}
 			// local dependency - skip
@@ -449,7 +449,7 @@ func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) er
 				continue
 			}
 			if err := os.Remove(fname); err != nil {
-				fmt.Fprintf(m.Out, "Could not delete %s: %s (Skipping)", fname, err)
+				_, _ = fmt.Fprintf(m.Out, "Could not delete %s: %s (Skipping)", fname, err)
 				continue
 			}
 		}
@@ -545,7 +545,7 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 	// the dependencies that are not known to the user if update skipping
 	// is not configured.
 	if !m.SkipUpdate && len(ru) > 0 {
-		fmt.Fprintln(m.Out, "Getting updates for unmanaged Helm repositories...")
+		_, _ = fmt.Fprintln(m.Out, "Getting updates for unmanaged Helm repositories...")
 		if err := m.parallelRepoUpdate(ru); err != nil {
 			return repoNames, err
 		}
@@ -583,7 +583,7 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			}
 
 			if m.Debug {
-				fmt.Fprintf(m.Out, "Repository from local path: %s\n", dd.Repository)
+				_, _ = fmt.Fprintf(m.Out, "Repository from local path: %s\n", dd.Repository)
 			}
 			reposMap[dd.Name] = dd.Repository
 			continue
@@ -649,12 +649,12 @@ func (m *Manager) UpdateRepositories() error {
 	}
 	repos := rf.Repositories
 	if len(repos) > 0 {
-		fmt.Fprintln(m.Out, "Hang tight while we grab the latest from your chart repositories...")
+		_, _ = fmt.Fprintln(m.Out, "Hang tight while we grab the latest from your chart repositories...")
 		// This prints warnings straight to out.
 		if err := m.parallelRepoUpdate(repos); err != nil {
 			return err
 		}
-		fmt.Fprintln(m.Out, "Update Complete. ⎈Happy Helming!⎈")
+		_, _ = fmt.Fprintln(m.Out, "Update Complete. ⎈Happy Helming!⎈")
 	}
 	return nil
 }
@@ -674,17 +674,17 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 				// For those dependencies that are not known to helm and using a
 				// generated key name we display the repo url.
 				if strings.HasPrefix(r.Config.Name, managerKeyPrefix) {
-					fmt.Fprintf(m.Out, "...Unable to get an update from the %q chart repository:\n\t%s\n", r.Config.URL, err)
+					_, _ = fmt.Fprintf(m.Out, "...Unable to get an update from the %q chart repository:\n\t%s\n", r.Config.URL, err)
 				} else {
-					fmt.Fprintf(m.Out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", r.Config.Name, r.Config.URL, err)
+					_, _ = fmt.Fprintf(m.Out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", r.Config.Name, r.Config.URL, err)
 				}
 			} else {
 				// For those dependencies that are not known to helm and using a
 				// generated key name we display the repo url.
 				if strings.HasPrefix(r.Config.Name, managerKeyPrefix) {
-					fmt.Fprintf(m.Out, "...Successfully got an update from the %q chart repository\n", r.Config.URL)
+					_, _ = fmt.Fprintf(m.Out, "...Successfully got an update from the %q chart repository\n", r.Config.URL)
 				} else {
-					fmt.Fprintf(m.Out, "...Successfully got an update from the %q chart repository\n", r.Config.Name)
+					_, _ = fmt.Fprintf(m.Out, "...Successfully got an update from the %q chart repository\n", r.Config.Name)
 				}
 			}
 			wg.Done()

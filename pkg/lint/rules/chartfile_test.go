@@ -41,8 +41,8 @@ var (
 	nonExistingChartFilePath = filepath.Join(os.TempDir(), "Chart.yaml")
 )
 
-var badChart, _ = chartutil.LoadChartfile(badChartFilePath)
-var badChartName, _ = chartutil.LoadChartfile(badChartNamePath)
+var badChart, _ = chartutil.LoadChartFile(badChartFilePath)
+var badChartName, _ = chartutil.LoadChartFile(badChartNamePath)
 
 // Validation functions Test
 func TestValidateChartYamlNotDirectory(t *testing.T) {
@@ -192,10 +192,10 @@ func TestValidateChartIconURL(t *testing.T) {
 	}
 }
 
-func TestChartfile(t *testing.T) {
+func TestChartFile(t *testing.T) {
 	t.Run("Chart.yaml basic validity issues", func(t *testing.T) {
 		linter := support.Linter{ChartDir: badChartDir}
-		Chartfile(&linter)
+		ChartFile(&linter)
 		msgs := linter.Messages
 		expectedNumberOfErrorMessages := 6
 
@@ -231,7 +231,7 @@ func TestChartfile(t *testing.T) {
 
 	t.Run("Chart.yaml validity issues due to type mismatch", func(t *testing.T) {
 		linter := support.Linter{ChartDir: anotherBadChartDir}
-		Chartfile(&linter)
+		ChartFile(&linter)
 		msgs := linter.Messages
 		expectedNumberOfErrorMessages := 3
 

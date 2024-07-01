@@ -74,7 +74,7 @@ func newVersionCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&o.short, "short", false, "print the version number")
 	f.StringVar(&o.template, "template", "", "template for version string format")
 	f.BoolP("client", "c", true, "display client version information")
-	f.MarkHidden("client")
+	_ = f.MarkHidden("client")
 
 	return cmd
 }
@@ -87,7 +87,7 @@ func (o *versionOptions) run(out io.Writer) error {
 		}
 		return tt.Execute(out, version.Get())
 	}
-	fmt.Fprintln(out, formatVersion(o.short))
+	_, _ = fmt.Fprintln(out, formatVersion(o.short))
 	return nil
 }
 

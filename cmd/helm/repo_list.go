@@ -30,7 +30,7 @@ import (
 )
 
 func newRepoListCmd(out io.Writer) *cobra.Command {
-	var outfmt output.Format
+	var outFmt output.Format
 	cmd := &cobra.Command{
 		Use:               "list",
 		Aliases:           []string{"ls"},
@@ -39,15 +39,15 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		ValidArgsFunction: noCompletions,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			f, _ := repo.LoadFile(settings.RepositoryConfig)
-			if len(f.Repositories) == 0 && !(outfmt == output.JSON || outfmt == output.YAML) {
+			if len(f.Repositories) == 0 && !(outFmt == output.JSON || outFmt == output.YAML) {
 				return errors.New("no repositories to show")
 			}
 
-			return outfmt.Write(out, &repoListWriter{f.Repositories})
+			return outFmt.Write(out, &repoListWriter{f.Repositories})
 		},
 	}
 
-	bindOutputFlag(cmd, &outfmt)
+	bindOutputFlag(cmd, &outFmt)
 
 	return cmd
 }
@@ -80,17 +80,17 @@ func (r *repoListWriter) WriteYAML(out io.Writer) error {
 
 func (r *repoListWriter) encodeByFormat(out io.Writer, format output.Format) error {
 	// Initialize the array so no results returns an empty array instead of null
-	repolist := make([]repositoryElement, 0, len(r.repos))
+	repoList := make([]repositoryElement, 0, len(r.repos))
 
 	for _, re := range r.repos {
-		repolist = append(repolist, repositoryElement{Name: re.Name, URL: re.URL})
+		repoList = append(repoList, repositoryElement{Name: re.Name, URL: re.URL})
 	}
 
 	switch format {
 	case output.JSON:
-		return output.EncodeJSON(out, repolist)
+		return output.EncodeJSON(out, repoList)
 	case output.YAML:
-		return output.EncodeYAML(out, repolist)
+		return output.EncodeYAML(out, repoList)
 	}
 
 	// Because this is a non-exported function and only called internally by
@@ -113,9 +113,9 @@ func filterRepos(repos []*repo.Entry, ignoredRepoNames []string) []*repo.Entry {
 		ignored[repoName] = true
 	}
 
-	for _, repo := range repos {
-		if _, removed := ignored[repo.Name]; !removed {
-			filteredRepos = append(filteredRepos, repo)
+	for _, rp := range repos {
+		if _, removed := ignored[rp.Name]; !removed {
+			filteredRepos = append(filteredRepos, rp)
 		}
 	}
 
@@ -129,8 +129,8 @@ func compListRepos(_ string, ignoredRepoNames []string) []string {
 	f, err := repo.LoadFile(settings.RepositoryConfig)
 	if err == nil && len(f.Repositories) > 0 {
 		filteredRepos := filterRepos(f.Repositories, ignoredRepoNames)
-		for _, repo := range filteredRepos {
-			rNames = append(rNames, fmt.Sprintf("%s\t%s", repo.Name, repo.URL))
+		for _, rp := range filteredRepos {
+			rNames = append(rNames, fmt.Sprintf("%s\t%s", rp.Name, rp.URL))
 		}
 	}
 	return rNames

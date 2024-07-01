@@ -54,7 +54,7 @@ func newGetManifestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(out, res.Manifest)
+			_, _ = fmt.Fprintln(out, res.Manifest)
 			return nil
 		},
 	}

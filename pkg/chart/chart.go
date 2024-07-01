@@ -38,7 +38,7 @@ type Chart struct {
 	// This should not be used except in special cases like `helm show values`,
 	// where we want to display the raw values, comments and all.
 	Raw []*File `json:"-"`
-	// Metadata is the contents of the Chartfile.
+	// Metadata is the contents of the ChartFile.
 	Metadata *Metadata `json:"metadata"`
 	// Lock is the contents of Chart.lock.
 	Lock *Lock `json:"lock"`
@@ -156,8 +156,8 @@ func (ch *Chart) CRDObjects() []CRD {
 	// Find all resources in the crds/ directory
 	for _, f := range ch.Files {
 		if strings.HasPrefix(f.Name, "crds/") && hasManifestExtension(f.Name) {
-			mycrd := CRD{Name: f.Name, Filename: filepath.Join(ch.ChartFullPath(), f.Name), File: f}
-			crds = append(crds, mycrd)
+			crd := CRD{Name: f.Name, Filename: filepath.Join(ch.ChartFullPath(), f.Name), File: f}
+			crds = append(crds, crd)
 		}
 	}
 	// Get CRDs from dependencies, too.
@@ -167,7 +167,7 @@ func (ch *Chart) CRDObjects() []CRD {
 	return crds
 }
 
-func hasManifestExtension(fname string) bool {
-	ext := filepath.Ext(fname)
+func hasManifestExtension(filename string) bool {
+	ext := filepath.Ext(filename)
 	return strings.EqualFold(ext, ".yaml") || strings.EqualFold(ext, ".yml") || strings.EqualFold(ext, ".json")
 }

@@ -131,9 +131,9 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 					return errors.Wrapf(err, "unable to get pod logs for %s", h.Name)
 				}
 
-				fmt.Fprintf(out, "POD LOGS: %s\n", h.Name)
+				_, _ = fmt.Fprintf(out, "POD LOGS: %s\n", h.Name)
 				_, err = io.Copy(out, logReader)
-				fmt.Fprintln(out)
+				_, _ = fmt.Fprintln(out)
 				if err != nil {
 					return errors.Wrapf(err, "unable to write pod logs for %s", h.Name)
 				}

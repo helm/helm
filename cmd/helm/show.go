@@ -92,7 +92,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(out, output)
+			_, _ = fmt.Fprint(out, output)
 			return nil
 		},
 	}
@@ -113,7 +113,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(out, output)
+			_, _ = fmt.Fprint(out, output)
 			return nil
 		},
 	}
@@ -134,7 +134,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(out, output)
+			_, _ = fmt.Fprint(out, output)
 			return nil
 		},
 	}
@@ -155,7 +155,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(out, output)
+			_, _ = fmt.Fprint(out, output)
 			return nil
 		},
 	}
@@ -176,7 +176,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(out, output)
+			_, _ = fmt.Fprint(out, output)
 			return nil
 		},
 	}
@@ -227,7 +227,7 @@ func runShow(args []string, client *action.Show) (string, error) {
 
 func addRegistryClient(client *action.Show) error {
 	registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
-		client.InsecureSkipTLSverify, client.PlainHTTP)
+		client.InsecureSkipTLSVerify, client.PlainHTTP)
 	if err != nil {
 		return fmt.Errorf("missing registry client: %w", err)
 	}

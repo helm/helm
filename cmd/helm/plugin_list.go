@@ -43,7 +43,7 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 			for _, p := range plugins {
 				table.AddRow(p.Metadata.Name, p.Metadata.Version, p.Metadata.Description)
 			}
-			fmt.Fprintln(out, table)
+			_, _ = fmt.Fprintln(out, table)
 			return nil
 		},
 	}
@@ -58,16 +58,16 @@ func filterPlugins(plugins []*plugin.Plugin, ignoredPluginNames []string) []*plu
 	}
 
 	var filteredPlugins []*plugin.Plugin
-	for _, plugin := range plugins {
+	for _, plg := range plugins {
 		found := false
 		for _, ignoredName := range ignoredPluginNames {
-			if plugin.Metadata.Name == ignoredName {
+			if plg.Metadata.Name == ignoredName {
 				found = true
 				break
 			}
 		}
 		if !found {
-			filteredPlugins = append(filteredPlugins, plugin)
+			filteredPlugins = append(filteredPlugins, plg)
 		}
 	}
 
