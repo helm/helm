@@ -41,7 +41,6 @@ type Manifest struct {
 type manifestFile struct {
 	entries map[string]string
 	path    string
-	apis    chartutil.VersionSet
 }
 
 // result is an intermediate structure used during sorting.
@@ -75,6 +74,8 @@ var events = map[string]release.HookEvent{
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
+//
+// NOTE: The apis argument is not used. It is safe to pass a nil or empty value.
 func SortManifests(files map[string]string, apis chartutil.VersionSet, ordering KindSortOrder) ([]*release.Hook, []Manifest, error) {
 	result := &result{}
 
@@ -100,7 +101,6 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, ordering 
 		manifestFile := &manifestFile{
 			entries: SplitManifests(content),
 			path:    filePath,
-			apis:    apis,
 		}
 
 		if err := manifestFile.sort(result); err != nil {
