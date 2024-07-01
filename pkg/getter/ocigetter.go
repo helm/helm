@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -104,6 +105,14 @@ func (g *OCIGetter) newRegistryClient() (*registry.Client, error) {
 	}
 
 	g.once.Do(func() {
+		var proxyFunc func(*http.Request) (*url.URL, error)
+		if g.opts.proxyUrl != "" {
+			proxyFunc = func(request *http.Request) (*url.URL, error) {
+				return url.Parse(g.opts.proxyUrl)
+			}
+		} else {
+			proxyFunc = http.ProxyFromEnvironment
+		}
 		g.transport = &http.Transport{
 			// From https://github.com/google/go-containerregistry/blob/31786c6cbb82d6ec4fb8eb79cd9387905130534e/pkg/v1/remote/options.go#L87
 			DisableCompression: true,
@@ -119,7 +128,7 @@ func (g *OCIGetter) newRegistryClient() (*registry.Client, error) {
 			IdleConnTimeout:       90 * time.Second,
 			TLSHandshakeTimeout:   10 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,
-			Proxy:                 http.ProxyFromEnvironment,
+			Proxy:                 proxyFunc,
 		}
 	})
 

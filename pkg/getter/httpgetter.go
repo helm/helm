@@ -117,9 +117,17 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 	}
 
 	g.once.Do(func() {
+		var proxyFunc func(*http.Request) (*url.URL, error)
+		if g.opts.proxyUrl != "" {
+			proxyFunc = func(request *http.Request) (*url.URL, error) {
+				return url.Parse(g.opts.proxyUrl)
+			}
+		} else {
+			proxyFunc = http.ProxyFromEnvironment
+		}
 		g.transport = &http.Transport{
 			DisableCompression: true,
-			Proxy:              http.ProxyFromEnvironment,
+			Proxy:              proxyFunc,
 		}
 	})
 

@@ -48,6 +48,10 @@ type Entry struct {
 	CAFile                string `json:"caFile"`
 	InsecureSkipTLSverify bool   `json:"insecure_skip_tls_verify"`
 	PassCredentialsAll    bool   `json:"pass_credentials_all"`
+	RepoProxyUrl          string `json:"repo_proxy_url"`
+	// This field is for handling proxy URL priority in NewChartRepository,
+	// and will not actually store any data.
+	DoNotUseEnvSettingsProxyUrl string `json:"-"`
 }
 
 // ChartRepository represents a chart repository
@@ -65,8 +69,13 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 	if err != nil {
 		return nil, errors.Errorf("invalid chart URL format: %s", cfg.URL)
 	}
-
-	client, err := getters.ByScheme(u.Scheme)
+	var proxyUrl string
+	if cfg.RepoProxyUrl != "" {
+		proxyUrl = cfg.RepoProxyUrl
+	} else if cfg.DoNotUseEnvSettingsProxyUrl != "" {
+		proxyUrl = cfg.DoNotUseEnvSettingsProxyUrl
+	}
+	client, err := getters.ByScheme(u.Scheme, getter.WithProxyUrl(proxyUrl))
 	if err != nil {
 		return nil, errors.Errorf("could not find protocol handler for: %s", u.Scheme)
 	}
