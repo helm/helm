@@ -276,3 +276,87 @@ func resetEnv() func() {
 		}
 	}
 }
+
+func TestEnvSettings_BackupKubeConfig(t *testing.T) {
+	var (
+		testDataDir        = `testdata/`
+		kubeConfigFilename = testDataDir + "kubeconfig"
+	)
+
+	type fields struct {
+		KubeConfig     string
+		helmConfigHome string
+	}
+
+	type toggles struct {
+		wantErr               bool
+		cleanUpTestKubeConfig bool
+	}
+
+	type testCase struct {
+		name    string
+		fields  fields
+		toggles toggles
+	}
+
+	tests := []testCase{
+		{
+			name: "Backup kube config",
+			fields: fields{
+				KubeConfig:     testDataDir + `valid-kubeconfig-no-contexts`,
+				helmConfigHome: testDataDir,
+			},
+			toggles: toggles{
+				cleanUpTestKubeConfig: true,
+			},
+		},
+		{
+			name: "Failure missing input kube config file",
+			fields: fields{
+				KubeConfig:     testDataDir + `missing-kubeconfig`,
+				helmConfigHome: testDataDir,
+			},
+			toggles: toggles{
+				wantErr: true,
+			},
+		},
+		{
+			name: "Failure invalid destination path",
+			fields: fields{
+				KubeConfig:     testDataDir + `valid-kubeconfig-no-contexts`,
+				helmConfigHome: testDataDir + `non-existing-dir/`,
+			},
+			toggles: toggles{
+				wantErr: true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &EnvSettings{
+				KubeConfig: tt.fields.KubeConfig,
+			}
+
+			t.Setenv(`HELM_CONFIG_HOME`, tt.fields.helmConfigHome)
+
+			err := s.BackupKubeConfig()
+			if (err != nil) != tt.toggles.wantErr {
+				t.Errorf("EnvSettings.BackupKubeConfig() error = %v, wantErr %v",
+					err, tt.toggles.wantErr)
+			}
+
+			if !tt.toggles.wantErr && s.KubeConfig != kubeConfigFilename {
+				t.Errorf("kube config path not updated after backup, want = %s, got = %s",
+					kubeConfigFilename, s.KubeConfig)
+			}
+
+			if tt.toggles.cleanUpTestKubeConfig {
+				err = os.Remove(kubeConfigFilename)
+				if err != nil {
+					t.Errorf("failed to delete %q: %v", kubeConfigFilename, err)
+				}
+			}
+		})
+	}
+}
