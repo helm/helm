@@ -16,6 +16,7 @@ limitations under the License.
 package downloader
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,6 +24,7 @@ import (
 	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
 	"helm.sh/helm/v3/pkg/repo/repotest"
 )
@@ -33,9 +35,30 @@ const (
 )
 
 func TestResolveChartRef(t *testing.T) {
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz")
+	srv.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.StartTLS()
+	defer srv.Stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	srv.LinkIndices()
+
+	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ociSrv.Run(t)
+
 	tests := []struct {
 		name, ref, expect, version string
 		fail                       bool
+		registryClient             *registry.Client
 	}{
 		{name: "full URL", ref: "http://example.com/foo-1.2.3.tgz", expect: "http://example.com/foo-1.2.3.tgz"},
 		{name: "full URL, HTTPS", ref: "https://example.com/foo-1.2.3.tgz", expect: "https://example.com/foo-1.2.3.tgz"},
@@ -53,6 +76,15 @@ func TestResolveChartRef(t *testing.T) {
 		{name: "full URL, file", ref: "file:///foo-1.2.3.tgz", fail: true},
 		{name: "invalid", ref: "invalid-1.2.3", fail: true},
 		{name: "not found", ref: "nosuchthing/invalid-1.2.3", fail: true},
+
+		// OCI tests
+		{name: "OCI with version", ref: fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart", ociSrv.RegistryURL), version: "0.1.0",
+			expect: fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0", ociSrv.RegistryURL)},
+		{name: "OCI without version fails without registry client", ref: fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart", ociSrv.RegistryURL),
+			expect: fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0", ociSrv.RegistryURL), fail: true},
+		{name: "OCI without version with registry client", ref: fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart", ociSrv.RegistryURL), registryClient: ociSrv.Client,
+			expect: fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0", ociSrv.RegistryURL)},
+		{name: "not found", ref: "oci://localhost:9999/nosuchthing/invalid-1.2.3", fail: true},
 	}
 
 	c := ChartDownloader{
@@ -66,6 +98,12 @@ func TestResolveChartRef(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		if tt.registryClient != nil {
+			c.RegistryClient = tt.registryClient
+		} else {
+			c.RegistryClient = nil
+		}
+
 		u, err := c.ResolveChartVersion(tt.ref, tt.version)
 		if err != nil {
 			if tt.fail {
