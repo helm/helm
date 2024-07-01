@@ -183,15 +183,20 @@ func TestPullCmd(t *testing.T) {
 			wantError:    true,
 		},
 		{
-			name:         "Fail fetching OCI chart without version specified",
-			args:         fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0", ociSrv.RegistryURL),
-			wantErrorMsg: "Error: --version flag is explicitly required for OCI registries",
-			wantError:    true,
+			name:       "Fetching OCI chart without version option specified",
+			args:       fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0", ociSrv.RegistryURL),
+			expectFile: "./oci-dependent-chart-0.1.0.tgz",
 		},
 		{
-			name:      "Fail fetching OCI chart without version specified",
-			args:      fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0 --version 0.1.0", ociSrv.RegistryURL),
-			wantError: true,
+			name:       "Fetching OCI chart with version specified",
+			args:       fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0 --version 0.1.0", ociSrv.RegistryURL),
+			expectFile: "./oci-dependent-chart-0.1.0.tgz",
+		},
+		{
+			name:         "Fail fetching OCI chart with version mismatch",
+			args:         fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.2.0 --version 0.1.0", ociSrv.RegistryURL),
+			wantErrorMsg: "Error: chart ref version mismatch: 0.2.0, 0.1.0",
+			wantError:    true,
 		},
 	}
 

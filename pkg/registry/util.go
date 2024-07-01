@@ -31,6 +31,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	errdef "oras.land/oras-go/pkg/content"
 	orascontext "oras.land/oras-go/pkg/context"
 	"oras.land/oras-go/pkg/registry"
 
@@ -127,8 +128,17 @@ func parseReference(raw string) (registry.Reference, error) {
 	// NOTE: Passing immediately to the reference parser will fail since (+)
 	// signs are an invalid tag character, and simply replacing all plus (+)
 	// occurrences could invalidate other portions of the URI
+	digest := ""
+	lastIndex := strings.LastIndex(raw, "@")
+	if lastIndex >= 0 {
+		digest = raw[lastIndex:]
+		raw = raw[:lastIndex]
+	}
 	parts := strings.Split(raw, ":")
 	if len(parts) > 1 && !strings.Contains(parts[len(parts)-1], "/") {
+		if len(digest) > 0 {
+			return registry.Reference{}, fmt.Errorf("%w: specify digest or version", errdef.ErrInvalidReference)
+		}
 		tag := parts[len(parts)-1]
 
 		if tag != "" {
@@ -138,6 +148,7 @@ func parseReference(raw string) (registry.Reference, error) {
 		}
 	}
 
+	raw += digest
 	return registry.ParseReference(raw)
 }
 
