@@ -1,0 +1,4 @@
+apiVersion: v1
+name: cluster-info
+version: 1.0.16
+icon: https://bitnami.com/assets/stacks/wordpress/img/wordpress-stack-220x234.png

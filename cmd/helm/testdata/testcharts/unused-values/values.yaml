@@ -1,0 +1,16 @@
+cluster:
+  name: silk-sonic
+
+resources:
+  cpu:
+    request: 32
+    limit: 64
+
+unused: values
+
+# This value is used by the template, but will show up as unused because
+# the new logic does not recursively call the helm rending function.
+# https://github.com/helm/helm/pull/11351/files#diff-9a4b0f64963e54937214c78c91c3d404eaef74b571e89f370ed7de3c9ff86ca1L156
+usedByTemplate: test
+
+template: "{{ .Values.usedByTemplate }}"
