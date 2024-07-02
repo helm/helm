@@ -77,7 +77,7 @@ func TestLintChart(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, nil)
+			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, nil, false)
 			switch {
 			case err != nil && !tt.err:
 				t.Errorf("%s", err)

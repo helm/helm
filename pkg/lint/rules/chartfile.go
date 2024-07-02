@@ -36,6 +36,11 @@ func Chartfile(linter *support.Linter) {
 	chartFileName := "Chart.yaml"
 	chartPath := filepath.Join(linter.ChartDir, chartFileName)
 
+	// When flag is enabled, update the file name with full path
+	if linter.EnableFullPath {
+		chartFileName = chartPath
+	}
+
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartYamlNotDirectory(chartPath))
 
 	chartFile, err := chartutil.LoadChartfile(chartPath)

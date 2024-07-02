@@ -54,6 +54,11 @@ func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interfac
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
+	// When flag is enabled, update the file name with full path
+	if linter.EnableFullPath {
+		fpath = templatesPath + string(filepath.Separator)
+	}
+
 	templatesDirExist := linter.RunLinterRule(support.WarningSev, fpath, validateTemplatesDir(templatesPath))
 
 	// Templates directory is optional for now
@@ -116,6 +121,11 @@ func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interfac
 	for _, template := range chart.Templates {
 		fileName, data := template.Name, template.Data
 		fpath = fileName
+
+		// When flag is enabled, update the file name with full path
+		if linter.EnableFullPath {
+			fpath = templatesPath + string(filepath.Separator) + fileName
+		}
 
 		linter.RunLinterRule(support.ErrorSev, fpath, validateAllowedExtension(fileName))
 		// These are v3 specific checks to make sure and warn people if their
