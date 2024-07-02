@@ -218,7 +218,7 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["SCBexported2A"] = "blaster"
 	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
-	if err := processDependencyImportValues(c, false); err != nil {
+	if err := processDependencyImportExportValues(c, false); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 	cc := Values(c.Values)
@@ -258,7 +258,7 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	}
 
 	c = loadChart(t, "testdata/subpop")
-	if err := processDependencyImportValues(c, true); err != nil {
+	if err := processDependencyImportExportValues(c, true); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 	cc = Values(c.Values)
@@ -294,7 +294,7 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 	e["app2.service.port"] = "8080"
 	e["app3.service.port"] = "9090"
 	e["app4.service.port"] = "1234"
-	if err := processDependencyImportValues(c, true); err != nil {
+	if err := processDependencyImportExportValues(c, true); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 	cc := Values(c.Values)
@@ -317,11 +317,69 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 	}
 }
 
+func TestProcessDependencyExportValues(t *testing.T) {
+	chart := loadChart(t, "testdata/subpop")
+
+	expectation := make(map[string]interface{})
+
+	// single value export
+	expectation["subchart1.single-value-parent"] = "exported-from-parent-7"
+
+	// merge with overrides
+	expectation["subchart1.merged-values.SC1bool"] = true
+	expectation["subchart1.merged-values.SPExtra11"] = "should-be-unchanged"
+	expectation["subchart1.merged-values.SC1float"] = 22.2
+	expectation["subchart1.merged-values.SC1int"] = float64(222)
+	expectation["subchart1.merged-values.SC1string"] = "exported-from-parent-2"
+
+	// merge exports
+	expectation["subchart1.merged-values.SPNested1.SPExtra19"] = "exported-from-parent-6"
+
+	// `exports` style
+	expectation["subchart1.merged-values.SPExtra9"] = "exported-from-parent-4"
+	expectation["subchart1.merged-values.SPExtra12"] = "should-be-unchanged"
+
+	// passed from child to grandchild with overrides
+	expectation["subchart1.subcharta.exported-overridden-chart1.SCAbool"] = true
+	expectation["subchart1.subcharta.exported-overridden-chart1.SCAfloat"] = 33.3
+	expectation["subchart1.subcharta.exported-overridden-chart1.SCAint"] = float64(333)
+	expectation["subchart1.subcharta.exported-overridden-chart1.SCAstring"] = "exported-from-chart1"
+	expectation["subchart1.subcharta.exported-overridden-chart1.SPExtra13"] = "exported-from-chart1-2"
+	expectation["subchart1.subcharta.exported-overridden-chart1.SPExtra15"] = "should-be-unchanged"
+
+	// passed through from parent to grandchild
+	expectation["subchart1.subcharta.merged-values.SPExtra17"] = "exported-from-parent-5"
+	expectation["subchart1.subcharta.merged-values.SPExtra18"] = "should-be-unchanged"
+	expectation["subchart1.subcharta.merged-values.SPExtra19"] = "exported-from-parent-9" //overwritten
+
+	// passed from child to grandchild, `exports` style
+	expectation["subchart1.subcharta.merged-values.SPExtra14"] = "exported-from-chart1-3"
+	expectation["subchart1.subcharta.merged-values.SPExtra16"] = "should-be-unchanged"
+
+	// exporting everything
+	expectation["subchart1.explicit-export1.merged-values.SPExtra9"] = "exported-from-parent-4"
+
+	if err := ProcessDependencies(chart, Values{}); err != nil {
+		t.Fatalf("processing dependencies failed: %v", err)
+	}
+	chartValues := Values(chart.Values)
+	for path, expectedValue := range expectation {
+		actualValue, err := chartValues.PathValue(path)
+		if err != nil {
+			t.Fatalf("retrieving export values table %v %v", path, err)
+		}
+
+		if actualValue != expectedValue {
+			t.Errorf("failed to match exported string value %q with expected %v", actualValue, expectedValue)
+		}
+	}
+}
+
 func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 	c := loadChart(t, "testdata/import-values-from-enabled-subchart/parent-chart")
 	nameOverride := "parent-chart-prod"
 
-	if err := processDependencyImportValues(c, true); err != nil {
+	if err := processDependencyImportExportValues(c, true); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 
