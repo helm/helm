@@ -84,6 +84,7 @@ type Install struct {
 	Devel                    bool
 	DependencyUpdate         bool
 	Timeout                  time.Duration
+	HookTimeout              time.Duration
 	Namespace                string
 	ReleaseName              string
 	GenerateName             bool
@@ -434,10 +435,16 @@ func (i *Install) isDryRun() bool {
 }
 
 func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {
+
+	// using HookTimeout if set otherwise using Timeout
+	if i.HookTimeout == 0*time.Second {
+		i.HookTimeout = i.Timeout
+	}
+  
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.HookTimeout); err != nil {
 			return rel, fmt.Errorf("failed pre-install: %s", err)
 		}
 	}
@@ -466,7 +473,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	}
 
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.HookTimeout); err != nil {
 			return rel, fmt.Errorf("failed post-install: %s", err)
 		}
 	}

@@ -44,6 +44,7 @@ type Uninstall struct {
 	Wait                bool
 	DeletionPropagation string
 	Timeout             time.Duration
+	HookTimeout         time.Duration
 	Description         string
 }
 
@@ -104,9 +105,12 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	rel.Info.Deleted = helmtime.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
 	res := &release.UninstallReleaseResponse{Release: rel}
-
+	// using HookTimeout if set otherwise using Timeout
+	if u.HookTimeout == 0*time.Second {
+		u.HookTimeout = u.Timeout
+	}
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(rel, release.HookPreDelete, u.Timeout); err != nil {
+		if err := u.cfg.execHook(rel, release.HookPreDelete, u.HookTimeout); err != nil {
 			return res, err
 		}
 	} else {
@@ -139,7 +143,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(rel, release.HookPostDelete, u.Timeout); err != nil {
+		if err := u.cfg.execHook(rel, release.HookPostDelete, u.HookTimeout); err != nil {
 			errs = append(errs, err)
 		}
 	}

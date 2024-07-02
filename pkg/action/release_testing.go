@@ -39,8 +39,9 @@ const (
 //
 // It provides the implementation of 'helm test'.
 type ReleaseTesting struct {
-	cfg     *Configuration
-	Timeout time.Duration
+	cfg         *Configuration
+	Timeout     time.Duration
+	HookTimeout time.Duration
 	// Used for fetching logs from test pods
 	Namespace string
 	Filters   map[string][]string
@@ -95,7 +96,12 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 		rel.Hooks = executingHooks
 	}
 
-	if err := r.cfg.execHook(rel, release.HookTest, r.Timeout); err != nil {
+	// using HookTimeout if set otherwise using Timeout
+	if r.HookTimeout == 0*time.Second {
+		r.HookTimeout = r.Timeout
+	}
+
+	if err := r.cfg.execHook(rel, release.HookTest, r.HookTimeout); err != nil {
 		rel.Hooks = append(skippedHooks, rel.Hooks...)
 		r.cfg.Releases.Update(rel)
 		return rel, err
