@@ -30,14 +30,12 @@ import (
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
-	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
-	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -51,7 +49,6 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	cachetools "k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
@@ -85,23 +82,11 @@ type Client struct {
 	kubeClient *kubernetes.Clientset
 }
 
-var addToScheme sync.Once
-
 // New creates a new Client.
 func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
-	// Add CRDs to the scheme. They are missing by default.
-	addToScheme.Do(func() {
-		if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
-			// This should never happen.
-			panic(err)
-		}
-		if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
-			panic(err)
-		}
-	})
 	return &Client{
 		Factory: cmdutil.NewFactory(getter),
 		Log:     nopLogger,

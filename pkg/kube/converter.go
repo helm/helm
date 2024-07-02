@@ -40,30 +40,36 @@ func AsVersioned(info *resource.Info) runtime.Object {
 // convertWithMapper converts the given object with the optional provided
 // RESTMapping. If no mapping is provided, the default schema versioner is used
 func convertWithMapper(obj runtime.Object, mapping *meta.RESTMapping) runtime.Object {
-	s := kubernetesNativeScheme()
+	s := NativeScheme()
 	var gv = runtime.GroupVersioner(schema.GroupVersions(s.PrioritizedVersionsAllGroups()))
 	if mapping != nil {
 		gv = mapping.GroupVersionKind.GroupVersion()
 	}
-	if obj, err := runtime.ObjectConvertor(s).ConvertToVersion(obj, gv); err == nil {
+	if obj, err := s.ConvertToVersion(obj, gv); err == nil {
 		return obj
 	}
 	return obj
 }
 
-// kubernetesNativeScheme returns a clean *runtime.Scheme with _only_ Kubernetes
+// NativeScheme returns a clean *runtime.Scheme with _only_ Kubernetes
 // native resources added to it. This is required to break free of custom resources
 // that may have been added to scheme.Scheme due to Helm being used as a package in
 // combination with e.g. a versioned kube client. If we would not do this, the client
 // may attempt to perform e.g. a 3-way-merge strategy patch for custom resources.
-func kubernetesNativeScheme() *runtime.Scheme {
+func NativeScheme() *runtime.Scheme {
 	k8sNativeSchemeOnce.Do(func() {
 		k8sNativeScheme = runtime.NewScheme()
-		scheme.AddToScheme(k8sNativeScheme)
+		if err := scheme.AddToScheme(k8sNativeScheme); err != nil {
+			panic(err)
+		}
 		// API extensions are not in the above scheme set,
 		// and must thus be added separately.
-		apiextensionsv1beta1.AddToScheme(k8sNativeScheme)
-		apiextensionsv1.AddToScheme(k8sNativeScheme)
+		if err := apiextensionsv1beta1.AddToScheme(k8sNativeScheme); err != nil {
+			panic(err)
+		}
+		if err := apiextensionsv1.AddToScheme(k8sNativeScheme); err != nil {
+			panic(err)
+		}
 	})
 	return k8sNativeScheme
 }
