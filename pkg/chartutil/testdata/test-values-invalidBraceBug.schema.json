@@ -1,0 +1,25 @@
+{
+    "type": "object",
+    "required": [
+        "image"
+    ],
+    "properties": {
+        "image": {
+            "type": "object",
+            "required": [
+                "repository",
+                "pullPolicy"
+            ],
+            "properties": {
+                "repository": {
+                    "type": "string",
+                    "pattern": "^([-_/.a-z0-9]+)$"
+                },
+                "pullPolicy": {
+                    "type": "string",
+                    "pattern": "^(Always|Never|IfNotPresent)$"
+                }
+            }}
+        }
+    }
+}

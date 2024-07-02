@@ -55,8 +55,9 @@ func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := "unable to validate schema: runtime error: invalid " +
-		"memory address or nil pointer dereference"
+	expectedErrString := "Failed to unmarshal JSON schema: " +
+		"json: cannot unmarshal number into Go value of type jsonschema._schema"
+
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
 	}
@@ -79,8 +80,8 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := `- (root): employmentInfo is required
-- age: Must be greater than or equal to 0
+	expectedErrString := `- /: "employmentInfo" value is required
+- /age: must be greater than or equal to 0
 `
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
@@ -159,9 +160,27 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 	}
 
 	expectedErrString := `subchart:
-- (root): age is required
+- /: "age" value is required
 `
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
 	}
+}
+
+func TestValidateAgainstBraceBug(t *testing.T) {
+	schemaJSON, err := os.ReadFile("./testdata/test-values-invalidBraceBug.schema.json")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	values := map[string]interface{}{
+		"image": map[string]interface{}{
+			"repository": "nginx",
+			"pullPolicy": "Always",
+		},
+	}
+
+	if err := ValidateAgainstSingleSchema(values, schemaJSON); err == nil {
+		t.Error("The invalid schema should cause the validation to fail")
+	}
+
 }
