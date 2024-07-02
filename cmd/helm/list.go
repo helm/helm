@@ -133,13 +133,15 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type releaseElement struct {
-	Name       string `json:"name"`
-	Namespace  string `json:"namespace"`
-	Revision   string `json:"revision"`
-	Updated    string `json:"updated"`
-	Status     string `json:"status"`
-	Chart      string `json:"chart"`
-	AppVersion string `json:"app_version"`
+	Name         string `json:"name"`
+	Namespace    string `json:"namespace"`
+	Revision     string `json:"revision"`
+	Updated      string `json:"updated"`
+	Status       string `json:"status"`
+	Chart        string `json:"chart"`
+	ChartName    string `json:"chart_name"`
+	ChartVersion string `json:"chart_version"`
+	AppVersion   string `json:"app_version"`
 }
 
 type releaseListWriter struct {
@@ -152,12 +154,14 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string, noHead
 	elements := make([]releaseElement, 0, len(releases))
 	for _, r := range releases {
 		element := releaseElement{
-			Name:       r.Name,
-			Namespace:  r.Namespace,
-			Revision:   strconv.Itoa(r.Version),
-			Status:     r.Info.Status.String(),
-			Chart:      formatChartname(r.Chart),
-			AppVersion: formatAppVersion(r.Chart),
+			Name:         r.Name,
+			Namespace:    r.Namespace,
+			Revision:     strconv.Itoa(r.Version),
+			Status:       r.Info.Status.String(),
+			Chart:        formatChartname(r.Chart),
+			ChartName:    getChartname(r.Chart),
+			ChartVersion: getChartVerison(r.Chart),
+			AppVersion:   formatAppVersion(r.Chart),
 		}
 
 		t := "-"
