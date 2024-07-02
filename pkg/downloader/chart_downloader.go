@@ -97,6 +97,8 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		return "", nil, err
 	}
 
+	c.Options = append(c.Options, getter.WithAcceptHeader("application/gzip,application/octet-stream"))
+
 	data, err := g.Get(u.String(), c.Options...)
 	if err != nil {
 		return "", nil, err
