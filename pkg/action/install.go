@@ -413,9 +413,10 @@ func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, t
 	resultChan := make(chan Msg, 1)
 
 	go func() {
-		rel, err := i.performInstall(rel, toBeAdopted, resources)
+		rel, err := i.performInstall(ctx, rel, toBeAdopted, resources)
 		resultChan <- Msg{rel, err}
 	}()
+
 	select {
 	case <-ctx.Done():
 		err := ctx.Err()
@@ -433,7 +434,7 @@ func (i *Install) isDryRun() bool {
 	return false
 }
 
-func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {
+func (i *Install) performInstall(ctx context.Context, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
@@ -456,9 +457,9 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 
 	if i.Wait {
 		if i.WaitForJobs {
-			err = i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout)
+			err = i.cfg.KubeClient.WaitWithJobsWithContext(ctx, resources, i.Timeout)
 		} else {
-			err = i.cfg.KubeClient.Wait(resources, i.Timeout)
+			err = i.cfg.KubeClient.WaitWithContext(ctx, resources, i.Timeout)
 		}
 		if err != nil {
 			return rel, err
