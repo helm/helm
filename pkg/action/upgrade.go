@@ -417,7 +417,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
 	}
 
-	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
+	results, err := u.cfg.KubeClient.Update(current, target, u.Force, !u.DisableOpenAPIValidation)
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)

@@ -165,7 +165,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		}
 
 		// Send them to Kube
-		if _, err := i.cfg.KubeClient.Create(res); err != nil {
+		if _, err := i.cfg.KubeClient.Create(res, !i.DisableOpenAPIValidation); err != nil {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
 				crdName := res[0].Name
@@ -377,7 +377,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		if err != nil {
 			return nil, err
 		}
-		if _, err := i.cfg.KubeClient.Create(resourceList); err != nil && !apierrors.IsAlreadyExists(err) {
+		if _, err := i.cfg.KubeClient.Create(resourceList, !i.DisableOpenAPIValidation); err != nil && !apierrors.IsAlreadyExists(err) {
 			return nil, err
 		}
 	}
@@ -446,9 +446,9 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	// do an update, but it's not clear whether we WANT to do an update if the re-use is set
 	// to true, since that is basically an upgrade operation.
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
-		_, err = i.cfg.KubeClient.Create(resources)
+		_, err = i.cfg.KubeClient.Create(resources, !i.DisableOpenAPIValidation)
 	} else if len(resources) > 0 {
-		_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force)
+		_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force, !i.DisableOpenAPIValidation)
 	}
 	if err != nil {
 		return rel, err
