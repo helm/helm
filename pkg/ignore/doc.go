@@ -63,6 +63,6 @@ Notable differences from .gitignore:
   - The globbing library is Go's 'filepath.Match', not fnmatch(3)
   - Trailing spaces are always ignored (there is no supported escape sequence)
   - The evaluation of escape sequences has not been tested for compatibility
-  - There is no support for '\!' as a special leading sequence.
+  - There is no support for '\\!' as a special leading sequence for files that begin with `!`
 */
 package ignore // import "helm.sh/helm/v3/pkg/ignore"
