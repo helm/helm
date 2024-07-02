@@ -103,7 +103,7 @@ func TestToRenderValues(t *testing.T) {
 		IsInstall: true,
 	}
 
-	res, err := ToRenderValues(c, overrideValues, o, nil)
+	res, err := ToRenderValuesWithSchemaValidation(c, overrideValues, o, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}

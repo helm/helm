@@ -51,6 +51,11 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 
 // TemplatesWithKubeVersion lints the templates in the Linter, allowing to specify the kubernetes version.
 func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) {
+	TemplatesWithSkipSchemaValidation(linter, values, namespace, kubeVersion, false)
+}
+
+// TemplatesWithSkipSchemaValidation lints the templates in the Linter, allowing to specify the kubernetes version and if schema validation is enabled or not.
+func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, skipSchemaValidation bool) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
@@ -91,7 +96,7 @@ func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interfac
 		return
 	}
 
-	valuesToRender, err := chartutil.ToRenderValues(chart, cvals, options, caps)
+	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, cvals, options, caps, skipSchemaValidation)
 	if err != nil {
 		linter.RunLinterRule(support.ErrorSev, fpath, err)
 		return
