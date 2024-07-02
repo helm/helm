@@ -18,24 +18,29 @@ package registry // import "helm.sh/helm/v3/pkg/registry"
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd/remotes"
+	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
-	"oras.land/oras-go/pkg/auth"
-	dockerauth "oras.land/oras-go/pkg/auth/docker"
-	"oras.land/oras-go/pkg/content"
-	"oras.land/oras-go/pkg/oras"
-	"oras.land/oras-go/pkg/registry"
-	registryremote "oras.land/oras-go/pkg/registry/remote"
-	registryauth "oras.land/oras-go/pkg/registry/remote/auth"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/credentials"
+	"oras.land/oras-go/v2/registry/remote/retry"
 
 	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/chart"
@@ -49,19 +54,21 @@ storing semantic versions, Helm adopts the convention of changing plus (+) to
 an underscore (_) in chart version tags when pushing to a registry and back to
 a plus (+) when pulling from a registry.`
 
+var errDeprecatedRemote = errors.New("providing github.com/containerd/containerd/remotes.Resolver via ClientOptResolver is no longer suported")
+
 type (
 	// Client works with OCI-compliant registries
 	Client struct {
 		debug       bool
 		enableCache bool
 		// path to repository config file e.g. ~/.docker/config.json
-		credentialsFile    string
-		out                io.Writer
-		authorizer         auth.Client
-		registryAuthorizer *registryauth.Client
-		resolver           func(ref registry.Reference) (remotes.Resolver, error)
-		httpClient         *http.Client
-		plainHTTP          bool
+		credentialsFile  string
+		out              io.Writer
+		authorizer       *auth.Client
+		credentialsStore credentials.Store
+		httpClient       *http.Client
+		plainHTTP        bool
+		err              error // pass any errors from the ClientOption functions
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -76,81 +83,69 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	for _, option := range options {
 		option(client)
+		if client.err != nil {
+			return nil, client.err
+		}
 	}
 	if client.credentialsFile == "" {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
 	}
+	if client.httpClient == nil {
+		type cloner[T any] interface {
+			Clone() T
+		}
+
+		// try to copy (clone) the http.DefaultTransport so any mutations we
+		// perform on it (e.g. TLS config) are not reflected globally
+		// follow https://github.com/golang/go/issues/39299 for a more elegant
+		// solution in the future
+		transport := http.DefaultTransport
+		if t, ok := transport.(cloner[*http.Transport]); ok {
+			transport = t.Clone()
+		} else if t, ok := transport.(cloner[http.RoundTripper]); ok {
+			// this branch will not be used with go 1.20, it was added
+			// optimistically to try to clone if the http.DefaultTransport
+			// implementation changes, still the Clone method in that case
+			// might not return http.RoundTripper...
+			transport = t.Clone()
+		}
+
+		client.httpClient = &http.Client{
+			Transport: retry.NewTransport(transport),
+		}
+	}
 	if client.authorizer == nil {
-		authClient, err := dockerauth.NewClientWithDockerFallback(client.credentialsFile)
-		if err != nil {
-			return nil, err
-		}
-		client.authorizer = authClient
-	}
-
-	resolverFn := client.resolver // copy for avoiding recursive call
-	client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
-		if resolverFn != nil {
-			// validate if the resolverFn returns a valid resolver
-			if resolver, err := resolverFn(ref); resolver != nil && err == nil {
-				return resolver, nil
-			}
-		}
-		headers := http.Header{}
-		headers.Set("User-Agent", version.GetUserAgent())
-		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
-		if client.httpClient != nil {
-			opts = append(opts, auth.WithResolverClient(client.httpClient))
-		}
-		if client.plainHTTP {
-			opts = append(opts, auth.WithResolverPlainHTTP())
-		}
-		resolver, err := client.authorizer.ResolverWithOpts(opts...)
-		if err != nil {
-			return nil, err
-		}
-		return resolver, nil
-	}
-
-	// allocate a cache if option is set
-	var cache registryauth.Cache
-	if client.enableCache {
-		cache = registryauth.DefaultCache
-	}
-	if client.registryAuthorizer == nil {
-		client.registryAuthorizer = &registryauth.Client{
+		authorizer := auth.Client{
 			Client: client.httpClient,
-			Header: http.Header{
-				"User-Agent": {version.GetUserAgent()},
-			},
-			Cache: cache,
-			Credential: func(_ context.Context, reg string) (registryauth.Credential, error) {
-				dockerClient, ok := client.authorizer.(*dockerauth.Client)
-				if !ok {
-					return registryauth.EmptyCredential, errors.New("unable to obtain docker client")
-				}
+		}
+		authorizer.SetUserAgent(version.GetUserAgent())
 
-				username, password, err := dockerClient.Credential(reg)
-				if err != nil {
-					return registryauth.EmptyCredential, errors.New("unable to retrieve credentials")
-				}
-
-				// A blank returned username and password value is a bearer token
-				if username == "" && password != "" {
-					return registryauth.Credential{
-						RefreshToken: password,
-					}, nil
-				}
-
-				return registryauth.Credential{
-					Username: username,
-					Password: password,
-				}, nil
-
-			},
+		storeOptions := credentials.StoreOptions{
+			AllowPlaintextPut:        true,
+			DetectDefaultNativeStore: true,
+		}
+		store, err := credentials.NewStore(client.credentialsFile, storeOptions)
+		if err != nil {
+			return nil, err
+		}
+		dockerStore, err := credentials.NewStoreFromDocker(storeOptions)
+		if err != nil {
+			// should only fail if user home directory can't be determined
+			client.credentialsStore = store
+		} else {
+			// use Helm credentials with fallback to Docker
+			client.credentialsStore = credentials.NewStoreWithFallbacks(store, dockerStore)
 		}
 
+		authorizer.Credential = credentials.Credential(client.credentialsStore)
+
+		if client.enableCache {
+			authorizer.Cache = auth.NewCache()
+		}
+
+		client.authorizer = &authorizer
 	}
+
 	return client, nil
 }
 
@@ -195,12 +190,9 @@ func ClientOptPlainHTTP() ClientOption {
 	}
 }
 
-// ClientOptResolver returns a function that sets the resolver setting on a client options set
-func ClientOptResolver(resolver remotes.Resolver) ClientOption {
-	return func(client *Client) {
-		client.resolver = func(_ registry.Reference) (remotes.Resolver, error) {
-			return resolver, nil
-		}
+func ClientOptResolver(_ remotes.Resolver) ClientOption {
+	return func(c *Client) {
+		c.err = errDeprecatedRemote
 	}
 }
 
@@ -209,60 +201,127 @@ type (
 	LoginOption func(*loginOperation)
 
 	loginOperation struct {
-		username string
-		password string
-		insecure bool
-		certFile string
-		keyFile  string
-		caFile   string
+		host   string
+		client *Client
 	}
 )
 
 // Login logs into a registry
 func (c *Client) Login(host string, options ...LoginOption) error {
-	operation := &loginOperation{}
 	for _, option := range options {
-		option(operation)
+		option(&loginOperation{host, c})
 	}
-	authorizerLoginOpts := []auth.LoginOption{
-		auth.WithLoginContext(ctx(c.out, c.debug)),
-		auth.WithLoginHostname(host),
-		auth.WithLoginUsername(operation.username),
-		auth.WithLoginSecret(operation.password),
-		auth.WithLoginUserAgent(version.GetUserAgent()),
-		auth.WithLoginTLS(operation.certFile, operation.keyFile, operation.caFile),
-	}
-	if operation.insecure {
-		authorizerLoginOpts = append(authorizerLoginOpts, auth.WithLoginInsecure())
-	}
-	if err := c.authorizer.LoginWithOpts(authorizerLoginOpts...); err != nil {
+
+	reg, err := remote.NewRegistry(host)
+	if err != nil {
 		return err
 	}
+	reg.PlainHTTP = c.plainHTTP
+	reg.Client = c.authorizer
+
+	ctx := context.Background()
+
+	cred, err := c.authorizer.Credential(ctx, host)
+	if err != nil {
+		return fmt.Errorf("fetching credentials for %q: %w", host, err)
+	}
+
+	if err := reg.Ping(ctx); err != nil {
+		return fmt.Errorf("authenticating to %q: %w", host, err)
+	}
+
+	key := credentials.ServerAddressFromRegistry(host)
+	if err := c.credentialsStore.Put(ctx, key, cred); err != nil {
+		return err
+	}
+
 	fmt.Fprintln(c.out, "Login Succeeded")
 	return nil
 }
 
 // LoginOptBasicAuth returns a function that sets the username/password settings on login
 func LoginOptBasicAuth(username string, password string) LoginOption {
-	return func(operation *loginOperation) {
-		operation.username = username
-		operation.password = password
+	return func(o *loginOperation) {
+		o.client.authorizer.Credential = auth.StaticCredential(o.host, auth.Credential{Username: username, Password: password})
 	}
+}
+
+// LoginOptBasicAuth returns a function that allows plaintext (HTTP) login
+func LoginOptPlainText(isPlainText bool) LoginOption {
+	return func(o *loginOperation) {
+		o.client.plainHTTP = isPlainText
+	}
+}
+
+func ensureTLSConfig(client *auth.Client) (*tls.Config, error) {
+	var transport *http.Transport
+
+	switch t := client.Client.Transport.(type) {
+	case *http.Transport:
+		transport = t
+	case *retry.Transport:
+		switch t := t.Base.(type) {
+		case *http.Transport:
+			transport = t
+		}
+	}
+
+	if transport == nil {
+		// we don't know how to access the http.Transport, most likely the
+		// auth.Client.Client was provided by API user
+		return nil, fmt.Errorf("unable to access TLS client configuration, the provided HTTP Transport is not supported, given: %T", client.Client.Transport)
+	}
+
+	if transport.TLSClientConfig == nil {
+		transport.TLSClientConfig = &tls.Config{}
+	}
+
+	return transport.TLSClientConfig, nil
 }
 
 // LoginOptInsecure returns a function that sets the insecure setting on login
 func LoginOptInsecure(insecure bool) LoginOption {
-	return func(operation *loginOperation) {
-		operation.insecure = insecure
+	return func(o *loginOperation) {
+		tlsConfig, err := ensureTLSConfig(o.client.authorizer)
+
+		if err != nil {
+			panic(err)
+		}
+
+		tlsConfig.InsecureSkipVerify = insecure
 	}
 }
 
 // LoginOptTLSClientConfig returns a function that sets the TLS settings on login.
 func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
-	return func(operation *loginOperation) {
-		operation.certFile = certFile
-		operation.keyFile = keyFile
-		operation.caFile = caFile
+	return func(o *loginOperation) {
+		if (certFile == "" || keyFile == "") && caFile == "" {
+			return
+		}
+		tlsConfig, err := ensureTLSConfig(o.client.authorizer)
+		if err != nil {
+			panic(err)
+		}
+
+		if certFile != "" && keyFile != "" {
+			authCert, err := tls.LoadX509KeyPair(certFile, keyFile)
+			if err != nil {
+				panic(err)
+			}
+			tlsConfig.Certificates = []tls.Certificate{authCert}
+		}
+
+		if caFile != "" {
+			certPool := x509.NewCertPool()
+			ca, err := os.ReadFile(caFile)
+			if err != nil {
+				panic(err)
+			}
+			if !certPool.AppendCertsFromPEM(ca) {
+				panic(fmt.Errorf("unable to parse CA file: %q", caFile))
+			}
+			tlsConfig.RootCAs = certPool
+		}
 	}
 }
 
@@ -279,7 +338,8 @@ func (c *Client) Logout(host string, opts ...LogoutOption) error {
 	for _, opt := range opts {
 		opt(operation)
 	}
-	if err := c.authorizer.Logout(ctx(c.out, c.debug), host); err != nil {
+
+	if err := credentials.Logout(context.Background(), c.credentialsStore, host); err != nil {
 		return err
 	}
 	fmt.Fprintf(c.out, "Removing login credentials for %s\n", host)
@@ -334,8 +394,9 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		return nil, errors.New(
 			"must specify at least one layer to pull (chart/prov)")
 	}
-	memoryStore := content.NewMemory()
+	memoryStore := memory.New()
 	allowedMediaTypes := []string{
+		ocispec.MediaTypeImageManifest,
 		ConfigMediaType,
 	}
 	minNumDescriptors := 1 // 1 for the config
@@ -351,18 +412,32 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 
 	var descriptors, layers []ocispec.Descriptor
-	remotesResolver, err := c.resolver(parsedRef)
+
+	repository, err := remote.NewRepository(parsedRef.String())
 	if err != nil {
 		return nil, err
 	}
-	registryStore := content.Registry{Resolver: remotesResolver}
+	repository.PlainHTTP = c.plainHTTP
+	repository.Client = c.authorizer
 
-	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, parsedRef.String(), memoryStore, "",
-		oras.WithPullEmptyNameAllowed(),
-		oras.WithAllowedMediaTypes(allowedMediaTypes),
-		oras.WithLayerDescriptors(func(l []ocispec.Descriptor) {
-			layers = l
-		}))
+	ctx := context.Background()
+
+	sort.Strings(allowedMediaTypes)
+
+	manifest, err := oras.Copy(ctx, repository, parsedRef.String(), memoryStore, "", oras.CopyOptions{
+		CopyGraphOptions: oras.CopyGraphOptions{
+			PreCopy: func(ctx context.Context, desc ocispec.Descriptor) error {
+				mediaType := desc.MediaType
+				if i := sort.SearchStrings(allowedMediaTypes, mediaType); i >= len(allowedMediaTypes) || allowedMediaTypes[i] != mediaType {
+					return errors.Errorf("media type %q is not allowed, found in descriptor with digest: %q", mediaType, desc.Digest)
+				}
+
+				layers = append(layers, desc)
+
+				return nil
+			},
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -421,54 +496,37 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		Prov:  &DescriptorPullSummary{},
 		Ref:   parsedRef.String(),
 	}
-	var getManifestErr error
-	if _, manifestData, ok := memoryStore.Get(manifest); !ok {
-		getManifestErr = errors.Errorf("Unable to retrieve blob with digest %s", manifest.Digest)
-	} else {
-		result.Manifest.Data = manifestData
+
+	result.Manifest.Data, err = content.FetchAll(ctx, memoryStore, manifest)
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve blob with digest %s: %w", manifest.Digest, err)
 	}
-	if getManifestErr != nil {
-		return nil, getManifestErr
+
+	result.Config.Data, err = content.FetchAll(ctx, memoryStore, *configDescriptor)
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve blob with digest %s: %w", configDescriptor.Digest, err)
 	}
-	var getConfigDescriptorErr error
-	if _, configData, ok := memoryStore.Get(*configDescriptor); !ok {
-		getConfigDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", configDescriptor.Digest)
-	} else {
-		result.Config.Data = configData
-		var meta *chart.Metadata
-		if err := json.Unmarshal(configData, &meta); err != nil {
-			return nil, err
-		}
-		result.Chart.Meta = meta
+
+	if err := json.Unmarshal(result.Config.Data, &result.Chart.Meta); err != nil {
+		return nil, err
 	}
-	if getConfigDescriptorErr != nil {
-		return nil, getConfigDescriptorErr
-	}
+
 	if operation.withChart {
-		var getChartDescriptorErr error
-		if _, chartData, ok := memoryStore.Get(*chartDescriptor); !ok {
-			getChartDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", chartDescriptor.Digest)
-		} else {
-			result.Chart.Data = chartData
-			result.Chart.Digest = chartDescriptor.Digest.String()
-			result.Chart.Size = chartDescriptor.Size
+		result.Chart.Data, err = content.FetchAll(ctx, memoryStore, *chartDescriptor)
+		if err != nil {
+			return nil, fmt.Errorf("unable to retrieve blob with digest %s: %w", chartDescriptor.Digest, err)
 		}
-		if getChartDescriptorErr != nil {
-			return nil, getChartDescriptorErr
-		}
+		result.Chart.Digest = chartDescriptor.Digest.String()
+		result.Chart.Size = chartDescriptor.Size
 	}
+
 	if operation.withProv && !provMissing {
-		var getProvDescriptorErr error
-		if _, provData, ok := memoryStore.Get(*provDescriptor); !ok {
-			getProvDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", provDescriptor.Digest)
-		} else {
-			result.Prov.Data = provData
-			result.Prov.Digest = provDescriptor.Digest.String()
-			result.Prov.Size = provDescriptor.Size
+		result.Prov.Data, err = content.FetchAll(ctx, memoryStore, *provDescriptor)
+		if err != nil {
+			return nil, fmt.Errorf("unable to retrieve blob with digest %s: %w", provDescriptor.Digest, err)
 		}
-		if getProvDescriptorErr != nil {
-			return nil, getProvDescriptorErr
-		}
+		result.Prov.Digest = provDescriptor.Digest.String()
+		result.Prov.Size = provDescriptor.Size
 	}
 
 	fmt.Fprintf(c.out, "Pulled: %s\n", result.Ref)
@@ -556,8 +614,11 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 				"strict mode enabled, ref basename and tag must match the chart name and version")
 		}
 	}
-	memoryStore := content.NewMemory()
-	chartDescriptor, err := memoryStore.Add("", ChartLayerMediaType, data)
+
+	ctx := context.Background()
+
+	memoryStore := memory.New()
+	chartDescriptor, err := oras.PushBytes(ctx, memoryStore, ChartLayerMediaType, data)
 	if err != nil {
 		return nil, err
 	}
@@ -567,43 +628,57 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 
-	configDescriptor, err := memoryStore.Add("", ConfigMediaType, configData)
+	configDescriptor, err := oras.PushBytes(ctx, memoryStore, ConfigMediaType, configData)
 	if err != nil {
 		return nil, err
 	}
 
-	descriptors := []ocispec.Descriptor{chartDescriptor}
+	layers := []ocispec.Descriptor{chartDescriptor}
 	var provDescriptor ocispec.Descriptor
 	if operation.provData != nil {
-		provDescriptor, err = memoryStore.Add("", ProvLayerMediaType, operation.provData)
+		provDescriptor, err = oras.PushBytes(ctx, memoryStore, ProvLayerMediaType, operation.provData)
 		if err != nil {
 			return nil, err
 		}
 
-		descriptors = append(descriptors, provDescriptor)
+		layers = append(layers, provDescriptor)
 	}
+
+	// sort layers for determinism, similar to how ORAS v1 does it
+	sort.Slice(layers, func(i, j int) bool {
+		return layers[i].Digest < layers[j].Digest
+	})
 
 	ociAnnotations := generateOCIAnnotations(meta, operation.creationTime)
+	manifest := ocispec.Manifest{
+		Versioned:   specs.Versioned{SchemaVersion: 2},
+		Config:      configDescriptor,
+		Layers:      layers,
+		Annotations: ociAnnotations,
+	}
 
-	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, ociAnnotations, descriptors...)
+	manifestData, err := json.Marshal(manifest)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := memoryStore.StoreManifest(parsedRef.String(), manifest, manifestData); err != nil {
+	manifestDescriptor, err := oras.TagBytes(ctx, memoryStore, ocispec.MediaTypeImageManifest, manifestData, ref)
+	if err != nil {
 		return nil, err
 	}
 
-	remotesResolver, err := c.resolver(parsedRef)
+	repository, err := remote.NewRepository(parsedRef.String())
 	if err != nil {
 		return nil, err
 	}
-	registryStore := content.Registry{Resolver: remotesResolver}
-	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, parsedRef.String(), registryStore, "",
-		oras.WithNameValidation(nil))
+	repository.PlainHTTP = c.plainHTTP
+	repository.Client = c.authorizer
+
+	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
 	if err != nil {
 		return nil, err
 	}
+
 	chartSummary := &descriptorPushSummaryWithMeta{
 		Meta: meta,
 	}
@@ -611,8 +686,8 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	chartSummary.Size = chartDescriptor.Size
 	result := &PushResult{
 		Manifest: &descriptorPushSummary{
-			Digest: manifest.Digest.String(),
-			Size:   manifest.Size,
+			Digest: manifestDescriptor.Digest.String(),
+			Size:   manifestDescriptor.Size,
 		},
 		Config: &descriptorPushSummary{
 			Digest: configDescriptor.Digest.String(),
@@ -666,27 +741,29 @@ func (c *Client) Tags(ref string) ([]string, error) {
 		return nil, err
 	}
 
-	repository := registryremote.Repository{
-		Reference: parsedReference,
-		Client:    c.registryAuthorizer,
-		PlainHTTP: c.plainHTTP,
-	}
-
-	var registryTags []string
-
-	registryTags, err = registry.Tags(ctx(c.out, c.debug), &repository)
+	ctx := context.Background()
+	repository, err := remote.NewRepository(parsedReference.String())
 	if err != nil {
 		return nil, err
 	}
+	repository.PlainHTTP = c.plainHTTP
+	repository.Client = c.authorizer
 
 	var tagVersions []*semver.Version
-	for _, tag := range registryTags {
-		// Change underscore (_) back to plus (+) for Helm
-		// See https://github.com/helm/helm/issues/10166
-		tagVersion, err := semver.StrictNewVersion(strings.ReplaceAll(tag, "_", "+"))
-		if err == nil {
-			tagVersions = append(tagVersions, tagVersion)
+	err = repository.Tags(ctx, "", func(tags []string) error {
+		for _, tag := range tags {
+			// Change underscore (_) back to plus (+) for Helm
+			// See https://github.com/helm/helm/issues/10166
+			tagVersion, err := semver.StrictNewVersion(strings.ReplaceAll(tag, "_", "+"))
+			if err == nil {
+				tagVersions = append(tagVersions, tagVersion)
+			}
 		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	// Sort the collection
