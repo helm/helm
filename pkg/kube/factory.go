@@ -46,6 +46,6 @@ type Factory interface {
 	// and which implements the common patterns for CLI interactions with generic resources.
 	NewBuilder() *resource.Builder
 
-	// Returns a schema that can validate objects stored on disk.
+	// Validator Returns a schema that can validate objects stored on disk.
 	Validator(validationDirective string) (validation.Schema, error)
 }

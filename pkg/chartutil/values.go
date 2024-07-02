@@ -165,14 +165,14 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 	return top, nil
 }
 
-// istable is a special-purpose function to see if the present thing matches the definition of a YAML table.
-func istable(v interface{}) bool {
+// isTable is a special-purpose function to see if the present thing matches the definition of a YAML table.
+func isTable(v interface{}) bool {
 	_, ok := v.(map[string]interface{})
 	return ok
 }
 
 // PathValue takes a path that traverses a YAML structure and returns the value at the end of that path.
-// The path starts at the root of the YAML structure and is comprised of YAML keys separated by periods.
+// The path starts at the root of the YAML structure and comprises YAML keys separated by periods.
 // Given the following YAML data the value at path "chapter.one.title" is "Loomings".
 //
 //	chapter:
@@ -188,7 +188,7 @@ func (v Values) PathValue(path string) (interface{}, error) {
 func (v Values) pathValue(path []string) (interface{}, error) {
 	if len(path) == 1 {
 		// if exists must be root key not table
-		if _, ok := v[path[0]]; ok && !istable(v[path[0]]) {
+		if _, ok := v[path[0]]; ok && !isTable(v[path[0]]) {
 			return v[path[0]], nil
 		}
 		return nil, ErrNoValue{path[0]}
@@ -201,7 +201,7 @@ func (v Values) pathValue(path []string) (interface{}, error) {
 		return nil, ErrNoValue{key}
 	}
 	// check table for key and ensure value is not a table
-	if k, ok := t[key]; ok && !istable(k) {
+	if k, ok := t[key]; ok && !isTable(k) {
 		return k, nil
 	}
 	return nil, ErrNoValue{key}

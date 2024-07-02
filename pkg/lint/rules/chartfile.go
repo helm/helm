@@ -31,14 +31,14 @@ import (
 	"helm.sh/helm/v3/pkg/lint/support"
 )
 
-// Chartfile runs a set of linter rules related to Chart.yaml file
-func Chartfile(linter *support.Linter) {
+// ChartFile runs a set of linter rules related to Chart.yaml file
+func ChartFile(linter *support.Linter) {
 	chartFileName := "Chart.yaml"
 	chartPath := filepath.Join(linter.ChartDir, chartFileName)
 
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartYamlNotDirectory(chartPath))
 
-	chartFile, err := chartutil.LoadChartfile(chartPath)
+	chartFile, err := chartutil.LoadChartFile(chartPath)
 	validChartFile := linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartYamlFormat(err))
 
 	// Guard clause. Following linter rules require a parsable ChartFile

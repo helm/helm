@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -50,13 +51,13 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 		Long:  dependencyBuildDesc,
 		Args:  require.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			chartpath := "."
+			chartPath := "."
 			if len(args) > 0 {
-				chartpath = filepath.Clean(args[0])
+				chartPath = filepath.Clean(args[0])
 			}
 			man := &downloader.Manager{
 				Out:              out,
-				ChartPath:        chartpath,
+				ChartPath:        chartPath,
 				Keyring:          client.Keyring,
 				SkipUpdate:       client.SkipRefresh,
 				Getters:          getter.All(settings),
@@ -69,7 +70,8 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 				man.Verify = downloader.VerifyIfPossible
 			}
 			err := man.Build()
-			if e, ok := err.(downloader.ErrRepoNotFound); ok {
+			var e downloader.ErrRepoNotFound
+			if errors.As(err, &e) {
 				return fmt.Errorf("%s. Please add the missing repos via 'helm repo add'", e.Error())
 			}
 			return err

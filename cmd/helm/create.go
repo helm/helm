@@ -85,11 +85,11 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *createOptions) run(out io.Writer) error {
-	fmt.Fprintf(out, "Creating %s\n", o.name)
+	_, _ = fmt.Fprintf(out, "Creating %s\n", o.name)
 
-	chartname := filepath.Base(o.name)
-	cfile := &chart.Metadata{
-		Name:        chartname,
+	chartName := filepath.Base(o.name)
+	chartFile := &chart.Metadata{
+		Name:        chartName,
 		Description: "A Helm chart for Kubernetes",
 		Type:        "application",
 		Version:     "0.1.0",
@@ -99,15 +99,15 @@ func (o *createOptions) run(out io.Writer) error {
 
 	if o.starter != "" {
 		// Create from the starter
-		lstarter := filepath.Join(o.starterDir, o.starter)
+		starterPath := filepath.Join(o.starterDir, o.starter)
 		// If path is absolute, we don't want to prefix it with helm starters folder
 		if filepath.IsAbs(o.starter) {
-			lstarter = o.starter
+			starterPath = o.starter
 		}
-		return chartutil.CreateFrom(cfile, filepath.Dir(o.name), lstarter)
+		return chartutil.CreateFrom(chartFile, filepath.Dir(o.name), starterPath)
 	}
 
 	chartutil.Stderr = out
-	_, err := chartutil.Create(chartname, filepath.Dir(o.name))
+	_, err := chartutil.Create(chartName, filepath.Dir(o.name))
 	return err
 }

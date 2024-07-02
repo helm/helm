@@ -104,12 +104,12 @@ func (s *Show) Run(chartpath string) (string, error) {
 
 	var out strings.Builder
 	if s.OutputFormat == ShowChart || s.OutputFormat == ShowAll {
-		fmt.Fprintf(&out, "%s\n", cf)
+		_, _ = fmt.Fprintf(&out, "%s\n", cf)
 	}
 
 	if (s.OutputFormat == ShowValues || s.OutputFormat == ShowAll) && s.chart.Values != nil {
 		if s.OutputFormat == ShowAll {
-			fmt.Fprintln(&out, "---")
+			_, _ = fmt.Fprintln(&out, "---")
 		}
 		if s.JSONPathTemplate != "" {
 			printer, err := printers.NewJSONPathPrinter(s.JSONPathTemplate)
@@ -119,8 +119,8 @@ func (s *Show) Run(chartpath string) (string, error) {
 			printer.Execute(&out, s.chart.Values)
 		} else {
 			for _, f := range s.chart.Raw {
-				if f.Name == chartutil.ValuesfileName {
-					fmt.Fprintln(&out, string(f.Data))
+				if f.Name == chartutil.ValuesFileName {
+					_, _ = fmt.Fprintln(&out, string(f.Data))
 				}
 			}
 		}
@@ -130,9 +130,9 @@ func (s *Show) Run(chartpath string) (string, error) {
 		readme := findReadme(s.chart.Files)
 		if readme != nil {
 			if s.OutputFormat == ShowAll {
-				fmt.Fprintln(&out, "---")
+				_, _ = fmt.Fprintln(&out, "---")
 			}
-			fmt.Fprintf(&out, "%s\n", readme.Data)
+			_, _ = fmt.Fprintf(&out, "%s\n", readme.Data)
 		}
 	}
 
@@ -140,10 +140,10 @@ func (s *Show) Run(chartpath string) (string, error) {
 		crds := s.chart.CRDObjects()
 		if len(crds) > 0 {
 			if s.OutputFormat == ShowAll && !bytes.HasPrefix(crds[0].File.Data, []byte("---")) {
-				fmt.Fprintln(&out, "---")
+				_, _ = fmt.Fprintln(&out, "---")
 			}
 			for _, crd := range crds {
-				fmt.Fprintf(&out, "%s\n", string(crd.File.Data))
+				_, _ = fmt.Fprintf(&out, "%s\n", string(crd.File.Data))
 			}
 		}
 	}

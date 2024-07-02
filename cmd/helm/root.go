@@ -134,8 +134,8 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 			loadingRules,
 			&clientcmd.ConfigOverrides{}).RawConfig(); err == nil {
 			comps := []string{}
-			for name, context := range config.Contexts {
-				comps = append(comps, fmt.Sprintf("%s\t%s", name, context.Cluster))
+			for name, ctx := range config.Contexts {
+				comps = append(comps, fmt.Sprintf("%s\t%s", name, ctx.Cluster))
 			}
 			return comps, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -151,7 +151,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// This call is required to gather configuration information prior to
 	// execution.
 	flags.ParseErrorsWhitelist.UnknownFlags = true
-	flags.Parse(args)
+	_ = flags.Parse(args)
 
 	registryClient, err := newDefaultRegistryClient(false)
 	if err != nil {
@@ -210,7 +210,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	return cmd, nil
 }
 
-func checkForExpiredRepos(repofile string) {
+func checkForExpiredRepos(repoPath string) {
 
 	expiredRepos := []struct {
 		name string
@@ -232,7 +232,7 @@ func checkForExpiredRepos(repofile string) {
 	// parse repo file.
 	// Ignore the error because it is okay for a repo file to be unparseable at this
 	// stage. Later checks will trap the error and respond accordingly.
-	repoFile, err := repo.LoadFile(repofile)
+	repoFile, err := repo.LoadFile(repoPath)
 	if err != nil {
 		return
 	}
@@ -244,7 +244,7 @@ func checkForExpiredRepos(repofile string) {
 		}
 
 		if url := r.URL; strings.Contains(url, exp.old) {
-			fmt.Fprintf(
+			_, _ = fmt.Fprintf(
 				os.Stderr,
 				"WARNING: %q is deprecated for %q and will be deleted Nov. 13, 2020.\nWARNING: You should switch to %q via:\nWARNING: helm repo add %q %q --force-update\n",
 				exp.old,
@@ -258,9 +258,9 @@ func checkForExpiredRepos(repofile string) {
 
 }
 
-func newRegistryClient(certFile, keyFile, caFile string, insecureSkipTLSverify, plainHTTP bool) (*registry.Client, error) {
-	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSverify {
-		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSverify)
+func newRegistryClient(certFile, keyFile, caFile string, insecureSkipTLSVerify, plainHTTP bool) (*registry.Client, error) {
+	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSVerify {
+		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSVerify)
 		if err != nil {
 			return nil, err
 		}
@@ -292,9 +292,9 @@ func newDefaultRegistryClient(plainHTTP bool) (*registry.Client, error) {
 	return registryClient, nil
 }
 
-func newRegistryClientWithTLS(certFile, keyFile, caFile string, insecureSkipTLSverify bool) (*registry.Client, error) {
+func newRegistryClientWithTLS(certFile, keyFile, caFile string, insecureSkipTLSVerify bool) (*registry.Client, error) {
 	// Create a new registry client
-	registryClient, err := registry.NewRegistryClientWithTLS(os.Stderr, certFile, keyFile, caFile, insecureSkipTLSverify,
+	registryClient, err := registry.NewRegistryClientWithTLS(os.Stderr, certFile, keyFile, caFile, insecureSkipTLSVerify,
 		settings.RegistryConfig, settings.Debug,
 	)
 	if err != nil {

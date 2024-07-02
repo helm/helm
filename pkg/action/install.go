@@ -55,7 +55,7 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
-// NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine
+// NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine,
 // but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
 // wants to see this file after rendering in the status command. However, it must be a suffix
 // since there can be filepath in front of it.
@@ -75,7 +75,7 @@ type Install struct {
 	DryRun          bool
 	DryRunOption    string
 	// HideSecret can be set to true when DryRun is enabled in order to hide
-	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
+	// Kubernetes Secrets in the output. It cannot be used outside DryRun.
 	HideSecret               bool
 	DisableHooks             bool
 	Replace                  bool
@@ -110,7 +110,7 @@ type Install struct {
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
 	PostRenderer   postrender.PostRenderer
-	// Lock to control raceconditions when the process receives a SIGTERM
+	// Lock to control race conditions when the process receives a SIGTERM
 	Lock sync.Mutex
 }
 
@@ -119,7 +119,7 @@ type ChartPathOptions struct {
 	CaFile                string // --ca-file
 	CertFile              string // --cert-file
 	KeyFile               string // --key-file
-	InsecureSkipTLSverify bool   // --insecure-skip-verify
+	InsecureSkipTLSVerify bool   // --insecure-skip-verify
 	PlainHTTP             bool   // --plain-http
 	Keyring               string // --keyring
 	Password              string // --password
@@ -222,7 +222,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	return i.RunWithContext(ctx, chrt, vals)
 }
 
-// Run executes the installation with Context
+// RunWithContext executes the installation with Context
 //
 // When the task is cancelled through ctx, the function returns and the install
 // proceeds in the background.
@@ -264,7 +264,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	if i.ClientOnly {
-		// Add mock objects in here so it doesn't use Kube API server
+		// Add mock objects in here, so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
 		i.cfg.Capabilities = chartutil.DefaultCapabilities.Copy()
 		if i.KubeVersion != nil {
@@ -382,7 +382,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		}
 	}
 
-	// If Replace is true, we need to supercede the last release.
+	// If Replace is true, we need to supersede the last release.
 	if i.Replace {
 		if err := i.replaceRelease(rel); err != nil {
 			return nil, err
@@ -504,7 +504,7 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 		}
 		return rel, errors.Wrapf(err, "release %s failed, and has been uninstalled due to atomic being set", i.ReleaseName)
 	}
-	i.recordRelease(rel) // Ignore the error, since we have another error to deal with.
+	_ = i.recordRelease(rel) // Ignore the error, since we have another error to deal with.
 	return rel, err
 }
 
@@ -761,7 +761,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		Options: []getter.Option{
 			getter.WithPassCredentialsAll(c.PassCredentialsAll),
 			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
-			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
+			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSVerify),
 			getter.WithPlainHTTP(c.PlainHTTP),
 		},
 		RepositoryConfig: settings.RepositoryConfig,
@@ -778,7 +778,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	}
 	if c.RepoURL != "" {
 		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(c.RepoURL, c.Username, c.Password, name, version,
-			c.CertFile, c.KeyFile, c.CaFile, c.InsecureSkipTLSverify, c.PassCredentialsAll, getter.All(settings))
+			c.CertFile, c.KeyFile, c.CaFile, c.InsecureSkipTLSVerify, c.PassCredentialsAll, getter.All(settings))
 		if err != nil {
 			return "", err
 		}
@@ -816,9 +816,9 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		return "", err
 	}
 
-	lname, err := filepath.Abs(filename)
+	abs, err := filepath.Abs(filename)
 	if err != nil {
 		return filename, err
 	}
-	return lname, nil
+	return abs, nil
 }

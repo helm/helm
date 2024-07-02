@@ -53,10 +53,10 @@ func newEnvCmd(out io.Writer) *cobra.Command {
 				keys := getSortedEnvVarKeys()
 
 				for _, k := range keys {
-					fmt.Fprintf(out, "%s=\"%s\"\n", k, envVars[k])
+					_, _ = fmt.Fprintf(out, "%s=\"%s\"\n", k, envVars[k])
 				}
 			} else {
-				fmt.Fprintf(out, "%s\n", envVars[args[0]])
+				_, _ = fmt.Fprintf(out, "%s\n", envVars[args[0]])
 			}
 		},
 	}

@@ -70,11 +70,11 @@ func mockArchiveServer() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasSuffix(r.URL.Path, ".tar.gz") {
 			w.Header().Add("Content-Type", "text/html")
-			fmt.Fprintln(w, "broken")
+			_, _ = fmt.Fprintln(w, "broken")
 			return
 		}
 		w.Header().Add("Content-Type", "application/gzip")
-		fmt.Fprintln(w, "test")
+		_, _ = fmt.Fprintln(w, "test")
 	}))
 }
 

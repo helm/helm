@@ -89,6 +89,6 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 		return err
 	}
 
-	fmt.Fprintf(out, "Installed plugin: %s\n", p.Metadata.Name)
+	_, _ = fmt.Fprintf(out, "Installed plugin: %s\n", p.Metadata.Name)
 	return nil
 }

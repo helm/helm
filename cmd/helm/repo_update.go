@@ -115,7 +115,7 @@ func (o *repoUpdateOptions) run(out io.Writer) error {
 }
 
 func updateCharts(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool) error {
-	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
+	_, _ = fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
 	var repoFailList []string
 	for _, re := range repos {
@@ -123,29 +123,29 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdate
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
 			if _, err := re.DownloadIndexFile(); err != nil {
-				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
+				_, _ = fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
 				repoFailList = append(repoFailList, re.Config.URL)
 			} else {
-				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)
+				_, _ = fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)
 			}
 		}(re)
 	}
 	wg.Wait()
 
 	if len(repoFailList) > 0 && failOnRepoUpdateFail {
-		return fmt.Errorf("Failed to update the following repositories: %s",
+		return fmt.Errorf("failed to update the following repositories: %s",
 			repoFailList)
 	}
 
-	fmt.Fprintln(out, "Update Complete. ⎈Happy Helming!⎈")
+	_, _ = fmt.Fprintln(out, "Update Complete. ⎈Happy Helming!⎈")
 	return nil
 }
 
 func checkRequestedRepos(requestedRepos []string, validRepos []*repo.Entry) error {
 	for _, requestedRepo := range requestedRepos {
 		found := false
-		for _, repo := range validRepos {
-			if requestedRepo == repo.Name {
+		for _, validRepo := range validRepos {
+			if requestedRepo == validRepo.Name {
 				found = true
 				break
 			}

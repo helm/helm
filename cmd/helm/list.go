@@ -60,7 +60,7 @@ flag with the '--offset' flag allows you to page through results.
 
 func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewList(cfg)
-	var outfmt output.Format
+	var outFmt output.Format
 
 	cmd := &cobra.Command{
 		Use:               "list",
@@ -92,20 +92,20 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 				switch outputFlag.Value.String() {
 				case "json":
-					output.EncodeJSON(out, names)
+					_ = output.EncodeJSON(out, names)
 					return nil
 				case "yaml":
-					output.EncodeYAML(out, names)
+					_ = output.EncodeYAML(out, names)
 					return nil
 				case "table":
 					for _, res := range results {
-						fmt.Fprintln(out, res.Name)
+						_, _ = fmt.Fprintln(out, res.Name)
 					}
 					return nil
 				}
 			}
 
-			return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat, client.NoHeaders))
+			return outFmt.Write(out, newReleaseListWriter(results, client.TimeFormat, client.NoHeaders))
 		},
 	}
 
@@ -127,7 +127,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.IntVar(&client.Offset, "offset", 0, "next release index in the list, used to offset from start value")
 	f.StringVarP(&client.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
 	f.StringVarP(&client.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2). Works only for secret(default) and configmap storage backends.")
-	bindOutputFlag(cmd, &outfmt)
+	bindOutputFlag(cmd, &outFmt)
 
 	return cmd
 }
@@ -156,7 +156,7 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string, noHead
 			Namespace:  r.Namespace,
 			Revision:   strconv.Itoa(r.Version),
 			Status:     r.Info.Status.String(),
-			Chart:      formatChartname(r.Chart),
+			Chart:      formatChartName(r.Chart),
 			AppVersion: formatAppVersion(r.Chart),
 		}
 
@@ -225,7 +225,7 @@ func compListReleases(toComplete string, ignoredReleaseNames []string, cfg *acti
 	client := action.NewList(cfg)
 	client.All = true
 	client.Limit = 0
-	// Do not filter so as to get the entire list of releases.
+	// Do not filter to get the entire list of releases.
 	// This will allow zsh and fish to match completion choices
 	// on other criteria then prefix.  For example:
 	//   helm status ingress<TAB>

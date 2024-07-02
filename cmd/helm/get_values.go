@@ -38,7 +38,7 @@ type valuesWriter struct {
 }
 
 func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	var outfmt output.Format
+	var outFmt output.Format
 	client := action.NewGetValues(cfg)
 
 	cmd := &cobra.Command{
@@ -57,7 +57,7 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return outfmt.Write(out, &valuesWriter{vals, client.AllValues})
+			return outFmt.Write(out, &valuesWriter{vals, client.AllValues})
 		},
 	}
 
@@ -75,16 +75,16 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	f.BoolVarP(&client.AllValues, "all", "a", false, "dump all (computed) values")
-	bindOutputFlag(cmd, &outfmt)
+	bindOutputFlag(cmd, &outFmt)
 
 	return cmd
 }
 
 func (v valuesWriter) WriteTable(out io.Writer) error {
 	if v.allValues {
-		fmt.Fprintln(out, "COMPUTED VALUES:")
+		_, _ = fmt.Fprintln(out, "COMPUTED VALUES:")
 	} else {
-		fmt.Fprintln(out, "USER-SUPPLIED VALUES:")
+		_, _ = fmt.Fprintln(out, "USER-SUPPLIED VALUES:")
 	}
 	return output.EncodeYAML(out, v.vals)
 }

@@ -111,7 +111,7 @@ type Upgrade struct {
 	DisableOpenAPIValidation bool
 	// Get missing dependencies
 	DependencyUpdate bool
-	// Lock to control raceconditions when the process receives a SIGTERM
+	// Lock to control race conditions when the process receives a SIGTERM
 	Lock sync.Mutex
 	// Enable DNS lookups when rendering templates
 	EnableDNS bool

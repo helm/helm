@@ -201,7 +201,7 @@ var ociProvider = Provider{
 	New:     NewOCIGetter,
 }
 
-// All finds all of the registered getters as a list of Provider instances.
+// All finds all the registered getters as a list of Provider instances.
 // Currently, the built-in getters and the discovered plugins with downloader
 // notations are collected.
 func All(settings *cli.EnvSettings) Providers {

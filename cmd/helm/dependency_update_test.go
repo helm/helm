@@ -106,7 +106,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		{Name: "reqtest", Version: "0.1.0", Repository: srv.URL()},
 		{Name: "compressedchart", Version: "0.3.0", Repository: srv.URL()},
 	}
-	if err := chartutil.SaveChartfile(dir(chartname, "Chart.yaml"), md); err != nil {
+	if err := chartutil.SaveChartFile(dir(chartname, "Chart.yaml"), md); err != nil {
 		t.Fatal(err)
 	}
 

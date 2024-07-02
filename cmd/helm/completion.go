@@ -166,7 +166,7 @@ else
     complete -o default -o nospace -F __start_helm %[1]s
 fi
 `
-		fmt.Fprintf(out, renamedBinaryHook, binary)
+		_, _ = fmt.Fprintf(out, renamedBinaryHook, binary)
 	}
 
 	return err
@@ -189,11 +189,11 @@ func runCompletionZsh(out io.Writer, cmd *cobra.Command) error {
 # the user renamed the helm binary
 compdef _helm %[1]s
 `
-		fmt.Fprintf(out, renamedBinaryHook, binary)
+		_, _ = fmt.Fprintf(out, renamedBinaryHook, binary)
 	}
 
 	// Cobra doesn't source zsh completion file, explicitly doing it here
-	fmt.Fprintf(out, "compdef _helm helm")
+	_, _ = fmt.Fprintf(out, "compdef _helm helm")
 
 	return err
 }

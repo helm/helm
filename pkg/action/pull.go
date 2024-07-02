@@ -89,7 +89,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			getter.WithBasicAuth(p.Username, p.Password),
 			getter.WithPassCredentialsAll(p.PassCredentialsAll),
 			getter.WithTLSClientConfig(p.CertFile, p.KeyFile, p.CaFile),
-			getter.WithInsecureSkipVerifyTLS(p.InsecureSkipTLSverify),
+			getter.WithInsecureSkipVerifyTLS(p.InsecureSkipTLSVerify),
 			getter.WithPlainHTTP(p.PlainHTTP),
 		},
 		RegistryClient:   p.cfg.RegistryClient,
@@ -122,7 +122,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	}
 
 	if p.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, p.InsecureSkipTLSverify, p.PassCredentialsAll, getter.All(p.Settings))
+		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, p.InsecureSkipTLSVerify, p.PassCredentialsAll, getter.All(p.Settings))
 		if err != nil {
 			return out.String(), err
 		}
@@ -136,10 +136,10 @@ func (p *Pull) Run(chartRef string) (string, error) {
 
 	if p.Verify {
 		for name := range v.SignedBy.Identities {
-			fmt.Fprintf(&out, "Signed by: %v\n", name)
+			_, _ = fmt.Fprintf(&out, "Signed by: %v\n", name)
 		}
-		fmt.Fprintf(&out, "Using Key With Fingerprint: %X\n", v.SignedBy.PrimaryKey.Fingerprint)
-		fmt.Fprintf(&out, "Chart Hash Verified: %s\n", v.FileHash)
+		_, _ = fmt.Fprintf(&out, "Using Key With Fingerprint: %X\n", v.SignedBy.PrimaryKey.Fingerprint)
+		_, _ = fmt.Fprintf(&out, "Chart Hash Verified: %s\n", v.FileHash)
 	}
 
 	// After verification, untar the chart into the requested directory.

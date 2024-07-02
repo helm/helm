@@ -52,14 +52,14 @@ func SaveDir(c *chart.Chart, dest string) error {
 	}
 
 	// Save the chart file.
-	if err := SaveChartfile(filepath.Join(outdir, ChartfileName), c.Metadata); err != nil {
+	if err := SaveChartFile(filepath.Join(outdir, ChartFileName), c.Metadata); err != nil {
 		return err
 	}
 
 	// Save values.yaml
 	for _, f := range c.Raw {
-		if f.Name == ValuesfileName {
-			vf := filepath.Join(outdir, ValuesfileName)
+		if f.Name == ValuesFileName {
+			vf := filepath.Join(outdir, ValuesFileName)
 			if err := writeFile(vf, f.Data); err != nil {
 				return err
 			}
@@ -68,7 +68,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 
 	// Save values.schema.json if it exists
 	if c.Schema != nil {
-		filename := filepath.Join(outdir, SchemafileName)
+		filename := filepath.Join(outdir, SchemaFileName)
 		if err := writeFile(filename, c.Schema); err != nil {
 			return err
 		}
@@ -173,7 +173,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	if err != nil {
 		return err
 	}
-	if err := writeToTar(out, filepath.Join(base, ChartfileName), cdata); err != nil {
+	if err := writeToTar(out, filepath.Join(base, ChartFileName), cdata); err != nil {
 		return err
 	}
 
@@ -193,8 +193,8 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 
 	// Save values.yaml
 	for _, f := range c.Raw {
-		if f.Name == ValuesfileName {
-			if err := writeToTar(out, filepath.Join(base, ValuesfileName), f.Data); err != nil {
+		if f.Name == ValuesFileName {
+			if err := writeToTar(out, filepath.Join(base, ValuesFileName), f.Data); err != nil {
 				return err
 			}
 		}
@@ -203,9 +203,9 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	// Save values.schema.json if it exists
 	if c.Schema != nil {
 		if !json.Valid(c.Schema) {
-			return errors.New("Invalid JSON in " + SchemafileName)
+			return errors.New("Invalid JSON in " + SchemaFileName)
 		}
-		if err := writeToTar(out, filepath.Join(base, SchemafileName), c.Schema); err != nil {
+		if err := writeToTar(out, filepath.Join(base, SchemaFileName), c.Schema); err != nil {
 			return err
 		}
 	}

@@ -176,7 +176,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 			if strings.TrimSpace(content) == "" {
 				continue
 			}
-			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
+			_, _ = fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
 		}
 		return hs, b, "", err
 	}
@@ -187,7 +187,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
 			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data[:]))
+				_, _ = fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data[:]))
 			} else {
 				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Filename])
 				if err != nil {
@@ -201,9 +201,9 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	for _, m := range manifests {
 		if outputDir == "" {
 			if hideSecret && m.Head.Kind == "Secret" && m.Head.Version == "v1" {
-				fmt.Fprintf(b, "---\n# Source: %s\n# HIDDEN: The Secret output has been suppressed\n", m.Name)
+				_, _ = fmt.Fprintf(b, "---\n# Source: %s\n# HIDDEN: The Secret output has been suppressed\n", m.Name)
 			} else {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+				_, _ = fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
 			}
 		} else {
 			newDir := outputDir
@@ -359,7 +359,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 		versions = append(versions, k)
 	}
 
-	return chartutil.VersionSet(versions), nil
+	return versions, nil
 }
 
 // recordRelease with an update operation in case reuse has been set.
@@ -374,7 +374,7 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	kc := kube.New(getter)
 	kc.Log = log
 
-	lazyClient := &lazyClient{
+	lazyCli := &lazyClient{
 		namespace: namespace,
 		clientFn:  kc.Factory.KubernetesClientSet,
 	}
@@ -382,11 +382,11 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	var store *storage.Storage
 	switch helmDriver {
 	case "secret", "secrets", "":
-		d := driver.NewSecrets(newSecretClient(lazyClient))
+		d := driver.NewSecrets(newSecretClient(lazyCli))
 		d.Log = log
 		store = storage.Init(d)
 	case "configmap", "configmaps":
-		d := driver.NewConfigMaps(newConfigMapClient(lazyClient))
+		d := driver.NewConfigMaps(newConfigMapClient(lazyCli))
 		d.Log = log
 		store = storage.Init(d)
 	case "memory":

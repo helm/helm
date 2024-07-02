@@ -82,7 +82,7 @@ which can contain sensitive values. To hide Kubernetes Secrets use the
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewUpgrade(cfg)
 	valueOpts := &values.Options{}
-	var outfmt output.Format
+	var outFmt output.Format
 	var createNamespace bool
 
 	cmd := &cobra.Command{
@@ -103,14 +103,14 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.Namespace = settings.Namespace()
 
 			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
-				client.InsecureSkipTLSverify, client.PlainHTTP)
+				client.InsecureSkipTLSVerify, client.PlainHTTP)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
 			client.SetRegistryClient(registryClient)
 
 			// This is for the case where "" is specifically passed in as a
-			// value. When there is no value passed in NoOptDefVal will be used
+			// value. When there is no value passed in NoOptDefVal will be used,
 			// and it is set to client. See addInstallFlags.
 			if client.DryRunOption == "" {
 				client.DryRunOption = "none"
@@ -122,10 +122,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				histClient := action.NewHistory(cfg)
 				histClient.Max = 1
 				versions, err := histClient.Run(args[0])
-				if err == driver.ErrReleaseNotFound || isReleaseUninstalled(versions) {
+				if errors.Is(err, driver.ErrReleaseNotFound) || isReleaseUninstalled(versions) {
 					// Only print this to stdout for table output
-					if outfmt == output.Table {
-						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
+					if outFmt == output.Table {
+						_, _ = fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
 					}
 					instClient := action.NewInstall(cfg)
 					instClient.CreateNamespace = createNamespace
@@ -159,7 +159,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					if err != nil {
 						return err
 					}
-					return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, instClient.HideNotes})
+					return outFmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, instClient.HideNotes})
 				} else if err != nil {
 					return err
 				}
@@ -232,7 +232,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
 			go func() {
 				<-cSignal
-				fmt.Fprintf(out, "Release %s has been cancelled.\n", args[0])
+				_, _ = fmt.Fprintf(out, "Release %s has been cancelled.\n", args[0])
 				cancel()
 			}()
 
@@ -242,11 +242,11 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return errors.Wrap(err, "UPGRADE FAILED")
 			}
 
-			if outfmt == output.Table {
-				fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
+			if outFmt == output.Table {
+				_, _ = fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
 			}
 
-			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes})
+			return outFmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes})
 		},
 	}
 
@@ -258,7 +258,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
 	f.Lookup("dry-run").NoOptDefVal = "client"
 	f.BoolVar(&client.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
-	f.MarkDeprecated("recreate-pods", "functionality will no longer be updated. Consult the documentation for other methods to recreate pods")
+	_ = f.MarkDeprecated("recreate-pods", "functionality will no longer be updated. Consult the documentation for other methods to recreate pods")
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
 	f.BoolVar(&client.DisableOpenAPIValidation, "disable-openapi-validation", false, "if set, the upgrade process will not validate rendered templates against the Kubernetes OpenAPI Schema")
@@ -280,7 +280,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
-	bindOutputFlag(cmd, &outfmt)
+	bindOutputFlag(cmd, &outFmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

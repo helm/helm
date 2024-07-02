@@ -51,7 +51,7 @@ The status consists of:
 
 func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewStatus(cfg)
-	var outfmt output.Format
+	var outFmt output.Format
 
 	cmd := &cobra.Command{
 		Use:   "status RELEASE_NAME",
@@ -69,7 +69,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// When the output format is a table the resources should be fetched
 			// and displayed as a table. When YAML or JSON the resources will be
 			// returned. This mirrors the handling in kubectl.
-			if outfmt == output.Table {
+			if outFmt == output.Table {
 				client.ShowResourcesTable = true
 			}
 			rel, err := client.Run(args[0])
@@ -80,7 +80,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, client.ShowResources, false, false})
+			return outFmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, client.ShowResources, false, false})
 		},
 	}
 
@@ -99,7 +99,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		log.Fatal(err)
 	}
 
-	bindOutputFlag(cmd, &outfmt)
+	bindOutputFlag(cmd, &outFmt)
 	f.BoolVar(&client.ShowDescription, "show-desc", false, "if set, display the description message of the named release")
 
 	f.BoolVar(&client.ShowResources, "show-resources", false, "if set, display the resources of the named release")
@@ -222,7 +222,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 
 	// Hide notes from output - option in install and upgrades
 	if !s.hideNotes && len(s.release.Info.Notes) > 0 {
-		fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(s.release.Info.Notes))
+		_, _ = fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(s.release.Info.Notes))
 	}
 	return nil
 }

@@ -129,7 +129,7 @@ charts in a repository, use 'helm search'.
 func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
-	var outfmt output.Format
+	var outFmt output.Format
 
 	cmd := &cobra.Command{
 		Use:   "install [NAME] [CHART]",
@@ -141,14 +141,14 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
-				client.InsecureSkipTLSverify, client.PlainHTTP)
+				client.InsecureSkipTLSVerify, client.PlainHTTP)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
 			client.SetRegistryClient(registryClient)
 
 			// This is for the case where "" is specifically passed in as a
-			// value. When there is no value passed in NoOptDefVal will be used
+			// value. When there is no value passed in NoOptDefVal will be used,
 			// and it is set to client. See addInstallFlags.
 			if client.DryRunOption == "" {
 				client.DryRunOption = "none"
@@ -158,16 +158,16 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return errors.Wrap(err, "INSTALLATION FAILED")
 			}
 
-			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes})
+			return outFmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes})
 		},
 	}
 
 	addInstallFlags(cmd, cmd.Flags(), client, valueOpts)
-	// hide-secret is not available in all places the install flags are used so
+	// the hide-secret is not available in all places where the install flags are used, so
 	// it is added separately
 	f := cmd.Flags()
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
-	bindOutputFlag(cmd, &outfmt)
+	bindOutputFlag(cmd, &outFmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
 	return cmd
@@ -226,13 +226,13 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		client.Version = ">0.0.0-0"
 	}
 
-	name, chart, err := client.NameAndChart(args)
+	name, chartName, err := client.NameAndChart(args)
 	if err != nil {
 		return nil, err
 	}
 	client.ReleaseName = name
 
-	cp, err := client.ChartPathOptions.LocateChart(chart, settings)
+	cp, err := client.ChartPathOptions.LocateChart(chartName, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +308,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-cSignal
-		fmt.Fprintf(out, "Release %s has been cancelled.\n", args[0])
+		_, _ = fmt.Fprintf(out, "Release %s has been cancelled.\n", args[0])
 		cancel()
 	}()
 

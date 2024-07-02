@@ -44,7 +44,7 @@ var immutableOciAnnotations = []string{
 	ocispec.AnnotationTitle,
 }
 
-// IsOCI determines whether or not a URL is to be treated as an OCI URL
+// IsOCI determines whether a URL is to be treated as an OCI URL
 func IsOCI(url string) bool {
 	return strings.HasPrefix(url, fmt.Sprintf("%s://", OCIScheme))
 }

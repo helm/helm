@@ -35,7 +35,7 @@ func TestCreateCmd(t *testing.T) {
 	dir := t.TempDir()
 	defer testChdir(t, dir)()
 
-	// Run a create
+	// Run a create command
 	if _, _, err := executeActionCommand("create " + cname); err != nil {
 		t.Fatalf("Failed to run create: %s", err)
 	}
@@ -64,24 +64,30 @@ func TestCreateStarterCmd(t *testing.T) {
 	ensure.HelmHome(t)
 	cname := "testchart"
 	defer resetEnv()()
-	os.MkdirAll(helmpath.CachePath(), 0755)
+	err := os.MkdirAll(helmpath.CachePath(), 0755)
+	if err != nil {
+		t.Fatalf("Could not create cache directory: %s", err)
+	}
 	defer testChdir(t, helmpath.CachePath())()
 
 	// Create a starter.
-	starterchart := helmpath.DataPath("starters")
-	os.MkdirAll(starterchart, 0755)
-	if dest, err := chartutil.Create("starterchart", starterchart); err != nil {
+	starterChart := helmpath.DataPath("starters")
+	err = os.MkdirAll(starterChart, 0755)
+	if err != nil {
+		t.Fatalf("Could not create starter chart: %s", err)
+	}
+	if dest, err := chartutil.Create("starterChart", starterChart); err != nil {
 		t.Fatalf("Could not create chart: %s", err)
 	} else {
 		t.Logf("Created %s", dest)
 	}
-	tplpath := filepath.Join(starterchart, "starterchart", "templates", "foo.tpl")
-	if err := os.WriteFile(tplpath, []byte("test"), 0644); err != nil {
+	tplPath := filepath.Join(starterChart, "starterChart", "templates", "foo.tpl")
+	if err := os.WriteFile(tplPath, []byte("test"), 0644); err != nil {
 		t.Fatalf("Could not write template: %s", err)
 	}
 
-	// Run a create
-	if _, _, err := executeActionCommand(fmt.Sprintf("create --starter=starterchart %s", cname)); err != nil {
+	// Run a create command
+	if _, _, err := executeActionCommand(fmt.Sprintf("create --starter=starterChart %s", cname)); err != nil {
 		t.Errorf("Failed to run create: %s", err)
 		return
 	}
@@ -131,24 +137,30 @@ func TestCreateStarterAbsoluteCmd(t *testing.T) {
 	cname := "testchart"
 
 	// Create a starter.
-	starterchart := helmpath.DataPath("starters")
-	os.MkdirAll(starterchart, 0755)
-	if dest, err := chartutil.Create("starterchart", starterchart); err != nil {
+	starterChart := helmpath.DataPath("starters")
+	err := os.MkdirAll(starterChart, 0755)
+	if err != nil {
+		t.Fatalf("Could not create starter chart: %s", err)
+	}
+	if dest, err := chartutil.Create("starterChart", starterChart); err != nil {
 		t.Fatalf("Could not create chart: %s", err)
 	} else {
 		t.Logf("Created %s", dest)
 	}
-	tplpath := filepath.Join(starterchart, "starterchart", "templates", "foo.tpl")
-	if err := os.WriteFile(tplpath, []byte("test"), 0644); err != nil {
+	tplPath := filepath.Join(starterChart, "starterChart", "templates", "foo.tpl")
+	if err := os.WriteFile(tplPath, []byte("test"), 0644); err != nil {
 		t.Fatalf("Could not write template: %s", err)
 	}
 
-	os.MkdirAll(helmpath.CachePath(), 0755)
+	err = os.MkdirAll(helmpath.CachePath(), 0755)
+	if err != nil {
+		t.Fatalf("Could not create cache directory: %s", err)
+	}
 	defer testChdir(t, helmpath.CachePath())()
 
-	starterChartPath := filepath.Join(starterchart, "starterchart")
+	starterChartPath := filepath.Join(starterChart, "starterChart")
 
-	// Run a create
+	// Run a create command
 	if _, _, err := executeActionCommand(fmt.Sprintf("create --starter=%s %s", starterChartPath, cname)); err != nil {
 		t.Errorf("Failed to run create: %s", err)
 		return

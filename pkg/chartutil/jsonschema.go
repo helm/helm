@@ -40,9 +40,9 @@ func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) err
 	}
 
 	// For each dependency, recursively call this function with the coalesced values
-	for _, subchart := range chrt.Dependencies() {
-		subchartValues := values[subchart.Name()].(map[string]interface{})
-		if err := ValidateAgainstSchema(subchart, subchartValues); err != nil {
+	for _, subChart := range chrt.Dependencies() {
+		subChartValues := values[subChart.Name()].(map[string]interface{})
+		if err := ValidateAgainstSchema(subChart, subChartValues); err != nil {
 			sb.WriteString(err.Error())
 		}
 	}
