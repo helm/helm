@@ -16,10 +16,12 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"flag"
 	"io"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -287,4 +289,51 @@ func TestGetVersionSet(t *testing.T) {
 	if vs.Has("nosuchversion/v1") {
 		t.Error("Non-existent version is reported found.")
 	}
+}
+
+type PostRendererMock struct {
+}
+
+func (p *PostRendererMock) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {
+	var output = &bytes.Buffer{}
+	for {
+		line, err := renderedManifests.ReadBytes('\n')
+
+		if len(line) > 0 {
+			output.Write(bytes.ReplaceAll(line, []byte("fake-image"), []byte("local-image")))
+		}
+		// ReadBytes returns err != nil if and only if the returned data does not end in delim.
+		if err != nil {
+			break
+		}
+	}
+
+	return output, nil
+}
+
+func TestPostRenderHookManifests(t *testing.T) {
+
+	hs := []*release.Hook{
+		{
+			Name:     "test-postrender-hook",
+			Kind:     "Pod",
+			Path:     "test-postrender-hook",
+			Manifest: manifestWithTestHook,
+			Events: []release.HookEvent{
+				release.HookTest,
+			},
+		},
+	}
+
+	pr := &PostRendererMock{}
+
+	if err := postRenderHookManifests(hs, pr); err != nil {
+		t.Error(err)
+	}
+
+	is := assert.New(t)
+	for _, hook := range hs {
+		is.Contains(hook.Manifest, "local-image")
+	}
+
 }
