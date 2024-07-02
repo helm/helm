@@ -598,3 +598,57 @@ func TestKey(t *testing.T) {
 		}
 	}
 }
+
+// See issue https://github.com/helm/helm/issues/11509
+func TestUpdateOnlyRequiredRepos(t *testing.T) {
+	// Set up a fake repo
+	srv, err := repotest.NewTempServerWithCleanupAndMultipleRepos(t, "testdata/*.tgz*")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Stop()
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
+
+	// Save a chart
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "with-dependency",
+			Version:    "0.1.0",
+			APIVersion: "v2",
+			Dependencies: []*chart.Dependency{{
+				Name:       "local-subchart",
+				Version:    ">=0.1.0",
+				Repository: srv.URL(),
+			}},
+		},
+	}
+	if err := chartutil.SaveDir(c, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set-up a manager
+	b := bytes.NewBuffer(nil)
+	g := getter.Providers{getter.Provider{
+		Schemes: []string{"http", "https"},
+		New:     getter.NewHTTPGetter,
+	}}
+	m := &Manager{
+		ChartPath:        dir(c.Metadata.Name),
+		Out:              b,
+		Getters:          g,
+		RepositoryConfig: dir("repositories.yaml"),
+		RepositoryCache:  dir(),
+		OptimizedUpdate:  true,
+	}
+
+	err = m.Update()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
