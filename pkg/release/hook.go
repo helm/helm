@@ -59,6 +59,9 @@ const HookWeightAnnotation = "helm.sh/hook-weight"
 // HookDeleteAnnotation is the label name for the delete policy for a hook
 const HookDeleteAnnotation = "helm.sh/hook-delete-policy"
 
+// HookDeletePropagationAnnotation is the label name for the delete propagation policy for a hook
+const HookDeletePropagationAnnotation = "helm.sh/hook-delete-propagation-policy"
+
 // Hook defines a hook object.
 type Hook struct {
 	Name string `json:"name,omitempty"`

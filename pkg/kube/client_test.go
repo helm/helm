@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -381,6 +382,50 @@ func TestReal(t *testing.T) {
 	}
 }
 
+func TestDelete(t *testing.T) {
+	t.Skip("This is a live deleting test, comment this line to run")
+
+	// Create pods
+	c := New(nil)
+	resourcesPods, err := c.Build(strings.NewReader(testPodManifest), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Create(resourcesPods); err != nil {
+		t.Fatal(err)
+	}
+	if errs := c.Wait(resourcesPods, 60*time.Second); errs != nil {
+		t.Fatal(errs)
+	}
+
+	// Create replica set
+	c = New(nil)
+	resourcesReplicaSets, err := c.Build(strings.NewReader(testReplicaSetManifest), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Create(resourcesReplicaSets); err != nil {
+		t.Fatal(err)
+	}
+	if errs := c.Wait(resourcesReplicaSets, 60*time.Second); errs != nil {
+		t.Fatal(errs)
+	}
+
+	if _, errs := c.Delete(resourcesReplicaSets); errs != nil {
+		t.Fatal(errs)
+	}
+
+	if objs, errs := c.Get(resourcesPods, true); err != nil {
+		t.Fatal(errs)
+	} else if len(objs) == 0 {
+		t.Fatal("Replica Set should not be deleted")
+	}
+
+	if _, errs := c.Delete(resourcesPods); errs != nil {
+		t.Fatal(errs)
+	}
+}
+
 const testServiceManifest = `
 kind: Service
 apiVersion: v1
@@ -557,4 +602,124 @@ spec:
           value: dns
         ports:
         - containerPort: 80
+`
+
+const testPodManifest = `
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: guestbook
+    tier: frontend
+  name: frontend
+  namespace: guestbook
+spec:
+  containers:
+  - env:
+    - name: GET_HOSTS_FROM
+      value: dns
+    image: gcr.io/google-samples/gb-frontend:v4
+    imagePullPolicy: IfNotPresent
+    name: php-redis
+    ports:
+    - containerPort: 80
+      protocol: TCP
+    resources:
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-7kzxn
+      readOnly: true
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  nodeName: k3d-debug-server-0
+  preemptionPolicy: PreemptLowerPriority
+  priority: 0
+  restartPolicy: Always
+  schedulerName: default-scheduler
+  securityContext: {}
+  serviceAccount: default
+  serviceAccountName: default
+  terminationGracePeriodSeconds: 30
+  tolerations:
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+    tolerationSeconds: 300
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+    tolerationSeconds: 300
+  volumes:
+  - name: kube-api-access-7kzxn
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          expirationSeconds: 3607
+          path: token
+      - configMap:
+          items:
+          - key: ca.crt
+            path: ca.crt
+          name: kube-root-ca.crt
+      - downwardAPI:
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+            path: namespace
+`
+
+const testReplicaSetManifest = `
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  annotations:
+    helm.sh/hook-delete-propagation-policy: Orphan
+    deployment.kubernetes.io/desired-replicas: "1"
+    deployment.kubernetes.io/max-replicas: "2"
+    deployment.kubernetes.io/revision: "1"
+  labels:
+    app: guestbook
+    tier: frontend
+  name: frontend
+  namespace: guestbook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: guestbook
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: guestbook
+        tier: frontend
+    spec:
+      containers:
+        - env:
+            - name: GET_HOSTS_FROM
+              value: dns
+          image: gcr.io/google-samples/gb-frontend:v4
+          imagePullPolicy: IfNotPresent
+          name: php-redis
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
 `
