@@ -59,7 +59,7 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 	}
 	result := &LintResult{}
 	for _, path := range paths {
-		linter, err := lintChart(path, vals, l.Namespace, l.KubeVersion)
+		linter, err := lintChart(path, vals, l.Namespace, l.KubeVersion, l.Quiet)
 		if err != nil {
 			result.Errors = append(result.Errors, err)
 			continue
@@ -67,9 +67,14 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 
 		result.Messages = append(result.Messages, linter.Messages...)
 		result.TotalChartsLinted++
-		for _, msg := range linter.Messages {
+		for i, msg := range linter.Messages {
+			// Unknown(0), Info(1), Warning(2), Error(3)
 			if msg.Severity >= lowestTolerance {
 				result.Errors = append(result.Errors, msg.Err)
+			}
+			// Remove INFO or UNKNOWN messages if --quiet flag is set, keeping the order of the messages
+			if l.Quiet && (msg.Severity <= support.InfoSev) {
+				result.Messages = append(result.Messages[:i], result.Messages[i+1:]...)
 			}
 		}
 	}
@@ -86,7 +91,7 @@ func HasWarningsOrErrors(result *LintResult) bool {
 	return len(result.Errors) > 0
 }
 
-func lintChart(path string, vals map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) (support.Linter, error) {
+func lintChart(path string, vals map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, quiet bool) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 
@@ -125,5 +130,5 @@ func lintChart(path string, vals map[string]interface{}, namespace string, kubeV
 		return linter, errors.Wrap(err, "unable to check Chart.yaml file in chart")
 	}
 
-	return lint.AllWithKubeVersion(chartPath, vals, namespace, kubeVersion), nil
+	return lint.AllWithKubeVersionAndQuiet(chartPath, vals, namespace, kubeVersion, quiet), nil
 }

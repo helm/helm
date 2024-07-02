@@ -40,6 +40,8 @@ type Engine struct {
 	Strict bool
 	// In LintMode, some 'required' template values may be missing, so don't fail
 	LintMode bool
+	// If quiet is enabled, suppress INFO messages
+	Quiet bool
 	// optional provider of clients to talk to the Kubernetes API
 	clientProvider *ClientProvider
 	// EnableDNS tells the engine to allow DNS lookups when rendering templates
@@ -145,7 +147,7 @@ func includeFun(t *template.Template, includedNames map[string]int) func(string,
 
 // As does 'tpl', so that nested calls to 'tpl' see the templates
 // defined by their enclosing contexts.
-func tplFun(parent *template.Template, includedNames map[string]int, strict bool) func(string, interface{}) (string, error) {
+func tplFun(parent *template.Template, includedNames map[string]int, strict bool, quiet bool) func(string, interface{}) (string, error) {
 	return func(tpl string, vals interface{}) (string, error) {
 		t, err := parent.Clone()
 		if err != nil {
@@ -165,7 +167,7 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 		// this lets any 'define's inside tpl be 'include'd.
 		t.Funcs(template.FuncMap{
 			"include": includeFun(t, includedNames),
-			"tpl":     tplFun(t, includedNames, strict),
+			"tpl":     tplFun(t, includedNames, strict, quiet),
 		})
 
 		// We need a .New template, as template text which is just blanks
@@ -184,6 +186,11 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
 		}
 
+		// Suppress INFO messages if quiet mode is enabled
+		if quiet {
+			return strings.ReplaceAll(buf.String(), "[INFO]", ""), nil
+		}
+
 		// See comment in renderWithReferences explaining the <no value> hack.
 		return strings.ReplaceAll(buf.String(), "<no value>", ""), nil
 	}
@@ -196,22 +203,26 @@ func (e Engine) initFunMap(t *template.Template) {
 
 	// Add the template-rendering functions here so we can close over t.
 	funcMap["include"] = includeFun(t, includedNames)
-	funcMap["tpl"] = tplFun(t, includedNames, e.Strict)
+	funcMap["tpl"] = tplFun(t, includedNames, e.Strict, e.Quiet)
 
 	// Add the `required` function here so we can use lintMode
 	funcMap["required"] = func(warn string, val interface{}) (interface{}, error) {
 		if val == nil {
 			if e.LintMode {
 				// Don't fail on missing required values when linting
-				log.Printf("[INFO] Missing required value: %s", warn)
-				return "", nil
+				if !e.Quiet {
+					log.Printf("[INFO] Missing required value: %s", warn)
+				}
+				return val, nil
 			}
 			return val, errors.Errorf(warnWrap(warn))
 		} else if _, ok := val.(string); ok {
 			if val == "" {
 				if e.LintMode {
 					// Don't fail on missing required values when linting
-					log.Printf("[INFO] Missing required value: %s", warn)
+					if !e.Quiet {
+						log.Printf("[INFO] Missing required value: %s", warn)
+					}
 					return "", nil
 				}
 				return val, errors.Errorf(warnWrap(warn))
@@ -224,7 +235,9 @@ func (e Engine) initFunMap(t *template.Template) {
 	funcMap["fail"] = func(msg string) (string, error) {
 		if e.LintMode {
 			// Don't fail when linting
-			log.Printf("[INFO] Fail: %s", msg)
+			if !e.Quiet { // Check if --quiet flag is not set
+				log.Printf("[INFO] Fail: %s", msg)
+			}
 			return "", nil
 		}
 		return "", errors.New(warnWrap(msg))
