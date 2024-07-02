@@ -110,7 +110,17 @@ type InterfaceResources interface {
 	BuildTable(reader io.Reader, validate bool) (ResourceList, error)
 }
 
+// UpdateWithTimeout is introduced to avoid breaking backwards compatibility for Interface and InterfaceExt implementers.
+// It extends Interface.Update by a timeout, which is used to wait until a resource is deleted in case the a replacement
+// is necessary due to the "helm.sh/update-policy".
+//
+// TODO Helm 4: Remove UpdateWithTimeout and integrate its method(s) into the Interface.
+type UpdateWithTimeout interface {
+	UpdateWithTimeout(original, target ResourceList, force bool, timeout time.Duration) (*Result, error)
+}
+
 var _ Interface = (*Client)(nil)
 var _ InterfaceExt = (*Client)(nil)
 var _ InterfaceDeletionPropagation = (*Client)(nil)
 var _ InterfaceResources = (*Client)(nil)
+var _ UpdateWithTimeout = (*Client)(nil)

@@ -448,7 +448,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
 		_, err = i.cfg.KubeClient.Create(resources)
 	} else if len(resources) > 0 {
-		_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force)
+		_, err = updateWithTimeoutOrFallback(i.cfg.KubeClient, toBeAdopted, resources, i.Force, i.Timeout)
 	}
 	if err != nil {
 		return rel, err
