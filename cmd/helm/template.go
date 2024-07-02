@@ -86,12 +86,10 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if client.DryRunOption == "" {
 				client.DryRunOption = "true"
 			}
+			client.DryRun = true
 			client.ReleaseName = "release-name"
 			client.Replace = true // Skip the name check
-			client.DryRunOption = "client"
-			if validate {
-				client.DryRunOption = "server"
-			}
+			client.ClientOnly = !validate
 			client.APIVersions = chartutil.VersionSet(extraAPIs)
 			client.IncludeCRDs = includeCrds
 			rel, err := runInstall(args, client, valueOpts, out)

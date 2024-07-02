@@ -129,7 +129,7 @@ func TestInstallReleaseWithValues(t *testing.T) {
 func TestInstallReleaseClientOnly(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	instAction.markAsClientOnly()
+	instAction.ClientOnly = true
 	instAction.Run(buildChart(), nil) // disregard output
 
 	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)
@@ -235,7 +235,7 @@ func TestInstallRelease_WithChartAndDependencyAllNotes(t *testing.T) {
 func TestInstallRelease_DryRun(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	instAction.markAsClientOnly()
+	instAction.DryRun = true
 	vals := map[string]interface{}{}
 	res, err := instAction.Run(buildChart(withSampleTemplates()), vals)
 	if err != nil {
@@ -260,7 +260,7 @@ func TestInstallRelease_DryRunHiddenSecret(t *testing.T) {
 	instAction := installAction(t)
 
 	// First perform a normal dry-run with the secret and confirm its presence.
-	instAction.markAsClientOnly()
+	instAction.DryRun = true
 	vals := map[string]interface{}{}
 	res, err := instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
 	if err != nil {
@@ -287,7 +287,7 @@ func TestInstallRelease_DryRunHiddenSecret(t *testing.T) {
 	is.Equal(res2.Info.Description, "Dry run complete")
 
 	// Ensure there is an error when HideSecret True but not in a dry-run mode
-	instAction.DryRunOption = ""
+	instAction.DryRun = false
 	vals = map[string]interface{}{}
 	_, err = instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
 	if err == nil {
@@ -299,7 +299,7 @@ func TestInstallRelease_DryRunHiddenSecret(t *testing.T) {
 func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	instAction.markAsClientOnly()
+	instAction.DryRun = true
 	vals := map[string]interface{}{}
 
 	mockChart := buildChart(withSampleTemplates())
@@ -319,7 +319,7 @@ func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	instAction.markAsClientOnly()
+	instAction.DryRun = true
 	vals := map[string]interface{}{}
 	_, err := instAction.Run(buildChart(withSampleIncludingIncorrectTemplates()), vals)
 	expectedErr := "\"hello/templates/incorrect\" at <.Values.bad.doh>: nil pointer evaluating interface {}.doh"
