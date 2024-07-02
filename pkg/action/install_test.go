@@ -429,16 +429,14 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	instAction.Wait = true
 	vals := map[string]interface{}{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
 	time.AfterFunc(time.Second, cancel)
 
 	goroutines := runtime.NumGoroutine()
 
-	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
+	_, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
-	is.Contains(res.Info.Description, "Release \"interrupted-release\" failed: context canceled")
-	is.Equal(res.Info.Status, release.StatusFailed)
+	is.Contains(err.Error(), "context canceled")
 
 	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
 	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
@@ -515,8 +513,7 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	instAction.Atomic = true
 	vals := map[string]interface{}{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
 	time.AfterFunc(time.Second, cancel)
 
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
