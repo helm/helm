@@ -622,6 +622,10 @@ func Create(name, dir string) (string, error) {
 		return cdir, errors.Errorf("file %s already exists and is not a directory", cdir)
 	}
 
+	// Note: If adding a new template below (i.e., to `helm create`) which is disabled by default (similar to hpa and
+	// ingress below); or making an existing template disabled by default, add the enabling condition in
+	// `TestHelmCreateChart_CheckDeprecatedWarnings` in `pkg/lint/lint_test.go` to make it run through deprecation checks
+	// with latest Kubernetes version.
 	files := []struct {
 		path    string
 		content []byte
