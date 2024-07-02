@@ -330,7 +330,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 	}
 
 	versionMap := make(map[string]interface{})
-	versions := []string{}
+	var versions []string
 
 	// Extract the groups
 	for _, g := range groups {
@@ -411,12 +411,11 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 			namespace,
 		)
 		if err != nil {
-			panic(fmt.Sprintf("Unable to instantiate SQL driver: %v", err))
+			return errors.Wrap(err, "unable to instantiate SQL driver")
 		}
 		store = storage.Init(d)
 	default:
-		// Not sure what to do here.
-		panic("Unknown driver in HELM_DRIVER: " + helmDriver)
+		return errors.Errorf("unknown driver %q", helmDriver)
 	}
 
 	cfg.RESTClientGetter = getter

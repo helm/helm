@@ -17,9 +17,11 @@ package action
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -270,6 +272,74 @@ func namedReleaseStub(name string, status release.Status) *release.Release {
 				},
 			},
 		},
+	}
+}
+
+func TestConfiguration_Init(t *testing.T) {
+	tests := []struct {
+		name               string
+		helmDriver         string
+		expectedDriverType interface{}
+		expectErr          bool
+		errMsg             string
+	}{
+		{
+			name:               "Test secret driver",
+			helmDriver:         "secret",
+			expectedDriverType: &driver.Secrets{},
+		},
+		{
+			name:               "Test secrets driver",
+			helmDriver:         "secrets",
+			expectedDriverType: &driver.Secrets{},
+		},
+		{
+			name:               "Test empty driver",
+			helmDriver:         "",
+			expectedDriverType: &driver.Secrets{},
+		},
+		{
+			name:               "Test configmap driver",
+			helmDriver:         "configmap",
+			expectedDriverType: &driver.ConfigMaps{},
+		},
+		{
+			name:               "Test configmaps driver",
+			helmDriver:         "configmaps",
+			expectedDriverType: &driver.ConfigMaps{},
+		},
+		{
+			name:               "Test memory driver",
+			helmDriver:         "memory",
+			expectedDriverType: &driver.Memory{},
+		},
+		{
+			name:       "Test sql driver",
+			helmDriver: "sql",
+			expectErr:  true,
+			errMsg:     "unable to instantiate SQL driver",
+		},
+		{
+			name:       "Test unknown driver",
+			helmDriver: "someDriver",
+			expectErr:  true,
+			errMsg:     fmt.Sprintf("unknown driver %q", "someDriver"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &Configuration{}
+
+			actualErr := cfg.Init(nil, "default", tt.helmDriver, nil)
+			if tt.expectErr {
+				assert.Error(t, actualErr)
+				assert.Contains(t, actualErr.Error(), tt.errMsg)
+			} else {
+				assert.NoError(t, actualErr)
+				assert.IsType(t, tt.expectedDriverType, cfg.Releases.Driver)
+			}
+		})
 	}
 }
 
