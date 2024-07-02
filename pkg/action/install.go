@@ -454,7 +454,9 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		return rel, err
 	}
 
-	if i.Wait {
+	waitBeforePostHooks := !i.DisableHooks && i.cfg.hasPostInstallHooks(rel) || i.cfg.hasPostUpgradeHooks(rel)
+
+	if i.Wait || waitBeforePostHooks {
 		if i.WaitForJobs {
 			err = i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout)
 		} else {
