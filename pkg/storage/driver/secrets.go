@@ -161,6 +161,7 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 	// push the secret object out into the kubiverse
 	if _, err := secrets.impl.Create(context.Background(), obj, metav1.CreateOptions{}); err != nil {
 		if apierrors.IsAlreadyExists(err) {
+			secrets.Log("create: release %q already exists in secrets", rls.Name)
 			return ErrReleaseExists
 		}
 
