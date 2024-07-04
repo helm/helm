@@ -21,6 +21,21 @@ import (
 	"testing"
 )
 
+func TestLintCmdWithMultipleChartsIsProhibited(t *testing.T) {
+	tests := []cmdTestCase{{
+		name:      "lint two charts simultaneously",
+		cmd:       "lint first second",
+		golden:    "output/lint-chart-with-two-charts.txt",
+		wantError: true,
+	}, {
+		name:      "lint three charts simultaneously",
+		cmd:       "lint first second third",
+		golden:    "output/lint-chart-with-three-charts.txt",
+		wantError: true,
+	}}
+	runTestCmd(t, tests)
+}
+
 func TestLintCmdWithSubchartsFlag(t *testing.T) {
 	testChart := "testdata/testcharts/chart-with-bad-subcharts"
 	tests := []cmdTestCase{{
@@ -37,6 +52,44 @@ func TestLintCmdWithSubchartsFlag(t *testing.T) {
 	runTestCmd(t, tests)
 }
 
+func TestLintCmdWithSubchartsFlagShouldPassScopedValuesToSubcharts(t *testing.T) {
+	scopeName := "testdata/testcharts/issue-12798"
+	scopeAlias := "testdata/testcharts/issue-12798-alias"
+	scopeGlobal := "testdata/testcharts/issue-12798-global"
+	tests := []cmdTestCase{{
+		name:      "lint umbrella chart without required parameter by sub-chart",
+		cmd:       fmt.Sprintf("lint --with-subcharts %s", scopeName),
+		golden:    "output/lint-chart-with-dependency-values-scoped-by-name.txt",
+		wantError: true,
+	}, {
+		name:      "lint umbrella chart with required parameter by sub-chart",
+		cmd:       fmt.Sprintf("lint --with-subcharts --set child.sample=1 %s", scopeName),
+		golden:    "",
+		wantError: false,
+	}, {
+		name:      "lint umbrella chart with required parameter by aliased sub-chart",
+		cmd:       fmt.Sprintf("lint --with-subcharts --set lastname=test %s", scopeAlias),
+		golden:    "output/lint-chart-with-dependency-values-scoped-by-alias.txt",
+		wantError: true,
+	}, {
+		name:      "lint umbrella chart with required parameter by aliased sub-chart",
+		cmd:       fmt.Sprintf("lint --with-subcharts --set short.sample=1 %s", scopeAlias),
+		golden:    "",
+		wantError: false,
+	}, {
+		name:      "lint umbrella chart with required global parameter",
+		cmd:       fmt.Sprintf("lint --with-subcharts %s", scopeGlobal),
+		golden:    "output/lint-chart-with-dependency-values-scoped-by-global.txt",
+		wantError: true,
+	}, {
+		name:      "lint umbrella chart with required global parameter",
+		cmd:       fmt.Sprintf("lint --with-subcharts --set global.sample=1 %s", scopeGlobal),
+		golden:    "",
+		wantError: false,
+	}}
+	runTestCmd(t, tests)
+}
+
 func TestLintCmdWithQuietFlag(t *testing.T) {
 	testChart1 := "testdata/testcharts/alpine"
 	testChart2 := "testdata/testcharts/chart-bad-requirements"
@@ -45,8 +98,8 @@ func TestLintCmdWithQuietFlag(t *testing.T) {
 		cmd:    fmt.Sprintf("lint --quiet %s", testChart1),
 		golden: "output/lint-quiet.txt",
 	}, {
-		name:      "lint two charts, one with error using --quiet flag",
-		cmd:       fmt.Sprintf("lint --quiet %s %s", testChart1, testChart2),
+		name:      "lint malformed chart using --quiet flag",
+		cmd:       fmt.Sprintf("lint --quiet %s", testChart2),
 		golden:    "output/lint-quiet-with-error.txt",
 		wantError: true,
 	}, {
@@ -60,7 +113,6 @@ func TestLintCmdWithQuietFlag(t *testing.T) {
 		wantError: true,
 	}}
 	runTestCmd(t, tests)
-
 }
 
 func TestLintCmdWithKubeVersionFlag(t *testing.T) {
