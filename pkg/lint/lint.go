@@ -18,8 +18,6 @@ package lint
 
 import (
 	"path/filepath"
-	"os"
-
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint/rules"
 	"helm.sh/helm/v3/pkg/lint/support"
