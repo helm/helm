@@ -37,7 +37,9 @@ type Lint struct {
 	WithSubcharts bool
 	Quiet         bool
 	KubeVersion   *chartutil.KubeVersion
+	IgnoreFilePath string
 }
+
 
 // LintResult is the result of Lint
 type LintResult struct {
@@ -51,7 +53,6 @@ func NewLint() *Lint {
 	return &Lint{}
 }
 
-// Run executes 'helm Lint' against the given chart.
 func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 	lowestTolerance := support.ErrorSev
 	if l.Strict {
@@ -59,7 +60,7 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 	}
 	result := &LintResult{}
 	for _, path := range paths {
-		linter, err := lintChart(path, vals, l.Namespace, l.KubeVersion)
+		linter, err := lintChart(path, vals, l.Namespace, l.KubeVersion, l.IgnoreFilePath)
 		if err != nil {
 			result.Errors = append(result.Errors, err)
 			continue
@@ -76,7 +77,6 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 	return result
 }
 
-// HasWarningsOrErrors checks is LintResult has any warnings or errors
 func HasWarningsOrErrors(result *LintResult) bool {
 	for _, msg := range result.Messages {
 		if msg.Severity > support.InfoSev {
@@ -86,7 +86,7 @@ func HasWarningsOrErrors(result *LintResult) bool {
 	return len(result.Errors) > 0
 }
 
-func lintChart(path string, vals map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) (support.Linter, error) {
+func lintChart(path string, vals map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, ignoreFilePath string) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 
@@ -125,5 +125,5 @@ func lintChart(path string, vals map[string]interface{}, namespace string, kubeV
 		return linter, errors.Wrap(err, "unable to check Chart.yaml file in chart")
 	}
 
-	return lint.AllWithKubeVersion(chartPath, vals, namespace, kubeVersion), nil
+	return lint.AllWithKubeVersion(chartPath, vals, namespace, kubeVersion, ignoreFilePath), nil
 }
