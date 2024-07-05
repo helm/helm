@@ -25,7 +25,7 @@ import (
 func All(basedir string, values map[string]interface{}, namespace string, _ bool) support.Linter {
 	return AllWithKubeVersion(basedir, values, namespace, nil, "")
 }
-func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, lintIgnoreFile string) support.Linter {
+func AllWithKubeVersion(chartPath string, vals map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, ignoreFilePath string) support.Linter
 	chartDir, _ := filepath.Abs(basedir)
 	var ignorePatterns []string
 	if lintIgnoreFile != "" {

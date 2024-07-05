@@ -54,6 +54,7 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
     }
     return result
 }
+
 func lintChart(path string, vals map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, ignoreFilePath string) (support.Linter, error) {
     var chartPath string
     linter := support.Linter{}
@@ -91,9 +92,5 @@ func lintChart(path string, vals map[string]interface{}, namespace string, kubeV
     if _, err := os.Stat(filepath.Join(chartPath, "Chart.yaml")); err != nil {
         return linter, errors.Wrap(err, "Chart.yaml file not found in chart")
     }
-    ignorePatterns, err := rules.ParseIgnoreFile(ignoreFilePath)
-    if err != nil {
-        return linter, errors.Wrap(err, "failed to parse .helmlintignore file")
-    }
-    return lint.AllWithKubeVersion(chartPath, vals, namespace, kubeVersion, ignorePatterns), nil
+    return lint.AllWithKubeVersion(chartPath, vals, namespace, kubeVersion, ignoreFilePath), nil
 }
