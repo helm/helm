@@ -55,6 +55,15 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
     return result
 }
 
+func HasWarningsOrErrors(result *LintResult) bool {
+	for _, msg := range result.Messages {
+		if msg.Severity > support.InfoSev {
+			return true
+		}
+	}
+	return len(result.Errors) > 0
+}
+
 func lintChart(path string, vals map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, ignoreFilePath string) (support.Linter, error) {
     var chartPath string
     linter := support.Linter{}

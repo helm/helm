@@ -160,4 +160,3 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-
