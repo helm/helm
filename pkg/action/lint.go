@@ -9,7 +9,7 @@ import (
 
     "helm.sh/helm/v3/pkg/chartutil"
     "helm.sh/helm/v3/pkg/lint"
-    "helm.sh/helm/v3/pkg/lint/rules"
+	// "helm.sh/helm/v3/pkg/lint/rules"
     "helm.sh/helm/v3/pkg/lint/support"
 )
 
