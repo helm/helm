@@ -113,7 +113,7 @@ func TestExecRun(t *testing.T) {
 	is := assert.New(t)
 	testpath := setupTestingScript(t)
 
-	renderer, err := NewExec(testpath, false)
+	renderer, err := NewExec(testpath)
 	require.NoError(t, err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
@@ -144,7 +144,7 @@ func TestExecRunIncHooks(t *testing.T) {
 	is := assert.New(t)
 	testpath := setupTestingScript(t)
 
-	renderer, err := NewExec(testpath, true)
+	renderer, err := NewExecHooks(testpath, true)
 	require.NoError(t, err)
 
 	input := map[string]string{
@@ -168,7 +168,7 @@ func TestNewExecWithOneArgsRun(t *testing.T) {
 	is := assert.New(t)
 	testpath := setupTestingScript(t)
 
-	renderer, err := NewExec(testpath, false, "ARG1")
+	renderer, err := NewExec(testpath, "ARG1")
 	require.NoError(t, err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
@@ -184,7 +184,7 @@ func TestNewExecWithTwoArgsRun(t *testing.T) {
 	is := assert.New(t)
 	testpath := setupTestingScript(t)
 
-	renderer, err := NewExec(testpath, false, "ARG1", "ARG2")
+	renderer, err := NewExec(testpath, "ARG1", "ARG2")
 	require.NoError(t, err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))

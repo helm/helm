@@ -36,7 +36,14 @@ type execRender struct {
 // It returns an error if the binary cannot be found. If the path does not
 // contain any separators, it will search in $PATH, otherwise it will resolve
 // any relative paths to a fully qualified path
-func NewExec(binaryPath string, incHooks bool, args ...string) (PostRenderer, error) {
+// The returned PostRenderer will not process hooks
+func NewExec(binaryPath string, args ...string) (PostRenderer, error) {
+	return NewExecHooks(binaryPath, false, args...)
+}
+
+// NewExecHooks returns a PostRenderer implementation that calls the provided binary.
+// The returned PostRenderer will process hooks if `incHooks` is true
+func NewExecHooks(binaryPath string, incHooks bool, args ...string) (PostRenderer, error) {
 	fullPath, err := getFullPath(binaryPath)
 	if err != nil {
 		return nil, err

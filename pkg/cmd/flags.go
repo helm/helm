@@ -193,7 +193,7 @@ func (p *postRendererBool) String() string {
 
 func (p *postRendererBool) Set(val string) error {
 	p.options.incHooks = (val != "false" && val != "0")
-	pr, err := postrender.NewExec(p.options.binaryPath, p.options.incHooks, p.options.args...)
+	pr, err := postrender.NewExecHooks(p.options.binaryPath, p.options.incHooks, p.options.args...)
 	if err != nil {
 		return err
 	}
@@ -221,7 +221,7 @@ func (p *postRendererString) Set(val string) error {
 		return fmt.Errorf("cannot specify --post-renderer flag more than once")
 	}
 	p.options.binaryPath = val
-	pr, err := postrender.NewExec(p.options.binaryPath, p.options.incHooks, p.options.args...)
+	pr, err := postrender.NewExecHooks(p.options.binaryPath, p.options.incHooks, p.options.args...)
 	if err != nil {
 		return err
 	}
@@ -250,7 +250,7 @@ func (p *postRendererArgsSlice) Set(val string) error {
 		return nil
 	}
 	// overwrite if already create PostRenderer by `post-renderer` flags
-	pr, err := postrender.NewExec(p.options.binaryPath, p.options.incHooks, p.options.args...)
+	pr, err := postrender.NewExecHooks(p.options.binaryPath, p.options.incHooks, p.options.args...)
 	if err != nil {
 		return err
 	}
