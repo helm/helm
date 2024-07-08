@@ -58,7 +58,6 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				paths = args
 			}
-
 			if kubeVersion != "" {
 				parsedKubeVersion, err := chartutil.ParseKubeVersion(kubeVersion)
 				if err != nil {
@@ -66,7 +65,6 @@ func newLintCmd(out io.Writer) *cobra.Command {
 				}
 				client.KubeVersion = parsedKubeVersion
 			}
-
 			if client.WithSubcharts {
 				for _, p := range paths {
 					filepath.Walk(filepath.Join(p, "charts"), func(path string, info os.FileInfo, _ error) error {
@@ -81,19 +79,32 @@ func newLintCmd(out io.Writer) *cobra.Command {
 					})
 				}
 			}
-
 			client.Namespace = settings.Namespace()
 			vals, err := valueOpts.MergeValues(getter.All(settings))
 			if err != nil {
 				return err
+				print("this is the error\n")
 			}
-
-			var ignorePatterns []string
+			var ignorePatterns map[string]string
+			if lintIgnoreFile == "" {
+				// Uncomment to debug:
+				// print("empty")
+				dir, err := os.Getwd()
+				if err != nil {
+					panic(err)
+				}
+				lintIgnoreFile = filepath.Join(dir, ".helmlintignore")
+			}
 			if lintIgnoreFile != "" {
-				ignorePatterns, err = rules.ParseIgnoreFile(lintIgnoreFile)
+				fmt.Printf("\nthis is the path: %s\n", lintIgnoreFile)
+				ignorePatterns, err := rules.ParseIgnoreFile(lintIgnoreFile)
+				// Uncomment to debug:
+				// fmt.Println("Patterns:", ignorePatterns)
+				// fmt.Println("Errors:", err)
 				if err != nil {
 					return fmt.Errorf("failed to parse .helmlintignore file: %v", err)
 				}
+				fmt.Println("Ignore Patterns:", ignorePatterns)
 			}
 
 			var message strings.Builder

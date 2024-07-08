@@ -17,6 +17,9 @@ limitations under the License.
 package lint
 
 import (
+	"fmt"
+    "log"
+    "io/ioutil"
 	"path/filepath"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint/rules"
@@ -27,9 +30,16 @@ func All(basedir string, values map[string]interface{}, namespace string, _ bool
 }
 func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, lintIgnoreFile string) support.Linter {
 	chartDir, _ := filepath.Abs(basedir)
-	var ignorePatterns []string
+	var ignorePatterns map[string]string
+	var err error
 	if lintIgnoreFile != "" {
-		ignorePatterns, _ = rules.ParseIgnoreFile(lintIgnoreFile) // Simplified error handling for the example
+		ignorePatterns, err = rules.ParseIgnoreFile(lintIgnoreFile)
+		for key, value := range ignorePatterns {
+			fmt.Printf("Pattern: %s, Error: %s\n", key, value)
+		}
+		// Review this to properly handle logging
+		log.SetOutput(ioutil.Discard)
+		log.Println(err)
 	}
 	linter := support.Linter{ChartDir: chartDir}
 	if rules.IsIgnored(chartDir, ignorePatterns) {

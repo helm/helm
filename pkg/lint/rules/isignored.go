@@ -6,8 +6,8 @@ import (
     "fmt"
 )
 
-func IsIgnored(path string, patterns []string) bool {
-    for _, pattern := range patterns {
+func IsIgnored(path string, patterns map[string]string) bool {
+    for pattern, _ := range patterns {
         cleanedPath := filepath.Clean(path)
         cleanedPattern := filepath.Clean(pattern)
         if match, err := filepath.Match(cleanedPattern, cleanedPath); err == nil && match {
