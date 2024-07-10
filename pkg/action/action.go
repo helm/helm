@@ -97,11 +97,12 @@ type Configuration struct {
 	Log func(string, ...interface{})
 }
 
-// chartNeedsAPIVersions returns true if any template in the given Chart references .Capabilities.APIVersions.
+// chartNeedsAPIVersions returns true if any of the Chart's templates reference "APIVersions".
+// If it returns false, it is safe to omit Capabilities.APIVersions from rendering values.
 func chartNeedsAPIVersions(chart *chart.Chart) bool {
 	if chart != nil {
 		for _, template := range chart.Templates {
-			if bytes.Contains(template.Data, []byte(".Capabilities.APIVersions")) {
+			if bytes.Contains(template.Data, []byte("APIVersions")) {
 				return true
 			}
 		}

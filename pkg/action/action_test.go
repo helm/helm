@@ -286,6 +286,12 @@ func Test_chartNeedsAPIVersions(t *testing.T) {
 	is.Equal(chartNeedsAPIVersions(ch), false)
 	ch.Templates = append(ch.Templates, &chart.File{Name: "templates/api-versions", Data: []byte("{{ .Capabilities.APIVersions }}")})
 	is.Equal(chartNeedsAPIVersions(ch), true)
+	ch.Templates = append(ch.Templates, &chart.File{Name: "templates/api-versions", Data: []byte("# {{ .Capabilities.APIVersions }}")})
+	is.Equal(chartNeedsAPIVersions(ch), true)
+	ch.Templates = append(ch.Templates, &chart.File{Name: "templates/api-versions", Data: []byte("{{ $cap.APIVersions }}")})
+	is.Equal(chartNeedsAPIVersions(ch), true)
+	ch.Templates = append(ch.Templates, &chart.File{Name: "templates/api-versions", Data: []byte("{{ get (.Capabilities | toJson | fromJson) \"APIVersions\" }}")})
+	is.Equal(chartNeedsAPIVersions(ch), true)
 }
 
 func TestConfiguration_Init(t *testing.T) {
