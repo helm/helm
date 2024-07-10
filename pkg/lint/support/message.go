@@ -33,6 +33,7 @@ const (
 // sev matches the *Sev states.
 var sev = []string{"UNKNOWN", "INFO", "WARNING", "ERROR"}
 
+
 // Linter encapsulates a linting run of a particular chart.
 type Linter struct {
 	Messages []Message

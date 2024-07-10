@@ -6,20 +6,22 @@ import (
     "fmt"
 )
 
-func IsIgnored(path string, patterns map[string]string) bool {
-    for pattern, _ := range patterns {
+type LintResult struct {
+    Messages []string
+}
+
+func IsIgnored(errorMessage string, patterns map[string][]string) bool {
+    for path, pathPatterns := range patterns {
         cleanedPath := filepath.Clean(path)
-        cleanedPattern := filepath.Clean(pattern)
-        if match, err := filepath.Match(cleanedPattern, cleanedPath); err == nil && match {
-            fmt.Printf("Ignoring path: %s due to pattern: %s\n", path, pattern)
-            return true
-        }
-        if strings.HasSuffix(cleanedPattern, "/") || strings.HasSuffix(cleanedPattern, "\\") {
-            patternDir := strings.TrimRight(cleanedPattern, "/\\")
-            if strings.HasPrefix(cleanedPath, patternDir) {
-                return true
+        if strings.Contains(errorMessage, cleanedPath) {
+            for _, pattern := range pathPatterns {
+                if strings.Contains(errorMessage, pattern) {
+                    fmt.Printf("Ignoring error related to path: %s with pattern: %s\n", path, pattern)
+                    return true
+                }
             }
         }
     }
     return false
 }
+

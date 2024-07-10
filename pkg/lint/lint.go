@@ -30,7 +30,7 @@ func All(basedir string, values map[string]interface{}, namespace string, _ bool
 }
 func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, lintIgnoreFile string) support.Linter {
 	chartDir, _ := filepath.Abs(basedir)
-	var ignorePatterns map[string]string
+	var ignorePatterns map[string][]string
 	var err error
 	if lintIgnoreFile != "" {
 		ignorePatterns, err = rules.ParseIgnoreFile(lintIgnoreFile)

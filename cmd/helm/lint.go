@@ -85,7 +85,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 				return err
 				print("this is the error\n")
 			}
-			var ignorePatterns map[string]string
+			var ignorePatterns map[string][]string
 			if lintIgnoreFile == "" {
 				// Uncomment to debug:
 				// print("empty")
@@ -112,19 +112,17 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			errorsOrWarnings := 0
 
 			for _, path := range paths {
-				if rules.IsIgnored(path, ignorePatterns) {
-					continue 
-				}
 
 				result := client.Run([]string{path}, vals)
-
-				hasWarningsOrErrors := action.HasWarningsOrErrors(result)
+				filteredResult := FilterIgnoredMessages(result, ignorePatterns)
+				hasWarningsOrErrors := len(filteredResult.Messages) > 0
 				if hasWarningsOrErrors {
 					errorsOrWarnings++
 				}
 				if client.Quiet && !hasWarningsOrErrors {
 					continue
 				}
+				
 
 				fmt.Fprintf(&message, "==> Linting %s\n", path)
 
@@ -169,5 +167,33 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	addValueOptionsFlags(f, valueOpts)
 
 	return cmd
+}
+
+// Need to figure out how to pull this function out of here
+
+func FilterIgnoredMessages(result *action.LintResult, patterns map[string][]string) *action.LintResult {
+    filteredMessages := make([]support.Message, 0)
+    for _, msg := range result.Messages {
+        ignore := false
+        for path, pathPatterns := range patterns {
+            cleanedPath := filepath.Clean(path)
+            if strings.Contains(msg.Path, cleanedPath) {  // Check if the message path matches the ignored path
+                for _, pattern := range pathPatterns {
+                    if strings.Contains(msg.Err.Error(), pattern) { // Assuming we are matching patterns against the error message
+                        fmt.Printf("Ignoring message: [%s] %s\n", msg.Path, msg.Err.Error())
+                        ignore = true
+                        break
+                    }
+                }
+            }
+            if ignore {
+                break
+            }
+        }
+        if !ignore {
+            filteredMessages = append(filteredMessages, msg)
+        }
+    }
+    return &action.LintResult{Messages: filteredMessages}
 }
 
