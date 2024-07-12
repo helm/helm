@@ -353,6 +353,10 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 		return i, err
 	}
 
+	if i.APIVersion == "" {
+		return i, ErrNoAPIVersion
+	}
+
 	for name, cvs := range i.Entries {
 		for idx := len(cvs) - 1; idx >= 0; idx-- {
 			if cvs[idx] == nil {
@@ -371,11 +375,10 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}
 		}
+		// adjust slice to only contain a set of valid versions
+		i.Entries[name] = cvs
 	}
 	i.SortEntries()
-	if i.APIVersion == "" {
-		return i, ErrNoAPIVersion
-	}
 	return i, nil
 }
 
