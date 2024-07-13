@@ -17,6 +17,7 @@ package chartutil
 
 import (
 	"fmt"
+	"runtime/debug"
 	"strconv"
 
 	"github.com/Masterminds/semver/v3"
@@ -38,15 +39,7 @@ var (
 	DefaultVersionSet = allKnownVersions()
 
 	// DefaultCapabilities is the default set of capabilities.
-	DefaultCapabilities = &Capabilities{
-		KubeVersion: KubeVersion{
-			Version: fmt.Sprintf("v%s.%s.0", k8sVersionMajor, k8sVersionMinor),
-			Major:   k8sVersionMajor,
-			Minor:   k8sVersionMinor,
-		},
-		APIVersions: DefaultVersionSet,
-		HelmVersion: helmversion.Get(),
-	}
+	DefaultCapabilities *Capabilities
 )
 
 // Capabilities describes the capabilities of the Kubernetes cluster.
@@ -123,4 +116,36 @@ func allKnownVersions() VersionSet {
 		vs = append(vs, gv.String())
 	}
 	return vs
+}
+
+func k8sClientVersion() (*semver.Version, bool) {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return nil, false
+	}
+	for _, m := range info.Deps {
+		if m.Path != "k8s.io/client-go" {
+			continue
+		}
+		v, err := semver.NewVersion(m.Version)
+		return v, err == nil
+	}
+	return nil, false
+}
+
+func init() {
+	if v, ok := k8sClientVersion(); ok {
+		k8sVersionMajor = fmt.Sprintf("%d", v.Major()+1)
+		k8sVersionMinor = fmt.Sprintf("%d", v.Minor())
+	}
+
+	DefaultCapabilities = &Capabilities{
+		KubeVersion: KubeVersion{
+			Version: fmt.Sprintf("v%s.%s.0", k8sVersionMajor, k8sVersionMinor),
+			Major:   k8sVersionMajor,
+			Minor:   k8sVersionMinor,
+		},
+		APIVersions: DefaultVersionSet,
+		HelmVersion: helmversion.Get(),
+	}
 }

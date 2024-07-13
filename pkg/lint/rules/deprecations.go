@@ -28,14 +28,6 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 )
 
-var (
-	// This should be set in the Makefile based on the version of client-go being imported.
-	// These constants will be overwritten with LDFLAGS. The version components must be
-	// strings in order for LDFLAGS to set them.
-	k8sVersionMajor = "1"
-	k8sVersionMinor = "20"
-)
-
 // deprecatedAPIError indicates than an API is deprecated in Kubernetes
 type deprecatedAPIError struct {
 	Deprecated string
@@ -56,12 +48,8 @@ func validateNoDeprecations(resource *K8sYamlStruct, kubeVersion *chartutil.Kube
 		return nil
 	}
 
-	majorVersion := k8sVersionMajor
-	minorVersion := k8sVersionMinor
-
-	if kubeVersion != nil {
-		majorVersion = kubeVersion.Major
-		minorVersion = kubeVersion.Minor
+	if kubeVersion == nil {
+		kubeVersion = &chartutil.DefaultCapabilities.KubeVersion
 	}
 
 	runtimeObject, err := resourceToRuntimeObject(resource)
@@ -73,11 +61,11 @@ func validateNoDeprecations(resource *K8sYamlStruct, kubeVersion *chartutil.Kube
 		return err
 	}
 
-	maj, err := strconv.Atoi(majorVersion)
+	maj, err := strconv.Atoi(kubeVersion.Major)
 	if err != nil {
 		return err
 	}
-	min, err := strconv.Atoi(minorVersion)
+	min, err := strconv.Atoi(kubeVersion.Minor)
 	if err != nil {
 		return err
 	}
