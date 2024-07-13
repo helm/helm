@@ -19,6 +19,7 @@ package version // import "helm.sh/helm/v3/internal/version"
 import (
 	"flag"
 	"runtime"
+	"runtime/debug"
 	"strings"
 )
 
@@ -78,4 +79,23 @@ func Get() BuildInfo {
 		v.GoVersion = ""
 	}
 	return v
+}
+
+func init() {
+	if gitCommit != "" || gitTreeState != "" {
+		return
+	}
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return
+	}
+	for _, setting := range info.Settings {
+		if setting.Key == "vcs.revision" && setting.Value != "" {
+			gitCommit = setting.Value
+		} else if setting.Key == "vcs.modified" && setting.Value == "true" {
+			gitTreeState = "dirty"
+		} else if setting.Key == "vcs.modified" && setting.Value == "false" {
+			gitTreeState = "clean"
+		}
+	}
 }
