@@ -175,16 +175,6 @@ func TestHelmCreateChart(t *testing.T) {
 //
 // Resources like hpa and ingress, which are disabled by default in values.yaml are enabled here using the equivalent
 // of the `--set` flag.
-//
-// Note: This test requires the following ldflags to be set per the current Kubernetes version to avoid false-positive
-// results.
-// 1. -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMajor=<k8s-major-version>
-// 2. -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMinor=<k8s-minor-version>
-// or directly use '$(LDFLAGS)' in Makefile.
-//
-// When run without ldflags, the test passes giving a false-positive result. This is because the variables
-// `k8sVersionMajor` and `k8sVersionMinor` by default are set to an older version of Kubernetes, with which, there
-// might not be the deprecation warning.
 func TestHelmCreateChart_CheckDeprecatedWarnings(t *testing.T) {
 	createdChart, err := chartutil.Create("checkdeprecatedwarnings", t.TempDir())
 	if err != nil {
