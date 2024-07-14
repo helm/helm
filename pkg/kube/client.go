@@ -283,32 +283,12 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 
 // Wait waits up to the given timeout for the specified resources to be ready.
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
-	cs, err := c.getKubeClient()
-	if err != nil {
-		return err
-	}
-	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
-	w := waiter{
-		c:       checker,
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForResources(resources)
+	return c.WaitWithContext(context.Background(), resources, timeout)
 }
 
 // WaitWithJobs wait up to the given timeout for the specified resources to be ready or until the context is Done, including jobs.
 func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
-	cs, err := c.getKubeClient()
-	if err != nil {
-		return err
-	}
-	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true), CheckJobs(true))
-	w := waiter{
-		c:       checker,
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForResources(resources)
+	return c.WaitWithJobsWithContext(context.Background(), resources, timeout)
 }
 
 // WaitWithContext waits up to the given timeout for the specified resources to be ready or until the context is Done.
