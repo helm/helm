@@ -77,12 +77,15 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte, extraSchemas 
 	extraSchemasLoader := gojsonschema.NewSchemaLoader()
 	for _, extraSchema := range extraSchemas {
 		extraLoader := gojsonschema.NewBytesLoader(extraSchema)
-		extraSchemasLoader.AddSchemas(extraLoader)
+		err = extraSchemasLoader.AddSchemas(extraLoader)
+		if err != nil {
+			return fmt.Errorf("unable to load extra schema: %s", err)
+		}
 	}
 	rootSchemaLoader := gojsonschema.NewBytesLoader(schemaJSON)
 	rootSchema, err := extraSchemasLoader.Compile(rootSchemaLoader)
 	if err != nil {
-		return fmt.Errorf("enable to compile schema: %s", err)
+		return fmt.Errorf("unable to compile schema: %s", err)
 	}
 
 	valuesLoader := gojsonschema.NewBytesLoader(valuesJSON)

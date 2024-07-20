@@ -103,12 +103,12 @@ func validateValuesFile(valuesPath string, overrides map[string]interface{}) err
 		}
 
 		if !dentry.IsDir() {
-			schema, err = os.ReadFile(path)
+			extraSchema, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}
 
-			extraSchemas = append(extraSchemas, schema)
+			extraSchemas = append(extraSchemas, extraSchema)
 		}
 
 		return nil
