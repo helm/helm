@@ -46,8 +46,21 @@ const testSchema = `
     "password": {
       "description": "Your password",
       "type": "string"
+    },
+    "extraData": {
+      "$ref": "http://example.com/helm/definitions/extraData"
     }
   }
+}
+`
+
+const extraSchema = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "helm values extra data schema",
+  "$id": "http://example.com/helm/definitions/extraData",
+
+  "type": "string"
 }
 `
 
@@ -136,6 +149,17 @@ func TestValidateValuesFile(t *testing.T) {
 			yaml:      "username: admin\npassword:",
 			overrides: map[string]interface{}{"username": "anotherUser", "password": "swordfish"},
 		},
+		{
+			name:      "include extra data",
+			yaml:      "username: admin\npassword: swordfish\nextraData: extra",
+			overrides: map[string]interface{}{},
+		},
+		{
+			name:      "extra data invalid",
+			yaml:      "username: admin\npassword: swordfish\nextraData: 1234",
+			overrides: map[string]interface{}{},
+			errorMessage: "Expected: string, given: integer",
+		},
 	}
 
 	for _, tt := range tests {
@@ -164,6 +188,14 @@ func createTestingSchema(t *testing.T, dir string) string {
 	schemafile := filepath.Join(dir, "values.schema.json")
 	if err := os.WriteFile(schemafile, []byte(testSchema), 0700); err != nil {
 		t.Fatalf("Failed to write schema to tmpdir: %s", err)
+	}
+	extraSchemaDir := filepath.Join(dir, "schemas")
+	if err := os.MkdirAll(extraSchemaDir, 0700); err != nil {
+		t.Fatalf("Failed to create extra schema dir: %s", err)
+	}
+	extraSchemaFile := filepath.Join(extraSchemaDir, "extraData.schema.json")
+	if err := os.WriteFile(extraSchemaFile, []byte(extraSchema), 0700); err != nil {
+		t.Fatalf("Failed to write extra schema to tmpdir: %s", err)
 	}
 	return schemafile
 }
