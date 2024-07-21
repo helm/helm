@@ -68,12 +68,12 @@ func (p *PrintingKubeClient) WaitWithJobs(resources kube.ResourceList, _ time.Du
 	return err
 }
 
-func (p *PrintingKubeClient) WaitWithContext(ctx context.Context, resources kube.ResourceList, _ time.Duration) error {
+func (p *PrintingKubeClient) WaitWithContext(_ context.Context, resources kube.ResourceList, _ time.Duration) error {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	return err
 }
 
-func (p *PrintingKubeClient) WaitWithJobsWithContext(ctx context.Context, resources kube.ResourceList, _ time.Duration) error {
+func (p *PrintingKubeClient) WaitWithJobsWithContext(_ context.Context, resources kube.ResourceList, _ time.Duration) error {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	return err
 }
