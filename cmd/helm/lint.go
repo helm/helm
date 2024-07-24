@@ -107,7 +107,6 @@ func newLintCmd(out io.Writer) *cobra.Command {
 						fmt.Fprintf(&message, "Error: %s\n", err)
 					}
 				}
-				// fmt.Fprint(&message, "\n")
 			}
 
 			fmt.Fprint(out, message.String())
