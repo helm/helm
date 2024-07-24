@@ -92,25 +92,22 @@ func newLintCmd(out io.Writer) *cobra.Command {
 					return fmt.Errorf("failed to parse .helmlintignore file: %v", err)
 				}
 			}
-
 			var message strings.Builder
 			failed := 0
-
 			for _, path := range paths {
 				result := client.Run([]string{path}, vals)
 				filteredResult := FilterIgnoredMessages(result, ignorePatterns)
-				
 				fmt.Fprintf(&message, "==> Linting %s\n", path)
 				for _, msg := range filteredResult.Messages {
 					fmt.Fprintf(&message, "%s\n", msg)
 				}
-				if len(filteredResult.Errors) != 0 {
+				if len(filteredResult.Messages) != 0 {
 					failed++
 					for _, err := range filteredResult.Errors {
 						fmt.Fprintf(&message, "Error: %s\n", err)
 					}
 				}
-				fmt.Fprint(&message, "\n")
+				// fmt.Fprint(&message, "\n")
 			}
 
 			fmt.Fprint(out, message.String())
@@ -134,29 +131,36 @@ func newLintCmd(out io.Writer) *cobra.Command {
 }
 
 func FilterIgnoredMessages(result *action.LintResult, patterns map[string][]string) *action.LintResult {
-	filteredMessages := make([]support.Message, 0)
-	for _, msg := range result.Messages {
-		fmt.Printf("test-- ", msg, " --test")
-		ignore := false
-		for path, pathPatterns := range patterns {
-			fmt.Printf("test-- ", path, " --test")
-			cleanedPath := filepath.Clean(path)
-			if strings.Contains(msg.Path, cleanedPath) {
-				for _, pattern := range pathPatterns {
-					if strings.Contains(msg.Err.Error(), pattern) {
-						fmt.Printf("Ignoring message: [%s] %s\n", msg.Path, msg.Err.Error())
-						ignore = true
-						break
-					}
-				}
-			}
-			if ignore {
-				break
-			}
-		}
-		if !ignore {
-			filteredMessages = append(filteredMessages, msg)
-		}
-	}
-	return &action.LintResult{Messages: filteredMessages}
+    filteredMessages := make([]support.Message, 0)
+    for _, msg := range result.Messages {
+        fullPath := extractFullPathFromError(msg.Err.Error())
+        fmt.Printf("Extracted full path: %s\n", fullPath)
+        ignore := false
+        for path, pathPatterns := range patterns {
+            if strings.Contains(fullPath, filepath.Clean(path)) {
+                for _, pattern := range pathPatterns {
+                    if strings.Contains(msg.Err.Error(), pattern) {
+                        fmt.Printf("Ignoring message: [%s] %s\n\n", fullPath, msg.Err.Error())
+                        ignore = true
+                        break
+                    }
+                }
+            }
+            if ignore {
+                break
+            }
+        }
+        if !ignore {
+            filteredMessages = append(filteredMessages, msg)
+        }
+    }
+    return &action.LintResult{Messages: filteredMessages}
+}
+
+func extractFullPathFromError(errorString string) string {
+    parts := strings.Split(errorString, ":")
+    if len(parts) > 2 {
+        return strings.TrimSpace(parts[1])
+    }
+    return ""
 }
