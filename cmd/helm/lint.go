@@ -31,7 +31,6 @@ import (
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/lint/rules"
-	"helm.sh/helm/v3/pkg/lint/support"
 )
 
 var longLintHelp = `
@@ -45,6 +44,7 @@ or recommendation, it will emit [WARNING] messages.
 
 func newLintCmd(out io.Writer) *cobra.Command {
 	client := action.NewLint()
+	client.Debug = settings.Debug
 	valueOpts := &values.Options{}
 	var kubeVersion string
 	var lintIgnoreFile string
@@ -92,15 +92,16 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			var message strings.Builder
 			failed := 0
 			for _, path := range paths {
-				result := client.Run([]string{path}, vals)
-				filteredResult := FilterIgnoredMessages(result, ignorePatterns, settings.Debug)
 				fmt.Fprintf(&message, "==> Linting %s\n", path)
-				for _, msg := range filteredResult.Messages {
+				result := client.Run([]string{path}, vals)
+				result.Messages = rules.FilterIgnoredMessages(result.Messages, ignorePatterns)
+				result.Errors = rules.FilterIgnoredErrors(result.Errors, ignorePatterns)
+				for _, msg := range result.Messages {
 					fmt.Fprintf(&message, "%s\n", msg)
 				}
-				if len(filteredResult.Messages) != 0 {
+				if len(result.Messages) != 0 {
 					failed++
-					for _, err := range filteredResult.Errors {
+					for _, err := range result.Errors {
 						fmt.Fprintf(&message, "Error: %s\n", err)
 					}
 				}
@@ -125,57 +126,3 @@ func newLintCmd(out io.Writer) *cobra.Command {
 
 	return cmd
 }
-
-func FilterIgnoredMessages(result *action.LintResult, patterns map[string][]string, debug bool) *action.LintResult {
-    filteredMessages := make([]support.Message, 0)
-    for _, msg := range result.Messages {
-        fullPath := extractFullPathFromError(msg.Err.Error())
-		if len(fullPath) == 0 {
-			break
-		}
-		if debug {
-			fmt.Printf("Extracted full path: %s\n", fullPath)
-		}
-        ignore := false
-        for path, pathPatterns := range patterns {
-            if strings.Contains(fullPath, filepath.Clean(path)) {
-                for _, pattern := range pathPatterns {
-                    if strings.Contains(msg.Err.Error(), pattern) {
-						if debug {
-                        	fmt.Printf("Ignoring message: [%s] %s\n\n", fullPath, msg.Err.Error())
-						}
-                        ignore = true
-                        break
-                    }
-                }
-            }
-            if ignore {
-                break
-            }
-        }
-        if !ignore {
-            filteredMessages = append(filteredMessages, msg)
-        }
-    }
-    return &action.LintResult{Messages: filteredMessages}
-}
-
-func extractFullPathFromError(errorString string) string {
-    parts := strings.Split(errorString, ":")
-    if len(parts) > 2 {
-        return strings.TrimSpace(parts[1])
-    }
-    return ""
-}
-
-/* TODO HIP-0019
-	- find ignore file path for a subchart
-	- add a chart or two for the end to end tests via testdata like in pkg/lint/lint_test.go
-	- review debug / output patterns across the helm project
-
-	Later/never
-	- XDG support
-	- helm config file support
-	- ignore file validation
-	-
-*/

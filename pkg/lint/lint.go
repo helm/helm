@@ -17,34 +17,17 @@ limitations under the License.
 package lint
 
 import (
-	"fmt"
-    "log"
-    "io/ioutil"
-	"path/filepath"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint/rules"
 	"helm.sh/helm/v3/pkg/lint/support"
+	"path/filepath"
 )
 func All(basedir string, values map[string]interface{}, namespace string, _ bool) support.Linter {
-	return AllWithKubeVersion(basedir, values, namespace, nil, "")
+	return AllWithKubeVersion(basedir, values, namespace, nil)
 }
-func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, lintIgnoreFile string) support.Linter {
+func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) support.Linter {
 	chartDir, _ := filepath.Abs(basedir)
-	var ignorePatterns map[string][]string
-	var err error
-	if lintIgnoreFile != "" {
-		ignorePatterns, err = rules.ParseIgnoreFile(lintIgnoreFile)
-		for key, value := range ignorePatterns {
-			fmt.Printf("Pattern: %s, Error: %s\n", key, value)
-		}
-		// Review this to properly handle logging
-		log.SetOutput(ioutil.Discard)
-		log.Println(err)
-	}
 	linter := support.Linter{ChartDir: chartDir}
-	if rules.IsIgnored(chartDir, ignorePatterns) {
-		return linter
-	}
 	rules.Chartfile(&linter)
 	rules.ValuesWithOverrides(&linter, values)
 	rules.TemplatesWithKubeVersion(&linter, values, namespace, kubeVersion)
