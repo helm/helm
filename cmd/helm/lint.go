@@ -30,8 +30,8 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/lint/support"
 	"helm.sh/helm/v3/pkg/lint/rules"
+	"helm.sh/helm/v3/pkg/lint/support"
 )
 
 var longLintHelp = `
@@ -48,7 +48,6 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	valueOpts := &values.Options{}
 	var kubeVersion string
 	var lintIgnoreFile string
-	var debug bool
 
 	cmd := &cobra.Command{
 		Use:   "lint PATH",
@@ -87,16 +86,14 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			}
 			var ignorePatterns map[string][]string
 			if lintIgnoreFile != "" {
-				if debug {
-					fmt.Printf("\nUsing ignore file: %s\n", lintIgnoreFile)
-				}
+				debug("\nUsing ignore file: %s\n", lintIgnoreFile)
 				ignorePatterns, err = rules.ParseIgnoreFile(lintIgnoreFile)
 			}
 			var message strings.Builder
 			failed := 0
 			for _, path := range paths {
 				result := client.Run([]string{path}, vals)
-				filteredResult := FilterIgnoredMessages(result, ignorePatterns, debug)
+				filteredResult := FilterIgnoredMessages(result, ignorePatterns, settings.Debug)
 				fmt.Fprintf(&message, "==> Linting %s\n", path)
 				for _, msg := range filteredResult.Messages {
 					fmt.Fprintf(&message, "%s\n", msg)
@@ -125,7 +122,6 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Quiet, "quiet", false, "print only warnings and errors")
 	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for capabilities and deprecation checks")
 	f.StringVar(&lintIgnoreFile, "lint-ignore-file", "", "path to .helmlintignore file to specify ignore patterns")
-	f.BoolVar(&debug, "debug", false, "enable debug output")
 
 	return cmd
 }
@@ -171,3 +167,15 @@ func extractFullPathFromError(errorString string) string {
     }
     return ""
 }
+
+/* TODO HIP-0019
+	- find ignore file path for a subchart
+	- add a chart or two for the end to end tests via testdata like in pkg/lint/lint_test.go
+	- review debug / output patterns across the helm project
+
+	Later/never
+	- XDG support
+	- helm config file support
+	- ignore file validation
+	-
+*/

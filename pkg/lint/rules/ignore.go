@@ -2,7 +2,9 @@ package rules
 
 import (
 	"bufio"
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -31,3 +33,19 @@ func ParseIgnoreFile(filePath string) (map[string][]string, error) {
 
 	return patterns, scanner.Err()
 }
+
+func IsIgnored(errorMessage string, patterns map[string][]string) bool {
+	for path, pathPatterns := range patterns {
+		cleanedPath := filepath.Clean(path)
+		if strings.Contains(errorMessage, cleanedPath) {
+			for _, pattern := range pathPatterns {
+				if strings.Contains(errorMessage, pattern) {
+					fmt.Printf("Ignoring error related to path: %s with pattern: %s\n", path, pattern)
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
