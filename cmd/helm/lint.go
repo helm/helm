@@ -48,6 +48,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	valueOpts := &values.Options{}
 	var kubeVersion string
 	var lintIgnoreFile string
+	var debug bool
 
 	cmd := &cobra.Command{
 		Use:   "lint PATH",
@@ -86,17 +87,16 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			}
 			var ignorePatterns map[string][]string
 			if lintIgnoreFile != "" {
-				fmt.Printf("\nUsing ignore file: %s\n", lintIgnoreFile)
+				if debug {
+					fmt.Printf("\nUsing ignore file: %s\n", lintIgnoreFile)
+				}
 				ignorePatterns, err = rules.ParseIgnoreFile(lintIgnoreFile)
-				// if err != nil {
-				// 	return fmt.Errorf("failed to parse .helmlintignore file: %v", err)
-				// }
 			}
 			var message strings.Builder
 			failed := 0
 			for _, path := range paths {
 				result := client.Run([]string{path}, vals)
-				filteredResult := FilterIgnoredMessages(result, ignorePatterns)
+				filteredResult := FilterIgnoredMessages(result, ignorePatterns, debug)
 				fmt.Fprintf(&message, "==> Linting %s\n", path)
 				for _, msg := range filteredResult.Messages {
 					fmt.Fprintf(&message, "%s\n", msg)
@@ -125,24 +125,29 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Quiet, "quiet", false, "print only warnings and errors")
 	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for capabilities and deprecation checks")
 	f.StringVar(&lintIgnoreFile, "lint-ignore-file", "", "path to .helmlintignore file to specify ignore patterns")
+	f.BoolVar(&debug, "debug", false, "enable debug output")
 
 	return cmd
 }
 
-func FilterIgnoredMessages(result *action.LintResult, patterns map[string][]string) *action.LintResult {
+func FilterIgnoredMessages(result *action.LintResult, patterns map[string][]string, debug bool) *action.LintResult {
     filteredMessages := make([]support.Message, 0)
     for _, msg := range result.Messages {
         fullPath := extractFullPathFromError(msg.Err.Error())
 		if len(fullPath) == 0 {
 			break
 		}
-        fmt.Printf("Extracted full path: %s\n", fullPath)
+		if debug {
+			fmt.Printf("Extracted full path: %s\n", fullPath)
+		}
         ignore := false
         for path, pathPatterns := range patterns {
             if strings.Contains(fullPath, filepath.Clean(path)) {
                 for _, pattern := range pathPatterns {
                     if strings.Contains(msg.Err.Error(), pattern) {
-                        fmt.Printf("Ignoring message: [%s] %s\n\n", fullPath, msg.Err.Error())
+						if debug {
+                        	fmt.Printf("Ignoring message: [%s] %s\n\n", fullPath, msg.Err.Error())
+						}
                         ignore = true
                         break
                     }
