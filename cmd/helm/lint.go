@@ -88,9 +88,9 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			if lintIgnoreFile != "" {
 				fmt.Printf("\nUsing ignore file: %s\n", lintIgnoreFile)
 				ignorePatterns, err = rules.ParseIgnoreFile(lintIgnoreFile)
-				if err != nil {
-					return fmt.Errorf("failed to parse .helmlintignore file: %v", err)
-				}
+				// if err != nil {
+				// 	return fmt.Errorf("failed to parse .helmlintignore file: %v", err)
+				// }
 			}
 			var message strings.Builder
 			failed := 0
@@ -133,6 +133,9 @@ func FilterIgnoredMessages(result *action.LintResult, patterns map[string][]stri
     filteredMessages := make([]support.Message, 0)
     for _, msg := range result.Messages {
         fullPath := extractFullPathFromError(msg.Err.Error())
+		if len(fullPath) == 0 {
+			break
+		}
         fmt.Printf("Extracted full path: %s\n", fullPath)
         ignore := false
         for path, pathPatterns := range patterns {
