@@ -72,6 +72,7 @@ type Install struct {
 	ClientOnly      bool
 	Force           bool
 	CreateNamespace bool
+	NamespaceLabels map[string]string
 	DryRun          bool
 	DryRunOption    string
 	// HideSecret can be set to true when DryRun is enabled in order to hide
@@ -357,16 +358,20 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	if i.CreateNamespace {
+		nsLabels := map[string]string{
+			"name": i.Namespace,
+		}
+		if i.NamespaceLabels != nil {
+			nsLabels = i.NamespaceLabels
+		}
 		ns := &v1.Namespace{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "v1",
 				Kind:       "Namespace",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name: i.Namespace,
-				Labels: map[string]string{
-					"name": i.Namespace,
-				},
+				Name:   i.Namespace,
+				Labels: nsLabels,
 			},
 		}
 		buf, err := yaml.Marshal(ns)
