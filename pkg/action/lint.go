@@ -9,7 +9,6 @@ import (
 
     "helm.sh/helm/v3/pkg/chartutil"
     "helm.sh/helm/v3/pkg/lint"
-	// "helm.sh/helm/v3/pkg/lint/rules"
     "helm.sh/helm/v3/pkg/lint/support"
 )
 
@@ -21,6 +20,7 @@ type Lint struct {
     Quiet         bool
     KubeVersion   *chartutil.KubeVersion
     IgnoreFilePath string
+    Debug bool
 }
 type LintResult struct {
     TotalChartsLinted int
@@ -38,7 +38,7 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 
     result := &LintResult{}
     for _, path := range paths {
-        linter, err := lintChart(path, vals, l.Namespace, l.KubeVersion, l.IgnoreFilePath)
+        linter, err := lintChart(path, vals, l.Namespace, l.KubeVersion)
         if err != nil {
             result.Errors = append(result.Errors, err)
             continue
@@ -64,7 +64,7 @@ func HasWarningsOrErrors(result *LintResult) bool {
 	return len(result.Errors) > 0
 }
 
-func lintChart(path string, vals map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, ignoreFilePath string) (support.Linter, error) {
+func lintChart(path string, vals map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) (support.Linter, error) {
     var chartPath string
     linter := support.Linter{}
 
@@ -101,5 +101,5 @@ func lintChart(path string, vals map[string]interface{}, namespace string, kubeV
     if _, err := os.Stat(filepath.Join(chartPath, "Chart.yaml")); err != nil {
         return linter, errors.Wrap(err, "Chart.yaml file not found in chart")
     }
-    return lint.AllWithKubeVersion(chartPath, vals, namespace, kubeVersion, ignoreFilePath), nil
+    return lint.AllWithKubeVersion(chartPath, vals, namespace, kubeVersion), nil
 }

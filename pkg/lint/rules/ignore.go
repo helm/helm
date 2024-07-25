@@ -3,10 +3,14 @@ package rules
 import (
 	"bufio"
 	"fmt"
+	"helm.sh/helm/v3/pkg/lint/support"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+var Debug bool
 
 func ParseIgnoreFile(filePath string) (map[string][]string, error) {
 	patterns := make(map[string][]string)
@@ -14,7 +18,12 @@ func ParseIgnoreFile(filePath string) (map[string][]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			log.Printf("Failed to close ignore file at [%s]: %v", filePath, err)
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -34,18 +43,105 @@ func ParseIgnoreFile(filePath string) (map[string][]string, error) {
 	return patterns, scanner.Err()
 }
 
-func IsIgnored(errorMessage string, patterns map[string][]string) bool {
-	for path, pathPatterns := range patterns {
-		cleanedPath := filepath.Clean(path)
-		if strings.Contains(errorMessage, cleanedPath) {
-			for _, pattern := range pathPatterns {
-				if strings.Contains(errorMessage, pattern) {
-					fmt.Printf("Ignoring error related to path: %s with pattern: %s\n", path, pattern)
-					return true
+func FilterIgnoredErrors(errors []error, patterns map[string][]string) []error {
+	filteredErrors := make([]error, 0)
+	for _, err := range errors {
+		errText := err.Error()
+		errorFullPath := extractFullPathFromError(errText)
+		if len(errorFullPath) == 0 {
+			debug("Unable to find a path for error, guess we'll keep it: %s", errText)
+			filteredErrors = append(filteredErrors, err)
+			continue
+		}
+		ignore := false
+		debug("Extracted full path: %s\n", errorFullPath)
+		for ignorablePath, pathPatterns := range patterns {
+			cleanIgnorablePath := filepath.Clean(ignorablePath)
+			if strings.Contains(errorFullPath, cleanIgnorablePath) {
+				for _, pattern := range pathPatterns {
+					if strings.Contains(err.Error(), pattern) {
+						debug("Ignoring error: [%s] %s\n\n", errorFullPath, errText)
+						ignore = true
+						break
+					}
 				}
 			}
+			if ignore {
+				break
+			}
+		}
+		if !ignore {
+			debug("keeping unignored error: [%s]", errText)
+			filteredErrors = append(filteredErrors, err)
 		}
 	}
-	return false
+
+	return filteredErrors
+}
+func FilterIgnoredMessages(messages []support.Message, patterns map[string][]string) []support.Message {
+	filteredMessages := make([]support.Message, 0)
+	for _, msg := range messages {
+		errText := msg.Err.Error()
+		errorFullPath := extractFullPathFromError(errText)
+		if len(errorFullPath) == 0 {
+			debug("Unable to find a path for message, guess we'll keep it: %s", errText)
+			filteredMessages = append(filteredMessages, msg)
+			continue
+		}
+		ignore := false
+		debug("Extracted full path: %s\n", errorFullPath)
+		for ignorablePath, pathPatterns := range patterns {
+			cleanIgnorablePath := filepath.Clean(ignorablePath)
+			if strings.Contains(errorFullPath, cleanIgnorablePath) {
+				for _, pattern := range pathPatterns {
+					if strings.Contains(msg.Err.Error(), pattern) {
+						debug("Ignoring message: [%s] %s\n\n", errorFullPath, errText)
+						ignore = true
+						break
+					}
+				}
+			}
+			if ignore {
+				break
+			}
+		}
+		if !ignore {
+			debug("keeping unignored message: [%s]", errText)
+			filteredMessages = append(filteredMessages, msg)
+		}
+	}
+
+	return filteredMessages
 }
 
+// TODO: figure out & fix or remove
+func extractFullPathFromError(errorString string) string {
+	parts := strings.Split(errorString, ":")
+	if len(parts) > 2 {
+		return strings.TrimSpace(parts[1])
+	}
+	return ""
+}
+
+// TODO: DELETE
+var logger = log.New(os.Stderr, "[debug] ", log.Lshortfile)
+func debug(format string, v ...interface{}) {
+	if Debug {
+		format = fmt.Sprintf("[debug] %s\n", format)
+		logger.Output(2, fmt.Sprintf(format, v...))
+	}
+}
+// END TODO: DELETE
+
+
+/* TODO HIP-0019
+- find ignore file path for a subchart
+- add a chart or two for the end to end tests via testdata like in pkg/lint/lint_test.go
+- review debug / output patterns across the helm project
+
+Later/never
+- XDG support
+- helm config file support
+- ignore file validation
+-
+*/
