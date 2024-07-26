@@ -1,4 +1,4 @@
-package rules
+package lint
 
 import (
 	"fmt"
@@ -64,7 +64,8 @@ func TestFilterIgnoredMessages(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := FilterIgnoredMessages(tt.args.messages, tt.args.ignorePatterns)
+			ignorer := Ignorer{Patterns: tt.args.ignorePatterns}
+			got := ignorer.FilterIgnoredMessages(tt.args.messages)
 			assert.Equalf(t, tt.want, got, "FilterIgnoredMessages(%v, %v)", tt.args.messages, tt.args.ignorePatterns)
 		})
 	}

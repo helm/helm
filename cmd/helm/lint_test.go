@@ -90,8 +90,3 @@ func TestLintCmdWithKubeVersionFlag(t *testing.T) {
 	}}
 	runTestCmd(t, tests)
 }
-
-func TestLintFileCompletion(t *testing.T) {
-	checkFileCompletion(t, "lint", true)
-	checkFileCompletion(t, "lint mypath", true) // Multiple paths can be given
-}

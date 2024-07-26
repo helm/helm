@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"helm.sh/helm/v3/pkg/lint"
 	"helm.sh/helm/v3/pkg/lint/support"
 	"io"
 	"os"
@@ -31,8 +32,9 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/lint/rules"
 )
+
+const defaultIgnoreFileName = ".helmlintignore"
 
 var longLintHelp = `
 This command takes a path to a chart and runs a series of tests to verify that
@@ -50,7 +52,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	client.Debug = settings.Debug
 	valueOpts := &values.Options{}
 	var kubeVersion string
-	var lintIgnoreFile string
+	var lintIgnoreFilePath string
 
 	cmd := &cobra.Command{
 		Use:   "lint PATH",
@@ -91,7 +93,6 @@ func newLintCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 
-			var ignorePatterns map[string][]string
 			var message strings.Builder
 
 			failed := 0
@@ -99,22 +100,26 @@ func newLintCmd(out io.Writer) *cobra.Command {
 
 			for _, path := range paths {
 				useTempFile = false
-				if lintIgnoreFile != "" {
-					debug("\nUsing ignore file: %s\n", lintIgnoreFile)
+				if lintIgnoreFilePath != "" {
+					debug("\nUsing ignore file: %s\n", lintIgnoreFilePath)
 				} else {
-					lintIgnoreFile = filepath.Join(path, ".helmlintignore")
-					debug("\nNo HelmLintIgnore file specified, will try and use the following: %s\n", lintIgnoreFile)
+					lintIgnoreFilePath = filepath.Join(path, defaultIgnoreFileName)
+					debug("\nNo HelmLintIgnore file specified, will try and use the following: %s\n", lintIgnoreFilePath)
 					useTempFile = true // Mark that a temporary file was used
 				}
-				ignorePatterns, err = rules.ParseIgnoreFile(lintIgnoreFile)
+				ignorer, err := lint.NewIgnorer(lintIgnoreFilePath)
+				if err != nil {
+					debug("Unable to load lint ignore rules: %s", err.Error())
+					ignorer = &lint.Ignorer{Patterns: map[string][]string{} }
+				}
 				if useTempFile {
-					lintIgnoreFile = ""
+					lintIgnoreFilePath = ""
 				}
 				result := client.Run([]string{path}, vals)
-				result.Messages = rules.FilterIgnoredMessages(result.Messages, ignorePatterns)
-				result.Errors = rules.FilterIgnoredErrors(result.Errors, ignorePatterns)
+				result.Messages = ignorer.FilterIgnoredMessages(result.Messages)
+				result.Errors = ignorer.FilterIgnoredErrors(result.Errors)
 
-				// If there is no errors/warnings and quiet flag is set
+				// If there are no errors/warnings and quiet flag is set
 				// go to the next chart
 				hasWarningsOrErrors := action.HasWarningsOrErrors(result)
 				if hasWarningsOrErrors {
@@ -170,7 +175,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&client.WithSubcharts, "with-subcharts", false, "lint dependent charts")
 	f.BoolVar(&client.Quiet, "quiet", false, "print only warnings and errors")
 	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for capabilities and deprecation checks")
-	f.StringVar(&lintIgnoreFile, "lint-ignore-file", "", "path to .helmlintignore file to specify ignore patterns")
+	f.StringVar(&lintIgnoreFilePath, "lint-ignore-file", "", "path to .helmlintignore file to specify ignore patterns")
 	addValueOptionsFlags(f, valueOpts)
 
 	return cmd
