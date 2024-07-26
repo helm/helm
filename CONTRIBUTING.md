@@ -307,7 +307,7 @@ The following tables define all label types used for Helm. It is split up by cat
 | `needs rebase` | Indicates a PR needs to be rebased before it can be merged |
 | `needs pick` | Indicates a PR needs to be cherry-picked into a feature branch (generally bugfix branches). Once it has been, the `picked` label should be applied and this one removed |
 | `picked` | This PR has been cherry-picked into a feature branch |
-| `docs wanted` | Tracks PRs that introduces a feature/change for which documentation update would be desirable (non-blocking). Once a suitable docs PR is created this label should be removed |
+| `docs needed` | Tracks PRs that introduces a feature/change for which documentation update would be desirable (non-blocking). Once a suitable docs PR is created this label should be removed |
 
 #### Size labels
 
