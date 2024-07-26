@@ -43,6 +43,8 @@ it will emit [ERROR] messages. If it encounters issues that break with conventio
 or recommendation, it will emit [WARNING] messages.
 `
 
+var useTempFile = false
+
 func newLintCmd(out io.Writer) *cobra.Command {
 	client := action.NewLint()
 	client.Debug = settings.Debug
@@ -90,16 +92,24 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			}
 
 			var ignorePatterns map[string][]string
-			if lintIgnoreFile != "" {
-				debug("\nUsing ignore file: %s\n", lintIgnoreFile)
-				ignorePatterns, err = rules.ParseIgnoreFile(lintIgnoreFile)
-			}
-
 			var message strings.Builder
+
 			failed := 0
 			errorsOrWarnings := 0
 
 			for _, path := range paths {
+				useTempFile = false
+				if lintIgnoreFile != "" {
+					debug("\nUsing ignore file: %s\n", lintIgnoreFile)
+				} else {
+					lintIgnoreFile = filepath.Join(path, ".helmlintignore")
+					debug("\nNo HelmLintIgnore file specified, will try and use the following: %s\n", lintIgnoreFile)
+					useTempFile = true // Mark that a temporary file was used
+				}
+				ignorePatterns, err = rules.ParseIgnoreFile(lintIgnoreFile)
+				if useTempFile {
+					lintIgnoreFile = ""
+				}
 				result := client.Run([]string{path}, vals)
 				result.Messages = rules.FilterIgnoredMessages(result.Messages, ignorePatterns)
 				result.Errors = rules.FilterIgnoredErrors(result.Errors, ignorePatterns)
