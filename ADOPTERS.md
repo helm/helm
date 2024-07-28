@@ -7,10 +7,13 @@
 
 - [Blood Orange](https://bloodorange.io)
 - [IBM](https://www.ibm.com)
+- [InfoCert](https://www.infocert.it/)
 - [Microsoft](https://microsoft.com)
+- [Omnistrate](https://omnistrate.com)
 - [Qovery](https://www.qovery.com/)
 - [Samsung SDS](https://www.samsungsds.com/)
 - [Softonic](https://hello.softonic.com/)
+- [SyncTune](https://mb-consulting.dev)
 - [Syself](https://syself.com)
 - [Ville de Montreal](https://montreal.ca)
 
