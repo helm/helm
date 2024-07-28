@@ -197,7 +197,8 @@ func TestDownloadTo(t *testing.T) {
 		},
 	}
 	cname := "/signtest-0.1.0.tgz"
-	dest := srv.Root()
+	dest := filepath.Join(srv.Root(), "signtest")
+	os.MkdirAll(dest, 0755)
 	where, v, err := c.DownloadTo(srv.URL()+cname, "", dest)
 	if err != nil {
 		t.Fatal(err)
@@ -209,6 +210,35 @@ func TestDownloadTo(t *testing.T) {
 
 	if v.FileHash == "" {
 		t.Error("File hash was empty, but verification is required.")
+	}
+
+	if _, err := os.Stat(filepath.Join(dest, cname)); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestDownloadToWithCachedChart(t *testing.T) {
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyNever,
+		Keyring:          "testdata/helm-test-key.pub",
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
+	}
+	dest := t.TempDir()
+	cname := "signtest-0.1.0.tgz"
+	os.Create(filepath.Join(dest, cname))
+	where, _, err := c.DownloadTo("https://localhost/"+cname, "", dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if expect := filepath.Join(dest, cname); where != expect {
+		t.Errorf("Expected download to %s, got %s", expect, where)
 	}
 
 	if _, err := os.Stat(filepath.Join(dest, cname)); err != nil {
@@ -248,7 +278,8 @@ func TestDownloadTo_TLS(t *testing.T) {
 		Options: []getter.Option{},
 	}
 	cname := "test/signtest"
-	dest := srv.Root()
+	dest := filepath.Join(srv.Root(), "signtest")
+	os.MkdirAll(dest, 0755)
 	where, v, err := c.DownloadTo(cname, "", dest)
 	if err != nil {
 		t.Fatal(err)
