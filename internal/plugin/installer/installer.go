@@ -174,39 +174,49 @@ func isLocalReference(source string) bool {
 // It works by checking whether the source looks like a URL and, if it does, running a
 // HEAD operation to see if the remote resource is a file that we understand.
 func isRemoteHTTPArchive(source string) bool {
-	if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
-		// First, check if the URL ends with a known archive suffix
-		// This is more reliable than content-type detection
+	if !isHTTPURL(source) {
+		return false
+	}
+
+	contentType, err := getRemoteContentType(source)
+	if err != nil {
+		return false
+	}
+
+	// Handle octet-stream specially by checking file extension
+	if contentType == "application/octet-stream" {
 		for suffix := range Extractors {
 			if strings.HasSuffix(source, suffix) {
 				return true
 			}
 		}
 
-		// If no suffix match, try HEAD request to check content type
-		res, err := http.Head(source)
-		if err != nil {
-			// If we get an error at the network layer, we can't install it. So
-			// we return false.
-			return false
-		}
-
-		// Next, we look for the content type or content disposition headers to see
-		// if they have matching extractors.
-		contentType := res.Header.Get("content-type")
-		foundSuffix, ok := mediaTypeToExtension(contentType)
-		if !ok {
-			// Media type not recognized
-			return false
-		}
-
-		for suffix := range Extractors {
-			if strings.HasSuffix(foundSuffix, suffix) {
-				return true
-			}
-		}
+		return false
 	}
+
+	// Check if we have an extractor for this media type
+	if suffix, ok := mediaTypeToExtension(contentType); ok {
+		_, hasExtractor := Extractors[suffix]
+		return hasExtractor
+	}
+
 	return false
+}
+
+// isHTTPURL checks if the source is an HTTP or HTTPS URL
+func isHTTPURL(source string) bool {
+	return strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://")
+}
+
+// getRemoteContentType performs a HEAD request and returns the content-type
+func getRemoteContentType(url string) (string, error) {
+	res, err := http.Head(url)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+
+	return res.Header.Get("content-type"), nil
 }
 
 // isPlugin checks if the directory contains a plugin.yaml file.
