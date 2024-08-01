@@ -66,22 +66,27 @@ func TestStripName(t *testing.T) {
 	}
 }
 
-func mockArchiveServer() *httptest.Server {
+func mockArchiveServer(extensionToContentType map[string]string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasSuffix(r.URL.Path, ".tar.gz") {
-			w.Header().Add("Content-Type", "text/html")
-			fmt.Fprintln(w, "broken")
-			return
+		for ext, contentType := range extensionToContentType {
+			if strings.HasSuffix(r.URL.Path, ext) {
+				w.Header().Add("Content-Type", contentType)
+				fmt.Fprintln(w, "test")
+				return
+			}
 		}
-		w.Header().Add("Content-Type", "application/gzip")
-		fmt.Fprintln(w, "test")
+
+		w.Header().Add("Content-Type", "text/html")
+		fmt.Fprintln(w, "broken")
 	}))
 }
 
 func TestHTTPInstaller(t *testing.T) {
 	ensure.HelmHome(t)
 
-	srv := mockArchiveServer()
+	srv := mockArchiveServer(map[string]string{
+		".tar.gz": "application/gzip",
+	})
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 
@@ -129,7 +134,9 @@ func TestHTTPInstaller(t *testing.T) {
 
 func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 	ensure.HelmHome(t)
-	srv := mockArchiveServer()
+	srv := mockArchiveServer(map[string]string{
+		".tar.gz": "application/gzip",
+	})
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 
@@ -161,7 +168,9 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 }
 
 func TestHTTPInstallerUpdate(t *testing.T) {
-	srv := mockArchiveServer()
+	srv := mockArchiveServer(map[string]string{
+		".tar.gz": "application/gzip",
+	})
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 	ensure.HelmHome(t)

@@ -107,8 +107,12 @@ func isRemoteHTTPArchive(source string) bool {
 		contentType := res.Header.Get("content-type")
 		foundSuffix, ok := mediaTypeToExtension(contentType)
 		if !ok {
-			// Media type not recognized
-			return false
+			if strings.HasSuffix(source, ".tar.gz") && contentType == "application/octet-stream" {
+				foundSuffix = ".tar.gz"
+			} else {
+				// Media type not recognized
+				return false
+			}
 		}
 
 		for suffix := range Extractors {

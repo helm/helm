@@ -18,9 +18,13 @@ package installer
 import "testing"
 
 func TestIsRemoteHTTPArchive(t *testing.T) {
-	srv := mockArchiveServer()
+	srv := mockArchiveServer(map[string]string{
+		".tar.gz":        "application/gzip",
+		".binary.tar.gz": "application/octet-stream",
+	})
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
+	binarySource := srv.URL + "/plugins/fake-plugin-0.0.1.binary.tar.gz"
 
 	if isRemoteHTTPArchive("/not/a/URL") {
 		t.Errorf("Expected non-URL to return false")
@@ -36,5 +40,9 @@ func TestIsRemoteHTTPArchive(t *testing.T) {
 
 	if isRemoteHTTPArchive(source + "-not-an-extension") {
 		t.Error("Expected media type match to fail")
+	}
+
+	if !isRemoteHTTPArchive(binarySource) {
+		t.Errorf("Expected %q to be a valid archive URL", source)
 	}
 }
