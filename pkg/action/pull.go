@@ -88,7 +88,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		Options: []getter.Option{
 			getter.WithBasicAuth(p.Username, p.Password),
 			getter.WithPassCredentialsAll(p.PassCredentialsAll),
-			getter.WithTLSClientConfig(p.CertFile, p.KeyFile, p.CAFile),
+			getter.WithTLSClientConfig(p.CertFile, p.KeyFile, p.CaFile),
 			getter.WithInsecureSkipVerifyTLS(p.InsecureSkipTLSverify),
 			getter.WithPlainHTTP(p.PlainHTTP),
 		},
@@ -122,7 +122,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	}
 
 	if p.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CAFile, p.InsecureSkipTLSverify, p.PassCredentialsAll, getter.All(p.Settings))
+		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, p.InsecureSkipTLSverify, p.PassCredentialsAll, getter.All(p.Settings))
 		if err != nil {
 			return out.String(), err
 		}
