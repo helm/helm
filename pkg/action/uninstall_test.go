@@ -41,7 +41,7 @@ func TestUninstallRelease_dryRun_ignoreNotFound(t *testing.T) {
 
 	is := assert.New(t)
 	res, err := unAction.Run("release-non-exist")
-	is.NotNil(res)
+	is.Nil(res)
 	is.NoError(err)
 }
 
