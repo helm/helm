@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	releaseutil "helm.sh/helm/v4/pkg/release/util"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage/driver"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
@@ -62,14 +63,13 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 
 	if u.DryRun {
 		r, err := u.cfg.releaseContent(name, 0)
-		switch {
-		case err == nil:
-			fallthrough
-		case u.IgnoreNotFound && errors.As(err, &driver.ErrReleaseNotFound):
-			return &release.UninstallReleaseResponse{Release: r}, nil
-		default:
+		if err != nil {
+			if u.IgnoreNotFound && errors.As(err, &driver.ErrReleaseNotFound) {
+				return nil, nil
+			}
 			return &release.UninstallReleaseResponse{}, err
 		}
+		return &release.UninstallReleaseResponse{Release: r}, nil
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
