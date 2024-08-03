@@ -143,27 +143,41 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 
 func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, error) {
 	var tag string
-	var err error
 
-	// Remove digest if provided
-	v := u.Path
-	digestProvided := false
-	lastIndex := strings.LastIndex(v, "@")
-	if lastIndex >= 0 {
-		v = v[:lastIndex]
-		digestProvided = true
+	registryReference, err := registry.NewReference(u.Path)
+	if err != nil {
+		return nil, err
 	}
 
-	// Isolate tag
-	firstIndex := strings.Index(v, ":")
-	if firstIndex >= 0 {
-		v := v[firstIndex+1:]
-		if version != "" && v != version {
-			return nil, errors.Errorf("chart ref version mismatch: %s, %s", version, v)
+	if version == "" {
+		// Use OCI URI tag as default
+		version = registryReference.Tag
+	} else {
+		if registryReference.Tag != "" && registryReference.Tag != version {
+			return nil, errors.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
 		}
-		return u, nil
 	}
-	if digestProvided {
+
+	if registryReference.Digest == "" {
+		if version == "" {
+			return u, errors.Errorf("a digest or version must be specified for an OCI chart")
+		}
+	} else {
+		if registryReference.Tag == "" {
+			// Install by digest only
+			return u, nil
+		}
+
+		// Validate the tag if it was specified
+		path := registryReference.Registry + "/" + registryReference.Repository + ":" + registryReference.Tag
+		desc, err := c.RegistryClient.Resolve(path)
+		if err != nil {
+			// The resource does not have to be tagged when digest is specified
+			return u, nil
+		}
+		if desc != nil && desc.Digest.String() != registryReference.Digest {
+			return nil, errors.Errorf("chart reference digest mismatch: %s is not %s", desc.Digest.String(), registryReference.Digest)
+		}
 		return u, nil
 	}
 
@@ -191,7 +205,7 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 		}
 	}
 
-	u.Path = fmt.Sprintf("%s:%s", u.Path, tag)
+	u.Path = fmt.Sprintf("%s/%s:%s", registryReference.Registry, registryReference.Repository, tag)
 
 	return u, err
 }

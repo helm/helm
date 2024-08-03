@@ -319,7 +319,7 @@ type (
 
 // Pull downloads a chart from a registry
 func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
-	parsedRef, err := parseReference(ref)
+	parsedRef, err := NewReference(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -351,13 +351,13 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 
 	var descriptors, layers []ocispec.Descriptor
-	remotesResolver, err := c.resolver(parsedRef)
+	remotesResolver, err := c.resolver(parsedRef.OrasReference)
 	if err != nil {
 		return nil, err
 	}
 	registryStore := content.Registry{Resolver: remotesResolver}
 
-	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, parsedRef.String(), memoryStore, "",
+	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, parsedRef.OrasReference.String(), memoryStore, "",
 		oras.WithPullEmptyNameAllowed(),
 		oras.WithAllowedMediaTypes(allowedMediaTypes),
 		oras.WithLayerDescriptors(func(l []ocispec.Descriptor) {
@@ -419,7 +419,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		},
 		Chart: &DescriptorPullSummaryWithMeta{},
 		Prov:  &DescriptorPullSummary{},
-		Ref:   parsedRef.String(),
+		Ref:   parsedRef.OrasReference.String(),
 	}
 	var getManifestErr error
 	if _, manifestData, ok := memoryStore.Get(manifest); !ok {
@@ -535,7 +535,7 @@ type (
 
 // Push uploads a chart to a registry.
 func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResult, error) {
-	parsedRef, err := parseReference(ref)
+	parsedRef, err := NewReference(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -590,16 +590,16 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 
-	if err := memoryStore.StoreManifest(parsedRef.String(), manifest, manifestData); err != nil {
+	if err := memoryStore.StoreManifest(parsedRef.OrasReference.String(), manifest, manifestData); err != nil {
 		return nil, err
 	}
 
-	remotesResolver, err := c.resolver(parsedRef)
+	remotesResolver, err := c.resolver(parsedRef.OrasReference)
 	if err != nil {
 		return nil, err
 	}
 	registryStore := content.Registry{Resolver: remotesResolver}
-	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, parsedRef.String(), registryStore, "",
+	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, parsedRef.OrasReference.String(), registryStore, "",
 		oras.WithNameValidation(nil))
 	if err != nil {
 		return nil, err
@@ -620,7 +620,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		},
 		Chart: chartSummary,
 		Prov:  &descriptorPushSummary{}, // prevent nil references
-		Ref:   parsedRef.String(),
+		Ref:   parsedRef.OrasReference.String(),
 	}
 	if operation.provData != nil {
 		result.Prov = &descriptorPushSummary{
@@ -630,7 +630,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 	fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
 	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
-	if strings.Contains(parsedRef.Reference, "_") {
+	if strings.Contains(parsedRef.OrasReference.Reference, "_") {
 		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
 		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
 	}
@@ -700,4 +700,24 @@ func (c *Client) Tags(ref string) ([]string, error) {
 
 	return tags, nil
 
+}
+
+// Resolve a reference to a descriptor.
+func (c *Client) Resolve(ref string) (*ocispec.Descriptor, error) {
+	ctx := context.Background()
+	parsedRef, err := NewReference(ref)
+	if err != nil {
+		return nil, err
+	}
+	if parsedRef.Registry == "" {
+		return nil, nil
+	}
+
+	remotesResolver, err := c.resolver(parsedRef.OrasReference)
+	if err != nil {
+		return nil, err
+	}
+
+	_, desc, err := remotesResolver.Resolve(ctx, ref)
+	return &desc, err
 }

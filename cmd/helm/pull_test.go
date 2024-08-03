@@ -195,7 +195,7 @@ func TestPullCmd(t *testing.T) {
 		{
 			name:         "Fail fetching OCI chart with version mismatch",
 			args:         fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.2.0 --version 0.1.0", ociSrv.RegistryURL),
-			wantErrorMsg: "Error: chart ref version mismatch: 0.2.0, 0.1.0",
+			wantErrorMsg: "Error: chart reference and version mismatch: 0.2.0 is not 0.1.0",
 			wantError:    true,
 		},
 	}
