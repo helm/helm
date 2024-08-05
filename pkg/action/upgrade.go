@@ -409,7 +409,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout); err != nil {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout, !u.DisableOpenAPIValidation); err != nil {
 			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 			return
 		}
@@ -455,7 +455,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.Timeout); err != nil {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.Timeout, !u.DisableOpenAPIValidation); err != nil {
 			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
 			return
 		}
