@@ -18,6 +18,8 @@ package action
 
 import (
 	"testing"
+
+	"helm.sh/helm/v3/pkg/lint/support"
 )
 
 var (
@@ -77,7 +79,7 @@ func TestLintChart(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, nil)
+			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, nil, false)
 			switch {
 			case err != nil && !tt.err:
 				t.Errorf("%s", err)
@@ -152,6 +154,28 @@ func TestLint_ChartWithWarnings(t *testing.T) {
 		testCharts := []string{chartWithNoTemplatesDir}
 		testLint := NewLint()
 		testLint.Strict = true
+		if result := testLint.Run(testCharts, values); len(result.Errors) != 0 {
+			t.Error("expected no errors, but got", len(result.Errors))
+		}
+	})
+}
+
+func TestLint_ChartWithInfo(t *testing.T) {
+	t.Run("should pass with no INFO messages when quiet", func(t *testing.T) {
+		testCharts := []string{chart1MultipleChartLint}
+		testLint := NewLint()
+		testLint.Quiet = true
+		result := testLint.Run(testCharts, values)
+		for _, message := range result.Messages {
+			if message.Severity < support.WarningSev {
+				t.Error("expected no INFO(1) or UNKNOWN(0) messages, but got \nSeverity:", message.Severity, "\nError:", message.Err)
+			}
+		}
+	})
+
+	t.Run("should pass with INFO messages without quiet", func(t *testing.T) {
+		testCharts := []string{chart1MultipleChartLint}
+		testLint := NewLint()
 		if result := testLint.Run(testCharts, values); len(result.Errors) != 0 {
 			t.Error("expected no errors, but got", len(result.Errors))
 		}
