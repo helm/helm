@@ -47,7 +47,7 @@ If '--keyring' is not specified, Helm usually defaults to the public keyring
 unless your environment is otherwise configured.
 `
 
-func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+func newPackageCmd(_ *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewPackage()
 	valueOpts := &values.Options{}
 
@@ -75,6 +75,12 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CAFile,
+				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+
 			for i := 0; i < len(args); i++ {
 				path, err := filepath.Abs(args[i])
 				if err != nil {
@@ -91,7 +97,7 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						Keyring:          client.Keyring,
 						Getters:          p,
 						Debug:            settings.Debug,
-						RegistryClient:   cfg.RegistryClient,
+						RegistryClient:   registryClient,
 						RepositoryConfig: settings.RepositoryConfig,
 						RepositoryCache:  settings.RepositoryCache,
 					}
@@ -119,6 +125,13 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.AppVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&client.Destination, "destination", "d", ".", "location to write the chart.")
 	f.BoolVarP(&client.DependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
+	f.StringVar(&client.Username, "username", "", "chart repository username where to locate the requested chart")
+	f.StringVar(&client.Password, "password", "", "chart repository password where to locate the requested chart")
+	f.StringVar(&client.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&client.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.BoolVar(&client.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
+	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
+	f.StringVar(&client.CAFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 
 	return cmd
 }
