@@ -82,7 +82,8 @@ type Client struct {
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
 
-	kubeClient *kubernetes.Clientset
+	kubeClient               *kubernetes.Clientset
+	fieldValidationDirective string
 }
 
 var addToScheme sync.Once
@@ -103,8 +104,9 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 		}
 	})
 	return &Client{
-		Factory: cmdutil.NewFactory(getter),
-		Log:     nopLogger,
+		Factory:                  cmdutil.NewFactory(getter),
+		Log:                      nopLogger,
+		fieldValidationDirective: metav1.FieldValidationStrict,
 	}
 }
 
@@ -139,8 +141,12 @@ func (c *Client) IsReachable() error {
 
 // Create creates Kubernetes resources specified in the resource list.
 func (c *Client) Create(resources ResourceList) (*Result, error) {
+	createResourceWrap := func(info *resource.Info) error {
+		return createResource(info, c.fieldValidationDirective)
+	}
+
 	c.Log("creating %d resource(s)", len(resources))
-	if err := perform(resources, createResource); err != nil {
+	if err := perform(resources, createResourceWrap); err != nil {
 		return nil, err
 	}
 	return &Result{Created: resources}, nil
@@ -274,7 +280,8 @@ func getSelectorFromObject(obj runtime.Object) (map[string]string, bool, error) 
 }
 
 func getResource(info *resource.Info) (runtime.Object, error) {
-	obj, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name)
+	obj, err := resource.NewHelper(info.Client, info.Mapping).
+		Get(info.Namespace, info.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -396,7 +403,9 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			return err
 		}
 
-		helper := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager())
+		helper := resource.NewHelper(info.Client, info.Mapping).
+			WithFieldManager(getManagedFieldsManager()).
+			WithFieldValidation(c.fieldValidationDirective)
 		if _, err := helper.Get(info.Namespace, info.Name); err != nil {
 			if !apierrors.IsNotFound(err) {
 				return errors.Wrap(err, "could not get information about the resource")
@@ -406,7 +415,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			res.Created = append(res.Created, info)
 
 			// Since the resource does not exist, create it.
-			if err := createResource(info); err != nil {
+			if err := createResource(info, c.fieldValidationDirective); err != nil {
 				return errors.Wrap(err, "failed to create resource")
 			}
 
@@ -595,8 +604,14 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 	}
 }
 
-func createResource(info *resource.Info) error {
-	obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
+func createResource(info *resource.Info, fieldValidationDirective string) error {
+	obj, err := resource.NewHelper(info.Client, info.Mapping).
+		WithFieldManager(getManagedFieldsManager()).
+		WithFieldValidation(fieldValidationDirective).
+		Create(
+			info.Namespace,
+			true,
+			info.Object)
 	if err != nil {
 		return err
 	}
@@ -605,7 +620,9 @@ func createResource(info *resource.Info) error {
 
 func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) error {
 	opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
-	_, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).DeleteWithOptions(info.Namespace, info.Name, opts)
+	_, err := resource.NewHelper(info.Client, info.Mapping).
+		WithFieldManager(getManagedFieldsManager()).
+		DeleteWithOptions(info.Namespace, info.Name, opts)
 	return err
 }
 
@@ -620,7 +637,9 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	}
 
 	// Fetch the current object for the three way merge
-	helper := resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
+	helper := resource.NewHelper(target.Client, target.Mapping).
+		WithFieldManager(getManagedFieldsManager())
+
 	currentObj, err := helper.Get(target.Namespace, target.Name)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, types.StrategicMergePatchType, errors.Wrapf(err, "unable to get data for current object %s/%s", target.Namespace, target.Name)
@@ -662,8 +681,11 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
 	var (
 		obj    runtime.Object
-		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
-		kind   = target.Mapping.GroupVersionKind.Kind
+		helper = resource.NewHelper(target.Client, target.Mapping).
+			WithFieldManager(getManagedFieldsManager()).
+			WithFieldValidation(c.fieldValidationDirective)
+
+		kind = target.Mapping.GroupVersionKind.Kind
 	)
 
 	// if --force is applied, attempt to replace the existing resource with the new object.
