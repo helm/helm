@@ -1,0 +1,17 @@
+==> Linting testdata/testcharts/issue-12798 (scope: root)
+[INFO] Chart.yaml: icon is recommended
+[ERROR] templates/: values don't meet the specifications of the schema(s) in the following chart(s):
+child:
+- (root): sample is required
+
+
+==> Linting testdata/testcharts/issue-12798/charts/child (scope: child)
+[INFO] Chart.yaml: icon is recommended
+[ERROR] values.yaml: - (root): sample is required
+
+[ERROR] templates/: values don't meet the specifications of the schema(s) in the following chart(s):
+child:
+- (root): sample is required
+
+
+Error: 2 chart(s) linted, 2 chart(s) failed
