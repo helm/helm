@@ -26,6 +26,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/repo"
 	"helm.sh/helm/v3/pkg/repo/repotest"
 )
 
@@ -596,5 +597,73 @@ func TestKey(t *testing.T) {
 		if o != tt.expect {
 			t.Errorf("wrong key name generated for %q, expected %q but got %q", tt.name, tt.expect, o)
 		}
+	}
+}
+
+// Test dedupeRepos tests that the dedupeRepos function correctly deduplicates
+func TestDedupeRepos(t *testing.T) {
+	tests := []struct {
+		name  string
+		repos []*repo.Entry
+		want  []*repo.Entry
+	}{
+		{
+			name: "no duplicates",
+			repos: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+				{
+					URL: "https://example.com/charts2",
+				},
+			},
+			want: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+				{
+					URL: "https://example.com/charts2",
+				},
+			},
+		},
+		{
+			name: "duplicates",
+			repos: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+				{
+					URL: "https://example.com/charts",
+				},
+			},
+			want: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+			},
+		},
+		{
+			name: "duplicates with trailing slash",
+			repos: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+				{
+					URL: "https://example.com/charts/",
+				},
+			},
+			want: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := dedupeRepos(tt.repos); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("received:\n%v\nwant:\n%v", got, tt.want)
+			}
+		})
 	}
 }
