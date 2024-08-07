@@ -33,6 +33,7 @@ import (
 // It provides the implementation of 'helm lint'.
 type Lint struct {
 	Strict        bool
+	ReleaseName   string
 	Namespace     string
 	WithSubcharts bool
 	Quiet         bool
@@ -59,7 +60,7 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 	}
 	result := &LintResult{}
 	for _, path := range paths {
-		linter, err := lintChart(path, vals, l.Namespace, l.KubeVersion)
+		linter, err := lintChart(path, vals, l.ReleaseName, l.Namespace, l.KubeVersion)
 		if err != nil {
 			result.Errors = append(result.Errors, err)
 			continue
@@ -86,7 +87,7 @@ func HasWarningsOrErrors(result *LintResult) bool {
 	return len(result.Errors) > 0
 }
 
-func lintChart(path string, vals map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) (support.Linter, error) {
+func lintChart(path string, vals map[string]interface{}, releaseName, namespace string, kubeVersion *chartutil.KubeVersion) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 
@@ -125,5 +126,8 @@ func lintChart(path string, vals map[string]interface{}, namespace string, kubeV
 		return linter, errors.Wrap(err, "unable to check Chart.yaml file in chart")
 	}
 
-	return lint.AllWithKubeVersion(chartPath, vals, namespace, kubeVersion), nil
+	return lint.AllWithOptions(chartPath, vals, namespace,
+		lint.WithReleaseName(releaseName),
+		lint.WithKubeVersion(kubeVersion),
+	), nil
 }
