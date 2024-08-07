@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -34,6 +35,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 
+	"helm.sh/helm/v3/internal/fileutil"
 	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/helmpath"
 )
@@ -263,4 +265,42 @@ func (s *EnvSettings) SetNamespace(namespace string) {
 // RESTClientGetter gets the kubeconfig from EnvSettings
 func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
 	return s.config
+}
+
+// BackupKubeConfig copies kubeconfig file to <helm-config-path>/kubeconfig
+// as backup. The backup file will have rw permissions for user.
+// The backup file's path is updated in EnvSettings.KubeConfig.
+//
+// There is no safety check on EnvSettings.KubeConfig, i.e., the caller
+// should call this method only when there is kubeconfig path specified.
+// Else, the actual kubeconfig file read fails.
+func (s *EnvSettings) BackupKubeConfig() error {
+	// Form the backup file path as: <helm-config-path>/kubeconfig
+	// The helm-config-path is derived from envs HELM_CONFIG_HOME,
+	// XDG_CONFIG_HOME and default path. Defaults paths:
+	// 	- Linux	 : $HOME/.config/helm
+	// 	- Mac	 : $HOME/Library/Preferences/helm
+	// 	- Windows : %APPDATA%\helm
+	helmConfigPath := helmpath.ConfigPath("")
+	kubeConfigBackupFilename := filepath.Join(helmConfigPath, "kubeconfig")
+
+	// Create reader from actual kubeconfig file.
+	kubeConfigReader, err := os.Open(s.KubeConfig)
+	if err != nil {
+		return fmt.Errorf("failed to read input kubeconfig file %q: %v",
+			s.KubeConfig, err)
+	}
+	defer kubeConfigReader.Close()
+
+	// Copy actual kube config file to backup file
+	err = fileutil.AtomicWriteFile(kubeConfigBackupFilename, kubeConfigReader, 0600)
+	if err != nil {
+		return fmt.Errorf("failed to copy kubeconfig from %q to %q: %v",
+			s.KubeConfig, kubeConfigBackupFilename, err)
+	}
+
+	// Update the kubeconfig in EnvSettings to a backup file path.
+	s.KubeConfig = kubeConfigBackupFilename
+
+	return nil
 }
