@@ -135,6 +135,13 @@ type ReleaseOptions struct {
 //
 // This takes both ReleaseOptions and Capabilities to merge into the render values.
 func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options ReleaseOptions, caps *Capabilities) (Values, error) {
+	return ToRenderValuesWithSchemaValidation(chrt, chrtVals, options, caps, false)
+}
+
+// ToRenderValuesWithSchemaValidation composes the struct from the data coming from the Releases, Charts and Values files
+//
+// This takes both ReleaseOptions and Capabilities to merge into the render values.
+func ToRenderValuesWithSchemaValidation(chrt *chart.Chart, chrtVals map[string]interface{}, options ReleaseOptions, caps *Capabilities, skipSchemaValidation bool) (Values, error) {
 	if caps == nil {
 		caps = DefaultCapabilities
 	}
@@ -156,9 +163,11 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 		return top, err
 	}
 
-	if err := ValidateAgainstSchema(chrt, vals); err != nil {
-		errFmt := "values don't meet the specifications of the schema(s) in the following chart(s):\n%s"
-		return top, fmt.Errorf(errFmt, err.Error())
+	if !skipSchemaValidation {
+		if err := ValidateAgainstSchema(chrt, vals); err != nil {
+			errFmt := "values don't meet the specifications of the schema(s) in the following chart(s):\n%s"
+			return top, fmt.Errorf(errFmt, err.Error())
+		}
 	}
 
 	top["Values"] = vals

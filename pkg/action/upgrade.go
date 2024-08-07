@@ -99,6 +99,8 @@ type Upgrade struct {
 	SubNotes bool
 	// HideNotes determines whether notes are output during upgrade
 	HideNotes bool
+	// SkipSchemaValidation determines if JSON schema validation is disabled.
+	SkipSchemaValidation bool
 	// Description is the description of this operation
 	Description string
 	Labels      map[string]string
@@ -258,7 +260,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	if err != nil {
 		return nil, nil, err
 	}
-	valuesToRender, err := chartutil.ToRenderValues(chart, vals, options, caps)
+	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, vals, options, caps, u.SkipSchemaValidation)
 	if err != nil {
 		return nil, nil, err
 	}
