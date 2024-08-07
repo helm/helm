@@ -228,7 +228,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 // proceeds in the background.
 func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
-	if !i.ClientOnly {
+	if i.canInteractRemote() {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
 			return nil, err
 		}
@@ -245,11 +245,6 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 
 	if err := chartutil.ProcessDependenciesWithMerge(chrt, vals); err != nil {
 		return nil, err
-	}
-
-	var interactWithRemote bool
-	if !i.isDryRun() || i.DryRunOption == "server" || i.DryRunOption == "none" || i.DryRunOption == "false" {
-		interactWithRemote = true
 	}
 
 	// Pre-install anything in the crd/ directory. We do this before Helm
@@ -310,7 +305,19 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	rel := i.createRelease(chrt, vals, i.Labels)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithRemote, i.EnableDNS, i.HideSecret)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(
+		chrt,
+		valuesToRender,
+		i.ReleaseName,
+		i.OutputDir,
+		i.SubNotes,
+		i.UseReleaseName,
+		i.IncludeCRDs,
+		i.PostRenderer,
+		i.canInteractRemote(),
+		i.EnableDNS,
+		i.HideSecret,
+	)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -425,7 +432,15 @@ func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, t
 	}
 }
 
-// isDryRun returns true if Upgrade is set to run as a DryRun
+func (i *Install) canInteractRemote() bool {
+	if i.ClientOnly || i.DryRun || i.DryRunOption == "client" || i.DryRunOption == "true" {
+		return false
+	}
+
+	return true
+}
+
+// isDryRun returns true if Install is set to run as a DryRun
 func (i *Install) isDryRun() bool {
 	if i.DryRun || i.DryRunOption == "client" || i.DryRunOption == "server" || i.DryRunOption == "true" {
 		return true
