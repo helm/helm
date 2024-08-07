@@ -25,8 +25,10 @@ import (
 	"sort"
 	"strings"
 	"text/template"
+	"text/template/parse"
 
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -36,7 +38,8 @@ import (
 // Engine is an implementation of the Helm rendering implementation for templates.
 type Engine struct {
 	// If strict is enabled, template rendering will fail if a template references
-	// a value that was not passed in.
+	// a value that was not passed in or if an extra value was passed in and not
+	// referenced by the template.
 	Strict bool
 	// In LintMode, some 'required' template values may be missing, so don't fail
 	LintMode bool
@@ -44,12 +47,18 @@ type Engine struct {
 	clientProvider *ClientProvider
 	// EnableDNS tells the engine to allow DNS lookups when rendering templates
 	EnableDNS bool
+	// usedValues is the set of values that are references in a chart
+	usedValues sets.Set[string]
+	// providedValues is a flattened map of every values given in the values files
+	providedValues sets.Set[string]
 }
 
 // New creates a new instance of Engine using the passed in rest config.
 func New(config *rest.Config) Engine {
 	var clientProvider ClientProvider = clientProviderFromConfig{config}
 	return Engine{
+		usedValues: sets.New[string](),
+		providedValues: sets.New[string](),
 		clientProvider: &clientProvider,
 	}
 }
@@ -73,7 +82,7 @@ func New(config *rest.Config) Engine {
 // that section of the values will be passed into the "foo" chart. And if that
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
-func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+func (e *Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
 	tmap := allTemplates(chrt, values)
 	return e.render(tmap)
 }
@@ -89,9 +98,12 @@ func Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, erro
 // functions that interact with the client.
 func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config) (map[string]string, error) {
 	var clientProvider ClientProvider = clientProviderFromConfig{config}
-	return Engine{
+	e := &Engine{
 		clientProvider: &clientProvider,
-	}.Render(chrt, values)
+		usedValues: sets.New[string](),
+		providedValues: sets.New[string](),
+	}
+	return e.Render(chrt, values)
 }
 
 // RenderWithClientProvider takes a chart, optional values, and value overrides, and attempts to
@@ -99,9 +111,10 @@ func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.C
 // functions that interact with the client.
 // This function differs from RenderWithClient in that it lets you customize the way a dynamic client is constructed.
 func RenderWithClientProvider(chrt *chart.Chart, values chartutil.Values, clientProvider ClientProvider) (map[string]string, error) {
-	return Engine{
+	e := &Engine{
 		clientProvider: &clientProvider,
-	}.Render(chrt, values)
+	}
+	return e.Render(chrt, values)
 }
 
 // renderable is an object that can be rendered.
@@ -248,7 +261,7 @@ func (e Engine) initFunMap(t *template.Template) {
 }
 
 // render takes a map of templates/values and renders them.
-func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, err error) {
+func (e *Engine) render(tpls map[string]renderable) (rendered map[string]string, err error) {
 	// Basically, what we do here is start with an empty parent template and then
 	// build up a list of templates -- one for each file. Once all of the templates
 	// have been parsed, we loop through again and execute every template.
@@ -298,10 +311,20 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 			return map[string]string{}, cleanupExecError(filename, err)
 		}
 
+		e.usedValues = e.usedValues.Union(traverse(t.Lookup(filename).Copy().Root))
+		e.providedValues = e.providedValues.Union(getProvidedValues(vals))
+
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
 		// is set. Since missing=error will never get here, we do not need to handle
 		// the Strict case.
 		rendered[filename] = strings.ReplaceAll(buf.String(), "<no value>", "")
+	}
+
+	if e.Strict && e.LintMode {
+		unused := setDifferenceWithParents(e.providedValues, e.usedValues)
+		if unused.Len() > 0 {
+			return map[string]string{}, fmt.Errorf("there are unused fields in values files %+v", sets.List(unused))
+		}
 	}
 
 	return rendered, nil
@@ -438,4 +461,141 @@ func isTemplateValid(ch *chart.Chart, templateName string) bool {
 // isLibraryChart returns true if the chart is a library chart
 func isLibraryChart(c *chart.Chart) bool {
 	return strings.EqualFold(c.Metadata.Type, "library")
+}
+
+// traverse reads through the template and pulls out all referenced variables.
+func traverse(cur parse.Node) sets.Set[string] {
+	vars := sets.New[string]()
+	switch node := cur.(type) {
+	case *parse.ActionNode:
+		if node.Pipe != nil {
+			vars = vars.Union(traverse(node.Pipe))
+		}
+	case *parse.BoolNode:
+	case *parse.BranchNode:
+		if node.Pipe != nil {
+			vars = vars.Union(traverse(node.Pipe))
+		}
+		if node.List != nil {
+			vars = vars.Union(traverse(node.List))
+		}
+		if node.ElseList != nil {
+			vars = vars.Union(traverse(node.ElseList))
+		}
+	case *parse.BreakNode:
+	case *parse.ChainNode:
+	case *parse.CommandNode:
+		if node.Args != nil {
+			for _, arg := range node.Args {
+				vars = vars.Union(traverse(arg))
+			}
+		}
+		return vars
+	case *parse.CommentNode:
+	case *parse.ContinueNode:
+	case *parse.DotNode:
+	case *parse.IdentifierNode:
+	case *parse.IfNode:
+		vars = vars.Union(traverse(&node.BranchNode))
+	case *parse.ListNode:
+		if node.Nodes != nil {
+			for _, child := range node.Nodes {
+				vars = vars.Union(traverse(child))
+			}
+		}
+	case *parse.NilNode:
+	case *parse.NumberNode:
+	case *parse.PipeNode:
+		if node.Cmds != nil {
+			for _, cmd := range node.Cmds {
+				vars = vars.Union(traverse(cmd))
+			}
+		}
+		if node.Decl != nil {
+			for _, decl := range node.Decl {
+				vars = vars.Union(traverse(decl))
+			}
+		}
+	case *parse.RangeNode:
+		return traverse(&node.BranchNode)
+	case *parse.StringNode:
+	case *parse.TemplateNode:
+		if node.Pipe != nil {
+			vars = vars.Union(traverse(node.Pipe))
+		}
+	case *parse.TextNode:
+	case *parse.WithNode:
+		vars = vars.Union(traverse(&node.BranchNode))
+
+	case *parse.FieldNode:
+		vars = vars.Insert(fmt.Sprintf(".%s", strings.Join(node.Ident, ".")))
+
+	case *parse.VariableNode:
+		vars = vars.Insert(strings.TrimPrefix(strings.Join(node.Ident, "."), "$"))
+	default:
+		panic("uncaught node type in go template")
+	}
+
+	return vars
+}
+
+// getProvidedValues grabs the Values part, ignoring the Chart and Release data.
+// I'm explicitly ignoring those because we don't care about fields that aren't used
+// like $.Chart.name or $.Release.name because we don't set them in the cluster specific
+// values.
+func getProvidedValues(vals chartutil.Values) sets.Set[string] {
+	chartUtilValues, keyExists := vals["Values"]
+	if !keyExists {
+		return sets.New[string]()
+	}
+
+	var superVals chartutil.Values
+	switch v := chartUtilValues.(type) {
+	case map[string]interface{}:
+		superVals = v
+	case chartutil.Values:
+		superVals = v
+	case nil:
+		return sets.New[string]()
+	}
+
+	f := flattenMapKeys(".Values", superVals)
+	return sets.New(f...)
+}
+
+// flattenMapKeys turns an interface into a list of variable paths to make it easy to log and
+// compare the used or unused values.
+func flattenMapKeys(root string, values chartutil.Values) []string {
+	keys := []string{}
+	for key, value := range values {
+		prefix := strings.Join([]string{root, key}, ".")
+		if v, ok := value.(map[string]interface{}); ok {
+			keys = append(keys, flattenMapKeys(prefix, v)...)
+		} else if v, ok := value.(chartutil.Values); ok {
+			keys = append(keys, flattenMapKeys(prefix, v)...)
+		} else {
+			keys = append(keys, prefix)
+		}
+	}
+
+	return keys
+}
+
+// setDifferenceWithParents checks for unused variables. However, there are instances where the
+// parent is used and the children are transitively used, not explicitly used. For example, a common
+// pattern in charts is to use the helm function {{ toJson $.Values.resources }} and put the limits
+// and requests nested in $.Values.resources. We never use $.Values.resources.cpu.limit explicitly,
+// but it is used.
+func setDifferenceWithParents(providedValues sets.Set[string], usedValues sets.Set[string]) sets.Set[string] {
+	unused := providedValues.Difference(usedValues)
+
+	for usedValue := range usedValues {
+		for unusedValue := range unused {
+			if strings.HasPrefix(unusedValue, usedValue) {
+				unused.Delete(unusedValue)
+			}
+		}
+	}
+
+	return unused
 }
