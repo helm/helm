@@ -484,7 +484,15 @@ func rdelete(c *Client, resources ResourceList, propagation metav1.DeletionPropa
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
-		err := deleteResource(info, propagation)
+		propagationPolicy := propagation
+		if annotations, err := metadataAccessor.Annotations(info.Object); err != nil {
+			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
+			errs = append(errs, err)
+		} else if annotations != nil && annotations[ResourceDeletionPolicyAnno] != "" {
+			propagationPolicy = selectDeletionPolicy(annotations[ResourceDeletionPolicyAnno], propagation)
+		}
+
+		err := deleteResource(info, propagationPolicy)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
 				c.Log("Ignoring delete failure for %q %s: %v", info.Name, info.Mapping.GroupVersionKind, err)
