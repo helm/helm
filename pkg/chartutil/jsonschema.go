@@ -17,17 +17,18 @@ limitations under the License.
 package chartutil
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 
-	cueyaml "cuelang.org/go/encoding/yaml"
+	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/cue/errors"
-
-	"github.com/xeipuuv/gojsonschema"
-	"helm.sh/helm/v3/pkg/chart"
+	"cuelang.org/go/encoding/json"
+	"cuelang.org/go/encoding/jsonschema"
+	cueyaml "cuelang.org/go/encoding/yaml"
 	"sigs.k8s.io/yaml"
+
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
@@ -37,20 +38,7 @@ func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) err
 		err := ValidateAgainstSingleSchema(values, chrt.Schema)
 		if err != nil {
 			sb.WriteString(fmt.Sprintf("%s:\n", chrt.Name()))
-			sb.WriteString(err.Error())
-		}
-	}
-	if chrt.Cue != nil {
-		ctx := cuecontext.New()
-		cue := ctx.CompileBytes(chrt.Cue)
-		valuesData, err := yaml.Marshal(values)
-		if err != nil {
-			return err
-		}
-		err = cueyaml.Validate(valuesData, cue)
-		if err != nil {
-			sb.WriteString(fmt.Sprintf("%s:\n", chrt.Name()))
-			sb.WriteString(err.Error())
+			sb.WriteString(errors.Details(err, nil))
 		}
 	}
 
@@ -70,38 +58,54 @@ func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) err
 }
 
 // ValidateAgainstSingleSchema checks that values does not violate the structure laid out in this schema
-func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error) {
+func ValidateAgainstSingleSchema(values Values, schema []byte) (reterr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to validate schema: %s", r)
 		}
 	}()
 
+	// Create a new CUE context
+	ctx := cuecontext.New()
+
 	valuesData, err := yaml.Marshal(values)
 	if err != nil {
 		return err
 	}
-	valuesJSON, err := yaml.YAMLToJSON(valuesData)
-	if err != nil {
-		return err
-	}
-	if bytes.Equal(valuesJSON, []byte("null")) {
-		valuesJSON = []byte("{}")
-	}
-	schemaLoader := gojsonschema.NewBytesLoader(schemaJSON)
-	valuesLoader := gojsonschema.NewBytesLoader(valuesJSON)
 
-	result, err := gojsonschema.Validate(schemaLoader, valuesLoader)
+	cueValuesData, err := cueyaml.Extract("values.yaml", valuesData)
 	if err != nil {
 		return err
 	}
 
-	if !result.Valid() {
-		var sb strings.Builder
-		for _, desc := range result.Errors() {
-			sb.WriteString(fmt.Sprintf("- %s\n", desc))
-		}
-		return errors.New(sb.String())
+	cueValuesDataExpr := ctx.BuildFile(cueValuesData)
+	if err := cueValuesDataExpr.Err(); err != nil {
+		return err
+	}
+
+	// JSONschema Processing with CUE
+	jsonSchema, err := json.Extract("values.schema.json", schema)
+	if err != nil {
+		return err
+	}
+
+	cueJSONSchemaExpr := ctx.BuildExpr(jsonSchema)
+	if err := cueJSONSchemaExpr.Err(); err != nil {
+		return err
+	}
+
+	schemaAst, err := jsonschema.Extract(cueJSONSchemaExpr, &jsonschema.Config{
+		Strict: false,
+	})
+	if err != nil {
+		return err
+	}
+
+	cueSchema := ctx.BuildFile(schemaAst)
+	result := cueSchema.Unify(cueValuesDataExpr)
+
+	if err := result.Validate(cue.Concrete(true)); err != nil {
+		return err
 	}
 
 	return nil
