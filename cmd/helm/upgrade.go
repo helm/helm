@@ -243,7 +243,11 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if outfmt == output.Table {
-				fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
+				if rel.Skipped {
+					fmt.Fprintf(out, "Release %q has been skipped. Happy Helming!\n", args[0])
+				} else {
+					fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
+				}
 			}
 
 			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes})
@@ -278,6 +282,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
+	f.BoolVar(&client.SkipEmptyUpgrade, "skip-empty", false, "skip upgrade if there are no changes")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
