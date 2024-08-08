@@ -138,9 +138,9 @@ func (c *Client) IsReachable() error {
 }
 
 // Create creates Kubernetes resources specified in the resource list.
-func (c *Client) Create(resources ResourceList) (*Result, error) {
+func (c *Client) Create(resources ResourceList, validate bool) (*Result, error) {
 	c.Log("creating %d resource(s)", len(resources))
-	if err := perform(resources, createResource); err != nil {
+	if err := perform(resources, getCreateResource(getValidationDirective(validate))); err != nil {
 		return nil, err
 	}
 	return &Result{Created: resources}, nil
@@ -386,9 +386,11 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 // occurs, a Result will still be returned with the error, containing all
 // resource updates, creations, and deletions that were attempted. These can be
 // used for cleanup or other logging purposes.
-func (c *Client) Update(original, target ResourceList, force bool) (*Result, error) {
+func (c *Client) Update(original, target ResourceList, force bool, validate bool) (*Result, error) {
 	updateErrors := []string{}
 	res := &Result{}
+
+	validationDirective := getValidationDirective(validate)
 
 	c.Log("checking %d resources for changes", len(target))
 	err := target.Visit(func(info *resource.Info, err error) error {
@@ -406,7 +408,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			res.Created = append(res.Created, info)
 
 			// Since the resource does not exist, create it.
-			if err := createResource(info); err != nil {
+			if err := getCreateResource(validationDirective)(info); err != nil {
 				return errors.Wrap(err, "failed to create resource")
 			}
 
@@ -421,7 +423,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			return errors.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
-		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
+		if err := updateResource(c, info, originalInfo.Object, force, validationDirective); err != nil {
 			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
@@ -595,12 +597,17 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 	}
 }
 
-func createResource(info *resource.Info) error {
-	obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
-	if err != nil {
-		return err
+func getCreateResource(validationDirective string) func(info *resource.Info) error {
+	return func(info *resource.Info) error {
+		obj, err := resource.NewHelper(info.Client, info.Mapping).
+			WithFieldManager(getManagedFieldsManager()).
+			WithFieldValidation(validationDirective).
+			Create(info.Namespace, true, info.Object)
+		if err != nil {
+			return err
+		}
+		return info.Refresh(obj, true)
 	}
-	return info.Refresh(obj, true)
 }
 
 func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) error {
@@ -659,11 +666,13 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	return patch, types.StrategicMergePatchType, err
 }
 
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
+func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool, validationDirective string) error {
 	var (
 		obj    runtime.Object
-		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
-		kind   = target.Mapping.GroupVersionKind.Kind
+		helper = resource.NewHelper(target.Client, target.Mapping).
+			WithFieldManager(getManagedFieldsManager()).
+			WithFieldValidation(validationDirective)
+		kind = target.Mapping.GroupVersionKind.Kind
 	)
 
 	// if --force is applied, attempt to replace the existing resource with the new object.
@@ -847,4 +856,11 @@ func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration)
 	}
 
 	return v1.PodUnknown, err
+}
+
+func getValidationDirective(validate bool) string {
+	if !validate {
+		return metav1.FieldValidationIgnore
+	}
+	return metav1.FieldValidationWarn
 }
