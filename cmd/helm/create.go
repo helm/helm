@@ -21,6 +21,7 @@ import (
 	"io"
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -54,6 +55,7 @@ type createOptions struct {
 	starter    string // --starter
 	name       string
 	starterDir string
+	noOverride bool
 }
 
 func newCreateCmd(out io.Writer) *cobra.Command {
@@ -73,6 +75,13 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 			// No more completions, so disable file completion
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if len(o.starter) == 0 && o.noOverride {
+				return errors.New("the -o/--no-override flag can only be specified when using a starter")
+			}
+
+			return nil
+		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			o.name = args[0]
 			o.starterDir = helmpath.DataPath("starters")
@@ -81,6 +90,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&o.starter, "starter", "p", "", "the name or absolute path to Helm starter scaffold")
+	cmd.Flags().BoolVarP(&o.noOverride, "no-override", "o", false, "if specified, does not override the starter's Chart.yaml")
 	return cmd
 }
 
@@ -97,6 +107,10 @@ func (o *createOptions) run(out io.Writer) error {
 		APIVersion:  chart.APIVersionV2,
 	}
 
+	if o.noOverride {
+		cfile = nil
+	}
+
 	if o.starter != "" {
 		// Create from the starter
 		lstarter := filepath.Join(o.starterDir, o.starter)
@@ -104,7 +118,7 @@ func (o *createOptions) run(out io.Writer) error {
 		if filepath.IsAbs(o.starter) {
 			lstarter = o.starter
 		}
-		return chartutil.CreateFrom(cfile, filepath.Dir(o.name), lstarter)
+		return chartutil.CreateFromWithOverride(chartname, filepath.Dir(chartname), lstarter, cfile)
 	}
 
 	chartutil.Stderr = out
