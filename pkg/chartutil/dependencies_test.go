@@ -212,6 +212,17 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["overridden-chartA-B.SCBextra1"] = "13"
 	e["overridden-chartA-B.SC1extra6"] = "77"
 
+	e["all.service.name"] = "nginx"
+	e["all.service.type"] = "ClusterIP"
+	e["all.service.externalPort"] = "80"
+	e["all.service.internalPort"] = "80"
+	e["all.SC1data.SC1bool"] = "true"
+	e["all.imported-chartA.SC1extra2"] = "1.337"
+	e["all.overridden-chartA.SCAbool"] = "true"
+	e["all.imported-chartA-B.SC1extra5"] = "tiller"
+	e["all.overridden-chartA-B.SCAbool"] = "true"
+	e["all.SCBexported1A.SC1extra7"] = "true"
+
 	// `exports` style
 	e["SCBexported1B"] = "1965"
 	e["SC1extra7"] = "true"
