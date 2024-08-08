@@ -97,6 +97,19 @@ type Configuration struct {
 	Log func(string, ...interface{})
 }
 
+// chartNeedsAPIVersions returns true if any of the Chart's templates reference "APIVersions".
+// If it returns false, it is safe to omit Capabilities.APIVersions from rendering values.
+func chartNeedsAPIVersions(chart *chart.Chart) bool {
+	if chart != nil {
+		for _, template := range chart.Templates {
+			if bytes.Contains(template.Data, []byte("APIVersions")) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // renderResources renders the templates in a chart
 //
 // TODO: This function is badly in need of a refactor.
@@ -107,7 +120,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
-	caps, err := cfg.getCapabilities()
+	caps, err := cfg.getCapabilities(ch)
 	if err != nil {
 		return hs, b, "", err
 	}
@@ -243,7 +256,7 @@ type RESTClientGetter interface {
 type DebugLog func(format string, v ...interface{})
 
 // capabilities builds a Capabilities from discovery information.
-func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
+func (cfg *Configuration) getCapabilities(ch *chart.Chart) (*chartutil.Capabilities, error) {
 	if cfg.Capabilities != nil {
 		return cfg.Capabilities, nil
 	}
@@ -257,18 +270,23 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get server version from Kubernetes")
 	}
-	// Issue #6361:
-	// Client-Go emits an error when an API service is registered but unimplemented.
-	// We trap that error here and print a warning. But since the discovery client continues
-	// building the API object, it is correctly populated with all valid APIs.
-	// See https://github.com/kubernetes/kubernetes/issues/72051#issuecomment-521157642
-	apiVersions, err := GetVersionSet(dc)
-	if err != nil {
-		if discovery.IsGroupDiscoveryFailedError(err) {
-			cfg.Log("WARNING: The Kubernetes server has an orphaned API service. Server reports: %s", err)
-			cfg.Log("WARNING: To fix this, kubectl delete apiservice <service-name>")
-		} else {
-			return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+
+	// Only fetch APIVersions if the chart needs it
+	var apiVersions chartutil.VersionSet
+	if chartNeedsAPIVersions(ch) {
+		// Issue #6361:
+		// Client-Go emits an error when an API service is registered but unimplemented.
+		// We trap that error here and print a warning. But since the discovery client continues
+		// building the API object, it is correctly populated with all valid APIs.
+		// See https://github.com/kubernetes/kubernetes/issues/72051#issuecomment-521157642
+		apiVersions, err = GetVersionSet(dc)
+		if err != nil {
+			if discovery.IsGroupDiscoveryFailedError(err) {
+				cfg.Log("WARNING: The Kubernetes server has an orphaned API service. Server reports: %s", err)
+				cfg.Log("WARNING: To fix this, kubectl delete apiservice <service-name>")
+			} else {
+				return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+			}
 		}
 	}
 

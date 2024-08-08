@@ -284,7 +284,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// the user doesn't have to specify both
 	i.Wait = i.Wait || i.Atomic
 
-	caps, err := i.cfg.getCapabilities()
+	caps, err := i.cfg.getCapabilities(chrt)
 	if err != nil {
 		return nil, err
 	}

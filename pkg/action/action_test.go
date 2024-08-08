@@ -275,6 +275,25 @@ func namedReleaseStub(name string, status release.Status) *release.Release {
 	}
 }
 
+func Test_chartNeedsAPIVersions(t *testing.T) {
+	is := assert.New(t)
+	is.Equal(chartNeedsAPIVersions(nil), false)
+	ch := &chart.Chart{Metadata: &chart.Metadata{APIVersion: "v1", Name: "test", Version: "0.1.0"}}
+	is.Equal(chartNeedsAPIVersions(ch), false)
+	ch.Templates = append(ch.Templates, &chart.File{Name: "templates/hello", Data: []byte("hello: world")})
+	is.Equal(chartNeedsAPIVersions(ch), false)
+	ch.Templates = append(ch.Templates, &chart.File{Name: "templates/kube-version", Data: []byte("{{ .Capabilities.KubeVersion }}")})
+	is.Equal(chartNeedsAPIVersions(ch), false)
+	ch.Templates = append(ch.Templates, &chart.File{Name: "templates/api-versions", Data: []byte("{{ .Capabilities.APIVersions }}")})
+	is.Equal(chartNeedsAPIVersions(ch), true)
+	ch.Templates = append(ch.Templates, &chart.File{Name: "templates/api-versions", Data: []byte("# {{ .Capabilities.APIVersions }}")})
+	is.Equal(chartNeedsAPIVersions(ch), true)
+	ch.Templates = append(ch.Templates, &chart.File{Name: "templates/api-versions", Data: []byte("{{ $cap.APIVersions }}")})
+	is.Equal(chartNeedsAPIVersions(ch), true)
+	ch.Templates = append(ch.Templates, &chart.File{Name: "templates/api-versions", Data: []byte("{{ get (.Capabilities | toJson | fromJson) \"APIVersions\" }}")})
+	is.Equal(chartNeedsAPIVersions(ch), true)
+}
+
 func TestConfiguration_Init(t *testing.T) {
 	tests := []struct {
 		name               string
