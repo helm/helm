@@ -88,6 +88,8 @@ type EnvSettings struct {
 	BurstLimit int
 	// QPS is queries per second which may be used to avoid throttling.
 	QPS float32
+	// Proxy proxy url
+	ProxyUrl string
 }
 
 func New() *EnvSettings {
@@ -108,6 +110,7 @@ func New() *EnvSettings {
 		RepositoryCache:           envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 		QPS:                       envFloat32Or("HELM_QPS", defaultQPS),
+		ProxyUrl:                  os.Getenv("HELM_PROXY_URL"),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -159,6 +162,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
 	fs.IntVar(&s.BurstLimit, "burst-limit", s.BurstLimit, "client-side default throttling limit")
 	fs.Float32Var(&s.QPS, "qps", s.QPS, "queries per second used when communicating with the Kubernetes API, not including bursting")
+	fs.StringVar(&s.ProxyUrl, "proxy-url", s.ProxyUrl, "use this parameter to specify a proxy server URL for accessing the Helm repository. The proxy URL must be in the format [scheme://][user[:password]@]host[:port], where scheme can be http, https, or socks5.")
 }
 
 func envOr(name, def string) string {
@@ -237,6 +241,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_KUBECAFILE":                   s.KubeCaFile,
 		"HELM_KUBEINSECURE_SKIP_TLS_VERIFY": strconv.FormatBool(s.KubeInsecureSkipTLSVerify),
 		"HELM_KUBETLS_SERVER_NAME":          s.KubeTLSServerName,
+		"HELM_PROXY_URL":                    s.ProxyUrl,
 	}
 	if s.KubeConfig != "" {
 		envvars["KUBECONFIG"] = s.KubeConfig

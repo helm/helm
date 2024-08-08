@@ -806,7 +806,9 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	} else {
 		dl.Options = append(dl.Options, getter.WithBasicAuth(c.Username, c.Password))
 	}
-
+	if settings.ProxyUrl != "" {
+		dl.Options = append(dl.Options, getter.WithProxyUrl(settings.ProxyUrl))
+	}
 	if err := os.MkdirAll(settings.RepositoryCache, 0755); err != nil {
 		return "", err
 	}
