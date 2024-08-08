@@ -44,9 +44,10 @@ type Downloaders struct {
 
 // PlatformCommand represents a command for a particular operating system and architecture
 type PlatformCommand struct {
-	OperatingSystem string `json:"os"`
-	Architecture    string `json:"arch"`
-	Command         string `json:"command"`
+	OperatingSystem string   `json:"os"`
+	Architecture    string   `json:"arch"`
+	Command         string   `json:"command"`
+	Args            []string `json:"args"`
 }
 
 // Metadata describes a plugin.
@@ -65,7 +66,24 @@ type Metadata struct {
 	// Description is a long description shown in places like `helm help`
 	Description string `json:"description"`
 
-	// Command is the command, as a single string.
+	// PlatformCommand is the plugin command, with a platform selector and support for args.
+	//
+	// The command and args will be passed through environment expansion, so env vars can
+	// be present in this command. Unless IgnoreFlags is set, this will
+	// also merge the flags passed from Helm.
+	//
+	// Note that the command is not executed in a shell. To do so, we suggest
+	// pointing the command to a shell script.
+	//
+	// The following rules will apply to processing platform commands:
+	// - If PlatformCommand is present, it will be searched first
+	// - If both OS and Arch match the current platform, search will stop and the command will be executed
+	// - If OS matches and there is no more specific match, the command will be executed
+	// - If no OS/Arch match is found, the default command will be executed
+	// - If no command is present and no matches are found in platformCommand, Helm will exit with an error
+	PlatformCommand []PlatformCommand `json:"platformCommand"`
+
+	// Command is the plugin command, as a single string. The command will be ignored if a valid PlatformCommand is found.
 	//
 	// The command will be passed through environment expansion, so env vars can
 	// be present in this command. Unless IgnoreFlags is set, this will
@@ -73,15 +91,7 @@ type Metadata struct {
 	//
 	// Note that command is not executed in a shell. To do so, we suggest
 	// pointing the command to a shell script.
-	//
-	// The following rules will apply to processing commands:
-	// - If platformCommand is present, it will be searched first
-	// - If both OS and Arch match the current platform, search will stop and the command will be executed
-	// - If OS matches and there is no more specific match, the command will be executed
-	// - If no OS/Arch match is found, the default command will be executed
-	// - If no command is present and no matches are found in platformCommand, Helm will exit with an error
-	PlatformCommand []PlatformCommand `json:"platformCommand"`
-	Command         string            `json:"command"`
+	Command string `json:"command"`
 
 	// IgnoreFlags ignores any flags passed in from Helm
 	//
@@ -90,7 +100,28 @@ type Metadata struct {
 	// the `--debug` flag will be discarded.
 	IgnoreFlags bool `json:"ignoreFlags"`
 
-	// Hooks are commands that will run on events.
+	// PlatformHooks are commands that will run on plugin events, with a platform selector and support for args.
+	//
+	// The command and args will be passed through environment expansion, so env vars can
+	// be present in the command.
+	//
+	// Note that the command is not executed in a shell. To do so, we suggest
+	// pointing the command to a shell script.
+	//
+	// The following rules will apply to processing platform commands:
+	// - If PlatformHooks is present, it will be searched first
+	// - If both OS and Arch match the current platform, search will stop and the command will be executed
+	// - If OS matches and there is no more specific match, the command will be executed
+	// - If no OS/Arch match is found, the default command will be executed
+	// - If no command is present and no matches are found in platformCommand, Helm will skip the event
+	PlatformHooks PlatformHooks `json:"platformHooks"`
+
+	// Hooks are commands that will run on plugin events, as a single string.
+	//
+	// The command will be passed through environment expansion, so env vars can
+	// be present in this command.
+	//
+	// Note that the command is executed in the sh shell.
 	Hooks Hooks
 
 	// Downloaders field is used if the plugin supply downloader mechanism
@@ -116,18 +147,81 @@ type Plugin struct {
 // - If both OS and Arch match the current platform, search will stop and the command will be prepared for execution
 // - If OS matches and there is no more specific match, the command will be prepared for execution
 // - If no OS/Arch match is found, return nil
-func getPlatformCommand(cmds []PlatformCommand) []string {
-	var command []string
+func getPlatformCommand(cmds []PlatformCommand) ([]string, []string) {
+	var command, args []string
+
 	eq := strings.EqualFold
 	for _, c := range cmds {
+		if len(c.Architecture) > 0 && !eq(c.Architecture, runtime.GOARCH) {
+			continue
+		}
+
 		if eq(c.OperatingSystem, runtime.GOOS) {
 			command = strings.Split(c.Command, " ")
+			args = c.Args
 		}
+
 		if eq(c.OperatingSystem, runtime.GOOS) && eq(c.Architecture, runtime.GOARCH) {
-			return strings.Split(c.Command, " ")
+			return strings.Split(c.Command, " "), c.Args
 		}
 	}
-	return command
+
+	return command, args
+}
+
+// PrepareCommands takes a []Plugin.PlatformCommand, a Plugin.Command and will applying the following processing:
+// - If platformCommand is present, it will be searched first
+// - If both OS and Arch match the current platform, search will stop and the command will be prepared for execution
+// - If OS matches and there is no more specific match, the command will be prepared for execution
+// - If no OS/Arch match is found, the default command will be prepared for execution
+// - If no command is present and no matches are found in platformCommand, will exit with an error
+//
+// It merges extraArgs into any arguments supplied in the plugin. It
+// returns the name of the command and an args array.
+//
+// The result is suitable to pass to exec.Command.
+func PrepareCommands(cmds []PlatformCommand, legacyCmd string, legacyCmdArgs []string, expandLegacyCmdArgs bool, extraArgs []string) (string, []string, error) {
+	var cmdParts, args []string
+	expandArgs := true
+
+	cmdsLen := len(cmds)
+	if cmdsLen > 0 {
+		cmdParts, args = getPlatformCommand(cmds)
+	}
+	if cmdsLen == 0 || cmdParts == nil {
+		cmdParts = strings.Split(legacyCmd, " ")
+		args = legacyCmdArgs
+		expandArgs = expandLegacyCmdArgs
+	}
+	if len(cmdParts) == 0 || cmdParts[0] == "" {
+		return "", nil, fmt.Errorf("no plugin command is applicable")
+	}
+
+	main := os.ExpandEnv(cmdParts[0])
+	baseArgs := []string{}
+	if len(cmdParts) > 1 {
+		for _, cmdPart := range cmdParts[1:] {
+			if expandArgs {
+				baseArgs = append(baseArgs, os.ExpandEnv(cmdPart))
+			} else {
+				baseArgs = append(baseArgs, cmdPart)
+			}
+		}
+	}
+
+	for _, arg := range args {
+		if expandArgs {
+			baseArgs = append(baseArgs, os.ExpandEnv(arg))
+		} else {
+			baseArgs = append(baseArgs, arg)
+		}
+	}
+
+	if len(extraArgs) > 0 {
+		baseArgs = append(baseArgs, extraArgs...)
+	}
+
+	return main, baseArgs, nil
 }
 
 // PrepareCommand takes a Plugin.PlatformCommand.Command, a Plugin.Command and will applying the following processing:
@@ -142,30 +236,13 @@ func getPlatformCommand(cmds []PlatformCommand) []string {
 //
 // The result is suitable to pass to exec.Command.
 func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string, error) {
-	var parts []string
-	platCmdLen := len(p.Metadata.PlatformCommand)
-	if platCmdLen > 0 {
-		parts = getPlatformCommand(p.Metadata.PlatformCommand)
-	}
-	if platCmdLen == 0 || parts == nil {
-		parts = strings.Split(p.Metadata.Command, " ")
-	}
-	if len(parts) == 0 || parts[0] == "" {
-		return "", nil, fmt.Errorf("no plugin command is applicable")
+	var extraArgsIn []string
+
+	if !p.Metadata.IgnoreFlags {
+		extraArgsIn = extraArgs
 	}
 
-	main := os.ExpandEnv(parts[0])
-	baseArgs := []string{}
-	if len(parts) > 1 {
-		for _, cmdpart := range parts[1:] {
-			cmdexp := os.ExpandEnv(cmdpart)
-			baseArgs = append(baseArgs, cmdexp)
-		}
-	}
-	if !p.Metadata.IgnoreFlags {
-		baseArgs = append(baseArgs, extraArgs...)
-	}
-	return main, baseArgs, nil
+	return PrepareCommands(p.Metadata.PlatformCommand, p.Metadata.Command, []string{}, true, extraArgsIn)
 }
 
 // validPluginName is a regular expression that validates plugin names.
