@@ -28,8 +28,9 @@ import (
 )
 
 const (
-	repoConfig = "testdata/repositories.yaml"
-	repoCache  = "testdata/repository"
+	repoConfig     = "testdata/repositories.yaml"
+	repoCache      = "testdata/repository"
+	repoCacheEmpty = "testdata/repository-empty"
 )
 
 func TestResolveChartRef(t *testing.T) {
@@ -340,6 +341,33 @@ func TestScanReposForURL(t *testing.T) {
 
 	// A lookup failure should produce an ErrNoOwnerRepo
 	u = "https://no.such.repo/foo/bar-1.23.4.tgz"
+	if _, err = c.scanReposForURL(u, rf); err != ErrNoOwnerRepo {
+		t.Fatalf("expected ErrNoOwnerRepo, got %v", err)
+	}
+}
+
+// In an scenario where a full URL is provided, chart_downloader will swallow the
+// ErrNoOwnerRepo error and return an HTTP client to download the chart. This specific
+// test shows that the chart will get downloaded in that scenario if the cache is empty
+// (hence `repoCacheEmpty`).
+func TestScanReposForURLWithEmptyCache(t *testing.T) {
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyLater,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCacheEmpty,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCacheEmpty,
+		}),
+	}
+
+	u := "http://example.com/alpine-0.2.0.tgz"
+	rf, err := repo.LoadFile(repoConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if _, err = c.scanReposForURL(u, rf); err != ErrNoOwnerRepo {
 		t.Fatalf("expected ErrNoOwnerRepo, got %v", err)
 	}
