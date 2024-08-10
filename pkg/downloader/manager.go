@@ -70,6 +70,8 @@ type Manager struct {
 	Keyring string
 	// SkipUpdate indicates that the repository should not be updated first.
 	SkipUpdate bool
+	// SkipDownloadIfExists indicates that the chart should not be downloaded if it already exists.
+	SkipDownloadIfExists bool
 	// Getter collection for the operation
 	Getters          []getter.Provider
 	RegistryClient   *registry.Client
@@ -321,6 +323,14 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		if _, ok := churls[churl]; ok {
 			fmt.Fprintf(m.Out, "Already downloaded %s from repo %s\n", dep.Name, dep.Repository)
 			continue
+		}
+
+		if m.SkipDownloadIfExists {
+			name := filepath.Base(churl)
+			if _, err = os.Stat(filepath.Join(destPath, name)); err == nil {
+				fmt.Fprintf(m.Out, "Already exists locally %s from repo %s\n", dep.Name, dep.Repository)
+				continue
+			}
 		}
 
 		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
