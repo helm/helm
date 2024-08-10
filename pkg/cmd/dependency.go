@@ -133,4 +133,5 @@ func addDependencySubcommandFlags(f *pflag.FlagSet, client *action.Dependency) {
 	f.BoolVar(&client.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
 	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
 	f.StringVar(&client.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&client.SkipDownloadIfExists, "skip-download-if-exists", false, "skip download of the chart if it already exists in the charts directory")
 }
