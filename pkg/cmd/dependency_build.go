@@ -65,6 +65,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 				ChartPath:        chartpath,
 				Keyring:          client.Keyring,
 				SkipUpdate:       client.SkipRefresh,
+				SkipDownloadIfExists: client.SkipDownloadIfExists,
 				Getters:          getter.All(settings),
 				RegistryClient:   registryClient,
 				RepositoryConfig: settings.RepositoryConfig,
