@@ -1,0 +1,12 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: unused-values
+  namespace: default
+  labels:
+    team: infrastructure
+data:
+  cluster-name: {{ $.Values.cluster.name }}
+  json: {{ toJson $.Values.resources }}
+  template: {{ tpl $.Values.template . }}

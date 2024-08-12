@@ -31,7 +31,9 @@ import (
 	"k8s.io/client-go/dynamic/fake"
 
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func TestSortTemplates(t *testing.T) {
@@ -1298,5 +1300,138 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 	default:
 		// Some unexpected error.
 		t.Fatal(err)
+	}
+}
+
+func TestReportUnusedValuesBasic(t *testing.T) {
+	chart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "UnusedValues",
+			Version: "4.2.0",
+		},
+		Templates: []*chart.File{
+			{Name: "templates/test1", Data: []byte("{{$.Values.very.used | title }} {{$.Values.extremely.used | title}}")},
+			{Name: "templates/test2", Data: []byte("{{$.Values.super.used | lower }}")},
+			{Name: "templates/test3", Data: []byte("{{$.Values.definitely.used}}")},
+		},
+		Values: chartutil.Values{"outer": "DEFAULT", "inner": "DEFAULT"},
+	}
+
+	vals := chartutil.Values{
+		"Values": chartutil.Values{
+			"very": chartutil.Values{
+				"used": "used",
+			},
+			"extremely": chartutil.Values{
+				"used": "used",
+			},
+			"definitely": chartutil.Values{
+				"used": "used",
+			},
+			"super": chartutil.Values{
+				"used": "used",
+			},
+			"not": "not used",
+		},
+	}
+
+	v, err := chartutil.CoalesceValues(chart, vals)
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+
+	engine := Engine{
+		Strict:   true,
+		LintMode: true,
+	}
+
+	_, err = engine.Render(chart, v)
+	if err == nil {
+		t.Errorf("should have errored, .Values.not is not used")
+		t.FailNow()
+	}
+
+	if !strings.Contains(err.Error(), "[.Values.not]") {
+		t.Errorf(".Values.not is unused and should have been in error message")
+	}
+}
+
+func TestReportUnusedValuesChartLoad(t *testing.T) {
+	unusedValuesChart, err := loader.Load("../../cmd/helm/testdata/testcharts/unused-values/")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	engine := Engine{
+		Strict:   true,
+		LintMode: true,
+		usedValues: sets.New[string](),
+		providedValues: sets.New[string](),
+	}
+
+	options := chartutil.ReleaseOptions{
+		Name:      unusedValuesChart.Name(),
+		Namespace: "test",
+	}
+
+	vals, err := chartutil.ToRenderValues(unusedValuesChart, unusedValuesChart.Values, options, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = engine.Render(unusedValuesChart, vals)
+	if err == nil {
+		t.Fatalf("there is an unused value in this chart, but we didn't find it")
+	}
+
+	if !strings.Contains(err.Error(), "[.Values.unused .Values.usedByTemplate]") {
+		t.Log(err)
+		t.Fatalf("[.Values.unused .Values.usedByTemplate] should be the only unused values")
+	}
+}
+
+func TestReportUnusedValuesDollarSign(t *testing.T) {
+	chart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "UnusedValues",
+			Version: "4.2.0",
+		},
+		Templates: []*chart.File{
+			{Name: "templates/test1", Data: []byte("{{ .Values.super.used }}")},
+			{Name: "templates/test2", Data: []byte("{{ $.Values.definitely.used }}")},
+		},
+	}
+
+	vals := chartutil.Values{
+		"Values": chartutil.Values{
+			"definitely": chartutil.Values{
+				"used": "used",
+			},
+			"super": chartutil.Values{
+				"used": "used",
+			},
+			"not": "not used",
+		},
+	}
+
+	v, err := chartutil.CoalesceValues(chart, vals)
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+
+	engine := Engine{
+		Strict:   true,
+		LintMode: true,
+	}
+
+	_, err = engine.Render(chart, v)
+	if err == nil {
+		t.Errorf("should have errored, $.Values.not is not used")
+		t.FailNow()
+	}
+
+	if !strings.Contains(err.Error(), "[.Values.not]") {
+		t.Error(err)
+		t.Errorf(".Values.not is the ONLY unused value")
 	}
 }
