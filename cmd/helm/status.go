@@ -125,7 +125,7 @@ func (s statusPrinter) WriteYAML(out io.Writer) error {
 }
 
 func (s statusPrinter) WriteTable(out io.Writer) error {
-	if s.release == nil {
+	if s.release == nil || s.release.Skipped {
 		return nil
 	}
 	_, _ = fmt.Fprintf(out, "NAME: %s\n", s.release.Name)
