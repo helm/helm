@@ -17,17 +17,23 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
+	"io"
+	"net/http"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/kube"
 
-	appsv1 "k8s.io/api/apps/v1"
-
 	"github.com/stretchr/testify/assert"
+
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest/fake"
 )
 
 func newDeploymentResource(name, namespace string) *resource.Info {
@@ -44,6 +50,117 @@ func newDeploymentResource(name, namespace string) *resource.Info {
 			},
 		},
 	}
+}
+
+func newMissingDeployment(name, namespace string) *resource.Info {
+	info := &resource.Info{
+		Name:      name,
+		Namespace: namespace,
+		Mapping: &meta.RESTMapping{
+			Resource:         schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployment"},
+			GroupVersionKind: schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
+			Scope:            meta.RESTScopeNamespace,
+		},
+		Object: &appsv1.Deployment{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		},
+		Client: fakeClientWith(http.StatusNotFound, appsV1GV, ""),
+	}
+
+	return info
+}
+
+func newDeploymentWithOwner(name, namespace string, labels map[string]string, annotations map[string]string) *resource.Info {
+	obj := &appsv1.Deployment{
+		ObjectMeta: v1.ObjectMeta{
+			Name:        name,
+			Namespace:   namespace,
+			Labels:      labels,
+			Annotations: annotations,
+		},
+	}
+	return &resource.Info{
+		Name:      name,
+		Namespace: namespace,
+		Mapping: &meta.RESTMapping{
+			Resource:         schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployment"},
+			GroupVersionKind: schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
+			Scope:            meta.RESTScopeNamespace,
+		},
+		Object: obj,
+		Client: fakeClientWith(http.StatusOK, appsV1GV, runtime.EncodeOrDie(appsv1Codec, obj)),
+	}
+}
+
+var (
+	appsV1GV    = schema.GroupVersion{Group: "apps", Version: "v1"}
+	appsv1Codec = scheme.Codecs.CodecForVersions(scheme.Codecs.LegacyCodec(appsV1GV), scheme.Codecs.UniversalDecoder(appsV1GV), appsV1GV, appsV1GV)
+)
+
+func stringBody(body string) io.ReadCloser {
+	return io.NopCloser(bytes.NewReader([]byte(body)))
+}
+
+func fakeClientWith(code int, gv schema.GroupVersion, body string) *fake.RESTClient {
+	return &fake.RESTClient{
+		GroupVersion:         gv,
+		NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			header := http.Header{}
+			header.Set("Content-Type", runtime.ContentTypeJSON)
+			return &http.Response{
+				StatusCode: code,
+				Header:     header,
+				Body:       stringBody(body),
+			}, nil
+		}),
+	}
+}
+
+func TestRequireAdoption(t *testing.T) {
+	var (
+		missing   = newMissingDeployment("missing", "ns-a")
+		existing  = newDeploymentWithOwner("existing", "ns-a", nil, nil)
+		resources = kube.ResourceList{missing, existing}
+	)
+
+	// Verify that a resource that lacks labels/annotations can be adopted
+	found, err := requireAdoption(resources)
+	assert.NoError(t, err)
+	assert.Len(t, found, 1)
+	assert.Equal(t, found[0], existing)
+}
+
+func TestExistingResourceConflict(t *testing.T) {
+	var (
+		releaseName      = "rel-name"
+		releaseNamespace = "rel-namespace"
+		labels           = map[string]string{
+			appManagedByLabel: appManagedByHelm,
+		}
+		annotations = map[string]string{
+			helmReleaseNameAnnotation:      releaseName,
+			helmReleaseNamespaceAnnotation: releaseNamespace,
+		}
+		missing   = newMissingDeployment("missing", "ns-a")
+		existing  = newDeploymentWithOwner("existing", "ns-a", labels, annotations)
+		conflict  = newDeploymentWithOwner("conflict", "ns-a", nil, nil)
+		resources = kube.ResourceList{missing, existing}
+	)
+
+	// Verify only existing resources are returned
+	found, err := existingResourceConflict(resources, releaseName, releaseNamespace)
+	assert.NoError(t, err)
+	assert.Len(t, found, 1)
+	assert.Equal(t, found[0], existing)
+
+	// Verify that an existing resource that lacks labels/annotations results in an error
+	resources = append(resources, conflict)
+	_, err = existingResourceConflict(resources, releaseName, releaseNamespace)
+	assert.Error(t, err)
 }
 
 func TestCheckOwnership(t *testing.T) {
