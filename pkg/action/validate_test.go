@@ -108,7 +108,7 @@ func fakeClientWith(code int, gv schema.GroupVersion, body string) *fake.RESTCli
 	return &fake.RESTClient{
 		GroupVersion:         gv,
 		NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
-		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+		Client: fake.CreateHTTPClient(func(_ *http.Request) (*http.Response, error) {
 			header := http.Header{}
 			header.Set("Content-Type", runtime.ContentTypeJSON)
 			return &http.Response{
