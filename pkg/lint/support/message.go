@@ -16,7 +16,10 @@ limitations under the License.
 
 package support
 
-import "fmt"
+import (
+	"fmt"
+	"log/slog"
+)
 
 // Severity indicates the severity of a Message.
 const (
@@ -51,6 +54,14 @@ type Message struct {
 
 func (m Message) Error() string {
 	return fmt.Sprintf("[%s] %s: %s", sev[m.Severity], m.Path, m.Err.Error())
+}
+
+func (m Message) LogAttrs() slog.Attr {
+	return slog.Group("Message",
+		slog.Int("Severity", m.Severity),
+		slog.String("Path", m.Path),
+		slog.String("Err", m.Err.Error()),
+	)
 }
 
 // NewMessage creates a new Message struct

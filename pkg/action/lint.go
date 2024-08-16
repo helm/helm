@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"helm.sh/helm/v3/pkg/lint/ignore"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,6 +38,7 @@ type Lint struct {
 	WithSubcharts        bool
 	Quiet                bool
 	SkipSchemaValidation bool
+	IgnoreFilePath       string
 	KubeVersion          *chartutil.KubeVersion
 }
 
@@ -53,23 +55,32 @@ func NewLint() *Lint {
 }
 
 // Run executes 'helm Lint' against the given chart.
-func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
+func (l *Lint) Run(paths []string, vals map[string]interface{}, lintIgnoreFilePath string, debugLogFn func(string, ...interface{})) *LintResult {
 	lowestTolerance := support.ErrorSev
 	if l.Strict {
 		lowestTolerance = support.WarningSev
 	}
 	result := &LintResult{}
-	for _, path := range paths {
+	for chartIndex, path := range paths {
+		// attempt to build an action-level lint result ignorer
+		ignorer, err := ignore.NewIgnorer(path, lintIgnoreFilePath, debugLogFn)
 		linter, err := lintChart(path, vals, l.Namespace, l.KubeVersion, l.SkipSchemaValidation)
 		if err != nil {
-			result.Errors = append(result.Errors, err)
+			// ❗ Discard ignorable errors as early as possible
+			if ignorer.ShouldKeepError(err) {
+				result.Errors = append(result.Errors, err)
+			}
 			continue
 		}
 
-		result.Messages = append(result.Messages, linter.Messages...)
+		// ❗ Discard ignorable messages as early as possible, BEFORE they get duplicated as errors
+		// in the loop below
+		keeperMessages := ignorer.FilterMessages(linter.Messages)
+		result.Messages = append(result.Messages, keeperMessages...)
 		result.TotalChartsLinted++
-		for _, msg := range linter.Messages {
+		for _, msg := range result.Messages {
 			if msg.Severity >= lowestTolerance {
+				debugLogFn("action/lint/Run is promoting a message to Error", "chartIndex", chartIndex, "path", path, "lowestTolerance", lowestTolerance, msg.LogAttrs())
 				result.Errors = append(result.Errors, msg.Err)
 			}
 		}
