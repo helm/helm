@@ -97,7 +97,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if len(args) == 1 {
 				return compListCharts(toComplete, true)
 			}
-			return nil, cobra.ShellCompDirectiveNoFileComp
+			return noMoreArgsComp()
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
