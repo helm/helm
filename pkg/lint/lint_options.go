@@ -20,3 +20,9 @@ func WithKubeVersion(version *chartutil.KubeVersion) LinterOption {
 		linter.KubeVersion = version
 	}
 }
+
+func WithSchemaValidation(enabled bool) LinterOption {
+	return func(linter *support.Linter) {
+		linter.SkipSchemaValidation = enabled
+	}
+}

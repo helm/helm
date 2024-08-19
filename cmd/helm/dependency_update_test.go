@@ -200,8 +200,9 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 		}
 	}
 
-	// Make sure tmpcharts is deleted
-	if _, err := os.Stat(filepath.Join(dir(chartname), "tmpcharts")); !os.IsNotExist(err) {
+	// Make sure tmpcharts-x is deleted
+	tmpPath := filepath.Join(dir(chartname), fmt.Sprintf("tmpcharts-%d", os.Getpid()))
+	if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
 		t.Fatalf("tmpcharts dir still exists")
 	}
 }

@@ -99,7 +99,7 @@ func TemplatesV2(linter *support.Linter, values map[string]interface{}, namespac
 		return
 	}
 
-	valuesToRender, err := chartutil.ToRenderValues(chart, cvals, options, caps)
+	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, cvals, options, caps, linter.SkipSchemaValidation)
 	if err != nil {
 		linter.RunLinterRule(support.ErrorSev, fpath, err)
 		return
@@ -320,6 +320,7 @@ func validateMatchSelector(yamlStruct *K8sYamlStruct, manifest string) error {
 	}
 	return nil
 }
+
 func validateListAnnotations(yamlStruct *K8sYamlStruct, manifest string) error {
 	if yamlStruct.Kind == "List" {
 		m := struct {

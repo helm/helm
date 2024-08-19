@@ -33,7 +33,10 @@ func All(basedir string, values map[string]interface{}, namespace string, _ bool
 // AllWithKubeVersion runs all the available linters on the given base directory, allowing to specify the kubernetes version.
 // Deprecated, use AllWithOptions instead.
 func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) support.Linter {
-	return AllWithOptions(basedir, values, namespace, WithKubeVersion(kubeVersion))
+	return AllWithOptions(basedir, values, namespace,
+		WithKubeVersion(kubeVersion),
+		WithSchemaValidation(false),
+	)
 }
 
 // AllWithOptions runs all the available linters on the given base directory, allowing to specify different options.

@@ -41,10 +41,11 @@ var sev = []string{"UNKNOWN", "INFO", "WARNING", "ERROR"}
 type Linter struct {
 	Messages []Message
 	// The highest severity of all the failing lint rules
-	HighestSeverity int
-	ChartDir        string
-	ReleaseName     string
-	KubeVersion     *chartutil.KubeVersion
+	HighestSeverity      int
+	ChartDir             string
+	ReleaseName          string
+	KubeVersion          *chartutil.KubeVersion
+	SkipSchemaValidation bool
 }
 
 // Message describes an error encountered while linting.

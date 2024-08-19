@@ -10,13 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # pin@v4.1.7
 
       - name: Setup Go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # pin@5.0.0
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # pin@5.0.2
         with:
-          go-version: "1.21"
+          go-version: "1.22"
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@3cfe3a4abbb849e10058ce4af15d205b6da42804 #pin@4.0.0
+        uses: golangci/golangci-lint-action@aaa42aa0628b4ae2578232a66b541047968fac86 #pin@6.1.0
         with:
-          version: v1.55
+          version: v1.58
