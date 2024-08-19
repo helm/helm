@@ -60,13 +60,13 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short:   "fetch release history",
 		Aliases: []string{"hist"},
 		Args:    require.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 			return compListReleases(toComplete, args, cfg)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			history, err := getHistory(client, args[0])
 			if err != nil {
 				return err

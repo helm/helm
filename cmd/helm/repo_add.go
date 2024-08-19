@@ -72,7 +72,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 		Short:             "add a chart repository",
 		Args:              require.ExactArgs(2),
 		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			o.name = args[0]
 			o.url = args[1]
 			o.repoFile = settings.RepositoryConfig

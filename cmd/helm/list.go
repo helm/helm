@@ -69,7 +69,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Aliases:           []string{"ls"},
 		Args:              require.NoArgs,
 		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if client.AllNamespaces {
 				if err := cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), debug); err != nil {
 					return err
