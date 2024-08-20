@@ -56,6 +56,8 @@ const (
 	IngressFileName = TemplatesDir + sep + "ingress.yaml"
 	// DeploymentName is the name of the example deployment file.
 	DeploymentName = TemplatesDir + sep + "deployment.yaml"
+	// EnvSecretName is the name of the example secret file for env vars.
+	EnvSecretName = TemplatesDir + sep + "secret-env.yaml"
 	// ServiceName is the name of the example service file.
 	ServiceName = TemplatesDir + sep + "service.yaml"
 	// ServiceAccountName is the name of the example serviceaccount file.
@@ -128,6 +130,10 @@ serviceAccount:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
+
+env: {}
+  # Specify multiple environment parameters for the container
+  # EXAMPLE_KEY: example-value
 
 podAnnotations: {}
 podLabels: {}
@@ -314,9 +320,9 @@ spec:
       {{- include "<CHARTNAME>.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
+      {{- with include "<CHARTNAME>.podAnnotations" . }}
       annotations:
-        {{- toYaml . | nindent 8 }}
+        {{- . | nindent 8 }}
       {{- end }}
       labels:
         {{- include "<CHARTNAME>.labels" . | nindent 8 }}
@@ -347,9 +353,10 @@ spec:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.volumeMounts }}
-          volumeMounts:
-            {{- toYaml . | nindent 12 }}
+          {{- with .Values.env }}
+          envFrom:
+            - secretRef:
+                name: {{ include "<CHARTNAME>.fullname" $ }}-env
           {{- end }}
       {{- with .Values.volumes }}
       volumes:
@@ -367,6 +374,19 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+`
+
+const defaultenvSecret = `{{- if .Values.env -}}
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  name: {{ include "<CHARTNAME>.fullname" . }}-env
+  labels:
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
+stringData:
+  {{- toYaml .Values.env | nindent 2 }}
+{{- end }}
 `
 
 const defaultService = `apiVersion: v1
@@ -521,6 +541,19 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Create a checksum for all env parameters in the secret.
+Adds the checksum to podAnnotations to ensure pod reloads on env secret changes.
+*/}}
+{{- define "<CHARTNAME>.podAnnotations" -}}
+{{- if .Values.env -}}
+{{- $envChecksum := .Values.env | toYaml | sha256sum | printf "%.*s" 60 -}}
+{{ toYaml (set .Values.podAnnotations "env-checksum" $envChecksum) }}
+{{- else -}}
+{{ toYaml .Values.podAnnotations }}
+{{- end -}}
+{{- end -}}
 `
 
 const defaultTestConnection = `apiVersion: v1
@@ -650,6 +683,11 @@ func Create(name, dir string) (string, error) {
 			// deployment.yaml
 			path:    filepath.Join(cdir, DeploymentName),
 			content: transform(defaultDeployment, name),
+		},
+		{
+			// env-secret.yaml
+			path:    filepath.Join(cdir, EnvSecretName),
+			content: transform(defaultenvSecret, name),
 		},
 		{
 			// service.yaml
