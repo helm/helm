@@ -105,21 +105,22 @@ func isRemoteHTTPArchive(source string) bool {
 		// Next, we look for the content type or content disposition headers to see
 		// if they have matching extractors.
 		contentType := res.Header.Get("content-type")
-		foundSuffix, ok := mediaTypeToExtension(contentType)
-		if !ok {
-			if strings.HasSuffix(source, ".tar.gz") && contentType == "application/octet-stream" {
-				foundSuffix = ".tar.gz"
-			} else {
-				// Media type not recognized
-				return false
-			}
+		var foundSuffix string
+
+		if contentType == "application/octet-stream" {
+			foundSuffix = filepath.Ext(source)
+		} else {
+			foundSuffix, _ = mediaTypeToExtension(contentType)
 		}
 
-		for suffix := range Extractors {
-			if strings.HasSuffix(foundSuffix, suffix) {
-				return true
-			}
+		if foundSuffix == "" {
+			// Media type not recognized
+			return false
 		}
+
+		_, ok := Extractors[foundSuffix]
+
+		return ok
 	}
 	return false
 }
