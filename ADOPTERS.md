@@ -5,7 +5,6 @@
 
 # Organizations Using Helm
 
-- [Blood Orange](https://bloodorange.io)
 - [IBM](https://www.ibm.com)
 - [Microsoft](https://microsoft.com)
 - [Qovery](https://www.qovery.com/)
