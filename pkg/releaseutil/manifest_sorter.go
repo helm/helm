@@ -123,18 +123,19 @@ func SortManifests(files map[string]string, _ chartutil.VersionSet, ordering Kin
 //
 // To determine the policy to delete the hook, it looks for a YAML structure like this:
 //
-//   kind: SomeKind
-//   apiVersion: v1
-//   metadata:
-//  		annotations:
-//  			helm.sh/hook-delete-policy: hook-succeeded
+//	 kind: SomeKind
+//	 apiVersion: v1
+//	 metadata:
+//			annotations:
+//				helm.sh/hook-delete-policy: hook-succeeded
+//
 // To determine the policy to output logs of the hook (for Pod and Job only), it looks for a YAML structure like this:
 //
-//  kind: Pod
-//  apiVersion: v1
-//  metadata:
-// 		annotations:
-// 			helm.sh/hook-output-log-policy: hook-succeeded,hook-failed
+//	 kind: Pod
+//	 apiVersion: v1
+//	 metadata:
+//			annotations:
+//				helm.sh/hook-output-log-policy: hook-succeeded,hook-failed
 func (file *manifestFile) sort(result *result) error {
 	// Go through manifests in order found in file (function `SplitManifests` creates integer-sortable keys)
 	var sortedEntryKeys []string
