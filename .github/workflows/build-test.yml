@@ -24,3 +24,8 @@ jobs:
         run: make test-coverage
       - name: Test build
         run: make build
+      - name: Run govulncheck
+        uses: golang/govulncheck-action@dd0578b371c987f96d1185abb54344b44352bd58 # pin@1.0.3
+        with:
+          go-version-input: 1.22.0
+          go-package: ./..
