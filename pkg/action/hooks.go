@@ -52,7 +52,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 	for _, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
-		if h.DeletePolicies == nil || len(h.DeletePolicies) == 0 {
+		if len(h.DeletePolicies) == 0 {
 			// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
 			//                 resources. For all other resource types update in place if a
 			//                 resource with the same name already exists and is owned by the
@@ -158,7 +158,7 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 			return errors.New(joinErrors(errs))
 		}
 
-		//wait for resources until they are deleted to avoid conflicts
+		// wait for resources until they are deleted to avoid conflicts
 		if kubeClient, ok := cfg.KubeClient.(kube.InterfaceExt); ok {
 			if err := kubeClient.WaitForDelete(resources, timeout); err != nil {
 				return err
@@ -199,7 +199,7 @@ func (cfg *Configuration) outputLogsByPolicy(h *release.Hook, releaseNamespace s
 }
 
 func (cfg *Configuration) outputContainerLogsForListOptions(namespace string, listOptions metav1.ListOptions) error {
-	//TODO Helm 4: Remove this check when GetPodList and OutputContainerLogsForPodList are moved from InterfaceExt to Interface
+	// TODO Helm 4: Remove this check when GetPodList and OutputContainerLogsForPodList are moved from InterfaceExt to Interface
 	if kubeClient, ok := cfg.KubeClient.(kube.InterfaceExt); ok {
 		podList, err := kubeClient.GetPodList(namespace, listOptions)
 		if err != nil {
