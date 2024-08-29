@@ -46,7 +46,7 @@ func init() {
 
 func debug(format string, v ...interface{}) {
 	if settings.Debug {
-		timeNow := time.Now().UTC().String()
+		timeNow := time.Now().String()
 		format = fmt.Sprintf("%s [debug] %s\n", timeNow, format)
 		log.Output(2, fmt.Sprintf(format, v...))
 	}
