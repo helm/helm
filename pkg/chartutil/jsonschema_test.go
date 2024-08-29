@@ -104,6 +104,21 @@ const subchartSchema = `{
 }
 `
 
+const subchartSchema2020 = `{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "Values",
+	"type": "object",
+	"properties": {
+		"data": {
+			"type": "array",
+			"contains": { "type": "string" },
+			"unevaluatedItems": { "type": "number" }
+		}
+	},
+	"required": ["data"]
+}
+`
+
 func TestValidateAgainstSchema(t *testing.T) {
 	subchartJSON := []byte(subchartSchema)
 	subchart := &chart.Chart{
@@ -161,6 +176,71 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 	expectedErrString := `subchart:
 - (root): age is required
 `
+	if errString != expectedErrString {
+		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
+	}
+}
+
+func TestValidateAgainstSchema2020(t *testing.T) {
+	subchartJSON := []byte(subchartSchema2020)
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "subchart",
+		},
+		Schema: subchartJSON,
+	}
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "chrt",
+		},
+	}
+	chrt.AddDependency(subchart)
+
+	vals := map[string]interface{}{
+		"name": "John",
+		"subchart": map[string]interface{}{
+			"data": []any{"hello", 12},
+		},
+	}
+
+	if err := ValidateAgainstSchema(chrt, vals); err != nil {
+		t.Errorf("Error validating Values against Schema: %s", err)
+	}
+}
+
+func TestValidateAgainstSchema2020Negative(t *testing.T) {
+	subchartJSON := []byte(subchartSchema2020)
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "subchart",
+		},
+		Schema: subchartJSON,
+	}
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "chrt",
+		},
+	}
+	chrt.AddDependency(subchart)
+
+	vals := map[string]interface{}{
+		"name": "John",
+		"subchart": map[string]interface{}{
+			"data": []any{12},
+		},
+	}
+
+	var errString string
+	if err := ValidateAgainstSchema(chrt, vals); err == nil {
+		t.Fatalf("Expected an error, but got nil")
+	} else {
+		errString = err.Error()
+	}
+
+	expectedErrString := `subchart:
+jsonschema validation failed with 'file:///values.schema.json#'
+- at '/data': no items match contains schema
+  - at '/data/0': got number, want string`
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
 	}
