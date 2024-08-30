@@ -1,18 +1,9 @@
 name: build-test
 on:
   push:
-    branches:
-      - 'main'
-      - 'release-**'
   pull_request:
-    branches:
-      - main
-  workflow_dispatch:
-  release:
-    types: [created]
-  workflow_call:
-    inputs:
-      private-repository: true
+
+
 
 jobs:
   build:
