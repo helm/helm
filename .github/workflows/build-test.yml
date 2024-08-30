@@ -10,6 +10,9 @@ on:
   workflow_dispatch:
   release:
     types: [created]
+  workflow_call:
+    inputs:
+      private-repository: true
 
 jobs:
   build:
