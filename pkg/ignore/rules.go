@@ -88,7 +88,6 @@ func Parse(file io.Reader) (*Rules, error) {
 //
 // Ignore evaluates path against the rules in order. Evaluation stops when a match
 // is found. Matching a negative rule will stop evaluation.
-// Ignore evaluates the file at the given path, and returns true if it should be ignored.
 func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 	// Don't match on empty dirs.
 	if path == "" {
@@ -129,7 +128,6 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 		}
 	}
 	return false
-
 }
 
 // parseRule parses a rule string and creates a pattern, which is then stored in the Rules object.

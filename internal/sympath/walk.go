@@ -68,13 +68,14 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 		resolved, err := filepath.EvalSymlinks(path)
 		if err != nil {
 			log.Printf("Skipping broken symlink: %s", path) // Log broken symlink
-			return nil                                      // Skip this symlink and continue
+			return nil
 		}
-		log.Printf("Found symbolic link in path: %s resolves to %s. Contents of linked file included and used", path, resolved)
+		//This log message is to highlight a symlink that is being used within a chart, symlinks can be used for nefarious reasons.
+		log.Printf("found symbolic link in path: %s resolves to %s. Contents of linked file included and used", path, resolved)
 		if info, err = os.Lstat(resolved); err != nil {
 			return err
 		}
-		if err := symwalk(path, info, walkFn); err != nil && err != filepath.SkipDir { // Notice we pass the original `path` here
+		if err := symwalk(path, info, walkFn); err != nil && err != filepath.SkipDir {
 			return err
 		}
 		return nil
