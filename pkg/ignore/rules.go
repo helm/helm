@@ -90,57 +90,46 @@ func Parse(file io.Reader) (*Rules, error) {
 // is found. Matching a negative rule will stop evaluation.
 // Ignore evaluates the file at the given path, and returns true if it should be ignored.
 func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
-    // Don't match on empty dirs.
-    if path == "" {
-        return false
-    }
+	// Don't match on empty dirs.
+	if path == "" {
+		return false
+	}
 
-    // Disallow ignoring the current working directory.
+	// Disallow ignoring the current working directory.
 	// See issue:
 	// 1776 (New York City) Hamilton: "Pardon me, are you Aaron Burr, sir?"
-    if path == "." || path == "./" {
-        return false
-    }
+	if path == "." || path == "./" {
+		return false
+	}
+	for _, p := range r.patterns {
+		if p.match == nil {
+			log.Printf("ignore: no matcher supplied for %q", p.raw)
+			return false
+		}
 
-    // Check for symlink and ignore based on pattern
-    if fi.Mode()&os.ModeSymlink != 0 {
-        resolvedPath, err := filepath.EvalSymlinks(path)
-        if err != nil {
-            log.Printf("Ignoring broken symlink: %s -> %s", path, resolvedPath) // Log and ignore broken symlink
-            return false // Skip this symlink and continue
-        }
-        for _, p := range r.patterns {
-            if p.match == nil {
-                log.Printf("ignore: no matcher supplied for %q", p.raw)
-                return false
-            }
-            if p.mustDir && !fi.IsDir() {
-                continue
-            }
-            if p.match(resolvedPath, fi) {
-                log.Printf("Ignoring symlink path: %s", path)
-                return true
-            }
-        }
-        return false // Skip further evaluation for this symlink
-    }
+		// For negative rules, we need to capture and return non-matches,
+		// and continue for matches.
+		if p.negate {
+			if p.mustDir && !fi.IsDir() {
+				return true
+			}
+			if !p.match(path, fi) {
+				return true
+			}
+			continue
+		}
 
-    for _, p := range r.patterns {
-        if p.match == nil {
-            log.Printf("ignore: no matcher supplied for %q", p.raw)
-            return false
-        }
+		// If the rule is looking for directories, and this is not a directory,
+		// skip it.
+		if p.mustDir && !fi.IsDir() {
+			continue
+		}
+		if p.match(path, fi) {
+			return true
+		}
+	}
+	return false
 
-        // If the rule is looking for directories, and this is not a directory,
-        // skip it.
-        if p.mustDir && !fi.IsDir() {
-            continue
-        }
-        if p.match(path, fi) {
-            return true
-        }
-    }
-    return false
 }
 
 // parseRule parses a rule string and creates a pattern, which is then stored in the Rules object.

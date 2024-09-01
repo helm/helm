@@ -25,7 +25,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-
 )
 
 // Walk walks the file tree rooted at root, calling walkFn for each file or directory
@@ -64,50 +63,53 @@ func readDirNames(dirname string) ([]string, error) {
 
 // symwalk recursively descends path, calling walkFn.
 func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
-    // Recursively walk symlinked directories.
-    if IsSymlink(info) {
-        resolved, err := filepath.EvalSymlinks(path)
-        if err != nil {
-            log.Printf("Skipping broken symlink: %s", path) // Log broken symlink
-            return nil // Skip this symlink and continue
-        }
-        log.Printf("Found symbolic link in path: %s resolves to %s. Contents of linked file included and used", path, resolved)
-        if info, err = os.Lstat(resolved); err != nil {
-            return err
-        }
-        return symwalk(resolved, info, walkFn)
-    }
+	// Recursively walk symlinked directories.
+	if IsSymlink(info) {
+		resolved, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			log.Printf("Skipping broken symlink: %s", path) // Log broken symlink
+			return nil                                      // Skip this symlink and continue
+		}
+		log.Printf("Found symbolic link in path: %s resolves to %s. Contents of linked file included and used", path, resolved)
+		if info, err = os.Lstat(resolved); err != nil {
+			return err
+		}
+		if err := symwalk(path, info, walkFn); err != nil && err != filepath.SkipDir { // Notice we pass the original `path` here
+			return err
+		}
+		return nil
+	}
 
-    if err := walkFn(path, info, nil); err != nil {
-        return err
-    }
+	if err := walkFn(path, info, nil); err != nil {
+		return err
+	}
 
-    if !info.IsDir() {
-        return nil
-    }
+	if !info.IsDir() {
+		return nil
+	}
 
-    names, err := readDirNames(path)
-    if err != nil {
-        return walkFn(path, info, err)
-    }
+	names, err := readDirNames(path)
+	if err != nil {
+		return walkFn(path, info, err)
+	}
 
-    for _, name := range names {
-        filename := filepath.Join(path, name)
-        fileInfo, err := os.Lstat(filename)
-        if err != nil {
-            if err := walkFn(filename, fileInfo, err); err != nil && err != filepath.SkipDir {
-                return err
-            }
-        } else {
-            err = symwalk(filename, fileInfo, walkFn)
-            if err != nil {
-                if (!fileInfo.IsDir() && !IsSymlink(fileInfo)) || err != filepath.SkipDir {
-                    return err
-                }
-            }
-        }
-    }
-    return nil
+	for _, name := range names {
+		filename := filepath.Join(path, name)
+		fileInfo, err := os.Lstat(filename)
+		if err != nil {
+			if err := walkFn(filename, fileInfo, err); err != nil && err != filepath.SkipDir {
+				return err
+			}
+		} else {
+			err = symwalk(filename, fileInfo, walkFn)
+			if err != nil {
+				if (!fileInfo.IsDir() && !IsSymlink(fileInfo)) || err != filepath.SkipDir {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // IsSymlink is used to determine if the fileinfo is a symbolic link.
