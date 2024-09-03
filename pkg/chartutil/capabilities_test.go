@@ -62,7 +62,7 @@ func TestDefaultCapabilities(t *testing.T) {
 func TestDefaultCapabilitiesHelmVersion(t *testing.T) {
 	hv := DefaultCapabilities.HelmVersion
 
-	if hv.Version != "v3.15" {
+	if hv.Version != "v3.16" {
 		t.Errorf("Expected default HelmVersion to be v3.15, got %q", hv.Version)
 	}
 }
