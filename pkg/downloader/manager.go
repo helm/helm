@@ -325,15 +325,13 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			continue
 		}
 
-		if m.SkipDownloadIfExists {
-			name := filepath.Base(churl)
-			if _, err = os.Stat(filepath.Join(destPath, name)); err == nil {
-				fmt.Fprintf(m.Out, "Already exists locally %s from repo %s\n", dep.Name, dep.Repository)
-				continue
+		version := ""
+		if registry.IsOCI(churl) {
+			churl, version, err = parseOCIRef(churl)
+			if err != nil {
+				return errors.Wrapf(err, "could not parse OCI reference")
 			}
 		}
-
-		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
 
 		dl := ChartDownloader{
 			Out:              m.Out,
@@ -351,17 +349,27 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			},
 		}
 
-		version := ""
 		if registry.IsOCI(churl) {
-			churl, version, err = parseOCIRef(churl)
-			if err != nil {
-				return errors.Wrapf(err, "could not parse OCI reference")
-			}
 			dl.Options = append(dl.Options,
 				getter.WithRegistryClient(m.RegistryClient),
 				getter.WithTagName(version))
 		}
 
+		if m.SkipDownloadIfExists {
+			u, err := dl.parseChartURL(churl, version)
+
+			if err != nil {
+				return err
+			}
+
+			name := dl.getChartName(u.String())
+			if _, err = os.Stat(filepath.Join(destPath, name)); err == nil {
+				fmt.Fprintf(m.Out, "Already exists locally %s from repo %s\n", dep.Name, dep.Repository)
+				continue
+			}
+		}
+
+		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
 		if _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
 			saveError = errors.Wrapf(err, "could not download %s", churl)
 			break
