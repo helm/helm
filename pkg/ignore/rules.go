@@ -100,6 +100,16 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 	if path == "." || path == "./" {
 		return false
 	}
+
+	// Handle broken symlinks
+	if fi.Mode()&os.ModeSymlink != 0 {
+		_, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			log.Printf("Skipping broken symlink: %s", path)
+			return true // Treat broken symlink as ignored
+		}
+	}
+
 	for _, p := range r.patterns {
 		if p.match == nil {
 			log.Printf("ignore: no matcher supplied for %q", p.raw)
@@ -127,6 +137,7 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
