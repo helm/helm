@@ -72,8 +72,8 @@ const (
 
 // Following limits based on k8s labels limits - https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
 const (
-	sqlCustomLabelsTableKeyMaxLenght   = 253 + 1 + 63
-	sqlCustomLabelsTableValueMaxLenght = 63
+	sqlCustomLabelsTableKeyMaxLength   = 253 + 1 + 63
+	sqlCustomLabelsTableValueMaxLength = 63
 )
 
 const (
@@ -119,7 +119,7 @@ func (s *SQL) checkAlreadyApplied(migrations []*migrate.Migration) bool {
 		}
 	}
 
-	// check if all migrations appliyed
+	// check if all migrations applied
 	if len(migrationsIDs) != 0 {
 		for id := range migrationsIDs {
 			s.Log("checkAlreadyApplied: find unapplied migration (id: %v)", id)
@@ -204,7 +204,7 @@ func (s *SQL) ensureDBSetup() error {
 						CREATE TABLE %s (
 							%s VARCHAR(64),
 							%s VARCHAR(67),
-							%s VARCHAR(%d), 
+							%s VARCHAR(%d),
 							%s VARCHAR(%d)
 						);
 						CREATE INDEX ON %s (%s, %s);
@@ -216,9 +216,9 @@ func (s *SQL) ensureDBSetup() error {
 						sqlCustomLabelsTableReleaseKeyColumn,
 						sqlCustomLabelsTableReleaseNamespaceColumn,
 						sqlCustomLabelsTableKeyColumn,
-						sqlCustomLabelsTableKeyMaxLenght,
+						sqlCustomLabelsTableKeyMaxLength,
 						sqlCustomLabelsTableValueColumn,
-						sqlCustomLabelsTableValueMaxLenght,
+						sqlCustomLabelsTableValueMaxLength,
 						sqlCustomLabelsTableName,
 						sqlCustomLabelsTableReleaseKeyColumn,
 						sqlCustomLabelsTableReleaseNamespaceColumn,
