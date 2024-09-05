@@ -64,7 +64,7 @@ func TestExpand(t *testing.T) {
 			t.Fatal(err)
 		}
 		// os.Stat can return different values for directories, based on the OS
-		// for Linux, for example, os.Stat alwaty returns the size of the directory
+		// for Linux, for example, os.Stat always returns the size of the directory
 		// (value-4096) regardless of the size of the contents of the directory
 		mode := expect.Mode()
 		if !mode.IsDir() {
@@ -112,7 +112,7 @@ func TestExpandFile(t *testing.T) {
 			t.Fatal(err)
 		}
 		// os.Stat can return different values for directories, based on the OS
-		// for Linux, for example, os.Stat alwaty returns the size of the directory
+		// for Linux, for example, os.Stat always returns the size of the directory
 		// (value-4096) regardless of the size of the contents of the directory
 		mode := expect.Mode()
 		if !mode.IsDir() {
