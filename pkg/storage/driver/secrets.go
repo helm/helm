@@ -162,6 +162,8 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 	if _, err := secrets.impl.Create(context.Background(), obj, metav1.CreateOptions{}); err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			return ErrReleaseExists
+		} else if apierrors.IsRequestEntityTooLargeError(err) {
+			return errors.Wrapf(err, "release: storage limit")
 		}
 
 		return errors.Wrap(err, "create: failed to create")
@@ -186,6 +188,11 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 	}
 	// push the secret object out into the kubiverse
 	_, err = secrets.impl.Update(context.Background(), obj, metav1.UpdateOptions{})
+
+	if apierrors.IsRequestEntityTooLargeError(err) {
+		return errors.Wrapf(err, "release: storage limit")
+	}
+
 	return errors.Wrap(err, "update: failed to update")
 }
 
