@@ -2,7 +2,6 @@ module helm.sh/helm/v3
 
 go 1.22.0
 
-
 require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/DATA-DOG/go-sqlmock v1.5.2
