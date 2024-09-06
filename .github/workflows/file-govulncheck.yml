@@ -2,7 +2,7 @@ name: file-govulncheck
 on:
   push:
     paths:
-      - go.sum
+      - go.mod
 
 jobs:
   govulncheck:
