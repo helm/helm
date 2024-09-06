@@ -1,8 +1,10 @@
-name: file-govulncheck
+name: govulncheck
 on:
   push:
     paths:
       - go.sum
+  schedule:
+    - cron: "0 0 * * *"
 
 jobs:
   govulncheck:
