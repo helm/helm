@@ -225,9 +225,9 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 	if len(resources) > 0 {
 		if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceDeletionPropagation); ok {
 			_, errs = kubeClient.DeleteWithPropagationPolicy(resources, parseCascadingFlag(u.cfg, u.DeletionPropagation))
-			return resources, kept, errs
+		} else {
+			_, errs = u.cfg.KubeClient.Delete(resources)
 		}
-		_, errs = u.cfg.KubeClient.Delete(resources)
 	}
 	return resources, kept, errs
 }
