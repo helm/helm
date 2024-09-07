@@ -63,6 +63,14 @@ func withDeps(c *chart.Chart, deps ...*chart.Chart) *chart.Chart {
 	return c
 }
 
+func assertIsEqualToJSON(t *testing.T, name string, val any, expectedJson []byte) {
+	j, err := json.Marshal(val)
+	if err != nil {
+		t.Fatalf("JSON marshal failed: %v", err)
+	}
+	assert.Equal(t, expectedJson, j)
+}
+
 func TestCoalesceValues(t *testing.T) {
 	is := assert.New(t)
 
@@ -387,12 +395,21 @@ func TestCoalesceTables(t *testing.T) {
 			"state":   "MA",
 			"street":  "234 Spouter Inn Ct.",
 			"country": "US",
+			"weather": map[string]interface{}{
+				"clouds": true,
+			},
 		},
 		"details": "empty",
 		"boat": map[string]interface{}{
 			"mast": true,
 		},
-		"hole": "black",
+		"hole":  "black",
+		"grass": []string{"green", "yellow"},
+	}
+
+	srcJson, err := json.Marshal(src)
+	if err != nil {
+		t.Fatalf("JSON marshal failed: %v", err)
 	}
 
 	// What we expect is that anything in dst overrides anything in src, but that
@@ -440,6 +457,11 @@ func TestCoalesceTables(t *testing.T) {
 	if _, ok = dst["hole"]; ok {
 		t.Error("The hole still exists.")
 	}
+
+	// change in dst shouldn't make a change in src
+	dst["grass"].([]string)[1] = "blue"
+	dst["address"].(map[string]interface{})["weather"].(map[string]interface{})["clouds"] = "no"
+	assertIsEqualToJSON(t, "src", src, srcJson)
 
 	dst2 := map[string]interface{}{
 		"name": "Ishmael",
@@ -697,4 +719,35 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 func TestConcatPrefix(t *testing.T) {
 	assert.Equal(t, "b", concatPrefix("", "b"))
 	assert.Equal(t, "a.b", concatPrefix("a", "b"))
+}
+
+func TestTwoFollowingCoalesceTables(t *testing.T) {
+	update := map[string]interface{}{
+		"mango": map[string]interface{}{
+			"fruit": "cool",
+		},
+	}
+	main := map[string]interface{}{
+		"mango": map[string]interface{}{
+			"fruit": "super",
+			"color": "orange",
+			"taste": "ok",
+		},
+	}
+
+	updateJson, err := json.Marshal(update)
+	if err != nil {
+		t.Fatalf("JSON marshal failed: %v", err)
+	}
+	mainJson, err := json.Marshal(main)
+	if err != nil {
+		t.Fatalf("JSON marshal failed: %v", err)
+	}
+
+	vals := CoalesceTables(make(map[string]interface{}, len(update)), update)
+	vals = CoalesceTables(vals, main)
+	_ = vals
+
+	assertIsEqualToJSON(t, "update", update, updateJson)
+	assertIsEqualToJSON(t, "main", main, mainJson)
 }
