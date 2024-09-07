@@ -77,6 +77,7 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.IgnoreNotFound, "ignore-not-found", false, `Treat "release not found" as a successful uninstall`)
 	f.BoolVar(&client.KeepHistory, "keep-history", false, "remove all associated resources and mark the release as deleted, but retain the release history")
 	f.BoolVar(&client.Wait, "wait", false, "if set, will wait until all the resources are deleted before returning. It will wait for as long as --timeout")
+	f.BoolVar(&client.DisableOpenAPIValidation, "disable-openapi-validation", false, "if set, the uninstallation process will not validate rendered templates against the Kubernetes OpenAPI Schema")
 	f.StringVar(&client.DeletionPropagation, "cascade", "background", "Must be \"background\", \"orphan\", or \"foreground\". Selects the deletion cascading strategy for the dependents. Defaults to background.")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
