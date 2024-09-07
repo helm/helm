@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
@@ -401,13 +402,15 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	time.AfterFunc(time.Second, cancel)
+	goroutines := runtime.NumGoroutine()
 
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 
 	req.Error(err)
 	is.Contains(res.Info.Description, "Upgrade \"interrupted-release\" failed: context canceled")
 	is.Equal(res.Info.Status, release.StatusFailed)
-
+	// since the context is cancelled all linked goroutines must also be cancelled
+	is.Equal(goroutines, runtime.NumGoroutine())
 }
 
 func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
@@ -430,6 +433,7 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	time.AfterFunc(time.Second, cancel)
+	goroutines := runtime.NumGoroutine()
 
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 
@@ -441,6 +445,8 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	is.NoError(err)
 	// Should have rolled back to the previous
 	is.Equal(updatedRes.Info.Status, release.StatusDeployed)
+	// since the context is cancelled all linked goroutines must also be cancelled
+	is.Equal(goroutines, runtime.NumGoroutine())
 }
 
 func TestMergeCustomLabels(t *testing.T) {

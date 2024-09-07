@@ -438,8 +438,7 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	is.Error(err)
 	is.Contains(err.Error(), "context canceled")
 
-	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
-	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
+	// since the context is cancelled all linked goroutines must also be cancelled without delay
 	is.Equal(goroutines, runtime.NumGoroutine())
 }
 func TestInstallRelease_WaitForJobs(t *testing.T) {
