@@ -693,12 +693,56 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		c.Log("Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
-			return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
+			sanitizeLog := err.Error()
+			if kind == "Secret" {
+				sanitizeLog = desensitizeLog(err.Error())
+			}
+			return errors.Wrapf(errors.New(sanitizeLog), "cannot patch %q with kind %s", target.Name, kind)
 		}
 	}
 
 	target.Refresh(obj, true)
 	return nil
+}
+
+// desensitizeLog replaces the data in a Secret with {"key": "***"}.
+// e.g. "data": {"username": "admin", "password": "password"} becomes "data": {"username": "***", "password": "***"}
+func desensitizeLog(log string) string {
+	start := strings.Index(log, `{\"apiVersion`)
+	end := strings.Index(log, `,\"kind\":\"Secret\"`)
+	if start == -1 || end == -1 {
+		return log
+	}
+
+	// Extract the JSON string and add a } at the end
+	jsonStr := log[start:end] + "}"
+	jsonStr = strings.ReplaceAll(jsonStr, "\\\"", "\"")
+
+	// Parse the JSON string into a map
+	var data map[string]interface{}
+	err := json.Unmarshal([]byte(jsonStr), &data)
+	if err != nil {
+		return log
+	}
+
+	// Desensitize the values in the data map
+	if dataMap, ok := data["data"].(map[string]interface{}); ok {
+		for k := range dataMap {
+			dataMap[k] = "***"
+		}
+	}
+
+	// Convert the map back to JSON string
+	newJsonStr, err := json.Marshal(data)
+	if err != nil {
+		return log
+	}
+
+	// Replace the original JSON string with the new one in the log
+	newJsonStr = []byte(strings.ReplaceAll(string(newJsonStr), "\"", "\\\""))
+	newLog := log[:start] + string(newJsonStr[:len(newJsonStr)-1]) + log[end:]
+
+	return newLog
 }
 
 func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) error {

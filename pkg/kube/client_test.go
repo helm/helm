@@ -558,3 +558,19 @@ spec:
         ports:
         - containerPort: 80
 `
+
+func TestDesensitizeLog(t *testing.T) {
+	log := `Error: UPGRADE FAILED: cannot patch "mysecret" with kind Secret:  "" is invalid: patch: Invalid value: "{\"apiVersion\":\"v1\",\"data\":{\"mykey1\":\"hello\", \"mykey2\":\"world\"},\"kind\":\"Secret\",\"metadata\"……,\"type\":\"Opaque\"}": illegal base64 data at input byte 12`
+	expected1 := `\"mykey1\":\"***\"`
+	expected2 := `\"mykey2\":\"***\"`
+
+	result := desensitizeLog(log)
+
+	if !strings.Contains(result, expected1) {
+		t.Errorf("Expected %s to contain %s", result, expected1)
+	}
+
+	if !strings.Contains(result, expected2) {
+		t.Errorf("Expected %s to contain %s", result, expected2)
+	}
+}
