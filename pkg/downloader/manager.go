@@ -510,6 +510,10 @@ Outer:
 			continue
 		}
 
+		if _, ok := repoNames[dd.Repository]; ok {
+			continue
+		}
+
 		// When the repoName for a dependency is known we can skip ensuring
 		if _, ok := repoNames[dd.Name]; ok {
 			continue
