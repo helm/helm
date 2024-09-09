@@ -2,8 +2,8 @@ name: build-test
 on:
   push:
     branches:
-      - 'main'
-      - 'release-**'
+      - "main"
+      - "release-**"
   pull_request:
     branches:
       - main
