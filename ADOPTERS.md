@@ -7,6 +7,7 @@
 
 - [IBM](https://www.ibm.com)
 - [Microsoft](https://microsoft.com)
+- [Octopus Deploy](https://octopus.com/)
 - [New Relic](https://www.newrelic.com)
 - [Qovery](https://www.qovery.com/)
 - [Samsung SDS](https://www.samsungsds.com/)
