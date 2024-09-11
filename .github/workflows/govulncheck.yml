@@ -1,0 +1,21 @@
+name: govulncheck
+on:
+  push:
+    paths:
+      - go.sum
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Go
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # pin@5.0.2
+        with:
+          go-version: '1.22'
+      - name: govulncheck
+        uses: golang/govulncheck-action@dd0578b371c987f96d1185abb54344b44352bd58 # pin@1.0.3
+        with:
+          go-package: ./...

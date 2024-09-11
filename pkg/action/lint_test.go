@@ -31,9 +31,10 @@ var (
 
 func TestLintChart(t *testing.T) {
 	tests := []struct {
-		name      string
-		chartPath string
-		err       bool
+		name                 string
+		chartPath            string
+		err                  bool
+		skipSchemaValidation bool
 	}{
 		{
 			name:      "decompressed-chart",
@@ -70,6 +71,11 @@ func TestLintChart(t *testing.T) {
 			chartPath: "testdata/charts/chart-with-schema-negative",
 		},
 		{
+			name:                 "chart-with-schema-negative-skip-validation",
+			chartPath:            "testdata/charts/chart-with-schema-negative",
+			skipSchemaValidation: true,
+		},
+		{
 			name:      "pre-release-chart",
 			chartPath: "testdata/charts/pre-release-chart-0.1.0-alpha.tgz",
 		},
@@ -77,7 +83,7 @@ func TestLintChart(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, nil)
+			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, nil, tt.skipSchemaValidation)
 			switch {
 			case err != nil && !tt.err:
 				t.Errorf("%s", err)

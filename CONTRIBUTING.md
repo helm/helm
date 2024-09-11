@@ -66,6 +66,18 @@ Use your real name (sorry, no pseudonyms or anonymous contributions.)
 If you set your `user.name` and `user.email` git configs, you can sign your commit automatically
 with `git commit -s`.
 
+The following command will update your git config with `user.email`:
+
+``` bash
+git config --global user.email joe.smith@example.com
+```
+
+This command will update your git config with `user.name`:
+
+``` bash
+git config --global user.name "Joe Smith"
+```
+
 Note: If your git config information is set properly then viewing the `git log` information for your
  commit will look something like this:
 
@@ -262,9 +274,9 @@ Like any good open source project, we use Pull Requests (PRs) to track code chan
 
 #### Documentation PRs
 
-Documentation PRs will follow the same lifecycle as other PRs. They will also be labeled with the
-`docs` label. For documentation, special attention will be paid to spelling, grammar, and clarity
-(whereas those things don't matter *as* much for comments in code).
+Documentation PRs should be made on the docs repo: <https://github.com/helm/helm-www>. Keeping Helm's documentation up to date is highly desirable, and it is recommend all user facing changes. Accurate and helpful documentation is critical for effectively communicating Helm's behavior to a wide audience.
+
+Small, ad-hoc changes/PRs to Helm which introduce user facing changes, which would benefit from documentation changes, should apply the `docs needed` label. Larger changes associated with a HIP should track docs via that HIP. The `docs needed` label doesn't block PRs, and maintainers/PR reviewers should apply discretion judging in whether the `docs needed` label should be applied.
 
 ## The Triager
 
@@ -307,6 +319,7 @@ The following tables define all label types used for Helm. It is split up by cat
 | `needs rebase` | Indicates a PR needs to be rebased before it can be merged |
 | `needs pick` | Indicates a PR needs to be cherry-picked into a feature branch (generally bugfix branches). Once it has been, the `picked` label should be applied and this one removed |
 | `picked` | This PR has been cherry-picked into a feature branch |
+| `docs needed` | Tracks PRs that introduces a feature/change for which documentation update would be desirable (non-blocking). Once a suitable documentation PR has been created, then this label should be removed |
 
 #### Size labels
 
