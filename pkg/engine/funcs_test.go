@@ -38,6 +38,30 @@ func TestFuncs(t *testing.T) {
 		expect: "foo = \"bar\"\n",
 		vars:   map[string]interface{}{"foo": "bar"},
 	}, {
+		tpl:    `{{ fromToml . }}`,
+		expect: "map[hello:world]",
+		vars:   `hello = "world"`,
+	}, {
+		tpl:    `{{ fromToml . }}`,
+		expect: "map[table:map[keyInTable:valueInTable subtable:map[keyInSubtable:valueInSubTable]]]",
+		vars: `
+[table]
+keyInTable = "valueInTable"
+[table.subtable]
+keyInSubtable = "valueInSubTable"`,
+	}, {
+		tpl:    `{{ fromToml . }}`,
+		expect: "map[tableArray:[map[keyInElement0:valueInElement0] map[keyInElement1:valueInElement1]]]",
+		vars: `
+[[tableArray]]
+keyInElement0 = "valueInElement0"
+[[tableArray]]
+keyInElement1 = "valueInElement1"`,
+	}, {
+		tpl:    `{{ fromToml . }}`,
+		expect: "map[Error:toml: line 0: unexpected EOF; expected key separator '=']",
+		vars:   "one",
+	}, {
 		tpl:    `{{ toJson . }}`,
 		expect: `{"foo":"bar"}`,
 		vars:   map[string]interface{}{"foo": "bar"},

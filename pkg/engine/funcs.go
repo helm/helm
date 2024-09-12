@@ -48,6 +48,7 @@ func funcMap() template.FuncMap {
 	// Add some extra functionality
 	extra := template.FuncMap{
 		"toToml":        toTOML,
+		"fromToml":      fromTOML,
 		"toYaml":        toYAML,
 		"fromYaml":      fromYAML,
 		"fromYamlArray": fromYAMLArray,
@@ -130,6 +131,21 @@ func toTOML(v interface{}) string {
 		return err.Error()
 	}
 	return b.String()
+}
+
+// fromTOML converts a TOML document into a map[string]interface{}.
+//
+// This is not a general-purpose TOML parser, and will not parse all valid
+// TOML documents. Additionally, because its intended use is within templates
+// it tolerates errors. It will insert the returned error message string into
+// m["Error"] in the returned map.
+func fromTOML(str string) map[string]interface{} {
+	m := make(map[string]interface{})
+
+	if err := toml.Unmarshal([]byte(str), &m); err != nil {
+		m["Error"] = err.Error()
+	}
+	return m
 }
 
 // toJSON takes an interface, marshals it to json, and returns a string. It will
