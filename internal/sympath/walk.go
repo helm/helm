@@ -71,6 +71,7 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 		if err != nil {
 			return errors.Wrapf(err, "error evaluating symlink %s", path)
 		}
+		//This log message is to highlight a symlink that is being used within a chart, symlinks can be used for nefarious reasons.
 		log.Printf("found symbolic link in path: %s resolves to %s. Contents of linked file included and used", path, resolved)
 		if info, err = os.Lstat(resolved); err != nil {
 			return err

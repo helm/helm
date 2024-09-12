@@ -128,6 +128,16 @@ func TestSecretList(t *testing.T) {
 	if len(ssd) != 2 {
 		t.Errorf("Expected 2 superseded, got %d", len(ssd))
 	}
+	// Check if release having both system and custom labels, this is needed to ensure that selector filtering would work.
+	rls := ssd[0]
+	_, ok := rls.Labels["name"]
+	if !ok {
+		t.Fatalf("Expected 'name' label in results, actual %v", rls.Labels)
+	}
+	_, ok = rls.Labels["key1"]
+	if !ok {
+		t.Fatalf("Expected 'key1' label in results, actual %v", rls.Labels)
+	}
 }
 
 func TestSecretQuery(t *testing.T) {

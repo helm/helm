@@ -33,7 +33,7 @@ func TestInstall(t *testing.T) {
 	}
 	defer srv.Stop()
 
-	srv.WithMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv.WithMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
 		if !ok || username != "username" || password != "password" {
 			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
@@ -225,6 +225,12 @@ func TestInstall(t *testing.T) {
 			wantError: true,
 			golden:    "output/subchart-schema-cli-negative.txt",
 		},
+		// Install, values from yaml, schematized with errors but skip schema validation, expect success
+		{
+			name:   "install with schema file and schematized subchart, extra values from cli, skip schema validation",
+			cmd:    "install schema testdata/testcharts/chart-with-schema-and-subchart --set lastname=doe --set subchart-with-schema.age=-25 --skip-schema-validation",
+			golden: "output/schema.txt",
+		},
 		// Install deprecated chart
 		{
 			name:   "install with warning about deprecated chart",
@@ -251,6 +257,22 @@ func TestInstall(t *testing.T) {
 			name:   "basic install with credentials and no repo",
 			cmd:    fmt.Sprintf("install aeneas test/reqtest --username username --password password --repository-config %s --repository-cache %s", repoFile, srv.Root()),
 			golden: "output/install.txt",
+		},
+		{
+			name:   "dry-run displaying secret",
+			cmd:    "install secrets testdata/testcharts/chart-with-secret --dry-run",
+			golden: "output/install-dry-run-with-secret.txt",
+		},
+		{
+			name:   "dry-run hiding secret",
+			cmd:    "install secrets testdata/testcharts/chart-with-secret --dry-run --hide-secret",
+			golden: "output/install-dry-run-with-secret-hidden.txt",
+		},
+		{
+			name:      "hide-secret error without dry-run",
+			cmd:       "install secrets testdata/testcharts/chart-with-secret --hide-secret",
+			wantError: true,
+			golden:    "output/install-hide-secret.txt",
 		},
 	}
 

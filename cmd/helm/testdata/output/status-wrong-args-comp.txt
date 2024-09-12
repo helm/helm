@@ -1,2 +1,3 @@
+_activeHelp_ This command does not take any more arguments (but may accept flags).
 :4
 Completion ended with directive: ShellCompDirectiveNoFileComp

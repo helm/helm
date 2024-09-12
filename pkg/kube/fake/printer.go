@@ -49,7 +49,7 @@ func (p *PrintingKubeClient) Create(resources kube.ResourceList) (*kube.Result, 
 	return &kube.Result{Created: resources}, nil
 }
 
-func (p *PrintingKubeClient) Get(resources kube.ResourceList, related bool) (map[string][]runtime.Object, error) {
+func (p *PrintingKubeClient) Get(resources kube.ResourceList, _ bool) (map[string][]runtime.Object, error) {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	if err != nil {
 		return nil, err
@@ -119,7 +119,7 @@ func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(_ string, _ time.Durati
 // DeleteWithPropagationPolicy implements KubeClient delete.
 //
 // It only prints out the content to be deleted.
-func (p *PrintingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceList, policy metav1.DeletionPropagation) (*kube.Result, []error) {
+func (p *PrintingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceList, _ metav1.DeletionPropagation) (*kube.Result, []error) {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	if err != nil {
 		return nil, []error{err}

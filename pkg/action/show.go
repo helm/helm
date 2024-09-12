@@ -153,6 +153,9 @@ func (s *Show) Run(chartpath string) (string, error) {
 func findReadme(files []*chart.File) (file *chart.File) {
 	for _, file := range files {
 		for _, n := range readmeFileNames {
+			if file == nil {
+				continue
+			}
 			if strings.EqualFold(file.Name, n) {
 				return file
 			}

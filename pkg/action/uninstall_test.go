@@ -32,6 +32,17 @@ func uninstallAction(t *testing.T) *Uninstall {
 	return unAction
 }
 
+func TestUninstallRelease_ignoreNotFound(t *testing.T) {
+	unAction := uninstallAction(t)
+	unAction.DryRun = false
+	unAction.IgnoreNotFound = true
+
+	is := assert.New(t)
+	res, err := unAction.Run("release-non-exist")
+	is.Nil(res)
+	is.NoError(err)
+}
+
 func TestUninstallRelease_deleteRelease(t *testing.T) {
 	is := assert.New(t)
 

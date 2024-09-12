@@ -40,6 +40,10 @@ func releaseStub(name string, vers int, namespace string, status rspb.Status) *r
 		Version:   vers,
 		Namespace: namespace,
 		Info:      &rspb.Info{Status: status},
+		Labels: map[string]string{
+			"key1": "val1",
+			"key2": "val2",
+		},
 	}
 }
 
@@ -249,7 +253,7 @@ func (mock *MockSecretsInterface) Delete(_ context.Context, name string, _ metav
 }
 
 // newTestFixtureSQL mocks the SQL database (for testing purposes)
-func newTestFixtureSQL(t *testing.T, releases ...*rspb.Release) (*SQL, sqlmock.Sqlmock) {
+func newTestFixtureSQL(t *testing.T, _ ...*rspb.Release) (*SQL, sqlmock.Sqlmock) {
 	sqlDB, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("error when opening stub database connection: %v", err)
@@ -258,7 +262,7 @@ func newTestFixtureSQL(t *testing.T, releases ...*rspb.Release) (*SQL, sqlmock.S
 	sqlxDB := sqlx.NewDb(sqlDB, "sqlmock")
 	return &SQL{
 		db:               sqlxDB,
-		Log:              func(a string, b ...interface{}) {},
+		Log:              func(_ string, _ ...interface{}) {},
 		namespace:        "default",
 		statementBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}, mock

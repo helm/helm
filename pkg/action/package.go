@@ -54,7 +54,7 @@ func NewPackage() *Package {
 }
 
 // Run executes 'helm package' against the given chart and returns the path to the packaged chart.
-func (p *Package) Run(path string, vals map[string]interface{}) (string, error) {
+func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
 	ch, err := loader.LoadDir(path)
 	if err != nil {
 		return "", err
@@ -161,7 +161,7 @@ func passphraseFileFetcher(passphraseFile string, stdin *os.File) (provenance.Pa
 	if err != nil {
 		return nil, err
 	}
-	return func(name string) ([]byte, error) {
+	return func(_ string) ([]byte, error) {
 		return passphrase, nil
 	}, nil
 }

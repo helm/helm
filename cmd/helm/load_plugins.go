@@ -128,7 +128,8 @@ func callPluginExecutable(pluginName string, main string, argv []string, out io.
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	prog := exec.Command(main, argv...)
+	mainCmdExp := os.ExpandEnv(main)
+	prog := exec.Command(mainCmdExp, argv...)
 	prog.Env = env
 	prog.Stdin = os.Stdin
 	prog.Stdout = out
@@ -153,7 +154,7 @@ func callPluginExecutable(pluginName string, main string, argv []string, out io.
 func manuallyProcessArgs(args []string) ([]string, []string) {
 	known := []string{}
 	unknown := []string{}
-	kvargs := []string{"--kube-context", "--namespace", "-n", "--kubeconfig", "--kube-apiserver", "--kube-token", "--kube-as-user", "--kube-as-group", "--kube-ca-file", "--registry-config", "--repository-cache", "--repository-config", "--insecure-skip-tls-verify", "--tls-server-name"}
+	kvargs := []string{"--kube-context", "--namespace", "-n", "--kubeconfig", "--kube-apiserver", "--kube-token", "--kube-as-user", "--kube-as-group", "--kube-ca-file", "--registry-config", "--repository-cache", "--repository-config", "--kube-insecure-skip-tls-verify", "--kube-tls-server-name"}
 	knownArg := func(a string) bool {
 		for _, pre := range kvargs {
 			if strings.HasPrefix(a, pre+"=") {
@@ -300,7 +301,7 @@ func addPluginCommands(plugin *plugin.Plugin, baseCmd *cobra.Command, cmds *plug
 			// to the dynamic completion script of the plugin.
 			DisableFlagParsing: true,
 			// A Run is required for it to be a valid command without subcommands
-			Run: func(cmd *cobra.Command, args []string) {},
+			Run: func(_ *cobra.Command, _ []string) {},
 		}
 		baseCmd.AddCommand(subCmd)
 		addPluginCommands(plugin, subCmd, &cmd)

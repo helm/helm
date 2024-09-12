@@ -106,6 +106,10 @@ func validateChartName(cf *chart.Metadata) error {
 	if cf.Name == "" {
 		return errors.New("name is required")
 	}
+	name := filepath.Base(cf.Name)
+	if name != cf.Name {
+		return fmt.Errorf("chart name %q is invalid", cf.Name)
+	}
 	return nil
 }
 

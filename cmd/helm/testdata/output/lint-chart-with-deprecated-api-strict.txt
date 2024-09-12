@@ -1,0 +1,5 @@
+==> Linting testdata/testcharts/chart-with-deprecated-api
+[INFO] Chart.yaml: icon is recommended
+[WARNING] templates/horizontalpodautoscaler.yaml: autoscaling/v2beta1 HorizontalPodAutoscaler is deprecated in v1.22+, unavailable in v1.25+; use autoscaling/v2 HorizontalPodAutoscaler
+
+Error: 1 chart(s) linted, 1 chart(s) failed

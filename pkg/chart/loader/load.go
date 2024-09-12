@@ -134,6 +134,9 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			if c.Metadata == nil {
 				c.Metadata = new(chart.Metadata)
 			}
+			if c.Metadata.APIVersion != chart.APIVersionV1 {
+				log.Printf("Warning: Dependency locking is handled in Chart.lock since apiVersion \"v2\". We recommend migrating to Chart.lock.")
+			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
 				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
 			}

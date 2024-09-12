@@ -1,5 +1,4 @@
 maintainers:
-  - hickeyma
   - joejulian
   - jdolitsky
   - marckhouzam
@@ -11,10 +10,12 @@ triage:
   - yxxhero
   - zonggen
   - gjenkins8
+  - z4ce
 emeritus:
   - adamreese
   - bacongobbler
   - fibonacci1729
+  - hickeyma
   - jascott1
   - michelleN
   - migmartri

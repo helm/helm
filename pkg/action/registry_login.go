@@ -73,7 +73,7 @@ func NewRegistryLogin(cfg *Configuration) *RegistryLogin {
 }
 
 // Run executes the registry login operation
-func (a *RegistryLogin) Run(out io.Writer, hostname string, username string, password string, opts ...RegistryLoginOpt) error {
+func (a *RegistryLogin) Run(_ io.Writer, hostname string, username string, password string, opts ...RegistryLoginOpt) error {
 	for _, opt := range opts {
 		if err := opt(a); err != nil {
 			return err

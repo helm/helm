@@ -51,13 +51,13 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Aliases: []string{"fetch"},
 		Long:    pullDesc,
 		Args:    require.MinimumNArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 			return compListCharts(toComplete, false)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			client.Settings = settings
 			if client.Version == "" && client.Devel {
 				debug("setting version to >0.0.0-0")
@@ -90,7 +90,7 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVarP(&client.DestDir, "destination", "d", ".", "location to write the chart. If this and untardir are specified, untardir is appended to this")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 
-	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("version", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 1 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}

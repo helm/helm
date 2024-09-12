@@ -119,7 +119,7 @@ func mark(info os.FileInfo, err error, errors *[]error, clear bool) error {
 		return err
 	}
 	name := info.Name()
-	walkTree(tree, tree.name, func(path string, n *Node) {
+	walkTree(tree, tree.name, func(_ string, n *Node) {
 		if n.name == name {
 			n.marks++
 		}
@@ -131,7 +131,7 @@ func TestWalk(t *testing.T) {
 	makeTree(t)
 	errors := make([]error, 0, 10)
 	clear := true
-	markFn := func(path string, info os.FileInfo, err error) error {
+	markFn := func(_ string, info os.FileInfo, err error) error {
 		return mark(info, err, &errors, clear)
 	}
 	// Expect no errors.

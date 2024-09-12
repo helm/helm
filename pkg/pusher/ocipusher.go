@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v3/pkg/time/ctime"
 )
 
 // OCIPusher is the default OCI backend handler
@@ -88,6 +89,9 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	ref := fmt.Sprintf("%s:%s",
 		path.Join(strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme)), meta.Metadata.Name),
 		meta.Metadata.Version)
+
+	chartCreationTime := ctime.Created(stat)
+	pushOpts = append(pushOpts, registry.PushOptCreationTime(chartCreationTime.Format(time.RFC3339)))
 
 	_, err = client.Push(chartBytes, ref, pushOpts...)
 	return err

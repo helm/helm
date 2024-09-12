@@ -18,18 +18,18 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
 func TestRepoIndexCmd(t *testing.T) {
 
-	dir := ensure.TempDir(t)
+	dir := t.TempDir()
 
 	comp := filepath.Join(dir, "compressedchart-0.1.0.tgz")
 	if err := linkOrCopy("testdata/testcharts/compressedchart-0.1.0.tgz", comp); err != nil {
@@ -66,6 +66,28 @@ func TestRepoIndexCmd(t *testing.T) {
 	expectedVersion := "0.2.0"
 	if vs[0].Version != expectedVersion {
 		t.Errorf("expected %q, got %q", expectedVersion, vs[0].Version)
+	}
+
+	b, err := os.ReadFile(destIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if json.Valid(b) {
+		t.Error("did not expect index file to be valid json")
+	}
+
+	// Test with `--json`
+
+	c.ParseFlags([]string{"--json", "true"})
+	if err := c.RunE(c, []string{dir}); err != nil {
+		t.Error(err)
+	}
+
+	if b, err = os.ReadFile(destIndex); err != nil {
+		t.Fatal(err)
+	}
+	if !json.Valid(b) {
+		t.Error("index file is not valid json")
 	}
 
 	// Test with `--merge`

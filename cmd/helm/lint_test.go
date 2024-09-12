@@ -63,6 +63,34 @@ func TestLintCmdWithQuietFlag(t *testing.T) {
 
 }
 
+func TestLintCmdWithKubeVersionFlag(t *testing.T) {
+	testChart := "testdata/testcharts/chart-with-deprecated-api"
+	tests := []cmdTestCase{{
+		name:      "lint chart with deprecated api version using kube version flag",
+		cmd:       fmt.Sprintf("lint --kube-version 1.22.0 %s", testChart),
+		golden:    "output/lint-chart-with-deprecated-api.txt",
+		wantError: false,
+	}, {
+		name:      "lint chart with deprecated api version using kube version and strict flag",
+		cmd:       fmt.Sprintf("lint --kube-version 1.22.0 --strict %s", testChart),
+		golden:    "output/lint-chart-with-deprecated-api-strict.txt",
+		wantError: true,
+	}, {
+		// the test builds will use the default k8sVersionMinor const in deprecations.go and capabilities.go
+		// which is "20"
+		name:      "lint chart with deprecated api version without kube version",
+		cmd:       fmt.Sprintf("lint %s", testChart),
+		golden:    "output/lint-chart-with-deprecated-api-old-k8s.txt",
+		wantError: false,
+	}, {
+		name:      "lint chart with deprecated api version with older kube version",
+		cmd:       fmt.Sprintf("lint --kube-version 1.21.0 --strict %s", testChart),
+		golden:    "output/lint-chart-with-deprecated-api-old-k8s.txt",
+		wantError: false,
+	}}
+	runTestCmd(t, tests)
+}
+
 func TestLintFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "lint", true)
 	checkFileCompletion(t, "lint mypath", true) // Multiple paths can be given

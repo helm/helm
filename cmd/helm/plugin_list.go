@@ -30,8 +30,8 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 		Use:               "list",
 		Aliases:           []string{"ls"},
 		Short:             "list installed Helm plugins",
-		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		ValidArgsFunction: noMoreArgsCompFunc,
+		RunE: func(_ *cobra.Command, _ []string) error {
 			debug("pluginDirs: %s", settings.PluginsDirectory)
 			plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
 			if err != nil {
@@ -75,7 +75,7 @@ func filterPlugins(plugins []*plugin.Plugin, ignoredPluginNames []string) []*plu
 }
 
 // Provide dynamic auto-completion for plugin names
-func compListPlugins(toComplete string, ignoredPluginNames []string) []string {
+func compListPlugins(_ string, ignoredPluginNames []string) []string {
 	var pNames []string
 	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
 	if err == nil && len(plugins) > 0 {

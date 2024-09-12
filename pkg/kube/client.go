@@ -69,6 +69,14 @@ var ManagedFieldsManager string
 
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
+	// Factory provides a minimal version of the kubectl Factory interface. If
+	// you need the full Factory you can type switch to the full interface.
+	// Since Kubernetes Go API does not provide backwards compatibility across
+	// minor versions, this API does not follow Helm backwards compatibility.
+	// Helm is exposing Kubernetes in this property and cannot guarantee this
+	// will not change. The minimal interface only has the functions that Helm
+	// needs. The smaller surface area of the interface means there is a lower
+	// chance of it changing.
 	Factory Factory
 	Log     func(string, ...interface{})
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
@@ -459,7 +467,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 // if one or more fail and collect any errors. All successfully deleted items
 // will be returned in the `Deleted` ResourceList that is part of the result.
 func (c *Client) Delete(resources ResourceList) (*Result, []error) {
-	return delete(c, resources, metav1.DeletePropagationBackground)
+	return rdelete(c, resources, metav1.DeletePropagationBackground)
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
@@ -467,10 +475,10 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 // if one or more fail and collect any errors. All successfully deleted items
 // will be returned in the `Deleted` ResourceList that is part of the result.
 func (c *Client) DeleteWithPropagationPolicy(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error) {
-	return delete(c, resources, policy)
+	return rdelete(c, resources, policy)
 }
 
-func delete(c *Client, resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
+func rdelete(c *Client, resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
@@ -764,7 +772,7 @@ func (c *Client) waitForJob(obj runtime.Object, name string) (bool, error) {
 		if c.Type == batch.JobComplete && c.Status == "True" {
 			return true, nil
 		} else if c.Type == batch.JobFailed && c.Status == "True" {
-			return true, errors.Errorf("job failed: %s", c.Reason)
+			return true, errors.Errorf("job %s failed: %s", name, c.Reason)
 		}
 	}
 

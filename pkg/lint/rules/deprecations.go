@@ -24,6 +24,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/endpoints/deprecation"
 	kscheme "k8s.io/client-go/kubernetes/scheme"
+
+	"helm.sh/helm/v3/pkg/chartutil"
 )
 
 var (
@@ -45,13 +47,21 @@ func (e deprecatedAPIError) Error() string {
 	return msg
 }
 
-func validateNoDeprecations(resource *K8sYamlStruct) error {
+func validateNoDeprecations(resource *K8sYamlStruct, kubeVersion *chartutil.KubeVersion) error {
 	// if `resource` does not have an APIVersion or Kind, we cannot test it for deprecation
 	if resource.APIVersion == "" {
 		return nil
 	}
 	if resource.Kind == "" {
 		return nil
+	}
+
+	majorVersion := k8sVersionMajor
+	minorVersion := k8sVersionMinor
+
+	if kubeVersion != nil {
+		majorVersion = kubeVersion.Major
+		minorVersion = kubeVersion.Minor
 	}
 
 	runtimeObject, err := resourceToRuntimeObject(resource)
@@ -62,11 +72,12 @@ func validateNoDeprecations(resource *K8sYamlStruct) error {
 		}
 		return err
 	}
-	maj, err := strconv.Atoi(k8sVersionMajor)
+
+	maj, err := strconv.Atoi(majorVersion)
 	if err != nil {
 		return err
 	}
-	min, err := strconv.Atoi(k8sVersionMinor)
+	min, err := strconv.Atoi(minorVersion)
 	if err != nil {
 		return err
 	}

@@ -293,7 +293,7 @@ func (d *MaxHistoryMockDriver) Create(key string, rls *rspb.Release) error {
 func (d *MaxHistoryMockDriver) Update(key string, rls *rspb.Release) error {
 	return d.Driver.Update(key, rls)
 }
-func (d *MaxHistoryMockDriver) Delete(key string) (*rspb.Release, error) {
+func (d *MaxHistoryMockDriver) Delete(_ string) (*rspb.Release, error) {
 	return nil, errMaxHistoryMockDriverSomethingHappened
 }
 func (d *MaxHistoryMockDriver) Get(key string) (*rspb.Release, error) {

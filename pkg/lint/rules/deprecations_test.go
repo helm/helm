@@ -23,7 +23,7 @@ func TestValidateNoDeprecations(t *testing.T) {
 		APIVersion: "extensions/v1beta1",
 		Kind:       "Deployment",
 	}
-	err := validateNoDeprecations(deprecated)
+	err := validateNoDeprecations(deprecated, nil)
 	if err == nil {
 		t.Fatal("Expected deprecated extension to be flagged")
 	}
@@ -35,7 +35,7 @@ func TestValidateNoDeprecations(t *testing.T) {
 	if err := validateNoDeprecations(&K8sYamlStruct{
 		APIVersion: "v1",
 		Kind:       "Pod",
-	}); err != nil {
+	}, nil); err != nil {
 		t.Errorf("Expected a v1 Pod to not be deprecated")
 	}
 }
