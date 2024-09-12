@@ -25,6 +25,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
 	"sigs.k8s.io/yaml"
+	goYaml "sigs.k8s.io/yaml/goyaml.v3"
 )
 
 // funcMap returns a mapping of all of the functions that Engine has.
@@ -50,6 +51,7 @@ func funcMap() template.FuncMap {
 		"toToml":        toTOML,
 		"fromToml":      fromTOML,
 		"toYaml":        toYAML,
+		"toYamlPretty":  toYAMLPretty,
 		"fromYaml":      fromYAML,
 		"fromYamlArray": fromYAMLArray,
 		"toJson":        toJSON,
@@ -87,6 +89,19 @@ func toYAML(v interface{}) string {
 		return ""
 	}
 	return strings.TrimSuffix(string(data), "\n")
+}
+
+func toYAMLPretty(v interface{}) string {
+	var data bytes.Buffer
+	encoder := goYaml.NewEncoder(&data)
+	encoder.SetIndent(2)
+	err := encoder.Encode(v)
+
+	if err != nil {
+		// Swallow errors inside of a template.
+		return ""
+	}
+	return strings.TrimSuffix(data.String(), "\n")
 }
 
 // fromYAML converts a YAML document into a map[string]interface{}.
