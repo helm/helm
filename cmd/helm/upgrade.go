@@ -36,6 +36,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
@@ -65,6 +66,17 @@ last (right-most) set specified. For example, if both 'bar' and 'newbar' values 
 set for a key called 'foo', the 'newbar' value would take precedence:
 
     $ helm upgrade --set foo=bar --set foo=newbar redis ./redis
+
+You can update the values for an existing release with this command as well via the
+'--reuse-values' flag. The 'RELEASE' and 'CHART' arguments should be set to the original
+parameters, and existing values will be merged with any values set via '--values'/'-f'
+or '--set' flags. Priority is given to new values.
+
+    $ helm upgrade --reuse-values --set foo=bar --set foo=newbar redis ./redis
+
+The --dry-run flag will output all generated chart manifests, including Secrets
+which can contain sensitive values. To hide Kubernetes Secrets use the
+--hide-secret flag. Please carefully consider how and when these flags are used.
 `
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -78,31 +90,39 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "upgrade a release",
 		Long:  upgradeDesc,
 		Args:  require.ExactArgs(2),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
 				return compListReleases(toComplete, args, cfg)
 			}
 			if len(args) == 1 {
 				return compListCharts(toComplete, true)
 			}
-			return nil, cobra.ShellCompDirectiveNoFileComp
+			return noMoreArgsComp()
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
 
-			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile, client.InsecureSkipTLSverify)
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+				client.InsecureSkipTLSverify, client.PlainHTTP)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
 			client.SetRegistryClient(registryClient)
 
+			// This is for the case where "" is specifically passed in as a
+			// value. When there is no value passed in NoOptDefVal will be used
+			// and it is set to client. See addInstallFlags.
+			if client.DryRunOption == "" {
+				client.DryRunOption = "none"
+			}
 			// Fixes #7002 - Support reading values from STDIN for `upgrade` command
-			// Must load values AFTER determining if we have to call install so that values loaded from stdin are are not read twice
+			// Must load values AFTER determining if we have to call install so that values loaded from stdin are not read twice
 			if client.Install {
 				// If a release does not exist, install it.
 				histClient := action.NewHistory(cfg)
 				histClient.Max = 1
-				if _, err := histClient.Run(args[0]); err == driver.ErrReleaseNotFound {
+				versions, err := histClient.Run(args[0])
+				if err == driver.ErrReleaseNotFound || isReleaseUninstalled(versions) {
 					// Only print this to stdout for table output
 					if outfmt == output.Table {
 						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
@@ -112,6 +132,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.Force = client.Force
 					instClient.DryRun = client.DryRun
+					instClient.DryRunOption = client.DryRunOption
 					instClient.DisableHooks = client.DisableHooks
 					instClient.SkipCRDs = client.SkipCRDs
 					instClient.Timeout = client.Timeout
@@ -123,15 +144,23 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.PostRenderer = client.PostRenderer
 					instClient.DisableOpenAPIValidation = client.DisableOpenAPIValidation
 					instClient.SubNotes = client.SubNotes
+					instClient.HideNotes = client.HideNotes
+					instClient.SkipSchemaValidation = client.SkipSchemaValidation
 					instClient.Description = client.Description
 					instClient.DependencyUpdate = client.DependencyUpdate
+					instClient.Labels = client.Labels
 					instClient.EnableDNS = client.EnableDNS
+					instClient.HideSecret = client.HideSecret
+
+					if isReleaseUninstalled(versions) {
+						instClient.Replace = true
+					}
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
 						return err
 					}
-					return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false})
+					return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, instClient.HideNotes})
 				} else if err != nil {
 					return err
 				}
@@ -144,6 +173,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
 			if err != nil {
+				return err
+			}
+			// Validate dry-run flag value is one of the allowed values
+			if err := validateDryRunOptionFlag(client.DryRunOption); err != nil {
 				return err
 			}
 
@@ -205,6 +238,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}()
 
 			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
+
 			if err != nil {
 				return errors.Wrap(err, "UPGRADE FAILED")
 			}
@@ -213,7 +247,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
 			}
 
-			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false})
+			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes})
 		},
 	}
 
@@ -221,7 +255,9 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&createNamespace, "create-namespace", false, "if --install is set, create the release namespace if not present")
 	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
-	f.BoolVar(&client.DryRun, "dry-run", false, "simulate an upgrade")
+	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
+	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
+	f.Lookup("dry-run").NoOptDefVal = "client"
 	f.BoolVar(&client.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
 	f.MarkDeprecated("recreate-pods", "functionality will no longer be updated. Consult the documentation for other methods to recreate pods")
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
@@ -231,12 +267,16 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&client.ResetValues, "reset-values", false, "when upgrading, reset the values to the ones built into the chart")
 	f.BoolVar(&client.ReuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored")
+	f.BoolVar(&client.ResetThenReuseValues, "reset-then-reuse-values", false, "when upgrading, reset the values to the ones built into the chart, apply the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' or '--reuse-values' is specified, this is ignored")
 	f.BoolVar(&client.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment, StatefulSet, or ReplicaSet are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&client.WaitForJobs, "wait-for-jobs", false, "if set and --wait enabled, will wait until all Jobs have been completed before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&client.Atomic, "atomic", false, "if set, upgrade process rolls back changes made in case of failed upgrade. The --wait flag will be set automatically if --atomic is used")
 	f.IntVar(&client.MaxHistory, "history-max", settings.MaxHistory, "limit the maximum number of revisions saved per release. Use 0 for no limit")
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this upgrade when upgrade fails")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
+	f.BoolVar(&client.HideNotes, "hide-notes", false, "if set, do not show notes in upgrade output. Does not affect presence in chart metadata")
+	f.BoolVar(&client.SkipSchemaValidation, "skip-schema-validation", false, "if set, disables JSON schema validation")
+	f.StringToStringVarP(&client.Labels, "labels", "l", nil, "Labels that would be added to release metadata. Should be separated by comma. Original release labels will be merged with upgrade labels. You can unset label using null.")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
@@ -245,7 +285,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
-	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("version", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 2 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -257,4 +297,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	return cmd
+}
+
+func isReleaseUninstalled(versions []*release.Release) bool {
+	return len(versions) > 0 && versions[len(versions)-1].Info.Status == release.StatusUninstalled
 }

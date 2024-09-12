@@ -32,6 +32,17 @@ func uninstallAction(t *testing.T) *Uninstall {
 	return unAction
 }
 
+func TestUninstallRelease_ignoreNotFound(t *testing.T) {
+	unAction := uninstallAction(t)
+	unAction.DryRun = false
+	unAction.IgnoreNotFound = true
+
+	is := assert.New(t)
+	res, err := unAction.Run("release-non-exist")
+	is.Nil(res)
+	is.NoError(err)
+}
+
 func TestUninstallRelease_deleteRelease(t *testing.T) {
 	is := assert.New(t)
 
@@ -94,4 +105,36 @@ func TestUninstallRelease_Wait(t *testing.T) {
 	is.Error(err)
 	is.Contains(err.Error(), "U timed out")
 	is.Equal(res.Release.Info.Status, release.StatusUninstalled)
+}
+
+func TestUninstallRelease_Cascade(t *testing.T) {
+	is := assert.New(t)
+
+	unAction := uninstallAction(t)
+	unAction.DisableHooks = true
+	unAction.DryRun = false
+	unAction.Wait = false
+	unAction.DeletionPropagation = "foreground"
+
+	rel := releaseStub()
+	rel.Name = "come-fail-away"
+	rel.Manifest = `{
+		"apiVersion": "v1",
+		"kind": "Secret",
+		"metadata": {
+		  "name": "secret"
+		},
+		"type": "Opaque",
+		"data": {
+		  "password": "password"
+		}
+	}`
+	unAction.cfg.Releases.Create(rel)
+	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.DeleteWithPropagationError = fmt.Errorf("Uninstall with cascade failed")
+	failer.BuildDummy = true
+	unAction.cfg.KubeClient = failer
+	_, err := unAction.Run(rel.Name)
+	is.Error(err)
+	is.Contains(err.Error(), "failed to delete release: come-fail-away")
 }

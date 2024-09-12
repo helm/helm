@@ -1,20 +1,21 @@
 maintainers:
-  - adamreese
-  - bacongobbler
-  - hickeyma
+  - joejulian
   - jdolitsky
   - marckhouzam
   - mattfarina
   - sabre1041
   - scottrigby
-  - SlickNik
   - technosophos
 triage:
-  - joejulian
   - yxxhero
   - zonggen
+  - gjenkins8
+  - z4ce
 emeritus:
+  - adamreese
+  - bacongobbler
   - fibonacci1729
+  - hickeyma
   - jascott1
   - michelleN
   - migmartri
@@ -22,6 +23,7 @@ emeritus:
   - prydonius
   - rimusz
   - seh
+  - SlickNik
   - thomastaylor312
   - vaikas-google
   - viglesiasce

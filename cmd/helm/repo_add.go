@@ -68,11 +68,16 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	o := &repoAddOptions{}
 
 	cmd := &cobra.Command{
-		Use:               "add [NAME] [URL]",
-		Short:             "add a chart repository",
-		Args:              require.ExactArgs(2),
-		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Use:   "add [NAME] [URL]",
+		Short: "add a chart repository",
+		Args:  require.ExactArgs(2),
+		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+			if len(args) > 1 {
+				return noMoreArgsComp()
+			}
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		},
+		RunE: func(_ *cobra.Command, args []string) error {
 			o.name = args[0]
 			o.url = args[1]
 			o.repoFile = settings.RepositoryConfig
@@ -212,7 +217,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 
 	f.Update(&c)
 
-	if err := f.WriteFile(o.repoFile, 0644); err != nil {
+	if err := f.WriteFile(o.repoFile, 0600); err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "%q has been added to your repositories\n", o.name)

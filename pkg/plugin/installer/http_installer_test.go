@@ -44,7 +44,7 @@ type TestHTTPGetter struct {
 	MockError    error
 }
 
-func (t *TestHTTPGetter) Get(href string, _ ...getter.Option) (*bytes.Buffer, error) {
+func (t *TestHTTPGetter) Get(_ string, _ ...getter.Option) (*bytes.Buffer, error) {
 	return t.MockResponse, t.MockError
 }
 
@@ -79,7 +79,7 @@ func mockArchiveServer() *httptest.Server {
 }
 
 func TestHTTPInstaller(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	srv := mockArchiveServer()
 	defer srv.Close()
@@ -128,7 +128,7 @@ func TestHTTPInstaller(t *testing.T) {
 }
 
 func TestHTTPInstallerNonExistentVersion(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 	srv := mockArchiveServer()
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
@@ -164,7 +164,7 @@ func TestHTTPInstallerUpdate(t *testing.T) {
 	srv := mockArchiveServer()
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)

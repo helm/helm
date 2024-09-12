@@ -16,6 +16,7 @@ limitations under the License.
 package chart
 
 import (
+	"path/filepath"
 	"strings"
 	"unicode"
 
@@ -110,6 +111,11 @@ func (md *Metadata) Validate() error {
 	if md.Name == "" {
 		return ValidationError("chart.metadata.name is required")
 	}
+
+	if md.Name != filepath.Base(md.Name) {
+		return ValidationErrorf("chart.metadata.name %q is invalid", md.Name)
+	}
+
 	if md.Version == "" {
 		return ValidationError("chart.metadata.version is required")
 	}
@@ -128,10 +134,19 @@ func (md *Metadata) Validate() error {
 
 	// Aliases need to be validated here to make sure that the alias name does
 	// not contain any illegal characters.
+	dependencies := map[string]*Dependency{}
 	for _, dependency := range md.Dependencies {
 		if err := dependency.Validate(); err != nil {
 			return err
 		}
+		key := dependency.Name
+		if dependency.Alias != "" {
+			key = dependency.Alias
+		}
+		if dependencies[key] != nil {
+			return ValidationErrorf("more than one dependency with name or alias %q", key)
+		}
+		dependencies[key] = dependency
 	}
 	return nil
 }

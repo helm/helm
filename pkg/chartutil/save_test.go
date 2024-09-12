@@ -29,16 +29,14 @@ import (
 	"testing"
 	"time"
 
-	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 )
 
 func TestSave(t *testing.T) {
-	tmp := ensure.TempDir(t)
-	defer os.RemoveAll(tmp)
+	tmp := t.TempDir()
 
-	for _, dest := range []string{tmp, path.Join(tmp, "newdir")} {
+	for _, dest := range []string{tmp, filepath.Join(tmp, "newdir")} {
 		t.Run("outDir="+dest, func(t *testing.T) {
 			c := &chart.Chart{
 				Metadata: &chart.Metadata{
@@ -107,6 +105,24 @@ func TestSave(t *testing.T) {
 				t.Fatal("Chart.lock data did not match")
 			}
 		})
+	}
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV1,
+			Name:       "../ahab",
+			Version:    "1.2.3",
+		},
+		Lock: &chart.Lock{
+			Digest: "testdigest",
+		},
+		Files: []*chart.File{
+			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
+		},
+	}
+	_, err := Save(c, tmp)
+	if err == nil {
+		t.Fatal("Expected error saving chart with invalid name")
 	}
 }
 
@@ -210,7 +226,7 @@ func TestSaveDir(t *testing.T) {
 			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 		},
 		Templates: []*chart.File{
-			{Name: filepath.Join(TemplatesDir, "nested", "dir", "thing.yaml"), Data: []byte("abc: {{ .Values.abc }}")},
+			{Name: path.Join(TemplatesDir, "nested", "dir", "thing.yaml"), Data: []byte("abc: {{ .Values.abc }}")},
 		},
 	}
 
@@ -227,11 +243,22 @@ func TestSaveDir(t *testing.T) {
 		t.Fatalf("Expected chart archive to have %q, got %q", c.Name(), c2.Name())
 	}
 
-	if len(c2.Templates) != 1 || c2.Templates[0].Name != filepath.Join(TemplatesDir, "nested", "dir", "thing.yaml") {
+	if len(c2.Templates) != 1 || c2.Templates[0].Name != c.Templates[0].Name {
 		t.Fatal("Templates data did not match")
 	}
 
-	if len(c2.Files) != 1 || c2.Files[0].Name != "scheherazade/shahryar.txt" {
+	if len(c2.Files) != 1 || c2.Files[0].Name != c.Files[0].Name {
 		t.Fatal("Files data did not match")
+	}
+
+	tmp2 := t.TempDir()
+	c.Metadata.Name = "../ahab"
+	pth := filepath.Join(tmp2, "tmpcharts")
+	if err := os.MkdirAll(filepath.Join(pth), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := SaveDir(c, pth); err.Error() != "\"../ahab\" is not a valid chart name" {
+		t.Fatalf("Did not get expected error for chart named %q", c.Name())
 	}
 }

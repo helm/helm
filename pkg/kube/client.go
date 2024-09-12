@@ -69,6 +69,14 @@ var ManagedFieldsManager string
 
 // Client represents a client capable of communicating with the Kubernetes API.
 type Client struct {
+	// Factory provides a minimal version of the kubectl Factory interface. If
+	// you need the full Factory you can type switch to the full interface.
+	// Since Kubernetes Go API does not provide backwards compatibility across
+	// minor versions, this API does not follow Helm backwards compatibility.
+	// Helm is exposing Kubernetes in this property and cannot guarantee this
+	// will not change. The minimal interface only has the functions that Helm
+	// needs. The smaller surface area of the interface means there is a lower
+	// chance of it changing.
 	Factory Factory
 	Log     func(string, ...interface{})
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
@@ -338,13 +346,7 @@ func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
 		validationDirective = metav1.FieldValidationStrict
 	}
 
-	dynamicClient, err := c.Factory.DynamicClient()
-	if err != nil {
-		return nil, err
-	}
-
-	verifier := resource.NewQueryParamVerifier(dynamicClient, c.Factory.OpenAPIGetter(), resource.QueryParamFieldValidation)
-	schema, err := c.Factory.Validator(validationDirective, verifier)
+	schema, err := c.Factory.Validator(validationDirective)
 	if err != nil {
 		return nil, err
 	}
@@ -364,13 +366,7 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 		validationDirective = metav1.FieldValidationStrict
 	}
 
-	dynamicClient, err := c.Factory.DynamicClient()
-	if err != nil {
-		return nil, err
-	}
-
-	verifier := resource.NewQueryParamVerifier(dynamicClient, c.Factory.OpenAPIGetter(), resource.QueryParamFieldValidation)
-	schema, err := c.Factory.Validator(validationDirective, verifier)
+	schema, err := c.Factory.Validator(validationDirective)
 	if err != nil {
 		return nil, err
 	}
@@ -457,7 +453,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
 			continue
 		}
-		if err := deleteResource(info); err != nil {
+		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
 			c.Log("Failed to delete %q, err: %s", info.ObjectName(), err)
 			continue
 		}
@@ -466,17 +462,29 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	return res, nil
 }
 
-// Delete deletes Kubernetes resources specified in the resources list. It will
-// attempt to delete all resources even if one or more fail and collect any
-// errors. All successfully deleted items will be returned in the `Deleted`
-// ResourceList that is part of the result.
+// Delete deletes Kubernetes resources specified in the resources list with
+// background cascade deletion. It will attempt to delete all resources even
+// if one or more fail and collect any errors. All successfully deleted items
+// will be returned in the `Deleted` ResourceList that is part of the result.
 func (c *Client) Delete(resources ResourceList) (*Result, []error) {
+	return rdelete(c, resources, metav1.DeletePropagationBackground)
+}
+
+// Delete deletes Kubernetes resources specified in the resources list with
+// given deletion propagation policy. It will attempt to delete all resources even
+// if one or more fail and collect any errors. All successfully deleted items
+// will be returned in the `Deleted` ResourceList that is part of the result.
+func (c *Client) DeleteWithPropagationPolicy(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error) {
+	return rdelete(c, resources, policy)
+}
+
+func rdelete(c *Client, resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
-		err := deleteResource(info)
+		err := deleteResource(info, propagation)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
 				c.Log("Ignoring delete failure for %q %s: %v", info.Name, info.Mapping.GroupVersionKind, err)
@@ -493,10 +501,8 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 		return nil
 	})
 	if err != nil {
-		// Rewrite the message from "no objects visited" if that is what we got
-		// back
-		if err == ErrNoObjectsVisited {
-			err = errors.New("object not found, skipping delete")
+		if errors.Is(err, ErrNoObjectsVisited) {
+			err = fmt.Errorf("object not found, skipping delete: %w", err)
 		}
 		errs = append(errs, err)
 	}
@@ -597,8 +603,7 @@ func createResource(info *resource.Info) error {
 	return info.Refresh(obj, true)
 }
 
-func deleteResource(info *resource.Info) error {
-	policy := metav1.DeletePropagationBackground
+func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) error {
 	opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
 	_, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).DeleteWithOptions(info.Namespace, info.Name, opts)
 	return err
@@ -767,7 +772,7 @@ func (c *Client) waitForJob(obj runtime.Object, name string) (bool, error) {
 		if c.Type == batch.JobComplete && c.Status == "True" {
 			return true, nil
 		} else if c.Type == batch.JobFailed && c.Status == "True" {
-			return true, errors.Errorf("job failed: %s", c.Reason)
+			return true, errors.Errorf("job %s failed: %s", name, c.Reason)
 		}
 	}
 

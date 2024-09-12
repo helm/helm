@@ -103,7 +103,7 @@ type Configuration struct {
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //
 //	This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun, enableDNS bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -121,12 +121,10 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	var files map[string]string
 	var err2 error
 
-	// A `helm template` or `helm install --dry-run` should not talk to the remote cluster.
-	// It will break in interesting and exotic ways because other data (e.g. discovery)
-	// is mocked. It is not up to the template author to decide when the user wants to
-	// connect to the cluster. So when the user says to dry run, respect the user's
-	// wishes and do not connect to the cluster.
-	if !dryRun && cfg.RESTClientGetter != nil {
+	// A `helm template` should not talk to the remote cluster. However, commands with the flag
+	//`--dry-run` with the value of `false`, `none`, or `server` should try to interact with the cluster.
+	// It may break in interesting and exotic ways because other data (e.g. discovery) is mocked.
+	if interactWithRemote && cfg.RESTClientGetter != nil {
 		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
 		if err != nil {
 			return hs, b, "", err
@@ -167,7 +165,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	hs, manifests, err := releaseutil.SortManifests(files, caps.APIVersions, releaseutil.InstallOrder)
+	hs, manifests, err := releaseutil.SortManifests(files, nil, releaseutil.InstallOrder)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.
@@ -189,20 +187,24 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
 			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Name, string(crd.File.Data[:]))
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data[:]))
 			} else {
-				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Name])
+				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Filename])
 				if err != nil {
 					return hs, b, "", err
 				}
-				fileWritten[crd.Name] = true
+				fileWritten[crd.Filename] = true
 			}
 		}
 	}
 
 	for _, m := range manifests {
 		if outputDir == "" {
-			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+			if hideSecret && m.Head.Kind == "Secret" && m.Head.Version == "v1" {
+				fmt.Fprintf(b, "---\n# Source: %s\n# HIDDEN: The Secret output has been suppressed\n", m.Name)
+			} else {
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+			}
 		} else {
 			newDir := outputDir
 			if useReleaseName {
@@ -328,7 +330,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 	}
 
 	versionMap := make(map[string]interface{})
-	versions := []string{}
+	var versions []string
 
 	// Extract the groups
 	for _, g := range groups {
@@ -409,12 +411,11 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 			namespace,
 		)
 		if err != nil {
-			panic(fmt.Sprintf("Unable to instantiate SQL driver: %v", err))
+			return errors.Wrap(err, "unable to instantiate SQL driver")
 		}
 		store = storage.Init(d)
 	default:
-		// Not sure what to do here.
-		panic("Unknown driver in HELM_DRIVER: " + helmDriver)
+		return errors.Errorf("unknown driver %q", helmDriver)
 	}
 
 	cfg.RESTClientGetter = getter

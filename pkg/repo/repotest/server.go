@@ -61,7 +61,7 @@ func NewTempServerWithCleanupAndBasicAuth(t *testing.T, glob string) *Server {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv.WithMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv.WithMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
 		if !ok || username != "username" || password != "password" {
 			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
@@ -385,7 +385,7 @@ func (s *Server) StartTLS() {
 		CAFile: filepath.Join("../../testdata", "rootca.crt"),
 	})
 
-	if err := r.WriteFile(repoConfig, 0644); err != nil {
+	if err := r.WriteFile(repoConfig, 0600); err != nil {
 		panic(err)
 	}
 }
@@ -422,5 +422,5 @@ func setTestingRepository(url, fname string) error {
 		Name: "test",
 		URL:  url,
 	})
-	return r.WriteFile(fname, 0644)
+	return r.WriteFile(fname, 0640)
 }

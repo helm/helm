@@ -58,8 +58,8 @@ func newDocsCmd(out io.Writer) *cobra.Command {
 		Long:              docsDesc,
 		Hidden:            true,
 		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		ValidArgsFunction: noMoreArgsCompFunc,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			o.topCmd = cmd.Root()
 			return o.run(out)
 		},
@@ -70,14 +70,14 @@ func newDocsCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.docTypeString, "type", "markdown", "the type of documentation to generate (markdown, man, bash)")
 	f.BoolVar(&o.generateHeaders, "generate-headers", false, "generate standard headers for markdown files")
 
-	cmd.RegisterFlagCompletionFunc("type", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	cmd.RegisterFlagCompletionFunc("type", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"bash", "man", "markdown"}, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	return cmd
 }
 
-func (o *docsOptions) run(out io.Writer) error {
+func (o *docsOptions) run(_ io.Writer) error {
 	switch o.docTypeString {
 	case "markdown", "mdown", "md":
 		if o.generateHeaders {

@@ -37,6 +37,7 @@ func Dependencies(linter *support.Linter) {
 	}
 
 	linter.RunLinterRule(support.ErrorSev, linter.ChartDir, validateDependencyInMetadata(c))
+	linter.RunLinterRule(support.ErrorSev, linter.ChartDir, validateDependenciesUnique(c))
 	linter.RunLinterRule(support.WarningSev, linter.ChartDir, validateDependencyInChartsDir(c))
 }
 
@@ -77,6 +78,26 @@ func validateDependencyInMetadata(c *chart.Chart) (err error) {
 	}
 	if len(missing) > 0 {
 		err = fmt.Errorf("chart metadata is missing these dependencies: %s", strings.Join(missing, ","))
+	}
+	return err
+}
+
+func validateDependenciesUnique(c *chart.Chart) (err error) {
+	dependencies := map[string]*chart.Dependency{}
+	shadowing := []string{}
+
+	for _, dep := range c.Metadata.Dependencies {
+		key := dep.Name
+		if dep.Alias != "" {
+			key = dep.Alias
+		}
+		if dependencies[key] != nil {
+			shadowing = append(shadowing, key)
+		}
+		dependencies[key] = dep
+	}
+	if len(shadowing) > 0 {
+		err = fmt.Errorf("multiple dependencies with name or alias: %s", strings.Join(shadowing, ","))
 	}
 	return err
 }
