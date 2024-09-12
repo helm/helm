@@ -97,6 +97,10 @@ type Upgrade struct {
 	CleanupOnFail bool
 	// SubNotes determines whether sub-notes are rendered in the chart.
 	SubNotes bool
+	// HideNotes determines whether notes are output during upgrade
+	HideNotes bool
+	// SkipSchemaValidation determines if JSON schema validation is disabled.
+	SkipSchemaValidation bool
 	// Description is the description of this operation
 	Description string
 	Labels      map[string]string
@@ -113,6 +117,8 @@ type Upgrade struct {
 	Lock sync.Mutex
 	// Enable DNS lookups when rendering templates
 	EnableDNS bool
+	// TakeOwnership will skip the check for helm annotations and adopt all existing resources.
+	TakeOwnership bool
 }
 
 type resultMessage struct {
@@ -256,7 +262,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	if err != nil {
 		return nil, nil, err
 	}
-	valuesToRender, err := chartutil.ToRenderValues(chart, vals, options, caps)
+	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, vals, options, caps, u.SkipSchemaValidation)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -337,7 +343,12 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		}
 	}
 
-	toBeUpdated, err := existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
+	var toBeUpdated kube.ResourceList
+	if u.TakeOwnership {
+		toBeUpdated, err = requireAdoption(toBeCreated)
+	} else {
+		toBeUpdated, err = existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
+	}
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to continue with update")
 	}

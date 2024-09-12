@@ -39,8 +39,8 @@ This command allows you to install a plugin from a url to a VCS repo or a local 
 func newPluginInstallCmd(out io.Writer) *cobra.Command {
 	o := &pluginInstallOptions{}
 	cmd := &cobra.Command{
-		Use:     "install [options] <path|url>...",
-		Short:   "install one or more Helm plugins",
+		Use:     "install [options] <path|url>",
+		Short:   "install a Helm plugin",
 		Long:    pluginInstallDesc,
 		Aliases: []string{"add"},
 		Args:    require.ExactArgs(1),
@@ -50,7 +50,7 @@ func newPluginInstallCmd(out io.Writer) *cobra.Command {
 				return nil, cobra.ShellCompDirectiveDefault
 			}
 			// No more completion once the plugin path has been specified
-			return nil, cobra.ShellCompDirectiveNoFileComp
+			return noMoreArgsComp()
 		},
 		PreRunE: func(_ *cobra.Command, args []string) error {
 			return o.complete(args)

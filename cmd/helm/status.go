@@ -60,7 +60,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Args:  require.ExactArgs(1),
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
-				return nil, cobra.ShellCompDirectiveNoFileComp
+				return noMoreArgsComp()
 			}
 			return compListReleases(toComplete, args, cfg)
 		},
@@ -80,7 +80,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, client.ShowResources, false})
+			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, client.ShowResources, false, false})
 		},
 	}
 
@@ -113,6 +113,7 @@ type statusPrinter struct {
 	showDescription bool
 	showResources   bool
 	showMetadata    bool
+	hideNotes       bool
 }
 
 func (s statusPrinter) WriteJSON(out io.Writer) error {
@@ -219,8 +220,9 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		_, _ = fmt.Fprintf(out, "MANIFEST:\n%s\n", s.release.Manifest)
 	}
 
-	if len(s.release.Info.Notes) > 0 {
-		_, _ = fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(s.release.Info.Notes))
+	// Hide notes from output - option in install and upgrades
+	if !s.hideNotes && len(s.release.Info.Notes) > 0 {
+		fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(s.release.Info.Notes))
 	}
 	return nil
 }

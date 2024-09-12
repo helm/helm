@@ -50,7 +50,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 		Args:  require.ExactArgs(1),
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
-				return nil, cobra.ShellCompDirectiveNoFileComp
+				return noMoreArgsComp()
 			}
 			return compListReleases(toComplete, args, cfg)
 		},
@@ -72,7 +72,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 				return runErr
 			}
 
-			if err := outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false}); err != nil {
+			if err := outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes}); err != nil {
 				return err
 			}
 
@@ -92,6 +92,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&outputLogs, "logs", false, "dump the logs from test pods (this runs after all tests are complete, but before any cleanup)")
 	f.StringSliceVar(&filter, "filter", []string{}, "specify tests by attribute (currently \"name\") using attribute=value syntax or '!attribute=value' to exclude a test (can specify multiple or separate values with commas: name=test1,name=test2)")
+	f.BoolVar(&client.HideNotes, "hide-notes", false, "if set, do not show notes in test output. Does not affect presence in chart metadata")
 
 	return cmd
 }
