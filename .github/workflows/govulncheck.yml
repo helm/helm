@@ -14,7 +14,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # pin@5.0.2
         with:
-          go-version: '1.22'
+          go-version: '1.22.7'
       - name: govulncheck
         uses: golang/govulncheck-action@dd0578b371c987f96d1185abb54344b44352bd58 # pin@1.0.3
         with:
