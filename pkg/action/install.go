@@ -631,7 +631,7 @@ func createOrOpenFile(filename string, append bool) (*os.File, error) {
 	return os.Create(filename)
 }
 
-// check if the directory exists to create file. creates if don't exist
+// check if the directory exists to create file. creates if doesn't exist
 func ensureDirectoryForFile(file string) error {
 	baseDir := path.Dir(file)
 	_, err := os.Stat(baseDir)

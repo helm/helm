@@ -200,7 +200,7 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 		}
 	}
 
-	// when customer input exact version, check whether have exact match one first
+	// when customer inputs specific version, check whether there's an exact match first
 	if len(version) != 0 {
 		for _, ver := range vs {
 			if version == ver.Version {

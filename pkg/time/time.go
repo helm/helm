@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // Package time contains a wrapper for time.Time in the standard library and
-// associated methods. This package mainly exists to workaround an issue in Go
+// associated methods. This package mainly exists to work around an issue in Go
 // where the serializer doesn't omit an empty value for time:
 // https://github.com/golang/go/issues/11939. As such, this can be removed if a
 // proposal is ever accepted for Go
