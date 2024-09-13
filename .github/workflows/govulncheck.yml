@@ -1,10 +1,12 @@
 name: govulncheck
 on:
   push:
-    paths:
-      - go.sum
+    #paths:
+    #  - go.sum
   schedule:
     - cron: "0 0 * * *"
+
+permissions: read-all
 
 jobs:
   govulncheck:
