@@ -145,21 +145,22 @@ func TestExistingResourceConflict(t *testing.T) {
 			helmReleaseNameAnnotation:      releaseName,
 			helmReleaseNamespaceAnnotation: releaseNamespace,
 		}
-		missing   = newMissingDeployment("missing", "ns-a")
-		existing  = newDeploymentWithOwner("existing", "ns-a", labels, annotations)
-		conflict  = newDeploymentWithOwner("conflict", "ns-a", nil, nil)
-		resources = kube.ResourceList{missing, existing}
+		missing       = newMissingDeployment("missing", "ns-a")
+		existing      = newDeploymentWithOwner("existing", "ns-a", labels, annotations)
+		conflict      = newDeploymentWithOwner("conflict", "ns-a", nil, nil)
+		resources     = kube.ResourceList{missing, existing}
+		takeOwnership = false
 	)
 
 	// Verify only existing resources are returned
-	found, err := existingResourceConflict(resources, releaseName, releaseNamespace)
+	found, err := existingResourceConflict(resources, releaseName, releaseNamespace, takeOwnership)
 	assert.NoError(t, err)
 	assert.Len(t, found, 1)
 	assert.Equal(t, found[0], existing)
 
 	// Verify that an existing resource that lacks labels/annotations results in an error
 	resources = append(resources, conflict)
-	_, err = existingResourceConflict(resources, releaseName, releaseNamespace)
+	_, err = existingResourceConflict(resources, releaseName, releaseNamespace, takeOwnership)
 	assert.Error(t, err)
 }
 
