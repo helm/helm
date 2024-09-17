@@ -74,6 +74,9 @@ type Upgrade struct {
 	DryRun bool
 	// DryRunOption controls whether the operation is prepared, but not executed with options on whether or not to interact with the remote cluster.
 	DryRunOption string
+	// HideSecret can be set to true when DryRun is enabled in order to hide
+	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
+	HideSecret bool
 	// Force will, if set to `true`, ignore certain warnings and perform the upgrade anyway.
 	//
 	// This should be used with caution.
@@ -82,6 +85,8 @@ type Upgrade struct {
 	ResetValues bool
 	// ReuseValues will re-use the user's last supplied values.
 	ReuseValues bool
+	// ResetThenReuseValues will reset the values to the chart's built-ins then merge with user's last supplied values.
+	ResetThenReuseValues bool
 	// Recreate will (if true) recreate pods after a rollback.
 	Recreate bool
 	// MaxHistory limits the maximum number of revisions saved per release
@@ -92,8 +97,13 @@ type Upgrade struct {
 	CleanupOnFail bool
 	// SubNotes determines whether sub-notes are rendered in the chart.
 	SubNotes bool
+	// HideNotes determines whether notes are output during upgrade
+	HideNotes bool
+	// SkipSchemaValidation determines if JSON schema validation is disabled.
+	SkipSchemaValidation bool
 	// Description is the description of this operation
 	Description string
+	Labels      map[string]string
 	// PostRender is an optional post-renderer
 	//
 	// If this is non-nil, then after templates are rendered, they will be sent to the
@@ -107,6 +117,8 @@ type Upgrade struct {
 	Lock sync.Mutex
 	// Enable DNS lookups when rendering templates
 	EnableDNS bool
+	// TakeOwnership will skip the check for helm annotations and adopt all existing resources.
+	TakeOwnership bool
 }
 
 type resultMessage struct {
@@ -188,6 +200,11 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, errMissingChart
 	}
 
+	// HideSecret must be used with dry run. Otherwise, return an error.
+	if !u.isDryRun() && u.HideSecret {
+		return nil, nil, errors.New("Hiding Kubernetes secrets requires a dry-run mode")
+	}
+
 	// finds the last non-deleted release with the given name
 	lastRelease, err := u.cfg.Releases.Last(name)
 	if err != nil {
@@ -226,7 +243,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	if err := chartutil.ProcessDependencies(chart, vals); err != nil {
+	if err := chartutil.ProcessDependenciesWithMerge(chart, vals); err != nil {
 		return nil, nil, err
 	}
 
@@ -245,7 +262,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	if err != nil {
 		return nil, nil, err
 	}
-	valuesToRender, err := chartutil.ToRenderValues(chart, vals, options, caps)
+	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, vals, options, caps, u.SkipSchemaValidation)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -256,9 +273,13 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		interactWithRemote = true
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithRemote, u.EnableDNS)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithRemote, u.EnableDNS, u.HideSecret)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if driver.ContainsSystemLabels(u.Labels) {
+		return nil, nil, fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
 	}
 
 	// Store an upgraded release.
@@ -276,6 +297,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		Version:  revision,
 		Manifest: manifestDoc.String(),
 		Hooks:    hooks,
+		Labels:   mergeCustomLabels(lastRelease.Labels, u.Labels),
 	}
 
 	if len(notesTxt) > 0 {
@@ -321,7 +343,12 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		}
 	}
 
-	toBeUpdated, err := existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
+	var toBeUpdated kube.ResourceList
+	if u.TakeOwnership {
+		toBeUpdated, err = requireAdoption(toBeCreated)
+	} else {
+		toBeUpdated, err = existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
+	}
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to continue with update")
 	}
@@ -546,6 +573,15 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 		return newVals, nil
 	}
 
+	// If the ResetThenReuseValues flag is set, we use the new chart's values, but we copy the old config's values over the new config's values.
+	if u.ResetThenReuseValues {
+		u.cfg.Log("merging values from old release to new values")
+
+		newVals = chartutil.CoalesceTables(newVals, current.Config)
+
+		return newVals, nil
+	}
+
 	if len(newVals) == 0 && len(current.Config) > 0 {
 		u.cfg.Log("copying values from %s (v%d) to new release.", current.Name, current.Version)
 		newVals = current.Config
@@ -597,4 +633,14 @@ func recreate(cfg *Configuration, resources kube.ResourceList) error {
 func objectKey(r *resource.Info) string {
 	gvk := r.Object.GetObjectKind().GroupVersionKind()
 	return fmt.Sprintf("%s/%s/%s/%s", gvk.GroupVersion().String(), gvk.Kind, r.Namespace, r.Name)
+}
+
+func mergeCustomLabels(current, desired map[string]string) map[string]string {
+	labels := mergeStrStrMaps(current, desired)
+	for k, v := range labels {
+		if v == "null" {
+			delete(labels, k)
+		}
+	}
+	return labels
 }

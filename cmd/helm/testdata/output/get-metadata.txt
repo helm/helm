@@ -1,0 +1,8 @@
+NAME: thomas-guide
+CHART: foo
+VERSION: 0.1.0-beta.1
+APP_VERSION: 1.0
+NAMESPACE: default
+REVISION: 1
+STATUS: deployed
+DEPLOYED_AT: 1977-09-02T22:04:05Z

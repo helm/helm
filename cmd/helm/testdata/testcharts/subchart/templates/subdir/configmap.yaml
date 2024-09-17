@@ -1,0 +1,8 @@
+{{ if .Values.configmap.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-cm
+data:
+  value: {{ .Values.configmap.value }}
+{{- end }}

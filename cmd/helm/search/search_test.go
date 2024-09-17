@@ -101,7 +101,7 @@ var indexfileEntries = map[string]repo.ChartVersions{
 	},
 }
 
-func loadTestIndex(t *testing.T, all bool) *Index {
+func loadTestIndex(_ *testing.T, all bool) *Index {
 	i := NewIndex()
 	i.AddRepo("testing", &repo.IndexFile{Entries: indexfileEntries}, all)
 	i.AddRepo("ztesting", &repo.IndexFile{Entries: map[string]repo.ChartVersions{

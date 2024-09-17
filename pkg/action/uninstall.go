@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -38,6 +39,7 @@ type Uninstall struct {
 
 	DisableHooks        bool
 	DryRun              bool
+	IgnoreNotFound      bool
 	KeepHistory         bool
 	Wait                bool
 	DeletionPropagation string
@@ -73,6 +75,9 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 
 	rels, err := u.cfg.Releases.History(name)
 	if err != nil {
+		if u.IgnoreNotFound {
+			return nil, nil
+		}
 		return nil, errors.Wrapf(err, "uninstall: Release not loaded: %s", name)
 	}
 	if len(rels) < 1 {
@@ -191,13 +196,9 @@ func joinErrors(errs []error) string {
 // deleteRelease deletes the release and returns list of delete resources and manifests that were kept in the deletion process
 func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, string, []error) {
 	var errs []error
-	caps, err := u.cfg.getCapabilities()
-	if err != nil {
-		return nil, rel.Manifest, []error{errors.Wrap(err, "could not get apiVersions from Kubernetes")}
-	}
 
 	manifests := releaseutil.SplitManifests(rel.Manifest)
-	_, files, err := releaseutil.SortManifests(manifests, caps.APIVersions, releaseutil.UninstallOrder)
+	_, files, err := releaseutil.SortManifests(manifests, nil, releaseutil.UninstallOrder)
 	if err != nil {
 		// We could instead just delete everything in no particular order.
 		// FIXME: One way to delete at this point would be to try a label-based
