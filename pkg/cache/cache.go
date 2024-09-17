@@ -1,3 +1,18 @@
+/*
+Copyright The Helm Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package cache
 
 import (
@@ -22,9 +37,9 @@ func NewNoOpCache[V any]() *NoOpCache[V] {
 	return &NoOpCache[V]{}
 }
 
-func (c *NoOpCache[V]) Set(key string, value V) {}
+func (c *NoOpCache[V]) Set(_ string, value V) {}
 
-func (c *NoOpCache[V]) Get(key string) (V, bool) {
+func (c *NoOpCache[V]) Get(_ string) (V, bool) {
 	var zero V
 	return zero, false
 }
