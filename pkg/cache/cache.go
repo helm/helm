@@ -16,7 +16,6 @@ limitations under the License.
 package cache
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -60,13 +59,11 @@ func (c *ConcurrentMapCache[V]) Set(key string, value V) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.items[key] = value
-	fmt.Println("set", key)
 }
 
 func (c *ConcurrentMapCache[V]) Get(key string) (V, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	value, exists := c.items[key]
-	fmt.Println("get", key, "exists", exists)
 	return value, exists
 }
