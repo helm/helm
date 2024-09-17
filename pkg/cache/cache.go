@@ -37,7 +37,7 @@ func NewNoOpCache[V any]() *NoOpCache[V] {
 	return &NoOpCache[V]{}
 }
 
-func (c *NoOpCache[V]) Set(_ string, value V) {}
+func (c *NoOpCache[V]) Set(_ string, _ V) {}
 
 func (c *NoOpCache[V]) Get(_ string) (V, bool) {
 	var zero V
