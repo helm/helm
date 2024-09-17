@@ -31,6 +31,7 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v3/pkg/cache"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -199,14 +200,27 @@ func (r *ChartRepository) generateIndex() error {
 // FindChartInRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories
 func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
-	return FindChartInAuthRepoURL(repoURL, "", "", chartName, chartVersion, certFile, keyFile, caFile, getters)
+	return FindChartInRepoURLWithCache(repoURL, chartName, chartVersion, certFile, keyFile, caFile, getters, nil)
+}
+
+// FindChartInRepoURLWithCache finds chart in chart repository pointed by repoURL
+// without adding repo to repositories. Also uses a cache for IndexFiles
+func FindChartInRepoURLWithCache(repoURL, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers, c *cache.Cache[*IndexFile]) (string, error) {
+	return FindChartInAuthRepoURLWithCache(repoURL, "", "", chartName, chartVersion, certFile, keyFile, caFile, getters, c)
 }
 
 // FindChartInAuthRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories, like FindChartInRepoURL,
 // but it also receives credentials for the chart repository.
 func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
-	return FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, false, getters)
+	return FindChartInAuthRepoURLWithCache(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, getters, nil)
+}
+
+// FindChartInAuthRepoURLWithCache finds chart in chart repository pointed by repoURL
+// without adding repo to repositories, like FindChartInRepoURL,
+// but it also receives credentials for the chart repository. Also uses a cache for IndexFiles
+func FindChartInAuthRepoURLWithCache(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers, c *cache.Cache[*IndexFile]) (string, error) {
+	return FindChartInAuthAndTLSRepoURLWithCache(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, false, getters, c)
 }
 
 // FindChartInAuthAndTLSRepoURL finds chart in chart repository pointed by repoURL
@@ -214,7 +228,15 @@ func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion
 // but it also receives credentials and TLS verify flag for the chart repository.
 // TODO Helm 4, FindChartInAuthAndTLSRepoURL should be integrated into FindChartInAuthRepoURL.
 func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify bool, getters getter.Providers) (string, error) {
-	return FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, insecureSkipTLSverify, false, getters)
+	return FindChartInAuthAndTLSRepoURLWithCache(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, insecureSkipTLSverify, getters, nil)
+}
+
+// FindChartInAuthAndTLSRepoURLWithCache finds chart in chart repository pointed by repoURL
+// without adding repo to repositories, like FindChartInRepoURL,
+// but it also receives credentials and TLS verify flag for the chart repository. Also uses a cache for IndexFiles
+// TODO Helm 4, FindChartInAuthAndTLSRepoURLWithCache should be integrated into FindChartInAuthRepoURL.
+func FindChartInAuthAndTLSRepoURLWithCache(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify bool, getters getter.Providers, c *cache.Cache[*IndexFile]) (string, error) {
+	return FindChartInAuthAndTLSAndPassRepoURLWithCache(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, insecureSkipTLSverify, false, getters, c)
 }
 
 // FindChartInAuthAndTLSAndPassRepoURL finds chart in chart repository pointed by repoURL
@@ -223,6 +245,15 @@ func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartV
 // be passed on to other domains.
 // TODO Helm 4, FindChartInAuthAndTLSAndPassRepoURL should be integrated into FindChartInAuthRepoURL.
 func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify, passCredentialsAll bool, getters getter.Providers) (string, error) {
+	return FindChartInAuthAndTLSAndPassRepoURLWithCache(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, insecureSkipTLSverify, passCredentialsAll, getters, nil)
+}
+
+// FindChartInAuthAndTLSAndPassRepoURLWithCache finds chart in chart repository pointed by repoURL
+// without adding repo to repositories, like FindChartInRepoURL,
+// but it also receives credentials, TLS verify flag, and if credentials should
+// be passed on to other domains. Also uses a cache for IndexFiles
+// TODO Helm 4, FindChartInAuthAndTLSAndPassRepoURL should be integrated into FindChartInAuthRepoURL.
+func FindChartInAuthAndTLSAndPassRepoURLWithCache(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify, passCredentialsAll bool, getters getter.Providers, indexFileCache *cache.Cache[*IndexFile]) (string, error) {
 
 	// Download and write the index file to a temporary location
 	buf := make([]byte, 20)
@@ -254,7 +285,7 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 	}()
 
 	// Read the index file for the repository to get chart information and return chart URL
-	repoIndex, err := LoadIndexFile(idx)
+	repoIndex, err := LoadIndexFileWithCache(idx, indexFileCache)
 	if err != nil {
 		return "", err
 	}
