@@ -16,6 +16,7 @@ limitations under the License.
 package chart
 
 import (
+	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -54,6 +55,15 @@ type Chart struct {
 
 	parent       *Chart
 	dependencies []*Chart
+}
+
+// Archive is a helm package on disk with a possible alias
+type Archive struct {
+	Name    string
+	Version string
+	URL     string
+	Alias   string
+	Dir     string
 }
 
 type CRD struct {
@@ -165,6 +175,22 @@ func (ch *Chart) CRDObjects() []CRD {
 		crds = append(crds, dep.CRDObjects()...)
 	}
 	return crds
+}
+
+func (a Archive) FileName() string {
+	if a.Alias != "" {
+		return filepath.Join(a.Dir, fmt.Sprintf("%s-%s.tgz", a.Alias, a.Version))
+	} else {
+		return filepath.Join(a.Dir, fmt.Sprintf("%s-%s.tgz", a.Name, a.Version))
+	}
+}
+
+func (a Archive) ProvFileName() string {
+	return fmt.Sprintf("%s.prov", a.FileName())
+}
+
+func (a Archive) SignatureFileName() string {
+	return fmt.Sprintf("%s-%s.tgz", a.Name, a.Version)
 }
 
 func hasManifestExtension(fname string) bool {
