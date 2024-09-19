@@ -754,7 +754,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 
 	urlsKey := repoURL + name + version
 	if _, ok := urls[urlsKey]; ok {
-		url = urls[urlsKey]
+		url, err = repo.ResolveReferenceURL(repoURL, urls[urlsKey])
 	} else {
 		url, err = repo.FindChartInRepoURL(repoURL, name, version, certFile, keyFile, caFile, m.Getters)
 	}
