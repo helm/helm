@@ -53,21 +53,23 @@ func New(chartpath, cachepath string, registryClient *registry.Client) *Resolver
 }
 
 // Resolve resolves dependencies and returns a lock file with the resolution.
-func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string) (*chart.Lock, error) {
+func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string) (*chart.Lock, map[string]string, error) {
 
 	// Now we clone the dependencies, locking as we go.
 	locked := make([]*chart.Dependency, len(reqs))
 	missing := []string{}
+	loadedIndexFiles := make(map[string]*repo.IndexFile)
+	urls := make(map[string]string)
 	for i, d := range reqs {
 		constraint, err := semver.NewConstraint(d.Version)
 		if err != nil {
-			return nil, fmt.Errorf("dependency %q has an invalid version/constraint format: %w", d.Name, err)
+			return nil, nil, fmt.Errorf("dependency %q has an invalid version/constraint format: %w", d.Name, err)
 		}
 
 		if d.Repository == "" {
 			// Local chart subfolder
 			if _, err := GetLocalPath(filepath.Join("charts", d.Name), r.chartpath); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			locked[i] = &chart.Dependency{
@@ -80,12 +82,12 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		if strings.HasPrefix(d.Repository, "file://") {
 			chartpath, err := GetLocalPath(d.Repository, r.chartpath)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			ch, err := loader.LoadDir(chartpath)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			v, err := semver.NewVersion(ch.Metadata.Version)
@@ -123,14 +125,26 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		var ok bool
 		found := true
 		if !registry.IsOCI(d.Repository) {
-			repoIndex, err := repo.LoadIndexFile(filepath.Join(r.cachepath, helmpath.CacheIndexFile(repoName)))
-			if err != nil {
-				return nil, fmt.Errorf("no cached repository for %s found. (try 'helm repo update'): %w", repoName, err)
+			filepath := filepath.Join(r.cachepath, helmpath.CacheIndexFile(repoName))
+			var repoIndex *repo.IndexFile
+
+			// Store previously loaded index files in a map. If repositories share the
+			// same index file there is no need to reload the same file again. This
+			// improves performance.
+			if indexFile, loaded := loadedIndexFiles[filepath]; !loaded {
+				var err error
+				repoIndex, err = repo.LoadIndexFile(filepath)
+				loadedIndexFiles[filepath] = repoIndex
+				if err != nil {
+				return nil, nil, fmt.Errorf("no cached repository for %s found. (try 'helm repo update'): %w", repoName, err)
+				}
+			} else {
+				repoIndex = indexFile
 			}
 
 			vs, ok = repoIndex.Entries[d.Name]
 			if !ok {
-				return nil, fmt.Errorf("%s chart not found in repo %s", d.Name, d.Repository)
+				return nil, nil, fmt.Errorf("%s chart not found in repo %s", d.Name, d.Repository)
 			}
 			found = false
 		} else {
@@ -152,7 +166,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				ref := fmt.Sprintf("%s/%s", strings.TrimPrefix(d.Repository, fmt.Sprintf("%s://", registry.OCIScheme)), d.Name)
 				tags, err := r.registryClient.Tags(ref)
 				if err != nil {
-					return nil, fmt.Errorf("could not retrieve list of tags for repository %s: %w", d.Repository, err)
+					return nil, nil, fmt.Errorf("could not retrieve list of tags for repository %s: %w", d.Repository, err)
 				}
 
 				vs = make(repo.ChartVersions, len(tags))
@@ -183,6 +197,9 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			}
 			if constraint.Check(v) {
 				found = true
+				if len(ver.URLs) > 0 {
+					urls[d.Repository+ver.Name+ver.Version] = ver.URLs[0]
+				}
 				locked[i].Version = v.Original()
 				break
 			}
@@ -193,19 +210,19 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		}
 	}
 	if len(missing) > 0 {
-		return nil, fmt.Errorf("can't get a valid version for %d subchart(s): %s. Make sure a matching chart version exists in the repo, or change the version constraint in Chart.yaml", len(missing), strings.Join(missing, ", "))
+		return nil, nil, fmt.Errorf("can't get a valid version for %d subchart(s): %s. Make sure a matching chart version exists in the repo, or change the version constraint in Chart.yaml", len(missing), strings.Join(missing, ", "))
 	}
 
 	digest, err := HashReq(reqs, locked)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return &chart.Lock{
 		Generated:    time.Now(),
 		Digest:       digest,
 		Dependencies: locked,
-	}, nil
+	}, urls, nil
 }
 
 // HashReq generates a hash of the dependencies.
