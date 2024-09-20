@@ -40,6 +40,18 @@ func verify(t *testing.T, actual Reference, registry, repository, tag, digest st
 	if digest != actual.Digest {
 		t.Errorf("Digest expected %v actual %v", digest, actual.Digest)
 	}
+	expectedString := registry
+	if repository != "" {
+		expectedString = expectedString + "/" + repository
+	}
+	if tag != "" {
+		expectedString = expectedString + ":" + tag
+	} else {
+		expectedString = expectedString + "@" + digest
+	}
+	if actual.String() != expectedString {
+		t.Errorf("String expected %s actual %s", expectedString, actual.String())
+	}
 }
 
 func TestNewReference(t *testing.T) {

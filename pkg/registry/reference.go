@@ -69,3 +69,10 @@ func NewReference(raw string) (result Reference, err error) {
 	result.Tag = result.OrasReference.Reference
 	return result, nil
 }
+
+func (r *Reference) String() string {
+	if r.Tag == "" {
+		return r.OrasReference.String() + "@" + r.Digest
+	}
+	return r.OrasReference.String()
+}

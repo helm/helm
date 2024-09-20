@@ -357,7 +357,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 	registryStore := content.Registry{Resolver: remotesResolver}
 
-	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, parsedRef.OrasReference.String(), memoryStore, "",
+	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, parsedRef.String(), memoryStore, "",
 		oras.WithPullEmptyNameAllowed(),
 		oras.WithAllowedMediaTypes(allowedMediaTypes),
 		oras.WithLayerDescriptors(func(l []ocispec.Descriptor) {
@@ -419,7 +419,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		},
 		Chart: &DescriptorPullSummaryWithMeta{},
 		Prov:  &DescriptorPullSummary{},
-		Ref:   parsedRef.OrasReference.String(),
+		Ref:   parsedRef.String(),
 	}
 	var getManifestErr error
 	if _, manifestData, ok := memoryStore.Get(manifest); !ok {
@@ -590,7 +590,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 
-	if err := memoryStore.StoreManifest(parsedRef.OrasReference.String(), manifest, manifestData); err != nil {
+	if err := memoryStore.StoreManifest(parsedRef.String(), manifest, manifestData); err != nil {
 		return nil, err
 	}
 
@@ -620,7 +620,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		},
 		Chart: chartSummary,
 		Prov:  &descriptorPushSummary{}, // prevent nil references
-		Ref:   parsedRef.OrasReference.String(),
+		Ref:   parsedRef.String(),
 	}
 	if operation.provData != nil {
 		result.Prov = &descriptorPushSummary{
