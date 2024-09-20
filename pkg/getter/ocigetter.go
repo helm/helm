@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -58,6 +59,9 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 
 	ref := strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme))
 
+	if version := g.opts.version; version != "" && !strings.Contains(path.Base(ref), ":") {
+		ref = fmt.Sprintf("%s:%s", ref, version)
+	}
 	var pullOpts []registry.PullOption
 	requestingProv := strings.HasSuffix(ref, ".prov")
 	if requestingProv {
