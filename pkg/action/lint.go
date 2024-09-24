@@ -55,7 +55,7 @@ func NewLint() *Lint {
 }
 
 // Run executes 'helm Lint' against the given chart.
-func (l *Lint) Run(paths []string, vals map[string]interface{}, lintIgnoreFilePath string, debugLogFn func(string, ...interface{})) *LintResult {
+func (l *Lint) Run(paths []string, vals map[string]interface{}, lintConfigFilePath string, debugLogFn func(string, ...interface{})) *LintResult {
 	lowestTolerance := support.ErrorSev
 	if l.Strict {
 		lowestTolerance = support.WarningSev
@@ -63,7 +63,7 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}, lintIgnoreFilePa
 	result := &LintResult{}
 	for chartIndex, path := range paths {
 		// attempt to build an action-level lint result ignorer
-		ignorer, err := ignore.NewIgnorer(path, lintIgnoreFilePath, debugLogFn)
+		ignorer, err := ignore.NewIgnorer(path, lintConfigFilePath, debugLogFn)
 		linter, err := lintChart(path, vals, l.Namespace, l.KubeVersion, l.SkipSchemaValidation)
 		if err != nil {
 			// ❗ Discard ignorable errors as early as possible

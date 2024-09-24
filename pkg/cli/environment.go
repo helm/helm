@@ -47,6 +47,8 @@ const defaultBurstLimit = 100
 // defaultQPS sets the default QPS value to 0 to use library defaults unless specified
 const defaultQPS = float32(0)
 
+const defaultLintConfigFile = string(".helmlintconfig.yaml")
+
 // EnvSettings describes all of the environment settings.
 type EnvSettings struct {
 	namespace string
@@ -88,6 +90,8 @@ type EnvSettings struct {
 	BurstLimit int
 	// QPS is queries per second which may be used to avoid throttling.
 	QPS float32
+	// Lint config file location
+	LintConfigFile string
 }
 
 func New() *EnvSettings {
@@ -108,6 +112,7 @@ func New() *EnvSettings {
 		RepositoryCache:           envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 		QPS:                       envFloat32Or("HELM_QPS", defaultQPS),
+		LintConfigFile:            envOr("HELM_LINT_CONFIG_FILE", defaultLintConfigFile),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -159,6 +164,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the directory containing cached repository indexes")
 	fs.IntVar(&s.BurstLimit, "burst-limit", s.BurstLimit, "client-side default throttling limit")
 	fs.Float32Var(&s.QPS, "qps", s.QPS, "queries per second used when communicating with the Kubernetes API, not including bursting")
+	fs.StringVar(&s.LintConfigFile, "lint-config-file", s.LintConfigFile, "path to .helmlintconfig.yaml file to specify ignore patterns")
 }
 
 func envOr(name, def string) string {
@@ -227,6 +233,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_MAX_HISTORY":       strconv.Itoa(s.MaxHistory),
 		"HELM_BURST_LIMIT":       strconv.Itoa(s.BurstLimit),
 		"HELM_QPS":               strconv.FormatFloat(float64(s.QPS), 'f', 2, 32),
+		"HELM_LINT_CONFIG_FILE":  s.LintConfigFile,
 
 		// broken, these are populated from helm flags and not kubeconfig.
 		"HELM_KUBECONTEXT":                  s.KubeContext,

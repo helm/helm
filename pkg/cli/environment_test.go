@@ -50,16 +50,17 @@ func TestEnvSettings(t *testing.T) {
 		envvars map[string]string
 
 		// expected values
-		ns, kcontext  string
-		debug         bool
-		maxhistory    int
-		kubeAsUser    string
-		kubeAsGroups  []string
-		kubeCaFile    string
-		kubeInsecure  bool
-		kubeTLSServer string
-		burstLimit    int
-		qps           float32
+		ns, kcontext   string
+		debug          bool
+		maxhistory     int
+		kubeAsUser     string
+		kubeAsGroups   []string
+		kubeCaFile     string
+		kubeInsecure   bool
+		kubeTLSServer  string
+		burstLimit     int
+		qps            float32
+		lintConfigFile string
 	}{
 		{
 			name:       "defaults",
@@ -69,47 +70,50 @@ func TestEnvSettings(t *testing.T) {
 			qps:        defaultQPS,
 		},
 		{
-			name:          "with flags set",
-			args:          "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt --burst-limit 100  --qps 50.12 --kube-insecure-skip-tls-verify=true --kube-tls-server-name=example.org",
-			ns:            "myns",
-			debug:         true,
-			maxhistory:    defaultMaxHistory,
-			burstLimit:    100,
-			qps:           50.12,
-			kubeAsUser:    "poro",
-			kubeAsGroups:  []string{"admins", "teatime", "snackeaters"},
-			kubeCaFile:    "/tmp/ca.crt",
-			kubeTLSServer: "example.org",
-			kubeInsecure:  true,
+			name:           "with flags set",
+			args:           "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt --burst-limit 100  --qps 50.12 --kube-insecure-skip-tls-verify=true --kube-tls-server-name=example.org --lint-config-file /tmp/.helmlintconfig.yaml",
+			ns:             "myns",
+			debug:          true,
+			maxhistory:     defaultMaxHistory,
+			burstLimit:     100,
+			qps:            50.12,
+			kubeAsUser:     "poro",
+			kubeAsGroups:   []string{"admins", "teatime", "snackeaters"},
+			kubeCaFile:     "/tmp/ca.crt",
+			kubeTLSServer:  "example.org",
+			kubeInsecure:   true,
+			lintConfigFile: "/tmp/.helmlintconfig.yaml",
 		},
 		{
-			name:          "with envvars set",
-			envvars:       map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "150", "HELM_KUBEINSECURE_SKIP_TLS_VERIFY": "true", "HELM_KUBETLS_SERVER_NAME": "example.org", "HELM_QPS": "60.34"},
-			ns:            "yourns",
-			maxhistory:    5,
-			burstLimit:    150,
-			qps:           60.34,
-			debug:         true,
-			kubeAsUser:    "pikachu",
-			kubeAsGroups:  []string{"operators", "snackeaters", "partyanimals"},
-			kubeCaFile:    "/tmp/ca.crt",
-			kubeTLSServer: "example.org",
-			kubeInsecure:  true,
+			name:           "with envvars set",
+			envvars:        map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "150", "HELM_KUBEINSECURE_SKIP_TLS_VERIFY": "true", "HELM_KUBETLS_SERVER_NAME": "example.org", "HELM_QPS": "60.34", "HELM_LINT_CONFIG_FILE": "/tmp/.helmlintconfig.yaml"},
+			ns:             "yourns",
+			maxhistory:     5,
+			burstLimit:     150,
+			qps:            60.34,
+			debug:          true,
+			kubeAsUser:     "pikachu",
+			kubeAsGroups:   []string{"operators", "snackeaters", "partyanimals"},
+			kubeCaFile:     "/tmp/ca.crt",
+			kubeTLSServer:  "example.org",
+			kubeInsecure:   true,
+			lintConfigFile: "/tmp/.helmlintconfig.yaml",
 		},
 		{
-			name:          "with flags and envvars set",
-			args:          "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/my/ca.crt --burst-limit 175 --qps 70 --kube-insecure-skip-tls-verify=true --kube-tls-server-name=example.org",
-			envvars:       map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "200", "HELM_KUBEINSECURE_SKIP_TLS_VERIFY": "true", "HELM_KUBETLS_SERVER_NAME": "example.org", "HELM_QPS": "40"},
-			ns:            "myns",
-			debug:         true,
-			maxhistory:    5,
-			burstLimit:    175,
-			qps:           70,
-			kubeAsUser:    "poro",
-			kubeAsGroups:  []string{"admins", "teatime", "snackeaters"},
-			kubeCaFile:    "/my/ca.crt",
-			kubeTLSServer: "example.org",
-			kubeInsecure:  true,
+			name:           "with flags and envvars set",
+			args:           "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/my/ca.crt --burst-limit 175 --qps 70 --kube-insecure-skip-tls-verify=true --kube-tls-server-name=example.org --lint-config-file /tmp/.helmlintconfig.yaml",
+			envvars:        map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "200", "HELM_KUBEINSECURE_SKIP_TLS_VERIFY": "true", "HELM_KUBETLS_SERVER_NAME": "example.org", "HELM_QPS": "40", "HELM_LINT_CONFIG_FILE": "/tmp/.helmlintconfig.yaml"},
+			ns:             "myns",
+			debug:          true,
+			maxhistory:     5,
+			burstLimit:     175,
+			qps:            70,
+			kubeAsUser:     "poro",
+			kubeAsGroups:   []string{"admins", "teatime", "snackeaters"},
+			kubeCaFile:     "/my/ca.crt",
+			kubeTLSServer:  "example.org",
+			kubeInsecure:   true,
+			lintConfigFile: "/tmp/.helmlintconfig.yaml",
 		},
 		{
 			name:       "invalid kubeconfig",

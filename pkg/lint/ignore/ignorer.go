@@ -7,7 +7,7 @@ import (
 )
 
 // DefaultIgnoreFileName is the name of the lint ignore file
-const DefaultIgnoreFileName = ".helmlintignore"
+const DefaultIgnoreFileName = ".helmlintconfig.yaml"
 
 var debugFn func(format string, v ...interface{})
 
@@ -16,9 +16,9 @@ type Ignorer struct {
 	Matchers  []MatchesErrors
 }
 
-func NewIgnorer(chartPath string, lintIgnorePath string, debugLogFn func(string, ...interface{})) (*Ignorer, error) {
+func NewIgnorer(chartPath string, lintConfigPath string, debugLogFn func(string, ...interface{})) (*Ignorer, error) {
 	debugFn = debugLogFn
-	matchers, err := LoadFromFilePath(chartPath, lintIgnorePath)
+	matchers, err := LoadFromFilePath(chartPath, lintConfigPath)
 	if err != nil {
 		return nil, err
 	}
