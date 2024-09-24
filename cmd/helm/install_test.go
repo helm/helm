@@ -225,6 +225,12 @@ func TestInstall(t *testing.T) {
 			wantError: true,
 			golden:    "output/subchart-schema-cli-negative.txt",
 		},
+		// Install, values from yaml, schematized with errors but skip schema validation, expect success
+		{
+			name:   "install with schema file and schematized subchart, extra values from cli, skip schema validation",
+			cmd:    "install schema testdata/testcharts/chart-with-schema-and-subchart --set lastname=doe --set subchart-with-schema.age=-25 --skip-schema-validation",
+			golden: "output/schema.txt",
+		},
 		// Install deprecated chart
 		{
 			name:   "install with warning about deprecated chart",

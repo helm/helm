@@ -97,7 +97,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if len(args) == 1 {
 				return compListCharts(toComplete, true)
 			}
-			return nil, cobra.ShellCompDirectiveNoFileComp
+			return noMoreArgsComp()
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
@@ -145,6 +145,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.DisableOpenAPIValidation = client.DisableOpenAPIValidation
 					instClient.SubNotes = client.SubNotes
 					instClient.HideNotes = client.HideNotes
+					instClient.SkipSchemaValidation = client.SkipSchemaValidation
 					instClient.Description = client.Description
 					instClient.DependencyUpdate = client.DependencyUpdate
 					instClient.Labels = client.Labels
@@ -274,6 +275,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this upgrade when upgrade fails")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	f.BoolVar(&client.HideNotes, "hide-notes", false, "if set, do not show notes in upgrade output. Does not affect presence in chart metadata")
+	f.BoolVar(&client.SkipSchemaValidation, "skip-schema-validation", false, "if set, disables JSON schema validation")
 	f.StringToStringVarP(&client.Labels, "labels", "l", nil, "Labels that would be added to release metadata. Should be separated by comma. Original release labels will be merged with upgrade labels. You can unset label using null.")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
