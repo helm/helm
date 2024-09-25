@@ -68,10 +68,15 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	o := &repoAddOptions{}
 
 	cmd := &cobra.Command{
-		Use:               "add [NAME] [URL]",
-		Short:             "add a chart repository",
-		Args:              require.ExactArgs(2),
-		ValidArgsFunction: noCompletions,
+		Use:   "add [NAME] [URL]",
+		Short: "add a chart repository",
+		Args:  require.ExactArgs(2),
+		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+			if len(args) > 1 {
+				return noMoreArgsComp()
+			}
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			o.name = args[0]
 			o.url = args[1]

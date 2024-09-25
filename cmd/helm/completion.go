@@ -102,7 +102,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		Short:             "generate autocompletion script for bash",
 		Long:              bashCompDesc,
 		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions,
+		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runCompletionBash(out, cmd)
 		},
@@ -114,7 +114,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		Short:             "generate autocompletion script for zsh",
 		Long:              zshCompDesc,
 		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions,
+		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runCompletionZsh(out, cmd)
 		},
@@ -126,7 +126,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		Short:             "generate autocompletion script for fish",
 		Long:              fishCompDesc,
 		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions,
+		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runCompletionFish(out, cmd)
 		},
@@ -138,7 +138,7 @@ func newCompletionCmd(out io.Writer) *cobra.Command {
 		Short:             "generate autocompletion script for powershell",
 		Long:              powershellCompDesc,
 		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions,
+		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runCompletionPowershell(out, cmd)
 		},
@@ -209,7 +209,15 @@ func runCompletionPowershell(out io.Writer, cmd *cobra.Command) error {
 	return cmd.Root().GenPowerShellCompletionWithDesc(out)
 }
 
-// Function to disable file completion
-func noCompletions(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-	return nil, cobra.ShellCompDirectiveNoFileComp
+// noMoreArgsCompFunc deactivates file completion when doing argument shell completion.
+// It also provides some ActiveHelp to indicate no more arguments are accepted.
+func noMoreArgsCompFunc(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+	return noMoreArgsComp()
+}
+
+// noMoreArgsComp deactivates file completion when doing argument shell completion.
+// It also provides some ActiveHelp to indicate no more arguments are accepted.
+func noMoreArgsComp() ([]string, cobra.ShellCompDirective) {
+	activeHelpMsg := "This command does not take any more arguments (but may accept flags)."
+	return cobra.AppendActiveHelp(nil, activeHelpMsg), cobra.ShellCompDirectiveNoFileComp
 }
