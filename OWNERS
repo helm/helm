@@ -1,6 +1,7 @@
 maintainers:
-  - joejulian
+  - gjenkins8
   - jdolitsky
+  - joejulian
   - marckhouzam
   - mattfarina
   - sabre1041
@@ -9,7 +10,6 @@ maintainers:
 triage:
   - yxxhero
   - zonggen
-  - gjenkins8
   - z4ce
 emeritus:
   - adamreese
