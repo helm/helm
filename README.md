@@ -1,4 +1,7 @@
 # Helm
+# https://github.com/helm/helm.git
+@Christoc90
+@Kinou90100
 
 [![Build Status](https://github.com/helm/helm/workflows/release/badge.svg)](https://github.com/helm/helm/actions?workflow=release)
 [![Go Report Card](https://goreportcard.com/badge/github.com/helm/helm)](https://goreportcard.com/report/github.com/helm/helm)
