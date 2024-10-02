@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/asaskevich/govalidator"
@@ -108,9 +109,19 @@ func validateChartName(cf *chart.Metadata) error {
 	}
 	name := filepath.Base(cf.Name)
 	if name != cf.Name {
-		return fmt.Errorf("chart name %q is invalid", cf.Name)
+		return fmt.Errorf("chart name %q is invalid: chart names must not include path components", cf.Name)
 	}
+	if !validChartNameChecker(cf.Name) {
+		return fmt.Errorf("chart name %q is invalid: must be lowercase and may only contain letters, numbers, and dashes", cf.Name)
+	}
+
 	return nil
+}
+
+// validChartNameChecker ensures that the chart name follows the defined pattern.
+func validChartNameChecker(name string) bool {
+	re := regexp.MustCompile(`^[a-z0-9-]+$`)
+	return re.MatchString(name)
 }
 
 func validateChartAPIVersion(cf *chart.Metadata) error {
