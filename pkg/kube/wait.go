@@ -38,6 +38,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
+var ErrNoRetryError = errors.New("this error will stop retry")
+
 type waiter struct {
 	c       ReadyChecker
 	timeout time.Duration
@@ -90,6 +92,10 @@ func (w *waiter) isRetryableError(err error, resource *resource.Info) bool {
 		retryable := w.isRetryableHTTPStatusCode(statusCode)
 		w.log("Status code received: %d. Retryable error? %t", statusCode, retryable)
 		return retryable
+	}
+	if errors.Is(err, ErrNoRetryError) {
+		w.log("The error is a NoRetryError, Retryable err? %t", false)
+		return false
 	}
 	w.log("Retryable error? %t", true)
 	return true
