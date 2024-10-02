@@ -84,6 +84,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 	var createNamespace bool
+	var outputLogs bool
 
 	cmd := &cobra.Command{
 		Use:   "upgrade [RELEASE] [CHART]",
@@ -237,22 +238,39 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				cancel()
 			}()
 
-			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
+			rel, runErr := client.RunWithContext(ctx, args[0], ch, vals)
 
-			if err != nil {
-				return errors.Wrap(err, "UPGRADE FAILED")
+			// We only return an error if we weren't even able to get the
+			// release, otherwise we keep going so we can print status and logs
+			// if requested
+			if runErr != nil && rel == nil {
+				return errors.Wrap(runErr, "UPGRADE FAILED")
 			}
 
-			if outfmt == output.Table {
+			if runErr == nil && outfmt == output.Table {
 				fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
 			}
 
-			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes})
+			if err := outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes}); err != nil {
+				return err
+			}
+			if outputLogs {
+				// Print a newline to stdout to separate the output
+				fmt.Fprintln(out)
+				if err := client.GetHookLogs(out, rel); err != nil {
+					return err
+				}
+			}
+			if runErr != nil {
+				return errors.Wrap(runErr, "UPGRADE FAILED")
+			}
+			return nil
 		},
 	}
 
 	f := cmd.Flags()
 	f.BoolVar(&createNamespace, "create-namespace", false, "if --install is set, create the release namespace if not present")
+	f.BoolVar(&outputLogs, "logs", false, "dump the logs from hook jobs or pods (this runs after the upgrade completes)")
 	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")

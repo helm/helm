@@ -25,6 +25,9 @@ import (
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes"
 
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
@@ -113,10 +116,9 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 	if err != nil {
 		return errors.Wrap(err, "unable to get kubernetes client to fetch pod logs")
 	}
-
-	hooksByWight := append([]*release.Hook{}, rel.Hooks...)
-	sort.Stable(hookByWeight(hooksByWight))
-	for _, h := range hooksByWight {
+	hooksByWeight := append([]*release.Hook{}, rel.Hooks...)
+	sort.Stable(hookByWeight(hooksByWeight))
+	for _, h := range hooksByWeight {
 		for _, e := range h.Events {
 			if e == release.HookTest {
 				if contains(r.Filters[ExcludeNameFilter], h.Name) {
@@ -125,19 +127,54 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 				if len(r.Filters[IncludeNameFilter]) > 0 && !contains(r.Filters[IncludeNameFilter], h.Name) {
 					continue
 				}
-				req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
-				logReader, err := req.Stream(context.Background())
-				if err != nil {
-					return errors.Wrapf(err, "unable to get pod logs for %s", h.Name)
-				}
-
-				fmt.Fprintf(out, "POD LOGS: %s\n", h.Name)
-				_, err = io.Copy(out, logReader)
-				fmt.Fprintln(out)
-				if err != nil {
-					return errors.Wrapf(err, "unable to write pod logs for %s", h.Name)
+				if err := getHookLogs(out, client, r.Namespace, h); err != nil {
+					return err
 				}
 			}
+		}
+	}
+	return nil
+}
+
+func getHookLogs(out io.Writer, client kubernetes.Interface, namespace string, h *release.Hook) error {
+	switch kind := h.Kind; kind {
+	case "Job":
+		job, err := client.BatchV1().Jobs(namespace).Get(context.Background(), h.Name, metav1.GetOptions{})
+		if err != nil {
+			return errors.Wrapf(err, "unable to get job for %s", h.Name)
+		}
+
+		pods, err := client.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: labels.Set(job.Spec.Selector.MatchLabels).String(),
+		})
+		if err != nil {
+			return errors.Wrapf(err, "failed to list pods for job %s", h.Name)
+		}
+		for _, pod := range pods.Items {
+			req := client.CoreV1().Pods(namespace).GetLogs(pod.Name, &v1.PodLogOptions{})
+			logReader, err := req.Stream(context.Background())
+			if err != nil {
+				return errors.Wrapf(err, "unable to get pod logs for %s", pod.Name)
+			}
+			fmt.Fprintf(out, "POD LOGS: %s\n", pod.Name)
+			_, err = io.Copy(out, logReader)
+			fmt.Fprintln(out)
+			if err != nil {
+				return errors.Wrapf(err, "unable to write pod logs for %s", pod.Name)
+			}
+		}
+	case "Pod":
+		req := client.CoreV1().Pods(namespace).GetLogs(h.Name, &v1.PodLogOptions{})
+		logReader, err := req.Stream(context.Background())
+		if err != nil {
+			return errors.Wrapf(err, "unable to get pod logs for %s", h.Name)
+		}
+
+		fmt.Fprintf(out, "POD LOGS: %s\n", h.Name)
+		_, err = io.Copy(out, logReader)
+		fmt.Fprintln(out)
+		if err != nil {
+			return errors.Wrapf(err, "unable to write pod logs for %s", h.Name)
 		}
 	}
 	return nil

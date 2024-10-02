@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -184,6 +186,30 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	}
 
 	return res, nil
+}
+
+// GetPodLogs will write the logs for all test pods in the given release into
+// the given writer. These can be immediately output to the user or captured for
+// other uses
+func (u *Upgrade) GetHookLogs(out io.Writer, rel *release.Release) error {
+	client, err := u.cfg.KubernetesClientSet()
+	if err != nil {
+		return errors.Wrap(err, "unable to get kubernetes client to fetch pod logs")
+	}
+
+	hooksByWeight := append([]*release.Hook{}, rel.Hooks...)
+	sort.Stable(hookByWeight(hooksByWeight))
+
+	for _, h := range hooksByWeight {
+		for _, e := range h.Events {
+			if e != release.HookTest {
+				if err := getHookLogs(out, client, u.Namespace, h); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // isDryRun returns true if Upgrade is set to run as a DryRun
