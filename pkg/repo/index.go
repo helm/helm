@@ -371,6 +371,8 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}
 		}
+		// adjust slice to only contain a set of valid versions
+		i.Entries[name] = cvs
 	}
 	i.SortEntries()
 	if i.APIVersion == "" {
