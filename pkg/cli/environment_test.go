@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/pflag"
 
@@ -55,6 +56,7 @@ func TestEnvSettings(t *testing.T) {
 		maxhistory    int
 		kubeAsUser    string
 		kubeAsGroups  []string
+		kubeTimeout   time.Duration
 		kubeCaFile    string
 		kubeInsecure  bool
 		kubeTLSServer string
@@ -70,7 +72,7 @@ func TestEnvSettings(t *testing.T) {
 		},
 		{
 			name:          "with flags set",
-			args:          "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt --burst-limit 100  --qps 50.12 --kube-insecure-skip-tls-verify=true --kube-tls-server-name=example.org",
+			args:          "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-apitimeout=10s --kube-ca-file=/tmp/ca.crt --burst-limit 100  --qps 50.12 --kube-insecure-skip-tls-verify=true --kube-tls-server-name=example.org",
 			ns:            "myns",
 			debug:         true,
 			maxhistory:    defaultMaxHistory,
@@ -78,13 +80,14 @@ func TestEnvSettings(t *testing.T) {
 			qps:           50.12,
 			kubeAsUser:    "poro",
 			kubeAsGroups:  []string{"admins", "teatime", "snackeaters"},
+			kubeTimeout:   10 * time.Second,
 			kubeCaFile:    "/tmp/ca.crt",
 			kubeTLSServer: "example.org",
 			kubeInsecure:  true,
 		},
 		{
 			name:          "with envvars set",
-			envvars:       map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "150", "HELM_KUBEINSECURE_SKIP_TLS_VERIFY": "true", "HELM_KUBETLS_SERVER_NAME": "example.org", "HELM_QPS": "60.34"},
+			envvars:       map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_KUBEAPITIMEOUT": "40s", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "150", "HELM_KUBEINSECURE_SKIP_TLS_VERIFY": "true", "HELM_KUBETLS_SERVER_NAME": "example.org", "HELM_QPS": "60.34"},
 			ns:            "yourns",
 			maxhistory:    5,
 			burstLimit:    150,
@@ -92,14 +95,15 @@ func TestEnvSettings(t *testing.T) {
 			debug:         true,
 			kubeAsUser:    "pikachu",
 			kubeAsGroups:  []string{"operators", "snackeaters", "partyanimals"},
+			kubeTimeout:   40 * time.Second,
 			kubeCaFile:    "/tmp/ca.crt",
 			kubeTLSServer: "example.org",
 			kubeInsecure:  true,
 		},
 		{
 			name:          "with flags and envvars set",
-			args:          "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/my/ca.crt --burst-limit 175 --qps 70 --kube-insecure-skip-tls-verify=true --kube-tls-server-name=example.org",
-			envvars:       map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "200", "HELM_KUBEINSECURE_SKIP_TLS_VERIFY": "true", "HELM_KUBETLS_SERVER_NAME": "example.org", "HELM_QPS": "40"},
+			args:          "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters  --kube-apitimeout=45s --kube-ca-file=/my/ca.crt --burst-limit 175 --qps 70 --kube-insecure-skip-tls-verify=true --kube-tls-server-name=example.org",
+			envvars:       map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_KUBEAPITIMEOUT": "1m30s", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "200", "HELM_KUBEINSECURE_SKIP_TLS_VERIFY": "true", "HELM_KUBETLS_SERVER_NAME": "example.org", "HELM_QPS": "40"},
 			ns:            "myns",
 			debug:         true,
 			maxhistory:    5,
@@ -107,6 +111,7 @@ func TestEnvSettings(t *testing.T) {
 			qps:           70,
 			kubeAsUser:    "poro",
 			kubeAsGroups:  []string{"admins", "teatime", "snackeaters"},
+			kubeTimeout:   45 * time.Second,
 			kubeCaFile:    "/my/ca.crt",
 			kubeTLSServer: "example.org",
 			kubeInsecure:  true,
@@ -152,6 +157,9 @@ func TestEnvSettings(t *testing.T) {
 			}
 			if !reflect.DeepEqual(tt.kubeAsGroups, settings.KubeAsGroups) {
 				t.Errorf("expected kAsGroups %+v, got %+v", len(tt.kubeAsGroups), len(settings.KubeAsGroups))
+			}
+			if tt.kubeTimeout != settings.KubeAPITimeout {
+				t.Errorf("expected KubeAPITimeout %q, got %q", tt.kubeTimeout, settings.KubeAPITimeout)
 			}
 			if tt.kubeCaFile != settings.KubeCaFile {
 				t.Errorf("expected kCaFile %q, got %q", tt.kubeCaFile, settings.KubeCaFile)

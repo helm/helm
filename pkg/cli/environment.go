@@ -29,6 +29,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/pflag"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -64,6 +65,8 @@ type EnvSettings struct {
 	KubeAsGroups []string
 	// Kubernetes API Server Endpoint for authentication
 	KubeAPIServer string
+	// The timeout on requests towards the Kubernetes API Server Endpoint.
+	KubeAPITimeout time.Duration
 	// Custom certificate authority file.
 	KubeCaFile string
 	// KubeInsecureSkipTLSVerify indicates if server's certificate will not be checked for validity.
@@ -99,6 +102,7 @@ func New() *EnvSettings {
 		KubeAsUser:                os.Getenv("HELM_KUBEASUSER"),
 		KubeAsGroups:              envCSV("HELM_KUBEASGROUPS"),
 		KubeAPIServer:             os.Getenv("HELM_KUBEAPISERVER"),
+		KubeAPITimeout:            envDurationOr("HELM_KUBEAPITIMEOUT", 0),
 		KubeCaFile:                os.Getenv("HELM_KUBECAFILE"),
 		KubeTLSServerName:         os.Getenv("HELM_KUBETLS_SERVER_NAME"),
 		KubeInsecureSkipTLSVerify: envBoolOr("HELM_KUBEINSECURE_SKIP_TLS_VERIFY", false),
@@ -126,6 +130,7 @@ func New() *EnvSettings {
 		WrapConfigFn: func(config *rest.Config) *rest.Config {
 			config.Burst = env.BurstLimit
 			config.QPS = env.QPS
+			config.Timeout = env.KubeAPITimeout
 			config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
 				return &retryingRoundTripper{wrapped: rt}
 			})
@@ -150,6 +155,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.KubeAsUser, "kube-as-user", s.KubeAsUser, "username to impersonate for the operation")
 	fs.StringArrayVar(&s.KubeAsGroups, "kube-as-group", s.KubeAsGroups, "group to impersonate for the operation, this flag can be repeated to specify multiple groups.")
 	fs.StringVar(&s.KubeAPIServer, "kube-apiserver", s.KubeAPIServer, "the address and the port for the Kubernetes API server")
+	fs.DurationVar(&s.KubeAPITimeout, "kube-apitimeout", s.KubeAPITimeout, "the timeout on requests towards the Kubernetes API server")
 	fs.StringVar(&s.KubeCaFile, "kube-ca-file", s.KubeCaFile, "the certificate authority file for the Kubernetes API server connection")
 	fs.StringVar(&s.KubeTLSServerName, "kube-tls-server-name", s.KubeTLSServerName, "server name to use for Kubernetes API server certificate validation. If it is not provided, the hostname used to contact the server is used")
 	fs.BoolVar(&s.KubeInsecureSkipTLSVerify, "kube-insecure-skip-tls-verify", s.KubeInsecureSkipTLSVerify, "if true, the Kubernetes API server's certificate will not be checked for validity. This will make your HTTPS connections insecure")
@@ -204,12 +210,32 @@ func envFloat32Or(name string, def float32) float32 {
 	return float32(ret)
 }
 
+func envDurationOr(name string, def time.Duration) time.Duration {
+	if name == "" {
+		return def
+	}
+	envVal := envOr(name, def.String())
+	ret, err := time.ParseDuration(envVal)
+	if err != nil {
+		return def
+	}
+	return ret
+}
+
 func envCSV(name string) (ls []string) {
 	trimmed := strings.Trim(os.Getenv(name), ", ")
 	if trimmed != "" {
 		ls = strings.Split(trimmed, ",")
 	}
 	return
+}
+
+// An unconfigured duration is presented as an empty string instead of '0s'.
+func durationToEnvString(value time.Duration) string {
+	if value == 0 {
+		return ""
+	}
+	return value.String()
 }
 
 func (s *EnvSettings) EnvVars() map[string]string {
@@ -234,6 +260,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_KUBEASUSER":                   s.KubeAsUser,
 		"HELM_KUBEASGROUPS":                 strings.Join(s.KubeAsGroups, ","),
 		"HELM_KUBEAPISERVER":                s.KubeAPIServer,
+		"HELM_KUBEAPITIMEOUT":               durationToEnvString(s.KubeAPITimeout),
 		"HELM_KUBECAFILE":                   s.KubeCaFile,
 		"HELM_KUBEINSECURE_SKIP_TLS_VERIFY": strconv.FormatBool(s.KubeInsecureSkipTLSVerify),
 		"HELM_KUBETLS_SERVER_NAME":          s.KubeTLSServerName,
