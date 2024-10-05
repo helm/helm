@@ -172,7 +172,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			Repository: d.Repository,
 			Version:    version,
 		}
-		// The version are already sorted and hence the first one to satisfy the constraint is used
+		// The versions are already sorted and hence the first one to satisfy the constraint is used
 		for _, ver := range vs {
 			v, err := semver.NewVersion(ver.Version)
 			// OCI does not need URLs

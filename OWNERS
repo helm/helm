@@ -1,15 +1,16 @@
 maintainers:
-  - joejulian
+  - gjenkins8
   - jdolitsky
+  - joejulian
   - marckhouzam
   - mattfarina
+  - robertsirc
   - sabre1041
   - scottrigby
   - technosophos
 triage:
   - yxxhero
   - zonggen
-  - gjenkins8
   - z4ce
 emeritus:
   - adamreese
