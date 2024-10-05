@@ -22,6 +22,6 @@ import (
 	"time"
 )
 
-func created(fi os.FileInfo) time.Time {
+func modified(fi os.FileInfo) time.Time {
 	return fi.ModTime()
 }
