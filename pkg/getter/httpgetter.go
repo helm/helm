@@ -53,6 +53,10 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 		return nil, err
 	}
 
+	if g.opts.acceptHeader != "" {
+		req.Header.Set("Accept", g.opts.acceptHeader)
+	}
+
 	req.Header.Set("User-Agent", version.GetUserAgent())
 	if g.opts.userAgent != "" {
 		req.Header.Set("User-Agent", g.opts.userAgent)

@@ -280,6 +280,29 @@ func TestDownload(t *testing.T) {
 	if got.String() != expect {
 		t.Errorf("Expected %q, got %q", expect, got.String())
 	}
+
+	// test server with varied Accept Header
+	const expectedAcceptHeader = "application/gzip,application/octet-stream"
+	acceptHeaderSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Accept") != expectedAcceptHeader {
+			t.Errorf("Expected '%s', got '%s'", expectedAcceptHeader, r.Header.Get("Accept"))
+		}
+		fmt.Fprint(w, expect)
+	}))
+
+	defer acceptHeaderSrv.Close()
+
+	u, _ = url.ParseRequestURI(acceptHeaderSrv.URL)
+	httpgetter, err = NewHTTPGetter(
+		WithAcceptHeader(expectedAcceptHeader),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = httpgetter.Get(u.String())
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestDownloadTLS(t *testing.T) {
