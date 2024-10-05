@@ -108,7 +108,8 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 
 		repoName := repoNames[d.Name]
 		// if the repository was not defined, but the dependency defines a repository url, bypass the cache
-		if repoName == "" && d.Repository != "" {
+		// if the repository name find in the cache does not match the one defined by user, bypass the cache
+		if repoName == "" && d.Repository != "" || d.Repository != repoName {
 			locked[i] = &chart.Dependency{
 				Name:       d.Name,
 				Repository: d.Repository,
