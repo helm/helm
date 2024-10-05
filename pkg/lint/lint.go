@@ -24,25 +24,36 @@ import (
 	"helm.sh/helm/v3/pkg/lint/support"
 )
 
-// All runs all the available linters on the given base directory.
+// All runs all of the available linters on the given base directory.
+// Deprecated, use AllWithOptions instead.
 func All(basedir string, values map[string]interface{}, namespace string, _ bool) support.Linter {
-	return AllWithKubeVersion(basedir, values, namespace, nil)
+	return AllWithOptions(basedir, values, namespace)
 }
 
 // AllWithKubeVersion runs all the available linters on the given base directory, allowing to specify the kubernetes version.
+// Deprecated, use AllWithOptions instead.
 func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) support.Linter {
-	return AllWithKubeVersionAndSchemaValidation(basedir, values, namespace, kubeVersion, false)
+	return AllWithOptions(basedir, values, namespace,
+		WithKubeVersion(kubeVersion),
+		WithSchemaValidation(false),
+	)
 }
 
-// AllWithKubeVersionAndSchemaValidation runs all the available linters on the given base directory, allowing to specify the kubernetes version and if schema validation is enabled or not.
-func AllWithKubeVersionAndSchemaValidation(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, skipSchemaValidation bool) support.Linter {
+// AllWithOptions runs all the available linters on the given base directory, allowing to specify different options.
+func AllWithOptions(basedir string, values map[string]interface{}, namespace string, options ...LinterOption) support.Linter {
 	// Using abs path to get directory context
 	chartDir, _ := filepath.Abs(basedir)
 
 	linter := support.Linter{ChartDir: chartDir}
+
+	for _, optFn := range options {
+		optFn(&linter)
+	}
+
 	rules.Chartfile(&linter)
 	rules.ValuesWithOverrides(&linter, values)
-	rules.TemplatesWithSkipSchemaValidation(&linter, values, namespace, kubeVersion, skipSchemaValidation)
+	rules.TemplatesV2(&linter, values, namespace)
 	rules.Dependencies(&linter)
+
 	return linter
 }
