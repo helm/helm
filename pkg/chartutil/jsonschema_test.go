@@ -159,7 +159,7 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 	}
 
 	expectedErrString := `subchart:
-- (root): age is required
+age: incomplete value >=0 & int
 `
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
