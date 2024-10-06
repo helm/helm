@@ -171,6 +171,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	// push the configmap object out into the kubiverse
 	if _, err := cfgmaps.impl.Create(context.Background(), obj, metav1.CreateOptions{}); err != nil {
 		if apierrors.IsAlreadyExists(err) {
+			cfgmaps.Log("create: release %q already exists in configmaps", rls.Name)
 			return ErrReleaseExists
 		}
 
