@@ -82,6 +82,8 @@ func (w metadataWriter) WriteTable(out io.Writer) error {
 	_, _ = fmt.Fprintf(out, "REVISION: %v\n", w.metadata.Revision)
 	_, _ = fmt.Fprintf(out, "STATUS: %v\n", w.metadata.Status)
 	_, _ = fmt.Fprintf(out, "DEPLOYED_AT: %v\n", w.metadata.DeployedAt)
+	_, _ = fmt.Fprintf(out, "ANNOTATIONS: %v\n", w.metadata.Annotations)
+
 	return nil
 }
 
