@@ -368,50 +368,21 @@ func Test_ReadyChecker_jobReady(t *testing.T) {
 	}{
 		{
 			name:    "job is completed",
-			args:    args{job: newJob("foo", 1, intToInt32(1), 1, 0)},
+			args:    args{job: newJob("foo", intToInt32(1), true, false)},
 			want:    true,
 			wantErr: false,
 		},
 		{
 			name:    "job is incomplete",
-			args:    args{job: newJob("foo", 1, intToInt32(1), 0, 0)},
+			args:    args{job: newJob("foo", intToInt32(1), false, false)},
 			want:    false,
 			wantErr: false,
 		},
 		{
-			name:    "job is failed but within BackoffLimit",
-			args:    args{job: newJob("foo", 1, intToInt32(1), 0, 1)},
-			want:    false,
-			wantErr: false,
-		},
-		{
-			name:    "job is completed with retry",
-			args:    args{job: newJob("foo", 1, intToInt32(1), 1, 1)},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name:    "job is failed and beyond BackoffLimit",
-			args:    args{job: newJob("foo", 1, intToInt32(1), 0, 2)},
+			name:    "job is failed",
+			args:    args{job: newJob("foo", intToInt32(1), false, true)},
 			want:    false,
 			wantErr: true,
-		},
-		{
-			name:    "job is completed single run",
-			args:    args{job: newJob("foo", 0, intToInt32(1), 1, 0)},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name:    "job is failed single run",
-			args:    args{job: newJob("foo", 0, intToInt32(1), 0, 1)},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "job with null completions",
-			args: args{job: newJob("foo", 0, nil, 1, 0)},
-			want: true,
 		},
 	}
 	for _, tt := range tests {
@@ -669,14 +640,27 @@ func newPersistentVolumeClaim(name string, phase corev1.PersistentVolumeClaimPha
 	}
 }
 
-func newJob(name string, backoffLimit int, completions *int32, succeeded int, failed int) *batchv1.Job {
+func newJob(name string, completions *int32, succeeded bool, failed bool) *batchv1.Job {
+	var conditions []batchv1.JobCondition
+	if succeeded {
+		conditions = append(conditions, batchv1.JobCondition{
+			Type:   batchv1.JobComplete,
+			Status: "True",
+		})
+	}
+	if failed {
+		conditions = append(conditions, batchv1.JobCondition{
+			Type:   batchv1.JobFailed,
+			Status: "True",
+		})
+	}
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: defaultNamespace,
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: intToInt32(backoffLimit),
+			BackoffLimit: intToInt32(1),
 			Completions:  completions,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -693,8 +677,7 @@ func newJob(name string, backoffLimit int, completions *int32, succeeded int, fa
 			},
 		},
 		Status: batchv1.JobStatus{
-			Succeeded: int32(succeeded),
-			Failed:    int32(failed),
+			Conditions: conditions,
 		},
 	}
 }
