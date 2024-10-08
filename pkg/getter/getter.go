@@ -43,6 +43,7 @@ type options struct {
 	passCredentialsAll    bool
 	userAgent             string
 	version               string
+	enableCompression     bool
 	registryClient        *registry.Client
 	timeout               time.Duration
 	transport             *http.Transport
@@ -119,6 +120,13 @@ func WithTagName(tagname string) Option {
 func WithRegistryClient(client *registry.Client) Option {
 	return func(opts *options) {
 		opts.registryClient = client
+	}
+}
+
+// WithCompression enables compression
+func WithCompression() Option {
+	return func(opts *options) {
+		opts.enableCompression = true
 	}
 }
 
