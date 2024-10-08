@@ -58,13 +58,13 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "display the status of the named release",
 		Long:  statusHelp,
 		Args:  require.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
-				return nil, cobra.ShellCompDirectiveNoFileComp
+				return noMoreArgsComp()
 			}
 			return compListReleases(toComplete, args, cfg)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 
 			// When the output format is a table the resources should be fetched
 			// and displayed as a table. When YAML or JSON the resources will be
@@ -80,7 +80,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, client.ShowResources, false})
+			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, client.ShowResources, false, false})
 		},
 	}
 
@@ -88,7 +88,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f.IntVar(&client.Version, "revision", 0, "if set, display the status of the named release with revision")
 
-	err := cmd.RegisterFlagCompletionFunc("revision", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("revision", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 1 {
 			return compListRevisions(toComplete, cfg, args[0])
 		}
@@ -113,6 +113,7 @@ type statusPrinter struct {
 	showDescription bool
 	showResources   bool
 	showMetadata    bool
+	hideNotes       bool
 }
 
 func (s statusPrinter) WriteJSON(out io.Writer) error {
@@ -219,8 +220,9 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		_, _ = fmt.Fprintf(out, "MANIFEST:\n%s\n", s.release.Manifest)
 	}
 
-	if len(s.release.Info.Notes) > 0 {
-		_, _ = fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(s.release.Info.Notes))
+	// Hide notes from output - option in install and upgrades
+	if !s.hideNotes && len(s.release.Info.Notes) > 0 {
+		fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(s.release.Info.Notes))
 	}
 	return nil
 }

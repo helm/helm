@@ -68,8 +68,8 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:              listHelp,
 		Aliases:           []string{"ls"},
 		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		ValidArgsFunction: noMoreArgsCompFunc,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if client.AllNamespaces {
 				if err := cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), debug); err != nil {
 					return err
@@ -156,7 +156,7 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string, noHead
 			Namespace:  r.Namespace,
 			Revision:   strconv.Itoa(r.Version),
 			Status:     r.Info.Status.String(),
-			Chart:      formatChartname(r.Chart),
+			Chart:      formatChartName(r.Chart),
 			AppVersion: formatAppVersion(r.Chart),
 		}
 

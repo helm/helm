@@ -120,7 +120,7 @@ func (mock *MockConfigMapsInterface) Get(_ context.Context, name string, _ metav
 	return object, nil
 }
 
-// List returns the a of ConfigMaps.
+// List returns all ConfigMaps.
 func (mock *MockConfigMapsInterface) List(_ context.Context, opts metav1.ListOptions) (*v1.ConfigMapList, error) {
 	var list v1.ConfigMapList
 
@@ -206,7 +206,7 @@ func (mock *MockSecretsInterface) Get(_ context.Context, name string, _ metav1.G
 	return object, nil
 }
 
-// List returns the a of Secret.
+// List returns all Secrets.
 func (mock *MockSecretsInterface) List(_ context.Context, opts metav1.ListOptions) (*v1.SecretList, error) {
 	var list v1.SecretList
 
@@ -262,7 +262,7 @@ func newTestFixtureSQL(t *testing.T, _ ...*rspb.Release) (*SQL, sqlmock.Sqlmock)
 	sqlxDB := sqlx.NewDb(sqlDB, "sqlmock")
 	return &SQL{
 		db:               sqlxDB,
-		Log:              func(a string, b ...interface{}) {},
+		Log:              func(_ string, _ ...interface{}) {},
 		namespace:        "default",
 		statementBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}, mock

@@ -101,7 +101,7 @@ func ensureArchive(name string, raw *os.File) error {
 	return nil
 }
 
-// isGZipApplication checks whether the achieve is of the application/x-gzip type.
+// isGZipApplication checks whether the archive is of the application/x-gzip type.
 func isGZipApplication(data []byte) bool {
 	sig := []byte("\x1F\x8B\x08")
 	return bytes.HasPrefix(data, sig)

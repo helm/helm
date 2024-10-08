@@ -100,7 +100,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	addKlogFlags(flags)
 
 	// Setup shell completion for the namespace flag
-	err := cmd.RegisterFlagCompletionFunc("namespace", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("namespace", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		if client, err := actionConfig.KubernetesClientSet(); err == nil {
 			// Choose a long enough timeout that the user notices something is not working
 			// but short enough that the user is not made to wait very long
@@ -123,7 +123,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	}
 
 	// Setup shell completion for the kube-context flag
-	err = cmd.RegisterFlagCompletionFunc("kube-context", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err = cmd.RegisterFlagCompletionFunc("kube-context", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		cobra.CompDebugln("About to get the different kube-contexts", settings.Debug)
 
 		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
@@ -201,9 +201,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// Find and add plugins
 	loadPlugins(cmd, out)
 
-	// Check permissions on critical files
-	checkPerms()
-
 	// Check for expired repositories
 	checkForExpiredRepos(settings.RepositoryConfig)
 
@@ -230,7 +227,7 @@ func checkForExpiredRepos(repofile string) {
 	}
 
 	// parse repo file.
-	// Ignore the error because it is okay for a repo file to be unparseable at this
+	// Ignore the error because it is okay for a repo file to be unparsable at this
 	// stage. Later checks will trap the error and respond accordingly.
 	repoFile, err := repo.LoadFile(repofile)
 	if err != nil {

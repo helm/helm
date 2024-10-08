@@ -161,7 +161,7 @@ func passphraseFileFetcher(passphraseFile string, stdin *os.File) (provenance.Pa
 	if err != nil {
 		return nil, err
 	}
-	return func(name string) ([]byte, error) {
+	return func(_ string) ([]byte, error) {
 		return passphrase, nil
 	}, nil
 }

@@ -31,8 +31,8 @@ func TestLoadArchiveFiles(t *testing.T) {
 	}{
 		{
 			name:     "empty input should return no files",
-			generate: func(w *tar.Writer) {},
-			check: func(t *testing.T, files []*BufferedFile, err error) {
+			generate: func(_ *tar.Writer) {},
+			check: func(t *testing.T, _ []*BufferedFile, err error) {
 				if err.Error() != "no files in chart archive" {
 					t.Fatalf(`expected "no files in chart archive", got [%#v]`, err)
 				}

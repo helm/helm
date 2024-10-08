@@ -60,18 +60,17 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewShowWithConfig(action.ShowAll, cfg)
 
 	showCommand := &cobra.Command{
-		Use:               "show",
-		Short:             "show information of a chart",
-		Aliases:           []string{"inspect"},
-		Long:              showDesc,
-		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions, // Disable file completion
+		Use:     "show",
+		Short:   "show information of a chart",
+		Aliases: []string{"inspect"},
+		Long:    showDesc,
+		Args:    require.NoArgs,
 	}
 
 	// Function providing dynamic auto-completion
-	validArgsFunc := func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	validArgsFunc := func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
+			return noMoreArgsComp()
 		}
 		return compListCharts(toComplete, true)
 	}
@@ -82,7 +81,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:              showAllDesc,
 		Args:              require.ExactArgs(1),
 		ValidArgsFunction: validArgsFunc,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowAll
 			err := addRegistryClient(client)
 			if err != nil {
@@ -103,7 +102,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:              showValuesDesc,
 		Args:              require.ExactArgs(1),
 		ValidArgsFunction: validArgsFunc,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowValues
 			err := addRegistryClient(client)
 			if err != nil {
@@ -124,7 +123,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:              showChartDesc,
 		Args:              require.ExactArgs(1),
 		ValidArgsFunction: validArgsFunc,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowChart
 			err := addRegistryClient(client)
 			if err != nil {
@@ -145,7 +144,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:              readmeChartDesc,
 		Args:              require.ExactArgs(1),
 		ValidArgsFunction: validArgsFunc,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowReadme
 			err := addRegistryClient(client)
 			if err != nil {
@@ -166,7 +165,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:              showCRDsDesc,
 		Args:              require.ExactArgs(1),
 		ValidArgsFunction: validArgsFunc,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			client.OutputFormat = action.ShowCRDs
 			err := addRegistryClient(client)
 			if err != nil {
@@ -199,7 +198,7 @@ func addShowFlags(subCmd *cobra.Command, client *action.Show) {
 	}
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 
-	err := subCmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err := subCmd.RegisterFlagCompletionFunc("version", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 1 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
