@@ -155,6 +155,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		ociRegistry.ClientOptEnableCache(true),
 		ociRegistry.ClientOptWriter(os.Stdout),
 		ociRegistry.ClientOptCredentialsFile(credentialsFile),
+		ociRegistry.ClientOptPlainHTTP(),
 	)
 	if err != nil {
 		t.Fatalf("error creating registry client")
