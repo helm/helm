@@ -1,9 +1,9 @@
 maintainers:
   - gjenkins8
-  - jdolitsky
   - joejulian
   - marckhouzam
   - mattfarina
+  - robertsirc
   - sabre1041
   - scottrigby
   - technosophos
@@ -17,6 +17,7 @@ emeritus:
   - fibonacci1729
   - hickeyma
   - jascott1
+  - jdolitsky
   - michelleN
   - migmartri
   - nebril

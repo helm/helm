@@ -644,3 +644,77 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 		})
 	}
 }
+
+var indexWithDuplicatesInChartDeps = `
+apiVersion: v1
+entries:
+  nginx:
+    - urls:
+        - https://charts.helm.sh/stable/alpine-1.0.0.tgz
+        - http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
+      name: alpine
+      description: string
+      home: https://github.com/something
+      digest: "sha256:1234567890abcdef"
+    - urls:
+        - https://charts.helm.sh/stable/nginx-0.2.0.tgz
+      name: nginx
+      description: string
+      version: 0.2.0
+      home: https://github.com/something/else
+      digest: "sha256:1234567890abcdef"
+`
+var indexWithDuplicatesInLastChartDeps = `
+apiVersion: v1
+entries:
+  nginx:
+    - urls:
+        - https://charts.helm.sh/stable/nginx-0.2.0.tgz
+      name: nginx
+      description: string
+      version: 0.2.0
+      home: https://github.com/something/else
+      digest: "sha256:1234567890abcdef"
+    - urls:
+        - https://charts.helm.sh/stable/alpine-1.0.0.tgz
+        - http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
+      name: alpine
+      description: string
+      home: https://github.com/something
+      digest: "sha256:111"
+`
+
+func TestLoadIndex_DuplicateChartDeps(t *testing.T) {
+	tests := []struct {
+		source string
+		data   string
+	}{
+		{
+			source: "indexWithDuplicatesInChartDeps",
+			data:   indexWithDuplicatesInChartDeps,
+		},
+		{
+			source: "indexWithDuplicatesInLastChartDeps",
+			data:   indexWithDuplicatesInLastChartDeps,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.source, func(t *testing.T) {
+			idx, err := loadIndex([]byte(tc.data), tc.source)
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			cvs := idx.Entries["nginx"]
+			if cvs == nil {
+				if err != nil {
+					t.Error("expected one chart version not to be filtered out")
+				}
+			}
+			for _, v := range cvs {
+				if v.Name == "alpine" {
+					t.Error("malformed version was not filtered out")
+				}
+			}
+		})
+	}
+}
