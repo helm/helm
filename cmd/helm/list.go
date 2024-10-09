@@ -156,7 +156,7 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string, noHead
 			Namespace:  r.Namespace,
 			Revision:   strconv.Itoa(r.Version),
 			Status:     r.Info.Status.String(),
-			Chart:      formatChartname(r.Chart),
+			Chart:      formatChartName(r.Chart),
 			AppVersion: formatAppVersion(r.Chart),
 		}
 

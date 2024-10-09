@@ -533,7 +533,7 @@ func TestUpgradeRelease_SystemLabels(t *testing.T) {
 		t.Fatal("expected an error")
 	}
 
-	is.Equal(fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
+	is.Equal(fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
 }
 
 func TestUpgradeRelease_DryRun(t *testing.T) {

@@ -65,7 +65,7 @@ func CertPoolFromFile(filename string) (*x509.CertPool, error) {
 	return cp, nil
 }
 
-// CertFromFilePair returns an tls.Certificate containing the
+// CertFromFilePair returns a tls.Certificate containing the
 // certificates public/private key pair from a pair of given PEM-encoded files.
 // Returns an error if the file could not be read, a certificate could not
 // be parsed, or if the file does not contain any certificates

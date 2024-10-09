@@ -169,7 +169,7 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 		})
 
 		// We need a .New template, as template text which is just blanks
-		// or comments after parsing out defines just addes new named
+		// or comments after parsing out defines just adds new named
 		// template definitions without changing the main template.
 		// https://pkg.go.dev/text/template#Template.Parse
 		// Use the parent's name for lack of a better way to identify the tpl

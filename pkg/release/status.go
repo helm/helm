@@ -31,13 +31,13 @@ const (
 	StatusSuperseded Status = "superseded"
 	// StatusFailed indicates that the release was not successfully deployed.
 	StatusFailed Status = "failed"
-	// StatusUninstalling indicates that a uninstall operation is underway.
+	// StatusUninstalling indicates that an uninstall operation is underway.
 	StatusUninstalling Status = "uninstalling"
 	// StatusPendingInstall indicates that an install operation is underway.
 	StatusPendingInstall Status = "pending-install"
 	// StatusPendingUpgrade indicates that an upgrade operation is underway.
 	StatusPendingUpgrade Status = "pending-upgrade"
-	// StatusPendingRollback indicates that an rollback operation is underway.
+	// StatusPendingRollback indicates that a rollback operation is underway.
 	StatusPendingRollback Status = "pending-rollback"
 )
 

@@ -137,7 +137,7 @@ func processDependencyEnabled(c *chart.Chart, v map[string]interface{}, path str
 	// If any dependency is not a part of Chart.yaml
 	// then this should be added to chartDependencies.
 	// However, if the dependency is already specified in Chart.yaml
-	// we should not add it, as it would be anyways processed from Chart.yaml
+	// we should not add it, as it would be processed from Chart.yaml anyway.
 
 Loop:
 	for _, existing := range c.Dependencies() {

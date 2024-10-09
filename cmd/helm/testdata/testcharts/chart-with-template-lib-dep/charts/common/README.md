@@ -48,7 +48,7 @@ Note that the `common.service` template defines two parameters:
   - A template name containing the service definition overrides
 
 A limitation of the Go template library is that a template can only take a
-single argument. The `list` function is used to workaround this by constructing
+single argument. The `list` function is used to work around this by constructing
 a list or array of arguments that is passed to the template.
 
 The `common.service` template is responsible for rendering the templates with

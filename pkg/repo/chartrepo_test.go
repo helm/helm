@@ -305,7 +305,7 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 		t.Errorf("%s is not the valid URL", chartURL)
 	}
 
-	// If the insecureSkipTLsverify is false, it will return an error that contains "x509: certificate signed by unknown authority".
+	// If the insecureSkipTLSVerify is false, it will return an error that contains "x509: certificate signed by unknown authority".
 	_, err = FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "0.1.0", "", "", "", false, false, getter.All(&cli.EnvSettings{}))
 	// Go communicates with the platform and different platforms return different messages. Go itself tests darwin
 	// differently for its message. On newer versions of Darwin the message includes the "Acme Co" portion while older

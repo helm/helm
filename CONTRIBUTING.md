@@ -274,7 +274,7 @@ Like any good open source project, we use Pull Requests (PRs) to track code chan
 
 #### Documentation PRs
 
-Documentation PRs should be made on the docs repo: <https://github.com/helm/helm-www>. Keeping Helm's documentation up to date is highly desirable, and it is recommend all user facing changes. Accurate and helpful documentation is critical for effectively communicating Helm's behavior to a wide audience.
+Documentation PRs should be made on the docs repo: <https://github.com/helm/helm-www>. Keeping Helm's documentation up to date is highly desirable, and is recommended for all user facing changes. Accurate and helpful documentation is critical for effectively communicating Helm's behavior to a wide audience.
 
 Small, ad-hoc changes/PRs to Helm which introduce user facing changes, which would benefit from documentation changes, should apply the `docs needed` label. Larger changes associated with a HIP should track docs via that HIP. The `docs needed` label doesn't block PRs, and maintainers/PR reviewers should apply discretion judging in whether the `docs needed` label should be applied.
 

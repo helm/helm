@@ -85,23 +85,22 @@ type Client struct {
 	kubeClient *kubernetes.Clientset
 }
 
-var addToScheme sync.Once
+func init() {
+	// Add CRDs to the scheme. They are missing by default.
+	if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
+		// This should never happen.
+		panic(err)
+	}
+	if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
+		panic(err)
+	}
+}
 
 // New creates a new Client.
 func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
-	// Add CRDs to the scheme. They are missing by default.
-	addToScheme.Do(func() {
-		if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
-			// This should never happen.
-			panic(err)
-		}
-		if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
-			panic(err)
-		}
-	})
 	return &Client{
 		Factory: cmdutil.NewFactory(getter),
 		Log:     nopLogger,
@@ -124,7 +123,7 @@ func (c *Client) getKubeClient() (*kubernetes.Clientset, error) {
 func (c *Client) IsReachable() error {
 	client, err := c.getKubeClient()
 	if err == genericclioptions.ErrEmptyConfig {
-		// re-replace kubernetes ErrEmptyConfig error with a friendy error
+		// re-replace kubernetes ErrEmptyConfig error with a friendly error
 		// moar workarounds for Kubernetes API breaking.
 		return errors.New("Kubernetes cluster unreachable")
 	}
@@ -635,7 +634,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	// Get a versioned object
 	versionedObject := AsVersioned(target)
 
-	// Unstructured objects, such as CRDs, may not have an not registered error
+	// Unstructured objects, such as CRDs, may not have a not registered error
 	// returned from ConvertToVersion. Anything that's unstructured should
 	// use the jsonpatch.CreateMergePatch. Strategic Merge Patch is not supported
 	// on objects like CRDs.

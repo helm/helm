@@ -436,7 +436,7 @@ func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interfa
 
 // check for an empty value
 // read and consume optional spaces until comma or EOF (empty val) or any other char (not empty val)
-// comma and spaces are consumed, while any other char is not cosumed
+// comma and spaces are consumed, while any other char is not consumed
 func (t *parser) emptyVal() (bool, error) {
 	for {
 		r, _, e := t.sc.ReadRune()

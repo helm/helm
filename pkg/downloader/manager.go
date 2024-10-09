@@ -141,7 +141,7 @@ func (m *Manager) Build() error {
 	}
 
 	// Now we need to fetch every package here into charts/
-	return m.downloadAll(lock.Dependencies, nil)
+	return m.downloadAll(lock.Dependencies)
 }
 
 // Update updates a local charts directory.
@@ -173,7 +173,7 @@ func (m *Manager) Update() error {
 	// has some information about them and, when possible, the index files
 	// locally.
 	// TODO(mattfarina): Repositories should be explicitly added by end users
-	// rather than automattic. In Helm v4 require users to add repositories. They
+	// rather than automatic. In Helm v4 require users to add repositories. They
 	// should have to add them in order to make sure they are aware of the
 	// repositories and opt-in to any locations, for security.
 	repoNames, err = m.ensureMissingRepos(repoNames, req)
@@ -191,13 +191,13 @@ func (m *Manager) Update() error {
 
 	// Now we need to find out which version of a chart best satisfies the
 	// dependencies in the Chart.yaml
-	lock, urls, err := m.resolve(req, repoNames)
+	lock, err := m.resolve(req, repoNames)
 	if err != nil {
 		return err
 	}
 
 	// Now we need to fetch every package here into charts/
-	if err := m.downloadAll(lock.Dependencies, urls); err != nil {
+	if err := m.downloadAll(lock.Dependencies); err != nil {
 		return err
 	}
 
@@ -230,7 +230,7 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 // resolve takes a list of dependencies and translates them into an exact version to download.
 //
 // This returns a lock file, which has all of the dependencies normalized to a specific version.
-func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) (*chart.Lock, map[string]string, error) {
+func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) (*chart.Lock, error) {
 	res := resolver.New(m.ChartPath, m.RepositoryCache, m.RegistryClient)
 	return res.Resolve(req, repoNames)
 }
@@ -239,7 +239,7 @@ func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) 
 //
 // It will delete versions of the chart that exist on disk and might cause
 // a conflict.
-func (m *Manager) downloadAll(deps []*chart.Dependency, urls map[string]string) error {
+func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	repos, err := m.loadChartRepositories()
 	if err != nil {
 		return err
@@ -312,7 +312,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency, urls map[string]string) 
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
-		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos, urls)
+		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
 			saveError = errors.Wrapf(err, "could not find %s", churl)
 			break
@@ -501,7 +501,6 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 
 	var ru []*repo.Entry
 
-Outer:
 	for _, dd := range deps {
 
 		// If the chart is in the local charts directory no repository needs
@@ -528,14 +527,6 @@ Outer:
 		rn = managerKeyPrefix + rn
 
 		repoNames[dd.Name] = rn
-
-		// If repository is already present don't add to array. This will skip
-		// unnecessary index file downloading improving performance.
-		for _, item := range ru {
-			if item.URL == dd.Repository {
-				continue Outer
-			}
-		}
 
 		// Assuming the repository is generally available. For Helm managed
 		// access controls the repository needs to be added through the user
@@ -712,7 +703,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 // repoURL is the repository to search
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository, urls map[string]string) (url, username, password string, insecureskiptlsverify, passcredentialsall bool, caFile, certFile, keyFile string, err error) {
+func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, insecureskiptlsverify, passcredentialsall bool, caFile, certFile, keyFile string, err error) {
 	if registry.IsOCI(repoURL) {
 		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", false, false, "", "", "", nil
 	}
@@ -751,14 +742,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			return
 		}
 	}
-
-	urlsKey := repoURL + name + version
-	if _, ok := urls[urlsKey]; ok {
-		url = urls[urlsKey]
-	} else {
-		url, err = repo.FindChartInRepoURL(repoURL, name, version, certFile, keyFile, caFile, m.Getters)
-	}
-
+	url, err = repo.FindChartInRepoURL(repoURL, name, version, certFile, keyFile, caFile, m.Getters)
 	if err == nil {
 		return url, username, password, false, false, "", "", "", err
 	}

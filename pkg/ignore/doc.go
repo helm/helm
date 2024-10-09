@@ -26,7 +26,7 @@ The formatting rules are as follows:
 
   - Parsing is line-by-line
   - Empty lines are ignored
-  - Lines the begin with # (comments) will be ignored
+  - Lines that begin with # (comments) will be ignored
   - Leading and trailing spaces are always ignored
   - Inline comments are NOT supported ('foo* # Any foo' does not contain a comment)
   - There is no support for multi-line patterns

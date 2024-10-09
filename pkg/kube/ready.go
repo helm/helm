@@ -426,7 +426,7 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 		return false
 	}
 	// This check only makes sense when all partitions are being upgraded otherwise during a
-	// partioned rolling upgrade, this condition will never evaluate to true, leading to
+	// partitioned rolling upgrade, this condition will never evaluate to true, leading to
 	// error.
 	if partition == 0 && sts.Status.CurrentRevision != sts.Status.UpdateRevision {
 		c.log("StatefulSet is not ready: %s/%s. currentRevision %s does not yet match updateRevision %s", sts.Namespace, sts.Name, sts.Status.CurrentRevision, sts.Status.UpdateRevision)

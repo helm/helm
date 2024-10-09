@@ -139,7 +139,7 @@ func (o *searchRepoOptions) setupSearchedVersion() {
 	if o.devel { // search for releases and prereleases (alpha, beta, and release candidate releases).
 		debug("setting version to >0.0.0-0")
 		o.version = ">0.0.0-0"
-	} else { // search only for stable releases, prerelease versions will be skip
+	} else { // search only for stable releases, prerelease versions will be skipped
 		debug("setting version to >0.0.0")
 		o.version = ">0.0.0"
 	}

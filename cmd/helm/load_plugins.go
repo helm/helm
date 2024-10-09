@@ -286,7 +286,7 @@ func addPluginCommands(plugin *plugin.Plugin, baseCmd *cobra.Command, cmds *plug
 					f.BoolP(longs[i], shorts[i], false, "")
 				} else {
 					// Create a long flag with the same name as the short flag.
-					// Not a perfect solution, but its better than ignoring the extra short flags.
+					// Not a perfect solution, but it's better than ignoring the extra short flags.
 					f.BoolP(shorts[i], shorts[i], false, "")
 				}
 			}
