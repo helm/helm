@@ -27,6 +27,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd/remotes"
@@ -424,16 +425,18 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 
 	sort.Strings(allowedMediaTypes)
 
+	var mu sync.Mutex
 	manifest, err := oras.Copy(ctx, repository, parsedRef.String(), memoryStore, "", oras.CopyOptions{
 		CopyGraphOptions: oras.CopyGraphOptions{
-			PreCopy: func(ctx context.Context, desc ocispec.Descriptor) error {
+			PreCopy: func(_ context.Context, desc ocispec.Descriptor) error {
 				mediaType := desc.MediaType
 				if i := sort.SearchStrings(allowedMediaTypes, mediaType); i >= len(allowedMediaTypes) || allowedMediaTypes[i] != mediaType {
 					return errors.Errorf("media type %q is not allowed, found in descriptor with digest: %q", mediaType, desc.Digest)
 				}
 
+				mu.Lock()
 				layers = append(layers, desc)
-
+				mu.Unlock()
 				return nil
 			},
 		},
