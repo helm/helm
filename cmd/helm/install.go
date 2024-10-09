@@ -268,7 +268,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 			err = errors.Wrap(err, "An error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies")
 			if client.DependencyUpdate {
 				man := &downloader.Manager{
-					Out:              out,
+					Out:              os.Stderr,
 					ChartPath:        cp,
 					Keyring:          client.ChartPathOptions.Keyring,
 					SkipUpdate:       false,
