@@ -112,7 +112,7 @@ func New() *EnvSettings {
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
 	// bind to kubernetes config flags
-	env.config = &genericclioptions.ConfigFlags{
+	config := &genericclioptions.ConfigFlags{
 		Namespace:        &env.namespace,
 		Context:          &env.KubeContext,
 		BearerToken:      &env.KubeToken,
@@ -133,6 +133,11 @@ func New() *EnvSettings {
 			return config
 		},
 	}
+	if env.BurstLimit != defaultBurstLimit {
+		config = config.WithDiscoveryBurst(env.BurstLimit)
+	}
+	env.config = config
+
 	return env
 }
 
@@ -151,7 +156,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&s.Debug, "debug", s.Debug, "enable verbose output")
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
-	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the file containing cached repository indexes")
+	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the directory containing cached repository indexes")
 	fs.IntVar(&s.BurstLimit, "burst-limit", s.BurstLimit, "client-side default throttling limit")
 	fs.Float32Var(&s.QPS, "qps", s.QPS, "queries per second used when communicating with the Kubernetes API, not including bursting")
 }

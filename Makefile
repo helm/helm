@@ -105,6 +105,15 @@ test-unit:
 	@echo
 	@echo "==> Running unit tests <=="
 	GO111MODULE=on go test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
+	@echo
+	@echo "==> Running unit test(s) with ldflags <=="
+# Test to check the deprecation warnings on Kubernetes templates created by `helm create` against the current Kubernetes
+# version. Note: The version details are set in var LDFLAGS. To avoid the ldflags impact on other unit tests that are
+# based on older versions, this is run separately. When run without the ldflags in the unit test (above) or coverage
+# test, it still passes with a false-positive result as the resources shouldn’t be deprecated in the older Kubernetes
+# version if it only starts failing with the latest. 
+	GO111MODULE=on go test $(GOFLAGS) -run ^TestHelmCreateChart_CheckDeprecatedWarnings$$ ./pkg/lint/ $(TESTFLAGS) -ldflags '$(LDFLAGS)'
+
 
 .PHONY: test-coverage
 test-coverage:

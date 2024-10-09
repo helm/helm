@@ -201,9 +201,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// Find and add plugins
 	loadPlugins(cmd, out)
 
-	// Check permissions on critical files
-	checkPerms()
-
 	// Check for expired repositories
 	checkForExpiredRepos(settings.RepositoryConfig)
 
@@ -230,7 +227,7 @@ func checkForExpiredRepos(repofile string) {
 	}
 
 	// parse repo file.
-	// Ignore the error because it is okay for a repo file to be unparseable at this
+	// Ignore the error because it is okay for a repo file to be unparsable at this
 	// stage. Later checks will trap the error and respond accordingly.
 	repoFile, err := repo.LoadFile(repofile)
 	if err != nil {

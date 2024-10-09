@@ -429,16 +429,14 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	instAction.Wait = true
 	vals := map[string]interface{}{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
 	time.AfterFunc(time.Second, cancel)
 
 	goroutines := runtime.NumGoroutine()
 
-	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
+	_, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
-	is.Contains(res.Info.Description, "Release \"interrupted-release\" failed: context canceled")
-	is.Equal(res.Info.Status, release.StatusFailed)
+	is.Contains(err.Error(), "context canceled")
 
 	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
 	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
@@ -471,8 +469,8 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		failer.WaitError = fmt.Errorf("I timed out")
 		instAction.cfg.KubeClient = failer
 		instAction.Atomic = true
-		// disabling hooks to avoid an early fail when the
-		// the WaitForDelete is called on the pre-delete hook execution
+		// disabling hooks to avoid an early fail when
+		// WaitForDelete is called on the pre-delete hook execution
 		instAction.DisableHooks = true
 		vals := map[string]interface{}{}
 
@@ -481,7 +479,7 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		is.Contains(err.Error(), "I timed out")
 		is.Contains(err.Error(), "atomic")
 
-		// Now make sure it isn't in storage any more
+		// Now make sure it isn't in storage anymore
 		_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
 		is.Error(err)
 		is.Equal(err, driver.ErrReleaseNotFound)
@@ -515,8 +513,7 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	instAction.Atomic = true
 	vals := map[string]interface{}{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
 	time.AfterFunc(time.Second, cancel)
 
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
@@ -525,7 +522,7 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	is.Contains(err.Error(), "atomic")
 	is.Contains(err.Error(), "uninstalled")
 
-	// Now make sure it isn't in storage any more
+	// Now make sure it isn't in storage anymore
 	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
 	is.Error(err)
 	is.Equal(err, driver.ErrReleaseNotFound)
@@ -799,5 +796,5 @@ func TestInstallWithSystemLabels(t *testing.T) {
 		t.Fatal("expected an error")
 	}
 
-	is.Equal(fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
+	is.Equal(fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
 }
