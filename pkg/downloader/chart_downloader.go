@@ -275,6 +275,9 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 				getter.WithPassCredentialsAll(r.Config.PassCredentialsAll),
 			)
 		}
+		if r.Config.RepoProxyUrl != "" {
+			c.Options = append(c.Options, getter.WithProxyUrl(r.Config.RepoProxyUrl))
+		}
 	}
 
 	// Next, we need to load the index, and actually look up the chart.

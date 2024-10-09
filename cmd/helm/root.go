@@ -71,7 +71,7 @@ Environment variables:
 | $HELM_KUBETLS_SERVER_NAME          | set the server name used to validate the Kubernetes API server certificate                                 |
 | $HELM_BURST_LIMIT                  | set the default burst limit in the case the server contains many CRDs (default 100, -1 to disable)         |
 | $HELM_QPS                          | set the Queries Per Second in cases where a high number of calls exceed the option for higher burst values |
-
+| $HELM_PROXY_URL                    | set the proxy url use this parameter to specify a proxy server URL for accessing the Helm repository       |
 Helm stores cache, configuration, and data based on the following configuration order:
 
 - If a HELM_*_HOME environment variable is set, it will be used
