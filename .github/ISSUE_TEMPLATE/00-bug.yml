@@ -51,6 +51,16 @@ body:
     validations:
       required: true
 
+  - type: input
+    id: helm-chart
+    attributes:
+      label: Helm chart
+      description: |
+        Could you provide the Helm chart link to help us reproduce the bug?
+      placeholder: ex. https://github.com/helm/examples
+    validations:
+      required: false
+
   - type: textarea
     id: what-did-you-do
     attributes:
