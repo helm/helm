@@ -41,7 +41,7 @@ If no lock file is found, 'helm dependency build' will mirror the behavior
 of 'helm dependency update'.
 `
 
-func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+func newDependencyBuildCmd(_ *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewDependency()
 
 	cmd := &cobra.Command{
@@ -54,13 +54,19 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CAFile,
+				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+
 			man := &downloader.Manager{
 				Out:              out,
 				ChartPath:        chartpath,
 				Keyring:          client.Keyring,
 				SkipUpdate:       client.SkipRefresh,
 				Getters:          getter.All(settings),
-				RegistryClient:   cfg.RegistryClient,
+				RegistryClient:   registryClient,
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
@@ -68,7 +74,7 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible
 			}
-			err := man.Build()
+			err = man.Build()
 			if e, ok := err.(downloader.ErrRepoNotFound); ok {
 				return fmt.Errorf("%s. Please add the missing repos via 'helm repo add'", e.Error())
 			}
@@ -77,9 +83,7 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
-	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
-	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	addDependencySubcommandFlags(f, client)
 
 	return cmd
 }
