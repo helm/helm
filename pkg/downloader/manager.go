@@ -36,6 +36,7 @@ import (
 	"helm.sh/helm/v3/internal/resolver"
 	"helm.sh/helm/v3/internal/third_party/dep/fs"
 	"helm.sh/helm/v3/internal/urlutil"
+	"helm.sh/helm/v3/pkg/cache"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -75,6 +76,8 @@ type Manager struct {
 	RegistryClient   *registry.Client
 	RepositoryConfig string
 	RepositoryCache  string
+	// IndexFileCache holds parsed IndexFiles as YAML parsing big files is a very slow operation
+	IndexFileCache *cache.Cache[*repo.IndexFile]
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -232,7 +235,7 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 // This returns a lock file, which has all of the dependencies normalized to a specific version.
 func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) (*chart.Lock, error) {
 	res := resolver.New(m.ChartPath, m.RepositoryCache, m.RegistryClient)
-	return res.Resolve(req, repoNames)
+	return res.Resolve(req, repoNames, m.IndexFileCache)
 }
 
 // downloadAll takes a list of dependencies and downloads them into charts/
@@ -742,7 +745,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			return
 		}
 	}
-	url, err = repo.FindChartInRepoURL(repoURL, name, version, certFile, keyFile, caFile, m.Getters)
+	url, err = repo.FindChartInRepoURLWithCache(repoURL, name, version, certFile, keyFile, caFile, m.Getters, m.IndexFileCache)
 	if err == nil {
 		return url, username, password, false, false, "", "", "", err
 	}

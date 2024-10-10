@@ -23,8 +23,10 @@ import (
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cache"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 const dependencyUpDesc = `
@@ -57,6 +59,9 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
+			// the helm client cli is run as a short-lived process so it's ok to use a simple
+			// implementation for a strictly growing cache
+			var c cache.Cache[*repo.IndexFile] = cache.NewConcurrentMapCache[*repo.IndexFile]()
 			man := &downloader.Manager{
 				Out:              out,
 				ChartPath:        chartpath,
@@ -67,6 +72,7 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
+				IndexFileCache:   &c,
 			}
 			if client.Verify {
 				man.Verify = downloader.VerifyAlways

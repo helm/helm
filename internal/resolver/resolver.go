@@ -27,6 +27,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v3/pkg/cache"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -51,9 +52,8 @@ func New(chartpath, cachepath string, registryClient *registry.Client) *Resolver
 	}
 }
 
-// Resolve resolves dependencies and returns a lock file with the resolution.
-func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string) (*chart.Lock, error) {
-
+// Resolve resolves dependencies with a cache and returns a lock file with the resolution.
+func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string, c *cache.Cache[*repo.IndexFile]) (*chart.Lock, error) {
 	// Now we clone the dependencies, locking as we go.
 	locked := make([]*chart.Dependency, len(reqs))
 	missing := []string{}
@@ -122,7 +122,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		var ok bool
 		found := true
 		if !registry.IsOCI(d.Repository) {
-			repoIndex, err := repo.LoadIndexFile(filepath.Join(r.cachepath, helmpath.CacheIndexFile(repoName)))
+			repoIndex, err := repo.LoadIndexFileWithCache(filepath.Join(r.cachepath, helmpath.CacheIndexFile(repoName)), c)
 			if err != nil {
 				return nil, errors.Wrapf(err, "no cached repository for %s found. (try 'helm repo update')", repoName)
 			}
