@@ -19,6 +19,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -361,57 +362,66 @@ func Test_ReadyChecker_jobReady(t *testing.T) {
 		job *batchv1.Job
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    bool
-		wantErr bool
+		name         string
+		args         args
+		want         bool
+		wantErr      bool
+		noRetryError bool
 	}{
 		{
-			name:    "job is completed",
-			args:    args{job: newJob("foo", 1, intToInt32(1), 1, 0)},
-			want:    true,
-			wantErr: false,
+			name:         "job is completed",
+			args:         args{job: newJob("foo", 1, intToInt32(1), 1, 0)},
+			want:         true,
+			wantErr:      false,
+			noRetryError: false,
 		},
 		{
-			name:    "job is incomplete",
-			args:    args{job: newJob("foo", 1, intToInt32(1), 0, 0)},
-			want:    false,
-			wantErr: false,
+			name:         "job is incomplete",
+			args:         args{job: newJob("foo", 1, intToInt32(1), 0, 0)},
+			want:         false,
+			wantErr:      false,
+			noRetryError: false,
 		},
 		{
-			name:    "job is failed but within BackoffLimit",
-			args:    args{job: newJob("foo", 1, intToInt32(1), 0, 1)},
-			want:    false,
-			wantErr: false,
+			name:         "job is failed but within BackoffLimit",
+			args:         args{job: newJob("foo", 1, intToInt32(1), 0, 1)},
+			want:         false,
+			wantErr:      false,
+			noRetryError: false,
 		},
 		{
-			name:    "job is completed with retry",
-			args:    args{job: newJob("foo", 1, intToInt32(1), 1, 1)},
-			want:    true,
-			wantErr: false,
+			name:         "job is completed with retry",
+			args:         args{job: newJob("foo", 1, intToInt32(1), 1, 1)},
+			want:         true,
+			wantErr:      false,
+			noRetryError: false,
 		},
 		{
-			name:    "job is failed and beyond BackoffLimit",
-			args:    args{job: newJob("foo", 1, intToInt32(1), 0, 2)},
-			want:    false,
-			wantErr: true,
+			name:         "job is failed and beyond BackoffLimit",
+			args:         args{job: newJob("foo", 1, intToInt32(1), 0, 2)},
+			want:         false,
+			wantErr:      true,
+			noRetryError: true,
 		},
 		{
-			name:    "job is completed single run",
-			args:    args{job: newJob("foo", 0, intToInt32(1), 1, 0)},
-			want:    true,
-			wantErr: false,
+			name:         "job is completed single run",
+			args:         args{job: newJob("foo", 0, intToInt32(1), 1, 0)},
+			want:         true,
+			wantErr:      false,
+			noRetryError: false,
 		},
 		{
-			name:    "job is failed single run",
-			args:    args{job: newJob("foo", 0, intToInt32(1), 0, 1)},
-			want:    false,
-			wantErr: true,
+			name:         "job is failed single run",
+			args:         args{job: newJob("foo", 0, intToInt32(1), 0, 1)},
+			want:         false,
+			wantErr:      true,
+			noRetryError: true,
 		},
 		{
-			name: "job with null completions",
-			args: args{job: newJob("foo", 0, nil, 1, 0)},
-			want: true,
+			name:         "job with null completions",
+			args:         args{job: newJob("foo", 0, nil, 1, 0)},
+			want:         true,
+			noRetryError: false,
 		},
 	}
 	for _, tt := range tests {
@@ -421,6 +431,9 @@ func Test_ReadyChecker_jobReady(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("jobReady() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if errors.Is(err, ErrNoRetryError) != tt.noRetryError {
+				t.Errorf("jobReady() error = %v, not ErrNoRetryError", err)
 			}
 			if got != tt.want {
 				t.Errorf("jobReady() = %v, want %v", got, tt.want)
