@@ -81,6 +81,8 @@ type Upgrade struct {
 	//
 	// This should be used with caution.
 	Force bool
+	// Forces use of a 3-way merge patch in cases where a 2-way merge is still the default
+	Force3WayMergePatch bool
 	// ResetValues will reset the values to the chart's built-ins rather than merging with existing.
 	ResetValues bool
 	// ReuseValues will re-use the user's last supplied values.
@@ -426,7 +428,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
 	}
 
-	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
+	results, err := u.cfg.KubeClient.Update(current, target, u.Force, u.Force3WayMergePatch)
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
