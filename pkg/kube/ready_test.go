@@ -287,6 +287,13 @@ func Test_ReadyChecker_statefulSetReady(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "statefulset is not ready when the number of replicas is being decreased ",
+			args: args{
+				sts: newStatefulSetWithNoCurrentReplicas("foo", 1, 0, 0, 1, true),
+			},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -469,6 +476,12 @@ func newStatefulSetWithUpdateRevision(name string, replicas, partition, readyRep
 	return ss
 }
 
+func newStatefulSetWithNoCurrentReplicas(name string, replicas, partition, readyReplicas, updatedReplicas int, generationInSync bool) *appsv1.StatefulSet {
+	ss := newStatefulSet(name, replicas, partition, readyReplicas, updatedReplicas, generationInSync)
+	ss.Status.CurrentReplicas = 0
+	return ss
+}
+
 func newDaemonSet(name string, maxUnavailable, numberReady, desiredNumberScheduled, updatedNumberScheduled int, generationInSync bool) *appsv1.DaemonSet {
 	var generation, observedGeneration int64 = 1, 1
 	if !generationInSync {
@@ -549,6 +562,7 @@ func newStatefulSet(name string, replicas, partition, readyReplicas, updatedRepl
 			UpdatedReplicas:    int32(updatedReplicas),
 			ReadyReplicas:      int32(readyReplicas),
 			ObservedGeneration: observedGeneration,
+			CurrentReplicas:    int32(replicas),
 		},
 	}
 }
