@@ -23,10 +23,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/resource"
+	k8sfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
 	cmdtesting "k8s.io/kubectl/pkg/cmd/testing"
@@ -379,6 +382,38 @@ func TestReal(t *testing.T) {
 	if _, errs := c.Delete(resources); errs != nil {
 		t.Fatal(errs)
 	}
+}
+
+func TestGetPodList(t *testing.T) {
+
+	namespace := "some-namespace"
+	names := []string{"dave", "jimmy"}
+	var responsePodList v1.PodList
+	for _, name := range names {
+		responsePodList.Items = append(responsePodList.Items, newPodWithStatus(name, v1.PodStatus{}, namespace))
+	}
+
+	kubeClient := k8sfake.NewSimpleClientset(&responsePodList)
+	c := Client{Namespace: namespace, kubeClient: kubeClient}
+
+	podList, err := c.GetPodList(namespace, metav1.ListOptions{})
+	clientAssertions := assert.New(t)
+	clientAssertions.NoError(err)
+	clientAssertions.Equal(&responsePodList, podList)
+
+}
+
+func TestOutputContainerLogsForPodList(t *testing.T) {
+	namespace := "some-namespace"
+	somePodList := newPodList("jimmy", "three", "structs")
+
+	kubeClient := k8sfake.NewSimpleClientset(&somePodList)
+	c := Client{Namespace: namespace, kubeClient: kubeClient}
+	outBuffer := &bytes.Buffer{}
+	err := c.OutputContainerLogsForPodList(&somePodList, namespace, outBuffer)
+	clientAssertions := assert.New(t)
+	clientAssertions.NoError(err)
+	clientAssertions.Equal("fake logsfake logsfake logs", outBuffer.String())
 }
 
 const testServiceManifest = `
