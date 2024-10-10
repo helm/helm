@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "addresses": {
+      "$ref": "https://helm.sh/schemas/addresses"
+    },
+    "age": {
+      "description": "Age",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "employmentInfo": {
+      "properties": {
+        "salary": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "salary"
+      ],
+      "type": "object"
+    },
+    "firstname": {
+      "description": "First name",
+      "type": "string"
+    },
+    "lastname": {
+      "type": "string"
+    },
+    "likesCoffee": {
+      "type": "boolean"
+    },
+    "phoneNumbers": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "firstname",
+    "lastname",
+    "addresses",
+    "employmentInfo"
+  ],
+  "title": "Values",
+  "type": "object"
+}

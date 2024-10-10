@@ -32,7 +32,7 @@ import (
 func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) error {
 	var sb strings.Builder
 	if chrt.Schema != nil {
-		err := ValidateAgainstSingleSchema(values, chrt.Schema)
+		err := ValidateAgainstSingleSchema(values, chrt.Schema, chrt.ExtraSchemas)
 		if err != nil {
 			sb.WriteString(fmt.Sprintf("%s:\n", chrt.Name()))
 			sb.WriteString(err.Error())
@@ -55,7 +55,7 @@ func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) err
 }
 
 // ValidateAgainstSingleSchema checks that values does not violate the structure laid out in this schema
-func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error) {
+func ValidateAgainstSingleSchema(values Values, schemaJSON []byte, extraSchemas [][]byte) (reterr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to validate schema: %s", r)
@@ -73,10 +73,24 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error
 	if bytes.Equal(valuesJSON, []byte("null")) {
 		valuesJSON = []byte("{}")
 	}
-	schemaLoader := gojsonschema.NewBytesLoader(schemaJSON)
+
+	extraSchemasLoader := gojsonschema.NewSchemaLoader()
+	for _, extraSchema := range extraSchemas {
+		extraLoader := gojsonschema.NewBytesLoader(extraSchema)
+		err = extraSchemasLoader.AddSchemas(extraLoader)
+		if err != nil {
+			return fmt.Errorf("unable to load extra schema: %s", err)
+		}
+	}
+	rootSchemaLoader := gojsonschema.NewBytesLoader(schemaJSON)
+	rootSchema, err := extraSchemasLoader.Compile(rootSchemaLoader)
+	if err != nil {
+		return fmt.Errorf("unable to compile schema: %s", err)
+	}
+
 	valuesLoader := gojsonschema.NewBytesLoader(valuesJSON)
 
-	result, err := gojsonschema.Validate(schemaLoader, valuesLoader)
+	result, err := rootSchema.Validate(valuesLoader)
 	if err != nil {
 		return err
 	}
