@@ -152,7 +152,8 @@ func coalesceGlobals(printf printFn, dest, src map[string]interface{}, prefix st
 	// tables in globals.
 	for key, val := range sg {
 		if istable(val) {
-			vv := copyMap(val.(map[string]interface{}))
+			valCopy, _ := copystructure.Copy(val)
+			vv := valCopy.(map[string]interface{})
 			if destv, ok := dg[key]; !ok {
 				// Here there is no merge. We're just adding.
 				dg[key] = vv
@@ -179,14 +180,6 @@ func coalesceGlobals(printf printFn, dest, src map[string]interface{}, prefix st
 		}
 	}
 	dest[GlobalKey] = dg
-}
-
-func copyMap(src map[string]interface{}) map[string]interface{} {
-	m := make(map[string]interface{}, len(src))
-	for k, v := range src {
-		m[k] = v
-	}
-	return m
 }
 
 // coalesceValues builds up a values map for a particular chart.
