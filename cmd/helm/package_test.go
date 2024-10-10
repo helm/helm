@@ -25,6 +25,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 )
 
 func TestPackage(t *testing.T) {
@@ -188,6 +189,173 @@ func TestSetAppVersion(t *testing.T) {
 	}
 	if ch.Metadata.AppVersion != expectedAppVersion {
 		t.Errorf("expected app-version %q, found %q", expectedAppVersion, ch.Metadata.AppVersion)
+	}
+}
+
+func TestAddValueOptions(t *testing.T) {
+	tests := []struct {
+		name   string
+		args   []string
+		expect string
+		chart  string
+		err    bool
+	}{
+		{
+			name: "package without set value",
+			args: []string{},
+			expect: `# The pod name
+Name: my-alpine
+List: []
+List1:
+- a
+`,
+			chart: "issue-3141",
+			err:   false,
+		},
+		{
+			name: "package set values",
+			args: []string{
+				"--set Name=other",
+			},
+			chart: "issue-3141",
+			expect: `# The pod name
+Name: other
+List: []
+List1:
+- a
+`,
+			err: false,
+		},
+		{
+			name: "package append values",
+			args: []string{
+				"--set Key=other",
+			},
+			chart: "issue-3141",
+			expect: `# The pod name
+Name: my-alpine
+List: []
+List1:
+- a
+Key: other
+`,
+			err: false,
+		},
+		{
+			name: "package multiple values",
+			args: []string{
+				"--set a=b,c=d",
+			},
+			chart: "issue-3141",
+			expect: `# The pod name
+Name: my-alpine
+List: []
+List1:
+- a
+a: b
+c: d
+`,
+			err: false,
+		},
+		{
+			name: "package more complex expressions",
+			args: []string{
+				"--set outer.inner=value",
+			},
+			chart: "issue-3141",
+			expect: `# The pod name
+Name: my-alpine
+List: []
+List1:
+- a
+outer:
+  inner: value
+`,
+			err: false,
+		},
+		{
+			name: "package lists values",
+			args: []string{
+				"--set List={a,b,c}",
+			},
+			chart: "issue-3141",
+			expect: `# The pod name
+Name: my-alpine
+List:
+- a
+- b
+- c
+List1:
+- a
+`,
+			err: false,
+		},
+		{
+			name: "package replace values",
+			args: []string{
+				"--set List1={a,b,c}",
+			},
+			chart: "issue-3141",
+			expect: `# The pod name
+Name: my-alpine
+List: []
+List1:
+- a
+- b
+- c
+`,
+			err: false,
+		},
+		{
+			name: "package no values file",
+			args: []string{
+				"--set List={a,b,c}",
+			},
+			chart: "issue-3141-without-values",
+			expect: `List:
+- a
+- b
+- c
+`,
+			err: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Cleanup(func() {
+				os.RemoveAll(dir)
+			})
+
+			chartToPackage := "testdata/testcharts/" + tt.chart
+			cmd := fmt.Sprintf("package %s --destination=%s %s", chartToPackage, dir, strings.Join(tt.args, " "))
+			_, _, err := executeActionCommand(cmd)
+			if err != nil {
+				if tt.err {
+					return
+				}
+				t.Fatal(err)
+			}
+			if tt.err {
+				t.Fatalf("Expected error in test %q", tt.name)
+			}
+			chartPath := filepath.Join(dir, tt.chart+"-0.1.0.tgz")
+			if fi, err := os.Stat(chartPath); err != nil {
+				t.Errorf("expected file %q, got err %q", chartPath, err)
+			} else if fi.Size() == 0 {
+				t.Errorf("file %q has zero bytes.", chartPath)
+			}
+			ch, err := loader.Load(chartPath)
+			if err != nil {
+				t.Fatalf("unexpected error loading packaged chart: %v", err)
+			}
+			for _, f := range ch.Raw {
+				if f.Name == chartutil.ValuesfileName && string(f.Data) != tt.expect {
+					t.Errorf("expected values %q, found %q", tt.expect, string(f.Data))
+				}
+			}
+		})
 	}
 }
 
