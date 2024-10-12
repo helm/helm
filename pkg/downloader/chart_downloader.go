@@ -97,20 +97,25 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		return "", nil, err
 	}
 
-	data, err := g.Get(u.String(), c.Options...)
-	if err != nil {
-		return "", nil, err
-	}
-
 	name := filepath.Base(u.Path)
+
 	if u.Scheme == registry.OCIScheme {
 		idx := strings.LastIndexByte(name, ':')
 		name = fmt.Sprintf("%s-%s.tgz", name[:idx], name[idx+1:])
 	}
 
 	destfile := filepath.Join(dest, name)
-	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
-		return destfile, nil, err
+
+	// If the file does not exist locally, fetch it from the remote source.
+	if _, err := os.Stat(destfile); err != nil {
+		data, err := g.Get(u.String(), c.Options...)
+		if err != nil {
+			return "", nil, err
+		}
+
+		if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
+			return destfile, nil, err
+		}
 	}
 
 	// If provenance is requested, verify it.
