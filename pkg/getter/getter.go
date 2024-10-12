@@ -19,6 +19,8 @@ package getter
 import (
 	"bytes"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -183,16 +185,26 @@ const (
 	// The cost timeout references curl's default connection timeout.
 	// https://github.com/curl/curl/blob/master/lib/connect.h#L40C21-L40C21
 	// The helm commands are usually executed manually. Considering the acceptable waiting time, we reduced the entire request time to 120s.
-	DefaultHTTPTimeout = 120
+	defaultHTTPTimeout = 120
 )
 
-var defaultOptions = []Option{WithTimeout(time.Second * DefaultHTTPTimeout)}
+func GetDefaultHTTPTimeout() int {
+	if v, err := strconv.Atoi(os.Getenv("HELM_DEFAULT_HTTP_TIMEOUT")); err == nil {
+		return v
+	}
+	return defaultHTTPTimeout
+}
+
+func DefaultOptions() []Option {
+	return []Option{WithTimeout(time.Second * time.Duration(GetDefaultHTTPTimeout()))}
+}
 
 var httpProvider = Provider{
 	Schemes: []string{"http", "https"},
 	New: func(options ...Option) (Getter, error) {
-		options = append(options, defaultOptions...)
-		return NewHTTPGetter(options...)
+		newOptions := DefaultOptions()
+		newOptions = append(newOptions, options...)
+		return NewHTTPGetter(newOptions...)
 	},
 }
 
