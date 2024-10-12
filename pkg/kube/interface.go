@@ -17,6 +17,7 @@ limitations under the License.
 package kube
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -33,10 +34,19 @@ type Interface interface {
 	Create(resources ResourceList) (*Result, error)
 
 	// Wait waits up to the given timeout for the specified resources to be ready.
+	// deprecated and replaced by WaitWithContext due for removal in helm v4
 	Wait(resources ResourceList, timeout time.Duration) error
 
 	// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
+	// deprecated and replaced by WaitWithJobsWithContext due for removal in helm v4
 	WaitWithJobs(resources ResourceList, timeout time.Duration) error
+
+	// WaitWithContext waits up to the given timeout for the specified resources to be ready or until the context is Done.
+	WaitWithContext(ctx context.Context, resources ResourceList, timeout time.Duration) error
+
+	// WaitWithJobsWithContext waits up to the given timeout for the specified resources to be ready or until the context is Done
+	// including jobs.
+	WaitWithJobsWithContext(ctx context.Context, resources ResourceList, timeout time.Duration) error
 
 	// Delete destroys one or more resources.
 	Delete(resources ResourceList) (*Result, []error)
