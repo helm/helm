@@ -17,12 +17,14 @@ limitations under the License.
 package rules
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -64,18 +66,6 @@ func TestValidateChartYamlFormat(t *testing.T) {
 	err = validateChartYamlFormat(nil)
 	if err != nil {
 		t.Errorf("validateChartYamlFormat to return no error, got a linter error")
-	}
-}
-
-func TestValidateChartName(t *testing.T) {
-	err := validateChartName(badChart)
-	if err == nil {
-		t.Errorf("validateChartName to return a linter error, got no error")
-	}
-
-	err = validateChartName(badChartName)
-	if err == nil {
-		t.Error("expected validateChartName to return a linter error for an invalid name, got no error")
 	}
 }
 
@@ -252,4 +242,63 @@ func TestChartfile(t *testing.T) {
 			t.Errorf("Unexpected message 2: %s", msgs[2].Err)
 		}
 	})
+}
+
+func TestValidateChartName(t *testing.T) {
+	tests := []struct {
+		name    string
+		cm      *chart.Metadata
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name:    "no chart name so returns an error",
+			cm:      &chart.Metadata{Name: ""},
+			wantErr: assert.Error,
+		},
+		{
+			name:    "chart name begins with a number so returns an error",
+			cm:      &chart.Metadata{Name: "1at-the-beginning"},
+			wantErr: assert.Error,
+		},
+		{
+			name:    "valid chart name with dashes so returns no error",
+			cm:      &chart.Metadata{Name: "good-chart-name"},
+			wantErr: assert.NoError,
+		},
+		{
+			name:    "valid chart name without dashes so returns no error",
+			cm:      &chart.Metadata{Name: "name"},
+			wantErr: assert.NoError,
+		},
+		{
+			name:    "chart name has special characters which isn't a dash so returns error",
+			cm:      &chart.Metadata{Name: "some.odd?chart,name!"},
+			wantErr: assert.Error,
+		},
+		{
+			name:    "chart name has underscore special characters which isn't a dash so returns error",
+			cm:      &chart.Metadata{Name: "some_slightly_wrong_chart_name"},
+			wantErr: assert.Error,
+		},
+		{
+			name:    "chart name has upper case characters so returns error",
+			cm:      &chart.Metadata{Name: "bad-Chart-name"},
+			wantErr: assert.Error,
+		},
+		{
+			name:    "bad chart name",
+			cm:      badChartName,
+			wantErr: assert.Error,
+		},
+		{
+			name:    "bad chart",
+			cm:      badChart,
+			wantErr: assert.Error,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.wantErr(t, validateChartName(tt.cm), fmt.Sprintf("validateChartName(%v)", tt.cm.Name))
+		})
+	}
 }
