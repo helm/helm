@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -72,6 +73,8 @@ func TestCreateFrom(t *testing.T) {
 		Name:       "foo",
 		Version:    "0.1.0",
 	}
+
+	chartname := "foo"
 	srcdir := "./testdata/frobnitz/charts/mariner"
 
 	if err := CreateFrom(cf, tdir, srcdir); err != nil {
@@ -79,7 +82,7 @@ func TestCreateFrom(t *testing.T) {
 	}
 
 	dir := filepath.Join(tdir, "foo")
-	c := filepath.Join(tdir, cf.Name)
+	c := filepath.Join(tdir, chartname)
 	mychart, err := loader.LoadDir(c)
 	if err != nil {
 		t.Fatalf("Failed to load newly created chart %q: %s", c, err)
@@ -105,6 +108,58 @@ func TestCreateFrom(t *testing.T) {
 		}
 		if bytes.Contains(b, []byte("<CHARTNAME>")) {
 			t.Errorf("File %s contains <CHARTNAME>", f)
+		}
+	}
+}
+
+func TestCreateFromWithOverride(t *testing.T) {
+	tdir := t.TempDir()
+
+	chartname := "foo"
+	srcdir := "./testdata/frobnitz/charts/custom"
+	srcMetadata := filepath.Join(srcdir, ChartfileName)
+	rawMetadata, err := ioutil.ReadFile(srcMetadata)
+	if err != nil {
+		t.Errorf("Unable to read file %s: %s", srcMetadata, err)
+	}
+
+	if err := CreateFromWithOverride(chartname, tdir, srcdir, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	dir := filepath.Join(tdir, chartname)
+	mychart, err := loader.LoadDir(dir)
+	if err != nil {
+		t.Fatalf("Failed to load newly created chart %q: %s", dir, err)
+	}
+
+	if mychart.Name() != "foo" {
+		t.Errorf("Expected name to be 'foo', got %q", mychart.Name())
+	}
+
+	expectedMetadata := strings.ReplaceAll(string(rawMetadata), "<CHARTNAME>", chartname)
+	for _, f := range []string{
+		ChartfileName,
+		ValuesfileName,
+		filepath.Join(TemplatesDir, "deployment.yaml"),
+	} {
+		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
+			t.Errorf("Expected %s file: %s", f, err)
+		}
+
+		// Check each file to make sure <CHARTNAME> has been replaced
+		b, err := ioutil.ReadFile(filepath.Join(dir, f))
+		if err != nil {
+			t.Errorf("Unable to read file %s: %s", f, err)
+		}
+		if bytes.Contains(b, []byte("<CHARTNAME>")) {
+			t.Errorf("File %s contains <CHARTNAME>", f)
+		}
+
+		if f == ChartfileName {
+			if string(b) != expectedMetadata {
+				t.Errorf("%s does not contain expected content", ChartfileName)
+			}
 		}
 	}
 }
