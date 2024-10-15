@@ -18,6 +18,7 @@ package registry // import "helm.sh/helm/v3/pkg/registry"
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -56,6 +57,8 @@ type (
 		enableCache bool
 		// path to repository config file e.g. ~/.docker/config.json
 		credentialsFile    string
+		username           string
+		password           string
 		out                io.Writer
 		authorizer         auth.Client
 		registryAuthorizer *registryauth.Client
@@ -105,6 +108,19 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		if client.plainHTTP {
 			opts = append(opts, auth.WithResolverPlainHTTP())
 		}
+
+		// if username and password are set, use them for authentication
+		// by adding the basic auth Authorization header to the resolver
+		if client.username != "" && client.password != "" {
+			concat := client.username + ":" + client.password
+			encodedAuth := base64.StdEncoding.EncodeToString([]byte(concat))
+			opts = append(opts, auth.WithResolverHeaders(
+				http.Header{
+					"Authorization": []string{"Basic " + encodedAuth},
+				},
+			))
+		}
+
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {
 			return nil, err
@@ -125,6 +141,13 @@ func NewClient(options ...ClientOption) (*Client, error) {
 			},
 			Cache: cache,
 			Credential: func(_ context.Context, reg string) (registryauth.Credential, error) {
+				if client.username != "" && client.password != "" {
+					return registryauth.Credential{
+						Username: client.username,
+						Password: client.password,
+					}, nil
+				}
+
 				dockerClient, ok := client.authorizer.(*dockerauth.Client)
 				if !ok {
 					return registryauth.EmptyCredential, errors.New("unable to obtain docker client")
@@ -165,6 +188,14 @@ func ClientOptDebug(debug bool) ClientOption {
 func ClientOptEnableCache(enableCache bool) ClientOption {
 	return func(client *Client) {
 		client.enableCache = enableCache
+	}
+}
+
+// ClientOptBasicAuth returns a function that sets the username and password setting on client options set
+func ClientOptBasicAuth(username, password string) ClientOption {
+	return func(client *Client) {
+		client.username = username
+		client.password = password
 	}
 }
 
