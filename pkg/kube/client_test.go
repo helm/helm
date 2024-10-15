@@ -101,7 +101,7 @@ func newTestClient(t *testing.T) *Client {
 }
 
 func TestUpdate(t *testing.T) {
-	listA := newPodList("starfish", "otter", "squid")
+	listA := newPodList("starfish", "otter", "squid", "notfound")
 	listB := newPodList("starfish", "otter", "dolphin")
 	listC := newPodList("starfish", "otter", "dolphin")
 	listB.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
@@ -151,6 +151,11 @@ func TestUpdate(t *testing.T) {
 				return newResponse(200, &listB.Items[1])
 			case p == "/namespaces/default/pods/squid" && m == "GET":
 				return newResponse(200, &listB.Items[2])
+			case p == "/namespaces/default/pods/notfound" && m == "GET":
+				return newResponse(200, &listA.Items[3])
+			case p == "/namespaces/default/pods/notfound" && m == "DELETE":
+				// got the item when GET, but not found when DELETE, it should not fail
+				return newResponse(404, notFoundBody())
 			default:
 				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
 				return nil, nil
@@ -202,6 +207,8 @@ func TestUpdate(t *testing.T) {
 		"/namespaces/default/pods:POST",
 		"/namespaces/default/pods/squid:GET",
 		"/namespaces/default/pods/squid:DELETE",
+		"/namespaces/default/pods/notfound:GET",
+		"/namespaces/default/pods/notfound:DELETE",
 	}
 	if len(expectedActions) != len(actions) {
 		t.Fatalf("unexpected number of requests, expected %d, got %d", len(expectedActions), len(actions))
