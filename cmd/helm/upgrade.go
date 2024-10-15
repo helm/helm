@@ -254,7 +254,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.BoolVar(&createNamespace, "create-namespace", false, "if --install is set, create the release namespace if not present")
-	f.StringToStringVarP(&namespaceLabels, "namespace-labels", "L", nil, "Labels that would be added to created namespace. Should be divided by comma. If --create-namespace is not set, this is ignored. Default is 'name=<namespace-name>'")
+	f.StringToStringVar(&namespaceLabels, "namespace-labels", nil, "labels to add to the created namespace. Comma separated key=value pairs. Ignored if --create-namespace is not set (default 'name=<namespace-name>'")
 	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
