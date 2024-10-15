@@ -185,6 +185,15 @@ Loop:
 	cd := []*chart.Chart{}
 	copy(cd, c.Dependencies()[:0])
 	for _, n := range c.Dependencies() {
+		// The metadata dependencies need to be deep copied.
+		// Otherwise we risk metadata corruption in case of multiple dependencies sharing the same sub-dependency chart
+		var metadataDependencies []*chart.Dependency
+		for _, d := range n.Metadata.Dependencies {
+			dep := *d
+			metadataDependencies = append(metadataDependencies, &dep)
+		}
+		n.Metadata.Dependencies = metadataDependencies
+
 		if _, ok := rm[n.Metadata.Name]; !ok {
 			cd = append(cd, n)
 		}
