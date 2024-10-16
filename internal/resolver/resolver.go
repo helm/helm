@@ -107,6 +107,10 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		}
 
 		repoName := repoNames[d.Name]
+		if d.Alias != "" {
+			repoName = repoNames[d.Alias]
+		}
+
 		// if the repository was not defined, but the dependency defines a repository url, bypass the cache
 		if repoName == "" && d.Repository != "" {
 			locked[i] = &chart.Dependency{
