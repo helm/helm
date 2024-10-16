@@ -488,6 +488,17 @@ func TestLoadInvalidArchive(t *testing.T) {
 	}
 }
 
+func TestLoadWithDuplicateKeysInValuesFile(t *testing.T) {
+	l, err := Loader("testdata/frobnitz_with_duplicate_keys")
+	if err != nil {
+		t.Fatalf("Failed to load testdata: %s", err)
+	}
+
+	if _, err = l.Load(); err == nil {
+		t.Errorf("packages with a value yaml file with duplicate keys should not load")
+	}
+}
+
 func verifyChart(t *testing.T, c *chart.Chart) {
 	t.Helper()
 	if c.Name() == "" {
