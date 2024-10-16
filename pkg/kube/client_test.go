@@ -22,6 +22,9 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,6 +82,26 @@ func notFoundBody() *metav1.Status {
 		Status:  metav1.StatusFailure,
 		Reason:  metav1.StatusReasonNotFound,
 		Message: " \"\" not found",
+		Details: &metav1.StatusDetails{},
+	}
+}
+
+func unprocessableEntityBody() *metav1.Status {
+	return &metav1.Status{
+		Code:    http.StatusUnprocessableEntity,
+		Status:  metav1.StatusFailure,
+		Reason:  metav1.StatusReasonInvalid,
+		Message: "cannot change",
+		Details: &metav1.StatusDetails{},
+	}
+}
+
+func conflictEntityBody() *metav1.Status {
+	return &metav1.Status{
+		Code:    http.StatusConflict,
+		Status:  metav1.StatusFailure,
+		Reason:  metav1.StatusReasonConflict,
+		Message: "conflict",
 		Details: &metav1.StatusDetails{},
 	}
 }
@@ -166,7 +189,7 @@ func TestUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := c.Update(first, second, false)
+	result, err := c.UpdateWithTimeout(first, second, false, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,6 +233,230 @@ func TestUpdate(t *testing.T) {
 		if actions[k] != v {
 			t.Errorf("expected %s request got %s", v, actions[k])
 		}
+	}
+}
+
+func TestClient_UpdateWithPolicy(t *testing.T) {
+
+	is := assert.New(t)
+
+	// setup two pods with one diff that should be patched
+	original := newPodList("starfish")
+	target := newPodList("starfish")
+	target.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+
+	// make sure there is a patchable difference
+	is.NotEqual(original.Items[0].Spec.Containers[0].Ports, target.Items[0].Spec.Containers[0].Ports)
+
+	okResponse := func() *http.Response {
+		res, _ := newResponse(http.StatusOK, &original.Items[0])
+		return res
+	}
+	notFoundResponse := func() *http.Response {
+		res, _ := newResponse(http.StatusNotFound, notFoundBody())
+		return res
+	}
+	unprocessableEntityResponse := func() *http.Response {
+		res, _ := newResponse(http.StatusUnprocessableEntity, unprocessableEntityBody())
+		return res
+	}
+	conflictEntityResponse := func() *http.Response {
+		res, _ := newResponse(http.StatusConflict, conflictEntityBody())
+		return res
+	}
+
+	tests := []struct {
+		name                 string
+		force                bool
+		updatePolicy         string
+		responses            []*http.Response
+		finalResponseFactory func() *http.Response
+		expectedActions      []string
+		fail                 bool
+	}{
+		{
+			name:         "update should delete and recreate when invalid on PATCH",
+			force:        false,
+			updatePolicy: updatePolicyRecreateOnInvalid,
+			responses: []*http.Response{
+				okResponse(),                  // GET
+				okResponse(),                  // GET
+				unprocessableEntityResponse(), // PATCH
+				okResponse(),                  // DELETE
+				notFoundResponse(),            // GET
+				okResponse(),                  // POST
+			},
+			expectedActions: []string{
+				"GET",
+				"GET",
+				"PATCH",
+				"DELETE",
+				"GET",
+				"POST",
+			},
+		},
+		{
+			name:         "update should delete and recreate when conflict on PATCH",
+			force:        false,
+			updatePolicy: updatePolicyRecreateOnConflict,
+			responses: []*http.Response{
+				okResponse(),             // GET
+				okResponse(),             // GET
+				conflictEntityResponse(), // PATCH
+				okResponse(),             // DELETE
+				notFoundResponse(),       // GET
+				okResponse(),             // POST
+			},
+			expectedActions: []string{
+				"GET",
+				"GET",
+				"PATCH",
+				"DELETE",
+				"GET",
+				"POST",
+			},
+		},
+		{
+			name:         "update should delete and recreate when invalid on PUT",
+			force:        true,
+			updatePolicy: updatePolicyRecreateOnInvalid,
+			responses: []*http.Response{
+				okResponse(),                  // GET
+				okResponse(),                  // GET
+				unprocessableEntityResponse(), // PUT
+				okResponse(),                  // DELETE
+				notFoundResponse(),            // GET
+				okResponse(),                  // POST
+			},
+			expectedActions: []string{
+				"GET",
+				"GET",
+				"PUT",
+				"DELETE",
+				"GET",
+				"POST",
+			},
+		},
+		{
+			name:         "update should delete and recreate when conflict on PUT",
+			force:        true,
+			updatePolicy: updatePolicyRecreateOnConflict,
+			responses: []*http.Response{
+				okResponse(),             // GET
+				okResponse(),             // GET
+				conflictEntityResponse(), // PUT
+				okResponse(),             // DELETE
+				notFoundResponse(),       // GET
+				okResponse(),             // POST
+			},
+			expectedActions: []string{
+				"GET",
+				"GET",
+				"PUT",
+				"DELETE",
+				"GET",
+				"POST",
+			},
+		},
+		{
+			name:         "update should fail when timing out after DELETE",
+			force:        false,
+			updatePolicy: updatePolicyRecreateOnInvalid,
+			responses: []*http.Response{
+				okResponse(),                  // GET
+				okResponse(),                  // GET
+				unprocessableEntityResponse(), // PATCH
+				okResponse(),                  // DELETE
+			},
+			// infinitely return OK on get, implying the server does not delete the resource within the given timeout
+			finalResponseFactory: okResponse, // GET
+			expectedActions: []string{
+				"GET",
+				"GET",
+				"PATCH",
+				"DELETE",
+			},
+			fail: true,
+		},
+		{
+			name:         "update should fail when no update policy specified",
+			force:        false,
+			updatePolicy: "",
+			responses: []*http.Response{
+				okResponse(),                  // GET
+				okResponse(),                  // GET
+				unprocessableEntityResponse(), // PATCH
+			},
+			expectedActions: []string{
+				"GET",
+				"GET",
+				"PATCH",
+			},
+			fail: true,
+		},
+		{
+			name:         "update should fail when no update policy does not match error",
+			force:        false,
+			updatePolicy: updatePolicyRecreateOnConflict,
+			responses: []*http.Response{
+				okResponse(),                  // GET
+				okResponse(),                  // GET
+				unprocessableEntityResponse(), // PATCH
+			},
+			expectedActions: []string{
+				"GET",
+				"GET",
+				"PATCH",
+			},
+			fail: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var actions []string
+			c := newTestClient(t)
+			c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+				NegotiatedSerializer: unstructuredSerializer,
+				Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+					p, m := req.URL.Path, req.Method
+					t.Logf("got request %s %s", p, m)
+					if len(tt.responses) == 0 {
+						if tt.finalResponseFactory != nil {
+							return tt.finalResponseFactory(), nil
+						}
+						t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+						return nil, nil
+					}
+					// final responses are not added to actions, since it is unpredictable how often the final
+					// response will be returned on polling
+					actions = append(actions, m)
+					var response *http.Response
+					response, tt.responses = tt.responses[0], tt.responses[1:]
+					return response, nil
+				}),
+			}
+
+			target.Items[0].Annotations = map[string]string{updatePolicyAnnotation: tt.updatePolicy}
+
+			originalResourceList, err := c.Build(objBody(&original), false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			targetResourceList, err := c.Build(objBody(&target), false)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// timeout should be larger than one second, to see actual polling with one second poll interval
+			_, err = c.UpdateWithTimeout(originalResourceList, targetResourceList, tt.force, 2*time.Second)
+			if (tt.fail && err == nil) || (!tt.fail && err != nil) {
+				t.Fatal(err)
+			}
+			t.Log(tt.expectedActions)
+			t.Log(actions)
+			is.ElementsMatch(tt.expectedActions, actions)
+		})
 	}
 }
 
