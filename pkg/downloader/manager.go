@@ -572,6 +572,10 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 	// by Helm.
 	missing := []string{}
 	for _, dd := range deps {
+		chartName := dd.Name
+		if dd.Alias != "" {
+			chartName = dd.Alias
+		}
 		// Don't map the repository, we don't need to download chart from charts directory
 		if dd.Repository == "" {
 			continue
@@ -585,12 +589,12 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Repository from local path: %s\n", dd.Repository)
 			}
-			reposMap[dd.Name] = dd.Repository
+			reposMap[chartName] = dd.Repository
 			continue
 		}
 
 		if registry.IsOCI(dd.Repository) {
-			reposMap[dd.Name] = dd.Repository
+			reposMap[chartName] = dd.Repository
 			continue
 		}
 
@@ -601,11 +605,11 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 				(strings.HasPrefix(dd.Repository, "alias:") && strings.TrimPrefix(dd.Repository, "alias:") == repo.Name) {
 				found = true
 				dd.Repository = repo.URL
-				reposMap[dd.Name] = repo.Name
+				reposMap[chartName] = repo.Name
 				break
 			} else if urlutil.Equal(repo.URL, dd.Repository) {
 				found = true
-				reposMap[dd.Name] = repo.Name
+				reposMap[chartName] = repo.Name
 				break
 			}
 		}
