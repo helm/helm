@@ -137,9 +137,22 @@ func TestResolve(t *testing.T) {
 			},
 			err: true,
 		},
+		{
+			name: "charts with same name but different repo",
+			req: []*chart.Dependency{
+				{Name: "alpine", Repository: "repository-1", Version: "0.1.0"},
+				{Name: "alpine", Repository: "repository-2", Version: "0.3.0", Alias: "alpine-alias"},
+			},
+			expect: &chart.Lock{
+				Dependencies: []*chart.Dependency{
+					{Name: "alpine", Repository: "repository-1", Version: "0.1.0"},
+					{Name: "alpine", Repository: "repository-2", Version: "0.3.0"},
+				},
+			},
+		},
 	}
 
-	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}
+	repoNames := map[string]string{"alpine": "repository-1", "redis": "repository-1", "alpine-alias": "repository-2"}
 	registryClient, _ := registry.NewClient()
 	r := New("testdata/chartpath", "testdata/repository", registryClient)
 	for _, tt := range tests {
