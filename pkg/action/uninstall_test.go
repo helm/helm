@@ -76,6 +76,34 @@ func TestUninstallRelease_deleteRelease(t *testing.T) {
 	is.Contains(res.Info, expected)
 }
 
+func TestUninstallRelease_keepResources(t *testing.T) {
+	is := assert.New(t)
+
+	unAction := uninstallAction(t)
+	unAction.DisableHooks = true
+	unAction.DryRun = false
+	unAction.KeepResources = true
+
+	rel := releaseStub()
+	rel.Name = "keep-resources"
+	rel.Manifest = `{
+		"apiVersion": "v1",
+		"kind": "Secret",
+		"metadata": {
+		  "name": "secret",
+		},
+		"type": "Opaque",
+		"data": {
+		  "password": "password"
+		}
+	}`
+	unAction.cfg.Releases.Create(rel)
+	res, err := unAction.Run(rel.Name)
+	is.NoError(err)
+	expected := "Associated resources were kept because --keep-resources was set"
+	is.Contains(res.Info, expected)
+}
+
 func TestUninstallRelease_Wait(t *testing.T) {
 	is := assert.New(t)
 
