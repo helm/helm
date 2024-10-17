@@ -22,7 +22,6 @@
 : ${DEBUG:="false"}
 : ${VERIFY_CHECKSUM:="true"}
 : ${VERIFY_SIGNATURES:="false"}
-: ${HELM_INSTALL_DIR:="/usr/local/bin"}
 : ${GPG_PUBRING:="pubring.kbx"}
 
 HAS_CURL="$(type "curl" &> /dev/null && echo true || echo false)"
@@ -242,6 +241,22 @@ verifySignatures() {
   echo "Done."
 }
 
+# verifyInstallDir sets the install directory for helm, based on the
+# arguments that are passed.
+verifyInstallDir() {
+  if [ ${HELM_INSTALL_DIR+x} ]; then
+    return 0
+  fi
+  if [ $USE_SUDO == "true" ]; then
+    HELM_INSTALL_DIR="/usr/local/bin"
+  else 
+    HELM_INSTALL_DIR="${HOME}/.local/bin"
+    if [ ! -d "$HELM_INSTALL_DIR" ]; then
+      mkdir -p -m 0700 "$HELM_INSTALL_DIR"
+    fi
+  fi
+}
+
 # fail_trap is executed if an error occurs.
 fail_trap() {
   result=$?
@@ -263,8 +278,7 @@ testVersion() {
   set +e
   HELM="$(command -v $BINARY_NAME)"
   if [ "$?" = "1" ]; then
-    echo "$BINARY_NAME not found. Is $HELM_INSTALL_DIR on your "'$PATH?'
-    exit 1
+    echo "$BINARY_NAME command not found, ensure $HELM_INSTALL_DIR is on your "'$PATH'
   fi
   set -e
 }
@@ -275,7 +289,7 @@ help () {
   echo -e "\t[--help|-h ] ->> prints this help"
   echo -e "\t[--version|-v <desired_version>] . When not defined it fetches the latest release from GitHub"
   echo -e "\te.g. --version v3.0.0 or -v canary"
-  echo -e "\t[--no-sudo]  ->> install without sudo"
+  echo -e "\t[--no-sudo]  ->> install without sudo, defaults to "'$HOME/.local/bin'
 }
 
 # cleanup temporary files to avoid https://github.com/helm/helm/issues/2977
@@ -332,6 +346,7 @@ initArch
 initOS
 verifySupported
 checkDesiredVersion
+verifyInstallDir
 if ! checkHelmInstalledVersion; then
   downloadFile
   verifyFile
