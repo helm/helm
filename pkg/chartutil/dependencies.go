@@ -103,6 +103,7 @@ func processDependencyTags(reqs []*chart.Dependency, cvals Values) {
 	}
 }
 
+// getAliasDependency finds the chart for an alias dependency and copies parts that will be modified
 func getAliasDependency(charts []*chart.Chart, dep *chart.Dependency) *chart.Chart {
 	for _, c := range charts {
 		if c == nil {
@@ -116,15 +117,36 @@ func getAliasDependency(charts []*chart.Chart, dep *chart.Dependency) *chart.Cha
 		}
 
 		out := *c
-		md := *c.Metadata
-		out.Metadata = &md
+		out.Metadata = copyMetadata(c.Metadata)
+
+		// empty dependencies and shallow copy all dependencies, otherwise parent info may be corrupted if
+		// there is more than one dependency aliasing this chart
+		out.SetDependencies()
+		for _, dependency := range c.Dependencies() {
+			cpy := *dependency
+			out.AddDependency(&cpy)
+		}
 
 		if dep.Alias != "" {
-			md.Name = dep.Alias
+			out.Metadata.Name = dep.Alias
 		}
 		return &out
 	}
 	return nil
+}
+
+func copyMetadata(metadata *chart.Metadata) *chart.Metadata {
+	md := *metadata
+
+	if md.Dependencies != nil {
+		dependencies := make([]*chart.Dependency, len(md.Dependencies))
+		for i := range md.Dependencies {
+			dependency := *md.Dependencies[i]
+			dependencies[i] = &dependency
+		}
+		md.Dependencies = dependencies
+	}
+	return &md
 }
 
 // processDependencyEnabled removes disabled charts from dependencies
