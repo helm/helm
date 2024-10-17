@@ -3,7 +3,26 @@ version: "0.1.0"
 usage: "usage"
 description: |-
   description
-command: "$HELM_PLUGIN_DIR/hello.sh"
+platformCommand:
+  - os: linux
+    arch:
+    command: "sh"
+    args: ["-c", "${HELM_PLUGIN_DIR}/hello.sh"]
+  - os: windows
+    arch:
+    command: "pwsh"
+    args: ["-c", "${HELM_PLUGIN_DIR}/hello.ps1"]
+command: "${HELM_PLUGIN_DIR}/hello.sh"
 ignoreFlags: true
+PlatformHooks:
+  install:
+    - os: linux
+      arch:
+      command: "sh"
+      args: ["-c", 'echo "installing..."']
+    - os: windows
+      arch:
+      command: "pwsh"
+      args: ["-c", 'echo "installing..."']
 hooks:
   install: "echo installing..."
