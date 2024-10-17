@@ -26,8 +26,10 @@ import (
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/cache"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 const dependencyBuildDesc = `
@@ -54,6 +56,7 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
+			var c cache.Cache[*repo.IndexFile] = cache.NewConcurrentMapCache[*repo.IndexFile]()
 			man := &downloader.Manager{
 				Out:              out,
 				ChartPath:        chartpath,
@@ -64,6 +67,7 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
+				IndexFileCache:   &c,
 			}
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible

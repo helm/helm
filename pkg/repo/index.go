@@ -18,6 +18,8 @@ package repo
 
 import (
 	"bytes"
+	"crypto/sha512"
+	"encoding/hex"
 	"encoding/json"
 	"log"
 	"os"
@@ -33,6 +35,7 @@ import (
 
 	"helm.sh/helm/v3/internal/fileutil"
 	"helm.sh/helm/v3/internal/urlutil"
+	"helm.sh/helm/v3/pkg/cache"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/provenance"
@@ -104,14 +107,36 @@ func NewIndexFile() *IndexFile {
 
 // LoadIndexFile takes a file at the given path and returns an IndexFile object
 func LoadIndexFile(path string) (*IndexFile, error) {
+	return LoadIndexFileWithCache(path, nil)
+}
+
+// LoadIndexFile takes a file at the given path and a Cache, and returns an IndexFile object
+func LoadIndexFileWithCache(path string, c *cache.Cache[*IndexFile]) (*IndexFile, error) {
+	if c == nil {
+		var noOpCache cache.Cache[*IndexFile] = cache.NewNoOpCache[*IndexFile]()
+		c = &noOpCache
+	}
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
+
+	// Calculate the cache key by the file content
+	hasher := sha512.New()
+	hasher.Write(b)
+	cacheKey := hex.EncodeToString(hasher.Sum(nil))
+
+	if cached, ok := (*c).Get(cacheKey); ok {
+		return cached, nil
+	}
+
 	i, err := loadIndex(b, path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error loading %s", path)
 	}
+
+	(*c).Set(cacheKey, i)
+
 	return i, nil
 }
 
