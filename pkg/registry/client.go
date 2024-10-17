@@ -319,7 +319,7 @@ type (
 
 // Pull downloads a chart from a registry
 func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
-	parsedRef, err := parseReference(ref)
+	parsedRef, err := NewReference(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +351,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 
 	var descriptors, layers []ocispec.Descriptor
-	remotesResolver, err := c.resolver(parsedRef)
+	remotesResolver, err := c.resolver(parsedRef.OrasReference)
 	if err != nil {
 		return nil, err
 	}
@@ -535,7 +535,7 @@ type (
 
 // Push uploads a chart to a registry.
 func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResult, error) {
-	parsedRef, err := parseReference(ref)
+	parsedRef, err := NewReference(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -594,12 +594,12 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 
-	remotesResolver, err := c.resolver(parsedRef)
+	remotesResolver, err := c.resolver(parsedRef.OrasReference)
 	if err != nil {
 		return nil, err
 	}
 	registryStore := content.Registry{Resolver: remotesResolver}
-	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, parsedRef.String(), registryStore, "",
+	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, parsedRef.OrasReference.String(), registryStore, "",
 		oras.WithNameValidation(nil))
 	if err != nil {
 		return nil, err
@@ -630,7 +630,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 	fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
 	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
-	if strings.Contains(parsedRef.Reference, "_") {
+	if strings.Contains(parsedRef.OrasReference.Reference, "_") {
 		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
 		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
 	}
@@ -700,4 +700,24 @@ func (c *Client) Tags(ref string) ([]string, error) {
 
 	return tags, nil
 
+}
+
+// Resolve a reference to a descriptor.
+func (c *Client) Resolve(ref string) (*ocispec.Descriptor, error) {
+	ctx := context.Background()
+	parsedRef, err := NewReference(ref)
+	if err != nil {
+		return nil, err
+	}
+	if parsedRef.Registry == "" {
+		return nil, nil
+	}
+
+	remotesResolver, err := c.resolver(parsedRef.OrasReference)
+	if err != nil {
+		return nil, err
+	}
+
+	_, desc, err := remotesResolver.Resolve(ctx, ref)
+	return &desc, err
 }
