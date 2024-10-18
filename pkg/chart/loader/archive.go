@@ -184,7 +184,7 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 
 		data := bytes.TrimPrefix(b.Bytes(), utf8bom)
 
-		files = append(files, &BufferedFile{Name: n, Data: data})
+		files = append(files, &BufferedFile{Name: n, ModTime: hd.FileInfo().ModTime(), Data: data})
 		b.Reset()
 	}
 
