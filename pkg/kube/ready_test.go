@@ -334,6 +334,18 @@ func Test_ReadyChecker_podsReadyForObject(t *testing.T) {
 			want:    false,
 			wantErr: false,
 		},
+		{
+			name: "ReplicaSet not set",
+			args: args{
+				namespace: defaultNamespace,
+				obj:       nil,
+			},
+			existPods: []corev1.Pod{
+				*newPodWithCondition("foo", corev1.ConditionFalse),
+			},
+			want:    false,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -458,6 +470,52 @@ func Test_ReadyChecker_volumeReady(t *testing.T) {
 			c := NewReadyChecker(fake.NewSimpleClientset(), nil)
 			if got := c.volumeReady(tt.args.v); got != tt.want {
 				t.Errorf("volumeReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_ReadyChecker_serviceReady(t *testing.T) {
+	type args struct {
+		service *corev1.Service
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "service type is of external name",
+			args: args{service: newService("foo", corev1.ServiceSpec{Type: corev1.ServiceTypeExternalName, ClusterIP: ""})},
+			want: true,
+		},
+		{
+			name: "service cluster ip is empty",
+			args: args{service: newService("foo", corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer, ClusterIP: ""})},
+			want: false,
+		},
+		{
+			name: "service has a cluster ip that is greater than 0",
+			args: args{service: newService("foo", corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer, ClusterIP: "bar", ExternalIPs: []string{"bar"}})},
+			want: true,
+		},
+		{
+			name: "service has a cluster ip that is less than 0 and ingress is nil",
+			args: args{service: newService("foo", corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer, ClusterIP: "bar"})},
+			want: false,
+		},
+		{
+			name: "service has a cluster ip that is less than 0 and ingress is nil",
+			args: args{service: newService("foo", corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP, ClusterIP: "bar"})},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := NewReadyChecker(fake.NewSimpleClientset(), nil)
+			got := c.serviceReady(tt.args.service)
+			if got != tt.want {
+				t.Errorf("serviceReady() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -695,6 +753,21 @@ func newJob(name string, backoffLimit int, completions *int32, succeeded int, fa
 		Status: batchv1.JobStatus{
 			Succeeded: int32(succeeded),
 			Failed:    int32(failed),
+		},
+	}
+}
+
+func newService(name string, serviceSpec corev1.ServiceSpec) *corev1.Service {
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: defaultNamespace,
+		},
+		Spec: serviceSpec,
+		Status: corev1.ServiceStatus{
+			LoadBalancer: corev1.LoadBalancerStatus{
+				Ingress: nil,
+			},
 		},
 	}
 }
