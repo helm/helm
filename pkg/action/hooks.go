@@ -24,6 +24,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/releaseutil"
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
@@ -39,8 +40,9 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		}
 	}
 
-	// hooke are pre-ordered by kind, so keep order stable
-	sort.Stable(hookByWeight(executingHooks))
+	// Since we want to sort by name among hooks of the same kind, we need to re-sort and can't use
+	// Stable() and rely on the existing sort by kind.
+	sort.Sort(hookByWeight(executingHooks))
 
 	for _, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
@@ -115,7 +117,38 @@ func (x hookByWeight) Len() int      { return len(x) }
 func (x hookByWeight) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
 func (x hookByWeight) Less(i, j int) bool {
 	if x[i].Weight == x[j].Weight {
-		return x[i].Name < x[j].Name
+		// It's safe to assume that we can use InstallOrder as hooks will be creating resources.
+		ordering := make(map[string]int, len(releaseutil.InstallOrder))
+		for v, k := range releaseutil.InstallOrder {
+			ordering[k] = v
+		}
+
+		first, iok := ordering[x[i].Kind]
+		second, jok := ordering[x[j].Kind]
+
+		if !iok && !jok {
+			// Sort unknown kinds alphabetically, with name as the tiebreaker.
+			if x[i].Kind == x[j].Kind {
+				return x[i].Name < x[j].Name
+			}
+
+			return x[i].Kind < x[j].Kind
+		}
+
+		// Unknown kind is last.
+		if !iok {
+			return false
+		}
+		if !jok {
+			return true
+		}
+
+		if first == second {
+			// According to the documentation, name is the last tiebreaker.
+			return x[i].Name < x[j].Name
+		}
+
+		return first < second
 	}
 	return x[i].Weight < x[j].Weight
 }
