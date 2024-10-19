@@ -39,18 +39,12 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		}
 	}
 
-	// hooke are pre-ordered by kind, so keep order stable
+	// hooks are pre-ordered by kind, so keep order stable
 	sort.Stable(hookByWeight(executingHooks))
 
 	for _, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
-		if h.DeletePolicies == nil || len(h.DeletePolicies) == 0 {
-			// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
-			//                 resources. For all other resource types update in place if a
-			//                 resource with the same name already exists and is owned by the
-			//                 current release.
-			h.DeletePolicies = []release.HookDeletePolicy{release.HookBeforeHookCreation}
-		}
+		setDefaultDeletePolicy(h)
 
 		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation, timeout); err != nil {
 			return err
@@ -59,6 +53,17 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
 		if err != nil {
 			return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
+		}
+
+		// It is safe to use "force" here because these are resources currently rendered by the chart.
+		err = resources.Visit(setMetadataVisitor(rl.Name, rl.Namespace, true))
+		if err != nil {
+			return err
+		}
+
+		toBeUpdated, err := existingResourceConflict(resources, rl.Name, rl.Namespace)
+		if err != nil {
+			return errors.Wrap(err, "rendered hook manifests contain a resource that already exists. Unable to continue")
 		}
 
 		// Record the time at which the hook was applied to the cluster
@@ -73,8 +78,8 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		// the most appropriate value to surface.
 		h.LastRun.Phase = release.HookPhaseUnknown
 
-		// Create hook resources
-		if _, err := cfg.KubeClient.Create(resources); err != nil {
+		// Create or update the hook resources
+		if _, err := cfg.KubeClient.Update(toBeUpdated, resources, false); err != nil {
 			h.LastRun.CompletedAt = helmtime.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
 			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
@@ -156,4 +161,14 @@ func hookHasDeletePolicy(h *release.Hook, policy release.HookDeletePolicy) bool 
 		}
 	}
 	return false
+}
+
+func setDefaultDeletePolicy(h *release.Hook) {
+	if h.DeletePolicies != nil && len(h.DeletePolicies) > 0 {
+		return
+	}
+	// TODO(luisdavim): We should probably add the group/version to the hook resources to avoid conflicts with CRs
+	if h.Kind == "Job" || h.Kind == "Pod" {
+		h.DeletePolicies = []release.HookDeletePolicy{release.HookBeforeHookCreation}
+	}
 }
