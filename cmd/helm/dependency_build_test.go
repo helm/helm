@@ -58,7 +58,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 	createTestingChart(t, rootDir, chartname, srv.URL())
 	repoFile := filepath.Join(rootDir, "repositories.yaml")
 
-	cmd := fmt.Sprintf("dependency build '%s' --repository-config %s --repository-cache %s", filepath.Join(rootDir, chartname), repoFile, rootDir)
+	cmd := fmt.Sprintf("dependency build '%s' --repository-config %s --repository-cache %s --plain-http", filepath.Join(rootDir, chartname), repoFile, rootDir)
 	_, out, err := executeActionCommand(cmd)
 
 	// In the first pass, we basically want the same results as an update.
@@ -117,7 +117,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 		t.Errorf("mismatched versions. Expected %q, got %q", "0.1.0", v)
 	}
 
-	skipRefreshCmd := fmt.Sprintf("dependency build '%s' --skip-refresh --repository-config %s --repository-cache %s", filepath.Join(rootDir, chartname), repoFile, rootDir)
+	skipRefreshCmd := fmt.Sprintf("dependency build '%s' --skip-refresh --repository-config %s --repository-cache %s --plain-http", filepath.Join(rootDir, chartname), repoFile, rootDir)
 	_, out, err = executeActionCommand(skipRefreshCmd)
 
 	// In this pass, we check --skip-refresh option becomes effective.
@@ -134,7 +134,7 @@ func TestDependencyBuildCmd(t *testing.T) {
 	if err := chartutil.SaveDir(c, dir()); err != nil {
 		t.Fatal(err)
 	}
-	cmd = fmt.Sprintf("dependency build '%s' --repository-config %s --repository-cache %s --registry-config %s/config.json",
+	cmd = fmt.Sprintf("dependency build '%s' --repository-config %s --repository-cache %s --registry-config %s/config.json --plain-http",
 		dir(ociChartName),
 		dir("repositories.yaml"),
 		dir(),
