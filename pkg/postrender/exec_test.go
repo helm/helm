@@ -121,6 +121,31 @@ func TestExecRun(t *testing.T) {
 	is.Contains(output.String(), "BARTEST")
 }
 
+func TestExecRunIncHooks(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// the actual Run test uses a basic sed example, so skip this test on windows
+		t.Skip("skipping on windows")
+	}
+	is := assert.New(t)
+	testpath := setupTestingScript(t)
+
+	renderer, err := NewExecHooks(testpath, true)
+	require.NoError(t, err)
+
+	input := map[string]string{
+		"templates/FOOTEST.yaml": "Kind: Pod",
+		"templates/baz.yaml":     "Kind: FOOTEST",
+	}
+	expectedOutput := map[string]string{
+		"templates/BARTEST.yaml": "Kind: Pod",
+		"templates/baz.yaml":     "Kind: BARTEST",
+	}
+	output, err := renderer.RunIncHooks(input)
+	is.NoError(err)
+	is.Exactly(expectedOutput, output)
+
+}
+
 func TestNewExecWithOneArgsRun(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// the actual Run test uses a basic sed example, so skip this test on windows
