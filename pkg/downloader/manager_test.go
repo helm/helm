@@ -26,6 +26,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/repo"
 	"helm.sh/helm/v3/pkg/repo/repotest"
 )
 
@@ -84,7 +85,7 @@ func TestFindChartURL(t *testing.T) {
 	version := "0.1.0"
 	repoURL := "http://example.com/charts"
 
-	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err := m.findChartURL(name, version, repoURL, repos)
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err := m.findChartURL(name, version, repoURL, repos, make(map[string]string))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +110,7 @@ func TestFindChartURL(t *testing.T) {
 	version = "1.2.3"
 	repoURL = "https://example-https-insecureskiptlsverify.com"
 
-	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos)
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos, make(map[string]string))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,6 +129,68 @@ func TestFindChartURL(t *testing.T) {
 	}
 	if passcredentialsall != false {
 		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
+	}
+}
+
+func TestFindChartURLBasedOnUrlMap(t *testing.T) {
+	var b bytes.Buffer
+	m := &Manager{
+		Out:              &b,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+	}
+	repos := make(map[string]*repo.ChartRepository)
+
+	name := "alpine"
+	version := "0.1.0"
+	repoURL := "http://example.com/charts"
+
+	urlMap := make(map[string]string)
+	urlKey := repoURL + name + version
+	urlMap[urlKey] = "https://charts.helm.sh/stable/alpine-0.1.0.tgzFromMap"
+
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err := m.findChartURL(name, version, repoURL, repos, urlMap)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if churl != "https://charts.helm.sh/stable/alpine-0.1.0.tgzFromMap" {
+		t.Errorf("Unexpected URL %q", churl)
+	}
+	if username != "" {
+		t.Errorf("Unexpected username %q", username)
+	}
+	if password != "" {
+		t.Errorf("Unexpected password %q", password)
+	}
+	if passcredentialsall != false {
+		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
+	}
+	if insecureSkipTLSVerify {
+		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
+	}
+
+	urlMap[urlKey] = "alpine-0.1.0.tgz"
+
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos, urlMap)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if churl != "http://example.com/charts/alpine-0.1.0.tgz" {
+		t.Errorf("Unexpected URL %q", churl)
+	}
+	if username != "" {
+		t.Errorf("Unexpected username %q", username)
+	}
+	if password != "" {
+		t.Errorf("Unexpected password %q", password)
+	}
+	if passcredentialsall != false {
+		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
+	}
+	if insecureSkipTLSVerify {
+		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
 	}
 }
 
@@ -255,7 +318,7 @@ func TestDownloadAll(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(chartPath, "tmpcharts"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.downloadAll([]*chart.Dependency{signDep, localDep}); err != nil {
+	if err := m.downloadAll([]*chart.Dependency{signDep, localDep}, make(map[string]string)); err != nil {
 		t.Error(err)
 	}
 
@@ -284,7 +347,7 @@ version: 0.1.0`
 		Version:    "0.1.0",
 	}
 
-	err = m.downloadAll([]*chart.Dependency{badLocalDep})
+	err = m.downloadAll([]*chart.Dependency{badLocalDep}, make(map[string]string))
 	if err == nil {
 		t.Fatal("Expected error for bad dependency name")
 	}
