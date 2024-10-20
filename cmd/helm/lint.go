@@ -145,6 +145,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
+	f.StringVar(&client.ReleaseName, "release-name", "test-release", "release name")
 	f.BoolVar(&client.Strict, "strict", false, "fail on lint warnings")
 	f.BoolVar(&client.WithSubcharts, "with-subcharts", false, "lint dependent charts")
 	f.BoolVar(&client.Quiet, "quiet", false, "print only warnings and errors")
