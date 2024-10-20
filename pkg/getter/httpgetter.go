@@ -17,6 +17,7 @@ package getter
 
 import (
 	"bytes"
+	"compress/gzip"
 	"crypto/tls"
 	"io"
 	"net/http"
@@ -78,6 +79,10 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 		}
 	}
 
+	if g.opts.enableCompression {
+		req.Header.Add("Accept-Encoding", "gzip")
+	}
+
 	client, err := g.httpClient()
 	if err != nil {
 		return nil, err
@@ -93,7 +98,19 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	}
 
 	buf := bytes.NewBuffer(nil)
-	_, err = io.Copy(buf, resp.Body)
+
+	body := resp.Body
+
+	if g.opts.enableCompression && resp.Header.Get("Content-Encoding") == "gzip" {
+		body, err = gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		defer body.Close()
+	}
+
+	_, err = io.Copy(buf, body)
+
 	return buf, err
 }
 
