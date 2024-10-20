@@ -290,10 +290,19 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 	//   chart. The library chart value should be used.
 	// - app4 has a value in the app chart and does not import the value from the
 	//   library chart. The app charts value should be used.
+	// - app5 has no value in the app chart and does not import the value. Umbrella import values
+	//   The umbrella import value should be used.
+	// - app6 has null value in the app chart and does not import the value. Umbrella import values
+	//   The app umbrella import value should be used.
+	// - app7 has a value in the app chart and does not import the value. Umbrella import values
+	//   The app umbrella import value should be used.
 	e["app1.service.port"] = "3456"
 	e["app2.service.port"] = "8080"
 	e["app3.service.port"] = "9090"
 	e["app4.service.port"] = "1234"
+	e["app5.service.port"] = "9090"
+	e["app6.service.port"] = "9090"
+	e["app7.service.port"] = "9090"
 	if err := processDependencyImportValues(c, true); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
