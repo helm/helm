@@ -73,7 +73,7 @@ func WithPlainHTTP(plainHTTP bool) PushOpt {
 	}
 }
 
-// WithOptWriter sets the registryOut field on the push configuration object.
+// WithPushOptWriter sets the registryOut field on the push configuration object.
 func WithPushOptWriter(out io.Writer) PushOpt {
 	return func(p *Push) {
 		p.out = out
