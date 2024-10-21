@@ -24,6 +24,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/releaseutil"
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
@@ -97,9 +98,11 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		h.LastRun.Phase = release.HookPhaseSucceeded
 	}
 
+	hooksToDelete := releaseutil.SortHooksToDelete(executingHooks)
+
 	// If all hooks are successful, check the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
-	for _, h := range executingHooks {
+	for _, h := range hooksToDelete {
 		if err := cfg.deleteHookByPolicy(h, release.HookSucceeded, timeout); err != nil {
 			return err
 		}
