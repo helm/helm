@@ -45,6 +45,9 @@ type Dependency struct {
 	// ImportValues holds the mapping of source values to parent key to be imported. Each item can be a
 	// string or pair of child/parent sublist items.
 	ImportValues []interface{} `json:"import-values,omitempty"`
+	// ExportValues holds the mapping of parent values to child key to be exported. Each item can be a
+	// string or pair of parent/child sublist items.
+	ExportValues []interface{} `json:"export-values,omitempty"`
 	// Alias usable alias to be used for the chart
 	Alias string `json:"alias,omitempty"`
 }
