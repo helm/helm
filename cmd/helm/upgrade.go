@@ -237,6 +237,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				cancel()
 			}()
 
+			ch.IndexOverride = valueOpts.IndexOverride
+
 			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
 
 			if err != nil {
