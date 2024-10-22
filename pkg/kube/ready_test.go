@@ -20,15 +20,211 @@ import (
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
+	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
 const defaultNamespace = metav1.NamespaceDefault
+
+// TODO: correct test cases to cover the positive and not just the negative.
+func Test_ReadyChecker_IsReady(t *testing.T) {
+	type fields struct {
+		client        kubernetes.Interface
+		log           func(string, ...interface{})
+		checkJobs     bool
+		pausedAsReady bool
+	}
+	type args struct {
+		ctx      context.Context
+		resource *resource.Info
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "IsReady Pod error while getting pod",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &corev1.Pod{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "IsReady Job error while getting job",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &batchv1.Job{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "IsReady Job",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &batchv1.Job{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "IsReady Deployments error while getting current Deployment",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &appsv1.Deployment{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "IsReady PersistentVolumeClaim",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &corev1.PersistentVolumeClaim{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "IsReady Service",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &corev1.Service{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "IsReady DaemonSet",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &appsv1.DaemonSet{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "IsReady StatefulSet",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &appsv1beta1.StatefulSet{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "IsReady ReplicationController",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &corev1.ReplicationController{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "IsReady ReplicaSet",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &extensionsv1beta1.ReplicaSet{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &ReadyChecker{
+				client:        tt.fields.client,
+				log:           tt.fields.log,
+				checkJobs:     tt.fields.checkJobs,
+				pausedAsReady: tt.fields.pausedAsReady,
+			}
+			got, err := c.IsReady(tt.args.ctx, tt.args.resource)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("IsReady() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("IsReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
 func Test_ReadyChecker_deploymentReady(t *testing.T) {
 	type args struct {
@@ -521,6 +717,144 @@ func Test_ReadyChecker_serviceReady(t *testing.T) {
 	}
 }
 
+func Test_ReadyChecker_crdBetaReady(t *testing.T) {
+	type args struct {
+		crdBeta apiextv1beta1.CustomResourceDefinition
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "crdBeta type is Establish and Conditional is true",
+			args: args{crdBeta: newcrdBetaReady("foo", apiextv1beta1.CustomResourceDefinitionStatus{
+				Conditions: []apiextv1beta1.CustomResourceDefinitionCondition{
+					{
+						Type:   apiextv1beta1.Established,
+						Status: apiextv1beta1.ConditionTrue,
+					},
+				},
+			})},
+			want: true,
+		},
+		{
+			name: "crdBeta type is Establish and Conditional is false",
+			args: args{crdBeta: newcrdBetaReady("foo", apiextv1beta1.CustomResourceDefinitionStatus{
+				Conditions: []apiextv1beta1.CustomResourceDefinitionCondition{
+					{
+						Type:   apiextv1beta1.Established,
+						Status: apiextv1beta1.ConditionFalse,
+					},
+				},
+			})},
+			want: false,
+		},
+		{
+			name: "crdBeta type is NamesAccepted and Conditional is true",
+			args: args{crdBeta: newcrdBetaReady("foo", apiextv1beta1.CustomResourceDefinitionStatus{
+				Conditions: []apiextv1beta1.CustomResourceDefinitionCondition{
+					{
+						Type:   apiextv1beta1.NamesAccepted,
+						Status: apiextv1beta1.ConditionTrue,
+					},
+				},
+			})},
+			want: false,
+		},
+		{
+			name: "crdBeta type is NamesAccepted and Conditional is false",
+			args: args{crdBeta: newcrdBetaReady("foo", apiextv1beta1.CustomResourceDefinitionStatus{
+				Conditions: []apiextv1beta1.CustomResourceDefinitionCondition{
+					{
+						Type:   apiextv1beta1.NamesAccepted,
+						Status: apiextv1beta1.ConditionFalse,
+					},
+				},
+			})},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := NewReadyChecker(fake.NewSimpleClientset(), nil)
+			got := c.crdBetaReady(tt.args.crdBeta)
+			if got != tt.want {
+				t.Errorf("crdBetaReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_ReadyChecker_crdReady(t *testing.T) {
+	type args struct {
+		crdBeta apiextv1.CustomResourceDefinition
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "crdBeta type is Establish and Conditional is true",
+			args: args{crdBeta: newcrdReady("foo", apiextv1.CustomResourceDefinitionStatus{
+				Conditions: []apiextv1.CustomResourceDefinitionCondition{
+					{
+						Type:   apiextv1.Established,
+						Status: apiextv1.ConditionTrue,
+					},
+				},
+			})},
+			want: true,
+		},
+		{
+			name: "crdBeta type is Establish and Conditional is false",
+			args: args{crdBeta: newcrdReady("foo", apiextv1.CustomResourceDefinitionStatus{
+				Conditions: []apiextv1.CustomResourceDefinitionCondition{
+					{
+						Type:   apiextv1.Established,
+						Status: apiextv1.ConditionFalse,
+					},
+				},
+			})},
+			want: false,
+		},
+		{
+			name: "crdBeta type is NamesAccepted and Conditional is true",
+			args: args{crdBeta: newcrdReady("foo", apiextv1.CustomResourceDefinitionStatus{
+				Conditions: []apiextv1.CustomResourceDefinitionCondition{
+					{
+						Type:   apiextv1.NamesAccepted,
+						Status: apiextv1.ConditionTrue,
+					},
+				},
+			})},
+			want: false,
+		},
+		{
+			name: "crdBeta type is NamesAccepted and Conditional is false",
+			args: args{crdBeta: newcrdReady("foo", apiextv1.CustomResourceDefinitionStatus{
+				Conditions: []apiextv1.CustomResourceDefinitionCondition{
+					{
+						Type:   apiextv1.NamesAccepted,
+						Status: apiextv1.ConditionFalse,
+					},
+				},
+			})},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := NewReadyChecker(fake.NewSimpleClientset(), nil)
+			got := c.crdReady(tt.args.crdBeta)
+			if got != tt.want {
+				t.Errorf("crdBetaReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func newStatefulSetWithUpdateRevision(name string, replicas, partition, readyReplicas, updatedReplicas int, updateRevision string, generationInSync bool) *appsv1.StatefulSet {
 	ss := newStatefulSet(name, replicas, partition, readyReplicas, updatedReplicas, generationInSync)
 	ss.Status.UpdateRevision = updateRevision
@@ -772,7 +1106,62 @@ func newService(name string, serviceSpec corev1.ServiceSpec) *corev1.Service {
 	}
 }
 
+func newcrdBetaReady(name string, crdBetaStatus apiextv1beta1.CustomResourceDefinitionStatus) apiextv1beta1.CustomResourceDefinition {
+	return apiextv1beta1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: defaultNamespace,
+		},
+		Spec:   apiextv1beta1.CustomResourceDefinitionSpec{},
+		Status: crdBetaStatus,
+	}
+}
+
+func newcrdReady(name string, crdBetaStatus apiextv1.CustomResourceDefinitionStatus) apiextv1.CustomResourceDefinition {
+	return apiextv1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: defaultNamespace,
+		},
+		Spec:   apiextv1.CustomResourceDefinitionSpec{},
+		Status: crdBetaStatus,
+	}
+}
+
 func intToInt32(i int) *int32 {
 	i32 := int32(i)
 	return &i32
+}
+
+func TestReadyChecker_isPodReady(t *testing.T) {
+	type fields struct {
+		client        kubernetes.Interface
+		log           func(string, ...interface{})
+		checkJobs     bool
+		pausedAsReady bool
+	}
+	type args struct {
+		pod *corev1.Pod
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &ReadyChecker{
+				client:        tt.fields.client,
+				log:           tt.fields.log,
+				checkJobs:     tt.fields.checkJobs,
+				pausedAsReady: tt.fields.pausedAsReady,
+			}
+			if got := c.isPodReady(tt.args.pod); got != tt.want {
+				t.Errorf("isPodReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
