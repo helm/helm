@@ -47,7 +47,7 @@ If '--keyring' is not specified, Helm usually defaults to the public keyring
 unless your environment is otherwise configured.
 `
 
-func newPackageCmd(_ *action.Configuration, out io.Writer) *cobra.Command {
+func newPackageCmd(out io.Writer) *cobra.Command {
 	client := action.NewPackage()
 	valueOpts := &values.Options{}
 
