@@ -154,7 +154,7 @@ func callPluginExecutable(pluginName string, main string, argv []string, out io.
 func manuallyProcessArgs(args []string) ([]string, []string) {
 	known := []string{}
 	unknown := []string{}
-	kvargs := []string{"--kube-context", "--namespace", "-n", "--kubeconfig", "--kube-apiserver", "--kube-token", "--kube-as-user", "--kube-as-group", "--kube-ca-file", "--registry-config", "--repository-cache", "--repository-config", "--insecure-skip-tls-verify", "--tls-server-name"}
+	kvargs := []string{"--kube-context", "--namespace", "-n", "--kubeconfig", "--kube-apiserver", "--kube-token", "--kube-as-user", "--kube-as-group", "--kube-ca-file", "--registry-config", "--repository-cache", "--repository-config", "--kube-insecure-skip-tls-verify", "--kube-tls-server-name"}
 	knownArg := func(a string) bool {
 		for _, pre := range kvargs {
 			if strings.HasPrefix(a, pre+"=") {
@@ -286,7 +286,7 @@ func addPluginCommands(plugin *plugin.Plugin, baseCmd *cobra.Command, cmds *plug
 					f.BoolP(longs[i], shorts[i], false, "")
 				} else {
 					// Create a long flag with the same name as the short flag.
-					// Not a perfect solution, but its better than ignoring the extra short flags.
+					// Not a perfect solution, but it's better than ignoring the extra short flags.
 					f.BoolP(shorts[i], shorts[i], false, "")
 				}
 			}

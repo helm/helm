@@ -67,7 +67,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 				return comps, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace
 			}
-			return nil, cobra.ShellCompDirectiveNoFileComp
+			return noMoreArgsComp()
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			registryClient, err := newRegistryClient(

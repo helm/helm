@@ -65,8 +65,7 @@ func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (str
 		// If string is empty, set wildcard constraint
 		constraint, _ = semver.NewConstraint("*")
 	} else {
-		// when customer input exact version, check whether have exact match
-		// one first
+		// when customer inputs specific version, check whether there's an exact match first
 		for _, v := range tags {
 			if versionString == v {
 				return v, nil
@@ -156,6 +155,7 @@ func NewRegistryClientWithTLS(out io.Writer, certFile, keyFile, caFile string, i
 		ClientOptHTTPClient(&http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConf,
+				Proxy:           http.ProxyFromEnvironment,
 			},
 		}),
 	)

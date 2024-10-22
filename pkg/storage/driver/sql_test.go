@@ -543,7 +543,7 @@ func mockGetReleaseCustomLabels(mock sqlmock.Sqlmock, key string, namespace stri
 	eq.WillReturnRows(returnRows).RowsWillBeClosed()
 }
 
-func TestSqlChechkAppliedMigrations(t *testing.T) {
+func TestSqlCheckAppliedMigrations(t *testing.T) {
 	cases := []struct {
 		migrationsToApply    []*migrate.Migration
 		appliedMigrationsIDs []string

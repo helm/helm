@@ -7,6 +7,8 @@ on:
     branches:
       - main
 
+permissions: read-all
+
 # Note the only differences between release and canary-release jobs are:
 # - only canary passes --overwrite flag
 # - the VERSION make variable passed to 'make dist checksum' is expected to
@@ -18,14 +20,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # pin@v4.2.1
         with:
           fetch-depth: 0
 
       - name: Setup Go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # pin@5.0.0
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # pin@5.0.2
         with:
-          go-version: '1.21'
+          go-version: '1.22.7'
 
       - name: Run unit tests
         run: make test-coverage
@@ -34,7 +36,7 @@ jobs:
         run: |
           set -eu -o pipefail
 
-          make build-cross
+          make build-cross VERSION="${{ github.ref_name }}"
           make dist checksum VERSION="${{ github.ref_name }}"
 
       - name: Set latest version
@@ -76,12 +78,13 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout source code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # pin@v4.2.1
 
       - name: Setup Go
-        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # pin@5.0.0
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # pin@5.0.2
         with:
-          go-version: '1.21'
+          go-version: '1.22'
+          check-latest: true
 
       - name: Run unit tests
         run: make test-coverage

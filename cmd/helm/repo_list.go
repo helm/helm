@@ -36,7 +36,7 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		Aliases:           []string{"ls"},
 		Short:             "list chart repositories",
 		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions,
+		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			f, _ := repo.LoadFile(settings.RepositoryConfig)
 			if len(f.Repositories) == 0 && !(outfmt == output.JSON || outfmt == output.YAML) {

@@ -50,7 +50,7 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 				return nil, cobra.ShellCompDirectiveDefault
 			}
 			// No more completions, so disable file completion
-			return nil, cobra.ShellCompDirectiveNoFileComp
+			return noMoreArgsComp()
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			err := client.Run(args[0])

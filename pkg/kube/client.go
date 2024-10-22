@@ -55,6 +55,7 @@ import (
 	"k8s.io/client-go/rest"
 	cachetools "k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
+	"k8s.io/client-go/util/retry"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
@@ -85,23 +86,22 @@ type Client struct {
 	kubeClient *kubernetes.Clientset
 }
 
-var addToScheme sync.Once
+func init() {
+	// Add CRDs to the scheme. They are missing by default.
+	if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
+		// This should never happen.
+		panic(err)
+	}
+	if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
+		panic(err)
+	}
+}
 
 // New creates a new Client.
 func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
-	// Add CRDs to the scheme. They are missing by default.
-	addToScheme.Do(func() {
-		if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
-			// This should never happen.
-			panic(err)
-		}
-		if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
-			panic(err)
-		}
-	})
 	return &Client{
 		Factory: cmdutil.NewFactory(getter),
 		Log:     nopLogger,
@@ -124,7 +124,7 @@ func (c *Client) getKubeClient() (*kubernetes.Clientset, error) {
 func (c *Client) IsReachable() error {
 	client, err := c.getKubeClient()
 	if err == genericclioptions.ErrEmptyConfig {
-		// re-replace kubernetes ErrEmptyConfig error with a friendy error
+		// re-replace kubernetes ErrEmptyConfig error with a friendly error
 		// moar workarounds for Kubernetes API breaking.
 		return errors.New("Kubernetes cluster unreachable")
 	}
@@ -596,17 +596,25 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 }
 
 func createResource(info *resource.Info) error {
-	obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
-	if err != nil {
-		return err
-	}
-	return info.Refresh(obj, true)
+	return retry.RetryOnConflict(
+		retry.DefaultRetry,
+		func() error {
+			obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
+			if err != nil {
+				return err
+			}
+			return info.Refresh(obj, true)
+		})
 }
 
 func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) error {
-	opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
-	_, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).DeleteWithOptions(info.Namespace, info.Name, opts)
-	return err
+	return retry.RetryOnConflict(
+		retry.DefaultRetry,
+		func() error {
+			opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
+			_, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).DeleteWithOptions(info.Namespace, info.Name, opts)
+			return err
+		})
 }
 
 func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
@@ -635,7 +643,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	// Get a versioned object
 	versionedObject := AsVersioned(target)
 
-	// Unstructured objects, such as CRDs, may not have an not registered error
+	// Unstructured objects, such as CRDs, may not have a not registered error
 	// returned from ConvertToVersion. Anything that's unstructured should
 	// use the jsonpatch.CreateMergePatch. Strategic Merge Patch is not supported
 	// on objects like CRDs.

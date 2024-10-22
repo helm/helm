@@ -60,18 +60,17 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewShowWithConfig(action.ShowAll, cfg)
 
 	showCommand := &cobra.Command{
-		Use:               "show",
-		Short:             "show information of a chart",
-		Aliases:           []string{"inspect"},
-		Long:              showDesc,
-		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions, // Disable file completion
+		Use:     "show",
+		Short:   "show information of a chart",
+		Aliases: []string{"inspect"},
+		Long:    showDesc,
+		Args:    require.NoArgs,
 	}
 
 	// Function providing dynamic auto-completion
 	validArgsFunc := func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 0 {
-			return nil, cobra.ShellCompDirectiveNoFileComp
+			return noMoreArgsComp()
 		}
 		return compListCharts(toComplete, true)
 	}

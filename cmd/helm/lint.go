@@ -148,6 +148,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Strict, "strict", false, "fail on lint warnings")
 	f.BoolVar(&client.WithSubcharts, "with-subcharts", false, "lint dependent charts")
 	f.BoolVar(&client.Quiet, "quiet", false, "print only warnings and errors")
+	f.BoolVar(&client.SkipSchemaValidation, "skip-schema-validation", false, "if set, disables JSON schema validation")
 	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for capabilities and deprecation checks")
 	addValueOptionsFlags(f, valueOpts)
 
