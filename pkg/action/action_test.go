@@ -218,6 +218,16 @@ func withSampleIncludingIncorrectTemplates() chartOption {
 	}
 }
 
+func withBadYaml() chartOption {
+	return func(opts *chartOptions) {
+		badYamlTemplate := []*chart.File{
+			{Name: "templates/goodyaml", Data: []byte("goodbye:world")},
+			{Name: "templates/badyaml", Data: []byte("this:isn't:\nhow:you_write_yaml")},
+		}
+		opts.Templates = append(opts.Templates, badYamlTemplate...)
+	}
+}
+
 func withMultipleManifestTemplate() chartOption {
 	return func(opts *chartOptions) {
 		sampleTemplates := []*chart.File{
