@@ -351,7 +351,7 @@ func testPull(suite *TestSuite) {
 
 	// full pull with chart and prov
 	result, err := suite.RegistryClient.Pull(ref, PullOptWithProv(true))
-	suite.Nil(err, "no error pulling a chart with prov")
+	suite.Require().Nil(err, "no error pulling a chart with prov")
 
 	// Validate the output
 	// Note: these digests/sizes etc may change if the test chart/prov files are modified,
