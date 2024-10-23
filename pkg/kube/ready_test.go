@@ -36,8 +36,7 @@ import (
 
 const defaultNamespace = metav1.NamespaceDefault
 
-// TODO: correct test cases to cover the positive and not just the negative.
-func Test_ReadyChecker_IsReady(t *testing.T) {
+func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
 		log           func(string, ...interface{})
@@ -52,11 +51,12 @@ func Test_ReadyChecker_IsReady(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
+		pod     *corev1.Pod
 		want    bool
 		wantErr bool
 	}{
 		{
-			name: "IsReady Pod error while getting pod",
+			name: "IsReady Pod",
 			fields: fields{
 				client:        fake.NewSimpleClientset(),
 				log:           func(string, ...interface{}) {},
@@ -67,9 +67,70 @@ func Test_ReadyChecker_IsReady(t *testing.T) {
 				ctx:      context.TODO(),
 				resource: &resource.Info{Object: &corev1.Pod{}, Name: "foo", Namespace: defaultNamespace},
 			},
+			pod:     newPodWithCondition("foo", corev1.ConditionTrue),
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "IsReady Pod returns error",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &corev1.Pod{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			pod:     newPodWithCondition("bar", corev1.ConditionTrue),
 			want:    false,
 			wantErr: true,
 		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &ReadyChecker{
+				client:        tt.fields.client,
+				log:           tt.fields.log,
+				checkJobs:     tt.fields.checkJobs,
+				pausedAsReady: tt.fields.pausedAsReady,
+			}
+			if _, err := c.client.CoreV1().Pods(defaultNamespace).Create(context.TODO(), tt.pod, metav1.CreateOptions{}); err != nil {
+				t.Errorf("Failed to create Pod error: %v", err)
+				return
+			}
+			got, err := c.IsReady(tt.args.ctx, tt.args.resource)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("IsReady() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("IsReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_ReadyChecker_IsReady_Job(t *testing.T) {
+	type fields struct {
+		client        kubernetes.Interface
+		log           func(string, ...interface{})
+		checkJobs     bool
+		pausedAsReady bool
+	}
+	type args struct {
+		ctx      context.Context
+		resource *resource.Info
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		job     *batchv1.Job
+		want    bool
+		wantErr bool
+	}{
 		{
 			name: "IsReady Job error while getting job",
 			fields: fields{
@@ -82,6 +143,7 @@ func Test_ReadyChecker_IsReady(t *testing.T) {
 				ctx:      context.TODO(),
 				resource: &resource.Info{Object: &batchv1.Job{}, Name: "foo", Namespace: defaultNamespace},
 			},
+			job:     newJob("bar", 1, intToInt32(1), 1, 0),
 			want:    false,
 			wantErr: true,
 		},
@@ -97,9 +159,54 @@ func Test_ReadyChecker_IsReady(t *testing.T) {
 				ctx:      context.TODO(),
 				resource: &resource.Info{Object: &batchv1.Job{}, Name: "foo", Namespace: defaultNamespace},
 			},
-			want:    false,
-			wantErr: true,
+			job:     newJob("foo", 1, intToInt32(1), 1, 0),
+			want:    true,
+			wantErr: false,
 		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &ReadyChecker{
+				client:        tt.fields.client,
+				log:           tt.fields.log,
+				checkJobs:     tt.fields.checkJobs,
+				pausedAsReady: tt.fields.pausedAsReady,
+			}
+			if _, err := c.client.BatchV1().Jobs(defaultNamespace).Create(context.TODO(), tt.job, metav1.CreateOptions{}); err != nil {
+				t.Errorf("Failed to create Job error: %v", err)
+				return
+			}
+			got, err := c.IsReady(tt.args.ctx, tt.args.resource)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("IsReady() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("IsReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
+	type fields struct {
+		client        kubernetes.Interface
+		log           func(string, ...interface{})
+		checkJobs     bool
+		pausedAsReady bool
+	}
+	type args struct {
+		ctx      context.Context
+		resource *resource.Info
+	}
+	tests := []struct {
+		name       string
+		fields     fields
+		args       args
+		replicaSet *appsv1.ReplicaSet
+		deployment *appsv1.Deployment
+		want       bool
+		wantErr    bool
+	}{
 		{
 			name: "IsReady Deployments error while getting current Deployment",
 			fields: fields{
@@ -112,9 +219,75 @@ func Test_ReadyChecker_IsReady(t *testing.T) {
 				ctx:      context.TODO(),
 				resource: &resource.Info{Object: &appsv1.Deployment{}, Name: "foo", Namespace: defaultNamespace},
 			},
-			want:    false,
-			wantErr: true,
+			replicaSet: newReplicaSet("foo", 0, 0, true),
+			deployment: newDeployment("bar", 1, 1, 0, true),
+			want:       false,
+			wantErr:    true,
 		},
+		{
+			name: "IsReady Deployments", //TODO fix this one
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &appsv1.Deployment{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			replicaSet: newReplicaSet("foo", 0, 0, true),
+			deployment: newDeployment("foo", 1, 1, 0, true),
+			want:       false,
+			wantErr:    false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &ReadyChecker{
+				client:        tt.fields.client,
+				log:           tt.fields.log,
+				checkJobs:     tt.fields.checkJobs,
+				pausedAsReady: tt.fields.pausedAsReady,
+			}
+			if _, err := c.client.AppsV1().Deployments(defaultNamespace).Create(context.TODO(), tt.deployment, metav1.CreateOptions{}); err != nil {
+				t.Errorf("Failed to create Deployment error: %v", err)
+				return
+			}
+			if _, err := c.client.AppsV1().ReplicaSets(defaultNamespace).Create(context.TODO(), tt.replicaSet, metav1.CreateOptions{}); err != nil {
+				t.Errorf("Failed to create ReplicaSet error: %v", err)
+				return
+			}
+			got, err := c.IsReady(tt.args.ctx, tt.args.resource)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("IsReady() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("IsReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
+	type fields struct {
+		client        kubernetes.Interface
+		log           func(string, ...interface{})
+		checkJobs     bool
+		pausedAsReady bool
+	}
+	type args struct {
+		ctx      context.Context
+		resource *resource.Info
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		pvc     *corev1.PersistentVolumeClaim
+		want    bool
+		wantErr bool
+	}{
 		{
 			name: "IsReady PersistentVolumeClaim",
 			fields: fields{
@@ -127,11 +300,12 @@ func Test_ReadyChecker_IsReady(t *testing.T) {
 				ctx:      context.TODO(),
 				resource: &resource.Info{Object: &corev1.PersistentVolumeClaim{}, Name: "foo", Namespace: defaultNamespace},
 			},
+			pvc:     newPersistentVolumeClaim("foo", corev1.ClaimPending),
 			want:    false,
-			wantErr: true,
+			wantErr: false,
 		},
 		{
-			name: "IsReady Service",
+			name: "IsReady PersistentVolumeClaim with error",
 			fields: fields{
 				client:        fake.NewSimpleClientset(),
 				log:           func(string, ...interface{}) {},
@@ -140,68 +314,9 @@ func Test_ReadyChecker_IsReady(t *testing.T) {
 			},
 			args: args{
 				ctx:      context.TODO(),
-				resource: &resource.Info{Object: &corev1.Service{}, Name: "foo", Namespace: defaultNamespace},
+				resource: &resource.Info{Object: &corev1.PersistentVolumeClaim{}, Name: "foo", Namespace: defaultNamespace},
 			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "IsReady DaemonSet",
-			fields: fields{
-				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
-				checkJobs:     true,
-				pausedAsReady: false,
-			},
-			args: args{
-				ctx:      context.TODO(),
-				resource: &resource.Info{Object: &appsv1.DaemonSet{}, Name: "foo", Namespace: defaultNamespace},
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "IsReady StatefulSet",
-			fields: fields{
-				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
-				checkJobs:     true,
-				pausedAsReady: false,
-			},
-			args: args{
-				ctx:      context.TODO(),
-				resource: &resource.Info{Object: &appsv1beta1.StatefulSet{}, Name: "foo", Namespace: defaultNamespace},
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "IsReady ReplicationController",
-			fields: fields{
-				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
-				checkJobs:     true,
-				pausedAsReady: false,
-			},
-			args: args{
-				ctx:      context.TODO(),
-				resource: &resource.Info{Object: &corev1.ReplicationController{}, Name: "foo", Namespace: defaultNamespace},
-			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "IsReady ReplicaSet",
-			fields: fields{
-				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
-				checkJobs:     true,
-				pausedAsReady: false,
-			},
-			args: args{
-				ctx:      context.TODO(),
-				resource: &resource.Info{Object: &extensionsv1beta1.ReplicaSet{}, Name: "foo", Namespace: defaultNamespace},
-			},
+			pvc:     newPersistentVolumeClaim("bar", corev1.ClaimPending),
 			want:    false,
 			wantErr: true,
 		},
@@ -214,10 +329,401 @@ func Test_ReadyChecker_IsReady(t *testing.T) {
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
+			if _, err := c.client.CoreV1().PersistentVolumeClaims(defaultNamespace).Create(context.TODO(), tt.pvc, metav1.CreateOptions{}); err != nil {
+				t.Errorf("Failed to create PersistentVolumeClaim error: %v", err)
+				return
+			}
 			got, err := c.IsReady(tt.args.ctx, tt.args.resource)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("IsReady() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("IsReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_ReadyChecker_IsReady_Service(t *testing.T) {
+	type fields struct {
+		client        kubernetes.Interface
+		log           func(string, ...interface{})
+		checkJobs     bool
+		pausedAsReady bool
+	}
+	type args struct {
+		ctx      context.Context
+		resource *resource.Info
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		svc     *corev1.Service
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "IsReady Service",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &corev1.Service{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			svc:     newService("foo", corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer, ClusterIP: ""}),
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "IsReady Service with error",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &corev1.Service{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			svc:     newService("bar", corev1.ServiceSpec{Type: corev1.ServiceTypeExternalName, ClusterIP: ""}),
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &ReadyChecker{
+				client:        tt.fields.client,
+				log:           tt.fields.log,
+				checkJobs:     tt.fields.checkJobs,
+				pausedAsReady: tt.fields.pausedAsReady,
+			}
+			if _, err := c.client.CoreV1().Services(defaultNamespace).Create(context.TODO(), tt.svc, metav1.CreateOptions{}); err != nil {
+				t.Errorf("Failed to create Service error: %v", err)
 				return
+			}
+			got, err := c.IsReady(tt.args.ctx, tt.args.resource)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("IsReady() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("IsReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_ReadyChecker_IsReady_DaemonSet(t *testing.T) {
+	type fields struct {
+		client        kubernetes.Interface
+		log           func(string, ...interface{})
+		checkJobs     bool
+		pausedAsReady bool
+	}
+	type args struct {
+		ctx      context.Context
+		resource *resource.Info
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		ds      *appsv1.DaemonSet
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "IsReady DaemonSet",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &appsv1.DaemonSet{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			ds:      newDaemonSet("foo", 0, 0, 1, 0, true),
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "IsReady DaemonSet with error",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &appsv1.DaemonSet{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			ds:      newDaemonSet("bar", 0, 1, 1, 1, true),
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &ReadyChecker{
+				client:        tt.fields.client,
+				log:           tt.fields.log,
+				checkJobs:     tt.fields.checkJobs,
+				pausedAsReady: tt.fields.pausedAsReady,
+			}
+			if _, err := c.client.AppsV1().DaemonSets(defaultNamespace).Create(context.TODO(), tt.ds, metav1.CreateOptions{}); err != nil {
+				t.Errorf("Failed to create DaemonSet error: %v", err)
+				return
+			}
+			got, err := c.IsReady(tt.args.ctx, tt.args.resource)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("IsReady() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("IsReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
+	type fields struct {
+		client        kubernetes.Interface
+		log           func(string, ...interface{})
+		checkJobs     bool
+		pausedAsReady bool
+	}
+	type args struct {
+		ctx      context.Context
+		resource *resource.Info
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		ss      *appsv1.StatefulSet
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "IsReady StatefulSet",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &appsv1beta1.StatefulSet{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			ss:      newStatefulSet("foo", 1, 0, 0, 1, true),
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "IsReady StatefulSet with error",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &appsv1beta1.StatefulSet{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			ss:      newStatefulSet("bar", 1, 0, 1, 1, true),
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &ReadyChecker{
+				client:        tt.fields.client,
+				log:           tt.fields.log,
+				checkJobs:     tt.fields.checkJobs,
+				pausedAsReady: tt.fields.pausedAsReady,
+			}
+			if _, err := c.client.AppsV1().StatefulSets(defaultNamespace).Create(context.TODO(), tt.ss, metav1.CreateOptions{}); err != nil {
+				t.Errorf("Failed to create StatefulSet error: %v", err)
+				return
+			}
+			got, err := c.IsReady(tt.args.ctx, tt.args.resource)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("IsReady() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("IsReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
+	type fields struct {
+		client        kubernetes.Interface
+		log           func(string, ...interface{})
+		checkJobs     bool
+		pausedAsReady bool
+	}
+	type args struct {
+		ctx      context.Context
+		resource *resource.Info
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		rc      *corev1.ReplicationController
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "IsReady ReplicationController",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &corev1.ReplicationController{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			rc:      newReplicationController("foo", false),
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "IsReady ReplicationController with error",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &corev1.ReplicationController{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			rc:      newReplicationController("bar", false),
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "IsReady ReplicationController and pods not ready for object",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &corev1.ReplicationController{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			rc:      newReplicationController("foo", true),
+			want:    true,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &ReadyChecker{
+				client:        tt.fields.client,
+				log:           tt.fields.log,
+				checkJobs:     tt.fields.checkJobs,
+				pausedAsReady: tt.fields.pausedAsReady,
+			}
+			if _, err := c.client.CoreV1().ReplicationControllers(defaultNamespace).Create(context.TODO(), tt.rc, metav1.CreateOptions{}); err != nil {
+				t.Errorf("Failed to create ReplicationController error: %v", err)
+				return
+			}
+			got, err := c.IsReady(tt.args.ctx, tt.args.resource)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("IsReady() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("IsReady() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_ReadyChecker_IsReady_ReplicaSet(t *testing.T) {
+	type fields struct {
+		client        kubernetes.Interface
+		log           func(string, ...interface{})
+		checkJobs     bool
+		pausedAsReady bool
+	}
+	type args struct {
+		ctx      context.Context
+		resource *resource.Info
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		rs      *appsv1.ReplicaSet
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "IsReady ReplicaSet",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &extensionsv1beta1.ReplicaSet{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			rs:      newReplicaSet("foo", 1, 1, true),
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name: "IsReady ReplicaSet not ready",
+			fields: fields{
+				client:        fake.NewSimpleClientset(),
+				log:           func(string, ...interface{}) {},
+				checkJobs:     true,
+				pausedAsReady: false,
+			},
+			args: args{
+				ctx:      context.TODO(),
+				resource: &resource.Info{Object: &extensionsv1beta1.ReplicaSet{}, Name: "foo", Namespace: defaultNamespace},
+			},
+			rs:      newReplicaSet("bar", 1, 1, false),
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &ReadyChecker{
+				client:        tt.fields.client,
+				log:           tt.fields.log,
+				checkJobs:     tt.fields.checkJobs,
+				pausedAsReady: tt.fields.pausedAsReady,
+			}
+			//
+			got, err := c.IsReady(tt.args.ctx, tt.args.resource)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("IsReady() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if got != tt.want {
 				t.Errorf("IsReady() = %v, want %v", got, tt.want)
