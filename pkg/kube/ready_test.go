@@ -1638,36 +1638,3 @@ func intToInt32(i int) *int32 {
 	i32 := int32(i)
 	return &i32
 }
-
-func TestReadyChecker_isPodReady(t *testing.T) {
-	type fields struct {
-		client        kubernetes.Interface
-		log           func(string, ...interface{})
-		checkJobs     bool
-		pausedAsReady bool
-	}
-	type args struct {
-		pod *corev1.Pod
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &ReadyChecker{
-				client:        tt.fields.client,
-				log:           tt.fields.log,
-				checkJobs:     tt.fields.checkJobs,
-				pausedAsReady: tt.fields.pausedAsReady,
-			}
-			if got := c.isPodReady(tt.args.pod); got != tt.want {
-				t.Errorf("isPodReady() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
