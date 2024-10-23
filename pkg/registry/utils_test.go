@@ -89,6 +89,7 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 		ClientOptWriter(suite.Out),
 		ClientOptCredentialsFile(credentialsFile),
 		ClientOptResolver(nil),
+		ClientOptBasicAuth(testUsername, testPassword),
 	}
 
 	if tlsEnabled {
@@ -128,11 +129,12 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	// This is required because Docker enforces HTTP if the registry
 	// host is localhost/127.0.0.1.
 	suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
-	suite.srv, _ = mockdns.NewServer(map[string]mockdns.Zone{
+	suite.srv, err = mockdns.NewServer(map[string]mockdns.Zone{
 		"helm-test-registry.": {
 			A: []string{"127.0.0.1"},
 		},
 	}, false)
+	suite.Nil(err, "no error creating mock DNS server")
 	suite.srv.PatchNet(net.DefaultResolver)
 
 	config.HTTP.Addr = fmt.Sprintf(":%d", port)
@@ -349,7 +351,7 @@ func testPull(suite *TestSuite) {
 
 	// full pull with chart and prov
 	result, err := suite.RegistryClient.Pull(ref, PullOptWithProv(true))
-	suite.Nil(err, "no error pulling a chart with prov")
+	suite.Require().Nil(err, "no error pulling a chart with prov")
 
 	// Validate the output
 	// Note: these digests/sizes etc may change if the test chart/prov files are modified,
