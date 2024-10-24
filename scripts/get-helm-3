@@ -276,6 +276,8 @@ help () {
   echo -e "\t[--version|-v <desired_version>] . When not defined it fetches the latest release from GitHub"
   echo -e "\te.g. --version v3.0.0 or -v canary"
   echo -e "\t[--no-sudo]  ->> install without sudo"
+  echo -e "\t[--install-dir] <install_destination_filepath> ->> install helm binary to a specific directory, e.g., /usr/bin"
+  echo -e "\t[--binary-name] <binary_filename> ->> name of helm binary, e.g., helm-v3.8.1"
 }
 
 # cleanup temporary files to avoid https://github.com/helm/helm/issues/2977
@@ -316,6 +318,24 @@ while [[ $# -gt 0 ]]; do
        ;;
     '--no-sudo')
        USE_SUDO="false"
+       ;;
+    '--install-dir')
+       shift
+       if [[ $# -ne 0 ]]; then
+           export HELM_INSTALL_DIR="${1}"
+       else
+           echo -e "Please provide the desired installation directory. e.g. --install-dir /usr/bin"
+           exit 0
+       fi
+       ;;
+    '--binary-name')
+       shift
+       if [[ $# -ne 0 ]]; then
+           export BINARY_NAME="${1}"
+       else
+           echo -e "Please provide the desired binary name. e.g. --binary-name helm-v3.8.1"
+           exit 0
+       fi
        ;;
     '--help'|-h)
        help
