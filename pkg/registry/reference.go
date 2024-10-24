@@ -22,19 +22,19 @@ import (
 	orasregistry "oras.land/oras-go/pkg/registry"
 )
 
-type Reference struct {
-	OrasReference orasregistry.Reference
+type reference struct {
+	orasReference orasregistry.Reference
 	Registry      string
 	Repository    string
 	Tag           string
 	Digest        string
 }
 
-// NewReference will parse and validate the reference, and clean tags when
+// newReference will parse and validate the reference, and clean tags when
 // applicable tags are only cleaned when plus (+) signs are present, and are
 // converted to underscores (_) before pushing
 // See https://github.com/helm/helm/issues/10166
-func NewReference(raw string) (result Reference, err error) {
+func newReference(raw string) (result reference, err error) {
 	// Remove oci:// prefix if it is there
 	raw = strings.TrimPrefix(raw, OCIScheme+"://")
 
@@ -60,19 +60,19 @@ func NewReference(raw string) (result Reference, err error) {
 		}
 	}
 
-	result.OrasReference, err = orasregistry.ParseReference(raw)
+	result.orasReference, err = orasregistry.ParseReference(raw)
 	if err != nil {
 		return result, err
 	}
-	result.Registry = result.OrasReference.Registry
-	result.Repository = result.OrasReference.Repository
-	result.Tag = result.OrasReference.Reference
+	result.Registry = result.orasReference.Registry
+	result.Repository = result.orasReference.Repository
+	result.Tag = result.orasReference.Reference
 	return result, nil
 }
 
-func (r *Reference) String() string {
+func (r *reference) String() string {
 	if r.Tag == "" {
-		return r.OrasReference.String() + "@" + r.Digest
+		return r.orasReference.String() + "@" + r.Digest
 	}
-	return r.OrasReference.String()
+	return r.orasReference.String()
 }
