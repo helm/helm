@@ -18,15 +18,15 @@ package registry
 
 import "testing"
 
-func verify(t *testing.T, actual Reference, registry, repository, tag, digest string) {
-	if registry != actual.OrasReference.Registry {
-		t.Errorf("Oras Reference registry expected %v actual %v", registry, actual.Registry)
+func verify(t *testing.T, actual reference, registry, repository, tag, digest string) {
+	if registry != actual.orasReference.Registry {
+		t.Errorf("Oras reference registry expected %v actual %v", registry, actual.Registry)
 	}
-	if repository != actual.OrasReference.Repository {
-		t.Errorf("Oras Reference repository expected %v actual %v", repository, actual.Repository)
+	if repository != actual.orasReference.Repository {
+		t.Errorf("Oras reference repository expected %v actual %v", repository, actual.Repository)
 	}
-	if tag != actual.OrasReference.Reference {
-		t.Errorf("Oras Reference reference expected %v actual %v", tag, actual.Tag)
+	if tag != actual.orasReference.Reference {
+		t.Errorf("Oras reference reference expected %v actual %v", tag, actual.Tag)
 	}
 	if registry != actual.Registry {
 		t.Errorf("Registry expected %v actual %v", registry, actual.Registry)
@@ -55,43 +55,43 @@ func verify(t *testing.T, actual Reference, registry, repository, tag, digest st
 }
 
 func TestNewReference(t *testing.T) {
-	actual, err := NewReference("registry.example.com/repository:1.0@sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
+	actual, err := newReference("registry.example.com/repository:1.0@sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
 	if err != nil {
 		t.Errorf("Unexpected error %v", err)
 	}
 	verify(t, actual, "registry.example.com", "repository", "1.0", "sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
 
-	actual, err = NewReference("oci://registry.example.com/repository:1.0@sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
+	actual, err = newReference("oci://registry.example.com/repository:1.0@sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
 	if err != nil {
 		t.Errorf("Unexpected error %v", err)
 	}
 	verify(t, actual, "registry.example.com", "repository", "1.0", "sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
 
-	actual, err = NewReference("a/b:1@c")
+	actual, err = newReference("a/b:1@c")
 	if err != nil {
 		t.Errorf("Unexpected error %v", err)
 	}
 	verify(t, actual, "a", "b", "1", "c")
 
-	actual, err = NewReference("a/b:@")
+	actual, err = newReference("a/b:@")
 	if err != nil {
 		t.Errorf("Unexpected error %v", err)
 	}
 	verify(t, actual, "a", "b", "", "")
 
-	actual, err = NewReference("registry.example.com/repository:1.0+001")
+	actual, err = newReference("registry.example.com/repository:1.0+001")
 	if err != nil {
 		t.Errorf("Unexpected error %v", err)
 	}
 	verify(t, actual, "registry.example.com", "repository", "1.0_001", "")
 
-	actual, err = NewReference("thing:1.0")
+	actual, err = newReference("thing:1.0")
 	if err == nil {
 		t.Errorf("Expect error error %v", err)
 	}
 	verify(t, actual, "", "", "", "")
 
-	actual, err = NewReference("registry.example.com/the/repository@sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
+	actual, err = newReference("registry.example.com/the/repository@sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
 	if err != nil {
 		t.Errorf("Unexpected error %v", err)
 	}
