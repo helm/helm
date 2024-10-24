@@ -24,7 +24,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
@@ -125,17 +127,41 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 				if len(r.Filters[IncludeNameFilter]) > 0 && !contains(r.Filters[IncludeNameFilter], h.Name) {
 					continue
 				}
-				req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
-				logReader, err := req.Stream(context.Background())
-				if err != nil {
-					return errors.Wrapf(err, "unable to get pod logs for %s", h.Name)
+				var (
+					podList *corev1.PodList
+					err     error
+				)
+				switch h.Kind {
+				case "Job":
+					podList, err = client.CoreV1().Pods(r.Namespace).List(context.Background(), metav1.ListOptions{
+						LabelSelector: labels.FormatLabels(map[string]string{"job-name": h.Name}),
+					})
+				case "Pod":
+					podList, err = client.CoreV1().Pods(r.Namespace).List(context.Background(), metav1.ListOptions{
+						FieldSelector: labels.FormatLabels(map[string]string{"metadata.name": h.Name}),
+					})
 				}
 
-				fmt.Fprintf(out, "POD LOGS: %s\n", h.Name)
-				_, err = io.Copy(out, logReader)
-				fmt.Fprintln(out)
 				if err != nil {
-					return errors.Wrapf(err, "unable to write pod logs for %s", h.Name)
+					return errors.Wrapf(err, "unable to get pod list for %s/%s", h.Kind, h.Name)
+				}
+
+				for idx, pod := range podList.Items {
+					req := client.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{})
+					logReader, err := req.Stream(context.Background())
+					if err != nil {
+						return errors.Wrapf(err, "unable to get pod logs for %s/%s", h.Kind, h.Name)
+					}
+
+					fmt.Fprintf(out, "POD LOGS: %s\n", pod.Name)
+					_, err = io.Copy(out, logReader)
+					fmt.Fprintln(out)
+					if idx != len(podList.Items)-1 {
+						fmt.Fprintln(out, "---")
+					}
+					if err != nil {
+						return errors.Wrapf(err, "unable to write pod logs for %s/%s", h.Kind, h.Name)
+					}
 				}
 			}
 		}
