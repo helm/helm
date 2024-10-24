@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/fileutil"
@@ -143,71 +142,6 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	return destfile, ver, nil
 }
 
-func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, error) {
-	var tag string
-
-	registryReference, err := registry.NewReference(u.Path)
-	if err != nil {
-		return nil, err
-	}
-
-	if version == "" {
-		// Use OCI URI tag as default
-		version = registryReference.Tag
-	} else {
-		if registryReference.Tag != "" && registryReference.Tag != version {
-			return nil, errors.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
-		}
-	}
-
-	if registryReference.Digest != "" {
-		if registryReference.Tag == "" {
-			// Install by digest only
-			return u, nil
-		}
-
-		// Validate the tag if it was specified
-		path := registryReference.Registry + "/" + registryReference.Repository + ":" + registryReference.Tag
-		desc, err := c.RegistryClient.Resolve(path)
-		if err != nil {
-			// The resource does not have to be tagged when digest is specified
-			return u, nil
-		}
-		if desc != nil && desc.Digest.String() != registryReference.Digest {
-			return nil, errors.Errorf("chart reference digest mismatch: %s is not %s", desc.Digest.String(), registryReference.Digest)
-		}
-		return u, nil
-	}
-
-	// Evaluate whether an explicit version has been provided. Otherwise, determine version to use
-	_, errSemVer := semver.NewVersion(version)
-	if errSemVer == nil {
-		tag = version
-	} else {
-		// Retrieve list of repository tags
-		tags, err := c.RegistryClient.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", registry.OCIScheme)))
-		if err != nil {
-			return nil, err
-		}
-		if len(tags) == 0 {
-			return nil, errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
-		}
-
-		// Determine if version provided
-		// If empty, try to get the highest available tag
-		// If exact version, try to find it
-		// If semver constraint string, try to find a match
-		tag, err = registry.GetTagMatchingVersionOrConstraint(tags, version)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	u.Path = fmt.Sprintf("%s/%s:%s", registryReference.Registry, registryReference.Repository, tag)
-
-	return u, err
-}
-
 // ResolveChartVersion resolves a chart reference to a URL.
 //
 // It returns the URL and sets the ChartDownloader's Options that can fetch
@@ -230,7 +164,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	if registry.IsOCI(u.String()) {
-		return c.getOciURI(ref, version, u)
+		return c.RegistryClient.ValidateReference(ref, version, u)
 	}
 
 	rf, err := loadRepoConfig(c.RepositoryConfig)
