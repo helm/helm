@@ -18,6 +18,7 @@ package rules
 
 import (
 	"os"
+	"io/fs"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -76,11 +77,46 @@ func validateValuesFile(valuesPath string, overrides map[string]interface{}) err
 	ext := filepath.Ext(valuesPath)
 	schemaPath := valuesPath[:len(valuesPath)-len(ext)] + ".schema.json"
 	schema, err := os.ReadFile(schemaPath)
+
+	// Check for zero-length _before_ checking for errors, since we want schema files to be optional
 	if len(schema) == 0 {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	return chartutil.ValidateAgainstSingleSchema(coalescedValues, schema)
+
+	extraSchemas := make([][]byte, 0)
+	schemasPath := filepath.Dir(valuesPath) + "/schemas"
+	err = filepath.WalkDir(schemasPath, func(path string, dentry fs.DirEntry, err error) error {
+		if path == schemasPath && dentry == nil && err != nil {
+			// The "schemas" folder could not be opened if it doesn't exist, treat it as empty
+			if os.IsNotExist(err) {
+				return fs.SkipAll
+			} else {
+				return err
+			}
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if !dentry.IsDir() {
+			extraSchema, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+
+			extraSchemas = append(extraSchemas, extraSchema)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return chartutil.ValidateAgainstSingleSchema(coalescedValues, schema, extraSchemas)
 }
