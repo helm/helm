@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -90,11 +91,32 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 		path.Join(strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme)), meta.Metadata.Name),
 		meta.Metadata.Version)
 
-	chartCreationTime := ctime.Created(stat)
+	chartCreationTime, err := getCreationTimeFromEnv(ctime.Created(stat))
+	if err != nil {
+		return err
+	}
 	pushOpts = append(pushOpts, registry.PushOptCreationTime(chartCreationTime.Format(time.RFC3339)))
 
 	_, err = client.Push(chartBytes, ref, pushOpts...)
 	return err
+}
+
+// getCreationTimeFromEnv returns the creation time of the chart from the HELM_OCI_DATE_EPOCH environment variable
+// or the fallback time if the environment variable is not set. The environment variable should be the number of
+// seconds since January 1st 1970, 00:00 UTC. The environment variable can be used to reproducaibly push the same
+// chart with the same creation time.
+func getCreationTimeFromEnv(fallback time.Time) (time.Time, error) {
+	epoch := os.Getenv("HELM_OCI_DATE_EPOCH")
+	if epoch == "" {
+		return fallback, nil
+	}
+
+	seconds, err := strconv.ParseInt(epoch, 10, 64)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("the environment variable HELM_OCI_DATE_EPOCH should be the number of seconds since January 1st 1970, 00:00 UTC, got: %w", err)
+	}
+
+	return time.Unix(seconds, 0), nil
 }
 
 // NewOCIPusher constructs a valid OCI client as a Pusher
