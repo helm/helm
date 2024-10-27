@@ -29,6 +29,8 @@ import (
 //
 // A KubernetesClient must be concurrency safe.
 type Interface interface {
+	Get(resources ResourceList, related bool) (map[string][]runtime.Object, error)
+
 	// Create creates one or more resources.
 	Create(resources ResourceList) (*Result, error)
 
