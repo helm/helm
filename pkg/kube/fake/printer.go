@@ -29,10 +29,17 @@ import (
 	"helm.sh/helm/v3/pkg/kube"
 )
 
+// Options to control the fake behavior of PrintingKubeClient
+type Options struct {
+	GetReturnResourceMap    bool
+	BuildReturnResourceList bool
+}
+
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
 // the given output.
 type PrintingKubeClient struct {
-	Out io.Writer
+	Out     io.Writer
+	Options *Options
 }
 
 // IsReachable checks if the cluster is reachable

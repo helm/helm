@@ -83,7 +83,7 @@ func TestRootCmd(t *testing.T) {
 				os.Setenv(k, v)
 			}
 
-			if _, _, err := executeActionCommand(tt.args); err != nil {
+			if _, _, err := executeActionCommand(tt.args, nil, nil); err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
 
@@ -115,7 +115,7 @@ func TestRootCmd(t *testing.T) {
 }
 
 func TestUnknownSubCmd(t *testing.T) {
-	_, _, err := executeActionCommand("foobar")
+	_, _, err := executeActionCommand("foobar", nil, nil)
 
 	if err == nil || err.Error() != `unknown command "foobar" for "helm"` {
 		t.Errorf("Expect unknown command error, got %q", err)

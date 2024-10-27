@@ -59,7 +59,12 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 					}
 				}
 				t.Logf("running cmd (attempt %d): %s", i+1, tt.cmd)
-				_, out, err := executeActionCommandC(storage, tt.cmd)
+				_, out, err := executeActionCommandC(
+					storage,
+					tt.cmd,
+					tt.restClientGetter,
+					tt.kubeClientOpts,
+				)
 				if tt.wantError && err == nil {
 					t.Errorf("expected error, got success with the following output:\n%s", out)
 				}
@@ -78,11 +83,22 @@ func storageFixture() *storage.Storage {
 	return storage.Init(driver.NewMemory())
 }
 
-func executeActionCommandC(store *storage.Storage, cmd string) (*cobra.Command, string, error) {
-	return executeActionCommandStdinC(store, nil, cmd)
+func executeActionCommandC(
+	store *storage.Storage,
+	cmd string,
+	restClientGetter action.RESTClientGetter,
+	kubeClientOpts *kubefake.Options,
+) (*cobra.Command, string, error) {
+	return executeActionCommandStdinC(store, nil, cmd, restClientGetter, kubeClientOpts)
 }
 
-func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string) (*cobra.Command, string, error) {
+func executeActionCommandStdinC(
+	store *storage.Storage,
+	in *os.File,
+	cmd string,
+	restClientGetter action.RESTClientGetter,
+	kubeClientOpts *kubefake.Options,
+) (*cobra.Command, string, error) {
 	args, err := shellwords.Parse(cmd)
 	if err != nil {
 		return nil, "", err
@@ -91,10 +107,14 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	buf := new(bytes.Buffer)
 
 	actionConfig := &action.Configuration{
-		Releases:     store,
-		KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
-		Capabilities: chartutil.DefaultCapabilities,
-		Log:          func(_ string, _ ...interface{}) {},
+		Releases: store,
+		KubeClient: &kubefake.PrintingKubeClient{
+			Out:     io.Discard,
+			Options: kubeClientOpts,
+		},
+		Capabilities:     chartutil.DefaultCapabilities,
+		Log:              func(_ string, _ ...interface{}) {},
+		RESTClientGetter: restClientGetter,
 	}
 
 	root, err := newRootCmd(actionConfig, buf, args)
@@ -135,10 +155,18 @@ type cmdTestCase struct {
 	// Number of repeats (in case a feature was previously flaky and the test checks
 	// it's now stably producing identical results). 0 means test is run exactly once.
 	repeat int
+	// REST client getter to be used with Helm action config
+	restClientGetter action.RESTClientGetter
+	// Kube client options for be used with fake printer kube client
+	kubeClientOpts *kubefake.Options
 }
 
-func executeActionCommand(cmd string) (*cobra.Command, string, error) {
-	return executeActionCommandC(storageFixture(), cmd)
+func executeActionCommand(
+	cmd string,
+	restClientGetter action.RESTClientGetter,
+	kubeClintOpts *kubefake.Options,
+) (*cobra.Command, string, error) {
+	return executeActionCommandC(storageFixture(), cmd, restClientGetter, kubeClintOpts)
 }
 
 func resetEnv() func() {
@@ -201,7 +229,6 @@ func TestPluginExitCode(t *testing.T) {
 		cmd.Stderr = stderr
 		err := cmd.Run()
 		exiterr, ok := err.(*exec.ExitError)
-
 		if !ok {
 			t.Fatalf("Unexpected error returned by os.Exit: %T", err)
 		}

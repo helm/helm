@@ -138,7 +138,7 @@ func TestPackage(t *testing.T) {
 					cmd = append(cmd, fmt.Sprintf("--%s=%s", k, v))
 				}
 			}
-			_, _, err = executeActionCommand(strings.Join(cmd, " "))
+			_, _, err = executeActionCommand(strings.Join(cmd, " "), nil, nil)
 			if err != nil {
 				if tt.err && re.MatchString(err.Error()) {
 					return
@@ -171,7 +171,7 @@ func TestSetAppVersion(t *testing.T) {
 	chartToPackage := "testdata/testcharts/alpine"
 	dir := t.TempDir()
 	cmd := fmt.Sprintf("package %s --destination=%s --app-version=%s", chartToPackage, dir, expectedAppVersion)
-	_, output, err := executeActionCommand(cmd)
+	_, output, err := executeActionCommand(cmd, nil, nil)
 	if err != nil {
 		t.Logf("Output: %s", output)
 		t.Fatal(err)
