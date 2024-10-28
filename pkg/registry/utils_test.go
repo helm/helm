@@ -88,7 +88,6 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 		ClientOptEnableCache(true),
 		ClientOptWriter(suite.Out),
 		ClientOptCredentialsFile(credentialsFile),
-		ClientOptResolver(nil),
 	}
 
 	if tlsEnabled {
@@ -139,14 +138,11 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
 
-	// Basic auth is not possible if we are serving HTTP.
-	if tlsEnabled {
-		config.Auth = configuration.Auth{
-			"htpasswd": configuration.Parameters{
-				"realm": "localhost",
-				"path":  htpasswdPath,
-			},
-		}
+	config.Auth = configuration.Auth{
+		"htpasswd": configuration.Parameters{
+			"realm": "localhost",
+			"path":  htpasswdPath,
+		},
 	}
 
 	// config tls
@@ -275,7 +271,7 @@ func testPush(suite *TestSuite) {
 	result, err := suite.RegistryClient.Push(chartData, ref, PushOptProvData(provData), PushOptCreationTime(testingChartCreationTime))
 	suite.Nil(err, "no error pushing good ref with prov")
 
-	_, err = suite.RegistryClient.Pull(ref)
+	_, err = suite.RegistryClient.Pull(ref, PullOptWithProv(true))
 	suite.Nil(err, "no error pulling a simple chart")
 
 	// Validate the output
