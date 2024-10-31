@@ -78,7 +78,7 @@ all: build
 build: $(BINDIR)/$(BINNAME)
 
 $(BINDIR)/$(BINNAME): $(SRC)
-	GO111MODULE=on CGO_ENABLED=$(CGO_ENABLED) go build $(GOFLAGS) -trimpath -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/helm
+	CGO_ENABLED=$(CGO_ENABLED) go build $(GOFLAGS) -trimpath -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/helm
 
 # ------------------------------------------------------------------------------
 #  install
@@ -104,15 +104,15 @@ test: test-unit
 test-unit:
 	@echo
 	@echo "==> Running unit tests <=="
-	GO111MODULE=on go test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
+	go test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
 	@echo
 	@echo "==> Running unit test(s) with ldflags <=="
 # Test to check the deprecation warnings on Kubernetes templates created by `helm create` against the current Kubernetes
 # version. Note: The version details are set in var LDFLAGS. To avoid the ldflags impact on other unit tests that are
 # based on older versions, this is run separately. When run without the ldflags in the unit test (above) or coverage
 # test, it still passes with a false-positive result as the resources shouldn’t be deprecated in the older Kubernetes
-# version if it only starts failing with the latest. 
-	GO111MODULE=on go test $(GOFLAGS) -run ^TestHelmCreateChart_CheckDeprecatedWarnings$$ ./pkg/lint/ $(TESTFLAGS) -ldflags '$(LDFLAGS)'
+# version if it only starts failing with the latest.
+	go test $(GOFLAGS) -run ^TestHelmCreateChart_CheckDeprecatedWarnings$$ ./pkg/lint/ $(TESTFLAGS) -ldflags '$(LDFLAGS)'
 
 
 .PHONY: test-coverage
@@ -151,7 +151,7 @@ coverage:
 
 .PHONY: format
 format: $(GOIMPORTS)
-	GO111MODULE=on go list -f '{{.Dir}}' ./... | xargs $(GOIMPORTS) -w -local helm.sh/helm
+	go list -f '{{.Dir}}' ./... | xargs $(GOIMPORTS) -w -local helm.sh/helm
 
 # Generate golden files used in unit tests
 .PHONY: gen-test-golden
@@ -168,10 +168,10 @@ gen-test-golden: test-unit
 # without a go.mod file when downloading the following dependencies
 
 $(GOX):
-	(cd /; GO111MODULE=on go install github.com/mitchellh/gox@v1.0.2-0.20220701044238-9f712387e2d2)
+	(cd /; go install github.com/mitchellh/gox@v1.0.2-0.20220701044238-9f712387e2d2)
 
 $(GOIMPORTS):
-	(cd /; GO111MODULE=on go install golang.org/x/tools/cmd/goimports@latest)
+	(cd /; go install golang.org/x/tools/cmd/goimports@latest)
 
 # ------------------------------------------------------------------------------
 #  release
@@ -179,7 +179,7 @@ $(GOIMPORTS):
 .PHONY: build-cross
 build-cross: LDFLAGS += -extldflags "-static"
 build-cross: $(GOX)
-	GOFLAGS="-trimpath" GO111MODULE=on CGO_ENABLED=0 $(GOX) -parallel=3 -output="_dist/{{.OS}}-{{.Arch}}/$(BINNAME)" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' ./cmd/helm
+	GOFLAGS="-trimpath" CGO_ENABLED=0 $(GOX) -parallel=3 -output="_dist/{{.OS}}-{{.Arch}}/$(BINNAME)" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' ./cmd/helm
 
 .PHONY: dist
 dist:
