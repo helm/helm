@@ -178,7 +178,7 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		upAction.cfg.Releases.Create(rel)
 
 		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-		failer.UpdateError = fmt.Errorf("update fail")
+		failer.UpdateWithTimeoutError = fmt.Errorf("update fail")
 		upAction.cfg.KubeClient = failer
 		upAction.Atomic = true
 		vals := map[string]interface{}{}

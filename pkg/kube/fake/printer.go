@@ -90,7 +90,11 @@ func (p *PrintingKubeClient) WatchUntilReady(resources kube.ResourceList, _ time
 }
 
 // Update implements KubeClient Update.
-func (p *PrintingKubeClient) Update(_, modified kube.ResourceList, _ bool) (*kube.Result, error) {
+func (p *PrintingKubeClient) Update(original, target kube.ResourceList, force bool) (*kube.Result, error) {
+	return p.UpdateWithTimeout(original, target, force, 0)
+}
+
+func (p *PrintingKubeClient) UpdateWithTimeout(_, modified kube.ResourceList, _ bool, _ time.Duration) (*kube.Result, error) {
 	_, err := io.Copy(p.Out, bufferize(modified))
 	if err != nil {
 		return nil, err
