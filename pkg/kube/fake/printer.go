@@ -17,6 +17,7 @@ limitations under the License.
 package fake
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -39,7 +40,10 @@ import (
 // Options to control the fake behavior of PrintingKubeClient
 type Options struct {
 	GetReturnResourceMap    bool
+	GetReturnError          bool
 	BuildReturnResourceList bool
+	BuildReturnError        bool
+	IsReachableReturnsError bool
 }
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -49,8 +53,18 @@ type PrintingKubeClient struct {
 	Options *Options
 }
 
+var (
+	ErrPrintingKubeClientNotReachable = errors.New("kubernetes cluster not reachable")
+	ErrPrintingKubeClientBuildFailure = errors.New("failed to build resource list")
+	ErrPrintingKubeClientGetFailure   = errors.New("failed to get resource")
+)
+
 // IsReachable checks if the cluster is reachable
 func (p *PrintingKubeClient) IsReachable() error {
+	if p.Options != nil && p.Options.IsReachableReturnsError {
+		return ErrPrintingKubeClientNotReachable
+	}
+
 	return nil
 }
 
@@ -69,18 +83,24 @@ func (p *PrintingKubeClient) Get(resources kube.ResourceList, _ bool) (map[strin
 		return nil, err
 	}
 
-	if p.Options == nil || !p.Options.GetReturnResourceMap {
-		return make(map[string][]runtime.Object), nil
-	}
+	if p.Options != nil {
+		if p.Options.GetReturnError {
+			return nil, ErrPrintingKubeClientGetFailure
+		}
 
-	result := make(map[string][]runtime.Object)
-	for _, r := range resources {
-		result[r.Name] = []runtime.Object{
-			r.Object,
+		if p.Options.GetReturnResourceMap {
+			result := make(map[string][]runtime.Object)
+			for _, r := range resources {
+				result[r.Name] = []runtime.Object{
+					r.Object,
+				}
+			}
+
+			return result, nil
 		}
 	}
 
-	return result, nil
+	return make(map[string][]runtime.Object), nil
 }
 
 func (p *PrintingKubeClient) Wait(resources kube.ResourceList, _ time.Duration) error {
@@ -129,21 +149,27 @@ func (p *PrintingKubeClient) Update(_, modified kube.ResourceList, _ bool) (*kub
 
 // Build implements KubeClient Build.
 func (p *PrintingKubeClient) Build(in io.Reader, _ bool) (kube.ResourceList, error) {
-	if p.Options == nil || !p.Options.BuildReturnResourceList {
-		return []*resource.Info{}, nil
+	if p.Options != nil {
+		if p.Options.BuildReturnError {
+			return nil, ErrPrintingKubeClientBuildFailure
+		}
+
+		if p.Options.BuildReturnResourceList {
+			manifest, err := (&kio.ByteReader{Reader: in}).Read()
+			if err != nil {
+				return nil, err
+			}
+
+			resources, err := parseResources(manifest)
+			if err != nil {
+				return nil, err
+			}
+
+			return resources, nil
+		}
 	}
 
-	manifest, err := (&kio.ByteReader{Reader: in}).Read()
-	if err != nil {
-		return nil, err
-	}
-
-	resources, err := parseResources(manifest)
-	if err != nil {
-		return nil, err
-	}
-
-	return resources, nil
+	return []*resource.Info{}, nil
 }
 
 // BuildTable implements KubeClient BuildTable.

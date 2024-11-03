@@ -115,7 +115,7 @@ func (g *GetDeployed) processResourceRecord(manifest *yaml.RNode, mapper meta.RE
 	// Build resource list required for Helm kube client
 	filter, err := g.cfg.KubeClient.Build(bytes.NewBufferString(manifestStr), false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build resource list: %v", err)
+		return nil, fmt.Errorf("failed to build resource list: %w", err)
 	}
 
 	// Fetch the resources from the Kubernetes cluster based on the resource list built above
@@ -124,12 +124,12 @@ func (g *GetDeployed) processResourceRecord(manifest *yaml.RNode, mapper meta.RE
 	// the current record.
 	list, err := g.cfg.KubeClient.Get(filter, false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get the resource from cluster: %v", err)
+		return nil, fmt.Errorf("failed to get the resource from cluster: %w", err)
 	}
 
 	var (
 		resourceObj runtime.Object
-		metaObj     metav1.Object
+		objMeta     metav1.Object
 	)
 
 	// Extract the resource object and its metadata from the list of resources. Note: Though Get() returns a list of
@@ -139,12 +139,12 @@ func (g *GetDeployed) processResourceRecord(manifest *yaml.RNode, mapper meta.RE
 		var ok bool
 		for _, objects := range list {
 			for _, obj := range objects {
-				metaObj, ok = obj.(metav1.Object)
+				objMeta, ok = obj.(metav1.Object)
 				if !ok {
 					return fmt.Errorf("object does not implement metav1.Object interface")
 				}
 
-				if metaObj.GetName() != manifest.GetName() {
+				if objMeta.GetName() != manifest.GetName() {
 					continue
 				}
 
@@ -170,9 +170,9 @@ func (g *GetDeployed) processResourceRecord(manifest *yaml.RNode, mapper meta.RE
 	return &ResourceElement{
 		Resource:          resourceMapping.Resource.Resource,
 		Name:              manifest.GetName(),
-		Namespace:         metaObj.GetNamespace(),
+		Namespace:         objMeta.GetNamespace(),
 		APIVersion:        manifest.GetApiVersion(),
-		CreationTimestamp: metaObj.GetCreationTimestamp(),
+		CreationTimestamp: objMeta.GetCreationTimestamp(),
 	}, nil
 }
 
