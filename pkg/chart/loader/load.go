@@ -174,7 +174,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		case filepath.Ext(n) == ".tgz":
 			file := files[0]
 			if file.Name != n {
-				return c, errors.Errorf("error unpacking tar in %s: expected %s, got %s", c.Name(), n, file.Name)
+				return c, errors.Errorf("error unpacking subchart tar in %s: expected %s, got %s", c.Name(), n, file.Name)
 			}
 			// Untar the chart and add to c.Dependencies
 			sc, err = LoadArchive(bytes.NewBuffer(file.Data))
@@ -194,7 +194,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		}
 
 		if err != nil {
-			return c, errors.Wrapf(err, "error unpacking %s in %s", n, c.Name())
+			return c, errors.Wrapf(err, "error unpacking subchart %s in %s", n, c.Name())
 		}
 		c.AddDependency(sc)
 	}
