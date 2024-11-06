@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -449,6 +450,195 @@ func TestPerform(t *testing.T) {
 				t.Errorf("expected %d result objects, got %d", tt.count, len(results))
 			}
 		})
+	}
+}
+
+func TestWait(t *testing.T) {
+	podList := newPodList("starfish", "otter", "squid")
+
+	var created *time.Time
+
+	c := newTestClient(t)
+	c.Factory.(*cmdtesting.TestFactory).Client = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/api/v1/namespaces/default/pods/starfish" && m == "GET":
+				pod := &podList.Items[0]
+				if created != nil && time.Since(*created) >= time.Second*5 {
+					pod.Status.Conditions = []v1.PodCondition{
+						{
+							Type:   v1.PodReady,
+							Status: v1.ConditionTrue,
+						},
+					}
+				}
+				return newResponse(200, pod)
+			case p == "/api/v1/namespaces/default/pods/otter" && m == "GET":
+				pod := &podList.Items[1]
+				if created != nil && time.Since(*created) >= time.Second*5 {
+					pod.Status.Conditions = []v1.PodCondition{
+						{
+							Type:   v1.PodReady,
+							Status: v1.ConditionTrue,
+						},
+					}
+				}
+				return newResponse(200, pod)
+			case p == "/api/v1/namespaces/default/pods/squid" && m == "GET":
+				pod := &podList.Items[2]
+				if created != nil && time.Since(*created) >= time.Second*5 {
+					pod.Status.Conditions = []v1.PodCondition{
+						{
+							Type:   v1.PodReady,
+							Status: v1.ConditionTrue,
+						},
+					}
+				}
+				return newResponse(200, pod)
+			case p == "/namespaces/default/pods" && m == "POST":
+				resources, err := c.Build(req.Body, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				now := time.Now()
+				created = &now
+				return newResponse(200, resources[0].Object)
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+	resources, err := c.Build(objBody(&podList), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := c.Create(resources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Created) != 3 {
+		t.Errorf("expected 3 resource created, got %d", len(result.Created))
+	}
+
+	if err := c.Wait(resources, time.Second*30); err != nil {
+		t.Errorf("expected wait without error, got %s", err)
+	}
+
+	if time.Since(*created) < time.Second*5 {
+		t.Errorf("expected to wait at least 5 seconds before ready status was detected, but got %s", time.Since(*created))
+	}
+}
+
+func TestWaitJob(t *testing.T) {
+	job := newJob("starfish", 0, intToInt32(1), 0, 0)
+
+	var created *time.Time
+
+	c := newTestClient(t)
+	c.Factory.(*cmdtesting.TestFactory).Client = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/apis/batch/v1/namespaces/default/jobs/starfish" && m == "GET":
+				if created != nil && time.Since(*created) >= time.Second*5 {
+					job.Status.Succeeded = 1
+				}
+				return newResponse(200, job)
+			case p == "/namespaces/default/jobs" && m == "POST":
+				resources, err := c.Build(req.Body, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				now := time.Now()
+				created = &now
+				return newResponse(200, resources[0].Object)
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+	resources, err := c.Build(objBody(job), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := c.Create(resources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Created) != 1 {
+		t.Errorf("expected 1 resource created, got %d", len(result.Created))
+	}
+
+	if err := c.WaitWithJobs(resources, time.Second*30); err != nil {
+		t.Errorf("expected wait without error, got %s", err)
+	}
+
+	if time.Since(*created) < time.Second*5 {
+		t.Errorf("expected to wait at least 5 seconds before ready status was detected, but got %s", time.Since(*created))
+	}
+}
+
+func TestWaitDelete(t *testing.T) {
+	pod := newPod("starfish")
+
+	var deleted *time.Time
+
+	c := newTestClient(t)
+	c.Factory.(*cmdtesting.TestFactory).Client = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/starfish" && m == "GET":
+				if deleted != nil && time.Since(*deleted) >= time.Second*5 {
+					return newResponse(404, notFoundBody())
+				}
+				return newResponse(200, &pod)
+			case p == "/namespaces/default/pods/starfish" && m == "DELETE":
+				now := time.Now()
+				deleted = &now
+				return newResponse(200, &pod)
+			case p == "/namespaces/default/pods" && m == "POST":
+				resources, err := c.Build(req.Body, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return newResponse(200, resources[0].Object)
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+	resources, err := c.Build(objBody(&pod), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := c.Create(resources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Created) != 1 {
+		t.Errorf("expected 1 resource created, got %d", len(result.Created))
+	}
+	if _, err := c.Delete(resources); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c.WaitForDelete(resources, time.Second*30); err != nil {
+		t.Errorf("expected wait without error, got %s", err)
+	}
+
+	if time.Since(*deleted) < time.Second*5 {
+		t.Errorf("expected to wait at least 5 seconds before ready status was detected, but got %s", time.Since(*deleted))
 	}
 }
 
