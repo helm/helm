@@ -85,11 +85,6 @@ type Client struct {
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
 
-	// ThreeWayMergeForUnstructured controls whether to use three way merge
-	// patch for unstructured objects (custom resource, custom definitions,
-	// etc).
-	ThreeWayMergeForUnstructured bool
-
 	kubeClient *kubernetes.Clientset
 }
 
@@ -393,7 +388,7 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 // occurs, a Result will still be returned with the error, containing all
 // resource updates, creations, and deletions that were attempted. These can be
 // used for cleanup or other logging purposes.
-func (c *Client) Update(original, target ResourceList, force bool) (*Result, error) {
+func (c *Client) Update(original, target ResourceList, force bool, threeWayMergeForCRs bool) (*Result, error) {
 	updateErrors := []string{}
 	res := &Result{}
 
@@ -428,7 +423,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			return errors.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
-		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
+		if err := updateResource(c, info, originalInfo.Object, force, threeWayMergeForCRs); err != nil {
 			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
@@ -624,7 +619,7 @@ func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) erro
 		})
 }
 
-func createPatch(target *resource.Info, current runtime.Object, threeWayMergeForUnstructured bool) ([]byte, types.PatchType, error) {
+func createPatch(target *resource.Info, current runtime.Object, threeWayMergeForCRs bool) ([]byte, types.PatchType, error) {
 	oldData, err := json.Marshal(current)
 	if err != nil {
 		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing current configuration")
@@ -660,7 +655,7 @@ func createPatch(target *resource.Info, current runtime.Object, threeWayMergeFor
 	_, isCRD := versionedObject.(*apiextv1beta1.CustomResourceDefinition)
 
 	if isUnstructured || isCRD {
-		if threeWayMergeForUnstructured {
+		if threeWayMergeForCRs {
 			// from https://github.com/kubernetes/kubectl/blob/b83b2ec7d15f286720bccf7872b5c72372cb8e80/pkg/cmd/apply/patcher.go#L129
 			preconditions := []mergepatch.PreconditionFunc{
 				mergepatch.RequireKeyUnchanged("apiVersion"),
@@ -687,7 +682,7 @@ func createPatch(target *resource.Info, current runtime.Object, threeWayMergeFor
 	return patch, types.StrategicMergePatchType, err
 }
 
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
+func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool, threeWayMergeForCRs bool) error {
 	var (
 		obj    runtime.Object
 		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
@@ -703,7 +698,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
-		patch, patchType, err := createPatch(target, currentObj, c.ThreeWayMergeForUnstructured)
+		patch, patchType, err := createPatch(target, currentObj, threeWayMergeForCRs)
 		if err != nil {
 			return errors.Wrap(err, "failed to create patch")
 		}

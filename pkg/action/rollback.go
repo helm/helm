@@ -45,6 +45,8 @@ type Rollback struct {
 	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
 	CleanupOnFail bool
 	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
+	// Also considers the state of custom resources and custom resource definitions in the cluster when upgrading (or adopting) resources.
+	ThreeWayMergeForCustomResources bool
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -188,7 +190,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	if err != nil {
 		return targetRelease, errors.Wrap(err, "unable to set metadata visitor from target release")
 	}
-	results, err := r.cfg.KubeClient.Update(current, target, r.Force)
+	results, err := r.cfg.KubeClient.Update(current, target, r.Force, r.ThreeWayMergeForCustomResources)
 
 	if err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
