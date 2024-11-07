@@ -96,7 +96,7 @@ func TestInstall(t *testing.T) {
 			golden:    "output/install-no-args.txt",
 			wantError: true,
 		},
-		// Install, re-use name
+		// Install, reuse name
 		{
 			name:   "install and replace release",
 			cmd:    "install aeneas testdata/testcharts/empty --replace",
