@@ -54,6 +54,15 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
+
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+				client.InsecureSkipTLSverify, client.PlainHTTP)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+
+			cfg.RegistryClient = registryClient
+
 			man := &downloader.Manager{
 				Out:              out,
 				ChartPath:        chartpath,
@@ -68,7 +77,7 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible
 			}
-			err := man.Build()
+			err = man.Build()
 			if e, ok := err.(downloader.ErrRepoNotFound); ok {
 				return fmt.Errorf("%s. Please add the missing repos via 'helm repo add'", e.Error())
 			}
@@ -80,6 +89,11 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	f.StringVar(&client.CertFile, "cert-file", "", "identify registry client using this SSL certificate file")
+	f.StringVar(&client.KeyFile, "key-file", "", "identify registry client using this SSL key file")
+	f.StringVar(&client.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&client.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for remote sources")
+	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use insecure HTTP connections for remote sources")
 
 	return cmd
 }

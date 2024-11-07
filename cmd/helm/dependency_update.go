@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 	"path/filepath"
 
@@ -57,6 +58,15 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
+
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+				client.InsecureSkipTLSverify, client.PlainHTTP)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+
+			cfg.RegistryClient = registryClient
+
 			man := &downloader.Manager{
 				Out:              out,
 				ChartPath:        chartpath,
@@ -79,6 +89,11 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	f.StringVar(&client.CertFile, "cert-file", "", "identify registry client using this SSL certificate file")
+	f.StringVar(&client.KeyFile, "key-file", "", "identify registry client using this SSL key file")
+	f.StringVar(&client.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&client.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for remote sources")
+	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use insecure HTTP connections for remote sources")
 
 	return cmd
 }
