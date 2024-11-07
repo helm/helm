@@ -99,7 +99,8 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 	// If all hooks are successful, check the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
-	for _, h := range executingHooks {
+	for i := len(executingHooks) - 1; i >= 0; i-- {
+		h := executingHooks[i]
 		if err := cfg.deleteHookByPolicy(h, release.HookSucceeded, timeout); err != nil {
 			return err
 		}

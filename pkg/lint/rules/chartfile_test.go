@@ -30,13 +30,13 @@ import (
 )
 
 const (
-	badCharNametDir    = "testdata/badchartname"
+	badChartNameDir    = "testdata/badchartname"
 	badChartDir        = "testdata/badchartfile"
 	anotherBadChartDir = "testdata/anotherbadchartfile"
 )
 
 var (
-	badChartNamePath         = filepath.Join(badCharNametDir, "Chart.yaml")
+	badChartNamePath         = filepath.Join(badChartNameDir, "Chart.yaml")
 	badChartFilePath         = filepath.Join(badChartDir, "Chart.yaml")
 	nonExistingChartFilePath = filepath.Join(os.TempDir(), "Chart.yaml")
 )

@@ -21,5 +21,9 @@ import (
 )
 
 func Created(fi os.FileInfo) time.Time {
-	return created(fi)
+	return modified(fi)
+}
+
+func Modified(fi os.FileInfo) time.Time {
+	return modified(fi)
 }
