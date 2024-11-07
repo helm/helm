@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: subchart2-{{ .Chart.Name }}
   labels:
-    helm.sh/hart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
 spec:
   type: {{ .Values.service.type }}
   ports:
