@@ -26,6 +26,10 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/term"
 
+	kyaml "sigs.k8s.io/kustomize/kyaml/yaml"
+	"sigs.k8s.io/kustomize/kyaml/yaml/merge2"
+
+	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/provenance"
@@ -54,7 +58,7 @@ func NewPackage() *Package {
 }
 
 // Run executes 'helm package' against the given chart and returns the path to the packaged chart.
-func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
+func (p *Package) Run(path string, vals map[string]interface{}) (string, error) {
 	ch, err := loader.LoadDir(path)
 	if err != nil {
 		return "", err
@@ -89,6 +93,51 @@ func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
 	} else {
 		// Otherwise save to set destination
 		dest = p.Destination
+	}
+
+	// If vals is not empty and the values.yaml file does not exist, then we need to generate a values.yaml file.
+	needToGenerateValuesFile := len(vals) != 0
+
+	src := &kyaml.Node{}
+	if err := src.Encode(vals); err != nil {
+		return "", err
+	}
+
+	for _, f := range ch.Raw {
+		// Always run to ensure that the values.yaml file is formatted.
+		if f.Name == chartutil.ValuesfileName {
+			dest, err := kyaml.Parse(string(f.Data))
+			if err != nil {
+				return "", err
+			}
+
+			// In the case of saving yaml comments, merges fields from src into dest.
+			rnode, err := merge2.Merge(kyaml.NewRNode(src), dest, kyaml.MergeOptions{})
+			if err != nil {
+				return "", err
+			}
+
+			data, err := rnode.String()
+			if err != nil {
+				return "", err
+			}
+			f.Data = []byte(data)
+
+			// After the file is formatted and merged, it is not necessary to generate a new values.yaml file.
+			needToGenerateValuesFile = false
+		}
+	}
+
+	if needToGenerateValuesFile {
+		data, err := kyaml.Marshal(src)
+		if err != nil {
+			return "", err
+		}
+
+		ch.Raw = append(ch.Raw, &chart.File{
+			Name: chartutil.ValuesfileName,
+			Data: data,
+		})
 	}
 
 	name, err := chartutil.Save(ch, dest)
