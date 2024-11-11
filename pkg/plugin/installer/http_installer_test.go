@@ -25,6 +25,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"testing"
@@ -67,8 +68,18 @@ func TestStripName(t *testing.T) {
 }
 
 func mockArchiveServer(extensionToContentType map[string]string) *httptest.Server {
+	// Extract and sort keys by length in descending order
+	extensions := make([]string, 0, len(extensionToContentType))
+	for ext := range extensionToContentType {
+		extensions = append(extensions, ext)
+	}
+	sort.Slice(extensions, func(i, j int) bool {
+		return len(extensions[i]) > len(extensions[j])
+	})
+
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		for ext, contentType := range extensionToContentType {
+		for _, ext := range extensions {
+			contentType := extensionToContentType[ext]
 			if strings.HasSuffix(r.URL.Path, ext) {
 				w.Header().Add("Content-Type", contentType)
 				fmt.Fprintln(w, "test")
