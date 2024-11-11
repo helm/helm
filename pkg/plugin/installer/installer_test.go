@@ -43,6 +43,6 @@ func TestIsRemoteHTTPArchive(t *testing.T) {
 	}
 
 	if !isRemoteHTTPArchive(binarySource) {
-		t.Errorf("Expected %q to be a valid archive URL", source)
+		t.Errorf("Expected %q to be a valid archive URL", binarySource)
 	}
 }
