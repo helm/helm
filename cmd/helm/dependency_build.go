@@ -68,7 +68,7 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 
 			registryClient, err := newDefaultRegistryClient(client.PlainHTTP)
 			if err != nil {
-				return fmt.Errorf("missing registry client: %w", err)
+				return fmt.Errorf("unable to create registry client: %w", err)
 			}
 			man.RegistryClient = registryClient
 
