@@ -2,7 +2,9 @@ apiVersion: v1
 description: A Helm chart for Kubernetes
 name: parentchart
 version: 0.1.0
+
 dependencies:
+
   - name: subchart1
     repository: http://localhost:10191
     version: 0.1.0
@@ -25,6 +27,17 @@ dependencies:
         parent: .
       - SCBexported2
       - SC1exported1
+    export-values:
+      - parent: values-for-the-child
+        child: merged-values
+      - parent: values-for-the-child-2
+        child: merged-values
+      - parent: exported-single-value
+        child: single-value-parent
+      - parent: values-for-the-grandchild
+        child: subcharta.merged-values
+      - explicit-export1
+      - ""
 
   - name: subchart2
     repository: http://localhost:10191
