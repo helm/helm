@@ -20,13 +20,14 @@ import (
 	"testing"
 
 	"github.com/containerd/containerd/remotes"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewClientResolverNotSupported(t *testing.T) {
 	var r remotes.Resolver
 
 	client, err := NewClient(ClientOptResolver(r))
-	if client != nil || err != errDeprecatedRemote {
-		t.Errorf("expected nil, %v, got: %v, %v", errDeprecatedRemote, client, err)
-	}
+	require.Equal(t, err, errDeprecatedRemote)
+	assert.Nil(t, client)
 }
