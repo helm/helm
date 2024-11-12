@@ -70,6 +70,8 @@ type Manager struct {
 	Keyring string
 	// SkipUpdate indicates that the repository should not be updated first.
 	SkipUpdate bool
+	// Dependencies is a list of specific dependencies to update instead of updating all.
+	Dependencies []string
 	// Getter collection for the operation
 	Getters          []getter.Provider
 	RegistryClient   *registry.Client
@@ -123,7 +125,7 @@ func (m *Manager) Build() error {
 			if v2Sum != lock.Digest {
 				return errors.New("the lock file (requirements.lock) is out of sync with the dependencies file (requirements.yaml). Please update the dependencies")
 			}
-		} else {
+		} else if len(m.Dependencies) == 0 {
 			return errors.New("the lock file (Chart.lock) is out of sync with the dependencies file (Chart.yaml). Please update the dependencies")
 		}
 	}
@@ -150,6 +152,7 @@ func (m *Manager) Build() error {
 // negotiate versions based on that. It will download the versions
 // from remote chart repositories unless SkipUpdate is true.
 func (m *Manager) Update() error {
+
 	c, err := m.loadChartDir()
 	if err != nil {
 		return err
@@ -189,9 +192,16 @@ func (m *Manager) Update() error {
 		}
 	}
 
+	// If the --dependency option is set, we want to keep the existing contents
+	// of Chart.lock and only upgrade the dependencies specified by the user.
+	depsToResolve, err := dependenciesToResolve(req, c.Lock, m.Dependencies)
+	if err != nil {
+		return err
+	}
+
 	// Now we need to find out which version of a chart best satisfies the
 	// dependencies in the Chart.yaml
-	lock, err := m.resolve(req, repoNames)
+	lock, err := m.resolve(depsToResolve, repoNames)
 	if err != nil {
 		return err
 	}
@@ -902,4 +912,55 @@ func key(name string) (string, error) {
 		return "", nil
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+// dependenciesToResolve takes the requested (req) dependencies from Chart.yaml and
+// overrides the version with the matching dependency from Chart.lock, except for those
+// dependencies which have been selected for update by the user.
+// The intention is to allow a user to update only selected dependencies in Chart.yaml
+// If no selected deps are specified, returns the original request to update all dependencies.
+// Returns an error if lock is nil or if some any unselected dependencies are missing
+// from Chart.lock.
+func dependenciesToResolve(req []*chart.Dependency, lock *chart.Lock, selected []string) ([]*chart.Dependency, error) {
+	if len(selected) == 0 {
+		return req, nil
+	}
+	if lock == nil {
+		return nil, fmt.Errorf("file Chart.lock not found, the '-d/--dependency' requires an existing Chart.lock file")
+	}
+	depsToUpdate := []*chart.Dependency{}
+	for _, dep := range req {
+		if stringSliceContains(selected, dep.Name) {
+			depsToUpdate = append(depsToUpdate, dep)
+		} else {
+			lockedDep := getDependencyByName(lock.Dependencies, dep.Name)
+			if lockedDep == nil {
+				return nil, fmt.Errorf("dependency '%s' missing from Chart.lock, this dependency must be selected with '-d/--dependency' in order to update Chart.lock", dep.Name)
+			}
+			depsToUpdate = append(depsToUpdate, lockedDep)
+		}
+	}
+	return depsToUpdate, nil
+}
+
+// stringSliceContains returns true if the slice contains the given string,
+// false otherwise.
+func stringSliceContains(slice []string, str string) bool {
+	for _, s := range slice {
+		if s == str {
+			return true
+		}
+	}
+	return false
+}
+
+// getDependencyByName returns the named dependency from the given list,
+// or nil if no matching dependency is found.
+func getDependencyByName(deps []*chart.Dependency, name string) *chart.Dependency {
+	for _, dep := range deps {
+		if dep.Name == name {
+			return dep
+		}
+	}
+	return nil
 }
