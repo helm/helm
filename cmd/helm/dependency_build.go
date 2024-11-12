@@ -55,15 +55,16 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 				chartpath = filepath.Clean(args[0])
 			}
 			man := &downloader.Manager{
-				Out:              out,
-				ChartPath:        chartpath,
-				Keyring:          client.Keyring,
-				SkipUpdate:       client.SkipRefresh,
-				Getters:          getter.All(settings),
-				RegistryClient:   cfg.RegistryClient,
-				RepositoryConfig: settings.RepositoryConfig,
-				RepositoryCache:  settings.RepositoryCache,
-				Debug:            settings.Debug,
+				Out:                  out,
+				ChartPath:            chartpath,
+				Keyring:              client.Keyring,
+				SkipUpdate:           client.SkipRefresh,
+				SkipDownloadIfExists: client.SkipDownloadIfExists,
+				Getters:              getter.All(settings),
+				RegistryClient:       cfg.RegistryClient,
+				RepositoryConfig:     settings.RepositoryConfig,
+				RepositoryCache:      settings.RepositoryCache,
+				Debug:                settings.Debug,
 			}
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible
@@ -80,6 +81,7 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
 	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	f.BoolVar(&client.SkipDownloadIfExists, "skip-download-if-exists", false, "skip download of the chart if it already exists in the charts directory")
 
 	return cmd
 }
