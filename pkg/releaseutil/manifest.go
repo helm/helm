@@ -17,8 +17,6 @@ limitations under the License.
 package releaseutil
 
 import (
-	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -33,30 +31,60 @@ type SimpleHead struct {
 	} `json:"metadata,omitempty"`
 }
 
-var sep = regexp.MustCompile("(?:^|\\s*\n)---\\s*")
-
 // SplitManifests takes a string of manifest and returns a map contains individual manifests
 func SplitManifests(bigFile string) map[string]string {
 	// Basically, we're quickly splitting a stream of YAML documents into an
 	// array of YAML docs. The file name is just a place holder, but should be
 	// integer-sortable so that manifests get output in the same order as the
 	// input (see `BySplitManifestsOrder`).
-	tpl := "manifest-%d"
-	res := map[string]string{}
 	// Making sure that any extra whitespace in YAML stream doesn't interfere in splitting documents correctly.
 	bigFileTmp := strings.TrimSpace(bigFile)
-	docs := sep.Split(bigFileTmp, -1)
-	var count int
-	for _, d := range docs {
-		if d == "" {
+	docs := splitDocs(bigFileTmp)
+	res := make(map[string]string, len(docs))
+	for count, _ := range docs {
+		res["manifest-"+strconv.Itoa(count)] = docs[count]
+	}
+	return res
+}
+
+const yamlDocumentTermination = "\n---"
+
+func splitDocs(bigFile string) []string {
+	docs := make([]string, 0)
+	docStartIdx := 0
+
+	// strip off a leading --- avoiding a special start case
+	bigFile = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(bigFile), "---"))
+
+	// using our own index so we can manually skip forward
+	i := 0
+	for i < len(bigFile) {
+		// see if we find a document termination sequence, i.e. "\n---"
+		if !strings.HasPrefix(bigFile[i:], yamlDocumentTermination) {
+			i++
 			continue
 		}
 
-		d = strings.TrimSpace(d)
-		res[fmt.Sprintf(tpl, count)] = d
-		count = count + 1
+		// this is the end of the document, slicing the bytes array
+		doc := strings.TrimSpace(bigFile[docStartIdx:i])
+
+		// ignore empty docs
+		if doc != "" {
+			docs = append(docs, doc)
+		}
+
+		// skip the document termination characters
+		docStartIdx = i + len(yamlDocumentTermination)
+		i = docStartIdx
 	}
-	return res
+
+	// append the 'rest' of the document as the last document
+	doc := strings.TrimSpace(bigFile[docStartIdx:])
+	if doc != "" {
+		docs = append(docs, doc)
+	}
+
+	return docs
 }
 
 // BySplitManifestsOrder sorts by in-file manifest order, as provided in function `SplitManifests`
