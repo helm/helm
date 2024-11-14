@@ -80,7 +80,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, client.ShowResources, false, false})
+			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowResources, false, false})
 		},
 	}
 
@@ -100,7 +100,6 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	bindOutputFlag(cmd, &outfmt)
-	f.BoolVar(&client.ShowDescription, "show-desc", false, "if set, display the description message of the named release")
 
 	f.BoolVar(&client.ShowResources, "show-resources", false, "if set, display the resources of the named release")
 
@@ -108,12 +107,11 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type statusPrinter struct {
-	release         *release.Release
-	debug           bool
-	showDescription bool
-	showResources   bool
-	showMetadata    bool
-	hideNotes       bool
+	release       *release.Release
+	debug         bool
+	showResources bool
+	showMetadata  bool
+	hideNotes     bool
 }
 
 func (s statusPrinter) WriteJSON(out io.Writer) error {
@@ -139,9 +137,6 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		_, _ = fmt.Fprintf(out, "CHART: %s\n", s.release.Chart.Metadata.Name)
 		_, _ = fmt.Fprintf(out, "VERSION: %s\n", s.release.Chart.Metadata.Version)
 		_, _ = fmt.Fprintf(out, "APP_VERSION: %s\n", s.release.Chart.Metadata.AppVersion)
-	}
-	if s.showDescription {
-		_, _ = fmt.Fprintf(out, "DESCRIPTION: %s\n", s.release.Info.Description)
 	}
 
 	if s.showResources && s.release.Info.Resources != nil && len(s.release.Info.Resources) > 0 {

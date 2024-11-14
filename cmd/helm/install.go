@@ -158,7 +158,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return errors.Wrap(err, "INSTALLATION FAILED")
 			}
 
-			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes})
+			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, client.HideNotes})
 		},
 	}
 

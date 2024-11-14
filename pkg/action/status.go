@@ -32,11 +32,6 @@ type Status struct {
 
 	Version int
 
-	// If true, display description to output format,
-	// only affect print type table.
-	// TODO Helm 4: Remove this flag and output the description by default.
-	ShowDescription bool
-
 	// ShowResources sets if the resources should be retrieved with the status.
 	// TODO Helm 4: Remove this flag and output the resources by default.
 	ShowResources bool
