@@ -39,7 +39,7 @@ The tests to be run are defined in the chart that was installed.
 
 func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewReleaseTesting(cfg)
-	var outfmt = output.Table
+	outfmt := output.Table
 	var outputLogs bool
 	var filter []string
 
@@ -72,7 +72,12 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 				return runErr
 			}
 
-			if err := outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes}); err != nil {
+			if err := outfmt.Write(out, &statusPrinter{
+				release:      rel,
+				debug:        settings.Debug,
+				showMetadata: false,
+				hideNotes:    client.HideNotes,
+			}); err != nil {
 				return err
 			}
 
