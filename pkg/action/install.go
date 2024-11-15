@@ -450,7 +450,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	}
 
 	// At this point, we can do the install. Note that before we were detecting whether to
-	// do an update, but it's not clear whether we WANT to do an update if the re-use is set
+	// do an update, but it's not clear whether we WANT to do an update if the reuse is set
 	// to true, since that is basically an upgrade operation.
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
 		_, err = i.cfg.KubeClient.Create(resources)
@@ -544,7 +544,7 @@ func (i *Install) availableName() error {
 	if st := rel.Info.Status; i.Replace && (st == release.StatusUninstalled || st == release.StatusFailed) {
 		return nil
 	}
-	return errors.New("cannot re-use a name that is still in use")
+	return errors.New("cannot reuse a name that is still in use")
 }
 
 // createRelease creates a new release object
@@ -574,7 +574,7 @@ func (i *Install) recordRelease(r *release.Release) error {
 
 // replaceRelease replaces an older release with this one
 //
-// This allows us to re-use names by superseding an existing release with a new one
+// This allows us to reuse names by superseding an existing release with a new one
 func (i *Install) replaceRelease(rel *release.Release) error {
 	hist, err := i.cfg.Releases.History(rel.Name)
 	if err != nil || len(hist) == 0 {
