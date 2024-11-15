@@ -83,7 +83,7 @@ type Upgrade struct {
 	Force bool
 	// ResetValues will reset the values to the chart's built-ins rather than merging with existing.
 	ResetValues bool
-	// ReuseValues will re-use the user's last supplied values.
+	// ReuseValues will reuse the user's last supplied values.
 	ReuseValues bool
 	// ResetThenReuseValues will reset the values to the chart's built-ins then merge with user's last supplied values.
 	ResetThenReuseValues bool
