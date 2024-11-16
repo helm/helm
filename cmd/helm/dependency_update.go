@@ -67,6 +67,7 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
+				Untar:            client.Untar,
 			}
 			if client.Verify {
 				man.Verify = downloader.VerifyAlways
@@ -78,6 +79,7 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 	f := cmd.Flags()
 	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
 	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	f.BoolVar(&client.Untar, "untar", false, "if set to true, will untar the chart after downloading it")
 	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
 
 	return cmd
