@@ -17,12 +17,12 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -65,7 +65,7 @@ func (o *repoRemoveOptions) run(out io.Writer) error {
 
 	for _, name := range o.names {
 		if !r.Remove(name) {
-			return errors.Errorf("no repo named %q found", name)
+			return fmt.Errorf("no repo named %q found", name)
 		}
 		if err := r.WriteFile(o.repoFile, 0600); err != nil {
 			return err
@@ -90,7 +90,7 @@ func removeRepoCache(root, name string) error {
 	if _, err := os.Stat(idx); os.IsNotExist(err) {
 		return nil
 	} else if err != nil {
-		return errors.Wrapf(err, "can't remove index file %s", idx)
+		return fmt.Errorf("can't remove index file %s: %w", idx, err)
 	}
 	return os.Remove(idx)
 }

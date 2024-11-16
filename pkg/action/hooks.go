@@ -17,10 +17,9 @@ package action
 
 import (
 	"bytes"
+	"fmt"
 	"sort"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
@@ -44,7 +43,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 	for _, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
-		if h.DeletePolicies == nil || len(h.DeletePolicies) == 0 {
+		if len(h.DeletePolicies) == 0 {
 			// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
 			//                 resources. For all other resource types update in place if a
 			//                 resource with the same name already exists and is owned by the
@@ -58,7 +57,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
 		if err != nil {
-			return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
+			return fmt.Errorf("unable to build kubernetes object for %s hook %s: %w", hook, h.Path, err)
 		}
 
 		// Record the time at which the hook was applied to the cluster
@@ -77,7 +76,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		if _, err := cfg.KubeClient.Create(resources); err != nil {
 			h.LastRun.CompletedAt = helmtime.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
-			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
+			return fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err)
 		}
 
 		// Watch hook resources until they have completed
@@ -131,14 +130,14 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 	if hookHasDeletePolicy(h, policy) {
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), false)
 		if err != nil {
-			return errors.Wrapf(err, "unable to build kubernetes object for deleting hook %s", h.Path)
+			return fmt.Errorf("unable to build kubernetes object for deleting hook %s: %w", h.Path, err)
 		}
 		_, errs := cfg.KubeClient.Delete(resources)
 		if len(errs) > 0 {
-			return errors.New(joinErrors(errs))
+			return joinErrors(errs, "; ")
 		}
 
-		//wait for resources until they are deleted to avoid conflicts
+		// wait for resources until they are deleted to avoid conflicts
 		if kubeClient, ok := cfg.KubeClient.(kube.InterfaceExt); ok {
 			if err := kubeClient.WaitForDelete(resources, timeout); err != nil {
 				return err
