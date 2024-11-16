@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 	"sigs.k8s.io/yaml"
@@ -183,7 +182,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 
 	// Check if the repo name is legal
 	if strings.Contains(o.name, "/") {
-		return errors.Errorf("repository name (%s) contains '/', please specify a different name without '/'", o.name)
+		return fmt.Errorf("repository name (%s) contains '/', please specify a different name without '/'", o.name)
 	}
 
 	// If the repo exists do one of two things:
@@ -192,10 +191,9 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	if !o.forceUpdate && f.Has(o.name) {
 		existing := f.Get(o.name)
 		if c != *existing {
-
 			// The input coming in for the name is different from what is already
 			// configured. Return an error.
-			return errors.Errorf("repository name (%s) already exists, please specify a different name", o.name)
+			return fmt.Errorf("repository name (%s) already exists, please specify a different name", o.name)
 		}
 
 		// The add is idempotent so do nothing
@@ -212,12 +210,12 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		r.CachePath = o.repoCache
 	}
 	if _, err := r.DownloadIndexFile(); err != nil {
-		return errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", o.url)
+		return fmt.Errorf("looks like %q is not a valid chart repository or cannot be reached: %w", o.url, err)
 	}
 
 	f.Update(&c)
 
-	if err := f.WriteFile(o.repoFile, 0600); err != nil {
+	if err := f.WriteFile(o.repoFile, 0o600); err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "%q has been added to your repositories\n", o.name)

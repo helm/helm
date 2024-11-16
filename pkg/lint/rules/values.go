@@ -17,10 +17,9 @@ limitations under the License.
 package rules
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint/support"
@@ -54,7 +53,7 @@ func ValuesWithOverrides(linter *support.Linter, values map[string]interface{}) 
 func validateValuesFileExistence(valuesPath string) error {
 	_, err := os.Stat(valuesPath)
 	if err != nil {
-		return errors.Errorf("file does not exist")
+		return fmt.Errorf("file does not exist")
 	}
 	return nil
 }
@@ -62,7 +61,7 @@ func validateValuesFileExistence(valuesPath string) error {
 func validateValuesFile(valuesPath string, overrides map[string]interface{}) error {
 	values, err := chartutil.ReadValuesFile(valuesPath)
 	if err != nil {
-		return errors.Wrap(err, "unable to parse YAML")
+		return fmt.Errorf("unable to parse YAML: %w", err)
 	}
 
 	// Helm 3.0.0 carried over the values linting from Helm 2.x, which only tests the top

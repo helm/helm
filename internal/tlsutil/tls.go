@@ -19,9 +19,8 @@ package tlsutil
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"os"
-
-	"github.com/pkg/errors"
 )
 
 // NewClientTLS returns tls.Config appropriate for client auth.
@@ -56,11 +55,11 @@ func NewClientTLS(certFile, keyFile, caFile string, insecureSkipTLSverify bool) 
 func CertPoolFromFile(filename string) (*x509.CertPool, error) {
 	b, err := os.ReadFile(filename)
 	if err != nil {
-		return nil, errors.Errorf("can't read CA file: %v", filename)
+		return nil, fmt.Errorf("can't read CA file: %v", filename)
 	}
 	cp := x509.NewCertPool()
 	if !cp.AppendCertsFromPEM(b) {
-		return nil, errors.Errorf("failed to append certificates from file: %s", filename)
+		return nil, fmt.Errorf("failed to append certificates from file: %s", filename)
 	}
 	return cp, nil
 }
@@ -72,7 +71,7 @@ func CertPoolFromFile(filename string) (*x509.CertPool, error) {
 func CertFromFilePair(certFile, keyFile string) (*tls.Certificate, error) {
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
-		return nil, errors.Wrapf(err, "can't load key pair from cert %s and key %s", certFile, keyFile)
+		return nil, fmt.Errorf("can't load key pair from cert %s and key %s: %w", certFile, keyFile, err)
 	}
 	return &cert, err
 }

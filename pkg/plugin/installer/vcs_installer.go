@@ -16,12 +16,13 @@ limitations under the License.
 package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"sort"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/Masterminds/vcs"
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/third_party/dep/fs"
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -144,7 +145,7 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 		}
 	}
 
-	return "", errors.Errorf("requested version %q does not exist for plugin %q", i.Version, i.Repo.Remote())
+	return "", fmt.Errorf("requested version %q does not exist for plugin %q", i.Version, i.Repo.Remote())
 }
 
 // setVersion attempts to checkout the version

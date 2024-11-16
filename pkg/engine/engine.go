@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"path"
@@ -26,7 +27,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -131,7 +131,9 @@ func includeFun(t *template.Template, includedNames map[string]int) func(string,
 		var buf strings.Builder
 		if v, ok := includedNames[name]; ok {
 			if v > recursionMaxNums {
-				return "", errors.Wrapf(fmt.Errorf("unable to execute template"), "rendering template has a nested reference name: %s", name)
+				return "", fmt.Errorf(
+					"rendering template has a nested reference name: %s: %w",
+					name, errors.New("unable to execute template"))
 			}
 			includedNames[name]++
 		} else {
@@ -149,7 +151,7 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 	return func(tpl string, vals interface{}) (string, error) {
 		t, err := parent.Clone()
 		if err != nil {
-			return "", errors.Wrapf(err, "cannot clone template")
+			return "", fmt.Errorf("cannot clone template: %w", err)
 		}
 
 		// Re-inject the missingkey option, see text/template issue https://github.com/golang/go/issues/43022
@@ -176,12 +178,12 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 		// text string. (Maybe we could use a hash appended to the name?)
 		t, err = t.New(parent.Name()).Parse(tpl)
 		if err != nil {
-			return "", errors.Wrapf(err, "cannot parse template %q", tpl)
+			return "", fmt.Errorf("cannot parse template %q: %w", tpl, err)
 		}
 
 		var buf strings.Builder
 		if err := t.Execute(&buf, vals); err != nil {
-			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
+			return "", fmt.Errorf("error during tpl function execution for %q: %w", tpl, err)
 		}
 
 		// See comment in renderWithReferences explaining the <no value> hack.
@@ -206,7 +208,7 @@ func (e Engine) initFunMap(t *template.Template) {
 				log.Printf("[INFO] Missing required value: %s", warn)
 				return "", nil
 			}
-			return val, errors.Errorf(warnWrap(warn))
+			return val, errors.New(warnWrap(warn))
 		} else if _, ok := val.(string); ok {
 			if val == "" {
 				if e.LintMode {
@@ -214,7 +216,7 @@ func (e Engine) initFunMap(t *template.Template) {
 					log.Printf("[INFO] Missing required value: %s", warn)
 					return "", nil
 				}
-				return val, errors.Errorf(warnWrap(warn))
+				return val, errors.New(warnWrap(warn))
 			}
 		}
 		return val, nil
@@ -258,7 +260,7 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 	// template engine.
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.Errorf("rendering template failed: %v", r)
+			err = fmt.Errorf("rendering template failed: %v", r)
 		}
 	}()
 	t := template.New("gotpl")

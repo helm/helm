@@ -17,10 +17,9 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -70,7 +69,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, errors.Errorf("uninstall: Release name is invalid: %s", name)
+		return nil, fmt.Errorf("uninstall: Release name is invalid: %s", name)
 	}
 
 	rels, err := u.cfg.Releases.History(name)
@@ -78,7 +77,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		if u.IgnoreNotFound {
 			return nil, nil
 		}
-		return nil, errors.Wrapf(err, "uninstall: Release not loaded: %s", name)
+		return nil, fmt.Errorf("uninstall: Release not loaded: %s: %w", name, err)
 	}
 	if len(rels) < 1 {
 		return nil, errMissingRelease
@@ -92,11 +91,11 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	if rel.Info.Status == release.StatusUninstalled {
 		if !u.KeepHistory {
 			if err := u.purgeReleases(rels...); err != nil {
-				return nil, errors.Wrap(err, "uninstall: Failed to purge the release")
+				return nil, fmt.Errorf("uninstall: Failed to purge the release: %w", err)
 			}
 			return &release.UninstallReleaseResponse{Release: rel}, nil
 		}
-		return nil, errors.Errorf("the release named %q is already deleted", name)
+		return nil, fmt.Errorf("the release named %q is already deleted", name)
 	}
 
 	u.cfg.Log("uninstall: Deleting %s", name)
@@ -122,7 +121,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	deletedResources, kept, errs := u.deleteRelease(rel)
 	if errs != nil {
 		u.cfg.Log("uninstall: Failed to delete release: %s", errs)
-		return nil, errors.Errorf("failed to delete release: %s", name)
+		return nil, fmt.Errorf("failed to delete release: %s", name)
 	}
 
 	if kept != "" {
@@ -155,12 +154,12 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		u.cfg.Log("purge requested for %s", name)
 		err := u.purgeReleases(rels...)
 		if err != nil {
-			errs = append(errs, errors.Wrap(err, "uninstall: Failed to purge the release"))
+			errs = append(errs, fmt.Errorf("uninstall: Failed to purge the release: %w", err))
 		}
 
 		// Return the errors that occurred while deleting the release, if any
 		if len(errs) > 0 {
-			return res, errors.Errorf("uninstallation completed with %d error(s): %s", len(errs), joinErrors(errs))
+			return res, fmt.Errorf("uninstallation completed with %d error(s): %w", len(errs), joinErrors(errs, "; "))
 		}
 
 		return res, nil
@@ -171,7 +170,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if len(errs) > 0 {
-		return res, errors.Errorf("uninstallation completed with %d error(s): %s", len(errs), joinErrors(errs))
+		return res, fmt.Errorf("uninstallation completed with %d error(s): %w", len(errs), joinErrors(errs, "; "))
 	}
 	return res, nil
 }
@@ -185,12 +184,28 @@ func (u *Uninstall) purgeReleases(rels ...*release.Release) error {
 	return nil
 }
 
-func joinErrors(errs []error) string {
-	es := make([]string, 0, len(errs))
-	for _, e := range errs {
-		es = append(es, e.Error())
+type joinedErrors struct {
+	errs []error
+	sep  string
+}
+
+func joinErrors(errs []error, sep string) error {
+	return &joinedErrors{
+		errs: errs,
+		sep:  sep,
 	}
-	return strings.Join(es, "; ")
+}
+
+func (e *joinedErrors) Error() string {
+	errs := make([]string, 0, len(e.errs))
+	for _, err := range e.errs {
+		errs = append(errs, err.Error())
+	}
+	return strings.Join(errs, e.sep)
+}
+
+func (e *joinedErrors) Unwrap() []error {
+	return e.errs
 }
 
 // deleteRelease deletes the release and returns list of delete resources and manifests that were kept in the deletion process
@@ -204,7 +219,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		// FIXME: One way to delete at this point would be to try a label-based
 		// deletion. The problem with this is that we could get a false positive
 		// and delete something that was not legitimately part of this release.
-		return nil, rel.Manifest, []error{errors.Wrap(err, "corrupted release record. You must manually delete the resources")}
+		return nil, rel.Manifest, []error{fmt.Errorf("corrupted release record. You must manually delete the resources: %w", err)}
 	}
 
 	filesToKeep, filesToDelete := filterManifestsToKeep(files)
@@ -220,7 +235,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 
 	resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
 	if err != nil {
-		return nil, "", []error{errors.Wrap(err, "unable to build kubernetes objects for delete")}
+		return nil, "", []error{fmt.Errorf("unable to build kubernetes objects for delete: %w", err)}
 	}
 	if len(resources) > 0 {
 		if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceDeletionPropagation); ok {
