@@ -17,7 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"errors"
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -113,11 +112,7 @@ func checkOwnership(obj runtime.Object, releaseName, releaseNamespace string) er
 	}
 
 	if len(errs) > 0 {
-		err := errors.New("invalid ownership metadata")
-		for _, e := range errs {
-			err = fmt.Errorf("%w; %s", err, e)
-		}
-		return err
+		return fmt.Errorf("invalid ownership metadata; %w", joinErrors(errs, "; "))
 	}
 
 	return nil

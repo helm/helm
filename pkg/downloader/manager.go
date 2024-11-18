@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	stdfs "io/fs"
 	"log"
 	"net/url"
 	"os"
@@ -253,7 +254,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		if !fi.IsDir() {
 			return fmt.Errorf("%q is not a directory", destPath)
 		}
-	} else if os.IsNotExist(err) {
+	} else if errors.Is(err, stdfs.ErrNotExist) {
 		if err := os.MkdirAll(destPath, 0755); err != nil {
 			return err
 		}
@@ -559,7 +560,7 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string, error) {
 	rf, err := loadRepoConfig(m.RepositoryConfig)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, stdfs.ErrNotExist) {
 			return make(map[string]string), nil
 		}
 		return nil, err

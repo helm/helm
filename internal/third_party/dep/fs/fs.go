@@ -35,6 +35,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -111,7 +112,7 @@ func CopyDir(src, dst string) error {
 	}
 
 	_, err = os.Stat(dst)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 	if err == nil {

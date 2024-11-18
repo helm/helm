@@ -18,6 +18,7 @@ package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 import (
 	"errors"
 	"fmt"
+	stdfs "io/fs"
 	"os"
 	"sort"
 
@@ -156,7 +157,7 @@ func (i *VCSInstaller) setVersion(repo vcs.Repo, ref string) error {
 
 // sync will clone or update a remote repo.
 func (i *VCSInstaller) sync(repo vcs.Repo) error {
-	if _, err := os.Stat(repo.LocalPath()); os.IsNotExist(err) {
+	if _, err := os.Stat(repo.LocalPath()); errors.Is(err, stdfs.ErrNotExist) {
 		debug("cloning %s to %s", repo.Remote(), repo.LocalPath())
 		return repo.Get()
 	}

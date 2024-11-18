@@ -17,8 +17,10 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -97,7 +99,7 @@ func index(dir, url, mergeTo string, json bool) error {
 	if mergeTo != "" {
 		// if index.yaml is missing then create an empty one to merge into
 		var i2 *repo.IndexFile
-		if _, err := os.Stat(mergeTo); os.IsNotExist(err) {
+		if _, err := os.Stat(mergeTo); errors.Is(err, fs.ErrNotExist) {
 			i2 = repo.NewIndexFile()
 			writeIndexFile(i2, mergeTo, json)
 		} else {

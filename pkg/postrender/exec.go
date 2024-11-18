@@ -88,7 +88,7 @@ func getFullPath(binaryPath string) (string, error) {
 	// 	// The plugins variable can actually contain multiple paths, so loop through those
 	// 	for _, p := range filepath.SplitList(pluginDir) {
 	// 		_, err := os.Stat(filepath.Join(p, binaryPath))
-	// 		if err != nil && !os.IsNotExist(err) {
+	// 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 	// 			return "", err
 	// 		} else if err == nil {
 	// 			binaryPath = filepath.Join(p, binaryPath)

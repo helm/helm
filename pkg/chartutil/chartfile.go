@@ -17,7 +17,9 @@ limitations under the License.
 package chartutil
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -68,7 +70,7 @@ func IsChartDir(dirName string) (bool, error) {
 	}
 
 	chartYaml := filepath.Join(dirName, ChartfileName)
-	if _, err := os.Stat(chartYaml); os.IsNotExist(err) {
+	if _, err := os.Stat(chartYaml); errors.Is(err, fs.ErrNotExist) {
 		return false, fmt.Errorf("no %s exists in directory %q", ChartfileName, dirName)
 	}
 

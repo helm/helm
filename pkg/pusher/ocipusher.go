@@ -18,6 +18,7 @@ package pusher
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"net/http"
 	"os"
@@ -47,7 +48,7 @@ func (pusher *OCIPusher) Push(chartRef, href string, options ...Option) error {
 func (pusher *OCIPusher) push(chartRef, href string) error {
 	stat, err := os.Stat(chartRef)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("%s: no such file", chartRef)
 		}
 		return err

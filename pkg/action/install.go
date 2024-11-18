@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/url"
 	"os"
 	"path"
@@ -634,7 +635,7 @@ func createOrOpenFile(filename string, append bool) (*os.File, error) {
 func ensureDirectoryForFile(file string) error {
 	baseDir := path.Dir(file)
 	_, err := os.Stat(baseDir)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 

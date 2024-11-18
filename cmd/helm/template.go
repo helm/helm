@@ -18,8 +18,10 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -254,7 +256,7 @@ func createOrOpenFile(filename string, append bool) (*os.File, error) {
 func ensureDirectoryForFile(file string) error {
 	baseDir := path.Dir(file)
 	_, err := os.Stat(baseDir)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 

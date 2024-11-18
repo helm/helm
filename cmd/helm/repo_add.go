@@ -18,8 +18,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -138,7 +140,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	}
 
 	b, err := os.ReadFile(o.repoFile)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 

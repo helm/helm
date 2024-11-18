@@ -18,7 +18,9 @@ package resolver
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -251,7 +253,7 @@ func GetLocalPath(repo, chartpath string) (string, error) {
 		depPath = filepath.Join(chartpath, p)
 	}
 
-	if _, err = os.Stat(depPath); os.IsNotExist(err) {
+	if _, err = os.Stat(depPath); errors.Is(err, fs.ErrNotExist) {
 		return "", fmt.Errorf("directory %s not found", depPath)
 	} else if err != nil {
 		return "", err

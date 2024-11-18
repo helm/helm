@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -87,7 +88,7 @@ func removeRepoCache(root, name string) error {
 	}
 
 	idx = filepath.Join(root, helmpath.CacheIndexFile(name))
-	if _, err := os.Stat(idx); os.IsNotExist(err) {
+	if _, err := os.Stat(idx); errors.Is(err, fs.ErrNotExist) {
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("can't remove index file %s: %w", idx, err)

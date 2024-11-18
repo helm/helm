@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -112,7 +113,7 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 	filename = filepath.Join(outDir, filename)
 	dir := filepath.Dir(filename)
 	if stat, err := os.Stat(dir); err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			if err2 := os.MkdirAll(dir, 0755); err2 != nil {
 				return "", err2
 			}
