@@ -161,5 +161,9 @@ func SelectorsForObject(object runtime.Object) (selector labels.Selector, err er
 		return nil, fmt.Errorf("selector for %T not implemented", object)
 	}
 
-	return selector, fmt.Errorf("invalid label selector: %w", err)
+	if err != nil {
+		return selector, fmt.Errorf("invalid label selector: %w", err)
+	}
+
+	return selector, nil
 }
