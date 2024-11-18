@@ -17,7 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"errors"
 	"fmt"
 	"maps"
 
