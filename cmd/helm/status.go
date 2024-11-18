@@ -43,8 +43,8 @@ The status consists of:
 - k8s namespace in which the release lives
 - state of the release (can be: unknown, deployed, uninstalled, superseded, failed, uninstalling, pending-install, pending-upgrade or pending-rollback)
 - revision of the release
-- description of the release (can be completion message or error message, need to enable --show-desc)
-- list of resources that this release consists of (need to enable --show-resources)
+- description of the release (can be completion message or error message)
+- list of resources that this release consists of
 - details on last test suite run, if applicable
 - additional notes provided by the chart
 `
