@@ -72,8 +72,11 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 	}
 	// found the secret, decode the base64 data string
 	r, err := decodeRelease(string(obj.Data["release"]))
+	if err != nil {
+		return r, fmt.Errorf("get: failed to decode data %q: %w", key, err)
+	}
 	r.Labels = filterSystemLabels(obj.ObjectMeta.Labels)
-	return r, fmt.Errorf("get: failed to decode data %q: %w", key, err)
+	return r, nil
 }
 
 // List fetches all releases and returns the list releases such
@@ -186,7 +189,10 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 	}
 	// push the secret object out into the kubiverse
 	_, err = secrets.impl.Update(context.Background(), obj, metav1.UpdateOptions{})
-	return fmt.Errorf("update: failed to update: %w", err)
+	if err != nil {
+		return fmt.Errorf("update: failed to update: %w", err)
+	}
+	return nil
 }
 
 // Delete deletes the Secret holding the release named by key.
@@ -197,7 +203,10 @@ func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 	}
 	// delete the release
 	err = secrets.impl.Delete(context.Background(), key, metav1.DeleteOptions{})
-	return rls, err
+	if err != nil {
+		return nil, err
+	}
+	return rls, nil
 }
 
 // newSecretsObject constructs a kubernetes Secret object
