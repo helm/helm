@@ -74,6 +74,24 @@ func Mock(opts *MockReleaseOptions) *Release {
 				Name:       "foo",
 				Version:    "0.1.0-beta.1",
 				AppVersion: "1.0",
+				Annotations: map[string]string{
+					"category":  "web-apps",
+					"supported": "true",
+				},
+				Dependencies: []*chart.Dependency{
+					{
+						Name:       "cool-plugin",
+						Version:    "1.0.0",
+						Repository: "https://coolplugin.io/charts",
+						Condition:  "coolPlugin.enabled",
+						Enabled:    true,
+					},
+					{
+						Name:      "crds",
+						Version:   "2.7.1",
+						Condition: "crds.enabled",
+					},
+				},
 			},
 			Templates: []*chart.File{
 				{Name: "templates/foo.tpl", Data: []byte(MockManifest)},
