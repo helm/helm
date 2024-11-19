@@ -83,8 +83,8 @@ func renameByCopy(src, dst string) error {
 		return fmt.Errorf("rename fallback failed: cannot rename %s to %s: %w", src, dst, cerr)
 	}
 
-	if cerr = os.RemoveAll(src); cerr != nil {
-		return fmt.Errorf("cannot delete %s: %w", src, cerr)
+	if err := os.RemoveAll(src); err != nil {
+		return fmt.Errorf("cannot delete %s: %w", src, err)
 	}
 
 	return nil
