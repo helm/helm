@@ -48,7 +48,13 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 	for i, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
-		cfg.hookSetDeletePolicy(h)
+		if h.DeletePolicies == nil || len(h.DeletePolicies) == 0 {
+			// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
+			//                 resources. For all other resource types update in place if a
+			//                 resource with the same name already exists and is owned by the
+			//                 current release.
+			h.DeletePolicies = []release.HookDeletePolicy{release.HookBeforeHookCreation}
+		}
 
 		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation, waitStrategy, timeout); err != nil {
 			return err
