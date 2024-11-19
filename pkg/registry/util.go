@@ -207,7 +207,7 @@ func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[
 		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationSource, meta.Sources[0])
 	}
 
-	if len(meta.Maintainers) > 0 {
+	if meta.Maintainers != nil && len(meta.Maintainers) > 0 {
 		var maintainerSb strings.Builder
 
 		for maintainerIdx, maintainer := range meta.Maintainers {
