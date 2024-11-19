@@ -75,7 +75,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 
-			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CAFile,
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
@@ -131,7 +131,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&client.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.BoolVar(&client.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
 	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
-	f.StringVar(&client.CAFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.StringVar(&client.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 
 	return cmd
 }

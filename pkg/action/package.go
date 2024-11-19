@@ -51,7 +51,7 @@ type Package struct {
 	Password              string
 	CertFile              string
 	KeyFile               string
-	CAFile                string
+	CaFile                string
 	InsecureSkipTLSverify bool
 }
 

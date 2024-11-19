@@ -54,7 +54,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
-			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CAFile,
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
