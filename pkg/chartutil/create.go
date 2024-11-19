@@ -179,7 +179,9 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
-# -- How the service is exposed via gateway-apis HTTPRoute.
+# -- Expose the service via gateway-api HTTPRoute
+# Requires Gateway API resources and suitable controller installed incluster
+# (see: https://gateway-api.sigs.k8s.io/guides/)
 httpRoute:
   # -- HTTPRoute enabled.
   enabled: false
