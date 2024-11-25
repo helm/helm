@@ -95,7 +95,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		Short:        "The Helm package manager for Kubernetes.",
 		Long:         globalUsage,
 		SilenceUsage: true,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			cpuprof, err := cmd.Flags().GetString("cpuprofile")
 			if err != nil {
 				log.Printf("Warning: Failed to get cpuprofile flag: %v", err)
@@ -105,7 +105,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 				log.Printf("Warning: Failed to start profiling: %v", err)
 			}
 		},
-		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+		PersistentPostRun: func(cmd *cobra.Command, _ []string) {
 			memprof, err := cmd.Flags().GetString("memprofile")
 			if err != nil {
 				log.Printf("Warning: Failed to get memprofile flag: %v", err)
