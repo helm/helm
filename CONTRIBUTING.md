@@ -276,11 +276,23 @@ Like any good open source project, we use Pull Requests (PRs) to track code chan
       or explicitly request another OWNER do that for them.
     - If the owner of a PR is _not_ listed in `OWNERS`, any core maintainer may merge the PR.
 
-#### Documentation PRs
+### Documentation PRs
 
 Documentation PRs should be made on the docs repo: <https://github.com/helm/helm-www>. Keeping Helm's documentation up to date is highly desirable, and is recommended for all user facing changes. Accurate and helpful documentation is critical for effectively communicating Helm's behavior to a wide audience.
 
 Small, ad-hoc changes/PRs to Helm which introduce user facing changes, which would benefit from documentation changes, should apply the `docs needed` label. Larger changes associated with a HIP should track docs via that HIP. The `docs needed` label doesn't block PRs, and maintainers/PR reviewers should apply discretion judging in whether the `docs needed` label should be applied.
+
+### Testing PRs
+
+During development, you need to add automated tests where possible. There are a few `make test*` targets that you can use to execute your unit or integration tests. If your contribution requires profiling to check memory and/or CPU usage, you can use `--cpuprofile` and/or `--memprofile` global cli flags to run collect runtime profiling data for analysis. You can use Golang's [pprof](https://github.com/google/pprof/blob/main/doc/README.md) tool to inspect the profiling data.
+
+Example invocation that collects profiling data
+```
+helm show all bitnami/nginx --memprofile mem.prof --cpuprofile cpu.prof
+
+# Visualize graphs. You need to have installed graphviz in you system
+go tool pprof -http=":8000" cpu.prof
+```
 
 ## The Triager
 

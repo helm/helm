@@ -95,6 +95,26 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		Short:        "The Helm package manager for Kubernetes.",
 		Long:         globalUsage,
 		SilenceUsage: true,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			cpuprof, err := cmd.Flags().GetString("cpuprofile")
+			if err != nil {
+				log.Printf("Warning: Failed to get cpuprofile flag: %v", err)
+			}
+
+			if err := startProfiling(cpuprof); err != nil {
+				log.Printf("Warning: Failed to start profiling: %v", err)
+			}
+		},
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			memprof, err := cmd.Flags().GetString("memprofile")
+			if err != nil {
+				log.Printf("Warning: Failed to get memprofile flag: %v", err)
+			}
+
+			if err := stopProfiling(memprof); err != nil {
+				log.Printf("Warning: Failed to stop profiling: %v", err)
+			}
+		},
 	}
 	flags := cmd.PersistentFlags()
 
@@ -205,6 +225,9 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 
 	// Check for expired repositories
 	checkForExpiredRepos(settings.RepositoryConfig)
+
+	// CPU and memory profiling flags that are available to all commands
+	addProfilingFlags(cmd)
 
 	return cmd, nil
 }
