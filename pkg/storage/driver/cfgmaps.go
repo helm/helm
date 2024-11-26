@@ -245,9 +245,9 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigM
 	}
 
 	// apply custom labels
-	lbs.fromMap(rls.Labels)
+	lbs.fromMap(filterSystemLabels(rls.Labels))
 
-	// apply labels
+	// apply system labels
 	lbs.set("name", rls.Name)
 	lbs.set("owner", owner)
 	lbs.set("status", rls.Info.Status.String())
