@@ -79,7 +79,7 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 		cfgmaps.Log("get: failed to decode data %q: %s", key, err)
 		return nil, err
 	}
-	r.Labels = filterSystemLabels(obj.ObjectMeta.Labels)
+	r.Labels = obj.ObjectMeta.Labels
 	// return the release object
 	return r, nil
 }

@@ -73,7 +73,7 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 	}
 	// found the secret, decode the base64 data string
 	r, err := decodeRelease(string(obj.Data["release"]))
-	r.Labels = filterSystemLabels(obj.ObjectMeta.Labels)
+	r.Labels = obj.ObjectMeta.Labels
 	return r, errors.Wrapf(err, "get: failed to decode data %q", key)
 }
 

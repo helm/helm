@@ -46,6 +46,7 @@ func TestSecretGet(t *testing.T) {
 		t.Fatalf("Failed to get release: %s", err)
 	}
 	// compare fetched release with original
+	got.Labels = filterSystemLabels(got.Labels)
 	if !reflect.DeepEqual(rel, got) {
 		t.Errorf("Expected {%v}, got {%v}", rel, got)
 	}
@@ -78,6 +79,7 @@ func TestUNcompressedSecretGet(t *testing.T) {
 		t.Fatalf("Failed to get release: %s", err)
 	}
 	// compare fetched release with original
+	got.Labels = filterSystemLabels(got.Labels)
 	if !reflect.DeepEqual(rel, got) {
 		t.Errorf("Expected {%v}, got {%v}", rel, got)
 	}
@@ -184,7 +186,12 @@ func TestSecretCreate(t *testing.T) {
 		t.Fatalf("Failed to get release with key %q: %s", key, err)
 	}
 
+	// check release has actually been created
+	if _, exists := got.Labels["createdAt"]; !exists {
+		t.Errorf("Expected field %s", "createdAt")
+	}
 	// compare created release with original
+	got.Labels = filterSystemLabels(got.Labels)
 	if !reflect.DeepEqual(rel, got) {
 		t.Errorf("Expected {%v}, got {%v}", rel, got)
 	}
@@ -217,6 +224,9 @@ func TestSecretUpdate(t *testing.T) {
 	if rel.Info.Status != got.Info.Status {
 		t.Errorf("Expected status %s, got status %s", rel.Info.Status.String(), got.Info.Status.String())
 	}
+	if _, exists := got.Labels["modifiedAt"]; !exists {
+		t.Errorf("Expected field %s", "modifiedAt")
+	}
 }
 
 func TestSecretDelete(t *testing.T) {
@@ -239,6 +249,7 @@ func TestSecretDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to delete release with key %q: %s", key, err)
 	}
+	rls.Labels = filterSystemLabels(rls.Labels)
 	if !reflect.DeepEqual(rel, rls) {
 		t.Errorf("Expected {%v}, got {%v}", rel, rls)
 	}

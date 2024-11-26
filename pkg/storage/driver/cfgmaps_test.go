@@ -46,6 +46,7 @@ func TestConfigMapGet(t *testing.T) {
 		t.Fatalf("Failed to get release: %s", err)
 	}
 	// compare fetched release with original
+	got.Labels = filterSystemLabels(got.Labels)
 	if !reflect.DeepEqual(rel, got) {
 		t.Errorf("Expected {%v}, got {%v}", rel, got)
 	}
@@ -78,6 +79,7 @@ func TestUncompressedConfigMapGet(t *testing.T) {
 		t.Fatalf("Failed to get release: %s", err)
 	}
 	// compare fetched release with original
+	got.Labels = filterSystemLabels(got.Labels)
 	if !reflect.DeepEqual(rel, got) {
 		t.Errorf("Expected {%v}, got {%v}", rel, got)
 	}
@@ -185,6 +187,7 @@ func TestConfigMapCreate(t *testing.T) {
 	}
 
 	// compare created release with original
+	got.Labels = filterSystemLabels(got.Labels)
 	if !reflect.DeepEqual(rel, got) {
 		t.Errorf("Expected {%v}, got {%v}", rel, got)
 	}
@@ -239,6 +242,7 @@ func TestConfigMapDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to delete release with key %q: %s", key, err)
 	}
+	rls.Labels = filterSystemLabels(rls.Labels)
 	if !reflect.DeepEqual(rel, rls) {
 		t.Errorf("Expected {%v}, got {%v}", rel, rls)
 	}
