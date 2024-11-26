@@ -120,6 +120,7 @@ type Upgrade struct {
 	// TakeOwnership will skip the check for helm annotations and adopt all existing resources.
 	TakeOwnership bool
 	// Also considers the state of custom resources and custom resource definitions in the cluster when upgrading (or adopting) resources.
+	// TODO Helm 4: Remove this config and always merge custom resources
 	ThreeWayMergeForCustomResources bool
 }
 
