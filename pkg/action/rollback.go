@@ -45,7 +45,8 @@ type Rollback struct {
 	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
 	CleanupOnFail bool
 	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
-	// Also considers the state of custom resources and custom resource definitions in the cluster when upgrading (or adopting) resources.
+	// Also considers the state of custom resources and custom resource definitions in the cluster when downgrading resources.
+	// TODO Helm 4: Remove this config and always merge custom resources
 	ThreeWayMergeForCustomResources bool
 }
 

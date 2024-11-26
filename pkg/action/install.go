@@ -113,6 +113,7 @@ type Install struct {
 	// TakeOwnership will ignore the check for helm annotations and take ownership of the resources.
 	TakeOwnership bool
 	// Also considers the state of custom resources and custom resource definitions in the cluster when adopting resources.
+	// TODO Helm 4: Remove this config and always merge custom resources
 	ThreeWayMergeForCustomResources bool
 	PostRenderer                    postrender.PostRenderer
 	// Lock to control raceconditions when the process receives a SIGTERM
