@@ -313,6 +313,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		cancel()
 	}()
 
+	chartRequested.IndexOverride = valueOpts.IndexOverride
 	return client.RunWithContext(ctx, chartRequested, vals)
 }
 
