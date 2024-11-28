@@ -33,6 +33,7 @@ package fs
 
 import (
 	"io"
+	"k8s.io/utils/strings/slices"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -67,7 +68,7 @@ func RenameWithFallback(src, dst string) error {
 func renameByCopy(src, dst string) error {
 	var cerr error
 	if dir, _ := IsDir(src); dir {
-		cerr = CopyDir(src, dst)
+		cerr = CopyDir(src, dst, []string{})
 		if cerr != nil {
 			cerr = errors.Wrap(cerr, "copying directory failed")
 		}
@@ -92,7 +93,7 @@ var (
 
 // CopyDir recursively copies a directory tree, attempting to preserve permissions.
 // Source directory must exist, destination directory must *not* exist.
-func CopyDir(src, dst string) error {
+func CopyDir(src, dst string, dirs_to_ignore []string) error {
 	src = filepath.Clean(src)
 	dst = filepath.Clean(dst)
 
@@ -128,8 +129,10 @@ func CopyDir(src, dst string) error {
 		dstPath := filepath.Join(dst, entry.Name())
 
 		if entry.IsDir() {
-			if err = CopyDir(srcPath, dstPath); err != nil {
-				return errors.Wrap(err, "copying directory failed")
+			if !slices.Contains(dirs_to_ignore, entry.Name()) {
+				if err = CopyDir(srcPath, dstPath, dirs_to_ignore); err != nil {
+					return errors.Wrap(err, "copying directory failed")
+				}
 			}
 		} else {
 			// This will include symlinks, which is what we want when
