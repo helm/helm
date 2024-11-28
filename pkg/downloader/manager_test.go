@@ -290,6 +290,54 @@ version: 0.1.0`
 	}
 }
 
+func TestBatchDownloadAll(t *testing.T) {
+	chartPath := t.TempDir()
+	m := &Manager{
+		Out:              new(bytes.Buffer),
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		ChartPath:        chartPath,
+	}
+	signtest, err := loader.LoadDir(filepath.Join("testdata", "signtest"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := chartutil.SaveDir(signtest, filepath.Join(chartPath, "testdata")); err != nil {
+		t.Fatal(err)
+	}
+
+	local, err := loader.LoadDir(filepath.Join("testdata", "local-subchart"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := chartutil.SaveDir(local, filepath.Join(chartPath, "charts")); err != nil {
+		t.Fatal(err)
+	}
+
+	signDep := &chart.Dependency{
+		Name:       signtest.Name(),
+		Repository: "file://./testdata/signtest",
+		Version:    signtest.Metadata.Version,
+	}
+	localDep := &chart.Dependency{
+		Name:       local.Name(),
+		Repository: "",
+		Version:    local.Metadata.Version,
+	}
+
+	// create a 'tmpcharts' directory to test #5567
+	if err := os.MkdirAll(filepath.Join(chartPath, "tmpcharts"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.batchDownloadAll([]*chart.Dependency{signDep, localDep}); err != nil {
+		t.Error(err)
+	}
+
+	if _, err := os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz")); os.IsNotExist(err) {
+		t.Error(err)
+	}
+}
+
 func TestUpdateBeforeBuild(t *testing.T) {
 	// Set up a fake repo
 	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
