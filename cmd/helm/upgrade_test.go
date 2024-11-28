@@ -196,7 +196,7 @@ func TestUpgradeWithValue(t *testing.T) {
 	store.Create(relMock(releaseName, 3, ch))
 
 	cmd := fmt.Sprintf("upgrade %s --set favoriteDrink=tea '%s'", releaseName, chartPath)
-	_, _, err := executeActionCommandC(store, cmd)
+	_, _, err := executeActionCommandC(store, cmd, nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -223,7 +223,7 @@ func TestUpgradeWithStringValue(t *testing.T) {
 	store.Create(relMock(releaseName, 3, ch))
 
 	cmd := fmt.Sprintf("upgrade %s --set-string favoriteDrink=coffee '%s'", releaseName, chartPath)
-	_, _, err := executeActionCommandC(store, cmd)
+	_, _, err := executeActionCommandC(store, cmd, nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -251,7 +251,7 @@ func TestUpgradeInstallWithSubchartNotes(t *testing.T) {
 	store.Create(relMock(releaseName, 1, ch))
 
 	cmd := fmt.Sprintf("upgrade %s -i --render-subchart-notes '%s'", releaseName, "testdata/testcharts/chart-with-subchart-notes")
-	_, _, err := executeActionCommandC(store, cmd)
+	_, _, err := executeActionCommandC(store, cmd, nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -283,7 +283,7 @@ func TestUpgradeWithValuesFile(t *testing.T) {
 	store.Create(relMock(releaseName, 3, ch))
 
 	cmd := fmt.Sprintf("upgrade %s --values testdata/testcharts/upgradetest/values.yaml '%s'", releaseName, chartPath)
-	_, _, err := executeActionCommandC(store, cmd)
+	_, _, err := executeActionCommandC(store, cmd, nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -316,7 +316,7 @@ func TestUpgradeWithValuesFromStdin(t *testing.T) {
 	}
 
 	cmd := fmt.Sprintf("upgrade %s --values - '%s'", releaseName, chartPath)
-	_, _, err = executeActionCommandStdinC(store, in, cmd)
+	_, _, err = executeActionCommandStdinC(store, in, cmd, nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -346,7 +346,7 @@ func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
 	}
 
 	cmd := fmt.Sprintf("upgrade %s -f - --install '%s'", releaseName, chartPath)
-	_, _, err = executeActionCommandStdinC(store, in, cmd)
+	_, _, err = executeActionCommandStdinC(store, in, cmd, nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -450,7 +450,7 @@ func TestUpgradeInstallWithLabels(t *testing.T) {
 		"key2": "val2",
 	}
 	cmd := fmt.Sprintf("upgrade %s --install --labels key1=val1,key2=val2 '%s'", releaseName, chartPath)
-	_, _, err := executeActionCommandC(store, cmd)
+	_, _, err := executeActionCommandC(store, cmd, nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -515,7 +515,7 @@ func TestUpgradeWithDryRun(t *testing.T) {
 	// First install a release into the store so that future --dry-run attempts
 	// have it available.
 	cmd := fmt.Sprintf("upgrade %s --install '%s'", releaseName, chartPath)
-	_, _, err := executeActionCommandC(store, cmd)
+	_, _, err := executeActionCommandC(store, cmd, nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -526,7 +526,7 @@ func TestUpgradeWithDryRun(t *testing.T) {
 	}
 
 	cmd = fmt.Sprintf("upgrade %s --dry-run '%s'", releaseName, chartPath)
-	_, out, err := executeActionCommandC(store, cmd)
+	_, out, err := executeActionCommandC(store, cmd, nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -543,7 +543,7 @@ func TestUpgradeWithDryRun(t *testing.T) {
 
 	// Ensure the secret is not in the output
 	cmd = fmt.Sprintf("upgrade %s --dry-run --hide-secret '%s'", releaseName, chartPath)
-	_, out, err = executeActionCommandC(store, cmd)
+	_, out, err = executeActionCommandC(store, cmd, nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -560,7 +560,7 @@ func TestUpgradeWithDryRun(t *testing.T) {
 
 	// Ensure there is an error when --hide-secret used without dry-run
 	cmd = fmt.Sprintf("upgrade %s --hide-secret '%s'", releaseName, chartPath)
-	_, _, err = executeActionCommandC(store, cmd)
+	_, _, err = executeActionCommandC(store, cmd, nil, nil)
 	if err == nil {
 		t.Error("expected error when --hide-secret used without --dry-run")
 	}

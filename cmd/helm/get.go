@@ -45,6 +45,7 @@ func newGetCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	cmd.AddCommand(newGetAllCmd(cfg, out))
+	cmd.AddCommand(newGetDeployedCmd(cfg, out))
 	cmd.AddCommand(newGetValuesCmd(cfg, out))
 	cmd.AddCommand(newGetManifestCmd(cfg, out))
 	cmd.AddCommand(newGetHooksCmd(cfg, out))

@@ -262,7 +262,7 @@ func TestRepoAddWithPasswordFromStdin(t *testing.T) {
 	const username = "username"
 	cmd := fmt.Sprintf("repo add %s %s --repository-config %s --repository-cache %s --username %s --password-stdin", testName, srv.URL(), repoFile, tmpdir, username)
 	var result string
-	_, result, err = executeActionCommandStdinC(store, in, cmd)
+	_, result, err = executeActionCommandStdinC(store, in, cmd, nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}

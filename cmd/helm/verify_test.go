@@ -72,7 +72,7 @@ func TestVerifyCmd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, out, err := executeActionCommand(tt.cmd)
+			_, out, err := executeActionCommand(tt.cmd, nil, nil)
 			if tt.wantError {
 				if err == nil {
 					t.Errorf("Expected error, but got none: %q", out)
