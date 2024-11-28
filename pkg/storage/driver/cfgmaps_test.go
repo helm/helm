@@ -17,11 +17,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
-	v1 "k8s.io/api/core/v1"
-
 	rspb "helm.sh/helm/v3/pkg/release"
+	v1 "k8s.io/api/core/v1"
 )
 
 func TestConfigMapName(t *testing.T) {
@@ -188,6 +188,12 @@ func TestConfigMapCreate(t *testing.T) {
 	if !reflect.DeepEqual(rel, got) {
 		t.Errorf("Expected {%v}, got {%v}", rel, got)
 	}
+
+	//  configmap overhead entity limit
+	if err := cfgmaps.Create(testKey("large-chart", 1), releaseStub("large-chart", 1, "", rspb.StatusDeployed)); !strings.Contains(err.Error(), "storage limit: Request entity too large") {
+		t.Errorf("Expected {%v}, got {%v}", "release: storage limit: Request entity too large: Request entity too large: limit is 3145728", err)
+	}
+
 }
 
 func TestConfigMapUpdate(t *testing.T) {
