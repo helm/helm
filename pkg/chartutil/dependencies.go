@@ -303,8 +303,10 @@ func processImportValues(c *chart.Chart, merge bool) error {
 	if merge {
 		// deep copying the cvals as there are cases where pointers can end
 		// up in the cvals when they are copied onto b in ways that break things.
-		cvals = deepCopyMap(cvals)
-		c.Values = MergeTables(cvals, b)
+		// Merge dependencies in the chart values-file first
+		b = MergeTables(deepCopyMap(c.Values), b)
+		// next merge sub-chart values in the chart-values merged with the dependencies
+		c.Values = MergeTables(deepCopyMap(b), cvals)
 	} else {
 		// Trimming the nil values from cvals is needed for backwards compatibility.
 		// Previously, the b value had been populated with cvals along with some
