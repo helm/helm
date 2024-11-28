@@ -62,6 +62,11 @@ func TestRollbackCmd(t *testing.T) {
 		golden: "output/rollback-wait-for-jobs.txt",
 		rels:   rels,
 	}, {
+		name:   "rollback a release with source hooks",
+		cmd:    "rollback funny-honey 1 --use-source-hooks",
+		golden: "output/rollback-use-source-hooks.txt",
+		rels:   rels,
+	}, {
 		name:   "rollback a release without revision",
 		cmd:    "rollback funny-honey",
 		golden: "output/rollback-no-revision.txt",
