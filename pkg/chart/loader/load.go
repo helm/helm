@@ -81,7 +81,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			if c.Metadata == nil {
 				c.Metadata = new(chart.Metadata)
 			}
-			if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
+			if err := yaml.UnmarshalStrict(f.Data, c.Metadata); err != nil {
 				return c, errors.Wrap(err, "cannot load Chart.yaml")
 			}
 			// NOTE(bacongobbler): while the chart specification says that APIVersion must be set,
@@ -99,12 +99,12 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			continue
 		case f.Name == "Chart.lock":
 			c.Lock = new(chart.Lock)
-			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
+			if err := yaml.UnmarshalStrict(f.Data, &c.Lock); err != nil {
 				return c, errors.Wrap(err, "cannot load Chart.lock")
 			}
 		case f.Name == "values.yaml":
 			c.Values = make(map[string]interface{})
-			if err := yaml.Unmarshal(f.Data, &c.Values); err != nil {
+			if err := yaml.UnmarshalStrict(f.Data, &c.Values); err != nil {
 				return c, errors.Wrap(err, "cannot load values.yaml")
 			}
 		case f.Name == "values.schema.json":
@@ -119,7 +119,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			if c.Metadata.APIVersion != chart.APIVersionV1 {
 				log.Printf("Warning: Dependencies are handled in Chart.yaml since apiVersion \"v2\". We recommend migrating dependencies to Chart.yaml.")
 			}
-			if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
+			if err := yaml.UnmarshalStrict(f.Data, c.Metadata); err != nil {
 				return c, errors.Wrap(err, "cannot load requirements.yaml")
 			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
@@ -128,7 +128,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		// Deprecated: requirements.lock is deprecated use Chart.lock.
 		case f.Name == "requirements.lock":
 			c.Lock = new(chart.Lock)
-			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
+			if err := yaml.UnmarshalStrict(f.Data, &c.Lock); err != nil {
 				return c, errors.Wrap(err, "cannot load requirements.lock")
 			}
 			if c.Metadata == nil {
