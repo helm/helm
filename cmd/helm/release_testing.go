@@ -72,7 +72,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 				return runErr
 			}
 
-			if err := outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes}); err != nil {
+			if err := outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, client.HideNotes}); err != nil {
 				return err
 			}
 
