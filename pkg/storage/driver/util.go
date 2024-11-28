@@ -19,9 +19,14 @@ package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
+	"os"
 
 	rspb "helm.sh/helm/v3/pkg/release"
 )
@@ -39,12 +44,31 @@ func encodeRelease(rls *rspb.Release) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	encryptionAlgorithm := os.Getenv("HELM_RELEASE_ENCRYPTION_ALGO")
+	encryptionKey := os.Getenv("HELM_RELEASE_ENCRYPTION_KEY")
+
+	var data []byte
+
+	switch encryptionAlgorithm {
+	case "aes":
+		data, err = encryptDataAES(b, []byte(encryptionKey))
+	case "":
+		data = b
+	default:
+		return "", fmt.Errorf("error encrypting release: unknown algorithm %v", encryptionAlgorithm)
+	}
+
+	if err != nil {
+		return "", err
+	}
+
 	var buf bytes.Buffer
 	w, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
 	if err != nil {
 		return "", err
 	}
-	if _, err = w.Write(b); err != nil {
+	if _, err = w.Write(data); err != nil {
 		return "", err
 	}
 	w.Close()
@@ -78,12 +102,81 @@ func decodeRelease(data string) (*rspb.Release, error) {
 		b = b2
 	}
 
+	encryptionAlgorithm := os.Getenv("HELM_RELEASE_ENCRYPTION_ALGO")
+	encryptionKey := os.Getenv("HELM_RELEASE_ENCRYPTION_KEY")
+
+	var releaseBytes []byte
+
+	switch encryptionAlgorithm {
+	case "aes":
+		releaseBytes, err = decryptDataAES(b, []byte(encryptionKey))
+	case "":
+		releaseBytes = b
+	default:
+		return nil, fmt.Errorf("error decrypting release: unknown algorithm %v", encryptionAlgorithm)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
 	var rls rspb.Release
 	// unmarshal release object bytes
-	if err := json.Unmarshal(b, &rls); err != nil {
+	if err := json.Unmarshal(releaseBytes, &rls); err != nil {
 		return nil, err
 	}
 	return &rls, nil
+}
+
+// encryptDataAES encrypts data using AES in Galois/Counter Mode (GCM) with the
+// provided key. The result includes both nonce and encrypted content.
+func encryptDataAES(data []byte, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+
+	ciphertext := gcm.Seal(nil, nonce, data, nil)
+	return append(nonce, ciphertext...), nil
+}
+
+// decryptDataAES decrypts data using AES (Advanced Encryption Standard) in
+// Galois/Counter Mode (GCM). It takes encrypted data and an encryption key,
+// returning the original plaintext content.
+func decryptDataAES(encryptedData []byte, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(encryptedData) < nonceSize {
+		return nil, fmt.Errorf("error decrypting data: ciphertext too short")
+	}
+
+	nonce, ciphertext := encryptedData[:nonceSize], encryptedData[nonceSize:]
+
+	decryptedData, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return decryptedData, nil
 }
 
 // Checks if label is system
