@@ -102,6 +102,11 @@ func TestTemplateCmd(t *testing.T) {
 			golden: "output/template-show-only-multiple.txt",
 		},
 		{
+			name:   "check chart with multiple dependencies that share global value",
+			cmd:    fmt.Sprintf("template '%s' --set global.ingress.annotations.test=global", "testdata/testcharts/chart-with-subchart-global"),
+			golden: "output/template-with-subchart-global-value.txt",
+		},
+		{
 			name:   "template with show-only glob",
 			cmd:    fmt.Sprintf("template '%s' --show-only templates/subdir/role*", chartPath),
 			golden: "output/template-show-only-glob.txt",
