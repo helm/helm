@@ -181,14 +181,6 @@ func coalesceGlobals(printf printFn, dest, src map[string]interface{}, prefix st
 	dest[GlobalKey] = dg
 }
 
-func copyMap(src map[string]interface{}) map[string]interface{} {
-	m := make(map[string]interface{}, len(src))
-	for k, v := range src {
-		m[k] = v
-	}
-	return m
-}
-
 // coalesceValues builds up a values map for a particular chart.
 //
 // Values in v will override the values in the chart.
@@ -278,7 +270,7 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 		if dv, ok := dst[key]; ok && !merge && dv == nil {
 			delete(dst, key)
 		} else if !ok {
-			dst[key] = val
+			dst[key] = stringCollectionsDeepCopy(val)
 		} else if istable(val) {
 			if istable(dv) {
 				coalesceTablesFullKey(printf, dv.(map[string]interface{}), val.(map[string]interface{}), fullkey, merge)
