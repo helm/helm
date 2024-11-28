@@ -698,3 +698,75 @@ func TestConcatPrefix(t *testing.T) {
 	assert.Equal(t, "b", concatPrefix("", "b"))
 	assert.Equal(t, "a.b", concatPrefix("a", "b"))
 }
+
+func Test_coalesceListsFullKey(t *testing.T) {
+	type args struct {
+		dst   []any
+		src   []any
+		merge bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want []any
+	}{
+		{
+			name: "case 1",
+			args: args{
+				dst: []any{"a"},
+				src: []any{"c", "d"},
+			},
+			want: []any{"a", "d"},
+		},
+		{
+			name: "case 2",
+			args: args{
+				dst: []any{"a", "b"},
+				src: []any{"c", "d"},
+			},
+			want: []any{"a", "b"},
+		},
+		{
+			name: "case 3",
+			args: args{
+				dst: []any{"a"},
+				src: []any{map[string]string{
+					"key": "value",
+				}, "d"},
+				merge: true,
+			},
+			want: []any{"a", "d"},
+		},
+		{
+			name: "case 4",
+			args: args{
+				dst:   []any{"a"},
+				src:   []any{3, "d"},
+				merge: true,
+			},
+			want: []any{"a", "d"},
+		},
+		{
+			name: "case 5",
+			args: args{
+				dst: []any{map[string]any{
+					"key": "value",
+				}, "b"},
+				src: []any{map[string]any{
+					"foo": "bar",
+				}, "d"},
+				merge: true,
+			},
+			want: []any{map[string]any{
+				"key": "value",
+				"foo": "bar",
+			}, "b"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := coalesceListsFullKey(t.Logf, tt.args.dst, tt.args.src, "", tt.args.merge)
+			assert.Equalf(t, tt.want, got, "coalesceListsFullKey() = %v, want %v", got, tt.want)
+		})
+	}
+}

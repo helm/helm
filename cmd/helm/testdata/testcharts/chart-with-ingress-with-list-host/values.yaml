@@ -1,0 +1,23 @@
+# Kubernetes Service settings
+service:
+  externalPort: 9898
+
+ingress:
+  enabled: true
+  className: myclassname
+  additionalLabels: {}
+  annotations: {}
+  hosts:
+    - host: myhost1.local
+    - host: myhost2.local
+    - host: myhost3.local
+  tls: []
+
+certificate:
+  create: true
+  issuerRef:
+    kind: ClusterIssuer
+    name: self-signed
+  dnsNames:
+    - podinfo
+    - [myhost1.local, myhost2.local, myhost3.local]
