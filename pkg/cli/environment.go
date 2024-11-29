@@ -1,5 +1,6 @@
 /*
 Copyright The Helm Authors.
+Copyright (c) 2024 Rakuten Symphony India.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -89,6 +90,9 @@ type EnvSettings struct {
 	BurstLimit int
 	// QPS is queries per second which may be used to avoid throttling.
 	QPS float32
+	// Add fields to authenticate for Vault or remote repo
+	Token        string
+	VaultAddress string
 }
 
 func New() *EnvSettings {
@@ -109,6 +113,8 @@ func New() *EnvSettings {
 		RepositoryCache:           envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 		QPS:                       envFloat32Or("HELM_QPS", defaultQPS),
+		VaultAddress:              os.Getenv("VAULT_ADDR"),
+		Token:                     os.Getenv("VAULT_TOKEN"),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -160,6 +166,8 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the directory containing cached repository indexes")
 	fs.IntVar(&s.BurstLimit, "burst-limit", s.BurstLimit, "client-side default throttling limit")
 	fs.Float32Var(&s.QPS, "qps", s.QPS, "queries per second used when communicating with the Kubernetes API, not including bursting")
+	fs.StringVar(&s.Token, "token", s.Token, "Token to authenticate Vault or remote repo to download values.yaml")
+	fs.StringVar(&s.VaultAddress, "vault-address", s.VaultAddress, "Host or Address to access Vault server to download Helm values or resources file")
 }
 
 func envOr(name, def string) string {
