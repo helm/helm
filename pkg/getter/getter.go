@@ -1,5 +1,6 @@
 /*
 Copyright The Helm Authors.
+Copyright (c) 2024 Rakuten Symphony India.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,6 +48,10 @@ type options struct {
 	registryClient        *registry.Client
 	timeout               time.Duration
 	transport             *http.Transport
+	
+	// Added field for Vault integration
+	address string // Vault address for accessing Vault server
+	token   string // Vault token for authentication
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -143,6 +148,20 @@ func WithTransport(transport *http.Transport) Option {
 	}
 }
 
+// WithAddress sets the Vault address to allow download values.yaml from Vault server.
+func WithAddress(address string) Option {
+	return func(opts *options) {
+		opts.address = address
+	}
+}
+
+// WithToken sets the token to allow authentication to Vault server default.
+func WithToken(token string) Option {
+	return func(o *options) {
+		o.token = token
+	}
+}
+
 // Getter is an interface to support GET to the specified URL.
 type Getter interface {
 	// Get file content by url string
@@ -209,11 +228,18 @@ var ociProvider = Provider{
 	New:     NewOCIGetter,
 }
 
+var vaultProvider = Provider{
+	Schemes: []string{"vault"}, // Define "vault" as the scheme
+	New: func(options ...Option) (Getter, error) {
+		return NewVaultGetter(options...)
+	},
+}
+
 // All finds all of the registered getters as a list of Provider instances.
 // Currently, the built-in getters and the discovered plugins with downloader
 // notations are collected.
 func All(settings *cli.EnvSettings) Providers {
-	result := Providers{httpProvider, ociProvider}
+	result := Providers{httpProvider, ociProvider, vaultProvider} // Including new vaultProvider as well for Vault integration
 	pluginDownloaders, _ := collectPlugins(settings)
 	result = append(result, pluginDownloaders...)
 	return result

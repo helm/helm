@@ -1,5 +1,6 @@
 /*
 Copyright The Helm Authors.
+Copyright (c) 2024 Rakuten Symphony India.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -181,7 +182,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			p := getter.All(settings)
-			vals, err := valueOpts.MergeValues(p)
+			vals, err := valueOpts.MergeValues(p, settings.VaultAddress, settings.Token)
 			if err != nil {
 				return err
 			}

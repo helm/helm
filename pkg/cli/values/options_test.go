@@ -1,5 +1,6 @@
 /*
 Copyright The Helm Authors.
+Copyright (c) 2024 Rakuten Symphony India.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -81,7 +82,7 @@ func TestMergeValues(t *testing.T) {
 func TestReadFile(t *testing.T) {
 	var p getter.Providers
 	filePath := "%a.txt"
-	_, err := readFile(filePath, p)
+	_, err := readFile(filePath, p, "", "")
 	if err == nil {
 		t.Errorf("Expected error when has special strings")
 	}

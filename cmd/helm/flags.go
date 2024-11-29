@@ -1,5 +1,6 @@
 /*
 Copyright The Helm Authors.
+Copyright (c) 2024 Rakuten Symphony India.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,6 +50,7 @@ func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 	f.StringArrayVar(&v.FileValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
 	f.StringArrayVar(&v.JSONValues, "set-json", []string{}, "set JSON values on the command line (can specify multiple or separate values with commas: key1=jsonval1,key2=jsonval2)")
 	f.StringArrayVar(&v.LiteralValues, "set-literal", []string{}, "set a literal STRING value on the command line")
+	f.StringSliceVarP(&v.PropertyFiles, "property-file", "p", []string{}, "specify property files to load (can specify multiple)")
 }
 
 func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {

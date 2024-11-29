@@ -1,5 +1,6 @@
 /*
 Copyright The Helm Authors.
+Copyright (c) 2024 Rakuten Symphony India.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,13 +18,15 @@ limitations under the License.
 package values
 
 import (
+	"bytes"
 	"io"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
-	"sigs.k8s.io/yaml"
+	"gopkg.in/yaml.v3"
 
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/strvals"
@@ -37,18 +40,19 @@ type Options struct {
 	FileValues    []string // --set-file
 	JSONValues    []string // --set-json
 	LiteralValues []string // --set-literal
+	PropertyFiles []string // -p/--property-file
 }
 
 // MergeValues merges values from files specified via -f/--values and directly
 // via --set-json, --set, --set-string, or --set-file, marshaling them to YAML
-func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, error) {
+func (opts *Options) MergeValues(p getter.Providers, vaultAddr, vaultToken string) (map[string]interface{}, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
 	for _, filePath := range opts.ValueFiles {
 		currentMap := map[string]interface{}{}
 
-		bytes, err := readFile(filePath, p)
+		bytes, err := readFile(filePath, p, vaultAddr, vaultToken)
 		if err != nil {
 			return nil, err
 		}
@@ -84,7 +88,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 	// User specified a value via --set-file
 	for _, value := range opts.FileValues {
 		reader := func(rs []rune) (interface{}, error) {
-			bytes, err := readFile(string(rs), p)
+			bytes, err := readFile(string(rs), p, vaultAddr, vaultToken)
 			if err != nil {
 				return nil, err
 			}
@@ -102,7 +106,49 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 		}
 	}
 
+	// User specified property files via -p/--property-file
+	if len(opts.PropertyFiles) > 0 {
+		propertiesFilesMap, err := opts.MergeProperties(p, vaultAddr, vaultToken)
+		if err != nil {
+			return nil, err
+		}
+		base["propertiesFiles"] = propertiesFilesMap
+	}
+
 	return base, nil
+}
+
+// MergeProperties merges properties from files specified via --property-file
+func (opts *Options) MergeProperties(p getter.Providers, vaultAddr, vaultToken string) (map[string]interface{}, error) {
+	propertiesFilesMap := make(map[string]interface{})
+
+	for _, filePath := range opts.PropertyFiles {
+		data, err := readFile(filePath, p, vaultAddr, vaultToken)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to fetch properties")
+		}
+
+		properties := make(map[string]interface{})
+		for _, line := range bytes.Split(data, []byte("\n")) {
+			lineStr := strings.TrimSpace(string(line))
+			if lineStr == "" || strings.HasPrefix(lineStr, "#") {
+				continue
+			}
+			parts := strings.SplitN(lineStr, ":", 2)
+			if len(parts) != 2 {
+				return nil, errors.Errorf("invalid properties line: %s", lineStr)
+			}
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			properties[key] = value
+		}
+
+		// Use the base file name (or Vault key) as the key in .Values.propertiesFiles
+		baseName := filepath.Base(filePath)
+		propertiesFilesMap[baseName] = properties
+	}
+
+	return propertiesFilesMap, nil
 }
 
 func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
@@ -125,7 +171,7 @@ func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
 }
 
 // readFile load a file from stdin, the local directory, or a remote file with a url.
-func readFile(filePath string, p getter.Providers) ([]byte, error) {
+func readFile(filePath string, p getter.Providers, vaultAddr, vaultToken string) ([]byte, error) {
 	if strings.TrimSpace(filePath) == "-" {
 		return io.ReadAll(os.Stdin)
 	}
@@ -139,9 +185,12 @@ func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	if err != nil {
 		return os.ReadFile(filePath)
 	}
-	data, err := g.Get(filePath, getter.WithURL(filePath))
+
+	// Fetch data using the provider
+	data, err := g.Get(filePath, getter.WithURL(filePath), getter.WithAddress(vaultAddr), getter.WithToken(vaultToken))
 	if err != nil {
 		return nil, err
 	}
+
 	return data.Bytes(), err
 }
