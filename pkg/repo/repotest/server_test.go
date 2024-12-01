@@ -19,6 +19,7 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"sigs.k8s.io/yaml"
@@ -34,7 +35,7 @@ func TestServer(t *testing.T) {
 
 	rootDir := t.TempDir()
 
-	srv := NewServer(rootDir)
+	srv := newServer(t, rootDir)
 	defer srv.Stop()
 
 	c, err := srv.CopyCharts("testdata/*.tgz")
@@ -99,18 +100,123 @@ func TestServer(t *testing.T) {
 func TestNewTempServer(t *testing.T) {
 	ensure.HelmHome(t)
 
-	srv, err := NewTempServerWithCleanup(t, "testdata/examplechart-0.1.0.tgz")
-	if err != nil {
-		t.Fatal(err)
+	type testCase struct {
+		options []ServerOption
 	}
+
+	testCases := map[string]testCase{
+		"plainhttp": {
+			options: []ServerOption{
+				WithChartSourceGlob("testdata/examplechart-0.1.0.tgz"),
+			},
+		},
+		"tls": {
+			options: []ServerOption{
+				WithChartSourceGlob("testdata/examplechart-0.1.0.tgz"),
+				WithTLSConfig(MakeTestTLSConfig(t, "../../../testdata")),
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			srv := NewTempServer(
+				t,
+				tc.options...,
+			)
+			defer srv.Stop()
+
+			if srv.srv.URL == "" {
+				t.Fatal("unstarted server")
+			}
+
+			client := srv.Client()
+
+			{
+				res, err := client.Head(srv.URL() + "/repositories.yaml")
+				if err != nil {
+					t.Error(err)
+				}
+
+				res.Body.Close()
+
+				if res.StatusCode != 200 {
+					t.Errorf("Expected 200, got %d", res.StatusCode)
+				}
+
+			}
+
+			{
+				res, err := client.Head(srv.URL() + "/examplechart-0.1.0.tgz")
+				if err != nil {
+					t.Error(err)
+				}
+				res.Body.Close()
+
+				if res.StatusCode != 200 {
+					t.Errorf("Expected 200, got %d", res.StatusCode)
+				}
+			}
+
+			res, err := client.Get(srv.URL() + "/examplechart-0.1.0.tgz")
+			res.Body.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if res.ContentLength < 500 {
+				t.Errorf("Expected at least 500 bytes of data, got %d", res.ContentLength)
+			}
+
+			res, err = client.Get(srv.URL() + "/index.yaml")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			data, err := io.ReadAll(res.Body)
+			res.Body.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			m := repo.NewIndexFile()
+			if err := yaml.Unmarshal(data, m); err != nil {
+				t.Fatal(err)
+			}
+
+			if l := len(m.Entries); l != 1 {
+				t.Fatalf("Expected 1 entry, got %d", l)
+			}
+
+			expect := "examplechart"
+			if !m.Has(expect, "0.1.0") {
+				t.Errorf("missing %q", expect)
+			}
+
+			res, err = client.Get(srv.URL() + "/index.yaml-nosuchthing")
+			res.Body.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.StatusCode != 404 {
+				t.Fatalf("Expected 404, got %d", res.StatusCode)
+			}
+		})
+	}
+
+}
+
+func TestNewTempServer_TLS(t *testing.T) {
+	ensure.HelmHome(t)
+
+	srv := NewTempServer(
+		t,
+		WithChartSourceGlob("testdata/examplechart-0.1.0.tgz"),
+		WithTLSConfig(MakeTestTLSConfig(t, "../../../testdata")),
+	)
 	defer srv.Stop()
 
-	res, err := http.Head(srv.URL() + "/examplechart-0.1.0.tgz")
-	res.Body.Close()
-	if err != nil {
-		t.Error(err)
-	}
-	if res.StatusCode != 200 {
-		t.Errorf("Expected 200, got %d", res.StatusCode)
+	if !strings.HasPrefix(srv.URL(), "https://") {
+		t.Fatal("non-TLS server")
 	}
 }
