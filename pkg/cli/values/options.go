@@ -26,7 +26,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/strvals"
@@ -45,14 +45,14 @@ type Options struct {
 
 // MergeValues merges values from files specified via -f/--values and directly
 // via --set-json, --set, --set-string, or --set-file, marshaling them to YAML
-func (opts *Options) MergeValues(p getter.Providers, vaultAddr, vaultToken string) (map[string]interface{}, error) {
+func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
 	for _, filePath := range opts.ValueFiles {
 		currentMap := map[string]interface{}{}
 
-		bytes, err := readFile(filePath, p, vaultAddr, vaultToken)
+		bytes, err := readFile(filePath, p)
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +88,7 @@ func (opts *Options) MergeValues(p getter.Providers, vaultAddr, vaultToken strin
 	// User specified a value via --set-file
 	for _, value := range opts.FileValues {
 		reader := func(rs []rune) (interface{}, error) {
-			bytes, err := readFile(string(rs), p, vaultAddr, vaultToken)
+			bytes, err := readFile(string(rs), p)
 			if err != nil {
 				return nil, err
 			}
@@ -108,7 +108,7 @@ func (opts *Options) MergeValues(p getter.Providers, vaultAddr, vaultToken strin
 
 	// User specified property files via -p/--property-file
 	if len(opts.PropertyFiles) > 0 {
-		propertiesFilesMap, err := opts.MergeProperties(p, vaultAddr, vaultToken)
+		propertiesFilesMap, err := opts.MergeProperties(p)
 		if err != nil {
 			return nil, err
 		}
@@ -119,11 +119,11 @@ func (opts *Options) MergeValues(p getter.Providers, vaultAddr, vaultToken strin
 }
 
 // MergeProperties merges properties from files specified via --property-file
-func (opts *Options) MergeProperties(p getter.Providers, vaultAddr, vaultToken string) (map[string]interface{}, error) {
+func (opts *Options) MergeProperties(p getter.Providers) (map[string]interface{}, error) {
 	propertiesFilesMap := make(map[string]interface{})
 
 	for _, filePath := range opts.PropertyFiles {
-		data, err := readFile(filePath, p, vaultAddr, vaultToken)
+		data, err := readFile(filePath, p)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to fetch properties")
 		}
@@ -171,7 +171,7 @@ func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
 }
 
 // readFile load a file from stdin, the local directory, or a remote file with a url.
-func readFile(filePath string, p getter.Providers, vaultAddr, vaultToken string) ([]byte, error) {
+func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	if strings.TrimSpace(filePath) == "-" {
 		return io.ReadAll(os.Stdin)
 	}
@@ -187,7 +187,7 @@ func readFile(filePath string, p getter.Providers, vaultAddr, vaultToken string)
 	}
 
 	// Fetch data using the provider
-	data, err := g.Get(filePath, getter.WithURL(filePath), getter.WithAddress(vaultAddr), getter.WithToken(vaultToken))
+	data, err := g.Get(filePath, getter.WithURL(filePath))
 	if err != nil {
 		return nil, err
 	}

@@ -228,9 +228,14 @@ var ociProvider = Provider{
 	New:     NewOCIGetter,
 }
 
+
+var vaultAddress string
+var vaultToken string
+
 var vaultProvider = Provider{
 	Schemes: []string{"vault"}, // Define "vault" as the scheme
 	New: func(options ...Option) (Getter, error) {
+		options = append(options, WithAddress(vaultAddress), WithToken(vaultToken))
 		return NewVaultGetter(options...)
 	},
 }
@@ -239,6 +244,8 @@ var vaultProvider = Provider{
 // Currently, the built-in getters and the discovered plugins with downloader
 // notations are collected.
 func All(settings *cli.EnvSettings) Providers {
+	vaultAddress = settings.VaultAddress
+	vaultToken = settings.Token
 	result := Providers{httpProvider, ociProvider, vaultProvider} // Including new vaultProvider as well for Vault integration
 	pluginDownloaders, _ := collectPlugins(settings)
 	result = append(result, pluginDownloaders...)

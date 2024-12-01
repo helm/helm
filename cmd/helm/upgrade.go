@@ -182,7 +182,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			p := getter.All(settings)
-			vals, err := valueOpts.MergeValues(p, settings.VaultAddress, settings.Token)
+			vals, err := valueOpts.MergeValues(p)
 			if err != nil {
 				return err
 			}

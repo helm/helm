@@ -82,7 +82,7 @@ func TestMergeValues(t *testing.T) {
 func TestReadFile(t *testing.T) {
 	var p getter.Providers
 	filePath := "%a.txt"
-	_, err := readFile(filePath, p, "", "")
+	_, err := readFile(filePath, p)
 	if err == nil {
 		t.Errorf("Expected error when has special strings")
 	}

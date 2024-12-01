@@ -242,7 +242,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	debug("CHART PATH: %s\n", cp)
 
 	p := getter.All(settings)
-	vals, err := valueOpts.MergeValues(p, settings.VaultAddress, settings.Token)
+	vals, err := valueOpts.MergeValues(p)
 	if err != nil {
 		return nil, err
 	}
