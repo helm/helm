@@ -74,10 +74,10 @@ func NewTempServer(t *testing.T, glob string, options ...ServerOption) *Server {
 		t.Fatal(err)
 	}
 
-	s := newServer(t, tdir, options...)
+	srv := newServer(t, tdir, options...)
 
 	if glob != "" {
-		if _, err := s.CopyCharts(glob); err != nil {
+		if _, err := srv.CopyCharts(glob); err != nil {
 			t.Fatal(err)
 		}
 	}
