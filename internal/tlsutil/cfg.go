@@ -19,9 +19,9 @@ package tlsutil
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"os"
-
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
+	"io/fs"
 )
 
 // Options represents configurable options used to create client and server TLS configurations.
@@ -41,10 +41,10 @@ func ClientConfig(opts Options) (cfg *tls.Config, err error) {
 
 	if opts.CertFile != "" || opts.KeyFile != "" {
 		if cert, err = CertFromFilePair(opts.CertFile, opts.KeyFile); err != nil {
-			if os.IsNotExist(err) {
-				return nil, errors.Wrapf(err, "could not load x509 key pair (cert: %q, key: %q)", opts.CertFile, opts.KeyFile)
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil, fmt.Errorf("could not load x509 key pair (cert: %q, key: %q): %w", opts.CertFile, opts.KeyFile, err)
 			}
-			return nil, errors.Wrapf(err, "could not read x509 key pair (cert: %q, key: %q)", opts.CertFile, opts.KeyFile)
+			return nil, fmt.Errorf("could not read x509 key pair (cert: %q, key: %q): %w", opts.CertFile, opts.KeyFile, err)
 		}
 	}
 	if !opts.InsecureSkipVerify && opts.CaCertFile != "" {

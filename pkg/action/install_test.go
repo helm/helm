@@ -18,8 +18,10 @@ package action
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -626,7 +628,7 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 	test.AssertGoldenFile(t, filepath.Join(dir, "hello/templates/rbac"), "rbac.txt")
 
 	_, err = os.Stat(filepath.Join(dir, "hello/templates/empty"))
-	is.True(os.IsNotExist(err))
+	is.True(errors.Is(err, fs.ErrNotExist))
 }
 
 func TestInstallOutputDirWithReleaseName(t *testing.T) {
@@ -662,7 +664,7 @@ func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	test.AssertGoldenFile(t, filepath.Join(newDir, "hello/templates/rbac"), "rbac.txt")
 
 	_, err = os.Stat(filepath.Join(newDir, "hello/templates/empty"))
-	is.True(os.IsNotExist(err))
+	is.True(errors.Is(err, fs.ErrNotExist))
 }
 
 func TestNameAndChart(t *testing.T) {

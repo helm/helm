@@ -22,8 +22,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
 	helmtime "helm.sh/helm/v3/pkg/time"
@@ -93,7 +91,7 @@ func (r *Rollback) Run(name string) error {
 // the previous release's configuration
 func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Release, error) {
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, nil, errors.Errorf("prepareRollback: Release name is invalid: %s", name)
+		return nil, nil, fmt.Errorf("prepareRollback: Release name is invalid: %s", name)
 	}
 
 	if r.Version < 0 {
@@ -125,7 +123,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		}
 	}
 	if !previousVersionExist {
-		return nil, nil, errors.Errorf("release has no %d version", previousVersion)
+		return nil, nil, fmt.Errorf("release has no %d version", previousVersion)
 	}
 
 	r.cfg.Log("rolling back %s (current: v%d, target: v%d)", name, currentRelease.Version, previousVersion)
@@ -167,11 +165,11 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	current, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), false)
 	if err != nil {
-		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
+		return targetRelease, fmt.Errorf("unable to build kubernetes objects from current release manifest: %w", err)
 	}
 	target, err := r.cfg.KubeClient.Build(bytes.NewBufferString(targetRelease.Manifest), false)
 	if err != nil {
-		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
+		return targetRelease, fmt.Errorf("unable to build kubernetes objects from new release manifest: %w", err)
 	}
 
 	// pre-rollback hooks
@@ -186,7 +184,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	// It is safe to use "force" here because these are resources currently rendered by the chart.
 	err = target.Visit(setMetadataVisitor(targetRelease.Name, targetRelease.Namespace, true))
 	if err != nil {
-		return targetRelease, errors.Wrap(err, "unable to set metadata visitor from target release")
+		return targetRelease, fmt.Errorf("unable to set metadata visitor from target release: %w", err)
 	}
 	results, err := r.cfg.KubeClient.Update(current, target, r.Force)
 
@@ -202,11 +200,9 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 			r.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(results.Created))
 			_, errs := r.cfg.KubeClient.Delete(results.Created)
 			if errs != nil {
-				var errorList []string
-				for _, e := range errs {
-					errorList = append(errorList, e.Error())
-				}
-				return targetRelease, errors.Wrapf(fmt.Errorf("unable to cleanup resources: %s", strings.Join(errorList, ", ")), "an error occurred while cleaning up resources. original rollback error: %s", err)
+				return targetRelease, fmt.Errorf(
+					"an error occurred while cleaning up resources. original rollback error: %w",
+					fmt.Errorf("unable to cleanup resources: %w", joinErrors(errs, ", ")))
 			}
 			r.cfg.Log("Resource cleanup complete")
 		}
@@ -229,14 +225,14 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 				targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
 				r.cfg.recordRelease(currentRelease)
 				r.cfg.recordRelease(targetRelease)
-				return targetRelease, errors.Wrapf(err, "release %s failed", targetRelease.Name)
+				return targetRelease, fmt.Errorf("release %s failed: %w", targetRelease.Name, err)
 			}
 		} else {
 			if err := r.cfg.KubeClient.Wait(target, r.Timeout); err != nil {
 				targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
 				r.cfg.recordRelease(currentRelease)
 				r.cfg.recordRelease(targetRelease)
-				return targetRelease, errors.Wrapf(err, "release %s failed", targetRelease.Name)
+				return targetRelease, fmt.Errorf("release %s failed: %w", targetRelease.Name, err)
 			}
 		}
 	}
