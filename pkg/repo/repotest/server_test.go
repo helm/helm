@@ -34,7 +34,7 @@ func TestServer(t *testing.T) {
 
 	rootDir := t.TempDir()
 
-	srv := NewServer(rootDir)
+	srv := newServer(t, rootDir)
 	defer srv.Stop()
 
 	c, err := srv.CopyCharts("testdata/*.tgz")
@@ -99,10 +99,7 @@ func TestServer(t *testing.T) {
 func TestNewTempServer(t *testing.T) {
 	ensure.HelmHome(t)
 
-	srv, err := NewTempServerWithCleanup(t, "testdata/examplechart-0.1.0.tgz")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := NewTempServer(t, "testdata/examplechart-0.1.0.tgz")
 	defer srv.Stop()
 
 	res, err := http.Head(srv.URL() + "/examplechart-0.1.0.tgz")

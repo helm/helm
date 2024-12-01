@@ -28,10 +28,7 @@ import (
 )
 
 func TestPullCmd(t *testing.T) {
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(t, "testdata/testcharts/*.tgz*")
 	defer srv.Stop()
 
 	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
@@ -252,10 +249,7 @@ func TestPullCmd(t *testing.T) {
 }
 
 func TestPullWithCredentialsCmd(t *testing.T) {
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(t, "testdata/testcharts/*.tgz*")
 	defer srv.Stop()
 
 	srv.WithMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {

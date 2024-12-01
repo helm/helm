@@ -30,10 +30,7 @@ import (
 )
 
 func TestRepoRemove(t *testing.T) {
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(t, "testdata/testserver/*.*")
 	defer ts.Stop()
 
 	rootDir := t.TempDir()
@@ -162,10 +159,7 @@ func testCacheFiles(t *testing.T, cacheIndexFile string, cacheChartsFile string,
 }
 
 func TestRepoRemoveCompletion(t *testing.T) {
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(t, "testdata/testserver/*.*")
 	defer ts.Stop()
 
 	rootDir := t.TempDir()

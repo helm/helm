@@ -34,22 +34,15 @@ import (
 )
 
 func TestRepoAddCmd(t *testing.T) {
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(t, "testdata/testserver/*.*")
 	defer srv.Stop()
 
 	// A second test server is setup to verify URL changing
-	srv2, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv2 := repotest.NewTempServer(t, "testdata/testserver/*.*")
 	defer srv2.Stop()
 
 	tmpdir := filepath.Join(t.TempDir(), "path-component.yaml/data")
-	err = os.MkdirAll(tmpdir, 0777)
-	if err != nil {
+	if err := os.MkdirAll(tmpdir, 0777); err != nil {
 		t.Fatal(err)
 	}
 	repoFile := filepath.Join(tmpdir, "repositories.yaml")
@@ -81,10 +74,7 @@ func TestRepoAddCmd(t *testing.T) {
 }
 
 func TestRepoAdd(t *testing.T) {
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(t, "testdata/testserver/*.*")
 	defer ts.Stop()
 
 	rootDir := t.TempDir()
@@ -135,10 +125,7 @@ func TestRepoAdd(t *testing.T) {
 }
 
 func TestRepoAddCheckLegalName(t *testing.T) {
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(t, "testdata/testserver/*.*")
 	defer ts.Stop()
 	defer resetEnv()()
 
@@ -192,10 +179,7 @@ func TestRepoAddConcurrentHiddenFile(t *testing.T) {
 }
 
 func repoAddConcurrent(t *testing.T, testName, repoFile string) {
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(t, "testdata/testserver/*.*")
 	defer ts.Stop()
 
 	var wg sync.WaitGroup
@@ -243,7 +227,7 @@ func TestRepoAddFileCompletion(t *testing.T) {
 }
 
 func TestRepoAddWithPasswordFromStdin(t *testing.T) {
-	srv := repotest.NewTempServerWithCleanupAndBasicAuth(t, "testdata/testserver/*.*")
+	srv := repotest.NewTempServer(t, "testdata/testserver/*.*", repotest.WithBasicAuth())
 	defer srv.Stop()
 
 	defer resetEnv()()

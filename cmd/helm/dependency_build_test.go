@@ -29,11 +29,8 @@ import (
 )
 
 func TestDependencyBuildCmd(t *testing.T) {
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
+	srv := repotest.NewTempServer(t, "testdata/testcharts/*.tgz")
 	defer srv.Stop()
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	rootDir := srv.Root()
 	srv.LinkIndices()

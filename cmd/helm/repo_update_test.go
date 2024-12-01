@@ -106,10 +106,7 @@ func TestUpdateCustomCacheCmd(t *testing.T) {
 	cachePath := filepath.Join(rootDir, "updcustomcache")
 	os.Mkdir(cachePath, os.ModePerm)
 
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(t, "testdata/testserver/*.*")
 	defer ts.Stop()
 
 	o := &repoUpdateOptions{
@@ -130,10 +127,7 @@ func TestUpdateCharts(t *testing.T) {
 	defer resetEnv()()
 	ensure.HelmHome(t)
 
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(t, "testdata/testserver/*.*")
 	defer ts.Stop()
 
 	r, err := repo.NewChartRepository(&repo.Entry{
@@ -165,10 +159,7 @@ func TestUpdateChartsFail(t *testing.T) {
 	defer resetEnv()()
 	ensure.HelmHome(t)
 
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(t, "testdata/testserver/*.*")
 	defer ts.Stop()
 
 	var invalidURL = ts.URL() + "55"
@@ -198,10 +189,7 @@ func TestUpdateChartsFailWithError(t *testing.T) {
 	defer resetEnv()()
 	ensure.HelmHome(t)
 
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(t, "testdata/testserver/*.*")
 	defer ts.Stop()
 
 	var invalidURL = ts.URL() + "55"

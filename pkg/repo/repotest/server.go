@@ -41,34 +41,111 @@ import (
 	"helm.sh/helm/v3/pkg/repo"
 )
 
-// NewTempServerWithCleanup creates a server inside of a temp dir.
+type ServerOption func(*testing.T, *Server)
+
+func WithNoAutostart() ServerOption {
+	return func(_ *testing.T, server *Server) {
+		server.autostart = false
+	}
+}
+
+func WithBasicAuth() ServerOption {
+	return func(t *testing.T, server *Server) {
+		server.WithMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			username, password, ok := r.BasicAuth()
+			if !ok || username != "username" || password != "password" {
+				t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
+			}
+		}))
+
+	}
+}
+
+// NewTempServer creates a server inside of a temp dir.
 //
 // If the passed in string is not "", it will be treated as a shell glob, and files
 // will be copied from that path to the server's docroot.
 //
 // The caller is responsible for stopping the server.
 // The temp dir will be removed by testing package automatically when test finished.
-func NewTempServerWithCleanup(t *testing.T, glob string) (*Server, error) {
-	srv, err := NewTempServer(glob)
-	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
-	return srv, err
-}
+func NewTempServer(t *testing.T, glob string, options ...ServerOption) *Server {
 
-// Set up a fake repo with basic auth enabled
-func NewTempServerWithCleanupAndBasicAuth(t *testing.T, glob string) *Server {
-	srv, err := NewTempServerWithCleanup(t, glob)
-	srv.Stop()
+	tdir, err := os.MkdirTemp("", "helm-repotest-")
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv.WithMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		username, password, ok := r.BasicAuth()
-		if !ok || username != "username" || password != "password" {
-			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
+
+	srv := newServer(t, tdir, options...)
+
+	if glob != "" {
+		if _, err := srv.CopyCharts(glob); err != nil {
+			t.Fatal(err)
 		}
-	}))
-	srv.Start()
+	}
+
+	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
+
+	if srv.autostart {
+		srv.Start()
+	}
+
 	return srv
+}
+
+// NewServer creates a repository server for testing.
+//
+// docroot should be a temp dir managed by the caller.
+//
+// By default the server will be started, serving files off of the docroot.
+//
+// Use CopyCharts to move charts into the repository and then index them
+// for service.
+func NewServer(t *testing.T, docroot string, options ...ServerOption) *Server {
+	srv := newServer(t, docroot, options...)
+
+	if srv.autostart {
+		srv.Start()
+	}
+
+	return srv
+}
+
+// Create the server, but don't yet start it
+func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
+	root, err := filepath.Abs(docroot)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	srv := &Server{
+		docroot:   root,
+		autostart: true,
+	}
+
+	// Add the testing repository as the only repo.
+	if err := setTestingRepository(srv.URL(), filepath.Join(srv.docroot, "repositories.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, option := range options {
+		option(t, srv)
+	}
+
+	return srv
+}
+
+// Server is an implementation of a repository server for testing.
+type Server struct {
+	docroot    string
+	srv        *httptest.Server
+	middleware http.HandlerFunc
+	autostart  bool
+}
+
+// WithMiddleware injects middleware in front of the server. This can be used to inject
+// additional functionality like layering in an authentication frontend.
+func (s *Server) WithMiddleware(middleware http.HandlerFunc) {
+	s.middleware = middleware
 }
 
 type OCIServer struct {
@@ -236,69 +313,6 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		result.Manifest.Digest, result.Manifest.Size,
 		result.Config.Digest, result.Config.Size,
 		result.Chart.Digest, result.Chart.Size)
-}
-
-// NewTempServer creates a server inside of a temp dir.
-//
-// If the passed in string is not "", it will be treated as a shell glob, and files
-// will be copied from that path to the server's docroot.
-//
-// The caller is responsible for destroying the temp directory as well as stopping
-// the server.
-//
-// Deprecated: use NewTempServerWithCleanup
-func NewTempServer(glob string) (*Server, error) {
-	tdir, err := os.MkdirTemp("", "helm-repotest-")
-	if err != nil {
-		return nil, err
-	}
-	srv := NewServer(tdir)
-
-	if glob != "" {
-		if _, err := srv.CopyCharts(glob); err != nil {
-			srv.Stop()
-			return srv, err
-		}
-	}
-
-	return srv, nil
-}
-
-// NewServer creates a repository server for testing.
-//
-// docroot should be a temp dir managed by the caller.
-//
-// This will start the server, serving files off of the docroot.
-//
-// Use CopyCharts to move charts into the repository and then index them
-// for service.
-func NewServer(docroot string) *Server {
-	root, err := filepath.Abs(docroot)
-	if err != nil {
-		panic(err)
-	}
-	srv := &Server{
-		docroot: root,
-	}
-	srv.Start()
-	// Add the testing repository as the only repo.
-	if err := setTestingRepository(srv.URL(), filepath.Join(root, "repositories.yaml")); err != nil {
-		panic(err)
-	}
-	return srv
-}
-
-// Server is an implementation of a repository server for testing.
-type Server struct {
-	docroot    string
-	srv        *httptest.Server
-	middleware http.HandlerFunc
-}
-
-// WithMiddleware injects middleware in front of the server. This can be used to inject
-// additional functionality like layering in an authentication frontend.
-func (s *Server) WithMiddleware(middleware http.HandlerFunc) {
-	s.middleware = middleware
 }
 
 // Root gets the docroot for the server.
