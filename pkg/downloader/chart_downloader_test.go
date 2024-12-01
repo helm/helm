@@ -218,9 +218,7 @@ func TestDownloadTo(t *testing.T) {
 
 func TestDownloadTo_TLS(t *testing.T) {
 	// Set up mock server w/ tls enabled
-	srv := repotest.NewTempServer(t, "testdata/*.tgz*")
-	srv.Stop()
-	srv.StartTLS()
+	srv := repotest.NewTempServer(t, "testdata/*.tgz*", repotest.WithAutostart("tls"))
 	defer srv.Stop()
 	if err := srv.CreateIndex(); err != nil {
 		t.Fatal(err)

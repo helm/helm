@@ -43,21 +43,20 @@ import (
 
 type ServerOption func(*testing.T, *Server)
 
-func WithNoAutostart() ServerOption {
+func WithAutostart(autostartOption string) ServerOption {
 	return func(_ *testing.T, server *Server) {
-		server.autostart = false
+		server.autostartOption = autostartOption
 	}
 }
 
 func WithBasicAuth() ServerOption {
 	return func(t *testing.T, server *Server) {
-		server.WithMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		server.middleware = http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 			username, password, ok := r.BasicAuth()
 			if !ok || username != "username" || password != "password" {
 				t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
 			}
-		}))
-
+		})
 	}
 }
 
@@ -85,9 +84,7 @@ func NewTempServer(t *testing.T, glob string, options ...ServerOption) *Server {
 
 	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
 
-	if srv.autostart {
-		srv.Start()
-	}
+	autostartServer(t, srv)
 
 	return srv
 }
@@ -103,9 +100,7 @@ func NewTempServer(t *testing.T, glob string, options ...ServerOption) *Server {
 func NewServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 	srv := newServer(t, docroot, options...)
 
-	if srv.autostart {
-		srv.Start()
-	}
+	autostartServer(t, srv)
 
 	return srv
 }
@@ -118,8 +113,8 @@ func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 	}
 
 	srv := &Server{
-		docroot:   root,
-		autostart: true,
+		docroot:         root,
+		autostartOption: "plain",
 	}
 
 	// Add the testing repository as the only repo.
@@ -134,18 +129,24 @@ func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 	return srv
 }
 
-// Server is an implementation of a repository server for testing.
-type Server struct {
-	docroot    string
-	srv        *httptest.Server
-	middleware http.HandlerFunc
-	autostart  bool
+func autostartServer(t *testing.T, srv *Server) {
+	switch srv.autostartOption {
+	case "none":
+	case "plain":
+		srv.Start()
+	case "tls":
+		srv.StartTLS()
+	default:
+		t.Fatalf("Invalid autostart option: %s", srv.autostartOption)
+	}
 }
 
-// WithMiddleware injects middleware in front of the server. This can be used to inject
-// additional functionality like layering in an authentication frontend.
-func (s *Server) WithMiddleware(middleware http.HandlerFunc) {
-	s.middleware = middleware
+// Server is an implementation of a repository server for testing.
+type Server struct {
+	docroot         string
+	srv             *httptest.Server
+	middleware      http.HandlerFunc
+	autostartOption string
 }
 
 type OCIServer struct {

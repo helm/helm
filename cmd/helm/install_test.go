@@ -27,15 +27,8 @@ import (
 )
 
 func TestInstall(t *testing.T) {
-	srv := repotest.NewTempServer(t, "testdata/testcharts/*.tgz*")
+	srv := repotest.NewTempServer(t, "testdata/testcharts/*.tgz*", repotest.WithBasicAuth())
 	defer srv.Stop()
-
-	srv.WithMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		username, password, ok := r.BasicAuth()
-		if !ok || username != "username" || password != "password" {
-			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
-		}
-	}))
 
 	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.FileServer(http.Dir(srv.Root())).ServeHTTP(w, r)
