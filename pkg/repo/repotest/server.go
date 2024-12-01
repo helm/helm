@@ -74,10 +74,10 @@ func NewTempServer(t *testing.T, glob string, options ...ServerOption) *Server {
 		t.Fatal(err)
 	}
 
-	srv := newServer(t, tdir, options...)
+	s := newServer(t, tdir, options...)
 
 	if glob != "" {
-		if _, err := srv.CopyCharts(glob); err != nil {
+		if _, err := s.CopyCharts(glob); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -112,21 +112,28 @@ func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 		t.Fatal(err)
 	}
 
-	srv := &Server{
+	s := &Server{
 		docroot:         root,
 		autostartOption: "plain",
 	}
 
+	s.srv = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.middleware != nil {
+			s.middleware.ServeHTTP(w, r)
+		}
+		http.FileServer(http.Dir(s.Root())).ServeHTTP(w, r)
+	}))
+
 	// Add the testing repository as the only repo.
-	if err := setTestingRepository(srv.URL(), filepath.Join(srv.docroot, "repositories.yaml")); err != nil {
+	if err := setTestingRepository(s.URL(), filepath.Join(s.docroot, "repositories.yaml")); err != nil {
 		t.Fatal(err)
 	}
 
 	for _, option := range options {
-		option(t, srv)
+		option(t, s)
 	}
 
-	return srv
+	return s
 }
 
 func autostartServer(t *testing.T, srv *Server) {
@@ -363,12 +370,7 @@ func (s *Server) CreateIndex() error {
 }
 
 func (s *Server) Start() {
-	s.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.middleware != nil {
-			s.middleware.ServeHTTP(w, r)
-		}
-		http.FileServer(http.Dir(s.docroot)).ServeHTTP(w, r)
-	}))
+	s.srv.Start()
 }
 
 func (s *Server) StartTLS() {
@@ -376,12 +378,6 @@ func (s *Server) StartTLS() {
 	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
 	insecure := false
 
-	s.srv = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.middleware != nil {
-			s.middleware.ServeHTTP(w, r)
-		}
-		http.FileServer(http.Dir(s.Root())).ServeHTTP(w, r)
-	}))
 	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca, insecure)
 	if err != nil {
 		panic(err)
@@ -389,20 +385,6 @@ func (s *Server) StartTLS() {
 	tlsConf.ServerName = "helm.sh"
 	s.srv.TLS = tlsConf
 	s.srv.StartTLS()
-
-	// Set up repositories config with ca file
-	repoConfig := filepath.Join(s.Root(), "repositories.yaml")
-
-	r := repo.NewFile()
-	r.Add(&repo.Entry{
-		Name:   "test",
-		URL:    s.URL(),
-		CAFile: filepath.Join("../../testdata", "rootca.crt"),
-	})
-
-	if err := r.WriteFile(repoConfig, 0600); err != nil {
-		panic(err)
-	}
 }
 
 // Stop stops the server and closes all connections.
