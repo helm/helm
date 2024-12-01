@@ -25,28 +25,28 @@ type Dependency struct {
 	// Name is the name of the dependency.
 	//
 	// This must mach the name in the dependency's Chart.yaml.
-	Name string `json:"name"`
+	Name string `json:"name" yaml:"name"`
 	// Version is the version (range) of this chart.
 	//
 	// A lock file will always produce a single version, while a dependency
 	// may contain a semantic version range.
-	Version string `json:"version,omitempty"`
+	Version string `json:"version,omitempty" yaml:"version,omitempty"`
 	// The URL to the repository.
 	//
 	// Appending `index.yaml` to this string should result in a URL that can be
 	// used to fetch the repository index.
-	Repository string `json:"repository"`
+	Repository string `json:"repository" yaml:"repository"`
 	// A yaml path that resolves to a boolean, used for enabling/disabling charts (e.g. subchart1.enabled )
-	Condition string `json:"condition,omitempty"`
+	Condition string `json:"condition,omitempty" yaml:"condition,omitempty"`
 	// Tags can be used to group charts for enabling/disabling together
-	Tags []string `json:"tags,omitempty"`
+	Tags []string `json:"tags,omitempty" yaml:"tags,omitempty"`
 	// Enabled bool determines if chart should be loaded
-	Enabled bool `json:"enabled,omitempty"`
+	Enabled bool `json:"enabled,omitempty" yaml:"enabled,omitempty"`
 	// ImportValues holds the mapping of source values to parent key to be imported. Each item can be a
 	// string or pair of child/parent sublist items.
-	ImportValues []interface{} `json:"import-values,omitempty"`
+	ImportValues []interface{} `json:"import-values,omitempty" yaml:"import-values,omitempty"`
 	// Alias usable alias to be used for the chart
-	Alias string `json:"alias,omitempty"`
+	Alias string `json:"alias,omitempty" yaml:"alias,omitempty"`
 }
 
 // Validate checks for common problems with the dependency datastructure in

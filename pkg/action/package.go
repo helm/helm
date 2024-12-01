@@ -44,8 +44,15 @@ type Package struct {
 	Destination      string
 	DependencyUpdate bool
 
-	RepositoryConfig string
-	RepositoryCache  string
+	RepositoryConfig      string
+	RepositoryCache       string
+	PlainHTTP             bool
+	Username              string
+	Password              string
+	CertFile              string
+	KeyFile               string
+	CaFile                string
+	InsecureSkipTLSverify bool
 }
 
 // NewPackage creates a new Package object with the given configuration.

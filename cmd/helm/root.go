@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 
@@ -29,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
@@ -167,7 +169,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newPullCmd(actionConfig, out),
 		newShowCmd(actionConfig, out),
 		newLintCmd(out),
-		newPackageCmd(actionConfig, out),
+		newPackageCmd(out),
 		newRepoCmd(out),
 		newSearchCmd(out),
 		newVerifyCmd(out),
@@ -255,7 +257,8 @@ func checkForExpiredRepos(repofile string) {
 
 }
 
-func newRegistryClient(certFile, keyFile, caFile string, insecureSkipTLSverify, plainHTTP bool) (*registry.Client, error) {
+func newRegistryClient(
+	certFile, keyFile, caFile string, insecureSkipTLSverify, plainHTTP bool) (*registry.Client, error) {
 	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSverify {
 		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSverify)
 		if err != nil {
@@ -289,10 +292,24 @@ func newDefaultRegistryClient(plainHTTP bool) (*registry.Client, error) {
 	return registryClient, nil
 }
 
-func newRegistryClientWithTLS(certFile, keyFile, caFile string, insecureSkipTLSverify bool) (*registry.Client, error) {
+func newRegistryClientWithTLS(
+	certFile, keyFile, caFile string, insecureSkipTLSverify bool) (*registry.Client, error) {
+	tlsConf, err := tlsutil.NewClientTLS(certFile, keyFile, caFile, insecureSkipTLSverify)
+	if err != nil {
+		return nil, fmt.Errorf("can't create TLS config for client: %w", err)
+	}
+
 	// Create a new registry client
-	registryClient, err := registry.NewRegistryClientWithTLS(os.Stderr, certFile, keyFile, caFile, insecureSkipTLSverify,
-		settings.RegistryConfig, settings.Debug,
+	registryClient, err := registry.NewClient(
+		registry.ClientOptDebug(settings.Debug),
+		registry.ClientOptEnableCache(true),
+		registry.ClientOptWriter(os.Stderr),
+		registry.ClientOptCredentialsFile(settings.RegistryConfig),
+		registry.ClientOptHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: tlsConf,
+			},
+		}),
 	)
 	if err != nil {
 		return nil, err

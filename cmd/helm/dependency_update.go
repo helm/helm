@@ -44,7 +44,7 @@ in the Chart.yaml file, but (b) at the wrong version.
 `
 
 // newDependencyUpdateCmd creates a new dependency update command.
-func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+func newDependencyUpdateCmd(_ *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewDependency()
 
 	cmd := &cobra.Command{
@@ -58,19 +58,25 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+				client.InsecureSkipTLSverify, client.PlainHTTP)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+
 			man := &downloader.Manager{
 				Out:              out,
 				ChartPath:        chartpath,
 				Keyring:          client.Keyring,
 				SkipUpdate:       client.SkipRefresh,
 				Getters:          getter.All(settings),
-				RegistryClient:   cfg.RegistryClient,
+				RegistryClient:   registryClient,
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
 			}
 
-			registryClient, err := newDefaultRegistryClient(client.PlainHTTP)
+			registryClient, err = newDefaultRegistryClient(client.PlainHTTP)
 			if err != nil {
 				return fmt.Errorf("unable to create registry client: %w", err)
 			}
@@ -84,10 +90,7 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
-	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
-	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
-	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
+	addDependencySubcommandFlags(f, client)
 
 	return cmd
 }
