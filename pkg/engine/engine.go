@@ -139,7 +139,7 @@ func includeFun(t *template.Template, includedNames map[string]int) func(string,
 		}
 		err := t.ExecuteTemplate(&buf, name, data)
 		includedNames[name]--
-		return buf.String(), err
+		return strings.ReplaceAll(buf.String(), "<no value>", ""), err
 	}
 }
 
