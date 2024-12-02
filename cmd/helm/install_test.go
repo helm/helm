@@ -27,7 +27,7 @@ import (
 )
 
 func TestInstall(t *testing.T) {
-	srv := repotest.NewTempServer(t, "testdata/testcharts/*.tgz*", repotest.WithBasicAuth())
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"), repotest.WithBasicAuth())
 	defer srv.Stop()
 
 	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

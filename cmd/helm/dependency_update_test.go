@@ -32,7 +32,7 @@ import (
 )
 
 func TestDependencyUpdateCmd(t *testing.T) {
-	srv := repotest.NewTempServer(t, "testdata/testcharts/*.tgz")
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/testcharts/*.tgz"))
 	defer srv.Stop()
 	t.Logf("Listening on directory %s", srv.Root())
 
@@ -148,7 +148,7 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 	defer resetEnv()()
 	ensure.HelmHome(t)
 
-	srv := repotest.NewTempServer(t, "testdata/testcharts/*.tgz")
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/testcharts/*.tgz"))
 	defer srv.Stop()
 	t.Logf("Listening on directory %s", srv.Root())
 
@@ -242,7 +242,7 @@ func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
 }
 
 func setupMockRepoServer(t *testing.T) *repotest.Server {
-	srv := repotest.NewTempServer(t, "testdata/testcharts/*.tgz")
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/testcharts/*.tgz"))
 
 	t.Logf("Listening on directory %s", srv.Root())
 

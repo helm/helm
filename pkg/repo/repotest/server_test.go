@@ -99,15 +99,36 @@ func TestServer(t *testing.T) {
 func TestNewTempServer(t *testing.T) {
 	ensure.HelmHome(t)
 
-	srv := NewTempServer(t, "testdata/examplechart-0.1.0.tgz")
+	srv := NewTempServer(t, WithChartSourceGlob("testdata/examplechart-0.1.0.tgz"))
 	defer srv.Stop()
 
-	res, err := http.Head(srv.URL() + "/examplechart-0.1.0.tgz")
-	res.Body.Close()
-	if err != nil {
-		t.Error(err)
+	if srv.srv.URL == "" {
+		t.Fatal("unstarted server")
 	}
-	if res.StatusCode != 200 {
-		t.Errorf("Expected 200, got %d", res.StatusCode)
+
+	{
+		res, err := http.Head(srv.URL() + "/repositories.yaml")
+		if err != nil {
+			t.Error(err)
+		}
+
+		res.Body.Close()
+
+		if res.StatusCode != 200 {
+			t.Errorf("Expected 200, got %d", res.StatusCode)
+		}
+
+	}
+
+	{
+		res, err := http.Head(srv.URL() + "/examplechart-0.1.0.tgz")
+		if err != nil {
+			t.Error(err)
+		}
+		res.Body.Close()
+
+		if res.StatusCode != 200 {
+			t.Errorf("Expected 200, got %d", res.StatusCode)
+		}
 	}
 }

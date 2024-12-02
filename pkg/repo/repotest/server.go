@@ -60,31 +60,35 @@ func WithBasicAuth() ServerOption {
 	}
 }
 
+func WithChartSourceGlob(glob string) ServerOption {
+	return func(t *testing.T, server *Server) {
+		server.chartSourceGlob = glob
+	}
+}
+
 // NewTempServer creates a server inside of a temp dir.
 //
 // If the passed in string is not "", it will be treated as a shell glob, and files
 // will be copied from that path to the server's docroot.
 //
-// The caller is responsible for stopping the server.
+// The server is started automatically. And the caller is responsible for stopping the server.
 // The temp dir will be removed by testing package automatically when test finished.
-func NewTempServer(t *testing.T, glob string, options ...ServerOption) *Server {
+func NewTempServer(t *testing.T, options ...ServerOption) *Server {
 
-	tdir, err := os.MkdirTemp("", "helm-repotest-")
+	docrootTempDir, err := os.MkdirTemp("", "helm-repotest-")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	srv := newServer(t, tdir, options...)
-
-	if glob != "" {
-		if _, err := srv.CopyCharts(glob); err != nil {
-			t.Fatal(err)
-		}
-	}
+	srv := newServer(t, docrootTempDir, options...)
 
 	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
 
-	autostartServer(t, srv)
+	if srv.chartSourceGlob != "" {
+		if _, err := srv.CopyCharts(srv.chartSourceGlob); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	return srv
 }
@@ -93,7 +97,7 @@ func NewTempServer(t *testing.T, glob string, options ...ServerOption) *Server {
 //
 // docroot should be a temp dir managed by the caller.
 //
-// By default the server will be started, serving files off of the docroot.
+// The server is started automatically. And the caller is responsible for stopping the server.
 //
 // Use CopyCharts to move charts into the repository and then index them
 // for service.
@@ -107,14 +111,18 @@ func NewServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 
 // Create the server, but don't yet start it
 func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
-	root, err := filepath.Abs(docroot)
+	absdocroot, err := filepath.Abs(docroot)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	s := &Server{
-		docroot:         root,
+		docroot:         absdocroot,
 		autostartOption: "plain",
+	}
+
+	for _, option := range options {
+		option(t, s)
 	}
 
 	s.srv = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -124,13 +132,11 @@ func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 		http.FileServer(http.Dir(s.Root())).ServeHTTP(w, r)
 	}))
 
-	// Add the testing repository as the only repo.
+	autostartServer(t, s)
+
+	// Add the testing repository as the only repo. Server must be started for the server's URL to be valid
 	if err := setTestingRepository(s.URL(), filepath.Join(s.docroot, "repositories.yaml")); err != nil {
 		t.Fatal(err)
-	}
-
-	for _, option := range options {
-		option(t, s)
 	}
 
 	return s
@@ -154,6 +160,7 @@ type Server struct {
 	srv             *httptest.Server
 	middleware      http.HandlerFunc
 	autostartOption string
+	chartSourceGlob string
 }
 
 type OCIServer struct {
@@ -414,6 +421,10 @@ func (s *Server) LinkIndices() error {
 
 // setTestingRepository sets up a testing repository.yaml with only the given URL.
 func setTestingRepository(url, fname string) error {
+	if url == "" {
+		panic("no url")
+	}
+
 	r := repo.NewFile()
 	r.Add(&repo.Entry{
 		Name: "test",

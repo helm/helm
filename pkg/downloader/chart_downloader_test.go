@@ -171,7 +171,7 @@ func TestIsTar(t *testing.T) {
 }
 
 func TestDownloadTo(t *testing.T) {
-	srv := repotest.NewTempServer(t, "testdata/*.tgz*", repotest.WithBasicAuth())
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/*.tgz*"), repotest.WithBasicAuth())
 	defer srv.Stop()
 	if err := srv.CreateIndex(); err != nil {
 		t.Fatal(err)
@@ -218,7 +218,7 @@ func TestDownloadTo(t *testing.T) {
 
 func TestDownloadTo_TLS(t *testing.T) {
 	// Set up mock server w/ tls enabled
-	srv := repotest.NewTempServer(t, "testdata/*.tgz*", repotest.WithAutostart("tls"))
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/*.tgz*"), repotest.WithAutostart("tls"))
 	defer srv.Stop()
 	if err := srv.CreateIndex(); err != nil {
 		t.Fatal(err)
@@ -269,7 +269,7 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 	dest := t.TempDir()
 
 	// Set up a fake repo
-	srv := repotest.NewTempServer(t, "testdata/*.tgz*")
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/*.tgz*"))
 	defer srv.Stop()
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)

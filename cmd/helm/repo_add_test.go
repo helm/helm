@@ -34,11 +34,11 @@ import (
 )
 
 func TestRepoAddCmd(t *testing.T) {
-	srv := repotest.NewTempServer(t, "testdata/testserver/*.*")
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/testserver/*.*"))
 	defer srv.Stop()
 
 	// A second test server is setup to verify URL changing
-	srv2 := repotest.NewTempServer(t, "testdata/testserver/*.*")
+	srv2 := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/testserver/*.*"))
 	defer srv2.Stop()
 
 	tmpdir := filepath.Join(t.TempDir(), "path-component.yaml/data")
@@ -74,7 +74,7 @@ func TestRepoAddCmd(t *testing.T) {
 }
 
 func TestRepoAdd(t *testing.T) {
-	ts := repotest.NewTempServer(t, "testdata/testserver/*.*")
+	ts := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/testserver/*.*"))
 	defer ts.Stop()
 
 	rootDir := t.TempDir()
@@ -125,7 +125,7 @@ func TestRepoAdd(t *testing.T) {
 }
 
 func TestRepoAddCheckLegalName(t *testing.T) {
-	ts := repotest.NewTempServer(t, "testdata/testserver/*.*")
+	ts := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/testserver/*.*"))
 	defer ts.Stop()
 	defer resetEnv()()
 
@@ -179,7 +179,7 @@ func TestRepoAddConcurrentHiddenFile(t *testing.T) {
 }
 
 func repoAddConcurrent(t *testing.T, testName, repoFile string) {
-	ts := repotest.NewTempServer(t, "testdata/testserver/*.*")
+	ts := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/testserver/*.*"))
 	defer ts.Stop()
 
 	var wg sync.WaitGroup
@@ -227,7 +227,7 @@ func TestRepoAddFileCompletion(t *testing.T) {
 }
 
 func TestRepoAddWithPasswordFromStdin(t *testing.T) {
-	srv := repotest.NewTempServer(t, "testdata/testserver/*.*", repotest.WithBasicAuth())
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/testserver/*.*"), repotest.WithBasicAuth())
 	defer srv.Stop()
 
 	defer resetEnv()()

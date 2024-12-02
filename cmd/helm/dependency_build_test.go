@@ -29,7 +29,7 @@ import (
 )
 
 func TestDependencyBuildCmd(t *testing.T) {
-	srv := repotest.NewTempServer(t, "testdata/testcharts/*.tgz")
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/testcharts/*.tgz"))
 	defer srv.Stop()
 
 	rootDir := srv.Root()

@@ -292,7 +292,7 @@ version: 0.1.0`
 
 func TestUpdateBeforeBuild(t *testing.T) {
 	// Set up a fake repo
-	srv := repotest.NewTempServer(t, "testdata/*.tgz*")
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/*.tgz*"))
 	defer srv.Stop()
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
@@ -358,7 +358,7 @@ func TestUpdateBeforeBuild(t *testing.T) {
 // to be fetched.
 func TestUpdateWithNoRepo(t *testing.T) {
 	// Set up a fake repo
-	srv := repotest.NewTempServer(t, "testdata/*.tgz*")
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/*.tgz*"))
 	defer srv.Stop()
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
@@ -427,7 +427,7 @@ func TestUpdateWithNoRepo(t *testing.T) {
 // If each of these main fields (name, version, repository) is not supplied by dep param, default value will be used.
 func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Dependency) {
 	// Set up a fake repo
-	srv := repotest.NewTempServer(t, "testdata/*.tgz*")
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/*.tgz*"))
 	defer srv.Stop()
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
