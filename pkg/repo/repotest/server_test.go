@@ -19,6 +19,7 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"sigs.k8s.io/yaml"
@@ -130,5 +131,16 @@ func TestNewTempServer(t *testing.T) {
 		if res.StatusCode != 200 {
 			t.Errorf("Expected 200, got %d", res.StatusCode)
 		}
+	}
+}
+
+func TestNewTempServer_TLS(t *testing.T) {
+	ensure.HelmHome(t)
+
+	srv := NewTempServer(t, WithChartSourceGlob("testdata/examplechart-0.1.0.tgz"), WithTLS())
+	defer srv.Stop()
+
+	if !strings.HasPrefix(srv.URL(), "https://") {
+		t.Fatal("non-TLS server")
 	}
 }

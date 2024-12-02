@@ -33,19 +33,19 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	ociRegistry "helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v3/testdata"
 )
 
 type ServerOption func(*testing.T, *Server)
 
-func WithAutostart(autostartOption string) ServerOption {
+func WithTLS() ServerOption {
 	return func(_ *testing.T, server *Server) {
-		server.autostartOption = autostartOption
+		server.useTLS = true
 	}
 }
 
@@ -103,8 +103,7 @@ func NewTempServer(t *testing.T, options ...ServerOption) *Server {
 // for service.
 func NewServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 	srv := newServer(t, docroot, options...)
-
-	autostartServer(t, srv)
+	srv.Start()
 
 	return srv
 }
@@ -117,8 +116,7 @@ func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 	}
 
 	s := &Server{
-		docroot:         absdocroot,
-		autostartOption: "plain",
+		docroot: absdocroot,
 	}
 
 	for _, option := range options {
@@ -132,7 +130,7 @@ func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 		http.FileServer(http.Dir(s.Root())).ServeHTTP(w, r)
 	}))
 
-	autostartServer(t, s)
+	s.Start()
 
 	// Add the testing repository as the only repo. Server must be started for the server's URL to be valid
 	if err := setTestingRepository(s.URL(), filepath.Join(s.docroot, "repositories.yaml")); err != nil {
@@ -142,24 +140,12 @@ func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 	return s
 }
 
-func autostartServer(t *testing.T, srv *Server) {
-	switch srv.autostartOption {
-	case "none":
-	case "plain":
-		srv.Start()
-	case "tls":
-		srv.StartTLS()
-	default:
-		t.Fatalf("Invalid autostart option: %s", srv.autostartOption)
-	}
-}
-
 // Server is an implementation of a repository server for testing.
 type Server struct {
 	docroot         string
 	srv             *httptest.Server
 	middleware      http.HandlerFunc
-	autostartOption string
+	useTLS          bool
 	chartSourceGlob string
 }
 
@@ -377,21 +363,19 @@ func (s *Server) CreateIndex() error {
 }
 
 func (s *Server) Start() {
-	s.srv.Start()
-}
+	if s.useTLS {
+		insecure := false
 
-func (s *Server) StartTLS() {
-	cd := "../../testdata"
-	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
-	insecure := false
-
-	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca, insecure)
-	if err != nil {
-		panic(err)
+		tlsConf, err := testdata.ReadTLSConfig(insecure)
+		if err != nil {
+			panic(err)
+		}
+		tlsConf.ServerName = "helm.sh"
+		s.srv.TLS = tlsConf
+		s.srv.StartTLS()
+	} else {
+		s.srv.Start()
 	}
-	tlsConf.ServerName = "helm.sh"
-	s.srv.TLS = tlsConf
-	s.srv.StartTLS()
 }
 
 // Stop stops the server and closes all connections.
