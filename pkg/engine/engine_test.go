@@ -1308,10 +1308,15 @@ func TestRenderNilValue(t *testing.T) {
 			Version: "1.2.3",
 		},
 		Templates: []*chart.File{
-			{Name: "templates/_helpers.tpl", Data: []byte(`{{- define "noval" -}}{{ and nil }}{{- end -}}`)},
+			{Name: "templates/_helpers.tpl", Data: []byte(`` +
+				`{{- define "noval" -}}{{ and nil }}{{- end -}}` +
+				`{{- define "noval_str" -}}<no value>{{- end -}}`)},
 			{Name: "templates/test_include.yaml", Data: []byte(`{{ eq (include "noval" .) "" }}`)},
 			{Name: "templates/test_tpl.yaml", Data: []byte(`{{ eq (tpl "{{ and nil }}" .) "" }}`)},
 			{Name: "templates/test_render.yaml", Data: []byte(`{{ and nil }}`)},
+			{Name: "templates/test_include_str.yaml", Data: []byte(`{{ eq (include "noval_str" .) "<no value>" }}`)},
+			{Name: "templates/test_tpl_str.yaml", Data: []byte(`{{ eq (tpl "<no value>" .) "<no value>" }}`)},
+			{Name: "templates/test_render_str.yaml", Data: []byte(`<no value>`)},
 		},
 	}
 
@@ -1321,9 +1326,12 @@ func TestRenderNilValue(t *testing.T) {
 	}
 
 	expect := map[string]string{
-		"moby/templates/test_include.yaml": "true",
-		"moby/templates/test_tpl.yaml":     "true",
-		"moby/templates/test_render.yaml":  "",
+		"moby/templates/test_include.yaml":     "true",
+		"moby/templates/test_tpl.yaml":         "true",
+		"moby/templates/test_render.yaml":      "",
+		"moby/templates/test_include_str.yaml": "true",
+		"moby/templates/test_tpl_str.yaml":     "true",
+		"moby/templates/test_render_str.yaml":  "<no value>",
 	}
 	for name, data := range expect {
 		if out[name] != data {
