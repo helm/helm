@@ -175,6 +175,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
 	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
+	f.StringToStringVarP(&client.NamespaceLabels, "namespace-labels", "L", nil, "Labels that would be added to created namespace. Should be divided by comma. If --create-namespace is not set, this is ignored. Default is 'name=<namespace-name>'")
 	// --dry-run options with expected outcome:
 	// - Not set means no dry run and server is contacted.
 	// - Set with no value, a value of client, or a value of true and the server is not contacted
