@@ -1300,3 +1300,34 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRenderNilValue(t *testing.T) {
+	chart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "moby",
+			Version: "1.2.3",
+		},
+		Templates: []*chart.File{
+			{Name: "templates/_helpers.tpl", Data: []byte(`{{- define "noval" -}}{{ and nil }}{{- end -}}`)},
+			{Name: "templates/test_include.yaml", Data: []byte(`{{ eq (include "noval" .) "" }}`)},
+			{Name: "templates/test_tpl.yaml", Data: []byte(`{{ eq (tpl "{{ and nil }}" .) "" }}`)},
+			{Name: "templates/test_render.yaml", Data: []byte(`{{ and nil }}`)},
+		},
+	}
+
+	out, err := Render(chart, chartutil.Values{})
+	if err != nil {
+		t.Fatalf("Failed to render templates: %s", err)
+	}
+
+	expect := map[string]string{
+		"moby/templates/test_include.yaml": "true",
+		"moby/templates/test_tpl.yaml":     "true",
+		"moby/templates/test_render.yaml":  "",
+	}
+	for name, data := range expect {
+		if out[name] != data {
+			t.Fatalf("Expected %q, got %q (%q)", data, out[name], name)
+		}
+	}
+}
