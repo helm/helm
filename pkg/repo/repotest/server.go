@@ -61,7 +61,7 @@ func WithBasicAuth() ServerOption {
 }
 
 func WithChartSourceGlob(glob string) ServerOption {
-	return func(t *testing.T, server *Server) {
+	return func(_ *testing.T, server *Server) {
 		server.chartSourceGlob = glob
 	}
 }
@@ -71,7 +71,9 @@ func WithChartSourceGlob(glob string) ServerOption {
 // If the passed in string is not "", it will be treated as a shell glob, and files
 // will be copied from that path to the server's docroot.
 //
-// The server is started automatically. And the caller is responsible for stopping the server.
+// The server is started automatically. The caller is responsible for stopping
+// the server.
+//
 // The temp dir will be removed by testing package automatically when test finished.
 func NewTempServer(t *testing.T, options ...ServerOption) *Server {
 
@@ -97,7 +99,8 @@ func NewTempServer(t *testing.T, options ...ServerOption) *Server {
 //
 // docroot should be a temp dir managed by the caller.
 //
-// The server is started automatically. And the caller is responsible for stopping the server.
+// The server is started automatically. The caller is responsible for stopping
+// the server.
 //
 // Use CopyCharts to move charts into the repository and then index them
 // for service.
