@@ -214,8 +214,8 @@ func TestDownload(t *testing.T) {
 	// test with Get URL differing from withURL
 	crossAuthSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
-		if ok || username == "username" || password == "password" {
-			t.Errorf("Expected request to not include but got '%v', '%s', '%s'", ok, username, password)
+		if ok {
+			t.Errorf("Expected no basic auth in request but got user '%s' and password '%s'", username, password)
 		}
 		fmt.Fprint(w, expect)
 	}))
