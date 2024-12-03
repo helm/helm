@@ -321,6 +321,11 @@ func cleanupParseError(filename string, err error) error {
 	return fmt.Errorf("parse error at (%s): %s", string(location), errMsg)
 }
 
+type TraceableError struct {
+	location string
+	message  string
+}
+
 func cleanupExecError(filename string, err error) error {
 	if _, isExecError := err.(template.ExecError); !isExecError {
 		return err
@@ -340,8 +345,51 @@ func cleanupExecError(filename string, err error) error {
 	if len(parts) >= 2 {
 		return fmt.Errorf("execution error at (%s): %s", string(location), parts[1])
 	}
+	current := err
+	fileLocations := []TraceableError{}
+	for {
+		if current == nil {
+			break
+		}
+		tokens = strings.SplitN(current.Error(), ": ", 3)
+		location = tokens[1]
+		traceable := TraceableError{
+			location: location,
+			message:  current.Error(),
+		}
+		fileLocations = append(fileLocations, traceable)
+		current = errors.Unwrap(current)
+	}
 
-	return err
+	prevMessage := ""
+	for i := len(fileLocations) - 1; i >= 0; i-- {
+		currentMsg := fileLocations[i].message
+		if i == len(fileLocations)-1 {
+			prevMessage = currentMsg
+			continue
+		}
+
+		if strings.Contains(currentMsg, prevMessage) {
+			fileLocations[i].message = strings.ReplaceAll(fileLocations[i].message, prevMessage, "")
+		}
+		prevMessage = currentMsg
+	}
+
+	for i := len(fileLocations) - 1; i >= 0; i-- {
+		if strings.Contains(fileLocations[i].message, fileLocations[i].location) {
+			fileLocations[i].message = strings.ReplaceAll(fileLocations[i].message, fileLocations[i].location, "")
+		}
+	}
+
+	finalErrorString := ""
+	for _, i := range fileLocations {
+		if i.message == "" {
+			continue
+		}
+		finalErrorString = finalErrorString + "\n" + i.location + " " + i.message
+	}
+
+	return fmt.Errorf("%s\n\n\n\nError: %s", finalErrorString, err.Error())
 }
 
 func sortTemplates(tpls map[string]renderable) []string {

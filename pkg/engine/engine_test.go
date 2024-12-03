@@ -18,6 +18,8 @@ package engine
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"path"
 	"strings"
 	"sync"
@@ -1299,4 +1301,23 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 		// Some unexpected error.
 		t.Fatal(err)
 	}
+}
+
+func TestSometimesJesseJustBe(t *testing.T) {
+	c, _ := loader.Load("/home/jesse/code/camunda-platform-helm/charts/camunda-platform-8.5")
+
+	v, _ := chartutil.ReadValuesFile("/home/jesse/code/helm/values.yaml")
+	val, _ := chartutil.CoalesceValues(c, v)
+	vals := map[string]interface{}{
+		"Values": val.AsMap(),
+	}
+	out, err := Render(c, vals)
+
+	if err != nil {
+		t.Errorf("Failed to render templates: %s", err)
+	}
+	assert.NotNil(t, out)
+	data := strings.TrimSpace(out["jesse-subchart-values-hacktest/charts/keycloak/templates/ingress.yaml"])
+	fmt.Println(data)
+	assert.NotEmpty(t, data)
 }
