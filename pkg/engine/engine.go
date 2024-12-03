@@ -389,7 +389,7 @@ func cleanupExecError(filename string, err error) error {
 		finalErrorString = finalErrorString + "\n" + i.location + " " + i.message
 	}
 
-	return fmt.Errorf("%s\n\n\n\nError: %s", finalErrorString, err.Error())
+	return fmt.Errorf("NEW ERROR FORMAT: \n%s\n\n\nORIGINAL ERROR:\n%s", finalErrorString, err.Error())
 }
 
 func sortTemplates(tpls map[string]renderable) []string {
