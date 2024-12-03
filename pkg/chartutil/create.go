@@ -35,7 +35,7 @@ import (
 // This regular expression is probably stricter than it needs to be. We can relax it
 // somewhat. Newline characters, as well as $, quotes, +, parens, and % are known to be
 // problematic.
-var chartName = regexp.MustCompile("^[a-zA-Z0-9._-]+$")
+var chartName = regexp.MustCompile("^[a-z0-9\\-]+$")
 
 const (
 	// ChartfileName is the default Chart file name.
