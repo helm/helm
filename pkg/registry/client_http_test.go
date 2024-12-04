@@ -17,12 +17,13 @@ limitations under the License.
 package registry
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
 
-	"github.com/containerd/containerd/errdefs"
 	"github.com/stretchr/testify/suite"
+	"oras.land/oras-go/v2/content"
 )
 
 type HTTPRegistryClientTestSuite struct {
@@ -40,6 +41,18 @@ func (suite *HTTPRegistryClientTestSuite) SetupSuite() {
 func (suite *HTTPRegistryClientTestSuite) TearDownSuite() {
 	teardown(&suite.TestSuite)
 	os.RemoveAll(suite.WorkspaceDir)
+}
+
+func (suite *HTTPRegistryClientTestSuite) Test_0_Login() {
+	err := suite.RegistryClient.Login(suite.DockerRegistryHost,
+		LoginOptBasicAuth("badverybad", "ohsobad"),
+		LoginOptPlainText(true))
+	suite.NotNil(err, "error logging into registry with bad credentials")
+
+	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
+		LoginOptBasicAuth(testUsername, testPassword),
+		LoginOptPlainText(true))
+	suite.Nil(err, "no error logging into registry with good credentials")
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_1_Push() {
@@ -60,7 +73,7 @@ func (suite *HTTPRegistryClientTestSuite) Test_4_ManInTheMiddle() {
 	// returns content that does not match the expected digest
 	_, err := suite.RegistryClient.Pull(ref)
 	suite.NotNil(err)
-	suite.True(errdefs.IsFailedPrecondition(err))
+	suite.True(errors.Is(err, content.ErrMismatchedDigest))
 }
 
 func TestHTTPRegistryClientTestSuite(t *testing.T) {

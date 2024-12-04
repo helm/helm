@@ -59,7 +59,7 @@ func newDependencyUpdateCmd(_ *action.Configuration, out io.Writer) *cobra.Comma
 				chartpath = filepath.Clean(args[0])
 			}
 			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
-				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
+				client.InsecureSkipTLSverify, client.PlainHTTP)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
@@ -75,6 +75,13 @@ func newDependencyUpdateCmd(_ *action.Configuration, out io.Writer) *cobra.Comma
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
 			}
+
+			registryClient, err = newDefaultRegistryClient(client.PlainHTTP)
+			if err != nil {
+				return fmt.Errorf("unable to create registry client: %w", err)
+			}
+			man.RegistryClient = registryClient
+
 			if client.Verify {
 				man.Verify = downloader.VerifyAlways
 			}
