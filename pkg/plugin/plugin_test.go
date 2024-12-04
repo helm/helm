@@ -26,160 +26,253 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 )
 
-func checkCommand(p *Plugin, extraArgs []string, osStrCmp string, t *testing.T) {
+func TestPrepareCommand(t *testing.T) {
+	cmdMain := "sh"
+	cmdArgs := []string{"-c", "echo \"test\""}
+
+	p := &Plugin{
+		Dir: "/tmp", // Unused
+		Metadata: &Metadata{
+			Name:    "test",
+			Command: "echo \"error\"",
+			PlatformCommand: []PlatformCommand{
+				{OperatingSystem: "no-os", Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+				{OperatingSystem: runtime.GOOS, Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+				{OperatingSystem: runtime.GOOS, Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+				{OperatingSystem: runtime.GOOS, Architecture: runtime.GOARCH, Command: cmdMain, Args: cmdArgs},
+			},
+		},
+	}
+
+	cmd, args, err := p.PrepareCommand([]string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cmd != cmdMain {
+		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
+	}
+	if !reflect.DeepEqual(args, cmdArgs) {
+		t.Fatalf("Expected %v, got %v", cmdArgs, args)
+	}
+}
+
+func TestPrepareCommandExtraArgs(t *testing.T) {
+	cmdMain := "sh"
+	cmdArgs := []string{"-c", "echo \"test\""}
+	extraArgs := []string{"--debug", "--foo", "bar"}
+
+	p := &Plugin{
+		Dir: "/tmp", // Unused
+		Metadata: &Metadata{
+			Name:    "test",
+			Command: "echo \"error\"",
+			PlatformCommand: []PlatformCommand{
+				{OperatingSystem: "no-os", Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+				{OperatingSystem: runtime.GOOS, Architecture: runtime.GOARCH, Command: cmdMain, Args: cmdArgs},
+				{OperatingSystem: runtime.GOOS, Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+				{OperatingSystem: runtime.GOOS, Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+			},
+		},
+	}
+
+	expectedArgs := append(cmdArgs, extraArgs...)
+
 	cmd, args, err := p.PrepareCommand(extraArgs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cmd != "echo" {
-		t.Fatalf("Expected echo, got %q", cmd)
+	if cmd != cmdMain {
+		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
+	}
+	if !reflect.DeepEqual(args, expectedArgs) {
+		t.Fatalf("Expected %v, got %v", expectedArgs, args)
+	}
+}
+
+func TestPrepareCommandExtraArgsIgnored(t *testing.T) {
+	cmdMain := "sh"
+	cmdArgs := []string{"-c", "echo \"test\""}
+	extraArgs := []string{"--debug", "--foo", "bar"}
+
+	p := &Plugin{
+		Dir: "/tmp", // Unused
+		Metadata: &Metadata{
+			Name:    "test",
+			Command: "echo \"error\"",
+			PlatformCommand: []PlatformCommand{
+				{OperatingSystem: "no-os", Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+				{OperatingSystem: runtime.GOOS, Architecture: runtime.GOARCH, Command: cmdMain, Args: cmdArgs},
+				{OperatingSystem: runtime.GOOS, Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+				{OperatingSystem: runtime.GOOS, Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+			},
+			IgnoreFlags: true,
+		},
 	}
 
-	if l := len(args); l != 5 {
-		t.Fatalf("expected 5 args, got %d", l)
-	}
-
-	expect := []string{"-n", osStrCmp, "--debug", "--foo", "bar"}
-	for i := 0; i < len(args); i++ {
-		if expect[i] != args[i] {
-			t.Errorf("Expected arg=%q, got %q", expect[i], args[i])
-		}
-	}
-
-	// Test with IgnoreFlags. This should omit --debug, --foo, bar
-	p.Metadata.IgnoreFlags = true
-	cmd, args, err = p.PrepareCommand(extraArgs)
+	cmd, args, err := p.PrepareCommand(extraArgs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cmd != "echo" {
-		t.Fatalf("Expected echo, got %q", cmd)
+	if cmd != cmdMain {
+		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
 	}
-	if l := len(args); l != 2 {
-		t.Fatalf("expected 2 args, got %d", l)
-	}
-	expect = []string{"-n", osStrCmp}
-	for i := 0; i < len(args); i++ {
-		if expect[i] != args[i] {
-			t.Errorf("Expected arg=%q, got %q", expect[i], args[i])
-		}
+	if !reflect.DeepEqual(args, cmdArgs) {
+		t.Fatalf("Expected %v, got %v", cmdArgs, args)
 	}
 }
 
-func TestPrepareCommand(t *testing.T) {
-	p := &Plugin{
-		Dir: "/tmp", // Unused
-		Metadata: &Metadata{
-			Name:    "test",
-			Command: "echo -n foo",
-		},
-	}
-	argv := []string{"--debug", "--foo", "bar"}
+func TestPrepareCommands(t *testing.T) {
+	cmdMain := "sh"
+	cmdArgs := []string{"-c", "echo \"test\""}
 
-	checkCommand(p, argv, "foo", t)
+	cmds := []PlatformCommand{
+		{OperatingSystem: "no-os", Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+		{OperatingSystem: runtime.GOOS, Architecture: runtime.GOARCH, Command: cmdMain, Args: cmdArgs},
+		{OperatingSystem: runtime.GOOS, Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+		{OperatingSystem: runtime.GOOS, Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+	}
+
+	cmd, args, err := PrepareCommands(cmds, true, []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cmd != cmdMain {
+		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
+	}
+	if !reflect.DeepEqual(args, cmdArgs) {
+		t.Fatalf("Expected %v, got %v", cmdArgs, args)
+	}
 }
 
-func TestPlatformPrepareCommand(t *testing.T) {
-	p := &Plugin{
-		Dir: "/tmp", // Unused
-		Metadata: &Metadata{
-			Name:    "test",
-			Command: "echo -n os-arch",
-			PlatformCommand: []PlatformCommand{
-				{OperatingSystem: "linux", Architecture: "386", Command: "echo -n linux-386"},
-				{OperatingSystem: "linux", Architecture: "amd64", Command: "echo -n linux-amd64"},
-				{OperatingSystem: "linux", Architecture: "arm64", Command: "echo -n linux-arm64"},
-				{OperatingSystem: "linux", Architecture: "ppc64le", Command: "echo -n linux-ppc64le"},
-				{OperatingSystem: "linux", Architecture: "s390x", Command: "echo -n linux-s390x"},
-				{OperatingSystem: "linux", Architecture: "riscv64", Command: "echo -n linux-riscv64"},
-				{OperatingSystem: "linux", Architecture: "loong64", Command: "echo -n linux-loong64"},
-				{OperatingSystem: "windows", Architecture: "amd64", Command: "echo -n win-64"},
-			},
-		},
-	}
-	var osStrCmp string
-	os := runtime.GOOS
-	arch := runtime.GOARCH
-	if os == "linux" && arch == "386" {
-		osStrCmp = "linux-386"
-	} else if os == "linux" && arch == "amd64" {
-		osStrCmp = "linux-amd64"
-	} else if os == "linux" && arch == "arm64" {
-		osStrCmp = "linux-arm64"
-	} else if os == "linux" && arch == "ppc64le" {
-		osStrCmp = "linux-ppc64le"
-	} else if os == "linux" && arch == "s390x" {
-		osStrCmp = "linux-s390x"
-	} else if os == "linux" && arch == "riscv64" {
-		osStrCmp = "linux-riscv64"
-	} else if os == "linux" && arch == "loong64" {
-		osStrCmp = "linux-loong64"
-	} else if os == "windows" && arch == "amd64" {
-		osStrCmp = "win-64"
-	} else {
-		osStrCmp = "os-arch"
+func TestPrepareCommandsExtraArgs(t *testing.T) {
+	cmdMain := "sh"
+	cmdArgs := []string{"-c", "echo \"test\""}
+	extraArgs := []string{"--debug", "--foo", "bar"}
+
+	cmds := []PlatformCommand{
+		{OperatingSystem: "no-os", Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+		{OperatingSystem: runtime.GOOS, Architecture: runtime.GOARCH, Command: "sh", Args: []string{"-c", "echo \"test\""}},
+		{OperatingSystem: runtime.GOOS, Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+		{OperatingSystem: runtime.GOOS, Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
 	}
 
-	argv := []string{"--debug", "--foo", "bar"}
-	checkCommand(p, argv, osStrCmp, t)
+	expectedArgs := append(cmdArgs, extraArgs...)
+
+	cmd, args, err := PrepareCommands(cmds, true, extraArgs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cmd != cmdMain {
+		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
+	}
+	if !reflect.DeepEqual(args, expectedArgs) {
+		t.Fatalf("Expected %v, got %v", expectedArgs, args)
+	}
 }
 
-func TestPartialPlatformPrepareCommand(t *testing.T) {
-	p := &Plugin{
-		Dir: "/tmp", // Unused
-		Metadata: &Metadata{
-			Name:    "test",
-			Command: "echo -n os-arch",
-			PlatformCommand: []PlatformCommand{
-				{OperatingSystem: "linux", Architecture: "386", Command: "echo -n linux-386"},
-				{OperatingSystem: "windows", Architecture: "amd64", Command: "echo -n win-64"},
-			},
-		},
-	}
-	var osStrCmp string
-	os := runtime.GOOS
-	arch := runtime.GOARCH
-	if os == "linux" {
-		osStrCmp = "linux-386"
-	} else if os == "windows" && arch == "amd64" {
-		osStrCmp = "win-64"
-	} else {
-		osStrCmp = "os-arch"
+func TestPrepareCommandsNoArch(t *testing.T) {
+	cmdMain := "sh"
+	cmdArgs := []string{"-c", "echo \"test\""}
+
+	cmds := []PlatformCommand{
+		{OperatingSystem: "no-os", Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+		{OperatingSystem: runtime.GOOS, Architecture: "", Command: "sh", Args: []string{"-c", "echo \"test\""}},
+		{OperatingSystem: runtime.GOOS, Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
 	}
 
-	argv := []string{"--debug", "--foo", "bar"}
-	checkCommand(p, argv, osStrCmp, t)
+	cmd, args, err := PrepareCommands(cmds, true, []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cmd != cmdMain {
+		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
+	}
+	if !reflect.DeepEqual(args, cmdArgs) {
+		t.Fatalf("Expected %v, got %v", cmdArgs, args)
+	}
 }
 
-func TestNoPrepareCommand(t *testing.T) {
-	p := &Plugin{
-		Dir: "/tmp", // Unused
-		Metadata: &Metadata{
-			Name: "test",
-		},
-	}
-	argv := []string{"--debug", "--foo", "bar"}
+func TestPrepareCommandsNoOsNoArch(t *testing.T) {
+	cmdMain := "sh"
+	cmdArgs := []string{"-c", "echo \"test\""}
 
-	_, _, err := p.PrepareCommand(argv)
-	if err == nil {
+	cmds := []PlatformCommand{
+		{OperatingSystem: "no-os", Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+		{OperatingSystem: "", Architecture: "", Command: "sh", Args: []string{"-c", "echo \"test\""}},
+		{OperatingSystem: runtime.GOOS, Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+	}
+
+	cmd, args, err := PrepareCommands(cmds, true, []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cmd != cmdMain {
+		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
+	}
+	if !reflect.DeepEqual(args, cmdArgs) {
+		t.Fatalf("Expected %v, got %v", cmdArgs, args)
+	}
+}
+
+func TestPrepareCommandsNoMatch(t *testing.T) {
+	cmds := []PlatformCommand{
+		{OperatingSystem: "no-os", Architecture: "no-arch", Command: "sh", Args: []string{"-c", "echo \"test\""}},
+		{OperatingSystem: runtime.GOOS, Architecture: "no-arch", Command: "sh", Args: []string{"-c", "echo \"test\""}},
+		{OperatingSystem: "no-os", Architecture: runtime.GOARCH, Command: "sh", Args: []string{"-c", "echo \"test\""}},
+	}
+
+	if _, _, err := PrepareCommands(cmds, true, []string{}); err == nil {
 		t.Fatalf("Expected error to be returned")
 	}
 }
 
-func TestNoMatchPrepareCommand(t *testing.T) {
-	p := &Plugin{
-		Dir: "/tmp", // Unused
-		Metadata: &Metadata{
-			Name: "test",
-			PlatformCommand: []PlatformCommand{
-				{OperatingSystem: "no-os", Architecture: "amd64", Command: "echo -n linux-386"},
-			},
-		},
-	}
-	argv := []string{"--debug", "--foo", "bar"}
+func TestPrepareCommandsNoCommands(t *testing.T) {
+	cmds := []PlatformCommand{}
 
-	if _, _, err := p.PrepareCommand(argv); err == nil {
+	if _, _, err := PrepareCommands(cmds, true, []string{}); err == nil {
 		t.Fatalf("Expected error to be returned")
+	}
+}
+
+func TestPrepareCommandsExpand(t *testing.T) {
+	t.Setenv("TEST", "test")
+	cmdMain := "sh"
+	cmdArgs := []string{"-c", "echo \"${TEST}\""}
+	cmds := []PlatformCommand{
+		{OperatingSystem: "", Architecture: "", Command: cmdMain, Args: cmdArgs},
+	}
+
+	expectedArgs := []string{"-c", "echo \"test\""}
+
+	cmd, args, err := PrepareCommands(cmds, true, []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cmd != cmdMain {
+		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
+	}
+	if !reflect.DeepEqual(args, expectedArgs) {
+		t.Fatalf("Expected %v, got %v", expectedArgs, args)
+	}
+}
+
+func TestPrepareCommandsNoExpand(t *testing.T) {
+	t.Setenv("TEST", "test")
+	cmdMain := "sh"
+	cmdArgs := []string{"-c", "echo \"${TEST}\""}
+	cmds := []PlatformCommand{
+		{OperatingSystem: "", Architecture: "", Command: cmdMain, Args: cmdArgs},
+	}
+
+	cmd, args, err := PrepareCommands(cmds, false, []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cmd != cmdMain {
+		t.Fatalf("Expected %q, got %q", cmdMain, cmd)
+	}
+	if !reflect.DeepEqual(args, cmdArgs) {
+		t.Fatalf("Expected %v, got %v", cmdArgs, args)
 	}
 }
 
@@ -199,10 +292,16 @@ func TestLoadDir(t *testing.T) {
 		Version:     "0.1.0",
 		Usage:       "usage",
 		Description: "description",
-		Command:     "$HELM_PLUGIN_DIR/hello.sh",
+		PlatformCommand: []PlatformCommand{
+			{OperatingSystem: "linux", Architecture: "", Command: "sh", Args: []string{"-c", "${HELM_PLUGIN_DIR}/hello.sh"}},
+			{OperatingSystem: "windows", Architecture: "", Command: "pwsh", Args: []string{"-c", "${HELM_PLUGIN_DIR}/hello.ps1"}},
+		},
 		IgnoreFlags: true,
-		Hooks: map[string]string{
-			Install: "echo installing...",
+		PlatformHooks: map[string][]PlatformCommand{
+			Install: {
+				{OperatingSystem: "linux", Architecture: "", Command: "sh", Args: []string{"-c", "echo \"installing...\""}},
+				{OperatingSystem: "windows", Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"installing...\""}},
+			},
 		},
 	}
 
@@ -249,7 +348,6 @@ func TestDownloader(t *testing.T) {
 }
 
 func TestLoadAll(t *testing.T) {
-
 	// Verify that empty dir loads:
 	if plugs, err := LoadAll("testdata"); err != nil {
 		t.Fatalf("error loading dir with no plugins: %s", err)
@@ -361,6 +459,30 @@ func TestValidatePluginData(t *testing.T) {
 		Dir: "no-such-dir",
 	}
 
+	// A mock plugin with no commands
+	mockNoCommand := mockPlugin("foo")
+	mockNoCommand.Metadata.PlatformCommand = []PlatformCommand{}
+	mockNoCommand.Metadata.PlatformHooks = map[string][]PlatformCommand{}
+
+	// A mock plugin with legacy commands
+	mockLegacyCommand := mockPlugin("foo")
+	mockLegacyCommand.Metadata.PlatformCommand = []PlatformCommand{}
+	mockLegacyCommand.Metadata.Command = "echo \"mock plugin\""
+	mockLegacyCommand.Metadata.PlatformHooks = map[string][]PlatformCommand{}
+	mockLegacyCommand.Metadata.Hooks = map[string]string{
+		Install: "echo installing...",
+	}
+
+	// A mock plugin with a command also set
+	mockWithCommand := mockPlugin("foo")
+	mockWithCommand.Metadata.Command = "echo \"mock plugin\""
+
+	// A mock plugin with a hooks also set
+	mockWithHooks := mockPlugin("foo")
+	mockWithHooks.Metadata.Hooks = map[string]string{
+		Install: "echo installing...",
+	}
+
 	for i, item := range []struct {
 		pass bool
 		plug *Plugin
@@ -372,6 +494,10 @@ func TestValidatePluginData(t *testing.T) {
 		{false, mockPlugin("foo -bar ")}, // Test trailing chars
 		{false, mockPlugin("foo\nbar")},  // Test newline
 		{false, mockMissingMeta},         // Test if the metadata section missing
+		{true, mockNoCommand},            // Test no command metadata works
+		{true, mockLegacyCommand},        // Test legacy command metadata works
+		{false, mockWithCommand},         // Test platformCommand and command both set fails
+		{false, mockWithHooks},           // Test platformHooks and hooks both set fails
 	} {
 		err := validatePluginData(item.plug, fmt.Sprintf("test-%d", i))
 		if item.pass && err != nil {
@@ -403,7 +529,16 @@ func mockPlugin(name string) *Plugin {
 			Version:     "v0.1.2",
 			Usage:       "Mock plugin",
 			Description: "Mock plugin for testing",
-			Command:     "echo mock plugin",
+			PlatformCommand: []PlatformCommand{
+				{OperatingSystem: "linux", Architecture: "", Command: "sh", Args: []string{"-c", "echo \"mock plugin\""}},
+				{OperatingSystem: "windows", Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"mock plugin\""}},
+			},
+			PlatformHooks: map[string][]PlatformCommand{
+				Install: {
+					{OperatingSystem: "linux", Architecture: "", Command: "sh", Args: []string{"-c", "echo \"installing...\""}},
+					{OperatingSystem: "windows", Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"installing...\""}},
+				},
+			},
 		},
 		Dir: "no-such-dir",
 	}
