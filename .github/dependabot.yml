@@ -4,7 +4,7 @@ updates:
   - # Keep dev-v3 branch dependencies up to date, while Helm v3 is within support
     package-ecosystem: "gomod"
     target_branch: "dev-v3"
-    directory: "/"
+    directory: "/pkg"
     schedule:
       interval: "daily"
     groups:
@@ -33,6 +33,7 @@ updates:
           - "k8s.io/client-go"
           - "k8s.io/kubectl"
   - package-ecosystem: "github-actions"
+    target_branch: "main"
     directory: "/"
     schedule:
       interval: "daily"
