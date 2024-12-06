@@ -51,6 +51,13 @@ an underscore (_) in chart version tags when pushing to a registry and back to
 a plus (+) when pulling from a registry.`
 
 type (
+	// RemoteClient shadows the ORAS remote.Client interface
+	// (hiding the ORAS type from Helm client visibility)
+	// https://pkg.go.dev/oras.land/oras-go/pkg/registry/remote#Client
+	RemoteClient interface {
+		Do(req *http.Request) (*http.Response, error)
+	}
+
 	// Client works with OCI-compliant registries
 	Client struct {
 		debug       bool
@@ -61,7 +68,7 @@ type (
 		password           string
 		out                io.Writer
 		authorizer         auth.Client
-		registryAuthorizer *registryauth.Client
+		registryAuthorizer RemoteClient
 		resolver           func(ref registry.Reference) (remotes.Resolver, error)
 		httpClient         *http.Client
 		plainHTTP          bool
@@ -220,7 +227,7 @@ func ClientOptAuthorizer(authorizer auth.Client) ClientOption {
 // can be used to override the default authorization mechanism.
 //
 // Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
-func ClientOptRegistryAuthorizer(registryAuthorizer *registryauth.Client) ClientOption {
+func ClientOptRegistryAuthorizer(registryAuthorizer RemoteClient) ClientOption {
 	return func(client *Client) {
 		client.registryAuthorizer = registryAuthorizer
 	}
