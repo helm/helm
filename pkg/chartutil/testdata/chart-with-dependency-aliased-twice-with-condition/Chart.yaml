@@ -1,0 +1,14 @@
+apiVersion: v2
+name: chart-with-dependency-aliased-twice-with-condition
+description: A chart with a dependency that is referenced twice with different aliases. The aliased charts have a sub-dependency with a condition.
+type: application
+version: 0.1.0
+appVersion: 1.16.0
+
+dependencies:
+  - name: child
+    alias: childFoo
+    version: "0.1.0"
+  - name: child
+    alias: childBar
+    version: "0.1.0"
