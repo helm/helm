@@ -17,9 +17,11 @@ limitations under the License.
 package values
 
 import (
+	"bytes"
 	"io"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -37,6 +39,7 @@ type Options struct {
 	FileValues    []string // --set-file
 	JSONValues    []string // --set-json
 	LiteralValues []string // --set-literal
+	PropertyFiles []string // -p/--property-file
 }
 
 // MergeValues merges values from files specified via -f/--values and directly
@@ -102,7 +105,49 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 		}
 	}
 
+	// User specified property files via -p/--property-file
+	if len(opts.PropertyFiles) > 0 {
+		propertiesFilesMap, err := opts.MergeProperties(p)
+		if err != nil {
+			return nil, err
+		}
+		base["propertiesFiles"] = propertiesFilesMap
+	}
+
 	return base, nil
+}
+
+// MergeProperties merges properties from files specified via --property-file
+func (opts *Options) MergeProperties(p getter.Providers) (map[string]interface{}, error) {
+	propertiesFilesMap := make(map[string]interface{})
+
+	for _, filePath := range opts.PropertyFiles {
+		data, err := readFile(filePath, p)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to fetch properties")
+		}
+
+		properties := make(map[string]interface{})
+		for _, line := range bytes.Split(data, []byte("\n")) {
+			lineStr := strings.TrimSpace(string(line))
+			if lineStr == "" || strings.HasPrefix(lineStr, "#") {
+				continue
+			}
+			parts := strings.SplitN(lineStr, ":", 2)
+			if len(parts) != 2 {
+				return nil, errors.Errorf("invalid properties line: %s", lineStr)
+			}
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			properties[key] = value
+		}
+
+		// Use the base file name (or Vault key) as the key in .Values.propertiesFiles
+		baseName := filepath.Base(filePath)
+		propertiesFilesMap[baseName] = properties
+	}
+
+	return propertiesFilesMap, nil
 }
 
 func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
@@ -139,9 +184,12 @@ func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	if err != nil {
 		return os.ReadFile(filePath)
 	}
+
+	// Fetch data using the provider
 	data, err := g.Get(filePath, getter.WithURL(filePath))
 	if err != nil {
 		return nil, err
 	}
+
 	return data.Bytes(), err
 }
