@@ -56,6 +56,8 @@ Get started with the [Quick Start guide](https://helm.sh/docs/intro/quickstart/)
 
 The [Helm roadmap uses GitHub milestones](https://github.com/helm/helm/milestones) to track the progress of the project.
 
+The development of Helm v4 is currently happening on the `main` branch while the development of Helm v3, the stable branch, is happening on the `dev-v3` branch. Changes should be made to the `main` branch prior to being added to the `dev-v3` branch so that all changes are carried along to Helm v4.
+
 ## Community, discussion, contribution, and support
 
 You can reach the Helm community and developers via the following channels:

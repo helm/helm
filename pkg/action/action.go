@@ -394,8 +394,8 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 		if cfg.Releases != nil {
 			if mem, ok := cfg.Releases.Driver.(*driver.Memory); ok {
 				// This function can be called more than once (e.g., helm list --all-namespaces).
-				// If a memory driver was already initialized, re-use it but set the possibly new namespace.
-				// We re-use it in case some releases where already created in the existing memory driver.
+				// If a memory driver was already initialized, reuse it but set the possibly new namespace.
+				// We reuse it in case some releases where already created in the existing memory driver.
 				d = mem
 			}
 		}

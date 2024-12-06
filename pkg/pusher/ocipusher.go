@@ -90,8 +90,9 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 		path.Join(strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme)), meta.Metadata.Name),
 		meta.Metadata.Version)
 
-	chartCreationTime := ctime.Created(stat)
-	pushOpts = append(pushOpts, registry.PushOptCreationTime(chartCreationTime.Format(time.RFC3339)))
+	// The time the chart was "created" is semantically the time the chart archive file was last written(modified)
+	chartArchiveFileCreatedTime := ctime.Modified(stat)
+	pushOpts = append(pushOpts, registry.PushOptCreationTime(chartArchiveFileCreatedTime.Format(time.RFC3339)))
 
 	_, err = client.Push(chartBytes, ref, pushOpts...)
 	return err
