@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
@@ -61,9 +62,11 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if u.DryRun {
-		// In the dry run case, just see if the release exists
 		r, err := u.cfg.releaseContent(name, 0)
 		if err != nil {
+			if u.IgnoreNotFound && errors.As(err, &driver.ErrReleaseNotFound) {
+				return nil, nil
+			}
 			return &release.UninstallReleaseResponse{}, err
 		}
 		return &release.UninstallReleaseResponse{Release: r}, nil
