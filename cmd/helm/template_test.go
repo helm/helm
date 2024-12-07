@@ -142,6 +142,12 @@ func TestTemplateCmd(t *testing.T) {
 			golden: "output/issue-9027.txt",
 		},
 		{
+			// Same as above, but ensures this still works when '-f' is used: https://github.com/helm/helm/issues/12488
+			name:   "ensure nil/null values pass to subcharts delete values when '-f' is used",
+			cmd:    fmt.Sprintf("template '%s' -f %s/values.yaml", deletevalchart, deletevalchart),
+			golden: "output/issue-9027.txt",
+		},
+		{
 			// Ensure that parent chart values take precedence over imported values
 			name:   "template with imported subchart values ensuring import",
 			cmd:    fmt.Sprintf("template '%s' --set configmap.enabled=true --set subchartb.enabled=true", chartPath),
