@@ -19,7 +19,9 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -93,9 +95,11 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 	switch value := AsVersioned(v).(type) {
 	case *corev1.Pod:
 		pod, err := c.client.CoreV1().Pods(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
-		if err != nil || !c.isPodReady(pod) {
+		if err != nil {
 			return false, err
 		}
+		ready, err := c.isPodReady(pod)
+		return ready, err
 	case *batchv1.Job:
 		if c.checkJobs {
 			job, err := c.client.BatchV1().Jobs(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
@@ -204,14 +208,52 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 	return true, nil
 }
 
+func (c *ReadyChecker) getPodFailedError(pod *corev1.Pod) error {
+	var err error
+	if pod.Status.Phase == corev1.PodFailed {
+		containerStatuses := pod.Status.ContainerStatuses
+		if pod.Status.InitContainerStatuses != nil {
+			containerStatuses = append(containerStatuses, pod.Status.InitContainerStatuses...)
+		}
+
+		for _, cs := range containerStatuses {
+			if cs.State.Terminated != nil {
+				err = multierror.Append(
+					err,
+					fmt.Errorf(
+						"pod: %q, container: %q. reason: %q. message: %q",
+						pod.Name,
+						cs.Name,
+						cs.State.Terminated.Reason,
+						strings.TrimSpace(cs.State.Terminated.Message),
+					),
+				)
+			} else if cs.State.Waiting != nil {
+				err = multierror.Append(
+					err,
+					fmt.Errorf(
+						"pod: %q, container: %q. reason: %q. message: %q",
+						pod.Name,
+						cs.Name,
+						cs.State.Waiting.Reason,
+						strings.TrimSpace(cs.State.Waiting.Message),
+					),
+				)
+			}
+		}
+	}
+
+	return err
+}
+
 func (c *ReadyChecker) podsReadyForObject(ctx context.Context, namespace string, obj runtime.Object) (bool, error) {
 	pods, err := c.podsforObject(ctx, namespace, obj)
 	if err != nil {
 		return false, err
 	}
 	for _, pod := range pods {
-		if !c.isPodReady(&pod) {
-			return false, nil
+		if isReady, err := c.isPodReady(&pod); !isReady {
+			return false, err
 		}
 	}
 	return true, nil
@@ -226,15 +268,26 @@ func (c *ReadyChecker) podsforObject(ctx context.Context, namespace string, obj 
 	return list, err
 }
 
-// isPodReady returns true if a pod is ready; false otherwise.
-func (c *ReadyChecker) isPodReady(pod *corev1.Pod) bool {
-	for _, c := range pod.Status.Conditions {
-		if c.Type == corev1.PodReady && c.Status == corev1.ConditionTrue {
-			return true
+// isPodReady returns true if the pod is ready, false if it is not ready, and an error if the pod is in a failed state.
+func (c *ReadyChecker) isPodReady(pod *corev1.Pod) (bool, error) {
+	if pod.Status.Phase == corev1.PodSucceeded {
+		return true, nil
+	}
+
+	err := c.getPodFailedError(pod)
+	if err != nil {
+		c.log("Pod is failed: %s/%s", pod.GetNamespace(), pod.GetName())
+		return false, err
+	}
+
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+			return true, nil
 		}
 	}
+
 	c.log("Pod is not ready: %s/%s", pod.GetNamespace(), pod.GetName())
-	return false
+	return false, nil
 }
 
 func (c *ReadyChecker) jobReady(job *batchv1.Job) (bool, error) {
