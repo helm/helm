@@ -22,9 +22,9 @@ import (
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
-	"helm.sh/helm/v3/pkg/plugin/installer"
 
 	"helm.sh/helm/v4/pkg/plugin"
+	"helm.sh/helm/v4/pkg/plugin/installer"
 )
 
 type pluginListOptions struct {
