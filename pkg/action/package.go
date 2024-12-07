@@ -44,8 +44,15 @@ type Package struct {
 	Destination      string
 	DependencyUpdate bool
 
-	RepositoryConfig string
-	RepositoryCache  string
+	RepositoryConfig      string
+	RepositoryCache       string
+	PlainHTTP             bool
+	Username              string
+	Password              string
+	CertFile              string
+	KeyFile               string
+	CaFile                string
+	InsecureSkipTLSverify bool
 }
 
 // NewPackage creates a new Package object with the given configuration.
@@ -161,7 +168,7 @@ func passphraseFileFetcher(passphraseFile string, stdin *os.File) (provenance.Pa
 	if err != nil {
 		return nil, err
 	}
-	return func(name string) ([]byte, error) {
+	return func(_ string) ([]byte, error) {
 		return passphrase, nil
 	}, nil
 }

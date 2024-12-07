@@ -280,6 +280,29 @@ func TestDownload(t *testing.T) {
 	if got.String() != expect {
 		t.Errorf("Expected %q, got %q", expect, got.String())
 	}
+
+	// test server with varied Accept Header
+	const expectedAcceptHeader = "application/gzip,application/octet-stream"
+	acceptHeaderSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Accept") != expectedAcceptHeader {
+			t.Errorf("Expected '%s', got '%s'", expectedAcceptHeader, r.Header.Get("Accept"))
+		}
+		fmt.Fprint(w, expect)
+	}))
+
+	defer acceptHeaderSrv.Close()
+
+	u, _ = url.ParseRequestURI(acceptHeaderSrv.URL)
+	httpgetter, err = NewHTTPGetter(
+		WithAcceptHeader(expectedAcceptHeader),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = httpgetter.Get(u.String())
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestDownloadTLS(t *testing.T) {
@@ -287,7 +310,7 @@ func TestDownloadTLS(t *testing.T) {
 	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
 	insecureSkipTLSverify := false
 
-	tlsSrv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	tlsSrv := httptest.NewUnstartedServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca, insecureSkipTLSverify)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "can't create TLS config for client"))
@@ -332,7 +355,7 @@ func TestDownloadTLS(t *testing.T) {
 }
 
 func TestDownloadInsecureSkipTLSVerify(t *testing.T) {
-	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 	defer ts.Close()
 
 	u, _ := url.ParseRequestURI(ts.URL)
@@ -364,7 +387,7 @@ func TestDownloadInsecureSkipTLSVerify(t *testing.T) {
 }
 
 func TestHTTPGetterTarDownload(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		f, _ := os.Open("testdata/empty-0.0.1.tgz")
 		defer f.Close()
 

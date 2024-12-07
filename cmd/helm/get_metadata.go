@@ -22,6 +22,7 @@ import (
 	"log"
 
 	"github.com/spf13/cobra"
+	k8sLabels "k8s.io/apimachinery/pkg/labels"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
@@ -40,13 +41,13 @@ func newGetMetadataCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 		Use:   "metadata RELEASE_NAME",
 		Short: "This command fetches metadata for a given release",
 		Args:  require.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
-				return nil, cobra.ShellCompDirectiveNoFileComp
+				return noMoreArgsComp()
 			}
 			return compListReleases(toComplete, args, cfg)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			releaseMetadata, err := client.Run(args[0])
 			if err != nil {
 				return err
@@ -57,7 +58,7 @@ func newGetMetadataCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 
 	f := cmd.Flags()
 	f.IntVar(&client.Version, "revision", 0, "specify release revision")
-	err := cmd.RegisterFlagCompletionFunc("revision", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("revision", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 1 {
 			return compListRevisions(toComplete, cfg, args[0])
 		}
@@ -78,10 +79,13 @@ func (w metadataWriter) WriteTable(out io.Writer) error {
 	_, _ = fmt.Fprintf(out, "CHART: %v\n", w.metadata.Chart)
 	_, _ = fmt.Fprintf(out, "VERSION: %v\n", w.metadata.Version)
 	_, _ = fmt.Fprintf(out, "APP_VERSION: %v\n", w.metadata.AppVersion)
+	_, _ = fmt.Fprintf(out, "ANNOTATIONS: %v\n", k8sLabels.Set(w.metadata.Annotations).String())
+	_, _ = fmt.Fprintf(out, "DEPENDENCIES: %v\n", w.metadata.FormattedDepNames())
 	_, _ = fmt.Fprintf(out, "NAMESPACE: %v\n", w.metadata.Namespace)
 	_, _ = fmt.Fprintf(out, "REVISION: %v\n", w.metadata.Revision)
 	_, _ = fmt.Fprintf(out, "STATUS: %v\n", w.metadata.Status)
 	_, _ = fmt.Fprintf(out, "DEPLOYED_AT: %v\n", w.metadata.DeployedAt)
+
 	return nil
 }
 

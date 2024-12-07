@@ -18,6 +18,7 @@ package registry // import "helm.sh/helm/v3/pkg/registry"
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -50,15 +51,24 @@ an underscore (_) in chart version tags when pushing to a registry and back to
 a plus (+) when pulling from a registry.`
 
 type (
+	// RemoteClient shadows the ORAS remote.Client interface
+	// (hiding the ORAS type from Helm client visibility)
+	// https://pkg.go.dev/oras.land/oras-go/pkg/registry/remote#Client
+	RemoteClient interface {
+		Do(req *http.Request) (*http.Response, error)
+	}
+
 	// Client works with OCI-compliant registries
 	Client struct {
 		debug       bool
 		enableCache bool
 		// path to repository config file e.g. ~/.docker/config.json
 		credentialsFile    string
+		username           string
+		password           string
 		out                io.Writer
 		authorizer         auth.Client
-		registryAuthorizer *registryauth.Client
+		registryAuthorizer RemoteClient
 		resolver           func(ref registry.Reference) (remotes.Resolver, error)
 		httpClient         *http.Client
 		plainHTTP          bool
@@ -105,6 +115,19 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		if client.plainHTTP {
 			opts = append(opts, auth.WithResolverPlainHTTP())
 		}
+
+		// if username and password are set, use them for authentication
+		// by adding the basic auth Authorization header to the resolver
+		if client.username != "" && client.password != "" {
+			concat := client.username + ":" + client.password
+			encodedAuth := base64.StdEncoding.EncodeToString([]byte(concat))
+			opts = append(opts, auth.WithResolverHeaders(
+				http.Header{
+					"Authorization": []string{"Basic " + encodedAuth},
+				},
+			))
+		}
+
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {
 			return nil, err
@@ -124,7 +147,14 @@ func NewClient(options ...ClientOption) (*Client, error) {
 				"User-Agent": {version.GetUserAgent()},
 			},
 			Cache: cache,
-			Credential: func(ctx context.Context, reg string) (registryauth.Credential, error) {
+			Credential: func(_ context.Context, reg string) (registryauth.Credential, error) {
+				if client.username != "" && client.password != "" {
+					return registryauth.Credential{
+						Username: client.username,
+						Password: client.password,
+					}, nil
+				}
+
 				dockerClient, ok := client.authorizer.(*dockerauth.Client)
 				if !ok {
 					return registryauth.EmptyCredential, errors.New("unable to obtain docker client")
@@ -168,10 +198,38 @@ func ClientOptEnableCache(enableCache bool) ClientOption {
 	}
 }
 
+// ClientOptBasicAuth returns a function that sets the username and password setting on client options set
+func ClientOptBasicAuth(username, password string) ClientOption {
+	return func(client *Client) {
+		client.username = username
+		client.password = password
+	}
+}
+
 // ClientOptWriter returns a function that sets the writer setting on client options set
 func ClientOptWriter(out io.Writer) ClientOption {
 	return func(client *Client) {
 		client.out = out
+	}
+}
+
+// ClientOptAuthorizer returns a function that sets the authorizer setting on a client options set. This
+// can be used to override the default authorization mechanism.
+//
+// Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
+func ClientOptAuthorizer(authorizer auth.Client) ClientOption {
+	return func(client *Client) {
+		client.authorizer = authorizer
+	}
+}
+
+// ClientOptRegistryAuthorizer returns a function that sets the registry authorizer setting on a client options set. This
+// can be used to override the default authorization mechanism.
+//
+// Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
+func ClientOptRegistryAuthorizer(registryAuthorizer RemoteClient) ClientOption {
+	return func(client *Client) {
+		client.registryAuthorizer = registryAuthorizer
 	}
 }
 
@@ -198,7 +256,7 @@ func ClientOptPlainHTTP() ClientOption {
 // ClientOptResolver returns a function that sets the resolver setting on a client options set
 func ClientOptResolver(resolver remotes.Resolver) ClientOption {
 	return func(client *Client) {
-		client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
+		client.resolver = func(_ registry.Reference) (remotes.Resolver, error) {
 			return resolver, nil
 		}
 	}
@@ -527,9 +585,9 @@ type (
 	}
 
 	pushOperation struct {
-		provData   []byte
-		strictMode bool
-		test       bool
+		provData     []byte
+		strictMode   bool
+		creationTime string
 	}
 )
 
@@ -583,7 +641,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		descriptors = append(descriptors, provDescriptor)
 	}
 
-	ociAnnotations := generateOCIAnnotations(meta, operation.test)
+	ociAnnotations := generateOCIAnnotations(meta, operation.creationTime)
 
 	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, ociAnnotations, descriptors...)
 	if err != nil {
@@ -652,10 +710,10 @@ func PushOptStrictMode(strictMode bool) PushOption {
 	}
 }
 
-// PushOptTest returns a function that sets whether test setting on push
-func PushOptTest(test bool) PushOption {
+// PushOptCreationDate returns a function that sets the creation time
+func PushOptCreationTime(creationTime string) PushOption {
 	return func(operation *pushOperation) {
-		operation.test = test
+		operation.creationTime = creationTime
 	}
 }
 

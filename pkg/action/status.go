@@ -32,15 +32,6 @@ type Status struct {
 
 	Version int
 
-	// If true, display description to output format,
-	// only affect print type table.
-	// TODO Helm 4: Remove this flag and output the description by default.
-	ShowDescription bool
-
-	// ShowResources sets if the resources should be retrieved with the status.
-	// TODO Helm 4: Remove this flag and output the resources by default.
-	ShowResources bool
-
 	// ShowResourcesTable is used with ShowResources. When true this will cause
 	// the resulting objects to be retrieved as a kind=table.
 	ShowResourcesTable bool
@@ -57,10 +48,6 @@ func NewStatus(cfg *Configuration) *Status {
 func (s *Status) Run(name string) (*release.Release, error) {
 	if err := s.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
-	}
-
-	if !s.ShowResources {
-		return s.cfg.releaseContent(name, s.Version)
 	}
 
 	rel, err := s.cfg.releaseContent(name, s.Version)

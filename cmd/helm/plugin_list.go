@@ -30,8 +30,8 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 		Use:               "list",
 		Aliases:           []string{"ls"},
 		Short:             "list installed Helm plugins",
-		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		ValidArgsFunction: noMoreArgsCompFunc,
+		RunE: func(_ *cobra.Command, _ []string) error {
 			debug("pluginDirs: %s", settings.PluginsDirectory)
 			plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
 			if err != nil {

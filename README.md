@@ -4,6 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/helm/helm)](https://goreportcard.com/report/github.com/helm/helm)
 [![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/helm.sh/helm/v3)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3131/badge)](https://bestpractices.coreinfrastructure.org/projects/3131)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/helm/helm/badge)](https://scorecard.dev/viewer/?uri=github.com/helm/helm)
 
 Helm is a tool for managing Charts. Charts are packages of pre-configured Kubernetes resources.
 
@@ -39,7 +40,8 @@ If you want to use a package manager:
 - [Homebrew](https://brew.sh/) users can use `brew install helm`.
 - [Chocolatey](https://chocolatey.org/) users can use `choco install kubernetes-helm`.
 - [Scoop](https://scoop.sh/) users can use `scoop install helm`.
-- [Snapcraft](https://snapcraft.io/) users can use `snap install helm --classic`
+- [Snapcraft](https://snapcraft.io/) users can use `snap install helm --classic`.
+- [Flox](https://flox.dev) users can use `flox install kubernetes-helm`.
 
 To rapidly get Helm up and running, start with the [Quick Start Guide](https://helm.sh/docs/intro/quickstart/).
 
@@ -53,6 +55,8 @@ Get started with the [Quick Start guide](https://helm.sh/docs/intro/quickstart/)
 ## Roadmap
 
 The [Helm roadmap uses GitHub milestones](https://github.com/helm/helm/milestones) to track the progress of the project.
+
+The development of Helm v4 is currently happening on the `main` branch while the development of Helm v3, the stable branch, is happening on the `dev-v3` branch. Changes should be made to the `main` branch prior to being added to the `dev-v3` branch so that all changes are carried along to Helm v4.
 
 ## Community, discussion, contribution, and support
 

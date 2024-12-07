@@ -60,13 +60,13 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short:   "fetch release history",
 		Aliases: []string{"hist"},
 		Args:    require.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
-				return nil, cobra.ShellCompDirectiveNoFileComp
+				return noMoreArgsComp()
 			}
 			return compListReleases(toComplete, args, cfg)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			history, err := getHistory(client, args[0])
 			if err != nil {
 				return err
@@ -136,7 +136,7 @@ func getHistory(client *action.History, name string) (releaseHistory, error) {
 func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 	for i := len(rls) - 1; i >= 0; i-- {
 		r := rls[i]
-		c := formatChartname(r.Chart)
+		c := formatChartName(r.Chart)
 		s := r.Info.Status.String()
 		v := r.Version
 		d := r.Info.Description
@@ -159,7 +159,7 @@ func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 	return history
 }
 
-func formatChartname(c *chart.Chart) string {
+func formatChartName(c *chart.Chart) string {
 	if c == nil || c.Metadata == nil {
 		// This is an edge case that has happened in prod, though we don't
 		// know how: https://github.com/helm/helm/issues/1347

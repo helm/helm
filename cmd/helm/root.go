@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 
@@ -29,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
@@ -100,7 +102,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	addKlogFlags(flags)
 
 	// Setup shell completion for the namespace flag
-	err := cmd.RegisterFlagCompletionFunc("namespace", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("namespace", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		if client, err := actionConfig.KubernetesClientSet(); err == nil {
 			// Choose a long enough timeout that the user notices something is not working
 			// but short enough that the user is not made to wait very long
@@ -123,7 +125,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	}
 
 	// Setup shell completion for the kube-context flag
-	err = cmd.RegisterFlagCompletionFunc("kube-context", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err = cmd.RegisterFlagCompletionFunc("kube-context", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		cobra.CompDebugln("About to get the different kube-contexts", settings.Debug)
 
 		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
@@ -153,7 +155,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	flags.ParseErrorsWhitelist.UnknownFlags = true
 	flags.Parse(args)
 
-	registryClient, err := newDefaultRegistryClient(false)
+	registryClient, err := newDefaultRegistryClient(false, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +169,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newPullCmd(actionConfig, out),
 		newShowCmd(actionConfig, out),
 		newLintCmd(out),
-		newPackageCmd(actionConfig, out),
+		newPackageCmd(out),
 		newRepoCmd(out),
 		newSearchCmd(out),
 		newVerifyCmd(out),
@@ -201,9 +203,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// Find and add plugins
 	loadPlugins(cmd, out)
 
-	// Check permissions on critical files
-	checkPerms()
-
 	// Check for expired repositories
 	checkForExpiredRepos(settings.RepositoryConfig)
 
@@ -230,7 +229,7 @@ func checkForExpiredRepos(repofile string) {
 	}
 
 	// parse repo file.
-	// Ignore the error because it is okay for a repo file to be unparseable at this
+	// Ignore the error because it is okay for a repo file to be unparsable at this
 	// stage. Later checks will trap the error and respond accordingly.
 	repoFile, err := repo.LoadFile(repofile)
 	if err != nil {
@@ -258,27 +257,30 @@ func checkForExpiredRepos(repofile string) {
 
 }
 
-func newRegistryClient(certFile, keyFile, caFile string, insecureSkipTLSverify, plainHTTP bool) (*registry.Client, error) {
+func newRegistryClient(
+	certFile, keyFile, caFile string, insecureSkipTLSverify, plainHTTP bool, username, password string,
+) (*registry.Client, error) {
 	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSverify {
-		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSverify)
+		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSverify, username, password)
 		if err != nil {
 			return nil, err
 		}
 		return registryClient, nil
 	}
-	registryClient, err := newDefaultRegistryClient(plainHTTP)
+	registryClient, err := newDefaultRegistryClient(plainHTTP, username, password)
 	if err != nil {
 		return nil, err
 	}
 	return registryClient, nil
 }
 
-func newDefaultRegistryClient(plainHTTP bool) (*registry.Client, error) {
+func newDefaultRegistryClient(plainHTTP bool, username, password string) (*registry.Client, error) {
 	opts := []registry.ClientOption{
 		registry.ClientOptDebug(settings.Debug),
 		registry.ClientOptEnableCache(true),
 		registry.ClientOptWriter(os.Stderr),
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
+		registry.ClientOptBasicAuth(username, password),
 	}
 	if plainHTTP {
 		opts = append(opts, registry.ClientOptPlainHTTP())
@@ -292,10 +294,26 @@ func newDefaultRegistryClient(plainHTTP bool) (*registry.Client, error) {
 	return registryClient, nil
 }
 
-func newRegistryClientWithTLS(certFile, keyFile, caFile string, insecureSkipTLSverify bool) (*registry.Client, error) {
+func newRegistryClientWithTLS(
+	certFile, keyFile, caFile string, insecureSkipTLSverify bool, username, password string,
+) (*registry.Client, error) {
+	tlsConf, err := tlsutil.NewClientTLS(certFile, keyFile, caFile, insecureSkipTLSverify)
+	if err != nil {
+		return nil, fmt.Errorf("can't create TLS config for client: %w", err)
+	}
+
 	// Create a new registry client
-	registryClient, err := registry.NewRegistryClientWithTLS(os.Stderr, certFile, keyFile, caFile, insecureSkipTLSverify,
-		settings.RegistryConfig, settings.Debug,
+	registryClient, err := registry.NewClient(
+		registry.ClientOptDebug(settings.Debug),
+		registry.ClientOptEnableCache(true),
+		registry.ClientOptWriter(os.Stderr),
+		registry.ClientOptCredentialsFile(settings.RegistryConfig),
+		registry.ClientOptHTTPClient(&http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: tlsConf,
+			},
+		}),
+		registry.ClientOptBasicAuth(username, password),
 	)
 	if err != nil {
 		return nil, err

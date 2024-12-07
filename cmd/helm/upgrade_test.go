@@ -175,6 +175,12 @@ func TestUpgradeCmd(t *testing.T) {
 			wantError: true,
 			rels:      []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusPendingInstall)},
 		},
+		{
+			name:   "install a previously uninstalled release with '--keep-history' using 'upgrade --install'",
+			cmd:    fmt.Sprintf("upgrade funny-bunny -i '%s'", chartPath),
+			golden: "output/upgrade-uninstalled-with-keep-history.txt",
+			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusUninstalled)},
+		},
 	}
 	runTestCmd(t, tests)
 }
@@ -456,5 +462,106 @@ func TestUpgradeInstallWithLabels(t *testing.T) {
 
 	if !reflect.DeepEqual(updatedRel.Labels, expectedLabels) {
 		t.Errorf("Expected {%v}, got {%v}", expectedLabels, updatedRel.Labels)
+	}
+}
+
+func prepareMockReleaseWithSecret(releaseName string, t *testing.T) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
+	tmpChart := t.TempDir()
+	configmapData, err := os.ReadFile("testdata/testcharts/chart-with-secret/templates/configmap.yaml")
+	if err != nil {
+		t.Fatalf("Error loading template yaml %v", err)
+	}
+	secretData, err := os.ReadFile("testdata/testcharts/chart-with-secret/templates/secret.yaml")
+	if err != nil {
+		t.Fatalf("Error loading template yaml %v", err)
+	}
+	cfile := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion:  chart.APIVersionV1,
+			Name:        "testUpgradeChart",
+			Description: "A Helm chart for Kubernetes",
+			Version:     "0.1.0",
+		},
+		Templates: []*chart.File{{Name: "templates/configmap.yaml", Data: configmapData}, {Name: "templates/secret.yaml", Data: secretData}},
+	}
+	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
+	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
+		t.Fatalf("Error creating chart for upgrade: %v", err)
+	}
+	ch, err := loader.Load(chartPath)
+	if err != nil {
+		t.Fatalf("Error loading chart: %v", err)
+	}
+	_ = release.Mock(&release.MockReleaseOptions{
+		Name:  releaseName,
+		Chart: ch,
+	})
+
+	relMock := func(n string, v int, ch *chart.Chart) *release.Release {
+		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch})
+	}
+
+	return relMock, ch, chartPath
+}
+
+func TestUpgradeWithDryRun(t *testing.T) {
+	releaseName := "funny-bunny-labels"
+	_, _, chartPath := prepareMockReleaseWithSecret(releaseName, t)
+
+	defer resetEnv()()
+
+	store := storageFixture()
+
+	// First install a release into the store so that future --dry-run attempts
+	// have it available.
+	cmd := fmt.Sprintf("upgrade %s --install '%s'", releaseName, chartPath)
+	_, _, err := executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	_, err = store.Get(releaseName, 1)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	cmd = fmt.Sprintf("upgrade %s --dry-run '%s'", releaseName, chartPath)
+	_, out, err := executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	// No second release should be stored because this is a dry run.
+	_, err = store.Get(releaseName, 2)
+	if err == nil {
+		t.Error("expected error as there should be no new release but got none")
+	}
+
+	if !strings.Contains(out, "kind: Secret") {
+		t.Error("expected secret in output from --dry-run but found none")
+	}
+
+	// Ensure the secret is not in the output
+	cmd = fmt.Sprintf("upgrade %s --dry-run --hide-secret '%s'", releaseName, chartPath)
+	_, out, err = executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+
+	// No second release should be stored because this is a dry run.
+	_, err = store.Get(releaseName, 2)
+	if err == nil {
+		t.Error("expected error as there should be no new release but got none")
+	}
+
+	if strings.Contains(out, "kind: Secret") {
+		t.Error("expected no secret in output from --dry-run --hide-secret but found one")
+	}
+
+	// Ensure there is an error when --hide-secret used without dry-run
+	cmd = fmt.Sprintf("upgrade %s --hide-secret '%s'", releaseName, chartPath)
+	_, _, err = executeActionCommandC(store, cmd)
+	if err == nil {
+		t.Error("expected error when --hide-secret used without --dry-run")
 	}
 }
