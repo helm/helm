@@ -46,7 +46,7 @@ func TestStatusCmd(t *testing.T) {
 		}),
 	}, {
 		name:   "get status of a deployed release, with desc",
-		cmd:    "status --show-desc flummoxed-chickadee",
+		cmd:    "status flummoxed-chickadee",
 		golden: "output/status-with-desc.txt",
 		rels: releasesMockWithStatus(&release.Info{
 			Status:      release.StatusDeployed,
@@ -70,7 +70,7 @@ func TestStatusCmd(t *testing.T) {
 		}),
 	}, {
 		name:   "get status of a deployed release with resources",
-		cmd:    "status --show-resources flummoxed-chickadee",
+		cmd:    "status flummoxed-chickadee",
 		golden: "output/status-with-resources.txt",
 		rels: releasesMockWithStatus(
 			&release.Info{
@@ -79,7 +79,7 @@ func TestStatusCmd(t *testing.T) {
 		),
 	}, {
 		name:   "get status of a deployed release with resources in json",
-		cmd:    "status --show-resources flummoxed-chickadee -o json",
+		cmd:    "status flummoxed-chickadee -o json",
 		golden: "output/status-with-resources.json",
 		rels: releasesMockWithStatus(
 			&release.Info{
