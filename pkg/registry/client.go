@@ -58,18 +58,28 @@ a plus (+) when pulling from a registry.`
 var errDeprecatedRemote = errors.New("providing github.com/containerd/containerd/remotes.Resolver via ClientOptResolver is no longer suported")
 
 type (
+	// RemoteClient shadows the ORAS remote.Client interface
+	// (hiding the ORAS type from Helm client visibility)
+	// https://pkg.go.dev/oras.land/oras-go/pkg/registry/remote#Client
+	RemoteClient interface {
+		Do(req *http.Request) (*http.Response, error)
+	}
+
 	// Client works with OCI-compliant registries
 	Client struct {
 		debug       bool
 		enableCache bool
 		// path to repository config file e.g. ~/.docker/config.json
-		credentialsFile  string
-		out              io.Writer
-		authorizer       *auth.Client
-		credentialsStore credentials.Store
-		httpClient       *http.Client
-		plainHTTP        bool
-		err              error // pass any errors from the ClientOption functions
+		credentialsFile    string
+		username           string
+		password           string
+		out                io.Writer
+		authorizer         *auth.Client
+		registryAuthorizer RemoteClient
+		credentialsStore   credentials.Store
+		httpClient         *http.Client
+		plainHTTP          bool
+		err                error // pass any errors from the ClientOption functions
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -168,6 +178,26 @@ func ClientOptEnableCache(enableCache bool) ClientOption {
 func ClientOptWriter(out io.Writer) ClientOption {
 	return func(client *Client) {
 		client.out = out
+	}
+}
+
+// ClientOptAuthorizer returns a function that sets the authorizer setting on a client options set. This
+// can be used to override the default authorization mechanism.
+//
+// Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
+func ClientOptAuthorizer(authorizer auth.Client) ClientOption {
+	return func(client *Client) {
+		client.authorizer = authorizer
+	}
+}
+
+// ClientOptRegistryAuthorizer returns a function that sets the registry authorizer setting on a client options set. This
+// can be used to override the default authorization mechanism.
+//
+// Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
+func ClientOptRegistryAuthorizer(registryAuthorizer RemoteClient) ClientOption {
+	return func(client *Client) {
+		client.registryAuthorizer = registryAuthorizer
 	}
 }
 
