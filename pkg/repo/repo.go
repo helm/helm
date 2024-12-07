@@ -94,6 +94,28 @@ func (r *File) Get(name string) *Entry {
 	return nil
 }
 
+// GetRepoFromURL returns an entry with the given URL if it exists, otherwise returns nil
+func (r *File) GetRepoFromURL(url string) *Entry {
+	for _, entry := range r.Repositories {
+		if entry.URL == url {
+			return entry
+		}
+	}
+	return nil
+}
+
+func FindRepoEntry(url string, repositoryConfig string) (*Entry, error) {
+	f, err := LoadFile(repositoryConfig)
+	if err != nil {
+		return nil, err
+	}
+	entry := f.GetRepoFromURL(url)
+	if entry == nil {
+		return nil, nil
+	}
+	return entry, nil
+}
+
 // Remove removes the entry from the list of repositories.
 func (r *File) Remove(name string) bool {
 	cp := []*Entry{}
