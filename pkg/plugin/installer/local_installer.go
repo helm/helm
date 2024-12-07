@@ -67,3 +67,7 @@ func (i *LocalInstaller) Update() error {
 	slog.Debug("local repository is auto-updated")
 	return nil
 }
+
+func (i *LocalInstaller) GetLatestVersion() (string, error) {
+	return "", errors.New("not supported")
+}

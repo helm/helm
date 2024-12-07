@@ -18,14 +18,22 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/plugin/installer"
 
 	"helm.sh/helm/v4/pkg/plugin"
 )
 
+type pluginListOptions struct {
+	showOutdated bool
+}
+
 func newPluginListCmd(out io.Writer) *cobra.Command {
+	o := &pluginListOptions{}
+
 	cmd := &cobra.Command{
 		Use:               "list",
 		Aliases:           []string{"ls"},
@@ -39,14 +47,24 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 			}
 
 			table := uitable.New()
-			table.AddRow("NAME", "VERSION", "DESCRIPTION")
+			table.AddRow("NAME", "VERSION", "LATEST", "DESCRIPTION")
 			for _, p := range plugins {
-				table.AddRow(p.Metadata.Name, p.Metadata.Version, p.Metadata.Description)
+				latest, err := getLatestVersion(p)
+				if err != nil {
+					latest = "unknown"
+				}
+
+				if !o.showOutdated || (latest != "unknown" && latest != p.Metadata.Version) {
+					table.AddRow(p.Metadata.Name, p.Metadata.Version, latest, p.Metadata.Description)
+				}
 			}
 			fmt.Fprintln(out, table)
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVar(&o.showOutdated, "outdated", false, "show only outdated plugins")
+
 	return cmd
 }
 
@@ -85,4 +103,23 @@ func compListPlugins(_ string, ignoredPluginNames []string) []string {
 		}
 	}
 	return pNames
+}
+
+// getLatestVersion returns the latest version of a plugin
+func getLatestVersion(p *plugin.Plugin) (string, error) {
+	exactLocation, err := filepath.EvalSymlinks(p.Dir)
+	if err != nil {
+		return "", err
+	}
+	absExactLocation, err := filepath.Abs(exactLocation)
+	if err != nil {
+		return "", err
+	}
+
+	i, err := installer.FindSource(absExactLocation)
+	if err != nil {
+		return "", err
+	}
+
+	return i.GetLatestVersion()
 }

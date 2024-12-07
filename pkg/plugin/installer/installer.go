@@ -40,6 +40,8 @@ type Installer interface {
 	Path() string
 	// Update updates a plugin.
 	Update() error
+	// GetLatestVersion fetches the latest version of the plugin.
+	GetLatestVersion() (string, error)
 }
 
 // Install installs a plugin.
