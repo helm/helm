@@ -26,7 +26,10 @@ import (
 )
 
 func TestShowPreReleaseChart(t *testing.T) {
-	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"))
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+	)
 	defer srv.Stop()
 
 	if err := srv.LinkIndices(); err != nil {

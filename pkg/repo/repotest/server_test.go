@@ -100,7 +100,10 @@ func TestServer(t *testing.T) {
 func TestNewTempServer(t *testing.T) {
 	ensure.HelmHome(t)
 
-	srv := NewTempServer(t, WithChartSourceGlob("testdata/examplechart-0.1.0.tgz"))
+	srv := NewTempServer(
+		t,
+		WithChartSourceGlob("testdata/examplechart-0.1.0.tgz"),
+	)
 	defer srv.Stop()
 
 	if srv.srv.URL == "" {
@@ -137,7 +140,11 @@ func TestNewTempServer(t *testing.T) {
 func TestNewTempServer_TLS(t *testing.T) {
 	ensure.HelmHome(t)
 
-	srv := NewTempServer(t, WithChartSourceGlob("testdata/examplechart-0.1.0.tgz"), WithTLS())
+	srv := NewTempServer(
+		t,
+		WithChartSourceGlob("testdata/examplechart-0.1.0.tgz"),
+		WithTLS(),
+	)
 	defer srv.Stop()
 
 	if !strings.HasPrefix(srv.URL(), "https://") {

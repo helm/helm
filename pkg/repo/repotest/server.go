@@ -33,13 +33,22 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v3/internal/tlsutil"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	ociRegistry "helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
-	"helm.sh/helm/v3/testdata"
 )
+
+func BasicAuthMiddleware(t *testing.T) http.HandlerFunc {
+	return http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "username" || password != "password" {
+			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
+		}
+	})
+}
 
 type ServerOption func(*testing.T, *Server)
 
@@ -49,14 +58,9 @@ func WithTLS() ServerOption {
 	}
 }
 
-func WithBasicAuth() ServerOption {
-	return func(t *testing.T, server *Server) {
-		server.middleware = http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-			username, password, ok := r.BasicAuth()
-			if !ok || username != "username" || password != "password" {
-				t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
-			}
-		})
+func WithMiddleware(middleware http.HandlerFunc) ServerOption {
+	return func(_ *testing.T, server *Server) {
+		server.middleware = middleware
 	}
 }
 
@@ -369,10 +373,14 @@ func (s *Server) Start() {
 	if s.useTLS {
 		insecure := false
 
-		tlsConf, err := testdata.ReadTLSConfig(insecure)
+		cd := "../../testdata"
+		ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
+
+		tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca, insecure)
 		if err != nil {
 			panic(err)
 		}
+
 		tlsConf.ServerName = "helm.sh"
 		s.srv.TLS = tlsConf
 		s.srv.StartTLS()

@@ -28,7 +28,10 @@ import (
 )
 
 func TestPullCmd(t *testing.T) {
-	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"))
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+	)
 	defer srv.Stop()
 
 	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
@@ -249,7 +252,11 @@ func TestPullCmd(t *testing.T) {
 }
 
 func TestPullWithCredentialsCmd(t *testing.T) {
-	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"), repotest.WithBasicAuth())
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+		repotest.WithMiddleware(repotest.BasicAuthMiddleware(t)),
+	)
 	defer srv.Stop()
 
 	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
