@@ -108,12 +108,12 @@ func NewTempServer(t *testing.T, options ...ServerOption) *Server {
 //
 // Use CopyCharts to move charts into the repository and then index them
 // for service.
-func NewServer(t *testing.T, docroot string, options ...ServerOption) *Server {
-	srv := newServer(t, docroot, options...)
-	srv.Start()
-
-	return srv
-}
+//func NewServer(t *testing.T, docroot string, options ...ServerOption) *Server {
+//	srv := newServer(t, docroot, options...)
+//	srv.Start()
+//
+//	return srv
+//}
 
 // Create the server, but don't yet start it
 func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
@@ -137,7 +137,7 @@ func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 		http.FileServer(http.Dir(s.Root())).ServeHTTP(w, r)
 	}))
 
-	s.Start()
+	s.start()
 
 	// Add the testing repository as the only repo. Server must be started for the server's URL to be valid
 	if err := setTestingRepository(s.URL(), filepath.Join(s.docroot, "repositories.yaml")); err != nil {
@@ -369,7 +369,7 @@ func (s *Server) CreateIndex() error {
 	return os.WriteFile(ifile, d, 0644)
 }
 
-func (s *Server) Start() {
+func (s *Server) start() {
 	if s.useTLS {
 		insecure := false
 

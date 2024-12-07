@@ -36,6 +36,7 @@ func TestServer(t *testing.T) {
 	rootDir := t.TempDir()
 
 	srv := newServer(t, rootDir)
+	srv.Start()
 	defer srv.Stop()
 
 	c, err := srv.CopyCharts("testdata/*.tgz")
@@ -135,6 +136,51 @@ func TestNewTempServer(t *testing.T) {
 			t.Errorf("Expected 200, got %d", res.StatusCode)
 		}
 	}
+
+	res, err := http.Get(srv.URL() + "/examplechart-0.1.0.tgz")
+	res.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.ContentLength < 500 {
+		t.Errorf("Expected at least 500 bytes of data, got %d", res.ContentLength)
+	}
+
+	res, err = http.Get(srv.URL() + "/index.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := io.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m := repo.NewIndexFile()
+	if err := yaml.Unmarshal(data, m); err != nil {
+		t.Fatal(err)
+	}
+
+	if l := len(m.Entries); l != 1 {
+		t.Fatalf("Expected 1 entry, got %d", l)
+	}
+
+	expect := "examplechart"
+	if !m.Has(expect, "0.1.0") {
+		t.Errorf("missing %q", expect)
+	}
+
+	res, err = http.Get(srv.URL() + "/index.yaml-nosuchthing")
+	res.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != 404 {
+		t.Fatalf("Expected 404, got %d", res.StatusCode)
+	}
+
 }
 
 func TestNewTempServer_TLS(t *testing.T) {
