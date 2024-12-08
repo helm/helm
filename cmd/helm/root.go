@@ -155,7 +155,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	flags.ParseErrorsWhitelist.UnknownFlags = true
 	flags.Parse(args)
 
-	registryClient, err := newDefaultRegistryClient(false)
+	registryClient, err := newDefaultRegistryClient(false, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -258,27 +258,29 @@ func checkForExpiredRepos(repofile string) {
 }
 
 func newRegistryClient(
-	certFile, keyFile, caFile string, insecureSkipTLSverify, plainHTTP bool) (*registry.Client, error) {
+	certFile, keyFile, caFile string, insecureSkipTLSverify, plainHTTP bool, username, password string,
+) (*registry.Client, error) {
 	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSverify {
-		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSverify)
+		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSverify, username, password)
 		if err != nil {
 			return nil, err
 		}
 		return registryClient, nil
 	}
-	registryClient, err := newDefaultRegistryClient(plainHTTP)
+	registryClient, err := newDefaultRegistryClient(plainHTTP, username, password)
 	if err != nil {
 		return nil, err
 	}
 	return registryClient, nil
 }
 
-func newDefaultRegistryClient(plainHTTP bool) (*registry.Client, error) {
+func newDefaultRegistryClient(plainHTTP bool, username, password string) (*registry.Client, error) {
 	opts := []registry.ClientOption{
 		registry.ClientOptDebug(settings.Debug),
 		registry.ClientOptEnableCache(true),
 		registry.ClientOptWriter(os.Stderr),
 		registry.ClientOptCredentialsFile(settings.RegistryConfig),
+		registry.ClientOptBasicAuth(username, password),
 	}
 	if plainHTTP {
 		opts = append(opts, registry.ClientOptPlainHTTP())
@@ -293,7 +295,8 @@ func newDefaultRegistryClient(plainHTTP bool) (*registry.Client, error) {
 }
 
 func newRegistryClientWithTLS(
-	certFile, keyFile, caFile string, insecureSkipTLSverify bool) (*registry.Client, error) {
+	certFile, keyFile, caFile string, insecureSkipTLSverify bool, username, password string,
+) (*registry.Client, error) {
 	tlsConf, err := tlsutil.NewClientTLS(certFile, keyFile, caFile, insecureSkipTLSverify)
 	if err != nil {
 		return nil, fmt.Errorf("can't create TLS config for client: %w", err)
@@ -310,6 +313,7 @@ func newRegistryClientWithTLS(
 				TLSClientConfig: tlsConf,
 			},
 		}),
+		registry.ClientOptBasicAuth(username, password),
 	)
 	if err != nil {
 		return nil, err

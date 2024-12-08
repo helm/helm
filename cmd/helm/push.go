@@ -71,7 +71,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			registryClient, err := newRegistryClient(
-				o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSverify, o.plainHTTP,
+				o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSverify, o.plainHTTP, o.username, o.password,
 			)
 
 			if err != nil {
