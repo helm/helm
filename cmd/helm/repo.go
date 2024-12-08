@@ -45,6 +45,7 @@ func newRepoCmd(out io.Writer) *cobra.Command {
 	cmd.AddCommand(newRepoRemoveCmd(out))
 	cmd.AddCommand(newRepoIndexCmd(out))
 	cmd.AddCommand(newRepoUpdateCmd(out))
+	cmd.AddCommand(newRepoImportCmd(out))
 
 	return cmd
 }
