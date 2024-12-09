@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/gosuri/uitable"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/internal/monocular"
@@ -83,7 +82,7 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 func (o *searchHubOptions) run(out io.Writer, args []string) error {
 	c, err := monocular.New(o.searchEndpoint)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("unable to create connection to %q", o.searchEndpoint))
+		return fmt.Errorf("unable to create connection to %q: %w", o.searchEndpoint, err)
 	}
 
 	q := strings.Join(args, " ")

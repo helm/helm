@@ -19,8 +19,10 @@ package action
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/url"
 	"os"
 	"path"
@@ -31,7 +33,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -164,7 +165,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		// Read in the resources
 		res, err := i.cfg.KubeClient.Build(bytes.NewBuffer(obj.File.Data), false)
 		if err != nil {
-			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
+			return fmt.Errorf("failed to install CRD %s: %w", obj.Name, err)
 		}
 
 		// Send them to Kube
@@ -175,7 +176,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 				i.cfg.Log("CRD %s is already present. Skipping.", crdName)
 				continue
 			}
-			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
+			return fmt.Errorf("failed to install CRD %s: %w", obj.Name, err)
 		}
 		totalItems = append(totalItems, res...)
 	}
@@ -331,7 +332,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	var toBeAdopted kube.ResourceList
 	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
+		return nil, fmt.Errorf("unable to build kubernetes objects from release manifest: %w", err)
 	}
 
 	// It is safe to use "force" here because these are resources currently rendered by the chart.
@@ -353,7 +354,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 			toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace)
 		}
 		if err != nil {
-			return nil, errors.Wrap(err, "Unable to continue with install")
+			return nil, fmt.Errorf("Unable to continue with install: %w", err)
 		}
 	}
 
@@ -507,9 +508,9 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 		uninstall.KeepHistory = false
 		uninstall.Timeout = i.Timeout
 		if _, uninstallErr := uninstall.Run(i.ReleaseName); uninstallErr != nil {
-			return rel, errors.Wrapf(uninstallErr, "an error occurred while uninstalling the release. original install error: %s", err)
+			return rel, fmt.Errorf("an error occurred while uninstalling the release. original install error: %w: %w", err, uninstallErr)
 		}
-		return rel, errors.Wrapf(err, "release %s failed, and has been uninstalled due to atomic being set", i.ReleaseName)
+		return rel, fmt.Errorf("release %s failed, and has been uninstalled due to atomic being set: %w", i.ReleaseName, err)
 	}
 	i.recordRelease(rel) // Ignore the error, since we have another error to deal with.
 	return rel, err
@@ -527,7 +528,7 @@ func (i *Install) availableName() error {
 	start := i.ReleaseName
 
 	if err := chartutil.ValidateReleaseName(start); err != nil {
-		return errors.Wrapf(err, "release name %q", start)
+		return fmt.Errorf("release name %q: %w", start, err)
 	}
 	// On dry run, bail here
 	if i.isDryRun() {
@@ -615,7 +616,6 @@ func writeToFile(outputDir string, name string, data string, append bool) error 
 	defer f.Close()
 
 	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s\n", name, data))
-
 	if err != nil {
 		return err
 	}
@@ -635,7 +635,7 @@ func createOrOpenFile(filename string, append bool) (*os.File, error) {
 func ensureDirectoryForFile(file string) error {
 	baseDir := path.Dir(file)
 	_, err := os.Stat(baseDir)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 
@@ -657,7 +657,7 @@ func (i *Install) NameAndChart(args []string) (string, string, error) {
 	}
 
 	if len(args) > 2 {
-		return args[0], args[1], errors.Errorf("expected at most two arguments, unexpected arguments: %v", strings.Join(args[2:], ", "))
+		return args[0], args[1], fmt.Errorf("expected at most two arguments, unexpected arguments: %v", strings.Join(args[2:], ", "))
 	}
 
 	if len(args) == 2 {
@@ -722,7 +722,7 @@ OUTER:
 	}
 
 	if len(missing) > 0 {
-		return errors.Errorf("found in Chart.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
+		return fmt.Errorf("found in Chart.yaml, but missing in charts/ directory: %s", strings.Join(missing, ", "))
 	}
 	return nil
 }
@@ -758,7 +758,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		return abs, nil
 	}
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
-		return name, errors.Errorf("path %q not found", name)
+		return name, fmt.Errorf("path %q not found", name)
 	}
 
 	dl := downloader.ChartDownloader{

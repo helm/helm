@@ -18,10 +18,10 @@ package chartutil
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
 	"sigs.k8s.io/yaml"
 

@@ -16,12 +16,14 @@ limitations under the License.
 package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 
 import (
+	"errors"
+	"fmt"
+	stdfs "io/fs"
 	"os"
 	"sort"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/Masterminds/vcs"
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/third_party/dep/fs"
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -144,7 +146,7 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 		}
 	}
 
-	return "", errors.Errorf("requested version %q does not exist for plugin %q", i.Version, i.Repo.Remote())
+	return "", fmt.Errorf("requested version %q does not exist for plugin %q", i.Version, i.Repo.Remote())
 }
 
 // setVersion attempts to checkout the version
@@ -155,7 +157,7 @@ func (i *VCSInstaller) setVersion(repo vcs.Repo, ref string) error {
 
 // sync will clone or update a remote repo.
 func (i *VCSInstaller) sync(repo vcs.Repo) error {
-	if _, err := os.Stat(repo.LocalPath()); os.IsNotExist(err) {
+	if _, err := os.Stat(repo.LocalPath()); errors.Is(err, stdfs.ErrNotExist) {
 		debug("cloning %s to %s", repo.Remote(), repo.LocalPath())
 		return repo.Get()
 	}
