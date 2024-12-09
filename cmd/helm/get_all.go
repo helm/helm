@@ -58,7 +58,12 @@ func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 				return tpl(template, data, out)
 			}
-			return output.Table.Write(out, &statusPrinter{res, true, false, false, true, false})
+			return output.Table.Write(out, &statusPrinter{
+				release:      res,
+				debug:        true,
+				showMetadata: true,
+				hideNotes:    false,
+			})
 		},
 	}
 
@@ -70,7 +75,6 @@ func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}

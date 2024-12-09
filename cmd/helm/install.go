@@ -158,7 +158,12 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return errors.Wrap(err, "INSTALLATION FAILED")
 			}
 
-			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes})
+			return outfmt.Write(out, &statusPrinter{
+				release:      rel,
+				debug:        settings.Debug,
+				showMetadata: false,
+				hideNotes:    client.HideNotes,
+			})
 		},
 	}
 
@@ -214,7 +219,6 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 		}
 		return compVersionFlag(args[requiredArgs-1], toComplete)
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}

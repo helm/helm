@@ -43,8 +43,8 @@ The status consists of:
 - k8s namespace in which the release lives
 - state of the release (can be: unknown, deployed, uninstalled, superseded, failed, uninstalling, pending-install, pending-upgrade or pending-rollback)
 - revision of the release
-- description of the release (can be completion message or error message, need to enable --show-desc)
-- list of resources that this release consists of (need to enable --show-resources)
+- description of the release (can be completion message or error message)
+- list of resources that this release consists of
 - details on last test suite run, if applicable
 - additional notes provided by the chart
 `
@@ -65,7 +65,6 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compListReleases(toComplete, args, cfg)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
-
 			// When the output format is a table the resources should be fetched
 			// and displayed as a table. When YAML or JSON the resources will be
 			// returned. This mirrors the handling in kubectl.
@@ -80,7 +79,12 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, client.ShowResources, false, false})
+			return outfmt.Write(out, &statusPrinter{
+				release:      rel,
+				debug:        false,
+				showMetadata: false,
+				hideNotes:    false,
+			})
 		},
 	}
 
@@ -94,26 +98,20 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	bindOutputFlag(cmd, &outfmt)
-	f.BoolVar(&client.ShowDescription, "show-desc", false, "if set, display the description message of the named release")
-
-	f.BoolVar(&client.ShowResources, "show-resources", false, "if set, display the resources of the named release")
 
 	return cmd
 }
 
 type statusPrinter struct {
-	release         *release.Release
-	debug           bool
-	showDescription bool
-	showResources   bool
-	showMetadata    bool
-	hideNotes       bool
+	release      *release.Release
+	debug        bool
+	showMetadata bool
+	hideNotes    bool
 }
 
 func (s statusPrinter) WriteJSON(out io.Writer) error {
@@ -140,11 +138,9 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		_, _ = fmt.Fprintf(out, "VERSION: %s\n", s.release.Chart.Metadata.Version)
 		_, _ = fmt.Fprintf(out, "APP_VERSION: %s\n", s.release.Chart.Metadata.AppVersion)
 	}
-	if s.showDescription {
-		_, _ = fmt.Fprintf(out, "DESCRIPTION: %s\n", s.release.Info.Description)
-	}
+	_, _ = fmt.Fprintf(out, "DESCRIPTION: %s\n", s.release.Info.Description)
 
-	if s.showResources && s.release.Info.Resources != nil && len(s.release.Info.Resources) > 0 {
+	if s.release.Info.Resources != nil && len(s.release.Info.Resources) > 0 {
 		buf := new(bytes.Buffer)
 		printFlags := get.NewHumanPrintFlags()
 		typePrinter, _ := printFlags.ToPrinter("")

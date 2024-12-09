@@ -174,6 +174,14 @@ func ClientOptEnableCache(enableCache bool) ClientOption {
 	}
 }
 
+// ClientOptBasicAuth returns a function that sets the username and password setting on client options set
+func ClientOptBasicAuth(username, password string) ClientOption {
+	return func(client *Client) {
+		client.username = username
+		client.password = password
+	}
+}
+
 // ClientOptWriter returns a function that sets the writer setting on client options set
 func ClientOptWriter(out io.Writer) ClientOption {
 	return func(client *Client) {
@@ -187,7 +195,7 @@ func ClientOptWriter(out io.Writer) ClientOption {
 // Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
 func ClientOptAuthorizer(authorizer auth.Client) ClientOption {
 	return func(client *Client) {
-		client.authorizer = authorizer
+		client.authorizer = &authorizer
 	}
 }
 
