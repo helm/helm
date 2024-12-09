@@ -71,6 +71,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
 			}
+
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible
 			}
