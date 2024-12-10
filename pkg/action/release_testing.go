@@ -25,6 +25,7 @@ import (
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
@@ -125,13 +126,28 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 				if len(r.Filters[IncludeNameFilter]) > 0 && !contains(r.Filters[IncludeNameFilter], h.Name) {
 					continue
 				}
-				req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
+
+				podLogOptions := &v1.PodLogOptions{}
+
+				pod, err := client.CoreV1().Pods(r.Namespace).Get(context.Background(), h.Name, metav1.GetOptions{})
+				if err != nil {
+					return errors.Wrapf(err, "unable to get pod info for %s", h.Name)
+				}
+
+				if container, ok := pod.Annotations["kubectl.kubernetes.io/default-container"]; ok {
+					podLogOptions.Container = container
+				}
+
+				req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, podLogOptions)
 				logReader, err := req.Stream(context.Background())
 				if err != nil {
 					return errors.Wrapf(err, "unable to get pod logs for %s", h.Name)
 				}
 
 				fmt.Fprintf(out, "POD LOGS: %s\n", h.Name)
+				if len(podLogOptions.Container) > 0 {
+					fmt.Fprintf(out, "CONTAINER: %s\n", podLogOptions.Container)
+				}
 				_, err = io.Copy(out, logReader)
 				fmt.Fprintln(out)
 				if err != nil {
