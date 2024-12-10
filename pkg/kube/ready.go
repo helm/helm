@@ -18,7 +18,6 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
 	"context"
-	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
@@ -34,6 +33,8 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+
+	"github.com/pkg/errors"
 
 	deploymentutil "helm.sh/helm/v3/internal/third_party/k8s.io/kubernetes/deployment/util"
 )
@@ -103,7 +104,9 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 				return false, err
 			}
 			ready, err := c.jobReady(job)
-			return ready, err
+			if !ready {
+				return false, err
+			}
 		}
 	case *appsv1.Deployment, *appsv1beta1.Deployment, *appsv1beta2.Deployment, *extensionsv1beta1.Deployment:
 		currentDeployment, err := c.client.AppsV1().Deployments(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
@@ -238,16 +241,14 @@ func (c *ReadyChecker) isPodReady(pod *corev1.Pod) bool {
 }
 
 func (c *ReadyChecker) jobReady(job *batchv1.Job) (bool, error) {
-	if job.Status.Failed > *job.Spec.BackoffLimit {
-		c.log("Job is failed: %s/%s", job.GetNamespace(), job.GetName())
-		// If a job is failed, it can't recover, so throw an error
-		return false, fmt.Errorf("job is failed: %s/%s", job.GetNamespace(), job.GetName())
+	for _, condition := range job.Status.Conditions {
+		if condition.Type == batchv1.JobComplete && condition.Status == "True" {
+			return true, nil
+		} else if condition.Type == batchv1.JobFailed && condition.Status == "True" {
+			return false, errors.Errorf("job failed: %s", condition.Reason)
+		}
 	}
-	if job.Spec.Completions != nil && job.Status.Succeeded < *job.Spec.Completions {
-		c.log("Job is not completed: %s/%s", job.GetNamespace(), job.GetName())
-		return false, nil
-	}
-	return true, nil
+	return false, nil
 }
 
 func (c *ReadyChecker) serviceReady(s *corev1.Service) bool {
