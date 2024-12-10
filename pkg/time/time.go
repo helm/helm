@@ -30,7 +30,7 @@ import (
 var emptyString = `""`
 
 // Time is a convenience wrapper around stdlib time, but with different
-// marshalling and unmarshaling for zero values
+// marshalling and unmarshalling for zero values
 type Time struct {
 	time.Time
 }
@@ -70,8 +70,8 @@ func ParseInLocation(layout, value string, loc *time.Location) (Time, error) {
 	return Time{Time: t}, err
 }
 
-func Date(year int, month time.Month, day, hour, min, sec, nsec int, loc *time.Location) Time {
-	return Time{Time: time.Date(year, month, day, hour, min, sec, nsec, loc)}
+func Date(year int, month time.Month, day, hour, minute, second, nanoSecond int, loc *time.Location) Time {
+	return Time{Time: time.Date(year, month, day, hour, minute, second, nanoSecond, loc)}
 }
 
 func Unix(sec int64, nsec int64) Time { return Time{Time: time.Unix(sec, nsec)} }
