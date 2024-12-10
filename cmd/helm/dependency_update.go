@@ -75,7 +75,6 @@ func newDependencyUpdateCmd(_ *action.Configuration, out io.Writer) *cobra.Comma
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
 			}
-
 			if client.Verify {
 				man.Verify = downloader.VerifyAlways
 			}

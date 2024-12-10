@@ -259,7 +259,6 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 	reg.Client = c.authorizer
 
 	ctx := context.Background()
-
 	cred, err := c.authorizer.Credential(ctx, host)
 	if err != nil {
 		return fmt.Errorf("fetching credentials for %q: %w", host, err)
@@ -281,11 +280,13 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 // LoginOptBasicAuth returns a function that sets the username/password settings on login
 func LoginOptBasicAuth(username string, password string) LoginOption {
 	return func(o *loginOperation) {
+		o.client.username = username
+		o.client.password = password
 		o.client.authorizer.Credential = auth.StaticCredential(o.host, auth.Credential{Username: username, Password: password})
 	}
 }
 
-// LoginOptBasicAuth returns a function that allows plaintext (HTTP) login
+// LoginOptPlainText returns a function that allows plaintext (HTTP) login
 func LoginOptPlainText(isPlainText bool) LoginOption {
 	return func(o *loginOperation) {
 		o.client.plainHTTP = isPlainText
