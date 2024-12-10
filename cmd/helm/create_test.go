@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"helm.sh/helm/v3/internal/test/ensure"
@@ -57,6 +58,20 @@ func TestCreateCmd(t *testing.T) {
 	}
 	if c.Metadata.APIVersion != chart.APIVersionV2 {
 		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
+	}
+
+	// Test that the name in Chart.yaml is quoted
+	chartPath := cname + "/Chart.yaml"
+	fileContent, err := ioutil.ReadFile(chartPath)
+	if err != nil {
+		t.Errorf("Got error when reading Chart.yaml at path %q: %q", chartPath, err)
+	}
+	m, err := regexp.Match("\nname: \""+cname+"\"\n", fileContent)
+	if err != nil {
+		t.Errorf("Could not apply regex for file %q", chartPath)
+	}
+	if !m {
+		t.Errorf("Could not find quoted name in %q", chartPath)
 	}
 }
 
