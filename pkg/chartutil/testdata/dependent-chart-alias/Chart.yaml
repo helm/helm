@@ -27,3 +27,11 @@ dependencies:
     version: "4.3.2"
     repository: https://example.com/charts
     alias: mariners1
+  - name: gizmo
+    version: "0.1.0"
+    repository: https://example.com/charts
+    alias: gizmo1
+  - name: gizmo
+    version: "0.1.0"
+    repository: https://example.com/charts
+    alias: gizmo2
