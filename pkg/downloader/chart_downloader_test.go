@@ -16,6 +16,7 @@ limitations under the License.
 package downloader
 
 import (
+	"helm.sh/helm/v3/pkg/chart"
 	"os"
 	"path/filepath"
 	"testing"
@@ -153,6 +154,25 @@ func TestVerifyChart(t *testing.T) {
 	}
 }
 
+func TestVerifyChartArchive(t *testing.T) {
+	archive := chart.Archive{
+		Name:    "signtest",
+		Version: "0.1.0",
+		Alias:   "signtest-alias",
+		Dir:     "testdata",
+	}
+
+	v, err := VerifyChartArchive(&archive, "testdata/helm-test-key.pub")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The verification is tested at length in the provenance package. Here,
+	// we just want a quick sanity check that the v is not empty.
+	if len(v.FileHash) == 0 {
+		t.Error("Digest missing")
+	}
+}
+
 func TestIsTar(t *testing.T) {
 	tests := map[string]bool{
 		"foo.tgz":           true,
@@ -212,6 +232,60 @@ func TestDownloadTo(t *testing.T) {
 	}
 
 	if _, err := os.Stat(filepath.Join(dest, cname)); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestDownloadArchiveTo(t *testing.T) {
+	srv := repotest.NewTempServerWithCleanupAndBasicAuth(t, "testdata/*.tgz*")
+	defer srv.Stop()
+	if err := srv.CreateIndex(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyAlways,
+		Keyring:          "testdata/helm-test-key.pub",
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
+		Options: []getter.Option{
+			getter.WithBasicAuth("username", "password"),
+			getter.WithPassCredentialsAll(false),
+		},
+	}
+	cname := "/signtest-0.1.0.tgz"
+	saveAs := "signtest-alias-0.1.0.tgz"
+	dest := srv.Root()
+	archive := chart.Archive{
+		Name:    "signtest",
+		Version: "0.1.0",
+		URL:     srv.URL() + cname,
+		Alias:   "signtest-alias",
+		Dir:     dest,
+	}
+	where, v, err := c.DownloadArchiveTo(&archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if expect := filepath.Join(dest, saveAs); where != expect {
+		t.Errorf("Expected download to %s, got %s", expect, where)
+	}
+
+	if v.FileHash == "" {
+		t.Error("File hash was empty, but verification is required.")
+	}
+
+	if _, err := os.Stat(filepath.Join(dest, saveAs)); err != nil {
 		t.Error(err)
 	}
 }
