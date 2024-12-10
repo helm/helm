@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/repo/repotest"
 )
 
 func TestUpgradeCmd(t *testing.T) {
@@ -36,7 +37,7 @@ func TestUpgradeCmd(t *testing.T) {
 	cfile := &chart.Chart{
 		Metadata: &chart.Metadata{
 			APIVersion:  chart.APIVersionV1,
-			Name:        "testUpgradeChart",
+			Name:        "test-upgrade-chart",
 			Description: "A Helm chart for Kubernetes",
 			Version:     "0.1.0",
 		},
@@ -89,6 +90,23 @@ func TestUpgradeCmd(t *testing.T) {
 		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch})
 	}
 
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Stop()
+	outdir := srv.Root()
+
+	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ociSrv.Run(t)
+
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
 	tests := []cmdTestCase{
 		{
 			name:   "upgrade a release",
@@ -113,6 +131,18 @@ func TestUpgradeCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("upgrade funny-bunny --reuse-values '%s'", chartPath),
 			golden: "output/upgrade-with-reset-values2.txt",
 			rels:   []*release.Release{relMock("funny-bunny", 5, ch2)},
+		},
+		{
+			name:   "upgrade a release with json output",
+			cmd:    fmt.Sprintf("upgrade --output json funny-bunny '%s'", chartPath),
+			golden: "output/upgrade-json.txt",
+			rels:   []*release.Release{relMock("funny-bunny", 6, ch)},
+		},
+		{
+			name:   "upgrade a oci release with json output",
+			cmd:    fmt.Sprintf("upgrade --output json funny-bunny 'oci://%s/u/ocitestuser/test-upgrade-chart' --version 0.1.7 --registry-config %s", ociSrv.RegistryURL, filepath.Join(outdir, "config.json")),
+			golden: "output/upgrade-oci-json.txt",
+			rels:   []*release.Release{relMock("funny-bunny", 7, ch)},
 		},
 		{
 			name:   "install a release with 'upgrade --install'",

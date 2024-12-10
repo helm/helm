@@ -209,6 +209,22 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		result.Config.Digest, result.Config.Size,
 		result.Chart.Digest, result.Chart.Size)
 
+	upgradeRef := fmt.Sprintf("%s/u/ocitestuser/test-upgrade-chart:0.1.7", srv.RegistryURL)
+	contentBytes, err = os.ReadFile(filepath.Join(srv.Dir, "test-upgrade-chart-0.1.7.tgz"))
+	if err != nil {
+		t.Fatal("could not load chart into memory")
+	}
+	result, err = registryClient.Push(contentBytes, upgradeRef)
+	if err != nil {
+		t.Fatalf("error pushing chart: %s", err)
+	}
+	t.Logf("Manifest.Digest: %s, Manifest.Size: %d, "+
+		"Config.Digest: %s, Config.Size: %d, "+
+		"Chart.Digest: %s, Chart.Size: %d",
+		result.Manifest.Digest, result.Manifest.Size,
+		result.Config.Digest, result.Config.Size,
+		result.Chart.Digest, result.Chart.Size)
+
 	srv.Client = registryClient
 	c := cfg.DependingChart
 	if c == nil {
