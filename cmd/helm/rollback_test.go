@@ -151,7 +151,7 @@ func TestRollbackWithLabels(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	_, _, err := executeActionCommandC(storage, fmt.Sprintf("rollback %s 1", releaseName))
+	_, _, err := executeActionCommandC(storage, fmt.Sprintf("rollback %s 1", releaseName), nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}

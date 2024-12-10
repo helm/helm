@@ -73,8 +73,7 @@ func TestShowPreReleaseChart(t *testing.T) {
 				filepath.Join(outdir, "repositories.yaml"),
 				outdir,
 			)
-			//_, out, err := executeActionCommand(cmd)
-			_, _, err := executeActionCommand(cmd)
+			_, _, err := executeActionCommand(cmd, nil, nil)
 			if err != nil {
 				if tt.fail {
 					if !strings.Contains(err.Error(), tt.expectedErr) {

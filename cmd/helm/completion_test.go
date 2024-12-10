@@ -41,7 +41,7 @@ func checkFileCompletion(t *testing.T, cmdName string, shouldBePerformed bool) {
 	})
 
 	testcmd := fmt.Sprintf("__complete %s ''", cmdName)
-	_, out, err := executeActionCommandC(storage, testcmd)
+	_, out, err := executeActionCommandC(storage, testcmd, nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, %s", err)
 	}
