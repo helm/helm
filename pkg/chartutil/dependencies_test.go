@@ -347,6 +347,63 @@ func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 	}
 }
 
+func TestProcessDependencyEnabledRespectsChildConditionsWhenParentLacksDependenciesBlock(t *testing.T) {
+	c := loadChart(t, "testdata/respect-conditions-without-dependencies-block/parent-chart")
+
+	if err := processDependencyImportValues(c); err != nil {
+		t.Fatalf("processing import values dependencies %v", err)
+	}
+
+	if len(c.Dependencies()) != 1 {
+		t.Fatalf("expected 1 dependency for this chart, but got %d", len(c.Dependencies()))
+	}
+
+	if len(c.Metadata.Dependencies) != 0 {
+		t.Fatalf("expected 0 dependencies specified in parent chart's Chart.yaml, got %d", len(c.Metadata.Dependencies))
+	}
+
+	if len(c.Dependencies()[0].Dependencies()) != 3 {
+		t.Fatalf("expected 3 dependencies for the subchart, but got %d", len(c.Dependencies()))
+	}
+
+	if len(c.Dependencies()[0].Metadata.Dependencies) != 3 {
+		t.Fatalf("expected 3 dependencies specified in subchart's Chart.yaml, got %d", len(c.Dependencies()[0].Metadata.Dependencies))
+	}
+
+	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+		t.Fatalf("expected no errors but got %q", err)
+	}
+
+	if len(c.Dependencies()) != 1 {
+		t.Fatalf("expected 1 dependency for this chart, but got %d", len(c.Dependencies()))
+	}
+
+	if len(c.Dependencies()[0].Dependencies()) != 2 {
+		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()[0].Dependencies()))
+	}
+
+	if len(c.Metadata.Dependencies) != 0 {
+		t.Fatalf("expected 0 dependencies specified in Chart.yaml, got %d", len(c.Metadata.Dependencies))
+	}
+
+	if len(c.Dependencies()[0].Metadata.Dependencies) != 2 {
+		t.Fatalf("expected 2 dependencies specified in subchart's Chart.yaml, got %d", len(c.Dependencies()[0].Metadata.Dependencies))
+	}
+
+	subChartDependencyChart0Name := c.Dependencies()[0].Dependencies()[0].Name()
+	subChartDependencyChart1Name := c.Dependencies()[0].Dependencies()[1].Name()
+	devChartName := "dev"
+	prodChartName := "prod"
+
+	if subChartDependencyChart0Name != devChartName {
+		t.Fatalf("subchart's dependency chart name should be %s but got %s", devChartName, subChartDependencyChart1Name)
+	}
+
+	if subChartDependencyChart1Name != prodChartName {
+		t.Fatalf("subchart's dependency chart name should be %s but got %s", prodChartName, subChartDependencyChart1Name)
+	}
+}
+
 func TestGetAliasDependency(t *testing.T) {
 	c := loadChart(t, "testdata/frobnitz")
 	req := c.Metadata.Dependencies
