@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Setup Go
-        uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # pin@5.1.0
+        uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # pin@5.2.0
         with:
           go-version: '1.22'
           check-latest: true
