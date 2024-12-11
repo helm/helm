@@ -278,7 +278,7 @@ Documentation PRs should be made on the docs repo: <https://github.com/helm/helm
 
 Small, ad-hoc changes/PRs to Helm which introduce user facing changes, which would benefit from documentation changes, should apply the `docs needed` label. Larger changes associated with a HIP should track docs via that HIP. The `docs needed` label doesn't block PRs, and maintainers/PR reviewers should apply discretion judging in whether the `docs needed` label should be applied.
 
-### Testing PRs
+### Profiling PRs
 
 During development, you need to add automated tests where possible. There are a few `make test*` targets that you can use to execute your unit or integration tests. If your contribution requires profiling to check memory and/or CPU usage, you can use `--cpuprofile` and/or `--memprofile` global cli flags to collect runtime profiling data for analysis. You can use Golang's [pprof](https://github.com/google/pprof/blob/main/doc/README.md) tool to inspect the results.
 
