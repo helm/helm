@@ -95,12 +95,12 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		Short:        "The Helm package manager for Kubernetes.",
 		Long:         globalUsage,
 		SilenceUsage: true,
-		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+		PersistentPreRun: func(_ *cobra.Command, _ []string) {
 			if err := startProfiling(); err != nil {
 				log.Printf("Warning: Failed to start profiling: %v", err)
 			}
 		},
-		PersistentPostRun: func(cmd *cobra.Command, _ []string) {
+		PersistentPostRun: func(_ *cobra.Command, _ []string) {
 			if err := stopProfiling(); err != nil {
 				log.Printf("Warning: Failed to stop profiling: %v", err)
 			}
