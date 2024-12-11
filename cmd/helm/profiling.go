@@ -19,6 +19,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
+	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"strings"
@@ -28,11 +30,17 @@ import (
 
 var (
 	cpuProfileFile *os.File
+	pprofPaths     map[string]string
 )
 
+func init() {
+	pprofPaths = parsePProfPaths(os.Getenv("HELM_PPROF"))
+}
+
 // startProfiling starts profiling CPU usage
-func startProfiling(cpuprofile string) error {
-	if cpuprofile != "" {
+func startProfiling() error {
+	cpuprofile, ok := pprofPaths["cpu"]
+	if ok && cpuprofile != "" {
 		var err error
 		cpuProfileFile, err = os.Create(cpuprofile)
 		if err != nil {
@@ -48,8 +56,8 @@ func startProfiling(cpuprofile string) error {
 }
 
 // stopProfiling stops profiling CPU and memory usage and writes the results to
-// the files specified by --cpuprofile and --memprofile flags respectively.
-func stopProfiling(memprofile string) error {
+// the files specified by HELM_PPROF=cpu=/path/to/cpu.prof,mem=/path/to/mem.prof
+func stopProfiling() error {
 	errs := []string{}
 
 	// Stop CPU profiling if it was started
@@ -62,7 +70,8 @@ func stopProfiling(memprofile string) error {
 		cpuProfileFile = nil
 	}
 
-	if memprofile != "" {
+	memprofile, ok := pprofPaths["mem"]
+	if ok && memprofile != "" {
 		f, err := os.Create(memprofile)
 		if err != nil {
 			errs = append(errs, err.Error())
@@ -87,4 +96,29 @@ func addProfilingFlags(cmd *cobra.Command) {
 	// Persistent flags to make available to subcommands
 	cmd.PersistentFlags().String("cpuprofile", "", "File path to write cpu profiling data")
 	cmd.PersistentFlags().String("memprofile", "", "File path to write memory profiling data")
+}
+
+func parsePProfPaths(env string) map[string]string {
+	// Initial empty paths
+	m := map[string]string{}
+	for _, pprofs := range strings.Split(env, ",") {
+		// Is of the format mem=/path/to/memprof
+		tuple := strings.Split(pprofs, "=")
+		if len(tuple) != 2 {
+			continue
+		}
+		if tuple[0] != "cpu" && tuple[0] != "mem" {
+			continue
+		}
+
+		s, err := filepath.Abs(path.Clean(tuple[1]))
+		if err != nil {
+			continue
+		}
+		if !strings.HasSuffix(s, string(filepath.Separator)) {
+			// Ensure its not a directory
+			m[tuple[0]] = s
+		}
+	}
+	return m
 }
