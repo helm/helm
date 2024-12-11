@@ -280,7 +280,7 @@ Small, ad-hoc changes/PRs to Helm which introduce user facing changes, which wou
 
 ### Profiling PRs
 
-During development, you need to add automated tests where possible. There are a few `make test*` targets that you can use to execute your unit or integration tests. If your contribution requires profiling to check memory and/or CPU usage, you can use `--cpuprofile` and/or `--memprofile` global cli flags to collect runtime profiling data for analysis. You can use Golang's [pprof](https://github.com/google/pprof/blob/main/doc/README.md) tool to inspect the results.
+If your contribution requires profiling to check memory and/or CPU usage, you can use `--cpuprofile` and/or `--memprofile` global cli flags to collect runtime profiling data for analysis. You can use Golang's [pprof](https://github.com/google/pprof/blob/main/doc/README.md) tool to inspect the results.
 
 Example analysing collected profiling data
 ```
