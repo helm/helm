@@ -96,22 +96,12 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		Long:         globalUsage,
 		SilenceUsage: true,
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
-			cpuprof, err := cmd.Flags().GetString("cpuprofile")
-			if err != nil {
-				log.Printf("Warning: Failed to get cpuprofile flag: %v", err)
-			}
-
-			if err := startProfiling(cpuprof); err != nil {
+			if err := startProfiling(); err != nil {
 				log.Printf("Warning: Failed to start profiling: %v", err)
 			}
 		},
 		PersistentPostRun: func(cmd *cobra.Command, _ []string) {
-			memprof, err := cmd.Flags().GetString("memprofile")
-			if err != nil {
-				log.Printf("Warning: Failed to get memprofile flag: %v", err)
-			}
-
-			if err := stopProfiling(memprof); err != nil {
+			if err := stopProfiling(); err != nil {
 				log.Printf("Warning: Failed to stop profiling: %v", err)
 			}
 		},
