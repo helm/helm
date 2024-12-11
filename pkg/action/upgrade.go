@@ -167,9 +167,6 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 		return nil, err
 	}
 
-	u.cfg.Releases.MaxHistory = u.MaxHistory
-
-	u.cfg.Log("performing update for %s", name)
 	res, err := u.performUpgrade(ctx, currentRelease, upgradedRelease)
 	if err != nil {
 		return res, err
@@ -303,11 +300,17 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	if len(notesTxt) > 0 {
 		upgradedRelease.Info.Notes = notesTxt
 	}
-	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
-	return currentRelease, upgradedRelease, err
+	return currentRelease, upgradedRelease, nil
 }
 
 func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedRelease *release.Release) (*release.Release, error) {
+	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest), !u.DisableOpenAPIValidation)
+	if err != nil {
+		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
+	}
+	u.cfg.Releases.MaxHistory = u.MaxHistory
+	u.cfg.Log("performing update for %s", upgradedRelease.Name)
+	
 	current, err := u.cfg.KubeClient.Build(bytes.NewBufferString(originalRelease.Manifest), false)
 	if err != nil {
 		// Checking for removed Kubernetes API error so can provide a more informative error message to the user
@@ -319,11 +322,6 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		}
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
 	}
-	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest), !u.DisableOpenAPIValidation)
-	if err != nil {
-		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
-	}
-
 	// It is safe to use force only on target because these are resources currently rendered by the chart.
 	err = target.Visit(setMetadataVisitor(upgradedRelease.Name, upgradedRelease.Namespace, true))
 	if err != nil {
@@ -587,11 +585,6 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 		newVals = current.Config
 	}
 	return newVals, nil
-}
-
-func validateManifest(c kube.Interface, manifest []byte, openAPIValidation bool) error {
-	_, err := c.Build(bytes.NewReader(manifest), openAPIValidation)
-	return err
 }
 
 // recreate captures all the logic for recreating pods for both upgrade and
