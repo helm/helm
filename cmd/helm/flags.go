@@ -37,9 +37,10 @@ import (
 )
 
 const (
-	outputFlag         = "output"
-	postRenderFlag     = "post-renderer"
-	postRenderArgsFlag = "post-renderer-args"
+	outputFlag          = "output"
+	postRenderFlag      = "post-renderer"
+	postRenderArgsFlag  = "post-renderer-args"
+	postRenderHooksFlag = "post-renderer-hooks"
 )
 
 func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
@@ -116,7 +117,9 @@ func (o *outputValue) Set(s string) error {
 }
 
 func bindPostRenderFlag(cmd *cobra.Command, varRef *postrender.PostRenderer) {
-	p := &postRendererOptions{varRef, "", []string{}}
+	p := &postRendererOptions{varRef, "", []string{}, false}
+	cmd.Flags().Var(&postRendererBool{p}, postRenderHooksFlag, "include hooks when running the post-renderer")
+	cmd.Flags().Lookup(postRenderHooksFlag).NoOptDefVal = "true"
 	cmd.Flags().Var(&postRendererString{p}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
 	cmd.Flags().Var(&postRendererArgsSlice{p}, postRenderArgsFlag, "an argument to the post-renderer (can specify multiple)")
 }
@@ -125,6 +128,29 @@ type postRendererOptions struct {
 	renderer   *postrender.PostRenderer
 	binaryPath string
 	args       []string
+	incHooks   bool
+}
+
+type postRendererBool struct {
+	options *postRendererOptions
+}
+
+func (p *postRendererBool) Type() string {
+	return "postRendererBool"
+}
+
+func (p *postRendererBool) String() string {
+	return fmt.Sprintf("%t", p.options.incHooks)
+}
+
+func (p *postRendererBool) Set(val string) error {
+	p.options.incHooks = (val != "false" && val != "0")
+	pr, err := postrender.NewExecHooks(p.options.binaryPath, p.options.incHooks, p.options.args...)
+	if err != nil {
+		return err
+	}
+	*p.options.renderer = pr
+	return nil
 }
 
 type postRendererString struct {
@@ -144,7 +170,7 @@ func (p *postRendererString) Set(val string) error {
 		return nil
 	}
 	p.options.binaryPath = val
-	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
+	pr, err := postrender.NewExecHooks(p.options.binaryPath, p.options.incHooks, p.options.args...)
 	if err != nil {
 		return err
 	}
@@ -173,7 +199,7 @@ func (p *postRendererArgsSlice) Set(val string) error {
 		return nil
 	}
 	// overwrite if already create PostRenderer by `post-renderer` flags
-	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
+	pr, err := postrender.NewExecHooks(p.options.binaryPath, p.options.incHooks, p.options.args...)
 	if err != nil {
 		return err
 	}
