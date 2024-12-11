@@ -352,7 +352,7 @@ func newMultiSecretsObject(key string, rls *rspb.Release, lbs labels, chunkSizeE
 						Name:   instanceName,
 						Labels: kblabels.Merge(lbs.toMap(), lbs2.toMap()),
 					},
-					Type: "helm.sh/release.v1",
+					Type: "helm.sh/release-multisecret.v1",
 					Data: map[string][]byte{"release": []byte(str), "chunk": []byte(fmt.Sprintf("%d", i)), "chunks": []byte(fmt.Sprintf("%d", len(slices)))},
 				})
 			}
@@ -413,12 +413,14 @@ func getMaxChunkSize(key string, multiSecretImpl *MultiSecrets, chunkSizeExist i
 		sz = obj.ObjectMeta.Labels["chunksize"]
 		if sz != "" {
 			size, err := strconv.Atoi(sz)
-			if err == nil && size < maxChunkSize {
+			if err == nil && size <= maxChunkSize {
 				chunkSize = size
 			} else {
 				log.Fatal(errors.Wrapf(err, "newSecretsObject: cannot use chunk size: %s", sz))
 				//return nil, errors.Wrapf(err, "newSecretsObject: cannot use chunk size: %s", sz)
 			}
+		} else {
+			chunkSize = maxChunkSize
 		}
 	} else {
 		// CASE 3: use the default or the envvar
@@ -426,7 +428,7 @@ func getMaxChunkSize(key string, multiSecretImpl *MultiSecrets, chunkSizeExist i
 		sz := strings.TrimSpace(os.Getenv("MULTISECRETS_CHUNKSIZE"))
 		if sz != "" {
 			size, err := strconv.Atoi(sz)
-			if err == nil && size < maxChunkSize {
+			if err == nil && size <= maxChunkSize {
 				chunkSize = size
 			} else {
 				log.Fatal(errors.Wrapf(err, "newSecretsObject: cannot use chunk size: %s", sz))
