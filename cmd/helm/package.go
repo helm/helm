@@ -91,8 +91,12 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 				}
 
 				if client.DependencyUpdate {
+					dmOut := io.Discard
+					if settings.Debug {
+						dmOut = out
+					}
 					downloadManager := &downloader.Manager{
-						Out:              io.Discard,
+						Out:              dmOut,
 						ChartPath:        path,
 						Keyring:          client.Keyring,
 						Getters:          p,
@@ -125,6 +129,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&client.AppVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&client.Destination, "destination", "d", ".", "location to write the chart.")
 	f.BoolVarP(&client.DependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
+	f.BoolVarP(&client.RewriteChart, "rewrite-chart", "r", false, `rewrite dependencies in "Chart.yaml" to point to local "charts/" folder before packaging`)
 	f.StringVar(&client.Username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&client.Password, "password", "", "chart repository password where to locate the requested chart")
 	f.StringVar(&client.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
