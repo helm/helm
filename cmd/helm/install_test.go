@@ -274,6 +274,11 @@ func TestInstall(t *testing.T) {
 			wantError: true,
 			golden:    "output/install-hide-secret.txt",
 		},
+		{
+			name:   "install with print-file-path",
+			cmd:    "install printpath testdata/testcharts/alpine --print-file-path",
+			golden: "output/install-print-file-path.txt",
+		},
 	}
 
 	runTestCmd(t, tests)

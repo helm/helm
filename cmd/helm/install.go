@@ -172,6 +172,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	// it is added separately
 	f := cmd.Flags()
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
+	f.BoolVar(&client.PrintFilePath, "print-file-path", false, "print the file path specified by the --print-file-path flag")
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
@@ -243,6 +244,11 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 
 	debug("CHART PATH: %s\n", cp)
+
+	if client.PrintFilePath {
+		fmt.Println(cp)
+		return nil, nil
+	}
 
 	p := getter.All(settings)
 	vals, err := valueOpts.MergeValues(p)
