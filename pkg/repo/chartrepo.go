@@ -99,7 +99,7 @@ func (r *ChartRepository) Load() error {
 	filepath.Walk(r.Config.Name, func(path string, f os.FileInfo, _ error) error {
 		if !f.IsDir() {
 			if strings.Contains(f.Name(), "-index.yaml") {
-				i, err := LoadIndexFile(path)
+				i, err := LoadIndexFileWithCaching(path)
 				if err != nil {
 					return err
 				}
@@ -254,7 +254,7 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 	}()
 
 	// Read the index file for the repository to get chart information and return chart URL
-	repoIndex, err := LoadIndexFile(idx)
+	repoIndex, err := LoadIndexFileWithCaching(idx)
 	if err != nil {
 		return "", err
 	}

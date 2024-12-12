@@ -28,6 +28,8 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/sync/errgroup"
+
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
@@ -168,6 +170,45 @@ func TestLoadIndex(t *testing.T) {
 			}
 			verifyLocalIndex(t, i)
 		})
+	}
+}
+
+func TestLoadIndexWithCaching(t *testing.T) {
+	var eg errgroup.Group
+
+	const nrParallelTests = 10
+
+	var indexFiles [nrParallelTests]*IndexFile
+
+	// Load same index multiple times in parallel
+	for i := 0; i < nrParallelTests; i++ {
+		indexNr := i
+		eg.Go(func() (err error) {
+			indexFiles[indexNr], err = LoadIndexFileWithCaching(chartmuseumtestfile)
+			return err
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	// we check if the same cache entry is used by comparing pointers to indexFiles
+	// if the pointers are the same, we assume the same cache entry is used.
+	for i := 1; i < nrParallelTests; i++ {
+		if indexFiles[i] != indexFiles[0] {
+			t.Fatal("not all indices retrieved from same cache entry")
+		}
+	}
+
+	// load another index, and check if new_entry is used
+	otherFile, err := LoadIndexFileWithCaching(testfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if otherFile == indexFiles[0] {
+		t.Fatal("same index used for different files")
 	}
 }
 
