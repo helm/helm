@@ -123,12 +123,12 @@ func (secrets *MultiSecrets) List(filter func(*rspb.Release) bool) ([]*rspb.Rele
 	for _, item := range list.Items {
 		// If chunked, add remaining chunks
 		chunk, err := strconv.Atoi(string(item.Data["chunk"]))
-		if err == nil && chunk > 1 {
-			// Skip any Secret that is not 1st chunk
-			continue
-		} else {
+		if err == nil && chunk == 1 {
 			// Load any remaining chunks
 			item.Data["release"], _ = loadRemainingChunks(&item, secrets)
+		} else if err == nil && chunk > 1 {
+			// Skip any Secret that is not 1st chunk
+			continue
 		}
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
@@ -169,12 +169,12 @@ func (secrets *MultiSecrets) Query(labels map[string]string) ([]*rspb.Release, e
 	for _, item := range list.Items {
 		// If chunked, add remaining chunks
 		chunk, err := strconv.Atoi(string(item.Data["chunk"]))
-		if err == nil && chunk > 1 {
-			// Skip any Secret that is not 1st chunk
-			continue
-		} else {
+		if err == nil && chunk == 1 {
 			// Load any remaining chunks
 			item.Data["release"], _ = loadRemainingChunks(&item, secrets)
+		} else if err == nil && chunk > 1 {
+			// Skip any Secret that is not 1st chunk
+			continue
 		}
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
