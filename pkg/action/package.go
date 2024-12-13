@@ -22,10 +22,13 @@ import (
 	"os"
 	"syscall"
 
+	"helm.sh/helm/v3/internal/resolver"
+
 	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
 	"golang.org/x/term"
 
+	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/provenance"
@@ -43,6 +46,7 @@ type Package struct {
 	AppVersion       string
 	Destination      string
 	DependencyUpdate bool
+	RewriteChart     bool
 
 	RepositoryConfig      string
 	RepositoryCache       string
@@ -83,6 +87,25 @@ func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
 	if reqs := ch.Metadata.Dependencies; reqs != nil {
 		if err := CheckDependencies(ch, reqs); err != nil {
 			return "", err
+		}
+	}
+	if p.RewriteChart {
+		if len(ch.Metadata.Dependencies) != 0 {
+			if ch.Lock == nil {
+				return "", fmt.Errorf("lock is nil. Please run package -u -r to have Chart.lock set")
+			}
+			lockedDependencies := make([]*chart.Dependency, 0, len(ch.Metadata.Dependencies))
+			for i, d := range ch.Metadata.Dependencies {
+				d.Repository = "file://charts/" + d.Name
+				ch.Metadata.Dependencies[i] = d
+				lockedDependencies = append(lockedDependencies, d)
+			}
+			ch.Lock.Dependencies = lockedDependencies
+			newDigest, err := resolver.HashReq(ch.Metadata.Dependencies, ch.Lock.Dependencies)
+			if err != nil {
+				return "", err
+			}
+			ch.Lock.Digest = newDigest
 		}
 	}
 
