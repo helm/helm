@@ -18,6 +18,7 @@ package loader
 
 import (
 	"bytes"
+	"encoding/json"
 	"log"
 	"os"
 	"path/filepath"
@@ -104,7 +105,10 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			}
 		case f.Name == "values.yaml":
 			c.Values = make(map[string]interface{})
-			if err := yaml.Unmarshal(f.Data, &c.Values); err != nil {
+			if err := yaml.Unmarshal(f.Data, &c.Values, func(d *json.Decoder) *json.Decoder {
+				d.UseNumber()
+				return d
+			}); err != nil {
 				return c, errors.Wrap(err, "cannot load values.yaml")
 			}
 		case f.Name == "values.schema.json":
