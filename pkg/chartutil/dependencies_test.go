@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strconv"
 	"testing"
@@ -256,7 +255,6 @@ func TestProcessDependencyImportValues(t *testing.T) {
 		default:
 			if pv != vv {
 				t.Errorf("failed to match imported string value %q with expected %q for key %q", pv, vv, kk)
-				t.Error(reflect.TypeOf(pv))
 			}
 		}
 	}
@@ -333,7 +331,6 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 		default:
 			if pv != vv {
 				t.Errorf("failed to match imported string value %q with expected %q", pv, vv)
-				t.Error(reflect.TypeOf(pv))
 			}
 		}
 	}
