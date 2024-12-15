@@ -66,3 +66,7 @@ func (i *LocalInstaller) Update() error {
 	debug("local repository is auto-updated")
 	return nil
 }
+
+func (i *LocalInstaller) GetLatestVersion() (string, error) {
+	return "", errors.New("not supported")
+}
