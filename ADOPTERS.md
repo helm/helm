@@ -18,5 +18,6 @@
 - [Syself](https://syself.com)
 - [Ville de Montreal](https://montreal.ca)
 - [Intercept](https://Intercept.cloud)
+- [Oracle](www.oracle.com)
 
 _This file is part of the CNCF official documentation for projects._
