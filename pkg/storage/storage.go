@@ -161,15 +161,15 @@ func (s *Storage) History(name string) ([]*rspb.Release, error) {
 //
 // We allow max to be set explicitly so that calling functions can "make space"
 // for the new records they are going to write.
-func (s *Storage) removeLeastRecent(name string, max int) error {
-	if max < 0 {
+func (s *Storage) removeLeastRecent(name string, maximum int) error {
+	if maximum < 0 {
 		return nil
 	}
 	h, err := s.History(name)
 	if err != nil {
 		return err
 	}
-	if len(h) <= max {
+	if len(h) <= maximum {
 		return nil
 	}
 
@@ -183,8 +183,8 @@ func (s *Storage) removeLeastRecent(name string, max int) error {
 
 	var toDelete []*rspb.Release
 	for _, rel := range h {
-		// once we have enough releases to delete to reach the max, stop
-		if len(h)-len(toDelete) == max {
+		// once we have enough releases to delete to reach the maximum, stop
+		if len(h)-len(toDelete) == maximum {
 			break
 		}
 		if lastDeployed != nil {

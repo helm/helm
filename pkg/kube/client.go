@@ -435,7 +435,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	case err != nil:
 		return res, err
 	case len(updateErrors) != 0:
-		return res, errors.Errorf(strings.Join(updateErrors, " && "))
+		return res, errors.New(strings.Join(updateErrors, " && "))
 	}
 
 	for _, info := range original.Difference(target) {
