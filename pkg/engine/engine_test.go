@@ -18,12 +18,14 @@ package engine
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"strings"
 	"sync"
 	"testing"
 	"text/template"
 
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -1298,5 +1300,78 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 	default:
 		// Some unexpected error.
 		t.Fatal(err)
+	}
+}
+
+func TestRenderDependencyPostRenderer(t *testing.T) {
+	dep := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "foo",
+		},
+		Templates: []*chart.File{
+			{Name: "templates/foo1", Data: []byte("value: {{ add .Values.bar 2 }}\n")},
+			{Name: "templates/NOTES.txt", Data: []byte("SOME TEXT")},
+			{Name: "templates/empty", Data: []byte("")},
+		},
+		Values: map[string]interface{}{},
+	}
+
+	cwd, _ := os.Getwd()
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "moby",
+			Version: "1.2.3",
+			Dependencies: []*chart.Dependency{
+				{
+					Name: "foo",
+					PostRenderer: &chart.PostRendererOptions{
+						Command: cwd + "/../../testdata/postrender.sh",
+					},
+				},
+			},
+		},
+		Templates: []*chart.File{
+			{Name: "templates/test1", Data: []byte("name: {{ .Chart.Name }}")},
+		},
+		Values: map[string]interface{}{},
+	}
+
+	c.SetDependencies(dep)
+
+	vals := map[string]interface{}{
+		"Values": map[string]any{
+			"foo": map[string]any{
+				"bar": 3,
+			},
+		},
+	}
+
+	v, err := chartutil.CoalesceValues(c, vals)
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+
+	var e Engine
+	out, err := e.Render(c, v)
+	if err != nil {
+		t.Errorf("Failed to render templates: %s", err)
+		return
+	}
+
+	assert.Equal(t, len(out), 4)
+
+	expected := "name: moby"
+
+	fp := path.Join(c.ChartFullPath(), "templates/test1")
+	if out[fp] != expected {
+		t.Errorf("Expected %q, got %q", expected, out[fp])
+	}
+
+	expected = "value: 25\n"
+
+	fp = path.Join(dep.ChartFullPath(), "templates/foo1")
+	if out[fp] != expected {
+		t.Errorf("Expected %q, got %q", expected, out[fp])
 	}
 }
