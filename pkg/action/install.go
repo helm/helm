@@ -241,7 +241,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// HideSecret must be used with dry run. Otherwise, return an error.
 	if !i.isDryRun() && i.HideSecret {
 		i.cfg.Log("ERROR: Hiding Kubernetes secrets requires a dry-run mode")
-		return nil, errors.New("hiding Kubernetes secrets requires a dry-run mode")
+		return nil, errors.New("Hiding Kubernetes secrets requires a dry-run mode")
 	}
 
 	if err := i.availableName(); err != nil {
