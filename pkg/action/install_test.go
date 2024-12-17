@@ -798,3 +798,46 @@ func TestInstallWithSystemLabels(t *testing.T) {
 
 	is.Equal(fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
 }
+
+func TestInstallWithTakeOwnershipOption(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	instAction := installAction(t)
+	instAction.ClientOnly = false
+	instAction.IsUpgrade = false
+	instAction.TakeOwnership = true
+	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+	failer.BuildDummy = true
+	instAction.cfg.KubeClient = failer
+
+	vals := map[string]interface{}{}
+	ctx, done := context.WithCancel(context.Background())
+	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+	is.Equal(res.Name, "test-install-release", "Expected release name.")
+	is.Equal(res.Namespace, "spaced")
+
+	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
+	is.NoError(err)
+
+	is.Len(rel.Hooks, 1)
+	is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
+	is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
+	is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
+
+	is.NotEqual(len(res.Manifest), 0)
+	is.NotEqual(len(rel.Manifest), 0)
+	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
+	is.Equal(rel.Info.Description, "Install complete")
+
+	// Detecting previous bug where context termination after successful release
+	// caused release to fail.
+	done()
+	time.Sleep(time.Millisecond * 100)
+	lastRelease, err := instAction.cfg.Releases.Last(rel.Name)
+	req.NoError(err)
+	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+}

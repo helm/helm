@@ -22,8 +22,10 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/v3/pkg/kube"
@@ -153,8 +155,10 @@ func createDummyResourceList() kube.ResourceList {
 	var resInfo resource.Info
 	resInfo.Name = "dummyName"
 	resInfo.Namespace = "dummyNamespace"
+	resInfo.Mapping = &meta.RESTMapping{
+		Resource: schema.GroupVersionResource{Version: "v1", Resource: "pods"},
+	}
 	var resourceList kube.ResourceList
 	resourceList.Append(&resInfo)
 	return resourceList
-
 }
