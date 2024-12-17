@@ -36,6 +36,13 @@ import (
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/aggregator"
+	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/collector"
+	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/event"
+	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
+	"sigs.k8s.io/cli-utils/pkg/kstatus/watcher"
+	"sigs.k8s.io/cli-utils/pkg/object"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -44,7 +51,6 @@ import (
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
@@ -294,6 +300,65 @@ func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 		timeout: timeout,
 	}
 	return w.waitForResources(resources)
+}
+
+// WaitForReady waits for all of the objects to reach a ready state.
+func WaitForReady(ctx context.Context, sw watcher.StatusWatcher, resourceList ResourceList) error {
+	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	// TODO maybe a simpler way to transfer the objects
+	runtimeObjs := []runtime.Object{}
+	for _, resource := range resourceList {
+		runtimeObjs = append(runtimeObjs, resource.Object)
+	}
+	resources := []object.ObjMetadata{}
+	for _, runtimeObj := range runtimeObjs {
+		obj, err := object.RuntimeToObjMeta(runtimeObj)
+		if err != nil {
+			return err
+		}
+		resources = append(resources, obj)
+	}
+
+	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
+	statusCollector := collector.NewResourceStatusCollector(resources)
+	done := statusCollector.ListenWithObserver(eventCh, collector.ObserverFunc(
+		func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
+			rss := []*event.ResourceStatus{}
+			for _, rs := range statusCollector.ResourceStatuses {
+				if rs == nil {
+					continue
+				}
+				rss = append(rss, rs)
+			}
+			desired := status.CurrentStatus
+			if aggregator.AggregateStatus(rss, desired) == desired {
+				cancel()
+				return
+			}
+		}),
+	)
+	<-done
+
+	if statusCollector.Error != nil {
+		return statusCollector.Error
+	}
+
+	// Only check parent context error, otherwise we would error when desired status is achieved.
+	if ctx.Err() != nil {
+		// todo use err
+		var err error
+		for _, id := range resources {
+			rs := statusCollector.ResourceStatuses[id]
+			if rs.Status == status.CurrentStatus {
+				continue
+			}
+			err = fmt.Errorf("%s: %s not ready, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status)
+		}
+		return fmt.Errorf("not all resources ready: %w: %w", ctx.Err(), err)
+	}
+
+	return nil
 }
 
 // WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
