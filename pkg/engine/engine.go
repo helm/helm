@@ -132,7 +132,7 @@ func includeFun(t *template.Template, includedNames map[string]int) func(string,
 		var buf strings.Builder
 		if v, ok := includedNames[name]; ok {
 			if v > recursionMaxNums {
-				return "", fmt.Errorf("rendering template has a nested reference name %s: unable to execute template", name)
+				return "", fmt.Errorf("rendering template has a nested reference name: %s: unable to execute template", name)
 			}
 			includedNames[name]++
 		} else {

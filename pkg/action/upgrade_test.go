@@ -186,7 +186,7 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		_, err := upAction.Run(rel.Name, buildChart(), vals)
 		req.Error(err)
 		is.Contains(err.Error(), "update fail")
-		is.Contains(err.Error(), "an error occurred while rolling back the release")
+		is.Contains(err.Error(), "rollback failed")
 	})
 }
 

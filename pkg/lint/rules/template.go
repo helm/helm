@@ -227,7 +227,10 @@ func validateAllowedExtension(fileName string) error {
 }
 
 func validateYamlContent(err error) error {
-	return fmt.Errorf("unable to parse YAML: %w", err)
+	if err != nil {
+		return fmt.Errorf("unable to parse YAML: %w", err)
+	}
+	return nil
 }
 
 // validateMetadataName uses the correct validation function for the object
