@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/pkg/errors"
+	"errors"
 )
 
 // validName is a regular expression for resource names.

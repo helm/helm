@@ -23,7 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
+	"errors"
+
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/pkg/action"

@@ -19,7 +19,7 @@ package driver // import "helm.sh/helm/v3/pkg/storage/driver"
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
+	"errors"
 
 	rspb "helm.sh/helm/v3/pkg/release"
 )

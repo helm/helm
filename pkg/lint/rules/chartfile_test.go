@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pkg/errors"
+	"errors"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"

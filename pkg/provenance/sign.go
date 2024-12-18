@@ -19,12 +19,14 @@ import (
 	"bytes"
 	"crypto"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
+	"errors"
+
 	"golang.org/x/crypto/openpgp"           //nolint
 	"golang.org/x/crypto/openpgp/clearsign" //nolint
 	"golang.org/x/crypto/openpgp/packet"    //nolint
@@ -143,7 +145,7 @@ func NewFromKeyring(keyringfile, id string) (*Signatory, error) {
 		}
 	}
 	if vague {
-		return s, errors.Errorf("more than one key contain the id %q", id)
+		return s, fmt.Errorf("more than one key contain the id %q", id)
 	}
 
 	s.Entity = candidate
@@ -236,12 +238,12 @@ func (s *Signatory) ClearSign(chartpath string) (string, error) {
 		// In other words, if we call Close here, there's a risk that there's an attempt to use the
 		// private key to sign garbage data (since we know that io.Copy failed, `w` won't contain
 		// anything useful).
-		return "", errors.Wrap(err, "failed to write to clearsign encoder")
+		return "", fmt.Errorf("failed to write to clearsign encoder: %w", err)
 	}
 
 	err = w.Close()
 	if err != nil {
-		return "", errors.Wrap(err, "failed to either sign or armor message block")
+		return "", fmt.Errorf("failed to either sign or armor message block: %w", err)
 	}
 
 	return out.String(), nil
@@ -254,14 +256,14 @@ func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
 		if fi, err := os.Stat(fname); err != nil {
 			return ver, err
 		} else if fi.IsDir() {
-			return ver, errors.Errorf("%s cannot be a directory", fname)
+			return ver, fmt.Errorf("%s cannot be a directory", fname)
 		}
 	}
 
 	// First verify the signature
 	sig, err := s.decodeSignature(sigpath)
 	if err != nil {
-		return ver, errors.Wrap(err, "failed to decode signature")
+		return ver, fmt.Errorf("failed to decode signature: %w", err)
 	}
 
 	by, err := s.verifySignature(sig)
@@ -283,9 +285,9 @@ func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
 	sum = "sha256:" + sum
 	basename := filepath.Base(chartpath)
 	if sha, ok := sums.Files[basename]; !ok {
-		return ver, errors.Errorf("provenance does not contain a SHA for a file named %q", basename)
+		return ver, fmt.Errorf("provenance does not contain a SHA for a file named %q", basename)
 	} else if sha != sum {
-		return ver, errors.Errorf("sha256 sum does not match for %s: %q != %q", basename, sha, sum)
+		return ver, fmt.Errorf("sha256 sum does not match for %s: %q != %q", basename, sha, sum)
 	}
 	ver.FileHash = sum
 	ver.FileName = basename

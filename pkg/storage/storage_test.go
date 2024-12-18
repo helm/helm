@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/pkg/errors"
+	"errors"
 
 	rspb "helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"

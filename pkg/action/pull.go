@@ -22,8 +22,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
@@ -116,7 +114,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		var err error
 		dest, err = os.MkdirTemp("", "helm-")
 		if err != nil {
-			return out.String(), errors.Wrap(err, "failed to untar")
+			return out.String(), fmt.Errorf("failed to untar: %w", err)
 		}
 		defer os.RemoveAll(dest)
 	}
@@ -159,11 +157,11 @@ func (p *Pull) Run(chartRef string) (string, error) {
 
 		if _, err := os.Stat(udCheck); err != nil {
 			if err := os.MkdirAll(udCheck, 0755); err != nil {
-				return out.String(), errors.Wrap(err, "failed to untar (mkdir)")
+				return out.String(), fmt.Errorf("failed to untar (mkdir): %w", err)
 			}
 
 		} else {
-			return out.String(), errors.Errorf("failed to untar: a file or directory with the name %s already exists", udCheck)
+			return out.String(), fmt.Errorf("failed to untar: a file or directory with the name %s already exists", udCheck)
 		}
 
 		return out.String(), chartutil.ExpandFile(ud, saved)

@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
+	"errors"
 
 	rspb "helm.sh/helm/v3/pkg/release"
 	relutil "helm.sh/helm/v3/pkg/releaseutil"
@@ -213,7 +213,7 @@ func (s *Storage) removeLeastRecent(name string, max int) error {
 	case 1:
 		return errs[0]
 	default:
-		return errors.Errorf("encountered %d deletion errors. First is: %s", c, errs[0])
+		return fmt.Errorf("encountered %d deletion errors. First is: %s", c, errs[0])
 	}
 }
 
@@ -235,7 +235,7 @@ func (s *Storage) Last(name string) (*rspb.Release, error) {
 		return nil, err
 	}
 	if len(h) == 0 {
-		return nil, errors.Errorf("no revision for release %q", name)
+		return nil, fmt.Errorf("no revision for release %q", name)
 	}
 
 	relutil.Reverse(h, relutil.SortByRevision)

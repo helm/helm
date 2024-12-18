@@ -22,8 +22,9 @@ import (
 	"os"
 	"syscall"
 
+	"errors"
+
 	"github.com/Masterminds/semver/v3"
-	"github.com/pkg/errors"
 	"golang.org/x/term"
 
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -100,7 +101,7 @@ func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
 
 	name, err := chartutil.Save(ch, dest)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to save")
+		return "", fmt.Errorf("failed to save: %w", err)
 	}
 
 	if p.Sign {

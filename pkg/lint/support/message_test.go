@@ -19,7 +19,7 @@ package support
 import (
 	"testing"
 
-	"github.com/pkg/errors"
+	"errors"
 )
 
 var linter = Linter{}

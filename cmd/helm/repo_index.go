@@ -17,11 +17,11 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -103,7 +103,7 @@ func index(dir, url, mergeTo string, json bool) error {
 		} else {
 			i2, err = repo.LoadIndexFile(mergeTo)
 			if err != nil {
-				return errors.Wrap(err, "merge failed")
+				return fmt.Errorf("merge failed: %w", err)
 			}
 		}
 		i.Merge(i2)
