@@ -86,6 +86,10 @@ func TestSearchRepositoriesCmd(t *testing.T) {
 		name:   "search for 'alpine', expect valid yaml output",
 		cmd:    "search repo alpine --output yaml",
 		golden: "output/search-output-yaml.txt",
+	}, {
+		name:   "search for 'alpine' with timestamps, expect valid table output with timestamps",
+		cmd:    "search repo alpine --with-timestamps",
+		golden: "output/search-output-timestamps.txt",
 	}}
 
 	settings.Debug = true
