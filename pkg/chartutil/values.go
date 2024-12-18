@@ -22,7 +22,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
+	"errors"
+
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"

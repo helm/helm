@@ -17,13 +17,13 @@ limitations under the License.
 package releaseutil
 
 import (
+	"fmt"
 	"log"
 	"path"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -141,7 +141,7 @@ func (file *manifestFile) sort(result *result) error {
 
 		var entry SimpleHead
 		if err := yaml.Unmarshal([]byte(m), &entry); err != nil {
-			return errors.Wrapf(err, "YAML parse error on %s", file.path)
+			return fmt.Errorf("YAML parse error on %s: %w", file.path, err)
 		}
 
 		if !hasAnyAnnotation(entry) {

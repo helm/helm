@@ -21,7 +21,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
+	"errors"
+
 	"github.com/xeipuuv/gojsonschema"
 	"sigs.k8s.io/yaml"
 

@@ -26,10 +26,11 @@ import (
 	"sort"
 	"strings"
 
+	"errors"
+
 	"github.com/Masterminds/semver/v3"
 	"github.com/containerd/containerd/remotes"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
 	"oras.land/oras-go/pkg/auth"
 	dockerauth "oras.land/oras-go/pkg/auth/docker"
 	"oras.land/oras-go/pkg/content"
@@ -481,7 +482,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 	var getManifestErr error
 	if _, manifestData, ok := memoryStore.Get(manifest); !ok {
-		getManifestErr = errors.Errorf("Unable to retrieve blob with digest %s", manifest.Digest)
+		getManifestErr = fmt.Errorf("Unable to retrieve blob with digest %s", manifest.Digest)
 	} else {
 		result.Manifest.Data = manifestData
 	}
@@ -490,7 +491,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 	var getConfigDescriptorErr error
 	if _, configData, ok := memoryStore.Get(*configDescriptor); !ok {
-		getConfigDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", configDescriptor.Digest)
+		getConfigDescriptorErr = fmt.Errorf("Unable to retrieve blob with digest %s", configDescriptor.Digest)
 	} else {
 		result.Config.Data = configData
 		var meta *chart.Metadata
@@ -505,7 +506,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	if operation.withChart {
 		var getChartDescriptorErr error
 		if _, chartData, ok := memoryStore.Get(*chartDescriptor); !ok {
-			getChartDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", chartDescriptor.Digest)
+			getChartDescriptorErr = fmt.Errorf("Unable to retrieve blob with digest %s", chartDescriptor.Digest)
 		} else {
 			result.Chart.Data = chartData
 			result.Chart.Digest = chartDescriptor.Digest.String()
@@ -518,7 +519,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	if operation.withProv && !provMissing {
 		var getProvDescriptorErr error
 		if _, provData, ok := memoryStore.Get(*provDescriptor); !ok {
-			getProvDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", provDescriptor.Digest)
+			getProvDescriptorErr = fmt.Errorf("Unable to retrieve blob with digest %s", provDescriptor.Digest)
 		} else {
 			result.Prov.Data = provData
 			result.Prov.Digest = provDescriptor.Digest.String()

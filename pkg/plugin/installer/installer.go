@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
+	"errors"
 
 	"helm.sh/helm/v3/pkg/plugin"
 )

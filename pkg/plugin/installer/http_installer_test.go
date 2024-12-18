@@ -29,8 +29,6 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/pkg/errors"
-
 	"helm.sh/helm/v3/internal/test/ensure"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/helmpath"
@@ -150,7 +148,7 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 
 	// inject fake http client responding with error
 	httpInstaller.getter = &TestHTTPGetter{
-		MockError: errors.Errorf("failed to download plugin for some reason"),
+		MockError: fmt.Errorf("failed to download plugin for some reason"),
 	}
 
 	// attempt to install the plugin

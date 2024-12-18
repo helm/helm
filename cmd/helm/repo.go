@@ -20,7 +20,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -50,5 +49,5 @@ func newRepoCmd(out io.Writer) *cobra.Command {
 }
 
 func isNotExist(err error) bool {
-	return os.IsNotExist(errors.Cause(err))
+	return os.IsNotExist(err)
 }

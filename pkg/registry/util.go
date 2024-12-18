@@ -29,7 +29,6 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	orascontext "oras.land/oras-go/pkg/context"
 	"oras.land/oras-go/pkg/registry"
@@ -92,7 +91,7 @@ func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (str
 		}
 	}
 
-	return "", errors.Errorf("Could not locate a version matching provided version string %s", versionString)
+	return "", fmt.Errorf("Could not locate a version matching provided version string %s", versionString)
 }
 
 // extractChartMeta is used to extract a chart metadata from a byte array
@@ -208,7 +207,7 @@ func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[
 		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationSource, meta.Sources[0])
 	}
 
-	if meta.Maintainers != nil && len(meta.Maintainers) > 0 {
+	if len(meta.Maintainers) > 0 {
 		var maintainerSb strings.Builder
 
 		for maintainerIdx, maintainer := range meta.Maintainers {

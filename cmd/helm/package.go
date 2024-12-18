@@ -22,7 +22,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
+	"errors"
+
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/pkg/action"
@@ -57,7 +58,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 		Long:  packageDesc,
 		RunE: func(_ *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return errors.Errorf("need at least one argument, the path to the chart")
+				return fmt.Errorf("need at least one argument, the path to the chart")
 			}
 			if client.Sign {
 				if client.Key == "" {
