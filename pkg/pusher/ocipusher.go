@@ -23,7 +23,7 @@ import (
 	"path"
 	"strings"
 	"time"
-
+	"net/url"
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/tlsutil"
@@ -46,6 +46,14 @@ func (pusher *OCIPusher) Push(chartRef, href string, options ...Option) error {
 }
 
 func (pusher *OCIPusher) push(chartRef, href string) error {
+
+	// See: https://github.com/helm/helm/issues/12728
+	u, _ := url.Parse(href)
+	hrefPath := strings.SplitN(u.Path, ":", 2)
+	if len(hrefPath) > 1 {
+			return fmt.Errorf("Version tag \"%s\" need not be passed for remote", hrefPath[1])
+	}
+	
 	stat, err := os.Stat(chartRef)
 	if err != nil {
 		if os.IsNotExist(err) {
