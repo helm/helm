@@ -158,7 +158,7 @@ func ToRenderValuesWithSchemaValidation(chrt *chart.Chart, chrtVals map[string]i
 		},
 	}
 
-	vals, err := CoalesceValues(chrt, chrtVals)
+	vals, err := MergeValues(chrt, chrtVals)
 	if err != nil {
 		return top, err
 	}
