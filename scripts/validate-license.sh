@@ -19,7 +19,7 @@ IFS=$'\n\t'
 find_files() {
   find . -not \( \
     \( \
-      -wholename './vendor' \
+      -wholename './.git' \
       -o -wholename '*testdata*' \
       -o -wholename '*third_party*' \
     \) -prune \
