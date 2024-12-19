@@ -102,6 +102,12 @@ func TestInstall(t *testing.T) {
 			cmd:    "install aeneas testdata/testcharts/empty --replace",
 			golden: "output/install-and-replace.txt",
 		},
+		// Install, take ownership
+		{
+			name:   "install and replace release",
+			cmd:    "install aeneas-take-ownership testdata/testcharts/empty --take-ownership",
+			golden: "output/install-and-take-ownership.txt",
+		},
 		// Install, with timeout
 		{
 			name:   "install with a timeout",
