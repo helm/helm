@@ -115,6 +115,12 @@ func TestUpgradeCmd(t *testing.T) {
 			rels:   []*release.Release{relMock("funny-bunny", 5, ch2)},
 		},
 		{
+			name:   "upgrade a release with --take-ownership",
+			cmd:    fmt.Sprintf("upgrade funny-bunny '%s' --take-ownership", chartPath),
+			golden: "output/upgrade-and-take-ownership.txt",
+			rels:   []*release.Release{relMock("funny-bunny", 2, ch)},
+		},
+		{
 			name:   "install a release with 'upgrade --install'",
 			cmd:    fmt.Sprintf("upgrade zany-bunny -i '%s'", chartPath),
 			golden: "output/upgrade-with-install.txt",
