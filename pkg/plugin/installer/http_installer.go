@@ -19,6 +19,8 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -27,7 +29,6 @@ import (
 	"strings"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/internal/third_party/dep/fs"
 	"helm.sh/helm/v3/pkg/cli"
@@ -78,7 +79,7 @@ func NewExtractor(source string) (Extractor, error) {
 			return extractor, nil
 		}
 	}
-	return nil, errors.Errorf("no extractor implemented yet for %s", source)
+	return nil, fmt.Errorf("no extractor implemented yet for %s", source)
 }
 
 // NewHTTPInstaller creates a new HttpInstaller.
@@ -132,7 +133,7 @@ func (i *HTTPInstaller) Install() error {
 	}
 
 	if err := i.extractor.Extract(pluginData, i.CacheDir); err != nil {
-		return errors.Wrap(err, "extracting files from archive")
+		return fmt.Errorf("extracting files from archive: %w", err)
 	}
 
 	if !isPlugin(i.CacheDir) {
@@ -151,7 +152,7 @@ func (i *HTTPInstaller) Install() error {
 // Update updates a local repository
 // Not implemented for now since tarball most likely will be packaged by version
 func (i *HTTPInstaller) Update() error {
-	return errors.Errorf("method Update() not implemented for HttpInstaller")
+	return fmt.Errorf("method Update() not implemented for HttpInstaller")
 }
 
 // Path is overridden because we want to join on the plugin name not the file name
@@ -261,7 +262,7 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 		case tar.TypeXGlobalHeader, tar.TypeXHeader:
 			continue
 		default:
-			return errors.Errorf("unknown type: %b in %s", header.Typeflag, header.Name)
+			return fmt.Errorf("unknown type: %b in %s", header.Typeflag, header.Name)
 		}
 	}
 	return nil

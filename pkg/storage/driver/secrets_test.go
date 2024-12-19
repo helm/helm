@@ -16,6 +16,7 @@ package driver
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -245,7 +246,7 @@ func TestSecretDelete(t *testing.T) {
 
 	// fetch the deleted release
 	_, err = secrets.Get(key)
-	if !reflect.DeepEqual(ErrReleaseNotFound, err) {
+	if !errors.Is(err, ErrReleaseNotFound) {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
 	}
 }

@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -162,5 +161,9 @@ func SelectorsForObject(object runtime.Object) (selector labels.Selector, err er
 		return nil, fmt.Errorf("selector for %T not implemented", object)
 	}
 
-	return selector, errors.Wrap(err, "invalid label selector")
+	if err != nil {
+		return selector, fmt.Errorf("invalid label selector: %w", err)
+	}
+
+	return selector, nil
 }

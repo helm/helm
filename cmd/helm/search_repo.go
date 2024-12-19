@@ -19,6 +19,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -27,7 +28,6 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/gosuri/uitable"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v3/cmd/helm/search"
@@ -152,7 +152,7 @@ func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Res
 
 	constraint, err := semver.NewConstraint(o.version)
 	if err != nil {
-		return res, errors.Wrap(err, "an invalid version/constraint format")
+		return res, fmt.Errorf("an invalid version/constraint format: %w", err)
 	}
 
 	data := res[:0]

@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 	"golang.org/x/text/cases"
@@ -99,6 +98,6 @@ func (o *docsOptions) run(_ io.Writer) error {
 	case "bash":
 		return o.topCmd.GenBashCompletionFile(filepath.Join(o.dest, "completions.bash"))
 	default:
-		return errors.Errorf("unknown doc type %q. Try 'markdown' or 'man'", o.docTypeString)
+		return fmt.Errorf("unknown doc type %q. Try 'markdown' or 'man'", o.docTypeString)
 	}
 }
