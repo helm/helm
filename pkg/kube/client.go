@@ -433,10 +433,6 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			c.Log("error applying the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
-
-		// afterwards, we will reconcile managed fields on these objects and re-apply if necessary.
-		// the reason we do this is to avoid 3 network requests in the "happy/normal" case with SSA.
-		// we want to first (1) apply, (2) try to check if a migration is needed, and (3) run the migration if we must.
 		return nil
 	})
 
@@ -631,6 +627,9 @@ func (c *Client) applyResource(target *resource.Info, force bool) error {
 	}
 	target.Refresh(obj, true)
 
+	// afterwards, we will reconcile managed fields on these objects and re-apply if necessary.
+	// the reason we do this is to avoid 3 network requests in the "happy/normal" case with SSA.
+	// we want to first (1) apply, (2) try to check if a migration is needed, and (3) run the migration if we must.
 	// now, we will try to migrate managed fields of the object, if necessary.
 	didMigrate, err := migrateManagedFields(
 		helper,
