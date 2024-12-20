@@ -81,7 +81,7 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 		}
 	}
 	if len(errorPlugins) > 0 {
-		return errors.Errorf(strings.Join(errorPlugins, "\n"))
+		return errors.New(strings.Join(errorPlugins, "\n"))
 	}
 	return nil
 }
