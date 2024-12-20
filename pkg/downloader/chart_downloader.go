@@ -171,7 +171,11 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 		}
 	}
 
-	u.Path = fmt.Sprintf("%s:%s", u.Path, tag)
+	// If the tag is already inside the OCI URI, don't concatenate u.Path with tag.
+	// Otherwise the tag gets invalid.
+	if !(strings.Contains(u.Path, ":"+tag)) {
+		u.Path = fmt.Sprintf("%s:%s", u.Path, tag)
+	}
 
 	return u, err
 }
