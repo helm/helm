@@ -405,28 +405,25 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			// Append the created resource to the results, even if something fails
 			res.Created = append(res.Created, info)
 
-			// Since the resource does not exist, create it.
-			if err := createResource(info); err != nil {
-				return errors.Wrap(err, "failed to create resource")
-			}
-
 			kind := info.Mapping.GroupVersionKind.Kind
 			c.Log("Created a new %s called %q in %s\n", kind, info.Name, info.Namespace)
 			return nil
+		} else {
+			var kind string
+			originalInfo := original.Get(info)
+			if originalInfo == nil {
+				kind := info.Mapping.GroupVersionKind.Kind
+				return errors.Errorf("no %s with the name %q found", kind, info.Name)
+			}
+			c.Log("Updating %s called %q in %s\n", kind, info.Name, info.Namespace)
+			// Because we check for errors later, append the info regardless
+			res.Updated = append(res.Updated, info)
 		}
 
-		originalInfo := original.Get(info)
-		if originalInfo == nil {
-			kind := info.Mapping.GroupVersionKind.Kind
-			return errors.Errorf("no %s with the name %q found", kind, info.Name)
-		}
-
-		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
-			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
+		if err := applyResource(info, force); err != nil {
+			c.Log("error applying the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
-		// Because we check for errors later, append the info regardless
-		res.Updated = append(res.Updated, info)
 
 		return nil
 	})
@@ -665,6 +662,24 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 
 	patch, err := strategicpatch.CreateThreeWayMergePatch(oldData, newData, currentData, patchMeta, true)
 	return patch, types.StrategicMergePatchType, err
+}
+
+// applyResource runs SSA via helm.
+func applyResource(target *resource.Info, force bool) error {
+	helper := resource.NewHelper(target.Client, target.Mapping).
+		WithFieldManager(getManagedFieldsManager())
+	// Send the full object to be applied on the server side.
+	data, err := runtime.Encode(unstructured.UnstructuredJSONScheme, target.Object)
+	if err != nil {
+		return errors.Wrap(err, "failed to encode target object")
+	}
+	_, err = helper.Patch(target.Namespace, target.Name, types.ApplyPatchType, data, &metav1.PatchOptions{
+		Force: &force,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, target.Mapping.GroupVersionKind.Kind)
+	}
+	return nil
 }
 
 func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
