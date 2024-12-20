@@ -143,7 +143,13 @@ func (c *Client) IsReachable() error {
 // Create creates Kubernetes resources specified in the resource list.
 func (c *Client) Create(resources ResourceList) (*Result, error) {
 	c.Log("creating %d resource(s)", len(resources))
-	if err := perform(resources, createResource); err != nil {
+	if err := perform(resources, func(i *resource.Info) error {
+		return retry.RetryOnConflict(
+			retry.DefaultRetry,
+			func() error {
+				return c.applyResource(i, true)
+			})
+	}); err != nil {
 		return nil, err
 	}
 	return &Result{Created: resources}, nil
@@ -423,7 +429,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			res.Updated = append(res.Updated, info)
 		}
 
-		if err := applyResource(info, force); err != nil {
+		if err := c.applyResource(info, force); err != nil {
 			c.Log("error applying the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
@@ -598,14 +604,6 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 	}
 }
 
-func createResource(info *resource.Info) error {
-	return retry.RetryOnConflict(
-		retry.DefaultRetry,
-		func() error {
-			return applyResource(info, true)
-		})
-}
-
 func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) error {
 	return retry.RetryOnConflict(
 		retry.DefaultRetry,
@@ -617,7 +615,7 @@ func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) erro
 }
 
 // applyResource runs SSA via helm.
-func applyResource(target *resource.Info, force bool) error {
+func (c *Client) applyResource(target *resource.Info, force bool) error {
 	helper := resource.NewHelper(target.Client, target.Mapping).
 		WithFieldManager(getManagedFieldsManager())
 	// Send the full object to be applied on the server side.
@@ -647,6 +645,7 @@ func applyResource(target *resource.Info, force bool) error {
 		return nil
 	}
 
+	c.Log("Applied patch to reconcile server-side-apply managed fields, re-applying SSA for object %s of kind %s in namespace %s", target.Name, target.Mapping.GroupVersionKind.Kind, target.Namespace)
 	// now we know that there were some extra managed fields lying around. Re-send original SSA to the api-server
 	// to clear the old managed fields.
 	obj, err = helper.Patch(target.Namespace, target.Name, types.ApplyPatchType, data, &metav1.PatchOptions{
