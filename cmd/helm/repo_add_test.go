@@ -93,11 +93,10 @@ func TestRepoAdd(t *testing.T) {
 	const testRepoName = "test-name"
 
 	o := &repoAddOptions{
-		name:               testRepoName,
-		url:                ts.URL(),
-		forceUpdate:        false,
-		deprecatedNoUpdate: true,
-		repoFile:           repoFile,
+		name:        testRepoName,
+		url:         ts.URL(),
+		forceUpdate: false,
+		repoFile:    repoFile,
 	}
 	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
@@ -148,11 +147,10 @@ func TestRepoAddCheckLegalName(t *testing.T) {
 	repoFile := filepath.Join(t.TempDir(), "repositories.yaml")
 
 	o := &repoAddOptions{
-		name:               testRepoName,
-		url:                ts.URL(),
-		forceUpdate:        false,
-		deprecatedNoUpdate: true,
-		repoFile:           repoFile,
+		name:        testRepoName,
+		url:         ts.URL(),
+		forceUpdate: false,
+		repoFile:    repoFile,
 	}
 	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
@@ -204,11 +202,10 @@ func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 		go func(name string) {
 			defer wg.Done()
 			o := &repoAddOptions{
-				name:               name,
-				url:                ts.URL(),
-				deprecatedNoUpdate: true,
-				forceUpdate:        false,
-				repoFile:           repoFile,
+				name:        name,
+				url:         ts.URL(),
+				forceUpdate: false,
+				repoFile:    repoFile,
 			}
 			if err := o.run(io.Discard); err != nil {
 				t.Error(err)
