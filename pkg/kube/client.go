@@ -602,11 +602,7 @@ func createResource(info *resource.Info) error {
 	return retry.RetryOnConflict(
 		retry.DefaultRetry,
 		func() error {
-			obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
-			if err != nil {
-				return err
-			}
-			return info.Refresh(obj, true)
+			return applyResource(info, true)
 		})
 }
 
