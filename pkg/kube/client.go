@@ -19,7 +19,6 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -29,7 +28,6 @@ import (
 	"sync"
 	"time"
 
-	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
@@ -46,7 +44,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -623,56 +620,6 @@ func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) erro
 		})
 }
 
-func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
-	oldData, err := json.Marshal(current)
-	if err != nil {
-		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing current configuration")
-	}
-	newData, err := json.Marshal(target.Object)
-	if err != nil {
-		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing target configuration")
-	}
-
-	// Fetch the current object for the three way merge
-	helper := resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
-	currentObj, err := helper.Get(target.Namespace, target.Name)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return nil, types.StrategicMergePatchType, errors.Wrapf(err, "unable to get data for current object %s/%s", target.Namespace, target.Name)
-	}
-
-	// Even if currentObj is nil (because it was not found), it will marshal just fine
-	currentData, err := json.Marshal(currentObj)
-	if err != nil {
-		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing live configuration")
-	}
-
-	// Get a versioned object
-	versionedObject := AsVersioned(target)
-
-	// Unstructured objects, such as CRDs, may not have a not registered error
-	// returned from ConvertToVersion. Anything that's unstructured should
-	// use the jsonpatch.CreateMergePatch. Strategic Merge Patch is not supported
-	// on objects like CRDs.
-	_, isUnstructured := versionedObject.(runtime.Unstructured)
-
-	// On newer K8s versions, CRDs aren't unstructured but has this dedicated type
-	_, isCRD := versionedObject.(*apiextv1beta1.CustomResourceDefinition)
-
-	if isUnstructured || isCRD {
-		// fall back to generic JSON merge patch
-		patch, err := jsonpatch.CreateMergePatch(oldData, newData)
-		return patch, types.MergePatchType, err
-	}
-
-	patchMeta, err := strategicpatch.NewPatchMetaFromStruct(versionedObject)
-	if err != nil {
-		return nil, types.StrategicMergePatchType, errors.Wrap(err, "unable to create patch metadata from object")
-	}
-
-	patch, err := strategicpatch.CreateThreeWayMergePatch(oldData, newData, currentData, patchMeta, true)
-	return patch, types.StrategicMergePatchType, err
-}
-
 // applyResource runs SSA via helm.
 func applyResource(target *resource.Info, force bool) error {
 	helper := resource.NewHelper(target.Client, target.Mapping).
@@ -712,48 +659,6 @@ func applyResource(target *resource.Info, force bool) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, target.Mapping.GroupVersionKind.Kind)
 	}
-	target.Refresh(obj, true)
-	return nil
-}
-
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
-	var (
-		obj    runtime.Object
-		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
-		kind   = target.Mapping.GroupVersionKind.Kind
-	)
-
-	// if --force is applied, attempt to replace the existing resource with the new object.
-	if force {
-		var err error
-		obj, err = helper.Replace(target.Namespace, target.Name, true, target.Object)
-		if err != nil {
-			return errors.Wrap(err, "failed to replace object")
-		}
-		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
-	} else {
-		patch, patchType, err := createPatch(target, currentObj)
-		if err != nil {
-			return errors.Wrap(err, "failed to create patch")
-		}
-
-		if patch == nil || string(patch) == "{}" {
-			c.Log("Looks like there are no changes for %s %q", kind, target.Name)
-			// This needs to happen to make sure that Helm has the latest info from the API
-			// Otherwise there will be no labels and other functions that use labels will panic
-			if err := target.Get(); err != nil {
-				return errors.Wrap(err, "failed to refresh resource information")
-			}
-			return nil
-		}
-		// send patch to server
-		c.Log("Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
-		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
-		if err != nil {
-			return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
-		}
-	}
-
 	target.Refresh(obj, true)
 	return nil
 }
