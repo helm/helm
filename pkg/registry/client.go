@@ -41,6 +41,7 @@ import (
 	"helm.sh/helm/v3/internal/version"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/helmpath"
+	"helm.sh/helm/v3/pkg/netrc"
 )
 
 // See https://github.com/helm/helm/issues/10166
@@ -117,9 +118,20 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		}
 
 		// if username and password are set, use them for authentication
-		// by adding the basic auth Authorization header to the resolver
-		if client.username != "" && client.password != "" {
-			concat := client.username + ":" + client.password
+		username := client.username
+		password := client.password
+
+		// If credentials are not explicitly set, try to get them from .netrc
+		if username == "" && password == "" {
+			if creds, err := netrc.GetCredentials(ref.Registry); err == nil && creds != nil {
+				username = creds.Login
+				password = creds.Password
+			}
+		}
+
+		// Add credentials to resolver if available
+		if username != "" && password != "" {
+			concat := username + ":" + password
 			encodedAuth := base64.StdEncoding.EncodeToString([]byte(concat))
 			opts = append(opts, auth.WithResolverHeaders(
 				http.Header{
@@ -148,10 +160,21 @@ func NewClient(options ...ClientOption) (*Client, error) {
 			},
 			Cache: cache,
 			Credential: func(_ context.Context, reg string) (registryauth.Credential, error) {
-				if client.username != "" && client.password != "" {
+				username := client.username
+				password := client.password
+
+				// If credentials are not explicitly set, try to get them from .netrc
+				if username == "" && password == "" {
+					if creds, err := netrc.GetCredentials(reg); err == nil && creds != nil {
+						username = creds.Login
+						password = creds.Password
+					}
+				}
+
+				if username != "" && password != "" {
 					return registryauth.Credential{
-						Username: client.username,
-						Password: client.password,
+						Username: username,
+						Password: password,
 					}, nil
 				}
 
@@ -176,10 +199,8 @@ func NewClient(options ...ClientOption) (*Client, error) {
 					Username: username,
 					Password: password,
 				}, nil
-
 			},
 		}
-
 	}
 	return client, nil
 }
