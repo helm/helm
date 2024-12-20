@@ -59,6 +59,12 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
+var FieldManagersToAdopt = []string{
+	"kubectl",
+	"kubectl-client-side-apply",
+	"kubectl-edit",
+}
+
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
 var ErrNoObjectsVisited = errors.New("no objects visited")
 
@@ -425,6 +431,9 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			updateErrors = append(updateErrors, err.Error())
 		}
 
+		// afterwards, we will reconcile managed fields on these objects and re-apply if necessary.
+		// the reason we do this is to avoid 3 network requests in the "happy/normal" case with SSA.
+		// we want to first (1) apply, (2) try to check if a migration is needed, and (3) run the migration if we must.
 		return nil
 	})
 
@@ -673,12 +682,37 @@ func applyResource(target *resource.Info, force bool) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to encode target object")
 	}
-	_, err = helper.Patch(target.Namespace, target.Name, types.ApplyPatchType, data, &metav1.PatchOptions{
+	obj, err := helper.Patch(target.Namespace, target.Name, types.ApplyPatchType, data, &metav1.PatchOptions{
 		Force: &force,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, target.Mapping.GroupVersionKind.Kind)
 	}
+	target.Refresh(obj, true)
+
+	// now, we will try to migrate managed fields of the object, if necessary.
+	didMigrate, err := migrateManagedFields(
+		helper,
+		target,
+		FieldManagersToAdopt,
+		getManagedFieldsManager(),
+	)
+	if err != nil {
+		return errors.Wrap(err, "failed to upgrade managed fields for helm ssa migration")
+	} else if !didMigrate {
+		// in the average case, there's no work to do - the object is already up to date.
+		return nil
+	}
+
+	// now we know that there were some extra managed fields lying around. Re-send original SSA to the api-server
+	// to clear the old managed fields.
+	obj, err = helper.Patch(target.Namespace, target.Name, types.ApplyPatchType, data, &metav1.PatchOptions{
+		Force: &force,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, target.Mapping.GroupVersionKind.Kind)
+	}
+	target.Refresh(obj, true)
 	return nil
 }
 
