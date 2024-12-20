@@ -17,6 +17,12 @@ import (
 	"sigs.k8s.io/structured-merge-diff/v4/fieldpath"
 )
 
+// this file is mostly copied from the "[kubectl client-side apply]" migration
+// code with a few small modifications:
+// 1) we do not special-case subresources or apply type for other field managers; helm assumes that it has sole control over the 'managersToAdopt'
+// 2) we automatically update previous 'Update' calls from helm to now be 'Apply' calls.
+//
+// [kubectl client-side apply]: https://github.com/kubernetes/kubernetes/blob/a4b8a3b2e33a3b591884f69b64f439e6b880dc40/staging/src/k8s.io/client-go/util/csaupgrade/upgrade.go#L122
 func migrateManagedFields(
 	helper *resource.Helper,
 	info *resource.Info,
