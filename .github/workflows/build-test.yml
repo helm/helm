@@ -7,9 +7,10 @@ on:
       - "release-**"
   pull_request:
     branches:
-      - main
+      - "main"
+      - "dev-v3"
 
-permissions:  
+permissions:
   contents: read
 
 jobs:
