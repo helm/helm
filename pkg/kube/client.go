@@ -854,5 +854,5 @@ func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration)
 		}
 	}
 
-	return v1.PodUnknown, err
+	return v1.PodUnknown, nil
 }

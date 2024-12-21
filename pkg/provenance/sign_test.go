@@ -34,7 +34,7 @@ const (
 	// phrase. Use `gpg --export-secret-keys helm-test` to export the secret.
 	testKeyfile = "testdata/helm-test-key.secret"
 
-	// testPasswordKeyFile is a keyfile with a password.
+	// testPasswordKeyfile is a keyfile with a password.
 	testPasswordKeyfile = "testdata/helm-password-key.secret"
 
 	// testPubfile is the public key file.
