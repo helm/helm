@@ -1,0 +1,5 @@
+NAMESPACE     	NAME                     	API_VERSION	AGE
+              	namespaces/thousand-sunny	v1         	2m 
+thousand-sunny	configmaps/nami          	v1         	2m 
+thousand-sunny	services/zoro            	v1         	2m 
+thousand-sunny	deployments/luffy        	apps/v1    	2m 
