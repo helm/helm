@@ -220,7 +220,7 @@ func TestPullCmd(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			_, out, err := executeActionCommand(cmd)
+			_, out, err := executeActionCommand(cmd, nil, nil)
 			if err != nil {
 				if tt.wantError {
 					if tt.wantErrorMsg != "" && tt.wantErrorMsg == err.Error() {
@@ -337,7 +337,7 @@ func TestPullWithCredentialsCmd(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			_, _, err := executeActionCommand(cmd)
+			_, _, err := executeActionCommand(cmd, nil, nil)
 			if err != nil {
 				if tt.wantError {
 					if tt.wantErrorMsg != "" && tt.wantErrorMsg == err.Error() {
