@@ -428,8 +428,12 @@ func cleanupExecError(filename string, err error) error {
 		}
 		finalErrorString = finalErrorString + fileLocation.String()
 	}
+	if strings.TrimSpace(finalErrorString) == "" {
+		// Fallback to original error message if nothing was extracted
+		return fmt.Errorf("%s", err.Error())
+	}
 
-	return fmt.Errorf("NEW ERROR FORMAT: \n%s\n\n\nORIGINAL ERROR:\n%s", finalErrorString, err.Error())
+	return fmt.Errorf("%s", finalErrorString)
 }
 
 func sortTemplates(tpls map[string]renderable) []string {
