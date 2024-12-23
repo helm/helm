@@ -410,8 +410,7 @@ func cleanupExecError(filename string, err error) error {
 	}
 
 	for i, fileLocation := range fileLocations {
-		t := fileLocation.FilterLocation()
-		fileLocations[i] = t
+		fileLocations[i] = fileLocation.FilterLocation()
 	}
 
 	for i, fileLocation := range fileLocations {
