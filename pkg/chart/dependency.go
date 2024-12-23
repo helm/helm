@@ -17,6 +17,11 @@ package chart
 
 import "time"
 
+type PostRendererOptions struct {
+	Command string   `json:"command" yaml:"command"`
+	Args    []string `json:"args,omitempty" yaml:"args,omitempty"`
+}
+
 // Dependency describes a chart upon which another chart depends.
 //
 // Dependencies can be used to express developer intent, or to capture the state
@@ -47,6 +52,8 @@ type Dependency struct {
 	ImportValues []interface{} `json:"import-values,omitempty" yaml:"import-values,omitempty"`
 	// Alias usable alias to be used for the chart
 	Alias string `json:"alias,omitempty" yaml:"alias,omitempty"`
+	// A post rendering operation that will be applied to the rendered outputs of this dependency
+	PostRenderer *PostRendererOptions `json:"postRenderer,omitempty" yaml:"postRenderer,omitempty"`
 }
 
 // Validate checks for common problems with the dependency datastructure in

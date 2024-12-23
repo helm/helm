@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"path"
@@ -31,6 +32,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/postrender"
 )
 
 // Engine is an implementation of the Helm rendering implementation for templates.
@@ -75,7 +77,11 @@ func New(config *rest.Config) Engine {
 // bar chart during render time.
 func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
 	tmap := allTemplates(chrt, values)
-	return e.render(tmap)
+	rendered, err := e.render(tmap)
+	if err != nil {
+		return nil, err
+	}
+	return postRenderDependency(nil, chrt, rendered)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to
@@ -305,6 +311,77 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 	}
 
 	return rendered, nil
+}
+
+func postRenderDependency(parent *chart.Chart, chrt *chart.Chart, rendered map[string]string) (map[string]string, error) {
+	for _, c := range chrt.Dependencies() {
+		_, err := postRenderDependency(chrt, c, rendered)
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Skip root chart since it has it's own post-render mechanism
+	if chrt.IsRoot() || parent == nil {
+		return rendered, nil
+	}
+
+	var postRenderOptions *chart.PostRendererOptions
+
+	for _, depMetadata := range parent.Metadata.Dependencies {
+		if depMetadata.Name == chrt.Name() {
+			postRenderOptions = depMetadata.PostRenderer
+			break
+		}
+	}
+
+	if postRenderOptions == nil {
+		return rendered, nil
+	}
+
+	postRenderer, err := postrender.NewExec(postRenderOptions.Command, postRenderOptions.Args...)
+
+	if err != nil {
+		errorMessage := err.Error()
+		if strings.HasPrefix(errorMessage, "unable to find binary at ") {
+			log.Printf("[INFO] Skipping dependency post render operation because: %s", errorMessage)
+
+			return rendered, nil
+		}
+
+		return nil, err
+	}
+
+	fullChartPath := chrt.ChartFullPath()
+
+	for k, renderedContent := range rendered {
+		if len(strings.TrimSpace(renderedContent)) == 0 || strings.HasSuffix(k, "/templates/NOTES.txt") {
+			continue
+		}
+
+		if strings.HasPrefix(k, fullChartPath+"/templates/") {
+			result, err := postRender(postRenderer, renderedContent)
+
+			if err != nil {
+				return nil, err
+			}
+
+			rendered[k] = result
+		}
+	}
+
+	return rendered, nil
+}
+
+func postRender(postRenderer postrender.PostRenderer, renderedContent string) (string, error) {
+	var buffer bytes.Buffer
+	buffer.WriteString(renderedContent)
+	newBuffer, err := postRenderer.Run(&buffer)
+	if err != nil {
+		return "", err
+	}
+	return newBuffer.String(), nil
 }
 
 func cleanupParseError(filename string, err error) error {
