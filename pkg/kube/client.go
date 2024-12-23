@@ -301,6 +301,7 @@ func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 	// 	log:     c.Log,
 	// 	timeout: timeout,
 	// }
+	// w.waitForResources()
 	cfg, err := c.Factory.ToRESTConfig()
 	if err != nil {
 		return err

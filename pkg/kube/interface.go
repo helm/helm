@@ -33,6 +33,7 @@ type Interface interface {
 	Create(resources ResourceList) (*Result, error)
 
 	// Wait waits up to the given timeout for the specified resources to be ready.
+	// TODO introduce another interface for the waiting of the KubeClient
 	Wait(resources ResourceList, timeout time.Duration) error
 
 	// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
