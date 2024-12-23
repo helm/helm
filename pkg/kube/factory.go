@@ -17,9 +17,11 @@ limitations under the License.
 package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubectl/pkg/validation"
 )
@@ -33,6 +35,7 @@ import (
 // Helm does not need are not impacted or exposed. This minimizes the impact of Kubernetes changes
 // being exposed.
 type Factory interface {
+	genericclioptions.RESTClientGetter
 	// ToRawKubeConfigLoader return kubeconfig loader as-is
 	ToRawKubeConfigLoader() clientcmd.ClientConfig
 
@@ -41,6 +44,9 @@ type Factory interface {
 
 	// KubernetesClientSet gives you back an external clientset
 	KubernetesClientSet() (*kubernetes.Clientset, error)
+
+	// Returns a RESTClient for accessing Kubernetes resources or an error.
+	RESTClient() (*restclient.RESTClient, error)
 
 	// NewBuilder returns an object that assists in loading objects from both disk and the server
 	// and which implements the common patterns for CLI interactions with generic resources.

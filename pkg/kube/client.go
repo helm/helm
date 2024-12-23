@@ -43,6 +43,7 @@ import (
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/watcher"
 	"sigs.k8s.io/cli-utils/pkg/object"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -56,6 +57,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -289,17 +291,43 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 
 // Wait waits up to the given timeout for the specified resources to be ready.
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
-	cs, err := c.getKubeClient()
+	// cs, err := c.getKubeClient()
+	// if err != nil {
+	// 	return err
+	// }
+	// checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
+	// w := waiter{
+	// 	c:       checker,
+	// 	log:     c.Log,
+	// 	timeout: timeout,
+	// }
+	cfg, err := c.Factory.ToRESTConfig()
 	if err != nil {
 		return err
 	}
-	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
-	w := waiter{
-		c:       checker,
-		log:     c.Log,
-		timeout: timeout,
+	dynamicClient, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return err
 	}
-	return w.waitForResources(resources)
+	// Not sure if I should use factory methods to get this http client or I should do this
+	// For example, I could likely use this as well, but it seems like I should use the factory methods instead
+	// httpClient, err := rest.HTTPClientFor(cfg)
+	// if err != nil {
+	// 	return err
+	// }
+	client, err := c.Factory.RESTClient()
+	if err != nil {
+		return err
+	}
+	restMapper, err := apiutil.NewDynamicRESTMapper(cfg, client.Client)
+	if err != nil {
+		return err
+	}
+	sw := watcher.NewDefaultStatusWatcher(dynamicClient, restMapper)
+	// return sw, nil
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	defer cancel()
+	return WaitForReady(ctx, sw, resources)
 }
 
 // WaitForReady waits for all of the objects to reach a ready state.
@@ -319,7 +347,6 @@ func WaitForReady(ctx context.Context, sw watcher.StatusWatcher, resourceList Re
 		}
 		resources = append(resources, obj)
 	}
-
 	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
 	done := statusCollector.ListenWithObserver(eventCh, collector.ObserverFunc(
@@ -346,7 +373,6 @@ func WaitForReady(ctx context.Context, sw watcher.StatusWatcher, resourceList Re
 
 	// Only check parent context error, otherwise we would error when desired status is achieved.
 	if ctx.Err() != nil {
-		// todo use err
 		var err error
 		for _, id := range resources {
 			rs := statusCollector.ResourceStatuses[id]
@@ -357,7 +383,6 @@ func WaitForReady(ctx context.Context, sw watcher.StatusWatcher, resourceList Re
 		}
 		return fmt.Errorf("not all resources ready: %w: %w", ctx.Err(), err)
 	}
-
 	return nil
 }
 
