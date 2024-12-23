@@ -422,11 +422,11 @@ func cleanupExecError(filename string, err error) error {
 	}
 
 	finalErrorString := ""
-	for _, i := range fileLocations {
-		if i.message == "" {
+	for _, fileLocation := range fileLocations {
+		if fileLocation.message == "" {
 			continue
 		}
-		finalErrorString = finalErrorString + i.String()
+		finalErrorString = finalErrorString + fileLocation.String()
 	}
 
 	return fmt.Errorf("NEW ERROR FORMAT: \n%s\n\n\nORIGINAL ERROR:\n%s", finalErrorString, err.Error())
