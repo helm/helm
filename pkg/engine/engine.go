@@ -322,8 +322,9 @@ func cleanupParseError(filename string, err error) error {
 }
 
 type TraceableError struct {
-	location string
-	message  string
+	location         string
+	message          string
+	executedFunction string
 }
 
 func cleanupExecError(filename string, err error) error {
@@ -381,12 +382,35 @@ func cleanupExecError(filename string, err error) error {
 		}
 	}
 
+	for i := len(fileLocations) - 1; i >= 0; i-- {
+		if strings.Contains(fileLocations[i].message, "template:") {
+			fileLocations[i].message = strings.TrimSpace(strings.ReplaceAll(fileLocations[i].message, "template:", ""))
+		}
+		if strings.HasPrefix(fileLocations[i].message, ": ") {
+			fileLocations[i].message = strings.TrimSpace(strings.TrimPrefix(fileLocations[i].message, ": "))
+		}
+	}
+
+	for i := len(fileLocations) - 1; i >= 0; i-- {
+		if fileLocations[i].message == "" {
+			continue
+		}
+		executionLocationRegex, regexFindErr := regexp.Compile(`executing "[^\"]*" at <[^\<\>]*>:?\s*`)
+		if regexFindErr != nil {
+			continue
+		}
+		byteArrayMsg := []byte(fileLocations[i].message)
+		executionLocations := executionLocationRegex.FindAll(byteArrayMsg, -1)
+		fileLocations[i].executedFunction = string(executionLocations[0])
+		fileLocations[i].message = strings.ReplaceAll(fileLocations[i].message, fileLocations[i].executedFunction, "")
+	}
+
 	finalErrorString := ""
 	for _, i := range fileLocations {
 		if i.message == "" {
 			continue
 		}
-		finalErrorString = finalErrorString + "\n" + i.location + " " + i.message
+		finalErrorString = finalErrorString + "\n" + i.location + "\n  " + i.executedFunction + "\n    " + i.message
 	}
 
 	return fmt.Errorf("NEW ERROR FORMAT: \n%s\n\n\nORIGINAL ERROR:\n%s", finalErrorString, err.Error())
