@@ -410,7 +410,7 @@ func cleanupExecError(filename string, err error) error {
 	}
 
 	for i, fileLocation := range fileLocations {
-		fileLocations[i] = fileLocation.FilterLocation().FilterUnnecessaryWords()
+		fileLocation = fileLocation.FilterLocation().FilterUnnecessaryWords()
 		if fileLocation.message == "" {
 			continue
 		}
