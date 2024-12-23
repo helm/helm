@@ -327,6 +327,10 @@ type TraceableError struct {
 	executedFunction string
 }
 
+func (t TraceableError) String() string {
+	return t.location + "\n  " + t.executedFunction + "\n    " + t.message + "\n"
+}
+
 func cleanupExecError(filename string, err error) error {
 	if _, isExecError := err.(template.ExecError); !isExecError {
 		return err
@@ -410,7 +414,7 @@ func cleanupExecError(filename string, err error) error {
 		if i.message == "" {
 			continue
 		}
-		finalErrorString = finalErrorString + "\n" + i.location + "\n  " + i.executedFunction + "\n    " + i.message
+		finalErrorString = finalErrorString + i.String()
 	}
 
 	return fmt.Errorf("NEW ERROR FORMAT: \n%s\n\n\nORIGINAL ERROR:\n%s", finalErrorString, err.Error())
