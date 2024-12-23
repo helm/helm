@@ -331,6 +331,35 @@ func (t TraceableError) String() string {
 	return t.location + "\n  " + t.executedFunction + "\n    " + t.message + "\n"
 }
 
+func (t TraceableError) ExtractExecutedFunction() (TraceableError, error) {
+	executionLocationRegex, regexFindErr := regexp.Compile(`executing "[^\"]*" at <[^\<\>]*>:?\s*`)
+	if regexFindErr != nil {
+		return t, regexFindErr
+	}
+	byteArrayMsg := []byte(t.message)
+	executionLocations := executionLocationRegex.FindAll(byteArrayMsg, -1)
+	t.executedFunction = string(executionLocations[0])
+	t.message = strings.ReplaceAll(t.message, t.executedFunction, "")
+	return t, nil
+}
+
+func (t TraceableError) FilterLocation() TraceableError {
+	if strings.Contains(t.message, t.location) {
+		t.message = strings.ReplaceAll(t.message, t.location, "")
+	}
+	return t
+}
+
+func (t TraceableError) FilterUnnecessaryWords() TraceableError {
+	if strings.Contains(t.message, "template:") {
+		t.message = strings.TrimSpace(strings.ReplaceAll(t.message, "template:", ""))
+	}
+	if strings.HasPrefix(t.message, ": ") {
+		t.message = strings.TrimSpace(strings.TrimPrefix(t.message, ": "))
+	}
+	return t
+}
+
 func cleanupExecError(filename string, err error) error {
 	if _, isExecError := err.(template.ExecError); !isExecError {
 		return err
@@ -380,33 +409,24 @@ func cleanupExecError(filename string, err error) error {
 		prevMessage = currentMsg
 	}
 
-	for i := len(fileLocations) - 1; i >= 0; i-- {
-		if strings.Contains(fileLocations[i].message, fileLocations[i].location) {
-			fileLocations[i].message = strings.ReplaceAll(fileLocations[i].message, fileLocations[i].location, "")
-		}
+	for i, fileLocation := range fileLocations {
+		t := fileLocation.FilterLocation()
+		fileLocations[i] = t
 	}
 
-	for i := len(fileLocations) - 1; i >= 0; i-- {
-		if strings.Contains(fileLocations[i].message, "template:") {
-			fileLocations[i].message = strings.TrimSpace(strings.ReplaceAll(fileLocations[i].message, "template:", ""))
-		}
-		if strings.HasPrefix(fileLocations[i].message, ": ") {
-			fileLocations[i].message = strings.TrimSpace(strings.TrimPrefix(fileLocations[i].message, ": "))
-		}
+	for i, fileLocation := range fileLocations {
+		fileLocations[i] = fileLocation.FilterUnnecessaryWords()
 	}
 
-	for i := len(fileLocations) - 1; i >= 0; i-- {
-		if fileLocations[i].message == "" {
+	for i, fileLocation := range fileLocations {
+		if fileLocation.message == "" {
 			continue
 		}
-		executionLocationRegex, regexFindErr := regexp.Compile(`executing "[^\"]*" at <[^\<\>]*>:?\s*`)
-		if regexFindErr != nil {
+		t, extractionErr := fileLocation.ExtractExecutedFunction()
+		if extractionErr != nil {
 			continue
 		}
-		byteArrayMsg := []byte(fileLocations[i].message)
-		executionLocations := executionLocationRegex.FindAll(byteArrayMsg, -1)
-		fileLocations[i].executedFunction = string(executionLocations[0])
-		fileLocations[i].message = strings.ReplaceAll(fileLocations[i].message, fileLocations[i].executedFunction, "")
+		fileLocations[i] = t
 	}
 
 	finalErrorString := ""
