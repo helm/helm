@@ -16,6 +16,7 @@ limitations under the License.
 package downloader
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -33,6 +34,8 @@ const (
 )
 
 func TestResolveChartRef(t *testing.T) {
+	ociRegistryUrl := "localhost:5000"
+
 	tests := []struct {
 		name, ref, expect, version string
 		fail                       bool
@@ -53,6 +56,13 @@ func TestResolveChartRef(t *testing.T) {
 		{name: "full URL, file", ref: "file:///foo-1.2.3.tgz", fail: true},
 		{name: "invalid", ref: "invalid-1.2.3", fail: true},
 		{name: "not found", ref: "nosuchthing/invalid-1.2.3", fail: true},
+
+		// OCI tests
+		{name: "OCI with version", ref: fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart", ociRegistryUrl), version: "0.1.0",
+			expect: fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0", ociRegistryUrl)},
+		{name: "OCI without version fails without registry client", ref: fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart", ociRegistryUrl),
+			expect: fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0", ociRegistryUrl), fail: true},
+		{name: "not found", ref: "oci://localhost:9999/nosuchthing/invalid-1.2.3", fail: true},
 	}
 
 	c := ChartDownloader{

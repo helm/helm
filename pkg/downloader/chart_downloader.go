@@ -152,8 +152,13 @@ func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, 
 	if errSemVer == nil {
 		tag = version
 	} else {
+		fullRef := strings.TrimPrefix(ref, fmt.Sprintf("%s://", registry.OCIScheme))
+		if c.RegistryClient == nil {
+			return nil, fmt.Errorf("unable to fetch tags for %q at version '%s', missing registry client", fullRef, version)
+		}
+
 		// Retrieve list of repository tags
-		tags, err := c.RegistryClient.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", registry.OCIScheme)))
+		tags, err := c.RegistryClient.Tags(fullRef)
 		if err != nil {
 			return nil, err
 		}
