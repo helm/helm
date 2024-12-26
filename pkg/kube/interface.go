@@ -32,15 +32,12 @@ type Interface interface {
 	// Create creates one or more resources.
 	Create(resources ResourceList) (*Result, error)
 
-	// Wait waits up to the given timeout for the specified resources to be ready.
-	// TODO introduce another interface for the waiting of the KubeClient
-	Wait(resources ResourceList, timeout time.Duration) error
-
-	// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
-	WaitWithJobs(resources ResourceList, timeout time.Duration) error
-
 	// Delete destroys one or more resources.
 	Delete(resources ResourceList) (*Result, []error)
+
+	// Update updates one or more resources or creates the resource
+	// if it doesn't exist.
+	Update(original, target ResourceList, force bool) (*Result, error)
 
 	// WatchUntilReady watches the resources given and waits until it is ready.
 	//
@@ -51,11 +48,12 @@ type Interface interface {
 	// For Pods, "ready" means the Pod phase is marked "succeeded".
 	// For all other kinds, it means the kind was created or modified without
 	// error.
+	// TODO: Is watch until ready really behavior we want over the resources actually being ready?
 	WatchUntilReady(resources ResourceList, timeout time.Duration) error
 
-	// Update updates one or more resources or creates the resource
-	// if it doesn't exist.
-	Update(original, target ResourceList, force bool) (*Result, error)
+	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
+	// and returns said phase (PodSucceeded or PodFailed qualify).
+	WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error)
 
 	// Build creates a resource list from a Reader.
 	//
@@ -65,12 +63,18 @@ type Interface interface {
 	// Validates against OpenAPI schema if validate is true.
 	Build(reader io.Reader, validate bool) (ResourceList, error)
 
-	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
-	// and returns said phase (PodSucceeded or PodFailed qualify).
-	WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error)
-
 	// IsReachable checks whether the client is able to connect to the cluster.
 	IsReachable() error
+	Waiter
+}
+
+// Waiter defines methods related to waiting for resource states.
+type Waiter interface {
+	// Wait waits up to the given timeout for the specified resources to be ready.
+	Wait(resources ResourceList, timeout time.Duration) error
+
+	// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
+	WaitWithJobs(resources ResourceList, timeout time.Duration) error
 }
 
 // InterfaceExt is introduced to avoid breaking backwards compatibility for Interface implementers.

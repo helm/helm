@@ -92,6 +92,11 @@ type Client struct {
 	Namespace string
 
 	kubeClient *kubernetes.Clientset
+	// Another potential option rather than having the waiter as a field
+	// would be to have a field that decides what type of waiter to use
+	// then instantiate it during the method
+	// of course the fields could take a waiter as well
+	waiter Waiter
 }
 
 func init() {
@@ -105,14 +110,53 @@ func init() {
 	}
 }
 
+func getStatusWatcher(factory Factory) (watcher.StatusWatcher, error) {
+	cfg, err := factory.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+	// factory.DynamicClient() may be a better choice here
+	dynamicClient, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	// Not sure if I should use factory methods to get this http client or I should do this
+	// For example, I could likely use this as well, but it seems like I should use the factory methods instead
+	// httpClient, err := rest.HTTPClientFor(cfg)
+	// if err != nil {
+	// 	return err
+	// }
+	client, err := factory.RESTClient()
+	if err != nil {
+		return nil, err
+	}
+	restMapper, err := apiutil.NewDynamicRESTMapper(cfg, client.Client)
+	if err != nil {
+		return nil, err
+	}
+	sw := watcher.NewDefaultStatusWatcher(dynamicClient, restMapper)
+	return sw, nil
+}
+
 // New creates a new Client.
-func New(getter genericclioptions.RESTClientGetter) *Client {
+func New(getter genericclioptions.RESTClientGetter, waiter Waiter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
+	}	
+	factory := cmdutil.NewFactory(getter)
+	if waiter == nil {
+		sw, err := getStatusWatcher(factory)
+		if err != nil {
+			// TODO, likely will move how the stats watcher is created so it doesn't need to be created
+			// unless it's going to be used
+			panic(err)
+		}
+		waiter = &kstatusWaiter{sw, nopLogger}
 	}
 	return &Client{
-		Factory: cmdutil.NewFactory(getter),
+		Factory: factory,
 		Log:     nopLogger,
+		waiter: waiter,
 	}
 }
 
@@ -291,44 +335,7 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 
 // Wait waits up to the given timeout for the specified resources to be ready.
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
-	// cs, err := c.getKubeClient()
-	// if err != nil {
-	// 	return err
-	// }
-	// checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
-	// w := waiter{
-	// 	c:       checker,
-	// 	log:     c.Log,
-	// 	timeout: timeout,
-	// }
-	// w.waitForResources()
-	cfg, err := c.Factory.ToRESTConfig()
-	if err != nil {
-		return err
-	}
-	dynamicClient, err := dynamic.NewForConfig(cfg)
-	if err != nil {
-		return err
-	}
-	// Not sure if I should use factory methods to get this http client or I should do this
-	// For example, I could likely use this as well, but it seems like I should use the factory methods instead
-	// httpClient, err := rest.HTTPClientFor(cfg)
-	// if err != nil {
-	// 	return err
-	// }
-	client, err := c.Factory.RESTClient()
-	if err != nil {
-		return err
-	}
-	restMapper, err := apiutil.NewDynamicRESTMapper(cfg, client.Client)
-	if err != nil {
-		return err
-	}
-	sw := watcher.NewDefaultStatusWatcher(dynamicClient, restMapper)
-	// return sw, nil
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
-	defer cancel()
-	return WaitForReady(ctx, sw, resources)
+	return c.waiter.Wait(resources, timeout)
 }
 
 // WaitForReady waits for all of the objects to reach a ready state.
@@ -389,17 +396,7 @@ func WaitForReady(ctx context.Context, sw watcher.StatusWatcher, resourceList Re
 
 // WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
 func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
-	cs, err := c.getKubeClient()
-	if err != nil {
-		return err
-	}
-	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true), CheckJobs(true))
-	w := waiter{
-		c:       checker,
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForResources(resources)
+	return c.waiter.WaitWithJobs(resources, timeout)
 }
 
 // WaitForDelete wait up to the given timeout for the specified resources to be deleted.
