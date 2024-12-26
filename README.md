@@ -2,7 +2,7 @@
 
 [![Build Status](https://github.com/helm/helm/workflows/release/badge.svg)](https://github.com/helm/helm/actions?workflow=release)
 [![Go Report Card](https://goreportcard.com/badge/github.com/helm/helm)](https://goreportcard.com/report/github.com/helm/helm)
-[![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/helm.sh/helm/v3)
+[![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/helm.sh/helm/v4)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3131/badge)](https://bestpractices.coreinfrastructure.org/projects/3131)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/helm/helm/badge)](https://scorecard.dev/viewer/?uri=github.com/helm/helm)
 
@@ -28,6 +28,11 @@ Think of it like apt/yum/homebrew for Kubernetes.
   - One or more templates, which contain Kubernetes manifest files
 - Charts can be stored on disk, or fetched from remote chart repositories
   (like Debian or RedHat packages)
+
+## Helm Development and Stable Versions
+
+Helm v4 is currently under development on the `main` branch. This is unstable and the APIs within the Go SDK and at the command line are changing.
+Helm v3 (current stable) is maintained on the `dev-v3` branch. APIs there follow semantic versioning.
 
 ## Install
 

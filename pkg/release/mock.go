@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"math/rand"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/time"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/time"
 )
 
 // MockHookTemplate is the hook template used for all mock release objects.

@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 func TestRepoIndexCmd(t *testing.T) {

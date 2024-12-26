@@ -1,4 +1,4 @@
-module helm.sh/helm/v3
+module helm.sh/helm/v4
 
 go 1.23.0
 
