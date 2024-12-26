@@ -27,10 +27,10 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/helmpath/xdg"
-	"helm.sh/helm/v3/pkg/repo"
-	"helm.sh/helm/v3/pkg/repo/repotest"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/helmpath/xdg"
+	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestRepoAddCmd(t *testing.T) {

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "helm.sh/helm/v3/pkg/registry"
+package registry // import "helm.sh/helm/v4/pkg/registry"
 
 import (
 	"bytes"
@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	helmtime "helm.sh/helm/v3/pkg/time"
+	helmtime "helm.sh/helm/v4/pkg/time"
 
 	"github.com/Masterminds/semver/v3"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -34,9 +34,9 @@ import (
 	orascontext "oras.land/oras-go/pkg/context"
 	"oras.land/oras-go/pkg/registry"
 
-	"helm.sh/helm/v3/internal/tlsutil"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v4/internal/tlsutil"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
 )
 
 var immutableOciAnnotations = []string{

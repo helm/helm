@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rules // import "helm.sh/helm/v3/pkg/lint/rules"
+package rules // import "helm.sh/helm/v4/pkg/lint/rules"
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/deprecation"
 	kscheme "k8s.io/client-go/kubernetes/scheme"
 
-	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/chartutil"
 )
 
 var (

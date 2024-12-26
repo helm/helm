@@ -19,7 +19,7 @@ package action
 import (
 	"io"
 
-	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 // RegistryLogin performs a registry login operation.
