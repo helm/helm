@@ -616,10 +616,10 @@ func TestPerform(t *testing.T) {
 	}
 }
 
-// Likely it is not possible to get this test to work with kstatus given that it seems 
+// Likely it is not possible to get this test to work with kstatus given that it seems
 // kstatus is not making constant get checks on the resources and is instead waiting for events
 // Potentially the test could be reworked to make the pods after five seconds
-// would need this -> 
+// would need this ->
 func TestWait(t *testing.T) {
 	podList := newPodList("starfish", "otter", "squid")
 
@@ -836,7 +836,7 @@ func TestWaitDelete(t *testing.T) {
 
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
-	c := New(nil)
+	c := New(nil, nil)
 	resources, err := c.Build(strings.NewReader(guestbookManifest), false)
 	if err != nil {
 		t.Fatal(err)
@@ -846,7 +846,7 @@ func TestReal(t *testing.T) {
 	}
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
-	c = New(nil)
+	c = New(nil, nil)
 	resources, err = c.Build(strings.NewReader(testSvcEndpointManifest), false)
 	if err != nil {
 		t.Fatal(err)

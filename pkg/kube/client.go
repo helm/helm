@@ -168,9 +168,19 @@ func (c *Client) SetWaiter(ws WaitStrategy) error {
 }
 
 // New creates a new Client.
-func New(getter genericclioptions.RESTClientGetter) *Client {
+func New(getter genericclioptions.RESTClientGetter, waiter Waiter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
+	}	
+	factory := cmdutil.NewFactory(getter)
+	if waiter == nil {
+		sw, err := getStatusWatcher(factory)
+		if err != nil {
+			// TODO, likely will move how the stats watcher is created so it doesn't need to be created
+			// unless it's going to be used
+			panic(err)
+		}
+		waiter = &kstatusWaiter{sw, nopLogger}
 	}
 	factory := cmdutil.NewFactory(getter)
 	c := &Client{

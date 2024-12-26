@@ -61,6 +61,19 @@ func (hw *legacyWaiter) WaitWithJobs(resources ResourceList, timeout time.Durati
 	return hw.waitForResources(resources, timeout)
 }
 
+func (w *waiter) Wait(resources ResourceList, timeout time.Duration) error {
+	w.timeout = timeout
+	return w.waitForResources(resources)
+}
+
+func (w *waiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
+	// Implementation
+	// TODO this function doesn't make sense unless you pass a readyChecker to it 
+	// TODO pass context instead
+	w.timeout = timeout
+	return w.waitForResources(resources)
+}
+
 // waitForResources polls to get the current status of all pods, PVCs, Services and
 // Jobs(optional) until all are ready or a timeout is reached
 func (hw *legacyWaiter) waitForResources(created ResourceList, timeout time.Duration) error {
