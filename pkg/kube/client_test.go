@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -519,14 +518,16 @@ func TestWait(t *testing.T) {
 		}),
 	}
 	cs, err := c.getKubeClient()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
 	w := &waiter{
 		c:       checker,
 		log:     c.Log,
 		timeout: time.Second * 30,
 	}
-	c.waiter = w		
+	c.waiter = w
 	resources, err := c.Build(objBody(&podList), false)
 	if err != nil {
 		t.Fatal(err)
@@ -580,14 +581,16 @@ func TestWaitJob(t *testing.T) {
 		}),
 	}
 	cs, err := c.getKubeClient()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true), CheckJobs(true))
 	w := &waiter{
 		c:       checker,
 		log:     c.Log,
 		timeout: time.Second * 30,
 	}
-	c.waiter = w		
+	c.waiter = w
 	resources, err := c.Build(objBody(job), false)
 	if err != nil {
 		t.Fatal(err)
@@ -643,14 +646,16 @@ func TestWaitDelete(t *testing.T) {
 		}),
 	}
 	cs, err := c.getKubeClient()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
 	w := &waiter{
 		c:       checker,
 		log:     c.Log,
 		timeout: time.Second * 30,
 	}
-	c.waiter = w	
+	c.waiter = w
 	resources, err := c.Build(objBody(&pod), false)
 	if err != nil {
 		t.Fatal(err)

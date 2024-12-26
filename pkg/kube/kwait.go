@@ -37,7 +37,8 @@ type kstatusWaiter struct {
 }
 
 func (w *kstatusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
-	ctx := context.TODO()
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	defer cancel()
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	// TODO maybe a simpler way to transfer the objects
@@ -62,6 +63,7 @@ func (w *kstatusWaiter) Wait(resourceList ResourceList, timeout time.Duration) e
 				if rs == nil {
 					continue
 				}
+				fmt.Println("this is the status of object", rs.Status)
 				rss = append(rss, rs)
 			}
 			desired := status.CurrentStatus

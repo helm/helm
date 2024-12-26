@@ -37,12 +37,7 @@ import (
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/aggregator"
-	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/collector"
-	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/event"
-	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/watcher"
-	"sigs.k8s.io/cli-utils/pkg/object"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	multierror "github.com/hashicorp/go-multierror"
@@ -92,10 +87,12 @@ type Client struct {
 	Namespace string
 
 	kubeClient *kubernetes.Clientset
-	// Another potential option rather than having the waiter as a field
-	// would be to have a field that decides what type of waiter to use
-	// then instantiate it during the method
-	// of course the fields could take a waiter as well
+	// I see a couple different options for how waiter could be handled here
+	// - The waiter could be instantiated in New or at the start of each wait function // 
+	// - The waiter could be completely separate from the client interface, 
+	//   I don't like that this causes consumers to need another interface on top of kube
+	// - The waiter could be bundled with the resource manager into a client object. The waiter doesn't need factory / 
+	// Another option still would be to 
 	waiter Waiter
 }
 
@@ -142,7 +139,7 @@ func getStatusWatcher(factory Factory) (watcher.StatusWatcher, error) {
 func New(getter genericclioptions.RESTClientGetter, waiter Waiter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
-	}	
+	}
 	factory := cmdutil.NewFactory(getter)
 	if waiter == nil {
 		sw, err := getStatusWatcher(factory)
@@ -156,7 +153,7 @@ func New(getter genericclioptions.RESTClientGetter, waiter Waiter) *Client {
 	return &Client{
 		Factory: factory,
 		Log:     nopLogger,
-		waiter: waiter,
+		waiter:  waiter,
 	}
 }
 
@@ -336,62 +333,6 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 // Wait waits up to the given timeout for the specified resources to be ready.
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 	return c.waiter.Wait(resources, timeout)
-}
-
-// WaitForReady waits for all of the objects to reach a ready state.
-func WaitForReady(ctx context.Context, sw watcher.StatusWatcher, resourceList ResourceList) error {
-	cancelCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	// TODO maybe a simpler way to transfer the objects
-	runtimeObjs := []runtime.Object{}
-	for _, resource := range resourceList {
-		runtimeObjs = append(runtimeObjs, resource.Object)
-	}
-	resources := []object.ObjMetadata{}
-	for _, runtimeObj := range runtimeObjs {
-		obj, err := object.RuntimeToObjMeta(runtimeObj)
-		if err != nil {
-			return err
-		}
-		resources = append(resources, obj)
-	}
-	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
-	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, collector.ObserverFunc(
-		func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
-			rss := []*event.ResourceStatus{}
-			for _, rs := range statusCollector.ResourceStatuses {
-				if rs == nil {
-					continue
-				}
-				rss = append(rss, rs)
-			}
-			desired := status.CurrentStatus
-			if aggregator.AggregateStatus(rss, desired) == desired {
-				cancel()
-				return
-			}
-		}),
-	)
-	<-done
-
-	if statusCollector.Error != nil {
-		return statusCollector.Error
-	}
-
-	// Only check parent context error, otherwise we would error when desired status is achieved.
-	if ctx.Err() != nil {
-		var err error
-		for _, id := range resources {
-			rs := statusCollector.ResourceStatuses[id]
-			if rs.Status == status.CurrentStatus {
-				continue
-			}
-			err = fmt.Errorf("%s: %s not ready, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status)
-		}
-		return fmt.Errorf("not all resources ready: %w: %w", ctx.Err(), err)
-	}
-	return nil
 }
 
 // WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
