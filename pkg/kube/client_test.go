@@ -746,6 +746,8 @@ func TestWaitJob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	c.waiter = w		
+	c.waiter = w
 	resources, err := c.Build(objBody(job), false)
 	if err != nil {
 		t.Fatal(err)

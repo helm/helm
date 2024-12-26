@@ -171,7 +171,7 @@ func (c *Client) SetWaiter(ws WaitStrategy) error {
 func New(getter genericclioptions.RESTClientGetter, waiter Waiter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
-	}	
+	}
 	factory := cmdutil.NewFactory(getter)
 	if waiter == nil {
 		sw, err := getStatusWatcher(factory)
