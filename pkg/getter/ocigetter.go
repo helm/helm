@@ -24,9 +24,9 @@ import (
 	"sync"
 	"time"
 
-	"helm.sh/helm/v3/internal/tlsutil"
-	"helm.sh/helm/v3/internal/urlutil"
-	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v4/internal/tlsutil"
+	"helm.sh/helm/v4/internal/urlutil"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 // OCIGetter is the default HTTP(/S) backend handler

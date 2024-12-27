@@ -23,7 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"helm.sh/helm/v3/internal/test/ensure"
+	"helm.sh/helm/v4/internal/test/ensure"
 )
 
 var nonExistingValuesFilePath = filepath.Join("/fake/dir", "values.yaml")

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "helm.sh/helm/v3/pkg/registry"
+package registry // import "helm.sh/helm/v4/pkg/registry"
 
 import (
 	"reflect"
@@ -23,8 +23,8 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"helm.sh/helm/v3/pkg/chart"
-	helmtime "helm.sh/helm/v3/pkg/time"
+	"helm.sh/helm/v4/pkg/chart"
+	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func TestGenerateOCIChartAnnotations(t *testing.T) {

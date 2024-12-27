@@ -24,7 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/pkg/plugin"
+	"helm.sh/helm/v4/pkg/plugin"
 )
 
 type pluginUninstallOptions struct {

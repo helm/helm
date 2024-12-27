@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart"
 )
 
 // GetMetadata is the action for checking a given release's metadata.

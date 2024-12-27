@@ -20,7 +20,7 @@ linters-settings:
   gofmt:
     simplify: true
   goimports:
-    local-prefixes: helm.sh/helm/v3
+    local-prefixes: helm.sh/helm/v4
   dupl:
     threshold: 400
 issues:
