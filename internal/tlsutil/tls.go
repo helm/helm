@@ -19,60 +19,104 @@ package tlsutil
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"os"
 
-	"github.com/pkg/errors"
+	"errors"
 )
 
-// NewClientTLS returns tls.Config appropriate for client auth.
-func NewClientTLS(certFile, keyFile, caFile string, insecureSkipTLSverify bool) (*tls.Config, error) {
+type TLSConfigOptions struct {
+	insecureSkipTLSverify     bool
+	certPEMBlock, keyPEMBlock []byte
+	caPEMBlock                []byte
+}
+
+type TLSConfigOption func(options *TLSConfigOptions) error
+
+func WithInsecureSkipVerify(insecureSkipTLSverify bool) TLSConfigOption {
+	return func(options *TLSConfigOptions) error {
+		options.insecureSkipTLSverify = insecureSkipTLSverify
+
+		return nil
+	}
+}
+
+func WithCertKeyPairFiles(certFile, keyFile string) TLSConfigOption {
+	return func(options *TLSConfigOptions) error {
+		if certFile == "" && keyFile == "" {
+			return nil
+		}
+
+		certPEMBlock, err := os.ReadFile(certFile)
+		if err != nil {
+			return fmt.Errorf("unable to read cert file: %q: %w", certFile, err)
+		}
+
+		keyPEMBlock, err := os.ReadFile(keyFile)
+		if err != nil {
+			return fmt.Errorf("unable to read key file: %q: %w", keyFile, err)
+		}
+
+		options.certPEMBlock = certPEMBlock
+		options.keyPEMBlock = keyPEMBlock
+
+		return nil
+	}
+}
+
+func WithCAFile(caFile string) TLSConfigOption {
+	return func(options *TLSConfigOptions) error {
+		if caFile == "" {
+			return nil
+		}
+
+		caPEMBlock, err := os.ReadFile(caFile)
+		if err != nil {
+			return fmt.Errorf("can't read CA file: %q: %w", caFile, err)
+		}
+
+		options.caPEMBlock = caPEMBlock
+
+		return nil
+	}
+}
+
+func NewTLSConfig(options ...TLSConfigOption) (*tls.Config, error) {
+	to := TLSConfigOptions{}
+
+	errs := []error{}
+	for _, option := range options {
+		err := option(&to)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
+	}
+
 	config := tls.Config{
-		InsecureSkipVerify: insecureSkipTLSverify,
+		InsecureSkipVerify: to.insecureSkipTLSverify,
 	}
 
-	if certFile != "" && keyFile != "" {
-		cert, err := CertFromFilePair(certFile, keyFile)
+	if len(to.certPEMBlock) > 0 && len(to.keyPEMBlock) > 0 {
+		cert, err := tls.X509KeyPair(to.certPEMBlock, to.keyPEMBlock)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unable to load cert from key pair: %w", err)
 		}
-		config.Certificates = []tls.Certificate{*cert}
+
+		config.Certificates = []tls.Certificate{cert}
 	}
 
-	if caFile != "" {
-		cp, err := CertPoolFromFile(caFile)
-		if err != nil {
-			return nil, err
+	if len(to.caPEMBlock) > 0 {
+		cp := x509.NewCertPool()
+		if !cp.AppendCertsFromPEM(to.caPEMBlock) {
+			return nil, fmt.Errorf("failed to append certificates from pem block")
 		}
+
 		config.RootCAs = cp
 	}
 
 	return &config, nil
-}
-
-// CertPoolFromFile returns an x509.CertPool containing the certificates
-// in the given PEM-encoded file.
-// Returns an error if the file could not be read, a certificate could not
-// be parsed, or if the file does not contain any certificates
-func CertPoolFromFile(filename string) (*x509.CertPool, error) {
-	b, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, errors.Errorf("can't read CA file: %v", filename)
-	}
-	cp := x509.NewCertPool()
-	if !cp.AppendCertsFromPEM(b) {
-		return nil, errors.Errorf("failed to append certificates from file: %s", filename)
-	}
-	return cp, nil
-}
-
-// CertFromFilePair returns a tls.Certificate containing the
-// certificates public/private key pair from a pair of given PEM-encoded files.
-// Returns an error if the file could not be read, a certificate could not
-// be parsed, or if the file does not contain any certificates
-func CertFromFilePair(certFile, keyFile string) (*tls.Certificate, error) {
-	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return nil, errors.Wrapf(err, "can't load key pair from cert %s and key %s", certFile, keyFile)
-	}
-	return &cert, err
 }
