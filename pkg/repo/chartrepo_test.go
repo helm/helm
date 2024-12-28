@@ -22,12 +22,12 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/chart"
@@ -40,37 +40,22 @@ const (
 	testURL        = "http://example-charts.com"
 )
 
-func TestLoadChartRepository(t *testing.T) {
-	r, err := NewChartRepository(&Entry{
-		Name: testRepository,
-		URL:  testURL,
-	}, getter.All(&cli.EnvSettings{}))
-	if err != nil {
-		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
+// loadFromDir a directory of charts archives (including sub-directories),
+// appending to the repositores ChartPath
+func loadFromDir(t *testing.T, r *ChartRepository, dir string) {
+	dirInfo, err := os.Stat(dir)
+	require.Nil(t, err)
+	require.True(t, dirInfo.IsDir())
+
+	globArchives := func(pattern string) []string {
+		archives, err := filepath.Glob(filepath.Join(dir, pattern))
+		require.Nil(t, err)
+
+		return archives
 	}
 
-	if err := r.Load(); err != nil {
-		t.Errorf("Problem loading chart repository from %s: %v", testRepository, err)
-	}
-
-	paths := []string{
-		filepath.Join(testRepository, "frobnitz-1.2.3.tgz"),
-		filepath.Join(testRepository, "sprocket-1.1.0.tgz"),
-		filepath.Join(testRepository, "sprocket-1.2.0.tgz"),
-		filepath.Join(testRepository, "universe/zarthal-1.0.0.tgz"),
-	}
-
-	if r.Config.Name != testRepository {
-		t.Errorf("Expected %s as Name but got %s", testRepository, r.Config.Name)
-	}
-
-	if !reflect.DeepEqual(r.ChartPaths, paths) {
-		t.Errorf("Expected %#v but got %#v\n", paths, r.ChartPaths)
-	}
-
-	if r.Config.URL != testURL {
-		t.Errorf("Expected url for chart repository to be %s but got %s", testURL, r.Config.URL)
-	}
+	r.ChartPaths = append(r.ChartPaths, globArchives("*.tgz")...)
+	r.ChartPaths = append(r.ChartPaths, globArchives("**/*.tgz")...)
 }
 
 func TestIndex(t *testing.T) {
@@ -82,9 +67,7 @@ func TestIndex(t *testing.T) {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
 	}
 
-	if err := r.Load(); err != nil {
-		t.Errorf("Problem loading chart repository from %s: %v", testRepository, err)
-	}
+	loadFromDir(t, r, testRepository)
 
 	err = r.Index()
 	if err != nil {

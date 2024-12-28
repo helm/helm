@@ -79,40 +79,6 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 	}, nil
 }
 
-// Load loads a directory of charts as if it were a repository.
-//
-// It requires the presence of an index.yaml file in the directory.
-//
-// Deprecated: remove in Helm 4.
-func (r *ChartRepository) Load() error {
-	dirInfo, err := os.Stat(r.Config.Name)
-	if err != nil {
-		return err
-	}
-	if !dirInfo.IsDir() {
-		return errors.Errorf("%q is not a directory", r.Config.Name)
-	}
-
-	// FIXME: Why are we recursively walking directories?
-	// FIXME: Why are we not reading the repositories.yaml to figure out
-	// what repos to use?
-	filepath.Walk(r.Config.Name, func(path string, f os.FileInfo, _ error) error {
-		if !f.IsDir() {
-			if strings.Contains(f.Name(), "-index.yaml") {
-				i, err := LoadIndexFile(path)
-				if err != nil {
-					return err
-				}
-				r.IndexFile = i
-			} else if strings.HasSuffix(f.Name(), ".tgz") {
-				r.ChartPaths = append(r.ChartPaths, path)
-			}
-		}
-		return nil
-	})
-	return nil
-}
-
 // DownloadIndexFile fetches the index from a repository.
 func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	indexURL, err := ResolveReferenceURL(r.Config.URL, "index.yaml")
