@@ -82,9 +82,7 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 // Load loads a directory of charts as if it were a repository.
 //
 // It requires the presence of an index.yaml file in the directory.
-//
-// Deprecated: remove in Helm 4.
-func (r *ChartRepository) Load() error {
+func loadFromDir(r *ChartRepository) error {
 	dirInfo, err := os.Stat(r.Config.Name)
 	if err != nil {
 		return err
