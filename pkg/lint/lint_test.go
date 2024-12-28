@@ -37,7 +37,7 @@ const subChartValuesDir = "rules/testdata/withsubchart"
 const malformedTemplate = "rules/testdata/malformed-template"
 
 func TestBadChart(t *testing.T) {
-	m := RunAll(badChartDir, values, namespace, WithSkipSchemaValidation(false)).Messages
+	m := RunAll(badChartDir, values, namespace).Messages
 	if len(m) != 8 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
@@ -81,7 +81,7 @@ func TestBadChart(t *testing.T) {
 }
 
 func TestInvalidYaml(t *testing.T) {
-	m := RunAll(badYamlFileDir, values, namespace, WithSkipSchemaValidation(false)).Messages
+	m := RunAll(badYamlFileDir, values, namespace).Messages
 	if len(m) != 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -91,7 +91,7 @@ func TestInvalidYaml(t *testing.T) {
 }
 
 func TestBadValues(t *testing.T) {
-	m := RunAll(badValuesFileDir, values, namespace, WithSkipSchemaValidation(false)).Messages
+	m := RunAll(badValuesFileDir, values, namespace).Messages
 	if len(m) < 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -101,7 +101,7 @@ func TestBadValues(t *testing.T) {
 }
 
 func TestGoodChart(t *testing.T) {
-	m := RunAll(goodChartDir, values, namespace, WithSkipSchemaValidation(false)).Messages
+	m := RunAll(goodChartDir, values, namespace).Messages
 	if len(m) != 0 {
 		t.Error("All returned linter messages when it shouldn't have")
 		for i, msg := range m {
@@ -186,7 +186,7 @@ func TestHelmCreateChart_CheckDeprecatedWarnings(t *testing.T) {
 // lint ignores import-values
 // See https://github.com/helm/helm/issues/9658
 func TestSubChartValuesChart(t *testing.T) {
-	m := RunAll(subChartValuesDir, values, namespace, WithSkipSchemaValidation(false)).Messages
+	m := RunAll(subChartValuesDir, values, namespace).Messages
 	if len(m) != 0 {
 		t.Error("All returned linter messages when it shouldn't have")
 		for i, msg := range m {
@@ -202,7 +202,7 @@ func TestMalformedTemplate(t *testing.T) {
 	ch := make(chan int, 1)
 	var m []support.Message
 	go func() {
-		m = RunAll(malformedTemplate, values, namespace, WithSkipSchemaValidation(false)).Messages
+		m = RunAll(malformedTemplate, values, namespace).Messages
 		ch <- 1
 	}()
 	select {
