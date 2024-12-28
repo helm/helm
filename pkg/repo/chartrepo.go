@@ -196,33 +196,45 @@ func (r *ChartRepository) generateIndex() error {
 	return nil
 }
 
+type findChartInRepoURLOptions struct {
+	Username              string
+	Password              string
+	PassCredentialsAll    bool
+	InsecureSkipTLSverify bool
+}
+
+type FindChartInRepoURLOption func(*findChartInRepoURLOptions)
+
+// WithUsernamePassword specifies the username/password credntials for the repository
+func WithUsernamePassword(username, password string) FindChartInRepoURLOption {
+	return func(options *findChartInRepoURLOptions) {
+		options.Username = username
+		options.Password = password
+	}
+}
+
+// WithPassCredentialsAll flags whether credentials should be passed on to other domains
+func WithPassCredentialsAll(passCredentialsAll bool) FindChartInRepoURLOption {
+	return func(options *findChartInRepoURLOptions) {
+		options.PassCredentialsAll = passCredentialsAll
+	}
+}
+
+// WithInsecureSkipTLSverify skips TLS verification for repostory communication
+func WithInsecureSkipTLSverify(insecureSkipTLSverify bool) FindChartInRepoURLOption {
+	return func(options *findChartInRepoURLOptions) {
+		options.InsecureSkipTLSverify = insecureSkipTLSverify
+	}
+}
+
 // FindChartInRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories
-func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
-	return FindChartInAuthRepoURL(repoURL, "", "", chartName, chartVersion, certFile, keyFile, caFile, getters)
-}
+func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers, options ...FindChartInRepoURLOption) (string, error) {
 
-// FindChartInAuthRepoURL finds chart in chart repository pointed by repoURL
-// without adding repo to repositories, like FindChartInRepoURL,
-// but it also receives credentials for the chart repository.
-func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
-	return FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, false, getters)
-}
-
-// FindChartInAuthAndTLSRepoURL finds chart in chart repository pointed by repoURL
-// without adding repo to repositories, like FindChartInRepoURL,
-// but it also receives credentials and TLS verify flag for the chart repository.
-// TODO Helm 4, FindChartInAuthAndTLSRepoURL should be integrated into FindChartInAuthRepoURL.
-func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify bool, getters getter.Providers) (string, error) {
-	return FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, insecureSkipTLSverify, false, getters)
-}
-
-// FindChartInAuthAndTLSAndPassRepoURL finds chart in chart repository pointed by repoURL
-// without adding repo to repositories, like FindChartInRepoURL,
-// but it also receives credentials, TLS verify flag, and if credentials should
-// be passed on to other domains.
-// TODO Helm 4, FindChartInAuthAndTLSAndPassRepoURL should be integrated into FindChartInAuthRepoURL.
-func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify, passCredentialsAll bool, getters getter.Providers) (string, error) {
+	opts := findChartInRepoURLOptions{}
+	for _, option := range options {
+		option(&opts)
+	}
 
 	// Download and write the index file to a temporary location
 	buf := make([]byte, 20)
@@ -231,14 +243,14 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 
 	c := Entry{
 		URL:                   repoURL,
-		Username:              username,
-		Password:              password,
-		PassCredentialsAll:    passCredentialsAll,
+		Username:              opts.Username,
+		Password:              opts.Password,
+		PassCredentialsAll:    opts.PassCredentialsAll,
 		CertFile:              certFile,
 		KeyFile:               keyFile,
 		CAFile:                caFile,
 		Name:                  name,
-		InsecureSkipTLSverify: insecureSkipTLSverify,
+		InsecureSkipTLSverify: opts.InsecureSkipTLSverify,
 	}
 	r, err := NewChartRepository(&c, getters)
 	if err != nil {
