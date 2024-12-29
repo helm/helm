@@ -18,6 +18,7 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -82,15 +83,16 @@ func (w *kstatusWaiter) Wait(resourceList ResourceList, timeout time.Duration) e
 
 	// Only check parent context error, otherwise we would error when desired status is achieved.
 	if ctx.Err() != nil {
-		var err error
+		errs := []error{}
 		for _, id := range resources {
 			rs := statusCollector.ResourceStatuses[id]
 			if rs.Status == status.CurrentStatus {
 				continue
 			}
-			err = fmt.Errorf("%s: %s not ready, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status)
+			errs = append(errs, fmt.Errorf("%s: %s not ready, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status)) 
 		}
-		return fmt.Errorf("not all resources ready: %w: %w", ctx.Err(), err)
+		errs = append(errs, ctx.Err())
+		return errors.Join(errs...)
 	}
 	return nil
 }

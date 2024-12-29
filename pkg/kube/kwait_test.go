@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -101,7 +102,7 @@ func TestKWaitJob(t *testing.T) {
 		{
 			name:       "Job is not complete",
 			objYamls:   []string{jobNoStatus},
-			expectErrs: []error{errors.New("not all resources ready: context deadline exceeded: test: Job not ready, status: InProgress")},
+			expectErrs: []error{errors.New("test: Job not ready, status: InProgress"), errors.New("context deadline exceeded")},
 		},
 		{
 			name:       "Pod is ready",
@@ -109,10 +110,9 @@ func TestKWaitJob(t *testing.T) {
 			expectErrs: nil,
 		},
 		{
-			name:     "one of the pods never becomes ready",
-			objYamls: []string{podNoStatus, podCurrent},
-			// TODO, make this better
-			expectErrs: []error{errors.New("not all resources ready: context deadline exceeded: in-progress-pod: Pod not ready, status: InProgress")},
+			name:       "one of the pods never becomes ready",
+			objYamls:   []string{podNoStatus, podCurrent},
+			expectErrs: []error{errors.New("in-progress-pod: Pod not ready, status: InProgress"), errors.New("context deadline exceeded")},
 		},
 	}
 
@@ -134,12 +134,12 @@ func TestKWaitJob(t *testing.T) {
 			for _, podYaml := range tt.objYamls {
 				m := make(map[string]interface{})
 				err := yaml.Unmarshal([]byte(podYaml), &m)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				resource := &unstructured.Unstructured{Object: m}
 				objs = append(objs, resource)
 				gvr := getGVR(t, fakeMapper, resource)
 				err = fakeClient.Tracker().Create(gvr, resource, resource.GetNamespace())
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 			c.Waiter = &kstatusWaiter{
 				sw:  statusWatcher,
@@ -149,19 +149,16 @@ func TestKWaitJob(t *testing.T) {
 			resourceList := ResourceList{}
 			for _, obj := range objs {
 				list, err := c.Build(objBody(obj), false)
-				if err != nil {
-					t.Fatal(err)
-				}
+				assert.NoError(t, err)
 				resourceList = append(resourceList, list...)
 			}
 
 			err := c.Wait(resourceList, time.Second*3)
 			if tt.expectErrs != nil {
-        //TODO remove require
-				require.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
 				return
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }
