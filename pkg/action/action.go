@@ -371,8 +371,10 @@ func (cfg *Configuration) recordRelease(r *release.Release) {
 
 // Init initializes the action configuration
 func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog) error {
-  // TODO I don't love that this ends up using nil instead of a real watcher
-	kc := kube.New(getter, nil)
+	kc, err := kube.New(getter, nil)
+	if err != nil {
+		return err
+	}
 	kc.Log = log
 
 	lazyClient := &lazyClient{

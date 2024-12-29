@@ -679,7 +679,10 @@ func TestWaitDelete(t *testing.T) {
 
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
-	c := New(nil, nil)
+	c, err := New(nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	resources, err := c.Build(strings.NewReader(guestbookManifest), false)
 	if err != nil {
 		t.Fatal(err)
@@ -689,7 +692,10 @@ func TestReal(t *testing.T) {
 	}
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
-	c = New(nil, nil)
+	c, err = New(nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	resources, err = c.Build(strings.NewReader(testSvcEndpointManifest), false)
 	if err != nil {
 		t.Fatal(err)

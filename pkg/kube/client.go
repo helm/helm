@@ -130,7 +130,7 @@ func getStatusWatcher(factory Factory) (watcher.StatusWatcher, error) {
 }
 
 // New creates a new Client.
-func New(getter genericclioptions.RESTClientGetter, waiter Waiter) *Client {
+func New(getter genericclioptions.RESTClientGetter, waiter Waiter) (*Client, error) {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
@@ -138,9 +138,7 @@ func New(getter genericclioptions.RESTClientGetter, waiter Waiter) *Client {
 	if waiter == nil {
 		sw, err := getStatusWatcher(factory)
 		if err != nil {
-			// TODO, likely will move how the stats watcher is created so it doesn't need to be created
-			// unless it's going to be used
-			panic(err)
+			return nil, err
 		}
 		waiter = &kstatusWaiter{sw, nopLogger}
 	}
@@ -148,7 +146,7 @@ func New(getter genericclioptions.RESTClientGetter, waiter Waiter) *Client {
 		Factory: factory,
 		Log:     nopLogger,
 		Waiter:  waiter,
-	}
+	}, nil
 }
 
 var nopLogger = func(_ string, _ ...interface{}) {}
