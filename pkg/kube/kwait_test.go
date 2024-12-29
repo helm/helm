@@ -98,7 +98,7 @@ func TestRunHealthChecks(t *testing.T) {
 				err = fakeClient.Tracker().Create(podGVR, pod, pod.GetNamespace())
 				require.NoError(t, err)
 			}
-			c.waiter = &kstatusWaiter{
+			c.Waiter = &kstatusWaiter{
 				sw:  statusWatcher,
 				log: c.Log,
 			}

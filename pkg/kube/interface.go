@@ -29,6 +29,11 @@ import (
 //
 // A KubernetesClient must be concurrency safe.
 type Interface interface {
+	ResourceManager
+	Waiter
+}
+
+type ResourceManager interface {
 	// Create creates one or more resources.
 	Create(resources ResourceList, options ...ClientCreateOption) (*Result, error)
 
@@ -67,7 +72,6 @@ type Waiter interface {
 	// Update updates one or more resources or creates the resource
 	// if it doesn't exist.
 	Update(original, target ResourceList, force bool) (*Result, error)
-
 	// WatchUntilReady watches the resources given and waits until it is ready.
 	//
 	// This method is mainly for hook implementations. It watches for a resource to
