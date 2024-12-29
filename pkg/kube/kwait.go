@@ -52,7 +52,6 @@ func (w *kstatusWaiter) wait(resourceList ResourceList, timeout time.Duration, w
 	defer cancel()
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	// TODO maybe a simpler way to transfer the objects
 	runtimeObjs := []runtime.Object{}
 	for _, resource := range resourceList {
 		switch value := AsVersioned(resource).(type) {

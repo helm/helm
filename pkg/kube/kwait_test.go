@@ -18,13 +18,14 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
 	"errors"
+	"log"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-  batchv1 "k8s.io/api/batch/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -166,7 +167,7 @@ func TestKWaitJob(t *testing.T) {
 			fakeMapper := testutil.NewFakeRESTMapper(
 				v1.SchemeGroupVersion.WithKind("Pod"),
 				appsv1.SchemeGroupVersion.WithKind("Deployment"),
-        batchv1.SchemeGroupVersion.WithKind("Job"),
+				batchv1.SchemeGroupVersion.WithKind("Job"),
 			)
 			objs := []runtime.Object{}
 			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
@@ -181,9 +182,9 @@ func TestKWaitJob(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			kwaiter := kstatusWaiter{
-				sw:  statusWatcher,
-				log: c.Log,
-        pausedAsReady: tt.pausedAsReady,
+				sw:            statusWatcher,
+				log:           log.Printf,
+				pausedAsReady: tt.pausedAsReady,
 			}
 
 			resourceList := ResourceList{}
