@@ -29,11 +29,6 @@ import (
 //
 // A KubernetesClient must be concurrency safe.
 type Interface interface {
-	ResourceManager
-	Waiter
-}
-
-type ResourceManager interface {
 	// Create creates one or more resources.
 	Create(resources ResourceList, options ...ClientCreateOption) (*Result, error)
 
