@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"time"
 
+	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/aggregator"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/collector"
@@ -39,6 +40,15 @@ type kstatusWaiter struct {
 }
 
 func (w *kstatusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
+	return w.wait(resourceList, timeout, false)
+}
+
+func (w *kstatusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
+	// Implementation
+	return w.wait(resourceList, timeout, true)
+}
+
+func (w *kstatusWaiter) wait(resourceList ResourceList, timeout time.Duration, waitWithJobs bool) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 	cancelCtx, cancel := context.WithCancel(ctx)
@@ -46,6 +56,12 @@ func (w *kstatusWaiter) Wait(resourceList ResourceList, timeout time.Duration) e
 	// TODO maybe a simpler way to transfer the objects
 	runtimeObjs := []runtime.Object{}
 	for _, resource := range resourceList {
+		switch AsVersioned(resource).(type) {
+		case *batchv1.Job:
+			if !waitWithJobs {
+				continue
+			}
+		}
 		runtimeObjs = append(runtimeObjs, resource.Object)
 	}
 	resources := []object.ObjMetadata{}
@@ -65,7 +81,6 @@ func (w *kstatusWaiter) Wait(resourceList ResourceList, timeout time.Duration) e
 				if rs == nil {
 					continue
 				}
-				fmt.Println("this is the status of object", rs.Status)
 				rss = append(rss, rs)
 			}
 			desired := status.CurrentStatus
@@ -89,15 +104,10 @@ func (w *kstatusWaiter) Wait(resourceList ResourceList, timeout time.Duration) e
 			if rs.Status == status.CurrentStatus {
 				continue
 			}
-			errs = append(errs, fmt.Errorf("%s: %s not ready, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status)) 
+			errs = append(errs, fmt.Errorf("%s: %s not ready, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
 		}
 		errs = append(errs, ctx.Err())
 		return errors.Join(errs...)
 	}
 	return nil
-}
-
-func (w *kstatusWaiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
-	// Implementation
-	panic("not implemented")
 }

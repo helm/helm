@@ -90,9 +90,10 @@ func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured
 func TestKWaitJob(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name       string
-		objYamls   []string
-		expectErrs []error
+		name        string
+		objYamls    []string
+		expectErrs  []error
+		waitForJobs bool
 	}{
 		{
 			name:       "Job is complete",
@@ -100,9 +101,16 @@ func TestKWaitJob(t *testing.T) {
 			expectErrs: nil,
 		},
 		{
-			name:       "Job is not complete",
-			objYamls:   []string{jobNoStatus},
-			expectErrs: []error{errors.New("test: Job not ready, status: InProgress"), errors.New("context deadline exceeded")},
+			name:        "Job is not complete",
+			objYamls:    []string{jobNoStatus},
+			expectErrs:  []error{errors.New("test: Job not ready, status: InProgress"), errors.New("context deadline exceeded")},
+			waitForJobs: true,
+		},
+		{
+			name:        "Job is not ready, but we pass wait anyway",
+			objYamls:    []string{jobNoStatus},
+			expectErrs:  nil,
+			waitForJobs: false,
 		},
 		{
 			name:       "Pod is ready",
@@ -141,7 +149,7 @@ func TestKWaitJob(t *testing.T) {
 				err = fakeClient.Tracker().Create(gvr, resource, resource.GetNamespace())
 				assert.NoError(t, err)
 			}
-			c.Waiter = &kstatusWaiter{
+			kwaiter := kstatusWaiter{
 				sw:  statusWatcher,
 				log: c.Log,
 			}
@@ -153,7 +161,7 @@ func TestKWaitJob(t *testing.T) {
 				resourceList = append(resourceList, list...)
 			}
 
-			err := c.Wait(resourceList, time.Second*3)
+			err := kwaiter.wait(resourceList, time.Second*3, tt.waitForJobs)
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
 				return
