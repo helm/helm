@@ -83,8 +83,6 @@ func TestRunHealthChecks(t *testing.T) {
 			fakeMapper := testutil.NewFakeRESTMapper(
 				v1.SchemeGroupVersion.WithKind("Pod"),
 			)
-			// ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-			// defer cancel()
 			pods := []runtime.Object{}
 			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
 			for _, podYaml := range tt.podYamls {
@@ -121,93 +119,3 @@ func TestRunHealthChecks(t *testing.T) {
 		})
 	}
 }
-
-// func TestWait1(t *testing.T) {
-// 	podList := newPodList("starfish", "otter", "squid")
-
-// 	var created *time.Time
-
-// 	c := newTestClient(t)
-// 	c.Factory.(*cmdtesting.TestFactory).ClientConfigVal = cmdtesting.DefaultClientConfig()
-// 	c.Factory.(*cmdtesting.TestFactory).Client = &fake.RESTClient{
-// 		NegotiatedSerializer: unstructuredSerializer,
-// 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
-// 			p, m := req.URL.Path, req.Method
-// 			t.Logf("got request %s %s", p, m)
-// 			switch {
-// 			case p == "/api/v1/namespaces/default/pods/starfish" && m == "GET":
-// 				pod := &podList.Items[0]
-// 				if created != nil && time.Since(*created) >= time.Second*5 {
-// 					pod.Status.Conditions = []v1.PodCondition{
-// 						{
-// 							Type:   v1.PodReady,
-// 							Status: v1.ConditionTrue,
-// 						},
-// 					}
-// 				}
-// 				return newResponse(200, pod)
-// 			case p == "/api/v1/namespaces/default/pods/otter" && m == "GET":
-// 				pod := &podList.Items[1]
-// 				if created != nil && time.Since(*created) >= time.Second*5 {
-// 					pod.Status.Conditions = []v1.PodCondition{
-// 						{
-// 							Type:   v1.PodReady,
-// 							Status: v1.ConditionTrue,
-// 						},
-// 					}
-// 				}
-// 				return newResponse(200, pod)
-// 			case p == "/api/v1/namespaces/default/pods/squid" && m == "GET":
-// 				pod := &podList.Items[2]
-// 				if created != nil && time.Since(*created) >= time.Second*5 {
-// 					pod.Status.Conditions = []v1.PodCondition{
-// 						{
-// 							Type:   v1.PodReady,
-// 							Status: v1.ConditionTrue,
-// 						},
-// 					}
-// 				}
-// 				return newResponse(200, pod)
-// 			case p == "/namespaces/default/pods" && m == "POST":
-// 				resources, err := c.Build(req.Body, false)
-// 				if err != nil {
-// 					t.Fatal(err)
-// 				}
-// 				now := time.Now()
-// 				created = &now
-// 				return newResponse(200, resources[0].Object)
-// 			default:
-// 				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
-// 				return nil, nil
-// 			}
-// 		}),
-// 	}
-// 	cs, err := c.getKubeClient()
-// 	require.NoError(t, err)
-// 	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
-// 	w := &waiter{
-// 		c:       checker,
-// 		log:     c.Log,
-// 		timeout: time.Second * 30,
-// 	}
-// 	c.waiter = w
-// 	resources, err := c.Build(objBody(&podList), false)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	result, err := c.Create(resources)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	if len(result.Created) != 3 {
-// 		t.Errorf("expected 3 resource created, got %d", len(result.Created))
-// 	}
-
-// 	if err := c.Wait(resources, time.Second*30); err != nil {
-// 		t.Errorf("expected wait without error, got %s", err)
-// 	}
-
-// 	if time.Since(*created) < time.Second*5 {
-// 		t.Errorf("expected to wait at least 5 seconds before ready status was detected, but got %s", time.Since(*created))
-// 	}
-// }
