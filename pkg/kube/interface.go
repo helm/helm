@@ -29,11 +29,6 @@ import (
 //
 // A KubernetesClient must be concurrency safe.
 type Interface interface {
-	ResourceManager
-	Waiter
-}
-
-type ResourceManager interface {
 	// Create creates one or more resources.
 	Create(resources ResourceList) (*Result, error)
 
@@ -66,6 +61,7 @@ type ResourceManager interface {
 	Build(reader io.Reader, validate bool) (ResourceList, error)
 	// IsReachable checks whether the client is able to connect to the cluster.
 	IsReachable() error
+	Waiter
 }
 
 // Waiter defines methods related to waiting for resource states.

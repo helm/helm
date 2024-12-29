@@ -87,7 +87,6 @@ type Client struct {
 	Namespace string
 
 	kubeClient *kubernetes.Clientset
-	ResourceManager
 	Waiter
 }
 
