@@ -29,6 +29,11 @@ import (
 //
 // A KubernetesClient must be concurrency safe.
 type Interface interface {
+	ResourceManager
+	Waiter
+}
+
+type ResourceManager interface {
 	// Create creates one or more resources.
 	Create(resources ResourceList) (*Result, error)
 
@@ -38,7 +43,6 @@ type Interface interface {
 	// Update updates one or more resources or creates the resource
 	// if it doesn't exist.
 	Update(original, target ResourceList, force bool) (*Result, error)
-
 	// WatchUntilReady watches the resources given and waits until it is ready.
 	//
 	// This method is mainly for hook implementations. It watches for a resource to
@@ -50,11 +54,9 @@ type Interface interface {
 	// error.
 	// TODO: Is watch until ready really behavior we want over the resources actually being ready?
 	WatchUntilReady(resources ResourceList, timeout time.Duration) error
-
 	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
 	// and returns said phase (PodSucceeded or PodFailed qualify).
 	WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error)
-
 	// Build creates a resource list from a Reader.
 	//
 	// Reader must contain a YAML stream (one or more YAML documents separated
@@ -62,10 +64,8 @@ type Interface interface {
 	//
 	// Validates against OpenAPI schema if validate is true.
 	Build(reader io.Reader, validate bool) (ResourceList, error)
-
 	// IsReachable checks whether the client is able to connect to the cluster.
 	IsReachable() error
-	Waiter
 }
 
 // Waiter defines methods related to waiting for resource states.

@@ -522,12 +522,11 @@ func TestWait(t *testing.T) {
 		t.Fatal(err)
 	}
 	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
-	w := &waiter{
+	c.Waiter = &waiter{
 		c:       checker,
 		log:     c.Log,
 		timeout: time.Second * 30,
 	}
-	c.waiter = w
 	resources, err := c.Build(objBody(&podList), false)
 	if err != nil {
 		t.Fatal(err)
@@ -585,12 +584,11 @@ func TestWaitJob(t *testing.T) {
 		t.Fatal(err)
 	}
 	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true), CheckJobs(true))
-	w := &waiter{
+	c.Waiter = &waiter{
 		c:       checker,
 		log:     c.Log,
 		timeout: time.Second * 30,
 	}
-	c.waiter = w
 	resources, err := c.Build(objBody(job), false)
 	if err != nil {
 		t.Fatal(err)
@@ -650,12 +648,11 @@ func TestWaitDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
-	w := &waiter{
+	c.Waiter = &waiter{
 		c:       checker,
 		log:     c.Log,
 		timeout: time.Second * 30,
 	}
-	c.waiter = w
 	resources, err := c.Build(objBody(&pod), false)
 	if err != nil {
 		t.Fatal(err)

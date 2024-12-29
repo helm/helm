@@ -87,13 +87,8 @@ type Client struct {
 	Namespace string
 
 	kubeClient *kubernetes.Clientset
-	// I see a couple different options for how waiter could be handled here
-	// - The waiter could be instantiated in New or at the start of each wait function // 
-	// - The waiter could be completely separate from the client interface, 
-	//   I don't like that this causes consumers to need another interface on top of kube
-	// - The waiter could be bundled with the resource manager into a client object. The waiter doesn't need factory / 
-	// Another option still would be to 
-	waiter Waiter
+	ResourceManager
+	Waiter
 }
 
 func init() {
@@ -153,7 +148,7 @@ func New(getter genericclioptions.RESTClientGetter, waiter Waiter) *Client {
 	return &Client{
 		Factory: factory,
 		Log:     nopLogger,
-		waiter:  waiter,
+		Waiter:  waiter,
 	}
 }
 
@@ -328,16 +323,6 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 		return nil, err
 	}
 	return obj, nil
-}
-
-// Wait waits up to the given timeout for the specified resources to be ready.
-func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
-	return c.waiter.Wait(resources, timeout)
-}
-
-// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
-func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
-	return c.waiter.WaitWithJobs(resources, timeout)
 }
 
 // WaitForDelete wait up to the given timeout for the specified resources to be deleted.
