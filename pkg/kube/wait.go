@@ -51,8 +51,9 @@ func (w *waiter) Wait(resources ResourceList, timeout time.Duration) error {
 
 func (w *waiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
 	// Implementation
-	// TODO this function doesn't make sense unless you pass a readyChecker to it 
+	// TODO this function doesn't make sense unless you pass a readyChecker to it
 	// TODO pass context instead
+	// checker := NewReadyChecker(cs, w.c.Log, PausedAsReady(true), CheckJobs(true))
 	w.timeout = timeout
 	return w.waitForResources(resources)
 }

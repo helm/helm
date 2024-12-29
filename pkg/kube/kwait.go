@@ -40,16 +40,18 @@ type kstatusWaiter struct {
 }
 
 func (w *kstatusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
-	return w.wait(resourceList, timeout, false)
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	defer cancel()
+	return w.wait(ctx, resourceList, false)
 }
 
 func (w *kstatusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
-	return w.wait(resourceList, timeout, true)
-}
-
-func (w *kstatusWaiter) wait(resourceList ResourceList, timeout time.Duration, waitForJobs bool) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
+	return w.wait(ctx, resourceList, true)
+}
+
+func (w *kstatusWaiter) wait(ctx context.Context, resourceList ResourceList, waitForJobs bool) error {
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	runtimeObjs := []runtime.Object{}

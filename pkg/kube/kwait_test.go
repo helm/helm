@@ -17,6 +17,7 @@ limitations under the License.
 package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
+	"context"
 	"errors"
 	"log"
 	"testing"
@@ -194,7 +195,10 @@ func TestKWaitJob(t *testing.T) {
 				resourceList = append(resourceList, list...)
 			}
 
-			err := kwaiter.wait(resourceList, time.Second*3, tt.waitForJobs)
+      ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+      defer cancel()
+
+			err := kwaiter.wait(ctx, resourceList, tt.waitForJobs)
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
 				return
