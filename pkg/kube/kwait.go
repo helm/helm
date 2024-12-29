@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/aggregator"
@@ -46,7 +47,7 @@ func (w *kstatusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dur
 	return w.wait(resourceList, timeout, true)
 }
 
-func (w *kstatusWaiter) wait(resourceList ResourceList, timeout time.Duration, waitWithJobs bool) error {
+func (w *kstatusWaiter) wait(resourceList ResourceList, timeout time.Duration, waitForJobs bool) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 	cancelCtx, cancel := context.WithCancel(ctx)
@@ -54,9 +55,13 @@ func (w *kstatusWaiter) wait(resourceList ResourceList, timeout time.Duration, w
 	// TODO maybe a simpler way to transfer the objects
 	runtimeObjs := []runtime.Object{}
 	for _, resource := range resourceList {
-		switch AsVersioned(resource).(type) {
+		switch value := AsVersioned(resource).(type) {
 		case *batchv1.Job:
-			if !waitWithJobs {
+			if !waitForJobs {
+				continue
+			}
+		case *appsv1.Deployment:
+			if w.pausedAsReady && value.Spec.Paused {
 				continue
 			}
 		}

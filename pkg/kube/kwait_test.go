@@ -23,6 +23,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+  batchv1 "k8s.io/api/batch/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -80,6 +82,31 @@ status:
       status: "True"
 `
 
+var pausedDeploymentYaml = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: ns-1
+  generation: 1
+spec:
+  paused: true
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.19.6
+        ports:
+        - containerPort: 80
+`
+
 func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured) schema.GroupVersionResource {
 	gvk := obj.GroupVersionKind()
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
@@ -90,10 +117,11 @@ func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured
 func TestKWaitJob(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name        string
-		objYamls    []string
-		expectErrs  []error
-		waitForJobs bool
+		name          string
+		objYamls      []string
+		expectErrs    []error
+		waitForJobs   bool
+		pausedAsReady bool
 	}{
 		{
 			name:       "Job is complete",
@@ -122,6 +150,12 @@ func TestKWaitJob(t *testing.T) {
 			objYamls:   []string{podNoStatus, podCurrent},
 			expectErrs: []error{errors.New("in-progress-pod: Pod not ready, status: InProgress"), errors.New("context deadline exceeded")},
 		},
+		{
+			name:          "paused deployment passes",
+			objYamls:      []string{pausedDeploymentYaml},
+			expectErrs:    nil,
+			pausedAsReady: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -131,11 +165,8 @@ func TestKWaitJob(t *testing.T) {
 			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 			fakeMapper := testutil.NewFakeRESTMapper(
 				v1.SchemeGroupVersion.WithKind("Pod"),
-				schema.GroupVersionKind{
-					Group:   "batch",
-					Version: "v1",
-					Kind:    "Job",
-				},
+				appsv1.SchemeGroupVersion.WithKind("Deployment"),
+        batchv1.SchemeGroupVersion.WithKind("Job"),
 			)
 			objs := []runtime.Object{}
 			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
@@ -152,6 +183,7 @@ func TestKWaitJob(t *testing.T) {
 			kwaiter := kstatusWaiter{
 				sw:  statusWatcher,
 				log: c.Log,
+        pausedAsReady: tt.pausedAsReady,
 			}
 
 			resourceList := ResourceList{}
