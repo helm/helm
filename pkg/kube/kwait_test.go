@@ -18,12 +18,12 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -34,7 +34,7 @@ import (
 	"sigs.k8s.io/cli-utils/pkg/testutil"
 )
 
-var podCurrentYaml = `
+var podCurrent = `
 apiVersion: v1
 kind: Pod
 metadata:
@@ -47,7 +47,7 @@ status:
   phase: Running
 `
 
-var podYaml = `
+var podNoStatus = `
 apiVersion: v1
 kind: Pod
 metadata:
@@ -55,21 +55,62 @@ metadata:
   namespace: ns
 `
 
-func TestRunHealthChecks(t *testing.T) {
+var jobNoStatus = `
+apiVersion: batch/v1
+kind: Job
+metadata:
+   name: test
+   namespace: qual
+   generation: 1
+`
+
+var jobComplete = `
+apiVersion: batch/v1
+kind: Job
+metadata:
+   name: test
+   namespace: qual
+   generation: 1
+status:
+   succeeded: 1
+   active: 0
+   conditions:
+    - type: Complete 
+      status: "True"
+`
+
+func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured) schema.GroupVersionResource {
+	gvk := obj.GroupVersionKind()
+	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	require.NoError(t, err)
+	return mapping.Resource
+}
+
+func TestKWaitJob(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
-		podYamls   []string
+		objYamls   []string
 		expectErrs []error
 	}{
 		{
+			name:       "Job is complete",
+			objYamls:   []string{jobComplete},
+			expectErrs: nil,
+		},
+		{
+			name:       "Job is not complete",
+			objYamls:   []string{jobNoStatus},
+			expectErrs: []error{errors.New("not all resources ready: context deadline exceeded: test: Job not ready, status: InProgress")},
+		},
+		{
 			name:       "Pod is ready",
-			podYamls:   []string{podCurrentYaml},
+			objYamls:   []string{podCurrent},
 			expectErrs: nil,
 		},
 		{
 			name:     "one of the pods never becomes ready",
-			podYamls: []string{podYaml, podCurrentYaml},
+			objYamls: []string{podNoStatus, podCurrent},
 			// TODO, make this better
 			expectErrs: []error{errors.New("not all resources ready: context deadline exceeded: in-progress-pod: Pod not ready, status: InProgress")},
 		},
@@ -82,18 +123,22 @@ func TestRunHealthChecks(t *testing.T) {
 			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 			fakeMapper := testutil.NewFakeRESTMapper(
 				v1.SchemeGroupVersion.WithKind("Pod"),
+				schema.GroupVersionKind{
+					Group:   "batch",
+					Version: "v1",
+					Kind:    "Job",
+				},
 			)
-			pods := []runtime.Object{}
+			objs := []runtime.Object{}
 			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
-			for _, podYaml := range tt.podYamls {
+			for _, podYaml := range tt.objYamls {
 				m := make(map[string]interface{})
 				err := yaml.Unmarshal([]byte(podYaml), &m)
 				require.NoError(t, err)
-				pod := &unstructured.Unstructured{Object: m}
-				pods = append(pods, pod)
-				fmt.Println(pod.GetName())
-				podGVR := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
-				err = fakeClient.Tracker().Create(podGVR, pod, pod.GetNamespace())
+				resource := &unstructured.Unstructured{Object: m}
+				objs = append(objs, resource)
+				gvr := getGVR(t, fakeMapper, resource)
+				err = fakeClient.Tracker().Create(gvr, resource, resource.GetNamespace())
 				require.NoError(t, err)
 			}
 			c.Waiter = &kstatusWaiter{
@@ -102,16 +147,17 @@ func TestRunHealthChecks(t *testing.T) {
 			}
 
 			resourceList := ResourceList{}
-			for _, pod := range pods {
-				list, err := c.Build(objBody(pod), false)
+			for _, obj := range objs {
+				list, err := c.Build(objBody(obj), false)
 				if err != nil {
 					t.Fatal(err)
 				}
 				resourceList = append(resourceList, list...)
 			}
 
-			err := c.Wait(resourceList, time.Second*5)
+			err := c.Wait(resourceList, time.Second*3)
 			if tt.expectErrs != nil {
+        //TODO remove require
 				require.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
 				return
 			}

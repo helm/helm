@@ -140,7 +140,10 @@ func New(getter genericclioptions.RESTClientGetter, waiter Waiter) (*Client, err
 		if err != nil {
 			return nil, err
 		}
-		waiter = &kstatusWaiter{sw, nopLogger}
+		waiter = &kstatusWaiter{
+			sw:            sw,
+			log:           nopLogger,
+			pausedAsReady: true}
 	}
 	return &Client{
 		Factory: factory,
