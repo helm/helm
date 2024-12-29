@@ -33,7 +33,6 @@ import (
 )
 
 type kstatusWaiter struct {
-	// Add any necessary dependencies, e.g., Kubernetes API client.
 	sw            watcher.StatusWatcher
 	log           func(string, ...interface{})
 	pausedAsReady bool
@@ -44,7 +43,6 @@ func (w *kstatusWaiter) Wait(resourceList ResourceList, timeout time.Duration) e
 }
 
 func (w *kstatusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
-	// Implementation
 	return w.wait(resourceList, timeout, true)
 }
 
