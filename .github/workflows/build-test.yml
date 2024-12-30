@@ -22,7 +22,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # pin@5.1.0
         with:
-          go-version: '1.22'
+          go-version: '1.23'
           check-latest: true
       - name: Test source headers are present
         run: make test-source-headers
