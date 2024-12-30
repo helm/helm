@@ -94,16 +94,19 @@ func (w *kstatusWaiter) waitForDelete(ctx context.Context, resourceList Resource
 		errs := []error{}
 		for _, id := range resources {
 			rs := statusCollector.ResourceStatuses[id]
-			if rs.Status == status.CurrentStatus {
+			if rs.Status == status.NotFoundStatus {
 				continue
 			}
-			errs = append(errs, fmt.Errorf("%s: %s not ready, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
+			if rs.Status == status.UnknownStatus {
+				errs = append(errs, fmt.Errorf("%s: %s cannot determine if resource exists, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
+				continue
+			}
+			
+			errs = append(errs, fmt.Errorf("%s: %s still exists, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
 		}
 		errs = append(errs, ctx.Err())
 		return errors.Join(errs...)
 	}
-	return nil
-	defer cancel()
 	return nil
 }
 
