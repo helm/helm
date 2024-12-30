@@ -183,9 +183,8 @@ func TestKWaitJob(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			kwaiter := kstatusWaiter{
-				sw:            statusWatcher,
-				log:           log.Printf,
-				pausedAsReady: tt.pausedAsReady,
+				sw:  statusWatcher,
+				log: log.Printf,
 			}
 
 			resourceList := ResourceList{}
@@ -195,8 +194,8 @@ func TestKWaitJob(t *testing.T) {
 				resourceList = append(resourceList, list...)
 			}
 
-      ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-      defer cancel()
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer cancel()
 
 			err := kwaiter.wait(ctx, resourceList, tt.waitForJobs)
 			if tt.expectErrs != nil {

@@ -34,9 +34,8 @@ import (
 )
 
 type kstatusWaiter struct {
-	sw            watcher.StatusWatcher
-	log           func(string, ...interface{})
-	pausedAsReady bool
+	sw  watcher.StatusWatcher
+	log func(string, ...interface{})
 }
 
 func (w *kstatusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
@@ -62,7 +61,7 @@ func (w *kstatusWaiter) wait(ctx context.Context, resourceList ResourceList, wai
 				continue
 			}
 		case *appsv1.Deployment:
-			if w.pausedAsReady && value.Spec.Paused {
+			if value.Spec.Paused {
 				continue
 			}
 		}

@@ -38,7 +38,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/watcher"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -52,7 +51,6 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -102,26 +100,11 @@ func init() {
 }
 
 func getStatusWatcher(factory Factory) (watcher.StatusWatcher, error) {
-	cfg, err := factory.ToRESTConfig()
+	dynamicClient, err := factory.DynamicClient()
 	if err != nil {
 		return nil, err
 	}
-	// factory.DynamicClient() may be a better choice here
-	dynamicClient, err := dynamic.NewForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
-	// Not sure if I should use factory methods to get this http client or I should do this
-	// For example, I could likely use this as well, but it seems like I should use the factory methods instead
-	// httpClient, err := rest.HTTPClientFor(cfg)
-	// if err != nil {
-	// 	return err
-	// }
-	client, err := factory.RESTClient()
-	if err != nil {
-		return nil, err
-	}
-	restMapper, err := apiutil.NewDynamicRESTMapper(cfg, client.Client)
+	restMapper, err := factory.ToRESTMapper()
 	if err != nil {
 		return nil, err
 	}
@@ -141,9 +124,9 @@ func New(getter genericclioptions.RESTClientGetter, waiter Waiter) (*Client, err
 			return nil, err
 		}
 		waiter = &kstatusWaiter{
-			sw:            sw,
-			log:           nopLogger,
-			pausedAsReady: true}
+			sw:  sw,
+			log: nopLogger,
+		}
 	}
 	return &Client{
 		Factory: factory,
