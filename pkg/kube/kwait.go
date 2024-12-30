@@ -50,6 +50,12 @@ func (w *kstatusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dur
 	return w.wait(ctx, resourceList, true)
 }
 
+func (w *kstatusWaiter) waitForDelete(ctx context.Context, resourceList ResourceList) error {
+	_, cancel := context.WithCancel(ctx)
+	defer cancel()
+	return nil
+}
+
 func (w *kstatusWaiter) wait(ctx context.Context, resourceList ResourceList, waitForJobs bool) error {
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()

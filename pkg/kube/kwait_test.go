@@ -29,6 +29,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -114,6 +115,59 @@ func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	require.NoError(t, err)
 	return mapping.Resource
+}
+
+func TestKWaitForDelete(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		objs          []runtime.Object
+		expectErrs    []error
+		waitForJobs   bool
+		pausedAsReady bool
+	}{
+		{
+			name: "Pod is deleted",
+			objs: []runtime.Object{
+				&v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: "ns"}},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				v1.SchemeGroupVersion.WithKind("Pod"),
+				appsv1.SchemeGroupVersion.WithKind("Deployment"),
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+			)
+			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
+			kwaiter := kstatusWaiter{
+				sw:  statusWatcher,
+				log: log.Printf,
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer cancel()
+			resourceList := ResourceList{}
+			for _, obj := range tt.objs {
+				list, err := c.Build(objBody(obj), false)
+				assert.NoError(t, err)
+				// gvr := getGVR(t, fakeMapper, obj.)
+				// err = fakeClient.Tracker().Create(gvr, obj, )
+        // assert.NoError(t, err)
+				// resourceList = append(resourceList, list...)
+			}
+			err := kwaiter.waitForDelete(ctx, resourceList)
+			if tt.expectErrs != nil {
+				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+
 }
 
 func TestKWaitJob(t *testing.T) {
