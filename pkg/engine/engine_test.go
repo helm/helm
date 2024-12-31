@@ -1318,6 +1318,17 @@ func TestNestedHelpersProducesMultilineStacktrace(t *testing.T) {
 		},
 	}
 
+	expectedErrorMessage := `NestedHelperFunctions/templates/svc.yaml:1:9
+  executing "NestedHelperFunctions/templates/svc.yaml" at <include "nested_helper.name" .>: 
+    error calling include:
+NestedHelperFunctions/templates/_helpers_1.tpl:1:39
+  executing "nested_helper.name" at <include "common.names.get_name" .>: 
+    error calling include:
+NestedHelperFunctions/charts/common/templates/_helpers_2.tpl:1:50
+  executing "common.names.get_name" at <.Release.Name>: 
+    nil pointer evaluating interface {}.Name
+`
+
 	v := chartutil.Values{}
 
 	val, _ := chartutil.CoalesceValues(c, v)
@@ -1327,7 +1338,5 @@ func TestNestedHelpersProducesMultilineStacktrace(t *testing.T) {
 	_, err := Render(c, vals)
 
 	assert.NotNil(t, err)
-	if err != nil {
-		t.Errorf("Failed to render templates: %s", err)
-	}
+	assert.Equal(t, expectedErrorMessage, err.Error())
 }

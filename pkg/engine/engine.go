@@ -380,7 +380,6 @@ func determineIfFormattedErrorIsAcceptable(formattedErr error, originalErr error
 	}
 
 	equivalenceRating := (float64(matchCount) / float64(len(formattedErrTokens))) * 100
-	fmt.Printf("Rating: %f\n", equivalenceRating)
 	if equivalenceRating >= 80 {
 		return formattedErr
 	}
