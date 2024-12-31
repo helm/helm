@@ -360,6 +360,33 @@ func (t TraceableError) FilterUnnecessaryWords() TraceableError {
 	return t
 }
 
+// In the process of formatting the error, we want to ensure that the formatted version of the error
+// is not losing any necessary information. This function will tokenize and compare the two strings
+// and if the formatted error doesn't meet the threshold, it will fallback to the originalErr
+func determineIfFormattedErrorIsAcceptable(formattedErr error, originalErr error) error {
+	formattedErrTokens := strings.Fields(formattedErr.Error())
+	originalErrTokens := strings.Fields(originalErr.Error())
+
+	tokenSet := make(map[string]struct{})
+	for _, token := range originalErrTokens {
+		tokenSet[token] = struct{}{}
+	}
+
+	matchCount := 0
+	for _, token := range formattedErrTokens {
+		if _, exists := tokenSet[token]; exists {
+			matchCount++
+		}
+	}
+
+	equivalenceRating := (float64(matchCount) / float64(len(formattedErrTokens))) * 100
+	fmt.Printf("Rating: %f\n", equivalenceRating)
+	if equivalenceRating >= 80 {
+		return formattedErr
+	}
+	return originalErr
+}
+
 func cleanupExecError(filename string, err error) error {
 	if _, isExecError := err.(template.ExecError); !isExecError {
 		return err
@@ -433,7 +460,7 @@ func cleanupExecError(filename string, err error) error {
 		return fmt.Errorf("%s", err.Error())
 	}
 
-	return fmt.Errorf("%s", finalErrorString)
+	return determineIfFormattedErrorIsAcceptable(fmt.Errorf("%s", finalErrorString), err)
 }
 
 func sortTemplates(tpls map[string]renderable) []string {
