@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -377,7 +378,7 @@ type (
 
 // Pull downloads a chart from a registry
 func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
-	parsedRef, err := parseReference(ref)
+	parsedRef, err := newReference(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +410,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 
 	var descriptors, layers []ocispec.Descriptor
-	remotesResolver, err := c.resolver(parsedRef)
+	remotesResolver, err := c.resolver(parsedRef.orasReference)
 	if err != nil {
 		return nil, err
 	}
@@ -593,7 +594,7 @@ type (
 
 // Push uploads a chart to a registry.
 func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResult, error) {
-	parsedRef, err := parseReference(ref)
+	parsedRef, err := newReference(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -652,12 +653,12 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 
-	remotesResolver, err := c.resolver(parsedRef)
+	remotesResolver, err := c.resolver(parsedRef.orasReference)
 	if err != nil {
 		return nil, err
 	}
 	registryStore := content.Registry{Resolver: remotesResolver}
-	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, parsedRef.String(), registryStore, "",
+	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, parsedRef.orasReference.String(), registryStore, "",
 		oras.WithNameValidation(nil))
 	if err != nil {
 		return nil, err
@@ -688,7 +689,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 	fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
 	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
-	if strings.Contains(parsedRef.Reference, "_") {
+	if strings.Contains(parsedRef.orasReference.Reference, "_") {
 		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
 		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
 	}
@@ -758,4 +759,90 @@ func (c *Client) Tags(ref string) ([]string, error) {
 
 	return tags, nil
 
+}
+
+// Resolve a reference to a descriptor.
+func (c *Client) Resolve(ref string) (*ocispec.Descriptor, error) {
+	ctx := context.Background()
+	parsedRef, err := newReference(ref)
+	if err != nil {
+		return nil, err
+	}
+	if parsedRef.Registry == "" {
+		return nil, nil
+	}
+
+	remotesResolver, err := c.resolver(parsedRef.orasReference)
+	if err != nil {
+		return nil, err
+	}
+
+	_, desc, err := remotesResolver.Resolve(ctx, ref)
+	return &desc, err
+}
+
+// ValidateReference for path and version
+func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, error) {
+	var tag string
+
+	registryReference, err := newReference(u.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	if version == "" {
+		// Use OCI URI tag as default
+		version = registryReference.Tag
+	} else {
+		if registryReference.Tag != "" && registryReference.Tag != version {
+			return nil, errors.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
+		}
+	}
+
+	if registryReference.Digest != "" {
+		if registryReference.Tag == "" {
+			// Install by digest only
+			return u, nil
+		}
+
+		// Validate the tag if it was specified
+		path := registryReference.Registry + "/" + registryReference.Repository + ":" + registryReference.Tag
+		desc, err := c.Resolve(path)
+		if err != nil {
+			// The resource does not have to be tagged when digest is specified
+			return u, nil
+		}
+		if desc != nil && desc.Digest.String() != registryReference.Digest {
+			return nil, errors.Errorf("chart reference digest mismatch: %s is not %s", desc.Digest.String(), registryReference.Digest)
+		}
+		return u, nil
+	}
+
+	// Evaluate whether an explicit version has been provided. Otherwise, determine version to use
+	_, errSemVer := semver.NewVersion(version)
+	if errSemVer == nil {
+		tag = version
+	} else {
+		// Retrieve list of repository tags
+		tags, err := c.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", OCIScheme)))
+		if err != nil {
+			return nil, err
+		}
+		if len(tags) == 0 {
+			return nil, errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
+		}
+
+		// Determine if version provided
+		// If empty, try to get the highest available tag
+		// If exact version, try to find it
+		// If semver constraint string, try to find a match
+		tag, err = GetTagMatchingVersionOrConstraint(tags, version)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	u.Path = fmt.Sprintf("%s/%s:%s", registryReference.Registry, registryReference.Repository, tag)
+
+	return u, err
 }
