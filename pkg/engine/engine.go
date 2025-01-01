@@ -392,7 +392,7 @@ func determineIfFormattedErrorIsAcceptable(formattedErr error, originalErr error
 	if equivalenceRating >= 80 {
 		return formattedErr
 	}
-	return originalErr
+	return fmt.Errorf("%s", originalErr.Error())
 }
 
 func cleanupExecError(filename string, err error) error {
@@ -416,7 +416,8 @@ func cleanupExecError(filename string, err error) error {
 	}
 	current := err
 	fileLocations := []TraceableError{}
-	for {
+	maxIterations := 100
+	for i := 0; i < maxIterations && current != nil; i++ {
 		if current == nil {
 			break
 		}
@@ -428,6 +429,9 @@ func cleanupExecError(filename string, err error) error {
 		}
 		fileLocations = append(fileLocations, traceable)
 		current = errors.Unwrap(current)
+	}
+	if current != nil {
+		return fmt.Errorf("%s", err.Error())
 	}
 
 	prevMessage := ""
