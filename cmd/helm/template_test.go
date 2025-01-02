@@ -22,6 +22,18 @@ import (
 	"testing"
 )
 
+func TestTemplateCmdWithToml(t *testing.T) {
+
+	tests := []cmdTestCase{
+		{
+			name:   "check toToml function rendering",
+			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/issue-totoml"),
+			golden: "output/issue-totoml.txt",
+		},
+	}
+	runTestCmd(t, tests)
+}
+
 var chartPath = "testdata/testcharts/subchart"
 
 func TestTemplateCmd(t *testing.T) {
