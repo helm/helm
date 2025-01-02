@@ -163,9 +163,10 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 	err = registryClient.Login(
 		srv.RegistryURL,
 		ociRegistry.LoginOptBasicAuth(srv.TestUsername, srv.TestPassword),
-		ociRegistry.LoginOptInsecure(false))
+		ociRegistry.LoginOptInsecure(true),
+		ociRegistry.LoginOptPlainText(true))
 	if err != nil {
-		t.Fatalf("error logging into registry with good credentials")
+		t.Fatalf("error logging into registry with good credentials: %v", err)
 	}
 
 	ref := fmt.Sprintf("%s/u/ocitestuser/oci-dependent-chart:0.1.0", srv.RegistryURL)
