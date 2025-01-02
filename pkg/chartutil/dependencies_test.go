@@ -502,3 +502,25 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
 		t.Fatalf("expected 1 dependency specified in Chart.yaml, got %d", len(c.Metadata.Dependencies))
 	}
 }
+
+func TestChartWithDependencyAliasedTwiceWithCondition(t *testing.T) {
+	c := loadChart(t, "testdata/chart-with-dependency-aliased-twice-with-condition")
+
+	if len(c.Dependencies()) != 1 {
+		t.Fatalf("expected 1 dependencies for this chart, but got %d", len(c.Dependencies()))
+	}
+
+	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+		t.Fatalf("expected no errors but got %q", err)
+	}
+
+	if len(c.Dependencies()) != 2 {
+		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
+	}
+
+	for _, d := range c.Dependencies() {
+		if d.Dependencies() != nil {
+			t.Fatalf("expected no dependency in chart %s as the condition should disable it", d.Metadata.Name)
+		}
+	}
+}
