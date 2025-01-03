@@ -24,7 +24,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/mitchellh/copystructure v1.2.0
-	github.com/moby/term v0.5.0
+	github.com/moby/term v0.5.2
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
@@ -51,7 +51,7 @@ require (
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
-	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
+	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d // indirect
