@@ -57,6 +57,7 @@ pequod:
     nested:
       foo: true
       boat: null
+    object: null
 `)
 
 func withDeps(c *chart.Chart, deps ...*chart.Chart) *chart.Chart {
@@ -118,6 +119,7 @@ func TestCoalesceValues(t *testing.T) {
 					"name":   "ahab",
 					"boat":   true,
 					"nested": map[string]interface{}{"foo": false, "boat": true},
+					"object": map[string]interface{}{"foo": "bar"},
 				},
 			},
 		),
@@ -225,6 +227,10 @@ func TestCoalesceValues(t *testing.T) {
 
 	if _, ok := subsubchart["nested"].(map[string]interface{})["boat"]; ok {
 		t.Error("Expected sub-subchart nested boat key to be removed, still present")
+	}
+
+	if _, ok := subsubchart["object"]; ok {
+		t.Error("Expected sub-subchart object map to be removed, still present")
 	}
 
 	// CoalesceValues should not mutate the passed arguments
