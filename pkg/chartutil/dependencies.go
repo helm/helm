@@ -264,7 +264,11 @@ func processImportValues(c *chart.Chart, merge bool) error {
 				})
 
 				// get child table
-				vv, err := cvals.Table(r.Name + "." + child)
+				ref := r.Name + "." + child
+				if child == "." {
+					ref = r.Name
+				}
+				vv, err := cvals.Table(ref)
 				if err != nil {
 					log.Printf("Warning: ImportValues missing table from chart %s: %v", r.Name, err)
 					continue
