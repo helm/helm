@@ -41,7 +41,7 @@ func AllWithKubeVersionAndSchemaValidation(basedir string, values map[string]int
 
 	linter := support.Linter{ChartDir: chartDir}
 	rules.Chartfile(&linter)
-	rules.ValuesWithOverrides(&linter, values)
+	rules.ValuesWithOverridesWithSkipSchemaValidation(&linter, values, skipSchemaValidation)
 	rules.TemplatesWithSkipSchemaValidation(&linter, values, namespace, kubeVersion, skipSchemaValidation)
 	rules.Dependencies(&linter)
 	return linter
