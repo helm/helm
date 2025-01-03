@@ -49,7 +49,7 @@ func TestLoadChartRepository(t *testing.T) {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
 	}
 
-	if err := r.Load(); err != nil {
+	if err := loadFromDir(r); err != nil {
 		t.Errorf("Problem loading chart repository from %s: %v", testRepository, err)
 	}
 
@@ -82,7 +82,7 @@ func TestIndex(t *testing.T) {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
 	}
 
-	if err := r.Load(); err != nil {
+	if err := loadFromDir(r); err != nil {
 		t.Errorf("Problem loading chart repository from %s: %v", testRepository, err)
 	}
 
