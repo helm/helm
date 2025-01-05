@@ -26,7 +26,6 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v4/pkg/chartutil"
 	"helm.sh/helm/v4/pkg/release"
 )
 
@@ -74,7 +73,7 @@ var events = map[string]release.HookEvent{
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func SortManifests(files map[string]string, _ chartutil.VersionSet, ordering KindSortOrder) ([]*release.Hook, []Manifest, error) {
+func SortManifests(files map[string]string, _ VersionSet, ordering KindSortOrder) ([]*release.Hook, []Manifest, error) {
 	result := &result{}
 
 	var sortedFilePaths []string

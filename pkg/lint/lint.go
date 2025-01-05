@@ -19,19 +19,19 @@ package lint // import "helm.sh/helm/v4/pkg/lint"
 import (
 	"path/filepath"
 
-	"helm.sh/helm/v4/pkg/chartutil"
 	"helm.sh/helm/v4/pkg/lint/rules"
 	"helm.sh/helm/v4/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/releaseutil"
 )
 
 type linterOptions struct {
-	KubeVersion          *chartutil.KubeVersion
+	KubeVersion          *releaseutil.KubeVersion
 	SkipSchemaValidation bool
 }
 
 type LinterOption func(lo *linterOptions)
 
-func WithKubeVersion(kubeVersion *chartutil.KubeVersion) LinterOption {
+func WithKubeVersion(kubeVersion *releaseutil.KubeVersion) LinterOption {
 	return func(lo *linterOptions) {
 		lo.KubeVersion = kubeVersion
 	}

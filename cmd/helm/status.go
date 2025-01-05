@@ -30,9 +30,9 @@ import (
 
 	"helm.sh/helm/v4/cmd/helm/require"
 	"helm.sh/helm/v4/pkg/action"
-	"helm.sh/helm/v4/pkg/chartutil"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/releaseutil"
 )
 
 // NOTE: Keep the list of statuses up-to-date with pkg/release/status.go.
@@ -194,7 +194,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		// Print an extra newline
 		_, _ = fmt.Fprintln(out)
 
-		cfg, err := chartutil.CoalesceValues(s.release.Chart, s.release.Config)
+		cfg, err := releaseutil.CoalesceValues(s.release.Chart, s.release.Config)
 		if err != nil {
 			return err
 		}

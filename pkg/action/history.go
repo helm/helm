@@ -19,8 +19,8 @@ package action
 import (
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v4/pkg/chartutil"
 	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/releaseutil"
 )
 
 // History is the action for checking the release's ledger.
@@ -49,7 +49,7 @@ func (h *History) Run(name string) ([]*release.Release, error) {
 		return nil, err
 	}
 
-	if err := chartutil.ValidateReleaseName(name); err != nil {
+	if err := releaseutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("release name is invalid: %s", name)
 	}
 

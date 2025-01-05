@@ -33,9 +33,9 @@ import (
 
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chartutil"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/releaseutil"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
@@ -132,7 +132,7 @@ func TestInstallReleaseClientOnly(t *testing.T) {
 	instAction.ClientOnly = true
 	instAction.Run(buildChart(), nil) // disregard output
 
-	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)
+	is.Equal(instAction.cfg.Capabilities, releaseutil.DefaultCapabilities)
 	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: io.Discard})
 }
 

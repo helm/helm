@@ -24,7 +24,6 @@ import (
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"helm.sh/helm/v4/pkg/chartutil"
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/releaseutil"
@@ -69,7 +68,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		return &release.UninstallReleaseResponse{Release: r}, nil
 	}
 
-	if err := chartutil.ValidateReleaseName(name); err != nil {
+	if err := releaseutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("uninstall: Release name is invalid: %s", name)
 	}
 

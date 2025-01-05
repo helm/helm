@@ -33,7 +33,6 @@ import (
 	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chartutil"
 	"helm.sh/helm/v4/pkg/engine"
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/postrender"
@@ -92,7 +91,7 @@ type Configuration struct {
 	RegistryClient *registry.Client
 
 	// Capabilities describes the capabilities of the Kubernetes cluster.
-	Capabilities *chartutil.Capabilities
+	Capabilities *releaseutil.Capabilities
 
 	Log func(string, ...interface{})
 }
@@ -103,7 +102,7 @@ type Configuration struct {
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //
 //	This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ch *chart.Chart, values releaseutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -113,7 +112,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	}
 
 	if ch.Metadata.KubeVersion != "" {
-		if !chartutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
+		if !releaseutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
 			return hs, b, "", errors.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
 		}
 	}
@@ -243,7 +242,7 @@ type RESTClientGetter interface {
 type DebugLog func(format string, v ...interface{})
 
 // capabilities builds a Capabilities from discovery information.
-func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
+func (cfg *Configuration) getCapabilities() (*releaseutil.Capabilities, error) {
 	if cfg.Capabilities != nil {
 		return cfg.Capabilities, nil
 	}
@@ -272,14 +271,14 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 		}
 	}
 
-	cfg.Capabilities = &chartutil.Capabilities{
+	cfg.Capabilities = &releaseutil.Capabilities{
 		APIVersions: apiVersions,
-		KubeVersion: chartutil.KubeVersion{
+		KubeVersion: releaseutil.KubeVersion{
 			Version: kubeVersion.GitVersion,
 			Major:   kubeVersion.Major,
 			Minor:   kubeVersion.Minor,
 		},
-		HelmVersion: chartutil.DefaultCapabilities.HelmVersion,
+		HelmVersion: releaseutil.DefaultCapabilities.HelmVersion,
 	}
 	return cfg.Capabilities, nil
 }
@@ -303,7 +302,7 @@ func (cfg *Configuration) Now() time.Time {
 }
 
 func (cfg *Configuration) releaseContent(name string, version int) (*release.Release, error) {
-	if err := chartutil.ValidateReleaseName(name); err != nil {
+	if err := releaseutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("releaseContent: Release name is invalid: %s", name)
 	}
 
@@ -315,10 +314,10 @@ func (cfg *Configuration) releaseContent(name string, version int) (*release.Rel
 }
 
 // GetVersionSet retrieves a set of available k8s API versions
-func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.VersionSet, error) {
+func GetVersionSet(client discovery.ServerResourcesInterface) (releaseutil.VersionSet, error) {
 	groups, resources, err := client.ServerGroupsAndResources()
 	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
-		return chartutil.DefaultVersionSet, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+		return releaseutil.DefaultVersionSet, errors.Wrap(err, "could not get apiVersions from Kubernetes")
 	}
 
 	// FIXME: The Kubernetes test fixture for cli appears to always return nil
@@ -326,7 +325,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 	// return the default API list. This is also a safe value to return in any
 	// other odd-ball case.
 	if len(groups) == 0 && len(resources) == 0 {
-		return chartutil.DefaultVersionSet, nil
+		return releaseutil.DefaultVersionSet, nil
 	}
 
 	versionMap := make(map[string]interface{})
@@ -359,7 +358,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 		versions = append(versions, k)
 	}
 
-	return chartutil.VersionSet(versions), nil
+	return releaseutil.VersionSet(versions), nil
 }
 
 // recordRelease with an update operation in case reuse has been set.

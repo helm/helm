@@ -14,21 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chartutil
+package releaseutil
 
-import "github.com/Masterminds/semver/v3"
+import (
+	"fmt"
+)
 
-// IsCompatibleRange compares a version to a constraint.
-// It returns true if the version matches the constraint, and false in all other cases.
-func IsCompatibleRange(constraint, ver string) bool {
-	sv, err := semver.NewVersion(ver)
-	if err != nil {
-		return false
-	}
-
-	c, err := semver.NewConstraint(constraint)
-	if err != nil {
-		return false
-	}
-	return c.Check(sv)
+// ErrNoTable indicates that a chart does not have a matching table.
+type ErrNoTable struct {
+	Key string
 }
+
+func (e ErrNoTable) Error() string { return fmt.Sprintf("%q is not a table", e.Key) }
+
+// ErrNoValue indicates that Values does not contain a key with a value
+type ErrNoValue struct {
+	Key string
+}
+
+func (e ErrNoValue) Error() string { return fmt.Sprintf("%q is not a value", e.Key) }
