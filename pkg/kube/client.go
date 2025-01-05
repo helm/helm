@@ -88,6 +88,13 @@ type Client struct {
 	Waiter
 }
 
+type WaitStrategy int
+
+const (
+	StatusWaiter WaitStrategy = iota
+	LegacyWaiter
+)
+
 func init() {
 	// Add CRDs to the scheme. They are missing by default.
 	if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
@@ -112,21 +119,37 @@ func getStatusWatcher(factory Factory) (watcher.StatusWatcher, error) {
 	return sw, nil
 }
 
-// New creates a new Client.
-func New(getter genericclioptions.RESTClientGetter, waiter Waiter) (*Client, error) {
-	if getter == nil {
-		getter = genericclioptions.NewConfigFlags(true)
-	}
-	factory := cmdutil.NewFactory(getter)
-	if waiter == nil {
+func NewWaiter(strategy WaitStrategy, factory Factory, log func(string, ...interface{})) (Waiter, error) {
+	switch strategy {
+	case LegacyWaiter:
+		kc, err := factory.KubernetesClientSet()
+		if err != nil {
+			return nil, err
+		}
+		return &waiter{kubeClient: kc, log: log}, nil
+	case StatusWaiter:
 		sw, err := getStatusWatcher(factory)
 		if err != nil {
 			return nil, err
 		}
-		waiter = &statusWaiter{
+		return &statusWaiter{
 			sw:  sw,
-			log: nopLogger,
-		}
+			log: log,
+		}, nil
+	default:
+		return nil, errors.New("unknown wait strategy")
+	}
+}
+
+// New creates a new Client.
+func New(getter genericclioptions.RESTClientGetter, ws WaitStrategy) (*Client, error) {
+	if getter == nil {
+		getter = genericclioptions.NewConfigFlags(true)
+	}
+	factory := cmdutil.NewFactory(getter)
+	waiter, err := NewWaiter(ws, factory, nopLogger)
+	if err != nil {
+		return nil, err
 	}
 	return &Client{
 		Factory: factory,

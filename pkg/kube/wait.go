@@ -46,13 +46,6 @@ type waiter struct {
 	kubeClient *kubernetes.Clientset
 }
 
-func (w *waiter) NewLegacyWaiter(kubeClient *kubernetes.Clientset, log func(string, ...interface{})) *waiter {
-	return &waiter{
-		log:        log,
-		kubeClient: kubeClient,
-	}
-}
-
 func (w *waiter) Wait(resources ResourceList, timeout time.Duration) error {
 	w.c = NewReadyChecker(w.kubeClient, w.log, PausedAsReady(true))
 	w.timeout = timeout
