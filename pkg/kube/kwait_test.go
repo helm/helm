@@ -132,7 +132,7 @@ func TestKWaitForDelete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 			c := newTestClient(t)
 			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 			fakeMapper := testutil.NewFakeRESTMapper(
@@ -157,11 +157,11 @@ func TestKWaitForDelete(t *testing.T) {
 				gvr := getGVR(t, fakeMapper, resource)
 				err = fakeClient.Tracker().Create(gvr, resource, resource.GetNamespace())
 				assert.NoError(t, err)
-        go func(){
-          time.Sleep(2 * time.Second)
-          err = fakeClient.Tracker().Delete(gvr, resource.GetNamespace(), resource.GetName())
-          assert.NoError(t, err)
-        }()
+				go func() {
+					time.Sleep(2 * time.Second)
+					err = fakeClient.Tracker().Delete(gvr, resource.GetNamespace(), resource.GetName())
+					assert.NoError(t, err)
+				}()
 			}
 			resourceList := ResourceList{}
 			for _, obj := range objs {
@@ -180,7 +180,7 @@ func TestKWaitForDelete(t *testing.T) {
 
 }
 
-func TestKWaitJob(t *testing.T) {
+func TestKWait(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
@@ -224,7 +224,7 @@ func TestKWaitJob(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 			c := newTestClient(t)
 			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 			fakeMapper := testutil.NewFakeRESTMapper(
