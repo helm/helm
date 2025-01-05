@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package plugin // import "helm.sh/helm/v3/pkg/plugin"
+package plugin // import "helm.sh/helm/v4/pkg/plugin"
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ import (
 	"runtime"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v4/pkg/cli"
 )
 
 func TestPrepareCommand(t *testing.T) {

@@ -19,8 +19,8 @@ import (
 	"runtime"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 func TestResolve(t *testing.T) {

@@ -26,10 +26,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/internal/tlsutil"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/time/ctime"
+	"helm.sh/helm/v4/internal/tlsutil"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/time/ctime"
 )
 
 // OCIPusher is the default OCI backend handler

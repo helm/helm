@@ -22,7 +22,7 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 func TestSortManifests(t *testing.T) {

@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 var values map[string]interface{}
@@ -147,8 +147,8 @@ func TestHelmCreateChart(t *testing.T) {
 //
 // Note: This test requires the following ldflags to be set per the current Kubernetes version to avoid false-positive
 // results.
-// 1. -X helm.sh/helm/v3/pkg/lint/rules.k8sVersionMajor=<k8s-major-version>
-// 2. -X helm.sh/helm/v3/pkg/lint/rules.k8sVersionMinor=<k8s-minor-version>
+// 1. -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMajor=<k8s-major-version>
+// 2. -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMinor=<k8s-minor-version>
 // or directly use '$(LDFLAGS)' in Makefile.
 //
 // When run without ldflags, the test passes giving a false-positive result. This is because the variables
