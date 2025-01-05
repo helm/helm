@@ -20,12 +20,11 @@ import (
 	"fmt"
 	"strconv"
 
+	"helm.sh/helm/v4/pkg/releaseutil"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/endpoints/deprecation"
 	kscheme "k8s.io/client-go/kubernetes/scheme"
-
-	"helm.sh/helm/v4/pkg/chartutil"
 )
 
 var (
@@ -47,7 +46,7 @@ func (e deprecatedAPIError) Error() string {
 	return msg
 }
 
-func validateNoDeprecations(resource *K8sYamlStruct, kubeVersion *chartutil.KubeVersion) error {
+func validateNoDeprecations(resource *K8sYamlStruct, kubeVersion *releaseutil.KubeVersion) error {
 	// if `resource` does not have an APIVersion or Kind, we cannot test it for deprecation
 	if resource.APIVersion == "" {
 		return nil

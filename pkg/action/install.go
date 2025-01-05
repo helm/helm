@@ -40,7 +40,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chartutil"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
@@ -101,8 +100,8 @@ type Install struct {
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
-	KubeVersion *chartutil.KubeVersion
-	APIVersions chartutil.VersionSet
+	KubeVersion *releaseutil.KubeVersion
+	APIVersions releaseutil.VersionSet
 	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
 	IsUpgrade bool
 	// Enable DNS lookups when rendering templates
@@ -249,7 +248,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, errors.Wrap(err, "release name check failed")
 	}
 
-	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
+	if err := releaseutil.ProcessDependencies(chrt, vals); err != nil {
 		i.cfg.Log(fmt.Sprintf("ERROR: Processing chart dependencies failed: %v", err))
 		return nil, errors.Wrap(err, "chart dependencies processing failed")
 	}
@@ -273,7 +272,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	if i.ClientOnly {
 		// Add mock objects in here so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
-		i.cfg.Capabilities = chartutil.DefaultCapabilities.Copy()
+		i.cfg.Capabilities = releaseutil.DefaultCapabilities.Copy()
 		if i.KubeVersion != nil {
 			i.cfg.Capabilities.KubeVersion = *i.KubeVersion
 		}
@@ -298,14 +297,14 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 
 	// special case for helm template --is-upgrade
 	isUpgrade := i.IsUpgrade && i.isDryRun()
-	options := chartutil.ReleaseOptions{
+	options := releaseutil.ReleaseOptions{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
 		Revision:  1,
 		IsInstall: !isUpgrade,
 		IsUpgrade: isUpgrade,
 	}
-	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chrt, vals, options, caps, i.SkipSchemaValidation)
+	valuesToRender, err := releaseutil.ToRenderValuesWithSchemaValidation(chrt, vals, options, caps, i.SkipSchemaValidation)
 	if err != nil {
 		return nil, err
 	}
@@ -530,7 +529,7 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 func (i *Install) availableName() error {
 	start := i.ReleaseName
 
-	if err := chartutil.ValidateReleaseName(start); err != nil {
+	if err := releaseutil.ValidateReleaseName(start); err != nil {
 		return errors.Wrapf(err, "release name %q", start)
 	}
 	// On dry run, bail here

@@ -31,7 +31,7 @@ import (
 	"k8s.io/client-go/dynamic/fake"
 
 	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/releaseutil"
 )
 
 func TestSortTemplates(t *testing.T) {
@@ -112,7 +112,7 @@ func TestRender(t *testing.T) {
 		},
 	}
 
-	v, err := chartutil.CoalesceValues(c, vals)
+	v, err := releaseutil.CoalesceValues(c, vals)
 	if err != nil {
 		t.Fatalf("Failed to coalesce values: %s", err)
 	}
@@ -163,7 +163,7 @@ func TestRenderRefsOrdering(t *testing.T) {
 	}
 
 	for i := 0; i < 100; i++ {
-		out, err := Render(parentChart, chartutil.Values{})
+		out, err := Render(parentChart, releaseutil.Values{})
 		if err != nil {
 			t.Fatalf("Failed to render templates: %s", err)
 		}
@@ -179,7 +179,7 @@ func TestRenderRefsOrdering(t *testing.T) {
 func TestRenderInternals(t *testing.T) {
 	// Test the internals of the rendering tool.
 
-	vals := chartutil.Values{"Name": "one", "Value": "two"}
+	vals := releaseutil.Values{"Name": "one", "Value": "two"}
 	tpls := map[string]renderable{
 		"one": {tpl: `Hello {{title .Name}}`, vals: vals},
 		"two": {tpl: `Goodbye {{upper .Value}}`, vals: vals},
@@ -226,7 +226,7 @@ func TestRenderWithDNS(t *testing.T) {
 		"Values": map[string]interface{}{},
 	}
 
-	v, err := chartutil.CoalesceValues(c, vals)
+	v, err := releaseutil.CoalesceValues(c, vals)
 	if err != nil {
 		t.Fatalf("Failed to coalesce values: %s", err)
 	}
@@ -363,7 +363,7 @@ func TestRenderWithClientProvider(t *testing.T) {
 		"Values": map[string]interface{}{},
 	}
 
-	v, err := chartutil.CoalesceValues(c, vals)
+	v, err := releaseutil.CoalesceValues(c, vals)
 	if err != nil {
 		t.Fatalf("Failed to coalesce values: %s", err)
 	}
@@ -399,7 +399,7 @@ func TestRenderWithClientProvider_error(t *testing.T) {
 		"Values": map[string]interface{}{},
 	}
 
-	v, err := chartutil.CoalesceValues(c, vals)
+	v, err := releaseutil.CoalesceValues(c, vals)
 	if err != nil {
 		t.Fatalf("Failed to coalesce values: %s", err)
 	}
@@ -446,7 +446,7 @@ func TestParallelRenderInternals(t *testing.T) {
 }
 
 func TestParseErrors(t *testing.T) {
-	vals := chartutil.Values{"Values": map[string]interface{}{}}
+	vals := releaseutil.Values{"Values": map[string]interface{}{}}
 
 	tplsUndefinedFunction := map[string]renderable{
 		"undefined_function": {tpl: `{{foo}}`, vals: vals},
@@ -462,7 +462,7 @@ func TestParseErrors(t *testing.T) {
 }
 
 func TestExecErrors(t *testing.T) {
-	vals := chartutil.Values{"Values": map[string]interface{}{}}
+	vals := releaseutil.Values{"Values": map[string]interface{}{}}
 	cases := []struct {
 		name     string
 		tpls     map[string]renderable
@@ -526,7 +526,7 @@ linebreak`,
 }
 
 func TestFailErrors(t *testing.T) {
-	vals := chartutil.Values{"Values": map[string]interface{}{}}
+	vals := releaseutil.Values{"Values": map[string]interface{}{}}
 
 	failtpl := `All your base are belong to us{{ fail "This is an error" }}`
 	tplsFailed := map[string]renderable{
@@ -579,7 +579,7 @@ func TestAllTemplates(t *testing.T) {
 	}
 	dep1.AddDependency(dep2)
 
-	tpls := allTemplates(ch1, chartutil.Values{})
+	tpls := allTemplates(ch1, releaseutil.Values{})
 	if len(tpls) != 5 {
 		t.Errorf("Expected 5 charts, got %d", len(tpls))
 	}
@@ -600,7 +600,7 @@ func TestChartValuesContainsIsRoot(t *testing.T) {
 	}
 	ch1.AddDependency(dep1)
 
-	out, err := Render(ch1, chartutil.Values{})
+	out, err := Render(ch1, releaseutil.Values{})
 	if err != nil {
 		t.Fatalf("failed to render templates: %s", err)
 	}
@@ -704,15 +704,15 @@ func TestRenderNestedValues(t *testing.T) {
 		},
 	}
 
-	tmp, err := chartutil.CoalesceValues(outer, injValues)
+	tmp, err := releaseutil.CoalesceValues(outer, injValues)
 	if err != nil {
 		t.Fatalf("Failed to coalesce values: %s", err)
 	}
 
-	inject := chartutil.Values{
+	inject := releaseutil.Values{
 		"Values": tmp,
 		"Chart":  outer.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "dyin",
 		},
 	}
@@ -772,10 +772,10 @@ func TestRenderBuiltinValues(t *testing.T) {
 	}
 	outer.AddDependency(inner)
 
-	inject := chartutil.Values{
+	inject := releaseutil.Values{
 		"Values": "",
 		"Chart":  outer.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "Aeneid",
 		},
 	}
@@ -819,10 +819,10 @@ func TestAlterFuncMap_include(t *testing.T) {
 		},
 	}
 
-	v := chartutil.Values{
+	v := releaseutil.Values{
 		"Values": "",
 		"Chart":  c.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "Mistah Kurtz",
 		},
 	}
@@ -853,13 +853,13 @@ func TestAlterFuncMap_require(t *testing.T) {
 		},
 	}
 
-	v := chartutil.Values{
-		"Values": chartutil.Values{
+	v := releaseutil.Values{
+		"Values": releaseutil.Values{
 			"who":   "us",
 			"bases": 2,
 		},
 		"Chart": c.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "That 90s meme",
 		},
 	}
@@ -880,12 +880,12 @@ func TestAlterFuncMap_require(t *testing.T) {
 
 	// test required without passing in needed values with lint mode on
 	// verifies lint replaces required with an empty string (should not fail)
-	lintValues := chartutil.Values{
-		"Values": chartutil.Values{
+	lintValues := releaseutil.Values{
+		"Values": releaseutil.Values{
 			"who": "us",
 		},
 		"Chart": c.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "That 90s meme",
 		},
 	}
@@ -914,12 +914,12 @@ func TestAlterFuncMap_tpl(t *testing.T) {
 		},
 	}
 
-	v := chartutil.Values{
-		"Values": chartutil.Values{
+	v := releaseutil.Values{
+		"Values": releaseutil.Values{
 			"value": "myvalue",
 		},
 		"Chart": c.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "TestRelease",
 		},
 	}
@@ -943,12 +943,12 @@ func TestAlterFuncMap_tplfunc(t *testing.T) {
 		},
 	}
 
-	v := chartutil.Values{
-		"Values": chartutil.Values{
+	v := releaseutil.Values{
+		"Values": releaseutil.Values{
 			"value": "myvalue",
 		},
 		"Chart": c.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "TestRelease",
 		},
 	}
@@ -972,12 +972,12 @@ func TestAlterFuncMap_tplinclude(t *testing.T) {
 			{Name: "templates/_partial", Data: []byte(`{{.Template.Name}}`)},
 		},
 	}
-	v := chartutil.Values{
-		"Values": chartutil.Values{
+	v := releaseutil.Values{
+		"Values": releaseutil.Values{
 			"value": "myvalue",
 		},
 		"Chart": c.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "TestRelease",
 		},
 	}
@@ -1003,10 +1003,10 @@ func TestRenderRecursionLimit(t *testing.T) {
 			{Name: "templates/recursion", Data: []byte(`{{define "recursion"}}{{include "recursion" . }}{{end}}`)},
 		},
 	}
-	v := chartutil.Values{
+	v := releaseutil.Values{
 		"Values": "",
 		"Chart":  c.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "TestRelease",
 		},
 	}
@@ -1062,13 +1062,13 @@ func TestRenderLoadTemplateForTplFromFile(t *testing.T) {
 		},
 	}
 
-	v := chartutil.Values{
-		"Values": chartutil.Values{
+	v := releaseutil.Values{
+		"Values": releaseutil.Values{
 			"filename":  "test",
 			"filename2": "test2",
 		},
 		"Chart": c.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "TestRelease",
 		},
 	}
@@ -1093,9 +1093,9 @@ func TestRenderTplEmpty(t *testing.T) {
 			{Name: "templates/only-defines", Data: []byte(`{{tpl "{{define \"not-invoked\"}}not-rendered{{end}}" .}}`)},
 		},
 	}
-	v := chartutil.Values{
+	v := releaseutil.Values{
 		"Chart": c.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "TestRelease",
 		},
 	}
@@ -1129,10 +1129,10 @@ func TestRenderTplTemplateNames(t *testing.T) {
 			{Name: "templates/modified-field", Data: []byte(`{{tpl "{{ .Template.Field }}" .Values.dot}}`)},
 		},
 	}
-	v := chartutil.Values{
-		"Values": chartutil.Values{
-			"dot": chartutil.Values{
-				"Template": chartutil.Values{
+	v := releaseutil.Values{
+		"Values": releaseutil.Values{
+			"dot": releaseutil.Values{
+				"Template": releaseutil.Values{
 					"BasePath": "path/to/template",
 					"Name":     "name-of-template",
 					"Field":    "extra-field",
@@ -1140,7 +1140,7 @@ func TestRenderTplTemplateNames(t *testing.T) {
 			},
 		},
 		"Chart": c.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "TestRelease",
 		},
 	}
@@ -1190,8 +1190,8 @@ func TestRenderTplRedefines(t *testing.T) {
 			)},
 		},
 	}
-	v := chartutil.Values{
-		"Values": chartutil.Values{
+	v := releaseutil.Values{
+		"Values": releaseutil.Values{
 			"partialText":      `{{define "partial"}}redefined-in-tpl{{end}}tpl: {{include "partial" .}}`,
 			"manifestText":     `{{define "manifest"}}redefined-in-tpl{{end}}tpl: {{include "manifest" .}}`,
 			"manifestOnlyText": `tpl: {{include "manifest-only" .}}`,
@@ -1203,7 +1203,7 @@ func TestRenderTplRedefines(t *testing.T) {
 			"innerText": `{{define "nested"}}redefined-in-inner-tpl{{end}}inner-tpl: {{include "nested" .}} {{include "nested-outer" . }}`,
 		},
 		"Chart": c.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "TestRelease",
 		},
 	}
@@ -1240,10 +1240,10 @@ func TestRenderTplMissingKey(t *testing.T) {
 			)},
 		},
 	}
-	v := chartutil.Values{
-		"Values": chartutil.Values{},
+	v := releaseutil.Values{
+		"Values": releaseutil.Values{},
 		"Chart":  c.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "TestRelease",
 		},
 	}
@@ -1273,10 +1273,10 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 			)},
 		},
 	}
-	v := chartutil.Values{
-		"Values": chartutil.Values{},
+	v := releaseutil.Values{
+		"Values": releaseutil.Values{},
 		"Chart":  c.Metadata,
-		"Release": chartutil.Values{
+		"Release": releaseutil.Values{
 			"Name": "TestRelease",
 		},
 	}
