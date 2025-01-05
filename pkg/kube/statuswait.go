@@ -33,24 +33,24 @@ import (
 	"sigs.k8s.io/cli-utils/pkg/object"
 )
 
-type kstatusWaiter struct {
+type statusWaiter struct {
 	sw  watcher.StatusWatcher
 	log func(string, ...interface{})
 }
 
-func (w *kstatusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
+func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 	return w.wait(ctx, resourceList, false)
 }
 
-func (w *kstatusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
+func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 	return w.wait(ctx, resourceList, true)
 }
 
-func (w *kstatusWaiter) waitForDelete(ctx context.Context, resourceList ResourceList) error {
+func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceList) error {
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	runtimeObjs := []runtime.Object{}
@@ -109,7 +109,7 @@ func (w *kstatusWaiter) waitForDelete(ctx context.Context, resourceList Resource
 	return nil
 }
 
-func (w *kstatusWaiter) wait(ctx context.Context, resourceList ResourceList, waitForJobs bool) error {
+func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, waitForJobs bool) error {
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	runtimeObjs := []runtime.Object{}

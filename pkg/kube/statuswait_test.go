@@ -116,7 +116,7 @@ func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured
 	return mapping.Resource
 }
 
-func TestKWaitForDelete(t *testing.T) {
+func TestStatusWaitForDelete(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
@@ -132,7 +132,7 @@ func TestKWaitForDelete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 			c := newTestClient(t)
 			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 			fakeMapper := testutil.NewFakeRESTMapper(
@@ -141,7 +141,7 @@ func TestKWaitForDelete(t *testing.T) {
 				batchv1.SchemeGroupVersion.WithKind("Job"),
 			)
 			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
-			kwaiter := kstatusWaiter{
+			kwaiter := statusWaiter{
 				sw:  statusWatcher,
 				log: log.Printf,
 			}
@@ -180,7 +180,7 @@ func TestKWaitForDelete(t *testing.T) {
 
 }
 
-func TestKWait(t *testing.T) {
+func TestStatusWait(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
@@ -224,7 +224,7 @@ func TestKWait(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 			c := newTestClient(t)
 			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 			fakeMapper := testutil.NewFakeRESTMapper(
@@ -244,7 +244,7 @@ func TestKWait(t *testing.T) {
 				err = fakeClient.Tracker().Create(gvr, resource, resource.GetNamespace())
 				assert.NoError(t, err)
 			}
-			kwaiter := kstatusWaiter{
+			kwaiter := statusWaiter{
 				sw:  statusWatcher,
 				log: log.Printf,
 			}
