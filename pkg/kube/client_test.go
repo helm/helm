@@ -616,10 +616,6 @@ func TestPerform(t *testing.T) {
 	}
 }
 
-// Likely it is not possible to get this test to work with kstatus given that it seems
-// kstatus is not making constant get checks on the resources and is instead waiting for events
-// Potentially the test could be reworked to make the pods after five seconds
-// would need this ->
 func TestWait(t *testing.T) {
 	podList := newPodList("starfish", "otter", "squid")
 
