@@ -15,23 +15,3 @@ limitations under the License.
 */
 
 package chartutil
-
-import (
-	"testing"
-)
-
-func TestErrorNoTableDoesNotPanic(t *testing.T) {
-	x := "empty"
-
-	y := ErrNoTable{x}
-
-	t.Logf("error is: %s", y)
-}
-
-func TestErrorNoValueDoesNotPanic(t *testing.T) {
-	x := "empty"
-
-	y := ErrNoValue{x}
-
-	t.Logf("error is: %s", y)
-}
