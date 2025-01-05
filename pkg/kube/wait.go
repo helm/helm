@@ -34,26 +34,33 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/kubernetes"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type waiter struct {
-	c       ReadyChecker
-	timeout time.Duration
-	log     func(string, ...interface{})
+	c          ReadyChecker
+	timeout    time.Duration
+	log        func(string, ...interface{})
+	kubeClient *kubernetes.Clientset
+}
+
+func (w *waiter) NewLegacyWaiter(kubeClient *kubernetes.Clientset, log func(string, ...interface{})) *waiter {
+	return &waiter{
+		log:        log,
+		kubeClient: kubeClient,
+	}
 }
 
 func (w *waiter) Wait(resources ResourceList, timeout time.Duration) error {
+	w.c = NewReadyChecker(w.kubeClient, w.log, PausedAsReady(true))
 	w.timeout = timeout
 	return w.waitForResources(resources)
 }
 
 func (w *waiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
-	// Implementation
-	// TODO this function doesn't make sense unless you pass a readyChecker to it
-	// TODO pass context instead
-	// checker := NewReadyChecker(cs, w.c.Log, PausedAsReady(true), CheckJobs(true))
+	w.c = NewReadyChecker(w.kubeClient, w.log, PausedAsReady(true), CheckJobs(true))
 	w.timeout = timeout
 	return w.waitForResources(resources)
 }
