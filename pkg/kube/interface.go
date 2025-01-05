@@ -20,7 +20,6 @@ import (
 	"io"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -49,9 +48,6 @@ type Interface interface {
 	// error.
 	// TODO: Is watch until ready really behavior we want over the resources actually being ready?
 	WatchUntilReady(resources ResourceList, timeout time.Duration) error
-	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
-	// and returns said phase (PodSucceeded or PodFailed qualify).
-	WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error)
 	// Build creates a resource list from a Reader.
 	//
 	// Reader must contain a YAML stream (one or more YAML documents separated
