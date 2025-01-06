@@ -119,20 +119,29 @@ func TestStatusWaitForDelete(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
-		objYamls    []string
+		objToCreate []string
+		toDelete    []string
 		expectErrs  []error
-		waitForJobs bool
 	}{
 		{
-			name:       "wait for pod to be deleted",
-			objYamls:   []string{podCurrent},
-			expectErrs: nil,
+			name:        "wait for pod to be deleted",
+			objToCreate: []string{podCurrent},
+			toDelete:    []string{podCurrent},
+			expectErrs:  nil,
+		},
+		{
+			name:        "error when not all objects are deleted",
+			objToCreate: []string{jobComplete, podCurrent},
+			toDelete:    []string{jobComplete},
+			expectErrs:  []error{errors.New("resource still exists, name: good-pod, kind: Pod, status: Current"), errors.New("context deadline exceeded")},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			c := newTestClient(t)
+			timeout := time.Second * 3
+			timeToDeletePod := time.Second * 2
 			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 			fakeMapper := testutil.NewFakeRESTMapper(
 				v1.SchemeGroupVersion.WithKind("Pod"),
@@ -140,35 +149,42 @@ func TestStatusWaitForDelete(t *testing.T) {
 				batchv1.SchemeGroupVersion.WithKind("Job"),
 			)
 			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
-			kwaiter := statusWaiter{
+			statusWaiter := statusWaiter{
 				sw:  statusWatcher,
 				log: t.Logf,
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
 			defer cancel()
-			objs := []runtime.Object{}
-			for _, podYaml := range tt.objYamls {
+			createdObjs := []runtime.Object{}
+			for _, objYaml := range tt.objToCreate {
 				m := make(map[string]interface{})
-				err := yaml.Unmarshal([]byte(podYaml), &m)
+				err := yaml.Unmarshal([]byte(objYaml), &m)
 				assert.NoError(t, err)
 				resource := &unstructured.Unstructured{Object: m}
-				objs = append(objs, resource)
+				createdObjs = append(createdObjs, resource)
 				gvr := getGVR(t, fakeMapper, resource)
 				err = fakeClient.Tracker().Create(gvr, resource, resource.GetNamespace())
 				assert.NoError(t, err)
+			}
+			for _, objYaml := range tt.toDelete {
+				m := make(map[string]interface{})
+				err := yaml.Unmarshal([]byte(objYaml), &m)
+				assert.NoError(t, err)
+				resource := &unstructured.Unstructured{Object: m}
+				gvr := getGVR(t, fakeMapper, resource)
 				go func() {
-					time.Sleep(2 * time.Second)
+					time.Sleep(timeToDeletePod)
 					err = fakeClient.Tracker().Delete(gvr, resource.GetNamespace(), resource.GetName())
 					assert.NoError(t, err)
 				}()
 			}
 			resourceList := ResourceList{}
-			for _, obj := range objs {
+			for _, obj := range createdObjs {
 				list, err := c.Build(objBody(obj), false)
 				assert.NoError(t, err)
 				resourceList = append(resourceList, list...)
 			}
-			err := kwaiter.waitForDelete(ctx, resourceList)
+			err := statusWaiter.waitForDelete(ctx, resourceList)
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
 				return
@@ -195,7 +211,7 @@ func TestStatusWait(t *testing.T) {
 		{
 			name:        "Job is not complete",
 			objYamls:    []string{jobNoStatus},
-			expectErrs:  []error{errors.New("test: Job not ready, status: InProgress"), errors.New("context deadline exceeded")},
+			expectErrs:  []error{errors.New("resource not ready, name: test, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
 			waitForJobs: true,
 		},
 		{
@@ -212,7 +228,7 @@ func TestStatusWait(t *testing.T) {
 		{
 			name:       "one of the pods never becomes ready",
 			objYamls:   []string{podNoStatus, podCurrent},
-			expectErrs: []error{errors.New("in-progress-pod: Pod not ready, status: InProgress"), errors.New("context deadline exceeded")},
+			expectErrs: []error{errors.New("resource not ready, name: in-progress-pod, kind: Pod, status: InProgress"), errors.New("context deadline exceeded")},
 		},
 		{
 			name:       "paused deployment passes",
@@ -231,8 +247,13 @@ func TestStatusWait(t *testing.T) {
 				appsv1.SchemeGroupVersion.WithKind("Deployment"),
 				batchv1.SchemeGroupVersion.WithKind("Job"),
 			)
-			objs := []runtime.Object{}
 			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
+			statusWaiter := statusWaiter{
+				sw:  statusWatcher,
+				log: t.Logf,
+			}
+			objs := []runtime.Object{}
+
 			for _, podYaml := range tt.objYamls {
 				m := make(map[string]interface{})
 				err := yaml.Unmarshal([]byte(podYaml), &m)
@@ -243,11 +264,6 @@ func TestStatusWait(t *testing.T) {
 				err = fakeClient.Tracker().Create(gvr, resource, resource.GetNamespace())
 				assert.NoError(t, err)
 			}
-			kwaiter := statusWaiter{
-				sw:  statusWatcher,
-				log: t.Logf,
-			}
-
 			resourceList := ResourceList{}
 			for _, obj := range objs {
 				list, err := c.Build(objBody(obj), false)
@@ -257,8 +273,7 @@ func TestStatusWait(t *testing.T) {
 
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 			defer cancel()
-
-			err := kwaiter.wait(ctx, resourceList, tt.waitForJobs)
+			err := statusWaiter.wait(ctx, resourceList, tt.waitForJobs)
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
 				return

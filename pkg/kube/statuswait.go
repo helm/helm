@@ -85,9 +85,9 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 				continue
 			}
 			if rs.Status == status.UnknownStatus {
-				errs = append(errs, fmt.Errorf("%s: %s cannot determine if resource exists, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
+				errs = append(errs, fmt.Errorf("cannot determine resource state, name: %s, kind: %s, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
 			} else {
-				errs = append(errs, fmt.Errorf("%s: %s still exists, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
+				errs = append(errs, fmt.Errorf("resource still exists, name: %s, kind: %s, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
 			}
 		}
 		errs = append(errs, ctx.Err())
@@ -140,7 +140,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, wait
 			if rs.Status == status.CurrentStatus {
 				continue
 			}
-			errs = append(errs, fmt.Errorf("%s: %s not ready, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
+			errs = append(errs, fmt.Errorf("resource not ready, name: %s, kind: %s, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
 		}
 		errs = append(errs, ctx.Err())
 		return errors.Join(errs...)
