@@ -121,6 +121,7 @@ func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured
 }
 
 func TestStatusLogger(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*1500)
 	defer cancel()
 	readyPod := object.ObjMetadata{
