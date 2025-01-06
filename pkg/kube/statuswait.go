@@ -84,11 +84,7 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 			if rs.Status == status.NotFoundStatus {
 				continue
 			}
-			if rs.Status == status.UnknownStatus {
-				errs = append(errs, fmt.Errorf("cannot determine resource state, name: %s, kind: %s, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
-			} else {
-				errs = append(errs, fmt.Errorf("resource still exists, name: %s, kind: %s, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
-			}
+			errs = append(errs, fmt.Errorf("resource still exists, name: %s, kind: %s, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
 		}
 		errs = append(errs, ctx.Err())
 		return errors.Join(errs...)
