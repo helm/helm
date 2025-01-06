@@ -144,8 +144,8 @@ func TestStatusWaitForDelete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			c := newTestClient(t)
-			timeout := time.Second * 3
-			timeToDeletePod := time.Second * 2
+			timeout := time.Second * 2
+			timeUntilPodDelete := time.Second * 1
 			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 			fakeMapper := testutil.NewFakeRESTMapper(
 				v1.SchemeGroupVersion.WithKind("Pod"),
@@ -175,7 +175,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 				resource := &unstructured.Unstructured{Object: m}
 				gvr := getGVR(t, fakeMapper, resource)
 				go func() {
-					time.Sleep(timeToDeletePod)
+					time.Sleep(timeUntilPodDelete)
 					err = fakeClient.Tracker().Delete(gvr, resource.GetNamespace(), resource.GetName())
 					assert.NoError(t, err)
 				}()
