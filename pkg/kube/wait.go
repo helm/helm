@@ -39,6 +39,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
+// HelmWaiter is the legacy implementation of the Waiter interface. This logic was used by default in Helm 3
+// Helm 4 now uses the StatusWaiter interface instead
 type HelmWaiter struct {
 	c          ReadyChecker
 	timeout    time.Duration
