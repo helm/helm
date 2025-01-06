@@ -17,7 +17,7 @@ limitations under the License.
 package kube // import "helm.sh/helm/v4/pkg/kube"
 
 import (
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -34,7 +34,9 @@ import (
 // Helm does not need are not impacted or exposed. This minimizes the impact of Kubernetes changes
 // being exposed.
 type Factory interface {
-	genericclioptions.RESTClientGetter
+	// ToRESTMapper returns a restmapper
+	ToRESTMapper() (meta.RESTMapper, error)
+
 	// ToRawKubeConfigLoader return kubeconfig loader as-is
 	ToRawKubeConfigLoader() clientcmd.ClientConfig
 
