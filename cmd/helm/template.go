@@ -24,6 +24,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -206,12 +207,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 func isTestHook(h *release.Hook) bool {
-	for _, e := range h.Events {
-		if e == release.HookTest {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(h.Events, release.HookTest)
 }
 
 // The following functions (writeToFile, createOrOpenFile, and ensureDirectoryForFile)

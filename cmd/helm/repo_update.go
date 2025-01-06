@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"slices"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -158,10 +159,5 @@ func checkRequestedRepos(requestedRepos []string, validRepos []*repo.Entry) erro
 }
 
 func isRepoRequested(repoName string, requestedRepos []string) bool {
-	for _, requestedRepo := range requestedRepos {
-		if repoName == requestedRepo {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(requestedRepos, repoName)
 }
