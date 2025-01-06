@@ -43,7 +43,7 @@ import (
 	"sigs.k8s.io/cli-utils/pkg/testutil"
 )
 
-var podCurrent = `
+var podCurrentManifest = `
 apiVersion: v1
 kind: Pod
 metadata:
@@ -56,7 +56,7 @@ status:
   phase: Running
 `
 
-var podNoStatus = `
+var podNoStatusManifest = `
 apiVersion: v1
 kind: Pod
 metadata:
@@ -64,7 +64,7 @@ metadata:
   namespace: ns
 `
 
-var jobNoStatus = `
+var jobNoStatusManifest = `
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -73,7 +73,7 @@ metadata:
    generation: 1
 `
 
-var jobComplete = `
+var jobCompleteManifest = `
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -88,7 +88,7 @@ status:
       status: "True"
 `
 
-var pausedDeploymentYaml = `
+var pausedDeploymentManifest = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -148,22 +148,22 @@ func TestStatusLogger(t *testing.T) {
 func TestStatusWaitForDelete(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name        string
-		objToCreate []string
-		toDelete    []string
-		expectErrs  []error
+		name              string
+		manifestsToCreate []string
+		manifestsToDelete []string
+		expectErrs        []error
 	}{
 		{
-			name:        "wait for pod to be deleted",
-			objToCreate: []string{podCurrent},
-			toDelete:    []string{podCurrent},
-			expectErrs:  nil,
+			name:              "wait for pod to be deleted",
+			manifestsToCreate: []string{podCurrentManifest},
+			manifestsToDelete: []string{podCurrentManifest},
+			expectErrs:        nil,
 		},
 		{
-			name:        "error when not all objects are deleted",
-			objToCreate: []string{jobComplete, podCurrent},
-			toDelete:    []string{jobComplete},
-			expectErrs:  []error{errors.New("resource still exists, name: good-pod, kind: Pod, status: Current"), errors.New("context deadline exceeded")},
+			name:              "error when not all objects are deleted",
+			manifestsToCreate: []string{jobCompleteManifest, podCurrentManifest},
+			manifestsToDelete: []string{jobCompleteManifest},
+			expectErrs:        []error{errors.New("resource still exists, name: good-pod, kind: Pod, status: Current"), errors.New("context deadline exceeded")},
 		},
 	}
 	for _, tt := range tests {
@@ -184,9 +184,9 @@ func TestStatusWaitForDelete(t *testing.T) {
 				log: t.Logf,
 			}
 			createdObjs := []runtime.Object{}
-			for _, objYaml := range tt.objToCreate {
+			for _, manifest := range tt.manifestsToCreate {
 				m := make(map[string]interface{})
-				err := yaml.Unmarshal([]byte(objYaml), &m)
+				err := yaml.Unmarshal([]byte(manifest), &m)
 				assert.NoError(t, err)
 				resource := &unstructured.Unstructured{Object: m}
 				createdObjs = append(createdObjs, resource)
@@ -194,9 +194,9 @@ func TestStatusWaitForDelete(t *testing.T) {
 				err = fakeClient.Tracker().Create(gvr, resource, resource.GetNamespace())
 				assert.NoError(t, err)
 			}
-			for _, objYaml := range tt.toDelete {
+			for _, manifest := range tt.manifestsToDelete {
 				m := make(map[string]interface{})
-				err := yaml.Unmarshal([]byte(objYaml), &m)
+				err := yaml.Unmarshal([]byte(manifest), &m)
 				assert.NoError(t, err)
 				resource := &unstructured.Unstructured{Object: m}
 				gvr := getGVR(t, fakeMapper, resource)
@@ -226,42 +226,42 @@ func TestStatusWaitForDelete(t *testing.T) {
 func TestStatusWait(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name        string
-		objYamls    []string
-		expectErrs  []error
-		waitForJobs bool
+		name         string
+		objManifests []string
+		expectErrs   []error
+		waitForJobs  bool
 	}{
 		{
-			name:       "Job is complete",
-			objYamls:   []string{jobComplete},
-			expectErrs: nil,
+			name:         "Job is complete",
+			objManifests: []string{jobCompleteManifest},
+			expectErrs:   nil,
 		},
 		{
-			name:        "Job is not complete",
-			objYamls:    []string{jobNoStatus},
-			expectErrs:  []error{errors.New("resource not ready, name: test, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
-			waitForJobs: true,
+			name:         "Job is not complete",
+			objManifests: []string{jobNoStatusManifest},
+			expectErrs:   []error{errors.New("resource not ready, name: test, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
+			waitForJobs:  true,
 		},
 		{
-			name:        "Job is not ready, but we pass wait anyway",
-			objYamls:    []string{jobNoStatus},
-			expectErrs:  nil,
-			waitForJobs: false,
+			name:         "Job is not ready, but we pass wait anyway",
+			objManifests: []string{jobNoStatusManifest},
+			expectErrs:   nil,
+			waitForJobs:  false,
 		},
 		{
-			name:       "Pod is ready",
-			objYamls:   []string{podCurrent},
-			expectErrs: nil,
+			name:         "Pod is ready",
+			objManifests: []string{podCurrentManifest},
+			expectErrs:   nil,
 		},
 		{
-			name:       "one of the pods never becomes ready",
-			objYamls:   []string{podNoStatus, podCurrent},
-			expectErrs: []error{errors.New("resource not ready, name: in-progress-pod, kind: Pod, status: InProgress"), errors.New("context deadline exceeded")},
+			name:         "one of the pods never becomes ready",
+			objManifests: []string{podNoStatusManifest, podCurrentManifest},
+			expectErrs:   []error{errors.New("resource not ready, name: in-progress-pod, kind: Pod, status: InProgress"), errors.New("context deadline exceeded")},
 		},
 		{
-			name:       "paused deployment passes",
-			objYamls:   []string{pausedDeploymentYaml},
-			expectErrs: nil,
+			name:         "paused deployment passes",
+			objManifests: []string{pausedDeploymentManifest},
+			expectErrs:   nil,
 		},
 	}
 
@@ -282,7 +282,7 @@ func TestStatusWait(t *testing.T) {
 			}
 			objs := []runtime.Object{}
 
-			for _, podYaml := range tt.objYamls {
+			for _, podYaml := range tt.objManifests {
 				m := make(map[string]interface{})
 				err := yaml.Unmarshal([]byte(podYaml), &m)
 				assert.NoError(t, err)
