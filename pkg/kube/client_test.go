@@ -459,7 +459,6 @@ func TestWait(t *testing.T) {
 	var created *time.Time
 
 	c := newTestClient(t)
-	c.Factory.(*cmdtesting.TestFactory).ClientConfigVal = cmdtesting.DefaultClientConfig()
 	c.Factory.(*cmdtesting.TestFactory).Client = &fake.RESTClient{
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
@@ -659,7 +658,7 @@ func TestWaitDelete(t *testing.T) {
 }
 
 func TestReal(t *testing.T) {
-	t.Skip("This is a live test, comment this line to run")
+	// t.Skip("This is a live test, comment this line to run")
 	c, err := New(nil, StatusWaiterStrategy)
 	if err != nil {
 		t.Fatal(err)
