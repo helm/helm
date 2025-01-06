@@ -50,6 +50,12 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	return w.wait(ctx, resourceList, true)
 }
 
+func (w *statusWaiter) WaitForDelete(resourceList ResourceList, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	defer cancel()
+	return w.waitForDelete(ctx, resourceList)
+}
+
 func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceList) error {
 	deadline, _ := ctx.Deadline()
 	w.log("beginning wait for %d resources to be deleted with timeout of %v", len(resourceList), time.Until(deadline))

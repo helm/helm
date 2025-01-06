@@ -43,29 +43,26 @@ import (
 // Helm 4 now uses the StatusWaiter interface instead
 type HelmWaiter struct {
 	c          ReadyChecker
-	timeout    time.Duration
 	log        func(string, ...interface{})
 	kubeClient *kubernetes.Clientset
 }
 
 func (w *HelmWaiter) Wait(resources ResourceList, timeout time.Duration) error {
 	w.c = NewReadyChecker(w.kubeClient, w.log, PausedAsReady(true))
-	w.timeout = timeout
-	return w.waitForResources(resources)
+	return w.waitForResources(resources, timeout)
 }
 
 func (w *HelmWaiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
 	w.c = NewReadyChecker(w.kubeClient, w.log, PausedAsReady(true), CheckJobs(true))
-	w.timeout = timeout
-	return w.waitForResources(resources)
+	return w.waitForResources(resources, timeout)
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, Services and
 // Jobs(optional) until all are ready or a timeout is reached
-func (w *HelmWaiter) waitForResources(created ResourceList) error {
-	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
+func (w *HelmWaiter) waitForResources(created ResourceList, timeout time.Duration) error {
+	w.log("beginning wait for %d resources with timeout of %v", len(created), timeout)
 
-	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	numberOfErrors := make([]int, len(created))
@@ -116,10 +113,10 @@ func (w *HelmWaiter) isRetryableHTTPStatusCode(httpStatusCode int32) bool {
 }
 
 // waitForDeletedResources polls to check if all the resources are deleted or a timeout is reached
-func (w *HelmWaiter) waitForDeletedResources(deleted ResourceList) error {
-	w.log("beginning wait for %d resources to be deleted with timeout of %v", len(deleted), w.timeout)
+func (w *HelmWaiter) WaitForDelete(deleted ResourceList, timeout time.Duration) error {
+	w.log("beginning wait for %d resources to be deleted with timeout of %v", len(deleted), timeout)
 
-	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	return wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(_ context.Context) (bool, error) {

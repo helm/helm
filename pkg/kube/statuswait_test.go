@@ -153,8 +153,6 @@ func TestStatusWaitForDelete(t *testing.T) {
 				sw:  statusWatcher,
 				log: t.Logf,
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), timeout)
-			defer cancel()
 			createdObjs := []runtime.Object{}
 			for _, objYaml := range tt.objToCreate {
 				m := make(map[string]interface{})
@@ -184,7 +182,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 				assert.NoError(t, err)
 				resourceList = append(resourceList, list...)
 			}
-			err := statusWaiter.waitForDelete(ctx, resourceList)
+			err := statusWaiter.WaitForDelete(resourceList, timeout)
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
 				return
