@@ -39,20 +39,20 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-type waiter struct {
+type HelmWaiter struct {
 	c          ReadyChecker
 	timeout    time.Duration
 	log        func(string, ...interface{})
 	kubeClient *kubernetes.Clientset
 }
 
-func (w *waiter) Wait(resources ResourceList, timeout time.Duration) error {
+func (w *HelmWaiter) Wait(resources ResourceList, timeout time.Duration) error {
 	w.c = NewReadyChecker(w.kubeClient, w.log, PausedAsReady(true))
 	w.timeout = timeout
 	return w.waitForResources(resources)
 }
 
-func (w *waiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
+func (w *HelmWaiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
 	w.c = NewReadyChecker(w.kubeClient, w.log, PausedAsReady(true), CheckJobs(true))
 	w.timeout = timeout
 	return w.waitForResources(resources)
@@ -60,7 +60,7 @@ func (w *waiter) WaitWithJobs(resources ResourceList, timeout time.Duration) err
 
 // waitForResources polls to get the current status of all pods, PVCs, Services and
 // Jobs(optional) until all are ready or a timeout is reached
-func (w *waiter) waitForResources(created ResourceList) error {
+func (w *HelmWaiter) waitForResources(created ResourceList) error {
 	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
@@ -94,7 +94,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 	})
 }
 
-func (w *waiter) isRetryableError(err error, resource *resource.Info) bool {
+func (w *HelmWaiter) isRetryableError(err error, resource *resource.Info) bool {
 	if err == nil {
 		return false
 	}
@@ -109,12 +109,12 @@ func (w *waiter) isRetryableError(err error, resource *resource.Info) bool {
 	return true
 }
 
-func (w *waiter) isRetryableHTTPStatusCode(httpStatusCode int32) bool {
+func (w *HelmWaiter) isRetryableHTTPStatusCode(httpStatusCode int32) bool {
 	return httpStatusCode == 0 || httpStatusCode == http.StatusTooManyRequests || (httpStatusCode >= 500 && httpStatusCode != http.StatusNotImplemented)
 }
 
 // waitForDeletedResources polls to check if all the resources are deleted or a timeout is reached
-func (w *waiter) waitForDeletedResources(deleted ResourceList) error {
+func (w *HelmWaiter) waitForDeletedResources(deleted ResourceList) error {
 	w.log("beginning wait for %d resources to be deleted with timeout of %v", len(deleted), w.timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)

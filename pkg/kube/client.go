@@ -126,7 +126,7 @@ func NewWaiter(strategy WaitStrategy, factory Factory, log func(string, ...inter
 		if err != nil {
 			return nil, err
 		}
-		return &waiter{kubeClient: kc, log: log}, nil
+		return &HelmWaiter{kubeClient: kc, log: log}, nil
 	case StatusWaiter:
 		sw, err := getStatusWatcher(factory)
 		if err != nil {
@@ -333,7 +333,7 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 
 // WaitForDelete wait up to the given timeout for the specified resources to be deleted.
 func (c *Client) WaitForDelete(resources ResourceList, timeout time.Duration) error {
-	w := waiter{
+	w := HelmWaiter{
 		log:     c.Log,
 		timeout: timeout,
 	}

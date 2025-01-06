@@ -143,7 +143,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
 			kwaiter := statusWaiter{
 				sw:  statusWatcher,
-				log: log.Printf,
+				log: t.Logf,
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 			defer cancel()
