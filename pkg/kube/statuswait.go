@@ -75,6 +75,7 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 	}
 	eventCh := w.sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
+	go logResource(ctx, resources, statusCollector, status.NotFoundStatus, w.log)
 	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus))
 	<-done
 
@@ -127,6 +128,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, wait
 	}
 	eventCh := w.sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
+	go logResource(cancelCtx, resources, statusCollector, status.CurrentStatus, w.log)
 	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus))
 	<-done
 
@@ -162,6 +164,26 @@ func statusObserver(cancel context.CancelFunc, desired status.Status) collector.
 		if aggregator.AggregateStatus(rss, desired) == desired {
 			cancel()
 			return
+		}
+	}
+}
+
+func logResource(ctx context.Context, resources []object.ObjMetadata, sc *collector.ResourceStatusCollector, desiredStatus status.Status, log func(string, ...interface{})) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			for _, id := range resources {
+				rs := sc.ResourceStatuses[id]
+				if rs.Status != desiredStatus {
+					log("waiting for resource, name: %s, kind: %s, desired status: %s, actual status: %s\n", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, desiredStatus, rs.Status)
+					// only log one resource to not overwhelm the logs
+					break
+				}
+			}
 		}
 	}
 }

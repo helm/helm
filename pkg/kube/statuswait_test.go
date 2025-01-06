@@ -19,6 +19,7 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -114,6 +115,9 @@ func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured
 	require.NoError(t, err)
 	return mapping.Resource
 }
+func testLogger(message string, args ...interface{}) {
+	fmt.Printf(message, args...)
+}
 
 func TestStatusWaitForDelete(t *testing.T) {
 	t.Parallel()
@@ -151,7 +155,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
 			statusWaiter := statusWaiter{
 				sw:  statusWatcher,
-				log: t.Logf,
+				log: testLogger,
 			}
 			createdObjs := []runtime.Object{}
 			for _, objYaml := range tt.objToCreate {
@@ -248,7 +252,7 @@ func TestStatusWait(t *testing.T) {
 			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
 			statusWaiter := statusWaiter{
 				sw:  statusWatcher,
-				log: t.Logf,
+				log: testLogger,
 			}
 			objs := []runtime.Object{}
 
