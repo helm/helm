@@ -19,7 +19,6 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 import (
 	"context"
 	"errors"
-	"log"
 	"testing"
 	"time"
 
@@ -246,7 +245,7 @@ func TestStatusWait(t *testing.T) {
 			}
 			kwaiter := statusWaiter{
 				sw:  statusWatcher,
-				log: log.Printf,
+				log: t.Logf,
 			}
 
 			resourceList := ResourceList{}

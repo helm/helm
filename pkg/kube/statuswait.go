@@ -69,22 +69,7 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 	}
 	eventCh := w.sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, collector.ObserverFunc(
-		func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
-			rss := []*event.ResourceStatus{}
-			for _, rs := range statusCollector.ResourceStatuses {
-				if rs == nil {
-					continue
-				}
-				rss = append(rss, rs)
-			}
-			desired := status.NotFoundStatus
-			if aggregator.AggregateStatus(rss, desired) == desired {
-				cancel()
-				return
-			}
-		}),
-	)
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -140,22 +125,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, wait
 	}
 	eventCh := w.sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, collector.ObserverFunc(
-		func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
-			rss := []*event.ResourceStatus{}
-			for _, rs := range statusCollector.ResourceStatuses {
-				if rs == nil {
-					continue
-				}
-				rss = append(rss, rs)
-			}
-			desired := status.CurrentStatus
-			if aggregator.AggregateStatus(rss, desired) == desired {
-				cancel()
-				return
-			}
-		}),
-	)
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -176,4 +146,20 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, wait
 		return errors.Join(errs...)
 	}
 	return nil
+}
+
+func statusObserver(cancel context.CancelFunc, desired status.Status) collector.ObserverFunc {
+	return func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
+		rss := []*event.ResourceStatus{}
+		for _, rs := range statusCollector.ResourceStatuses {
+			if rs == nil {
+				continue
+			}
+			rss = append(rss, rs)
+		}
+		if aggregator.AggregateStatus(rss, desired) == desired {
+			cancel()
+			return
+		}
+	}
 }
