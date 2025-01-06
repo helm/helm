@@ -24,7 +24,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/aggregator"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/collector"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/event"
@@ -61,13 +60,9 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 	w.log("beginning wait for %d resources to be deleted with timeout of %v", len(resourceList), time.Until(deadline))
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	runtimeObjs := []runtime.Object{}
-	for _, resource := range resourceList {
-		runtimeObjs = append(runtimeObjs, resource.Object)
-	}
 	resources := []object.ObjMetadata{}
-	for _, runtimeObj := range runtimeObjs {
-		obj, err := object.RuntimeToObjMeta(runtimeObj)
+	for _, resource := range resourceList {
+		obj, err := object.RuntimeToObjMeta(resource.Object)
 		if err != nil {
 			return err
 		}
@@ -104,7 +99,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, wait
 	w.log("beginning wait for %d resources with timeout of %v", len(resourceList), deadline)
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	runtimeObjs := []runtime.Object{}
+	resources := []object.ObjMetadata{}
 	for _, resource := range resourceList {
 		switch value := AsVersioned(resource).(type) {
 		case *batchv1.Job:
@@ -116,16 +111,13 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, wait
 				continue
 			}
 		}
-		runtimeObjs = append(runtimeObjs, resource.Object)
-	}
-	resources := []object.ObjMetadata{}
-	for _, runtimeObj := range runtimeObjs {
-		obj, err := object.RuntimeToObjMeta(runtimeObj)
+		obj, err := object.RuntimeToObjMeta(resource.Object)
 		if err != nil {
 			return err
 		}
 		resources = append(resources, obj)
 	}
+
 	eventCh := w.sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
 	go logResourceStatus(cancelCtx, resources, statusCollector, status.CurrentStatus, w.log)
