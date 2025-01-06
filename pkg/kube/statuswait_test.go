@@ -35,7 +35,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/kubectl/pkg/scheme"
+	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/collector"
+	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/event"
+	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/watcher"
+	"sigs.k8s.io/cli-utils/pkg/object"
 	"sigs.k8s.io/cli-utils/pkg/testutil"
 )
 
@@ -115,8 +119,29 @@ func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured
 	require.NoError(t, err)
 	return mapping.Resource
 }
-func testLogger(message string, args ...interface{}) {
-	fmt.Printf(message, args...)
+
+func TestStatusLogger(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*1500)
+	defer cancel()
+	readyPod := object.ObjMetadata{
+		Name:      "readyPod",
+		GroupKind: schema.GroupKind{Kind: "Pod"},
+	}
+	notReadyPod := object.ObjMetadata{
+		Name:      "notReadyPod",
+		GroupKind: schema.GroupKind{Kind: "Pod"},
+	}
+	objs := []object.ObjMetadata{readyPod, notReadyPod}
+	resourceStatusCollector := collector.NewResourceStatusCollector(objs)
+	resourceStatusCollector.ResourceStatuses[readyPod] = &event.ResourceStatus{
+		Identifier: readyPod,
+		Status:     status.CurrentStatus,
+	}
+	expectedMessage := "waiting for resource, name: notReadyPod, kind: Pod, desired status: Current, actual status: Unknown"
+	testLogger := func(message string, args ...interface{}) {
+		assert.Equal(t, expectedMessage, fmt.Sprintf(message, args...))
+	}
+	logResourceStatus(ctx, objs, resourceStatusCollector, status.CurrentStatus, testLogger)
 }
 
 func TestStatusWaitForDelete(t *testing.T) {
@@ -155,7 +180,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
 			statusWaiter := statusWaiter{
 				sw:  statusWatcher,
-				log: testLogger,
+				log: t.Logf,
 			}
 			createdObjs := []runtime.Object{}
 			for _, objYaml := range tt.objToCreate {
@@ -252,7 +277,7 @@ func TestStatusWait(t *testing.T) {
 			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
 			statusWaiter := statusWaiter{
 				sw:  statusWatcher,
-				log: testLogger,
+				log: t.Logf,
 			}
 			objs := []runtime.Object{}
 
