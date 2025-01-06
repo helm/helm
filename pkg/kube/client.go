@@ -91,8 +91,8 @@ type Client struct {
 type WaitStrategy int
 
 const (
-	StatusWaiter WaitStrategy = iota
-	LegacyWaiter
+	StatusWaiterStrategy WaitStrategy = iota
+	LegacyWaiterStrategy
 )
 
 func init() {
@@ -121,13 +121,13 @@ func getStatusWatcher(factory Factory) (watcher.StatusWatcher, error) {
 
 func NewWaiter(strategy WaitStrategy, factory Factory, log func(string, ...interface{})) (Waiter, error) {
 	switch strategy {
-	case LegacyWaiter:
+	case LegacyWaiterStrategy:
 		kc, err := factory.KubernetesClientSet()
 		if err != nil {
 			return nil, err
 		}
 		return &HelmWaiter{kubeClient: kc, log: log}, nil
-	case StatusWaiter:
+	case StatusWaiterStrategy:
 		sw, err := getStatusWatcher(factory)
 		if err != nil {
 			return nil, err

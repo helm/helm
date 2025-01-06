@@ -513,7 +513,7 @@ func TestWait(t *testing.T) {
 			}
 		}),
 	}
-	waiter, err := NewWaiter(LegacyWaiter, c.Factory, c.Log)
+	waiter, err := NewWaiter(LegacyWaiterStrategy, c.Factory, c.Log)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -570,7 +570,7 @@ func TestWaitJob(t *testing.T) {
 			}
 		}),
 	}
-	waiter, err := NewWaiter(LegacyWaiter, c.Factory, c.Log)
+	waiter, err := NewWaiter(LegacyWaiterStrategy, c.Factory, c.Log)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -629,7 +629,7 @@ func TestWaitDelete(t *testing.T) {
 			}
 		}),
 	}
-	waiter, err := NewWaiter(LegacyWaiter, c.Factory, c.Log)
+	waiter, err := NewWaiter(LegacyWaiterStrategy, c.Factory, c.Log)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -660,7 +660,7 @@ func TestWaitDelete(t *testing.T) {
 
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
-	c, err := New(nil, StatusWaiter)
+	c, err := New(nil, StatusWaiterStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -673,7 +673,7 @@ func TestReal(t *testing.T) {
 	}
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
-	c, err = New(nil, StatusWaiter)
+	c, err = New(nil, StatusWaiterStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
