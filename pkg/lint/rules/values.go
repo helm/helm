@@ -22,8 +22,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v4/pkg/chartutil"
 	"helm.sh/helm/v4/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/releaseutil"
 )
 
 // Values lints a chart's values.yaml file.
@@ -60,7 +60,7 @@ func validateValuesFileExistence(valuesPath string) error {
 }
 
 func validateValuesFile(valuesPath string, overrides map[string]interface{}) error {
-	values, err := chartutil.ReadValuesFile(valuesPath)
+	values, err := releaseutil.ReadValuesFile(valuesPath)
 	if err != nil {
 		return errors.Wrap(err, "unable to parse YAML")
 	}
@@ -70,8 +70,8 @@ func validateValuesFile(valuesPath string, overrides map[string]interface{}) err
 	// We could change that. For now, though, we retain that strategy, and thus can
 	// coalesce tables (like reuse-values does) instead of doing the full chart
 	// CoalesceValues
-	coalescedValues := chartutil.CoalesceTables(make(map[string]interface{}, len(overrides)), overrides)
-	coalescedValues = chartutil.CoalesceTables(coalescedValues, values)
+	coalescedValues := releaseutil.CoalesceTables(make(map[string]interface{}, len(overrides)), overrides)
+	coalescedValues = releaseutil.CoalesceTables(coalescedValues, values)
 
 	ext := filepath.Ext(valuesPath)
 	schemaPath := valuesPath[:len(valuesPath)-len(ext)] + ".schema.json"
@@ -82,5 +82,5 @@ func validateValuesFile(valuesPath string, overrides map[string]interface{}) err
 	if err != nil {
 		return err
 	}
-	return chartutil.ValidateAgainstSingleSchema(coalescedValues, schema)
+	return releaseutil.ValidateAgainstSingleSchema(coalescedValues, schema)
 }

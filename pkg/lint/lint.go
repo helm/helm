@@ -19,9 +19,9 @@ package lint // import "helm.sh/helm/v4/pkg/lint"
 import (
 	"path/filepath"
 
-	"helm.sh/helm/v4/pkg/chartutil"
 	"helm.sh/helm/v4/pkg/lint/rules"
 	"helm.sh/helm/v4/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/releaseutil"
 )
 
 // All runs all the available linters on the given base directory.
@@ -30,12 +30,12 @@ func All(basedir string, values map[string]interface{}, namespace string, _ bool
 }
 
 // AllWithKubeVersion runs all the available linters on the given base directory, allowing to specify the kubernetes version.
-func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) support.Linter {
+func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *releaseutil.KubeVersion) support.Linter {
 	return AllWithKubeVersionAndSchemaValidation(basedir, values, namespace, kubeVersion, false)
 }
 
 // AllWithKubeVersionAndSchemaValidation runs all the available linters on the given base directory, allowing to specify the kubernetes version and if schema validation is enabled or not.
-func AllWithKubeVersionAndSchemaValidation(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, skipSchemaValidation bool) support.Linter {
+func AllWithKubeVersionAndSchemaValidation(basedir string, values map[string]interface{}, namespace string, kubeVersion *releaseutil.KubeVersion, skipSchemaValidation bool) support.Linter {
 	// Using abs path to get directory context
 	chartDir, _ := filepath.Abs(basedir)
 
