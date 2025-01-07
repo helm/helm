@@ -28,7 +28,6 @@ import (
 var values map[string]interface{}
 
 const namespace = "testNamespace"
-const strict = false
 
 const badChartDir = "rules/testdata/badchartfile"
 const badValuesFileDir = "rules/testdata/badvaluesfile"
@@ -38,7 +37,7 @@ const subChartValuesDir = "rules/testdata/withsubchart"
 const malformedTemplate = "rules/testdata/malformed-template"
 
 func TestBadChart(t *testing.T) {
-	m := All(badChartDir, values, namespace, strict).Messages
+	m := RunAll(badChartDir, values, namespace).Messages
 	if len(m) != 8 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
@@ -82,7 +81,7 @@ func TestBadChart(t *testing.T) {
 }
 
 func TestInvalidYaml(t *testing.T) {
-	m := All(badYamlFileDir, values, namespace, strict).Messages
+	m := RunAll(badYamlFileDir, values, namespace).Messages
 	if len(m) != 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -92,7 +91,7 @@ func TestInvalidYaml(t *testing.T) {
 }
 
 func TestBadValues(t *testing.T) {
-	m := All(badValuesFileDir, values, namespace, strict).Messages
+	m := RunAll(badValuesFileDir, values, namespace).Messages
 	if len(m) < 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -102,7 +101,7 @@ func TestBadValues(t *testing.T) {
 }
 
 func TestGoodChart(t *testing.T) {
-	m := All(goodChartDir, values, namespace, strict).Messages
+	m := RunAll(goodChartDir, values, namespace).Messages
 	if len(m) != 0 {
 		t.Error("All returned linter messages when it shouldn't have")
 		for i, msg := range m {
@@ -126,7 +125,7 @@ func TestHelmCreateChart(t *testing.T) {
 
 	// Note: we test with strict=true here, even though others have
 	// strict = false.
-	m := All(createdChart, values, namespace, true).Messages
+	m := RunAll(createdChart, values, namespace, WithSkipSchemaValidation(true)).Messages
 	if ll := len(m); ll != 1 {
 		t.Errorf("All should have had exactly 1 error. Got %d", ll)
 		for i, msg := range m {
@@ -173,7 +172,7 @@ func TestHelmCreateChart_CheckDeprecatedWarnings(t *testing.T) {
 		},
 	}
 
-	linterRunDetails := All(createdChart, updatedValues, namespace, true)
+	linterRunDetails := RunAll(createdChart, updatedValues, namespace, WithSkipSchemaValidation(true))
 	for _, msg := range linterRunDetails.Messages {
 		if strings.HasPrefix(msg.Error(), "[WARNING]") &&
 			strings.Contains(msg.Error(), "deprecated") {
@@ -187,7 +186,7 @@ func TestHelmCreateChart_CheckDeprecatedWarnings(t *testing.T) {
 // lint ignores import-values
 // See https://github.com/helm/helm/issues/9658
 func TestSubChartValuesChart(t *testing.T) {
-	m := All(subChartValuesDir, values, namespace, strict).Messages
+	m := RunAll(subChartValuesDir, values, namespace).Messages
 	if len(m) != 0 {
 		t.Error("All returned linter messages when it shouldn't have")
 		for i, msg := range m {
@@ -203,7 +202,7 @@ func TestMalformedTemplate(t *testing.T) {
 	ch := make(chan int, 1)
 	var m []support.Message
 	go func() {
-		m = All(malformedTemplate, values, namespace, strict).Messages
+		m = RunAll(malformedTemplate, values, namespace).Messages
 		ch <- 1
 	}()
 	select {
