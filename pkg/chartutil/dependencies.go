@@ -25,19 +25,7 @@ import (
 )
 
 // ProcessDependencies checks through this chart's dependencies, processing accordingly.
-//
-// TODO: For Helm v4 this can be combined with or turned into ProcessDependenciesWithMerge
 func ProcessDependencies(c *chart.Chart, v Values) error {
-	if err := processDependencyEnabled(c, v, ""); err != nil {
-		return err
-	}
-	return processDependencyImportValues(c, false)
-}
-
-// ProcessDependenciesWithMerge checks through this chart's dependencies, processing accordingly.
-// It is similar to ProcessDependencies but it does not remove nil values during
-// the import/export handling process.
-func ProcessDependenciesWithMerge(c *chart.Chart, v Values) error {
 	if err := processDependencyEnabled(c, v, ""); err != nil {
 		return err
 	}

@@ -56,13 +56,8 @@ func WithConfig(cfg *Configuration) PullOpt {
 	}
 }
 
-// NewPull creates a new Pull object.
-func NewPull() *Pull {
-	return NewPullWithOpts()
-}
-
-// NewPullWithOpts creates a new pull, with configuration options.
-func NewPullWithOpts(opts ...PullOpt) *Pull {
+// NewPull creates a new Pull with configuration options.
+func NewPull(opts ...PullOpt) *Pull {
 	p := &Pull{}
 	for _, fn := range opts {
 		fn(p)
