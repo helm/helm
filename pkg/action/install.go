@@ -249,7 +249,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, errors.Wrap(err, "release name check failed")
 	}
 
-	if err := chartutil.ProcessDependenciesWithMerge(chrt, vals); err != nil {
+	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
 		i.cfg.Log(fmt.Sprintf("ERROR: Processing chart dependencies failed: %v", err))
 		return nil, errors.Wrap(err, "chart dependencies processing failed")
 	}
