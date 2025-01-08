@@ -106,6 +106,8 @@ func TestPlatformPrepareCommand(t *testing.T) {
 		osStrCmp = "linux-arm64"
 	} else if os == "linux" && arch == "ppc64le" {
 		osStrCmp = "linux-ppc64le"
+	} else if os == "linux" && arch == "riscv64" {
+		osStrCmp = "linux-riscv64"
 	} else if os == "linux" && arch == "s390x" {
 		osStrCmp = "linux-s390x"
 	} else if os == "windows" && arch == "amd64" {
