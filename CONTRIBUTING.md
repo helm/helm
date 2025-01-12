@@ -17,9 +17,7 @@ Helm v4 is currently under development on the `main` branch. During the developm
 
 ## Sign Your Work
 
-The sign-off is a simple line at the end of the explanation for a commit. All commits need to be
-signed. Your signature certifies that you wrote the patch or otherwise have the right to contribute
-the material. The rules are pretty simple, if you can certify the below (from
+Add a "Signed-off-by" line at the end of your commit message. This certifies that you wrote the patch or have the right to contribute the material. The rules are pretty simple, if you can certify the below (from
 [developercertificate.org](https://developercertificate.org/)):
 
 ```
