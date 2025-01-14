@@ -38,6 +38,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/watcher"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -107,11 +108,19 @@ func init() {
 }
 
 func getStatusWatcher(factory Factory) (watcher.StatusWatcher, error) {
+	cfg, err := factory.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
 	dynamicClient, err := factory.DynamicClient()
 	if err != nil {
 		return nil, err
 	}
-	restMapper, err := factory.ToRESTMapper()
+	httpClient, err := rest.HTTPClientFor(cfg)
+	if err != nil {
+		return nil, err
+	}
+	restMapper, err := apiutil.NewDynamicRESTMapper(cfg, httpClient)
 	if err != nil {
 		return nil, err
 	}
