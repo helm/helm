@@ -34,9 +34,6 @@ type Interface interface {
 	// Delete destroys one or more resources.
 	Delete(resources ResourceList) (*Result, []error)
 
-	// Update updates one or more resources or creates the resource
-	// if it doesn't exist.
-	Update(original, target ResourceList, force bool) (*Result, error)
 	// WatchUntilReady watches the resources given and waits until it is ready.
 	//
 	// This method is mainly for hook implementations. It watches for a resource to
@@ -48,6 +45,11 @@ type Interface interface {
 	// error.
 	// TODO: Is watch until ready really behavior we want over the resources actually being ready?
 	WatchUntilReady(resources ResourceList, timeout time.Duration) error
+
+	// Update updates one or more resources or creates the resource
+	// if it doesn't exist.
+	Update(original, target ResourceList, force bool) (*Result, error)
+
 	// Build creates a resource list from a Reader.
 	//
 	// Reader must contain a YAML stream (one or more YAML documents separated
