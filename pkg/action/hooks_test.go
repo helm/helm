@@ -24,9 +24,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"helm.sh/helm/v3/pkg/chart"
-	kubefake "helm.sh/helm/v3/pkg/kube/fake"
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/pkg/chart"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 func podManifestWithOutputLogs(hookDefinitions []release.HookOutputLogPolicy) string {

@@ -37,6 +37,7 @@ require (
 	golang.org/x/crypto v0.32.0
 	golang.org/x/term v0.28.0
 	golang.org/x/text v0.21.0
+	helm.sh/helm/v3 v3.16.4
 	k8s.io/api v0.32.0
 	k8s.io/apiextensions-apiserver v0.32.0
 	k8s.io/apimachinery v0.32.0

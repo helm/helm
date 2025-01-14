@@ -199,7 +199,7 @@ func (cfg *Configuration) outputLogsByPolicy(h *release.Hook, releaseNamespace s
 
 func (cfg *Configuration) outputContainerLogsForListOptions(namespace string, listOptions metav1.ListOptions) error {
 	// TODO Helm 4: Remove this check when GetPodList and OutputContainerLogsForPodList are moved from InterfaceExt to Interface
-	if kubeClient, ok := cfg.KubeClient.(kube.InterfaceExt); ok {
+	if kubeClient, ok := cfg.KubeClient.(kube.InterfaceLogs); ok {
 		podList, err := kubeClient.GetPodList(namespace, listOptions)
 		if err != nil {
 			return err
