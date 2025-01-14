@@ -19,13 +19,13 @@ package chartutil
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"os"
-	"sigs.k8s.io/yaml"
 	"strings"
 
+	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/chart"
+	"sigs.k8s.io/yaml"
 )
 
 // GlobalKey is the name of the Values key that is used for storing global vars.
