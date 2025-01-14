@@ -190,7 +190,7 @@ func getScopedValues(parent *parentScope, single scopedChart, vals chartutil.Val
 			for _, dependency := range parent.metadata.Dependencies {
 				// it is worth remembering that there could be the same sub-chart used in many dependencies
 				// to handle this we should validate such sub-chart as many times (with the appropriate set of values)
-				// aa it is defined in the parent chart
+				// as it is defined in the parent chart
 				if subChart.Metadata.Version == dependency.Version && subChart.Name() == dependency.Name {
 					alias := dependency.Alias
 					if alias == "" {
