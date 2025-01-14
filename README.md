@@ -44,6 +44,7 @@ If you want to use a package manager:
 
 - [Homebrew](https://brew.sh/) users can use `brew install helm`.
 - [Chocolatey](https://chocolatey.org/) users can use `choco install kubernetes-helm`.
+- [Winget](https://learn.microsoft.com/en-us/windows/package-manager/) users can use `winget install Helm.Helm`.
 - [Scoop](https://scoop.sh/) users can use `scoop install helm`.
 - [Snapcraft](https://snapcraft.io/) users can use `snap install helm --classic`.
 - [Flox](https://flox.dev) users can use `flox install kubernetes-helm`.

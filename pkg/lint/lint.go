@@ -24,25 +24,42 @@ import (
 	"helm.sh/helm/v4/pkg/lint/support"
 )
 
-// All runs all the available linters on the given base directory.
-func All(basedir string, values map[string]interface{}, namespace string, _ bool) support.Linter {
-	return AllWithKubeVersion(basedir, values, namespace, nil)
+type linterOptions struct {
+	KubeVersion          *chartutil.KubeVersion
+	SkipSchemaValidation bool
 }
 
-// AllWithKubeVersion runs all the available linters on the given base directory, allowing to specify the kubernetes version.
-func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) support.Linter {
-	return AllWithKubeVersionAndSchemaValidation(basedir, values, namespace, kubeVersion, false)
+type LinterOption func(lo *linterOptions)
+
+func WithKubeVersion(kubeVersion *chartutil.KubeVersion) LinterOption {
+	return func(lo *linterOptions) {
+		lo.KubeVersion = kubeVersion
+	}
 }
 
-// AllWithKubeVersionAndSchemaValidation runs all the available linters on the given base directory, allowing to specify the kubernetes version and if schema validation is enabled or not.
-func AllWithKubeVersionAndSchemaValidation(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, skipSchemaValidation bool) support.Linter {
-	// Using abs path to get directory context
-	chartDir, _ := filepath.Abs(basedir)
+func WithSkipSchemaValidation(skipSchemaValidation bool) LinterOption {
+	return func(lo *linterOptions) {
+		lo.SkipSchemaValidation = skipSchemaValidation
+	}
+}
 
-	linter := support.Linter{ChartDir: chartDir}
-	rules.Chartfile(&linter)
-	rules.ValuesWithOverrides(&linter, values)
-	rules.TemplatesWithSkipSchemaValidation(&linter, values, namespace, kubeVersion, skipSchemaValidation)
-	rules.Dependencies(&linter)
-	return linter
+func RunAll(baseDir string, values map[string]interface{}, namespace string, options ...LinterOption) support.Linter {
+
+	chartDir, _ := filepath.Abs(baseDir)
+
+	lo := linterOptions{}
+	for _, option := range options {
+		option(&lo)
+	}
+
+	result := support.Linter{
+		ChartDir: chartDir,
+	}
+
+	rules.Chartfile(&result)
+	rules.ValuesWithOverrides(&result, values)
+	rules.TemplatesWithSkipSchemaValidation(&result, values, namespace, lo.KubeVersion, lo.SkipSchemaValidation)
+	rules.Dependencies(&result)
+
+	return result
 }

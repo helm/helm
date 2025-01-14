@@ -87,7 +87,7 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 
 	// lint ignores import-values
 	// See https://github.com/helm/helm/issues/9658
-	if err := chartutil.ProcessDependenciesWithMerge(chart, values); err != nil {
+	if err := chartutil.ProcessDependencies(chart, values); err != nil {
 		return
 	}
 
