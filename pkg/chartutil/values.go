@@ -24,8 +24,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"helm.sh/helm/v3/pkg/chart"
 	"sigs.k8s.io/yaml"
+
+	"helm.sh/helm/v4/pkg/chart"
 )
 
 // GlobalKey is the name of the Values key that is used for storing global vars.
