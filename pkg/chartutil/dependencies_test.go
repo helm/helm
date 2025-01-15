@@ -502,3 +502,89 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
 		t.Fatalf("expected 1 dependency specified in Chart.yaml, got %d", len(c.Metadata.Dependencies))
 	}
 }
+
+func TestDependencyWithSameNameDifferentVersion(t *testing.T) {
+	type M = map[string]interface{}
+	tests := []struct {
+		name     string
+		v        M
+		charts   []string // expected dependent charts names
+		versions []string // expected dependent charts versions
+	}{
+		{
+			"same name subcharts enbale one",
+			M{"one": M{"enabled": true}, "two": M{"enabled": false}},
+			[]string{"parent-chart.test"},
+			[]string{"0.1.0"},
+		},
+		{
+			"same name subcharts enbale another one",
+			M{"one": M{"enabled": false}, "two": M{"enabled": true}},
+			[]string{"parent-chart.test"},
+			[]string{"0.2.0"},
+		},
+	}
+
+	for _, tc := range tests {
+		c := loadChart(t, "testdata/dependent-chart-with-same-name-different-version")
+		t.Run(tc.name, func(t *testing.T) {
+			if err := processDependencyEnabled(c, tc.v, ""); err != nil {
+				t.Fatalf("error processing enabled dependencies %v", err)
+			}
+			if len(c.Dependencies()) != len(tc.charts) {
+				t.Fatalf("slice lengths do not match got %v, expected %v", len(c.Dependencies()), len(tc.charts))
+			}
+			for i, d := range c.Dependencies() {
+				if d.Metadata.Version != tc.versions[i] {
+					t.Fatalf("slice values do not match got %v, expected %v", tc.versions[i], d.Metadata.Version)
+				}
+			}
+		})
+	}
+}
+
+func TestDependencyWithDifferentAliasNameSameVersion(t *testing.T) {
+	type M = map[string]interface{}
+	tests := []struct {
+		name     string
+		v        M
+		charts   []string // expected dependent charts names
+		versions []string // expected dependent charts versions
+	}{
+		{
+			"Different Alias name subcharts enbale one",
+			M{"one": M{"enabled": true}, "two": M{"enabled": false}},
+			[]string{"parent-chart.test1"},
+			[]string{"0.1.0"},
+		},
+		{
+			"Different Alias name subcharts enbale another one",
+			M{"one": M{"enabled": false}, "two": M{"enabled": true}},
+			[]string{"parent-chart.test2"},
+			[]string{"0.1.0"},
+		},
+		{
+			"Different Alias name subcharts enbale all",
+			M{"one": M{"enabled": true}, "two": M{"enabled": true}},
+			[]string{"parent-chart.test1", "parent-chart.test2"},
+			[]string{"0.1.0", "0.1.0"},
+		},
+	}
+
+	for _, tc := range tests {
+		c := loadChart(t, "testdata/dependent-chart-with-different-alias-name-same-version")
+		t.Run(tc.name, func(t *testing.T) {
+			if err := processDependencyEnabled(c, tc.v, ""); err != nil {
+				t.Fatalf("error processing enabled dependencies %v", err)
+			}
+			if len(c.Dependencies()) != len(tc.charts) {
+				t.Fatalf("slice lengths do not match got %v, expected %v", len(c.Dependencies()), len(tc.charts))
+			}
+			for i, d := range c.Dependencies() {
+				if d.Metadata.Version != tc.versions[i] {
+					t.Fatalf("slice values do not match got %v, expected %v", tc.versions[i], d.Metadata.Version)
+				}
+			}
+		})
+	}
+}
