@@ -95,7 +95,7 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 	return nil
 }
 
-func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, waitForJobs bool) error {	
+func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, waitForJobs bool) error {
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	resources := []object.ObjMetadata{}
