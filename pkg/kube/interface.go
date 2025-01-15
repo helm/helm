@@ -20,7 +20,6 @@ import (
 	"io"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -31,12 +30,6 @@ import (
 type Interface interface {
 	// Create creates one or more resources.
 	Create(resources ResourceList) (*Result, error)
-
-	// Wait waits up to the given timeout for the specified resources to be ready.
-	Wait(resources ResourceList, timeout time.Duration) error
-
-	// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
-	WaitWithJobs(resources ResourceList, timeout time.Duration) error
 
 	// Delete destroys one or more resources.
 	Delete(resources ResourceList) (*Result, []error)
@@ -50,6 +43,7 @@ type Interface interface {
 	// For Pods, "ready" means the Pod phase is marked "succeeded".
 	// For all other kinds, it means the kind was created or modified without
 	// error.
+	// TODO: Is watch until ready really behavior we want over the resources actually being ready?
 	WatchUntilReady(resources ResourceList, timeout time.Duration) error
 
 	// Update updates one or more resources or creates the resource
@@ -63,19 +57,19 @@ type Interface interface {
 	//
 	// Validates against OpenAPI schema if validate is true.
 	Build(reader io.Reader, validate bool) (ResourceList, error)
-
-	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
-	// and returns said phase (PodSucceeded or PodFailed qualify).
-	WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error)
-
 	// IsReachable checks whether the client is able to connect to the cluster.
 	IsReachable() error
+	Waiter
 }
 
-// InterfaceExt is introduced to avoid breaking backwards compatibility for Interface implementers.
-//
-// TODO Helm 4: Remove InterfaceExt and integrate its method(s) into the Interface.
-type InterfaceExt interface {
+// Waiter defines methods related to waiting for resource states.
+type Waiter interface {
+	// Wait waits up to the given timeout for the specified resources to be ready.
+	Wait(resources ResourceList, timeout time.Duration) error
+
+	// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
+	WaitWithJobs(resources ResourceList, timeout time.Duration) error
+
 	// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
 	WaitForDelete(resources ResourceList, timeout time.Duration) error
 }
@@ -111,6 +105,5 @@ type InterfaceResources interface {
 }
 
 var _ Interface = (*Client)(nil)
-var _ InterfaceExt = (*Client)(nil)
 var _ InterfaceDeletionPropagation = (*Client)(nil)
 var _ InterfaceResources = (*Client)(nil)

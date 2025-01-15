@@ -512,6 +512,11 @@ func TestWait(t *testing.T) {
 			}
 		}),
 	}
+	waiter, err := NewWaiter(LegacyWaiterStrategy, c.Factory, c.Log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Waiter = waiter
 	resources, err := c.Build(objBody(&podList), false)
 	if err != nil {
 		t.Fatal(err)
@@ -564,6 +569,11 @@ func TestWaitJob(t *testing.T) {
 			}
 		}),
 	}
+	waiter, err := NewWaiter(LegacyWaiterStrategy, c.Factory, c.Log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Waiter = waiter
 	resources, err := c.Build(objBody(job), false)
 	if err != nil {
 		t.Fatal(err)
@@ -618,6 +628,11 @@ func TestWaitDelete(t *testing.T) {
 			}
 		}),
 	}
+	waiter, err := NewWaiter(LegacyWaiterStrategy, c.Factory, c.Log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Waiter = waiter
 	resources, err := c.Build(objBody(&pod), false)
 	if err != nil {
 		t.Fatal(err)
@@ -644,7 +659,10 @@ func TestWaitDelete(t *testing.T) {
 
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
-	c := New(nil)
+	c, err := New(nil, StatusWaiterStrategy)
+	if err != nil {
+		t.Fatal(err)
+	}
 	resources, err := c.Build(strings.NewReader(guestbookManifest), false)
 	if err != nil {
 		t.Fatal(err)
@@ -654,7 +672,10 @@ func TestReal(t *testing.T) {
 	}
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
-	c = New(nil)
+	c, err = New(nil, StatusWaiterStrategy)
+	if err != nil {
+		t.Fatal(err)
+	}
 	resources, err = c.Build(strings.NewReader(testSvcEndpointManifest), false)
 	if err != nil {
 		t.Fatal(err)

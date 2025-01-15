@@ -36,6 +36,9 @@ import (
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/cli-utils/pkg/kstatus/watcher"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -44,7 +47,6 @@ import (
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
@@ -84,7 +86,15 @@ type Client struct {
 	Namespace string
 
 	kubeClient *kubernetes.Clientset
+	Waiter
 }
+
+type WaitStrategy int
+
+const (
+	StatusWaiterStrategy WaitStrategy = iota
+	LegacyWaiterStrategy
+)
 
 func init() {
 	// Add CRDs to the scheme. They are missing by default.
@@ -97,15 +107,64 @@ func init() {
 	}
 }
 
+func getStatusWatcher(factory Factory) (watcher.StatusWatcher, error) {
+	cfg, err := factory.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+	dynamicClient, err := factory.DynamicClient()
+	if err != nil {
+		return nil, err
+	}
+	httpClient, err := rest.HTTPClientFor(cfg)
+	if err != nil {
+		return nil, err
+	}
+	restMapper, err := apiutil.NewDynamicRESTMapper(cfg, httpClient)
+	if err != nil {
+		return nil, err
+	}
+	sw := watcher.NewDefaultStatusWatcher(dynamicClient, restMapper)
+	return sw, nil
+}
+
+func NewWaiter(strategy WaitStrategy, factory Factory, log func(string, ...interface{})) (Waiter, error) {
+	switch strategy {
+	case LegacyWaiterStrategy:
+		kc, err := factory.KubernetesClientSet()
+		if err != nil {
+			return nil, err
+		}
+		return &HelmWaiter{kubeClient: kc, log: log}, nil
+	case StatusWaiterStrategy:
+		sw, err := getStatusWatcher(factory)
+		if err != nil {
+			return nil, err
+		}
+		return &statusWaiter{
+			sw:  sw,
+			log: log,
+		}, nil
+	default:
+		return nil, errors.New("unknown wait strategy")
+	}
+}
+
 // New creates a new Client.
-func New(getter genericclioptions.RESTClientGetter) *Client {
+func New(getter genericclioptions.RESTClientGetter, ws WaitStrategy) (*Client, error) {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
-	return &Client{
-		Factory: cmdutil.NewFactory(getter),
-		Log:     nopLogger,
+	factory := cmdutil.NewFactory(getter)
+	waiter, err := NewWaiter(ws, factory, nopLogger)
+	if err != nil {
+		return nil, err
 	}
+	return &Client{
+		Factory: factory,
+		Log:     nopLogger,
+		Waiter:  waiter,
+	}, nil
 }
 
 var nopLogger = func(_ string, _ ...interface{}) {}
@@ -279,45 +338,6 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 		return nil, err
 	}
 	return obj, nil
-}
-
-// Wait waits up to the given timeout for the specified resources to be ready.
-func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
-	cs, err := c.getKubeClient()
-	if err != nil {
-		return err
-	}
-	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
-	w := waiter{
-		c:       checker,
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForResources(resources)
-}
-
-// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
-func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
-	cs, err := c.getKubeClient()
-	if err != nil {
-		return err
-	}
-	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true), CheckJobs(true))
-	w := waiter{
-		c:       checker,
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForResources(resources)
-}
-
-// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
-func (c *Client) WaitForDelete(resources ResourceList, timeout time.Duration) error {
-	w := waiter{
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForDeletedResources(resources)
 }
 
 func (c *Client) namespace() string {
@@ -823,36 +843,4 @@ func scrubValidationError(err error) error {
 		return errors.New(strings.ReplaceAll(err.Error(), "; "+stopValidateMessage, ""))
 	}
 	return err
-}
-
-// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
-// and returns said phase (PodSucceeded or PodFailed qualify).
-func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error) {
-	client, err := c.getKubeClient()
-	if err != nil {
-		return v1.PodUnknown, err
-	}
-	to := int64(timeout)
-	watcher, err := client.CoreV1().Pods(c.namespace()).Watch(context.Background(), metav1.ListOptions{
-		FieldSelector:  fmt.Sprintf("metadata.name=%s", name),
-		TimeoutSeconds: &to,
-	})
-	if err != nil {
-		return v1.PodUnknown, err
-	}
-
-	for event := range watcher.ResultChan() {
-		p, ok := event.Object.(*v1.Pod)
-		if !ok {
-			return v1.PodUnknown, fmt.Errorf("%s not a pod", name)
-		}
-		switch p.Status.Phase {
-		case v1.PodFailed:
-			return v1.PodFailed, nil
-		case v1.PodSucceeded:
-			return v1.PodSucceeded, nil
-		}
-	}
-
-	return v1.PodUnknown, err
 }
