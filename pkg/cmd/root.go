@@ -89,7 +89,9 @@ By default, the default directories depend on the Operating System. The defaults
 | macOS            | $HOME/Library/Caches/helm | $HOME/Library/Preferences/helm | $HOME/Library/helm      |
 | Windows          | %TEMP%\helm               | %APPDATA%\helm                 | %APPDATA%\helm          |
 `
-var settings *cli.EnvSettings
+
+// var settings *cli.EnvSettings
+var settings = cli.New()
 
 func Debug(format string, v ...interface{}) {
 	if settings.Debug {
@@ -104,8 +106,10 @@ func Warning(format string, v ...interface{}) {
 }
 
 func NewRootCmd(actionConfig *action.Configuration, settingsIn *cli.EnvSettings, out io.Writer, args []string) (*cobra.Command, error) {
-	settings = settingsIn
-
+	if settingsIn != nil {
+		settings = settingsIn
+	}
+	
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",

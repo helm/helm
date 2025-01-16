@@ -1,0 +1,4 @@
+name: fullenv
+usage: "show env vars"
+description: "show all env vars"
+command: "$HELM_PLUGIN_DIR/fullenv.sh"

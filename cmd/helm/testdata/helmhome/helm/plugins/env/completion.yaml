@@ -1,0 +1,13 @@
+name: env
+commands:
+  - name: list
+    flags:
+    - a
+    - all
+    - log
+  - name: remove
+    validArgs:
+    - all
+    - one
+flags:
+- global

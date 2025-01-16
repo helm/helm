@@ -20,8 +20,6 @@ import (
 	"bytes"
 	"io"
 	"os"
-	"os/exec"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -97,7 +95,7 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 		Log:          func(_ string, _ ...interface{}) {},
 	}
 
-	root, err := NewRootCmd(actionConfig, cli.New(), buf, args)
+	root, err := NewRootCmd(actionConfig, nil, buf, args)
 	if err != nil {
 		return nil, "", err
 	}
@@ -163,60 +161,4 @@ func testChdir(t *testing.T, dir string) func() {
 		t.Fatal(err)
 	}
 	return func() { os.Chdir(old) }
-}
-
-func TestPluginExitCode(t *testing.T) {
-	if os.Getenv("RUN_MAIN_FOR_TESTING") == "1" {
-		os.Args = []string{"helm", "exitwith", "2"}
-
-		// We DO call helm's main() here. So this looks like a normal `helm` process.
-		// main() TODO, figure out what to do for this test
-
-		// As main calls os.Exit, we never reach this line.
-		// But the test called this block of code catches and verifies the exit code.
-		return
-	}
-
-	// Currently, plugins assume a Linux subsystem. Skip the execution
-	// tests until this is fixed
-	if runtime.GOOS != "windows" {
-		// Do a second run of this specific test(TestPluginExitCode) with RUN_MAIN_FOR_TESTING=1 set,
-		// So that the second run is able to run main() and this first run can verify the exit status returned by that.
-		//
-		// This technique originates from https://talks.golang.org/2014/testing.slide#23.
-		cmd := exec.Command(os.Args[0], "-test.run=TestPluginExitCode")
-		cmd.Env = append(
-			os.Environ(),
-			"RUN_MAIN_FOR_TESTING=1",
-			// See pkg/cli/environment.go for which envvars can be used for configuring these passes
-			// and also see plugin_test.go for how a plugin env can be set up.
-			// We just does the same setup as plugin_test.go via envvars
-			"HELM_PLUGINS=testdata/helmhome/helm/plugins",
-			"HELM_REPOSITORY_CONFIG=testdata/helmhome/helm/repositories.yaml",
-			"HELM_REPOSITORY_CACHE=testdata/helmhome/helm/repository",
-		)
-		stdout := &bytes.Buffer{}
-		stderr := &bytes.Buffer{}
-		cmd.Stdout = stdout
-		cmd.Stderr = stderr
-		err := cmd.Run()
-		exiterr, ok := err.(*exec.ExitError)
-
-		if !ok {
-			t.Fatalf("Unexpected error returned by os.Exit: %T", err)
-		}
-
-		if stdout.String() != "" {
-			t.Errorf("Expected no write to stdout: Got %q", stdout.String())
-		}
-
-		expectedStderr := "Error: plugin \"exitwith\" exited with error\n"
-		if stderr.String() != expectedStderr {
-			t.Errorf("Expected %q written to stderr: Got %q", expectedStderr, stderr.String())
-		}
-
-		if exiterr.ExitCode() != 2 {
-			t.Errorf("Expected exit code 2: Got %d", exiterr.ExitCode())
-		}
-	}
 }
