@@ -65,16 +65,7 @@ type Show struct {
 }
 
 // NewShow creates a new Show object with the given configuration.
-// Deprecated: Use NewShowWithConfig
-// TODO Helm 4: Fold NewShowWithConfig back into NewShow
-func NewShow(output ShowOutputFormat) *Show {
-	return &Show{
-		OutputFormat: output,
-	}
-}
-
-// NewShowWithConfig creates a new Show object with the given configuration.
-func NewShowWithConfig(output ShowOutputFormat, cfg *Configuration) *Show {
+func NewShow(output ShowOutputFormat, cfg *Configuration) *Show {
 	sh := &Show{
 		OutputFormat: output,
 	}
