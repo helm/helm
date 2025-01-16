@@ -162,6 +162,35 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	}
 	notes := notesBuffer.String()
 
+	// Call the post renderer if one was provided and we were asked to pass hooks into it.
+	// Note that for backwards compatibility reasons, the format of the data passed into
+	// the post renderer is different when hooks are included vs when they are not:
+	// When hooks are included, we pass in the YAML encoded Map of filenames
+	// and their rendered content. Example:
+	// > templates/foo.yaml: |
+	// >   apiVersion: v1
+	// >   kind: Pod
+	// >   ...
+	// > templates/bar.yaml: |
+	// >   ...
+	// When hooks are not included, we pass in a stream of YAML manifests (just the
+	// values of the map). Example:
+	// > # Source: templates/foo.yaml
+	// > apiVersion: v1
+	// > kind: Pod
+	// > ...
+	// > # Source: templates/bar.yaml
+	// > ...
+	// This allows the post renderer to see and mofify all rendered files at once
+	// before they are sorted into hooks, manifests, and partials below, while keeping
+	// the behavior of not post-rendering hooks unchanged.
+	if pr != nil && pr.IncHooks() {
+		files, err = pr.RunIncHooks(files)
+		if err != nil {
+			return hs, b, notes, errors.Wrap(err, "error while post rendering templates")
+		}
+	}
+
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
@@ -222,7 +251,9 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		}
 	}
 
-	if pr != nil {
+	// Call the post renderer if one was provided and we were NOT asked to pass hooks into it.
+	// See the post render comment above for more details.
+	if pr != nil && !pr.IncHooks() {
 		b, err = pr.Run(b)
 		if err != nil {
 			return hs, b, notes, errors.Wrap(err, "error while running post render on files")
