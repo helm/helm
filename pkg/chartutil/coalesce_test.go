@@ -51,6 +51,7 @@ pequod:
     nested:
       boat: false
       sail: true
+      foo2: null
   ahab:
     scope: whale
     boat: null
@@ -112,7 +113,7 @@ func TestCoalesceValues(t *testing.T) {
 				Metadata: &chart.Metadata{Name: "ahab"},
 				Values: map[string]interface{}{
 					"global": map[string]interface{}{
-						"nested":  map[string]interface{}{"foo": "bar"},
+						"nested":  map[string]interface{}{"foo": "bar", "foo2": "bar2"},
 						"nested2": map[string]interface{}{"l2": "ahab"},
 					},
 					"scope":  "ahab",
@@ -170,6 +171,7 @@ func TestCoalesceValues(t *testing.T) {
 		{"{{.pequod.ahab.nested.foo}}", "true"},
 		{"{{.pequod.ahab.global.name}}", "Ishmael"},
 		{"{{.pequod.ahab.global.nested.foo}}", "bar"},
+		{"{{.pequod.ahab.global.nested.foo2}}", "<no value>"},
 		{"{{.pequod.ahab.global.subject}}", "Queequeg"},
 		{"{{.pequod.ahab.global.harpooner}}", "Tashtego"},
 		{"{{.pequod.global.name}}", "Ishmael"},
