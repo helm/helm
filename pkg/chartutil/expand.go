@@ -52,6 +52,9 @@ func Expand(dir string, r io.Reader) error {
 	}
 
 	// Find the base directory
+	// The directory needs to be cleaned prior to passing to SecureJoin or the location may end up
+	// being wrong or returning an error. This was introduced in v0.4.0.
+	dir = filepath.Clean(dir)
 	chartdir, err := securejoin.SecureJoin(dir, chartName)
 	if err != nil {
 		return err
