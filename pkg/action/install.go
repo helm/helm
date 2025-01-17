@@ -233,21 +233,25 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
-			return nil, err
+			i.cfg.Log(fmt.Sprintf("ERROR: Cluster reachability check failed: %v", err))
+			return nil, errors.Wrap(err, "cluster reachability check failed")
 		}
 	}
 
 	// HideSecret must be used with dry run. Otherwise, return an error.
 	if !i.isDryRun() && i.HideSecret {
+		i.cfg.Log("ERROR: Hiding Kubernetes secrets requires a dry-run mode")
 		return nil, errors.New("Hiding Kubernetes secrets requires a dry-run mode")
 	}
 
 	if err := i.availableName(); err != nil {
-		return nil, err
+		i.cfg.Log(fmt.Sprintf("ERROR: Release name check failed: %v", err))
+		return nil, errors.Wrap(err, "release name check failed")
 	}
 
 	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
-		return nil, err
+		i.cfg.Log(fmt.Sprintf("ERROR: Processing chart dependencies failed: %v", err))
+		return nil, errors.Wrap(err, "chart dependencies processing failed")
 	}
 
 	var interactWithRemote bool
