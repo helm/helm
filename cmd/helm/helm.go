@@ -51,6 +51,7 @@ func main() {
 	kube.ManagedFieldsManager = "helm"
 
 	actionConfig := new(action.Configuration)
+	// Two things I'm going to do. make newRootCommand not take setting, de-couple test data ./
 	cmd, err := helmcmd.NewRootCmd(actionConfig, settings, os.Stdout, os.Args[1:])
 	if err != nil {
 		helmcmd.Warning("%+v", err)
