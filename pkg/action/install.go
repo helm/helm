@@ -90,7 +90,7 @@ type Install struct {
 	NameTemplate     string
 	Description      string
 	OutputDir        string
-	// RollbackOnFailure enables rollingback (uninstalling) the release on failure if set
+	// RollbackOnFailure enables rolling back (uninstalling) the release on failure if set
 	RollbackOnFailure        bool
 	SkipCRDs                 bool
 	SubNotes                 bool

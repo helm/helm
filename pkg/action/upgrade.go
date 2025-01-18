@@ -91,7 +91,7 @@ type Upgrade struct {
 	Recreate bool
 	// MaxHistory limits the maximum number of revisions saved per release
 	MaxHistory int
-	// RollbackOnFailure enables rollingback the upgraded release on failure
+	// RollbackOnFailure enables rolling back the upgraded release on failure
 	RollbackOnFailure bool
 	// CleanupOnFail will, if true, cause the upgrade to delete newly-created resources on a failed update.
 	CleanupOnFail bool
