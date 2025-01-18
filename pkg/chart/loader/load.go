@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
@@ -64,19 +65,21 @@ func Load(name string) (*chart.Chart, error) {
 
 // BufferedFile represents an archive file buffered for later processing.
 type BufferedFile struct {
-	Name string
-	Data []byte
+	Name    string
+	ModTime time.Time
+	Data    []byte
 }
 
 // LoadFiles loads from in-memory files.
 func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	c := new(chart.Chart)
 	subcharts := make(map[string][]*BufferedFile)
+	var subChartsKeys []string
 
 	// do not rely on assumed ordering of files in the chart and crash
 	// if Chart.yaml was not coming early enough to initialize metadata
 	for _, f := range files {
-		c.Raw = append(c.Raw, &chart.File{Name: f.Name, Data: f.Data})
+		c.Raw = append(c.Raw, &chart.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
 		if f.Name == "Chart.yaml" {
 			if c.Metadata == nil {
 				c.Metadata = new(chart.Metadata)
@@ -90,6 +93,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			if c.Metadata.APIVersion == "" {
 				c.Metadata.APIVersion = chart.APIVersionV1
 			}
+			c.ModTime = f.ModTime
 		}
 	}
 	for _, f := range files {
@@ -109,6 +113,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			}
 		case f.Name == "values.schema.json":
 			c.Schema = f.Data
+			c.SchemaModTime = f.ModTime
 
 		// Deprecated: requirements.yaml is deprecated use Chart.yaml.
 		// We will handle it for you because we are nice people
@@ -138,22 +143,26 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				log.Printf("Warning: Dependency locking is handled in Chart.lock since apiVersion \"v2\". We recommend migrating to Chart.lock.")
 			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
-				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
+				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data, ModTime: f.ModTime})
 			}
 
 		case strings.HasPrefix(f.Name, "templates/"):
-			c.Templates = append(c.Templates, &chart.File{Name: f.Name, Data: f.Data})
+			c.Templates = append(c.Templates, &chart.File{Name: f.Name, Data: f.Data, ModTime: f.ModTime})
 		case strings.HasPrefix(f.Name, "charts/"):
 			if filepath.Ext(f.Name) == ".prov" {
-				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
+				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data, ModTime: f.ModTime})
 				continue
 			}
 
 			fname := strings.TrimPrefix(f.Name, "charts/")
 			cname := strings.SplitN(fname, "/", 2)[0]
-			subcharts[cname] = append(subcharts[cname], &BufferedFile{Name: fname, Data: f.Data})
+			// map[string] is unsorted - keep an array to keep things sorted
+			if !stringInSlice(cname, subChartsKeys) {
+				subChartsKeys = append(subChartsKeys, cname)
+			}
+			subcharts[cname] = append(subcharts[cname], &BufferedFile{Name: fname, Data: f.Data, ModTime: f.ModTime})
 		default:
-			c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
+			c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data, ModTime: f.ModTime})
 		}
 	}
 
@@ -165,7 +174,8 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		return c, err
 	}
 
-	for n, files := range subcharts {
+	for _, n := range subChartsKeys {
+		files := subcharts[n]
 		var sc *chart.Chart
 		var err error
 		switch {
@@ -200,4 +210,13 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	}
 
 	return c, nil
+}
+
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }

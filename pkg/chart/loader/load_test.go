@@ -216,8 +216,9 @@ func TestLoadFiles_BadCases(t *testing.T) {
 			name: "These files contain only requirements.lock",
 			bufferedFiles: []*BufferedFile{
 				{
-					Name: "requirements.lock",
-					Data: []byte(""),
+					Name:    "requirements.lock",
+					ModTime: time.Now(),
+					Data:    []byte(""),
 				},
 			},
 			expectError: "validation: chart.metadata.apiVersion is required"},
@@ -233,6 +234,7 @@ func TestLoadFiles_BadCases(t *testing.T) {
 }
 
 func TestLoadFiles(t *testing.T) {
+	modTime := time.Now()
 	goodFiles := []*BufferedFile{
 		{
 			Name: "Chart.yaml",
@@ -254,22 +256,27 @@ sources:
 home: http://example.com
 icon: https://example.com/64x64.png
 `),
+			ModTime: modTime,
 		},
 		{
-			Name: "values.yaml",
-			Data: []byte("var: some values"),
+			Name:    "values.yaml",
+			ModTime: modTime,
+			Data:    []byte("var: some values"),
 		},
 		{
-			Name: "values.schema.json",
-			Data: []byte("type: Values"),
+			Name:    "values.schema.json",
+			ModTime: modTime,
+			Data:    []byte("type: Values"),
 		},
 		{
-			Name: "templates/deployment.yaml",
-			Data: []byte("some deployment"),
+			Name:    "templates/deployment.yaml",
+			ModTime: modTime,
+			Data:    []byte("some deployment"),
 		},
 		{
-			Name: "templates/service.yaml",
-			Data: []byte("some service"),
+			Name:    "templates/service.yaml",
+			ModTime: modTime,
+			Data:    []byte("some service"),
 		},
 	}
 
@@ -298,6 +305,10 @@ icon: https://example.com/64x64.png
 		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
 	}
 
+	if !c.ModTime.Equal(modTime) {
+		t.Errorf("Expected chart modtime to be %v got %v\n", modTime, c.ModTime)
+	}
+
 	if _, err = LoadFiles([]*BufferedFile{}); err == nil {
 		t.Fatal("Expected err to be non-nil")
 	}
@@ -311,24 +322,29 @@ icon: https://example.com/64x64.png
 func TestLoadFilesOrder(t *testing.T) {
 	goodFiles := []*BufferedFile{
 		{
-			Name: "requirements.yaml",
-			Data: []byte("dependencies:"),
+			Name:    "requirements.yaml",
+			ModTime: time.Now(),
+			Data:    []byte("dependencies:"),
 		},
 		{
-			Name: "values.yaml",
-			Data: []byte("var: some values"),
+			Name:    "values.yaml",
+			ModTime: time.Now(),
+			Data:    []byte("var: some values"),
 		},
 
 		{
-			Name: "templates/deployment.yaml",
-			Data: []byte("some deployment"),
+			Name:    "templates/deployment.yaml",
+			ModTime: time.Now(),
+			Data:    []byte("some deployment"),
 		},
 		{
-			Name: "templates/service.yaml",
-			Data: []byte("some service"),
+			Name:    "templates/service.yaml",
+			ModTime: time.Now(),
+			Data:    []byte("some service"),
 		},
 		{
-			Name: "Chart.yaml",
+			Name:    "Chart.yaml",
+			ModTime: time.Now(),
 			Data: []byte(`apiVersion: v1
 name: frobnitz
 description: This is a frobnitz.
