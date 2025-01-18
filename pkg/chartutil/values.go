@@ -17,6 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -105,7 +106,10 @@ func tableLookup(v Values, simple string) (Values, error) {
 
 // ReadValues will parse YAML byte data into a Values.
 func ReadValues(data []byte) (vals Values, err error) {
-	err = yaml.Unmarshal(data, &vals)
+	err = yaml.Unmarshal(data, &vals, func(d *json.Decoder) *json.Decoder {
+		d.UseNumber()
+		return d
+	})
 	if len(vals) == 0 {
 		vals = Values{}
 	}
