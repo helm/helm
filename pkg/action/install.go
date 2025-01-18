@@ -112,7 +112,10 @@ type Install struct {
 	UseReleaseName bool
 	// TakeOwnership will ignore the check for helm annotations and take ownership of the resources.
 	TakeOwnership bool
-	PostRenderer  postrender.PostRenderer
+	// Also considers the state of custom resources and custom resource definitions in the cluster when adopting resources.
+	// TODO Helm 4: Remove this config and always merge custom resources
+	ThreeWayMergeForCustomResources bool
+	PostRenderer                    postrender.PostRenderer
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
 }
@@ -459,7 +462,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
 		_, err = i.cfg.KubeClient.Create(resources)
 	} else if len(resources) > 0 {
-		_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force)
+		_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force, i.ThreeWayMergeForCustomResources)
 	}
 	if err != nil {
 		return rel, err
