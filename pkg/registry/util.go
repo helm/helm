@@ -116,7 +116,11 @@ func ctx(out io.Writer, debug bool) context.Context {
 
 // NewRegistryClientWithTLS is a helper function to create a new registry client with TLS enabled.
 func NewRegistryClientWithTLS(out io.Writer, certFile, keyFile, caFile string, insecureSkipTLSverify bool, registryConfig string, debug bool) (*Client, error) {
-	tlsConf, err := tlsutil.NewClientTLS(certFile, keyFile, caFile, insecureSkipTLSverify)
+	tlsConf, err := tlsutil.NewTLSConfig(
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+		tlsutil.WithCertKeyPairFiles(certFile, keyFile),
+		tlsutil.WithCAFile(caFile),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("can't create TLS config for client: %s", err)
 	}
