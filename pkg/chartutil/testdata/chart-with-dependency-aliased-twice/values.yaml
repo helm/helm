@@ -1,0 +1,7 @@
+foo:
+  grandchild:
+    from: foo
+bar:
+  grandchild:
+    from: bar
+

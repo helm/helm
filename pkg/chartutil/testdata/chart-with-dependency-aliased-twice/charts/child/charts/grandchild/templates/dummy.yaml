@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-{{ .Values.from }}
+data:
+  {{- toYaml .Values | nindent 2 }}
+
