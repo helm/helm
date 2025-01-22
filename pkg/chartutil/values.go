@@ -19,11 +19,12 @@ package chartutil
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"os"
-	"sigs.k8s.io/yaml"
 	"strings"
+
+	"github.com/pkg/errors"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/chart"
 )

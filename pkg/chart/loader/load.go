@@ -19,12 +19,13 @@ package loader
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/pkg/errors"
 	"log"
 	"os"
 	"path/filepath"
-	"sigs.k8s.io/yaml"
 	"strings"
+
+	"github.com/pkg/errors"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/chart"
 )
