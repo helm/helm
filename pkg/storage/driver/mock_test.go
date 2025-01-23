@@ -80,7 +80,7 @@ func tsFixtureMemory(t *testing.T) *Memory {
 	return mem
 }
 
-// newTestFixture initializes a MockConfigMapsInterface.
+// newTestFixtureCfgMaps initializes a MockConfigMapsInterface.
 // ConfigMaps are created for each release provided.
 func newTestFixtureCfgMaps(t *testing.T, releases ...*rspb.Release) *ConfigMaps {
 	var mock MockConfigMapsInterface
