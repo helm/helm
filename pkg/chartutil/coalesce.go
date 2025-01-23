@@ -237,6 +237,9 @@ func coalesceValues(printf printFn, c *chart.Chart, v map[string]interface{}, pr
 						printf("warning: skipped value for %s.%s: Not a table.", subPrefix, key)
 					}
 				} else {
+					// If the key is a child chart, coalesce tables with Merge set to true
+					merge := childChartMergeTrue(c, key, merge)
+
 					// Because v has higher precedence than nv, dest values override src
 					// values.
 					coalesceTablesFullKey(printf, dest, src, concatPrefix(subPrefix, key), merge)
@@ -247,6 +250,15 @@ func coalesceValues(printf printFn, c *chart.Chart, v map[string]interface{}, pr
 			v[key] = val
 		}
 	}
+}
+
+func childChartMergeTrue(chrt *chart.Chart, key string, merge bool) bool {
+	for _, subchart := range chrt.Dependencies() {
+		if subchart.Name() == key {
+			return true
+		}
+	}
+	return merge
 }
 
 // CoalesceTables merges a source map into a destination map.
