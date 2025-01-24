@@ -1,0 +1,8 @@
+---
+# Source: issue-totoml/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: issue-totoml
+data: |
+  key = 13
