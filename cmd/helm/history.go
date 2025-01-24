@@ -177,22 +177,15 @@ func formatAppVersion(c *chart.Chart) string {
 	return c.AppVersion()
 }
 
-func min(x, y int) int {
-	if x < y {
-		return x
-	}
-	return y
-}
-
 func compListRevisions(_ string, cfg *action.Configuration, releaseName string) ([]string, cobra.ShellCompDirective) {
 	client := action.NewHistory(cfg)
 
 	var revisions []string
 	if hist, err := client.Run(releaseName); err == nil {
-		for _, release := range hist {
-			appVersion := fmt.Sprintf("App: %s", release.Chart.Metadata.AppVersion)
-			chartDesc := fmt.Sprintf("Chart: %s-%s", release.Chart.Metadata.Name, release.Chart.Metadata.Version)
-			revisions = append(revisions, fmt.Sprintf("%s\t%s, %s", strconv.Itoa(release.Version), appVersion, chartDesc))
+		for _, version := range hist {
+			appVersion := fmt.Sprintf("App: %s", version.Chart.Metadata.AppVersion)
+			chartDesc := fmt.Sprintf("Chart: %s-%s", version.Chart.Metadata.Name, version.Chart.Metadata.Version)
+			revisions = append(revisions, fmt.Sprintf("%s\t%s, %s", strconv.Itoa(version.Version), appVersion, chartDesc))
 		}
 		return revisions, cobra.ShellCompDirectiveNoFileComp
 	}
