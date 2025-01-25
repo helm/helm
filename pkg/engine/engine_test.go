@@ -18,12 +18,13 @@ package engine
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"path"
 	"strings"
 	"sync"
 	"testing"
 	"text/template"
+
+	"github.com/stretchr/testify/assert"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
