@@ -338,6 +338,9 @@ func (t TraceableError) ExtractExecutedFunction() (TraceableError, error) {
 	}
 	byteArrayMsg := []byte(t.message)
 	executionLocations := executionLocationRegex.FindAll(byteArrayMsg, -1)
+	if len(executionLocations) == 0 {
+		return t, nil
+	}
 	t.executedFunction = string(executionLocations[0])
 	t.message = strings.ReplaceAll(t.message, t.executedFunction, "")
 	return t, nil
@@ -413,7 +416,12 @@ func cleanupExecError(filename string, err error) error {
 			break
 		}
 		tokens = strings.SplitN(current.Error(), ": ", 3)
-		location = tokens[1]
+		if len(tokens) == 1 {
+			// For cases where the error message doesn't contain a colon
+			location = tokens[0]
+		} else {
+			location = tokens[1]
+		}
 		traceable := TraceableError{
 			location: location,
 			message:  current.Error(),
