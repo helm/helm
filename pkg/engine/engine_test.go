@@ -22,7 +22,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"text/template"
 
 	"github.com/stretchr/testify/assert"
 
@@ -1291,16 +1290,11 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 		t.Errorf("Expected error, got %v", out)
 		return
 	}
-	switch err.(type) {
-	case (template.ExecError):
-		errTxt := fmt.Sprint(err)
-		if !strings.Contains(errTxt, "noSuchKey") {
-			t.Errorf("Expected error to contain 'noSuchKey', got %s", errTxt)
-		}
-	default:
-		// Some unexpected error.
-		t.Fatal(err)
+	errTxt := fmt.Sprint(err)
+	if !strings.Contains(errTxt, "noSuchKey") {
+		t.Errorf("Expected error to contain 'noSuchKey', got %s", errTxt)
 	}
+
 }
 
 func TestNestedHelpersProducesMultilineStacktrace(t *testing.T) {
