@@ -792,11 +792,9 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		chartURL, err := repo.FindChartInRepoURL(
 			c.RepoURL,
 			name,
-			version,
-			c.CertFile,
-			c.KeyFile,
-			c.CaFile,
 			getter.All(settings),
+			repo.WithChartVersion(version),
+			repo.WithClientTLS(c.CertFile, c.KeyFile, c.CaFile),
 			repo.WithUsernamePassword(c.Username, c.Password),
 			repo.WithInsecureSkipTLSverify(c.InsecureSkipTLSverify),
 			repo.WithPassCredentialsAll(c.PassCredentialsAll),

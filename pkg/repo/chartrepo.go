@@ -201,9 +201,20 @@ type findChartInRepoURLOptions struct {
 	Password              string
 	PassCredentialsAll    bool
 	InsecureSkipTLSverify bool
+	CertFile              string
+	KeyFile               string
+	CAFile                string
+	ChartVersion          string
 }
 
 type FindChartInRepoURLOption func(*findChartInRepoURLOptions)
+
+// WithChartVersion specifies the chart version to find
+func WithChartVersion(chartVersion string) FindChartInRepoURLOption {
+	return func(options *findChartInRepoURLOptions) {
+		options.ChartVersion = chartVersion
+	}
+}
 
 // WithUsernamePassword specifies the username/password credntials for the repository
 func WithUsernamePassword(username, password string) FindChartInRepoURLOption {
@@ -220,6 +231,15 @@ func WithPassCredentialsAll(passCredentialsAll bool) FindChartInRepoURLOption {
 	}
 }
 
+// WithClientTLS species the cert, key, and CA files for client mTLS
+func WithClientTLS(certFile, keyFile, caFile string) FindChartInRepoURLOption {
+	return func(options *findChartInRepoURLOptions) {
+		options.CertFile = certFile
+		options.KeyFile = keyFile
+		options.CAFile = caFile
+	}
+}
+
 // WithInsecureSkipTLSverify skips TLS verification for repostory communication
 func WithInsecureSkipTLSverify(insecureSkipTLSverify bool) FindChartInRepoURLOption {
 	return func(options *findChartInRepoURLOptions) {
@@ -229,7 +249,7 @@ func WithInsecureSkipTLSverify(insecureSkipTLSverify bool) FindChartInRepoURLOpt
 
 // FindChartInRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories
-func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers, options ...FindChartInRepoURLOption) (string, error) {
+func FindChartInRepoURL(repoURL string, chartName string, getters getter.Providers, options ...FindChartInRepoURLOption) (string, error) {
 
 	opts := findChartInRepoURLOptions{}
 	for _, option := range options {
@@ -246,9 +266,9 @@ func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caF
 		Username:              opts.Username,
 		Password:              opts.Password,
 		PassCredentialsAll:    opts.PassCredentialsAll,
-		CertFile:              certFile,
-		KeyFile:               keyFile,
-		CAFile:                caFile,
+		CertFile:              opts.CertFile,
+		KeyFile:               opts.KeyFile,
+		CAFile:                opts.CAFile,
 		Name:                  name,
 		InsecureSkipTLSverify: opts.InsecureSkipTLSverify,
 	}
@@ -272,10 +292,10 @@ func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caF
 	}
 
 	errMsg := fmt.Sprintf("chart %q", chartName)
-	if chartVersion != "" {
-		errMsg = fmt.Sprintf("%s version %q", errMsg, chartVersion)
+	if opts.ChartVersion != "" {
+		errMsg = fmt.Sprintf("%s version %q", errMsg, opts.ChartVersion)
 	}
-	cv, err := repoIndex.Get(chartName, chartVersion)
+	cv, err := repoIndex.Get(chartName, opts.ChartVersion)
 	if err != nil {
 		return "", errors.Errorf("%s not found in %s repository", errMsg, repoURL)
 	}

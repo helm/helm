@@ -120,11 +120,9 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		chartURL, err := repo.FindChartInRepoURL(
 			p.RepoURL,
 			chartRef,
-			p.Version,
-			p.CertFile,
-			p.KeyFile,
-			p.CaFile,
 			getter.All(p.Settings),
+			repo.WithChartVersion(p.Version),
+			repo.WithClientTLS(p.CertFile, p.KeyFile, p.CaFile),
 			repo.WithUsernamePassword(p.Username, p.Password),
 			repo.WithInsecureSkipTLSverify(p.InsecureSkipTLSverify),
 			repo.WithPassCredentialsAll(p.PassCredentialsAll),
