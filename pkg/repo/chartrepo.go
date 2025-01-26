@@ -29,12 +29,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
-	"helm.sh/helm/v4/pkg/provenance"
 )
 
 // Entry represents a collection of parameters for chart repository
@@ -52,11 +49,10 @@ type Entry struct {
 
 // ChartRepository represents a chart repository
 type ChartRepository struct {
-	Config     *Entry
-	ChartPaths []string
-	IndexFile  *IndexFile
-	Client     getter.Getter
-	CachePath  string
+	Config    *Entry
+	IndexFile *IndexFile
+	Client    getter.Getter
+	CachePath string
 }
 
 // NewChartRepository constructs ChartRepository
@@ -120,46 +116,6 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(fname), 0755)
 	return fname, os.WriteFile(fname, index, 0644)
-}
-
-// Index generates an index for the chart repository and writes an index.yaml file.
-func (r *ChartRepository) Index() error {
-	err := r.generateIndex()
-	if err != nil {
-		return err
-	}
-	return r.saveIndexFile()
-}
-
-func (r *ChartRepository) saveIndexFile() error {
-	index, err := yaml.Marshal(r.IndexFile)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(r.Config.Name, indexPath), index, 0644)
-}
-
-func (r *ChartRepository) generateIndex() error {
-	for _, path := range r.ChartPaths {
-		ch, err := loader.Load(path)
-		if err != nil {
-			return err
-		}
-
-		digest, err := provenance.DigestFile(path)
-		if err != nil {
-			return err
-		}
-
-		if !r.IndexFile.Has(ch.Name(), ch.Metadata.Version) {
-			if err := r.IndexFile.MustAdd(ch.Metadata, path, r.Config.URL, digest); err != nil {
-				return errors.Wrapf(err, "failed adding to %s to index", path)
-			}
-		}
-		// TODO: If a chart exists, but has a different Digest, should we error?
-	}
-	r.IndexFile.SortEntries()
-	return nil
 }
 
 type findChartInRepoURLOptions struct {

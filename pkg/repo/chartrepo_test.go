@@ -21,78 +21,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 )
-
-const (
-	testRepository = "testdata/repository"
-	testURL        = "http://example-charts.com"
-)
-
-// loadFromDir a directory of charts archives (including sub-directories),
-// appending to the repositores ChartPath
-func loadFromDir(t *testing.T, r *ChartRepository, dir string) {
-	dirInfo, err := os.Stat(dir)
-	require.Nil(t, err)
-	require.True(t, dirInfo.IsDir())
-
-	globArchives := func(pattern string) []string {
-		archives, err := filepath.Glob(filepath.Join(dir, pattern))
-		require.Nil(t, err)
-
-		return archives
-	}
-
-	r.ChartPaths = append(r.ChartPaths, globArchives("*.tgz")...)
-	r.ChartPaths = append(r.ChartPaths, globArchives("**/*.tgz")...)
-}
-
-func TestIndex(t *testing.T) {
-	r, err := NewChartRepository(&Entry{
-		Name: testRepository,
-		URL:  testURL,
-	}, getter.All(&cli.EnvSettings{}))
-	if err != nil {
-		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
-	}
-
-	loadFromDir(t, r, testRepository)
-
-	err = r.Index()
-	if err != nil {
-		t.Errorf("Error performing index: %v\n", err)
-	}
-
-	tempIndexPath := filepath.Join(testRepository, indexPath)
-	actual, err := LoadIndexFile(tempIndexPath)
-	defer os.Remove(tempIndexPath) // clean up
-	if err != nil {
-		t.Errorf("Error loading index file %v", err)
-	}
-	verifyIndex(t, actual)
-
-	// Re-index and test again.
-	err = r.Index()
-	if err != nil {
-		t.Errorf("Error performing re-index: %s\n", err)
-	}
-	second, err := LoadIndexFile(tempIndexPath)
-	if err != nil {
-		t.Errorf("Error re-loading index file %v", err)
-	}
-	verifyIndex(t, second)
-}
 
 type CustomGetter struct {
 	repoUrls []string
@@ -149,97 +87,6 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	expectedRepoIndexURL := repoURL + "/index.yaml"
 	if myCustomGetter.repoUrls[0] != expectedRepoIndexURL {
 		t.Fatalf("Custom Getter.Get should be called with %s", expectedRepoIndexURL)
-	}
-}
-
-func verifyIndex(t *testing.T, actual *IndexFile) {
-	var empty time.Time
-	if actual.Generated.Equal(empty) {
-		t.Errorf("Generated should be greater than 0: %s", actual.Generated)
-	}
-
-	if actual.APIVersion != APIVersionV1 {
-		t.Error("Expected v1 API")
-	}
-
-	entries := actual.Entries
-	if numEntries := len(entries); numEntries != 3 {
-		t.Errorf("Expected 3 charts to be listed in index file but got %v", numEntries)
-	}
-
-	expects := map[string]ChartVersions{
-		"frobnitz": {
-			{
-				Metadata: &chart.Metadata{
-					Name:    "frobnitz",
-					Version: "1.2.3",
-				},
-			},
-		},
-		"sprocket": {
-			{
-				Metadata: &chart.Metadata{
-					Name:    "sprocket",
-					Version: "1.2.0",
-				},
-			},
-			{
-				Metadata: &chart.Metadata{
-					Name:    "sprocket",
-					Version: "1.1.0",
-				},
-			},
-		},
-		"zarthal": {
-			{
-				Metadata: &chart.Metadata{
-					Name:    "zarthal",
-					Version: "1.0.0",
-				},
-			},
-		},
-	}
-
-	for name, versions := range expects {
-		got, ok := entries[name]
-		if !ok {
-			t.Errorf("Could not find %q entry", name)
-			continue
-		}
-		if len(versions) != len(got) {
-			t.Errorf("Expected %d versions, got %d", len(versions), len(got))
-			continue
-		}
-		for i, e := range versions {
-			g := got[i]
-			if e.Name != g.Name {
-				t.Errorf("Expected %q, got %q", e.Name, g.Name)
-			}
-			if e.Version != g.Version {
-				t.Errorf("Expected %q, got %q", e.Version, g.Version)
-			}
-			if len(g.Keywords) != 3 {
-				t.Error("Expected 3 keywords.")
-			}
-			if len(g.Maintainers) != 2 {
-				t.Error("Expected 2 maintainers.")
-			}
-			if g.Created.Equal(empty) {
-				t.Error("Expected created to be non-empty")
-			}
-			if g.Description == "" {
-				t.Error("Expected description to be non-empty")
-			}
-			if g.Home == "" {
-				t.Error("Expected home to be non-empty")
-			}
-			if g.Digest == "" {
-				t.Error("Expected digest to be non-empty")
-			}
-			if len(g.URLs) != 1 {
-				t.Error("Expected exactly 1 URL")
-			}
-		}
 	}
 }
 
