@@ -21,78 +21,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 )
-
-const (
-	testRepository = "testdata/repository"
-	testURL        = "http://example-charts.com"
-)
-
-// loadFromDir a directory of charts archives (including sub-directories),
-// appending to the repositores ChartPath
-func loadFromDir(t *testing.T, r *ChartRepository, dir string) {
-	dirInfo, err := os.Stat(dir)
-	require.Nil(t, err)
-	require.True(t, dirInfo.IsDir())
-
-	globArchives := func(pattern string) []string {
-		archives, err := filepath.Glob(filepath.Join(dir, pattern))
-		require.Nil(t, err)
-
-		return archives
-	}
-
-	r.ChartPaths = append(r.ChartPaths, globArchives("*.tgz")...)
-	r.ChartPaths = append(r.ChartPaths, globArchives("**/*.tgz")...)
-}
-
-func TestIndex(t *testing.T) {
-	r, err := NewChartRepository(&Entry{
-		Name: testRepository,
-		URL:  testURL,
-	}, getter.All(&cli.EnvSettings{}))
-	if err != nil {
-		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
-	}
-
-	loadFromDir(t, r, testRepository)
-
-	err = r.Index()
-	if err != nil {
-		t.Errorf("Error performing index: %v\n", err)
-	}
-
-	tempIndexPath := filepath.Join(testRepository, indexPath)
-	actual, err := LoadIndexFile(tempIndexPath)
-	defer os.Remove(tempIndexPath) // clean up
-	if err != nil {
-		t.Errorf("Error loading index file %v", err)
-	}
-	verifyIndex(t, actual)
-
-	// Re-index and test again.
-	err = r.Index()
-	if err != nil {
-		t.Errorf("Error performing re-index: %s\n", err)
-	}
-	second, err := LoadIndexFile(tempIndexPath)
-	if err != nil {
-		t.Errorf("Error re-loading index file %v", err)
-	}
-	verifyIndex(t, second)
-}
 
 type CustomGetter struct {
 	repoUrls []string
