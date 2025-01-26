@@ -369,8 +369,7 @@ func pickChartRepositoryConfigByName(name string, cfgs []*repo.Entry) (*repo.Ent
 // be mindful of this case.
 //
 // The same URL can technically exist in multiple repositories.
-// This algorithm will return one of them based on concurrent processing,
-// without regard to the order specified in the repositories.yaml file.
+// All repositories in repositories.yaml are searched concurrently, and the first found returned
 func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry, error) {
 	var (
 		g      errgroup.Group
