@@ -19,30 +19,29 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
-	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"strings"
-
-	"github.com/spf13/cobra"
 )
 
 var (
 	cpuProfileFile *os.File
-	pprofPaths     map[string]string
+	cpuProfilePath string
+	memProfilePath string
 )
 
 func init() {
-	pprofPaths = parsePProfPaths(os.Getenv("HELM_PPROF"))
+	cpuProfilePath = os.Getenv("HELM_PPROF_CPU_PROFILE")
+	memProfilePath = os.Getenv("HELM_PPROF_MEM_PROFILE")
 }
 
-// startProfiling starts profiling CPU usage
+// startProfiling starts profiling CPU usage if HELM_PPROF_CPU_PROFILE is set
+// to a file path. It returns an error if the file could not be created or
+// CPU profiling could not be started.
 func startProfiling() error {
-	cpuprofile, ok := pprofPaths["cpu"]
-	if ok && cpuprofile != "" {
+	if cpuProfilePath != "" {
 		var err error
-		cpuProfileFile, err = os.Create(cpuprofile)
+		cpuProfileFile, err = os.Create(cpuProfilePath)
 		if err != nil {
 			return fmt.Errorf("could not create CPU profile: %w", err)
 		}
@@ -55,8 +54,9 @@ func startProfiling() error {
 	return nil
 }
 
-// stopProfiling stops profiling CPU and memory usage and writes the results to
-// the files specified by HELM_PPROF=cpu=/path/to/cpu.prof,mem=/path/to/mem.prof
+// stopProfiling stops profiling CPU and memory usage.
+// It writes memory profile to the file path specified in HELM_PPROF_MEM_PROFILE
+// environment variable.
 func stopProfiling() error {
 	errs := []string{}
 
@@ -70,9 +70,8 @@ func stopProfiling() error {
 		cpuProfileFile = nil
 	}
 
-	memprofile, ok := pprofPaths["mem"]
-	if ok && memprofile != "" {
-		f, err := os.Create(memprofile)
+	if memProfilePath != "" {
+		f, err := os.Create(memProfilePath)
 		if err != nil {
 			errs = append(errs, err.Error())
 		}
@@ -89,36 +88,4 @@ func stopProfiling() error {
 	}
 
 	return nil
-}
-
-// addProfilingFlags adds the --cpuprofile and --memprofile flags to the given command.
-func addProfilingFlags(cmd *cobra.Command) {
-	// Persistent flags to make available to subcommands
-	cmd.PersistentFlags().String("cpuprofile", "", "File path to write cpu profiling data")
-	cmd.PersistentFlags().String("memprofile", "", "File path to write memory profiling data")
-}
-
-func parsePProfPaths(env string) map[string]string {
-	// Initial empty paths
-	m := map[string]string{}
-	for _, pprofs := range strings.Split(env, ",") {
-		// Is of the format mem=/path/to/memprof
-		tuple := strings.Split(pprofs, "=")
-		if len(tuple) != 2 {
-			continue
-		}
-		if tuple[0] != "cpu" && tuple[0] != "mem" {
-			continue
-		}
-
-		s, err := filepath.Abs(path.Clean(tuple[1]))
-		if err != nil {
-			continue
-		}
-		if !strings.HasSuffix(s, string(filepath.Separator)) {
-			// Ensure its not a directory
-			m[tuple[0]] = s
-		}
-	}
-	return m
 }
