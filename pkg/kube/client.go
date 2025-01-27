@@ -107,43 +107,35 @@ func init() {
 	}
 }
 
-func getStatusWatcher(factory Factory) (watcher.StatusWatcher, error) {
-	cfg, err := factory.ToRESTConfig()
-	if err != nil {
-		return nil, err
-	}
-	dynamicClient, err := factory.DynamicClient()
-	if err != nil {
-		return nil, err
-	}
-	httpClient, err := rest.HTTPClientFor(cfg)
-	if err != nil {
-		return nil, err
-	}
-	restMapper, err := apiutil.NewDynamicRESTMapper(cfg, httpClient)
-	if err != nil {
-		return nil, err
-	}
-	sw := watcher.NewDefaultStatusWatcher(dynamicClient, restMapper)
-	return sw, nil
-}
-
-func NewWaiter(strategy WaitStrategy, factory Factory, log func(string, ...interface{})) (Waiter, error) {
+func (c *Client) newWaiter(strategy WaitStrategy) (Waiter, error) {
 	switch strategy {
 	case LegacyWaiterStrategy:
-		kc, err := factory.KubernetesClientSet()
+		kc, err := c.Factory.KubernetesClientSet()
 		if err != nil {
 			return nil, err
 		}
-		return &HelmWaiter{kubeClient: kc, log: log}, nil
+		return &HelmWaiter{kubeClient: kc, log: c.Log}, nil
 	case StatusWaiterStrategy:
-		sw, err := getStatusWatcher(factory)
+		cfg, err := c.Factory.ToRESTConfig()
 		if err != nil {
 			return nil, err
 		}
+		dynamicClient, err := c.Factory.DynamicClient()
+		if err != nil {
+			return nil, err
+		}
+		httpClient, err := rest.HTTPClientFor(cfg)
+		if err != nil {
+			return nil, err
+		}
+		restMapper, err := apiutil.NewDynamicRESTMapper(cfg, httpClient)
+		if err != nil {
+			return nil, err
+		}
+		sw := watcher.NewDefaultStatusWatcher(dynamicClient, restMapper)
 		return &statusWaiter{
 			sw:  sw,
-			log: log,
+			log: c.Log,
 		}, nil
 	default:
 		return nil, errors.New("unknown wait strategy")
@@ -156,15 +148,16 @@ func New(getter genericclioptions.RESTClientGetter, ws WaitStrategy) (*Client, e
 		getter = genericclioptions.NewConfigFlags(true)
 	}
 	factory := cmdutil.NewFactory(getter)
-	waiter, err := NewWaiter(ws, factory, nopLogger)
+	c :=  &Client{
+		Factory: factory,
+		Log:     nopLogger,
+	}
+	var err error
+	c.Waiter, err = c.newWaiter(ws)
 	if err != nil {
 		return nil, err
 	}
-	return &Client{
-		Factory: factory,
-		Log:     nopLogger,
-		Waiter:  waiter,
-	}, nil
+	return c, nil
 }
 
 var nopLogger = func(_ string, _ ...interface{}) {}

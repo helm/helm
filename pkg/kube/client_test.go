@@ -512,11 +512,11 @@ func TestWait(t *testing.T) {
 			}
 		}),
 	}
-	waiter, err := NewWaiter(LegacyWaiterStrategy, c.Factory, c.Log)
+	var err error
+	c.Waiter, err = c.newWaiter(LegacyWaiterStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
-	c.Waiter = waiter
 	resources, err := c.Build(objBody(&podList), false)
 	if err != nil {
 		t.Fatal(err)
@@ -569,11 +569,11 @@ func TestWaitJob(t *testing.T) {
 			}
 		}),
 	}
-	waiter, err := NewWaiter(LegacyWaiterStrategy, c.Factory, c.Log)
+	var err error
+	c.Waiter, err = c.newWaiter(LegacyWaiterStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
-	c.Waiter = waiter
 	resources, err := c.Build(objBody(job), false)
 	if err != nil {
 		t.Fatal(err)
@@ -628,11 +628,11 @@ func TestWaitDelete(t *testing.T) {
 			}
 		}),
 	}
-	waiter, err := NewWaiter(LegacyWaiterStrategy, c.Factory, c.Log)
+	var err error
+	c.Waiter, err = c.newWaiter(LegacyWaiterStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
-	c.Waiter = waiter
 	resources, err := c.Build(objBody(&pod), false)
 	if err != nil {
 		t.Fatal(err)
