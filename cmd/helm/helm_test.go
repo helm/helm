@@ -49,10 +49,8 @@ func TestPluginExitCode(t *testing.T) {
 			"RUN_MAIN_FOR_TESTING=1",
 			// See pkg/cli/environment.go for which envvars can be used for configuring these passes
 			// and also see plugin_test.go for how a plugin env can be set up.
-			// We just does the same setup as plugin_test.go via envvars
+			// This mimics the "exitwith" test case in TestLoadPlugins using envvars
 			"HELM_PLUGINS=../../pkg/cmd/testdata/helmhome/helm/plugins",
-			"HELM_REPOSITORY_CONFIG=../../pkg/cmd/testdata/helmhome/helm/repositories.yaml",
-			"HELM_REPOSITORY_CACHE=../../pkg/cmd/testdata/helmhome/helm/repository",
 		)
 		stdout := &bytes.Buffer{}
 		stderr := &bytes.Buffer{}
