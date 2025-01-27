@@ -90,7 +90,6 @@ By default, the default directories depend on the Operating System. The defaults
 | Windows          | %TEMP%\helm               | %APPDATA%\helm                 | %APPDATA%\helm          |
 `
 
-// var settings *cli.EnvSettings
 var settings = cli.New()
 
 func Debug(format string, v ...interface{}) {
@@ -105,11 +104,7 @@ func Warning(format string, v ...interface{}) {
 	fmt.Fprintf(os.Stderr, format, v...)
 }
 
-func NewRootCmd(actionConfig *action.Configuration, settingsIn *cli.EnvSettings, out io.Writer, args []string) (*cobra.Command, error) {
-	if settingsIn != nil {
-		settings = settingsIn
-	}
-	
+func NewRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",

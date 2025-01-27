@@ -52,14 +52,12 @@ func main() {
 
 	actionConfig := new(action.Configuration)
 	// Two things I'm going to do. make newRootCommand not take setting, de-couple test data ./
-	cmd, err := helmcmd.NewRootCmd(actionConfig, settings, os.Stdout, os.Args[1:])
+	cmd, err := helmcmd.NewRootCmd(actionConfig, os.Stdout, os.Args[1:])
 	if err != nil {
 		helmcmd.Warning("%+v", err)
 		os.Exit(1)
 	}
 
-	// run when each command's execute method is called
-	// I may want to change this to a PersistentPreRunE call
 	cobra.OnInitialize(func() {
 		helmDriver := os.Getenv("HELM_DRIVER")
 		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, helmcmd.Debug); err != nil {

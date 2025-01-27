@@ -1,5 +1,0 @@
-commands:
-  - name: code
-    flags:
-    - a
-    - b
