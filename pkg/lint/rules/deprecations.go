@@ -73,16 +73,16 @@ func validateNoDeprecations(resource *K8sYamlStruct, kubeVersion *chartutil.Kube
 		return err
 	}
 
-	maj, err := strconv.Atoi(majorVersion)
+	major, err := strconv.Atoi(majorVersion)
 	if err != nil {
 		return err
 	}
-	min, err := strconv.Atoi(minorVersion)
+	minor, err := strconv.Atoi(minorVersion)
 	if err != nil {
 		return err
 	}
 
-	if !deprecation.IsDeprecated(runtimeObject, maj, min) {
+	if !deprecation.IsDeprecated(runtimeObject, major, minor) {
 		return nil
 	}
 	gvk := fmt.Sprintf("%s %s", resource.APIVersion, resource.Kind)

@@ -59,9 +59,6 @@ type repoAddOptions struct {
 
 	repoFile  string
 	repoCache string
-
-	// Deprecated, but cannot be removed until Helm 4
-	deprecatedNoUpdate bool
 }
 
 func newRepoAddCmd(out io.Writer) *cobra.Command {
@@ -92,7 +89,6 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.password, "password", "", "chart repository password")
 	f.BoolVarP(&o.passwordFromStdinOpt, "password-stdin", "", false, "read chart repository password from stdin")
 	f.BoolVar(&o.forceUpdate, "force-update", false, "replace (overwrite) the repo if it already exists")
-	f.BoolVar(&o.deprecatedNoUpdate, "no-update", false, "Ignored. Formerly, it would disabled forced updates. It is deprecated by force-update.")
 	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&o.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
