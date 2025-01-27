@@ -44,18 +44,21 @@ global:
     boat: true
 
 pequod:
+  boat: null
   global:
     name: Stinky
     harpooner: Tashtego
     nested:
       boat: false
       sail: true
+      foo2: null
   ahab:
     scope: whale
     boat: null
     nested:
       foo: true
-      bar: null
+      boat: null
+    object: null
 `)
 
 func withDeps(c *chart.Chart, deps ...*chart.Chart) *chart.Chart {
@@ -82,6 +85,13 @@ func TestCoalesceValues(t *testing.T) {
 			"global": map[string]interface{}{
 				"nested2": map[string]interface{}{"l0": "moby"},
 			},
+			"pequod": map[string]interface{}{
+				"boat": "maybe",
+				"ahab": map[string]interface{}{
+					"boat":   "maybe",
+					"nested": map[string]interface{}{"boat": "maybe"},
+				},
+			},
 		},
 	},
 		withDeps(&chart.Chart{
@@ -92,19 +102,25 @@ func TestCoalesceValues(t *testing.T) {
 				"global": map[string]interface{}{
 					"nested2": map[string]interface{}{"l1": "pequod"},
 				},
+				"boat": false,
+				"ahab": map[string]interface{}{
+					"boat":   false,
+					"nested": map[string]interface{}{"boat": false},
+				},
 			},
 		},
 			&chart.Chart{
 				Metadata: &chart.Metadata{Name: "ahab"},
 				Values: map[string]interface{}{
 					"global": map[string]interface{}{
-						"nested":  map[string]interface{}{"foo": "bar"},
+						"nested":  map[string]interface{}{"foo": "bar", "foo2": "bar2"},
 						"nested2": map[string]interface{}{"l2": "ahab"},
 					},
 					"scope":  "ahab",
 					"name":   "ahab",
 					"boat":   true,
-					"nested": map[string]interface{}{"foo": false, "bar": true},
+					"nested": map[string]interface{}{"foo": false, "boat": true},
+					"object": map[string]interface{}{"foo": "bar"},
 				},
 			},
 		),
@@ -155,6 +171,7 @@ func TestCoalesceValues(t *testing.T) {
 		{"{{.pequod.ahab.nested.foo}}", "true"},
 		{"{{.pequod.ahab.global.name}}", "Ishmael"},
 		{"{{.pequod.ahab.global.nested.foo}}", "bar"},
+		{"{{.pequod.ahab.global.nested.foo2}}", "<no value>"},
 		{"{{.pequod.ahab.global.subject}}", "Queequeg"},
 		{"{{.pequod.ahab.global.harpooner}}", "Tashtego"},
 		{"{{.pequod.global.name}}", "Ishmael"},
@@ -200,13 +217,22 @@ func TestCoalesceValues(t *testing.T) {
 		t.Error("Expected nested boat key to be removed, still present")
 	}
 
-	subchart := v["pequod"].(map[string]interface{})["ahab"].(map[string]interface{})
+	subchart := v["pequod"].(map[string]interface{})
 	if _, ok := subchart["boat"]; ok {
 		t.Error("Expected subchart boat key to be removed, still present")
 	}
 
-	if _, ok := subchart["nested"].(map[string]interface{})["bar"]; ok {
-		t.Error("Expected subchart nested bar key to be removed, still present")
+	subsubchart := subchart["ahab"].(map[string]interface{})
+	if _, ok := subsubchart["boat"]; ok {
+		t.Error("Expected sub-subchart ahab boat key to be removed, still present")
+	}
+
+	if _, ok := subsubchart["nested"].(map[string]interface{})["boat"]; ok {
+		t.Error("Expected sub-subchart nested boat key to be removed, still present")
+	}
+
+	if _, ok := subsubchart["object"]; ok {
+		t.Error("Expected sub-subchart object map to be removed, still present")
 	}
 
 	// CoalesceValues should not mutate the passed arguments
