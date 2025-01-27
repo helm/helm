@@ -163,7 +163,7 @@ annotations:
 	return ociAnnotations
 }
 
-// getChartOCIAnnotations will generate OCI annotations from the provided chart
+// generateChartOCIAnnotations will generate OCI annotations from the provided chart
 func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[string]string {
 	chartOCIAnnotations := map[string]string{}
 

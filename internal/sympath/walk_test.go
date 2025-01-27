@@ -108,12 +108,12 @@ func checkMarks(t *testing.T, report bool) {
 }
 
 // Assumes that each node name is unique. Good enough for a test.
-// If clear is true, any incoming error is cleared before return. The errors
-// are always accumulated, though.
-func mark(info os.FileInfo, err error, errors *[]error, clear bool) error {
+// If clearIncomingError is true, any incoming error is cleared before
+// return. The errors are always accumulated, though.
+func mark(info os.FileInfo, err error, errors *[]error, clearIncomingError bool) error {
 	if err != nil {
 		*errors = append(*errors, err)
-		if clear {
+		if clearIncomingError {
 			return nil
 		}
 		return err
@@ -130,9 +130,8 @@ func mark(info os.FileInfo, err error, errors *[]error, clear bool) error {
 func TestWalk(t *testing.T) {
 	makeTree(t)
 	errors := make([]error, 0, 10)
-	clear := true
 	markFn := func(_ string, info os.FileInfo, err error) error {
-		return mark(info, err, &errors, clear)
+		return mark(info, err, &errors, true)
 	}
 	// Expect no errors.
 	err := Walk(tree.name, markFn)

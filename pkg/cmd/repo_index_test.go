@@ -162,9 +162,9 @@ func TestRepoIndexCmd(t *testing.T) {
 	}
 }
 
-func linkOrCopy(old, new string) error {
-	if err := os.Link(old, new); err != nil {
-		return copyFile(old, new)
+func linkOrCopy(source, target string) error {
+	if err := os.Link(source, target); err != nil {
+		return copyFile(source, target)
 	}
 
 	return nil

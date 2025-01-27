@@ -233,21 +233,25 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
-			return nil, err
+			i.cfg.Log(fmt.Sprintf("ERROR: Cluster reachability check failed: %v", err))
+			return nil, errors.Wrap(err, "cluster reachability check failed")
 		}
 	}
 
 	// HideSecret must be used with dry run. Otherwise, return an error.
 	if !i.isDryRun() && i.HideSecret {
+		i.cfg.Log("ERROR: Hiding Kubernetes secrets requires a dry-run mode")
 		return nil, errors.New("Hiding Kubernetes secrets requires a dry-run mode")
 	}
 
 	if err := i.availableName(); err != nil {
-		return nil, err
+		i.cfg.Log(fmt.Sprintf("ERROR: Release name check failed: %v", err))
+		return nil, errors.Wrap(err, "release name check failed")
 	}
 
 	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
-		return nil, err
+		i.cfg.Log(fmt.Sprintf("ERROR: Processing chart dependencies failed: %v", err))
+		return nil, errors.Wrap(err, "chart dependencies processing failed")
 	}
 
 	var interactWithRemote bool
@@ -598,8 +602,8 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 	return i.recordRelease(last)
 }
 
-// write the <data> to <output-dir>/<name>. <append> controls if the file is created or content will be appended
-func writeToFile(outputDir string, name string, data string, append bool) error {
+// write the <data> to <output-dir>/<name>. <appendData> controls if the file is created or content will be appended
+func writeToFile(outputDir string, name string, data string, appendData bool) error {
 	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
 
 	err := ensureDirectoryForFile(outfileName)
@@ -607,7 +611,7 @@ func writeToFile(outputDir string, name string, data string, append bool) error 
 		return err
 	}
 
-	f, err := createOrOpenFile(outfileName, append)
+	f, err := createOrOpenFile(outfileName, appendData)
 	if err != nil {
 		return err
 	}
@@ -624,8 +628,8 @@ func writeToFile(outputDir string, name string, data string, append bool) error 
 	return nil
 }
 
-func createOrOpenFile(filename string, append bool) (*os.File, error) {
-	if append {
+func createOrOpenFile(filename string, appendData bool) (*os.File, error) {
+	if appendData {
 		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
 	}
 	return os.Create(filename)

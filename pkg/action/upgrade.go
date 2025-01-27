@@ -104,7 +104,7 @@ type Upgrade struct {
 	// Description is the description of this operation
 	Description string
 	Labels      map[string]string
-	// PostRender is an optional post-renderer
+	// PostRenderer is an optional post-renderer
 	//
 	// If this is non-nil, then after templates are rendered, they will be sent to the
 	// post renderer before sending to the Kubernetes API server.
