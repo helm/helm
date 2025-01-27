@@ -216,9 +216,6 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// Check for expired repositories
 	checkForExpiredRepos(settings.RepositoryConfig)
 
-	// CPU and memory profiling flags that are available to all commands
-	addProfilingFlags(cmd)
-
 	return cmd, nil
 }
 
