@@ -196,34 +196,9 @@ func (r *ChartRepository) generateIndex() error {
 	return nil
 }
 
-// FindChartInRepoURL finds chart in chart repository pointed by repoURL
-// without adding repo to repositories
-func FindChartInRepoURL(repoURL, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
-	return FindChartInAuthRepoURL(repoURL, "", "", chartName, chartVersion, certFile, keyFile, caFile, getters)
-}
-
 // FindChartInAuthRepoURL finds chart in chart repository pointed by repoURL
-// without adding repo to repositories, like FindChartInRepoURL,
-// but it also receives credentials for the chart repository.
-func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, getters getter.Providers) (string, error) {
-	return FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, false, getters)
-}
-
-// FindChartInAuthAndTLSRepoURL finds chart in chart repository pointed by repoURL
-// without adding repo to repositories, like FindChartInRepoURL,
-// but it also receives credentials and TLS verify flag for the chart repository.
-// TODO Helm 4, FindChartInAuthAndTLSRepoURL should be integrated into FindChartInAuthRepoURL.
-func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify bool, getters getter.Providers) (string, error) {
-	return FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, insecureSkipTLSverify, false, getters)
-}
-
-// FindChartInAuthAndTLSAndPassRepoURL finds chart in chart repository pointed by repoURL
-// without adding repo to repositories, like FindChartInRepoURL,
-// but it also receives credentials, TLS verify flag, and if credentials should
-// be passed on to other domains.
-// TODO Helm 4, FindChartInAuthAndTLSAndPassRepoURL should be integrated into FindChartInAuthRepoURL.
-func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify, passCredentialsAll bool, getters getter.Providers) (string, error) {
-
+// without adding repo to repositories, and supports authentication, TLS settings, and optional passing of credentials to other domains.
+func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify, passCredentialsAll bool, getters getter.Providers) (string, error) {
 	// Download and write the index file to a temporary location
 	buf := make([]byte, 20)
 	rand.Read(buf)
@@ -244,6 +219,8 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 	if err != nil {
 		return "", err
 	}
+
+	// Download the index file from the repository
 	idx, err := r.DownloadIndexFile()
 	if err != nil {
 		return "", errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", repoURL)
@@ -253,27 +230,31 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 		os.RemoveAll(filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name)))
 	}()
 
-	// Read the index file for the repository to get chart information and return chart URL
+	// Read the index file to get chart information
 	repoIndex, err := LoadIndexFile(idx)
 	if err != nil {
 		return "", err
 	}
 
+	// Build error message for missing chart version
 	errMsg := fmt.Sprintf("chart %q", chartName)
 	if chartVersion != "" {
 		errMsg = fmt.Sprintf("%s version %q", errMsg, chartVersion)
 	}
+
+	// Find chart in the index
 	cv, err := repoIndex.Get(chartName, chartVersion)
 	if err != nil {
 		return "", errors.Errorf("%s not found in %s repository", errMsg, repoURL)
 	}
 
+	// Ensure the chart has downloadable URLs
 	if len(cv.URLs) == 0 {
 		return "", errors.Errorf("%s has no downloadable URLs", errMsg)
 	}
 
+	// Resolve the chart URL
 	chartURL := cv.URLs[0]
-
 	absoluteChartURL, err := ResolveReferenceURL(repoURL, chartURL)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to make chart URL absolute")
