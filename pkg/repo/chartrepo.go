@@ -196,9 +196,9 @@ func (r *ChartRepository) generateIndex() error {
 	return nil
 }
 
-// FindChartInAuthRepoURL finds chart in chart repository pointed by repoURL
+// FindChartRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories, and supports authentication, TLS settings, and optional passing of credentials to other domains.
-func FindChartInAuthRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify, passCredentialsAll bool, getters getter.Providers) (string, error) {
+func FindChartRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify, passCredentialsAll bool, getters getter.Providers) (string, error) {
 	// Download and write the index file to a temporary location
 	buf := make([]byte, 20)
 	rand.Read(buf)
