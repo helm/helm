@@ -115,8 +115,11 @@ func (o *outputValue) Set(s string) error {
 	return nil
 }
 
+var P2 string
+
 func bindPostRenderFlag(cmd *cobra.Command, varRef *postrender.PostRenderer) {
 	p := &postRendererOptions{varRef, "", []string{}}
+	cmd.Flags().StringVar(&P2, "post-renderer2", "", "chart repository username where to locate the requested chart")
 	cmd.Flags().Var(&postRendererString{p}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
 	cmd.Flags().Var(&postRendererArgsSlice{p}, postRenderArgsFlag, "an argument to the post-renderer (can specify multiple)")
 }
@@ -140,6 +143,7 @@ func (p *postRendererString) Type() string {
 }
 
 func (p *postRendererString) Set(val string) error {
+	fmt.Println("set set", val)
 	if val == "" {
 		return nil
 	}

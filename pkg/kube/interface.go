@@ -20,7 +20,6 @@ import (
 	"io"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -63,10 +62,6 @@ type Interface interface {
 	//
 	// Validates against OpenAPI schema if validate is true.
 	Build(reader io.Reader, validate bool) (ResourceList, error)
-
-	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
-	// and returns said phase (PodSucceeded or PodFailed qualify).
-	WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error)
 
 	// IsReachable checks whether the client is able to connect to the cluster.
 	IsReachable() error
