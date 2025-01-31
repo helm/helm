@@ -1,4 +1,4 @@
-==> Linting testdata/testcharts/chart-with-bad-subcharts
+==> Linting testdata/testcharts/chart-with-bad-subcharts (scope: root)
 [INFO] Chart.yaml: icon is recommended
 [ERROR] templates/: error unpacking subchart bad-subchart in chart-with-bad-subcharts: validation: chart.metadata.name is required
 [ERROR] : unable to load chart
