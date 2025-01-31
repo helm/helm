@@ -77,7 +77,7 @@ const maxChartNameLength = 250
 const sep = string(filepath.Separator)
 
 const defaultChartfile = `apiVersion: v2
-name: %s
+name: "%s"
 description: A Helm chart for Kubernetes
 
 # A chart can be either an 'application' or a 'library' chart.
