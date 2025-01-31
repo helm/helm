@@ -204,7 +204,7 @@ func TestChartfile(t *testing.T) {
 			return
 		}
 
-		if !strings.Contains(msgs[0].Err.Error(), "name is required") {
+		if !strings.Contains(msgs[0].Err.Error(), "no name provided") {
 			t.Errorf("Unexpected message 0: %s", msgs[0].Err)
 		}
 
@@ -233,22 +233,26 @@ func TestChartfile(t *testing.T) {
 		linter := support.Linter{ChartDir: anotherBadChartDir}
 		Chartfile(&linter)
 		msgs := linter.Messages
-		expectedNumberOfErrorMessages := 3
+		expectedNumberOfErrorMessages := 4
 
 		if len(msgs) != expectedNumberOfErrorMessages {
 			t.Errorf("Expected %d errors, got %d", expectedNumberOfErrorMessages, len(msgs))
 			return
 		}
 
-		if !strings.Contains(msgs[0].Err.Error(), "version should be of type string") {
+		if !strings.Contains(msgs[0].Err.Error(), "invalid release name, must match regex ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$ and the length must not be longer than 53") {
 			t.Errorf("Unexpected message 0: %s", msgs[0].Err)
 		}
 
-		if !strings.Contains(msgs[1].Err.Error(), "version '7.2445e+06' is not a valid SemVer") {
+		if !strings.Contains(msgs[1].Err.Error(), "version should be of type string") {
+			t.Errorf("Unexpected message 0: %s", msgs[0].Err)
+		}
+
+		if !strings.Contains(msgs[2].Err.Error(), "version '7.2445e+06' is not a valid SemVer") {
 			t.Errorf("Unexpected message 1: %s", msgs[1].Err)
 		}
 
-		if !strings.Contains(msgs[2].Err.Error(), "appVersion should be of type string") {
+		if !strings.Contains(msgs[3].Err.Error(), "appVersion should be of type string") {
 			t.Errorf("Unexpected message 2: %s", msgs[2].Err)
 		}
 	})
