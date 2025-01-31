@@ -68,7 +68,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 
 	_, out, err := executeActionCommand(
 		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s", dir(chartname), dir("repositories.yaml"), dir()),
-	)
+		nil, nil)
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
@@ -110,7 +110,9 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, out, err = executeActionCommand(fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s", dir(chartname), dir("repositories.yaml"), dir()))
+	_, out, err = executeActionCommand(
+		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s", dir(chartname), dir("repositories.yaml"), dir()),
+		nil, nil)
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
@@ -136,7 +138,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		dir("repositories.yaml"),
 		dir(),
 		dir())
-	_, out, err = executeActionCommand(cmd)
+	_, out, err = executeActionCommand(cmd, nil, nil)
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
@@ -169,7 +171,9 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 	}
 	createTestingChart(t, dir(), chartname, srv.URL())
 
-	_, output, err := executeActionCommand(fmt.Sprintf("dependency update %s --repository-config %s --repository-cache %s", dir(chartname), dir("repositories.yaml"), dir()))
+	_, output, err := executeActionCommand(
+		fmt.Sprintf("dependency update %s --repository-config %s --repository-cache %s", dir(chartname), dir("repositories.yaml"), dir()),
+		nil, nil)
 	if err != nil {
 		t.Logf("Output: %s", output)
 		t.Fatal(err)
@@ -178,7 +182,9 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 	// Chart repo is down
 	srv.Stop()
 
-	_, output, err = executeActionCommand(fmt.Sprintf("dependency update %s --repository-config %s --repository-cache %s", dir(chartname), dir("repositories.yaml"), dir()))
+	_, output, err = executeActionCommand(
+		fmt.Sprintf("dependency update %s --repository-config %s --repository-cache %s", dir(chartname), dir("repositories.yaml"), dir()),
+		nil, nil)
 	if err == nil {
 		t.Logf("Output: %s", output)
 		t.Fatal("Expected error, got nil")
@@ -233,7 +239,7 @@ func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
 	_, out, err := executeActionCommand(
 		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s", dir(chartname),
 			dir("repositories.yaml"), dir()),
-	)
+		nil, nil)
 
 	if err != nil {
 		t.Logf("Output: %s", out)

@@ -42,7 +42,7 @@ func TestSearchHubCmd(t *testing.T) {
 
 	testcmd := "search hub --endpoint " + ts.URL + " maria"
 	storage := storageFixture()
-	_, out, err := executeActionCommandC(storage, testcmd)
+	_, out, err := executeActionCommandC(storage, testcmd, nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, %s", err)
 	}
@@ -72,7 +72,7 @@ func TestSearchHubListRepoCmd(t *testing.T) {
 
 	testcmd := "search hub --list-repo-url --endpoint " + ts.URL + " maria"
 	storage := storageFixture()
-	_, out, err := executeActionCommandC(storage, testcmd)
+	_, out, err := executeActionCommandC(storage, testcmd, nil, nil)
 	if err != nil {
 		t.Errorf("unexpected error, %s", err)
 	}
@@ -165,7 +165,7 @@ func TestSearchHubCmd_FailOnNoResponseTests(t *testing.T) {
 
 			storage := storageFixture()
 
-			_, out, err := executeActionCommandC(storage, tt.cmd)
+			_, out, err := executeActionCommandC(storage, tt.cmd, nil, nil)
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("expected error due to no record in response, got nil")
