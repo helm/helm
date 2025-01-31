@@ -93,6 +93,10 @@ func WithDependingChart(c *chart.Chart) OCIServerOpt {
 }
 
 func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
+	return NewOCIServerWithBindAddress(t, dir, "")
+}
+
+func NewOCIServerWithBindAddress(t *testing.T, dir string, bindAddress string) (*OCIServer, error) {
 	testHtpasswdFileBasename := "authtest.htpasswd"
 	testUsername, testPassword := "username", "password"
 
@@ -113,7 +117,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 		t.Fatalf("error finding free port for test registry")
 	}
 
-	config.HTTP.Addr = fmt.Sprintf(":%d", port)
+	config.HTTP.Addr = fmt.Sprintf("%s:%d", bindAddress, port)
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
 	config.Auth = configuration.Auth{
