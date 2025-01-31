@@ -1,0 +1,4 @@
+apiVersion: v2
+name: prod
+version: v0.1.0
+appVersion: v0.1.0
