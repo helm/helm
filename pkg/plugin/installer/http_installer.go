@@ -145,7 +145,7 @@ func (i *HTTPInstaller) Install() error {
 	}
 
 	debug("copying %s to %s", src, i.Path())
-	return fs.CopyDir(src, i.Path())
+	return fs.CopyDir(src, i.Path(), []string{})
 }
 
 // Update updates a local repository
