@@ -18,6 +18,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"time"
 
@@ -80,6 +82,38 @@ func (f *FailingKubeClient) WaitWithJobs(resources kube.ResourceList, d time.Dur
 		return f.WaitError
 	}
 	return f.PrintingKubeClient.WaitWithJobs(resources, d)
+}
+
+// WaitWithContext waits the amount of time defined on f.WaitDuration or until context is done
+// then returns the configured error if set or prints.
+func (f *FailingKubeClient) WaitWithContext(ctx context.Context, resources kube.ResourceList, d time.Duration) error {
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context canceled")
+	case <-time.After(f.WaitDuration):
+	}
+
+	if f.WaitError != nil {
+		return f.WaitError
+	}
+
+	return f.PrintingKubeClient.WaitWithContext(ctx, resources, d)
+}
+
+// WaitWithJobsWithContext waits the amount of time defined on f.WaitDuration or until context is done
+// then returns the configured error if set or prints.
+func (f *FailingKubeClient) WaitWithJobsWithContext(ctx context.Context, resources kube.ResourceList, d time.Duration) error {
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context canceled")
+	case <-time.After(f.WaitDuration):
+	}
+
+	if f.WaitError != nil {
+		return f.WaitError
+	}
+
+	return f.PrintingKubeClient.WaitWithContext(ctx, resources, d)
 }
 
 // WaitForDelete returns the configured error if set or prints
