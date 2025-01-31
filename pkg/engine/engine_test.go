@@ -22,7 +22,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"text/template"
+
+	"github.com/stretchr/testify/assert"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1289,14 +1290,48 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 		t.Errorf("Expected error, got %v", out)
 		return
 	}
-	switch err.(type) {
-	case (template.ExecError):
-		errTxt := fmt.Sprint(err)
-		if !strings.Contains(errTxt, "noSuchKey") {
-			t.Errorf("Expected error to contain 'noSuchKey', got %s", errTxt)
-		}
-	default:
-		// Some unexpected error.
-		t.Fatal(err)
+	errTxt := fmt.Sprint(err)
+	if !strings.Contains(errTxt, "noSuchKey") {
+		t.Errorf("Expected error to contain 'noSuchKey', got %s", errTxt)
 	}
+
+}
+
+func TestNestedHelpersProducesMultilineStacktrace(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "NestedHelperFunctions"},
+		Templates: []*chart.File{
+			{Name: "templates/svc.yaml", Data: []byte(
+				`name: {{ include "nested_helper.name" . }}`,
+			)},
+			{Name: "templates/_helpers_1.tpl", Data: []byte(
+				`{{- define "nested_helper.name" -}}{{- include "common.names.get_name" . -}}{{- end -}}`,
+			)},
+			{Name: "charts/common/templates/_helpers_2.tpl", Data: []byte(
+				`{{- define "common.names.get_name" -}}{{- .Release.Name | trunc 63 | trimSuffix "-" -}}{{- end -}}`,
+			)},
+		},
+	}
+
+	expectedErrorMessage := `NestedHelperFunctions/templates/svc.yaml:1:9
+  executing "NestedHelperFunctions/templates/svc.yaml" at <include "nested_helper.name" .>: 
+    error calling include:
+NestedHelperFunctions/templates/_helpers_1.tpl:1:39
+  executing "nested_helper.name" at <include "common.names.get_name" .>: 
+    error calling include:
+NestedHelperFunctions/charts/common/templates/_helpers_2.tpl:1:50
+  executing "common.names.get_name" at <.Release.Name>: 
+    nil pointer evaluating interface {}.Name
+`
+
+	v := chartutil.Values{}
+
+	val, _ := chartutil.CoalesceValues(c, v)
+	vals := map[string]interface{}{
+		"Values": val.AsMap(),
+	}
+	_, err := Render(c, vals)
+
+	assert.NotNil(t, err)
+	assert.Equal(t, expectedErrorMessage, err.Error())
 }

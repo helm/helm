@@ -321,6 +321,74 @@ func cleanupParseError(filename string, err error) error {
 	return fmt.Errorf("parse error at (%s): %s", string(location), errMsg)
 }
 
+type TraceableError struct {
+	location         string
+	message          string
+	executedFunction string
+}
+
+func (t TraceableError) String() string {
+	return t.location + "\n  " + t.executedFunction + "\n    " + t.message + "\n"
+}
+
+func (t TraceableError) ExtractExecutedFunction() (TraceableError, error) {
+	executionLocationRegex, regexFindErr := regexp.Compile(`executing "[^\"]*" at <[^\<\>]*>:?\s*`)
+	if regexFindErr != nil {
+		return t, regexFindErr
+	}
+	byteArrayMsg := []byte(t.message)
+	executionLocations := executionLocationRegex.FindAll(byteArrayMsg, -1)
+	if len(executionLocations) == 0 {
+		return t, nil
+	}
+	t.executedFunction = string(executionLocations[0])
+	t.message = strings.ReplaceAll(t.message, t.executedFunction, "")
+	return t, nil
+}
+
+func (t TraceableError) FilterLocation() TraceableError {
+	if strings.Contains(t.message, t.location) {
+		t.message = strings.ReplaceAll(t.message, t.location, "")
+	}
+	return t
+}
+
+func (t TraceableError) FilterUnnecessaryWords() TraceableError {
+	if strings.Contains(t.message, "template:") {
+		t.message = strings.TrimSpace(strings.ReplaceAll(t.message, "template:", ""))
+	}
+	if strings.HasPrefix(t.message, ": ") {
+		t.message = strings.TrimSpace(strings.TrimPrefix(t.message, ": "))
+	}
+	return t
+}
+
+// In the process of formatting the error, we want to ensure that the formatted version of the error
+// is not losing any necessary information. This function will tokenize and compare the two strings
+// and if the formatted error doesn't meet the threshold, it will fallback to the originalErr
+func determineIfFormattedErrorIsAcceptable(formattedErr error, originalErr error) error {
+	formattedErrTokens := strings.Fields(formattedErr.Error())
+	originalErrTokens := strings.Fields(originalErr.Error())
+
+	tokenSet := make(map[string]struct{})
+	for _, token := range originalErrTokens {
+		tokenSet[token] = struct{}{}
+	}
+
+	matchCount := 0
+	for _, token := range formattedErrTokens {
+		if _, exists := tokenSet[token]; exists {
+			matchCount++
+		}
+	}
+
+	equivalenceRating := (float64(matchCount) / float64(len(formattedErrTokens))) * 100
+	if equivalenceRating >= 80 {
+		return formattedErr
+	}
+	return fmt.Errorf("%s", originalErr.Error())
+}
+
 func cleanupExecError(filename string, err error) error {
 	if _, isExecError := err.(template.ExecError); !isExecError {
 		return err
@@ -340,8 +408,70 @@ func cleanupExecError(filename string, err error) error {
 	if len(parts) >= 2 {
 		return fmt.Errorf("execution error at (%s): %s", string(location), parts[1])
 	}
+	current := err
+	fileLocations := []TraceableError{}
+	maxIterations := 100
+	for i := 0; i < maxIterations && current != nil; i++ {
+		if current == nil {
+			break
+		}
+		tokens = strings.SplitN(current.Error(), ": ", 3)
+		if len(tokens) == 1 {
+			// For cases where the error message doesn't contain a colon
+			location = tokens[0]
+		} else {
+			location = tokens[1]
+		}
+		traceable := TraceableError{
+			location: location,
+			message:  current.Error(),
+		}
+		fileLocations = append(fileLocations, traceable)
+		current = errors.Unwrap(current)
+	}
+	if current != nil {
+		return fmt.Errorf("%s", err.Error())
+	}
 
-	return err
+	prevMessage := ""
+	for i := len(fileLocations) - 1; i >= 0; i-- {
+		currentMsg := fileLocations[i].message
+		if i == len(fileLocations)-1 {
+			prevMessage = currentMsg
+			continue
+		}
+
+		if strings.Contains(currentMsg, prevMessage) {
+			fileLocations[i].message = strings.ReplaceAll(fileLocations[i].message, prevMessage, "")
+		}
+		prevMessage = currentMsg
+	}
+
+	for i, fileLocation := range fileLocations {
+		fileLocation = fileLocation.FilterLocation().FilterUnnecessaryWords()
+		if fileLocation.message == "" {
+			continue
+		}
+		t, extractionErr := fileLocation.ExtractExecutedFunction()
+		if extractionErr != nil {
+			continue
+		}
+		fileLocations[i] = t
+	}
+
+	finalErrorString := ""
+	for _, fileLocation := range fileLocations {
+		if fileLocation.message == "" {
+			continue
+		}
+		finalErrorString = finalErrorString + fileLocation.String()
+	}
+	if strings.TrimSpace(finalErrorString) == "" {
+		// Fallback to original error message if nothing was extracted
+		return fmt.Errorf("%s", err.Error())
+	}
+
+	return determineIfFormattedErrorIsAcceptable(fmt.Errorf("%s", finalErrorString), err)
 }
 
 func sortTemplates(tpls map[string]renderable) []string {
