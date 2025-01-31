@@ -30,10 +30,10 @@ import (
 
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/action"
-	"helm.sh/helm/v4/pkg/chartutil"
 	"helm.sh/helm/v4/pkg/cli"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/releaseutil"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"helm.sh/helm/v4/pkg/time"
@@ -93,7 +93,7 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	actionConfig := &action.Configuration{
 		Releases:     store,
 		KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
-		Capabilities: chartutil.DefaultCapabilities,
+		Capabilities: releaseutil.DefaultCapabilities,
 		Log:          func(_ string, _ ...interface{}) {},
 	}
 

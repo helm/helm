@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/releaseutil"
 )
 
 // Engine is an implementation of the Helm rendering implementation for templates.
@@ -73,21 +73,21 @@ func New(config *rest.Config) Engine {
 // that section of the values will be passed into the "foo" chart. And if that
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
-func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+func (e Engine) Render(chrt *chart.Chart, values releaseutil.Values) (map[string]string, error) {
 	tmap := allTemplates(chrt, values)
 	return e.render(tmap)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options.
-func Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+func Render(chrt *chart.Chart, values releaseutil.Values) (map[string]string, error) {
 	return new(Engine).Render(chrt, values)
 }
 
 // RenderWithClient takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
-func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config) (map[string]string, error) {
+func RenderWithClient(chrt *chart.Chart, values releaseutil.Values, config *rest.Config) (map[string]string, error) {
 	var clientProvider ClientProvider = clientProviderFromConfig{config}
 	return Engine{
 		clientProvider: &clientProvider,
@@ -98,7 +98,7 @@ func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.C
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
 // This function differs from RenderWithClient in that it lets you customize the way a dynamic client is constructed.
-func RenderWithClientProvider(chrt *chart.Chart, values chartutil.Values, clientProvider ClientProvider) (map[string]string, error) {
+func RenderWithClientProvider(chrt *chart.Chart, values releaseutil.Values, clientProvider ClientProvider) (map[string]string, error) {
 	return Engine{
 		clientProvider: &clientProvider,
 	}.Render(chrt, values)
@@ -109,7 +109,7 @@ type renderable struct {
 	// tpl is the current template.
 	tpl string
 	// vals are the values to be supplied to the template.
-	vals chartutil.Values
+	vals releaseutil.Values
 	// namespace prefix to the templates of the current chart
 	basePath string
 }
@@ -292,7 +292,7 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 		}
 		// At render time, add information about the template that is being rendered.
 		vals := tpls[filename].vals
-		vals["Template"] = chartutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
+		vals["Template"] = releaseutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
 		var buf strings.Builder
 		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
 			return map[string]string{}, cleanupExecError(filename, err)
@@ -371,7 +371,7 @@ func (p byPathLen) Less(i, j int) bool {
 // allTemplates returns all templates for a chart and its dependencies.
 //
 // As it goes, it also prepares the values in a scope-sensitive manner.
-func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
+func allTemplates(c *chart.Chart, vals releaseutil.Values) map[string]renderable {
 	templates := make(map[string]renderable)
 	recAllTpls(c, templates, vals)
 	return templates
@@ -381,7 +381,7 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 //
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
-func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) map[string]interface{} {
+func recAllTpls(c *chart.Chart, templates map[string]renderable, vals releaseutil.Values) map[string]interface{} {
 	subCharts := make(map[string]interface{})
 	chartMetaData := struct {
 		chart.Metadata
@@ -393,7 +393,7 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 		"Files":        newFiles(c.Files),
 		"Release":      vals["Release"],
 		"Capabilities": vals["Capabilities"],
-		"Values":       make(chartutil.Values),
+		"Values":       make(releaseutil.Values),
 		"Subcharts":    subCharts,
 	}
 

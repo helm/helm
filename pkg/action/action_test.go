@@ -25,10 +25,10 @@ import (
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chartutil"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/registry"
 	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/releaseutil"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"helm.sh/helm/v4/pkg/time"
@@ -47,7 +47,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 	return &Configuration{
 		Releases:       storage.Init(driver.NewMemory()),
 		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
-		Capabilities:   chartutil.DefaultCapabilities,
+		Capabilities:   releaseutil.DefaultCapabilities,
 		RegistryClient: registryClient,
 		Log: func(format string, v ...interface{}) {
 			t.Helper()
