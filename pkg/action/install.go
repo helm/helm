@@ -809,7 +809,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 
 		// Host on URL (returned from url.Parse) contains the port if present.
 		// This check ensures credentials are not passed between different
-		// services on different ports.
+		// services on different ports
 		if c.PassCredentialsAll || (u1.Scheme == u2.Scheme && u1.Host == u2.Host) {
 			dl.Options = append(dl.Options, getter.WithBasicAuth(c.Username, c.Password))
 		} else {

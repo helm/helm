@@ -290,7 +290,7 @@ func startLocalTLSServerForTests(handler http.Handler) (*httptest.Server, error)
 	return httptest.NewTLSServer(handler), nil
 }
 
-func TestChartInAuthRepoURL(t *testing.T) {
+func TestChartInRepoURL(t *testing.T) {
 	srv, err := startLocalTLSServerForTests(nil)
 	if err != nil {
 		t.Fatal(err)
