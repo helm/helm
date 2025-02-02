@@ -47,6 +47,7 @@ type options struct {
 	registryClient        *registry.Client
 	timeout               time.Duration
 	transport             *http.Transport
+	target                string
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -140,6 +141,13 @@ func WithUntar() Option {
 func WithTransport(transport *http.Transport) Option {
 	return func(opts *options) {
 		opts.transport = transport
+	}
+}
+
+// WithTransport sets the http.Transport to allow overwriting the HTTPGetter default.
+func WithTarget(target string) Option {
+	return func(opts *options) {
+		opts.target = target
 	}
 }
 

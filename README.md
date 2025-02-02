@@ -6,6 +6,30 @@
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3131/badge)](https://bestpractices.coreinfrastructure.org/projects/3131)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/helm/helm/badge)](https://scorecard.dev/viewer/?uri=github.com/helm/helm)
 
+## PR
+
+Run a registry:
+```
+docker run -d -p 5000:5000 --restart always --name registry docker.io/registry:3.0.0-rc.2
+```
+
+Create a chart and values, push values to registry:
+```
+helm create oci-values-demo
+$ cat value-overides.yaml
+---
+replicaCount: 3
+$ oras push localhost:5000/oci-values-demo-values:demo value-overides.yaml:application/vnd.cncf.helm.values.v1
+```
+
+Install the chart, pulling values from OCI:
+```
+make && ./bin/helm upgrade --install oci-values-demo-release oci-values-demo/ -f oci://localhost:5000/oci-values-demo-values:demo
+```
+
+
+
+
 Helm is a tool for managing Charts. Charts are packages of pre-configured Kubernetes resources.
 
 Use Helm to:

@@ -39,6 +39,7 @@ type OCIGetter struct {
 
 // Get performs a Get from repo.Getter and returns the body.
 func (g *OCIGetter) Get(href string, options ...Option) (*bytes.Buffer, error) {
+	g.opts.target = "chart"
 	for _, opt := range options {
 		opt(&g.opts)
 	}
@@ -76,10 +77,17 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 		return nil, err
 	}
 
-	if requestingProv {
-		return bytes.NewBuffer(result.Prov.Data), nil
+	switch g.opts.target {
+	case "values":
+		return bytes.NewBuffer(result.Values.Data), nil
+	case "chart":
+		if requestingProv {
+			return bytes.NewBuffer(result.Prov.Data), nil
+		}
+		return bytes.NewBuffer(result.Chart.Data), nil
 	}
-	return bytes.NewBuffer(result.Chart.Data), nil
+
+	return nil, fmt.Errorf("unknown get target: %s", g.opts.target)
 }
 
 // NewOCIGetter constructs a valid http/https client as a Getter
