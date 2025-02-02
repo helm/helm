@@ -356,6 +356,7 @@ type (
 		Chart    *DescriptorPullSummaryWithMeta `json:"chart"`
 		Prov     *DescriptorPullSummary         `json:"prov"`
 		Ref      string                         `json:"ref"`
+		Values   *DescriptorPullSummary         `json:"values"`
 	}
 
 	DescriptorPullSummary struct {
@@ -394,31 +395,31 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 			"must specify at least one layer to pull (chart/prov)")
 	}
 	memoryStore := content.NewMemory()
-	allowedMediaTypes := []string{
-		ConfigMediaType,
-	}
-	minNumDescriptors := 1 // 1 for the config
-	if operation.withChart {
-		minNumDescriptors++
-		allowedMediaTypes = append(allowedMediaTypes, ChartLayerMediaType, LegacyChartLayerMediaType)
-	}
-	if operation.withProv {
-		if !operation.ignoreMissingProv {
-			minNumDescriptors++
-		}
-		allowedMediaTypes = append(allowedMediaTypes, ProvLayerMediaType)
-	}
+	//allowedMediaTypes := []string{
+	//	ConfigMediaType,
+	//}
+	//minNumDescriptors := 1 // 1 for the config
+	//if operation.withChart {
+	//	minNumDescriptors++
+	//	allowedMediaTypes = append(allowedMediaTypes, ChartLayerMediaType, LegacyChartLayerMediaType)
+	//}
+	//if operation.withProv {
+	//	if !operation.ignoreMissingProv {
+	//		minNumDescriptors++
+	//	}
+	//	allowedMediaTypes = append(allowedMediaTypes, ProvLayerMediaType)
+	//}
 
-	var descriptors, layers []ocispec.Descriptor
 	remotesResolver, err := c.resolver(parsedRef.orasReference)
 	if err != nil {
 		return nil, err
 	}
 	registryStore := content.Registry{Resolver: remotesResolver}
 
+	var layers []ocispec.Descriptor
 	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, parsedRef.String(), memoryStore, "",
 		oras.WithPullEmptyNameAllowed(),
-		oras.WithAllowedMediaTypes(allowedMediaTypes),
+		//oras.WithAllowedMediaTypes(allowedMediaTypes),
 		oras.WithLayerDescriptors(func(l []ocispec.Descriptor) {
 			layers = l
 		}))
@@ -426,17 +427,19 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		return nil, err
 	}
 
+	var descriptors []ocispec.Descriptor
 	descriptors = append(descriptors, manifest)
 	descriptors = append(descriptors, layers...)
 
-	numDescriptors := len(descriptors)
-	if numDescriptors < minNumDescriptors {
-		return nil, fmt.Errorf("manifest does not contain minimum number of descriptors (%d), descriptors found: %d",
-			minNumDescriptors, numDescriptors)
+	if manifest.MediaType != "application/vnd.oci.image.manifest.v1+json" {
+		return nil, fmt.Errorf("unexpected reference mediatype: %s", manifest.MediaType)
 	}
+
 	var configDescriptor *ocispec.Descriptor
 	var chartDescriptor *ocispec.Descriptor
 	var provDescriptor *ocispec.Descriptor
+	var valuesDescriptor *ocispec.Descriptor
+
 	for _, descriptor := range descriptors {
 		d := descriptor
 		switch d.MediaType {
@@ -446,11 +449,30 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 			chartDescriptor = &d
 		case ProvLayerMediaType:
 			provDescriptor = &d
+		case ValuesMediaType:
+			valuesDescriptor = &d
 		case LegacyChartLayerMediaType:
 			chartDescriptor = &d
 			fmt.Fprintf(c.out, "Warning: chart media type %s is deprecated\n", LegacyChartLayerMediaType)
 		}
 	}
+
+	if valuesDescriptor != nil {
+		_, data, ok := memoryStore.Get(*valuesDescriptor)
+		if !ok {
+			return nil, errors.Errorf("failed to retrieve blob with digest: %s", valuesDescriptor.Digest)
+		}
+
+		return &PullResult{
+			Ref: parsedRef.String(),
+			Values: &DescriptorPullSummary{
+				Digest: valuesDescriptor.Digest.String(),
+				Size:   valuesDescriptor.Size,
+				Data:   data,
+			},
+		}, nil
+	}
+
 	if configDescriptor == nil {
 		return nil, fmt.Errorf("could not load config with mediatype %s", ConfigMediaType)
 	}
@@ -476,9 +498,10 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 			Digest: configDescriptor.Digest.String(),
 			Size:   configDescriptor.Size,
 		},
-		Chart: &DescriptorPullSummaryWithMeta{},
-		Prov:  &DescriptorPullSummary{},
-		Ref:   parsedRef.String(),
+		Chart:  &DescriptorPullSummaryWithMeta{},
+		Prov:   &DescriptorPullSummary{},
+		Ref:    parsedRef.String(),
+		Values: nil,
 	}
 	var getManifestErr error
 	if _, manifestData, ok := memoryStore.Get(manifest); !ok {
