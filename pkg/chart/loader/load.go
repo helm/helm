@@ -17,14 +17,17 @@ limitations under the License.
 package loader
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
+	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/chart"
@@ -104,13 +107,11 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				return c, errors.Wrap(err, "cannot load Chart.lock")
 			}
 		case f.Name == "values.yaml":
-			c.Values = make(map[string]interface{})
-			if err := yaml.Unmarshal(f.Data, &c.Values, func(d *json.Decoder) *json.Decoder {
-				d.UseNumber()
-				return d
-			}); err != nil {
+			values, err := LoadValues(f.Data)
+			if err != nil {
 				return c, errors.Wrap(err, "cannot load values.yaml")
 			}
+			c.Values = values
 		case f.Name == "values.schema.json":
 			c.Schema = f.Data
 
@@ -204,4 +205,46 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	}
 
 	return c, nil
+}
+
+func LoadValues(data []byte) (map[string]interface{}, error) {
+	values := map[string]interface{}{}
+	reader := utilyaml.NewYAMLReader(bufio.NewReader(bytes.NewReader(data)))
+	for {
+		currentMap := map[string]interface{}{}
+		raw, err := reader.Read()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, errors.Wrap(err, "error reading yaml document")
+		}
+		if err := yaml.Unmarshal(raw, &currentMap, func(d *json.Decoder) *json.Decoder {
+			d.UseNumber()
+			return d
+		}); err != nil {
+			return nil, errors.Wrap(err, "cannot unmarshal yaml document")
+		}
+		values = MergeMaps(values, currentMap)
+	}
+	return values, nil
+}
+
+func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(a))
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		if v, ok := v.(map[string]interface{}); ok {
+			if bv, ok := out[k]; ok {
+				if bv, ok := bv.(map[string]interface{}); ok {
+					out[k] = MergeMaps(bv, v)
+					continue
+				}
+			}
+		}
+		out[k] = v
+	}
+	return out
 }

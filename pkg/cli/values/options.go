@@ -17,7 +17,6 @@ limitations under the License.
 package values
 
 import (
-	"bytes"
 	"encoding/json"
 	"io"
 	"net/url"
@@ -25,8 +24,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 
+	"helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/strvals"
 )
@@ -48,23 +47,16 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 
 	// User specified a values files via -f/--values
 	for _, filePath := range opts.ValueFiles {
-		raw, err := readFile(filePath, p)
+		bytes, err := readFile(filePath, p)
 		if err != nil {
 			return nil, err
 		}
-
-		decoder := utilyaml.NewYAMLOrJSONDecoder(bytes.NewReader(raw), 4096)
-		for {
-			currentMap := map[string]interface{}{}
-			if err := decoder.Decode(&currentMap); err != nil {
-				if err == io.EOF {
-					break
-				}
-				return nil, errors.Wrapf(err, "failed to parse %s", filePath)
-			}
-			// Merge with the previous map
-			base = mergeMaps(base, currentMap)
+		currentMap, err := loader.LoadValues(bytes)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to parse %s", filePath)
 		}
+		// Merge with the previous map
+		base = loader.MergeMaps(base, currentMap)
 	}
 
 	// User specified a value via --set-json
@@ -121,25 +113,6 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 	}
 
 	return base, nil
-}
-
-func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
-	out := make(map[string]interface{}, len(a))
-	for k, v := range a {
-		out[k] = v
-	}
-	for k, v := range b {
-		if v, ok := v.(map[string]interface{}); ok {
-			if bv, ok := out[k]; ok {
-				if bv, ok := bv.(map[string]interface{}); ok {
-					out[k] = mergeMaps(bv, v)
-					continue
-				}
-			}
-		}
-		out[k] = v
-	}
-	return out
 }
 
 // readFile load a file from stdin, the local directory, or a remote file with a url.
