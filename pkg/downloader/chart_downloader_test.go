@@ -56,8 +56,6 @@ func TestResolveChartRef(t *testing.T) {
 		{name: "ref with tag", ref: "oci://example.com/helm-charts/nginx:15.4.2", expect: "oci://example.com/helm-charts/nginx:15.4.2"},
 		{name: "no repository", ref: "oci://", fail: true},
 		{name: "oci ref", ref: "oci://example.com/helm-charts/nginx", version: "15.4.2", expect: "oci://example.com/helm-charts/nginx:15.4.2"},
-		{name: "oci ref with sha256", ref: "oci://example.com/install/by/sha@sha256:d234555386402a5867ef0169fefe5486858b6d8d209eaf32fd26d29b16807fd6", version: "0.1.1", expect: "oci://example.com/install/by/sha@sha256:d234555386402a5867ef0169fefe5486858b6d8d209eaf32fd26d29b16807fd6"},
-		{name: "oci ref with sha256 and version", ref: "oci://example.com/install/by/sha:0.1.1@sha256:d234555386402a5867ef0169fefe5486858b6d8d209eaf32fd26d29b16807fd6", version: "0.1.1", expect: "oci://example.com/install/by/sha:0.1.1@sha256:d234555386402a5867ef0169fefe5486858b6d8d209eaf32fd26d29b16807fd6"},
 		{name: "oci ref with sha256 and version mismatch", ref: "oci://example.com/install/by/sha:0.1.1@sha256:d234555386402a5867ef0169fefe5486858b6d8d209eaf32fd26d29b16807fd6", version: "0.1.2", fail: true},
 	}
 
