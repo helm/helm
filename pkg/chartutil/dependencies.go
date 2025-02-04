@@ -149,7 +149,6 @@ Loop:
 		}
 	}
 	c.SetDependencies(chartDependencies...)
-
 	// set all to true
 	for _, lr := range c.Metadata.Dependencies {
 		lr.Enabled = true

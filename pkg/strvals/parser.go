@@ -128,34 +128,54 @@ func ParseIntoFile(s string, dest map[string]interface{}, reader RunesValueReade
 // and returns the parsed value
 type RunesValueReader func([]rune) (interface{}, error)
 
-// parser is a simple parser that takes a strvals line and parses it into a
+// Parser is a simple Parser that takes a strvals line and parses it into a
 // map representation.
 //
 // where sc is the source of the original data being parsed
 // where data is the final parsed data from the parses with correct types
-type parser struct {
+type Parser struct {
 	sc        *bytes.Buffer
 	data      map[string]interface{}
 	reader    RunesValueReader
 	isjsonval bool
 }
 
-func newParser(sc *bytes.Buffer, data map[string]interface{}, stringBool bool) *parser {
+func newParser(sc *bytes.Buffer, data map[string]interface{}, stringBool bool) *Parser {
 	stringConverter := func(rs []rune) (interface{}, error) {
 		return typedVal(rs, stringBool), nil
 	}
-	return &parser{sc: sc, data: data, reader: stringConverter}
+	return &Parser{sc: sc, data: data, reader: stringConverter}
 }
 
-func newJSONParser(sc *bytes.Buffer, data map[string]interface{}) *parser {
-	return &parser{sc: sc, data: data, reader: nil, isjsonval: true}
+// determine whether the provided string has an open bracket for a list rune
+func FindListRune(in string) (string, *Parser) {
+	var t *Parser
+	found := ""
+
+	scanner := bytes.NewBufferString(in)
+	t = newParser(scanner, map[string]interface{}{}, false)
+
+	stop := runeSet([]rune{'['})
+
+	// as long as we dont hit eof, we are good. and we've seeked to open bracket
+	v, _, err := runesUntil(t.sc, stop)
+
+	if err == nil {
+		found = string(v)
+	}
+
+	return found, t
 }
 
-func newFileParser(sc *bytes.Buffer, data map[string]interface{}, reader RunesValueReader) *parser {
-	return &parser{sc: sc, data: data, reader: reader}
+func newJSONParser(sc *bytes.Buffer, data map[string]interface{}) *Parser {
+	return &Parser{sc: sc, data: data, reader: nil, isjsonval: true}
 }
 
-func (t *parser) parse() error {
+func newFileParser(sc *bytes.Buffer, data map[string]interface{}, reader RunesValueReader) *Parser {
+	return &Parser{sc: sc, data: data, reader: reader}
+}
+
+func (t *Parser) parse() error {
 	for {
 		err := t.key(t.data, 0)
 		if err == nil {
@@ -168,6 +188,19 @@ func (t *parser) parse() error {
 	}
 }
 
+// read string index and validate it
+func (t *Parser) ParseListIndex() (int, error) {
+	idx, err := t.keyIndex()
+	if err != nil {
+		return 0, errors.New("failed to find a valid index")
+	}
+	if idx < 0 {
+		return 0, errors.New("index cannot be negative")
+	}
+
+	return idx, nil
+}
+
 func runeSet(r []rune) map[rune]bool {
 	s := make(map[rune]bool, len(r))
 	for _, rr := range r {
@@ -176,7 +209,7 @@ func runeSet(r []rune) map[rune]bool {
 	return s
 }
 
-func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr error) {
+func (t *Parser) key(data map[string]interface{}, nestedNameLevel int) (reterr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to parse key: %s", r)
@@ -321,7 +354,7 @@ func setIndex(list []interface{}, index int, val interface{}) (l2 []interface{},
 	return list, nil
 }
 
-func (t *parser) keyIndex() (int, error) {
+func (t *Parser) keyIndex() (int, error) {
 	// First, get the key.
 	stop := runeSet([]rune{']'})
 	v, _, err := runesUntil(t.sc, stop)
@@ -332,7 +365,7 @@ func (t *parser) keyIndex() (int, error) {
 	return strconv.Atoi(string(v))
 
 }
-func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interface{}, error) {
+func (t *Parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interface{}, error) {
 	if i < 0 {
 		return list, fmt.Errorf("negative %d index not allowed", i)
 	}
@@ -437,7 +470,7 @@ func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interfa
 // check for an empty value
 // read and consume optional spaces until comma or EOF (empty val) or any other char (not empty val)
 // comma and spaces are consumed, while any other char is not consumed
-func (t *parser) emptyVal() (bool, error) {
+func (t *Parser) emptyVal() (bool, error) {
 	for {
 		r, _, e := t.sc.ReadRune()
 		if e == io.EOF {
@@ -456,13 +489,13 @@ func (t *parser) emptyVal() (bool, error) {
 	}
 }
 
-func (t *parser) val() ([]rune, error) {
+func (t *Parser) val() ([]rune, error) {
 	stop := runeSet([]rune{','})
 	v, _, err := runesUntil(t.sc, stop)
 	return v, err
 }
 
-func (t *parser) valList() ([]interface{}, error) {
+func (t *Parser) valList() ([]interface{}, error) {
 	r, _, e := t.sc.ReadRune()
 	if e != nil {
 		return []interface{}{}, e
