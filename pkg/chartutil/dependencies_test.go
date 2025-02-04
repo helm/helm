@@ -522,8 +522,8 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
 	}
 }
 
-func TestChartWithDependencyAliasedTwiceWithCondition(t *testing.T) {
-	c := loadChart(t, "testdata/chart-with-dependency-aliased-twice-with-condition")
+func TestDependencyAliasedTwiceWithCondition(t *testing.T) {
+	c := loadChart(t, "testdata/dependency-aliased-twice-with-condition")
 
 	if len(c.Dependencies()) != 1 {
 		t.Fatalf("expected 1 dependencies for this chart, but got %d", len(c.Dependencies()))

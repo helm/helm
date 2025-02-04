@@ -1,6 +1,0 @@
-# Default values for child.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
-grandchildAlias:
-  enabled: false
