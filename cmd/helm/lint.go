@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/chartutil"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/getter"
@@ -67,16 +68,35 @@ func newLintCmd(out io.Writer) *cobra.Command {
 
 			if client.WithSubcharts {
 				for _, p := range paths {
-					filepath.Walk(filepath.Join(p, "charts"), func(path string, info os.FileInfo, _ error) error {
-						if info != nil {
-							if info.Name() == "Chart.yaml" {
-								paths = append(paths, filepath.Dir(path))
-							} else if strings.HasSuffix(path, ".tgz") || strings.HasSuffix(path, ".tar.gz") {
-								paths = append(paths, path)
-							}
+					if strings.HasSuffix(p, ".tgz") || strings.HasSuffix(p, ".tar.gz") {
+						c, err := loader.Load(p)
+						if err != nil {
+							return err
 						}
-						return nil
-					})
+						for _, d := range c.Dependencies() {
+							tempDir, err := os.MkdirTemp("", "helm-lint")
+							if err != nil {
+								return errors.Wrap(err, "unable to create temp dir to extract tarball")
+							}
+							defer os.RemoveAll(tempDir)
+							archive, err := chartutil.Save(d, tempDir)
+							if err != nil {
+								return err
+							}
+							paths = append(paths, archive)
+						}
+					} else {
+						filepath.Walk(filepath.Join(p, "charts"), func(path string, info os.FileInfo, _ error) error {
+							if info != nil {
+								if info.Name() == "Chart.yaml" {
+									paths = append(paths, filepath.Dir(path))
+								} else if strings.HasSuffix(path, ".tgz") || strings.HasSuffix(path, ".tar.gz") {
+									paths = append(paths, path)
+								}
+							}
+							return nil
+						})
+					}
 				}
 			}
 
