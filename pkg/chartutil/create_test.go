@@ -147,8 +147,12 @@ func TestCreate_Overwrite(t *testing.T) {
 func TestValidateChartName(t *testing.T) {
 	for name, shouldPass := range map[string]bool{
 		"":                              false,
-		"abcdefghijklmnopqrstuvwxyz-_.": true,
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZ-_.": true,
+		"abcdefghijklmnopqrstuvwxyz-_.": false,
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ-_.": false,
+		"abcdefghijklmnopqrstuvwxyz":    true,
+		"abcdefghijklmnopqrstuvwxyz_":   false,
+		"abcdefghijklmnopqrstuvwxyz-":   true,
+		"abcdefghijklmnopqrstuvwxyz.":   false,
 		"$hello":                        false,
 		"Hellô":                         false,
 		"he%%o":                         false,
