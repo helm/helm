@@ -15,6 +15,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
@@ -237,6 +238,20 @@ func TestProcessDependencyImportValues(t *testing.T) {
 			if b := strconv.FormatBool(pv); b != vv {
 				t.Errorf("failed to match imported bool value %v with expected %v for key %q", b, vv, kk)
 			}
+		case json.Number:
+			if fv, err := pv.Float64(); err == nil {
+				if sfv := strconv.FormatFloat(fv, 'f', -1, 64); sfv != vv {
+					t.Errorf("failed to match imported float value %v with expected %v for key %q", sfv, vv, kk)
+				}
+			}
+			if iv, err := pv.Int64(); err == nil {
+				if siv := strconv.FormatInt(iv, 10); siv != vv {
+					t.Errorf("failed to match imported int value %v with expected %v for key %q", siv, vv, kk)
+				}
+			}
+			if pv.String() != vv {
+				t.Errorf("failed to match imported string value %q with expected %q for key %q", pv, vv, kk)
+			}
 		default:
 			if pv != vv {
 				t.Errorf("failed to match imported string value %q with expected %q for key %q", pv, vv, kk)
@@ -308,6 +323,10 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 		case float64:
 			if s := strconv.FormatFloat(pv, 'f', -1, 64); s != vv {
 				t.Errorf("failed to match imported float value %v with expected %v", s, vv)
+			}
+		case json.Number:
+			if pv.String() != vv {
+				t.Errorf("failed to match imported string value %q with expected %q", pv, vv)
 			}
 		default:
 			if pv != vv {
