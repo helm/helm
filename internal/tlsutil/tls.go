@@ -74,5 +74,5 @@ func CertFromFilePair(certFile, keyFile string) (*tls.Certificate, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't load key pair from cert %s and key %s", certFile, keyFile)
 	}
-	return &cert, err
+	return &cert, nil
 }
