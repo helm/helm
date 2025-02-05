@@ -94,9 +94,14 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	if tlsEnabled {
 		var tlsConf *tls.Config
 		if insecure {
-			tlsConf, err = tlsutil.NewClientTLS("", "", "", true)
+			tlsConf, err = tlsutil.NewTLSConfig(
+				tlsutil.WithInsecureSkipVerify(true),
+			)
 		} else {
-			tlsConf, err = tlsutil.NewClientTLS(tlsCert, tlsKey, tlsCA, false)
+			tlsConf, err = tlsutil.NewTLSConfig(
+				tlsutil.WithCertKeyPairFiles(tlsCert, tlsKey),
+				tlsutil.WithCAFile(tlsCA),
+			)
 		}
 		httpClient := &http.Client{
 			Transport: &http.Transport{

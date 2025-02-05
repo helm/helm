@@ -368,7 +368,11 @@ func (s *Server) StartTLS() {
 		}
 		http.FileServer(http.Dir(s.Root())).ServeHTTP(w, r)
 	}))
-	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca, insecure)
+	tlsConf, err := tlsutil.NewTLSConfig(
+		tlsutil.WithInsecureSkipVerify(insecure),
+		tlsutil.WithCertKeyPairFiles(pub, priv),
+		tlsutil.WithCAFile(ca),
+	)
 	if err != nil {
 		panic(err)
 	}
