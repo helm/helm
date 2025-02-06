@@ -331,6 +331,34 @@ func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
 	}
 }
 
+func TestInstallRelease_LineNumbers(t *testing.T) {
+	is := assert.New(t)
+	t.Run("Should print line numbers on incorrect yaml when flag is set", func(t *testing.T) {
+		instAction := installAction(t)
+		instAction.DryRun = true
+		dummyVals := map[string]interface{}{}
+		badChart := buildChart(withBadYaml())
+		res, _ := instAction.Run(badChart, dummyVals)
+
+		// Should have line numbers for bad yaml
+		is.Contains(res.Manifest, "1 this:isn't:")
+		is.Contains(res.Manifest, "2 how:you_write_yaml")
+		// Should have line numbers for every other resource
+		is.Contains(res.Manifest, "1 kind: ConfigMap")
+	})
+
+	t.Run("Should not print line numbers on well-formatted yaml", func(t *testing.T) {
+		instAction := installAction(t)
+		instAction.DryRun = true
+		dummyVals := map[string]interface{}{}
+		goodChart := buildChart(withSampleTemplates())
+		res, _ := instAction.Run(goodChart, dummyVals)
+
+		is.Contains(res.Manifest, "hello: world")
+		is.NotContains(res.Manifest, "1 hello: Earth")
+	})
+}
+
 func TestInstallRelease_NoHooks(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
