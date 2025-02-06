@@ -24,11 +24,12 @@ import (
 
 // RegistryLogin performs a registry login operation.
 type RegistryLogin struct {
-	cfg      *Configuration
-	certFile string
-	keyFile  string
-	caFile   string
-	insecure bool
+	cfg       *Configuration
+	certFile  string
+	keyFile   string
+	caFile    string
+	insecure  bool
+	plainHTTP bool
 }
 
 type RegistryLoginOpt func(*RegistryLogin) error
@@ -41,7 +42,7 @@ func WithCertFile(certFile string) RegistryLoginOpt {
 	}
 }
 
-// WithKeyFile specifies whether to very certificates when communicating.
+// WithInsecure specifies whether to verify certificates.
 func WithInsecure(insecure bool) RegistryLoginOpt {
 	return func(r *RegistryLogin) error {
 		r.insecure = insecure
@@ -65,6 +66,14 @@ func WithCAFile(caFile string) RegistryLoginOpt {
 	}
 }
 
+// WithPlainHTTPLogin use http rather than https for login.
+func WithPlainHTTPLogin(isPlain bool) RegistryLoginOpt {
+	return func(r *RegistryLogin) error {
+		r.plainHTTP = isPlain
+		return nil
+	}
+}
+
 // NewRegistryLogin creates a new RegistryLogin object with the given configuration.
 func NewRegistryLogin(cfg *Configuration) *RegistryLogin {
 	return &RegistryLogin{
@@ -84,5 +93,7 @@ func (a *RegistryLogin) Run(_ io.Writer, hostname string, username string, passw
 		hostname,
 		registry.LoginOptBasicAuth(username, password),
 		registry.LoginOptInsecure(a.insecure),
-		registry.LoginOptTLSClientConfig(a.certFile, a.keyFile, a.caFile))
+		registry.LoginOptTLSClientConfig(a.certFile, a.keyFile, a.caFile),
+		registry.LoginOptPlainText(a.plainHTTP),
+	)
 }

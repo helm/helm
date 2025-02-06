@@ -824,35 +824,3 @@ func scrubValidationError(err error) error {
 	}
 	return err
 }
-
-// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
-// and returns said phase (PodSucceeded or PodFailed qualify).
-func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error) {
-	client, err := c.getKubeClient()
-	if err != nil {
-		return v1.PodUnknown, err
-	}
-	to := int64(timeout)
-	watcher, err := client.CoreV1().Pods(c.namespace()).Watch(context.Background(), metav1.ListOptions{
-		FieldSelector:  fmt.Sprintf("metadata.name=%s", name),
-		TimeoutSeconds: &to,
-	})
-	if err != nil {
-		return v1.PodUnknown, err
-	}
-
-	for event := range watcher.ResultChan() {
-		p, ok := event.Object.(*v1.Pod)
-		if !ok {
-			return v1.PodUnknown, fmt.Errorf("%s not a pod", name)
-		}
-		switch p.Status.Phase {
-		case v1.PodFailed:
-			return v1.PodFailed, nil
-		case v1.PodSucceeded:
-			return v1.PodSucceeded, nil
-		}
-	}
-
-	return v1.PodUnknown, err
-}
