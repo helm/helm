@@ -81,28 +81,6 @@ metadata:
   uid: 5e7d8814-36fc-486f-9e6d-5b0a09351682
   resourceVersion: "568"
   generation: 1
-  creationTimestamp: 2025-02-06T16:34:20-05:00
-  labels:
-    batch.kubernetes.io/controller-uid: 5e7d8814-36fc-486f-9e6d-5b0a09351682
-    batch.kubernetes.io/job-name: sleep-job
-    controller-uid: 5e7d8814-36fc-486f-9e6d-5b0a09351682
-    job-name: sleep-job
-  annotations:
-    kubectl.kubernetes.io/last-applied-configuration: "{\"apiVersion\":\"batch/v1\",\"kind\":\"Job\",\"metadata\":{\"annotations\":{},\"name\":\"sleep-job\",\"namespace\":\"default\"},\"spec\":{\"template\":{\"metadata\":{\"name\":\"sleep-job\"},\"spec\":{\"containers\":[{\"command\":[\"sh\",\"-c\",\"sleep 100\"],\"image\":\"busybox\",\"name\":\"sleep\"}],\"restartPolicy\":\"Never\"}}}}\n"
-  managedFields:
-  - manager: kubectl-client-side-apply
-    operation: Update
-    apiVersion: batch/v1
-    time: 2025-02-06T16:34:20-05:00
-    fieldsType: FieldsV1
-    fieldsV1: {}
-  - manager: k3s
-    operation: Update
-    apiVersion: batch/v1
-    time: 2025-02-06T16:34:23-05:00
-    fieldsType: FieldsV1
-    fieldsV1: {}
-    subresource: status
 spec:
   parallelism: 1
   completions: 1
