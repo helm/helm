@@ -370,7 +370,7 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 		t.Fatal(errors.Wrap(err, "can't create TLS config for client"))
 	}
 
-	tlsSrv2 := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+	tlsSrv2 := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.Write([]byte(srv2Resp))
 	}))
