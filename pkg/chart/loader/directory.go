@@ -108,7 +108,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 
 		data = bytes.TrimPrefix(data, utf8bom)
 
-		files = append(files, &BufferedFile{Name: n, Data: data})
+		files = append(files, &BufferedFile{Name: n, ModTime: fi.ModTime(), Data: data})
 		return nil
 	}
 	if err = sympath.Walk(topdir, walk); err != nil {
