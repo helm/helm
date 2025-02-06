@@ -37,7 +37,6 @@ import (
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/cli-utils/pkg/kstatus/watcher"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	multierror "github.com/hashicorp/go-multierror"
@@ -59,7 +58,6 @@ import (
 	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/client-go/util/retry"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/statusreaders"
 )
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
@@ -133,13 +131,10 @@ func (c *Client) newWaiter(strategy WaitStrategy) (Waiter, error) {
 		if err != nil {
 			return nil, err
 		}
-		sw := watcher.NewDefaultStatusWatcher(dynamicClient, restMapper)
-		newCustomJobStatusReader := NewCustomJobStatusReader(restMapper)
-		customSR := statusreaders.NewStatusReader(restMapper, newCustomJobStatusReader)
-		sw.StatusReader = customSR
 		return &statusWaiter{
-			sw:  sw,
-			log: c.Log,
+			restMapper: restMapper,
+			client:     dynamicClient,
+			log:        c.Log,
 		}, nil
 	default:
 		return nil, errors.New("unknown wait strategy")

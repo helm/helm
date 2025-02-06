@@ -38,7 +38,6 @@ import (
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/collector"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/event"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
-	"sigs.k8s.io/cli-utils/pkg/kstatus/watcher"
 	"sigs.k8s.io/cli-utils/pkg/object"
 	"sigs.k8s.io/cli-utils/pkg/testutil"
 )
@@ -178,10 +177,10 @@ func TestStatusWaitForDelete(t *testing.T) {
 				appsv1.SchemeGroupVersion.WithKind("Deployment"),
 				batchv1.SchemeGroupVersion.WithKind("Job"),
 			)
-			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
 			statusWaiter := statusWaiter{
-				sw:  statusWatcher,
-				log: t.Logf,
+				restMapper: fakeMapper,
+				client:     fakeClient,
+				log:        t.Logf,
 			}
 			createdObjs := []runtime.Object{}
 			for _, manifest := range tt.manifestsToCreate {
@@ -275,10 +274,10 @@ func TestStatusWait(t *testing.T) {
 				appsv1.SchemeGroupVersion.WithKind("Deployment"),
 				batchv1.SchemeGroupVersion.WithKind("Job"),
 			)
-			statusWatcher := watcher.NewDefaultStatusWatcher(fakeClient, fakeMapper)
 			statusWaiter := statusWaiter{
-				sw:  statusWatcher,
-				log: t.Logf,
+				client:     fakeClient,
+				restMapper: fakeMapper,
+				log:        t.Logf,
 			}
 			objs := []runtime.Object{}
 
@@ -299,9 +298,12 @@ func TestStatusWait(t *testing.T) {
 				resourceList = append(resourceList, list...)
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-			defer cancel()
-			err := statusWaiter.wait(ctx, resourceList, tt.waitForJobs)
+			var err error
+			if tt.waitForJobs {
+				err = statusWaiter.Wait(resourceList, time.Second*3)
+			} else {
+				err = statusWaiter.WaitWithJobs(resourceList, time.Second*3)
+			}
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
 				return

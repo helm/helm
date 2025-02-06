@@ -23,42 +23,51 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
-	batchv1 "k8s.io/api/batch/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/client-go/dynamic"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/aggregator"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/collector"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/event"
+	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/statusreaders"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/watcher"
 	"sigs.k8s.io/cli-utils/pkg/object"
 )
 
 type statusWaiter struct {
-	sw  watcher.StatusWatcher
-	log func(string, ...interface{})
+	client     dynamic.Interface
+	restMapper meta.RESTMapper
+	log        func(string, ...interface{})
 }
 
 func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 	w.log("beginning wait for %d resources with timeout of %s", len(resourceList), timeout)
-	return w.wait(ctx, resourceList, false)
+	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
+	return w.wait(ctx, resourceList, sw)
 }
 
 func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 	w.log("beginning wait for %d resources with timeout of %s", len(resourceList), timeout)
-	return w.wait(ctx, resourceList, true)
+	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
+	newCustomJobStatusReader := NewCustomJobStatusReader(w.restMapper)
+	customSR := statusreaders.NewStatusReader(w.restMapper, newCustomJobStatusReader)
+	sw.StatusReader = customSR
+	return w.wait(ctx, resourceList, sw)
 }
 
 func (w *statusWaiter) WaitForDelete(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 	w.log("beginning wait for %d resources to be deleted with timeout of %s", len(resourceList), timeout)
-	return w.waitForDelete(ctx, resourceList)
+	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
+	return w.waitForDelete(ctx, resourceList, sw)
 }
 
-func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceList) error {
+func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceList, sw watcher.StatusWatcher) error {
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	resources := []object.ObjMetadata{}
@@ -69,7 +78,7 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		}
 		resources = append(resources, obj)
 	}
-	eventCh := w.sw.Watch(cancelCtx, resources, watcher.Options{})
+	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
 	go logResourceStatus(ctx, resources, statusCollector, status.NotFoundStatus, w.log)
 	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus))
@@ -95,16 +104,12 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 	return nil
 }
 
-func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, waitForJobs bool) error {
+func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw watcher.StatusWatcher) error {
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	resources := []object.ObjMetadata{}
 	for _, resource := range resourceList {
 		switch value := AsVersioned(resource).(type) {
-		case *batchv1.Job:
-			if !waitForJobs {
-				continue
-			}
 		case *appsv1.Deployment:
 			if value.Spec.Paused {
 				continue
@@ -117,7 +122,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, wait
 		resources = append(resources, obj)
 	}
 
-	eventCh := w.sw.Watch(cancelCtx, resources, watcher.Options{})
+	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
 	go logResourceStatus(cancelCtx, resources, statusCollector, status.CurrentStatus, w.log)
 	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus))
