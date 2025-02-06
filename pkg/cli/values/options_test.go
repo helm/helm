@@ -23,7 +23,7 @@ import (
 	"helm.sh/helm/v4/pkg/getter"
 )
 
-func TestMergeValues(t *testing.T) {
+func Test_mergeMaps(t *testing.T) {
 	nestedMap := map[string]interface{}{
 		"foo": "bar",
 		"baz": map[string]string{
@@ -84,5 +84,149 @@ func TestReadFile(t *testing.T) {
 	_, err := readFile(filePath, p)
 	if err == nil {
 		t.Errorf("Expected error when has special strings")
+	}
+}
+
+func TestOptions_MergeValues(t *testing.T) {
+	const (
+		crewNameKey      = `crew`
+		shipNameKey      = `ship`
+		powerUserskey    = `power-users`
+		nonPowerUsersKey = `non-power-users`
+		strawHatsCrew    = `Straw Hat Pirates`
+		strawHatsShip1   = `Going Merry`
+		strawHatsShip2   = `Thousand Sunny`
+	)
+
+	var (
+		powerUsersVal = []interface{}{
+			"Luffy",
+			"Chopper",
+			"Robin",
+			"Brook",
+		}
+		nonPowerUsersVal = []interface{}{
+			"Zoro",
+			"Nami",
+			"Ussop",
+			"Sanji",
+			"Franky",
+			"Jinbei",
+		}
+	)
+
+	type args struct {
+		p getter.Providers
+	}
+	tests := []struct {
+		name    string
+		opts    Options
+		args    args
+		want    map[string]interface{}
+		wantErr bool
+	}{
+		{
+			name: "--values-directory with single level",
+			opts: Options{
+				ValueFiles: []string{},
+				ValuesDirectories: []string{
+					"testdata/chart-with-values-dir/values.d",
+				},
+				StringValues: []string{},
+				Values:       []string{},
+				FileValues:   []string{},
+				JSONValues:   []string{},
+			},
+			args: args{
+				p: []getter.Provider{},
+			},
+			want: map[string]interface{}{
+				powerUserskey:    powerUsersVal,
+				nonPowerUsersKey: nonPowerUsersVal,
+			},
+			wantErr: false,
+		},
+		{
+			name: "--values-directory with nested directories",
+			opts: Options{
+				ValueFiles: []string{},
+				ValuesDirectories: []string{
+					"testdata/multi-level-values-dir/values.d",
+				},
+				StringValues: []string{},
+				Values:       []string{},
+				FileValues:   []string{},
+				JSONValues:   []string{},
+			},
+			args: args{
+				p: []getter.Provider{},
+			},
+			want: map[string]interface{}{
+				crewNameKey:      strawHatsCrew,
+				shipNameKey:      strawHatsShip1,
+				powerUserskey:    powerUsersVal,
+				nonPowerUsersKey: nonPowerUsersVal,
+			},
+			wantErr: false,
+		},
+		{
+			name: "--values-directory value overwritten by --values",
+			opts: Options{
+				ValueFiles: []string{
+					"testdata/multi-level-values-dir/ship.yaml",
+				},
+				ValuesDirectories: []string{
+					"testdata/multi-level-values-dir/values.d",
+				},
+				StringValues: []string{},
+				Values:       []string{},
+				FileValues:   []string{},
+				JSONValues:   []string{},
+			},
+			args: args{
+				p: []getter.Provider{},
+			},
+			want: map[string]interface{}{
+				crewNameKey:      strawHatsCrew,
+				shipNameKey:      strawHatsShip2, // This is the value overwritten by values file "ship.yaml"
+				powerUserskey:    powerUsersVal,
+				nonPowerUsersKey: nonPowerUsersVal,
+			},
+			wantErr: false,
+		},
+		{
+			name: "--values-directory with missing directory",
+			opts: Options{
+				ValueFiles: []string{},
+				ValuesDirectories: []string{
+					"testdata/chart-with-values-dir/non-existing/",
+				},
+				StringValues: []string{},
+				Values:       []string{},
+				FileValues:   []string{},
+				JSONValues:   []string{},
+			},
+			args: args{
+				p: []getter.Provider{},
+			},
+			want:    map[string]interface{}(nil),
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.opts.MergeValues(tt.args.p)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Options.MergeValues() error = %v, wantErr %v", err, tt.wantErr)
+
+				return
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Expected result from MergeValues() = %v, got %v", tt.want, got)
+			}
+		})
 	}
 }
