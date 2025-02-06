@@ -72,6 +72,80 @@ metadata:
    generation: 1
 `
 
+var jobReadyManifest = `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sleep-job
+  namespace: default
+  uid: 5e7d8814-36fc-486f-9e6d-5b0a09351682
+  resourceVersion: "568"
+  generation: 1
+  creationTimestamp: 2025-02-06T16:34:20-05:00
+  labels:
+    batch.kubernetes.io/controller-uid: 5e7d8814-36fc-486f-9e6d-5b0a09351682
+    batch.kubernetes.io/job-name: sleep-job
+    controller-uid: 5e7d8814-36fc-486f-9e6d-5b0a09351682
+    job-name: sleep-job
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: "{\"apiVersion\":\"batch/v1\",\"kind\":\"Job\",\"metadata\":{\"annotations\":{},\"name\":\"sleep-job\",\"namespace\":\"default\"},\"spec\":{\"template\":{\"metadata\":{\"name\":\"sleep-job\"},\"spec\":{\"containers\":[{\"command\":[\"sh\",\"-c\",\"sleep 100\"],\"image\":\"busybox\",\"name\":\"sleep\"}],\"restartPolicy\":\"Never\"}}}}\n"
+  managedFields:
+  - manager: kubectl-client-side-apply
+    operation: Update
+    apiVersion: batch/v1
+    time: 2025-02-06T16:34:20-05:00
+    fieldsType: FieldsV1
+    fieldsV1: {}
+  - manager: k3s
+    operation: Update
+    apiVersion: batch/v1
+    time: 2025-02-06T16:34:23-05:00
+    fieldsType: FieldsV1
+    fieldsV1: {}
+    subresource: status
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 6
+  selector:
+    matchLabels:
+      batch.kubernetes.io/controller-uid: 5e7d8814-36fc-486f-9e6d-5b0a09351682
+  manualSelector: false
+  template:
+    metadata:
+      name: sleep-job
+      labels:
+        batch.kubernetes.io/controller-uid: 5e7d8814-36fc-486f-9e6d-5b0a09351682
+        batch.kubernetes.io/job-name: sleep-job
+        controller-uid: 5e7d8814-36fc-486f-9e6d-5b0a09351682
+        job-name: sleep-job
+    spec:
+      containers:
+      - name: sleep
+        image: busybox
+        command:
+        - sh
+        - -c
+        - sleep 100
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        imagePullPolicy: Always
+      restartPolicy: Never
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+  completionMode: NonIndexed
+  suspend: false
+  podReplacementPolicy: TerminatingOrFailed
+status:
+  startTime: 2025-02-06T16:34:20-05:00
+  active: 1
+  terminating: 0
+  uncountedTerminatedPods: {}
+  ready: 1
+`
+
 var jobCompleteManifest = `
 apiVersion: batch/v1
 kind: Job
@@ -242,8 +316,8 @@ func TestStatusWait(t *testing.T) {
 			waitForJobs:  true,
 		},
 		{
-			name:         "Job is not ready, but we pass wait anyway",
-			objManifests: []string{jobNoStatusManifest},
+			name:         "Job is not ready but we pass wait anyway",
+			objManifests: []string{jobReadyManifest},
 			expectErrs:   nil,
 			waitForJobs:  false,
 		},
@@ -300,9 +374,9 @@ func TestStatusWait(t *testing.T) {
 
 			var err error
 			if tt.waitForJobs {
-				err = statusWaiter.Wait(resourceList, time.Second*3)
-			} else {
 				err = statusWaiter.WaitWithJobs(resourceList, time.Second*3)
+			} else {				
+				err = statusWaiter.Wait(resourceList, time.Second*3)
 			}
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
