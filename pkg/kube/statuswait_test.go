@@ -78,49 +78,10 @@ kind: Job
 metadata:
   name: sleep-job
   namespace: default
-  uid: 5e7d8814-36fc-486f-9e6d-5b0a09351682
-  resourceVersion: "568"
   generation: 1
-spec:
-  parallelism: 1
-  completions: 1
-  backoffLimit: 6
-  selector:
-    matchLabels:
-      batch.kubernetes.io/controller-uid: 5e7d8814-36fc-486f-9e6d-5b0a09351682
-  manualSelector: false
-  template:
-    metadata:
-      name: sleep-job
-      labels:
-        batch.kubernetes.io/controller-uid: 5e7d8814-36fc-486f-9e6d-5b0a09351682
-        batch.kubernetes.io/job-name: sleep-job
-        controller-uid: 5e7d8814-36fc-486f-9e6d-5b0a09351682
-        job-name: sleep-job
-    spec:
-      containers:
-      - name: sleep
-        image: busybox
-        command:
-        - sh
-        - -c
-        - sleep 100
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-        imagePullPolicy: Always
-      restartPolicy: Never
-      terminationGracePeriodSeconds: 30
-      dnsPolicy: ClusterFirst
-      securityContext: {}
-      schedulerName: default-scheduler
-  completionMode: NonIndexed
-  suspend: false
-  podReplacementPolicy: TerminatingOrFailed
 status:
   startTime: 2025-02-06T16:34:20-05:00
   active: 1
-  terminating: 0
-  uncountedTerminatedPods: {}
   ready: 1
 `
 
