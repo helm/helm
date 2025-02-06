@@ -59,6 +59,7 @@ import (
 	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/client-go/util/retry"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/statusreaders"
 )
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
@@ -133,6 +134,9 @@ func (c *Client) newWaiter(strategy WaitStrategy) (Waiter, error) {
 			return nil, err
 		}
 		sw := watcher.NewDefaultStatusWatcher(dynamicClient, restMapper)
+		newCustomJobStatusReader := NewCustomJobStatusReader(restMapper)
+		customSR := statusreaders.NewStatusReader(restMapper, newCustomJobStatusReader)
+		sw.StatusReader = customSR
 		return &statusWaiter{
 			sw:  sw,
 			log: c.Log,
@@ -148,7 +152,7 @@ func New(getter genericclioptions.RESTClientGetter, ws WaitStrategy) (*Client, e
 		getter = genericclioptions.NewConfigFlags(true)
 	}
 	factory := cmdutil.NewFactory(getter)
-	c :=  &Client{
+	c := &Client{
 		Factory: factory,
 		Log:     nopLogger,
 	}
