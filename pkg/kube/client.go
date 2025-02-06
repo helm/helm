@@ -36,6 +36,8 @@ import (
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -44,7 +46,6 @@ import (
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
@@ -84,7 +85,15 @@ type Client struct {
 	Namespace string
 
 	kubeClient *kubernetes.Clientset
+	Waiter
 }
+
+type WaitStrategy int
+
+const (
+	StatusWaiterStrategy WaitStrategy = iota
+	LegacyWaiterStrategy
+)
 
 func init() {
 	// Add CRDs to the scheme. They are missing by default.
@@ -97,15 +106,57 @@ func init() {
 	}
 }
 
+func (c *Client) newWaiter(strategy WaitStrategy) (Waiter, error) {
+	switch strategy {
+	case LegacyWaiterStrategy:
+		kc, err := c.Factory.KubernetesClientSet()
+		if err != nil {
+			return nil, err
+		}
+		return &HelmWaiter{kubeClient: kc, log: c.Log}, nil
+	case StatusWaiterStrategy:
+		cfg, err := c.Factory.ToRESTConfig()
+		if err != nil {
+			return nil, err
+		}
+		dynamicClient, err := c.Factory.DynamicClient()
+		if err != nil {
+			return nil, err
+		}
+		httpClient, err := rest.HTTPClientFor(cfg)
+		if err != nil {
+			return nil, err
+		}
+		restMapper, err := apiutil.NewDynamicRESTMapper(cfg, httpClient)
+		if err != nil {
+			return nil, err
+		}
+		return &statusWaiter{
+			restMapper: restMapper,
+			client:     dynamicClient,
+			log:        c.Log,
+		}, nil
+	default:
+		return nil, errors.New("unknown wait strategy")
+	}
+}
+
 // New creates a new Client.
-func New(getter genericclioptions.RESTClientGetter) *Client {
+func New(getter genericclioptions.RESTClientGetter, ws WaitStrategy) (*Client, error) {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
-	return &Client{
-		Factory: cmdutil.NewFactory(getter),
+	factory := cmdutil.NewFactory(getter)
+	c := &Client{
+		Factory: factory,
 		Log:     nopLogger,
 	}
+	var err error
+	c.Waiter, err = c.newWaiter(ws)
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 var nopLogger = func(_ string, _ ...interface{}) {}
@@ -279,45 +330,6 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 		return nil, err
 	}
 	return obj, nil
-}
-
-// Wait waits up to the given timeout for the specified resources to be ready.
-func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
-	cs, err := c.getKubeClient()
-	if err != nil {
-		return err
-	}
-	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
-	w := waiter{
-		c:       checker,
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForResources(resources)
-}
-
-// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
-func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
-	cs, err := c.getKubeClient()
-	if err != nil {
-		return err
-	}
-	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true), CheckJobs(true))
-	w := waiter{
-		c:       checker,
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForResources(resources)
-}
-
-// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
-func (c *Client) WaitForDelete(resources ResourceList, timeout time.Duration) error {
-	w := waiter{
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForDeletedResources(resources)
 }
 
 func (c *Client) namespace() string {
