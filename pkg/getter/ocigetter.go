@@ -128,7 +128,11 @@ func (g *OCIGetter) newRegistryClient() (*registry.Client, error) {
 	})
 
 	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" || g.opts.insecureSkipVerifyTLS {
-		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile, g.opts.insecureSkipVerifyTLS)
+		tlsConf, err := tlsutil.NewTLSConfig(
+			tlsutil.WithInsecureSkipVerify(g.opts.insecureSkipVerifyTLS),
+			tlsutil.WithCertKeyPairFiles(g.opts.certFile, g.opts.keyFile),
+			tlsutil.WithCAFile(g.opts.caFile),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("can't create TLS config for client: %w", err)
 		}

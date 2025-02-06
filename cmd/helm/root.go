@@ -297,7 +297,12 @@ func newDefaultRegistryClient(plainHTTP bool, username, password string) (*regis
 func newRegistryClientWithTLS(
 	certFile, keyFile, caFile string, insecureSkipTLSverify bool, username, password string,
 ) (*registry.Client, error) {
-	tlsConf, err := tlsutil.NewClientTLS(certFile, keyFile, caFile, insecureSkipTLSverify)
+	tlsConf, err := tlsutil.NewTLSConfig(
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+		tlsutil.WithCertKeyPairFiles(certFile, keyFile),
+		tlsutil.WithCAFile(caFile),
+	)
+
 	if err != nil {
 		return nil, fmt.Errorf("can't create TLS config for client: %w", err)
 	}

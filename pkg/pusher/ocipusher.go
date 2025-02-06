@@ -111,7 +111,11 @@ func NewOCIPusher(ops ...Option) (Pusher, error) {
 
 func (pusher *OCIPusher) newRegistryClient() (*registry.Client, error) {
 	if (pusher.opts.certFile != "" && pusher.opts.keyFile != "") || pusher.opts.caFile != "" || pusher.opts.insecureSkipTLSverify {
-		tlsConf, err := tlsutil.NewClientTLS(pusher.opts.certFile, pusher.opts.keyFile, pusher.opts.caFile, pusher.opts.insecureSkipTLSverify)
+		tlsConf, err := tlsutil.NewTLSConfig(
+			tlsutil.WithInsecureSkipVerify(pusher.opts.insecureSkipTLSverify),
+			tlsutil.WithCertKeyPairFiles(pusher.opts.certFile, pusher.opts.keyFile),
+			tlsutil.WithCAFile(pusher.opts.caFile),
+		)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't create TLS config for client")
 		}
