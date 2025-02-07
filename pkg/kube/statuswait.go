@@ -41,7 +41,7 @@ type statusWaiter struct {
 }
 
 func (w *statusWaiter) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
-	panic("todo")
+	
 	return nil
 }
 
