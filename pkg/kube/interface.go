@@ -34,18 +34,6 @@ type Interface interface {
 	// Delete destroys one or more resources.
 	Delete(resources ResourceList) (*Result, []error)
 
-	// WatchUntilReady watches the resources given and waits until it is ready.
-	//
-	// This method is mainly for hook implementations. It watches for a resource to
-	// hit a particular milestone. The milestone depends on the Kind.
-	//
-	// For Jobs, "ready" means the Job ran to completion (exited without error).
-	// For Pods, "ready" means the Pod phase is marked "succeeded".
-	// For all other kinds, it means the kind was created or modified without
-	// error.
-	// TODO: Is watch until ready really behavior we want over the resources actually being ready?
-	WatchUntilReady(resources ResourceList, timeout time.Duration) error
-
 	// Update updates one or more resources or creates the resource
 	// if it doesn't exist.
 	Update(original, target ResourceList, force bool) (*Result, error)
@@ -72,6 +60,18 @@ type Waiter interface {
 
 	// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
 	WaitForDelete(resources ResourceList, timeout time.Duration) error
+
+	// WatchUntilReady watches the resources given and waits until it is ready.
+	//
+	// This method is mainly for hook implementations. It watches for a resource to
+	// hit a particular milestone. The milestone depends on the Kind.
+	//
+	// For Jobs, "ready" means the Job ran to completion (exited without error).
+	// For Pods, "ready" means the Pod phase is marked "succeeded".
+	// For all other kinds, it means the kind was created or modified without
+	// error.
+	// TODO: Is watch until ready really behavior we want over the resources actually being ready?
+	WatchUntilReady(resources ResourceList, timeout time.Duration) error
 }
 
 // InterfaceDeletionPropagation is introduced to avoid breaking backwards compatibility for Interface implementers.

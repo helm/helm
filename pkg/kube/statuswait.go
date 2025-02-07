@@ -40,6 +40,11 @@ type statusWaiter struct {
 	log        func(string, ...interface{})
 }
 
+func (w *statusWaiter) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
+	panic("todo")
+	return nil
+}
+
 func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
