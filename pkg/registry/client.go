@@ -103,25 +103,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
 	}
 	if client.httpClient == nil {
-		type cloner[T any] interface {
-			Clone() T
-		}
-
-		// try to copy (clone) the http.DefaultTransport so any mutations we
-		// perform on it (e.g. TLS config) are not reflected globally
-		// follow https://github.com/golang/go/issues/39299 for a more elegant
-		// solution in the future
-		transport := http.DefaultTransport
-		if t, ok := transport.(cloner[*http.Transport]); ok {
-			transport = t.Clone()
-		} else if t, ok := transport.(cloner[http.RoundTripper]); ok {
-			// this branch will not be used with go 1.20, it was added
-			// optimistically to try to clone if the http.DefaultTransport
-			// implementation changes, still the Clone method in that case
-			// might not return http.RoundTripper...
-			transport = t.Clone()
-		}
-
+		transport := newTransport()
 		client.httpClient = &http.Client{
 			Transport: retry.NewTransport(transport),
 		}
@@ -305,6 +287,11 @@ func ensureTLSConfig(client *auth.Client) (*tls.Config, error) {
 		switch t := t.Base.(type) {
 		case *http.Transport:
 			transport = t
+		case *fallbackTransport:
+			switch t := t.Base.(type) {
+			case *http.Transport:
+				transport = t
+			}
 		}
 	}
 
