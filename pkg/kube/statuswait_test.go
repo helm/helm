@@ -76,7 +76,7 @@ var jobReadyManifest = `
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: sleep-job
+  name: ready-not-complete
   namespace: default
   generation: 1
 status:
@@ -182,8 +182,8 @@ func TestStatusWaitForDelete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			c := newTestClient(t)
-			timeout := time.Second * 2
-			timeUntilPodDelete := time.Second * 1
+			timeout := time.Second
+			timeUntilPodDelete := time.Millisecond * 500
 			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 			fakeMapper := testutil.NewFakeRESTMapper(
 				v1.SchemeGroupVersion.WithKind("Pod"),
@@ -232,7 +232,6 @@ func TestStatusWaitForDelete(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
-
 }
 
 func TestStatusWait(t *testing.T) {
@@ -314,9 +313,73 @@ func TestStatusWait(t *testing.T) {
 			var err error
 			if tt.waitForJobs {
 				err = statusWaiter.WaitWithJobs(resourceList, time.Second*3)
-			} else {				
+			} else {
 				err = statusWaiter.Wait(resourceList, time.Second*3)
 			}
+			if tt.expectErrs != nil {
+				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestWaitForJobComplete(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		objManifests []string
+		expectErrs   []error
+	}{
+		{
+			name:         "Job is complete",
+			objManifests: []string{jobCompleteManifest},
+		},
+		{
+			name:         "Job is not ready",
+			objManifests: []string{jobNoStatusManifest},
+			expectErrs:   []error{errors.New("resource not ready, name: test, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
+		},
+		{
+			name:         "Job is ready but not complete",
+			objManifests: []string{jobReadyManifest},
+			expectErrs:   []error{errors.New("resource not ready, name: ready-not-complete, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+			)
+			statusWaiter := statusWaiter{
+				client:     fakeClient,
+				restMapper: fakeMapper,
+				log:        t.Logf,
+			}
+			objs := []runtime.Object{}
+			for _, podYaml := range tt.objManifests {
+				m := make(map[string]interface{})
+				err := yaml.Unmarshal([]byte(podYaml), &m)
+				assert.NoError(t, err)
+				resource := &unstructured.Unstructured{Object: m}
+				objs = append(objs, resource)
+				gvr := getGVR(t, fakeMapper, resource)
+				err = fakeClient.Tracker().Create(gvr, resource, resource.GetNamespace())
+				assert.NoError(t, err)
+			}
+			resourceList := ResourceList{}
+			for _, obj := range objs {
+				list, err := c.Build(objBody(obj), false)
+				assert.NoError(t, err)
+				resourceList = append(resourceList, list...)
+			}
+
+			err := statusWaiter.WaitWithJobs(resourceList, time.Second*3)
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
 				return
