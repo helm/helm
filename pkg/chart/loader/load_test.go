@@ -490,13 +490,11 @@ func TestLoadInvalidArchive(t *testing.T) {
 }
 
 func TestLoadValues(t *testing.T) {
-	testDatas := []struct {
-		name          string
+	testCases := map[string]struct {
 		data          []byte
 		expctedValues map[string]interface{}
 	}{
-		{
-			name: "It should load values correctly",
+		"It should load values correctly": {
 			data: []byte(`
 foo:
   image: foo:v1
@@ -512,8 +510,7 @@ bar:
 				},
 			},
 		},
-		{
-			name: "It should load values correctly with multiple documents in one file",
+		"It should load values correctly with multiple documents in one file": {
 			data: []byte(`
 foo:
   image: foo:v1
@@ -533,14 +530,14 @@ foo:
 			},
 		},
 	}
-	for _, testData := range testDatas {
-		t.Run(testData.name, func(tt *testing.T) {
-			values, err := LoadValues(testData.data)
+	for testName, testCase := range testCases {
+		t.Run(testName, func(tt *testing.T) {
+			values, err := LoadValues(bytes.NewReader(testCase.data))
 			if err != nil {
 				tt.Fatal(err)
 			}
-			if !reflect.DeepEqual(values, testData.expctedValues) {
-				tt.Errorf("Expected values: %v, got %v", testData.expctedValues, values)
+			if !reflect.DeepEqual(values, testCase.expctedValues) {
+				tt.Errorf("Expected values: %v, got %v", testCase.expctedValues, values)
 			}
 		})
 	}

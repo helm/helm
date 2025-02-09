@@ -107,7 +107,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				return c, errors.Wrap(err, "cannot load Chart.lock")
 			}
 		case f.Name == "values.yaml":
-			values, err := LoadValues(f.Data)
+			values, err := LoadValues(bytes.NewReader(f.Data))
 			if err != nil {
 				return c, errors.Wrap(err, "cannot load values.yaml")
 			}
@@ -207,9 +207,10 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	return c, nil
 }
 
-func LoadValues(data []byte) (map[string]interface{}, error) {
+// LoadValues loads chat values from a reader.
+func LoadValues(data io.Reader) (map[string]interface{}, error) {
 	values := map[string]interface{}{}
-	reader := utilyaml.NewYAMLReader(bufio.NewReader(bytes.NewReader(data)))
+	reader := utilyaml.NewYAMLReader(bufio.NewReader(data))
 	for {
 		currentMap := map[string]interface{}{}
 		raw, err := reader.Read()
