@@ -62,8 +62,8 @@ func (j *customPodStatusReader) ReadStatusForObject(ctx context.Context, reader 
 func podConditions(u *unstructured.Unstructured) (*status.Result, error) {
 	obj := u.UnstructuredContent()
 	phase := status.GetStringField(obj, ".status.phase", "")
-	switch phase {
-	case string(v1.PodSucceeded):
+	switch v1.PodPhase(phase) {
+	case v1.PodSucceeded:
 		message := fmt.Sprintf("pod %s succeeded", u.GetName())
 		return &status.Result{
 			Status:  status.CurrentStatus,
@@ -76,7 +76,7 @@ func podConditions(u *unstructured.Unstructured) (*status.Result, error) {
 				},
 			},
 		}, nil
-	case string(v1.PodFailed):
+	case v1.PodFailed:
 		message := fmt.Sprintf("pod %s failed", u.GetName())
 		return &status.Result{
 			Status:  status.FailedStatus,
@@ -90,8 +90,6 @@ func podConditions(u *unstructured.Unstructured) (*status.Result, error) {
 				},
 			},
 		}, nil
-	case string(v1.PodPending):
-	case string(v1.PodRunning):
 	}
 
 	message := "Pod in progress"

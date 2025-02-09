@@ -30,7 +30,8 @@ import (
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 )
 
-func toUnstructured(obj runtime.Object) (*unstructured.Unstructured, error) {
+func toUnstructured(t *testing.T, obj runtime.Object) (*unstructured.Unstructured, error) {
+	t.Helper()
 	// If the incoming object is already unstructured, perform a deep copy first
 	// otherwise DefaultUnstructuredConverter ends up returning the inner map without
 	// making a copy.
@@ -45,35 +46,69 @@ func toUnstructured(obj runtime.Object) (*unstructured.Unstructured, error) {
 }
 
 func TestJobConditions(t *testing.T) {
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "job",
+	t.Parallel()
+	tests := []struct {
+		name           string
+		job            *batchv1.Job
+		expectedStatus status.Status
+	}{
+		{
+			name: "job without Complete condition returns InProgress status",
+			job: &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "job-no-condition",
+				},
+				Spec:   batchv1.JobSpec{},
+				Status: batchv1.JobStatus{},
+			},
+			expectedStatus: status.InProgressStatus,
 		},
-		Spec:   batchv1.JobSpec{},
-		Status: batchv1.JobStatus{},
-	}
-
-	t.Run("job without Complete condition returns InProgress status", func(t *testing.T) {
-		us, err := toUnstructured(job)
-		assert.NoError(t, err)
-		result, err := jobConditions(us)
-		assert.NoError(t, err)
-		assert.Equal(t, status.InProgressStatus, result.Status)
-	})
-
-	t.Run("job with Complete condition as True returns Current status", func(t *testing.T) {
-		job.Status = batchv1.JobStatus{
-			Conditions: []batchv1.JobCondition{
-				{
-					Type:   batchv1.JobComplete,
-					Status: corev1.ConditionTrue,
+		{
+			name: "job with Complete condition as True returns Current status",
+			job: &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "job-complete",
+				},
+				Spec: batchv1.JobSpec{},
+				Status: batchv1.JobStatus{
+					Conditions: []batchv1.JobCondition{
+						{
+							Type:   batchv1.JobComplete,
+							Status: corev1.ConditionTrue,
+						},
+					},
 				},
 			},
-		}
-		us, err := toUnstructured(job)
-		assert.NoError(t, err)
-		result, err := jobConditions(us)
-		assert.NoError(t, err)
-		assert.Equal(t, status.CurrentStatus, result.Status)
-	})
+			expectedStatus: status.CurrentStatus,
+		},
+		{
+			name: "job with Failed condition as True returns Failed status",
+			job: &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "job-failed",
+				},
+				Spec: batchv1.JobSpec{},
+				Status: batchv1.JobStatus{
+					Conditions: []batchv1.JobCondition{
+						{
+							Type:   batchv1.JobFailed,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			},
+			expectedStatus: status.FailedStatus,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			us, err := toUnstructured(t, tc.job)
+			assert.NoError(t, err)
+			result, err := jobConditions(us)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectedStatus, result.Status)
+		})
+	}
 }
