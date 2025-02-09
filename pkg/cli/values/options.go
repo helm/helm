@@ -17,6 +17,7 @@ limitations under the License.
 package values
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/url"
@@ -47,11 +48,11 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 
 	// User specified a values files via -f/--values
 	for _, filePath := range opts.ValueFiles {
-		bytes, err := readFile(filePath, p)
+		raw, err := readFile(filePath, p)
 		if err != nil {
 			return nil, err
 		}
-		currentMap, err := loader.LoadValues(bytes)
+		currentMap, err := loader.LoadValues(bytes.NewReader(raw))
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse %s", filePath)
 		}
