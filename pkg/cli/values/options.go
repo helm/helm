@@ -68,7 +68,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 			// If value is JSON object format, parse it as map
 			var jsonMap map[string]interface{}
 			if err := json.Unmarshal([]byte(trimmedValue), &jsonMap); err != nil {
-				return nil, errors.Errorf("failed parsing --set-json data using JSON format: %s", value)
+				return nil, errors.Errorf("failed parsing --set-json data JSON: %s", value)
 			}
 			base = mergeMaps(base, jsonMap)
 		} else {
