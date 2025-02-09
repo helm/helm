@@ -231,6 +231,8 @@ func LoadValues(data io.Reader) (map[string]interface{}, error) {
 	return values, nil
 }
 
+// MergeMaps merges two maps. If a key exists in both maps, the value from b will be used.
+// If the value is a map, the maps will be merged recursively.
 func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 	out := make(map[string]interface{}, len(a))
 	for k, v := range a {
