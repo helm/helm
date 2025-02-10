@@ -27,6 +27,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	batch "k8s.io/api/batch/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -42,7 +43,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	cachetools "k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
-	batch "k8s.io/api/batch/v1"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -55,20 +55,20 @@ type HelmWaiter struct {
 	kubeClient *kubernetes.Clientset
 }
 
-func (w *HelmWaiter) Wait(resources ResourceList, timeout time.Duration) error {
-	w.c = NewReadyChecker(w.kubeClient, w.log, PausedAsReady(true))
-	return w.waitForResources(resources, timeout)
+func (hw *HelmWaiter) Wait(resources ResourceList, timeout time.Duration) error {
+	hw.c = NewReadyChecker(hw.kubeClient, hw.log, PausedAsReady(true))
+	return hw.waitForResources(resources, timeout)
 }
 
-func (w *HelmWaiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
-	w.c = NewReadyChecker(w.kubeClient, w.log, PausedAsReady(true), CheckJobs(true))
-	return w.waitForResources(resources, timeout)
+func (hw *HelmWaiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
+	hw.c = NewReadyChecker(hw.kubeClient, hw.log, PausedAsReady(true), CheckJobs(true))
+	return hw.waitForResources(resources, timeout)
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, Services and
 // Jobs(optional) until all are ready or a timeout is reached
-func (w *HelmWaiter) waitForResources(created ResourceList, timeout time.Duration) error {
-	w.log("beginning wait for %d resources with timeout of %v", len(created), timeout)
+func (hw *HelmWaiter) waitForResources(created ResourceList, timeout time.Duration) error {
+	hw.log("beginning wait for %d resources with timeout of %v", len(created), timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -81,15 +81,15 @@ func (w *HelmWaiter) waitForResources(created ResourceList, timeout time.Duratio
 	return wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(ctx context.Context) (bool, error) {
 		waitRetries := 30
 		for i, v := range created {
-			ready, err := w.c.IsReady(ctx, v)
+			ready, err := hw.c.IsReady(ctx, v)
 
-			if waitRetries > 0 && w.isRetryableError(err, v) {
+			if waitRetries > 0 && hw.isRetryableError(err, v) {
 				numberOfErrors[i]++
 				if numberOfErrors[i] > waitRetries {
-					w.log("Max number of retries reached")
+					hw.log("Max number of retries reached")
 					return false, err
 				}
-				w.log("Retrying as current number of retries %d less than max number of retries %d", numberOfErrors[i]-1, waitRetries)
+				hw.log("Retrying as current number of retries %d less than max number of retries %d", numberOfErrors[i]-1, waitRetries)
 				return false, nil
 			}
 			numberOfErrors[i] = 0
@@ -101,28 +101,28 @@ func (w *HelmWaiter) waitForResources(created ResourceList, timeout time.Duratio
 	})
 }
 
-func (w *HelmWaiter) isRetryableError(err error, resource *resource.Info) bool {
+func (hw *HelmWaiter) isRetryableError(err error, resource *resource.Info) bool {
 	if err == nil {
 		return false
 	}
-	w.log("Error received when checking status of resource %s. Error: '%s', Resource details: '%s'", resource.Name, err, resource)
+	hw.log("Error received when checking status of resource %s. Error: '%s', Resource details: '%s'", resource.Name, err, resource)
 	if ev, ok := err.(*apierrors.StatusError); ok {
 		statusCode := ev.Status().Code
-		retryable := w.isRetryableHTTPStatusCode(statusCode)
-		w.log("Status code received: %d. Retryable error? %t", statusCode, retryable)
+		retryable := hw.isRetryableHTTPStatusCode(statusCode)
+		hw.log("Status code received: %d. Retryable error? %t", statusCode, retryable)
 		return retryable
 	}
-	w.log("Retryable error? %t", true)
+	hw.log("Retryable error? %t", true)
 	return true
 }
 
-func (w *HelmWaiter) isRetryableHTTPStatusCode(httpStatusCode int32) bool {
+func (hw *HelmWaiter) isRetryableHTTPStatusCode(httpStatusCode int32) bool {
 	return httpStatusCode == 0 || httpStatusCode == http.StatusTooManyRequests || (httpStatusCode >= 500 && httpStatusCode != http.StatusNotImplemented)
 }
 
 // waitForDeletedResources polls to check if all the resources are deleted or a timeout is reached
-func (w *HelmWaiter) WaitForDelete(deleted ResourceList, timeout time.Duration) error {
-	w.log("beginning wait for %d resources to be deleted with timeout of %v", len(deleted), timeout)
+func (hw *HelmWaiter) WaitForDelete(deleted ResourceList, timeout time.Duration) error {
+	hw.log("beginning wait for %d resources to be deleted with timeout of %v", len(deleted), timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -314,7 +314,7 @@ func (hw *HelmWaiter) waitForJob(obj runtime.Object, name string) (bool, error) 
 // waitForPodSuccess is a helper that waits for a pod to complete.
 //
 // This operates on an event returned from a watcher.
-func (c *HelmWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool, error) {
+func (hw *HelmWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool, error) {
 	o, ok := obj.(*v1.Pod)
 	if !ok {
 		return true, errors.Errorf("expected %s to be a *v1.Pod, got %T", name, obj)
@@ -322,14 +322,14 @@ func (c *HelmWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool, e
 
 	switch o.Status.Phase {
 	case v1.PodSucceeded:
-		c.log("Pod %s succeeded", o.Name)
+		hw.log("Pod %s succeeded", o.Name)
 		return true, nil
 	case v1.PodFailed:
 		return true, errors.Errorf("pod %s failed", o.Name)
 	case v1.PodPending:
-		c.log("Pod %s pending", o.Name)
+		hw.log("Pod %s pending", o.Name)
 	case v1.PodRunning:
-		c.log("Pod %s running", o.Name)
+		hw.log("Pod %s running", o.Name)
 	}
 
 	return false, nil

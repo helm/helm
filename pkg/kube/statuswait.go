@@ -23,7 +23,6 @@ import (
 	"sort"
 	"time"
 
-	helmStatusReaders "helm.sh/helm/v4/internal/statusreaders"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -36,6 +35,8 @@ import (
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/watcher"
 	"sigs.k8s.io/cli-utils/pkg/object"
+
+	helmStatusReaders "helm.sh/helm/v4/internal/statusreaders"
 )
 
 type statusWaiter struct {
@@ -44,7 +45,7 @@ type statusWaiter struct {
 	log        func(string, ...interface{})
 }
 
-func alwaysReady(u *unstructured.Unstructured) (*status.Result, error) {
+func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
 	return &status.Result{
 		Status:  status.CurrentStatus,
 		Message: "Resource is current",
@@ -179,7 +180,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 }
 
 func statusObserver(cancel context.CancelFunc, desired status.Status, logFn func(string, ...interface{})) collector.ObserverFunc {
-	return func(statusCollector *collector.ResourceStatusCollector, e event.Event) {
+	return func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
 		var rss []*event.ResourceStatus
 		var nonDesiredResources []*event.ResourceStatus
 		for _, rs := range statusCollector.ResourceStatuses {
