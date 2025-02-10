@@ -180,22 +180,22 @@ ingress:
   #      - chart-example.local
 
 # -- Expose the service via gateway-api HTTPRoute
-# Requires Gateway API resources and suitable controller installed incluster
+# Requires Gateway API resources and suitable controller installed within the cluster
 # (see: https://gateway-api.sigs.k8s.io/guides/)
 httpRoute:
-  # -- HTTPRoute enabled.
+  # HTTPRoute enabled.
   enabled: false
-  # -- HTTPRoute annotations.
+  # HTTPRoute annotations.
   annotations: {}
-  # -- Which Gateways this Route is attached to
+  # Which Gateways this Route is attached to.
   parentRefs:
   - name: gateway
     sectionName: http
     # namespace: default
-  # -- Hostnames matching HTTP header.
+  # Hostnames matching HTTP header.
   hostnames:
   - chart-example.local
-  # -- List of rules and filters applied.
+  # List of rules and filters applied.
   rules:
   - matches:
     - path:
