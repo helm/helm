@@ -26,6 +26,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	batch "k8s.io/api/batch/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -470,7 +471,7 @@ func (hw *HelmWaiter) waitForJob(obj runtime.Object, name string) (bool, error) 
 // waitForPodSuccess is a helper that waits for a pod to complete.
 //
 // This operates on an event returned from a watcher.
-func (c *HelmWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool, error) {
+func (hw *HelmWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool, error) {
 	o, ok := obj.(*v1.Pod)
 	if !ok {
 		return true, errors.Errorf("expected %s to be a *v1.Pod, got %T", name, obj)
@@ -478,14 +479,14 @@ func (c *HelmWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool, e
 
 	switch o.Status.Phase {
 	case v1.PodSucceeded:
-		c.log("Pod %s succeeded", o.Name)
+		hw.log("Pod %s succeeded", o.Name)
 		return true, nil
 	case v1.PodFailed:
 		return true, errors.Errorf("pod %s failed", o.Name)
 	case v1.PodPending:
-		c.log("Pod %s pending", o.Name)
+		hw.log("Pod %s pending", o.Name)
 	case v1.PodRunning:
-		c.log("Pod %s running", o.Name)
+		hw.log("Pod %s running", o.Name)
 	}
 
 	return false, nil
