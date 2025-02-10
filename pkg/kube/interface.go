@@ -70,7 +70,6 @@ type Waiter interface {
 	// For Pods, "ready" means the Pod phase is marked "succeeded".
 	// For all other kinds, it means the kind was created or modified without
 	// error.
-	// TODO: Is watch until ready really behavior we want over the resources actually being ready?
 	WatchUntilReady(resources ResourceList, timeout time.Duration) error
 }
 
