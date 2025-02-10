@@ -23,6 +23,7 @@ import (
 	"sort"
 	"time"
 
+	helmStatusReaders "helm.sh/helm/v4/internal/statusreaders"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -55,8 +56,8 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 	defer cancel()
 	w.log("waiting for %d pods and jobs to complete with a timeout of %s", len(resourceList), timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
-	jobSR := NewCustomJobStatusReader(w.restMapper)
-	podSR := NewCustomPodStatusReader(w.restMapper)
+	jobSR := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
+	podSR := helmStatusReaders.NewCustomPodStatusReader(w.restMapper)
 	// We don't want to wait on any other resources as watchUntilReady is only for Helm hooks
 	genericSR := statusreaders.NewGenericStatusReader(w.restMapper, alwaysReady)
 
@@ -84,7 +85,7 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	defer cancel()
 	w.log("beginning wait for %d resources with timeout of %s", len(resourceList), timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
-	newCustomJobStatusReader := NewCustomJobStatusReader(w.restMapper)
+	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	customSR := statusreaders.NewStatusReader(w.restMapper, newCustomJobStatusReader)
 	sw.StatusReader = customSR
 	return w.wait(ctx, resourceList, sw)
