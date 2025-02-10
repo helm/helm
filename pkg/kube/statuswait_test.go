@@ -17,9 +17,7 @@ limitations under the License.
 package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -35,10 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/kubectl/pkg/scheme"
-	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/collector"
-	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/event"
-	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
-	"sigs.k8s.io/cli-utils/pkg/object"
 	"sigs.k8s.io/cli-utils/pkg/testutil"
 )
 
@@ -46,7 +40,7 @@ var podCurrentManifest = `
 apiVersion: v1
 kind: Pod
 metadata:
-  name: good-pod
+  name: current-pod
   namespace: ns
 status:
   conditions:
@@ -100,15 +94,49 @@ status:
       status: "True"
 `
 
+var podCompleteManifest = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod
+  namespace: ns
+status:
+  phase: Succeeded
+`
+
 var pausedDeploymentManifest = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx
+  name: paused
   namespace: ns-1
   generation: 1
 spec:
   paused: true
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.19.6
+        ports:
+        - containerPort: 80
+`
+
+var notReadyDeploymentManifest = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: not-ready
+  namespace: ns-1
+  generation: 1
+spec:
   replicas: 1
   selector:
     matchLabels:
@@ -132,31 +160,6 @@ func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured
 	return mapping.Resource
 }
 
-func TestStatusLogger(t *testing.T) {
-	t.Parallel()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*1500)
-	defer cancel()
-	readyPod := object.ObjMetadata{
-		Name:      "readyPod",
-		GroupKind: schema.GroupKind{Kind: "Pod"},
-	}
-	notReadyPod := object.ObjMetadata{
-		Name:      "notReadyPod",
-		GroupKind: schema.GroupKind{Kind: "Pod"},
-	}
-	objs := []object.ObjMetadata{readyPod, notReadyPod}
-	resourceStatusCollector := collector.NewResourceStatusCollector(objs)
-	resourceStatusCollector.ResourceStatuses[readyPod] = &event.ResourceStatus{
-		Identifier: readyPod,
-		Status:     status.CurrentStatus,
-	}
-	expectedMessage := "waiting for resource, name: notReadyPod, kind: Pod, desired status: Current, actual status: Unknown"
-	testLogger := func(message string, args ...interface{}) {
-		assert.Equal(t, expectedMessage, fmt.Sprintf(message, args...))
-	}
-	logResourceStatus(ctx, objs, resourceStatusCollector, status.CurrentStatus, testLogger)
-}
-
 func TestStatusWaitForDelete(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -175,7 +178,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 			name:              "error when not all objects are deleted",
 			manifestsToCreate: []string{jobCompleteManifest, podCurrentManifest},
 			manifestsToDelete: []string{jobCompleteManifest},
-			expectErrs:        []error{errors.New("resource still exists, name: good-pod, kind: Pod, status: Current"), errors.New("context deadline exceeded")},
+			expectErrs:        []error{errors.New("resource still exists, name: current-pod, kind: Pod, status: Current"), errors.New("context deadline exceeded")},
 		},
 	}
 	for _, tt := range tests {
@@ -370,6 +373,76 @@ func TestWaitForJobComplete(t *testing.T) {
 			}
 
 			err := statusWaiter.WaitWithJobs(resourceList, time.Second*3)
+			if tt.expectErrs != nil {
+				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestWatchForReady(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		objManifests []string
+		expectErrs   []error
+	}{
+		{
+			name:         "succeeds if pod and job are complete",
+			objManifests: []string{jobCompleteManifest, podCompleteManifest},
+		},
+		{
+			name:         "succeeds even when a resource that's not a pod or job is complete",
+			objManifests: []string{notReadyDeploymentManifest},
+		},
+		{
+			name:         "Fails if job is not complete",
+			objManifests: []string{jobReadyManifest},
+			expectErrs:   []error{errors.New("resource not ready, name: ready-not-complete, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
+		},
+		{
+			name:         "Fails if pod is not complete",
+			objManifests: []string{podCurrentManifest},
+			expectErrs:   []error{errors.New("resource not ready, name: current-pod, kind: Pod, status: InProgress"), errors.New("context deadline exceeded")},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				v1.SchemeGroupVersion.WithKind("Pod"),
+				appsv1.SchemeGroupVersion.WithKind("Deployment"),
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+			)
+			statusWaiter := statusWaiter{
+				client:     fakeClient,
+				restMapper: fakeMapper,
+				log:        t.Logf,
+			}
+			objs := []runtime.Object{}
+			for _, podYaml := range tt.objManifests {
+				m := make(map[string]interface{})
+				err := yaml.Unmarshal([]byte(podYaml), &m)
+				assert.NoError(t, err)
+				resource := &unstructured.Unstructured{Object: m}
+				objs = append(objs, resource)
+				gvr := getGVR(t, fakeMapper, resource)
+				err = fakeClient.Tracker().Create(gvr, resource, resource.GetNamespace())
+				assert.NoError(t, err)
+			}
+			resourceList := ResourceList{}
+			for _, obj := range objs {
+				list, err := c.Build(objBody(obj), false)
+				assert.NoError(t, err)
+				resourceList = append(resourceList, list...)
+			}
+
+			err := statusWaiter.WatchUntilReady(resourceList, time.Second*3)
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
 				return

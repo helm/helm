@@ -22,9 +22,7 @@ import (
 	"context"
 	"fmt"
 
-	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -42,13 +40,13 @@ type customPodStatusReader struct {
 
 func NewCustomPodStatusReader(mapper meta.RESTMapper) engine.StatusReader {
 	genericStatusReader := statusreaders.NewGenericStatusReader(mapper, podConditions)
-	return &customJobStatusReader{
+	return &customPodStatusReader{
 		genericStatusReader: genericStatusReader,
 	}
 }
 
 func (j *customPodStatusReader) Supports(gk schema.GroupKind) bool {
-	return gk == batchv1.SchemeGroupVersion.WithKind("Job").GroupKind()
+	return gk == corev1.SchemeGroupVersion.WithKind("Pod").GroupKind()
 }
 
 func (j *customPodStatusReader) ReadStatus(ctx context.Context, reader engine.ClusterReader, resource object.ObjMetadata) (*event.ResourceStatus, error) {
@@ -62,8 +60,8 @@ func (j *customPodStatusReader) ReadStatusForObject(ctx context.Context, reader 
 func podConditions(u *unstructured.Unstructured) (*status.Result, error) {
 	obj := u.UnstructuredContent()
 	phase := status.GetStringField(obj, ".status.phase", "")
-	switch v1.PodPhase(phase) {
-	case v1.PodSucceeded:
+	switch corev1.PodPhase(phase) {
+	case corev1.PodSucceeded:
 		message := fmt.Sprintf("pod %s succeeded", u.GetName())
 		return &status.Result{
 			Status:  status.CurrentStatus,
@@ -76,7 +74,7 @@ func podConditions(u *unstructured.Unstructured) (*status.Result, error) {
 				},
 			},
 		}, nil
-	case v1.PodFailed:
+	case corev1.PodFailed:
 		message := fmt.Sprintf("pod %s failed", u.GetName())
 		return &status.Result{
 			Status:  status.FailedStatus,

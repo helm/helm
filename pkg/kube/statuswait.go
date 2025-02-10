@@ -20,13 +20,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/aggregator"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/collector"
+	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/engine"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/event"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/polling/statusreaders"
 	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
@@ -40,9 +43,32 @@ type statusWaiter struct {
 	log        func(string, ...interface{})
 }
 
-func (w *statusWaiter) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
-	
-	return nil
+func alwaysReady(u *unstructured.Unstructured) (*status.Result, error) {
+	return &status.Result{
+		Status:  status.CurrentStatus,
+		Message: "Resource is current",
+	}, nil
+}
+
+func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	w.log("waiting for %d pods and jobs to complete with a timeout of %s", len(resourceList), timeout)
+	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
+	jobSR := NewCustomJobStatusReader(w.restMapper)
+	podSR := NewCustomPodStatusReader(w.restMapper)
+	// We don't want to wait on any other resources as watchUntilReady is only for Helm hooks
+	genericSR := statusreaders.NewGenericStatusReader(w.restMapper, alwaysReady)
+
+	sr := &statusreaders.DelegatingStatusReader{
+		StatusReaders: []engine.StatusReader{
+			jobSR,
+			podSR,
+			genericSR,
+		},
+	}
+	sw.StatusReader = sr
+	return w.wait(ctx, resourceList, sw)
 }
 
 func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
@@ -85,8 +111,7 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 	}
 	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	go logResourceStatus(ctx, resources, statusCollector, status.NotFoundStatus, w.log)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus))
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus, w.log))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -129,8 +154,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 
 	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	go logResourceStatus(cancelCtx, resources, statusCollector, status.CurrentStatus, w.log)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus))
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus, w.log))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -153,38 +177,33 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 	return nil
 }
 
-func statusObserver(cancel context.CancelFunc, desired status.Status) collector.ObserverFunc {
-	return func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
-		rss := []*event.ResourceStatus{}
+func statusObserver(cancel context.CancelFunc, desired status.Status, logFn func(string, ...interface{})) collector.ObserverFunc {
+	return func(statusCollector *collector.ResourceStatusCollector, e event.Event) {
+		var rss []*event.ResourceStatus
+		var nonDesiredResources []*event.ResourceStatus
 		for _, rs := range statusCollector.ResourceStatuses {
 			if rs == nil {
 				continue
 			}
 			rss = append(rss, rs)
+			if rs.Status != desired {
+				nonDesiredResources = append(nonDesiredResources, rs)
+			}
 		}
+
 		if aggregator.AggregateStatus(rss, desired) == desired {
 			cancel()
 			return
 		}
-	}
-}
 
-func logResourceStatus(ctx context.Context, resources []object.ObjMetadata, sc *collector.ResourceStatusCollector, desiredStatus status.Status, log func(string, ...interface{})) {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			for _, id := range resources {
-				rs := sc.ResourceStatuses[id]
-				if rs.Status != desiredStatus {
-					log("waiting for resource, name: %s, kind: %s, desired status: %s, actual status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, desiredStatus, rs.Status)
-					// only log one resource to not overwhelm the logs
-					break
-				}
-			}
+		if len(nonDesiredResources) > 0 {
+			// Log only the first resource so the user knows what they're waiting for without being overwhelmed
+			sort.Slice(nonDesiredResources, func(i, j int) bool {
+				return nonDesiredResources[i].Identifier.Name < nonDesiredResources[j].Identifier.Name
+			})
+			first := nonDesiredResources[0]
+			logFn("waiting for resource: name: %s, kind: %s, desired status: %s, actual status: %s",
+				first.Identifier.Name, first.Identifier.GroupKind.Kind, desired, first.Status)
 		}
 	}
 }
