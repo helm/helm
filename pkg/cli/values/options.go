@@ -143,5 +143,5 @@ func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return data.Bytes(), err
+	return data.Bytes(), nil
 }
