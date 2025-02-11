@@ -96,7 +96,7 @@ func TestInvalidChartYaml(t *testing.T) {
 	if len(m) != 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
-	if !strings.Contains(m[0].Err.Error(), "failed to strictly parse chartfile") {
+	if !strings.Contains(m[0].Err.Error(), "failed to strictly parse chart metadata file") {
 		t.Errorf("All didn't have the error for duplicate YAML keys")
 	}
 }
