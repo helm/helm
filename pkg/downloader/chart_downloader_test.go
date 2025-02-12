@@ -175,7 +175,11 @@ func TestIsTar(t *testing.T) {
 }
 
 func TestDownloadTo(t *testing.T) {
-	srv := repotest.NewTempServerWithCleanupAndBasicAuth(t, "testdata/*.tgz*")
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/*.tgz*"),
+		repotest.WithMiddleware(repotest.BasicAuthMiddleware(t)),
+	)
 	defer srv.Stop()
 	if err := srv.CreateIndex(); err != nil {
 		t.Fatal(err)
@@ -222,12 +226,11 @@ func TestDownloadTo(t *testing.T) {
 
 func TestDownloadTo_TLS(t *testing.T) {
 	// Set up mock server w/ tls enabled
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
-	srv.Stop()
-	if err != nil {
-		t.Fatal(err)
-	}
-	srv.StartTLS()
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/*.tgz*"),
+		repotest.WithTLSConfig(repotest.MakeTestTLSConfig(t, "../../testdata")),
+	)
 	defer srv.Stop()
 	if err := srv.CreateIndex(); err != nil {
 		t.Fatal(err)
@@ -249,7 +252,13 @@ func TestDownloadTo_TLS(t *testing.T) {
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
 		}),
-		Options: []getter.Option{},
+		Options: []getter.Option{
+			getter.WithTLSClientConfig(
+				"",
+				"",
+				filepath.Join("../../testdata/rootca.crt"),
+			),
+		},
 	}
 	cname := "test/signtest"
 	dest := srv.Root()
@@ -278,10 +287,10 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 	dest := t.TempDir()
 
 	// Set up a fake repo
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/*.tgz*"),
+	)
 	defer srv.Stop()
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
