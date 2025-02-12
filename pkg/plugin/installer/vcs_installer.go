@@ -63,7 +63,7 @@ func NewVCSInstaller(source, version string) (*VCSInstaller, error) {
 		Version: version,
 		base:    newBase(source),
 	}
-	return i, err
+	return i, nil
 }
 
 // Install clones a remote repository and installs into the plugin directory.
