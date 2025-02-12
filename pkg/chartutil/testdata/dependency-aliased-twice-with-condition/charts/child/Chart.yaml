@@ -1,0 +1,9 @@
+apiVersion: v2
+name: child
+version: 0.1.0
+
+dependencies:
+  - name: grandchild
+    alias: grandchildAlias
+    version: "0.1.0"
+    condition: grandchildAlias.enabled
