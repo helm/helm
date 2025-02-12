@@ -26,6 +26,10 @@ type PostRenderer interface {
 	// expects the modified results to be returned on a separate buffer or an
 	// error if there was an issue or failure while running the post render step
 	Run(renderedManifests *bytes.Buffer) (modifiedManifests *bytes.Buffer, err error)
+}
+
+type PostRendererWithHooks interface {
+	PostRenderer
 	// RunIncHooks expects and returns a map of file names and their rendered contents
 	// Example:
 	// > map[string]string{

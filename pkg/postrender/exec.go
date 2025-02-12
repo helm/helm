@@ -43,7 +43,7 @@ func NewExec(binaryPath string, args ...string) (PostRenderer, error) {
 
 // NewExecHooks returns a PostRenderer implementation that calls the provided binary.
 // The returned PostRenderer will process hooks if `incHooks` is true
-func NewExecHooks(binaryPath string, incHooks bool, args ...string) (PostRenderer, error) {
+func NewExecHooks(binaryPath string, incHooks bool, args ...string) (PostRendererWithHooks, error) {
 	fullPath, err := getFullPath(binaryPath)
 	if err != nil {
 		return nil, err
