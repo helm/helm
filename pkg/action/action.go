@@ -179,8 +179,8 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	// This allows the post renderer to see and mofify all rendered files at once
 	// before they are sorted into hooks, manifests, and partials below, while keeping
 	// the behavior of not post-rendering hooks unchanged.
-	if pr != nil && pr.IncHooks() {
-		files, err = pr.RunIncHooks(files)
+	if pr != nil && shouldIncludeHooks(pr) {
+		files, err = pr.(postrender.PostRendererWithHooks).RunIncHooks(files)
 		if err != nil {
 			return hs, b, notes, fmt.Errorf("error while post rendering templates: %w", err)
 		}
@@ -248,7 +248,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 
 	// Call the post renderer if one was provided and we were NOT asked to pass hooks into it.
 	// See the post render comment above for more details.
-	if pr != nil && !pr.IncHooks() {
+	if pr != nil && !shouldIncludeHooks(pr) {
 		b, err = pr.Run(b)
 		if err != nil {
 			return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
@@ -256,6 +256,15 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	}
 
 	return hs, b, notes, nil
+}
+
+func shouldIncludeHooks(pr postrender.PostRenderer) bool {
+	switch x := pr.(type) {
+	case postrender.PostRendererWithHooks:
+		return x.IncHooks()
+	default:
+		return false
+	}
 }
 
 // RESTClientGetter gets the rest client
