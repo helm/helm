@@ -223,7 +223,9 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		}
 	}
 
-	if r.Wait {
+	waitBeforePostHooks := !r.DisableHooks && r.cfg.hasPostRollbackHooks(targetRelease)
+
+	if r.Wait || waitBeforePostHooks {
 		if r.WaitForJobs {
 			if err := r.cfg.KubeClient.WaitWithJobs(target, r.Timeout); err != nil {
 				targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
