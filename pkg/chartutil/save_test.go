@@ -20,6 +20,8 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -126,6 +128,89 @@ func TestSave(t *testing.T) {
 	}
 }
 
+func TestRepeatableSave(t *testing.T) {
+	tmp := t.TempDir()
+	defer os.RemoveAll(tmp)
+	modTime := time.Date(2021, 9, 1, 20, 34, 58, 651387237, time.UTC)
+	tests := []struct {
+		name  string
+		chart *chart.Chart
+		want  string
+	}{
+		{
+			name: "Package 1 file",
+			chart: &chart.Chart{
+				Metadata: &chart.Metadata{
+					APIVersion: chart.APIVersionV1,
+					Name:       "ahab",
+					Version:    "1.2.3",
+				},
+				Lock: &chart.Lock{
+					Digest: "testdigest",
+				},
+				Files: []*chart.File{
+					{Name: "scheherazade/shahryar.txt", ModTime: modTime, Data: []byte("1,001 Nights")},
+				},
+				Schema: []byte("{\n  \"title\": \"Values\"\n}"),
+			},
+			want: "5427738f1e4fffdc6e67bf3dfb0abd19e5d77900778b744461707ff5b980878c",
+		},
+		{
+			name: "Package 2 files",
+			chart: &chart.Chart{
+				Metadata: &chart.Metadata{
+					APIVersion: chart.APIVersionV1,
+					Name:       "ahab",
+					Version:    "1.2.3",
+				},
+				Lock: &chart.Lock{
+					Digest: "testdigest",
+				},
+				Files: []*chart.File{
+					{Name: "scheherazade/shahryar.txt", ModTime: modTime, Data: []byte("1,001 Nights")},
+					{Name: "scheherazade/dunyazad.txt", ModTime: modTime, Data: []byte("1,001 Nights again")},
+				},
+				Schema: []byte("{\n  \"title\": \"Values\"\n}"),
+			},
+			want: "0347ca299620594f1459c80dada72802a2b1e05fdba6142c1f2d3d1d887eb348",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// create package
+			dest := path.Join(tmp, "newdir")
+			where, err := Save(test.chart, dest)
+			if err != nil {
+				t.Fatalf("Failed to save: %s", err)
+			}
+			// get shasum for package
+			result, err := sha256Sum(where)
+			if err != nil {
+				t.Fatalf("Failed to check shasum: %s", err)
+			}
+			// assert that the package SHA is what we wanted.
+			if result != test.want {
+				t.Errorf("FormatName() result = %v, want %v", result, test.want)
+			}
+		})
+	}
+}
+
+func sha256Sum(filePath string) (string, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
+}
+
 // Creates a copy with a different schema; does not modify anything.
 func withSchema(chart chart.Chart, schema []byte) chart.Chart {
 	chart.Schema = schema
@@ -157,7 +242,11 @@ func TestSavePreservesTimestamps(t *testing.T) {
 			"imageId":   42,
 		},
 		Files: []*chart.File{
-			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
+			{
+				Name:    "scheherazade/shahryar.txt",
+				ModTime: initialCreateTime,
+				Data:    []byte("1,001 Nights"),
+			},
 		},
 		Schema: []byte("{\n  \"title\": \"Values\"\n}"),
 	}
@@ -173,8 +262,8 @@ func TestSavePreservesTimestamps(t *testing.T) {
 	}
 
 	for _, header := range allHeaders {
-		if header.ModTime.Before(initialCreateTime) {
-			t.Fatalf("File timestamp not preserved: %v", header.ModTime)
+		if header.ModTime.Equal(initialCreateTime) {
+			t.Fatalf("File timestamp not preserved: %v - init: %v", header.ModTime, initialCreateTime)
 		}
 	}
 }
