@@ -18,24 +18,20 @@ package registry // import "helm.sh/helm/v3/pkg/registry"
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
+	"helm.sh/helm/v3/internal/tlsutil"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	helmtime "helm.sh/helm/v3/pkg/time"
 
 	"github.com/Masterminds/semver/v3"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	orascontext "oras.land/oras-go/pkg/context"
-
-	"helm.sh/helm/v3/internal/tlsutil"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
 )
 
 var immutableOciAnnotations = []string{
@@ -43,7 +39,7 @@ var immutableOciAnnotations = []string{
 	ocispec.AnnotationTitle,
 }
 
-// IsOCI determines whether or not a URL is to be treated as an OCI URL
+// IsOCI determines whether a URL is to be treated as an OCI URL
 func IsOCI(url string) bool {
 	return strings.HasPrefix(url, fmt.Sprintf("%s://", OCIScheme))
 }
@@ -101,17 +97,6 @@ func extractChartMeta(chartData []byte) (*chart.Metadata, error) {
 		return nil, err
 	}
 	return ch.Metadata, nil
-}
-
-// ctx retrieves a fresh context.
-// disable verbose logging coming from ORAS (unless debug is enabled)
-func ctx(out io.Writer, debug bool) context.Context {
-	if !debug {
-		return orascontext.Background()
-	}
-	ctx := orascontext.WithLoggerFromWriter(context.Background(), out)
-	orascontext.GetLogger(ctx).Logger.SetLevel(logrus.DebugLevel)
-	return ctx
 }
 
 // NewRegistryClientWithTLS is a helper function to create a new registry client with TLS enabled.
