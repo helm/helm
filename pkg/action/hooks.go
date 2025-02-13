@@ -22,7 +22,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/release"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
@@ -138,11 +137,8 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 			return errors.New(joinErrors(errs))
 		}
 
-		//wait for resources until they are deleted to avoid conflicts
-		if kubeClient, ok := cfg.KubeClient.(kube.InterfaceExt); ok {
-			if err := kubeClient.WaitForDelete(resources, timeout); err != nil {
-				return err
-			}
+		if err := cfg.KubeClient.WaitForDelete(resources, timeout); err != nil {
+			return err
 		}
 	}
 	return nil
