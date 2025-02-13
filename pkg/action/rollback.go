@@ -35,16 +35,17 @@ import (
 type Rollback struct {
 	cfg *Configuration
 
-	Version       int
-	Timeout       time.Duration
-	Wait          bool
-	WaitForJobs   bool
-	DisableHooks  bool
-	DryRun        bool
-	Recreate      bool // will (if true) recreate pods after a rollback.
-	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
-	CleanupOnFail bool
-	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
+	Version             int
+	Timeout             time.Duration
+	Wait                bool
+	WaitForJobs         bool
+	DisableHooks        bool
+	DryRun              bool
+	Recreate            bool // will (if true) recreate pods after a rollback.
+	Force               bool // will (if true) force resource upgrade through uninstall/recreate if needed
+	Force3WayMergePatch bool
+	CleanupOnFail       bool
+	MaxHistory          int // MaxHistory limits the maximum number of revisions saved per release
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -188,7 +189,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	if err != nil {
 		return targetRelease, errors.Wrap(err, "unable to set metadata visitor from target release")
 	}
-	results, err := r.cfg.KubeClient.Update(current, target, r.Force)
+	results, err := r.cfg.KubeClient.Update(current, target, r.Force, r.Force3WayMergePatch)
 
 	if err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)

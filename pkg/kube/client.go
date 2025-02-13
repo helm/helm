@@ -46,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/jsonmergepatch"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -386,7 +387,7 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 // occurs, a Result will still be returned with the error, containing all
 // resource updates, creations, and deletions that were attempted. These can be
 // used for cleanup or other logging purposes.
-func (c *Client) Update(original, target ResourceList, force bool) (*Result, error) {
+func (c *Client) Update(original, target ResourceList, force, force3WayMergePatch bool) (*Result, error) {
 	updateErrors := []string{}
 	res := &Result{}
 
@@ -421,7 +422,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			return errors.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
-		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
+		if err := updateResource(c, info, originalInfo.Object, force, force3WayMergePatch); err != nil {
 			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
@@ -617,7 +618,7 @@ func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) erro
 		})
 }
 
-func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
+func createPatch(target *resource.Info, current runtime.Object, force3WayMergePatch bool) ([]byte, types.PatchType, error) {
 	oldData, err := json.Marshal(current)
 	if err != nil {
 		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing current configuration")
@@ -645,7 +646,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 
 	// Unstructured objects, such as CRDs, may not have a not registered error
 	// returned from ConvertToVersion. Anything that's unstructured should
-	// use the jsonpatch.CreateMergePatch. Strategic Merge Patch is not supported
+	// use the jsonmergepatch.CreateThreeWayJSONMergePatch. Strategic Merge Patch is not supported
 	// on objects like CRDs.
 	_, isUnstructured := versionedObject.(runtime.Unstructured)
 
@@ -654,6 +655,15 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 
 	if isUnstructured || isCRD {
 		// fall back to generic JSON merge patch
+
+		// TODO Helm 4: the logic controlled by this flag should become the default.
+		//      The flag can then be removed from all the commands where it is accepted: install, upgrade, & rollback.
+		if force3WayMergePatch {
+			patch, err := jsonmergepatch.CreateThreeWayJSONMergePatch(oldData, newData, currentData)
+			return patch, types.MergePatchType, err
+		}
+
+		// 2-way merge patch logic that is kept to maintain backwards-compatibility for Helm 3
 		patch, err := jsonpatch.CreateMergePatch(oldData, newData)
 		return patch, types.MergePatchType, err
 	}
@@ -667,7 +677,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	return patch, types.StrategicMergePatchType, err
 }
 
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
+func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force, force3WayMergePatch bool) error {
 	var (
 		obj    runtime.Object
 		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
@@ -683,7 +693,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
-		patch, patchType, err := createPatch(target, currentObj)
+		patch, patchType, err := createPatch(target, currentObj, force3WayMergePatch)
 		if err != nil {
 			return errors.Wrap(err, "failed to create patch")
 		}
