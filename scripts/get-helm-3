@@ -279,7 +279,7 @@ testVersion() {
 help () {
   echo "Accepted cli arguments are:"
   echo -e "\t[--help|-h ] ->> prints this help"
-  echo -e "\t[--version|-v <desired_version>] . When not defined it fetches the latest release from GitHub"
+  echo -e "\t[--version|-v <desired_version>] . When not defined it fetches the latest release tag from the Helm CDN"
   echo -e "\te.g. --version v3.0.0 or -v canary"
   echo -e "\t[--no-sudo]  ->> install without sudo"
 }
