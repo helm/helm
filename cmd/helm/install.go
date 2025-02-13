@@ -52,7 +52,7 @@ or use the '--set' flag and pass configuration from the command line, to force
 a string value use '--set-string'. You can use '--set-file' to set individual
 values from a file when the value itself is too long for the command line
 or is dynamically generated. You can also use '--set-json' to set json values
-(scalars/objects/arrays) from the command line.
+(scalars/objects/arrays) from the command line. Additionally, you can use '--set-json' and passing json object as a string.
 
     $ helm install -f myvalues.yaml myredis ./redis
 
@@ -72,6 +72,9 @@ or
 
     $ helm install --set-json 'master.sidecars=[{"name":"sidecar","image":"myImage","imagePullPolicy":"Always","ports":[{"name":"portname","containerPort":1234}]}]' myredis ./redis
 
+or
+
+    $ helm install --set-json '{"master":{"sidecars":[{"name":"sidecar","image":"myImage","imagePullPolicy":"Always","ports":[{"name":"portname","containerPort":1234}]}]}}' myredis ./redis
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
