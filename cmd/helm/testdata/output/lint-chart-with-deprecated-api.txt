@@ -1,4 +1,4 @@
-==> Linting testdata/testcharts/chart-with-deprecated-api
+==> Linting testdata/testcharts/chart-with-deprecated-api (scope: root)
 [INFO] Chart.yaml: icon is recommended
 [WARNING] templates/horizontalpodautoscaler.yaml: autoscaling/v2beta1 HorizontalPodAutoscaler is deprecated in v1.22+, unavailable in v1.25+; use autoscaling/v2 HorizontalPodAutoscaler
 
