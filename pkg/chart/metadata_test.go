@@ -32,17 +32,17 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			"chart without apiVersion",
-			&Metadata{Name: "test", Version: "1.0"},
+			&Metadata{Name: "test", Version: "1.0.0"},
 			ValidationError("chart.metadata.apiVersion is required"),
 		},
 		{
 			"chart without name",
-			&Metadata{APIVersion: "v2", Version: "1.0"},
+			&Metadata{APIVersion: "v2", Version: "1.0.0"},
 			ValidationError("chart.metadata.name is required"),
 		},
 		{
 			"chart without name",
-			&Metadata{Name: "../../test", APIVersion: "v2", Version: "1.0"},
+			&Metadata{Name: "../../test", APIVersion: "v2", Version: "1.0.0"},
 			ValidationError("chart.metadata.name \"../../test\" is invalid"),
 		},
 		{
@@ -52,12 +52,12 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			"chart with bad type",
-			&Metadata{Name: "test", APIVersion: "v2", Version: "1.0", Type: "test"},
+			&Metadata{Name: "test", APIVersion: "v2", Version: "1.0.0", Type: "test"},
 			ValidationError("chart.metadata.type must be application or library"),
 		},
 		{
 			"chart without dependency",
-			&Metadata{Name: "test", APIVersion: "v2", Version: "1.0", Type: "application"},
+			&Metadata{Name: "test", APIVersion: "v2", Version: "1.0.0", Type: "application"},
 			nil,
 		},
 		{
@@ -65,7 +65,7 @@ func TestValidate(t *testing.T) {
 			&Metadata{
 				Name:       "test",
 				APIVersion: "v2",
-				Version:    "1.0",
+				Version:    "1.0.0",
 				Type:       "application",
 				Dependencies: []*Dependency{
 					{Name: "dependency", Alias: "legal-alias"},
@@ -78,7 +78,7 @@ func TestValidate(t *testing.T) {
 			&Metadata{
 				Name:       "test",
 				APIVersion: "v2",
-				Version:    "1.0",
+				Version:    "1.0.0",
 				Type:       "application",
 				Dependencies: []*Dependency{
 					{Name: "bad", Alias: "illegal alias"},
@@ -91,7 +91,7 @@ func TestValidate(t *testing.T) {
 			&Metadata{
 				Name:       "test",
 				APIVersion: "v2",
-				Version:    "1.0",
+				Version:    "1.0.0",
 				Type:       "application",
 				Dependencies: []*Dependency{
 					{Name: "foo", Alias: ""},
@@ -105,7 +105,7 @@ func TestValidate(t *testing.T) {
 			&Metadata{
 				Name:       "test",
 				APIVersion: "v2",
-				Version:    "1.0",
+				Version:    "1.0.0",
 				Type:       "application",
 				Dependencies: []*Dependency{
 					{Name: "foo", Alias: ""},
@@ -121,7 +121,7 @@ func TestValidate(t *testing.T) {
 			&Metadata{
 				Name:       "test",
 				APIVersion: "v2",
-				Version:    "1.0",
+				Version:    "1.0.0",
 				Type:       "application",
 				Dependencies: []*Dependency{
 					{Name: "foo", Alias: "", Version: "1.2.3"},
@@ -137,7 +137,7 @@ func TestValidate(t *testing.T) {
 			&Metadata{
 				Name:       "test",
 				APIVersion: "v2",
-				Version:    "1.0",
+				Version:    "1.0.0",
 				Type:       "application",
 				Dependencies: []*Dependency{
 					{Name: "foo", Repository: "repo-0"},
@@ -151,7 +151,7 @@ func TestValidate(t *testing.T) {
 			&Metadata{
 				Name:       "test",
 				APIVersion: "v2",
-				Version:    "1.0",
+				Version:    "1.0.0",
 				Type:       "application",
 				Dependencies: []*Dependency{
 					nil,
@@ -164,7 +164,7 @@ func TestValidate(t *testing.T) {
 			&Metadata{
 				Name:       "test",
 				APIVersion: "v2",
-				Version:    "1.0",
+				Version:    "1.0.0",
 				Type:       "application",
 				Maintainers: []*Maintainer{
 					nil,
@@ -173,7 +173,37 @@ func TestValidate(t *testing.T) {
 			ValidationError("maintainers must not contain empty or null nodes"),
 		},
 		{
-			"version invalid",
+			"valid semver",
+			&Metadata{APIVersion: "v2", Name: "test", Version: "1.2.3-7"},
+			nil,
+		},
+		{
+			"valid semver",
+			&Metadata{APIVersion: "v2", Name: "test", Version: "1.0.0-branch.0"},
+			nil,
+		},
+		{
+			"valid but rediculous semver",
+			&Metadata{APIVersion: "v2", Name: "test", Version: "99.3.3-rc2.-1.0.ab"},
+			nil,
+		},
+		{
+			"invalid semver",
+			&Metadata{APIVersion: "v2", Name: "test", Version: "-1.0.0"},
+			ValidationError("chart.metadata.version \"-1.0.0\" is invalid"),
+		},
+		{
+			"invalid semver",
+			&Metadata{APIVersion: "v2", Name: "test", Version: "1"},
+			ValidationError("chart.metadata.version \"1\" is invalid"),
+		},
+		{
+			"invalid semver",
+			&Metadata{APIVersion: "v2", Name: "test", Version: "1.0"},
+			ValidationError("chart.metadata.version \"1.0\" is invalid"),
+		},
+		{
+			"invalid semver",
 			&Metadata{APIVersion: "v2", Name: "test", Version: "1.2.3.4"},
 			ValidationError("chart.metadata.version \"1.2.3.4\" is invalid"),
 		},
@@ -188,7 +218,7 @@ func TestValidate(t *testing.T) {
 }
 
 func TestValidate_sanitize(t *testing.T) {
-	md := &Metadata{APIVersion: "v2", Name: "test", Version: "1.0", Description: "\adescr\u0081iption\rtest", Maintainers: []*Maintainer{{Name: "\r"}}}
+	md := &Metadata{APIVersion: "v2", Name: "test", Version: "1.0.0", Description: "\adescr\u0081iption\rtest", Maintainers: []*Maintainer{{Name: "\r"}}}
 	if err := md.Validate(); err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
