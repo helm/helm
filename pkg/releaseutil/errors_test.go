@@ -14,4 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chartutil
+package releaseutil
+
+import (
+	"testing"
+)
+
+func TestErrorNoTableDoesNotPanic(t *testing.T) {
+	x := "empty"
+
+	y := ErrNoTable{x}
+
+	t.Logf("error is: %s", y)
+}
+
+func TestErrorNoValueDoesNotPanic(t *testing.T) {
+	x := "empty"
+
+	y := ErrNoValue{x}
+
+	t.Logf("error is: %s", y)
+}
