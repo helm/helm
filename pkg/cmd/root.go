@@ -94,14 +94,12 @@ var settings = cli.New()
 
 func Debug(format string, v ...interface{}) {
 	if settings.Debug {
-		format = fmt.Sprintf("[debug] %s\n", format)
-		log.Output(2, fmt.Sprintf(format, v...))
+		log.Output(os.Stderr.Fd(), fmt.Sprintf("[debug] " + format + "\n",, v...))
 	}
 }
 
 func Warning(format string, v ...interface{}) {
-	format = fmt.Sprintf("WARNING: %s\n", format)
-	fmt.Fprintf(os.Stderr, format, v...)
+	fmt.Fprintf(os.Stderr, "WARNING: " + format + "\n", v...)
 }
 
 func NewRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) (*cobra.Command, error) {
