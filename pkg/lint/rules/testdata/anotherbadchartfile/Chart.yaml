@@ -1,4 +1,4 @@
-name: "some-chart"
+name: InvalidName
 apiVersion: v2
 description: A Helm chart for Kubernetes
 version: 72445e2
