@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/asaskevich/govalidator"
@@ -102,14 +103,59 @@ func validateChartYamlFormat(chartFileError error) error {
 	return nil
 }
 
+const (
+	chartNamePattern      = "^[a-z0-9-]*$"
+	chartNameStartPattern = "^[a-z]"
+)
+
+type chartNameValidator func(*chart.Metadata) error
+
 func validateChartName(cf *chart.Metadata) error {
+	rules := []chartNameValidator{
+		isNotEmpty,
+		nameIsNotPath,
+		doesNotContainInvalidCharacters,
+		beginsWithAlphabeticCharacter,
+	}
+	for _, rule := range rules {
+		if err := rule(cf); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func isNotEmpty(cf *chart.Metadata) error {
 	if cf.Name == "" {
 		return errors.New("name is required")
 	}
+	return nil
+}
+
+func nameIsNotPath(cf *chart.Metadata) error {
 	name := filepath.Base(cf.Name)
 	if name != cf.Name {
-		return fmt.Errorf("chart name %q is invalid", cf.Name)
+		return fmt.Errorf("chart name '%s' should not include a path", cf.Name)
 	}
+	return nil
+}
+
+func doesNotContainInvalidCharacters(cf *chart.Metadata) error {
+	match, _ := regexp.MatchString(chartNamePattern, cf.Name)
+	if !match {
+		return errors.New("name must not contain any upper case letters or any special characters other than '-'")
+	}
+
+	return nil
+}
+
+func beginsWithAlphabeticCharacter(cf *chart.Metadata) error {
+	match, _ := regexp.MatchString(chartNameStartPattern, cf.Name[0:1])
+	if !match {
+		return errors.New("name must begin with a lowercase alphabetic character (a-z)")
+	}
+
 	return nil
 }
 
