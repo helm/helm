@@ -25,10 +25,10 @@ import (
 // KindSortOrder is an ordering of Kinds.
 type KindSortOrder []string
 
-// InstallOrder is the order in which manifests should be installed (by Kind).
+// ResourceDependencyOrder is the order in which manifests should be installed (by Kind).
 //
 // Those occurring earlier in the list get installed before those occurring later in the list.
-var InstallOrder KindSortOrder = []string{
+var ResourceDependencyOrder KindSortOrder = []string{
 	"PriorityClass",
 	"Namespace",
 	"NetworkPolicy",
@@ -38,20 +38,15 @@ var InstallOrder KindSortOrder = []string{
 	"PodDisruptionBudget",
 	"ServiceAccount",
 	"Secret",
-	"SecretList",
 	"ConfigMap",
 	"StorageClass",
 	"PersistentVolume",
 	"PersistentVolumeClaim",
 	"CustomResourceDefinition",
 	"ClusterRole",
-	"ClusterRoleList",
 	"ClusterRoleBinding",
-	"ClusterRoleBindingList",
 	"Role",
-	"RoleList",
 	"RoleBinding",
-	"RoleBindingList",
 	"Service",
 	"DaemonSet",
 	"Pod",
@@ -67,47 +62,34 @@ var InstallOrder KindSortOrder = []string{
 	"APIService",
 }
 
+// addListKind adds the List equivalent for each resource kind in the list.
+func addListKind(resources KindSortOrder) KindSortOrder {
+	output := make(KindSortOrder, 0, 2*len(resources))
+	for _, resource := range resources {
+		output = append(output, resource)
+		output = append(output, resource+"List")
+	}
+	return output
+}
+
+// reverseKindOrder reverses the order of the KindSortOrder.
+func reverseKindOrder(resources KindSortOrder) KindSortOrder {
+	for i := 0; i < len(resources)/2; i++ {
+		j := len(resources) - i - 1
+		resources[i], resources[j] = resources[j], resources[i]
+	}
+	return resources
+}
+
+// InstallOrder is the order in which manifests should be installed (by Kind).
+//
+// Those occurring earlier in the list get installed before those occurring later in the list.
+var InstallOrder = addListKind(ResourceDependencyOrder)
+
 // UninstallOrder is the order in which manifests should be uninstalled (by Kind).
 //
 // Those occurring earlier in the list get uninstalled before those occurring later in the list.
-var UninstallOrder KindSortOrder = []string{
-	"APIService",
-	"Ingress",
-	"IngressClass",
-	"Service",
-	"CronJob",
-	"Job",
-	"StatefulSet",
-	"HorizontalPodAutoscaler",
-	"Deployment",
-	"ReplicaSet",
-	"ReplicationController",
-	"Pod",
-	"DaemonSet",
-	"RoleBindingList",
-	"RoleBinding",
-	"RoleList",
-	"Role",
-	"ClusterRoleBindingList",
-	"ClusterRoleBinding",
-	"ClusterRoleList",
-	"ClusterRole",
-	"CustomResourceDefinition",
-	"PersistentVolumeClaim",
-	"PersistentVolume",
-	"StorageClass",
-	"ConfigMap",
-	"SecretList",
-	"Secret",
-	"ServiceAccount",
-	"PodDisruptionBudget",
-	"PodSecurityPolicy",
-	"LimitRange",
-	"ResourceQuota",
-	"NetworkPolicy",
-	"Namespace",
-	"PriorityClass",
-}
+var UninstallOrder = reverseKindOrder(addListKind(ResourceDependencyOrder))
 
 // sort manifests by kind.
 //
