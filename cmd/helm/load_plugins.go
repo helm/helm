@@ -70,6 +70,15 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 			md.Usage = fmt.Sprintf("the %q plugin", md.Name)
 		}
 
+		// Check if a command with this name already exists in baseCmd.
+		if baseCmd.HasSubCommands() {
+			existingCmd, _, err := baseCmd.Find([]string{md.Name})
+			if err == nil && existingCmd != nil {
+				fmt.Fprintf(os.Stderr, "plugin %q not loaded: command with this name already exists\n", md.Name)
+				continue
+			}
+		}
+
 		c := &cobra.Command{
 			Use:   md.Name,
 			Short: md.Usage,
@@ -95,8 +104,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 			// This passes all the flags to the subcommand.
 			DisableFlagParsing: true,
 		}
-
-		// TODO: Make sure a command with this name does not already exist.
+		// Add the plugin command if the name does not already exist.
 		baseCmd.AddCommand(c)
 
 		// For completion, we try to load more details about the plugins so as to allow for command and
