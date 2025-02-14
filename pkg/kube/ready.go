@@ -18,8 +18,8 @@ package kube // import "helm.sh/helm/v4/pkg/kube"
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -241,7 +241,7 @@ func (c *ReadyChecker) jobReady(job *batchv1.Job) (bool, error) {
 	if job.Status.Failed > *job.Spec.BackoffLimit {
 		c.log("Job is failed: %s/%s", job.GetNamespace(), job.GetName())
 		// If a job is failed, it can't recover, so throw an error
-		return false, fmt.Errorf("job is failed: %s/%s", job.GetNamespace(), job.GetName())
+		return false, errors.Wrapf(ErrNoRetryError, "job is failed: %s/%s", job.GetNamespace(), job.GetName())
 	}
 	if job.Spec.Completions != nil && job.Status.Succeeded < *job.Spec.Completions {
 		c.log("Job is not completed: %s/%s", job.GetNamespace(), job.GetName())
