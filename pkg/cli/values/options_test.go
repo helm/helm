@@ -17,6 +17,7 @@ limitations under the License.
 package values
 
 import (
+	"os"
 	"reflect"
 	"testing"
 
@@ -84,5 +85,33 @@ func TestReadFile(t *testing.T) {
 	_, err := readFile(filePath, p)
 	if err == nil {
 		t.Errorf("Expected error when has special strings")
+	}
+}
+
+func TestMergeYaml(t *testing.T) {
+	var p getter.Providers
+	valuesFile, err := os.CreateTemp("", "values.yaml")
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = valuesFile.WriteString("---\nkey1: value1\n---\nkey2: value2")
+	if err != nil {
+		t.Error(err)
+	}
+
+	options := Options{ValueFiles: []string{valuesFile.Name()}}
+	testMap, err := options.MergeValues(p)
+	if err != nil {
+		t.Error(err)
+	}
+
+	expectedMap := map[string]interface{}{
+		"key1": "value1",
+		"key2": "value2",
+	}
+	equal := reflect.DeepEqual(testMap, expectedMap)
+	if !equal {
+		t.Errorf("Expected a map with different keys to merge properly with another map. Expected: %v, got %v", expectedMap, testMap)
 	}
 }
