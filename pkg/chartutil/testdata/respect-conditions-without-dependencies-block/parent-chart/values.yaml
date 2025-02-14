@@ -1,0 +1,6 @@
+# Default values for parent-chart.
+global:
+  dev:
+    enabled: true
+  staging:
+    enabled: true
