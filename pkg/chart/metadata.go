@@ -160,7 +160,7 @@ func isValidChartType(in string) bool {
 }
 
 func isValidSemver(v string) bool {
-	_, err := semver.NewVersion(v)
+	_, err := semver.StrictNewVersion(v)
 	return err == nil
 }
 
