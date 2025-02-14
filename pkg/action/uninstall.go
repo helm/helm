@@ -121,8 +121,13 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 
 	deletedResources, kept, errs := u.deleteRelease(rel)
 	if errs != nil {
+		rel.Info.Status = release.StatusFailed
+		if err := u.cfg.Releases.Update(rel); err != nil {
+			u.cfg.Log("uninstall: Failed to store updated release: %s", err)
+			return nil, errors.Errorf("uninstallation failed and failed to store updated release: %s", joinErrors(errs))
+		}
 		u.cfg.Log("uninstall: Failed to delete release: %s", errs)
-		return nil, errors.Errorf("failed to delete release: %s", name)
+		return nil, errors.Errorf("failed to delete release %s, %s", name, joinErrors(errs))
 	}
 
 	if kept != "" {
