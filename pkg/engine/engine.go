@@ -26,6 +26,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
 
@@ -291,7 +292,11 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 			continue
 		}
 		// At render time, add information about the template that is being rendered.
-		vals := tpls[filename].vals
+		structureCopy, err := copystructure.Copy(tpls[filename].vals)
+		if err != nil {
+			return map[string]string{}, err
+		}
+		vals := structureCopy.(chartutil.Values)
 		vals["Template"] = chartutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
 		var buf strings.Builder
 		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
