@@ -183,7 +183,7 @@ func TestValidate(t *testing.T) {
 			nil,
 		},
 		{
-			"valid but rediculous semver",
+			"valid but ridiculous semver",
 			&Metadata{APIVersion: "v2", Name: "test", Version: "99.3.3-rc2.-1.0.ab"},
 			nil,
 		},
