@@ -94,7 +94,7 @@ var settings = cli.New()
 
 func Debug(format string, v ...interface{}) {
 	if settings.Debug {
-		log.Output(os.Stderr.Fd(), fmt.Sprintf("[debug] " + format + "\n",, v...))
+		log.Output(2, fmt.Sprintf("[debug] " + format + "\n", v...))
 	}
 }
 
