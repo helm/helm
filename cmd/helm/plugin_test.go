@@ -116,6 +116,8 @@ func TestLoadPlugins(t *testing.T) {
 		{"env", "env stuff", "show the env", "env\n", []string{}, 0},
 		{"exitwith", "exitwith code", "This exits with the specified exit code", "", []string{"2"}, 2},
 		{"fullenv", "show env vars", "show all env vars", envs + "\n", []string{}, 0},
+		// Test that empty arguments are passed to the plugin
+		{"numargs", "echo num args", "echo number of arguments received", "3\n", []string{"-a", "", "-b"}, 0},
 	}
 
 	plugins := cmd.Commands()
@@ -271,6 +273,7 @@ func TestLoadPluginsForCompletion(t *testing.T) {
 				{"more", []string{"one", "two"}, []string{"b", "ball"}, []staticCompletionDetails{}},
 			}},
 		}},
+		{"numargs", []string{}, []string{}, []staticCompletionDetails{}},
 	}
 	checkCommand(t, cmd.Commands(), tests)
 }
