@@ -27,10 +27,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
-	batch "k8s.io/api/batch/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -294,15 +292,15 @@ func (hw *HelmWaiter) watchUntilReady(timeout time.Duration, info *resource.Info
 //
 // This operates on an event returned from a watcher.
 func (hw *HelmWaiter) waitForJob(obj runtime.Object, name string) (bool, error) {
-	o, ok := obj.(*batch.Job)
+	o, ok := obj.(*batchv1.Job)
 	if !ok {
 		return true, errors.Errorf("expected %s to be a *batch.Job, got %T", name, obj)
 	}
 
 	for _, c := range o.Status.Conditions {
-		if c.Type == batch.JobComplete && c.Status == "True" {
+		if c.Type == batchv1.JobComplete && c.Status == "True" {
 			return true, nil
-		} else if c.Type == batch.JobFailed && c.Status == "True" {
+		} else if c.Type == batchv1.JobFailed && c.Status == "True" {
 			return true, errors.Errorf("job %s failed: %s", name, c.Reason)
 		}
 	}
@@ -315,20 +313,20 @@ func (hw *HelmWaiter) waitForJob(obj runtime.Object, name string) (bool, error) 
 //
 // This operates on an event returned from a watcher.
 func (hw *HelmWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool, error) {
-	o, ok := obj.(*v1.Pod)
+	o, ok := obj.(*corev1.Pod)
 	if !ok {
 		return true, errors.Errorf("expected %s to be a *v1.Pod, got %T", name, obj)
 	}
 
 	switch o.Status.Phase {
-	case v1.PodSucceeded:
+	case corev1.PodSucceeded:
 		hw.log("Pod %s succeeded", o.Name)
 		return true, nil
-	case v1.PodFailed:
+	case corev1.PodFailed:
 		return true, errors.Errorf("pod %s failed", o.Name)
-	case v1.PodPending:
+	case corev1.PodPending:
 		hw.log("Pod %s pending", o.Name)
-	case v1.PodRunning:
+	case corev1.PodRunning:
 		hw.log("Pod %s running", o.Name)
 	}
 
