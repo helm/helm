@@ -249,6 +249,13 @@ func WithInsecureSkipTLSverify(insecureSkipTLSverify bool) FindChartInRepoURLOpt
 	}
 }
 
+// WithIndexFileCache specifies the cache to use for index files
+func WithIndexFileCache(indexFileCache *cache.Cache[*IndexFile]) FindChartInRepoURLOption {
+	return func(options *findChartInRepoURLOptions) {
+		options.IndexFileCache = indexFileCache
+	}
+}
+
 // FindChartInRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories
 func FindChartInRepoURL(repoURL string, chartName string, getters getter.Providers, options ...FindChartInRepoURLOption) (string, error) {
