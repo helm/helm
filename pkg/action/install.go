@@ -175,6 +175,10 @@ func (i *Install) GetRegistryClient() *registry.Client {
 	return i.registryClient
 }
 
+func (i *Install) shouldWait() bool {
+	return i.Wait != ""
+}
+
 func (i *Install) installCRDs(crds []chart.CRD) error {
 	// We do these one file at a time in the order they were read.
 	totalItems := []*resource.Info{}

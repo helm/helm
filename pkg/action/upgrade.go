@@ -208,6 +208,10 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 	return res, nil
 }
 
+func (u *Upgrade) shouldWait() bool {
+	return u.Wait != ""
+}
+
 // isDryRun returns true if Upgrade is set to run as a DryRun
 func (u *Upgrade) isDryRun() bool {
 	if u.DryRun || u.DryRunOption == "client" || u.DryRunOption == "server" || u.DryRunOption == "true" {
