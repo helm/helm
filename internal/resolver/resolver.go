@@ -27,13 +27,13 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/pkg/cache"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/provenance"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/cache"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/provenance"
+	"helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 // Resolver resolves dependencies from semantic version ranges to a particular version.
@@ -172,7 +172,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			Repository: d.Repository,
 			Version:    version,
 		}
-		// The version are already sorted and hence the first one to satisfy the constraint is used
+		// The versions are already sorted and hence the first one to satisfy the constraint is used
 		for _, ver := range vs {
 			v, err := semver.NewVersion(ver.Version)
 			// OCI does not need URLs

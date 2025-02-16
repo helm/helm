@@ -39,23 +39,23 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/kube"
-	kubefake "helm.sh/helm/v3/pkg/kube/fake"
-	"helm.sh/helm/v3/pkg/postrender"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/releaseutil"
-	"helm.sh/helm/v3/pkg/repo"
-	"helm.sh/helm/v3/pkg/storage"
-	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/downloader"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/kube"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/releaseutil"
+	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
-// NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine
+// notesFileSuffix that we want to treat special. It goes through the templating engine
 // but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
 // wants to see this file after rendering in the status command. However, it must be a suffix
 // since there can be filepath in front of it.
@@ -233,21 +233,25 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
-			return nil, err
+			i.cfg.Log(fmt.Sprintf("ERROR: Cluster reachability check failed: %v", err))
+			return nil, errors.Wrap(err, "cluster reachability check failed")
 		}
 	}
 
 	// HideSecret must be used with dry run. Otherwise, return an error.
 	if !i.isDryRun() && i.HideSecret {
+		i.cfg.Log("ERROR: Hiding Kubernetes secrets requires a dry-run mode")
 		return nil, errors.New("Hiding Kubernetes secrets requires a dry-run mode")
 	}
 
 	if err := i.availableName(); err != nil {
-		return nil, err
+		i.cfg.Log(fmt.Sprintf("ERROR: Release name check failed: %v", err))
+		return nil, errors.Wrap(err, "release name check failed")
 	}
 
-	if err := chartutil.ProcessDependenciesWithMerge(chrt, vals); err != nil {
-		return nil, err
+	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
+		i.cfg.Log(fmt.Sprintf("ERROR: Processing chart dependencies failed: %v", err))
+		return nil, errors.Wrap(err, "chart dependencies processing failed")
 	}
 
 	var interactWithRemote bool
@@ -307,7 +311,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	if driver.ContainsSystemLabels(i.Labels) {
-		return nil, fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
+		return nil, fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
 	}
 
 	rel := i.createRelease(chrt, vals, i.Labels)
@@ -389,7 +393,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		}
 	}
 
-	// If Replace is true, we need to supercede the last release.
+	// If Replace is true, we need to supersede the last release.
 	if i.Replace {
 		if err := i.replaceRelease(rel); err != nil {
 			return nil, err
@@ -450,7 +454,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	}
 
 	// At this point, we can do the install. Note that before we were detecting whether to
-	// do an update, but it's not clear whether we WANT to do an update if the re-use is set
+	// do an update, but it's not clear whether we WANT to do an update if the reuse is set
 	// to true, since that is basically an upgrade operation.
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
 		_, err = i.cfg.KubeClient.Create(resources)
@@ -544,7 +548,7 @@ func (i *Install) availableName() error {
 	if st := rel.Info.Status; i.Replace && (st == release.StatusUninstalled || st == release.StatusFailed) {
 		return nil
 	}
-	return errors.New("cannot re-use a name that is still in use")
+	return errors.New("cannot reuse a name that is still in use")
 }
 
 // createRelease creates a new release object
@@ -574,7 +578,7 @@ func (i *Install) recordRelease(r *release.Release) error {
 
 // replaceRelease replaces an older release with this one
 //
-// This allows us to re-use names by superseding an existing release with a new one
+// This allows us to reuse names by superseding an existing release with a new one
 func (i *Install) replaceRelease(rel *release.Release) error {
 	hist, err := i.cfg.Releases.History(rel.Name)
 	if err != nil || len(hist) == 0 {
@@ -598,8 +602,8 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 	return i.recordRelease(last)
 }
 
-// write the <data> to <output-dir>/<name>. <append> controls if the file is created or content will be appended
-func writeToFile(outputDir string, name string, data string, append bool) error {
+// write the <data> to <output-dir>/<name>. <appendData> controls if the file is created or content will be appended
+func writeToFile(outputDir string, name string, data string, appendData bool) error {
 	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
 
 	err := ensureDirectoryForFile(outfileName)
@@ -607,7 +611,7 @@ func writeToFile(outputDir string, name string, data string, append bool) error 
 		return err
 	}
 
-	f, err := createOrOpenFile(outfileName, append)
+	f, err := createOrOpenFile(outfileName, appendData)
 	if err != nil {
 		return err
 	}
@@ -624,14 +628,14 @@ func writeToFile(outputDir string, name string, data string, append bool) error 
 	return nil
 }
 
-func createOrOpenFile(filename string, append bool) (*os.File, error) {
-	if append {
+func createOrOpenFile(filename string, appendData bool) (*os.File, error) {
+	if appendData {
 		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
 	}
 	return os.Create(filename)
 }
 
-// check if the directory exists to create file. creates if don't exists
+// check if the directory exists to create file. creates if doesn't exist
 func ensureDirectoryForFile(file string) error {
 	baseDir := path.Dir(file)
 	_, err := os.Stat(baseDir)
@@ -770,6 +774,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
 			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
 			getter.WithPlainHTTP(c.PlainHTTP),
+			getter.WithBasicAuth(c.Username, c.Password),
 		},
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
@@ -784,8 +789,16 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		dl.Verify = downloader.VerifyAlways
 	}
 	if c.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(c.RepoURL, c.Username, c.Password, name, version,
-			c.CertFile, c.KeyFile, c.CaFile, c.InsecureSkipTLSverify, c.PassCredentialsAll, getter.All(settings))
+		chartURL, err := repo.FindChartInRepoURL(
+			c.RepoURL,
+			name,
+			getter.All(settings),
+			repo.WithChartVersion(version),
+			repo.WithClientTLS(c.CertFile, c.KeyFile, c.CaFile),
+			repo.WithUsernamePassword(c.Username, c.Password),
+			repo.WithInsecureSkipTLSverify(c.InsecureSkipTLSverify),
+			repo.WithPassCredentialsAll(c.PassCredentialsAll),
+		)
 		if err != nil {
 			return "", err
 		}

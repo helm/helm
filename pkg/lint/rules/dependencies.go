@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rules // import "helm.sh/helm/v3/pkg/lint/rules"
+package rules // import "helm.sh/helm/v4/pkg/lint/rules"
 
 import (
 	"fmt"
@@ -22,9 +22,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 // Dependencies runs lints against a chart's dependencies

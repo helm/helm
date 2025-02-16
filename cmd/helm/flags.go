@@ -28,12 +28,12 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/klog/v2"
 
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/cli/output"
-	"helm.sh/helm/v3/pkg/cli/values"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/postrender"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli/output"
+	"helm.sh/helm/v4/pkg/cli/values"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 const (

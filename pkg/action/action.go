@@ -32,17 +32,17 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/engine"
-	"helm.sh/helm/v3/pkg/kube"
-	"helm.sh/helm/v3/pkg/postrender"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/releaseutil"
-	"helm.sh/helm/v3/pkg/storage"
-	"helm.sh/helm/v3/pkg/storage/driver"
-	"helm.sh/helm/v3/pkg/time"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/engine"
+	"helm.sh/helm/v4/pkg/kube"
+	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/releaseutil"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
+	"helm.sh/helm/v4/pkg/time"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
@@ -394,8 +394,8 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 		if cfg.Releases != nil {
 			if mem, ok := cfg.Releases.Driver.(*driver.Memory); ok {
 				// This function can be called more than once (e.g., helm list --all-namespaces).
-				// If a memory driver was already initialized, re-use it but set the possibly new namespace.
-				// We re-use it in case some releases where already created in the existing memory driver.
+				// If a memory driver was already initialized, reuse it but set the possibly new namespace.
+				// We reuse it in case some releases where already created in the existing memory driver.
 				d = mem
 			}
 		}

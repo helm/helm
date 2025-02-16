@@ -28,14 +28,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/kube"
-	"helm.sh/helm/v3/pkg/postrender"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/releaseutil"
-	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/kube"
+	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/releaseutil"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 // Upgrade is the action for upgrading releases.
@@ -83,7 +83,7 @@ type Upgrade struct {
 	Force bool
 	// ResetValues will reset the values to the chart's built-ins rather than merging with existing.
 	ResetValues bool
-	// ReuseValues will re-use the user's last supplied values.
+	// ReuseValues will reuse the user's last supplied values.
 	ReuseValues bool
 	// ResetThenReuseValues will reset the values to the chart's built-ins then merge with user's last supplied values.
 	ResetThenReuseValues bool
@@ -104,7 +104,7 @@ type Upgrade struct {
 	// Description is the description of this operation
 	Description string
 	Labels      map[string]string
-	// PostRender is an optional post-renderer
+	// PostRenderer is an optional post-renderer
 	//
 	// If this is non-nil, then after templates are rendered, they will be sent to the
 	// post renderer before sending to the Kubernetes API server.
@@ -243,7 +243,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	if err := chartutil.ProcessDependenciesWithMerge(chart, vals); err != nil {
+	if err := chartutil.ProcessDependencies(chart, vals); err != nil {
 		return nil, nil, err
 	}
 
@@ -279,7 +279,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	}
 
 	if driver.ContainsSystemLabels(u.Labels) {
-		return nil, nil, fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
+		return nil, nil, fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
 	}
 
 	// Store an upgraded release.

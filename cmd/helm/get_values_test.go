@@ -19,7 +19,7 @@ package main
 import (
 	"testing"
 
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 func TestGetValuesCmd(t *testing.T) {

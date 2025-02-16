@@ -22,10 +22,11 @@ import (
 	"log"
 
 	"github.com/spf13/cobra"
+	k8sLabels "k8s.io/apimachinery/pkg/labels"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/cli/output"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli/output"
 )
 
 type metadataWriter struct {
@@ -78,10 +79,13 @@ func (w metadataWriter) WriteTable(out io.Writer) error {
 	_, _ = fmt.Fprintf(out, "CHART: %v\n", w.metadata.Chart)
 	_, _ = fmt.Fprintf(out, "VERSION: %v\n", w.metadata.Version)
 	_, _ = fmt.Fprintf(out, "APP_VERSION: %v\n", w.metadata.AppVersion)
+	_, _ = fmt.Fprintf(out, "ANNOTATIONS: %v\n", k8sLabels.Set(w.metadata.Annotations).String())
+	_, _ = fmt.Fprintf(out, "DEPENDENCIES: %v\n", w.metadata.FormattedDepNames())
 	_, _ = fmt.Fprintf(out, "NAMESPACE: %v\n", w.metadata.Namespace)
 	_, _ = fmt.Fprintf(out, "REVISION: %v\n", w.metadata.Revision)
 	_, _ = fmt.Fprintf(out, "STATUS: %v\n", w.metadata.Status)
 	_, _ = fmt.Fprintf(out, "DEPLOYED_AT: %v\n", w.metadata.DeployedAt)
+
 	return nil
 }
 

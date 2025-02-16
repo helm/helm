@@ -22,13 +22,13 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/internal/test/ensure"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/provenance"
-	"helm.sh/helm/v3/pkg/repo"
-	"helm.sh/helm/v3/pkg/repo/repotest"
+	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/provenance"
+	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestDependencyUpdateCmd(t *testing.T) {
@@ -67,7 +67,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	}
 
 	_, out, err := executeActionCommand(
-		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s", dir(chartname), dir("repositories.yaml"), dir()),
+		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --plain-http", dir(chartname), dir("repositories.yaml"), dir()),
 	)
 	if err != nil {
 		t.Logf("Output: %s", out)
@@ -110,7 +110,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, out, err = executeActionCommand(fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s", dir(chartname), dir("repositories.yaml"), dir()))
+	_, out, err = executeActionCommand(fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --plain-http", dir(chartname), dir("repositories.yaml"), dir()))
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
@@ -131,7 +131,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	if err := chartutil.SaveDir(c, dir()); err != nil {
 		t.Fatal(err)
 	}
-	cmd := fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --registry-config %s/config.json",
+	cmd := fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --registry-config %s/config.json --plain-http",
 		dir(ociChartName),
 		dir("repositories.yaml"),
 		dir(),
@@ -169,7 +169,7 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 	}
 	createTestingChart(t, dir(), chartname, srv.URL())
 
-	_, output, err := executeActionCommand(fmt.Sprintf("dependency update %s --repository-config %s --repository-cache %s", dir(chartname), dir("repositories.yaml"), dir()))
+	_, output, err := executeActionCommand(fmt.Sprintf("dependency update %s --repository-config %s --repository-cache %s --plain-http", dir(chartname), dir("repositories.yaml"), dir()))
 	if err != nil {
 		t.Logf("Output: %s", output)
 		t.Fatal(err)
@@ -178,7 +178,7 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 	// Chart repo is down
 	srv.Stop()
 
-	_, output, err = executeActionCommand(fmt.Sprintf("dependency update %s --repository-config %s --repository-cache %s", dir(chartname), dir("repositories.yaml"), dir()))
+	_, output, err = executeActionCommand(fmt.Sprintf("dependency update %s --repository-config %s --repository-cache %s --plain-http", dir(chartname), dir("repositories.yaml"), dir()))
 	if err == nil {
 		t.Logf("Output: %s", output)
 		t.Fatal("Expected error, got nil")

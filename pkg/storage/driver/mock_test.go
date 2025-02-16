@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v3/pkg/storage/driver"
+package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 
 import (
 	"context"
@@ -31,7 +31,7 @@ import (
 	kblabels "k8s.io/apimachinery/pkg/labels"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
-	rspb "helm.sh/helm/v3/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release"
 )
 
 func releaseStub(name string, vers int, namespace string, status rspb.Status) *rspb.Release {
@@ -80,7 +80,7 @@ func tsFixtureMemory(t *testing.T) *Memory {
 	return mem
 }
 
-// newTestFixture initializes a MockConfigMapsInterface.
+// newTestFixtureCfgMaps initializes a MockConfigMapsInterface.
 // ConfigMaps are created for each release provided.
 func newTestFixtureCfgMaps(t *testing.T, releases ...*rspb.Release) *ConfigMaps {
 	var mock MockConfigMapsInterface
@@ -120,7 +120,7 @@ func (mock *MockConfigMapsInterface) Get(_ context.Context, name string, _ metav
 	return object, nil
 }
 
-// List returns the a of ConfigMaps.
+// List returns all ConfigMaps.
 func (mock *MockConfigMapsInterface) List(_ context.Context, opts metav1.ListOptions) (*v1.ConfigMapList, error) {
 	var list v1.ConfigMapList
 
@@ -206,7 +206,7 @@ func (mock *MockSecretsInterface) Get(_ context.Context, name string, _ metav1.G
 	return object, nil
 }
 
-// List returns the a of Secret.
+// List returns all Secrets.
 func (mock *MockSecretsInterface) List(_ context.Context, opts metav1.ListOptions) (*v1.SecretList, error) {
 	var list v1.SecretList
 

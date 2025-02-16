@@ -30,9 +30,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/internal/tlsutil"
-	"helm.sh/helm/v3/internal/version"
-	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v4/internal/tlsutil"
+	"helm.sh/helm/v4/internal/version"
+	"helm.sh/helm/v4/pkg/cli"
 )
 
 func TestHTTPGetter(t *testing.T) {
@@ -280,6 +280,29 @@ func TestDownload(t *testing.T) {
 	if got.String() != expect {
 		t.Errorf("Expected %q, got %q", expect, got.String())
 	}
+
+	// test server with varied Accept Header
+	const expectedAcceptHeader = "application/gzip,application/octet-stream"
+	acceptHeaderSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Accept") != expectedAcceptHeader {
+			t.Errorf("Expected '%s', got '%s'", expectedAcceptHeader, r.Header.Get("Accept"))
+		}
+		fmt.Fprint(w, expect)
+	}))
+
+	defer acceptHeaderSrv.Close()
+
+	u, _ = url.ParseRequestURI(acceptHeaderSrv.URL)
+	httpgetter, err = NewHTTPGetter(
+		WithAcceptHeader(expectedAcceptHeader),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = httpgetter.Get(u.String())
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestDownloadTLS(t *testing.T) {
@@ -288,7 +311,11 @@ func TestDownloadTLS(t *testing.T) {
 	insecureSkipTLSverify := false
 
 	tlsSrv := httptest.NewUnstartedServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
-	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca, insecureSkipTLSverify)
+	tlsConf, err := tlsutil.NewTLSConfig(
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+		tlsutil.WithCertKeyPairFiles(pub, priv),
+		tlsutil.WithCAFile(ca),
+	)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "can't create TLS config for client"))
 	}

@@ -26,10 +26,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/internal/tlsutil"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/time/ctime"
+	"helm.sh/helm/v4/internal/tlsutil"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/time/ctime"
 )
 
 // OCIPusher is the default OCI backend handler
@@ -90,8 +90,9 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 		path.Join(strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme)), meta.Metadata.Name),
 		meta.Metadata.Version)
 
-	chartCreationTime := ctime.Created(stat)
-	pushOpts = append(pushOpts, registry.PushOptCreationTime(chartCreationTime.Format(time.RFC3339)))
+	// The time the chart was "created" is semantically the time the chart archive file was last written(modified)
+	chartArchiveFileCreatedTime := ctime.Modified(stat)
+	pushOpts = append(pushOpts, registry.PushOptCreationTime(chartArchiveFileCreatedTime.Format(time.RFC3339)))
 
 	_, err = client.Push(chartBytes, ref, pushOpts...)
 	return err
@@ -110,7 +111,11 @@ func NewOCIPusher(ops ...Option) (Pusher, error) {
 
 func (pusher *OCIPusher) newRegistryClient() (*registry.Client, error) {
 	if (pusher.opts.certFile != "" && pusher.opts.keyFile != "") || pusher.opts.caFile != "" || pusher.opts.insecureSkipTLSverify {
-		tlsConf, err := tlsutil.NewClientTLS(pusher.opts.certFile, pusher.opts.keyFile, pusher.opts.caFile, pusher.opts.insecureSkipTLSverify)
+		tlsConf, err := tlsutil.NewTLSConfig(
+			tlsutil.WithInsecureSkipVerify(pusher.opts.insecureSkipTLSverify),
+			tlsutil.WithCertKeyPairFiles(pusher.opts.certFile, pusher.opts.keyFile),
+			tlsutil.WithCAFile(pusher.opts.caFile),
+		)
 		if err != nil {
 			return nil, errors.Wrap(err, "can't create TLS config for client")
 		}

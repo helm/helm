@@ -14,9 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package registry
 
-func checkPerms() {
-	// Not yet implemented on Windows. If you know how to do a comprehensive perms
-	// check on Windows, contributions welcomed!
+import (
+	"testing"
+
+	"github.com/containerd/containerd/remotes"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestNewClientResolverNotSupported(t *testing.T) {
+	var r remotes.Resolver
+
+	client, err := NewClient(ClientOptResolver(r))
+	require.Equal(t, err, errDeprecatedRemote)
+	assert.Nil(t, client)
 }

@@ -24,19 +24,21 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 const repoIndexDesc = `
-Read the current directory and generate an index file based on the charts found.
+Read the current directory, generate an index file based on the charts found
+and write the result to 'index.yaml' in the current directory.
 
 This tool is used for creating an 'index.yaml' file for a chart repository. To
 set an absolute URL to the charts, use '--url' flag.
 
 To merge the generated index with an existing index file, use the '--merge'
 flag. In this case, the charts found in the current directory will be merged
-into the existing index, with local charts taking priority over existing charts.
+into the index passed in with --merge, with local charts taking priority over
+existing charts.
 `
 
 type repoIndexOptions struct {

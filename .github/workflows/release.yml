@@ -7,6 +7,8 @@ on:
     branches:
       - main
 
+permissions: read-all
+
 # Note the only differences between release and canary-release jobs are:
 # - only canary passes --overwrite flag
 # - the VERSION make variable passed to 'make dist checksum' is expected to
@@ -15,17 +17,17 @@ on:
 jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     steps:
       - name: Checkout source code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # pin@v4.1.7
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4.2.2
         with:
           fetch-depth: 0
 
       - name: Setup Go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # pin@5.0.2
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # pin@5.3.0
         with:
-          go-version: '1.22.7'
+          go-version: '1.23'
 
       - name: Run unit tests
         run: make test-coverage
@@ -72,16 +74,17 @@ jobs:
           connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
 
   canary-release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout source code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # pin@v4.1.7
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4.2.2
 
       - name: Setup Go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # pin@5.0.2
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # pin@5.3.0
         with:
-          go-version: '1.22.7'
+          go-version: '1.23'
+          check-latest: true
 
       - name: Run unit tests
         run: make test-coverage

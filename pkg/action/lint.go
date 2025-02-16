@@ -23,9 +23,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/lint"
-	"helm.sh/helm/v3/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/lint"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 // Lint is the action for checking that the semantics of a chart are well-formed.
@@ -126,5 +126,11 @@ func lintChart(path string, vals map[string]interface{}, namespace string, kubeV
 		return linter, errors.Wrap(err, "unable to check Chart.yaml file in chart")
 	}
 
-	return lint.AllWithKubeVersionAndSchemaValidation(chartPath, vals, namespace, kubeVersion, skipSchemaValidation), nil
+	return lint.RunAll(
+		chartPath,
+		vals,
+		namespace,
+		lint.WithKubeVersion(kubeVersion),
+		lint.WithSkipSchemaValidation(skipSchemaValidation),
+	), nil
 }

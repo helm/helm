@@ -22,9 +22,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/cli/output"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli/output"
 )
 
 var getAllHelp = `
@@ -58,7 +58,12 @@ func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 				return tpl(template, data, out)
 			}
-			return output.Table.Write(out, &statusPrinter{res, true, false, false, true, false})
+			return output.Table.Write(out, &statusPrinter{
+				release:      res,
+				debug:        true,
+				showMetadata: true,
+				hideNotes:    false,
+			})
 		},
 	}
 
@@ -70,7 +75,6 @@ func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}

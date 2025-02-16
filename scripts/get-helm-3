@@ -30,6 +30,7 @@ HAS_WGET="$(type "wget" &> /dev/null && echo true || echo false)"
 HAS_OPENSSL="$(type "openssl" &> /dev/null && echo true || echo false)"
 HAS_GPG="$(type "gpg" &> /dev/null && echo true || echo false)"
 HAS_GIT="$(type "git" &> /dev/null && echo true || echo false)"
+HAS_TAR="$(type "tar" &> /dev/null && echo true || echo false)"
 
 # initArch discovers the architecture for this system.
 initArch() {
@@ -101,6 +102,11 @@ verifySupported() {
 
   if [ "${HAS_GIT}" != "true" ]; then
     echo "[WARNING] Could not find git. It is required for plugin installation."
+  fi
+
+  if [ "${HAS_TAR}" != "true" ]; then
+    echo "[ERROR] Could not find tar. It is required to extract the helm binary archive."
+    exit 1
   fi
 }
 

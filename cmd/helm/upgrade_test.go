@@ -24,10 +24,10 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 func TestUpgradeCmd(t *testing.T) {
@@ -113,6 +113,12 @@ func TestUpgradeCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("upgrade funny-bunny --reuse-values '%s'", chartPath),
 			golden: "output/upgrade-with-reset-values2.txt",
 			rels:   []*release.Release{relMock("funny-bunny", 5, ch2)},
+		},
+		{
+			name:   "upgrade a release with --take-ownership",
+			cmd:    fmt.Sprintf("upgrade funny-bunny '%s' --take-ownership", chartPath),
+			golden: "output/upgrade-and-take-ownership.txt",
+			rels:   []*release.Release{relMock("funny-bunny", 2, ch)},
 		},
 		{
 			name:   "install a release with 'upgrade --install'",

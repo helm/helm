@@ -23,7 +23,7 @@ import (
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	migrate "github.com/rubenv/sql-migrate"
 
-	rspb "helm.sh/helm/v3/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release"
 )
 
 func TestSQLName(t *testing.T) {
@@ -543,7 +543,7 @@ func mockGetReleaseCustomLabels(mock sqlmock.Sqlmock, key string, namespace stri
 	eq.WillReturnRows(returnRows).RowsWillBeClosed()
 }
 
-func TestSqlChechkAppliedMigrations(t *testing.T) {
+func TestSqlCheckAppliedMigrations(t *testing.T) {
 	cases := []struct {
 		migrationsToApply    []*migrate.Migration
 		appliedMigrationsIDs []string

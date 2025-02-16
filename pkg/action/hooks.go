@@ -22,9 +22,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/pkg/kube"
-	"helm.sh/helm/v3/pkg/release"
-	helmtime "helm.sh/helm/v3/pkg/time"
+	"helm.sh/helm/v4/pkg/kube"
+	"helm.sh/helm/v4/pkg/release"
+	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 // execHook executes all of the hooks for the given hook event.
@@ -44,7 +44,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 	for _, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
-		if h.DeletePolicies == nil || len(h.DeletePolicies) == 0 {
+		if len(h.DeletePolicies) == 0 {
 			// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
 			//                 resources. For all other resource types update in place if a
 			//                 resource with the same name already exists and is owned by the
@@ -99,7 +99,8 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 	// If all hooks are successful, check the annotation of each hook to determine whether the hook should be deleted
 	// under succeeded condition. If so, then clear the corresponding resource object in each hook
-	for _, h := range executingHooks {
+	for i := len(executingHooks) - 1; i >= 0; i-- {
+		h := executingHooks[i]
 		if err := cfg.deleteHookByPolicy(h, release.HookSucceeded, timeout); err != nil {
 			return err
 		}

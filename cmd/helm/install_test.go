@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/repo/repotest"
+	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestInstall(t *testing.T) {
@@ -96,11 +96,17 @@ func TestInstall(t *testing.T) {
 			golden:    "output/install-no-args.txt",
 			wantError: true,
 		},
-		// Install, re-use name
+		// Install, reuse name
 		{
 			name:   "install and replace release",
 			cmd:    "install aeneas testdata/testcharts/empty --replace",
 			golden: "output/install-and-replace.txt",
+		},
+		// Install, take ownership
+		{
+			name:   "install and replace release",
+			cmd:    "install aeneas-take-ownership testdata/testcharts/empty --take-ownership",
+			golden: "output/install-and-take-ownership.txt",
 		},
 		// Install, with timeout
 		{

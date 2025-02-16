@@ -30,15 +30,15 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/cli/output"
-	"helm.sh/helm/v3/pkg/cli/values"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/cli/output"
+	"helm.sh/helm/v4/pkg/cli/values"
+	"helm.sh/helm/v4/pkg/downloader"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 const installDesc = `
@@ -141,7 +141,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
-				client.InsecureSkipTLSverify, client.PlainHTTP)
+				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
@@ -158,7 +158,12 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return errors.Wrap(err, "INSTALLATION FAILED")
 			}
 
-			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes})
+			return outfmt.Write(out, &statusPrinter{
+				release:      rel,
+				debug:        settings.Debug,
+				showMetadata: false,
+				hideNotes:    client.HideNotes,
+			})
 		},
 	}
 
@@ -184,7 +189,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.Lookup("dry-run").NoOptDefVal = "client"
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
-	f.BoolVar(&client.Replace, "replace", false, "re-use the given name, only if that name is a deleted release which remains in the history. This is unsafe in production")
+	f.BoolVar(&client.Replace, "replace", false, "reuse the given name, only if that name is a deleted release which remains in the history. This is unsafe in production")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&client.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment, StatefulSet, or ReplicaSet are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&client.WaitForJobs, "wait-for-jobs", false, "if set and --wait enabled, will wait until all Jobs have been completed before marking the release as successful. It will wait for as long as --timeout")
@@ -201,6 +206,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.StringToStringVarP(&client.Labels, "labels", "l", nil, "Labels that would be added to release metadata. Should be divided by comma.")
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
 	f.BoolVar(&client.HideNotes, "hide-notes", false, "if set, do not show notes in install output. Does not affect presence in chart metadata")
+	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, install will ignore the check for helm annotations and take ownership of the existing resources")
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 
@@ -214,7 +220,6 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 		}
 		return compVersionFlag(args[requiredArgs-1], toComplete)
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}

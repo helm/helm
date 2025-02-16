@@ -24,19 +24,19 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 const (
-	badCharNametDir    = "testdata/badchartname"
+	badChartNameDir    = "testdata/badchartname"
 	badChartDir        = "testdata/badchartfile"
 	anotherBadChartDir = "testdata/anotherbadchartfile"
 )
 
 var (
-	badChartNamePath         = filepath.Join(badCharNametDir, "Chart.yaml")
+	badChartNamePath         = filepath.Join(badChartNameDir, "Chart.yaml")
 	badChartFilePath         = filepath.Join(badChartDir, "Chart.yaml")
 	nonExistingChartFilePath = filepath.Join(os.TempDir(), "Chart.yaml")
 )

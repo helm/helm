@@ -1,15 +1,16 @@
 maintainers:
+  - gjenkins8
   - joejulian
-  - jdolitsky
   - marckhouzam
   - mattfarina
+  - robertsirc
   - sabre1041
   - scottrigby
   - technosophos
 triage:
+  - banjoh
   - yxxhero
   - zonggen
-  - gjenkins8
   - z4ce
 emeritus:
   - adamreese
@@ -17,6 +18,7 @@ emeritus:
   - fibonacci1729
   - hickeyma
   - jascott1
+  - jdolitsky
   - michelleN
   - migmartri
   - nebril

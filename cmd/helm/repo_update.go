@@ -19,14 +19,15 @@ package main
 import (
 	"fmt"
 	"io"
+	"slices"
 	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 const updateDesc = `
@@ -158,10 +159,5 @@ func checkRequestedRepos(requestedRepos []string, validRepos []*repo.Entry) erro
 }
 
 func isRepoRequested(repoName string, requestedRepos []string) bool {
-	for _, requestedRepo := range requestedRepos {
-		if repoName == requestedRepo {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(requestedRepos, repoName)
 }

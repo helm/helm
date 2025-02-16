@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package releaseutil // import "helm.sh/helm/v3/pkg/releaseutil"
+package releaseutil // import "helm.sh/helm/v4/pkg/releaseutil"
 
 import (
 	"testing"
 
-	rspb "helm.sh/helm/v3/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release"
 )
 
 func TestFilterAny(t *testing.T) {

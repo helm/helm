@@ -26,11 +26,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/cli/values"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/cli/values"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 var longLintHelp = `

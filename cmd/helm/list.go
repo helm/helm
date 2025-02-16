@@ -25,10 +25,10 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/cli/output"
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli/output"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 var listHelp = `
@@ -156,7 +156,7 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string, noHead
 			Namespace:  r.Namespace,
 			Revision:   strconv.Itoa(r.Version),
 			Status:     r.Info.Status.String(),
-			Chart:      formatChartname(r.Chart),
+			Chart:      formatChartName(r.Chart),
 			AppVersion: formatAppVersion(r.Chart),
 		}
 

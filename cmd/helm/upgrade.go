@@ -29,15 +29,15 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/cli/output"
-	"helm.sh/helm/v3/pkg/cli/values"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/cli/output"
+	"helm.sh/helm/v4/pkg/cli/values"
+	"helm.sh/helm/v4/pkg/downloader"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 const upgradeDesc = `
@@ -103,7 +103,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.Namespace = settings.Namespace()
 
 			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
-				client.InsecureSkipTLSverify, client.PlainHTTP)
+				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
@@ -151,6 +151,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Labels = client.Labels
 					instClient.EnableDNS = client.EnableDNS
 					instClient.HideSecret = client.HideSecret
+					instClient.TakeOwnership = client.TakeOwnership
 
 					if isReleaseUninstalled(versions) {
 						instClient.Replace = true
@@ -160,7 +161,12 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					if err != nil {
 						return err
 					}
-					return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, instClient.HideNotes})
+					return outfmt.Write(out, &statusPrinter{
+						release:      rel,
+						debug:        settings.Debug,
+						showMetadata: false,
+						hideNotes:    instClient.HideNotes,
+					})
 				} else if err != nil {
 					return err
 				}
@@ -238,7 +244,6 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}()
 
 			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
-
 			if err != nil {
 				return errors.Wrap(err, "UPGRADE FAILED")
 			}
@@ -247,7 +252,12 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
 			}
 
-			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false, client.HideNotes})
+			return outfmt.Write(out, &statusPrinter{
+				release:      rel,
+				debug:        settings.Debug,
+				showMetadata: false,
+				hideNotes:    client.HideNotes,
+			})
 		},
 	}
 
@@ -280,6 +290,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
+	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, upgrade will ignore the check for helm annotations and take ownership of the existing resources")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
@@ -291,7 +302,6 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		}
 		return compVersionFlag(args[1], toComplete)
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}
