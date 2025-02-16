@@ -513,7 +513,7 @@ func TestWait(t *testing.T) {
 		}),
 	}
 	var err error
-	c.Waiter, err = c.newWaiter(LegacyWaiterStrategy)
+	c.Waiter, err = c.newWaiter(LegacyStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -570,7 +570,7 @@ func TestWaitJob(t *testing.T) {
 		}),
 	}
 	var err error
-	c.Waiter, err = c.newWaiter(LegacyWaiterStrategy)
+	c.Waiter, err = c.newWaiter(LegacyStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -629,7 +629,7 @@ func TestWaitDelete(t *testing.T) {
 		}),
 	}
 	var err error
-	c.Waiter, err = c.newWaiter(LegacyWaiterStrategy)
+	c.Waiter, err = c.newWaiter(LegacyStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}

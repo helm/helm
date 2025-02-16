@@ -209,3 +209,23 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logFn func
 		}
 	}
 }
+
+type hookOnlyWaiter struct {
+	sw *statusWaiter
+}
+
+func (w *hookOnlyWaiter) WatchUntilReady(resourceList ResourceList, timeout time.Duration) error {
+	return w.sw.WatchUntilReady(resourceList, timeout)
+}
+
+func (w *hookOnlyWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
+	return nil
+}
+
+func (w *hookOnlyWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
+	return nil
+}
+
+func (w *hookOnlyWaiter) WaitForDelete(resourceList ResourceList, timeout time.Duration) error {
+	return nil
+}

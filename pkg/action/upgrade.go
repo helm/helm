@@ -155,7 +155,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
-	if !u.shouldWait() {
+	if u.Wait == kube.HookOnlyStrategy {
 		if u.Atomic {
 			u.Wait = kube.StatusWatcherStrategy
 		}
@@ -188,10 +188,6 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	}
 
 	return res, nil
-}
-
-func (u *Upgrade) shouldWait() bool {
-	return u.Wait != ""
 }
 
 // isDryRun returns true if Upgrade is set to run as a DryRun
@@ -451,22 +447,17 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		}
 	}
 
-	if u.shouldWait() {
-		u.cfg.Log(
-			"waiting for release %s resources (created: %d updated: %d  deleted: %d)",
-			upgradedRelease.Name, len(results.Created), len(results.Updated), len(results.Deleted))
-		if u.WaitForJobs {
-			if err := u.cfg.KubeClient.WaitWithJobs(target, u.Timeout); err != nil {
-				u.cfg.recordRelease(originalRelease)
-				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-				return
-			}
-		} else {
-			if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
-				u.cfg.recordRelease(originalRelease)
-				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-				return
-			}
+	if u.WaitForJobs {
+		if err := u.cfg.KubeClient.WaitWithJobs(target, u.Timeout); err != nil {
+			u.cfg.recordRelease(originalRelease)
+			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+			return
+		}
+	} else {
+		if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
+			u.cfg.recordRelease(originalRelease)
+			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+			return
 		}
 	}
 
@@ -534,7 +525,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 
 		rollin := NewRollback(u.cfg)
 		rollin.Version = filteredHistory[0].Version
-		if !u.shouldWait() {
+		if u.Wait == kube.HookOnlyStrategy {
 			rollin.Wait = kube.StatusWatcherStrategy
 		}
 		rollin.WaitForJobs = u.WaitForJobs

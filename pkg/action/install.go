@@ -293,9 +293,9 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
-	if !i.shouldWait() {
+	if i.Wait == kube.HookOnlyStrategy {
 		if i.Atomic {
-			i.Wait = "watcher"
+			i.Wait = kube.StatusWatcherStrategy
 		}
 	}
 
@@ -473,15 +473,13 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		return rel, err
 	}
 
-	if i.shouldWait() {
-		if i.WaitForJobs {
-			err = i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout)
-		} else {
-			err = i.cfg.KubeClient.Wait(resources, i.Timeout)
-		}
-		if err != nil {
-			return rel, err
-		}
+	if i.WaitForJobs {
+		err = i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout)
+	} else {
+		err = i.cfg.KubeClient.Wait(resources, i.Timeout)
+	}
+	if err != nil {
+		return rel, err
 	}
 
 	if !i.DisableHooks {

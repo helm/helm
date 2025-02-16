@@ -84,7 +84,8 @@ type WaitStrategy string
 
 const (
 	StatusWatcherStrategy WaitStrategy = "watcher"
-	LegacyWaiterStrategy  WaitStrategy = "legacy"
+	LegacyStrategy        WaitStrategy = "legacy"
+	HookOnlyStrategy      WaitStrategy = "noop"
 )
 
 func init() {
@@ -98,36 +99,46 @@ func init() {
 	}
 }
 
+func (c *Client) newStatusWatcher() (*statusWaiter, error) {
+	cfg, err := c.Factory.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+	dynamicClient, err := c.Factory.DynamicClient()
+	if err != nil {
+		return nil, err
+	}
+	httpClient, err := rest.HTTPClientFor(cfg)
+	if err != nil {
+		return nil, err
+	}
+	restMapper, err := apiutil.NewDynamicRESTMapper(cfg, httpClient)
+	if err != nil {
+		return nil, err
+	}
+	return &statusWaiter{
+		restMapper: restMapper,
+		client:     dynamicClient,
+		log:        c.Log,
+	}, nil
+}
+
 func (c *Client) newWaiter(strategy WaitStrategy) (Waiter, error) {
 	switch strategy {
-	case LegacyWaiterStrategy:
+	case LegacyStrategy:
 		kc, err := c.Factory.KubernetesClientSet()
 		if err != nil {
 			return nil, err
 		}
 		return &HelmWaiter{kubeClient: kc, log: c.Log}, nil
 	case StatusWatcherStrategy:
-		cfg, err := c.Factory.ToRESTConfig()
+		return c.newStatusWatcher()
+	case HookOnlyStrategy:
+		sw, err := c.newStatusWatcher()
 		if err != nil {
 			return nil, err
 		}
-		dynamicClient, err := c.Factory.DynamicClient()
-		if err != nil {
-			return nil, err
-		}
-		httpClient, err := rest.HTTPClientFor(cfg)
-		if err != nil {
-			return nil, err
-		}
-		restMapper, err := apiutil.NewDynamicRESTMapper(cfg, httpClient)
-		if err != nil {
-			return nil, err
-		}
-		return &statusWaiter{
-			restMapper: restMapper,
-			client:     dynamicClient,
-			log:        c.Log,
-		}, nil
+		return &hookOnlyWaiter{sw: sw}, nil
 	default:
 		return nil, errors.New("unknown wait strategy")
 	}

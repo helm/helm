@@ -54,7 +54,7 @@ func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 
 func AddWaitFlag(cmd *cobra.Command, wait *kube.WaitStrategy) {
 	cmd.Flags().Var(
-		newWaitValue(wait),
+		newWaitValue(kube.HookOnlyStrategy, wait),
 		"wait",
 		"if set, will wait until all resources are in the expected state before marking the operation as successful. It will wait for as long as --timeout. Options are (true, false, watcher, and legacy)",
 	)
@@ -64,7 +64,8 @@ func AddWaitFlag(cmd *cobra.Command, wait *kube.WaitStrategy) {
 
 type waitValue kube.WaitStrategy
 
-func newWaitValue(ws *kube.WaitStrategy) *waitValue {
+func newWaitValue(defaultValue kube.WaitStrategy, ws *kube.WaitStrategy) *waitValue {
+	*ws = defaultValue
 	return (*waitValue)(ws)
 }
 
@@ -77,7 +78,7 @@ func (ws *waitValue) String() string {
 
 func (ws *waitValue) Set(s string) error {
 	switch s {
-	case string(kube.StatusWatcherStrategy), string(kube.LegacyWaiterStrategy):
+	case string(kube.StatusWatcherStrategy), string(kube.LegacyStrategy):
 		*ws = waitValue(s)
 		return nil
 	case "true":
@@ -87,7 +88,7 @@ func (ws *waitValue) Set(s string) error {
 		*ws = ""
 		return nil
 	default:
-		return fmt.Errorf("invalid wait input %q. Valid inputs are true, false, %s, and %s", s, kube.StatusWatcherStrategy, kube.LegacyWaiterStrategy)
+		return fmt.Errorf("invalid wait input %q. Valid inputs are true, false, %s, and %s", s, kube.StatusWatcherStrategy, kube.LegacyStrategy)
 	}
 }
 

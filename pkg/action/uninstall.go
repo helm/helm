@@ -41,7 +41,7 @@ type Uninstall struct {
 	DryRun              bool
 	IgnoreNotFound      bool
 	KeepHistory         bool
-	Wait                bool
+	Wait                kube.WaitStrategy
 	DeletionPropagation string
 	Timeout             time.Duration
 	Description         string
@@ -130,10 +130,8 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 	res.Info = kept
 
-	if u.Wait {
-		if err := u.cfg.KubeClient.WaitForDelete(deletedResources, u.Timeout); err != nil {
-			errs = append(errs, err)
-		}
+	if err := u.cfg.KubeClient.WaitForDelete(deletedResources, u.Timeout); err != nil {
+		errs = append(errs, err)
 	}
 
 	if !u.DisableHooks {

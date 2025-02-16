@@ -22,6 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release"
 )
@@ -82,7 +83,7 @@ func TestUninstallRelease_Wait(t *testing.T) {
 	unAction := uninstallAction(t)
 	unAction.DisableHooks = true
 	unAction.DryRun = false
-	unAction.Wait = true
+	unAction.Wait = kube.StatusWatcherStrategy
 
 	rel := releaseStub()
 	rel.Name = "come-fail-away"
@@ -113,7 +114,7 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	unAction := uninstallAction(t)
 	unAction.DisableHooks = true
 	unAction.DryRun = false
-	unAction.Wait = false
+	unAction.Wait = kube.HookOnlyStrategy
 	unAction.DeletionPropagation = "foreground"
 
 	rel := releaseStub()
