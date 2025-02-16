@@ -139,6 +139,10 @@ func (f *FailingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceL
 	return f.PrintingKubeClient.DeleteWithPropagationPolicy(resources, policy)
 }
 
+func (f *FailingKubeClient) SetWaiter(ws kube.WaitStrategy) error {
+	return nil
+}
+
 func createDummyResourceList() kube.ResourceList {
 	var resInfo resource.Info
 	resInfo.Name = "dummyName"

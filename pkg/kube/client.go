@@ -144,8 +144,17 @@ func (c *Client) newWaiter(strategy WaitStrategy) (Waiter, error) {
 	}
 }
 
+func (c *Client) SetWaiter(ws WaitStrategy) error {
+	var err error
+	c.Waiter, err = c.newWaiter(ws)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // New creates a new Client.
-func New(getter genericclioptions.RESTClientGetter, ws WaitStrategy) (*Client, error) {
+func New(getter genericclioptions.RESTClientGetter) (*Client, error) {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
@@ -155,7 +164,7 @@ func New(getter genericclioptions.RESTClientGetter, ws WaitStrategy) (*Client, e
 		Log:     nopLogger,
 	}
 	var err error
-	c.Waiter, err = c.newWaiter(ws)
+	c.Waiter, err = c.newWaiter(HookOnlyStrategy)
 	if err != nil {
 		return nil, err
 	}

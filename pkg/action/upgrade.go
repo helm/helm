@@ -160,6 +160,9 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 			u.Wait = kube.StatusWatcherStrategy
 		}
 	}
+	if err := u.cfg.KubeClient.SetWaiter(u.Wait); err != nil {
+		return nil, fmt.Errorf("failed to set kube client waiter: %w", err)
+	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("release name is invalid: %s", name)
@@ -527,6 +530,11 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		rollin.Version = filteredHistory[0].Version
 		if u.Wait == kube.HookOnlyStrategy {
 			rollin.Wait = kube.StatusWatcherStrategy
+		}
+		// TODO pretty sure this is unnecessary as the waiter is already set if atomic at the start of upgrade
+		werr := u.cfg.KubeClient.SetWaiter(u.Wait)
+		if werr != nil {
+			return rel, errors.Wrapf(herr, "an error occurred while creating the waiter. original upgrade error: %s", err)
 		}
 		rollin.WaitForJobs = u.WaitForJobs
 		rollin.DisableHooks = u.DisableHooks

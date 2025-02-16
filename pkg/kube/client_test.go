@@ -659,7 +659,7 @@ func TestWaitDelete(t *testing.T) {
 
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
-	c, err := New(nil, StatusWatcherStrategy)
+	c, err := New(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -672,7 +672,7 @@ func TestReal(t *testing.T) {
 	}
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
-	c, err = New(nil, StatusWatcherStrategy)
+	c, err = New(nil)
 	if err != nil {
 		t.Fatal(err)
 	}

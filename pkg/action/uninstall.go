@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -58,6 +59,10 @@ func NewUninstall(cfg *Configuration) *Uninstall {
 func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) {
 	if err := u.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
+	}
+
+	if err := u.cfg.KubeClient.SetWaiter(u.Wait); err != nil {
+		return nil, fmt.Errorf("failed to set kube client waiter: %w", err)
 	}
 
 	if u.DryRun {

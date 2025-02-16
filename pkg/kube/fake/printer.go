@@ -121,6 +121,10 @@ func (p *PrintingKubeClient) DeleteWithPropagationPolicy(resources kube.Resource
 	return &kube.Result{Deleted: resources}, nil
 }
 
+func (f *PrintingKubeClient) SetWaiter(ws kube.WaitStrategy) error {
+	return nil
+}
+
 func bufferize(resources kube.ResourceList) io.Reader {
 	var builder strings.Builder
 	for _, info := range resources {

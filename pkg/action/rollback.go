@@ -61,6 +61,10 @@ func (r *Rollback) Run(name string) error {
 		return err
 	}
 
+	if err := r.cfg.KubeClient.SetWaiter(r.Wait); err != nil {
+		return fmt.Errorf("failed to set kube client waiter: %w", err)
+	}
+
 	r.cfg.Releases.MaxHistory = r.MaxHistory
 
 	r.cfg.Log("preparing rollback of %s", name)
@@ -88,10 +92,6 @@ func (r *Rollback) Run(name string) error {
 		}
 	}
 	return nil
-}
-
-func (r *Rollback) shouldWait() bool {
-	return !(r.Wait == "")
 }
 
 // prepareRollback finds the previous release and prepares a new release object with
