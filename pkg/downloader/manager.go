@@ -342,6 +342,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				getter.WithInsecureSkipVerifyTLS(insecureskiptlsverify),
 				getter.WithTLSClientConfig(certFile, keyFile, caFile),
 			},
+			IndexFileCache: m.IndexFileCache,
 		}
 
 		version := ""
@@ -829,7 +830,7 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 	for _, re := range rf.Repositories {
 		lname := re.Name
 		idxFile := filepath.Join(m.RepositoryCache, helmpath.CacheIndexFile(lname))
-		index, err := repo.LoadIndexFile(idxFile)
+		index, err := repo.LoadIndexFileWithCache(idxFile, m.IndexFileCache)
 		if err != nil {
 			return indices, err
 		}
