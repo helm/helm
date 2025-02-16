@@ -80,11 +80,11 @@ type Client struct {
 	Waiter
 }
 
-type WaitStrategy int
+type WaitStrategy string
 
 const (
-	StatusWaiterStrategy WaitStrategy = iota
-	LegacyWaiterStrategy
+	StatusWatcherStrategy WaitStrategy = "watcher"
+	LegacyWaiterStrategy  WaitStrategy = "legacy"
 )
 
 func init() {
@@ -106,7 +106,7 @@ func (c *Client) newWaiter(strategy WaitStrategy) (Waiter, error) {
 			return nil, err
 		}
 		return &HelmWaiter{kubeClient: kc, log: c.Log}, nil
-	case StatusWaiterStrategy:
+	case StatusWatcherStrategy:
 		cfg, err := c.Factory.ToRESTConfig()
 		if err != nil {
 			return nil, err

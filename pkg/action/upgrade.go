@@ -64,8 +64,8 @@ type Upgrade struct {
 	SkipCRDs bool
 	// Timeout is the timeout for this operation
 	Timeout time.Duration
-	// Wait determines whether the wait operation should be performed after the upgrade is requested.
-	Wait bool
+	// Wait determines whether the wait operation should be performed and what type of wait.
+	Wait kube.WaitStrategy
 	// WaitForJobs determines whether the wait operation for the Jobs should be performed after the upgrade is requested.
 	WaitForJobs bool
 	// DisableHooks disables hook processing if set to true.
@@ -155,7 +155,11 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
-	u.Wait = u.Wait || u.Atomic
+	if !u.shouldWait() {
+		if u.Atomic {
+			u.Wait = kube.StatusWatcherStrategy
+		}
+	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("release name is invalid: %s", name)
@@ -184,6 +188,10 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	}
 
 	return res, nil
+}
+
+func (u *Upgrade) shouldWait() bool {
+	return u.Wait != ""
 }
 
 // isDryRun returns true if Upgrade is set to run as a DryRun
@@ -443,7 +451,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		}
 	}
 
-	if u.Wait {
+	if u.shouldWait() {
 		u.cfg.Log(
 			"waiting for release %s resources (created: %d updated: %d  deleted: %d)",
 			upgradedRelease.Name, len(results.Created), len(results.Updated), len(results.Deleted))
@@ -526,7 +534,9 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 
 		rollin := NewRollback(u.cfg)
 		rollin.Version = filteredHistory[0].Version
-		rollin.Wait = true
+		if !u.shouldWait() {
+			rollin.Wait = kube.StatusWatcherStrategy
+		}
 		rollin.WaitForJobs = u.WaitForJobs
 		rollin.DisableHooks = u.DisableHooks
 		rollin.Recreate = u.Recreate

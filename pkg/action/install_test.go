@@ -34,6 +34,7 @@ import (
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -407,7 +408,7 @@ func TestInstallRelease_Wait(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	instAction.cfg.KubeClient = failer
-	instAction.Wait = true
+	instAction.Wait = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
 	goroutines := runtime.NumGoroutine()
@@ -426,7 +427,7 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 10 * time.Second
 	instAction.cfg.KubeClient = failer
-	instAction.Wait = true
+	instAction.Wait = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -449,7 +450,7 @@ func TestInstallRelease_WaitForJobs(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	instAction.cfg.KubeClient = failer
-	instAction.Wait = true
+	instAction.Wait = kube.StatusWatcherStrategy
 	instAction.WaitForJobs = true
 	vals := map[string]interface{}{}
 

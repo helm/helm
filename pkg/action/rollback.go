@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/release"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
@@ -37,7 +38,7 @@ type Rollback struct {
 
 	Version       int
 	Timeout       time.Duration
-	Wait          bool
+	Wait          kube.WaitStrategy
 	WaitForJobs   bool
 	DisableHooks  bool
 	DryRun        bool
@@ -87,6 +88,10 @@ func (r *Rollback) Run(name string) error {
 		}
 	}
 	return nil
+}
+
+func (r *Rollback) shouldWait() bool {
+	return !(r.Wait == "")
 }
 
 // prepareRollback finds the previous release and prepares a new release object with
@@ -223,7 +228,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		}
 	}
 
-	if r.Wait {
+	if r.shouldWait() {
 		if r.WaitForJobs {
 			if err := r.cfg.KubeClient.WaitWithJobs(target, r.Timeout); err != nil {
 				targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))

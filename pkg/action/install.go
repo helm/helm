@@ -79,7 +79,7 @@ type Install struct {
 	HideSecret               bool
 	DisableHooks             bool
 	Replace                  bool
-	Wait                     bool
+	Wait                     kube.WaitStrategy
 	WaitForJobs              bool
 	Devel                    bool
 	DependencyUpdate         bool
@@ -155,6 +155,10 @@ func (i *Install) SetRegistryClient(registryClient *registry.Client) {
 // GetRegistryClient get the registry client.
 func (i *Install) GetRegistryClient() *registry.Client {
 	return i.ChartPathOptions.registryClient
+}
+
+func (i *Install) shouldWait() bool {
+	return i.Wait != ""
 }
 
 func (i *Install) installCRDs(crds []chart.CRD) error {
@@ -289,7 +293,11 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
-	i.Wait = i.Wait || i.Atomic
+	if !i.shouldWait() {
+		if i.Atomic {
+			i.Wait = "watcher"
+		}
+	}
 
 	caps, err := i.cfg.getCapabilities()
 	if err != nil {
@@ -465,7 +473,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		return rel, err
 	}
 
-	if i.Wait {
+	if i.shouldWait() {
 		if i.WaitForJobs {
 			err = i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout)
 		} else {
