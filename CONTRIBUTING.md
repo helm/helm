@@ -280,7 +280,7 @@ Small, ad-hoc changes/PRs to Helm which introduce user facing changes, which wou
 
 ### Profiling PRs
 
-If your contribution requires profiling to check memory and/or CPU usage, you can set `HELM_PPROF_CPU_PROFILE=/path/to/cpu.prof HELM_PPROF_MEM_PROFILE=/path/to/mem.prof helm show all bitnami/nginx` environment variable to collect runtime profiling data for analysis. You can use Golang's [pprof](https://github.com/google/pprof/blob/main/doc/README.md) tool to inspect the results.
+If your contribution requires profiling to check memory and/or CPU usage, you can set `HELM_PPROF_CPU_PROFILE=/path/to/cpu.prof` and/or `HELM_PPROF_MEM_PROFILE=/path/to/mem.prof` environment variables to collect runtime profiling data for analysis. You can use Golang's [pprof](https://github.com/google/pprof/blob/main/doc/README.md) tool to inspect the results.
 
 Example analysing collected profiling data
 ```
