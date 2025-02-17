@@ -83,8 +83,8 @@ func stopProfiling() error {
 		}
 	}
 
-	if len(errs) > 0 {
-		return fmt.Errorf("errors while stopping profiling: [%s]", strings.Join(errs, ", "))
+	if err := errors.Join(errs...); err != nil {
+		return fmt.Errorf("error(s) while stopping profiling: %w", err)
 	}
 
 	return nil
