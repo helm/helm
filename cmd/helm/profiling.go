@@ -17,11 +17,11 @@ limitations under the License.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"strings"
 )
 
 var (
@@ -58,14 +58,14 @@ func startProfiling() error {
 // It writes memory profile to the file path specified in HELM_PPROF_MEM_PROFILE
 // environment variable.
 func stopProfiling() error {
-	errs := []string{}
+	errs := []error{}
 
 	// Stop CPU profiling if it was started
 	if cpuProfileFile != nil {
 		pprof.StopCPUProfile()
 		err := cpuProfileFile.Close()
 		if err != nil {
-			errs = append(errs, err.Error())
+			errs = append(errs, err)
 		}
 		cpuProfileFile = nil
 	}
@@ -73,13 +73,13 @@ func stopProfiling() error {
 	if memProfilePath != "" {
 		f, err := os.Create(memProfilePath)
 		if err != nil {
-			errs = append(errs, err.Error())
+			errs = append(errs, err)
 		}
 		defer f.Close()
 
 		runtime.GC() // get up-to-date statistics
 		if err := pprof.WriteHeapProfile(f); err != nil {
-			errs = append(errs, err.Error())
+			errs = append(errs, err)
 		}
 	}
 
