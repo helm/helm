@@ -18,6 +18,7 @@ package kube // import "helm.sh/helm/v4/pkg/kube"
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -40,6 +41,12 @@ import (
 
 // ReadyCheckerOption is a function that configures a ReadyChecker.
 type ReadyCheckerOption func(*ReadyChecker)
+
+var ErrJobFailed = errors.New("job is failed")
+
+var TerminalErrors = []error{
+	ErrJobFailed,
+}
 
 // PausedAsReady returns a ReadyCheckerOption that configures a ReadyChecker
 // to consider paused resources to be ready. For example a Deployment
@@ -241,7 +248,7 @@ func (c *ReadyChecker) jobReady(job *batchv1.Job) (bool, error) {
 	if job.Status.Failed > *job.Spec.BackoffLimit {
 		c.log("Job is failed: %s/%s", job.GetNamespace(), job.GetName())
 		// If a job is failed, it can't recover, so throw an error
-		return false, fmt.Errorf("job is failed: %s/%s", job.GetNamespace(), job.GetName())
+		return false, fmt.Errorf("%w: %s/%s", ErrJobFailed, job.GetNamespace(), job.GetName())
 	}
 	if job.Spec.Completions != nil && job.Status.Succeeded < *job.Spec.Completions {
 		c.log("Job is not completed: %s/%s", job.GetNamespace(), job.GetName())
