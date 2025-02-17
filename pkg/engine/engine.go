@@ -29,8 +29,8 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chartutil"
 )
 
 // Engine is an implementation of the Helm rendering implementation for templates.
@@ -169,7 +169,7 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 		})
 
 		// We need a .New template, as template text which is just blanks
-		// or comments after parsing out defines just addes new named
+		// or comments after parsing out defines just adds new named
 		// template definitions without changing the main template.
 		// https://pkg.go.dev/text/template#Template.Parse
 		// Use the parent's name for lack of a better way to identify the tpl
@@ -206,7 +206,7 @@ func (e Engine) initFunMap(t *template.Template) {
 				log.Printf("[INFO] Missing required value: %s", warn)
 				return "", nil
 			}
-			return val, errors.Errorf(warnWrap(warn))
+			return val, errors.New(warnWrap(warn))
 		} else if _, ok := val.(string); ok {
 			if val == "" {
 				if e.LintMode {
@@ -214,7 +214,7 @@ func (e Engine) initFunMap(t *template.Template) {
 					log.Printf("[INFO] Missing required value: %s", warn)
 					return "", nil
 				}
-				return val, errors.Errorf(warnWrap(warn))
+				return val, errors.New(warnWrap(warn))
 			}
 		}
 		return val, nil
@@ -239,7 +239,7 @@ func (e Engine) initFunMap(t *template.Template) {
 	// When DNS lookups are not enabled override the sprig function and return
 	// an empty string.
 	if !e.EnableDNS {
-		funcMap["getHostByName"] = func(name string) string {
+		funcMap["getHostByName"] = func(_ string) string {
 			return ""
 		}
 	}

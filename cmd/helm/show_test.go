@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/repo/repotest"
+	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestShowPreReleaseChart(t *testing.T) {

@@ -30,10 +30,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/search"
-	"helm.sh/helm/v3/pkg/cli/output"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/cmd/helm/search"
+	"helm.sh/helm/v4/pkg/cli/output"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 const searchRepoDesc = `
@@ -81,7 +81,7 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 		Use:   "repo [keyword]",
 		Short: "search repositories for a keyword in charts",
 		Long:  searchRepoDesc,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			o.repoFile = settings.RepositoryConfig
 			o.repoCacheDir = settings.RepositoryCache
 			return o.run(out, args)
@@ -139,7 +139,7 @@ func (o *searchRepoOptions) setupSearchedVersion() {
 	if o.devel { // search for releases and prereleases (alpha, beta, and release candidate releases).
 		debug("setting version to >0.0.0-0")
 		o.version = ">0.0.0-0"
-	} else { // search only for stable releases, prerelease versions will be skip
+	} else { // search only for stable releases, prerelease versions will be skipped
 		debug("setting version to >0.0.0")
 		o.version = ">0.0.0"
 	}

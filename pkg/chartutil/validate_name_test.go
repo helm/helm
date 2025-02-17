@@ -18,7 +18,7 @@ package chartutil
 
 import "testing"
 
-// TestValidateName is a regression test for ValidateName
+// TestValidateReleaseName is a regression test for ValidateName
 //
 // Kubernetes has strict naming conventions for resource names. This test represents
 // those conventions.

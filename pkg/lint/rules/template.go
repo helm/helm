@@ -33,10 +33,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/engine"
-	"helm.sh/helm/v3/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/engine"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 var (
@@ -51,6 +51,11 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 
 // TemplatesWithKubeVersion lints the templates in the Linter, allowing to specify the kubernetes version.
 func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) {
+	TemplatesWithSkipSchemaValidation(linter, values, namespace, kubeVersion, false)
+}
+
+// TemplatesWithSkipSchemaValidation lints the templates in the Linter, allowing to specify the kubernetes version and if schema validation is enabled or not.
+func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, skipSchemaValidation bool) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
@@ -82,7 +87,7 @@ func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interfac
 
 	// lint ignores import-values
 	// See https://github.com/helm/helm/issues/9658
-	if err := chartutil.ProcessDependenciesWithMerge(chart, values); err != nil {
+	if err := chartutil.ProcessDependencies(chart, values); err != nil {
 		return
 	}
 
@@ -91,7 +96,7 @@ func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interfac
 		return
 	}
 
-	valuesToRender, err := chartutil.ToRenderValues(chart, cvals, options, caps)
+	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, cvals, options, caps, skipSchemaValidation)
 	if err != nil {
 		linter.RunLinterRule(support.ErrorSev, fpath, err)
 		return
@@ -275,10 +280,10 @@ func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
 	case "certificatesigningrequest":
 		// No validation.
 		// https://github.com/kubernetes/kubernetes/blob/v1.20.0/pkg/apis/certificates/validation/validation.go#L137-L140
-		return func(name string, prefix bool) []string { return nil }
+		return func(_ string, _ bool) []string { return nil }
 	case "role", "clusterrole", "rolebinding", "clusterrolebinding":
 		// https://github.com/kubernetes/kubernetes/blob/v1.20.0/pkg/apis/rbac/validation/validation.go#L32-L34
-		return func(name string, prefix bool) []string {
+		return func(name string, _ bool) []string {
 			return apipath.IsValidPathSegmentName(name)
 		}
 	default:

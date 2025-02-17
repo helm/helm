@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v3/pkg/storage/driver"
+package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -30,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
-	rspb "helm.sh/helm/v3/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release"
 )
 
 var _ Driver = (*Secrets)(nil)
@@ -151,7 +152,7 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
-	lbs.set("createdAt", strconv.Itoa(int(time.Now().Unix())))
+	lbs.set("createdAt", fmt.Sprintf("%v", time.Now().Unix()))
 
 	// create a new secret to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)
@@ -177,7 +178,7 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
-	lbs.set("modifiedAt", strconv.Itoa(int(time.Now().Unix())))
+	lbs.set("modifiedAt", fmt.Sprintf("%v", time.Now().Unix()))
 
 	// create a new secret object to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)

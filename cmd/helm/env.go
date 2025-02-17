@@ -23,7 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
+	"helm.sh/helm/v4/cmd/helm/require"
 )
 
 var envHelp = `
@@ -36,15 +36,15 @@ func newEnvCmd(out io.Writer) *cobra.Command {
 		Short: "helm client environment information",
 		Long:  envHelp,
 		Args:  require.MaximumNArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
 				keys := getSortedEnvVarKeys()
 				return keys, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			return nil, cobra.ShellCompDirectiveNoFileComp
+			return noMoreArgsComp()
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, args []string) {
 			envVars := settings.EnvVars()
 
 			if len(args) == 0 {

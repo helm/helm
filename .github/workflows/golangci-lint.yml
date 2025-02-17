@@ -4,19 +4,23 @@ on:
   push:
   pull_request:
 
+permissions:  
+  contents: read
+
 jobs:
   golangci:
     name: golangci-lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # pin@v4.1.1
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4.2.2
 
       - name: Setup Go
-        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # pin@4.1.0
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # pin@5.3.0
         with:
-          go-version: "1.21"
+          go-version: '1.23'
+          check-latest: true
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc #pin@3.7.0
+        uses: golangci/golangci-lint-action@051d91933864810ecd5e2ea2cfd98f6a5bca5347 #pin@6.3.2
         with:
-          version: v1.55
+          version: v1.62

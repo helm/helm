@@ -21,23 +21,11 @@ import (
 
 	"github.com/mitchellh/copystructure"
 
-	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart"
 )
 
 // ProcessDependencies checks through this chart's dependencies, processing accordingly.
-//
-// TODO: For Helm v4 this can be combined with or turned into ProcessDependenciesWithMerge
 func ProcessDependencies(c *chart.Chart, v Values) error {
-	if err := processDependencyEnabled(c, v, ""); err != nil {
-		return err
-	}
-	return processDependencyImportValues(c, false)
-}
-
-// ProcessDependenciesWithMerge checks through this chart's dependencies, processing accordingly.
-// It is similar to ProcessDependencies but it does not remove nil values during
-// the import/export handling process.
-func ProcessDependenciesWithMerge(c *chart.Chart, v Values) error {
 	if err := processDependencyEnabled(c, v, ""); err != nil {
 		return err
 	}
@@ -137,7 +125,7 @@ func processDependencyEnabled(c *chart.Chart, v map[string]interface{}, path str
 	// If any dependency is not a part of Chart.yaml
 	// then this should be added to chartDependencies.
 	// However, if the dependency is already specified in Chart.yaml
-	// we should not add it, as it would be anyways processed from Chart.yaml
+	// we should not add it, as it would be processed from Chart.yaml anyway.
 
 Loop:
 	for _, existing := range c.Dependencies() {

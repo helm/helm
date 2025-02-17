@@ -20,9 +20,10 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
 )
 
 const dependencyDesc = `
@@ -93,7 +94,7 @@ func newDependencyCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	cmd.AddCommand(newDependencyListCmd(out))
 	cmd.AddCommand(newDependencyUpdateCmd(cfg, out))
-	cmd.AddCommand(newDependencyBuildCmd(cfg, out))
+	cmd.AddCommand(newDependencyBuildCmd(out))
 
 	return cmd
 }
@@ -106,7 +107,7 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 		Short:   "list the dependencies for the given chart",
 		Long:    dependencyListDesc,
 		Args:    require.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			chartpath := "."
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
@@ -119,4 +120,17 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 
 	f.UintVar(&client.ColumnWidth, "max-col-width", 80, "maximum column width for output table")
 	return cmd
+}
+
+func addDependencySubcommandFlags(f *pflag.FlagSet, client *action.Dependency) {
+	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
+	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
+	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	f.StringVar(&client.Username, "username", "", "chart repository username where to locate the requested chart")
+	f.StringVar(&client.Password, "password", "", "chart repository password where to locate the requested chart")
+	f.StringVar(&client.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&client.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.BoolVar(&client.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
+	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
+	f.StringVar(&client.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 }

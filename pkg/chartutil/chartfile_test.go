@@ -19,7 +19,7 @@ package chartutil
 import (
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart"
 )
 
 const testfile = "testdata/chartfiletest.yaml"

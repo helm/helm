@@ -32,17 +32,17 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/engine"
-	"helm.sh/helm/v3/pkg/kube"
-	"helm.sh/helm/v3/pkg/postrender"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/releaseutil"
-	"helm.sh/helm/v3/pkg/storage"
-	"helm.sh/helm/v3/pkg/storage/driver"
-	"helm.sh/helm/v3/pkg/time"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/engine"
+	"helm.sh/helm/v4/pkg/kube"
+	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/releaseutil"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
+	"helm.sh/helm/v4/pkg/time"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
@@ -103,7 +103,7 @@ type Configuration struct {
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //
 //	This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -165,7 +165,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	hs, manifests, err := releaseutil.SortManifests(files, caps.APIVersions, releaseutil.InstallOrder)
+	hs, manifests, err := releaseutil.SortManifests(files, nil, releaseutil.InstallOrder)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.
@@ -200,7 +200,11 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 
 	for _, m := range manifests {
 		if outputDir == "" {
-			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+			if hideSecret && m.Head.Kind == "Secret" && m.Head.Version == "v1" {
+				fmt.Fprintf(b, "---\n# Source: %s\n# HIDDEN: The Secret output has been suppressed\n", m.Name)
+			} else {
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+			}
 		} else {
 			newDir := outputDir
 			if useReleaseName {
@@ -326,7 +330,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 	}
 
 	versionMap := make(map[string]interface{})
-	versions := []string{}
+	var versions []string
 
 	// Extract the groups
 	for _, g := range groups {
@@ -390,8 +394,8 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 		if cfg.Releases != nil {
 			if mem, ok := cfg.Releases.Driver.(*driver.Memory); ok {
 				// This function can be called more than once (e.g., helm list --all-namespaces).
-				// If a memory driver was already initialized, re-use it but set the possibly new namespace.
-				// We re-use it in case some releases where already created in the existing memory driver.
+				// If a memory driver was already initialized, reuse it but set the possibly new namespace.
+				// We reuse it in case some releases where already created in the existing memory driver.
 				d = mem
 			}
 		}
@@ -407,12 +411,11 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 			namespace,
 		)
 		if err != nil {
-			panic(fmt.Sprintf("Unable to instantiate SQL driver: %v", err))
+			return errors.Wrap(err, "unable to instantiate SQL driver")
 		}
 		store = storage.Init(d)
 	default:
-		// Not sure what to do here.
-		panic("Unknown driver in HELM_DRIVER: " + helmDriver)
+		return errors.Errorf("unknown driver %q", helmDriver)
 	}
 
 	cfg.RESTClientGetter = getter

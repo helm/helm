@@ -24,17 +24,17 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/internal/test/ensure"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/repo"
-	"helm.sh/helm/v3/pkg/repo/repotest"
+	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestUpdateCmd(t *testing.T) {
 	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool) error {
+	updater := func(repos []*repo.ChartRepository, out io.Writer, _ bool) error {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}
@@ -59,7 +59,7 @@ func TestUpdateCmdMultiple(t *testing.T) {
 	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool) error {
+	updater := func(repos []*repo.ChartRepository, out io.Writer, _ bool) error {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}
@@ -85,7 +85,7 @@ func TestUpdateCmdInvalid(t *testing.T) {
 	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool) error {
+	updater := func(repos []*repo.ChartRepository, out io.Writer, _ bool) error {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}

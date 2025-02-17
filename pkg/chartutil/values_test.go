@@ -22,7 +22,7 @@ import (
 	"testing"
 	"text/template"
 
-	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart"
 )
 
 func TestReadValues(t *testing.T) {
@@ -103,7 +103,7 @@ func TestToRenderValues(t *testing.T) {
 		IsInstall: true,
 	}
 
-	res, err := ToRenderValues(c, overrideValues, o, nil)
+	res, err := ToRenderValuesWithSchemaValidation(c, overrideValues, o, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}

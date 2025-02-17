@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 func TestRepoIndexCmd(t *testing.T) {
@@ -162,9 +162,9 @@ func TestRepoIndexCmd(t *testing.T) {
 	}
 }
 
-func linkOrCopy(old, new string) error {
-	if err := os.Link(old, new); err != nil {
-		return copyFile(old, new)
+func linkOrCopy(source, target string) error {
+	if err := os.Link(source, target); err != nil {
+		return copyFile(source, target)
 	}
 
 	return nil

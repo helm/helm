@@ -23,8 +23,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
 )
 
 var getNotesHelp = `
@@ -39,13 +39,13 @@ func newGetNotesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "download the notes for a named release",
 		Long:  getNotesHelp,
 		Args:  require.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
-				return nil, cobra.ShellCompDirectiveNoFileComp
+				return noMoreArgsComp()
 			}
 			return compListReleases(toComplete, args, cfg)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			res, err := client.Run(args[0])
 			if err != nil {
 				return err
@@ -59,7 +59,7 @@ func newGetNotesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.IntVar(&client.Version, "revision", 0, "get the named release with revision")
-	err := cmd.RegisterFlagCompletionFunc("revision", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("revision", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 1 {
 			return compListRevisions(toComplete, cfg, args[0])
 		}

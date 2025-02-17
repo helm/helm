@@ -27,8 +27,8 @@ import (
 	"github.com/moby/term"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
 )
 
 const registryLoginDesc = `
@@ -43,6 +43,7 @@ type registryLoginOptions struct {
 	keyFile              string
 	caFile               string
 	insecure             bool
+	plainHTTP            bool
 }
 
 func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -53,8 +54,8 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 		Short:             "login to a registry",
 		Long:              registryLoginDesc,
 		Args:              require.MinimumNArgs(1),
-		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		ValidArgsFunction: cobra.NoFileCompletions,
+		RunE: func(_ *cobra.Command, args []string) error {
 			hostname := args[0]
 
 			username, password, err := getUsernamePassword(o.username, o.password, o.passwordFromStdinOpt)
@@ -66,7 +67,8 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 				action.WithCertFile(o.certFile),
 				action.WithKeyFile(o.keyFile),
 				action.WithCAFile(o.caFile),
-				action.WithInsecure(o.insecure))
+				action.WithInsecure(o.insecure),
+				action.WithPlainHTTPLogin(o.plainHTTP))
 		},
 	}
 
@@ -78,6 +80,7 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 	f.StringVar(&o.certFile, "cert-file", "", "identify registry client using this SSL certificate file")
 	f.StringVar(&o.keyFile, "key-file", "", "identify registry client using this SSL key file")
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart upload")
 
 	return cmd
 }

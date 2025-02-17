@@ -18,6 +18,7 @@ package loader
 
 import (
 	"bytes"
+	"encoding/json"
 	"log"
 	"os"
 	"path/filepath"
@@ -26,7 +27,7 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart"
 )
 
 // ChartLoader loads a chart.
@@ -104,7 +105,10 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			}
 		case f.Name == "values.yaml":
 			c.Values = make(map[string]interface{})
-			if err := yaml.Unmarshal(f.Data, &c.Values); err != nil {
+			if err := yaml.Unmarshal(f.Data, &c.Values, func(d *json.Decoder) *json.Decoder {
+				d.UseNumber()
+				return d
+			}); err != nil {
 				return c, errors.Wrap(err, "cannot load values.yaml")
 			}
 		case f.Name == "values.schema.json":
@@ -133,6 +137,9 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 			}
 			if c.Metadata == nil {
 				c.Metadata = new(chart.Metadata)
+			}
+			if c.Metadata.APIVersion != chart.APIVersionV1 {
+				log.Printf("Warning: Dependency locking is handled in Chart.lock since apiVersion \"v2\". We recommend migrating to Chart.lock.")
 			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
 				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
@@ -171,7 +178,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		case filepath.Ext(n) == ".tgz":
 			file := files[0]
 			if file.Name != n {
-				return c, errors.Errorf("error unpacking tar in %s: expected %s, got %s", c.Name(), n, file.Name)
+				return c, errors.Errorf("error unpacking subchart tar in %s: expected %s, got %s", c.Name(), n, file.Name)
 			}
 			// Untar the chart and add to c.Dependencies
 			sc, err = LoadArchive(bytes.NewBuffer(file.Data))
@@ -191,7 +198,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		}
 
 		if err != nil {
-			return c, errors.Wrapf(err, "error unpacking %s in %s", n, c.Name())
+			return c, errors.Wrapf(err, "error unpacking subchart %s in %s", n, c.Name())
 		}
 		c.AddDependency(sc)
 	}

@@ -19,9 +19,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 func chartWithBadDependencies() chart.Chart {

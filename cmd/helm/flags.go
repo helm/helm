@@ -28,12 +28,12 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/klog/v2"
 
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/cli/output"
-	"helm.sh/helm/v3/pkg/cli/values"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/postrender"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli/output"
+	"helm.sh/helm/v4/pkg/cli/values"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 const (
@@ -72,7 +72,7 @@ func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 	cmd.Flags().VarP(newOutputValue(output.Table, varRef), outputFlag, "o",
 		fmt.Sprintf("prints the output in the specified format. Allowed values: %s", strings.Join(output.Formats(), ", ")))
 
-	err := cmd.RegisterFlagCompletionFunc(outputFlag, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc(outputFlag, func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		var formatNames []string
 		for format, desc := range output.FormatsWithDesc() {
 			formatNames = append(formatNames, fmt.Sprintf("%s\t%s", format, desc))

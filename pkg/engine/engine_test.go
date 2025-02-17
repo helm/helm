@@ -30,8 +30,8 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/fake"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chartutil"
 )
 
 func TestSortTemplates(t *testing.T) {
@@ -78,7 +78,7 @@ func TestFuncMap(t *testing.T) {
 	}
 
 	// Test for Engine-specific template functions.
-	expect := []string{"include", "required", "tpl", "toYaml", "fromYaml", "toToml", "toJson", "fromJson", "lookup"}
+	expect := []string{"include", "required", "tpl", "toYaml", "fromYaml", "toToml", "fromToml", "toJson", "fromJson", "lookup"}
 	for _, f := range expect {
 		if _, ok := fns[f]; !ok {
 			t.Errorf("Expected add-on function %q", f)

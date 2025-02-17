@@ -21,8 +21,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
 )
 
 const registryLogoutDesc = `
@@ -35,8 +35,8 @@ func newRegistryLogoutCmd(cfg *action.Configuration, out io.Writer) *cobra.Comma
 		Short:             "logout from a registry",
 		Long:              registryLogoutDesc,
 		Args:              require.MinimumNArgs(1),
-		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		ValidArgsFunction: cobra.NoFileCompletions,
+		RunE: func(_ *cobra.Command, args []string) error {
 			hostname := args[0]
 			return action.NewRegistryLogout(cfg).Run(out, hostname)
 		},

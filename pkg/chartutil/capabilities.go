@@ -25,7 +25,7 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 
-	helmversion "helm.sh/helm/v3/internal/version"
+	helmversion "helm.sh/helm/v4/internal/version"
 )
 
 var (
@@ -53,7 +53,7 @@ var (
 type Capabilities struct {
 	// KubeVersion is the Kubernetes version.
 	KubeVersion KubeVersion
-	// APIversions are supported Kubernetes API versions.
+	// APIVersions are supported Kubernetes API versions.
 	APIVersions VersionSet
 	// HelmVersion is the build information for this helm version
 	HelmVersion helmversion.BuildInfo
