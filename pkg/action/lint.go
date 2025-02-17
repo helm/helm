@@ -23,19 +23,21 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/lint"
-	"helm.sh/helm/v3/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/lint"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 // Lint is the action for checking that the semantics of a chart are well-formed.
 //
 // It provides the implementation of 'helm lint'.
 type Lint struct {
-	Strict        bool
-	Namespace     string
-	WithSubcharts bool
-	Quiet         bool
+	Strict               bool
+	Namespace            string
+	WithSubcharts        bool
+	Quiet                bool
+	SkipSchemaValidation bool
+	KubeVersion          *chartutil.KubeVersion
 }
 
 // LintResult is the result of Lint
@@ -58,7 +60,7 @@ func (l *Lint) Run(paths []string, vals map[string]interface{}) *LintResult {
 	}
 	result := &LintResult{}
 	for _, path := range paths {
-		linter, err := lintChart(path, vals, l.Namespace, l.Strict)
+		linter, err := lintChart(path, vals, l.Namespace, l.KubeVersion, l.SkipSchemaValidation)
 		if err != nil {
 			result.Errors = append(result.Errors, err)
 			continue
@@ -85,7 +87,7 @@ func HasWarningsOrErrors(result *LintResult) bool {
 	return len(result.Errors) > 0
 }
 
-func lintChart(path string, vals map[string]interface{}, namespace string, strict bool) (support.Linter, error) {
+func lintChart(path string, vals map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, skipSchemaValidation bool) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 
@@ -124,5 +126,11 @@ func lintChart(path string, vals map[string]interface{}, namespace string, stric
 		return linter, errors.Wrap(err, "unable to check Chart.yaml file in chart")
 	}
 
-	return lint.All(chartPath, vals, namespace, strict), nil
+	return lint.RunAll(
+		chartPath,
+		vals,
+		namespace,
+		lint.WithKubeVersion(kubeVersion),
+		lint.WithSkipSchemaValidation(skipSchemaValidation),
+	), nil
 }

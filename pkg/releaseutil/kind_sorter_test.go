@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 func TestKindSorter(t *testing.T) {

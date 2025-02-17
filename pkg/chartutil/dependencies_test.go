@@ -15,14 +15,15 @@ limitations under the License.
 package chartutil
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
 )
 
 func loadChart(t *testing.T, path string) *chart.Chart {
@@ -181,13 +182,13 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["imported-chartA-B.SPextra5"] = "k8s"
 	e["imported-chartA-B.SC1extra5"] = "tiller"
 
-	// These values are imported from the child chart to the parent. Imported
-	// values take precedence over those in the parent so these should be the
-	// values from the child chart.
-	e["overridden-chart1.SC1bool"] = "true"
-	e["overridden-chart1.SC1float"] = "3.14"
-	e["overridden-chart1.SC1int"] = "100"
-	e["overridden-chart1.SC1string"] = "dollywood"
+	// These values are imported from the child chart to the parent. Parent
+	// values take precedence over imported values. This enables importing a
+	// large section from a child chart and overriding a selection from it.
+	e["overridden-chart1.SC1bool"] = "false"
+	e["overridden-chart1.SC1float"] = "3.141592"
+	e["overridden-chart1.SC1int"] = "99"
+	e["overridden-chart1.SC1string"] = "pollywog"
 	e["overridden-chart1.SPextra2"] = "42"
 
 	e["overridden-chartA.SCAbool"] = "true"
@@ -196,17 +197,17 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["overridden-chartA.SCAstring"] = "jabberwocky"
 	e["overridden-chartA.SPextra4"] = "true"
 
-	// These values are imported from the child chart to the parent. Imported
-	// values take precedence over those in the parent so these should be the
-	// values from the child chart.
+	// These values are imported from the child chart to the parent. Parent
+	// values take precedence over imported values. This enables importing a
+	// large section from a child chart and overriding a selection from it.
 	e["overridden-chartA-B.SCAbool"] = "true"
-	e["overridden-chartA-B.SCAfloat"] = "3.33"
-	e["overridden-chartA-B.SCAint"] = "555"
-	e["overridden-chartA-B.SCAstring"] = "wormwood"
-	e["overridden-chartA-B.SCBbool"] = "true"
-	e["overridden-chartA-B.SCBfloat"] = "0.25"
-	e["overridden-chartA-B.SCBint"] = "98"
-	e["overridden-chartA-B.SCBstring"] = "murkwood"
+	e["overridden-chartA-B.SCAfloat"] = "41.3"
+	e["overridden-chartA-B.SCAint"] = "808"
+	e["overridden-chartA-B.SCAstring"] = "jabberwocky"
+	e["overridden-chartA-B.SCBbool"] = "false"
+	e["overridden-chartA-B.SCBfloat"] = "1.99"
+	e["overridden-chartA-B.SCBint"] = "77"
+	e["overridden-chartA-B.SCBstring"] = "jango"
 	e["overridden-chartA-B.SPextra6"] = "111"
 	e["overridden-chartA-B.SCAextra1"] = "23"
 	e["overridden-chartA-B.SCBextra1"] = "13"
@@ -236,6 +237,20 @@ func TestProcessDependencyImportValues(t *testing.T) {
 		case bool:
 			if b := strconv.FormatBool(pv); b != vv {
 				t.Errorf("failed to match imported bool value %v with expected %v for key %q", b, vv, kk)
+			}
+		case json.Number:
+			if fv, err := pv.Float64(); err == nil {
+				if sfv := strconv.FormatFloat(fv, 'f', -1, 64); sfv != vv {
+					t.Errorf("failed to match imported float value %v with expected %v for key %q", sfv, vv, kk)
+				}
+			}
+			if iv, err := pv.Int64(); err == nil {
+				if siv := strconv.FormatInt(iv, 10); siv != vv {
+					t.Errorf("failed to match imported int value %v with expected %v for key %q", siv, vv, kk)
+				}
+			}
+			if pv.String() != vv {
+				t.Errorf("failed to match imported string value %q with expected %q for key %q", pv, vv, kk)
 			}
 		default:
 			if pv != vv {
@@ -278,20 +293,20 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 
 	// The order of precedence should be:
 	// 1. User specified values (e.g CLI)
-	// 2. Imported values
-	// 3. Parent chart values
+	// 2. Parent chart values
+	// 3. Imported values
 	// 4. Sub-chart values
 	// The 4 app charts here deal with things differently:
 	// - app1 has a port value set in the umbrella chart. It does not import any
 	//   values so the value from the umbrella chart should be used.
 	// - app2 has a value in the app chart and imports from the library. The
-	//   library chart value should take precedence.
+	//   app chart value should take precedence.
 	// - app3 has no value in the app chart and imports the value from the library
 	//   chart. The library chart value should be used.
 	// - app4 has a value in the app chart and does not import the value from the
 	//   library chart. The app charts value should be used.
 	e["app1.service.port"] = "3456"
-	e["app2.service.port"] = "9090"
+	e["app2.service.port"] = "8080"
 	e["app3.service.port"] = "9090"
 	e["app4.service.port"] = "1234"
 	if err := processDependencyImportValues(c, true); err != nil {
@@ -308,6 +323,10 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 		case float64:
 			if s := strconv.FormatFloat(pv, 'f', -1, 64); s != vv {
 				t.Errorf("failed to match imported float value %v with expected %v", s, vv)
+			}
+		case json.Number:
+			if pv.String() != vv {
+				t.Errorf("failed to match imported string value %q with expected %q", pv, vv)
 			}
 		default:
 			if pv != vv {

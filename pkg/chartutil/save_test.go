@@ -29,8 +29,8 @@ import (
 	"testing"
 	"time"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
 )
 
 func TestSave(t *testing.T) {
@@ -105,6 +105,24 @@ func TestSave(t *testing.T) {
 				t.Fatal("Chart.lock data did not match")
 			}
 		})
+	}
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV1,
+			Name:       "../ahab",
+			Version:    "1.2.3",
+		},
+		Lock: &chart.Lock{
+			Digest: "testdigest",
+		},
+		Files: []*chart.File{
+			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
+		},
+	}
+	_, err := Save(c, tmp)
+	if err == nil {
+		t.Fatal("Expected error saving chart with invalid name")
 	}
 }
 
@@ -231,5 +249,16 @@ func TestSaveDir(t *testing.T) {
 
 	if len(c2.Files) != 1 || c2.Files[0].Name != c.Files[0].Name {
 		t.Fatal("Files data did not match")
+	}
+
+	tmp2 := t.TempDir()
+	c.Metadata.Name = "../ahab"
+	pth := filepath.Join(tmp2, "tmpcharts")
+	if err := os.MkdirAll(filepath.Join(pth), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := SaveDir(c, pth); err.Error() != "\"../ahab\" is not a valid chart name" {
+		t.Fatalf("Did not get expected error for chart named %q", c.Name())
 	}
 }

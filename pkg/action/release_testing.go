@@ -26,8 +26,8 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 const (
@@ -44,6 +44,7 @@ type ReleaseTesting struct {
 	// Used for fetching logs from test pods
 	Namespace string
 	Filters   map[string][]string
+	HideNotes bool
 }
 
 // NewReleaseTesting creates a new ReleaseTesting object with the given configuration.

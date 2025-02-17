@@ -23,7 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/pkg/plugin"
+	"helm.sh/helm/v4/pkg/plugin"
 )
 
 const pluginHelp = `
@@ -47,19 +47,27 @@ func newPluginCmd(out io.Writer) *cobra.Command {
 
 // runHook will execute a plugin hook.
 func runHook(p *plugin.Plugin, event string) error {
-	hook := p.Metadata.Hooks[event]
-	if hook == "" {
+	plugin.SetupPluginEnv(settings, p.Metadata.Name, p.Dir)
+
+	cmds := p.Metadata.PlatformHooks[event]
+	expandArgs := true
+	if len(cmds) == 0 && len(p.Metadata.Hooks) > 0 {
+		cmd := p.Metadata.Hooks[event]
+		if len(cmd) > 0 {
+			cmds = []plugin.PlatformCommand{{Command: "sh", Args: []string{"-c", cmd}}}
+			expandArgs = false
+		}
+	}
+
+	main, argv, err := plugin.PrepareCommands(cmds, expandArgs, []string{})
+	if err != nil {
 		return nil
 	}
 
-	prog := exec.Command("sh", "-c", hook)
-	// TODO make this work on windows
-	// I think its ... ¯\_(ツ)_/¯
-	// prog := exec.Command("cmd", "/C", p.Metadata.Hooks.Install())
+	prog := exec.Command(main, argv...)
 
 	debug("running %s hook: %s", event, prog)
 
-	plugin.SetupPluginEnv(settings, p.Metadata.Name, p.Dir)
 	prog.Stdout, prog.Stderr = os.Stdout, os.Stderr
 	if err := prog.Run(); err != nil {
 		if eerr, ok := err.(*exec.ExitError); ok {

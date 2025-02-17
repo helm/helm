@@ -14,11 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v3/pkg/storage/driver"
+package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -29,7 +30,7 @@ import (
 	// Import pq for postgres dialect
 	_ "github.com/lib/pq"
 
-	rspb "helm.sh/helm/v3/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release"
 )
 
 var _ Driver = (*SQL)(nil)
@@ -71,8 +72,8 @@ const (
 
 // Following limits based on k8s labels limits - https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
 const (
-	sqlCustomLabelsTableKeyMaxLenght   = 253 + 1 + 63
-	sqlCustomLabelsTableValueMaxLenght = 63
+	sqlCustomLabelsTableKeyMaxLength   = 253 + 1 + 63
+	sqlCustomLabelsTableValueMaxLength = 63
 )
 
 const (
@@ -97,9 +98,9 @@ func (s *SQL) Name() string {
 // Check if all migrations al
 func (s *SQL) checkAlreadyApplied(migrations []*migrate.Migration) bool {
 	// make map (set) of ids for fast search
-	migrationsIds := make(map[string]struct{})
+	migrationsIDs := make(map[string]struct{})
 	for _, migration := range migrations {
-		migrationsIds[migration.Id] = struct{}{}
+		migrationsIDs[migration.Id] = struct{}{}
 	}
 
 	// get list of applied migrations
@@ -112,15 +113,15 @@ func (s *SQL) checkAlreadyApplied(migrations []*migrate.Migration) bool {
 	}
 
 	for _, record := range records {
-		if _, ok := migrationsIds[record.Id]; ok {
+		if _, ok := migrationsIDs[record.Id]; ok {
 			s.Log("checkAlreadyApplied: found previous migration (Id: %v) applied at %v", record.Id, record.AppliedAt)
-			delete(migrationsIds, record.Id)
+			delete(migrationsIDs, record.Id)
 		}
 	}
 
-	// check if all migrations appliyed
-	if len(migrationsIds) != 0 {
-		for id := range migrationsIds {
+	// check if all migrations applied
+	if len(migrationsIDs) != 0 {
+		for id := range migrationsIDs {
 			s.Log("checkAlreadyApplied: find unapplied migration (id: %v)", id)
 		}
 		return false
@@ -203,7 +204,7 @@ func (s *SQL) ensureDBSetup() error {
 						CREATE TABLE %s (
 							%s VARCHAR(64),
 							%s VARCHAR(67),
-							%s VARCHAR(%d), 
+							%s VARCHAR(%d),
 							%s VARCHAR(%d)
 						);
 						CREATE INDEX ON %s (%s, %s);
@@ -215,9 +216,9 @@ func (s *SQL) ensureDBSetup() error {
 						sqlCustomLabelsTableReleaseKeyColumn,
 						sqlCustomLabelsTableReleaseNamespaceColumn,
 						sqlCustomLabelsTableKeyColumn,
-						sqlCustomLabelsTableKeyMaxLenght,
+						sqlCustomLabelsTableKeyMaxLength,
 						sqlCustomLabelsTableValueColumn,
-						sqlCustomLabelsTableValueMaxLenght,
+						sqlCustomLabelsTableValueMaxLength,
 						sqlCustomLabelsTableName,
 						sqlCustomLabelsTableReleaseKeyColumn,
 						sqlCustomLabelsTableReleaseNamespaceColumn,
@@ -367,6 +368,9 @@ func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 		if release.Labels, err = s.getReleaseCustomLabels(record.Key, record.Namespace); err != nil {
 			s.Log("failed to get release %s/%s custom labels: %v", record.Namespace, record.Key, err)
 			return nil, err
+		}
+		for k, v := range getReleaseSystemLabels(release) {
+			release.Labels[k] = v
 		}
 
 		if filter(release) {
@@ -658,7 +662,7 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 }
 
 // Get release custom labels from database
-func (s *SQL) getReleaseCustomLabels(key string, namespace string) (map[string]string, error) {
+func (s *SQL) getReleaseCustomLabels(key string, _ string) (map[string]string, error) {
 	query, args, err := s.statementBuilder.
 		Select(sqlCustomLabelsTableKeyColumn, sqlCustomLabelsTableValueColumn).
 		From(sqlCustomLabelsTableName).
@@ -680,4 +684,14 @@ func (s *SQL) getReleaseCustomLabels(key string, namespace string) (map[string]s
 	}
 
 	return filterSystemLabels(labelsMap), nil
+}
+
+// Rebuild system labels from release object
+func getReleaseSystemLabels(rls *rspb.Release) map[string]string {
+	return map[string]string{
+		"name":    rls.Name,
+		"owner":   sqlReleaseDefaultOwner,
+		"status":  rls.Info.Status.String(),
+		"version": strconv.Itoa(rls.Version),
+	}
 }

@@ -21,12 +21,11 @@ import (
 	"strings"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/resource"
 
-	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v4/pkg/kube"
 )
 
 // PrintingKubeClient implements KubeClient, but simply prints the reader to
@@ -49,7 +48,7 @@ func (p *PrintingKubeClient) Create(resources kube.ResourceList) (*kube.Result, 
 	return &kube.Result{Created: resources}, nil
 }
 
-func (p *PrintingKubeClient) Get(resources kube.ResourceList, related bool) (map[string][]runtime.Object, error) {
+func (p *PrintingKubeClient) Get(resources kube.ResourceList, _ bool) (map[string][]runtime.Object, error) {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	if err != nil {
 		return nil, err
@@ -111,15 +110,10 @@ func (p *PrintingKubeClient) BuildTable(_ io.Reader, _ bool) (kube.ResourceList,
 	return []*resource.Info{}, nil
 }
 
-// WaitAndGetCompletedPodPhase implements KubeClient WaitAndGetCompletedPodPhase.
-func (p *PrintingKubeClient) WaitAndGetCompletedPodPhase(_ string, _ time.Duration) (v1.PodPhase, error) {
-	return v1.PodSucceeded, nil
-}
-
 // DeleteWithPropagationPolicy implements KubeClient delete.
 //
 // It only prints out the content to be deleted.
-func (p *PrintingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceList, policy metav1.DeletionPropagation) (*kube.Result, []error) {
+func (p *PrintingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceList, _ metav1.DeletionPropagation) (*kube.Result, []error) {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	if err != nil {
 		return nil, []error{err}

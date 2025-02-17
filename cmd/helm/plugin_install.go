@@ -22,9 +22,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/plugin"
-	"helm.sh/helm/v3/pkg/plugin/installer"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/plugin"
+	"helm.sh/helm/v4/pkg/plugin/installer"
 )
 
 type pluginInstallOptions struct {
@@ -39,23 +39,23 @@ This command allows you to install a plugin from a url to a VCS repo or a local 
 func newPluginInstallCmd(out io.Writer) *cobra.Command {
 	o := &pluginInstallOptions{}
 	cmd := &cobra.Command{
-		Use:     "install [options] <path|url>...",
-		Short:   "install one or more Helm plugins",
+		Use:     "install [options] <path|url>",
+		Short:   "install a Helm plugin",
 		Long:    pluginInstallDesc,
 		Aliases: []string{"add"},
 		Args:    require.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
 				// We do file completion, in case the plugin is local
 				return nil, cobra.ShellCompDirectiveDefault
 			}
 			// No more completion once the plugin path has been specified
-			return nil, cobra.ShellCompDirectiveNoFileComp
+			return noMoreArgsComp()
 		},
-		PreRunE: func(cmd *cobra.Command, args []string) error {
+		PreRunE: func(_ *cobra.Command, args []string) error {
 			return o.complete(args)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return o.run(out)
 		},
 	}

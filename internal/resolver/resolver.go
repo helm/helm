@@ -27,12 +27,12 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/provenance"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/provenance"
+	"helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 // Resolver resolves dependencies from semantic version ranges to a particular version.
@@ -77,7 +77,6 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			continue
 		}
 		if strings.HasPrefix(d.Repository, "file://") {
-
 			chartpath, err := GetLocalPath(d.Repository, r.chartpath)
 			if err != nil {
 				return nil, err
@@ -95,7 +94,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			}
 
 			if !constraint.Check(v) {
-				missing = append(missing, d.Name)
+				missing = append(missing, fmt.Sprintf("%q (repository %q, version %q)", d.Name, d.Repository, d.Version))
 				continue
 			}
 
@@ -173,7 +172,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			Repository: d.Repository,
 			Version:    version,
 		}
-		// The version are already sorted and hence the first one to satisfy the constraint is used
+		// The versions are already sorted and hence the first one to satisfy the constraint is used
 		for _, ver := range vs {
 			v, err := semver.NewVersion(ver.Version)
 			// OCI does not need URLs
@@ -189,11 +188,11 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		}
 
 		if !found {
-			missing = append(missing, d.Name)
+			missing = append(missing, fmt.Sprintf("%q (repository %q, version %q)", d.Name, d.Repository, d.Version))
 		}
 	}
 	if len(missing) > 0 {
-		return nil, errors.Errorf("can't get a valid version for repositories %s. Try changing the version constraint in Chart.yaml", strings.Join(missing, ", "))
+		return nil, errors.Errorf("can't get a valid version for %d subchart(s): %s. Make sure a matching chart version exists in the repo, or change the version constraint in Chart.yaml", len(missing), strings.Join(missing, ", "))
 	}
 
 	digest, err := HashReq(reqs, locked)

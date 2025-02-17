@@ -25,8 +25,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/internal/monocular"
-	"helm.sh/helm/v3/pkg/cli/output"
+	"helm.sh/helm/v4/internal/monocular"
+	"helm.sh/helm/v4/pkg/cli/output"
 )
 
 const searchHubDesc = `
@@ -64,7 +64,7 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 		Use:   "hub [KEYWORD]",
 		Short: "search for charts in the Artifact Hub or your own hub instance",
 		Long:  searchHubDesc,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			return o.run(out, args)
 		},
 	}

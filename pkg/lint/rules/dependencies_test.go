@@ -19,9 +19,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 func chartWithBadDependencies() chart.Chart {
@@ -73,6 +73,67 @@ func TestValidateDependencyInMetadata(t *testing.T) {
 
 	if err := validateDependencyInMetadata(&c); err == nil {
 		t.Errorf("chart should have been flagged for missing deps in chart metadata")
+	}
+}
+
+func TestValidateDependenciesUnique(t *testing.T) {
+	tests := []struct {
+		chart chart.Chart
+	}{
+		{chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:       "badchart",
+				Version:    "0.1.0",
+				APIVersion: "v2",
+				Dependencies: []*chart.Dependency{
+					{
+						Name: "foo",
+					},
+					{
+						Name: "foo",
+					},
+				},
+			},
+		}},
+		{chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:       "badchart",
+				Version:    "0.1.0",
+				APIVersion: "v2",
+				Dependencies: []*chart.Dependency{
+					{
+						Name:  "foo",
+						Alias: "bar",
+					},
+					{
+						Name: "bar",
+					},
+				},
+			},
+		}},
+		{chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:       "badchart",
+				Version:    "0.1.0",
+				APIVersion: "v2",
+				Dependencies: []*chart.Dependency{
+					{
+						Name:  "foo",
+						Alias: "baz",
+					},
+					{
+						Name:  "bar",
+						Alias: "baz",
+					},
+				},
+			},
+		}},
+	}
+
+	for _, tt := range tests {
+		if err := validateDependenciesUnique(&tt.chart); err == nil {
+			t.Errorf("chart should have been flagged for dependency shadowing")
+		}
 	}
 }
 

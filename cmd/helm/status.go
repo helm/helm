@@ -28,11 +28,11 @@ import (
 
 	"k8s.io/kubectl/pkg/cmd/get"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/cli/output"
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/cli/output"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 // NOTE: Keep the list of statuses up-to-date with pkg/release/status.go.
@@ -43,8 +43,8 @@ The status consists of:
 - k8s namespace in which the release lives
 - state of the release (can be: unknown, deployed, uninstalled, superseded, failed, uninstalling, pending-install, pending-upgrade or pending-rollback)
 - revision of the release
-- description of the release (can be completion message or error message, need to enable --show-desc)
-- list of resources that this release consists of (need to enable --show-resources)
+- description of the release (can be completion message or error message)
+- list of resources that this release consists of
 - details on last test suite run, if applicable
 - additional notes provided by the chart
 `
@@ -58,14 +58,13 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "display the status of the named release",
 		Long:  statusHelp,
 		Args:  require.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
-				return nil, cobra.ShellCompDirectiveNoFileComp
+				return noMoreArgsComp()
 			}
 			return compListReleases(toComplete, args, cfg)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-
+		RunE: func(_ *cobra.Command, args []string) error {
 			// When the output format is a table the resources should be fetched
 			// and displayed as a table. When YAML or JSON the resources will be
 			// returned. This mirrors the handling in kubectl.
@@ -80,7 +79,12 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// strip chart metadata from the output
 			rel.Chart = nil
 
-			return outfmt.Write(out, &statusPrinter{rel, false, client.ShowDescription, client.ShowResources, false})
+			return outfmt.Write(out, &statusPrinter{
+				release:      rel,
+				debug:        false,
+				showMetadata: false,
+				hideNotes:    false,
+			})
 		},
 	}
 
@@ -88,31 +92,26 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f.IntVar(&client.Version, "revision", 0, "if set, display the status of the named release with revision")
 
-	err := cmd.RegisterFlagCompletionFunc("revision", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("revision", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 1 {
 			return compListRevisions(toComplete, cfg, args[0])
 		}
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	bindOutputFlag(cmd, &outfmt)
-	f.BoolVar(&client.ShowDescription, "show-desc", false, "if set, display the description message of the named release")
-
-	f.BoolVar(&client.ShowResources, "show-resources", false, "if set, display the resources of the named release")
 
 	return cmd
 }
 
 type statusPrinter struct {
-	release         *release.Release
-	debug           bool
-	showDescription bool
-	showResources   bool
-	showMetadata    bool
+	release      *release.Release
+	debug        bool
+	showMetadata bool
+	hideNotes    bool
 }
 
 func (s statusPrinter) WriteJSON(out io.Writer) error {
@@ -139,11 +138,9 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		_, _ = fmt.Fprintf(out, "VERSION: %s\n", s.release.Chart.Metadata.Version)
 		_, _ = fmt.Fprintf(out, "APP_VERSION: %s\n", s.release.Chart.Metadata.AppVersion)
 	}
-	if s.showDescription {
-		_, _ = fmt.Fprintf(out, "DESCRIPTION: %s\n", s.release.Info.Description)
-	}
+	_, _ = fmt.Fprintf(out, "DESCRIPTION: %s\n", s.release.Info.Description)
 
-	if s.showResources && s.release.Info.Resources != nil && len(s.release.Info.Resources) > 0 {
+	if len(s.release.Info.Resources) > 0 {
 		buf := new(bytes.Buffer)
 		printFlags := get.NewHumanPrintFlags()
 		typePrinter, _ := printFlags.ToPrinter("")
@@ -219,8 +216,9 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		_, _ = fmt.Fprintf(out, "MANIFEST:\n%s\n", s.release.Manifest)
 	}
 
-	if len(s.release.Info.Notes) > 0 {
-		_, _ = fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(s.release.Info.Notes))
+	// Hide notes from output - option in install and upgrades
+	if !s.hideNotes && len(s.release.Info.Notes) > 0 {
+		fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(s.release.Info.Notes))
 	}
 	return nil
 }

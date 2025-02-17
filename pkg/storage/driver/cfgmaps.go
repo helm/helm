@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v3/pkg/storage/driver"
+package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -30,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
-	rspb "helm.sh/helm/v3/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release"
 )
 
 var _ Driver = (*ConfigMaps)(nil)
@@ -107,7 +108,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 			continue
 		}
 
-		rls.Labels = filterSystemLabels(item.ObjectMeta.Labels)
+		rls.Labels = item.ObjectMeta.Labels
 
 		if filter(rls) {
 			results = append(results, rls)
@@ -146,7 +147,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 			cfgmaps.Log("query: failed to decode release: %s", err)
 			continue
 		}
-		rls.Labels = filterSystemLabels(item.ObjectMeta.Labels)
+		rls.Labels = item.ObjectMeta.Labels
 		results = append(results, rls)
 	}
 	return results, nil
@@ -160,7 +161,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
-	lbs.set("createdAt", strconv.Itoa(int(time.Now().Unix())))
+	lbs.set("createdAt", fmt.Sprintf("%v", time.Now().Unix()))
 
 	// create a new configmap to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)
@@ -188,7 +189,7 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
-	lbs.set("modifiedAt", strconv.Itoa(int(time.Now().Unix())))
+	lbs.set("modifiedAt", fmt.Sprintf("%v", time.Now().Unix()))
 
 	// create a new configmap object to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)

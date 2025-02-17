@@ -74,7 +74,7 @@ externalDatabase:
   ## Database host
   host: localhost
 
-  ## non-root Username for Wordpress Database
+  ## non-root Username for WordPress Database
   user: bn_wordpress
 
   ## Database password
@@ -102,7 +102,7 @@ mariadb:
   db:
     name: bitnami_wordpress
     user: bn_wordpress
-    ## If the password is not specified, mariadb will generates a random password
+    ## If the password is not specified, mariadb will generate a random password
     ##
     # password:
 
@@ -165,7 +165,7 @@ readinessProbe:
   successThreshold: 1
 
 ## Configure the ingress resource that allows you to access the
-## Wordpress installation. Set up the URL
+## WordPress installation. Set up the URL
 ## ref: http://kubernetes.io/docs/user-guide/ingress/
 ##
 ingress:

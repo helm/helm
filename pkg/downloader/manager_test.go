@@ -22,12 +22,12 @@ import (
 	"reflect"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/repo"
-	"helm.sh/helm/v3/pkg/repo/repotest"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/chartutil"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestVersionEquals(t *testing.T) {
@@ -262,6 +262,32 @@ func TestDownloadAll(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz")); os.IsNotExist(err) {
 		t.Error(err)
+	}
+
+	// A chart with a bad name like this cannot be loaded and saved. Handling in
+	// the loading and saving will return an error about the invalid name. In
+	// this case, the chart needs to be created directly.
+	badchartyaml := `apiVersion: v2
+description: A Helm chart for Kubernetes
+name: ../bad-local-subchart
+version: 0.1.0`
+	if err := os.MkdirAll(filepath.Join(chartPath, "testdata", "bad-local-subchart"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	err = os.WriteFile(filepath.Join(chartPath, "testdata", "bad-local-subchart", "Chart.yaml"), []byte(badchartyaml), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	badLocalDep := &chart.Dependency{
+		Name:       "../bad-local-subchart",
+		Repository: "file://./testdata/bad-local-subchart",
+		Version:    "0.1.0",
+	}
+
+	err = m.downloadAll([]*chart.Dependency{badLocalDep})
+	if err == nil {
+		t.Fatal("Expected error for bad dependency name")
 	}
 }
 

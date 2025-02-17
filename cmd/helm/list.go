@@ -25,10 +25,10 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/cli/output"
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli/output"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 var listHelp = `
@@ -68,8 +68,8 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Long:              listHelp,
 		Aliases:           []string{"ls"},
 		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		ValidArgsFunction: noMoreArgsCompFunc,
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if client.AllNamespaces {
 				if err := cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), debug); err != nil {
 					return err
@@ -156,7 +156,7 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string, noHead
 			Namespace:  r.Namespace,
 			Revision:   strconv.Itoa(r.Version),
 			Status:     r.Info.Status.String(),
-			Chart:      formatChartname(r.Chart),
+			Chart:      formatChartName(r.Chart),
 			AppVersion: formatAppVersion(r.Chart),
 		}
 

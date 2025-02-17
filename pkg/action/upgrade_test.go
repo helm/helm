@@ -23,15 +23,15 @@ import (
 	"testing"
 	"time"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/storage/driver"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	kubefake "helm.sh/helm/v3/pkg/kube/fake"
-	"helm.sh/helm/v3/pkg/release"
-	helmtime "helm.sh/helm/v3/pkg/time"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/release"
+	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func upgradeAction(t *testing.T) *Upgrade {
@@ -308,6 +308,59 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 	})
 }
 
+func TestUpgradeRelease_ResetThenReuseValues(t *testing.T) {
+	is := assert.New(t)
+
+	t.Run("reset then reuse values should work with values", func(t *testing.T) {
+		upAction := upgradeAction(t)
+
+		existingValues := map[string]interface{}{
+			"name":        "value",
+			"maxHeapSize": "128m",
+			"replicas":    2,
+		}
+		newValues := map[string]interface{}{
+			"name":        "newValue",
+			"maxHeapSize": "512m",
+			"cpu":         "12m",
+		}
+		newChartValues := map[string]interface{}{
+			"memory": "256m",
+		}
+		expectedValues := map[string]interface{}{
+			"name":        "newValue",
+			"maxHeapSize": "512m",
+			"cpu":         "12m",
+			"replicas":    2,
+		}
+
+		rel := releaseStub()
+		rel.Name = "nuketown"
+		rel.Info.Status = release.StatusDeployed
+		rel.Config = existingValues
+
+		err := upAction.cfg.Releases.Create(rel)
+		is.NoError(err)
+
+		upAction.ResetThenReuseValues = true
+		// setting newValues and upgrading
+		res, err := upAction.Run(rel.Name, buildChart(withValues(newChartValues)), newValues)
+		is.NoError(err)
+
+		// Now make sure it is actually upgraded
+		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
+		is.NoError(err)
+
+		if updatedRes == nil {
+			is.Fail("Updated Release is nil")
+			return
+		}
+		is.Equal(release.StatusDeployed, updatedRes.Info.Status)
+		is.Equal(expectedValues, updatedRes.Config)
+		is.Equal(newChartValues, updatedRes.Chart.Values)
+	})
+}
+
 func TestUpgradeRelease_Pending(t *testing.T) {
 	req := require.New(t)
 
@@ -480,5 +533,56 @@ func TestUpgradeRelease_SystemLabels(t *testing.T) {
 		t.Fatal("expected an error")
 	}
 
-	is.Equal(fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
+	is.Equal(fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
+}
+
+func TestUpgradeRelease_DryRun(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "previous-release"
+	rel.Info.Status = release.StatusDeployed
+	req.NoError(upAction.cfg.Releases.Create(rel))
+
+	upAction.DryRun = true
+	vals := map[string]interface{}{}
+
+	ctx, done := context.WithCancel(context.Background())
+	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
+	done()
+	req.NoError(err)
+	is.Equal(release.StatusPendingUpgrade, res.Info.Status)
+	is.Contains(res.Manifest, "kind: Secret")
+
+	lastRelease, err := upAction.cfg.Releases.Last(rel.Name)
+	req.NoError(err)
+	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+	is.Equal(1, lastRelease.Version)
+
+	// Test the case for hiding the secret to ensure it is not displayed
+	upAction.HideSecret = true
+	vals = map[string]interface{}{}
+
+	ctx, done = context.WithCancel(context.Background())
+	res, err = upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
+	done()
+	req.NoError(err)
+	is.Equal(release.StatusPendingUpgrade, res.Info.Status)
+	is.NotContains(res.Manifest, "kind: Secret")
+
+	lastRelease, err = upAction.cfg.Releases.Last(rel.Name)
+	req.NoError(err)
+	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+	is.Equal(1, lastRelease.Version)
+
+	// Ensure in a dry run mode when using HideSecret
+	upAction.DryRun = false
+	vals = map[string]interface{}{}
+
+	ctx, done = context.WithCancel(context.Background())
+	_, err = upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
+	done()
+	req.Error(err)
 }

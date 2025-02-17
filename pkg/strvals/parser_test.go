@@ -626,7 +626,7 @@ func TestParseJSON(t *testing.T) {
 			},
 			err: false,
 		},
-		{ // null assigment, and no value assigned (equivalent to null)
+		{ // null assignment, and no value assigned (equivalent to null)
 			input: "outer.inner1=,outer.inner3={\"aa\":\"1\",\"bb\":2,\"cc\":[1,2,3]},outer.inner3.cc[1]=null",
 			got: map[string]interface{}{
 				"outer": map[string]interface{}{
