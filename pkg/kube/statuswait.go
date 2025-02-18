@@ -218,14 +218,14 @@ func (w *hookOnlyWaiter) WatchUntilReady(resourceList ResourceList, timeout time
 	return w.sw.WatchUntilReady(resourceList, timeout)
 }
 
-func (w *hookOnlyWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
+func (w *hookOnlyWaiter) Wait(_ ResourceList, _ time.Duration) error {
 	return nil
 }
 
-func (w *hookOnlyWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
+func (w *hookOnlyWaiter) WaitWithJobs(_ ResourceList, _ time.Duration) error {
 	return nil
 }
 
-func (w *hookOnlyWaiter) WaitForDelete(resourceList ResourceList, timeout time.Duration) error {
+func (w *hookOnlyWaiter) WaitForDelete(_ ResourceList, _ time.Duration) error {
 	return nil
 }

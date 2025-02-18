@@ -140,7 +140,7 @@ func (f *FailingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceL
 	return f.PrintingKubeClient.DeleteWithPropagationPolicy(resources, policy)
 }
 
-func (f *FailingKubeClient) SetWaiter(ws kube.WaitStrategy) error {
+func (f *FailingKubeClient) SetWaiter(_ kube.WaitStrategy) error {
 	return nil
 }
 
