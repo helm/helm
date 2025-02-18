@@ -121,7 +121,7 @@ func (p *PrintingKubeClient) DeleteWithPropagationPolicy(resources kube.Resource
 	return &kube.Result{Deleted: resources}, nil
 }
 
-func (f *PrintingKubeClient) SetWaiter(ws kube.WaitStrategy) error {
+func (p *PrintingKubeClient) SetWaiter(_ kube.WaitStrategy) error {
 	return nil
 }
 
