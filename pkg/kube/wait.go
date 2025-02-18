@@ -85,7 +85,7 @@ func (w *waiter) isRetryableError(err error, resource *resource.Info) bool {
 		return false
 	}
 	w.log("Error received when checking status of resource %s. Error: '%s', Resource details: '%s'", resource.Name, err, resource)
-	for _, terminalError := range TerminalErrors {
+	for _, terminalError := range terminalErrors {
 		if errors.Is(err, terminalError) {
 			w.log("Retryable error? %t", false)
 			return false
