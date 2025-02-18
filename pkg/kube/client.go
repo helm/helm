@@ -85,7 +85,7 @@ type WaitStrategy string
 const (
 	StatusWatcherStrategy WaitStrategy = "watcher"
 	LegacyStrategy        WaitStrategy = "legacy"
-	HookOnlyStrategy      WaitStrategy = "noop"
+	HookOnlyStrategy      WaitStrategy = "hookOnly"
 )
 
 func init() {
