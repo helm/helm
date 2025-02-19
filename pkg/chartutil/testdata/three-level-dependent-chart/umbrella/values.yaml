@@ -12,3 +12,15 @@ app3:
 
 app4:
   enabled: true
+
+app5:
+  enabled: true
+
+app6:
+  enabled: true
+
+app7:
+  enabled: true
+
+profile:
+  enabled: true
