@@ -678,9 +678,9 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 
 	var wg sync.WaitGroup
 
-	repos = dedupeRepos(repos)
+	localRepos := dedupeRepos(repos)
 
-	for _, c := range repos {
+	for _, c := range localRepos {
 		r, err := repo.NewChartRepository(c, m.Getters)
 		if err != nil {
 			return err
