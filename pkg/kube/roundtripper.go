@@ -58,7 +58,7 @@ func (rt *RetryingRoundTripper) roundTrip(req *http.Request, retry int, prevResp
 	r.Seek(0, io.SeekStart)
 	resp.Body = io.NopCloser(r)
 	if err != nil {
-		return resp, nil
+		return resp, err
 	}
 	if ke.Code < 500 {
 		return resp, nil
