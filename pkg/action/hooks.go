@@ -181,7 +181,9 @@ func hookHasDeletePolicy(h *release.Hook, policy release.HookDeletePolicy) bool 
 
 // outputLogsByPolicy outputs a pods logs if the hook policy instructs it to
 func (cfg *Configuration) outputLogsByPolicy(h *release.Hook, releaseNamespace string, policy release.HookOutputLogPolicy) error {
-	if hookHasOutputLogPolicy(h, policy) {
+	if !hookHasOutputLogPolicy(h, policy) {
+	    return nil
+	}
 		namespace, err := cfg.deriveNamespace(h, releaseNamespace)
 		if err != nil {
 			return err
