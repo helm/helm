@@ -69,7 +69,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 			if err := json.Unmarshal([]byte(trimmedValue), &jsonMap); err != nil {
 				return nil, errors.Errorf("failed parsing --set-json data JSON: %s", value)
 			}
-			base = mergeMaps(base, jsonMap)
+			base = loader.MergeMaps(base, jsonMap)
 		} else {
 			// Otherwise, parse it as key=value format
 			if err := strvals.ParseJSON(value, base); err != nil {
