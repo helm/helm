@@ -17,6 +17,7 @@ limitations under the License.
 package values
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/url"
@@ -24,8 +25,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/strvals"
 )
@@ -47,18 +48,16 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 
 	// User specified a values files via -f/--values
 	for _, filePath := range opts.ValueFiles {
-		currentMap := map[string]interface{}{}
-
-		bytes, err := readFile(filePath, p)
+		raw, err := readFile(filePath, p)
 		if err != nil {
 			return nil, err
 		}
-
-		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
+		currentMap, err := loader.LoadValues(bytes.NewReader(raw))
+		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse %s", filePath)
 		}
 		// Merge with the previous map
-		base = mergeMaps(base, currentMap)
+		base = loader.MergeMaps(base, currentMap)
 	}
 
 	// User specified a value via --set-json
@@ -70,7 +69,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 			if err := json.Unmarshal([]byte(trimmedValue), &jsonMap); err != nil {
 				return nil, errors.Errorf("failed parsing --set-json data JSON: %s", value)
 			}
-			base = mergeMaps(base, jsonMap)
+			base = loader.MergeMaps(base, jsonMap)
 		} else {
 			// Otherwise, parse it as key=value format
 			if err := strvals.ParseJSON(value, base); err != nil {
@@ -115,25 +114,6 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 	}
 
 	return base, nil
-}
-
-func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
-	out := make(map[string]interface{}, len(a))
-	for k, v := range a {
-		out[k] = v
-	}
-	for k, v := range b {
-		if v, ok := v.(map[string]interface{}); ok {
-			if bv, ok := out[k]; ok {
-				if bv, ok := bv.(map[string]interface{}); ok {
-					out[k] = mergeMaps(bv, v)
-					continue
-				}
-			}
-		}
-		out[k] = v
-	}
-	return out
 }
 
 // readFile load a file from stdin, the local directory, or a remote file with a url.
