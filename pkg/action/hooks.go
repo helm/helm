@@ -103,7 +103,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			// under failed condition. If so, then clear the corresponding resource object in the hook
 			if errDeleting := cfg.deleteHookByPolicy(h, release.HookFailed, timeout); errDeleting != nil {
 				// We log the error here as we want to propagate the hook failure upwards to the release object.
-				log.Printf("error the hook resource on hook failure: %v", errDeleting)
+				log.Printf("error deleting the hook resource on hook failure: %v", errDeleting)
 			}
 			return err
 		}
