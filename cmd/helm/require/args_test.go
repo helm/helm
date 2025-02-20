@@ -71,7 +71,8 @@ func runTestCases(t *testing.T, testCases []testCase) {
 				Args: tc.validateFunc,
 			}
 			cmd.SetArgs(tc.args)
-			cmd.SetOutput(io.Discard)
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
 
 			err := cmd.Execute()
 			if tc.wantError == "" {

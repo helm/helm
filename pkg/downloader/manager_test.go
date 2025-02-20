@@ -293,10 +293,10 @@ version: 0.1.0`
 
 func TestUpdateBeforeBuild(t *testing.T) {
 	// Set up a fake repo
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/*.tgz*"),
+	)
 	defer srv.Stop()
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
@@ -348,13 +348,11 @@ func TestUpdateBeforeBuild(t *testing.T) {
 	}
 
 	// Update before Build. see issue: https://github.com/helm/helm/issues/7101
-	err = m.Update()
-	if err != nil {
+	if err := m.Update(); err != nil {
 		t.Fatal(err)
 	}
 
-	err = m.Build()
-	if err != nil {
+	if err := m.Build(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -364,10 +362,10 @@ func TestUpdateBeforeBuild(t *testing.T) {
 // to be fetched.
 func TestUpdateWithNoRepo(t *testing.T) {
 	// Set up a fake repo
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/*.tgz*"),
+	)
 	defer srv.Stop()
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
@@ -423,8 +421,7 @@ func TestUpdateWithNoRepo(t *testing.T) {
 	}
 
 	// Test the update
-	err = m.Update()
-	if err != nil {
+	if err := m.Update(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -437,10 +434,10 @@ func TestUpdateWithNoRepo(t *testing.T) {
 // If each of these main fields (name, version, repository) is not supplied by dep param, default value will be used.
 func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Dependency) {
 	// Set up a fake repo
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/*.tgz*"),
+	)
 	defer srv.Stop()
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
@@ -488,14 +485,12 @@ func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Depe
 	}
 
 	// First build will update dependencies and create Chart.lock file.
-	err = m.Build()
-	if err != nil {
+	if err := m.Build(); err != nil {
 		t.Fatal(err)
 	}
 
 	// Second build should be passed. See PR #6655.
-	err = m.Build()
-	if err != nil {
+	if err := m.Build(); err != nil {
 		t.Fatal(err)
 	}
 }

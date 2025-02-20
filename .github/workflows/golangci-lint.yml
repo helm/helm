@@ -21,6 +21,6 @@ jobs:
           go-version: '1.23'
           check-latest: true
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@051d91933864810ecd5e2ea2cfd98f6a5bca5347 #pin@6.3.2
+        uses: golangci/golangci-lint-action@2226d7cb06a077cd73e56eedd38eecad18e5d837 #pin@6.5.0
         with:
           version: v1.62
