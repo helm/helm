@@ -664,8 +664,8 @@ func dedupeRepos(repos []*repo.Entry) []*repo.Entry {
 	seen := make(map[string]*repo.Entry)
 	for _, r := range repos {
 		// Normalize URL by removing trailing slashes.
-		r.URL = strings.TrimSuffix(r.URL, "/")
-		seen[r.URL] = r
+		seenUrl := strings.TrimRight(r.URL, "/")
+		seen[seenUrl] = r
 	}
 	var unique []*repo.Entry
 	for _, r := range seen {
