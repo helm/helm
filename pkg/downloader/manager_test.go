@@ -649,7 +649,8 @@ func TestDedupeRepos(t *testing.T) {
 			},
 			want: []*repo.Entry{
 				{
-					URL: "https://example.com/charts",
+					// the last one wins
+					URL: "https://example.com/charts/",
 				},
 			},
 		},
