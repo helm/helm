@@ -822,14 +822,14 @@ func (c *Client) GetPodList(namespace string, listOptions metav1.ListOptions) (*
 }
 
 // OutputContainerLogsForPodList is a helper that outputs logs for a list of pods
-func (c *Client) OutputContainerLogsForPodList(podList *v1.PodList, namespace string, writer io.Writer) error {
+func (c *Client) OutputContainerLogsForPodList(podList *v1.PodList, namespace string, writerFunc func(namespace, pod, container string) io.Writer) error {
 	for _, pod := range podList.Items {
 		for _, container := range pod.Spec.Containers {
 			options := &v1.PodLogOptions{
 				Container: container.Name,
 			}
 			request := c.kubeClient.CoreV1().Pods(namespace).GetLogs(pod.Name, options)
-			err2 := copyRequestStreamToWriter(request, pod.Name, container.Name, writer)
+			err2 := copyRequestStreamToWriter(request, pod.Name, container.Name, writerFunc(namespace, pod.Name, container.Name))
 			if err2 != nil {
 				return err2
 			}
