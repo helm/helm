@@ -57,6 +57,11 @@ func warning(format string, v ...interface{}) {
 	fmt.Fprintf(os.Stderr, format, v...)
 }
 
+// hookOutputWriter provides the writer for writing hook logs.
+func hookOutputWriter(_, _, _ string) io.Writer {
+	return log.Writer()
+}
+
 func main() {
 	// Setting the name of the app for managedFields in the Kubernetes client.
 	// It is set here to the full name of "helm" so that renaming of helm to
@@ -80,6 +85,7 @@ func main() {
 		if helmDriver == "memory" {
 			loadReleasesInMemory(actionConfig)
 		}
+		actionConfig.SetHookOutputFunc(hookOutputWriter)
 	})
 
 	if err := cmd.Execute(); err != nil {

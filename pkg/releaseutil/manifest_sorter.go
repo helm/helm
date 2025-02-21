@@ -128,6 +128,14 @@ func SortManifests(files map[string]string, _ chartutil.VersionSet, ordering Kin
 //	 metadata:
 //			annotations:
 //				helm.sh/hook-delete-policy: hook-succeeded
+//
+// To determine the policy to output logs of the hook (for Pod and Job only), it looks for a YAML structure like this:
+//
+//	 kind: Pod
+//	 apiVersion: v1
+//	 metadata:
+//			annotations:
+//				helm.sh/hook-output-log-policy: hook-succeeded,hook-failed
 func (file *manifestFile) sort(result *result) error {
 	// Go through manifests in order found in file (function `SplitManifests` creates integer-sortable keys)
 	var sortedEntryKeys []string
@@ -166,13 +174,14 @@ func (file *manifestFile) sort(result *result) error {
 		hw := calculateHookWeight(entry)
 
 		h := &release.Hook{
-			Name:           entry.Metadata.Name,
-			Kind:           entry.Kind,
-			Path:           file.path,
-			Manifest:       m,
-			Events:         []release.HookEvent{},
-			Weight:         hw,
-			DeletePolicies: []release.HookDeletePolicy{},
+			Name:              entry.Metadata.Name,
+			Kind:              entry.Kind,
+			Path:              file.path,
+			Manifest:          m,
+			Events:            []release.HookEvent{},
+			Weight:            hw,
+			DeletePolicies:    []release.HookDeletePolicy{},
+			OutputLogPolicies: []release.HookOutputLogPolicy{},
 		}
 
 		isUnknownHook := false
@@ -195,6 +204,10 @@ func (file *manifestFile) sort(result *result) error {
 
 		operateAnnotationValues(entry, release.HookDeleteAnnotation, func(value string) {
 			h.DeletePolicies = append(h.DeletePolicies, release.HookDeletePolicy(value))
+		})
+
+		operateAnnotationValues(entry, release.HookOutputLogAnnotation, func(value string) {
+			h.OutputLogPolicies = append(h.OutputLogPolicies, release.HookOutputLogPolicy(value))
 		})
 	}
 
