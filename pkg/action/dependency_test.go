@@ -26,7 +26,7 @@ import (
 
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
 )
 
 func TestList(t *testing.T) {

@@ -30,7 +30,7 @@ import (
 
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/action"
-	"helm.sh/helm/v4/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
 	"helm.sh/helm/v4/pkg/cli"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release"

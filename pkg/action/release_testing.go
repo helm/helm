@@ -27,7 +27,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
-	"helm.sh/helm/v4/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
 	"helm.sh/helm/v4/pkg/release"
 )
 
