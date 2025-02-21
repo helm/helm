@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // Package version represents the current version of the project.
-package chartutil
+package util
 
 import "testing"
 

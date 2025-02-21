@@ -36,7 +36,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/chart/loader"
-	"helm.sh/helm/v4/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
 	ociRegistry "helm.sh/helm/v4/pkg/registry"
 	"helm.sh/helm/v4/pkg/repo"
 )

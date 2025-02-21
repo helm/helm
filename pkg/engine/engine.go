@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
 )
 
 // Engine is an implementation of the Helm rendering implementation for templates.
