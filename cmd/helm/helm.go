@@ -57,6 +57,11 @@ func warning(format string, v ...interface{}) {
 	fmt.Fprintf(os.Stderr, format, v...)
 }
 
+// hookOutputWriter provides the writer for writing hook logs.
+func hookOutputWriter(_, _, _ string) io.Writer {
+	return log.Writer()
+}
+
 func main() {
 	// Setting the name of the app for managedFields in the Kubernetes client.
 	// It is set here to the full name of "helm" so that renaming of helm to
@@ -74,7 +79,7 @@ func main() {
 	// run when each command's execute method is called
 	cobra.OnInitialize(func() {
 		helmDriver := os.Getenv("HELM_DRIVER")
-		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug, hookOutputWriter); err != nil {
 			log.Fatal(err)
 		}
 		if helmDriver == "memory" {

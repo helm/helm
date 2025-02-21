@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -98,7 +97,7 @@ type Configuration struct {
 
 	Log func(string, ...interface{})
 
-	// HookOutputFunc Called with container name and returns and expects writer that will receive the log output
+	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
 	HookOutputFunc func(namespace, pod, container string) io.Writer
 }
 
@@ -247,6 +246,9 @@ type RESTClientGetter interface {
 // DebugLog sets the logger that writes debug strings
 type DebugLog func(format string, v ...interface{})
 
+// HookOutputFunc returns the io.Writer for outputting hook logs.
+type HookOutputFunc func(namespace, pod, container string) io.Writer
+
 // capabilities builds a Capabilities from discovery information.
 func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	if cfg.Capabilities != nil {
@@ -375,7 +377,7 @@ func (cfg *Configuration) recordRelease(r *release.Release) {
 }
 
 // Init initializes the action configuration
-func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog) error {
+func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog, outputFunc HookOutputFunc) error {
 	kc := kube.New(getter)
 	kc.Log = log
 
@@ -427,12 +429,11 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	cfg.KubeClient = kc
 	cfg.Releases = store
 	cfg.Log = log
-	cfg.HookOutputFunc = defaultHookOutputWriter
+	if outputFunc != nil {
+		cfg.HookOutputFunc = outputFunc
+	} else {
+		cfg.HookOutputFunc = func(_, _, _ string) io.Writer { return io.Discard }
+	}
 
 	return nil
-}
-
-// defaultHookOutputWriter will write the Hook logs to log.Writer().
-func defaultHookOutputWriter(_, _, _ string) io.Writer {
-	return log.Writer()
 }
