@@ -334,7 +334,7 @@ func TestConfiguration_Init(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &Configuration{}
 
-			actualErr := cfg.Init(nil, "default", tt.helmDriver, nil, nil)
+			actualErr := cfg.Init(nil, "default", tt.helmDriver, nil)
 			if tt.expectErr {
 				assert.Error(t, actualErr)
 				assert.Contains(t, actualErr.Error(), tt.errMsg)
