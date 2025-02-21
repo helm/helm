@@ -27,10 +27,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
-	"helm.sh/helm/v4/pkg/chartutil"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/releaseutil"
 )
 
 var longLintHelp = `
@@ -58,7 +58,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			}
 
 			if kubeVersion != "" {
-				parsedKubeVersion, err := chartutil.ParseKubeVersion(kubeVersion)
+				parsedKubeVersion, err := releaseutil.ParseKubeVersion(kubeVersion)
 				if err != nil {
 					return fmt.Errorf("invalid kube version '%s': %s", kubeVersion, err)
 				}

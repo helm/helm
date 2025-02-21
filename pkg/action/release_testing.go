@@ -27,8 +27,8 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
-	"helm.sh/helm/v4/pkg/chartutil"
 	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/releaseutil"
 )
 
 const (
@@ -62,7 +62,7 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 		return nil, err
 	}
 
-	if err := chartutil.ValidateReleaseName(name); err != nil {
+	if err := releaseutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("releaseTest: Release name is invalid: %s", name)
 	}
 

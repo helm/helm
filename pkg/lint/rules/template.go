@@ -34,9 +34,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 
 	"helm.sh/helm/v4/pkg/chart/loader"
-	"helm.sh/helm/v4/pkg/chartutil"
 	"helm.sh/helm/v4/pkg/engine"
 	"helm.sh/helm/v4/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/releaseutil"
 )
 
 var (
@@ -50,12 +50,12 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 }
 
 // TemplatesWithKubeVersion lints the templates in the Linter, allowing to specify the kubernetes version.
-func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) {
+func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *releaseutil.KubeVersion) {
 	TemplatesWithSkipSchemaValidation(linter, values, namespace, kubeVersion, false)
 }
 
 // TemplatesWithSkipSchemaValidation lints the templates in the Linter, allowing to specify the kubernetes version and if schema validation is enabled or not.
-func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, skipSchemaValidation bool) {
+func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *releaseutil.KubeVersion, skipSchemaValidation bool) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
@@ -75,28 +75,28 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 		return
 	}
 
-	options := chartutil.ReleaseOptions{
+	options := releaseutil.ReleaseOptions{
 		Name:      "test-release",
 		Namespace: namespace,
 	}
 
-	caps := chartutil.DefaultCapabilities.Copy()
+	caps := releaseutil.DefaultCapabilities.Copy()
 	if kubeVersion != nil {
 		caps.KubeVersion = *kubeVersion
 	}
 
 	// lint ignores import-values
 	// See https://github.com/helm/helm/issues/9658
-	if err := chartutil.ProcessDependencies(chart, values); err != nil {
+	if err := releaseutil.ProcessDependencies(chart, values); err != nil {
 		return
 	}
 
-	cvals, err := chartutil.CoalesceValues(chart, values)
+	cvals, err := releaseutil.CoalesceValues(chart, values)
 	if err != nil {
 		return
 	}
 
-	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, cvals, options, caps, skipSchemaValidation)
+	valuesToRender, err := releaseutil.ToRenderValuesWithSchemaValidation(chart, cvals, options, caps, skipSchemaValidation)
 	if err != nil {
 		linter.RunLinterRule(support.ErrorSev, fpath, err)
 		return
