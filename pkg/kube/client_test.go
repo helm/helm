@@ -711,7 +711,8 @@ func TestOutputContainerLogsForPodList(t *testing.T) {
 	kubeClient := k8sfake.NewSimpleClientset(&somePodList)
 	c := Client{Namespace: namespace, kubeClient: kubeClient}
 	outBuffer := &bytes.Buffer{}
-	err := c.OutputContainerLogsForPodList(&somePodList, namespace, outBuffer)
+	outBufferFunc := func(_, _, _ string) io.Writer { return outBuffer }
+	err := c.OutputContainerLogsForPodList(&somePodList, namespace, outBufferFunc)
 	clientAssertions := assert.New(t)
 	clientAssertions.NoError(err)
 	clientAssertions.Equal("fake logsfake logsfake logs", outBuffer.String())

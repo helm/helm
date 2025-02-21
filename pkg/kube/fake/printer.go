@@ -124,7 +124,7 @@ func (p *PrintingKubeClient) GetPodList(_ string, _ metav1.ListOptions) (*v1.Pod
 }
 
 // OutputContainerLogsForPodList implements KubeClient OutputContainerLogsForPodList.
-func (p *PrintingKubeClient) OutputContainerLogsForPodList(_ *v1.PodList, someNamespace string, _ io.Writer) error {
+func (p *PrintingKubeClient) OutputContainerLogsForPodList(_ *v1.PodList, someNamespace string, _ func(namespace, pod, container string) io.Writer) error {
 	_, err := io.Copy(p.LogOutput, strings.NewReader(fmt.Sprintf("attempted to output logs for namespace: %s", someNamespace)))
 	return err
 }

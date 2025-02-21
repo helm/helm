@@ -19,16 +19,16 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"slices"
 	"sort"
 	"time"
 
 	"helm.sh/helm/v4/pkg/kube"
 
-	"helm.sh/helm/v4/pkg/chartutil"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
 
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
@@ -180,22 +180,20 @@ func hookHasDeletePolicy(h *release.Hook, policy release.HookDeletePolicy) bool 
 // outputLogsByPolicy outputs a pods logs if the hook policy instructs it to
 func (cfg *Configuration) outputLogsByPolicy(h *release.Hook, releaseNamespace string, policy release.HookOutputLogPolicy) error {
 	if !hookHasOutputLogPolicy(h, policy) {
-	    return nil
+		return nil
 	}
-		namespace, err := cfg.deriveNamespace(h, releaseNamespace)
-		if err != nil {
-			return err
-		}
-		switch h.Kind {
-		case "Job":
-			return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{LabelSelector: fmt.Sprintf("job-name=%s", h.Name)})
-		case "Pod":
-			return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", h.Name)})
-		default:
-			return nil
-		}
+	namespace, err := cfg.deriveNamespace(h, releaseNamespace)
+	if err != nil {
+		return err
 	}
-	return nil
+	switch h.Kind {
+	case "Job":
+		return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{LabelSelector: fmt.Sprintf("job-name=%s", h.Name)})
+	case "Pod":
+		return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", h.Name)})
+	default:
+		return nil
+	}
 }
 
 func (cfg *Configuration) outputContainerLogsForListOptions(namespace string, listOptions metav1.ListOptions) error {
@@ -205,35 +203,30 @@ func (cfg *Configuration) outputContainerLogsForListOptions(namespace string, li
 		if err != nil {
 			return err
 		}
-		err = kubeClient.OutputContainerLogsForPodList(podList, namespace, log.Writer())
+		err = kubeClient.OutputContainerLogsForPodList(podList, namespace, cfg.HookOutputFunc)
 		return err
 	}
 	return nil
 }
 
 func (cfg *Configuration) deriveNamespace(h *release.Hook, namespace string) (string, error) {
-	values, err := chartutil.ReadValues([]byte(h.Manifest))
+	tmp := struct {
+		Metadata struct {
+			Namespace string
+		}
+	}{}
+	err := yaml.Unmarshal([]byte(h.Manifest), &tmp)
 	if err != nil {
-		return "", errors.Wrapf(err, "unable to parse kubernetes manifest for output logs hook %s", h.Path)
+		return "", errors.Wrapf(err, "unable to parse metadata.namespace from kubernetes manifest for output logs hook %s", h.Path)
 	}
-	value, err := values.PathValue("metadata.namespace")
-	switch err.(type) {
-	case nil:
-		return value.(string), nil
-	case chartutil.ErrNoValue:
+	if tmp.Metadata.Namespace == "" {
 		return namespace, nil
-	default:
-		return "", errors.Wrapf(err, "unable to parse path of metadata.namespace in yaml for output logs hook %s", h.Path)
 	}
+	return tmp.Metadata.Namespace, nil
 }
 
 // hookHasOutputLogPolicy determines whether the defined hook output log policy matches the hook output log policies
 // supported by helm.
 func hookHasOutputLogPolicy(h *release.Hook, policy release.HookOutputLogPolicy) bool {
-	for _, v := range h.OutputLogPolicies {
-		if policy == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(h.OutputLogPolicies, policy)
 }

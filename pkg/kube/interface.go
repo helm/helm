@@ -88,7 +88,7 @@ type InterfaceLogs interface {
 	GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error)
 
 	// OutputContainerLogsForPodList output the logs for a pod list
-	OutputContainerLogsForPodList(podList *v1.PodList, namespace string, writer io.Writer) error
+	OutputContainerLogsForPodList(podList *v1.PodList, namespace string, writerFunc func(namespace, pod, container string) io.Writer) error
 }
 
 // InterfaceDeletionPropagation is introduced to avoid breaking backwards compatibility for Interface implementers.
