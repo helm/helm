@@ -386,7 +386,7 @@ func determineIfFormattedErrorIsAcceptable(formattedErr error, originalErr error
 	if equivalenceRating >= 80 {
 		return formattedErr
 	}
-	return fmt.Errorf("%s", originalErr.Error())
+	return originalErr
 }
 
 func cleanupExecError(filename string, err error) error {
