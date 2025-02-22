@@ -659,10 +659,28 @@ func (m *Manager) UpdateRepositories() error {
 	return nil
 }
 
+// Filter out duplicate repos by URL, including those with trailing slashes.
+func dedupeRepos(repos []*repo.Entry) []*repo.Entry {
+	seen := make(map[string]*repo.Entry)
+	for _, r := range repos {
+		// Normalize URL by removing trailing slashes.
+		seenURL := strings.TrimSuffix(r.URL, "/")
+		seen[seenURL] = r
+	}
+	var unique []*repo.Entry
+	for _, r := range seen {
+		unique = append(unique, r)
+	}
+	return unique
+}
+
 func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 
 	var wg sync.WaitGroup
-	for _, c := range repos {
+
+	localRepos := dedupeRepos(repos)
+
+	for _, c := range localRepos {
 		r, err := repo.NewChartRepository(c, m.Getters)
 		if err != nil {
 			return err
