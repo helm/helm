@@ -23,8 +23,6 @@ import (
 	"sort"
 	"time"
 
-	"helm.sh/helm/v4/pkg/kube"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pkg/errors"
