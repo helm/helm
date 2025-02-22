@@ -330,67 +330,22 @@ type TraceableError struct {
 func (t TraceableError) String() string {
 	return t.location + "\n  " + t.executedFunction + "\n    " + t.message + "\n"
 }
-
-func (t TraceableError) ExtractExecutedFunction() (TraceableError, error) {
-	executionLocationRegex, regexFindErr := regexp.Compile(`executing "[^\"]*" at <[^\<\>]*>:?\s*`)
-	if regexFindErr != nil {
-		return t, regexFindErr
-	}
-	byteArrayMsg := []byte(t.message)
-	executionLocations := executionLocationRegex.FindAll(byteArrayMsg, -1)
-	if len(executionLocations) == 0 {
-		return t, nil
-	}
-	t.executedFunction = string(executionLocations[0])
-	t.message = strings.ReplaceAll(t.message, t.executedFunction, "")
-	return t, nil
-}
-
-func (t TraceableError) FilterLocation() TraceableError {
-	if strings.Contains(t.message, t.location) {
-		t.message = strings.ReplaceAll(t.message, t.location, "")
-	}
-	return t
-}
-
-func (t TraceableError) FilterUnnecessaryWords() TraceableError {
-	if strings.Contains(t.message, "template:") {
-		t.message = strings.TrimSpace(strings.ReplaceAll(t.message, "template:", ""))
-	}
-	if strings.HasPrefix(t.message, ": ") {
-		t.message = strings.TrimSpace(strings.TrimPrefix(t.message, ": "))
-	}
-	return t
-}
-
-// In the process of formatting the error, we want to ensure that the formatted version of the error
-// is not losing any necessary information. This function will tokenize and compare the two strings
-// and if the formatted error doesn't meet the threshold, it will fallback to the originalErr
-func determineIfFormattedErrorIsAcceptable(formattedErr error, originalErr error) error {
-	formattedErrTokens := strings.Fields(formattedErr.Error())
-	originalErrTokens := strings.Fields(originalErr.Error())
-
-	tokenSet := make(map[string]struct{})
-	for _, token := range originalErrTokens {
-		tokenSet[token] = struct{}{}
-	}
-
-	matchCount := 0
-	for _, token := range formattedErrTokens {
-		if _, exists := tokenSet[token]; exists {
-			matchCount++
-		}
-	}
-
-	equivalenceRating := (float64(matchCount) / float64(len(formattedErrTokens))) * 100
-	if equivalenceRating >= 80 {
-		return formattedErr
-	}
-	return originalErr
-}
-
 func cleanupExecError(filename string, err error) error {
 	if _, isExecError := err.(template.ExecError); !isExecError {
+		return err
+	}
+
+	// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
+	// > "template: %s: %s"
+	// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
+	// > "template: %s: executing %q at <%s>: %s"
+
+	execErrFmt, compileErr := regexp.Compile(`^template: (?P<templateName>(?U).+): executing (?P<functionName>(?U).+) at (?P<location>(?U).+): (?P<errMsg>(?U).+)(?P<nextErr>( template:.*)?)$`)
+	if compileErr != nil {
+		return err
+	}
+	execErrFmtWithoutTemplate, compileErr := regexp.Compile(`^template: (?P<templateName>(?U).+): (?P<errMsg>.*)(?P<nextErr>( template:.*)?)$`)
+	if compileErr != nil {
 		return err
 	}
 
@@ -415,16 +370,35 @@ func cleanupExecError(filename string, err error) error {
 		if current == nil {
 			break
 		}
-		tokens = strings.SplitN(current.Error(), ": ", 3)
-		if len(tokens) == 1 {
-			// For cases where the error message doesn't contain a colon
-			location = tokens[0]
+
+		var traceable TraceableError
+		if execErrFmt.MatchString(current.Error()) {
+			matches := execErrFmt.FindStringSubmatch(current.Error())
+			templateIndex := execErrFmt.SubexpIndex("templateName")
+			templateName := matches[templateIndex]
+			functionNameIndex := execErrFmt.SubexpIndex("functionName")
+			functionName := matches[functionNameIndex]
+			locationNameIndex := execErrFmt.SubexpIndex("location")
+			locationName := matches[locationNameIndex]
+			errMsgIndex := execErrFmt.SubexpIndex("errMsg")
+			errMsg := matches[errMsgIndex]
+			traceable = TraceableError{
+				location:         templateName,
+				message:          errMsg,
+				executedFunction: "executing " + functionName + " at " + locationName + ":",
+			}
+		} else if execErrFmtWithoutTemplate.MatchString(current.Error()) {
+			matches := execErrFmt.FindStringSubmatch(current.Error())
+			templateIndex := execErrFmt.SubexpIndex("templateName")
+			templateName := matches[templateIndex]
+			errMsgIndex := execErrFmt.SubexpIndex("errMsg")
+			errMsg := matches[errMsgIndex]
+			traceable = TraceableError{
+				location: templateName,
+				message:  errMsg,
+			}
 		} else {
-			location = tokens[1]
-		}
-		traceable := TraceableError{
-			location: location,
-			message:  current.Error(),
+			return err
 		}
 		fileLocations = append(fileLocations, traceable)
 		current = errors.Unwrap(current)
@@ -433,30 +407,18 @@ func cleanupExecError(filename string, err error) error {
 		return fmt.Errorf("%s", err.Error())
 	}
 
-	prevMessage := ""
+	var prev TraceableError
 	for i := len(fileLocations) - 1; i >= 0; i-- {
-		currentMsg := fileLocations[i].message
+		current := fileLocations[i]
 		if i == len(fileLocations)-1 {
-			prevMessage = currentMsg
+			prev = current
 			continue
 		}
 
-		if strings.Contains(currentMsg, prevMessage) {
-			fileLocations[i].message = strings.ReplaceAll(fileLocations[i].message, prevMessage, "")
+		if current.message == prev.message && current.location == prev.location && current.executedFunction == prev.executedFunction {
+			fileLocations[i].message = ""
 		}
-		prevMessage = currentMsg
-	}
-
-	for i, fileLocation := range fileLocations {
-		fileLocation = fileLocation.FilterLocation().FilterUnnecessaryWords()
-		if fileLocation.message == "" {
-			continue
-		}
-		t, extractionErr := fileLocation.ExtractExecutedFunction()
-		if extractionErr != nil {
-			continue
-		}
-		fileLocations[i] = t
+		prev = current
 	}
 
 	finalErrorString := ""
@@ -471,7 +433,7 @@ func cleanupExecError(filename string, err error) error {
 		return fmt.Errorf("%s", err.Error())
 	}
 
-	return determineIfFormattedErrorIsAcceptable(fmt.Errorf("%s", finalErrorString), err)
+	return fmt.Errorf("%s", finalErrorString)
 }
 
 func sortTemplates(tpls map[string]renderable) []string {
