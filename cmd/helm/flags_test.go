@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
+	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/release"
 	helmtime "helm.sh/helm/v4/pkg/time"
@@ -92,4 +95,25 @@ func outputFlagCompletionTest(t *testing.T, cmdName string) {
 		}),
 	}}
 	runTestCmd(t, tests)
+}
+
+func TestPostRendererFlagSetOnce(t *testing.T) {
+	cfg := action.Configuration{}
+	client := action.NewInstall(&cfg)
+	str := postRendererString{
+		options: &postRendererOptions{
+			renderer: &client.PostRenderer,
+		},
+	}
+	// Set the binary once
+	err := str.Set("echo")
+	require.NoError(t, err)
+
+	// Set the binary again to the same value is ok
+	err = str.Set("echo")
+	require.NoError(t, err)
+
+	// Set the binary again to a different value is not ok
+	err = str.Set("cat")
+	require.Error(t, err)
 }

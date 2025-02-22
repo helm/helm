@@ -24,6 +24,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"k8s.io/klog/v2"
@@ -142,6 +143,9 @@ func (p *postRendererString) Type() string {
 func (p *postRendererString) Set(val string) error {
 	if val == "" {
 		return nil
+	}
+	if p.options.binaryPath != "" && p.options.binaryPath != val {
+		return errors.Errorf("cannot set post-renderer more than once, given: %s, previous: %s", val, p.options.binaryPath)
 	}
 	p.options.binaryPath = val
 	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
