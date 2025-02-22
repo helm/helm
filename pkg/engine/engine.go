@@ -413,7 +413,7 @@ func cleanupExecError(filename string, err error) error {
 		current = errors.Unwrap(current)
 	}
 	if current != nil {
-		return fmt.Errorf("%s", err.Error())
+		return err
 	}
 
 	var prev TraceableError
@@ -439,7 +439,7 @@ func cleanupExecError(filename string, err error) error {
 	}
 	if strings.TrimSpace(finalErrorString) == "" {
 		// Fallback to original error message if nothing was extracted
-		return fmt.Errorf("%s", err.Error())
+		return err
 	}
 
 	return fmt.Errorf("%s", finalErrorString)
