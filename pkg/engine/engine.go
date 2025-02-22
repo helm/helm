@@ -370,6 +370,9 @@ func cleanupExecError(filename string, err error) error {
 		if current == nil {
 			break
 		}
+		if i == maxIterations-1 {
+			return err
+		}
 
 		var traceable TraceableError
 		if execErrFmt.MatchString(current.Error()) {
@@ -400,34 +403,24 @@ func cleanupExecError(filename string, err error) error {
 		} else {
 			return err
 		}
+		if len(fileLocations) > 0 {
+			lastErr := fileLocations[len(fileLocations)-1]
+			if lastErr.message == traceable.message &&
+				lastErr.location == traceable.location &&
+				lastErr.executedFunction == traceable.executedFunction {
+				current = errors.Unwrap(current)
+				continue
+			}
+		}
 		fileLocations = append(fileLocations, traceable)
 		current = errors.Unwrap(current)
-	}
-	if current != nil {
-		return err
-	}
-
-	var prev TraceableError
-	for i := len(fileLocations) - 1; i >= 0; i-- {
-		current := fileLocations[i]
-		if i == len(fileLocations)-1 {
-			prev = current
-			continue
-		}
-
-		if current.message == prev.message && current.location == prev.location && current.executedFunction == prev.executedFunction {
-			fileLocations[i].message = ""
-		}
-		prev = current
 	}
 
 	finalErrorString := ""
 	for _, fileLocation := range fileLocations {
-		if fileLocation.message == "" {
-			continue
-		}
 		finalErrorString = finalErrorString + fileLocation.String()
 	}
+
 	if strings.TrimSpace(finalErrorString) == "" {
 		// Fallback to original error message if nothing was extracted
 		return err
