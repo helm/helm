@@ -22,6 +22,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/chart/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/util"
@@ -657,9 +659,8 @@ func TestDedupeRepos(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := dedupeRepos(tt.repos); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("received:\n%v\nwant:\n%v", got, tt.want)
-			}
+			got := dedupeRepos(tt.repos)
+			assert.ElementsMatch(t, tt.want, got)
 		})
 	}
 }
