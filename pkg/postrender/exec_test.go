@@ -121,6 +121,21 @@ func TestExecRun(t *testing.T) {
 	is.Contains(output.String(), "BARTEST")
 }
 
+func TestExecRunWithNoOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// the actual Run test uses a basic sed example, so skip this test on windows
+		t.Skip("skipping on windows")
+	}
+	is := assert.New(t)
+	testpath := setupTestingScript(t)
+
+	renderer, err := NewExec(testpath)
+	require.NoError(t, err)
+
+	_, err = renderer.Run(bytes.NewBufferString(""))
+	is.Error(err)
+}
+
 func TestNewExecWithOneArgsRun(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// the actual Run test uses a basic sed example, so skip this test on windows
