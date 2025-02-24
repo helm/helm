@@ -465,9 +465,8 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 
 	if len(updateErrors) != 0 {
 		return res, errors.Errorf(strings.Join(updateErrors, " && "))
-	} else {
-		return res, nil
 	}
+	return res, nil
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
