@@ -40,7 +40,7 @@ import (
 	"helm.sh/helm/v4/pkg/postrender"
 	"helm.sh/helm/v4/pkg/registry"
 	"helm.sh/helm/v4/pkg/release"
-	"helm.sh/helm/v4/pkg/releaseutil"
+	releaseutil "helm.sh/helm/v4/pkg/release/util"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"helm.sh/helm/v4/pkg/time"

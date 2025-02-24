@@ -30,7 +30,7 @@ import (
 	"helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/release"
-	"helm.sh/helm/v4/pkg/releaseutil"
+	releaseutil "helm.sh/helm/v4/pkg/release/util"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
 

@@ -23,7 +23,7 @@ import (
 	"github.com/pkg/errors"
 
 	rspb "helm.sh/helm/v4/pkg/release"
-	relutil "helm.sh/helm/v4/pkg/releaseutil"
+	relutil "helm.sh/helm/v4/pkg/release/util"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
