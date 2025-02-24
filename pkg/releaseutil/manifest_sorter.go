@@ -26,8 +26,8 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/release"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 // Manifest represents a manifest file, which has a name and some content.
@@ -41,7 +41,6 @@ type Manifest struct {
 type manifestFile struct {
 	entries map[string]string
 	path    string
-	apis    chartutil.VersionSet
 }
 
 // result is an intermediate structure used during sorting.
@@ -75,7 +74,7 @@ var events = map[string]release.HookEvent{
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func SortManifests(files map[string]string, apis chartutil.VersionSet, ordering KindSortOrder) ([]*release.Hook, []Manifest, error) {
+func SortManifests(files map[string]string, _ chartutil.VersionSet, ordering KindSortOrder) ([]*release.Hook, []Manifest, error) {
 	result := &result{}
 
 	var sortedFilePaths []string
@@ -100,7 +99,6 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, ordering 
 		manifestFile := &manifestFile{
 			entries: SplitManifests(content),
 			path:    filePath,
-			apis:    apis,
 		}
 
 		if err := manifestFile.sort(result); err != nil {
@@ -130,6 +128,14 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, ordering 
 //	 metadata:
 //			annotations:
 //				helm.sh/hook-delete-policy: hook-succeeded
+//
+// To determine the policy to output logs of the hook (for Pod and Job only), it looks for a YAML structure like this:
+//
+//	 kind: Pod
+//	 apiVersion: v1
+//	 metadata:
+//			annotations:
+//				helm.sh/hook-output-log-policy: hook-succeeded,hook-failed
 func (file *manifestFile) sort(result *result) error {
 	// Go through manifests in order found in file (function `SplitManifests` creates integer-sortable keys)
 	var sortedEntryKeys []string
@@ -168,13 +174,14 @@ func (file *manifestFile) sort(result *result) error {
 		hw := calculateHookWeight(entry)
 
 		h := &release.Hook{
-			Name:           entry.Metadata.Name,
-			Kind:           entry.Kind,
-			Path:           file.path,
-			Manifest:       m,
-			Events:         []release.HookEvent{},
-			Weight:         hw,
-			DeletePolicies: []release.HookDeletePolicy{},
+			Name:              entry.Metadata.Name,
+			Kind:              entry.Kind,
+			Path:              file.path,
+			Manifest:          m,
+			Events:            []release.HookEvent{},
+			Weight:            hw,
+			DeletePolicies:    []release.HookDeletePolicy{},
+			OutputLogPolicies: []release.HookOutputLogPolicy{},
 		}
 
 		isUnknownHook := false
@@ -197,6 +204,10 @@ func (file *manifestFile) sort(result *result) error {
 
 		operateAnnotationValues(entry, release.HookDeleteAnnotation, func(value string) {
 			h.DeletePolicies = append(h.DeletePolicies, release.HookDeletePolicy(value))
+		})
+
+		operateAnnotationValues(entry, release.HookOutputLogAnnotation, func(value string) {
+			h.OutputLogPolicies = append(h.OutputLogPolicies, release.HookOutputLogPolicy(value))
 		})
 	}
 

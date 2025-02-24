@@ -33,10 +33,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/engine"
-	"helm.sh/helm/v3/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	"helm.sh/helm/v4/pkg/engine"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 var (
@@ -45,7 +45,17 @@ var (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values map[string]interface{}, namespace string, strict bool) {
+func Templates(linter *support.Linter, values map[string]interface{}, namespace string, _ bool) {
+	TemplatesWithKubeVersion(linter, values, namespace, nil)
+}
+
+// TemplatesWithKubeVersion lints the templates in the Linter, allowing to specify the kubernetes version.
+func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) {
+	TemplatesWithSkipSchemaValidation(linter, values, namespace, kubeVersion, false)
+}
+
+// TemplatesWithSkipSchemaValidation lints the templates in the Linter, allowing to specify the kubernetes version and if schema validation is enabled or not.
+func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, skipSchemaValidation bool) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
@@ -70,9 +80,14 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		Namespace: namespace,
 	}
 
+	caps := chartutil.DefaultCapabilities.Copy()
+	if kubeVersion != nil {
+		caps.KubeVersion = *kubeVersion
+	}
+
 	// lint ignores import-values
 	// See https://github.com/helm/helm/issues/9658
-	if err := chartutil.ProcessDependenciesWithMerge(chart, values); err != nil {
+	if err := chartutil.ProcessDependencies(chart, values); err != nil {
 		return
 	}
 
@@ -80,7 +95,8 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 	if err != nil {
 		return
 	}
-	valuesToRender, err := chartutil.ToRenderValues(chart, cvals, options, nil)
+
+	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, cvals, options, caps, skipSchemaValidation)
 	if err != nil {
 		linter.RunLinterRule(support.ErrorSev, fpath, err)
 		return
@@ -150,7 +166,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 					// NOTE: set to warnings to allow users to support out-of-date kubernetes
 					// Refs https://github.com/helm/helm/issues/8596
 					linter.RunLinterRule(support.WarningSev, fpath, validateMetadataName(yamlStruct))
-					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct))
+					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct, kubeVersion))
 
 					linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(yamlStruct, renderedContent))
 					linter.RunLinterRule(support.ErrorSev, fpath, validateListAnnotations(yamlStruct, renderedContent))
@@ -264,10 +280,10 @@ func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
 	case "certificatesigningrequest":
 		// No validation.
 		// https://github.com/kubernetes/kubernetes/blob/v1.20.0/pkg/apis/certificates/validation/validation.go#L137-L140
-		return func(name string, prefix bool) []string { return nil }
+		return func(_ string, _ bool) []string { return nil }
 	case "role", "clusterrole", "rolebinding", "clusterrolebinding":
 		// https://github.com/kubernetes/kubernetes/blob/v1.20.0/pkg/apis/rbac/validation/validation.go#L32-L34
-		return func(name string, prefix bool) []string {
+		return func(name string, _ bool) []string {
 			return apipath.IsValidPathSegmentName(name)
 		}
 	default:

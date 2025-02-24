@@ -22,8 +22,7 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 func TestSortManifests(t *testing.T) {
@@ -139,7 +138,7 @@ metadata:
 		manifests[o.path] = o.manifest
 	}
 
-	hs, generic, err := SortManifests(manifests, chartutil.VersionSet{"v1", "v1beta1"}, InstallOrder)
+	hs, generic, err := SortManifests(manifests, nil, InstallOrder)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}

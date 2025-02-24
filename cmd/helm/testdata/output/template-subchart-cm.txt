@@ -11,7 +11,7 @@ kind: ConfigMap
 metadata:
   name: subchart-cm
 data:
-  value: bar
+  value: foo
 ---
 # Source: subchart/templates/subdir/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1

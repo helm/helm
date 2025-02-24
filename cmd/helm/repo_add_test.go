@@ -27,30 +27,28 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/internal/test/ensure"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/helmpath/xdg"
-	"helm.sh/helm/v3/pkg/repo"
-	"helm.sh/helm/v3/pkg/repo/repotest"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/helmpath/xdg"
+	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestRepoAddCmd(t *testing.T) {
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testserver/*.*"),
+	)
 	defer srv.Stop()
 
 	// A second test server is setup to verify URL changing
-	srv2, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv2 := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testserver/*.*"),
+	)
 	defer srv2.Stop()
 
-	tmpdir := filepath.Join(ensure.TempDir(t), "path-component.yaml/data")
-	err = os.MkdirAll(tmpdir, 0777)
-	if err != nil {
+	tmpdir := filepath.Join(t.TempDir(), "path-component.yaml/data")
+	if err := os.MkdirAll(tmpdir, 0777); err != nil {
 		t.Fatal(err)
 	}
 	repoFile := filepath.Join(tmpdir, "repositories.yaml")
@@ -82,23 +80,22 @@ func TestRepoAddCmd(t *testing.T) {
 }
 
 func TestRepoAdd(t *testing.T) {
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testserver/*.*"),
+	)
 	defer ts.Stop()
 
-	rootDir := ensure.TempDir(t)
+	rootDir := t.TempDir()
 	repoFile := filepath.Join(rootDir, "repositories.yaml")
 
 	const testRepoName = "test-name"
 
 	o := &repoAddOptions{
-		name:               testRepoName,
-		url:                ts.URL(),
-		forceUpdate:        false,
-		deprecatedNoUpdate: true,
-		repoFile:           repoFile,
+		name:        testRepoName,
+		url:         ts.URL(),
+		forceUpdate: false,
+		repoFile:    repoFile,
 	}
 	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
@@ -136,24 +133,23 @@ func TestRepoAdd(t *testing.T) {
 }
 
 func TestRepoAddCheckLegalName(t *testing.T) {
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testserver/*.*"),
+	)
 	defer ts.Stop()
 	defer resetEnv()()
 
 	const testRepoName = "test-hub/test-name"
 
-	rootDir := ensure.TempDir(t)
-	repoFile := filepath.Join(ensure.TempDir(t), "repositories.yaml")
+	rootDir := t.TempDir()
+	repoFile := filepath.Join(t.TempDir(), "repositories.yaml")
 
 	o := &repoAddOptions{
-		name:               testRepoName,
-		url:                ts.URL(),
-		forceUpdate:        false,
-		deprecatedNoUpdate: true,
-		repoFile:           repoFile,
+		name:        testRepoName,
+		url:         ts.URL(),
+		forceUpdate: false,
+		repoFile:    repoFile,
 	}
 	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
@@ -170,33 +166,33 @@ func TestRepoAddCheckLegalName(t *testing.T) {
 
 func TestRepoAddConcurrentGoRoutines(t *testing.T) {
 	const testName = "test-name"
-	repoFile := filepath.Join(ensure.TempDir(t), "repositories.yaml")
+	repoFile := filepath.Join(t.TempDir(), "repositories.yaml")
 	repoAddConcurrent(t, testName, repoFile)
 }
 
 func TestRepoAddConcurrentDirNotExist(t *testing.T) {
 	const testName = "test-name-2"
-	repoFile := filepath.Join(ensure.TempDir(t), "foo", "repositories.yaml")
+	repoFile := filepath.Join(t.TempDir(), "foo", "repositories.yaml")
 	repoAddConcurrent(t, testName, repoFile)
 }
 
 func TestRepoAddConcurrentNoFileExtension(t *testing.T) {
 	const testName = "test-name-3"
-	repoFile := filepath.Join(ensure.TempDir(t), "repositories")
+	repoFile := filepath.Join(t.TempDir(), "repositories")
 	repoAddConcurrent(t, testName, repoFile)
 }
 
 func TestRepoAddConcurrentHiddenFile(t *testing.T) {
 	const testName = "test-name-4"
-	repoFile := filepath.Join(ensure.TempDir(t), ".repositories")
+	repoFile := filepath.Join(t.TempDir(), ".repositories")
 	repoAddConcurrent(t, testName, repoFile)
 }
 
 func repoAddConcurrent(t *testing.T, testName, repoFile string) {
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testserver/*.*"),
+	)
 	defer ts.Stop()
 
 	var wg sync.WaitGroup
@@ -205,11 +201,10 @@ func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 		go func(name string) {
 			defer wg.Done()
 			o := &repoAddOptions{
-				name:               name,
-				url:                ts.URL(),
-				deprecatedNoUpdate: true,
-				forceUpdate:        false,
-				repoFile:           repoFile,
+				name:        name,
+				url:         ts.URL(),
+				forceUpdate: false,
+				repoFile:    repoFile,
 			}
 			if err := o.run(io.Discard); err != nil {
 				t.Error(err)
@@ -244,7 +239,11 @@ func TestRepoAddFileCompletion(t *testing.T) {
 }
 
 func TestRepoAddWithPasswordFromStdin(t *testing.T) {
-	srv := repotest.NewTempServerWithCleanupAndBasicAuth(t, "testdata/testserver/*.*")
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testserver/*.*"),
+		repotest.WithMiddleware(repotest.BasicAuthMiddleware(t)),
+	)
 	defer srv.Stop()
 
 	defer resetEnv()()
@@ -254,7 +253,7 @@ func TestRepoAddWithPasswordFromStdin(t *testing.T) {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
 
-	tmpdir := ensure.TempDir(t)
+	tmpdir := t.TempDir()
 	repoFile := filepath.Join(tmpdir, "repositories.yaml")
 
 	store := storageFixture()

@@ -24,12 +24,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
-	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart"
 )
 
 func TestLoadDir(t *testing.T) {
@@ -485,6 +486,115 @@ func TestLoadInvalidArchive(t *testing.T) {
 	_, err = Load(illegalChart)
 	if err.Error() != "validation: chart.metadata.name is required" {
 		t.Error(err)
+	}
+}
+
+func TestLoadValues(t *testing.T) {
+	testCases := map[string]struct {
+		data          []byte
+		expctedValues map[string]interface{}
+	}{
+		"It should load values correctly": {
+			data: []byte(`
+foo:
+  image: foo:v1
+bar:
+  version: v2
+`),
+			expctedValues: map[string]interface{}{
+				"foo": map[string]interface{}{
+					"image": "foo:v1",
+				},
+				"bar": map[string]interface{}{
+					"version": "v2",
+				},
+			},
+		},
+		"It should load values correctly with multiple documents in one file": {
+			data: []byte(`
+foo:
+  image: foo:v1
+bar:
+  version: v2
+---
+foo:
+  image: foo:v2
+`),
+			expctedValues: map[string]interface{}{
+				"foo": map[string]interface{}{
+					"image": "foo:v2",
+				},
+				"bar": map[string]interface{}{
+					"version": "v2",
+				},
+			},
+		},
+	}
+	for testName, testCase := range testCases {
+		t.Run(testName, func(tt *testing.T) {
+			values, err := LoadValues(bytes.NewReader(testCase.data))
+			if err != nil {
+				tt.Fatal(err)
+			}
+			if !reflect.DeepEqual(values, testCase.expctedValues) {
+				tt.Errorf("Expected values: %v, got %v", testCase.expctedValues, values)
+			}
+		})
+	}
+}
+
+func TestMergeValues(t *testing.T) {
+	nestedMap := map[string]interface{}{
+		"foo": "bar",
+		"baz": map[string]string{
+			"cool": "stuff",
+		},
+	}
+	anotherNestedMap := map[string]interface{}{
+		"foo": "bar",
+		"baz": map[string]string{
+			"cool":    "things",
+			"awesome": "stuff",
+		},
+	}
+	flatMap := map[string]interface{}{
+		"foo": "bar",
+		"baz": "stuff",
+	}
+	anotherFlatMap := map[string]interface{}{
+		"testing": "fun",
+	}
+
+	testMap := MergeMaps(flatMap, nestedMap)
+	equal := reflect.DeepEqual(testMap, nestedMap)
+	if !equal {
+		t.Errorf("Expected a nested map to overwrite a flat value. Expected: %v, got %v", nestedMap, testMap)
+	}
+
+	testMap = MergeMaps(nestedMap, flatMap)
+	equal = reflect.DeepEqual(testMap, flatMap)
+	if !equal {
+		t.Errorf("Expected a flat value to overwrite a map. Expected: %v, got %v", flatMap, testMap)
+	}
+
+	testMap = MergeMaps(nestedMap, anotherNestedMap)
+	equal = reflect.DeepEqual(testMap, anotherNestedMap)
+	if !equal {
+		t.Errorf("Expected a nested map to overwrite another nested map. Expected: %v, got %v", anotherNestedMap, testMap)
+	}
+
+	testMap = MergeMaps(anotherFlatMap, anotherNestedMap)
+	expectedMap := map[string]interface{}{
+		"testing": "fun",
+		"foo":     "bar",
+		"baz": map[string]string{
+			"cool":    "things",
+			"awesome": "stuff",
+		},
+	}
+	equal = reflect.DeepEqual(testMap, expectedMap)
+	if !equal {
+		t.Errorf("Expected a map with different keys to merge properly with another map. Expected: %v, got %v", expectedMap, testMap)
 	}
 }
 

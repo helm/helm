@@ -22,6 +22,18 @@ import (
 	"testing"
 )
 
+func TestTemplateCmdWithToml(t *testing.T) {
+
+	tests := []cmdTestCase{
+		{
+			name:   "check toToml function rendering",
+			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/issue-totoml"),
+			golden: "output/issue-totoml.txt",
+		},
+	}
+	runTestCmd(t, tests)
+}
+
 var chartPath = "testdata/testcharts/subchart"
 
 func TestTemplateCmd(t *testing.T) {
@@ -142,7 +154,7 @@ func TestTemplateCmd(t *testing.T) {
 			golden: "output/issue-9027.txt",
 		},
 		{
-			// Ensure that imported values take precedence over parent chart values
+			// Ensure that parent chart values take precedence over imported values
 			name:   "template with imported subchart values ensuring import",
 			cmd:    fmt.Sprintf("template '%s' --set configmap.enabled=true --set subchartb.enabled=true", chartPath),
 			golden: "output/template-subchart-cm.txt",

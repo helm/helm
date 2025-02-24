@@ -23,16 +23,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/internal/fileutil"
-	"helm.sh/helm/v3/internal/urlutil"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/provenance"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/internal/fileutil"
+	"helm.sh/helm/v4/internal/urlutil"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/provenance"
+	"helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 // VerificationStrategy describes a strategy for determining whether to verify a chart.
@@ -97,6 +96,8 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		return "", nil, err
 	}
 
+	c.Options = append(c.Options, getter.WithAcceptHeader("application/gzip,application/octet-stream"))
+
 	data, err := g.Get(u.String(), c.Options...)
 	if err != nil {
 		return "", nil, err
@@ -141,39 +142,6 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	return destfile, ver, nil
 }
 
-func (c *ChartDownloader) getOciURI(ref, version string, u *url.URL) (*url.URL, error) {
-	var tag string
-	var err error
-
-	// Evaluate whether an explicit version has been provided. Otherwise, determine version to use
-	_, errSemVer := semver.NewVersion(version)
-	if errSemVer == nil {
-		tag = version
-	} else {
-		// Retrieve list of repository tags
-		tags, err := c.RegistryClient.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", registry.OCIScheme)))
-		if err != nil {
-			return nil, err
-		}
-		if len(tags) == 0 {
-			return nil, errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
-		}
-
-		// Determine if version provided
-		// If empty, try to get the highest available tag
-		// If exact version, try to find it
-		// If semver constraint string, try to find a match
-		tag, err = registry.GetTagMatchingVersionOrConstraint(tags, version)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	u.Path = fmt.Sprintf("%s:%s", u.Path, tag)
-
-	return u, err
-}
-
 // ResolveChartVersion resolves a chart reference to a URL.
 //
 // It returns the URL and sets the ChartDownloader's Options that can fetch
@@ -196,7 +164,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	if registry.IsOCI(u.String()) {
-		return c.getOciURI(ref, version, u)
+		return c.RegistryClient.ValidateReference(ref, version, u)
 	}
 
 	rf, err := loadRepoConfig(c.RepositoryConfig)

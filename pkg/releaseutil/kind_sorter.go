@@ -19,7 +19,7 @@ package releaseutil
 import (
 	"sort"
 
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 // KindSortOrder is an ordering of Kinds.
@@ -132,7 +132,7 @@ func sortHooksByKind(hooks []*release.Hook, ordering KindSortOrder) []*release.H
 	return h
 }
 
-func lessByKind(a interface{}, b interface{}, kindA string, kindB string, o KindSortOrder) bool {
+func lessByKind(_ interface{}, _ interface{}, kindA string, kindB string, o KindSortOrder) bool {
 	ordering := make(map[string]int, len(o))
 	for v, k := range o {
 		ordering[k] = v

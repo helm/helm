@@ -24,16 +24,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
 )
 
 const rollbackDesc = `
 This command rolls back a release to a previous revision.
 
 The first argument of the rollback command is the name of a release, and the
-second is a revision (version) number. If this argument is omitted, it will
-roll back to the previous release.
+second is a revision (version) number. If this argument is omitted or set to
+0, it will roll back to the previous release.
 
 To see revision numbers, run 'helm history RELEASE'.
 `
@@ -46,7 +46,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "roll back a release to a previous revision",
 		Long:  rollbackDesc,
 		Args:  require.MinimumNArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
 				return compListReleases(toComplete, args, cfg)
 			}
@@ -55,9 +55,9 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return compListRevisions(toComplete, cfg, args[0])
 			}
 
-			return nil, cobra.ShellCompDirectiveNoFileComp
+			return noMoreArgsComp()
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			if len(args) > 1 {
 				ver, err := strconv.Atoi(args[1])
 				if err != nil {

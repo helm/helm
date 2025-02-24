@@ -22,14 +22,14 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/repo/repotest"
+	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestShowPreReleaseChart(t *testing.T) {
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+	)
 	defer srv.Stop()
 
 	if err := srv.LinkIndices(); err != nil {

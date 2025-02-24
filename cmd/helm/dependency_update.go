@@ -16,15 +16,16 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"io"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/downloader"
+	"helm.sh/helm/v4/pkg/getter"
 )
 
 const dependencyUpDesc = `
@@ -43,7 +44,7 @@ in the Chart.yaml file, but (b) at the wrong version.
 `
 
 // newDependencyUpdateCmd creates a new dependency update command.
-func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+func newDependencyUpdateCmd(_ *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewDependency()
 
 	cmd := &cobra.Command{
@@ -52,18 +53,24 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 		Short:   "update charts/ based on the contents of Chart.yaml",
 		Long:    dependencyUpDesc,
 		Args:    require.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			chartpath := "."
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+
 			man := &downloader.Manager{
 				Out:              out,
 				ChartPath:        chartpath,
 				Keyring:          client.Keyring,
 				SkipUpdate:       client.SkipRefresh,
 				Getters:          getter.All(settings),
-				RegistryClient:   cfg.RegistryClient,
+				RegistryClient:   registryClient,
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
@@ -76,9 +83,7 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
-	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
-	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	addDependencySubcommandFlags(f, client)
 
 	return cmd
 }

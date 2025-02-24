@@ -24,17 +24,17 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/internal/test/ensure"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/repo"
-	"helm.sh/helm/v3/pkg/repo/repotest"
+	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestUpdateCmd(t *testing.T) {
 	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool) error {
+	updater := func(repos []*repo.ChartRepository, out io.Writer, _ bool) error {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}
@@ -59,7 +59,7 @@ func TestUpdateCmdMultiple(t *testing.T) {
 	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool) error {
+	updater := func(repos []*repo.ChartRepository, out io.Writer, _ bool) error {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}
@@ -85,7 +85,7 @@ func TestUpdateCmdInvalid(t *testing.T) {
 	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool) error {
+	updater := func(repos []*repo.ChartRepository, out io.Writer, _ bool) error {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}
@@ -102,15 +102,15 @@ func TestUpdateCmdInvalid(t *testing.T) {
 }
 
 func TestUpdateCustomCacheCmd(t *testing.T) {
-	rootDir := ensure.TempDir(t)
+	rootDir := t.TempDir()
 	cachePath := filepath.Join(rootDir, "updcustomcache")
 	os.Mkdir(cachePath, os.ModePerm)
-	defer os.RemoveAll(cachePath)
 
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testserver/*.*"),
+	)
+
 	defer ts.Stop()
 
 	o := &repoUpdateOptions{
@@ -129,12 +129,11 @@ func TestUpdateCustomCacheCmd(t *testing.T) {
 
 func TestUpdateCharts(t *testing.T) {
 	defer resetEnv()()
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(t,
+		repotest.WithChartSourceGlob("testdata/testserver/*.*"),
+	)
 	defer ts.Stop()
 
 	r, err := repo.NewChartRepository(&repo.Entry{
@@ -164,12 +163,12 @@ func TestRepoUpdateFileCompletion(t *testing.T) {
 
 func TestUpdateChartsFail(t *testing.T) {
 	defer resetEnv()()
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testserver/*.*"),
+	)
 	defer ts.Stop()
 
 	var invalidURL = ts.URL() + "55"
@@ -197,12 +196,12 @@ func TestUpdateChartsFail(t *testing.T) {
 
 func TestUpdateChartsFailWithError(t *testing.T) {
 	defer resetEnv()()
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testserver/*.*"),
+	)
 	defer ts.Stop()
 
 	var invalidURL = ts.URL() + "55"

@@ -24,10 +24,10 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/homedir"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/downloader"
+	"helm.sh/helm/v4/pkg/getter"
 )
 
 const dependencyBuildDesc = `
@@ -41,7 +41,7 @@ If no lock file is found, 'helm dependency build' will mirror the behavior
 of 'helm dependency update'.
 `
 
-func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 	client := action.NewDependency()
 
 	cmd := &cobra.Command{
@@ -49,18 +49,24 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 		Short: "rebuild the charts/ directory based on the Chart.lock file",
 		Long:  dependencyBuildDesc,
 		Args:  require.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			chartpath := "."
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+
 			man := &downloader.Manager{
 				Out:              out,
 				ChartPath:        chartpath,
 				Keyring:          client.Keyring,
 				SkipUpdate:       client.SkipRefresh,
 				Getters:          getter.All(settings),
-				RegistryClient:   cfg.RegistryClient,
+				RegistryClient:   registryClient,
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
@@ -68,7 +74,7 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible
 			}
-			err := man.Build()
+			err = man.Build()
 			if e, ok := err.(downloader.ErrRepoNotFound); ok {
 				return fmt.Errorf("%s. Please add the missing repos via 'helm repo add'", e.Error())
 			}
@@ -77,9 +83,7 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&client.Verify, "verify", false, "verify the packages against signatures")
-	f.StringVar(&client.Keyring, "keyring", defaultKeyring(), "keyring containing public keys")
-	f.BoolVar(&client.SkipRefresh, "skip-refresh", false, "do not refresh the local repository cache")
+	addDependencySubcommandFlags(f, client)
 
 	return cmd
 }

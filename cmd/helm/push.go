@@ -22,9 +22,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/pusher"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/pusher"
 )
 
 const pushDesc = `
@@ -40,6 +40,8 @@ type registryPushOptions struct {
 	caFile                string
 	insecureSkipTLSverify bool
 	plainHTTP             bool
+	password              string
+	username              string
 }
 
 func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -50,7 +52,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Short: "push a chart to remote",
 		Long:  pushDesc,
 		Args:  require.MinimumNArgs(2),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
 				// Do file completion for the chart file to push
 				return nil, cobra.ShellCompDirectiveDefault
@@ -65,10 +67,13 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 				return comps, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace
 			}
-			return nil, cobra.ShellCompDirectiveNoFileComp
+			return noMoreArgsComp()
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			registryClient, err := newRegistryClient(o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSverify, o.plainHTTP)
+		RunE: func(_ *cobra.Command, args []string) error {
+			registryClient, err := newRegistryClient(
+				o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSverify, o.plainHTTP, o.username, o.password,
+			)
+
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
@@ -96,6 +101,8 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart upload")
 	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart upload")
+	f.StringVar(&o.username, "username", "", "chart repository username where to locate the requested chart")
+	f.StringVar(&o.password, "password", "", "chart repository password where to locate the requested chart")
 
 	return cmd
 }

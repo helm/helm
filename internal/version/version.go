@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package version // import "helm.sh/helm/v3/internal/version"
+package version // import "helm.sh/helm/v4/internal/version"
 
 import (
 	"flag"
@@ -29,7 +29,7 @@ var (
 	//
 	// Increment major number for new feature additions and behavioral changes.
 	// Increment minor number for bug fixes and performance enhancements.
-	version = "v3.12"
+	version = "v4.0"
 
 	// metadata is extra build time data
 	metadata = ""

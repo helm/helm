@@ -24,14 +24,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/repo/repotest"
+	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestPullCmd(t *testing.T) {
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+	)
 	defer srv.Stop()
 
 	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
@@ -183,22 +183,27 @@ func TestPullCmd(t *testing.T) {
 			wantError:    true,
 		},
 		{
-			name:         "Fail fetching OCI chart without version specified",
-			args:         fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0", ociSrv.RegistryURL),
-			wantErrorMsg: "Error: --version flag is explicitly required for OCI registries",
-			wantError:    true,
+			name:       "Fetching OCI chart without version option specified",
+			args:       fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0", ociSrv.RegistryURL),
+			expectFile: "./oci-dependent-chart-0.1.0.tgz",
 		},
 		{
-			name:      "Fail fetching OCI chart without version specified",
-			args:      fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0 --version 0.1.0", ociSrv.RegistryURL),
-			wantError: true,
+			name:       "Fetching OCI chart with version specified",
+			args:       fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0 --version 0.1.0", ociSrv.RegistryURL),
+			expectFile: "./oci-dependent-chart-0.1.0.tgz",
+		},
+		{
+			name:         "Fail fetching OCI chart with version mismatch",
+			args:         fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.2.0 --version 0.1.0", ociSrv.RegistryURL),
+			wantErrorMsg: "Error: chart reference and version mismatch: 0.2.0 is not 0.1.0",
+			wantError:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			outdir := srv.Root()
-			cmd := fmt.Sprintf("fetch %s -d '%s' --repository-config %s --repository-cache %s --registry-config %s",
+			cmd := fmt.Sprintf("fetch %s -d '%s' --repository-config %s --repository-cache %s --registry-config %s --plain-http",
 				tt.args,
 				outdir,
 				filepath.Join(outdir, "repositories.yaml"),
@@ -252,18 +257,12 @@ func TestPullCmd(t *testing.T) {
 }
 
 func TestPullWithCredentialsCmd(t *testing.T) {
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+		repotest.WithMiddleware(repotest.BasicAuthMiddleware(t)),
+	)
 	defer srv.Stop()
-
-	srv.WithMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		username, password, ok := r.BasicAuth()
-		if !ok || username != "username" || password != "password" {
-			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
-		}
-	}))
 
 	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.FileServer(http.Dir(srv.Root())).ServeHTTP(w, r)

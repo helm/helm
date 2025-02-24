@@ -22,17 +22,17 @@ import (
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/internal/test/ensure"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/helmpath"
+	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 func TestCreateCmd(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 	cname := "testchart"
-	dir := ensure.TempDir(t)
+	dir := t.TempDir()
 	defer testChdir(t, dir)()
 
 	// Run a create
@@ -61,7 +61,7 @@ func TestCreateCmd(t *testing.T) {
 }
 
 func TestCreateStarterCmd(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 	cname := "testchart"
 	defer resetEnv()()
 	os.MkdirAll(helmpath.CachePath(), 0755)
@@ -127,7 +127,7 @@ func TestCreateStarterCmd(t *testing.T) {
 
 func TestCreateStarterAbsoluteCmd(t *testing.T) {
 	defer resetEnv()()
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 	cname := "testchart"
 
 	// Create a starter.

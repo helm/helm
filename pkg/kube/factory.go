@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube // import "helm.sh/helm/v3/pkg/kube"
+package kube // import "helm.sh/helm/v4/pkg/kube"
 
 import (
 	"k8s.io/cli-runtime/pkg/resource"
@@ -26,6 +26,12 @@ import (
 
 // Factory provides abstractions that allow the Kubectl command to be extended across multiple types
 // of resources and different API sets.
+// This interface is a minimal copy of the kubectl Factory interface containing only the functions
+// needed by Helm. Since Kubernetes Go APIs, including interfaces, can change in any minor release
+// this interface is not covered by the Helm backwards compatibility guarantee. The reasons for the
+// minimal copy is that it does not include the full interface. Changes or additions to functions
+// Helm does not need are not impacted or exposed. This minimizes the impact of Kubernetes changes
+// being exposed.
 type Factory interface {
 	// ToRawKubeConfigLoader return kubeconfig loader as-is
 	ToRawKubeConfigLoader() clientcmd.ClientConfig

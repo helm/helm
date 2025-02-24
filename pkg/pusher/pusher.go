@@ -19,8 +19,8 @@ package pusher
 import (
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 // options are generic parameters to be provided to the pusher during instantiation.
@@ -116,7 +116,7 @@ var ociProvider = Provider{
 
 // All finds all of the registered pushers as a list of Provider instances.
 // Currently, just the built-in pushers are collected.
-func All(settings *cli.EnvSettings) Providers {
+func All(_ *cli.EnvSettings) Providers {
 	result := Providers{ociProvider}
 	return result
 }

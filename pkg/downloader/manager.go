@@ -33,16 +33,16 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/internal/resolver"
-	"helm.sh/helm/v3/internal/third_party/dep/fs"
-	"helm.sh/helm/v3/internal/urlutil"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/internal/resolver"
+	"helm.sh/helm/v4/internal/third_party/dep/fs"
+	"helm.sh/helm/v4/internal/urlutil"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 // ErrRepoNotFound indicates that chart repositories can't be found in local repo cache.
@@ -173,7 +173,7 @@ func (m *Manager) Update() error {
 	// has some information about them and, when possible, the index files
 	// locally.
 	// TODO(mattfarina): Repositories should be explicitly added by end users
-	// rather than automattic. In Helm v4 require users to add repositories. They
+	// rather than automatic. In Helm v4 require users to add repositories. They
 	// should have to add them in order to make sure they are aware of the
 	// repositories and opt-in to any locations, for security.
 	repoNames, err = m.ensureMissingRepos(repoNames, req)
@@ -246,7 +246,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 
 	destPath := filepath.Join(m.ChartPath, "charts")
-	tmpPath := filepath.Join(m.ChartPath, "tmpcharts")
+	tmpPath := filepath.Join(m.ChartPath, fmt.Sprintf("tmpcharts-%d", os.Getpid()))
 
 	// Check if 'charts' directory is not actually a directory. If it does not exist, create it.
 	if fi, err := os.Stat(destPath); err == nil {
@@ -659,14 +659,33 @@ func (m *Manager) UpdateRepositories() error {
 	return nil
 }
 
+// Filter out duplicate repos by URL, including those with trailing slashes.
+func dedupeRepos(repos []*repo.Entry) []*repo.Entry {
+	seen := make(map[string]*repo.Entry)
+	for _, r := range repos {
+		// Normalize URL by removing trailing slashes.
+		seenURL := strings.TrimSuffix(r.URL, "/")
+		seen[seenURL] = r
+	}
+	var unique []*repo.Entry
+	for _, r := range seen {
+		unique = append(unique, r)
+	}
+	return unique
+}
+
 func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 
 	var wg sync.WaitGroup
-	for _, c := range repos {
+
+	localRepos := dedupeRepos(repos)
+
+	for _, c := range localRepos {
 		r, err := repo.NewChartRepository(c, m.Getters)
 		if err != nil {
 			return err
 		}
+		r.CachePath = m.RepositoryCache
 		wg.Add(1)
 		go func(r *repo.ChartRepository) {
 			if _, err := r.DownloadIndexFile(); err != nil {
@@ -713,15 +732,21 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			var entry repo.ChartVersions
 			entry, err = findEntryByName(name, cr)
 			if err != nil {
+				// TODO: Where linting is skipped in this function we should
+				// refactor to remove naked returns while ensuring the same
+				// behavior
+				//nolint:nakedret
 				return
 			}
 			var ve *repo.ChartVersion
 			ve, err = findVersionedEntry(version, entry)
 			if err != nil {
+				//nolint:nakedret
 				return
 			}
 			url, err = normalizeURL(repoURL, ve.URLs[0])
 			if err != nil {
+				//nolint:nakedret
 				return
 			}
 			username = cr.Config.Username
@@ -731,10 +756,11 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			caFile = cr.Config.CAFile
 			certFile = cr.Config.CertFile
 			keyFile = cr.Config.KeyFile
+			//nolint:nakedret
 			return
 		}
 	}
-	url, err = repo.FindChartInRepoURL(repoURL, name, version, certFile, keyFile, caFile, m.Getters)
+	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
 	if err == nil {
 		return url, username, password, false, false, "", "", "", err
 	}

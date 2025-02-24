@@ -23,22 +23,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/repo/repotest"
+	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestInstall(t *testing.T) {
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+		repotest.WithMiddleware(repotest.BasicAuthMiddleware(t)),
+	)
 	defer srv.Stop()
-
-	srv.WithMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		username, password, ok := r.BasicAuth()
-		if !ok || username != "username" || password != "password" {
-			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
-		}
-	}))
 
 	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.FileServer(http.Dir(srv.Root())).ServeHTTP(w, r)
@@ -96,11 +90,17 @@ func TestInstall(t *testing.T) {
 			golden:    "output/install-no-args.txt",
 			wantError: true,
 		},
-		// Install, re-use name
+		// Install, reuse name
 		{
 			name:   "install and replace release",
 			cmd:    "install aeneas testdata/testcharts/empty --replace",
 			golden: "output/install-and-replace.txt",
+		},
+		// Install, take ownership
+		{
+			name:   "install and replace release",
+			cmd:    "install aeneas-take-ownership testdata/testcharts/empty --take-ownership",
+			golden: "output/install-and-take-ownership.txt",
 		},
 		// Install, with timeout
 		{
@@ -225,6 +225,12 @@ func TestInstall(t *testing.T) {
 			wantError: true,
 			golden:    "output/subchart-schema-cli-negative.txt",
 		},
+		// Install, values from yaml, schematized with errors but skip schema validation, expect success
+		{
+			name:   "install with schema file and schematized subchart, extra values from cli, skip schema validation",
+			cmd:    "install schema testdata/testcharts/chart-with-schema-and-subchart --set lastname=doe --set subchart-with-schema.age=-25 --skip-schema-validation",
+			golden: "output/schema.txt",
+		},
 		// Install deprecated chart
 		{
 			name:   "install with warning about deprecated chart",
@@ -251,6 +257,22 @@ func TestInstall(t *testing.T) {
 			name:   "basic install with credentials and no repo",
 			cmd:    fmt.Sprintf("install aeneas test/reqtest --username username --password password --repository-config %s --repository-cache %s", repoFile, srv.Root()),
 			golden: "output/install.txt",
+		},
+		{
+			name:   "dry-run displaying secret",
+			cmd:    "install secrets testdata/testcharts/chart-with-secret --dry-run",
+			golden: "output/install-dry-run-with-secret.txt",
+		},
+		{
+			name:   "dry-run hiding secret",
+			cmd:    "install secrets testdata/testcharts/chart-with-secret --dry-run --hide-secret",
+			golden: "output/install-dry-run-with-secret-hidden.txt",
+		},
+		{
+			name:      "hide-secret error without dry-run",
+			cmd:       "install secrets testdata/testcharts/chart-with-secret --hide-secret",
+			wantError: true,
+			golden:    "output/install-hide-secret.txt",
 		},
 	}
 

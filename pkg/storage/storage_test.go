@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package storage // import "helm.sh/helm/v3/pkg/storage"
+package storage // import "helm.sh/helm/v4/pkg/storage"
 
 import (
 	"fmt"
@@ -23,8 +23,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	rspb "helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/storage/driver"
+	rspb "helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 func TestStorageCreate(t *testing.T) {
@@ -293,7 +293,7 @@ func (d *MaxHistoryMockDriver) Create(key string, rls *rspb.Release) error {
 func (d *MaxHistoryMockDriver) Update(key string, rls *rspb.Release) error {
 	return d.Driver.Update(key, rls)
 }
-func (d *MaxHistoryMockDriver) Delete(key string) (*rspb.Release, error) {
+func (d *MaxHistoryMockDriver) Delete(_ string) (*rspb.Release, error) {
 	return nil, errMaxHistoryMockDriverSomethingHappened
 }
 func (d *MaxHistoryMockDriver) Get(key string) (*rspb.Release, error) {

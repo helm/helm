@@ -20,13 +20,15 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
+	"sort"
 	"time"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/release"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 const (
@@ -43,6 +45,7 @@ type ReleaseTesting struct {
 	// Used for fetching logs from test pods
 	Namespace string
 	Filters   map[string][]string
+	HideNotes bool
 }
 
 // NewReleaseTesting creates a new ReleaseTesting object with the given configuration.
@@ -73,7 +76,7 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 	executingHooks := []*release.Hook{}
 	if len(r.Filters[ExcludeNameFilter]) != 0 {
 		for _, h := range rel.Hooks {
-			if contains(r.Filters[ExcludeNameFilter], h.Name) {
+			if slices.Contains(r.Filters[ExcludeNameFilter], h.Name) {
 				skippedHooks = append(skippedHooks, h)
 			} else {
 				executingHooks = append(executingHooks, h)
@@ -84,7 +87,7 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 	if len(r.Filters[IncludeNameFilter]) != 0 {
 		executingHooks = nil
 		for _, h := range rel.Hooks {
-			if contains(r.Filters[IncludeNameFilter], h.Name) {
+			if slices.Contains(r.Filters[IncludeNameFilter], h.Name) {
 				executingHooks = append(executingHooks, h)
 			} else {
 				skippedHooks = append(skippedHooks, h)
@@ -112,13 +115,15 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 		return errors.Wrap(err, "unable to get kubernetes client to fetch pod logs")
 	}
 
-	for _, h := range rel.Hooks {
+	hooksByWight := append([]*release.Hook{}, rel.Hooks...)
+	sort.Stable(hookByWeight(hooksByWight))
+	for _, h := range hooksByWight {
 		for _, e := range h.Events {
 			if e == release.HookTest {
-				if contains(r.Filters[ExcludeNameFilter], h.Name) {
+				if slices.Contains(r.Filters[ExcludeNameFilter], h.Name) {
 					continue
 				}
-				if len(r.Filters[IncludeNameFilter]) > 0 && !contains(r.Filters[IncludeNameFilter], h.Name) {
+				if len(r.Filters[IncludeNameFilter]) > 0 && !slices.Contains(r.Filters[IncludeNameFilter], h.Name) {
 					continue
 				}
 				req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
@@ -137,13 +142,4 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 		}
 	}
 	return nil
-}
-
-func contains(arr []string, value string) bool {
-	for _, item := range arr {
-		if item == value {
-			return true
-		}
-	}
-	return false
 }

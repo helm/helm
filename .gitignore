@@ -5,8 +5,11 @@
 .idea/
 .vimrc
 .vscode/
+.devcontainer/
 _dist/
+_dist_versions/
 bin/
 vendor/
 # Ignores charts pulled for dependency build tests
 cmd/helm/testdata/testcharts/issue-7233/charts/*
+.pre-commit-config.yaml

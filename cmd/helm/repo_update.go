@@ -19,14 +19,15 @@ package main
 import (
 	"fmt"
 	"io"
+	"slices"
 	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 const updateDesc = `
@@ -57,10 +58,10 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 		Short:   "update information of available charts locally from chart repositories",
 		Long:    updateDesc,
 		Args:    require.MinimumNArgs(0),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compListRepos(toComplete, args), cobra.ShellCompDirectiveNoFileComp
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			o.repoFile = settings.RepositoryConfig
 			o.repoCache = settings.RepositoryCache
 			o.names = args
@@ -158,10 +159,5 @@ func checkRequestedRepos(requestedRepos []string, validRepos []*repo.Entry) erro
 }
 
 func isRepoRequested(repoName string, requestedRepos []string) bool {
-	for _, requestedRepo := range requestedRepos {
-		if repoName == requestedRepo {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(requestedRepos, repoName)
 }

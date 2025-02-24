@@ -23,9 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/internal/test/ensure"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
 )
 
 func TestPackage(t *testing.T) {
@@ -111,7 +110,7 @@ func TestPackage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cachePath := ensure.TempDir(t)
+			cachePath := t.TempDir()
 			defer testChdir(t, cachePath)()
 
 			if err := os.MkdirAll("toot", 0777); err != nil {
@@ -170,7 +169,7 @@ func TestSetAppVersion(t *testing.T) {
 	var ch *chart.Chart
 	expectedAppVersion := "app-version-foo"
 	chartToPackage := "testdata/testcharts/alpine"
-	dir := ensure.TempDir(t)
+	dir := t.TempDir()
 	cmd := fmt.Sprintf("package %s --destination=%s --app-version=%s", chartToPackage, dir, expectedAppVersion)
 	_, output, err := executeActionCommand(cmd)
 	if err != nil {
