@@ -22,18 +22,18 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v4/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
 	"helm.sh/helm/v4/pkg/provenance"
 	"helm.sh/helm/v4/pkg/repo"
 	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestDependencyBuildCmd(t *testing.T) {
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz"),
+	)
 	defer srv.Stop()
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	rootDir := srv.Root()
 	srv.LinkIndices()

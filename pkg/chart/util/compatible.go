@@ -14,24 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chartutil
+package util
 
-import (
-	"testing"
-)
+import "github.com/Masterminds/semver/v3"
 
-func TestErrorNoTableDoesNotPanic(t *testing.T) {
-	x := "empty"
+// IsCompatibleRange compares a version to a constraint.
+// It returns true if the version matches the constraint, and false in all other cases.
+func IsCompatibleRange(constraint, ver string) bool {
+	sv, err := semver.NewVersion(ver)
+	if err != nil {
+		return false
+	}
 
-	y := ErrNoTable{x}
-
-	t.Logf("error is: %s", y)
-}
-
-func TestErrorNoValueDoesNotPanic(t *testing.T) {
-	x := "empty"
-
-	y := ErrNoValue{x}
-
-	t.Logf("error is: %s", y)
+	c, err := semver.NewConstraint(constraint)
+	if err != nil {
+		return false
+	}
+	return c.Check(sv)
 }

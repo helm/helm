@@ -25,7 +25,7 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
 	"helm.sh/helm/v4/pkg/lint/support"
 )
 

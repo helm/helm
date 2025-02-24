@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -33,7 +34,7 @@ import (
 
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -354,11 +355,14 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WatchUntilReadyError = fmt.Errorf("Failed watch")
 	instAction.cfg.KubeClient = failer
+	outBuffer := &bytes.Buffer{}
+	failer.PrintingKubeClient = kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
 	vals := map[string]interface{}{}
 	res, err := instAction.Run(buildChart(), vals)
 	is.Error(err)
 	is.Contains(res.Info.Description, "failed post-install")
+	is.Equal("", outBuffer.String())
 	is.Equal(release.StatusFailed, res.Info.Status)
 }
 

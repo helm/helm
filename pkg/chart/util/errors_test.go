@@ -14,17 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube // import "helm.sh/helm/v4/pkg/kube"
+package util
 
-import "k8s.io/cli-runtime/pkg/genericclioptions"
+import (
+	"testing"
+)
 
-// GetConfig returns a Kubernetes client config.
-//
-// Deprecated
-func GetConfig(kubeconfig, context, namespace string) *genericclioptions.ConfigFlags {
-	cf := genericclioptions.NewConfigFlags(true)
-	cf.Namespace = &namespace
-	cf.Context = &context
-	cf.KubeConfig = &kubeconfig
-	return cf
+func TestErrorNoTableDoesNotPanic(t *testing.T) {
+	x := "empty"
+
+	y := ErrNoTable{x}
+
+	t.Logf("error is: %s", y)
+}
+
+func TestErrorNoValueDoesNotPanic(t *testing.T) {
+	x := "empty"
+
+	y := ErrNoValue{x}
+
+	t.Logf("error is: %s", y)
 }

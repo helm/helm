@@ -27,7 +27,7 @@ import (
 	"golang.org/x/term"
 
 	"helm.sh/helm/v4/pkg/chart/loader"
-	"helm.sh/helm/v4/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
 	"helm.sh/helm/v4/pkg/provenance"
 )
 

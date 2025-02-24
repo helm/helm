@@ -24,7 +24,7 @@ import (
 
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/provenance"
 	"helm.sh/helm/v4/pkg/repo"
@@ -32,10 +32,10 @@ import (
 )
 
 func TestDependencyUpdateCmd(t *testing.T) {
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz"),
+	)
 	defer srv.Stop()
 	t.Logf("Listening on directory %s", srv.Root())
 
@@ -151,10 +151,10 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 	defer resetEnv()()
 	ensure.HelmHome(t)
 
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz"),
+	)
 	defer srv.Stop()
 	t.Logf("Listening on directory %s", srv.Root())
 
@@ -248,10 +248,10 @@ func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
 }
 
 func setupMockRepoServer(t *testing.T) *repotest.Server {
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/testcharts/*.tgz")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz"),
+	)
 
 	t.Logf("Listening on directory %s", srv.Root())
 

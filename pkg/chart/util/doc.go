@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 /*
-Package chartutil contains tools for working with charts.
+package util contains tools for working with charts.
 
 Charts are described in the chart package (pkg/chart).
 This package provides utilities for serializing and deserializing charts.
@@ -42,4 +42,4 @@ into a Chart.
 When creating charts in memory, use the 'helm.sh/helm/pkg/chart'
 package directly.
 */
-package chartutil // import "helm.sh/helm/v4/pkg/chartutil"
+package util // import chartutil "helm.sh/helm/v4/pkg/chart/util"
