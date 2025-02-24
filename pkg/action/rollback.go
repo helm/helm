@@ -35,16 +35,17 @@ import (
 type Rollback struct {
 	cfg *Configuration
 
-	Version       int
-	Timeout       time.Duration
-	Wait          bool
-	WaitForJobs   bool
-	DisableHooks  bool
-	DryRun        bool
-	Recreate      bool // will (if true) recreate pods after a rollback.
-	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
-	CleanupOnFail bool
-	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
+	Version        int
+	Timeout        time.Duration
+	Wait           bool
+	WaitForJobs    bool
+	DisableHooks   bool
+	UseSourceHooks bool
+	DryRun         bool
+	Recreate       bool // will (if true) recreate pods after a rollback.
+	Force          bool // will (if true) force resource upgrade through uninstall/recreate if needed
+	CleanupOnFail  bool
+	MaxHistory     int // MaxHistory limits the maximum number of revisions saved per release
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -174,9 +175,16 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
 	}
 
+	// release whose hooks will be executed during rollback
+	releaseForHooks := targetRelease
+	if r.UseSourceHooks {
+		r.cfg.Log("Using hooks from current release")
+		releaseForHooks = currentRelease
+	}
+
 	// pre-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.Timeout); err != nil {
+		if err := r.cfg.execHook(releaseForHooks, release.HookPreRollback, r.Timeout); err != nil {
 			return targetRelease, err
 		}
 	} else {
@@ -243,7 +251,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.Timeout); err != nil {
+		if err := r.cfg.execHook(releaseForHooks, release.HookPostRollback, r.Timeout); err != nil {
 			return targetRelease, err
 		}
 	}
