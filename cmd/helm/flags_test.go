@@ -109,9 +109,9 @@ func TestPostRendererFlagSetOnce(t *testing.T) {
 	err := str.Set("echo")
 	require.NoError(t, err)
 
-	// Set the binary again to the same value is ok
+	// Set the binary again to the same value is not ok
 	err = str.Set("echo")
-	require.NoError(t, err)
+	require.Error(t, err)
 
 	// Set the binary again to a different value is not ok
 	err = str.Set("cat")
