@@ -94,7 +94,6 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 
 			v, err := semver.NewVersion(ch.Metadata.Version)
 			if err != nil {
-				// If version is not set and the version from the local chart is invalid
 				if d.Version == "" {
 					missing = append(missing, d.Name)
 				}
