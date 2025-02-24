@@ -68,14 +68,30 @@ func TestValidateChartYamlFormat(t *testing.T) {
 }
 
 func TestValidateChartName(t *testing.T) {
-	err := validateChartName(badChart)
-	if err == nil {
-		t.Errorf("validateChartName to return a linter error, got no error")
+	validChart := &chart.Chart{Metadata: &chart.Metadata{Name: "valid-chart"}}
+
+	invalidChartNames := []struct {
+		name     string
+		expected string
+	}{
+		{"ValidChart", "chart name \"ValidChart\" is invalid: must be lowercase and may only contain letters, numbers and dashes"},
+		{"chart.name", "chart name \"chart.name\" is invalid: must be lowercase and may only contain letters, numbers and dashes"},
+		{"chart/name", "chart name \"chart/name\" is invalid: chart names must not include path components"},
+		{"-bad-start", "chart name \"-bad-start\" is invalid: must be lowercase and may only contain letters, numbers and dashes"},
+		{"/path/to/chart", "chart name \"/path/to/chart\" is invalid: chart names must not include path components"},
 	}
 
-	err = validateChartName(badChartName)
-	if err == nil {
-		t.Error("expected validateChartName to return a linter error for an invalid name, got no error")
+	err := validateChartName(validChart.Metadata)
+	if err != nil {
+		t.Errorf("expected validateChartName to return no error for a valid name, got %s", err)
+	}
+
+	for _, chartName := range invalidChartNames {
+		badChart := &chart.Chart{Metadata: &chart.Metadata{Name: chartName.name}}
+		err := validateChartName(badChart.Metadata)
+		if err == nil || err.Error() != chartName.expected {
+			t.Errorf("validateChartName(%q) = %v, want error %q", chartName.name, err, chartName.expected)
+		}
 	}
 }
 
