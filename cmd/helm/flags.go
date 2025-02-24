@@ -144,8 +144,8 @@ func (p *postRendererString) Set(val string) error {
 	if val == "" {
 		return nil
 	}
-	if p.options.binaryPath != "" && p.options.binaryPath != val {
-		return errors.Errorf("cannot set post-renderer more than once, given: %s, previous: %s", val, p.options.binaryPath)
+	if p.options.binaryPath != "" {
+		return fmt.Errorf("cannot specify --post-renderer flag more than once")
 	}
 	p.options.binaryPath = val
 	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
