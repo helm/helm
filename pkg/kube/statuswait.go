@@ -187,6 +187,11 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logFn func
 			if rs == nil {
 				continue
 			}
+			// If a resource is already deleted before waiting has started, it will show as unknown
+      // this check ensures we don't wait forever for a resource that is already deleted
+			if rs.Status == status.UnknownStatus && desired == status.NotFoundStatus {
+				continue
+			}
 			rss = append(rss, rs)
 			if rs.Status != desired {
 				nonDesiredResources = append(nonDesiredResources, rs)
@@ -199,12 +204,12 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logFn func
 		}
 
 		if len(nonDesiredResources) > 0 {
-			// Log only the first resource so the user knows what they're waiting for without being overwhelmed
+			// Log a single resource so the user knows what they're waiting for without an overwhelming amount of output
 			sort.Slice(nonDesiredResources, func(i, j int) bool {
 				return nonDesiredResources[i].Identifier.Name < nonDesiredResources[j].Identifier.Name
 			})
 			first := nonDesiredResources[0]
-			logFn("waiting for resource: name: %s, kind: %s, desired status: %s, actual status: %s",
+			logFn("waiting for resource: name: %s, kind: %s, desired status: %s, actual status: %s \n",
 				first.Identifier.Name, first.Identifier.GroupKind.Kind, desired, first.Status)
 		}
 	}

@@ -160,6 +160,18 @@ func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured
 	return mapping.Resource
 }
 
+func getUnstructuredObjsFromManifests(t *testing.T, manifests []string) []runtime.Object {
+	objects := []runtime.Object{}
+	for _, manifest := range manifests {
+		m := make(map[string]interface{})
+		err := yaml.Unmarshal([]byte(manifest), &m)
+		assert.NoError(t, err)
+		resource := &unstructured.Unstructured{Object: m}
+		objects = append(objects, resource)
+	}
+	return objects
+}
+
 func TestStatusWaitForDelete(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -190,7 +202,6 @@ func TestStatusWaitForDelete(t *testing.T) {
 			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 			fakeMapper := testutil.NewFakeRESTMapper(
 				v1.SchemeGroupVersion.WithKind("Pod"),
-				appsv1.SchemeGroupVersion.WithKind("Deployment"),
 				batchv1.SchemeGroupVersion.WithKind("Job"),
 			)
 			statusWaiter := statusWaiter{
@@ -198,31 +209,25 @@ func TestStatusWaitForDelete(t *testing.T) {
 				client:     fakeClient,
 				log:        t.Logf,
 			}
-			createdObjs := []runtime.Object{}
-			for _, manifest := range tt.manifestsToCreate {
-				m := make(map[string]interface{})
-				err := yaml.Unmarshal([]byte(manifest), &m)
-				assert.NoError(t, err)
-				resource := &unstructured.Unstructured{Object: m}
-				createdObjs = append(createdObjs, resource)
-				gvr := getGVR(t, fakeMapper, resource)
-				err = fakeClient.Tracker().Create(gvr, resource, resource.GetNamespace())
+			objsToCreate := getUnstructuredObjsFromManifests(t, tt.manifestsToCreate)
+			for _, objToCreate := range objsToCreate {
+				u := objToCreate.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
 				assert.NoError(t, err)
 			}
-			for _, manifest := range tt.manifestsToDelete {
-				m := make(map[string]interface{})
-				err := yaml.Unmarshal([]byte(manifest), &m)
-				assert.NoError(t, err)
-				resource := &unstructured.Unstructured{Object: m}
-				gvr := getGVR(t, fakeMapper, resource)
+			objsToDelete := getUnstructuredObjsFromManifests(t, tt.manifestsToDelete)
+			for _, objToDelete := range objsToDelete {
+				u := objToDelete.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
 				go func() {
 					time.Sleep(timeUntilPodDelete)
-					err = fakeClient.Tracker().Delete(gvr, resource.GetNamespace(), resource.GetName())
+					err := fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName())
 					assert.NoError(t, err)
 				}()
 			}
 			resourceList := ResourceList{}
-			for _, obj := range createdObjs {
+			for _, obj := range objsToCreate {
 				list, err := c.Build(objBody(obj), false)
 				assert.NoError(t, err)
 				resourceList = append(resourceList, list...)
@@ -235,6 +240,35 @@ func TestStatusWaitForDelete(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
+}
+
+func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	timeout := time.Second
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		v1.SchemeGroupVersion.WithKind("Pod"),
+	)
+	statusWaiter := statusWaiter{
+		restMapper: fakeMapper,
+		client:     fakeClient,
+		log:        t.Logf,
+	}
+	createdObjs := []runtime.Object{}
+	m := make(map[string]interface{})
+	err := yaml.Unmarshal([]byte(podCurrentManifest), &m)
+	assert.NoError(t, err)
+	resource := &unstructured.Unstructured{Object: m}
+	createdObjs = append(createdObjs, resource)
+	resourceList := ResourceList{}
+	for _, obj := range createdObjs {
+		list, err := c.Build(objBody(obj), false)
+		assert.NoError(t, err)
+		resourceList = append(resourceList, list...)
+	}
+	err = statusWaiter.WaitForDelete(resourceList, timeout)
+	assert.NoError(t, err)
 }
 
 func TestStatusWait(t *testing.T) {
