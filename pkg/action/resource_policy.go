@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"helm.sh/helm/v4/pkg/kube"
-	"helm.sh/helm/v4/pkg/releaseutil"
+	releaseutil "helm.sh/helm/v4/pkg/release/util"
 )
 
 func filterManifestsToKeep(manifests []releaseutil.Manifest) (keep, remaining []releaseutil.Manifest) {
