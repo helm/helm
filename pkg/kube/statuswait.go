@@ -188,7 +188,7 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logFn func
 				continue
 			}
 			// If a resource is already deleted before waiting has started, it will show as unknown
-      // this check ensures we don't wait forever for a resource that is already deleted
+			// this check ensures we don't wait forever for a resource that is already deleted
 			if rs.Status == status.UnknownStatus && desired == status.NotFoundStatus {
 				continue
 			}
