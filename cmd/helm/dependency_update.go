@@ -24,8 +24,10 @@ import (
 
 	"helm.sh/helm/v4/cmd/helm/require"
 	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cache"
 	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 const dependencyUpDesc = `
@@ -63,7 +65,9 @@ func newDependencyUpdateCmd(_ *action.Configuration, out io.Writer) *cobra.Comma
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
-
+			// the helm client cli is run as a short-lived process so it's ok to use a simple
+			// implementation for a strictly growing cache
+			var c cache.Cache[*repo.IndexFile] = cache.NewConcurrentMapCache[*repo.IndexFile]()
 			man := &downloader.Manager{
 				Out:              out,
 				ChartPath:        chartpath,
@@ -74,6 +78,7 @@ func newDependencyUpdateCmd(_ *action.Configuration, out io.Writer) *cobra.Comma
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
+				IndexFileCache:   &c,
 			}
 			if client.Verify {
 				man.Verify = downloader.VerifyAlways

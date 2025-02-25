@@ -31,6 +31,7 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/pkg/cache"
 	"helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
@@ -205,6 +206,7 @@ type findChartInRepoURLOptions struct {
 	KeyFile               string
 	CAFile                string
 	ChartVersion          string
+	IndexFileCache        *cache.Cache[*IndexFile]
 }
 
 type FindChartInRepoURLOption func(*findChartInRepoURLOptions)
@@ -247,6 +249,13 @@ func WithInsecureSkipTLSverify(insecureSkipTLSverify bool) FindChartInRepoURLOpt
 	}
 }
 
+// WithIndexFileCache specifies the cache to use for index files
+func WithIndexFileCache(indexFileCache *cache.Cache[*IndexFile]) FindChartInRepoURLOption {
+	return func(options *findChartInRepoURLOptions) {
+		options.IndexFileCache = indexFileCache
+	}
+}
+
 // FindChartInRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories
 func FindChartInRepoURL(repoURL string, chartName string, getters getter.Providers, options ...FindChartInRepoURLOption) (string, error) {
@@ -286,7 +295,7 @@ func FindChartInRepoURL(repoURL string, chartName string, getters getter.Provide
 	}()
 
 	// Read the index file for the repository to get chart information and return chart URL
-	repoIndex, err := LoadIndexFile(idx)
+	repoIndex, err := LoadIndexFileWithCache(idx, opts.IndexFileCache)
 	if err != nil {
 		return "", err
 	}

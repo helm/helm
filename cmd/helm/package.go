@@ -26,9 +26,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cache"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 const packageDesc = `
@@ -91,6 +93,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 				}
 
 				if client.DependencyUpdate {
+					var c cache.Cache[*repo.IndexFile] = cache.NewConcurrentMapCache[*repo.IndexFile]()
 					downloadManager := &downloader.Manager{
 						Out:              io.Discard,
 						ChartPath:        path,
@@ -100,6 +103,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 						RegistryClient:   registryClient,
 						RepositoryConfig: settings.RepositoryConfig,
 						RepositoryCache:  settings.RepositoryCache,
+						IndexFileCache:   &c,
 					}
 
 					if err := downloadManager.Update(); err != nil {

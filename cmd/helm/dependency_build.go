@@ -26,8 +26,10 @@ import (
 
 	"helm.sh/helm/v4/cmd/helm/require"
 	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cache"
 	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 const dependencyBuildDesc = `
@@ -59,7 +61,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
-
+			var c cache.Cache[*repo.IndexFile] = cache.NewConcurrentMapCache[*repo.IndexFile]()
 			man := &downloader.Manager{
 				Out:              out,
 				ChartPath:        chartpath,
@@ -70,6 +72,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 				RepositoryConfig: settings.RepositoryConfig,
 				RepositoryCache:  settings.RepositoryCache,
 				Debug:            settings.Debug,
+				IndexFileCache:   &c,
 			}
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible

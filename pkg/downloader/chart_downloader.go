@@ -27,6 +27,7 @@ import (
 
 	"helm.sh/helm/v4/internal/fileutil"
 	"helm.sh/helm/v4/internal/urlutil"
+	"helm.sh/helm/v4/pkg/cache"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/provenance"
@@ -72,6 +73,8 @@ type ChartDownloader struct {
 	RegistryClient   *registry.Client
 	RepositoryConfig string
 	RepositoryCache  string
+	// IndexFileCache holds parsed IndexFiles as YAML parsing big files is a very slow operation
+	IndexFileCache *cache.Cache[*repo.IndexFile]
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -247,7 +250,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 
 	// Next, we need to load the index, and actually look up the chart.
 	idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
-	i, err := repo.LoadIndexFile(idxFile)
+	i, err := repo.LoadIndexFileWithCache(idxFile, c.IndexFileCache)
 	if err != nil {
 		return u, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
 	}
@@ -346,7 +349,7 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 		}
 
 		idxFile := filepath.Join(c.RepositoryCache, helmpath.CacheIndexFile(r.Config.Name))
-		i, err := repo.LoadIndexFile(idxFile)
+		i, err := repo.LoadIndexFileWithCache(idxFile, c.IndexFileCache)
 		if err != nil {
 			return nil, errors.Wrap(err, "no cached repo found. (try 'helm repo update')")
 		}
