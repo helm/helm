@@ -20,10 +20,8 @@ import (
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
-	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -523,7 +521,7 @@ func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 			},
 			args: args{
 				ctx:      context.TODO(),
-				resource: &resource.Info{Object: &appsv1beta1.StatefulSet{}, Name: "foo", Namespace: defaultNamespace},
+				resource: &resource.Info{Object: &appsv1.StatefulSet{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			ss:      newStatefulSet("foo", 1, 0, 0, 1, true),
 			want:    false,
@@ -539,7 +537,7 @@ func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 			},
 			args: args{
 				ctx:      context.TODO(),
-				resource: &resource.Info{Object: &appsv1beta1.StatefulSet{}, Name: "foo", Namespace: defaultNamespace},
+				resource: &resource.Info{Object: &appsv1.StatefulSet{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			ss:      newStatefulSet("bar", 1, 0, 1, 1, true),
 			want:    false,
@@ -689,7 +687,7 @@ func Test_ReadyChecker_IsReady_ReplicaSet(t *testing.T) {
 			},
 			args: args{
 				ctx:      context.TODO(),
-				resource: &resource.Info{Object: &extensionsv1beta1.ReplicaSet{}, Name: "foo", Namespace: defaultNamespace},
+				resource: &resource.Info{Object: &appsv1.ReplicaSet{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			rs:      newReplicaSet("foo", 1, 1, true),
 			want:    false,
@@ -705,7 +703,7 @@ func Test_ReadyChecker_IsReady_ReplicaSet(t *testing.T) {
 			},
 			args: args{
 				ctx:      context.TODO(),
-				resource: &resource.Info{Object: &extensionsv1beta1.ReplicaSet{}, Name: "foo", Namespace: defaultNamespace},
+				resource: &resource.Info{Object: &appsv1.ReplicaSet{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			rs:      newReplicaSet("bar", 1, 1, false),
 			want:    false,
