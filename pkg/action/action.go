@@ -19,6 +19,7 @@ package action
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -95,6 +96,9 @@ type Configuration struct {
 	Capabilities *chartutil.Capabilities
 
 	Log func(string, ...interface{})
+
+	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
+	HookOutputFunc func(namespace, pod, container string) io.Writer
 }
 
 // renderResources renders the templates in a chart
@@ -122,7 +126,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	var err2 error
 
 	// A `helm template` should not talk to the remote cluster. However, commands with the flag
-	//`--dry-run` with the value of `false`, `none`, or `server` should try to interact with the cluster.
+	// `--dry-run` with the value of `false`, `none`, or `server` should try to interact with the cluster.
 	// It may break in interesting and exotic ways because other data (e.g. discovery) is mocked.
 	if interactWithRemote && cfg.RESTClientGetter != nil {
 		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
@@ -422,6 +426,12 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	cfg.KubeClient = kc
 	cfg.Releases = store
 	cfg.Log = log
+	cfg.HookOutputFunc = func(_, _, _ string) io.Writer { return io.Discard }
 
 	return nil
+}
+
+// SetHookOutputFunc sets the HookOutputFunc on the Configuration.
+func (cfg *Configuration) SetHookOutputFunc(hookOutputFunc func(_, _, _ string) io.Writer) {
+	cfg.HookOutputFunc = hookOutputFunc
 }

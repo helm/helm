@@ -72,7 +72,7 @@ type Interface interface {
 	IsReachable() error
 }
 
-// InterfaceExt is introduced to avoid breaking backwards compatibility for Interface implementers.
+// InterfaceExt was introduced to avoid breaking backwards compatibility for Interface implementers.
 //
 // TODO Helm 4: Remove InterfaceExt and integrate its method(s) into the Interface.
 type InterfaceExt interface {
@@ -80,11 +80,22 @@ type InterfaceExt interface {
 	WaitForDelete(resources ResourceList, timeout time.Duration) error
 }
 
+// InterfaceLogs was introduced to avoid breaking backwards compatibility for Interface implementers.
+//
+// TODO Helm 4: Remove InterfaceLogs and integrate its method(s) into the Interface.
+type InterfaceLogs interface {
+	// GetPodList list all pods that match the specified listOptions
+	GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error)
+
+	// OutputContainerLogsForPodList output the logs for a pod list
+	OutputContainerLogsForPodList(podList *v1.PodList, namespace string, writerFunc func(namespace, pod, container string) io.Writer) error
+}
+
 // InterfaceDeletionPropagation is introduced to avoid breaking backwards compatibility for Interface implementers.
 //
 // TODO Helm 4: Remove InterfaceDeletionPropagation and integrate its method(s) into the Interface.
 type InterfaceDeletionPropagation interface {
-	// Delete destroys one or more resources. The deletion propagation is handled as per the given deletion propagation value.
+	// DeleteWithPropagationPolicy destroys one or more resources. The deletion propagation is handled as per the given deletion propagation value.
 	DeleteWithPropagationPolicy(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error)
 }
 
@@ -112,5 +123,6 @@ type InterfaceResources interface {
 
 var _ Interface = (*Client)(nil)
 var _ InterfaceExt = (*Client)(nil)
+var _ InterfaceLogs = (*Client)(nil)
 var _ InterfaceDeletionPropagation = (*Client)(nil)
 var _ InterfaceResources = (*Client)(nil)
