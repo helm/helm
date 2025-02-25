@@ -160,7 +160,7 @@ func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured
 	return mapping.Resource
 }
 
-func getUnstructuredObjsFromManifests(t *testing.T, manifests []string) []runtime.Object {
+func getRuntimeObjFromManifests(t *testing.T, manifests []string) []runtime.Object {
 	objects := []runtime.Object{}
 	for _, manifest := range manifests {
 		m := make(map[string]interface{})
@@ -170,6 +170,16 @@ func getUnstructuredObjsFromManifests(t *testing.T, manifests []string) []runtim
 		objects = append(objects, resource)
 	}
 	return objects
+}
+
+func getResourceListFromRuntimeObjs(t *testing.T, c *Client, objs []runtime.Object) ResourceList {
+	resourceList := ResourceList{}
+	for _, obj := range objs {
+		list, err := c.Build(objBody(obj), false)
+		assert.NoError(t, err)
+		resourceList = append(resourceList, list...)
+	}
+	return resourceList
 }
 
 func TestStatusWaitForDelete(t *testing.T) {
@@ -209,14 +219,14 @@ func TestStatusWaitForDelete(t *testing.T) {
 				client:     fakeClient,
 				log:        t.Logf,
 			}
-			objsToCreate := getUnstructuredObjsFromManifests(t, tt.manifestsToCreate)
+			objsToCreate := getRuntimeObjFromManifests(t, tt.manifestsToCreate)
 			for _, objToCreate := range objsToCreate {
 				u := objToCreate.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
 				assert.NoError(t, err)
 			}
-			objsToDelete := getUnstructuredObjsFromManifests(t, tt.manifestsToDelete)
+			objsToDelete := getRuntimeObjFromManifests(t, tt.manifestsToDelete)
 			for _, objToDelete := range objsToDelete {
 				u := objToDelete.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
@@ -226,12 +236,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 					assert.NoError(t, err)
 				}()
 			}
-			resourceList := ResourceList{}
-			for _, obj := range objsToCreate {
-				list, err := c.Build(objBody(obj), false)
-				assert.NoError(t, err)
-				resourceList = append(resourceList, list...)
-			}
+			resourceList := getResourceListFromRuntimeObjs(t, c, objsToCreate)
 			err := statusWaiter.WaitForDelete(resourceList, timeout)
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
@@ -255,19 +260,10 @@ func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 		client:     fakeClient,
 		log:        t.Logf,
 	}
-	createdObjs := []runtime.Object{}
-	m := make(map[string]interface{})
-	err := yaml.Unmarshal([]byte(podCurrentManifest), &m)
-	assert.NoError(t, err)
-	resource := &unstructured.Unstructured{Object: m}
-	createdObjs = append(createdObjs, resource)
-	resourceList := ResourceList{}
-	for _, obj := range createdObjs {
-		list, err := c.Build(objBody(obj), false)
-		assert.NoError(t, err)
-		resourceList = append(resourceList, list...)
-	}
-	err = statusWaiter.WaitForDelete(resourceList, timeout)
+	// Don't create the object to test that the wait for delete works when the object doesn't exist
+	objManifest := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+	resourceList := getResourceListFromRuntimeObjs(t, c, objManifest)
+	err := statusWaiter.WaitForDelete(resourceList, timeout)
 	assert.NoError(t, err)
 }
 
