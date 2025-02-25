@@ -20,7 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v4/pkg/action"
 )
 
 const registryHelp = `
@@ -29,11 +29,9 @@ This command consists of multiple subcommands to interact with registries.
 
 func newRegistryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "registry",
-		Short:             "login to or logout from a registry",
-		Long:              registryHelp,
-		Hidden:            !FeatureGateOCI.IsEnabled(),
-		PersistentPreRunE: checkOCIFeatureGate(),
+		Use:   "registry",
+		Short: "login to or logout from a registry",
+		Long:  registryHelp,
 	}
 	cmd.AddCommand(
 		newRegistryLoginCmd(cfg, out),

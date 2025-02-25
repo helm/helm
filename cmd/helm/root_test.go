@@ -21,9 +21,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/internal/test/ensure"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/helmpath/xdg"
+	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/helmpath/xdg"
 )
 
 func TestRootCmd(t *testing.T) {
@@ -77,7 +77,7 @@ func TestRootCmd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer ensure.HelmHome(t)()
+			ensure.HelmHome(t)
 
 			for k, v := range tt.envvars {
 				os.Setenv(k, v)

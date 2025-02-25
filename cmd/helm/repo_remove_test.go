@@ -24,20 +24,19 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/internal/test/ensure"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/repo"
-	"helm.sh/helm/v3/pkg/repo/repotest"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestRepoRemove(t *testing.T) {
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testserver/*.*"),
+	)
 	defer ts.Stop()
 
-	rootDir := ensure.TempDir(t)
+	rootDir := t.TempDir()
 	repoFile := filepath.Join(rootDir, "repositories.yaml")
 
 	const testRepoName = "test-name"
@@ -163,13 +162,14 @@ func testCacheFiles(t *testing.T, cacheIndexFile string, cacheChartsFile string,
 }
 
 func TestRepoRemoveCompletion(t *testing.T) {
-	ts, err := repotest.NewTempServerWithCleanup(t, "testdata/testserver/*.*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ts := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testserver/*.*"),
+	)
+
 	defer ts.Stop()
 
-	rootDir := ensure.TempDir(t)
+	rootDir := t.TempDir()
 	repoFile := filepath.Join(rootDir, "repositories.yaml")
 	repoCache := filepath.Join(rootDir, "cache/")
 
@@ -196,6 +196,10 @@ func TestRepoRemoveCompletion(t *testing.T) {
 	tests := []cmdTestCase{{
 		name:   "completion for repo remove",
 		cmd:    fmt.Sprintf("%s __completeNoDesc repo remove ''", repoSetup),
+		golden: "output/repo_list_comp.txt",
+	}, {
+		name:   "completion for repo remove, no filter",
+		cmd:    fmt.Sprintf("%s __completeNoDesc repo remove fo", repoSetup),
 		golden: "output/repo_list_comp.txt",
 	}, {
 		name:   "completion for repo remove repetition",

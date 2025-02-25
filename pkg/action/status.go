@@ -17,7 +17,11 @@ limitations under the License.
 package action
 
 import (
-	"helm.sh/helm/v3/pkg/release"
+	"bytes"
+	"errors"
+
+	"helm.sh/helm/v4/pkg/kube"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 // Status is the action for checking the deployment status of releases.
@@ -28,10 +32,9 @@ type Status struct {
 
 	Version int
 
-	// If true, display description to output format,
-	// only affect print type table.
-	// TODO Helm 4: Remove this flag and output the description by default.
-	ShowDescription bool
+	// ShowResourcesTable is used with ShowResources. When true this will cause
+	// the resulting objects to be retrieved as a kind=table.
+	ShowResourcesTable bool
 }
 
 // NewStatus creates a new Status object with the given configuration.
@@ -47,5 +50,33 @@ func (s *Status) Run(name string) (*release.Release, error) {
 		return nil, err
 	}
 
-	return s.cfg.releaseContent(name, s.Version)
+	rel, err := s.cfg.releaseContent(name, s.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	if kubeClient, ok := s.cfg.KubeClient.(kube.InterfaceResources); ok {
+		var resources kube.ResourceList
+		if s.ShowResourcesTable {
+			resources, err = kubeClient.BuildTable(bytes.NewBufferString(rel.Manifest), false)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			resources, err = s.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), false)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		resp, err := kubeClient.Get(resources, true)
+		if err != nil {
+			return nil, err
+		}
+
+		rel.Info.Resources = resp
+
+		return rel, nil
+	}
+	return nil, errors.New("unable to get kubeClient with interface InterfaceResources")
 }

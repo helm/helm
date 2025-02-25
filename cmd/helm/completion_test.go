@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 // Check if file completion should be performed according to parameter 'shouldBePerformed'
@@ -47,10 +47,10 @@ func checkFileCompletion(t *testing.T, cmdName string, shouldBePerformed bool) {
 	}
 	if !strings.Contains(out, "ShellCompDirectiveNoFileComp") != shouldBePerformed {
 		if shouldBePerformed {
-			t.Error(fmt.Sprintf("Unexpected directive ShellCompDirectiveNoFileComp when completing '%s'", cmdName))
+			t.Errorf("Unexpected directive ShellCompDirectiveNoFileComp when completing '%s'", cmdName)
 		} else {
 
-			t.Error(fmt.Sprintf("Did not receive directive ShellCompDirectiveNoFileComp when completing '%s'", cmdName))
+			t.Errorf("Did not receive directive ShellCompDirectiveNoFileComp when completing '%s'", cmdName)
 		}
 		t.Log(out)
 	}

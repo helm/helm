@@ -19,11 +19,12 @@ package action
 import (
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart"
 )
 
 func TestShow(t *testing.T) {
-	client := NewShow(ShowAll)
+	config := actionConfigFixture(t)
+	client := NewShow(ShowAll, config)
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*chart.File{
@@ -64,7 +65,8 @@ bar
 }
 
 func TestShowNoValues(t *testing.T) {
-	client := NewShow(ShowAll)
+	config := actionConfigFixture(t)
+	client := NewShow(ShowAll, config)
 	client.chart = new(chart.Chart)
 
 	// Regression tests for missing values. See issue #1024.
@@ -80,7 +82,8 @@ func TestShowNoValues(t *testing.T) {
 }
 
 func TestShowValuesByJsonPathFormat(t *testing.T) {
-	client := NewShow(ShowValues)
+	config := actionConfigFixture(t)
+	client := NewShow(ShowValues, config)
 	client.JSONPathTemplate = "{$.nestedKey.simpleKey}"
 	client.chart = buildChart(withSampleValues())
 	output, err := client.Run("")
@@ -94,7 +97,8 @@ func TestShowValuesByJsonPathFormat(t *testing.T) {
 }
 
 func TestShowCRDs(t *testing.T) {
-	client := NewShow(ShowCRDs)
+	config := actionConfigFixture(t)
+	client := NewShow(ShowCRDs, config)
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*chart.File{
@@ -122,7 +126,8 @@ bar
 }
 
 func TestShowNoReadme(t *testing.T) {
-	client := NewShow(ShowAll)
+	config := actionConfigFixture(t)
+	client := NewShow(ShowAll, config)
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*chart.File{

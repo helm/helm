@@ -39,9 +39,28 @@ type lookupFunc = func(apiversion string, resource string, namespace string, nam
 // This function is considered deprecated, and will be renamed in Helm 4. It will no
 // longer be a public function.
 func NewLookupFunction(config *rest.Config) lookupFunc {
-	return func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error) {
+	return newLookupFunction(clientProviderFromConfig{config: config})
+}
+
+type ClientProvider interface {
+	// GetClientFor returns a dynamic.NamespaceableResourceInterface suitable for interacting with resources
+	// corresponding to the provided apiVersion and kind, as well as a boolean indicating whether the resources
+	// are namespaced.
+	GetClientFor(apiVersion, kind string) (dynamic.NamespaceableResourceInterface, bool, error)
+}
+
+type clientProviderFromConfig struct {
+	config *rest.Config
+}
+
+func (c clientProviderFromConfig) GetClientFor(apiVersion, kind string) (dynamic.NamespaceableResourceInterface, bool, error) {
+	return getDynamicClientOnKind(apiVersion, kind, c.config)
+}
+
+func newLookupFunction(clientProvider ClientProvider) lookupFunc {
+	return func(apiversion string, kind string, namespace string, name string) (map[string]interface{}, error) {
 		var client dynamic.ResourceInterface
-		c, namespaced, err := getDynamicClientOnKind(apiversion, resource, config)
+		c, namespaced, err := clientProvider.GetClientFor(apiversion, kind)
 		if err != nil {
 			return map[string]interface{}{}, err
 		}
@@ -77,7 +96,7 @@ func NewLookupFunction(config *rest.Config) lookupFunc {
 	}
 }
 
-// getDynamicClientOnUnstructured returns a dynamic client on an Unstructured type. This client can be further namespaced.
+// getDynamicClientOnKind returns a dynamic client on an Unstructured type. This client can be further namespaced.
 func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config) (dynamic.NamespaceableResourceInterface, bool, error) {
 	gvk := schema.FromAPIVersionAndKind(apiversion, kind)
 	apiRes, err := getAPIResourceForGVK(gvk, config)
@@ -112,7 +131,7 @@ func getAPIResourceForGVK(gvk schema.GroupVersionKind, config *rest.Config) (met
 		return res, err
 	}
 	for _, resource := range resList.APIResources {
-		// if a resource contains a "/" it's referencing a subresource. we don't support suberesource for now.
+		// if a resource contains a "/" it's referencing a subresource. we don't support subresource for now.
 		if resource.Kind == gvk.Kind && !strings.Contains(resource.Name, "/") {
 			res = resource
 			res.Group = gvk.Group

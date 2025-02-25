@@ -18,22 +18,21 @@ package repo
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/internal/test/ensure"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/getter"
 )
 
 const (
@@ -116,7 +115,7 @@ type CustomGetter struct {
 	repoUrls []string
 }
 
-func (g *CustomGetter) Get(href string, options ...getter.Option) (*bytes.Buffer, error) {
+func (g *CustomGetter) Get(href string, _ ...getter.Option) (*bytes.Buffer, error) {
 	index := &IndexFile{
 		APIVersion: "v1",
 		Generated:  time.Now(),
@@ -133,7 +132,7 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	repoName := "gcs-repo"
 	repoURL := "gs://some-gcs-bucket"
 	myCustomGetter := &CustomGetter{}
-	customGetterConstructor := func(options ...getter.Option) (getter.Getter, error) {
+	customGetterConstructor := func(_ ...getter.Option) (getter.Getter, error) {
 		return myCustomGetter, nil
 	}
 	providers := getter.Providers{{
@@ -147,10 +146,9 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Problem loading chart repository from %s: %v", repoURL, err)
 	}
-	repo.CachePath = ensure.TempDir(t)
-	defer os.RemoveAll(repo.CachePath)
+	repo.CachePath = t.TempDir()
 
-	tempIndexFile, err := ioutil.TempFile("", "test-repo")
+	tempIndexFile, err := os.CreateTemp("", "test-repo")
 	if err != nil {
 		t.Fatalf("Failed to create temp index file: %v", err)
 	}
@@ -265,11 +263,11 @@ func verifyIndex(t *testing.T, actual *IndexFile) {
 // startLocalServerForTests Start the local helm server
 func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 	if handler == nil {
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			return nil, err
 		}
-		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Write(fileBytes)
 		})
 	}
@@ -280,11 +278,11 @@ func startLocalServerForTests(handler http.Handler) (*httptest.Server, error) {
 // startLocalTLSServerForTests Start the local helm server with TLS
 func startLocalTLSServerForTests(handler http.Handler) (*httptest.Server, error) {
 	if handler == nil {
-		fileBytes, err := ioutil.ReadFile("testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("testdata/local-index.yaml")
 		if err != nil {
 			return nil, err
 		}
-		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Write(fileBytes)
 		})
 	}
@@ -299,7 +297,12 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	chartURL, err := FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "", "", "", "", true, false, getter.All(&cli.EnvSettings{}))
+	chartURL, err := FindChartInRepoURL(
+		srv.URL,
+		"nginx",
+		getter.All(&cli.EnvSettings{}),
+		WithInsecureSkipTLSverify(true),
+	)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -307,10 +310,17 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 		t.Errorf("%s is not the valid URL", chartURL)
 	}
 
-	// If the insecureSkipTLsverify is false, it will return an error that contains "x509: certificate signed by unknown authority".
-	_, err = FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "0.1.0", "", "", "", false, false, getter.All(&cli.EnvSettings{}))
-
-	if !strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
+	// If the insecureSkipTLSVerify is false, it will return an error that contains "x509: certificate signed by unknown authority".
+	_, err = FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{}), WithChartVersion("0.1.0"))
+	// Go communicates with the platform and different platforms return different messages. Go itself tests darwin
+	// differently for its message. On newer versions of Darwin the message includes the "Acme Co" portion while older
+	// versions of Darwin do not. As there are people developing Helm using both old and new versions of Darwin we test
+	// for both messages.
+	if runtime.GOOS == "darwin" {
+		if !strings.Contains(err.Error(), "x509: “Acme Co” certificate is not trusted") && !strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
+			t.Errorf("Expected TLS error for function  FindChartInAuthAndTLSAndPassRepoURL not found, but got a different error (%v)", err)
+		}
+	} else if !strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
 		t.Errorf("Expected TLS error for function  FindChartInAuthAndTLSAndPassRepoURL not found, but got a different error (%v)", err)
 	}
 }
@@ -322,7 +332,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	chartURL, err := FindChartInRepoURL(srv.URL, "nginx", "", "", "", "", getter.All(&cli.EnvSettings{}))
+	chartURL, err := FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{}))
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -330,7 +340,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 		t.Errorf("%s is not the valid URL", chartURL)
 	}
 
-	chartURL, err = FindChartInRepoURL(srv.URL, "nginx", "0.1.0", "", "", "", getter.All(&cli.EnvSettings{}))
+	chartURL, err = FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{}), WithChartVersion("0.1.0"))
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -342,10 +352,10 @@ func TestFindChartInRepoURL(t *testing.T) {
 func TestErrorFindChartInRepoURL(t *testing.T) {
 
 	g := getter.All(&cli.EnvSettings{
-		RepositoryCache: ensure.TempDir(t),
+		RepositoryCache: t.TempDir(),
 	})
 
-	if _, err := FindChartInRepoURL("http://someserver/something", "nginx", "", "", "", "", g); err == nil {
+	if _, err := FindChartInRepoURL("http://someserver/something", "nginx", g); err == nil {
 		t.Errorf("Expected error for bad chart URL, but did not get any errors")
 	} else if !strings.Contains(err.Error(), `looks like "http://someserver/something" is not a valid chart repository or cannot be reached`) {
 		t.Errorf("Expected error for bad chart URL, but got a different error (%v)", err)
@@ -357,19 +367,19 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	if _, err = FindChartInRepoURL(srv.URL, "nginx1", "", "", "", "", g); err == nil {
+	if _, err = FindChartInRepoURL(srv.URL, "nginx1", g); err == nil {
 		t.Errorf("Expected error for chart not found, but did not get any errors")
 	} else if err.Error() != `chart "nginx1" not found in `+srv.URL+` repository` {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
 	}
 
-	if _, err = FindChartInRepoURL(srv.URL, "nginx1", "0.1.0", "", "", "", g); err == nil {
+	if _, err = FindChartInRepoURL(srv.URL, "nginx1", g, WithChartVersion("0.1.0")); err == nil {
 		t.Errorf("Expected error for chart not found, but did not get any errors")
 	} else if err.Error() != `chart "nginx1" version "0.1.0" not found in `+srv.URL+` repository` {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
 	}
 
-	if _, err = FindChartInRepoURL(srv.URL, "chartWithNoURL", "", "", "", "", g); err == nil {
+	if _, err = FindChartInRepoURL(srv.URL, "chartWithNoURL", g); err == nil {
 		t.Errorf("Expected error for no chart URLs available, but did not get any errors")
 	} else if err.Error() != `chart "chartWithNoURL" has no downloadable URLs` {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
@@ -377,35 +387,21 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 }
 
 func TestResolveReferenceURL(t *testing.T) {
-	chartURL, err := ResolveReferenceURL("http://localhost:8123/charts/", "nginx-0.2.0.tgz")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	if chartURL != "http://localhost:8123/charts/nginx-0.2.0.tgz" {
-		t.Errorf("%s", chartURL)
-	}
-
-	chartURL, err = ResolveReferenceURL("http://localhost:8123/charts-with-no-trailing-slash", "nginx-0.2.0.tgz")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	if chartURL != "http://localhost:8123/charts-with-no-trailing-slash/nginx-0.2.0.tgz" {
-		t.Errorf("%s", chartURL)
-	}
-
-	chartURL, err = ResolveReferenceURL("http://localhost:8123", "https://charts.helm.sh/stable/nginx-0.2.0.tgz")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	if chartURL != "https://charts.helm.sh/stable/nginx-0.2.0.tgz" {
-		t.Errorf("%s", chartURL)
-	}
-
-	chartURL, err = ResolveReferenceURL("http://localhost:8123/charts%2fwith%2fescaped%2fslash", "nginx-0.2.0.tgz")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	if chartURL != "http://localhost:8123/charts%2fwith%2fescaped%2fslash/nginx-0.2.0.tgz" {
-		t.Errorf("%s", chartURL)
+	for _, tt := range []struct {
+		baseURL, refURL, chartURL string
+	}{
+		{"http://localhost:8123/charts/", "nginx-0.2.0.tgz", "http://localhost:8123/charts/nginx-0.2.0.tgz"},
+		{"http://localhost:8123/charts-with-no-trailing-slash", "nginx-0.2.0.tgz", "http://localhost:8123/charts-with-no-trailing-slash/nginx-0.2.0.tgz"},
+		{"http://localhost:8123", "https://charts.helm.sh/stable/nginx-0.2.0.tgz", "https://charts.helm.sh/stable/nginx-0.2.0.tgz"},
+		{"http://localhost:8123/charts%2fwith%2fescaped%2fslash", "nginx-0.2.0.tgz", "http://localhost:8123/charts%2fwith%2fescaped%2fslash/nginx-0.2.0.tgz"},
+		{"http://localhost:8123/charts?with=queryparameter", "nginx-0.2.0.tgz", "http://localhost:8123/charts/nginx-0.2.0.tgz?with=queryparameter"},
+	} {
+		chartURL, err := ResolveReferenceURL(tt.baseURL, tt.refURL)
+		if err != nil {
+			t.Errorf("unexpected error in ResolveReferenceURL(%q, %q): %s", tt.baseURL, tt.refURL, err)
+		}
+		if chartURL != tt.chartURL {
+			t.Errorf("expected ResolveReferenceURL(%q, %q) to equal %q, got %q", tt.baseURL, tt.refURL, tt.chartURL, chartURL)
+		}
 	}
 }

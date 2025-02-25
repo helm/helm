@@ -21,8 +21,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
 )
 
 var getHelp = `
@@ -33,6 +33,7 @@ get extended information about the release, including:
 - The generated manifest file
 - The notes provided by the chart of the release
 - The hooks associated with the release
+- The metadata of the release
 `
 
 func newGetCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -48,6 +49,7 @@ func newGetCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd.AddCommand(newGetManifestCmd(cfg, out))
 	cmd.AddCommand(newGetHooksCmd(cfg, out))
 	cmd.AddCommand(newGetNotesCmd(cfg, out))
+	cmd.AddCommand(newGetMetadataCmd(cfg, out))
 
 	return cmd
 }

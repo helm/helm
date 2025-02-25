@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v3/pkg/storage/driver"
+package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -30,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
-	rspb "helm.sh/helm/v3/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release"
 )
 
 var _ Driver = (*Secrets)(nil)
@@ -72,6 +73,7 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 	}
 	// found the secret, decode the base64 data string
 	r, err := decodeRelease(string(obj.Data["release"]))
+	r.Labels = filterSystemLabels(obj.ObjectMeta.Labels)
 	return r, errors.Wrapf(err, "get: failed to decode data %q", key)
 }
 
@@ -136,6 +138,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 			secrets.Log("query: failed to decode release: %s", err)
 			continue
 		}
+		rls.Labels = item.ObjectMeta.Labels
 		results = append(results, rls)
 	}
 	return results, nil
@@ -148,7 +151,8 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
-	lbs.set("createdAt", strconv.Itoa(int(time.Now().Unix())))
+	lbs.fromMap(rls.Labels)
+	lbs.set("createdAt", fmt.Sprintf("%v", time.Now().Unix()))
 
 	// create a new secret to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)
@@ -173,7 +177,8 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 	var lbs labels
 
 	lbs.init()
-	lbs.set("modifiedAt", strconv.Itoa(int(time.Now().Unix())))
+	lbs.fromMap(rls.Labels)
+	lbs.set("modifiedAt", fmt.Sprintf("%v", time.Now().Unix()))
 
 	// create a new secret object to hold the release
 	obj, err := newSecretsObject(key, rls, lbs)
@@ -202,13 +207,12 @@ func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
 //
 // The following labels are used within each secret:
 //
-//    "modifiedAt"    - timestamp indicating when this secret was last modified. (set in Update)
-//    "createdAt"     - timestamp indicating when this secret was created. (set in Create)
-//    "version"        - version of the release.
-//    "status"         - status of the release (see pkg/release/status.go for variants)
-//    "owner"          - owner of the secret, currently "helm".
-//    "name"           - name of the release.
-//
+//	"modifiedAt"    - timestamp indicating when this secret was last modified. (set in Update)
+//	"createdAt"     - timestamp indicating when this secret was created. (set in Create)
+//	"version"        - version of the release.
+//	"status"         - status of the release (see pkg/release/status.go for variants)
+//	"owner"          - owner of the secret, currently "helm".
+//	"name"           - name of the release.
 func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, error) {
 	const owner = "helm"
 
@@ -221,6 +225,9 @@ func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, er
 	if lbs == nil {
 		lbs.init()
 	}
+
+	// apply custom labels
+	lbs.fromMap(rls.Labels)
 
 	// apply labels
 	lbs.set("name", rls.Name)

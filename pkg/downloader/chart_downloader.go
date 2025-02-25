@@ -25,13 +25,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/internal/experimental/registry"
-	"helm.sh/helm/v3/internal/fileutil"
-	"helm.sh/helm/v3/internal/urlutil"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/provenance"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/internal/fileutil"
+	"helm.sh/helm/v4/internal/urlutil"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/provenance"
+	"helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 // VerificationStrategy describes a strategy for determining whether to verify a chart.
@@ -96,6 +96,8 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		return "", nil, err
 	}
 
+	c.Options = append(c.Options, getter.WithAcceptHeader("application/gzip,application/octet-stream"))
+
 	data, err := g.Get(u.String(), c.Options...)
 	if err != nil {
 		return "", nil, err
@@ -103,7 +105,8 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 
 	name := filepath.Base(u.Path)
 	if u.Scheme == registry.OCIScheme {
-		name = fmt.Sprintf("%s-%s.tgz", name, version)
+		idx := strings.LastIndexByte(name, ':')
+		name = fmt.Sprintf("%s-%s.tgz", name[:idx], name[idx+1:])
 	}
 
 	destfile := filepath.Join(dest, name)
@@ -144,19 +147,24 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 // It returns the URL and sets the ChartDownloader's Options that can fetch
 // the URL using the appropriate Getter.
 //
-// A reference may be an HTTP URL, a 'reponame/chartname' reference, or a local path.
+// A reference may be an HTTP URL, an oci reference URL, a 'reponame/chartname'
+// reference, or a local path.
 //
 // A version is a SemVer string (1.2.3-beta.1+f334a6789).
 //
-//	- For fully qualified URLs, the version will be ignored (since URLs aren't versioned)
-//	- For a chart reference
-//		* If version is non-empty, this will return the URL for that version
-//		* If version is empty, this will return the URL for the latest version
-//		* If no version can be found, an error is returned
+//   - For fully qualified URLs, the version will be ignored (since URLs aren't versioned)
+//   - For a chart reference
+//   - If version is non-empty, this will return the URL for that version
+//   - If version is empty, this will return the URL for the latest version
+//   - If no version can be found, an error is returned
 func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, error) {
 	u, err := url.Parse(ref)
 	if err != nil {
 		return nil, errors.Errorf("invalid chart URL format: %s", ref)
+	}
+
+	if registry.IsOCI(u.String()) {
+		return c.RegistryClient.ValidateReference(ref, version, u)
 	}
 
 	rf, err := loadRepoConfig(c.RepositoryConfig)
@@ -254,31 +262,13 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	// TODO: Seems that picking first URL is not fully correct
-	u, err = url.Parse(cv.URLs[0])
+	resolvedURL, err := repo.ResolveReferenceURL(rc.URL, cv.URLs[0])
+
 	if err != nil {
 		return u, errors.Errorf("invalid chart URL format: %s", ref)
 	}
 
-	// If the URL is relative (no scheme), prepend the chart repo's base URL
-	if !u.IsAbs() {
-		repoURL, err := url.Parse(rc.URL)
-		if err != nil {
-			return repoURL, err
-		}
-		q := repoURL.Query()
-		// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
-		repoURL.Path = strings.TrimSuffix(repoURL.Path, "/") + "/"
-		u = repoURL.ResolveReference(u)
-		u.RawQuery = q.Encode()
-		// TODO add user-agent
-		if _, err := getter.NewHTTPGetter(getter.WithURL(rc.URL)); err != nil {
-			return repoURL, err
-		}
-		return u, err
-	}
-
-	// TODO add user-agent
-	return u, nil
+	return url.Parse(resolvedURL)
 }
 
 // VerifyChart takes a path to a chart archive and a keyring, and verifies the chart.

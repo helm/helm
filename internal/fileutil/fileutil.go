@@ -18,17 +18,16 @@ package fileutil
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"helm.sh/helm/v3/internal/third_party/dep/fs"
+	"helm.sh/helm/v4/internal/third_party/dep/fs"
 )
 
 // AtomicWriteFile atomically (as atomic as os.Rename allows) writes a file to a
 // disk.
 func AtomicWriteFile(filename string, reader io.Reader, mode os.FileMode) error {
-	tempFile, err := ioutil.TempFile(filepath.Split(filename))
+	tempFile, err := os.CreateTemp(filepath.Split(filename))
 	if err != nil {
 		return err
 	}

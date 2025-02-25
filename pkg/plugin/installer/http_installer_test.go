@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
+package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
 	"archive/tar"
@@ -21,7 +21,6 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -32,9 +31,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/internal/test/ensure"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/helmpath"
+	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 var _ Installer = new(HTTPInstaller)
@@ -45,7 +44,7 @@ type TestHTTPGetter struct {
 	MockError    error
 }
 
-func (t *TestHTTPGetter) Get(href string, _ ...getter.Option) (*bytes.Buffer, error) {
+func (t *TestHTTPGetter) Get(_ string, _ ...getter.Option) (*bytes.Buffer, error) {
 	return t.MockResponse, t.MockError
 }
 
@@ -80,7 +79,7 @@ func mockArchiveServer() *httptest.Server {
 }
 
 func TestHTTPInstaller(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	srv := mockArchiveServer()
 	defer srv.Close()
@@ -129,7 +128,7 @@ func TestHTTPInstaller(t *testing.T) {
 }
 
 func TestHTTPInstallerNonExistentVersion(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 	srv := mockArchiveServer()
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
@@ -165,7 +164,7 @@ func TestHTTPInstallerUpdate(t *testing.T) {
 	srv := mockArchiveServer()
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
@@ -209,11 +208,7 @@ func TestHTTPInstallerUpdate(t *testing.T) {
 func TestExtract(t *testing.T) {
 	source := "https://repo.localdomain/plugins/fake-plugin-0.0.1.tar.gz"
 
-	tempDir, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	// Set the umask to default open permissions so we can actually test
 	oldmask := syscall.Umask(0000)

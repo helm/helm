@@ -25,7 +25,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/pkg/plugin"
+	"helm.sh/helm/v4/pkg/plugin"
 )
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.

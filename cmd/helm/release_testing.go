@@ -25,9 +25,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/cli/output"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli/output"
 )
 
 const releaseTestHelp = `
@@ -39,7 +39,7 @@ The tests to be run are defined in the chart that was installed.
 
 func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewReleaseTesting(cfg)
-	var outfmt = output.Table
+	outfmt := output.Table
 	var outputLogs bool
 	var filter []string
 
@@ -48,20 +48,20 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 		Short: "run tests for a release",
 		Long:  releaseTestHelp,
 		Args:  require.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
-				return nil, cobra.ShellCompDirectiveNoFileComp
+				return noMoreArgsComp()
 			}
 			return compListReleases(toComplete, args, cfg)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
 			notName := regexp.MustCompile(`^!\s?name=`)
 			for _, f := range filter {
 				if strings.HasPrefix(f, "name=") {
-					client.Filters["name"] = append(client.Filters["name"], strings.TrimPrefix(f, "name="))
+					client.Filters[action.IncludeNameFilter] = append(client.Filters[action.IncludeNameFilter], strings.TrimPrefix(f, "name="))
 				} else if notName.MatchString(f) {
-					client.Filters["!name"] = append(client.Filters["!name"], notName.ReplaceAllLiteralString(f, ""))
+					client.Filters[action.ExcludeNameFilter] = append(client.Filters[action.ExcludeNameFilter], notName.ReplaceAllLiteralString(f, ""))
 				}
 			}
 			rel, runErr := client.Run(args[0])
@@ -72,7 +72,12 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 				return runErr
 			}
 
-			if err := outfmt.Write(out, &statusPrinter{rel, settings.Debug, false}); err != nil {
+			if err := outfmt.Write(out, &statusPrinter{
+				release:      rel,
+				debug:        settings.Debug,
+				showMetadata: false,
+				hideNotes:    client.HideNotes,
+			}); err != nil {
 				return err
 			}
 
@@ -92,6 +97,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&outputLogs, "logs", false, "dump the logs from test pods (this runs after all tests are complete, but before any cleanup)")
 	f.StringSliceVar(&filter, "filter", []string{}, "specify tests by attribute (currently \"name\") using attribute=value syntax or '!attribute=value' to exclude a test (can specify multiple or separate values with commas: name=test1,name=test2)")
+	f.BoolVar(&client.HideNotes, "hide-notes", false, "if set, do not show notes in test output. Does not affect presence in chart metadata")
 
 	return cmd
 }

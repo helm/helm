@@ -20,8 +20,8 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 func TestSortScore(t *testing.T) {
@@ -101,15 +101,15 @@ var indexfileEntries = map[string]repo.ChartVersions{
 	},
 }
 
-func loadTestIndex(t *testing.T, all bool) *Index {
+func loadTestIndex(_ *testing.T, all bool) *Index {
 	i := NewIndex()
 	i.AddRepo("testing", &repo.IndexFile{Entries: indexfileEntries}, all)
 	i.AddRepo("ztesting", &repo.IndexFile{Entries: map[string]repo.ChartVersions{
-		"pinta": {
+		"Pinta": {
 			{
 				URLs: []string{"http://example.com/charts/pinta-2.0.0.tgz"},
 				Metadata: &chart.Metadata{
-					Name:        "pinta",
+					Name:        "Pinta",
 					Version:     "2.0.0",
 					Description: "Two ship, version two",
 				},
@@ -170,14 +170,14 @@ func TestSearchByName(t *testing.T) {
 			query: "pinta",
 			expect: []*Result{
 				{Name: "testing/pinta"},
-				{Name: "ztesting/pinta"},
+				{Name: "ztesting/Pinta"},
 			},
 		},
 		{
 			name:  "repo-specific search for one result",
 			query: "ztesting/pinta",
 			expect: []*Result{
-				{Name: "ztesting/pinta"},
+				{Name: "ztesting/Pinta"},
 			},
 		},
 		{
@@ -199,7 +199,15 @@ func TestSearchByName(t *testing.T) {
 			query: "two",
 			expect: []*Result{
 				{Name: "testing/pinta"},
-				{Name: "ztesting/pinta"},
+				{Name: "ztesting/Pinta"},
+			},
+		},
+		{
+			name:  "search mixedCase and result should be mixedCase too",
+			query: "pinta",
+			expect: []*Result{
+				{Name: "testing/pinta"},
+				{Name: "ztesting/Pinta"},
 			},
 		},
 		{
@@ -207,7 +215,7 @@ func TestSearchByName(t *testing.T) {
 			query: "TWO",
 			expect: []*Result{
 				{Name: "testing/pinta"},
-				{Name: "ztesting/pinta"},
+				{Name: "ztesting/Pinta"},
 			},
 		},
 		{

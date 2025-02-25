@@ -19,15 +19,14 @@ package main
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/gosuri/uitable"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/cli/output"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/cli/output"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 func newRepoListCmd(out io.Writer) *cobra.Command {
@@ -37,10 +36,10 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		Aliases:           []string{"ls"},
 		Short:             "list chart repositories",
 		Args:              require.NoArgs,
-		ValidArgsFunction: noCompletions,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			f, err := repo.LoadFile(settings.RepositoryConfig)
-			if isNotExist(err) || (len(f.Repositories) == 0 && !(outfmt == output.JSON || outfmt == output.YAML)) {
+		ValidArgsFunction: noMoreArgsCompFunc,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			f, _ := repo.LoadFile(settings.RepositoryConfig)
+			if len(f.Repositories) == 0 && !(outfmt == output.JSON || outfmt == output.YAML) {
 				return errors.New("no repositories to show")
 			}
 
@@ -124,16 +123,14 @@ func filterRepos(repos []*repo.Entry, ignoredRepoNames []string) []*repo.Entry {
 }
 
 // Provide dynamic auto-completion for repo names
-func compListRepos(prefix string, ignoredRepoNames []string) []string {
+func compListRepos(_ string, ignoredRepoNames []string) []string {
 	var rNames []string
 
 	f, err := repo.LoadFile(settings.RepositoryConfig)
 	if err == nil && len(f.Repositories) > 0 {
 		filteredRepos := filterRepos(f.Repositories, ignoredRepoNames)
 		for _, repo := range filteredRepos {
-			if strings.HasPrefix(repo.Name, prefix) {
-				rNames = append(rNames, fmt.Sprintf("%s\t%s", repo.Name, repo.URL))
-			}
+			rNames = append(rNames, fmt.Sprintf("%s\t%s", repo.Name, repo.URL))
 		}
 	}
 	return rNames

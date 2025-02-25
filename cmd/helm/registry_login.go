@@ -21,49 +21,66 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
-	"github.com/docker/docker/pkg/term" //nolint
+	"github.com/moby/term"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	experimental "helm.sh/helm/v3/internal/experimental/action"
-	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
 )
 
 const registryLoginDesc = `
 Authenticate to a remote registry.
 `
 
+type registryLoginOptions struct {
+	username             string
+	password             string
+	passwordFromStdinOpt bool
+	certFile             string
+	keyFile              string
+	caFile               string
+	insecure             bool
+	plainHTTP            bool
+}
+
 func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	var usernameOpt, passwordOpt string
-	var passwordFromStdinOpt, insecureOpt bool
+	o := &registryLoginOptions{}
 
 	cmd := &cobra.Command{
-		Use:    "login [host]",
-		Short:  "login to a registry",
-		Long:   registryLoginDesc,
-		Args:   require.MinimumNArgs(1),
-		Hidden: !FeatureGateOCI.IsEnabled(),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Use:               "login [host]",
+		Short:             "login to a registry",
+		Long:              registryLoginDesc,
+		Args:              require.MinimumNArgs(1),
+		ValidArgsFunction: cobra.NoFileCompletions,
+		RunE: func(_ *cobra.Command, args []string) error {
 			hostname := args[0]
 
-			username, password, err := getUsernamePassword(usernameOpt, passwordOpt, passwordFromStdinOpt)
+			username, password, err := getUsernamePassword(o.username, o.password, o.passwordFromStdinOpt)
 			if err != nil {
 				return err
 			}
 
-			return experimental.NewRegistryLogin(cfg).Run(out, hostname, username, password, insecureOpt)
+			return action.NewRegistryLogin(cfg).Run(out, hostname, username, password,
+				action.WithCertFile(o.certFile),
+				action.WithKeyFile(o.keyFile),
+				action.WithCAFile(o.caFile),
+				action.WithInsecure(o.insecure),
+				action.WithPlainHTTPLogin(o.plainHTTP))
 		},
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&usernameOpt, "username", "u", "", "registry username")
-	f.StringVarP(&passwordOpt, "password", "p", "", "registry password or identity token")
-	f.BoolVarP(&passwordFromStdinOpt, "password-stdin", "", false, "read password or identity token from stdin")
-	f.BoolVarP(&insecureOpt, "insecure", "", false, "allow connections to TLS registry without certs")
+	f.StringVarP(&o.username, "username", "u", "", "registry username")
+	f.StringVarP(&o.password, "password", "p", "", "registry password or identity token")
+	f.BoolVarP(&o.passwordFromStdinOpt, "password-stdin", "", false, "read password or identity token from stdin")
+	f.BoolVarP(&o.insecure, "insecure", "", false, "allow connections to TLS registry without certs")
+	f.StringVar(&o.certFile, "cert-file", "", "identify registry client using this SSL certificate file")
+	f.StringVar(&o.keyFile, "key-file", "", "identify registry client using this SSL key file")
+	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart upload")
 
 	return cmd
 }
@@ -75,7 +92,7 @@ func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStd
 	password := passwordOpt
 
 	if passwordFromStdinOpt {
-		passwordFromStdin, err := ioutil.ReadAll(os.Stdin)
+		passwordFromStdin, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return "", "", err
 		}

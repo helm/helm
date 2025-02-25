@@ -21,6 +21,8 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Interface represents a client capable of communicating with the Kubernetes API.
@@ -62,15 +64,11 @@ type Interface interface {
 	// Validates against OpenAPI schema if validate is true.
 	Build(reader io.Reader, validate bool) (ResourceList, error)
 
-	// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
-	// and returns said phase (PodSucceeded or PodFailed qualify).
-	WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error)
-
 	// IsReachable checks whether the client is able to connect to the cluster.
 	IsReachable() error
 }
 
-// InterfaceExt is introduced to avoid breaking backwards compatibility for Interface implementers.
+// InterfaceExt was introduced to avoid breaking backwards compatibility for Interface implementers.
 //
 // TODO Helm 4: Remove InterfaceExt and integrate its method(s) into the Interface.
 type InterfaceExt interface {
@@ -78,5 +76,49 @@ type InterfaceExt interface {
 	WaitForDelete(resources ResourceList, timeout time.Duration) error
 }
 
+// InterfaceLogs was introduced to avoid breaking backwards compatibility for Interface implementers.
+//
+// TODO Helm 4: Remove InterfaceLogs and integrate its method(s) into the Interface.
+type InterfaceLogs interface {
+	// GetPodList list all pods that match the specified listOptions
+	GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error)
+
+	// OutputContainerLogsForPodList output the logs for a pod list
+	OutputContainerLogsForPodList(podList *v1.PodList, namespace string, writerFunc func(namespace, pod, container string) io.Writer) error
+}
+
+// InterfaceDeletionPropagation is introduced to avoid breaking backwards compatibility for Interface implementers.
+//
+// TODO Helm 4: Remove InterfaceDeletionPropagation and integrate its method(s) into the Interface.
+type InterfaceDeletionPropagation interface {
+	// DeleteWithPropagationPolicy destroys one or more resources. The deletion propagation is handled as per the given deletion propagation value.
+	DeleteWithPropagationPolicy(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error)
+}
+
+// InterfaceResources is introduced to avoid breaking backwards compatibility for Interface implementers.
+//
+// TODO Helm 4: Remove InterfaceResources and integrate its method(s) into the Interface.
+type InterfaceResources interface {
+	// Get details of deployed resources.
+	// The first argument is a list of resources to get. The second argument
+	// specifies if related pods should be fetched. For example, the pods being
+	// managed by a deployment.
+	Get(resources ResourceList, related bool) (map[string][]runtime.Object, error)
+
+	// BuildTable creates a resource list from a Reader. This differs from
+	// Interface.Build() in that a table kind is returned. A table is useful
+	// if you want to use a printer to display the information.
+	//
+	// Reader must contain a YAML stream (one or more YAML documents separated
+	// by "\n---\n")
+	//
+	// Validates against OpenAPI schema if validate is true.
+	// TODO Helm 4: Integrate into Build with an argument
+	BuildTable(reader io.Reader, validate bool) (ResourceList, error)
+}
+
 var _ Interface = (*Client)(nil)
 var _ InterfaceExt = (*Client)(nil)
+var _ InterfaceLogs = (*Client)(nil)
+var _ InterfaceDeletionPropagation = (*Client)(nil)
+var _ InterfaceResources = (*Client)(nil)

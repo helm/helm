@@ -17,17 +17,19 @@ package downloader
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/repo/repotest"
+	"github.com/stretchr/testify/assert"
+
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestVersionEquals(t *testing.T) {
@@ -218,11 +220,7 @@ func TestGetRepoNames(t *testing.T) {
 }
 
 func TestDownloadAll(t *testing.T) {
-	chartPath, err := ioutil.TempDir("", "test-downloadall")
-	if err != nil {
-		t.Fatalf("could not create tempdir: %v", err)
-	}
-	defer os.RemoveAll(chartPath)
+	chartPath := t.TempDir()
 	m := &Manager{
 		Out:              new(bytes.Buffer),
 		RepositoryConfig: repoConfig,
@@ -267,14 +265,40 @@ func TestDownloadAll(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz")); os.IsNotExist(err) {
 		t.Error(err)
 	}
+
+	// A chart with a bad name like this cannot be loaded and saved. Handling in
+	// the loading and saving will return an error about the invalid name. In
+	// this case, the chart needs to be created directly.
+	badchartyaml := `apiVersion: v2
+description: A Helm chart for Kubernetes
+name: ../bad-local-subchart
+version: 0.1.0`
+	if err := os.MkdirAll(filepath.Join(chartPath, "testdata", "bad-local-subchart"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	err = os.WriteFile(filepath.Join(chartPath, "testdata", "bad-local-subchart", "Chart.yaml"), []byte(badchartyaml), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	badLocalDep := &chart.Dependency{
+		Name:       "../bad-local-subchart",
+		Repository: "file://./testdata/bad-local-subchart",
+		Version:    "0.1.0",
+	}
+
+	err = m.downloadAll([]*chart.Dependency{badLocalDep})
+	if err == nil {
+		t.Fatal("Expected error for bad dependency name")
+	}
 }
 
 func TestUpdateBeforeBuild(t *testing.T) {
 	// Set up a fake repo
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/*.tgz*"),
+	)
 	defer srv.Stop()
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
@@ -326,13 +350,11 @@ func TestUpdateBeforeBuild(t *testing.T) {
 	}
 
 	// Update before Build. see issue: https://github.com/helm/helm/issues/7101
-	err = m.Update()
-	if err != nil {
+	if err := m.Update(); err != nil {
 		t.Fatal(err)
 	}
 
-	err = m.Build()
-	if err != nil {
+	if err := m.Build(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -342,10 +364,10 @@ func TestUpdateBeforeBuild(t *testing.T) {
 // to be fetched.
 func TestUpdateWithNoRepo(t *testing.T) {
 	// Set up a fake repo
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/*.tgz*"),
+	)
 	defer srv.Stop()
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
@@ -401,8 +423,7 @@ func TestUpdateWithNoRepo(t *testing.T) {
 	}
 
 	// Test the update
-	err = m.Update()
-	if err != nil {
+	if err := m.Update(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -415,10 +436,10 @@ func TestUpdateWithNoRepo(t *testing.T) {
 // If each of these main fields (name, version, repository) is not supplied by dep param, default value will be used.
 func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Dependency) {
 	// Set up a fake repo
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/*.tgz*"),
+	)
 	defer srv.Stop()
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
@@ -466,14 +487,12 @@ func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Depe
 	}
 
 	// First build will update dependencies and create Chart.lock file.
-	err = m.Build()
-	if err != nil {
+	if err := m.Build(); err != nil {
 		t.Fatal(err)
 	}
 
 	// Second build should be passed. See PR #6655.
-	err = m.Build()
-	if err != nil {
+	if err := m.Build(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -575,5 +594,73 @@ func TestKey(t *testing.T) {
 		if o != tt.expect {
 			t.Errorf("wrong key name generated for %q, expected %q but got %q", tt.name, tt.expect, o)
 		}
+	}
+}
+
+// Test dedupeRepos tests that the dedupeRepos function correctly deduplicates
+func TestDedupeRepos(t *testing.T) {
+	tests := []struct {
+		name  string
+		repos []*repo.Entry
+		want  []*repo.Entry
+	}{
+		{
+			name: "no duplicates",
+			repos: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+				{
+					URL: "https://example.com/charts2",
+				},
+			},
+			want: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+				{
+					URL: "https://example.com/charts2",
+				},
+			},
+		},
+		{
+			name: "duplicates",
+			repos: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+				{
+					URL: "https://example.com/charts",
+				},
+			},
+			want: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+			},
+		},
+		{
+			name: "duplicates with trailing slash",
+			repos: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+				{
+					URL: "https://example.com/charts/",
+				},
+			},
+			want: []*repo.Entry{
+				{
+					// the last one wins
+					URL: "https://example.com/charts/",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := dedupeRepos(tt.repos)
+			assert.ElementsMatch(t, tt.want, got)
+		})
 	}
 }

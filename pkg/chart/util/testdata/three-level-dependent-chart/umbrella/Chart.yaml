@@ -1,0 +1,19 @@
+apiVersion: v2
+name: umbrella
+description: A Helm chart for Kubernetes
+type: application
+version: 0.1.0
+
+dependencies:
+- name: app1
+  version: 0.1.0
+  condition: app1.enabled
+- name: app2
+  version: 0.1.0
+  condition: app2.enabled
+- name: app3
+  version: 0.1.0
+  condition: app3.enabled
+- name: app4
+  version: 0.1.0
+  condition: app4.enabled

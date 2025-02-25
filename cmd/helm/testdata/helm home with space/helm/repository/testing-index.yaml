@@ -1,0 +1,66 @@
+apiVersion: v1
+entries:
+  alpine:
+    - name: alpine
+      url: https://charts.helm.sh/stable/alpine-0.1.0.tgz
+      checksum: 0e6661f193211d7a5206918d42f5c2a9470b737d
+      created: "2018-06-27T10:00:18.230700509Z"
+      deprecated: true
+      home: https://helm.sh/helm
+      sources:
+        - https://github.com/helm/helm
+      version: 0.1.0
+      appVersion: 1.2.3
+      description: Deploy a basic Alpine Linux pod
+      keywords: []
+      maintainers: []
+      icon: ""
+      apiVersion: v2
+    - name: alpine
+      url: https://charts.helm.sh/stable/alpine-0.2.0.tgz
+      checksum: 0e6661f193211d7a5206918d42f5c2a9470b737d
+      created: "2018-07-09T11:34:37.797864902Z"
+      home: https://helm.sh/helm
+      sources:
+        - https://github.com/helm/helm
+      version: 0.2.0
+      appVersion: 2.3.4
+      description: Deploy a basic Alpine Linux pod
+      keywords: []
+      maintainers: []
+      icon: ""
+      apiVersion: v2
+    - name: alpine
+      url: https://charts.helm.sh/stable/alpine-0.3.0-rc.1.tgz
+      checksum: 0e6661f193211d7a5206918d42f5c2a9470b737d
+      created: "2020-11-12T08:44:58.872726222Z"
+      home: https://helm.sh/helm
+      sources:
+        - https://github.com/helm/helm
+      version: 0.3.0-rc.1
+      appVersion: 3.0.0
+      description: Deploy a basic Alpine Linux pod
+      keywords: []
+      maintainers: []
+      icon: ""
+      apiVersion: v2
+  mariadb:
+    - name: mariadb
+      url: https://charts.helm.sh/stable/mariadb-0.3.0.tgz
+      checksum: 65229f6de44a2be9f215d11dbff311673fc8ba56
+      created: "2018-04-23T08:20:27.160959131Z"
+      home: https://mariadb.org
+      sources:
+        - https://github.com/bitnami/bitnami-docker-mariadb
+      version: 0.3.0
+      description: Chart for MariaDB
+      keywords:
+        - mariadb
+        - mysql
+        - database
+        - sql
+      maintainers:
+        - name: Bitnami
+          email: containers@bitnami.com
+      icon: ""
+      apiVersion: v2

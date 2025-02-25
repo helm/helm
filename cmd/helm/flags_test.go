@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/release"
-	helmtime "helm.sh/helm/v3/pkg/time"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/release"
+	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func outputFlagCompletionTest(t *testing.T, cmdName string) {
@@ -79,6 +79,13 @@ func outputFlagCompletionTest(t *testing.T, cmdName string) {
 	}, {
 		name:   "completion for output flag short and after arg",
 		cmd:    fmt.Sprintf("__complete %s aramis -o ''", cmdName),
+		golden: "output/output-comp.txt",
+		rels: releasesMockWithStatus(&release.Info{
+			Status: release.StatusDeployed,
+		}),
+	}, {
+		name:   "completion for output flag, no filter",
+		cmd:    fmt.Sprintf("__complete %s --output jso", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
 			Status: release.StatusDeployed,

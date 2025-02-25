@@ -31,7 +31,7 @@ var invalidSearchResult = `{"data":[{"id":"stable/phpmyadmin","type"`
 
 func TestSearch(t *testing.T) {
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintln(w, searchResult)
 	}))
 	defer ts.Close()

@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/resource"
 
-	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v4/pkg/kube"
 )
 
 var accessor = meta.NewAccessor()
@@ -36,6 +36,31 @@ const (
 	helmReleaseNameAnnotation      = "meta.helm.sh/release-name"
 	helmReleaseNamespaceAnnotation = "meta.helm.sh/release-namespace"
 )
+
+// requireAdoption returns the subset of resources that already exist in the cluster.
+func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
+	var requireUpdate kube.ResourceList
+
+	err := resources.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+
+		helper := resource.NewHelper(info.Client, info.Mapping)
+		_, err = helper.Get(info.Namespace, info.Name)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return errors.Wrapf(err, "could not get information about the resource %s", resourceString(info))
+		}
+
+		requireUpdate.Append(info)
+		return nil
+	})
+
+	return requireUpdate, err
+}
 
 func existingResourceConflict(resources kube.ResourceList, releaseName, releaseNamespace string) (kube.ResourceList, error) {
 	var requireUpdate kube.ResourceList

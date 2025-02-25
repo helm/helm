@@ -23,8 +23,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/action"
 )
 
 const pullDesc = `
@@ -43,7 +43,7 @@ result in an error, and the chart will not be saved locally.
 `
 
 func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	client := action.NewPullWithOpts(action.WithConfig(cfg))
+	client := action.NewPull(action.WithConfig(cfg))
 
 	cmd := &cobra.Command{
 		Use:     "pull [chart URL | repo/chartname] [...]",
@@ -51,22 +51,25 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		Aliases: []string{"fetch"},
 		Long:    pullDesc,
 		Args:    require.MinimumNArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 			return compListCharts(toComplete, false)
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			client.Settings = settings
 			if client.Version == "" && client.Devel {
 				debug("setting version to >0.0.0-0")
 				client.Version = ">0.0.0-0"
 			}
 
-			if err := checkOCI(args[0]); err != nil {
-				return err
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
 			}
+			client.SetRegistryClient(registryClient)
 
 			for i := 0; i < len(args); i++ {
 				output, err := client.Run(args[i])
@@ -84,10 +87,10 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.Untar, "untar", false, "if set to true, will untar the chart after downloading it")
 	f.BoolVar(&client.VerifyLater, "prov", false, "fetch the provenance file, but don't perform verification")
 	f.StringVar(&client.UntarDir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
-	f.StringVarP(&client.DestDir, "destination", "d", ".", "location to write the chart. If this and tardir are specified, tardir is appended to this")
+	f.StringVarP(&client.DestDir, "destination", "d", ".", "location to write the chart. If this and untardir are specified, untardir is appended to this")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 
-	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	err := cmd.RegisterFlagCompletionFunc("version", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 1 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}

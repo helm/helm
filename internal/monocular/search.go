@@ -24,8 +24,8 @@ import (
 	"path"
 	"time"
 
-	"helm.sh/helm/v3/internal/version"
-	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v4/internal/version"
+	"helm.sh/helm/v4/pkg/chart"
 )
 
 // SearchPath is the url path to the search API in monocular.
@@ -114,7 +114,7 @@ func (c *Client) Search(term string) ([]SearchResult, error) {
 	p.RawQuery = "q=" + url.QueryEscape(term)
 
 	// Create request
-	req, err := http.NewRequest("GET", p.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, p.String(), nil)
 	if err != nil {
 		return nil, err
 	}

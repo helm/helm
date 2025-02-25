@@ -19,17 +19,16 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/cli/values"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli/values"
+	"helm.sh/helm/v4/pkg/downloader"
+	"helm.sh/helm/v4/pkg/getter"
 )
 
 const packageDesc = `
@@ -56,7 +55,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 		Use:   "package [CHART_PATH] [...]",
 		Short: "package a chart directory into a chart archive",
 		Long:  packageDesc,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errors.Errorf("need at least one argument, the path to the chart")
 			}
@@ -76,6 +75,12 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 
+			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
+			if err != nil {
+				return fmt.Errorf("missing registry client: %w", err)
+			}
+
 			for i := 0; i < len(args); i++ {
 				path, err := filepath.Abs(args[i])
 				if err != nil {
@@ -87,11 +92,12 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 
 				if client.DependencyUpdate {
 					downloadManager := &downloader.Manager{
-						Out:              ioutil.Discard,
+						Out:              io.Discard,
 						ChartPath:        path,
 						Keyring:          client.Keyring,
 						Getters:          p,
 						Debug:            settings.Debug,
+						RegistryClient:   registryClient,
 						RepositoryConfig: settings.RepositoryConfig,
 						RepositoryCache:  settings.RepositoryCache,
 					}
@@ -119,6 +125,13 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&client.AppVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&client.Destination, "destination", "d", ".", "location to write the chart.")
 	f.BoolVarP(&client.DependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
+	f.StringVar(&client.Username, "username", "", "chart repository username where to locate the requested chart")
+	f.StringVar(&client.Password, "password", "", "chart repository password where to locate the requested chart")
+	f.StringVar(&client.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
+	f.StringVar(&client.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
+	f.BoolVar(&client.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
+	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
+	f.StringVar(&client.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 
 	return cmd
 }

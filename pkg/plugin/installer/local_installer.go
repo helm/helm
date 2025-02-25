@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
+package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
 	"os"
@@ -21,6 +21,9 @@ import (
 
 	"github.com/pkg/errors"
 )
+
+// ErrPluginNotAFolder indicates that the plugin path is not a folder.
+var ErrPluginNotAFolder = errors.New("expected plugin to be a folder")
 
 // LocalInstaller installs plugins from the filesystem.
 type LocalInstaller struct {
@@ -43,6 +46,14 @@ func NewLocalInstaller(source string) (*LocalInstaller, error) {
 //
 // Implements Installer.
 func (i *LocalInstaller) Install() error {
+	stat, err := os.Stat(i.Source)
+	if err != nil {
+		return err
+	}
+	if !stat.IsDir() {
+		return ErrPluginNotAFolder
+	}
+
 	if !isPlugin(i.Source) {
 		return ErrMissingMetadata
 	}

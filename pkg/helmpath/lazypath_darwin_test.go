@@ -12,7 +12,6 @@
 // limitations under the License.
 
 //go:build darwin
-// +build darwin
 
 package helmpath
 
@@ -23,7 +22,7 @@ import (
 
 	"k8s.io/client-go/util/homedir"
 
-	"helm.sh/helm/v3/pkg/helmpath/xdg"
+	"helm.sh/helm/v4/pkg/helmpath/xdg"
 )
 
 const (

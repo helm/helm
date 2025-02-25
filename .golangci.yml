@@ -4,25 +4,42 @@ run:
 linters:
   disable-all: true
   enable:
-    - deadcode
     - dupl
     - gofmt
     - goimports
-    - golint
     - gosimple
     - govet
     - ineffassign
     - misspell
     - nakedret
-    - structcheck
+    - revive
     - unused
-    - varcheck
     - staticcheck
 
 linters-settings:
   gofmt:
     simplify: true
   goimports:
-    local-prefixes: helm.sh/helm/v3
+    local-prefixes: helm.sh/helm/v4
   dupl:
     threshold: 400
+issues:
+  exclude-rules:
+    # Helm, and the Go source code itself, sometimes uses these names outside their built-in
+    # functions. As the Go source code has re-used these names it's ok for Helm to do the same.
+    # Linting will look for redefinition of built-in id's but we opt-in to the ones we choose to use.
+    - linters:
+        - revive
+      text: "redefines-builtin-id: redefinition of the built-in function append"
+    - linters:
+        - revive
+      text: "redefines-builtin-id: redefinition of the built-in function clear"
+    - linters:
+        - revive
+      text: "redefines-builtin-id: redefinition of the built-in function max"
+    - linters:
+        - revive
+      text: "redefines-builtin-id: redefinition of the built-in function min"
+    - linters:
+        - revive
+      text: "redefines-builtin-id: redefinition of the built-in function new"

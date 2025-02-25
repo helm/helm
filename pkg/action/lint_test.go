@@ -23,7 +23,6 @@ import (
 var (
 	values                  = make(map[string]interface{})
 	namespace               = "testNamespace"
-	strict                  = false
 	chart1MultipleChartLint = "testdata/charts/multiplecharts-lint-chart-1"
 	chart2MultipleChartLint = "testdata/charts/multiplecharts-lint-chart-2"
 	corruptedTgzChart       = "testdata/charts/corrupted-compressed-chart.tgz"
@@ -32,9 +31,10 @@ var (
 
 func TestLintChart(t *testing.T) {
 	tests := []struct {
-		name      string
-		chartPath string
-		err       bool
+		name                 string
+		chartPath            string
+		err                  bool
+		skipSchemaValidation bool
 	}{
 		{
 			name:      "decompressed-chart",
@@ -71,6 +71,11 @@ func TestLintChart(t *testing.T) {
 			chartPath: "testdata/charts/chart-with-schema-negative",
 		},
 		{
+			name:                 "chart-with-schema-negative-skip-validation",
+			chartPath:            "testdata/charts/chart-with-schema-negative",
+			skipSchemaValidation: true,
+		},
+		{
 			name:      "pre-release-chart",
 			chartPath: "testdata/charts/pre-release-chart-0.1.0-alpha.tgz",
 		},
@@ -78,7 +83,7 @@ func TestLintChart(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, strict)
+			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, nil, tt.skipSchemaValidation)
 			switch {
 			case err != nil && !tt.err:
 				t.Errorf("%s", err)
@@ -149,12 +154,12 @@ func TestLint_ChartWithWarnings(t *testing.T) {
 		}
 	})
 
-	t.Run("should fail with errors when strict", func(t *testing.T) {
+	t.Run("should pass with no errors when strict", func(t *testing.T) {
 		testCharts := []string{chartWithNoTemplatesDir}
 		testLint := NewLint()
 		testLint.Strict = true
-		if result := testLint.Run(testCharts, values); len(result.Errors) != 1 {
-			t.Error("expected one error, but got", len(result.Errors))
+		if result := testLint.Run(testCharts, values); len(result.Errors) != 0 {
+			t.Error("expected no errors, but got", len(result.Errors))
 		}
 	})
 }

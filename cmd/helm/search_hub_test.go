@@ -27,12 +27,14 @@ func TestSearchHubCmd(t *testing.T) {
 
 	// Setup a mock search service
 	var searchResult = `{"data":[{"id":"stable/phpmyadmin","type":"chart","attributes":{"name":"phpmyadmin","repo":{"name":"stable","url":"https://charts.helm.sh/stable"},"description":"phpMyAdmin is an mysql administration frontend","home":"https://www.phpmyadmin.net/","keywords":["mariadb","mysql","phpmyadmin"],"maintainers":[{"name":"Bitnami","email":"containers@bitnami.com"}],"sources":["https://github.com/bitnami/bitnami-docker-phpmyadmin"],"icon":""},"links":{"self":"/v1/charts/stable/phpmyadmin"},"relationships":{"latestChartVersion":{"data":{"version":"3.0.0","app_version":"4.9.0-1","created":"2019-08-08T17:57:31.38Z","digest":"119c499251bffd4b06ff0cd5ac98c2ce32231f84899fb4825be6c2d90971c742","urls":["https://charts.helm.sh/stable/phpmyadmin-3.0.0.tgz"],"readme":"/v1/assets/stable/phpmyadmin/versions/3.0.0/README.md","values":"/v1/assets/stable/phpmyadmin/versions/3.0.0/values.yaml"},"links":{"self":"/v1/charts/stable/phpmyadmin/versions/3.0.0"}}}},{"id":"bitnami/phpmyadmin","type":"chart","attributes":{"name":"phpmyadmin","repo":{"name":"bitnami","url":"https://charts.bitnami.com"},"description":"phpMyAdmin is an mysql administration frontend","home":"https://www.phpmyadmin.net/","keywords":["mariadb","mysql","phpmyadmin"],"maintainers":[{"name":"Bitnami","email":"containers@bitnami.com"}],"sources":["https://github.com/bitnami/bitnami-docker-phpmyadmin"],"icon":""},"links":{"self":"/v1/charts/bitnami/phpmyadmin"},"relationships":{"latestChartVersion":{"data":{"version":"3.0.0","app_version":"4.9.0-1","created":"2019-08-08T18:34:13.341Z","digest":"66d77cf6d8c2b52c488d0a294cd4996bd5bad8dc41d3829c394498fb401c008a","urls":["https://charts.bitnami.com/bitnami/phpmyadmin-3.0.0.tgz"],"readme":"/v1/assets/bitnami/phpmyadmin/versions/3.0.0/README.md","values":"/v1/assets/bitnami/phpmyadmin/versions/3.0.0/values.yaml"},"links":{"self":"/v1/charts/bitnami/phpmyadmin/versions/3.0.0"}}}}]}`
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintln(w, searchResult)
 	}))
 	defer ts.Close()
 
 	// The expected output has the URL to the mocked search service in it
+	// Trailing spaces are necessary to preserve in "expected" as the uitable package adds
+	// them during printing.
 	var expected = fmt.Sprintf(`URL                                             	CHART VERSION	APP VERSION	DESCRIPTION                                   
 %s/charts/stable/phpmyadmin 	3.0.0        	4.9.0-1    	phpMyAdmin is an mysql administration frontend
 %s/charts/bitnami/phpmyadmin	3.0.0        	4.9.0-1    	phpMyAdmin is an mysql administration frontend
@@ -51,10 +53,135 @@ func TestSearchHubCmd(t *testing.T) {
 	}
 }
 
+func TestSearchHubListRepoCmd(t *testing.T) {
+
+	// Setup a mock search service
+	var searchResult = `{"data":[{"id":"stable/phpmyadmin","type":"chart","attributes":{"name":"phpmyadmin","repo":{"name":"stable","url":"https://charts.helm.sh/stable"},"description":"phpMyAdmin is an mysql administration frontend","home":"https://www.phpmyadmin.net/","keywords":["mariadb","mysql","phpmyadmin"],"maintainers":[{"name":"Bitnami","email":"containers@bitnami.com"}],"sources":["https://github.com/bitnami/bitnami-docker-phpmyadmin"],"icon":""},"links":{"self":"/v1/charts/stable/phpmyadmin"},"relationships":{"latestChartVersion":{"data":{"version":"3.0.0","app_version":"4.9.0-1","created":"2019-08-08T17:57:31.38Z","digest":"119c499251bffd4b06ff0cd5ac98c2ce32231f84899fb4825be6c2d90971c742","urls":["https://charts.helm.sh/stable/phpmyadmin-3.0.0.tgz"],"readme":"/v1/assets/stable/phpmyadmin/versions/3.0.0/README.md","values":"/v1/assets/stable/phpmyadmin/versions/3.0.0/values.yaml"},"links":{"self":"/v1/charts/stable/phpmyadmin/versions/3.0.0"}}}},{"id":"bitnami/phpmyadmin","type":"chart","attributes":{"name":"phpmyadmin","repo":{"name":"bitnami","url":"https://charts.bitnami.com"},"description":"phpMyAdmin is an mysql administration frontend","home":"https://www.phpmyadmin.net/","keywords":["mariadb","mysql","phpmyadmin"],"maintainers":[{"name":"Bitnami","email":"containers@bitnami.com"}],"sources":["https://github.com/bitnami/bitnami-docker-phpmyadmin"],"icon":""},"links":{"self":"/v1/charts/bitnami/phpmyadmin"},"relationships":{"latestChartVersion":{"data":{"version":"3.0.0","app_version":"4.9.0-1","created":"2019-08-08T18:34:13.341Z","digest":"66d77cf6d8c2b52c488d0a294cd4996bd5bad8dc41d3829c394498fb401c008a","urls":["https://charts.bitnami.com/bitnami/phpmyadmin-3.0.0.tgz"],"readme":"/v1/assets/bitnami/phpmyadmin/versions/3.0.0/README.md","values":"/v1/assets/bitnami/phpmyadmin/versions/3.0.0/values.yaml"},"links":{"self":"/v1/charts/bitnami/phpmyadmin/versions/3.0.0"}}}}]}`
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprintln(w, searchResult)
+	}))
+	defer ts.Close()
+
+	// The expected output has the URL to the mocked search service in it
+	// Trailing spaces are necessary to preserve in "expected" as the uitable package adds
+	// them during printing.
+	var expected = fmt.Sprintf(`URL                                             	CHART VERSION	APP VERSION	DESCRIPTION                                   	REPO URL                     
+%s/charts/stable/phpmyadmin 	3.0.0        	4.9.0-1    	phpMyAdmin is an mysql administration frontend	https://charts.helm.sh/stable
+%s/charts/bitnami/phpmyadmin	3.0.0        	4.9.0-1    	phpMyAdmin is an mysql administration frontend	https://charts.bitnami.com   
+`, ts.URL, ts.URL)
+
+	testcmd := "search hub --list-repo-url --endpoint " + ts.URL + " maria"
+	storage := storageFixture()
+	_, out, err := executeActionCommandC(storage, testcmd)
+	if err != nil {
+		t.Errorf("unexpected error, %s", err)
+	}
+	if out != expected {
+		t.Error("expected and actual output did not match")
+		t.Log(out)
+		t.Log(expected)
+	}
+}
+
 func TestSearchHubOutputCompletion(t *testing.T) {
 	outputFlagCompletionTest(t, "search hub")
 }
 
 func TestSearchHubFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "search hub", true) // File completion may be useful when inputting a keyword
+}
+
+func TestSearchHubCmd_FailOnNoResponseTests(t *testing.T) {
+	var (
+		searchResult            = `{"data":[]}`
+		noResultFoundErr        = "Error: no results found\n"
+		noResultFoundWarn       = "No results found\n"
+		noResultFoundWarnInList = "[]\n"
+	)
+
+	type testCase struct {
+		name     string
+		cmd      string
+		response string
+		expected string
+		wantErr  bool
+	}
+
+	var tests = []testCase{
+		{
+			name:     "Search hub with no results in response",
+			cmd:      `search hub maria`,
+			response: searchResult,
+			expected: noResultFoundWarn,
+			wantErr:  false,
+		},
+		{
+			name:     "Search hub with no results in response and output JSON",
+			cmd:      `search hub maria --output json`,
+			response: searchResult,
+			expected: noResultFoundWarnInList,
+			wantErr:  false,
+		},
+		{
+			name:     "Search hub with no results in response and output YAML",
+			cmd:      `search hub maria --output yaml`,
+			response: searchResult,
+			expected: noResultFoundWarnInList,
+			wantErr:  false,
+		},
+		{
+			name:     "Search hub with no results in response and --fail-on-no-result enabled, expected failure",
+			cmd:      `search hub maria --fail-on-no-result`,
+			response: searchResult,
+			expected: noResultFoundErr,
+			wantErr:  true,
+		},
+		{
+			name:     "Search hub with no results in response, output JSON and --fail-on-no-result enabled, expected failure",
+			cmd:      `search hub maria --fail-on-no-result --output json`,
+			response: searchResult,
+			expected: noResultFoundErr,
+			wantErr:  true,
+		},
+		{
+			name:     "Search hub with no results in response, output YAML and --fail-on-no-result enabled, expected failure",
+			cmd:      `search hub maria --fail-on-no-result --output yaml`,
+			response: searchResult,
+			expected: noResultFoundErr,
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup a mock search service
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				fmt.Fprintln(w, tt.response)
+			}))
+			defer ts.Close()
+
+			// Add mock server URL to command
+			tt.cmd += " --endpoint " + ts.URL
+
+			storage := storageFixture()
+
+			_, out, err := executeActionCommandC(storage, tt.cmd)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("expected error due to no record in response, got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error, got %q", err)
+				}
+			}
+
+			if out != tt.expected {
+				t.Errorf("expected and actual output did not match\n"+
+					"expected: %q\n"+
+					"actual  : %q",
+					tt.expected, out)
+			}
+		})
+	}
 }

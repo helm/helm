@@ -19,9 +19,9 @@ package main
 import (
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/time"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/time"
 )
 
 func TestListCmd(t *testing.T) {
@@ -147,6 +147,11 @@ func TestListCmd(t *testing.T) {
 		name:   "list releases",
 		cmd:    "list",
 		golden: "output/list.txt",
+		rels:   releaseFixture,
+	}, {
+		name:   "list without headers",
+		cmd:    "list --no-headers",
+		golden: "output/list-no-headers.txt",
 		rels:   releaseFixture,
 	}, {
 		name:   "list all releases",

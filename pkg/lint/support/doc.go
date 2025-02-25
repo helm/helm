@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package support contains tools for linting charts.
+/*
+Package support contains tools for linting charts.
 
 Linting is the process of testing charts for errors or warnings regarding
 formatting, compilation, or standards compliance.
 */
-package support // import "helm.sh/helm/v3/pkg/lint/support"
+package support // import "helm.sh/helm/v4/pkg/lint/support"

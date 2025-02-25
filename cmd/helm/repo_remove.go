@@ -25,9 +25,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/cmd/helm/require"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 type repoRemoveOptions struct {
@@ -44,10 +44,10 @@ func newRepoRemoveCmd(out io.Writer) *cobra.Command {
 		Aliases: []string{"rm"},
 		Short:   "remove one or more chart repositories",
 		Args:    require.MinimumNArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compListRepos(toComplete, args), cobra.ShellCompDirectiveNoFileComp
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			o.repoFile = settings.RepositoryConfig
 			o.repoCache = settings.RepositoryCache
 			o.names = args
@@ -67,7 +67,7 @@ func (o *repoRemoveOptions) run(out io.Writer) error {
 		if !r.Remove(name) {
 			return errors.Errorf("no repo named %q found", name)
 		}
-		if err := r.WriteFile(o.repoFile, 0644); err != nil {
+		if err := r.WriteFile(o.repoFile, 0600); err != nil {
 			return err
 		}
 

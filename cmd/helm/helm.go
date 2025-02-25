@@ -14,14 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main // import "helm.sh/helm/v3/cmd/helm"
+package main // import "helm.sh/helm/v4/cmd/helm"
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
@@ -29,17 +30,13 @@ import (
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/gates"
-	"helm.sh/helm/v3/pkg/kube"
-	kubefake "helm.sh/helm/v3/pkg/kube/fake"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/kube"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
-
-// FeatureGateOCI is the feature gate for checking if `helm chart` and `helm registry` commands should work
-const FeatureGateOCI = gates.Gate("HELM_EXPERIMENTAL_OCI")
 
 var settings = cli.New()
 
@@ -49,7 +46,8 @@ func init() {
 
 func debug(format string, v ...interface{}) {
 	if settings.Debug {
-		format = fmt.Sprintf("[debug] %s\n", format)
+		timeNow := time.Now().String()
+		format = fmt.Sprintf("%s [debug] %s\n", timeNow, format)
 		log.Output(2, fmt.Sprintf(format, v...))
 	}
 }
@@ -57,6 +55,11 @@ func debug(format string, v ...interface{}) {
 func warning(format string, v ...interface{}) {
 	format = fmt.Sprintf("WARNING: %s\n", format)
 	fmt.Fprintf(os.Stderr, format, v...)
+}
+
+// hookOutputWriter provides the writer for writing hook logs.
+func hookOutputWriter(_, _, _ string) io.Writer {
+	return log.Writer()
 }
 
 func main() {
@@ -82,6 +85,7 @@ func main() {
 		if helmDriver == "memory" {
 			loadReleasesInMemory(actionConfig)
 		}
+		actionConfig.SetHookOutputFunc(hookOutputWriter)
 	})
 
 	if err := cmd.Execute(); err != nil {
@@ -92,15 +96,6 @@ func main() {
 		default:
 			os.Exit(1)
 		}
-	}
-}
-
-func checkOCIFeatureGate() func(_ *cobra.Command, _ []string) error {
-	return func(_ *cobra.Command, _ []string) error {
-		if !FeatureGateOCI.IsEnabled() {
-			return FeatureGateOCI.Error()
-		}
-		return nil
 	}
 }
 
@@ -119,10 +114,10 @@ func loadReleasesInMemory(actionConfig *action.Configuration) {
 		return
 	}
 
-	actionConfig.KubeClient = &kubefake.PrintingKubeClient{Out: ioutil.Discard}
+	actionConfig.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard}
 
 	for _, path := range filePaths {
-		b, err := ioutil.ReadFile(path)
+		b, err := os.ReadFile(path)
 		if err != nil {
 			log.Fatal("Unable to read memory driver data", err)
 		}

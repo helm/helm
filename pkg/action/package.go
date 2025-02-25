@@ -19,7 +19,6 @@ package action
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"syscall"
 
@@ -27,9 +26,9 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/term"
 
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/provenance"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	"helm.sh/helm/v4/pkg/provenance"
 )
 
 // Package is the action for packaging a chart.
@@ -45,8 +44,15 @@ type Package struct {
 	Destination      string
 	DependencyUpdate bool
 
-	RepositoryConfig string
-	RepositoryCache  string
+	RepositoryConfig      string
+	RepositoryCache       string
+	PlainHTTP             bool
+	Username              string
+	Password              string
+	CertFile              string
+	KeyFile               string
+	CaFile                string
+	InsecureSkipTLSverify bool
 }
 
 // NewPackage creates a new Package object with the given configuration.
@@ -55,7 +61,7 @@ func NewPackage() *Package {
 }
 
 // Run executes 'helm package' against the given chart and returns the path to the packaged chart.
-func (p *Package) Run(path string, vals map[string]interface{}) (string, error) {
+func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
 	ch, err := loader.LoadDir(path)
 	if err != nil {
 		return "", err
@@ -137,7 +143,7 @@ func (p *Package) Clearsign(filename string) error {
 		return err
 	}
 
-	return ioutil.WriteFile(filename+".prov", []byte(sig), 0644)
+	return os.WriteFile(filename+".prov", []byte(sig), 0644)
 }
 
 // promptUser implements provenance.PassphraseFetcher
@@ -162,7 +168,7 @@ func passphraseFileFetcher(passphraseFile string, stdin *os.File) (provenance.Pa
 	if err != nil {
 		return nil, err
 	}
-	return func(name string) ([]byte, error) {
+	return func(_ string) ([]byte, error) {
 		return passphrase, nil
 	}, nil
 }

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
+package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
 	"archive/tar"
@@ -29,11 +29,11 @@ import (
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/internal/third_party/dep/fs"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/plugin/cache"
+	"helm.sh/helm/v4/internal/third_party/dep/fs"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/plugin/cache"
 )
 
 // HTTPInstaller installs plugins from an archive served by a web server.
@@ -162,13 +162,13 @@ func (i HTTPInstaller) Path() string {
 	return helmpath.DataPath("plugins", i.PluginName)
 }
 
-// CleanJoin resolves dest as a subpath of root.
+// cleanJoin resolves dest as a subpath of root.
 //
 // This function runs several security checks on the path, generating an error if
 // the supplied `dest` looks suspicious or would result in dubious behavior on the
 // filesystem.
 //
-// CleanJoin assumes that any attempt by `dest` to break out of the CWD is an attempt
+// cleanJoin assumes that any attempt by `dest` to break out of the CWD is an attempt
 // to be malicious. (If you don't care about this, use the securejoin-filepath library.)
 // It will emit an error if it detects paths that _look_ malicious, operating on the
 // assumption that we don't actually want to do anything with files that already
@@ -206,6 +206,9 @@ func cleanJoin(root, dest string) (string, error) {
 	}
 
 	// SecureJoin will do some cleaning, as well as some rudimentary checking of symlinks.
+	// The directory needs to be cleaned prior to passing to SecureJoin or the location may end up
+	// being wrong or returning an error. This was introduced in v0.4.0.
+	root = filepath.Clean(root)
 	newpath, err := securejoin.SecureJoin(root, dest)
 	if err != nil {
 		return "", err

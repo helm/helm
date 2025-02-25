@@ -14,21 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v3/pkg/storage/driver"
+package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 
 import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 
-	rspb "helm.sh/helm/v3/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release"
 )
 
 var b64 = base64.StdEncoding
 
 var magicGzip = []byte{0x1f, 0x8b, 0x08}
+
+var systemLabels = []string{"name", "owner", "status", "version", "createdAt", "modifiedAt"}
 
 // encodeRelease encodes a release returning a base64 encoded
 // gzipped string representation, or error.
@@ -63,13 +65,13 @@ func decodeRelease(data string) (*rspb.Release, error) {
 	// For backwards compatibility with releases that were stored before
 	// compression was introduced we skip decompression if the
 	// gzip magic header is not found
-	if bytes.Equal(b[0:3], magicGzip) {
+	if len(b) > 3 && bytes.Equal(b[0:3], magicGzip) {
 		r, err := gzip.NewReader(bytes.NewReader(b))
 		if err != nil {
 			return nil, err
 		}
 		defer r.Close()
-		b2, err := ioutil.ReadAll(r)
+		b2, err := io.ReadAll(r)
 		if err != nil {
 			return nil, err
 		}
@@ -82,4 +84,39 @@ func decodeRelease(data string) (*rspb.Release, error) {
 		return nil, err
 	}
 	return &rls, nil
+}
+
+// Checks if label is system
+func isSystemLabel(key string) bool {
+	for _, v := range GetSystemLabels() {
+		if key == v {
+			return true
+		}
+	}
+	return false
+}
+
+// Removes system labels from labels map
+func filterSystemLabels(lbs map[string]string) map[string]string {
+	result := make(map[string]string)
+	for k, v := range lbs {
+		if !isSystemLabel(k) {
+			result[k] = v
+		}
+	}
+	return result
+}
+
+// Checks if labels array contains system labels
+func ContainsSystemLabels(lbs map[string]string) bool {
+	for k := range lbs {
+		if isSystemLabel(k) {
+			return true
+		}
+	}
+	return false
+}
+
+func GetSystemLabels() []string {
+	return systemLabels
 }

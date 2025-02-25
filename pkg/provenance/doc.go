@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*Package provenance provides tools for establishing the authenticity of a chart.
+/*
+Package provenance provides tools for establishing the authenticity of a chart.
 
 In Helm, provenance is established via several factors. The primary factor is the
 cryptographic signature of a chart. Chart authors may sign charts, which in turn
@@ -34,4 +35,4 @@ and using `gpg --verify`, `keybase pgp verify`, or similar:
 	gpg: Signature made Mon Jul 25 17:23:44 2016 MDT using RSA key ID 1FC18762
 	gpg: Good signature from "Helm Testing (This key should only be used for testing. DO NOT TRUST.) <helm-testing@helm.sh>" [ultimate]
 */
-package provenance // import "helm.sh/helm/v3/pkg/provenance"
+package provenance // import "helm.sh/helm/v4/pkg/provenance"

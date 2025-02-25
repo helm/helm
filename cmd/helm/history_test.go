@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 func TestHistoryCmd(t *testing.T) {
@@ -93,6 +93,11 @@ func revisionFlagCompletionTest(t *testing.T, cmdName string) {
 	tests := []cmdTestCase{{
 		name:   "completion for revision flag",
 		cmd:    fmt.Sprintf("__complete %s musketeers --revision ''", cmdName),
+		rels:   releases,
+		golden: "output/revision-comp.txt",
+	}, {
+		name:   "completion for revision flag, no filter",
+		cmd:    fmt.Sprintf("__complete %s musketeers --revision 1", cmdName),
 		rels:   releases,
 		golden: "output/revision-comp.txt",
 	}, {

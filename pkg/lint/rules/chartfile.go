@@ -14,11 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rules // import "helm.sh/helm/v3/pkg/lint/rules"
+package rules // import "helm.sh/helm/v4/pkg/lint/rules"
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -27,9 +26,9 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/chart"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 // Chartfile runs a set of linter rules related to Chart.yaml file
@@ -106,6 +105,10 @@ func validateChartYamlFormat(chartFileError error) error {
 func validateChartName(cf *chart.Metadata) error {
 	if cf.Name == "" {
 		return errors.New("name is required")
+	}
+	name := filepath.Base(cf.Name)
+	if name != cf.Name {
+		return fmt.Errorf("chart name %q is invalid", cf.Name)
 	}
 	return nil
 }
@@ -200,7 +203,7 @@ func validateChartType(cf *chart.Metadata) error {
 // in a generic form of a map[string]interface{}, so that the type
 // of the values can be checked
 func loadChartFileForTypeCheck(filename string) (map[string]interface{}, error) {
-	b, err := ioutil.ReadFile(filename)
+	b, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

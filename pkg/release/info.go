@@ -16,7 +16,9 @@ limitations under the License.
 package release
 
 import (
-	"helm.sh/helm/v3/pkg/time"
+	"k8s.io/apimachinery/pkg/runtime"
+
+	"helm.sh/helm/v4/pkg/time"
 )
 
 // Info describes release information.
@@ -33,4 +35,6 @@ type Info struct {
 	Status Status `json:"status,omitempty"`
 	// Contains the rendered templates/NOTES.txt if available
 	Notes string `json:"notes,omitempty"`
+	// Contains the deployed resources information
+	Resources map[string][]runtime.Object `json:"resources,omitempty"`
 }

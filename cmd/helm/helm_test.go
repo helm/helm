@@ -18,7 +18,7 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"runtime"
@@ -28,15 +28,15 @@ import (
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v3/internal/test"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/cli"
-	kubefake "helm.sh/helm/v3/pkg/kube/fake"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/storage"
-	"helm.sh/helm/v3/pkg/storage/driver"
-	"helm.sh/helm/v3/pkg/time"
+	"helm.sh/helm/v4/internal/test"
+	"helm.sh/helm/v4/pkg/action"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	"helm.sh/helm/v4/pkg/cli"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
+	"helm.sh/helm/v4/pkg/time"
 )
 
 func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }
@@ -60,35 +60,17 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 				}
 				t.Logf("running cmd (attempt %d): %s", i+1, tt.cmd)
 				_, out, err := executeActionCommandC(storage, tt.cmd)
-				if (err != nil) != tt.wantError {
-					t.Errorf("expected error, got '%v'", err)
+				if tt.wantError && err == nil {
+					t.Errorf("expected error, got success with the following output:\n%s", out)
+				}
+				if !tt.wantError && err != nil {
+					t.Errorf("expected no error, got: '%v'", err)
 				}
 				if tt.golden != "" {
 					test.AssertGoldenString(t, out, tt.golden)
 				}
 			})
 		}
-	}
-}
-
-func runTestActionCmd(t *testing.T, tests []cmdTestCase) {
-	t.Helper()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			defer resetEnv()()
-
-			store := storageFixture()
-			for _, rel := range tt.rels {
-				store.Create(rel)
-			}
-			_, out, err := executeActionCommandC(store, tt.cmd)
-			if (err != nil) != tt.wantError {
-				t.Errorf("expected error, got '%v'", err)
-			}
-			if tt.golden != "" {
-				test.AssertGoldenString(t, out, tt.golden)
-			}
-		})
 	}
 }
 
@@ -110,9 +92,9 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 
 	actionConfig := &action.Configuration{
 		Releases:     store,
-		KubeClient:   &kubefake.PrintingKubeClient{Out: ioutil.Discard},
+		KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
 		Capabilities: chartutil.DefaultCapabilities,
-		Log:          func(format string, v ...interface{}) {},
+		Log:          func(_ string, _ ...interface{}) {},
 	}
 
 	root, err := newRootCmd(actionConfig, buf, args)

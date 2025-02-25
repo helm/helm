@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
+package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
 	"fmt"
@@ -23,8 +23,8 @@ import (
 
 	"github.com/Masterminds/vcs"
 
-	"helm.sh/helm/v3/internal/test/ensure"
-	"helm.sh/helm/v3/pkg/helmpath"
+	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 var _ Installer = new(VCSInstaller)
@@ -49,7 +49,7 @@ func (r *testRepo) UpdateVersion(version string) error {
 }
 
 func TestVCSInstaller(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
@@ -102,7 +102,7 @@ func TestVCSInstaller(t *testing.T) {
 }
 
 func TestVCSInstallerNonExistentVersion(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	source := "https://github.com/adamreese/helm-env"
 	version := "0.2.0"
@@ -124,7 +124,7 @@ func TestVCSInstallerNonExistentVersion(t *testing.T) {
 	}
 }
 func TestVCSInstallerUpdate(t *testing.T) {
-	defer ensure.HelmHome(t)()
+	ensure.HelmHome(t)
 
 	source := "https://github.com/adamreese/helm-env"
 

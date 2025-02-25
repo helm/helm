@@ -29,6 +29,8 @@ HAS_CURL="$(type "curl" &> /dev/null && echo true || echo false)"
 HAS_WGET="$(type "wget" &> /dev/null && echo true || echo false)"
 HAS_OPENSSL="$(type "openssl" &> /dev/null && echo true || echo false)"
 HAS_GPG="$(type "gpg" &> /dev/null && echo true || echo false)"
+HAS_GIT="$(type "git" &> /dev/null && echo true || echo false)"
+HAS_TAR="$(type "tar" &> /dev/null && echo true || echo false)"
 
 # initArch discovers the architecture for this system.
 initArch() {
@@ -67,7 +69,7 @@ runAsRoot() {
 # verifySupported checks that the os/arch combination is supported for
 # binary builds, as well whether or not necessary tools are present.
 verifySupported() {
-  local supported="darwin-amd64\ndarwin-arm64\nlinux-386\nlinux-amd64\nlinux-arm\nlinux-arm64\nlinux-ppc64le\nlinux-s390x\nwindows-amd64"
+  local supported="darwin-amd64\ndarwin-arm64\nlinux-386\nlinux-amd64\nlinux-arm\nlinux-arm64\nlinux-ppc64le\nlinux-s390x\nlinux-riscv64\nwindows-amd64\nwindows-arm64"
   if ! echo "${supported}" | grep -q "${OS}-${ARCH}"; then
     echo "No prebuilt binary for ${OS}-${ARCH}."
     echo "To build from source, go to https://github.com/helm/helm"
@@ -97,17 +99,32 @@ verifySupported() {
       exit 1
     fi
   fi
+
+  if [ "${HAS_GIT}" != "true" ]; then
+    echo "[WARNING] Could not find git. It is required for plugin installation."
+  fi
+
+  if [ "${HAS_TAR}" != "true" ]; then
+    echo "[ERROR] Could not find tar. It is required to extract the helm binary archive."
+    exit 1
+  fi
 }
 
 # checkDesiredVersion checks if the desired version is available.
 checkDesiredVersion() {
   if [ "x$DESIRED_VERSION" == "x" ]; then
     # Get tag from release URL
-    local latest_release_url="https://github.com/helm/helm/releases"
+    local latest_release_url="https://get.helm.sh/helm-latest-version"
+    local latest_release_response=""
     if [ "${HAS_CURL}" == "true" ]; then
-      TAG=$(curl -Ls $latest_release_url | grep 'href="/helm/helm/releases/tag/v3.[0-9]*.[0-9]*\"' | sed -E 's/.*\/helm\/helm\/releases\/tag\/(v[0-9\.]+)".*/\1/g' | head -1)
+      latest_release_response=$( curl -L --silent --show-error --fail "$latest_release_url" 2>&1 || true )
     elif [ "${HAS_WGET}" == "true" ]; then
-      TAG=$(wget $latest_release_url -O - 2>&1 | grep 'href="/helm/helm/releases/tag/v3.[0-9]*.[0-9]*\"' | sed -E 's/.*\/helm\/helm\/releases\/tag\/(v[0-9\.]+)".*/\1/g' | head -1)
+      latest_release_response=$( wget "$latest_release_url" -q -O - 2>&1 || true )
+    fi
+    TAG=$( echo "$latest_release_response" | grep '^v[0-9]' )
+    if [ "x$TAG" == "x" ]; then
+      printf "Could not retrieve the latest release tag information from %s: %s\n" "${latest_release_url}" "${latest_release_response}"
+      exit 1
     fi
   else
     TAG=$DESIRED_VERSION
@@ -262,7 +279,7 @@ testVersion() {
 help () {
   echo "Accepted cli arguments are:"
   echo -e "\t[--help|-h ] ->> prints this help"
-  echo -e "\t[--version|-v <desired_version>] . When not defined it fetches the latest release from GitHub"
+  echo -e "\t[--version|-v <desired_version>] . When not defined it fetches the latest release tag from the Helm CDN"
   echo -e "\te.g. --version v3.0.0 or -v canary"
   echo -e "\t[--no-sudo]  ->> install without sudo"
 }
@@ -294,6 +311,10 @@ while [[ $# -gt 0 ]]; do
        shift
        if [[ $# -ne 0 ]]; then
            export DESIRED_VERSION="${1}"
+           if [[ "$1" != "v"* ]]; then
+               echo "Expected version arg ('${DESIRED_VERSION}') to begin with 'v', fixing..."
+               export DESIRED_VERSION="v${1}"
+           fi
        else
            echo -e "Please provide the desired version. e.g. --version v3.0.0 or -v canary"
            exit 0

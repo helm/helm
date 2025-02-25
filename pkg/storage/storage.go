@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package storage // import "helm.sh/helm/v3/pkg/storage"
+package storage // import "helm.sh/helm/v4/pkg/storage"
 
 import (
 	"fmt"
@@ -22,9 +22,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	rspb "helm.sh/helm/v3/pkg/release"
-	relutil "helm.sh/helm/v3/pkg/releaseutil"
-	"helm.sh/helm/v3/pkg/storage/driver"
+	rspb "helm.sh/helm/v4/pkg/release"
+	relutil "helm.sh/helm/v4/pkg/release/util"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 // HelmStorageType is the type field of the Kubernetes storage object which stores the Helm release
@@ -111,7 +111,7 @@ func (s *Storage) ListDeployed() ([]*rspb.Release, error) {
 }
 
 // Deployed returns the last deployed release with the provided release name, or
-// returns ErrReleaseNotFound if not found.
+// returns driver.NewErrNoDeployedReleases if not found.
 func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 	ls, err := s.DeployedAll(name)
 	if err != nil {
@@ -130,7 +130,7 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 }
 
 // DeployedAll returns all deployed releases with the provided name, or
-// returns ErrReleaseNotFound if not found.
+// returns driver.NewErrNoDeployedReleases if not found.
 func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 	s.Log("getting deployed releases from %q history", name)
 
@@ -149,7 +149,7 @@ func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 }
 
 // History returns the revision history for the release with the provided name, or
-// returns ErrReleaseNotFound if no such release name exists.
+// returns driver.ErrReleaseNotFound if no such release name exists.
 func (s *Storage) History(name string) ([]*rspb.Release, error) {
 	s.Log("getting release history for %q", name)
 
@@ -161,15 +161,15 @@ func (s *Storage) History(name string) ([]*rspb.Release, error) {
 //
 // We allow max to be set explicitly so that calling functions can "make space"
 // for the new records they are going to write.
-func (s *Storage) removeLeastRecent(name string, max int) error {
-	if max < 0 {
+func (s *Storage) removeLeastRecent(name string, maximum int) error {
+	if maximum < 0 {
 		return nil
 	}
 	h, err := s.History(name)
 	if err != nil {
 		return err
 	}
-	if len(h) <= max {
+	if len(h) <= maximum {
 		return nil
 	}
 
@@ -177,14 +177,14 @@ func (s *Storage) removeLeastRecent(name string, max int) error {
 	relutil.SortByRevision(h)
 
 	lastDeployed, err := s.Deployed(name)
-	if err != nil {
+	if err != nil && !errors.Is(err, driver.ErrNoDeployedReleases) {
 		return err
 	}
 
 	var toDelete []*rspb.Release
 	for _, rel := range h {
-		// once we have enough releases to delete to reach the max, stop
-		if len(h)-len(toDelete) == max {
+		// once we have enough releases to delete to reach the maximum, stop
+		if len(h)-len(toDelete) == maximum {
 			break
 		}
 		if lastDeployed != nil {
