@@ -118,5 +118,6 @@ type InterfaceResources interface {
 }
 
 var _ Interface = (*Client)(nil)
+var _ InterfaceLogs = (*Client)(nil)
 var _ InterfaceDeletionPropagation = (*Client)(nil)
 var _ InterfaceResources = (*Client)(nil)
