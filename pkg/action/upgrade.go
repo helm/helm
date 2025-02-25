@@ -29,12 +29,12 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/postrender"
 	"helm.sh/helm/v4/pkg/registry"
 	"helm.sh/helm/v4/pkg/release"
-	"helm.sh/helm/v4/pkg/releaseutil"
+	releaseutil "helm.sh/helm/v4/pkg/release/util"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 

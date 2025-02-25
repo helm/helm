@@ -25,10 +25,10 @@ import (
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"helm.sh/helm/v4/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/util"
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/release"
-	"helm.sh/helm/v4/pkg/releaseutil"
+	releaseutil "helm.sh/helm/v4/pkg/release/util"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
 

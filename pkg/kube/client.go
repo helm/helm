@@ -76,8 +76,8 @@ type Client struct {
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
 
-	kubeClient *kubernetes.Clientset
 	Waiter
+	kubeClient kubernetes.Interface
 }
 
 type WaitStrategy string
@@ -174,7 +174,7 @@ func New(getter genericclioptions.RESTClientGetter) (*Client, error) {
 var nopLogger = func(_ string, _ ...interface{}) {}
 
 // getKubeClient get or create a new KubernetesClientSet
-func (c *Client) getKubeClient() (*kubernetes.Clientset, error) {
+func (c *Client) getKubeClient() (kubernetes.Interface, error) {
 	var err error
 	if c.kubeClient == nil {
 		c.kubeClient, err = c.Factory.KubernetesClientSet()
@@ -194,7 +194,7 @@ func (c *Client) IsReachable() error {
 	if err != nil {
 		return errors.Wrap(err, "Kubernetes cluster unreachable")
 	}
-	if _, err := client.ServerVersion(); err != nil {
+	if _, err := client.Discovery().ServerVersion(); err != nil {
 		return errors.Wrap(err, "Kubernetes cluster unreachable")
 	}
 	return nil
@@ -686,6 +686,151 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 	target.Refresh(obj, true)
 	return nil
 }
+
+// func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) error {
+// 	kind := info.Mapping.GroupVersionKind.Kind
+// 	switch kind {
+// 	case "Job", "Pod":
+// 	default:
+// 		return nil
+// 	}
+
+// 	c.Log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
+
+// 	// Use a selector on the name of the resource. This should be unique for the
+// 	// given version and kind
+// 	selector, err := fields.ParseSelector(fmt.Sprintf("metadata.name=%s", info.Name))
+// 	if err != nil {
+// 		return err
+// 	}
+// 	lw := cachetools.NewListWatchFromClient(info.Client, info.Mapping.Resource.Resource, info.Namespace, selector)
+
+// 	// What we watch for depends on the Kind.
+// 	// - For a Job, we watch for completion.
+// 	// - For all else, we watch until Ready.
+// 	// In the future, we might want to add some special logic for types
+// 	// like Ingress, Volume, etc.
+
+// 	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
+// 	defer cancel()
+// 	_, err = watchtools.UntilWithSync(ctx, lw, &unstructured.Unstructured{}, nil, func(e watch.Event) (bool, error) {
+// 		// Make sure the incoming object is versioned as we use unstructured
+// 		// objects when we build manifests
+// 		obj := convertWithMapper(e.Object, info.Mapping)
+// 		switch e.Type {
+// 		case watch.Added, watch.Modified:
+// 			// For things like a secret or a config map, this is the best indicator
+// 			// we get. We care mostly about jobs, where what we want to see is
+// 			// the status go into a good state. For other types, like ReplicaSet
+// 			// we don't really do anything to support these as hooks.
+// 			c.Log("Add/Modify event for %s: %v", info.Name, e.Type)
+// 			switch kind {
+// 			case "Job":
+// 				return c.waitForJob(obj, info.Name)
+// 			case "Pod":
+// 				return c.waitForPodSuccess(obj, info.Name)
+// 			}
+// 			return true, nil
+// 		case watch.Deleted:
+// 			c.Log("Deleted event for %s", info.Name)
+// 			return true, nil
+// 		case watch.Error:
+// 			// Handle error and return with an error.
+// 			c.Log("Error event for %s", info.Name)
+// 			return true, errors.Errorf("failed to deploy %s", info.Name)
+// 		default:
+// 			return false, nil
+// 		}
+// 	})
+// 	return err
+// }
+
+// // waitForJob is a helper that waits for a job to complete.
+// //
+// // This operates on an event returned from a watcher.
+// func (c *Client) waitForJob(obj runtime.Object, name string) (bool, error) {
+// 	o, ok := obj.(*batch.Job)
+// 	if !ok {
+// 		return true, errors.Errorf("expected %s to be a *batch.Job, got %T", name, obj)
+// 	}
+
+// 	for _, c := range o.Status.Conditions {
+// 		if c.Type == batch.JobComplete && c.Status == "True" {
+// 			return true, nil
+// 		} else if c.Type == batch.JobFailed && c.Status == "True" {
+// 			return true, errors.Errorf("job %s failed: %s", name, c.Reason)
+// 		}
+// 	}
+
+// 	c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
+// 	return false, nil
+// }
+
+// // waitForPodSuccess is a helper that waits for a pod to complete.
+// //
+// // This operates on an event returned from a watcher.
+// func (c *Client) waitForPodSuccess(obj runtime.Object, name string) (bool, error) {
+// 	o, ok := obj.(*v1.Pod)
+// 	if !ok {
+// 		return true, errors.Errorf("expected %s to be a *v1.Pod, got %T", name, obj)
+// 	}
+
+// 	switch o.Status.Phase {
+// 	case v1.PodSucceeded:
+// 		c.Log("Pod %s succeeded", o.Name)
+// 		return true, nil
+// 	case v1.PodFailed:
+// 		return true, errors.Errorf("pod %s failed", o.Name)
+// 	case v1.PodPending:
+// 		c.Log("Pod %s pending", o.Name)
+// 	case v1.PodRunning:
+// 		c.Log("Pod %s running", o.Name)
+// 	}
+
+// 	return false, nil
+// }
+
+// // GetPodList uses the kubernetes interface to get the list of pods filtered by listOptions
+// func (c *Client) GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error) {
+// 	podList, err := c.kubeClient.CoreV1().Pods(namespace).List(context.Background(), listOptions)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to get pod list with options: %+v with error: %v", listOptions, err)
+// 	}
+// 	return podList, nil
+// }
+
+// // OutputContainerLogsForPodList is a helper that outputs logs for a list of pods
+// func (c *Client) OutputContainerLogsForPodList(podList *v1.PodList, namespace string, writerFunc func(namespace, pod, container string) io.Writer) error {
+// 	for _, pod := range podList.Items {
+// 		for _, container := range pod.Spec.Containers {
+// 			options := &v1.PodLogOptions{
+// 				Container: container.Name,
+// 			}
+// 			request := c.kubeClient.CoreV1().Pods(namespace).GetLogs(pod.Name, options)
+// 			err2 := copyRequestStreamToWriter(request, pod.Name, container.Name, writerFunc(namespace, pod.Name, container.Name))
+// 			if err2 != nil {
+// 				return err2
+// 			}
+// 		}
+// 	}
+// 	return nil
+// }
+
+// func copyRequestStreamToWriter(request *rest.Request, podName, containerName string, writer io.Writer) error {
+// 	readCloser, err := request.Stream(context.Background())
+// 	if err != nil {
+// 		return errors.Errorf("Failed to stream pod logs for pod: %s, container: %s", podName, containerName)
+// 	}
+// 	defer readCloser.Close()
+// 	_, err = io.Copy(writer, readCloser)
+// 	if err != nil {
+// 		return errors.Errorf("Failed to copy IO from logs for pod: %s, container: %s", podName, containerName)
+// 	}
+// 	if err != nil {
+// 		return errors.Errorf("Failed to close reader for pod: %s, container: %s", podName, containerName)
+// 	}
+// 	return nil
+// }
 
 // scrubValidationError removes kubectl info from the message.
 func scrubValidationError(err error) error {
