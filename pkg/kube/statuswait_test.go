@@ -319,25 +319,14 @@ func TestStatusWait(t *testing.T) {
 				restMapper: fakeMapper,
 				log:        t.Logf,
 			}
-			objs := []runtime.Object{}
-
-			for _, podYaml := range tt.objManifests {
-				m := make(map[string]interface{})
-				err := yaml.Unmarshal([]byte(podYaml), &m)
-				assert.NoError(t, err)
-				resource := &unstructured.Unstructured{Object: m}
-				objs = append(objs, resource)
-				gvr := getGVR(t, fakeMapper, resource)
-				err = fakeClient.Tracker().Create(gvr, resource, resource.GetNamespace())
-				assert.NoError(t, err)
-			}
-			resourceList := ResourceList{}
+			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
-				list, err := c.Build(objBody(obj), false)
+				u := obj.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
 				assert.NoError(t, err)
-				resourceList = append(resourceList, list...)
 			}
-
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.Wait(resourceList, time.Second*3)
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
@@ -384,24 +373,14 @@ func TestWaitForJobComplete(t *testing.T) {
 				restMapper: fakeMapper,
 				log:        t.Logf,
 			}
-			objs := []runtime.Object{}
-			for _, podYaml := range tt.objManifests {
-				m := make(map[string]interface{})
-				err := yaml.Unmarshal([]byte(podYaml), &m)
-				assert.NoError(t, err)
-				resource := &unstructured.Unstructured{Object: m}
-				objs = append(objs, resource)
-				gvr := getGVR(t, fakeMapper, resource)
-				err = fakeClient.Tracker().Create(gvr, resource, resource.GetNamespace())
-				assert.NoError(t, err)
-			}
-			resourceList := ResourceList{}
+			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
-				list, err := c.Build(objBody(obj), false)
+				u := obj.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
 				assert.NoError(t, err)
-				resourceList = append(resourceList, list...)
 			}
-
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WaitWithJobs(resourceList, time.Second*3)
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
@@ -424,7 +403,7 @@ func TestWatchForReady(t *testing.T) {
 			objManifests: []string{jobCompleteManifest, podCompleteManifest},
 		},
 		{
-			name:         "succeeds even when a resource that's not a pod or job is complete",
+			name:         "succeeds when a resource that's not a pod or job is not ready",
 			objManifests: []string{notReadyDeploymentManifest},
 		},
 		{
@@ -454,24 +433,14 @@ func TestWatchForReady(t *testing.T) {
 				restMapper: fakeMapper,
 				log:        t.Logf,
 			}
-			objs := []runtime.Object{}
-			for _, podYaml := range tt.objManifests {
-				m := make(map[string]interface{})
-				err := yaml.Unmarshal([]byte(podYaml), &m)
-				assert.NoError(t, err)
-				resource := &unstructured.Unstructured{Object: m}
-				objs = append(objs, resource)
-				gvr := getGVR(t, fakeMapper, resource)
-				err = fakeClient.Tracker().Create(gvr, resource, resource.GetNamespace())
-				assert.NoError(t, err)
-			}
-			resourceList := ResourceList{}
+			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
-				list, err := c.Build(objBody(obj), false)
+				u := obj.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
 				assert.NoError(t, err)
-				resourceList = append(resourceList, list...)
 			}
-
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WatchUntilReady(resourceList, time.Second*3)
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
