@@ -25,7 +25,7 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/deprecation"
 	kscheme "k8s.io/client-go/kubernetes/scheme"
 
-	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
 var (

@@ -45,7 +45,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote/retry"
 
 	"helm.sh/helm/v4/internal/version"
-	"helm.sh/helm/v4/pkg/chart"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 

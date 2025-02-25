@@ -17,7 +17,7 @@ limitations under the License.
 package action
 
 import (
-	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
 // GetValues is the action for checking a given release's values.

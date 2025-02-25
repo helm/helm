@@ -25,8 +25,8 @@ import (
 	"time"
 
 	"helm.sh/helm/v4/internal/tlsutil"
-	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chart/loader"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	helmtime "helm.sh/helm/v4/pkg/time"
 
 	"github.com/Masterminds/semver/v3"
