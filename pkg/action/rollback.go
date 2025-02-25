@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 
 	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/release"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
@@ -37,7 +38,7 @@ type Rollback struct {
 
 	Version       int
 	Timeout       time.Duration
-	Wait          bool
+	Wait          kube.WaitStrategy
 	WaitForJobs   bool
 	DisableHooks  bool
 	DryRun        bool
@@ -58,6 +59,10 @@ func NewRollback(cfg *Configuration) *Rollback {
 func (r *Rollback) Run(name string) error {
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
 		return err
+	}
+
+	if err := r.cfg.KubeClient.SetWaiter(r.Wait); err != nil {
+		return fmt.Errorf("failed to set kube client waiter: %w", err)
 	}
 
 	r.cfg.Releases.MaxHistory = r.MaxHistory
@@ -223,21 +228,19 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		}
 	}
 
-	if r.Wait {
-		if r.WaitForJobs {
-			if err := r.cfg.KubeClient.WaitWithJobs(target, r.Timeout); err != nil {
-				targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
-				r.cfg.recordRelease(currentRelease)
-				r.cfg.recordRelease(targetRelease)
-				return targetRelease, errors.Wrapf(err, "release %s failed", targetRelease.Name)
-			}
-		} else {
-			if err := r.cfg.KubeClient.Wait(target, r.Timeout); err != nil {
-				targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
-				r.cfg.recordRelease(currentRelease)
-				r.cfg.recordRelease(targetRelease)
-				return targetRelease, errors.Wrapf(err, "release %s failed", targetRelease.Name)
-			}
+	if r.WaitForJobs {
+		if err := r.cfg.KubeClient.WaitWithJobs(target, r.Timeout); err != nil {
+			targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
+			r.cfg.recordRelease(currentRelease)
+			r.cfg.recordRelease(targetRelease)
+			return targetRelease, errors.Wrapf(err, "release %s failed", targetRelease.Name)
+		}
+	} else {
+		if err := r.cfg.KubeClient.Wait(target, r.Timeout); err != nil {
+			targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
+			r.cfg.recordRelease(currentRelease)
+			r.cfg.recordRelease(targetRelease)
+			return targetRelease, errors.Wrapf(err, "release %s failed", targetRelease.Name)
 		}
 	}
 

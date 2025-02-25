@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -41,7 +42,7 @@ type Uninstall struct {
 	DryRun              bool
 	IgnoreNotFound      bool
 	KeepHistory         bool
-	Wait                bool
+	Wait                kube.WaitStrategy
 	DeletionPropagation string
 	Timeout             time.Duration
 	Description         string
@@ -58,6 +59,10 @@ func NewUninstall(cfg *Configuration) *Uninstall {
 func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) {
 	if err := u.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
+	}
+
+	if err := u.cfg.KubeClient.SetWaiter(u.Wait); err != nil {
+		return nil, fmt.Errorf("failed to set kube client waiter: %w", err)
 	}
 
 	if u.DryRun {
@@ -130,12 +135,8 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 	res.Info = kept
 
-	if u.Wait {
-		if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceExt); ok {
-			if err := kubeClient.WaitForDelete(deletedResources, u.Timeout); err != nil {
-				errs = append(errs, err)
-			}
-		}
+	if err := u.cfg.KubeClient.WaitForDelete(deletedResources, u.Timeout); err != nil {
+		errs = append(errs, err)
 	}
 
 	if !u.DisableHooks {
