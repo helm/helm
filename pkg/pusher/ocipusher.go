@@ -27,7 +27,7 @@ import (
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v4/internal/tlsutil"
-	"helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/registry"
 	"helm.sh/helm/v4/pkg/time/ctime"
 )

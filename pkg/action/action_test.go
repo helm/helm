@@ -24,8 +24,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
-	"helm.sh/helm/v4/pkg/chart"
-	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/registry"
 	"helm.sh/helm/v4/pkg/release"

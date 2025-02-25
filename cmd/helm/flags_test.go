@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"testing"
 
-	"helm.sh/helm/v4/pkg/chart"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/release"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
