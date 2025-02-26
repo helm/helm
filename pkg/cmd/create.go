@@ -23,9 +23,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v4/pkg/chart"
-	chartutil "helm.sh/helm/v4/pkg/chart/util"
 	"helm.sh/helm/v4/pkg/cmd/require"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 

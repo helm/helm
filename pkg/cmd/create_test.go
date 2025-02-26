@@ -23,9 +23,9 @@ import (
 	"testing"
 
 	"helm.sh/helm/v4/internal/test/ensure"
-	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chart/loader"
-	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 

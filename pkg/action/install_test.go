@@ -33,8 +33,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test"
-	"helm.sh/helm/v4/pkg/chart"
-	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/storage/driver"

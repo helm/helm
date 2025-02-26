@@ -26,8 +26,8 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/term"
 
-	"helm.sh/helm/v4/pkg/chart/loader"
-	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/provenance"
 )
 
