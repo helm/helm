@@ -1,0 +1,4 @@
+error_lint_ignore=icon is recommended
+error_lint_ignore=apiVersion is required. The value must be either \"v1\" or \"v2\"
+error_lint_ignore=file does not exist
+error_lint_ignore=chart directory is missing these dependencies: mariadb
