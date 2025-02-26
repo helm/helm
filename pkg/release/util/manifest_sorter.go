@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
-	"helm.sh/helm/v4/pkg/release"
+	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 // Manifest represents a manifest file, which has a name and some content.

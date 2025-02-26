@@ -19,7 +19,7 @@ package util // import "helm.sh/helm/v4/pkg/release/util"
 import (
 	"sort"
 
-	rspb "helm.sh/helm/v4/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
 type list []*rspb.Release
