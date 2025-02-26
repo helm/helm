@@ -28,8 +28,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 
-	"helm.sh/helm/v4/pkg/chart"
-	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/postrender"
 	"helm.sh/helm/v4/pkg/registry"

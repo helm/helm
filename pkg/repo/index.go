@@ -33,8 +33,8 @@ import (
 
 	"helm.sh/helm/v4/internal/fileutil"
 	"helm.sh/helm/v4/internal/urlutil"
-	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chart/loader"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/provenance"
 )
 

@@ -29,8 +29,8 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
 
-	"helm.sh/helm/v4/pkg/chart"
-	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
 // Engine is an implementation of the Helm rendering implementation for templates.
