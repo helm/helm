@@ -103,12 +103,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		return "", nil, err
 	}
 
-	name := filepath.Base(u.Path)
-	if u.Scheme == registry.OCIScheme {
-		idx := strings.LastIndexByte(name, ':')
-		name = fmt.Sprintf("%s-%s.tgz", name[:idx], name[idx+1:])
-	}
-
+	name := c.getChartName(u.String())
 	destfile := filepath.Join(dest, name)
 	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
 		return destfile, nil, err
@@ -158,9 +153,10 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 //   - If version is empty, this will return the URL for the latest version
 //   - If no version can be found, an error is returned
 func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, error) {
-	u, err := url.Parse(ref)
+	u, err := c.parseChartURL(ref, version)
+
 	if err != nil {
-		return nil, errors.Errorf("invalid chart URL format: %s", ref)
+		return u, err
 	}
 
 	if registry.IsOCI(u.String()) {
@@ -363,6 +359,65 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 	}
 	// This means that there is no repo file for the given URL.
 	return nil, ErrNoOwnerRepo
+}
+
+func (c *ChartDownloader) getChartName(url string) string {
+	name := filepath.Base(url)
+	if registry.IsOCI(url) {
+		idx := strings.LastIndexByte(name, ':')
+		name = fmt.Sprintf("%s-%s.tgz", name[:idx], name[idx+1:])
+	}
+
+	return name
+}
+
+func (c *ChartDownloader) parseChartURL(ref string, version string) (*url.URL, error) {
+	u, err := url.Parse(ref)
+	if err != nil {
+		return nil, errors.Errorf("invalid chart URL format: %s", ref)
+	}
+
+	if registry.IsOCI(u.String()) {
+		tag, err := c.getOciTag(ref, version)
+
+		if err != nil {
+			return nil, err
+		}
+
+		u.Path = fmt.Sprintf("%s:%s", u.Path, tag)
+	}
+
+	return u, nil
+}
+
+func (c *ChartDownloader) getOciTag(ref, version string) (string, error) {
+	var tag string
+
+	// Evaluate whether an explicit version has been provided. Otherwise, determine version to use
+	_, errSemVer := semver.NewVersion(version)
+	if errSemVer == nil {
+		tag = version
+	} else {
+		// Retrieve list of repository tags
+		tags, err := c.RegistryClient.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", registry.OCIScheme)))
+		if err != nil {
+			return "", err
+		}
+		if len(tags) == 0 {
+			return "", errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
+		}
+
+		// Determine if version provided
+		// If empty, try to get the highest available tag
+		// If exact version, try to find it
+		// If semver constraint string, try to find a match
+		tag, err = registry.GetTagMatchingVersionOrConstraint(tags, version)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return tag, nil
 }
 
 func loadRepoConfig(file string) (*repo.File, error) {
