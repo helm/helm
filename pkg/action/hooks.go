@@ -30,7 +30,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 
-	"helm.sh/helm/v4/pkg/release"
+	release "helm.sh/helm/v4/pkg/release/v1"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
 

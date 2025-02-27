@@ -33,8 +33,8 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/postrender"
 	"helm.sh/helm/v4/pkg/registry"
-	"helm.sh/helm/v4/pkg/release"
 	releaseutil "helm.sh/helm/v4/pkg/release/util"
+	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 

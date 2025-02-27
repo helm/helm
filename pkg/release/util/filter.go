@@ -16,7 +16,7 @@ limitations under the License.
 
 package util // import "helm.sh/helm/v4/pkg/release/util"
 
-import rspb "helm.sh/helm/v4/pkg/release"
+import rspb "helm.sh/helm/v4/pkg/release/v1"
 
 // FilterFunc returns true if the release object satisfies
 // the predicate of the underlying filter func.

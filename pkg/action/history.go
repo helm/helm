@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
-	"helm.sh/helm/v4/pkg/release"
+	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 // History is the action for checking the release's ledger.
