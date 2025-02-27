@@ -48,10 +48,10 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath s
 						r.Enabled = bv
 						break
 					}
-					slog.Warn("Warning: Condition path '%s' for chart %s returned non-bool value", c, r.Name)
+					slog.Warn("Condition path '%s' for chart %s returned non-bool value", c, r.Name)
 				} else if _, ok := err.(ErrNoValue); !ok {
 					// this is a real error
-					slog.Error("Warning: PathValue returned error %v", slog.Any("err", err))
+					slog.Error("PathValue returned error %v", slog.Any("err", err))
 				}
 			}
 		}
@@ -79,7 +79,7 @@ func processDependencyTags(reqs []*chart.Dependency, cvals Values) {
 						hasFalse = true
 					}
 				} else {
-					slog.Warn("Warning: Tag '%s' for chart %s returned non-bool value", k, r.Name)
+					slog.Warn("Tag '%s' for chart %s returned non-bool value", k, r.Name)
 				}
 			}
 		}
@@ -254,7 +254,7 @@ func processImportValues(c *chart.Chart, merge bool) error {
 				// get child table
 				vv, err := cvals.Table(r.Name + "." + child)
 				if err != nil {
-					slog.Error("Warning: ImportValues missing table from chart %s: %v", r.Name, err)
+					slog.Error("ImportValues missing table from chart %s: %v", r.Name, err)
 					continue
 				}
 				// create value map from child to be merged into parent
@@ -271,7 +271,7 @@ func processImportValues(c *chart.Chart, merge bool) error {
 				})
 				vm, err := cvals.Table(r.Name + "." + child)
 				if err != nil {
-					slog.Error("Warning: ImportValues missing table: %v", slog.Any("err", err))
+					slog.Error("ImportValues missing table: %v", slog.Any("err", err))
 					continue
 				}
 				if merge {
