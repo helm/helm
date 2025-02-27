@@ -29,8 +29,8 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
-	"helm.sh/helm/v4/pkg/release"
 	releaseutil "helm.sh/helm/v4/pkg/release/util"
+	release "helm.sh/helm/v4/pkg/release/v1"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
 

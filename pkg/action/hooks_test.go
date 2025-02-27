@@ -26,7 +26,7 @@ import (
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
-	"helm.sh/helm/v4/pkg/release"
+	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func podManifestWithOutputLogs(hookDefinitions []release.HookOutputLogPolicy) string {

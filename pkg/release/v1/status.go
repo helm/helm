@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package release
+package v1
 
 // Status is the status of a release
 type Status string

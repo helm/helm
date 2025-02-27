@@ -22,8 +22,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	rspb "helm.sh/helm/v4/pkg/release"
 	relutil "helm.sh/helm/v4/pkg/release/util"
+	rspb "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
