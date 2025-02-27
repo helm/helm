@@ -102,7 +102,7 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 	}
 	for _, p := range r.patterns {
 		if p.match == nil {
-			slog.Info("ignore: no matcher supplied for %q", p.raw)
+			slog.Info("ignore: no matcher supplied for %q", "patterns", p.raw)
 			return false
 		}
 

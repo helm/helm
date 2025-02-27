@@ -95,7 +95,7 @@ func (i *VCSInstaller) Install() error {
 
 // Update updates a remote repository
 func (i *VCSInstaller) Update() error {
-	slog.Debug("updating %s", i.Repo.Remote())
+	slog.Debug("updating %s", "repo", i.Repo.Remote())
 	if i.Repo.IsDirty() {
 		return errors.New("plugin repo was modified")
 	}
@@ -129,7 +129,7 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	slog.Debug("found refs: %s", refs)
+	slog.Debug("found refs: %s", "refs", refs)
 
 	// Convert and filter the list to semver.Version instances
 	semvers := getSemVers(refs)
@@ -140,7 +140,7 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 		if constraint.Check(v) {
 			// If the constraint passes get the original reference
 			ver := v.Original()
-			slog.Debug("setting to %s", ver)
+			slog.Debug("setting to %s", "versions", ver)
 			return ver, nil
 		}
 	}
@@ -150,7 +150,7 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 
 // setVersion attempts to checkout the version
 func (i *VCSInstaller) setVersion(repo vcs.Repo, ref string) error {
-	slog.Debug("setting version to %q", i.Version)
+	slog.Debug("setting version to %q", "versions", i.Version)
 	return repo.UpdateVersion(ref)
 }
 
@@ -160,7 +160,7 @@ func (i *VCSInstaller) sync(repo vcs.Repo) error {
 		slog.Debug("cloning %s to %s", repo.Remote(), repo.LocalPath())
 		return repo.Get()
 	}
-	slog.Debug("updating %s", repo.Remote())
+	slog.Debug("updating %s", "remote", repo.Remote())
 	return repo.Update()
 }
 

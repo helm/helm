@@ -196,7 +196,7 @@ func (file *manifestFile) sort(result *result) error {
 		}
 
 		if isUnknownHook {
-			slog.Info("info: skipping unknown hook: %q", hookTypes)
+			slog.Info("info: skipping unknown hook: %q", "hookTypes", hookTypes)
 			continue
 		}
 

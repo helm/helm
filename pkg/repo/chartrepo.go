@@ -343,7 +343,7 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 func (e *Entry) String() string {
 	buf, err := json.Marshal(e)
 	if err != nil {
-		slog.Error("failed to marshal entry: %s", err)
+		slog.Error("failed to marshal entry: %s", slog.Any("err", err))
 		panic(err)
 	}
 	return string(buf)
