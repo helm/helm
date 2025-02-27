@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -144,7 +145,7 @@ func (i *HTTPInstaller) Install() error {
 		return err
 	}
 
-	debug("copying %s to %s", src, i.Path())
+	slog.Debug("copying %s to %s", src, i.Path())
 	return fs.CopyDir(src, i.Path())
 }
 

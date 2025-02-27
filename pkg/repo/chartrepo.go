@@ -22,7 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -343,7 +343,8 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 func (e *Entry) String() string {
 	buf, err := json.Marshal(e)
 	if err != nil {
-		log.Panic(err)
+		slog.Error("failed to marshal entry: %s", err)
+		panic(err)
 	}
 	return string(buf)
 }
