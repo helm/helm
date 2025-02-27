@@ -31,8 +31,9 @@ import (
 	"github.com/spf13/pflag"
 
 	"helm.sh/helm/v4/cmd/helm/require"
+	ichart "helm.sh/helm/v4/internal/chart"
 	"helm.sh/helm/v4/pkg/action"
-	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartv2 "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cli/values"
@@ -327,12 +328,21 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 // checkIfInstallable validates if a chart can be installed
 //
 // Application chart type is only installable
-func checkIfInstallable(ch *chart.Chart) error {
-	switch ch.Metadata.Type {
-	case "", "application":
-		return nil
+func checkIfInstallable[C ichart.Chart](ch *C) error {
+
+	// In order to access nested structs (i.e., Metadata) you need to do type switches as generics
+	// do not provide a means to handle accessing these.
+	switch v := any(ch).(type) {
+	case *chartv2.Chart:
+		switch v.Metadata.Type {
+		case "", "application":
+			return nil
+		}
+
+		return errors.Errorf("%s charts are not installable", v.Metadata.Type)
+	default:
+		return errors.Errorf("chart type cannot be installed, type: %T\n", v)
 	}
-	return errors.Errorf("%s charts are not installable", ch.Metadata.Type)
 }
 
 // Provide dynamic auto-completion for the install and template commands
