@@ -170,7 +170,9 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 				return v
 			}
 		}
-		return ""
+		// Return something different than what we received by adding a random prefix.
+		// We cannot simply return an empty string as v could be an empty string itself.
+		return fmt.Sprintf("x%s", v)
 	}
 
 	for i := 0; i < len(args); i++ {
