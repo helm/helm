@@ -58,7 +58,7 @@ func (i *LocalInstaller) Install() error {
 	if !isPlugin(i.Source) {
 		return ErrMissingMetadata
 	}
-	slog.Debug("symlinking %s to %s", i.Source, i.Path())
+	slog.Debug("symlinking", "source", i.Source, "path", i.Path())
 	return os.Symlink(i.Source, i.Path())
 }
 

@@ -145,7 +145,7 @@ func (i *HTTPInstaller) Install() error {
 		return err
 	}
 
-	slog.Debug("copying %s to %s", src, i.Path())
+	slog.Debug("copying", "source", src, "path", i.Path())
 	return fs.CopyDir(src, i.Path())
 }
 
