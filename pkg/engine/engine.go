@@ -203,7 +203,7 @@ func (e Engine) initFunMap(t *template.Template) {
 		if val == nil {
 			if e.LintMode {
 				// Don't fail on missing required values when linting
-				slog.Warn("Missing required value: %s", "LintMode", warn)
+				slog.Warn("missing required value: %s", "LintMode", warn)
 				return "", nil
 			}
 			return val, errors.New(warnWrap(warn))
@@ -211,7 +211,7 @@ func (e Engine) initFunMap(t *template.Template) {
 			if val == "" {
 				if e.LintMode {
 					// Don't fail on missing required values when linting
-					slog.Warn("Missing required value: %s", "LintMode", warn)
+					slog.Warn("missing required value: %s", "LintMode", warn)
 					return "", nil
 				}
 				return val, errors.New(warnWrap(warn))
@@ -224,7 +224,7 @@ func (e Engine) initFunMap(t *template.Template) {
 	funcMap["fail"] = func(msg string) (string, error) {
 		if e.LintMode {
 			// Don't fail when linting
-			slog.Info("Fail: %s", "LintMode", msg)
+			slog.Info("fail: %s", "lintMode", msg)
 			return "", nil
 		}
 		return "", errors.New(warnWrap(msg))

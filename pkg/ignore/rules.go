@@ -102,7 +102,7 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 	}
 	for _, p := range r.patterns {
 		if p.match == nil {
-			slog.Info("This will be ignored no matcher supplied for %q", "patterns", p.raw)
+			slog.Info("this will be ignored no matcher supplied for %q", "patterns", p.raw)
 			return false
 		}
 
@@ -177,7 +177,7 @@ func (r *Rules) parseRule(rule string) error {
 			rule = strings.TrimPrefix(rule, "/")
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				slog.Error("Failed to compile %q: %s", rule, err)
+				slog.Error("failed to compile %q: %s", rule, err)
 				return false
 			}
 			return ok
@@ -187,7 +187,7 @@ func (r *Rules) parseRule(rule string) error {
 		p.match = func(n string, _ os.FileInfo) bool {
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				slog.Error("Failed to compile %q: %s", rule, err)
+				slog.Error("failed to compile %q: %s", rule, err)
 				return false
 			}
 			return ok
@@ -199,7 +199,7 @@ func (r *Rules) parseRule(rule string) error {
 			n = filepath.Base(n)
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				slog.Error("Failed to compile %q: %s", rule, err)
+				slog.Error("failed to compile %q: %s", rule, err)
 				return false
 			}
 			return ok
