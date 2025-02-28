@@ -21,7 +21,6 @@ import (
 	"io"
 
 	"github.com/gosuri/uitable"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/cli/output"
@@ -39,10 +38,6 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			f, _ := repo.LoadFile(settings.RepositoryConfig)
-			if len(f.Repositories) == 0 && !(outfmt == output.JSON || outfmt == output.YAML) {
-				return errors.New("no repositories to show")
-			}
-
 			return outfmt.Write(out, &repoListWriter{f.Repositories})
 		},
 	}
@@ -62,6 +57,10 @@ type repoListWriter struct {
 }
 
 func (r *repoListWriter) WriteTable(out io.Writer) error {
+	if len(r.repos) == 0 {
+		_, _ = fmt.Fprintln(out, "no repositories to show")
+		return nil
+	}
 	table := uitable.New()
 	table.AddRow("NAME", "URL")
 	for _, re := range r.repos {
