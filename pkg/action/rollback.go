@@ -24,8 +24,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v4/pkg/chartutil"
-	"helm.sh/helm/v4/pkg/release"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	release "helm.sh/helm/v4/pkg/release/v1"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
 

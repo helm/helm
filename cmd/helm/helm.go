@@ -17,12 +17,10 @@ limitations under the License.
 package main // import "helm.sh/helm/v4/cmd/helm"
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
@@ -32,9 +30,10 @@ import (
 
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cli"
+	helmcmd "helm.sh/helm/v4/pkg/cmd"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
-	"helm.sh/helm/v4/pkg/release"
+	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
@@ -44,17 +43,9 @@ func init() {
 	log.SetFlags(log.Lshortfile)
 }
 
-func debug(format string, v ...interface{}) {
-	if settings.Debug {
-		timeNow := time.Now().String()
-		format = fmt.Sprintf("%s [debug] %s\n", timeNow, format)
-		log.Output(2, fmt.Sprintf(format, v...))
-	}
-}
-
-func warning(format string, v ...interface{}) {
-	format = fmt.Sprintf("WARNING: %s\n", format)
-	fmt.Fprintf(os.Stderr, format, v...)
+// hookOutputWriter provides the writer for writing hook logs.
+func hookOutputWriter(_, _, _ string) io.Writer {
+	return log.Writer()
 }
 
 func main() {
@@ -65,28 +56,28 @@ func main() {
 	kube.ManagedFieldsManager = "helm"
 
 	actionConfig := new(action.Configuration)
-	cmd, err := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
+	cmd, err := helmcmd.NewRootCmd(actionConfig, os.Stdout, os.Args[1:])
 	if err != nil {
-		warning("%+v", err)
+		helmcmd.Warning("%+v", err)
 		os.Exit(1)
 	}
 
-	// run when each command's execute method is called
 	cobra.OnInitialize(func() {
 		helmDriver := os.Getenv("HELM_DRIVER")
-		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, helmcmd.Debug); err != nil {
 			log.Fatal(err)
 		}
 		if helmDriver == "memory" {
 			loadReleasesInMemory(actionConfig)
 		}
+		actionConfig.SetHookOutputFunc(hookOutputWriter)
 	})
 
 	if err := cmd.Execute(); err != nil {
-		debug("%+v", err)
+		helmcmd.Debug("%+v", err)
 		switch e := err.(type) {
-		case pluginError:
-			os.Exit(e.code)
+		case helmcmd.PluginError:
+			os.Exit(e.Code)
 		default:
 			os.Exit(1)
 		}

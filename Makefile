@@ -65,8 +65,8 @@ K8S_MODULES_MINOR_VER=$(word 2,$(K8S_MODULES_VER))
 
 LDFLAGS += -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
 LDFLAGS += -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/chartutil.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/chartutil.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/util.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/util.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
 
 .PHONY: all
 all: build
