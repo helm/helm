@@ -339,6 +339,7 @@ func newRegistryClientWithTLS(
 		registry.ClientOptHTTPClient(&http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: tlsConf,
+				Proxy:           http.ProxyFromEnvironment,
 			},
 		}),
 		registry.ClientOptBasicAuth(username, password),
