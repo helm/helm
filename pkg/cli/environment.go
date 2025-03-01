@@ -34,9 +34,9 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 
-	"helm.sh/helm/v3/internal/version"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v4/internal/version"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/kube"
 )
 
 // defaultMaxHistory sets the maximum number of releases to 0: unlimited

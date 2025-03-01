@@ -1,7 +1,0 @@
-Release "crazy-bunny" has been upgraded. Happy Helming!
-NAME: crazy-bunny
-LAST DEPLOYED: Fri Sep  2 22:04:05 1977
-NAMESPACE: default
-STATUS: deployed
-REVISION: 2
-TEST SUITE: None

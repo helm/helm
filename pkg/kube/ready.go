@@ -14,18 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube // import "helm.sh/helm/v3/pkg/kube"
+package kube // import "helm.sh/helm/v4/pkg/kube"
 
 import (
 	"context"
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
-	appsv1beta1 "k8s.io/api/apps/v1beta1"
-	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +32,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	deploymentutil "helm.sh/helm/v3/internal/third_party/k8s.io/kubernetes/deployment/util"
+	deploymentutil "helm.sh/helm/v4/internal/third_party/k8s.io/kubernetes/deployment/util"
 )
 
 // ReadyCheckerOption is a function that configures a ReadyChecker.
@@ -105,7 +102,7 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 			ready, err := c.jobReady(job)
 			return ready, err
 		}
-	case *appsv1.Deployment, *appsv1beta1.Deployment, *appsv1beta2.Deployment, *extensionsv1beta1.Deployment:
+	case *appsv1.Deployment:
 		currentDeployment, err := c.client.AppsV1().Deployments(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
@@ -138,7 +135,7 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 		if !c.serviceReady(svc) {
 			return false, nil
 		}
-	case *extensionsv1beta1.DaemonSet, *appsv1.DaemonSet, *appsv1beta2.DaemonSet:
+	case *appsv1.DaemonSet:
 		ds, err := c.client.AppsV1().DaemonSets(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
@@ -168,7 +165,7 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 		if !c.crdReady(*crd) {
 			return false, nil
 		}
-	case *appsv1.StatefulSet, *appsv1beta1.StatefulSet, *appsv1beta2.StatefulSet:
+	case *appsv1.StatefulSet:
 		sts, err := c.client.AppsV1().StatefulSets(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
@@ -188,7 +185,7 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 		if !ready || err != nil {
 			return false, err
 		}
-	case *extensionsv1beta1.ReplicaSet, *appsv1beta2.ReplicaSet, *appsv1.ReplicaSet:
+	case *appsv1.ReplicaSet:
 		rs, err := c.client.AppsV1().ReplicaSets(v.Namespace).Get(ctx, v.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err

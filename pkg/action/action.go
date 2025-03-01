@@ -19,6 +19,7 @@ package action
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -32,17 +33,17 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/engine"
-	"helm.sh/helm/v3/pkg/kube"
-	"helm.sh/helm/v3/pkg/postrender"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/releaseutil"
-	"helm.sh/helm/v3/pkg/storage"
-	"helm.sh/helm/v3/pkg/storage/driver"
-	"helm.sh/helm/v3/pkg/time"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/engine"
+	"helm.sh/helm/v4/pkg/kube"
+	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/registry"
+	releaseutil "helm.sh/helm/v4/pkg/release/util"
+	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
+	"helm.sh/helm/v4/pkg/time"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
@@ -95,6 +96,9 @@ type Configuration struct {
 	Capabilities *chartutil.Capabilities
 
 	Log func(string, ...interface{})
+
+	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
+	HookOutputFunc func(namespace, pod, container string) io.Writer
 }
 
 // renderResources renders the templates in a chart
@@ -122,7 +126,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	var err2 error
 
 	// A `helm template` should not talk to the remote cluster. However, commands with the flag
-	//`--dry-run` with the value of `false`, `none`, or `server` should try to interact with the cluster.
+	// `--dry-run` with the value of `false`, `none`, or `server` should try to interact with the cluster.
 	// It may break in interesting and exotic ways because other data (e.g. discovery) is mocked.
 	if interactWithRemote && cfg.RESTClientGetter != nil {
 		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
@@ -394,8 +398,8 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 		if cfg.Releases != nil {
 			if mem, ok := cfg.Releases.Driver.(*driver.Memory); ok {
 				// This function can be called more than once (e.g., helm list --all-namespaces).
-				// If a memory driver was already initialized, re-use it but set the possibly new namespace.
-				// We re-use it in case some releases where already created in the existing memory driver.
+				// If a memory driver was already initialized, reuse it but set the possibly new namespace.
+				// We reuse it in case some releases where already created in the existing memory driver.
 				d = mem
 			}
 		}
@@ -422,6 +426,12 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	cfg.KubeClient = kc
 	cfg.Releases = store
 	cfg.Log = log
+	cfg.HookOutputFunc = func(_, _, _ string) io.Writer { return io.Discard }
 
 	return nil
+}
+
+// SetHookOutputFunc sets the HookOutputFunc on the Configuration.
+func (cfg *Configuration) SetHookOutputFunc(hookOutputFunc func(_, _, _ string) io.Writer) {
+	cfg.HookOutputFunc = hookOutputFunc
 }

@@ -19,8 +19,8 @@ package action
 import (
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/release"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 // History is the action for checking the release's ledger.

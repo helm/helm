@@ -40,7 +40,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
-	"helm.sh/helm/v3/internal/tlsutil"
+	"helm.sh/helm/v4/internal/tlsutil"
 )
 
 const (
@@ -88,15 +88,20 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 		ClientOptEnableCache(true),
 		ClientOptWriter(suite.Out),
 		ClientOptCredentialsFile(credentialsFile),
-		ClientOptResolver(nil),
+		ClientOptBasicAuth(testUsername, testPassword),
 	}
 
 	if tlsEnabled {
 		var tlsConf *tls.Config
 		if insecure {
-			tlsConf, err = tlsutil.NewClientTLS("", "", "", true)
+			tlsConf, err = tlsutil.NewTLSConfig(
+				tlsutil.WithInsecureSkipVerify(true),
+			)
 		} else {
-			tlsConf, err = tlsutil.NewClientTLS(tlsCert, tlsKey, tlsCA, false)
+			tlsConf, err = tlsutil.NewTLSConfig(
+				tlsutil.WithCertKeyPairFiles(tlsCert, tlsKey),
+				tlsutil.WithCAFile(tlsCA),
+			)
 		}
 		httpClient := &http.Client{
 			Transport: &http.Transport{
@@ -128,25 +133,23 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	// This is required because Docker enforces HTTP if the registry
 	// host is localhost/127.0.0.1.
 	suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
-	suite.srv, _ = mockdns.NewServer(map[string]mockdns.Zone{
+	suite.srv, err = mockdns.NewServer(map[string]mockdns.Zone{
 		"helm-test-registry.": {
 			A: []string{"127.0.0.1"},
 		},
 	}, false)
+	suite.Nil(err, "no error creating mock DNS server")
 	suite.srv.PatchNet(net.DefaultResolver)
 
 	config.HTTP.Addr = fmt.Sprintf(":%d", port)
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
 
-	// Basic auth is not possible if we are serving HTTP.
-	if tlsEnabled {
-		config.Auth = configuration.Auth{
-			"htpasswd": configuration.Parameters{
-				"realm": "localhost",
-				"path":  htpasswdPath,
-			},
-		}
+	config.Auth = configuration.Auth{
+		"htpasswd": configuration.Parameters{
+			"realm": "localhost",
+			"path":  htpasswdPath,
+		},
 	}
 
 	// config tls
@@ -275,7 +278,7 @@ func testPush(suite *TestSuite) {
 	result, err := suite.RegistryClient.Push(chartData, ref, PushOptProvData(provData), PushOptCreationTime(testingChartCreationTime))
 	suite.Nil(err, "no error pushing good ref with prov")
 
-	_, err = suite.RegistryClient.Pull(ref)
+	_, err = suite.RegistryClient.Pull(ref, PullOptWithProv(true))
 	suite.Nil(err, "no error pulling a simple chart")
 
 	// Validate the output
@@ -349,7 +352,7 @@ func testPull(suite *TestSuite) {
 
 	// full pull with chart and prov
 	result, err := suite.RegistryClient.Pull(ref, PullOptWithProv(true))
-	suite.Nil(err, "no error pulling a chart with prov")
+	suite.Require().Nil(err, "no error pulling a chart with prov")
 
 	// Validate the output
 	// Note: these digests/sizes etc may change if the test chart/prov files are modified,

@@ -25,10 +25,10 @@ import (
 	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/registry"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 // ShowOutputFormat is the format of the output of `helm show`
@@ -65,16 +65,7 @@ type Show struct {
 }
 
 // NewShow creates a new Show object with the given configuration.
-// Deprecated: Use NewShowWithConfig
-// TODO Helm 4: Fold NewShowWithConfig back into NewShow
-func NewShow(output ShowOutputFormat) *Show {
-	return &Show{
-		OutputFormat: output,
-	}
-}
-
-// NewShowWithConfig creates a new Show object with the given configuration.
-func NewShowWithConfig(output ShowOutputFormat, cfg *Configuration) *Show {
+func NewShow(output ShowOutputFormat, cfg *Configuration) *Show {
 	sh := &Show{
 		OutputFormat: output,
 	}
