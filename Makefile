@@ -21,7 +21,7 @@ ACCEPTANCE_RUN_TESTS=.
 PKG         := ./...
 TAGS        :=
 TESTS       := .
-TESTFLAGS   :=
+TESTFLAGS   := -shuffle=on
 LDFLAGS     := -w -s
 GOFLAGS     :=
 CGO_ENABLED ?= 0
@@ -116,10 +116,11 @@ test-unit:
 
 
 .PHONY: test-coverage
+test-coverage: TESTFLAGS += -count=3
 test-coverage:
 	@echo
 	@echo "==> Running unit tests with coverage <=="
-	@ ./scripts/coverage.sh
+	@ TESTFLAGS="${TESTFLAGS}" ./scripts/coverage.sh
 
 .PHONY: test-style
 test-style:
