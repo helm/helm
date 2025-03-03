@@ -161,8 +161,8 @@ func processParent(cmd *cobra.Command, args []string) ([]string, error) {
 // Returns two sets of args: known and unknown (in that order)
 // Known args are flags that are consumed by the root `helm` command
 // Unknown args are any args that will not be consumed by helm, and that may be
-// processed by the plugin plus
-// The single exception is -h or --help, which is passed to the plugin
+// processed by the plugin
+// The single exception is -h or --help, which is passed to the plugin regardless
 func manuallyProcessArgs(args []string) ([]string, []string) {
 	known := []string{}
 	unknown := []string{}
@@ -185,7 +185,7 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 		"--registry-config",
 		"--repository-cache",
 		"--repository-config"}
-	kvargs = append(kvargs, boolArgs...) // bool args can also by kv i.e. `--debug=true`
+	kvargs = append(kvargs, boolArgs...) // boolean args can also be kv i.e. `--debug=true`
 
 	// detects args with 'arg=val' syntax
 	isKnownKvWithEquals := func(a string) bool {
