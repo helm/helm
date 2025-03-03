@@ -1,5 +1,8 @@
 /*
 Copyright The Helm Authors.
+This file was initially copied and modified from
+    https://github.com/fluxcd/kustomize-controller/blob/main/internal/statusreaders/job_test.go
+Copyright 2022 The Flux authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,7 +19,6 @@ limitations under the License.
 
 package statusreaders
 
-// This file was copied and modified from https://github.com/fluxcd/kustomize-controller/blob/main/internal/statusreaders/job.go
 import (
 	"testing"
 
