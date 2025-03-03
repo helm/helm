@@ -85,7 +85,7 @@ func (ws *waitValue) Set(s string) error {
 		*ws = waitValue(kube.StatusWatcherStrategy)
 		return nil
 	case "false":
-		*ws = ""
+		*ws = waitValue(kube.HookOnlyStrategy)
 		return nil
 	default:
 		return fmt.Errorf("invalid wait input %q. Valid inputs are true, false, %s, and %s", s, kube.StatusWatcherStrategy, kube.LegacyStrategy)
