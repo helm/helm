@@ -40,7 +40,7 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 			if len(f.Repositories) == 0 {
 			    switch outfmt {
 			    case output.Table:
-				fmt.Fprintln(out, "no repositories to show")
+				_, _ = fmt.Fprintln(out, "no repositories to show")
 				return nil
 			     case output.JSON, output.YAML:
 				return outfmt.Write(out, &repoListWriter{repos: []*repo.Entry{}})
