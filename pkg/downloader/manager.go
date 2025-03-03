@@ -75,6 +75,7 @@ type Manager struct {
 	RegistryClient   *registry.Client
 	RepositoryConfig string
 	RepositoryCache  string
+	Untar            bool
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -357,6 +358,10 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			break
 		}
 
+		if m.Untar {
+			chartutil.ExpandFile(m.ChartPath+"/charts/", tmpPath)
+		}
+
 		churls[churl] = struct{}{}
 	}
 
@@ -498,7 +503,6 @@ Loop:
 // in a known repo and attempt to ensure the data is present for steps like
 // version resolution.
 func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.Dependency) (map[string]string, error) {
-
 	var ru []*repo.Entry
 
 	for _, dd := range deps {
@@ -675,7 +679,6 @@ func dedupeRepos(repos []*repo.Entry) []*repo.Entry {
 }
 
 func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
-
 	var wg sync.WaitGroup
 
 	localRepos := dedupeRepos(repos)
@@ -727,7 +730,6 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	}
 
 	for _, cr := range repos {
-
 		if urlutil.Equal(repoURL, cr.Config.URL) {
 			var entry repo.ChartVersions
 			entry, err = findEntryByName(name, cr)
