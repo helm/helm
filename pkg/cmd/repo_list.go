@@ -37,11 +37,17 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		Args:              require.NoArgs,
 		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			f, _ := repo.LoadFile(settings.RepositoryConfig)
+			if len(f.Repositories) == 0 {
+			    switch outfmt {
+			    case output.Table:
+				fmt.Fprintln(out, "no repositories to show")
+				return nil
+			     case output.JSON, output.YAML:
+				return outfmt.Write(out, &repoListWriter{repos: []*repo.Entry{}})
+					}
 			return outfmt.Write(out, &repoListWriter{f.Repositories})
 		},
 	}
-
 	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
@@ -57,10 +63,6 @@ type repoListWriter struct {
 }
 
 func (r *repoListWriter) WriteTable(out io.Writer) error {
-	if len(r.repos) == 0 {
-		_, _ = fmt.Fprintln(out, "no repositories to show")
-		return nil
-	}
 	table := uitable.New()
 	table.AddRow("NAME", "URL")
 	for _, re := range r.repos {
