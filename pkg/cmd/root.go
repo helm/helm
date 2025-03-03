@@ -106,7 +106,26 @@ func Warning(format string, v ...interface{}) {
 	fmt.Fprintf(os.Stderr, "WARNING: "+format+"\n", v...)
 }
 
-func NewRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) (*cobra.Command, error) {
+func NewRootCmd(out io.Writer, args []string) (*cobra.Command, error) {
+	actionConfig := new(action.Configuration)
+	cmd, err := newRootCmdWithConfig(actionConfig, out, args)
+	if err != nil {
+		return nil, err
+	}
+	cobra.OnInitialize(func() {
+		helmDriver := os.Getenv("HELM_DRIVER")
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, Debug); err != nil {
+			log.Fatal(err)
+		}
+		if helmDriver == "memory" {
+			loadReleasesInMemory(actionConfig)
+		}
+		actionConfig.SetHookOutputFunc(hookOutputWriter)
+	})
+	return cmd, nil
+}
+
+func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, args []string) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
@@ -124,16 +143,6 @@ func NewRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		},
 	}
 
-	cobra.OnInitialize(func() {
-		helmDriver := os.Getenv("HELM_DRIVER")
-		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, Debug); err != nil {
-			log.Fatal(err)
-		}
-		if helmDriver == "memory" {
-			loadReleasesInMemory(actionConfig)
-		}
-		actionConfig.SetHookOutputFunc(hookOutputWriter)
-	})
 	flags := cmd.PersistentFlags()
 
 	settings.AddFlags(flags)

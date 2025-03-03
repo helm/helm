@@ -95,7 +95,7 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 		Log:          func(_ string, _ ...interface{}) {},
 	}
 
-	root, err := NewRootCmd(actionConfig, buf, args)
+	root, err := newRootCmdWithConfig(actionConfig, buf, args)
 	if err != nil {
 		return nil, "", err
 	}
