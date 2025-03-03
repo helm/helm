@@ -34,7 +34,16 @@ import (
 func TestManuallyProcessArgs(t *testing.T) {
 	input := []string{
 		"--debug",
+		"--debug=true",
+		"--debug", "true",
+		"--debug", "false",
+		"--kube-insecure-skip-tls-verify",
+		"--kube-insecure-skip-tls-verify=true",
+		"--kube-insecure-skip-tls-verify", "true",
+		"--kube-insecure-skip-tls-verify", "false",
 		"--foo", "bar",
+		"--burst-limit", "123",
+		"--burst-limit=123",
 		"--kubeconfig=/home/foo",
 		"--kubeconfig", "/home/foo",
 		"--kube-context=test1",
@@ -46,12 +55,24 @@ func TestManuallyProcessArgs(t *testing.T) {
 		"-n", "test2",
 		"--namespace=test2",
 		"--namespace", "test2",
+		"--qps", "22",
+		"--qps=22",
 		"--home=/tmp",
 		"command",
+		"--debug", // check a boolean flag at the end to test possible out of bounds exception
 	}
 
 	expectKnown := []string{
 		"--debug",
+		"--debug=true",
+		"--debug", "true",
+		"--debug", "false",
+		"--kube-insecure-skip-tls-verify",
+		"--kube-insecure-skip-tls-verify=true",
+		"--kube-insecure-skip-tls-verify", "true",
+		"--kube-insecure-skip-tls-verify", "false",
+		"--burst-limit", "123",
+		"--burst-limit=123",
 		"--kubeconfig=/home/foo",
 		"--kubeconfig", "/home/foo",
 		"--kube-context=test1",
@@ -63,6 +84,9 @@ func TestManuallyProcessArgs(t *testing.T) {
 		"-n", "test2",
 		"--namespace=test2",
 		"--namespace", "test2",
+		"--qps", "22",
+		"--qps=22",
+		"--debug",
 	}
 
 	expectUnknown := []string{
@@ -71,16 +95,8 @@ func TestManuallyProcessArgs(t *testing.T) {
 
 	known, unknown := manuallyProcessArgs(input)
 
-	for i, k := range known {
-		if k != expectKnown[i] {
-			t.Errorf("expected known flag %d to be %q, got %q", i, expectKnown[i], k)
-		}
-	}
-	for i, k := range unknown {
-		if k != expectUnknown[i] {
-			t.Errorf("expected unknown flag %d to be %q, got %q", i, expectUnknown[i], k)
-		}
-	}
+	assert.Equal(t, expectKnown, known)
+	assert.Equal(t, expectUnknown, unknown)
 }
 
 func TestLoadCLIPlugins(t *testing.T) {
