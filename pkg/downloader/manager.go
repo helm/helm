@@ -506,6 +506,7 @@ Loop:
 // in a known repo and attempt to ensure the data is present for steps like
 // version resolution.
 func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.Dependency) (map[string]string, error) {
+
 	var ru []*repo.Entry
 
 	for _, dd := range deps {
@@ -682,6 +683,7 @@ func dedupeRepos(repos []*repo.Entry) []*repo.Entry {
 }
 
 func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
+
 	var wg sync.WaitGroup
 
 	localRepos := dedupeRepos(repos)
@@ -733,6 +735,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	}
 
 	for _, cr := range repos {
+
 		if urlutil.Equal(repoURL, cr.Config.URL) {
 			var entry repo.ChartVersions
 			entry, err = findEntryByName(name, cr)
