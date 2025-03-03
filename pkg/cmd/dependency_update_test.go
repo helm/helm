@@ -247,6 +247,7 @@ func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
 		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s", dir(chartname),
 			dir("repositories.yaml"), dir()),
 	)
+
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
