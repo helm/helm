@@ -79,7 +79,7 @@ type Install struct {
 	HideSecret               bool
 	DisableHooks             bool
 	Replace                  bool
-	Wait                     bool
+	Wait                     kube.WaitStrategy
 	WaitForJobs              bool
 	Devel                    bool
 	DependencyUpdate         bool
@@ -289,7 +289,14 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
-	i.Wait = i.Wait || i.Atomic
+	if i.Wait == kube.HookOnlyStrategy {
+		if i.Atomic {
+			i.Wait = kube.StatusWatcherStrategy
+		}
+	}
+	if err := i.cfg.KubeClient.SetWaiter(i.Wait); err != nil {
+		return nil, fmt.Errorf("failed to set kube client waiter: %w", err)
+	}
 
 	caps, err := i.cfg.getCapabilities()
 	if err != nil {
@@ -465,15 +472,13 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		return rel, err
 	}
 
-	if i.Wait {
-		if i.WaitForJobs {
-			err = i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout)
-		} else {
-			err = i.cfg.KubeClient.Wait(resources, i.Timeout)
-		}
-		if err != nil {
-			return rel, err
-		}
+	if i.WaitForJobs {
+		err = i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout)
+	} else {
+		err = i.cfg.KubeClient.Wait(resources, i.Timeout)
+	}
+	if err != nil {
+		return rel, err
 	}
 
 	if !i.DisableHooks {
