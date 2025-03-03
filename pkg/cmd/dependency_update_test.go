@@ -149,6 +149,19 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	if _, err := os.Stat(expect); err != nil {
 		t.Fatal(err)
 	}
+
+	// When using `--untar`, ./charts/*.tgz should not exist
+	_, _, err = executeActionCommand(
+		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --untar", dir(chartname), dir("repositories.yaml"), dir()),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Make sure the actual file is downloaded and untar
+	expect = dir(chartname, "charts/reqtest")
+	if _, err := os.Stat(expect); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
@@ -241,7 +254,6 @@ func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
 		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --content-cache %s", dir(chartname),
 			dir("repositories.yaml"), dir(), contentCache),
 	)
-
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
