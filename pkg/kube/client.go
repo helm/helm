@@ -35,7 +35,6 @@ import (
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,6 +50,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+
+	helmClient "helm.sh/helm/v4/internal/client"
 )
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
@@ -113,7 +114,7 @@ func (c *Client) newStatusWatcher() (*statusWaiter, error) {
 	if err != nil {
 		return nil, err
 	}
-	restMapper, err := apiutil.NewDynamicRESTMapper(cfg, httpClient)
+	restMapper, err := helmClient.NewLazyRESTMapper(cfg, httpClient)
 	if err != nil {
 		return nil, err
 	}
