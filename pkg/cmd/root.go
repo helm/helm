@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"sigs.k8s.io/yaml"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
@@ -33,8 +34,11 @@ import (
 	"helm.sh/helm/v4/internal/tlsutil"
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cli"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/registry"
+	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 var globalUsage = `The Kubernetes package manager
@@ -102,7 +106,26 @@ func Warning(format string, v ...interface{}) {
 	fmt.Fprintf(os.Stderr, "WARNING: "+format+"\n", v...)
 }
 
-func NewRootCmd(actionConfig *action.Configuration, out io.Writer, args []string) (*cobra.Command, error) {
+func NewRootCmd(out io.Writer, args []string) (*cobra.Command, error) {
+	actionConfig := new(action.Configuration)
+	cmd, err := newRootCmdWithConfig(actionConfig, out, args)
+	if err != nil {
+		return nil, err
+	}
+	cobra.OnInitialize(func() {
+		helmDriver := os.Getenv("HELM_DRIVER")
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, Debug); err != nil {
+			log.Fatal(err)
+		}
+		if helmDriver == "memory" {
+			loadReleasesInMemory(actionConfig)
+		}
+		actionConfig.SetHookOutputFunc(hookOutputWriter)
+	})
+	return cmd, nil
+}
+
+func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, args []string) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
@@ -119,6 +142,7 @@ func NewRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 			}
 		},
 	}
+
 	flags := cmd.PersistentFlags()
 
 	settings.AddFlags(flags)
@@ -230,6 +254,49 @@ func NewRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	checkForExpiredRepos(settings.RepositoryConfig)
 
 	return cmd, nil
+}
+
+// This function loads releases into the memory storage if the
+// environment variable is properly set.
+func loadReleasesInMemory(actionConfig *action.Configuration) {
+	filePaths := strings.Split(os.Getenv("HELM_MEMORY_DRIVER_DATA"), ":")
+	if len(filePaths) == 0 {
+		return
+	}
+
+	store := actionConfig.Releases
+	mem, ok := store.Driver.(*driver.Memory)
+	if !ok {
+		// For an unexpected reason we are not dealing with the memory storage driver.
+		return
+	}
+
+	actionConfig.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard}
+
+	for _, path := range filePaths {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			log.Fatal("Unable to read memory driver data", err)
+		}
+
+		releases := []*release.Release{}
+		if err := yaml.Unmarshal(b, &releases); err != nil {
+			log.Fatal("Unable to unmarshal memory driver data: ", err)
+		}
+
+		for _, rel := range releases {
+			if err := store.Create(rel); err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
+	// Must reset namespace to the proper one
+	mem.SetNamespace(settings.Namespace())
+}
+
+// hookOutputWriter provides the writer for writing hook logs.
+func hookOutputWriter(_, _, _ string) io.Writer {
+	return log.Writer()
 }
 
 func checkForExpiredRepos(repofile string) {
