@@ -1,4 +1,7 @@
 /*
+Copyright The Helm Authors.
+This file was initially copied and modified from
+  https://github.com/kubernetes-sigs/controller-runtime/blob/e818ce450d3d358600848dcfa1b585de64e7c865/pkg/client/apiutil/restmapper.go
 Copyright 2023 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
