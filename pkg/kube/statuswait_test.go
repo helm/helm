@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fluxcd/cli-utils/pkg/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -33,7 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/kubectl/pkg/scheme"
-	"sigs.k8s.io/cli-utils/pkg/testutil"
 )
 
 var podCurrentManifest = `

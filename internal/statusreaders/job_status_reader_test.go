@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"sigs.k8s.io/cli-utils/pkg/kstatus/status"
+	"github.com/fluxcd/cli-utils/pkg/kstatus/status"
 )
 
 func toUnstructured(t *testing.T, obj runtime.Object) (*unstructured.Unstructured, error) {
