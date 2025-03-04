@@ -29,11 +29,22 @@ type base struct {
 }
 
 func newBase(source string) base {
-	settings := cli.New()
+	pluginsDir := getPluginsDir()
 	return base{
 		Source:           source,
-		PluginsDirectory: settings.PluginsDirectory,
+		PluginsDirectory: pluginsDir,
 	}
+}
+
+func getPluginsDir() string {
+	settings := cli.New()
+
+	if settings.PluginsDirectory == "" {
+		return ""
+	}
+
+	pluginsDirs := filepath.SplitList(settings.PluginsDirectory)
+	return pluginsDirs[0]
 }
 
 // Path is where the plugin will be installed.
