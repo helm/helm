@@ -176,12 +176,12 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 		// text string. (Maybe we could use a hash appended to the name?)
 		t, err = t.New(parent.Name()).Parse(tpl)
 		if err != nil {
-			return "", errors.Wrapf(err, "Cannot parse template %q", tpl)
+			return "", errors.Wrapf(err, "cannot parse template %q", tpl)
 		}
 
 		var buf strings.Builder
 		if err := t.Execute(&buf, vals); err != nil {
-			return "", errors.Wrapf(err, "Error during tpl function execution for %q", tpl)
+			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
 		}
 
 		// See comment in renderWithReferences explaining the <no value> hack.
