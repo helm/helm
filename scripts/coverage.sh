@@ -16,6 +16,8 @@
 
 set -euo pipefail
 
+TESTFLAGS=${TESTFLAGS:-}
+
 covermode=${COVERMODE:-atomic}
 coverdir=$(mktemp -d /tmp/coverage.XXXXXXXXXX)
 profile="${coverdir}/cover.out"
@@ -24,7 +26,7 @@ generate_cover_data() {
   for d in $(go list ./...) ; do
     (
       local output="${coverdir}/${d//\//-}.cover"
-      go test -coverprofile="${output}" -covermode="$covermode" "$d"
+      go test ${TESTFLAGS} -coverprofile="${output}" -covermode="$covermode" "$d"
     )
   done
 
