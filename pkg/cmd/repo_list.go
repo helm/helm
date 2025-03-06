@@ -44,12 +44,12 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 				return nil
 			     case output.JSON, output.YAML:
 				return outfmt.Write(out, &repoListWriter{repos: []*repo.Entry{}})
+			     }
 			}
 			return outfmt.Write(out, &repoListWriter{f.Repositories})
 		},
 	}
 	bindOutputFlag(cmd, &outfmt)
-
 	return cmd
 }
 
