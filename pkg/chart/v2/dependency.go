@@ -31,6 +31,8 @@ type Dependency struct {
 	// A lock file will always produce a single version, while a dependency
 	// may contain a semantic version range.
 	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+	// The URL to the dependency.
+	ChartURL string `json:"charturl,omitempty" yaml:"charturl,omitempty"`
 	// The URL to the repository.
 	//
 	// Appending `index.yaml` to this string should result in a URL that can be

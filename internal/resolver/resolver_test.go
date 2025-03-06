@@ -81,7 +81,7 @@ func TestResolve(t *testing.T) {
 			},
 			expect: &chart.Lock{
 				Dependencies: []*chart.Dependency{
-					{Name: "alpine", Repository: "http://example.com", Version: "0.2.0"},
+					{Name: "alpine", Repository: "http://example.com", Version: "0.2.0", ChartURL: "https://charts.helm.sh/stable/alpine-0.1.0.tgz"},
 				},
 			},
 		},
@@ -144,7 +144,7 @@ func TestResolve(t *testing.T) {
 	r := New("testdata/chartpath", "testdata/repository", registryClient)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l, _, err := r.Resolve(tt.req, repoNames)
+			l, err := r.Resolve(tt.req, repoNames)
 			if err != nil {
 				if tt.err {
 					return
