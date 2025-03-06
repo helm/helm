@@ -16,6 +16,7 @@ limitations under the License.
 package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
+	"fmt"
 	"os"
 	"sort"
 
@@ -105,6 +106,26 @@ func (i *VCSInstaller) Update() error {
 		return ErrMissingMetadata
 	}
 	return nil
+}
+
+func (i *VCSInstaller) GetLatestVersion() (string, error) {
+	_, err := i.Repo.RunFromDir("git", "fetch", "-q", "--tags")
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch tags: %w", err)
+	}
+
+	refs, err := i.Repo.Tags()
+	if err != nil {
+		return "", fmt.Errorf("failed to get tags: %w", err)
+	}
+
+	semvers := getSemVers(refs)
+	if len(semvers) == 0 {
+		return "", fmt.Errorf("no valid semver tags found in repository")
+	}
+
+	sort.Sort(sort.Reverse(semver.Collection(semvers)))
+	return semvers[0].Original(), nil
 }
 
 func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
