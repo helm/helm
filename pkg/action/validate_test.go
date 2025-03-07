@@ -22,7 +22,7 @@ import (
 	"net/http"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v4/pkg/kube"
 
 	"github.com/stretchr/testify/assert"
 

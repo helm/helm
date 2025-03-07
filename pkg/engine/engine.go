@@ -29,8 +29,8 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
 // Engine is an implementation of the Helm rendering implementation for templates.
@@ -206,7 +206,7 @@ func (e Engine) initFunMap(t *template.Template) {
 				log.Printf("[INFO] Missing required value: %s", warn)
 				return "", nil
 			}
-			return val, errors.Errorf(warnWrap(warn))
+			return val, errors.New(warnWrap(warn))
 		} else if _, ok := val.(string); ok {
 			if val == "" {
 				if e.LintMode {
@@ -214,7 +214,7 @@ func (e Engine) initFunMap(t *template.Template) {
 					log.Printf("[INFO] Missing required value: %s", warn)
 					return "", nil
 				}
-				return val, errors.Errorf(warnWrap(warn))
+				return val, errors.New(warnWrap(warn))
 			}
 		}
 		return val, nil

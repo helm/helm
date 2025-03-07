@@ -21,12 +21,11 @@ import (
 	"io"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/resource"
 
-	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v4/pkg/kube"
 )
 
 // FailingKubeClient implements KubeClient for testing purposes. It also has
@@ -34,19 +33,18 @@ import (
 // delegates all its calls to `PrintingKubeClient`
 type FailingKubeClient struct {
 	PrintingKubeClient
-	CreateError                      error
-	GetError                         error
-	WaitError                        error
-	DeleteError                      error
-	DeleteWithPropagationError       error
-	WatchUntilReadyError             error
-	UpdateError                      error
-	BuildError                       error
-	BuildTableError                  error
-	BuildDummy                       bool
-	BuildUnstructuredError           error
-	WaitAndGetCompletedPodPhaseError error
-	WaitDuration                     time.Duration
+	CreateError                error
+	GetError                   error
+	WaitError                  error
+	DeleteError                error
+	DeleteWithPropagationError error
+	WatchUntilReadyError       error
+	UpdateError                error
+	BuildError                 error
+	BuildTableError            error
+	BuildDummy                 bool
+	BuildUnstructuredError     error
+	WaitDuration               time.Duration
 }
 
 // Create returns the configured error if set or prints
@@ -131,14 +129,6 @@ func (f *FailingKubeClient) BuildTable(r io.Reader, _ bool) (kube.ResourceList, 
 		return []*resource.Info{}, f.BuildTableError
 	}
 	return f.PrintingKubeClient.BuildTable(r, false)
-}
-
-// WaitAndGetCompletedPodPhase returns the configured error if set or prints
-func (f *FailingKubeClient) WaitAndGetCompletedPodPhase(s string, d time.Duration) (v1.PodPhase, error) {
-	if f.WaitAndGetCompletedPodPhaseError != nil {
-		return v1.PodSucceeded, f.WaitAndGetCompletedPodPhaseError
-	}
-	return f.PrintingKubeClient.WaitAndGetCompletedPodPhase(s, d)
 }
 
 // DeleteWithPropagationPolicy returns the configured error if set or prints

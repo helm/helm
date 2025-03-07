@@ -22,16 +22,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/lint/support"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
-
-// Values lints a chart's values.yaml file.
-//
-// This function is deprecated and will be removed in Helm 4.
-func Values(linter *support.Linter) {
-	ValuesWithOverrides(linter, map[string]interface{}{})
-}
 
 // ValuesWithOverrides tests the values.yaml file.
 //
@@ -39,7 +32,7 @@ func Values(linter *support.Linter) {
 // they are only tested for well-formedness.
 //
 // If additional values are supplied, they are coalesced into the values in values.yaml.
-func ValuesWithOverrides(linter *support.Linter, values map[string]interface{}) {
+func ValuesWithOverrides(linter *support.Linter, valueOverrides map[string]interface{}) {
 	file := "values.yaml"
 	vf := filepath.Join(linter.ChartDir, file)
 	fileExists := linter.RunLinterRule(support.InfoSev, file, validateValuesFileExistence(vf))
@@ -48,7 +41,7 @@ func ValuesWithOverrides(linter *support.Linter, values map[string]interface{}) 
 		return
 	}
 
-	linter.RunLinterRule(support.ErrorSev, file, validateValuesFile(vf, values))
+	linter.RunLinterRule(support.ErrorSev, file, validateValuesFile(vf, valueOverrides))
 }
 
 func validateValuesFileExistence(valuesPath string) error {

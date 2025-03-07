@@ -64,6 +64,12 @@ func (p *execRender) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error)
 		return nil, errors.Wrapf(err, "error while running command %s. error output:\n%s", p.binaryPath, stderr.String())
 	}
 
+	// If the binary returned almost nothing, it's likely that it didn't
+	// successfully render anything
+	if len(bytes.TrimSpace(postRendered.Bytes())) == 0 {
+		return nil, errors.Errorf("post-renderer %q produced empty output", p.binaryPath)
+	}
+
 	return postRendered, nil
 }
 

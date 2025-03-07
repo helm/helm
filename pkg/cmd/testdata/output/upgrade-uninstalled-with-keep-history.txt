@@ -1,0 +1,8 @@
+Release "funny-bunny" does not exist. Installing it now.
+NAME: funny-bunny
+LAST DEPLOYED: Fri Sep  2 22:04:05 1977
+NAMESPACE: default
+STATUS: deployed
+REVISION: 3
+DESCRIPTION: Install complete
+TEST SUITE: None

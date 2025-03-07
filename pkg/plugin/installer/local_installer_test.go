@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
+package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 var _ Installer = new(LocalInstaller)

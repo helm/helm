@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube // import "helm.sh/helm/v3/pkg/kube"
+package kube // import "helm.sh/helm/v4/pkg/kube"
 
 import (
 	"context"
@@ -153,7 +153,7 @@ func SelectorsForObject(object runtime.Object) (selector labels.Selector, err er
 	case *batchv1.Job:
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 	case *corev1.Service:
-		if t.Spec.Selector == nil || len(t.Spec.Selector) == 0 {
+		if len(t.Spec.Selector) == 0 {
 			return nil, fmt.Errorf("invalid service '%s': Service is defined without a selector", t.Name)
 		}
 		selector = labels.SelectorFromSet(t.Spec.Selector)

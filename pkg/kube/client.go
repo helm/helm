@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube // import "helm.sh/helm/v3/pkg/kube"
+package kube // import "helm.sh/helm/v4/pkg/kube"
 
 import (
 	"bytes"
@@ -83,7 +83,7 @@ type Client struct {
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
 
-	kubeClient *kubernetes.Clientset
+	kubeClient kubernetes.Interface
 }
 
 func init() {
@@ -111,7 +111,7 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 var nopLogger = func(_ string, _ ...interface{}) {}
 
 // getKubeClient get or create a new KubernetesClientSet
-func (c *Client) getKubeClient() (*kubernetes.Clientset, error) {
+func (c *Client) getKubeClient() (kubernetes.Interface, error) {
 	var err error
 	if c.kubeClient == nil {
 		c.kubeClient, err = c.Factory.KubernetesClientSet()
@@ -131,7 +131,7 @@ func (c *Client) IsReachable() error {
 	if err != nil {
 		return errors.Wrap(err, "Kubernetes cluster unreachable")
 	}
-	if _, err := client.ServerVersion(); err != nil {
+	if _, err := client.Discovery().ServerVersion(); err != nil {
 		return errors.Wrap(err, "Kubernetes cluster unreachable")
 	}
 	return nil
@@ -435,7 +435,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	case err != nil:
 		return res, err
 	case len(updateErrors) != 0:
-		return res, errors.Errorf(strings.Join(updateErrors, " && "))
+		return res, errors.New(strings.Join(updateErrors, " && "))
 	}
 
 	for _, info := range original.Difference(target) {
@@ -812,6 +812,48 @@ func (c *Client) waitForPodSuccess(obj runtime.Object, name string) (bool, error
 	return false, nil
 }
 
+// GetPodList uses the kubernetes interface to get the list of pods filtered by listOptions
+func (c *Client) GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error) {
+	podList, err := c.kubeClient.CoreV1().Pods(namespace).List(context.Background(), listOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pod list with options: %+v with error: %v", listOptions, err)
+	}
+	return podList, nil
+}
+
+// OutputContainerLogsForPodList is a helper that outputs logs for a list of pods
+func (c *Client) OutputContainerLogsForPodList(podList *v1.PodList, namespace string, writerFunc func(namespace, pod, container string) io.Writer) error {
+	for _, pod := range podList.Items {
+		for _, container := range pod.Spec.Containers {
+			options := &v1.PodLogOptions{
+				Container: container.Name,
+			}
+			request := c.kubeClient.CoreV1().Pods(namespace).GetLogs(pod.Name, options)
+			err2 := copyRequestStreamToWriter(request, pod.Name, container.Name, writerFunc(namespace, pod.Name, container.Name))
+			if err2 != nil {
+				return err2
+			}
+		}
+	}
+	return nil
+}
+
+func copyRequestStreamToWriter(request *rest.Request, podName, containerName string, writer io.Writer) error {
+	readCloser, err := request.Stream(context.Background())
+	if err != nil {
+		return errors.Errorf("Failed to stream pod logs for pod: %s, container: %s", podName, containerName)
+	}
+	defer readCloser.Close()
+	_, err = io.Copy(writer, readCloser)
+	if err != nil {
+		return errors.Errorf("Failed to copy IO from logs for pod: %s, container: %s", podName, containerName)
+	}
+	if err != nil {
+		return errors.Errorf("Failed to close reader for pod: %s, container: %s", podName, containerName)
+	}
+	return nil
+}
+
 // scrubValidationError removes kubectl info from the message.
 func scrubValidationError(err error) error {
 	if err == nil {
@@ -823,36 +865,4 @@ func scrubValidationError(err error) error {
 		return errors.New(strings.ReplaceAll(err.Error(), "; "+stopValidateMessage, ""))
 	}
 	return err
-}
-
-// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
-// and returns said phase (PodSucceeded or PodFailed qualify).
-func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error) {
-	client, err := c.getKubeClient()
-	if err != nil {
-		return v1.PodUnknown, err
-	}
-	to := int64(timeout)
-	watcher, err := client.CoreV1().Pods(c.namespace()).Watch(context.Background(), metav1.ListOptions{
-		FieldSelector:  fmt.Sprintf("metadata.name=%s", name),
-		TimeoutSeconds: &to,
-	})
-	if err != nil {
-		return v1.PodUnknown, err
-	}
-
-	for event := range watcher.ResultChan() {
-		p, ok := event.Object.(*v1.Pod)
-		if !ok {
-			return v1.PodUnknown, fmt.Errorf("%s not a pod", name)
-		}
-		switch p.Status.Phase {
-		case v1.PodFailed:
-			return v1.PodFailed, nil
-		case v1.PodSucceeded:
-			return v1.PodSucceeded, nil
-		}
-	}
-
-	return v1.PodUnknown, err
 }

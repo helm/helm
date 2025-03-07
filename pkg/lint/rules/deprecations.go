@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rules // import "helm.sh/helm/v3/pkg/lint/rules"
+package rules // import "helm.sh/helm/v4/pkg/lint/rules"
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/deprecation"
 	kscheme "k8s.io/client-go/kubernetes/scheme"
 
-	"helm.sh/helm/v3/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
 var (
@@ -73,16 +73,16 @@ func validateNoDeprecations(resource *K8sYamlStruct, kubeVersion *chartutil.Kube
 		return err
 	}
 
-	maj, err := strconv.Atoi(majorVersion)
+	major, err := strconv.Atoi(majorVersion)
 	if err != nil {
 		return err
 	}
-	min, err := strconv.Atoi(minorVersion)
+	minor, err := strconv.Atoi(minorVersion)
 	if err != nil {
 		return err
 	}
 
-	if !deprecation.IsDeprecated(runtimeObject, maj, min) {
+	if !deprecation.IsDeprecated(runtimeObject, major, minor) {
 		return nil
 	}
 	gvk := fmt.Sprintf("%s %s", resource.APIVersion, resource.Kind)
