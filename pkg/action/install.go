@@ -289,10 +289,8 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
-	if i.Wait == kube.HookOnlyStrategy {
-		if i.Atomic {
-			i.Wait = kube.StatusWatcherStrategy
-		}
+	if i.Wait == kube.HookOnlyStrategy && i.Atomic {
+		i.Wait = kube.StatusWatcherStrategy
 	}
 	if err := i.cfg.KubeClient.SetWaiter(i.Wait); err != nil {
 		return nil, fmt.Errorf("failed to set kube client waiter: %w", err)
