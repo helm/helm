@@ -34,6 +34,8 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
+const mergePrefix = "*"
+
 // ChartLoader loads a chart.
 type ChartLoader interface {
 	Load() (*chart.Chart, error)
@@ -252,23 +254,25 @@ func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 					continue
 				}
 			}
-		} else if reflect.TypeOf(v).Kind() == reflect.Slice {
-			if sourceList, ok := out[k].([]map[string]interface{}); ok {
+		} else if reflect.TypeOf(v).Kind() == reflect.Slice && strings.HasPrefix(k, mergePrefix) {
+			strippedKey := strings.TrimPrefix(k, mergePrefix)
+			out[strippedKey] = out[k]
+			delete(out, k)
+			if sourceList, ok := out[strippedKey].([]map[string]interface{}); ok {
 
 				val, ok := v.([]map[string]interface{})
 				if !ok {
 					log.Println("Property mismatch during merge")
-					out[k] = v
 					continue
 				}
 
-				out[k] = MergeMapLists(sourceList, val)
+				out[strippedKey] = MergeMapLists(sourceList, val)
 				continue
-			} else if sourceList, ok := out[k].([]interface{}); ok {
+			} else if sourceList, ok := out[strippedKey].([]interface{}); ok {
 				if val, ok := v.([]interface{}); ok {
-					out[k] = append(sourceList, val...)
+					out[strippedKey] = append(sourceList, val...)
 				} else {
-					out[k] = v
+					out[strippedKey] = v
 				}
 				continue
 			}
@@ -287,16 +291,16 @@ func MergeMapLists(a, b []map[string]interface{}) []map[string]interface{} {
 		var mergeKey string
 		var mergeValue interface{}
 		for k, v := range mapEntry {
-			if strings.HasPrefix(k, "*") {
+			if strings.HasPrefix(k, mergePrefix) {
 				mergeKey = k
 				mergeValue = v
-				b[j][strings.TrimPrefix(mergeKey, "*")] = v
+				b[j][strings.TrimPrefix(mergeKey, mergePrefix)] = v
 				delete(b[j], mergeKey)
 				break
 			}
 		}
 		if len(mergeKey) > 0 {
-			strippedMergeKey := strings.TrimPrefix(mergeKey, "*")
+			strippedMergeKey := strings.TrimPrefix(mergeKey, mergePrefix)
 			for i, sourceMapEntry := range out {
 				for k, v := range sourceMapEntry {
 					if (k == strippedMergeKey || k == mergeKey) && v == mergeValue {
