@@ -131,7 +131,8 @@ func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	if err != nil {
 		return os.ReadFile(filePath)
 	}
-	data, err := g.Get(filePath, getter.WithURL(filePath))
+
+	data, err := g.Get(filePath, getter.WithURL(filePath), getter.WithTarget("values"))
 	if err != nil {
 		return nil, err
 	}

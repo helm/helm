@@ -32,6 +32,9 @@ const (
 	// ProvLayerMediaType is the reserved media type for Helm chart provenance files
 	ProvLayerMediaType = "application/vnd.cncf.helm.chart.provenance.v1.prov"
 
+	// ValuesMediaType is the reserved media type for the Helm chart values
+	ValuesMediaType = "application/vnd.cncf.helm.values.v1"
+
 	// LegacyChartLayerMediaType is the legacy reserved media type for Helm chart package content.
 	LegacyChartLayerMediaType = "application/tar+gzip"
 )
