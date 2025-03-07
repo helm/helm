@@ -51,7 +51,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 
-	helmClient "helm.sh/helm/v4/internal/client"
+	helmRestmapper "helm.sh/helm/v4/internal/restmapper"
 )
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
@@ -114,7 +114,7 @@ func (c *Client) newStatusWatcher() (*statusWaiter, error) {
 	if err != nil {
 		return nil, err
 	}
-	restMapper, err := helmClient.NewLazyRESTMapper(cfg, httpClient)
+	restMapper, err := helmRestmapper.NewLazyRESTMapper(cfg, httpClient)
 	if err != nil {
 		return nil, err
 	}
