@@ -24,6 +24,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -236,21 +237,79 @@ func LoadValues(data io.Reader) (map[string]interface{}, error) {
 
 // MergeMaps merges two maps. If a key exists in both maps, the value from b will be used.
 // If the value is a map, the maps will be merged recursively.
+// If the value is a list, the lists will be merged
 func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 	out := make(map[string]interface{}, len(a))
 	for k, v := range a {
 		out[k] = v
 	}
 	for k, v := range b {
-		if v, ok := v.(map[string]interface{}); ok {
+
+		if val, ok := v.(map[string]interface{}); ok {
 			if bv, ok := out[k]; ok {
 				if bv, ok := bv.(map[string]interface{}); ok {
-					out[k] = MergeMaps(bv, v)
+					out[k] = MergeMaps(bv, val)
 					continue
 				}
 			}
+		} else if reflect.TypeOf(v).Kind() == reflect.Slice {
+			if sourceList, ok := out[k].([]map[string]interface{}); ok {
+
+				val, ok := v.([]map[string]interface{})
+				if !ok {
+					log.Println("Property mismatch during merge")
+					out[k] = v
+					continue
+				}
+
+				out[k] = MergeMapLists(sourceList, val)
+				continue
+			} else if sourceList, ok := out[k].([]interface{}); ok {
+				if val, ok := v.([]interface{}); ok {
+					out[k] = append(sourceList, val...)
+				} else {
+					out[k] = v
+				}
+				continue
+			}
+
 		}
 		out[k] = v
 	}
 	return out
+}
+
+// MergeMapLists merges two lists of maps. If a prefix of * is set on a map key,
+// that key will be used to de-duplicate/merge with the source map
+func MergeMapLists(a, b []map[string]interface{}) []map[string]interface{} {
+	out := a
+	for j, mapEntry := range b {
+		var mergeKey string
+		var mergeValue interface{}
+		for k, v := range mapEntry {
+			if strings.HasPrefix(k, "*") {
+				mergeKey = k
+				mergeValue = v
+				b[j][strings.TrimPrefix(mergeKey, "*")] = v
+				delete(b[j], mergeKey)
+				break
+			}
+		}
+		if len(mergeKey) > 0 {
+			strippedMergeKey := strings.TrimPrefix(mergeKey, "*")
+			for i, sourceMapEntry := range out {
+				for k, v := range sourceMapEntry {
+					if (k == strippedMergeKey || k == mergeKey) && v == mergeValue {
+						mergedMapEntry := MergeMaps(sourceMapEntry, mapEntry)
+						out[i] = mergedMapEntry
+						break
+					}
+				}
+			}
+		} else {
+			out = append(out, mapEntry)
+		}
+	}
+	return out
+
 }
