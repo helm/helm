@@ -132,7 +132,7 @@ func (c *Client) newWaiter(strategy WaitStrategy) (Waiter, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &HelmWaiter{kubeClient: kc, log: c.Log}, nil
+		return &legacyWaiter{kubeClient: kc, log: c.Log}, nil
 	case StatusWatcherStrategy:
 		return c.newStatusWatcher()
 	case HookOnlyStrategy:

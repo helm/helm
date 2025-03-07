@@ -45,27 +45,27 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-// HelmWaiter is the legacy implementation of the Waiter interface. This logic was used by default in Helm 3
+// legacyWaiter is the legacy implementation of the Waiter interface. This logic was used by default in Helm 3
 // Helm 4 now uses the StatusWaiter implementation instead
-type HelmWaiter struct {
+type legacyWaiter struct {
 	c          ReadyChecker
 	log        func(string, ...interface{})
 	kubeClient *kubernetes.Clientset
 }
 
-func (hw *HelmWaiter) Wait(resources ResourceList, timeout time.Duration) error {
+func (hw *legacyWaiter) Wait(resources ResourceList, timeout time.Duration) error {
 	hw.c = NewReadyChecker(hw.kubeClient, hw.log, PausedAsReady(true))
 	return hw.waitForResources(resources, timeout)
 }
 
-func (hw *HelmWaiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
+func (hw *legacyWaiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
 	hw.c = NewReadyChecker(hw.kubeClient, hw.log, PausedAsReady(true), CheckJobs(true))
 	return hw.waitForResources(resources, timeout)
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, Services and
 // Jobs(optional) until all are ready or a timeout is reached
-func (hw *HelmWaiter) waitForResources(created ResourceList, timeout time.Duration) error {
+func (hw *legacyWaiter) waitForResources(created ResourceList, timeout time.Duration) error {
 	hw.log("beginning wait for %d resources with timeout of %v", len(created), timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -99,7 +99,7 @@ func (hw *HelmWaiter) waitForResources(created ResourceList, timeout time.Durati
 	})
 }
 
-func (hw *HelmWaiter) isRetryableError(err error, resource *resource.Info) bool {
+func (hw *legacyWaiter) isRetryableError(err error, resource *resource.Info) bool {
 	if err == nil {
 		return false
 	}
@@ -114,12 +114,12 @@ func (hw *HelmWaiter) isRetryableError(err error, resource *resource.Info) bool 
 	return true
 }
 
-func (hw *HelmWaiter) isRetryableHTTPStatusCode(httpStatusCode int32) bool {
+func (hw *legacyWaiter) isRetryableHTTPStatusCode(httpStatusCode int32) bool {
 	return httpStatusCode == 0 || httpStatusCode == http.StatusTooManyRequests || (httpStatusCode >= 500 && httpStatusCode != http.StatusNotImplemented)
 }
 
 // waitForDeletedResources polls to check if all the resources are deleted or a timeout is reached
-func (hw *HelmWaiter) WaitForDelete(deleted ResourceList, timeout time.Duration) error {
+func (hw *legacyWaiter) WaitForDelete(deleted ResourceList, timeout time.Duration) error {
 	hw.log("beginning wait for %d resources to be deleted with timeout of %v", len(deleted), timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -184,7 +184,7 @@ func SelectorsForObject(object runtime.Object) (selector labels.Selector, err er
 	return selector, errors.Wrap(err, "invalid label selector")
 }
 
-func (hw *HelmWaiter) watchTimeout(t time.Duration) func(*resource.Info) error {
+func (hw *legacyWaiter) watchTimeout(t time.Duration) func(*resource.Info) error {
 	return func(info *resource.Info) error {
 		return hw.watchUntilReady(t, info)
 	}
@@ -204,7 +204,7 @@ func (hw *HelmWaiter) watchTimeout(t time.Duration) func(*resource.Info) error {
 //     ascertained by watching the status.phase field in a pod's output.
 //
 // Handling for other kinds will be added as necessary.
-func (hw *HelmWaiter) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
+func (hw *legacyWaiter) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
 	return perform(resources, hw.watchTimeout(timeout))
@@ -230,7 +230,7 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 	return result
 }
 
-func (hw *HelmWaiter) watchUntilReady(timeout time.Duration, info *resource.Info) error {
+func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.Info) error {
 	kind := info.Mapping.GroupVersionKind.Kind
 	switch kind {
 	case "Job", "Pod":
@@ -291,7 +291,7 @@ func (hw *HelmWaiter) watchUntilReady(timeout time.Duration, info *resource.Info
 // waitForJob is a helper that waits for a job to complete.
 //
 // This operates on an event returned from a watcher.
-func (hw *HelmWaiter) waitForJob(obj runtime.Object, name string) (bool, error) {
+func (hw *legacyWaiter) waitForJob(obj runtime.Object, name string) (bool, error) {
 	o, ok := obj.(*batchv1.Job)
 	if !ok {
 		return true, errors.Errorf("expected %s to be a *batch.Job, got %T", name, obj)
@@ -312,7 +312,7 @@ func (hw *HelmWaiter) waitForJob(obj runtime.Object, name string) (bool, error) 
 // waitForPodSuccess is a helper that waits for a pod to complete.
 //
 // This operates on an event returned from a watcher.
-func (hw *HelmWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool, error) {
+func (hw *legacyWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool, error) {
 	o, ok := obj.(*corev1.Pod)
 	if !ok {
 		return true, errors.Errorf("expected %s to be a *v1.Pod, got %T", name, obj)
