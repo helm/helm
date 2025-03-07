@@ -343,7 +343,7 @@ func (hw *legacyWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool
 	return false, nil
 }
 
-func (hw *HelmWaiter) watchTimeout(t time.Duration) func(*resource.Info) error {
+func (hw *legacyWaiter) watchTimeout(t time.Duration) func(*resource.Info) error {
 	return func(info *resource.Info) error {
 		return hw.watchUntilReady(t, info)
 	}
@@ -363,7 +363,7 @@ func (hw *HelmWaiter) watchTimeout(t time.Duration) func(*resource.Info) error {
 //     ascertained by watching the status.phase field in a pod's output.
 //
 // Handling for other kinds will be added as necessary.
-func (hw *HelmWaiter) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
+func (hw *legacyWaiter) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
 	return perform(resources, hw.watchTimeout(timeout))
@@ -389,7 +389,7 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 	return result
 }
 
-func (hw *HelmWaiter) watchUntilReady(timeout time.Duration, info *resource.Info) error {
+func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.Info) error {
 	kind := info.Mapping.GroupVersionKind.Kind
 	switch kind {
 	case "Job", "Pod":
