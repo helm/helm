@@ -82,13 +82,15 @@ func (ws *waitValue) Set(s string) error {
 		*ws = waitValue(s)
 		return nil
 	case "true":
+		Warning("--wait=true is deprecated (boolean value) and can be replaced with --wait=watcher")
 		*ws = waitValue(kube.StatusWatcherStrategy)
 		return nil
 	case "false":
+		Warning("--wait=false is deprecated (boolean value) and can be replaced by omitting the --wait flag")
 		*ws = waitValue(kube.HookOnlyStrategy)
 		return nil
 	default:
-		return fmt.Errorf("invalid wait input %q. Valid inputs are true, false, %s, and %s", s, kube.StatusWatcherStrategy, kube.LegacyStrategy)
+		return fmt.Errorf("invalid wait input %q. Valid inputs are %s, and %s", s, kube.StatusWatcherStrategy, kube.LegacyStrategy)
 	}
 }
 
