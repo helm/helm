@@ -321,8 +321,31 @@ func cleanupParseError(filename string, err error) error {
 	return fmt.Errorf("parse error at (%s): %s", string(location), errMsg)
 }
 
+type TraceableError struct {
+	location         string
+	message          string
+	executedFunction string
+}
+
+func (t TraceableError) String() string {
+	return t.location + "\n  " + t.executedFunction + "\n    " + t.message + "\n"
+}
 func cleanupExecError(filename string, err error) error {
 	if _, isExecError := err.(template.ExecError); !isExecError {
+		return err
+	}
+
+	// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
+	// > "template: %s: %s"
+	// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
+	// > "template: %s: executing %q at <%s>: %s"
+
+	execErrFmt, compileErr := regexp.Compile(`^template: (?P<templateName>(?U).+): executing (?P<functionName>(?U).+) at (?P<location>(?U).+): (?P<errMsg>(?U).+)(?P<nextErr>( template:.*)?)$`)
+	if compileErr != nil {
+		return err
+	}
+	execErrFmtWithoutTemplate, compileErr := regexp.Compile(`^template: (?P<templateName>(?U).+): (?P<errMsg>.*)(?P<nextErr>( template:.*)?)$`)
+	if compileErr != nil {
 		return err
 	}
 
@@ -340,8 +363,70 @@ func cleanupExecError(filename string, err error) error {
 	if len(parts) >= 2 {
 		return fmt.Errorf("execution error at (%s): %s", string(location), parts[1])
 	}
+	current := err
+	fileLocations := []TraceableError{}
+	maxIterations := 100
+	for i := 0; i < maxIterations && current != nil; i++ {
+		if current == nil {
+			break
+		}
+		if i == maxIterations-1 {
+			return err
+		}
 
-	return err
+		var traceable TraceableError
+		if execErrFmt.MatchString(current.Error()) {
+			matches := execErrFmt.FindStringSubmatch(current.Error())
+			templateIndex := execErrFmt.SubexpIndex("templateName")
+			templateName := matches[templateIndex]
+			functionNameIndex := execErrFmt.SubexpIndex("functionName")
+			functionName := matches[functionNameIndex]
+			locationNameIndex := execErrFmt.SubexpIndex("location")
+			locationName := matches[locationNameIndex]
+			errMsgIndex := execErrFmt.SubexpIndex("errMsg")
+			errMsg := matches[errMsgIndex]
+			traceable = TraceableError{
+				location:         templateName,
+				message:          errMsg,
+				executedFunction: "executing " + functionName + " at " + locationName + ":",
+			}
+		} else if execErrFmtWithoutTemplate.MatchString(current.Error()) {
+			matches := execErrFmt.FindStringSubmatch(current.Error())
+			templateIndex := execErrFmt.SubexpIndex("templateName")
+			templateName := matches[templateIndex]
+			errMsgIndex := execErrFmt.SubexpIndex("errMsg")
+			errMsg := matches[errMsgIndex]
+			traceable = TraceableError{
+				location: templateName,
+				message:  errMsg,
+			}
+		} else {
+			return err
+		}
+		if len(fileLocations) > 0 {
+			lastErr := fileLocations[len(fileLocations)-1]
+			if lastErr.message == traceable.message &&
+				lastErr.location == traceable.location &&
+				lastErr.executedFunction == traceable.executedFunction {
+				current = errors.Unwrap(current)
+				continue
+			}
+		}
+		fileLocations = append(fileLocations, traceable)
+		current = errors.Unwrap(current)
+	}
+
+	finalErrorString := ""
+	for _, fileLocation := range fileLocations {
+		finalErrorString = finalErrorString + fileLocation.String()
+	}
+
+	if strings.TrimSpace(finalErrorString) == "" {
+		// Fallback to original error message if nothing was extracted
+		return err
+	}
+
+	return fmt.Errorf("%s", finalErrorString)
 }
 
 func sortTemplates(tpls map[string]renderable) []string {
