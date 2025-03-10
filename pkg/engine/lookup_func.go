@@ -111,7 +111,7 @@ func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config)
 	}
 	intf, err := dynamic.NewForConfig(config)
 	if err != nil {
-		slog.Error("unable to get dynamic client", slog.Any("err", err))
+		slog.Error("unable to get dynamic client", slog.Any("error", err))
 		return nil, false, err
 	}
 	res := intf.Resource(gvr)
@@ -122,7 +122,7 @@ func getAPIResourceForGVK(gvk schema.GroupVersionKind, config *rest.Config) (met
 	res := metav1.APIResource{}
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
 	if err != nil {
-		slog.Error("unable to create discovery client", slog.Any("err", err))
+		slog.Error("unable to create discovery client", slog.Any("error", err))
 		return res, err
 	}
 	resList, err := discoveryClient.ServerResourcesForGroupVersion(gvk.GroupVersion().String())

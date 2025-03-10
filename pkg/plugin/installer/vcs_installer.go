@@ -95,7 +95,7 @@ func (i *VCSInstaller) Install() error {
 
 // Update updates a remote repository
 func (i *VCSInstaller) Update() error {
-	slog.Debug("updating", "repo", i.Repo.Remote())
+	slog.Debug("updating", "source", i.Repo.Remote())
 	if i.Repo.IsDirty() {
 		return errors.New("plugin repo was modified")
 	}
@@ -160,7 +160,7 @@ func (i *VCSInstaller) sync(repo vcs.Repo) error {
 		slog.Debug("cloning", "source", repo.Remote(), "destination", repo.LocalPath())
 		return repo.Get()
 	}
-	slog.Debug("updating", "remote", repo.Remote())
+	slog.Debug("updating", "source", repo.Remote(), "destination", repo.LocalPath())
 	return repo.Update()
 }
 
