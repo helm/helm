@@ -11,6 +11,9 @@ metadata:
 {{- if .Capabilities.APIVersions.Has "helm.k8s.io/test" }}
     kube-api-version/test: v1
 {{- end }}
+{{- if .Capabilities.APIVersions.Has "helm.k8s.io/test2" }}
+    kube-api-version/test2: v2
+{{- end }}
 spec:
   type: {{ .Values.service.type }}
   ports:
