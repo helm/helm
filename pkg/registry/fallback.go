@@ -58,6 +58,8 @@ func (t *fallbackTransport) RoundTrip(req *http.Request) (*http.Response, error)
 		return t.Base.RoundTrip(req)
 	}
 	resp, err := t.Base.RoundTrip(req)
+	// We are falling back to http here for backward compatibility with Helm v3.
+	// ORAS v1 provided fallback automatically, but ORAS v2 does not.
 	if err != nil && req.URL.Scheme == "https" {
 		if tlsErr, ok := err.(tls.RecordHeaderError); ok {
 			if string(tlsErr.RecordHeader[:]) == "HTTP/" {
