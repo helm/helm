@@ -24,7 +24,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -34,7 +33,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
-const mergePrefix = "*"
+const mergePrefix = "\\*"
 
 // ChartLoader loads a chart.
 type ChartLoader interface {
@@ -232,6 +231,7 @@ func LoadValues(data io.Reader) (map[string]interface{}, error) {
 		}); err != nil {
 			return nil, errors.Wrap(err, "cannot unmarshal yaml document")
 		}
+
 		values = MergeMaps(values, currentMap)
 	}
 	return values, nil
@@ -246,7 +246,6 @@ func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 		out[k] = v
 	}
 	for k, v := range b {
-
 		if val, ok := v.(map[string]interface{}); ok {
 			if bv, ok := out[k]; ok {
 				if bv, ok := bv.(map[string]interface{}); ok {
@@ -254,27 +253,38 @@ func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 					continue
 				}
 			}
-		} else if reflect.TypeOf(v).Kind() == reflect.Slice && strings.HasPrefix(k, mergePrefix) {
+		} else {
 			strippedKey := strings.TrimPrefix(k, mergePrefix)
-			out[strippedKey] = out[k]
-			delete(out, k)
-			if sourceList, ok := out[strippedKey].([]map[string]interface{}); ok {
+			if out[k] != nil {
+				out[strippedKey] = out[k]
+				delete(out, k)
+			}
+			if sourceList, ok := out[strippedKey].([]any); ok && strings.HasPrefix(k, mergePrefix) {
 
-				val, ok := v.([]map[string]interface{})
-				if !ok {
-					log.Println("Property mismatch during merge")
+				_, isMapSlice := sourceList[0].(map[string]any)
+				if isMapSlice {
+					val, ok := v.([]any)
+					if !ok {
+						// List is explicitly made null on a subsequent file
+						if v == nil {
+							delete(out, strippedKey)
+							continue
+						} else {
+							log.Printf("Property \"%s\" mismatch during merge", strippedKey)
+							continue
+						}
+					}
+
+					out[strippedKey] = MergeMapLists(sourceList, val)
+					continue
+				} else if sourceList, ok := out[strippedKey].([]any); ok {
+					if val, ok := v.([]any); ok {
+						out[strippedKey] = append(sourceList, val...)
+					} else {
+						out[strippedKey] = v
+					}
 					continue
 				}
-
-				out[strippedKey] = MergeMapLists(sourceList, val)
-				continue
-			} else if sourceList, ok := out[strippedKey].([]interface{}); ok {
-				if val, ok := v.([]interface{}); ok {
-					out[strippedKey] = append(sourceList, val...)
-				} else {
-					out[strippedKey] = v
-				}
-				continue
 			}
 
 		}
@@ -285,23 +295,37 @@ func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 
 // MergeMapLists merges two lists of maps. If a prefix of * is set on a map key,
 // that key will be used to de-duplicate/merge with the source map
-func MergeMapLists(a, b []map[string]interface{}) []map[string]interface{} {
+func MergeMapLists(a, b []any) []any {
 	out := a
 	for j, mapEntry := range b {
+		mapEntry, ok := mapEntry.(map[string]any)
+		if !ok {
+			continue
+		}
+
 		var mergeKey string
 		var mergeValue interface{}
 		for k, v := range mapEntry {
 			if strings.HasPrefix(k, mergePrefix) {
 				mergeKey = k
 				mergeValue = v
-				b[j][strings.TrimPrefix(mergeKey, mergePrefix)] = v
-				delete(b[j], mergeKey)
+				bj, ok := b[j].(map[string]any)
+				if !ok {
+					continue
+				}
+				bj[strings.TrimPrefix(mergeKey, mergePrefix)] = v
+				delete(bj, mergeKey)
 				break
 			}
 		}
 		if len(mergeKey) > 0 {
 			strippedMergeKey := strings.TrimPrefix(mergeKey, mergePrefix)
+
 			for i, sourceMapEntry := range out {
+				sourceMapEntry, ok := sourceMapEntry.(map[string]any)
+				if !ok {
+					continue
+				}
 				for k, v := range sourceMapEntry {
 					if (k == strippedMergeKey || k == mergeKey) && v == mergeValue {
 						mergedMapEntry := MergeMaps(sourceMapEntry, mapEntry)
