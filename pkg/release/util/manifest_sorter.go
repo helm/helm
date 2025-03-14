@@ -17,7 +17,7 @@ limitations under the License.
 package util
 
 import (
-	"log"
+	"log/slog"
 	"path"
 	"sort"
 	"strconv"
@@ -196,7 +196,7 @@ func (file *manifestFile) sort(result *result) error {
 		}
 
 		if isUnknownHook {
-			log.Printf("info: skipping unknown hook: %q", hookTypes)
+			slog.Info("skipping unknown hooks", "hookTypes", hookTypes)
 			continue
 		}
 

@@ -16,6 +16,7 @@ limitations under the License.
 package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -57,12 +58,12 @@ func (i *LocalInstaller) Install() error {
 	if !isPlugin(i.Source) {
 		return ErrMissingMetadata
 	}
-	debug("symlinking %s to %s", i.Source, i.Path())
+	slog.Debug("symlinking", "source", i.Source, "path", i.Path())
 	return os.Symlink(i.Source, i.Path())
 }
 
 // Update updates a local repository
 func (i *LocalInstaller) Update() error {
-	debug("local repository is auto-updated")
+	slog.Debug("local repository is auto-updated")
 	return nil
 }
