@@ -303,23 +303,23 @@ func MergeMapLists(a, b []any) []any {
 			continue
 		}
 
-		var mergeKey string
-		var mergeValue interface{}
+		var uniqueKey string
+		var dedupValue interface{}
 		for k, v := range mapEntry {
 			if strings.HasPrefix(k, mergePrefix) {
-				mergeKey = k
-				mergeValue = v
+				uniqueKey = k
+				dedupValue = v
 				bj, ok := b[j].(map[string]any)
 				if !ok {
 					continue
 				}
-				bj[strings.TrimPrefix(mergeKey, mergePrefix)] = v
-				delete(bj, mergeKey)
+				bj[strings.TrimPrefix(uniqueKey, mergePrefix)] = v
+				delete(bj, uniqueKey)
 				break
 			}
 		}
-		if len(mergeKey) > 0 {
-			strippedMergeKey := strings.TrimPrefix(mergeKey, mergePrefix)
+		if len(uniqueKey) > 0 {
+			strippedMergeKey := strings.TrimPrefix(uniqueKey, mergePrefix)
 
 			for i, sourceMapEntry := range out {
 				sourceMapEntry, ok := sourceMapEntry.(map[string]any)
@@ -327,7 +327,7 @@ func MergeMapLists(a, b []any) []any {
 					continue
 				}
 				for k, v := range sourceMapEntry {
-					if (k == strippedMergeKey || k == mergeKey) && v == mergeValue {
+					if (k == strippedMergeKey || k == uniqueKey) && v == dedupValue {
 						mergedMapEntry := MergeMaps(sourceMapEntry, mapEntry)
 						out[i] = mergedMapEntry
 						break
