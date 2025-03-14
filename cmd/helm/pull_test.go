@@ -203,7 +203,7 @@ func TestPullCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			outdir := srv.Root()
-			cmd := fmt.Sprintf("fetch %s -d '%s' --repository-config %s --repository-cache %s --registry-config %s",
+			cmd := fmt.Sprintf("fetch %s -d '%s' --repository-config %s --repository-cache %s --registry-config %s --plain-http",
 				tt.args,
 				outdir,
 				filepath.Join(outdir, "repositories.yaml"),
