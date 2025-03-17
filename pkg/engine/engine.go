@@ -367,9 +367,6 @@ func cleanupExecError(filename string, err error) error {
 	fileLocations := []TraceableError{}
 	maxIterations := 100
 	for i := 0; i < maxIterations && current != nil; i++ {
-		if current == nil {
-			break
-		}
 		if i == maxIterations-1 {
 			return err
 		}
