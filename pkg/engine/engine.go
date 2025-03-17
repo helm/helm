@@ -33,6 +33,14 @@ import (
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
+// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
+// > "template: %s: executing %q at <%s>: %s"
+var execErrFmt = regexp.MustCompile(`^template: (?P<templateName>(?U).+): executing (?P<functionName>(?U).+) at (?P<location>(?U).+): (?P<errMsg>(?U).+)(?P<nextErr>( template:.*)?)$`)
+
+// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
+// > "template: %s: %s"
+var execErrFmtWithoutTemplate = regexp.MustCompile(`^template: (?P<templateName>(?U).+): (?P<errMsg>.*)(?P<nextErr>( template:.*)?)$`)
+
 // Engine is an implementation of the Helm rendering implementation for templates.
 type Engine struct {
 	// If strict is enabled, template rendering will fail if a template references
@@ -332,20 +340,6 @@ func (t TraceableError) String() string {
 }
 func cleanupExecError(filename string, err error) error {
 	if _, isExecError := err.(template.ExecError); !isExecError {
-		return err
-	}
-
-	// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
-	// > "template: %s: %s"
-	// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
-	// > "template: %s: executing %q at <%s>: %s"
-
-	execErrFmt, compileErr := regexp.Compile(`^template: (?P<templateName>(?U).+): executing (?P<functionName>(?U).+) at (?P<location>(?U).+): (?P<errMsg>(?U).+)(?P<nextErr>( template:.*)?)$`)
-	if compileErr != nil {
-		return err
-	}
-	execErrFmtWithoutTemplate, compileErr := regexp.Compile(`^template: (?P<templateName>(?U).+): (?P<errMsg>.*)(?P<nextErr>( template:.*)?)$`)
-	if compileErr != nil {
 		return err
 	}
 
