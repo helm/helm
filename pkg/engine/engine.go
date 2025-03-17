@@ -303,7 +303,7 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 		vals["Template"] = chartutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
 		var buf strings.Builder
 		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
-			return map[string]string{}, cleanupExecError(filename, err)
+			return map[string]string{}, reformatExecErrorMsg(filename, err)
 		}
 
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
@@ -338,7 +338,14 @@ type TraceableError struct {
 func (t TraceableError) String() string {
 	return t.location + "\n  " + t.executedFunction + "\n    " + t.message + "\n"
 }
-func cleanupExecError(filename string, err error) error {
+
+// reformatExecErrorMsg takes an error message for template rendering and formats it into a formatted
+// multi-line error string
+func reformatExecErrorMsg(filename string, err error) error {
+	// This function matches the error message against regex's for the text/template package.
+	// If the regex's can parse out details from that error message such as the line number, template it failed on,
+	// and error description, then it will construct a new error that displays these details in a structured way.
+	// If there are issues with parsing the error message, the err passed into the function should return instead.
 	if _, isExecError := err.(template.ExecError); !isExecError {
 		return err
 	}
