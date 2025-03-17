@@ -382,8 +382,7 @@ func reformatExecErrorMsg(filename string, err error) error {
 		}
 
 		var traceable TraceableError
-		if execErrFmt.MatchString(current.Error()) {
-			matches := execErrFmt.FindStringSubmatch(current.Error())
+		if matches := execErrFmt.FindStringSubmatch(current.Error()); matches != nil {
 			templateName := matches[execErrFmt.SubexpIndex("templateName")]
 			functionName := matches[execErrFmt.SubexpIndex("functionName")]
 			locationName := matches[execErrFmt.SubexpIndex("location")]
@@ -393,8 +392,7 @@ func reformatExecErrorMsg(filename string, err error) error {
 				message:          errMsg,
 				executedFunction: "executing " + functionName + " at " + locationName + ":",
 			}
-		} else if execErrFmtWithoutTemplate.MatchString(current.Error()) {
-			matches := execErrFmt.FindStringSubmatch(current.Error())
+		} else if matches := execErrFmtWithoutTemplate.FindStringSubmatch(current.Error()); matches != nil {
 			templateName := matches[execErrFmt.SubexpIndex("templateName")]
 			errMsg := matches[execErrFmt.SubexpIndex("errMsg")]
 			traceable = TraceableError{
