@@ -375,14 +375,10 @@ func reformatExecErrorMsg(filename string, err error) error {
 		var traceable TraceableError
 		if execErrFmt.MatchString(current.Error()) {
 			matches := execErrFmt.FindStringSubmatch(current.Error())
-			templateIndex := execErrFmt.SubexpIndex("templateName")
-			templateName := matches[templateIndex]
-			functionNameIndex := execErrFmt.SubexpIndex("functionName")
-			functionName := matches[functionNameIndex]
-			locationNameIndex := execErrFmt.SubexpIndex("location")
-			locationName := matches[locationNameIndex]
-			errMsgIndex := execErrFmt.SubexpIndex("errMsg")
-			errMsg := matches[errMsgIndex]
+			templateName := matches[execErrFmt.SubexpIndex("templateName")]
+			functionName := matches[execErrFmt.SubexpIndex("functionName")]
+			locationName := matches[execErrFmt.SubexpIndex("location")]
+			errMsg := matches[execErrFmt.SubexpIndex("errMsg")]
 			traceable = TraceableError{
 				location:         templateName,
 				message:          errMsg,
@@ -390,10 +386,8 @@ func reformatExecErrorMsg(filename string, err error) error {
 			}
 		} else if execErrFmtWithoutTemplate.MatchString(current.Error()) {
 			matches := execErrFmt.FindStringSubmatch(current.Error())
-			templateIndex := execErrFmt.SubexpIndex("templateName")
-			templateName := matches[templateIndex]
-			errMsgIndex := execErrFmt.SubexpIndex("errMsg")
-			errMsg := matches[errMsgIndex]
+			templateName := matches[execErrFmt.SubexpIndex("templateName")]
+			errMsg := matches[execErrFmt.SubexpIndex("errMsg")]
 			traceable = TraceableError{
 				location: templateName,
 				message:  errMsg,
