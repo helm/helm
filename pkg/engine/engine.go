@@ -413,17 +413,17 @@ func cleanupExecError(filename string, err error) error {
 		current = errors.Unwrap(current)
 	}
 
-	finalErrorString := ""
+	var finalErrorString strings.Builder
 	for _, fileLocation := range fileLocations {
-		finalErrorString = finalErrorString + fileLocation.String()
+		fmt.Fprintf(&finalErrorString, "%s", fileLocation.String())
 	}
 
-	if strings.TrimSpace(finalErrorString) == "" {
+	if strings.TrimSpace(finalErrorString.String()) == "" {
 		// Fallback to original error message if nothing was extracted
 		return err
 	}
 
-	return fmt.Errorf("%s", finalErrorString)
+	return fmt.Errorf("%s", finalErrorString.String())
 }
 
 func sortTemplates(tpls map[string]renderable) []string {
