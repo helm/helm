@@ -412,11 +412,6 @@ func cleanupExecError(filename string, err error) error {
 		fmt.Fprintf(&finalErrorString, "%s", fileLocation.String())
 	}
 
-	if strings.TrimSpace(finalErrorString.String()) == "" {
-		// Fallback to original error message if nothing was extracted
-		return err
-	}
-
 	return fmt.Errorf("%s", finalErrorString.String())
 }
 
