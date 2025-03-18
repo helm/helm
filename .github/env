@@ -1,1 +1,2 @@
 golang-version=1.24
+golangci-lint-version=v1.64
