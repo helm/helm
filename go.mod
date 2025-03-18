@@ -11,7 +11,7 @@ require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Masterminds/vcs v1.13.3
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
-	github.com/containerd/containerd v1.7.26
+	github.com/containerd/containerd v1.7.27
 	github.com/cyphar/filepath-securejoin v0.4.1
 	github.com/distribution/distribution/v3 v3.0.0-rc.3
 	github.com/evanphx/json-patch v5.9.11+incompatible
@@ -135,7 +135,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
+	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
 	go.opentelemetry.io/contrib/bridges/prometheus v0.57.0 // indirect
