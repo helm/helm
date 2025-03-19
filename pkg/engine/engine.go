@@ -388,14 +388,9 @@ func reformatExecErrorMsg(filename string, err error) error {
 		} else {
 			return err
 		}
-		if len(fileLocations) > 0 {
-			lastErr := fileLocations[len(fileLocations)-1]
-			if lastErr == traceable {
-				current = errors.Unwrap(current)
-				continue
-			}
+		if len(fileLocations) == 0 || fileLocations[len(fileLocations)-1] != traceable {
+			fileLocations = append(fileLocations, traceable)
 		}
-		fileLocations = append(fileLocations, traceable)
 		current = errors.Unwrap(current)
 	}
 
