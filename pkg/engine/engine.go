@@ -366,12 +366,7 @@ func reformatExecErrorMsg(filename string, err error) error {
 	}
 	current := err
 	fileLocations := []TraceableError{}
-	maxIterations := 100
-	for i := 0; i < maxIterations && current != nil; i++ {
-		if i == maxIterations-1 {
-			return err
-		}
-
+	for current != nil {
 		var traceable TraceableError
 		if matches := execErrFmt.FindStringSubmatch(current.Error()); matches != nil {
 			templateName := matches[execErrFmt.SubexpIndex("templateName")]
