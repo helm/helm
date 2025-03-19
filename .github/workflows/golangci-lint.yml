@@ -19,9 +19,9 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # pin@5.3.0
         with:
-          go-version: '${{ env.golang-version }}'
+          go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true
       - name: golangci-lint
         uses: golangci/golangci-lint-action@4696ba8babb6127d732c3c6dde519db15edab9ea #pin@6.5.1
         with:
-          version: ${{ env.golangci-lint-version }}
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
