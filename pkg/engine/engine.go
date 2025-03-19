@@ -390,9 +390,7 @@ func reformatExecErrorMsg(filename string, err error) error {
 		}
 		if len(fileLocations) > 0 {
 			lastErr := fileLocations[len(fileLocations)-1]
-			if lastErr.message == traceable.message &&
-				lastErr.location == traceable.location &&
-				lastErr.executedFunction == traceable.executedFunction {
+			if lastErr == traceable {
 				current = errors.Unwrap(current)
 				continue
 			}
