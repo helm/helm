@@ -771,7 +771,7 @@ func PushOptStrictMode(strictMode bool) PushOption {
 	}
 }
 
-// PushOptCreationDate returns a function that sets the creation time
+// PushOptCreationTime returns a function that sets the creation time
 func PushOptCreationTime(creationTime string) PushOption {
 	return func(operation *pushOperation) {
 		operation.creationTime = creationTime
