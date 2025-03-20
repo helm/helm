@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
@@ -322,6 +324,22 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dest, cname+".prov")); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestDownloadTo_MissingRegistryClient(t *testing.T) {
+	c := ChartDownloader{
+		Getters: getter.Providers{
+			getter.Provider{
+				Schemes: []string{"oci"},
+				New:     getter.NewOCIGetter,
+			},
+		},
+	}
+
+	ref := "oci://someurl"
+	version := "latest"
+	_, _, err := c.DownloadTo(ref, version, t.TempDir())
+	assert.Error(t, err)
 }
 
 func TestScanReposForURL(t *testing.T) {
