@@ -476,7 +476,7 @@ func TestStorageLast(t *testing.T) {
 	}
 }
 
-// TestUpgradeInitiallyFailedRelease tests a case when there are no deployed release yet, but history limit has been
+// TestUpgradeInitiallyFailedReleaseWithHistoryLimit tests a case when there are no deployed release yet, but history limit has been
 // reached: the has-no-deployed-releases error should not occur in such case.
 func TestUpgradeInitiallyFailedReleaseWithHistoryLimit(t *testing.T) {
 	storage := Init(driver.NewMemory())
