@@ -84,7 +84,7 @@ func (w *waiter) waitForResources(created ResourceList) error {
 	if err != nil {
 		w.log("wait for resources failed after %v: %v", elapsed, err)
 	} else {
-		w.log("wait for ressources succeeded within %v", elapsed)
+		w.log("wait for resources succeeded within %v", elapsed)
 	}
 
 	return err
