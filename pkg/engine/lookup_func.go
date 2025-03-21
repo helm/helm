@@ -127,7 +127,7 @@ func getAPIResourceForGVK(gvk schema.GroupVersionKind, config *rest.Config) (met
 	}
 	resList, err := discoveryClient.ServerResourcesForGroupVersion(gvk.GroupVersion().String())
 	if err != nil {
-		slog.Error("unable to retrieve resource list", "list", gvk.GroupVersion().String(), "error", err)
+		slog.Error("unable to retrieve resource list", "GroupVersion", gvk.GroupVersion().String(), "error", err)
 		return res, err
 	}
 	for _, resource := range resList.APIResources {
