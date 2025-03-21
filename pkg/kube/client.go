@@ -340,6 +340,45 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 	return obj, nil
 }
 
+// Wait waits up to the given timeout for the specified resources to be ready.
+func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
+	cs, err := c.getKubeClient()
+	if err != nil {
+		return err
+	}
+	checker := NewReadyChecker(cs, PausedAsReady(true))
+	w := waiter{
+		c:       checker,
+		log:     c.Log,
+		timeout: timeout,
+	}
+	return w.waitForResources(resources)
+}
+
+// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
+func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
+	cs, err := c.getKubeClient()
+	if err != nil {
+		return err
+	}
+	checker := NewReadyChecker(cs, PausedAsReady(true), CheckJobs(true))
+	w := waiter{
+		c:       checker,
+		log:     c.Log,
+		timeout: timeout,
+	}
+	return w.waitForResources(resources)
+}
+
+// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
+func (c *Client) WaitForDelete(resources ResourceList, timeout time.Duration) error {
+	w := waiter{
+		log:     c.Log,
+		timeout: timeout,
+	}
+	return w.waitForDeletedResources(resources)
+}
+
 func (c *Client) namespace() string {
 	if c.Namespace != "" {
 		return c.Namespace

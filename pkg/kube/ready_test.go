@@ -90,7 +90,6 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -166,7 +165,6 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -244,7 +242,6 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -323,7 +320,6 @@ func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -398,7 +394,6 @@ func Test_ReadyChecker_IsReady_Service(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
