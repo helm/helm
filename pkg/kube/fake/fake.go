@@ -114,6 +114,14 @@ func (f *FailingKubeClient) Update(r, modified kube.ResourceList, ignoreMe bool)
 	return f.PrintingKubeClient.Update(r, modified, ignoreMe)
 }
 
+// Update returns the configured error if set or prints
+func (f *FailingKubeClient) UpdateThreeWayMerge(r, modified kube.ResourceList, ignoreMe bool) (*kube.Result, error) {
+	if f.UpdateError != nil {
+		return &kube.Result{}, f.UpdateError
+	}
+	return f.PrintingKubeClient.Update(r, modified, ignoreMe)
+}
+
 // Build returns the configured error if set or prints
 func (f *FailingKubeClient) Build(r io.Reader, _ bool) (kube.ResourceList, error) {
 	if f.BuildError != nil {
