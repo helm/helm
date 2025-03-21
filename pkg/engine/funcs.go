@@ -19,16 +19,19 @@ package engine
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"log"
 	"strings"
 	"text/template"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
+	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 	goYaml "sigs.k8s.io/yaml/goyaml.v3"
 )
 
-// funcMap returns a mapping of all of the functions that Engine has.
+// FuncMap returns a mapping of all of the functions that Engine has.
 //
 // Because some functions are late-bound (e.g. contain context-sensitive
 // data), the functions may not all perform identically outside of an Engine
@@ -36,12 +39,12 @@ import (
 //
 // Known late-bound functions:
 //
-//   - "include"
-//   - "tpl"
+//   - "include": Possible implementation in IncludeFun
+//   - "tpl": Possible implementation in TplFun
 //
-// These are late-bound in Engine.Render().  The
+// These are late-bound when the needed context is known.  The
 // version included in the FuncMap is a placeholder.
-func funcMap() template.FuncMap {
+func FuncMap(lintMode, enableDNS bool, clientProvider *ClientProvider) template.FuncMap {
 	f := sprig.TxtFuncMap()
 	delete(f, "env")
 	delete(f, "expandenv")
@@ -58,24 +61,123 @@ func funcMap() template.FuncMap {
 		"fromJson":      fromJSON,
 		"fromJsonArray": fromJSONArray,
 
-		// This is a placeholder for the "include" function, which is
-		// late-bound to a template. By declaring it here, we preserve the
-		// integrity of the linter.
-		"include":  func(string, interface{}) string { return "not implemented" },
-		"tpl":      func(string, interface{}) interface{} { return "not implemented" },
-		"required": func(string, interface{}) (interface{}, error) { return "not implemented", nil },
-		// Provide a placeholder for the "lookup" function, which requires a kubernetes
-		// connection.
+		// Add the `required` function here so we can use lintMode
+		"required": requiredFun(lintMode),
+
+		// lookup is defined here but the functionality is only exposed under certain
+		// circumstances. See below.
 		"lookup": func(string, string, string, string) (map[string]interface{}, error) {
 			return map[string]interface{}{}, nil
 		},
+
+		// This is a placeholder for the "include" function, which is
+		// late-bound to a template. By declaring it here, we preserve the
+		// integrity of the linter.
+		"include": func(string, interface{}) string { return "not implemented" },
+		"tpl":     func(string, interface{}) interface{} { return "not implemented" },
 	}
 
 	for k, v := range extra {
 		f[k] = v
 	}
 
+	// When DNS lookups are not enabled override the sprig function and return
+	// an empty string.
+	if !enableDNS {
+		f["getHostByName"] = func(_ string) string {
+			return ""
+		}
+	}
+
+	// Override sprig fail function for linting and wrapping message
+	f["fail"] = func(msg string) (string, error) {
+		if lintMode {
+			// Don't fail when linting
+			log.Printf("[INFO] Fail: %s", msg)
+			return "", nil
+		}
+		return "", errors.New(warnWrap(msg))
+	}
+
+	// If we are not linting and have a cluster connection, provide a Kubernetes-backed
+	// implementation.
+	if !lintMode && clientProvider != nil {
+		f["lookup"] = newLookupFunction(*clientProvider)
+	}
+
 	return f
+}
+
+// IncludeFun provides the function for the 'include' function available in Helm templates.
+//
+// 'include' needs to be defined in the scope of a 'tpl' template as well as regular
+// file-loaded templates.
+// This function must be late bound when the templates are known and not reused over
+// different sets of templates.
+func IncludeFun(t *template.Template, includedNames map[string]int) func(string, interface{}) (string, error) {
+	return func(name string, data interface{}) (string, error) {
+		var buf strings.Builder
+		if v, ok := includedNames[name]; ok {
+			if v > recursionMaxNums {
+				return "", errors.Wrapf(fmt.Errorf("unable to execute template"), "rendering template has a nested reference name: %s", name)
+			}
+			includedNames[name]++
+		} else {
+			includedNames[name] = 1
+		}
+		err := t.ExecuteTemplate(&buf, name, data)
+		includedNames[name]--
+		return buf.String(), err
+	}
+}
+
+// TplFun provides the 'tpl' function available in Helm templates.
+//
+// 'tpl' needs to see the templates defined by their enclosing scopes.
+// This function must be late bound when the templates are known and not reused over
+// different sets of templates.
+func TplFun(parent *template.Template, includedNames map[string]int, strict bool) func(string, interface{}) (string, error) {
+	return func(tpl string, vals interface{}) (string, error) {
+		t, err := parent.Clone()
+		if err != nil {
+			return "", errors.Wrapf(err, "cannot clone template")
+		}
+
+		// Re-inject the missingkey option, see text/template issue https://github.com/golang/go/issues/43022
+		// We have to go by strict from our engine configuration, as the option fields are private in Template.
+		// TODO: Remove workaround (and the strict parameter) once we build only with golang versions with a fix.
+		if strict {
+			t.Option("missingkey=error")
+		} else {
+			t.Option("missingkey=zero")
+		}
+
+		// Re-inject 'include' so that it can close over our clone of t;
+		// this lets any 'define's inside tpl be 'include'd.
+		t.Funcs(template.FuncMap{
+			"include": IncludeFun(t, includedNames),
+			"tpl":     TplFun(t, includedNames, strict),
+		})
+
+		// We need a .New template, as template text which is just blanks
+		// or comments after parsing out defines just adds new named
+		// template definitions without changing the main template.
+		// https://pkg.go.dev/text/template#Template.Parse
+		// Use the parent's name for lack of a better way to identify the tpl
+		// text string. (Maybe we could use a hash appended to the name?)
+		t, err = t.New(parent.Name()).Parse(tpl)
+		if err != nil {
+			return "", errors.Wrapf(err, "cannot parse template %q", tpl)
+		}
+
+		var buf strings.Builder
+		if err := t.Execute(&buf, vals); err != nil {
+			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
+		}
+
+		// See comment in renderWithReferences explaining the <no value> hack.
+		return strings.ReplaceAll(buf.String(), "<no value>", ""), nil
+	}
 }
 
 // toYAML takes an interface, marshals it to yaml, and returns a string. It will
@@ -204,4 +306,27 @@ func fromJSONArray(str string) []interface{} {
 		a = []interface{}{err.Error()}
 	}
 	return a
+}
+
+func requiredFun(lintMode bool) func(string, interface{}) (interface{}, error) {
+	return func(warn string, val interface{}) (interface{}, error) {
+		if val == nil {
+			if lintMode {
+				// Don't fail on missing required values when linting
+				log.Printf("[INFO] Missing required value: %s", warn)
+				return "", nil
+			}
+			return val, errors.New(warnWrap(warn))
+		} else if _, ok := val.(string); ok {
+			if val == "" {
+				if lintMode {
+					// Don't fail on missing required values when linting
+					log.Printf("[INFO] Missing required value: %s", warn)
+					return "", nil
+				}
+				return val, errors.New(warnWrap(warn))
+			}
+		}
+		return val, nil
+	}
 }

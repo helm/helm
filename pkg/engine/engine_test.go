@@ -69,7 +69,7 @@ func TestSortTemplates(t *testing.T) {
 }
 
 func TestFuncMap(t *testing.T) {
-	fns := funcMap()
+	fns := FuncMap(false, false, nil)
 	forbidden := []string{"env", "expandenv"}
 	for _, f := range forbidden {
 		if _, ok := fns[f]; ok {

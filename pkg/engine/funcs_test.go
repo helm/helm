@@ -131,7 +131,7 @@ keyInElement1 = "valueInElement1"`,
 
 	for _, tt := range tests {
 		var b strings.Builder
-		err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars)
+		err := template.Must(template.New("test").Funcs(FuncMap(false, false, nil)).Parse(tt.tpl)).Execute(&b, tt.vars)
 		assert.NoError(t, err)
 		assert.Equal(t, tt.expect, b.String(), tt.tpl)
 	}
@@ -183,7 +183,7 @@ func TestMerge(t *testing.T) {
 	}
 	tpl := `{{merge .dst .src1 .src2}}`
 	var b strings.Builder
-	err := template.Must(template.New("test").Funcs(funcMap()).Parse(tpl)).Execute(&b, dict)
+	err := template.Must(template.New("test").Funcs(FuncMap(false, false, nil)).Parse(tpl)).Execute(&b, dict)
 	assert.NoError(t, err)
 
 	expected := map[string]interface{}{
