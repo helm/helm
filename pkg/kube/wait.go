@@ -120,7 +120,7 @@ func (w *waiter) waitForDeletedResources(deleted ResourceList) error {
 
 	elapsed := time.Since(startTime).Round(time.Second)
 	if err != nil {
-		slog.Debug("wait for resources failed", "elapsed", elapsed, "error", err)
+		slog.Debug("wait for resources failed", "elapsed", elapsed, slog.Any("error", err))
 	} else {
 		slog.Debug("wait for resources succeeded", "elapsed", elapsed)
 	}
