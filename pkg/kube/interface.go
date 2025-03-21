@@ -52,6 +52,13 @@ type Interface interface {
 	GetWaiter(ws WaitStrategy) (Waiter, error)
 }
 
+// InterfaceThreeWayMerge was introduced to avoid breaking backwards compatibility for Interface implementers.
+//
+// TODO Helm 4: Remove InterfaceThreeWayMerge and integrate its method(s) into the Interface.
+type InterfaceThreeWayMerge interface {
+	UpdateThreeWayMerge(original, target ResourceList, force bool) (*Result, error)
+}
+
 // Waiter defines methods related to waiting for resource states.
 type Waiter interface {
 	// Wait waits up to the given timeout for the specified resources to be ready.

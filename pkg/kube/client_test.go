@@ -488,6 +488,14 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+func TestUpdate(t *testing.T) {
+	testUpdate(t, false)
+}
+
+func TestUpdateThreeWayMerge(t *testing.T) {
+	testUpdate(t, true)
+}
+
 func TestBuild(t *testing.T) {
 	tests := []struct {
 		name      string
