@@ -287,7 +287,7 @@ func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 	if err != nil {
 		return err
 	}
-	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
+	checker := NewReadyChecker(cs, PausedAsReady(true))
 	w := waiter{
 		c:       checker,
 		log:     c.Log,
@@ -302,7 +302,7 @@ func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) err
 	if err != nil {
 		return err
 	}
-	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true), CheckJobs(true))
+	checker := NewReadyChecker(cs, PausedAsReady(true), CheckJobs(true))
 	w := waiter{
 		c:       checker,
 		log:     c.Log,

@@ -37,7 +37,6 @@ const defaultNamespace = metav1.NamespaceDefault
 func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -57,7 +56,6 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 			name: "IsReady Pod",
 			fields: fields{
 				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -73,7 +71,6 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 			name: "IsReady Pod returns error",
 			fields: fields{
 				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -90,7 +87,6 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -113,7 +109,6 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -133,7 +128,6 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 			name: "IsReady Job error while getting job",
 			fields: fields{
 				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -149,7 +143,6 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 			name: "IsReady Job",
 			fields: fields{
 				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -166,7 +159,6 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -188,7 +180,6 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -209,7 +200,6 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 			name: "IsReady Deployments error while getting current Deployment",
 			fields: fields{
 				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -226,7 +216,6 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 			name: "IsReady Deployments", //TODO fix this one
 			fields: fields{
 				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -244,7 +233,6 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -323,7 +311,6 @@ func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -398,7 +385,6 @@ func Test_ReadyChecker_IsReady_Service(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -473,7 +459,6 @@ func Test_ReadyChecker_IsReady_DaemonSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -548,7 +533,6 @@ func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -639,7 +623,6 @@ func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -714,7 +697,6 @@ func Test_ReadyChecker_IsReady_ReplicaSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
