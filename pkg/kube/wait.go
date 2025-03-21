@@ -102,7 +102,7 @@ func (w *waiter) isRetryableHTTPStatusCode(httpStatusCode int32) bool {
 
 // waitForDeletedResources polls to check if all the resources are deleted or a timeout is reached
 func (w *waiter) waitForDeletedResources(deleted ResourceList) error {
-	slog.Info("beginning wait for resources to be deleted", "count", len(deleted), "timeout", w.timeout)
+	slog.Debug("beginning wait for resources to be deleted", "count", len(deleted), "timeout", w.timeout)
 
 	startTime := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
