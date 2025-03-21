@@ -57,13 +57,9 @@ func CheckJobs(checkJobs bool) ReadyCheckerOption {
 
 // NewReadyChecker creates a new checker. Passed ReadyCheckerOptions can
 // be used to override defaults.
-func NewReadyChecker(cl kubernetes.Interface, log func(string, ...interface{}), opts ...ReadyCheckerOption) ReadyChecker {
+func NewReadyChecker(cl kubernetes.Interface, opts ...ReadyCheckerOption) ReadyChecker {
 	c := ReadyChecker{
 		client: cl,
-		log:    log,
-	}
-	if c.log == nil {
-		c.log = nopLogger
 	}
 	for _, opt := range opts {
 		opt(&c)
@@ -74,7 +70,6 @@ func NewReadyChecker(cl kubernetes.Interface, log func(string, ...interface{}), 
 // ReadyChecker is a type that can check core Kubernetes types for readiness.
 type ReadyChecker struct {
 	client        kubernetes.Interface
-	log           func(string, ...interface{})
 	checkJobs     bool
 	pausedAsReady bool
 }
