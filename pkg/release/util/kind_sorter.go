@@ -65,12 +65,16 @@ var InstallOrder KindSortOrder = []string{
 	"IngressClass",
 	"Ingress",
 	"APIService",
+	"MutatingWebhookConfiguration",
+	"ValidatingWebhookConfiguration",
 }
 
 // UninstallOrder is the order in which manifests should be uninstalled (by Kind).
 //
 // Those occurring earlier in the list get uninstalled before those occurring later in the list.
 var UninstallOrder KindSortOrder = []string{
+	"ValidatingWebhookConfiguration",
+	"MutatingWebhookConfiguration",
 	"APIService",
 	"Ingress",
 	"IngressClass",
