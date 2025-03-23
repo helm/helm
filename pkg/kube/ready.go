@@ -226,18 +226,18 @@ func (c *ReadyChecker) isPodReady(pod *corev1.Pod) bool {
 			return true
 		}
 	}
-	slog.Info("Pod is not ready", "namespace", pod.GetNamespace(), "name", pod.GetName())
+	slog.Debug("Pod is not ready", "namespace", pod.GetNamespace(), "name", pod.GetName())
 	return false
 }
 
 func (c *ReadyChecker) jobReady(job *batchv1.Job) (bool, error) {
 	if job.Status.Failed > *job.Spec.BackoffLimit {
-		slog.Info("Job failed", "namespace", job.GetNamespace(), "name", job.GetName())
+		slog.Debug("Job failed", "namespace", job.GetNamespace(), "name", job.GetName())
 		// If a job is failed, it can't recover, so throw an error
 		return false, fmt.Errorf("job is failed: %s/%s", job.GetNamespace(), job.GetName())
 	}
 	if job.Spec.Completions != nil && job.Status.Succeeded < *job.Spec.Completions {
-		slog.Info("Job is not completed", "namespace", job.GetNamespace(), "name", job.GetName())
+		slog.Debug("Job is not completed", "namespace", job.GetNamespace(), "name", job.GetName())
 		return false, nil
 	}
 	return true, nil
@@ -251,7 +251,7 @@ func (c *ReadyChecker) serviceReady(s *corev1.Service) bool {
 
 	// Ensure that the service cluster IP is not empty
 	if s.Spec.ClusterIP == "" {
-		slog.Info("Service does not have cluster IP address", "namespace", s.GetNamespace(), "name", s.GetName())
+		slog.Debug("Service does not have cluster IP address", "namespace", s.GetNamespace(), "name", s.GetName())
 		return false
 	}
 
@@ -259,12 +259,12 @@ func (c *ReadyChecker) serviceReady(s *corev1.Service) bool {
 	if s.Spec.Type == corev1.ServiceTypeLoadBalancer {
 		// do not wait when at least 1 external IP is set
 		if len(s.Spec.ExternalIPs) > 0 {
-			slog.Info("Service has external IP addresses, marking as ready", "namespace", s.GetNamespace(), "name", s.GetName(), "externalIPs", s.Spec.ExternalIPs)
+			slog.Debug("Service has external IP addresses, marking as ready", "namespace", s.GetNamespace(), "name", s.GetName(), "externalIPs", s.Spec.ExternalIPs)
 			return true
 		}
 
 		if s.Status.LoadBalancer.Ingress == nil {
-			slog.Info("Service does not have load balancer ingress IP address", "namespace", s.GetNamespace(), "name", s.GetName())
+			slog.Debug("Service does not have load balancer ingress IP address", "namespace", s.GetNamespace(), "name", s.GetName())
 			return false
 		}
 	}
@@ -274,7 +274,7 @@ func (c *ReadyChecker) serviceReady(s *corev1.Service) bool {
 
 func (c *ReadyChecker) volumeReady(v *corev1.PersistentVolumeClaim) bool {
 	if v.Status.Phase != corev1.ClaimBound {
-		slog.Info("PersistentVolumeClaim is not bound", "namespace", v.GetNamespace(), "name", v.GetName())
+		slog.Debug("PersistentVolumeClaim is not bound", "namespace", v.GetNamespace(), "name", v.GetName())
 		return false
 	}
 	return true
@@ -287,7 +287,7 @@ func (c *ReadyChecker) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deploy
 	}
 	// Verify the generation observed by the deployment controller matches the spec generation
 	if dep.Status.ObservedGeneration != dep.ObjectMeta.Generation {
-		slog.Info("Deployment is not ready: observedGeneration does not match spec generation",
+		slog.Debug("Deployment is not ready: observedGeneration does not match spec generation",
 			"namespace", dep.Namespace,
 			"name", dep.Name,
 			"observedGeneration", dep.Status.ObservedGeneration,
@@ -297,7 +297,7 @@ func (c *ReadyChecker) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deploy
 
 	expectedReady := *dep.Spec.Replicas - deploymentutil.MaxUnavailable(*dep)
 	if !(rs.Status.ReadyReplicas >= expectedReady) {
-		slog.Info("Deployment is not ready: not enough pods ready",
+		slog.Debug("Deployment is not ready: not enough pods ready",
 			"namespace", dep.Namespace,
 			"name", dep.Name,
 			"readyReplicas", rs.Status.ReadyReplicas,
@@ -310,7 +310,7 @@ func (c *ReadyChecker) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deploy
 func (c *ReadyChecker) daemonSetReady(ds *appsv1.DaemonSet) bool {
 	// Verify the generation observed by the daemonSet controller matches the spec generation
 	if ds.Status.ObservedGeneration != ds.ObjectMeta.Generation {
-		slog.Info("DaemonSet is not ready: observedGeneration does not match spec generation",
+		slog.Debug("DaemonSet is not ready: observedGeneration does not match spec generation",
 			"namespace", ds.Namespace,
 			"name", ds.Name,
 			"observedGeneration", ds.Status.ObservedGeneration,
@@ -325,7 +325,7 @@ func (c *ReadyChecker) daemonSetReady(ds *appsv1.DaemonSet) bool {
 
 	// Make sure all the updated pods have been scheduled
 	if ds.Status.UpdatedNumberScheduled != ds.Status.DesiredNumberScheduled {
-		slog.Info("DaemonSet is not ready: not enough pods scheduled",
+		slog.Debug("DaemonSet is not ready: not enough pods scheduled",
 			"namespace", ds.Namespace,
 			"name", ds.Name,
 			"updatedScheduled", ds.Status.UpdatedNumberScheduled,
@@ -342,7 +342,7 @@ func (c *ReadyChecker) daemonSetReady(ds *appsv1.DaemonSet) bool {
 
 	expectedReady := int(ds.Status.DesiredNumberScheduled) - maxUnavailable
 	if !(int(ds.Status.NumberReady) >= expectedReady) {
-		slog.Info("DaemonSet is not ready: not enough pods ready",
+		slog.Debug("DaemonSet is not ready: not enough pods ready",
 			"namespace", ds.Namespace,
 			"name", ds.Name,
 			"readyPods", ds.Status.NumberReady,
@@ -398,7 +398,7 @@ func (c *ReadyChecker) crdReady(crd apiextv1.CustomResourceDefinition) bool {
 func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 	// Verify the generation observed by the statefulSet controller matches the spec generation
 	if sts.Status.ObservedGeneration != sts.ObjectMeta.Generation {
-		slog.Info("StatefulSet is not ready: observedGeneration does not match spec generation",
+		slog.Debug("StatefulSet is not ready: observedGeneration does not match spec generation",
 			"namespace", sts.Namespace,
 			"name", sts.Name,
 			"observedGeneration", sts.Status.ObservedGeneration,
@@ -408,7 +408,7 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 
 	// If the update strategy is not a rolling update, there will be nothing to wait for
 	if sts.Spec.UpdateStrategy.Type != appsv1.RollingUpdateStatefulSetStrategyType {
-		slog.Info("StatefulSet skipped ready check",
+		slog.Debug("StatefulSet skipped ready check",
 			"namespace", sts.Namespace,
 			"name", sts.Name,
 			"updateStrategy", sts.Spec.UpdateStrategy.Type)
@@ -437,7 +437,7 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 
 	// Make sure all the updated pods have been scheduled
 	if int(sts.Status.UpdatedReplicas) < expectedReplicas {
-		slog.Info("StatefulSet is not ready: not enough pods scheduled",
+		slog.Debug("StatefulSet is not ready: not enough pods scheduled",
 			"namespace", sts.Namespace,
 			"name", sts.Name,
 			"updatedReplicas", sts.Status.UpdatedReplicas,
@@ -446,7 +446,7 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 	}
 
 	if int(sts.Status.ReadyReplicas) != replicas {
-		slog.Info("StatefulSet is not ready: not enough pods ready",
+		slog.Debug("StatefulSet is not ready: not enough pods ready",
 			"namespace", sts.Namespace,
 			"name", sts.Name,
 			"readyReplicas", sts.Status.ReadyReplicas,
@@ -457,7 +457,7 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 	// partitioned rolling upgrade, this condition will never evaluate to true, leading to
 	// error.
 	if partition == 0 && sts.Status.CurrentRevision != sts.Status.UpdateRevision {
-		slog.Info("StatefulSet is not ready: currentRevision does not match updateRevision",
+		slog.Debug("StatefulSet is not ready: currentRevision does not match updateRevision",
 			"namespace", sts.Namespace,
 			"name", sts.Name,
 			"currentRevision", sts.Status.CurrentRevision,
@@ -465,7 +465,7 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 		return false
 	}
 
-	slog.Info("StatefulSet is ready",
+	slog.Debug("StatefulSet is ready",
 		"namespace", sts.Namespace,
 		"name", sts.Name,
 		"readyReplicas", sts.Status.ReadyReplicas,
@@ -476,7 +476,7 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 func (c *ReadyChecker) replicationControllerReady(rc *corev1.ReplicationController) bool {
 	// Verify the generation observed by the replicationController controller matches the spec generation
 	if rc.Status.ObservedGeneration != rc.ObjectMeta.Generation {
-		slog.Info("ReplicationController is not ready: observedGeneration does not match spec generation",
+		slog.Debug("ReplicationController is not ready: observedGeneration does not match spec generation",
 			"namespace", rc.Namespace,
 			"name", rc.Name,
 			"observedGeneration", rc.Status.ObservedGeneration,
@@ -489,7 +489,7 @@ func (c *ReadyChecker) replicationControllerReady(rc *corev1.ReplicationControll
 func (c *ReadyChecker) replicaSetReady(rs *appsv1.ReplicaSet) bool {
 	// Verify the generation observed by the replicaSet controller matches the spec generation
 	if rs.Status.ObservedGeneration != rs.ObjectMeta.Generation {
-		slog.Info("ReplicaSet is not ready: observedGeneration does not match spec generation",
+		slog.Debug("ReplicaSet is not ready: observedGeneration does not match spec generation",
 			"namespace", rs.Namespace,
 			"name", rs.Name,
 			"observedGeneration", rs.Status.ObservedGeneration,
