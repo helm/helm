@@ -155,11 +155,9 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 			return errors.New(joinErrors(errs))
 		}
 
-		// wait for resources until they are deleted to avoid conflicts
-		if kubeClient, ok := cfg.KubeClient.(kube.InterfaceExt); ok {
-			if err := kubeClient.WaitForDelete(resources, timeout); err != nil {
-				return err
-			}
+		//wait for resources until they are deleted to avoid conflicts
+		if err := cfg.KubeClient.WaitForDelete(resources, timeout); err != nil {
+			return err
 		}
 	}
 	return nil
