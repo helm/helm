@@ -19,6 +19,7 @@ package kube // import "helm.sh/helm/v4/pkg/kube"
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -101,12 +102,13 @@ func (w *waiter) isRetryableHTTPStatusCode(httpStatusCode int32) bool {
 
 // waitForDeletedResources polls to check if all the resources are deleted or a timeout is reached
 func (w *waiter) waitForDeletedResources(deleted ResourceList) error {
-	w.log("beginning wait for %d resources to be deleted with timeout of %v", len(deleted), w.timeout)
+	slog.Debug("beginning wait for resources to be deleted", "count", len(deleted), "timeout", w.timeout)
 
+	startTime := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
 	defer cancel()
 
-	return wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(_ context.Context) (bool, error) {
+	err := wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(_ context.Context) (bool, error) {
 		for _, v := range deleted {
 			err := v.Get()
 			if err == nil || !apierrors.IsNotFound(err) {
@@ -115,6 +117,15 @@ func (w *waiter) waitForDeletedResources(deleted ResourceList) error {
 		}
 		return true, nil
 	})
+
+	elapsed := time.Since(startTime).Round(time.Second)
+	if err != nil {
+		slog.Debug("wait for resources failed", "elapsed", elapsed, slog.Any("error", err))
+	} else {
+		slog.Debug("wait for resources succeeded", "elapsed", elapsed)
+	}
+
+	return err
 }
 
 // SelectorsForObject returns the pod label selector for a given object
