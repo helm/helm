@@ -365,7 +365,12 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 
 	// Server 2 that will actually fulfil the request.
 	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "localhost-crt.pem"), filepath.Join(cd, "key.pem")
-	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca, insecureSkipTLSverify)
+	tlsConf, err := tlsutil.NewTLSConfig(
+		tlsutil.WithCAFile(ca),
+		tlsutil.WithCertKeyPairFiles(pub, priv),
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+	)
+
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "can't create TLS config for client"))
 	}
@@ -381,7 +386,12 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 
 	// Server 1 responds with a redirect to Server 2.
 	ca, pub, priv = filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
-	tlsConf, err = tlsutil.NewClientTLS(pub, priv, ca, insecureSkipTLSverify)
+	tlsConf, err = tlsutil.NewTLSConfig(
+		tlsutil.WithCAFile(ca),
+		tlsutil.WithCertKeyPairFiles(pub, priv),
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+	)
+
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "can't create TLS config for client"))
 	}
