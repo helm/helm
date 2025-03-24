@@ -188,7 +188,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	if err != nil {
 		return targetRelease, errors.Wrap(err, "unable to set metadata visitor from target release")
 	}
-	results, err := r.cfg.KubeClient.Update(current, target, r.Force)
+	results, err := r.cfg.KubeClient.Update(current, target, r.Force, false)
 
 	if err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
