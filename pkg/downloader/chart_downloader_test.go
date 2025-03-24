@@ -70,7 +70,7 @@ func TestResolveChartRef(t *testing.T) {
 		Out:              os.Stderr,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
-		RegistryClient: registryClient,
+		RegistryClient:   registryClient,
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
