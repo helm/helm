@@ -196,7 +196,7 @@ func (c *Client) IsReachable() error {
 
 // Create creates Kubernetes resources specified in the resource list.
 func (c *Client) Create(resources ResourceList) (*Result, error) {
-	c.Log.Debug("creating resource(s)", "resources", resources)
+	c.Log.Debug("creating resource(s)", "resources", len(resources))
 	if err := perform(resources, createResource); err != nil {
 		return nil, err
 	}
@@ -266,7 +266,7 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objs map[string][]run
 	if info == nil {
 		return objs, nil
 	}
-	c.Log.Debug("get relation pod of object", "namespace", info.Namespace, "kind", info.Mapping.GroupVersionKind.Kind, "name", info.Name)
+	c.Log.Debug("get relation pod of object", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 	selector, ok, _ := getSelectorFromObject(info.Object)
 	if !ok {
 		return objs, nil
@@ -408,7 +408,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	updateErrors := []string{}
 	res := &Result{}
 
-	c.Log.Debug("checking resources for changes", "original", original, "target", target)
+	c.Log.Debug("checking resources for changes", "resources", len(target))
 	err := target.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
@@ -429,7 +429,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			}
 
 			kind := info.Mapping.GroupVersionKind.Kind
-			c.Log.Debug("created a new resource", "kind", kind, "name", info.Name, "namespace", info.Namespace)
+			c.Log.Debug("created a new resource", "namespace", info.Namespace, "name", info.Name, "kind", kind)
 			return nil
 		}
 
@@ -440,7 +440,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
-			c.Log.Debug("error updating the resource", "kind", info.Mapping.GroupVersionKind.Kind, "name", info.Name, "error", err)
+			c.Log.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
 			updateErrors = append(updateErrors, err.Error())
 		}
 		// Because we check for errors later, append the info regardless
@@ -457,22 +457,22 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	}
 
 	for _, info := range original.Difference(target) {
-		c.Log.Debug("deleting resource", "kind", info.Mapping.GroupVersionKind.Kind, "name", info.Name, "namespace", info.Namespace)
+		c.Log.Debug("deleting resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 
 		if err := info.Get(); err != nil {
-			c.Log.Debug("unable to get object", "name", info.Name, "error", err)
+			c.Log.Debug("unable to get object", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
 			continue
 		}
 		annotations, err := metadataAccessor.Annotations(info.Object)
 		if err != nil {
-			c.Log.Debug("unable to get annotations", "name", info.Name, "error", err)
+			c.Log.Debug("unable to get annotations", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
 		}
 		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
-			c.Log.Debug("skipping delete due to annotation", "name", info.Name, "annotation", ResourcePolicyAnno, "value", KeepPolicy)
+			c.Log.Debug("skipping delete due to annotation", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "annotation", ResourcePolicyAnno, "value", KeepPolicy)
 			continue
 		}
 		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
-			c.Log.Debug("failed to delete resource", "name", info.Name, "error", err)
+			c.Log.Debug("failed to delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
 			continue
 		}
 		res.Deleted = append(res.Deleted, info)
@@ -501,11 +501,11 @@ func rdelete(c *Client, resources ResourceList, propagation metav1.DeletionPropa
 	res := &Result{}
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
-		c.Log.Debug("starting delete resource", "kind", info.Mapping.GroupVersionKind.Kind, "name", info.Name, "namespace", info.Namespace)
+		c.Log.Debug("starting delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 		err := deleteResource(info, propagation)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
-				c.Log.Debug("ignoring delete failure", "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
+				c.Log.Debug("ignoring delete failure", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
 			}
 			mtx.Lock()
 			defer mtx.Unlock()
