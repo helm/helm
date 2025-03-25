@@ -1,6 +1,7 @@
 module helm.sh/helm/v4
 
 go 1.23.0
+toolchain go1.24.1
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24
@@ -12,7 +13,7 @@ require (
 	github.com/Masterminds/vcs v1.13.3
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/cyphar/filepath-securejoin v0.4.1
-	github.com/distribution/distribution/v3 v3.0.0-rc.3
+	github.com/distribution/distribution/v3 v3.0.0-rc.4
 	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/foxcpp/go-mockdns v1.1.0
 	github.com/gobwas/glob v0.2.3
