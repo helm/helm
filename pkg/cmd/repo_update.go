@@ -42,11 +42,10 @@ To update all the repositories, use 'helm repo update'.
 var errNoRepositories = errors.New("no repositories found. You must add one before updating")
 
 type repoUpdateOptions struct {
-	update               func([]*repo.ChartRepository, io.Writer, bool) error
-	repoFile             string
-	repoCache            string
-	names                []string
-	failOnRepoUpdateFail bool
+	update    func([]*repo.ChartRepository, io.Writer) error
+	repoFile  string
+	repoCache string
+	names     []string
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
@@ -68,12 +67,6 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 			return o.run(out)
 		},
 	}
-
-	f := cmd.Flags()
-
-	// Adding this flag for Helm 3 as stop gap functionality for https://github.com/helm/helm/issues/10016.
-	// This should be deprecated in Helm 4 by update to the behaviour of `helm repo update` command.
-	f.BoolVar(&o.failOnRepoUpdateFail, "fail-on-repo-update-fail", false, "update fails if any of the repository updates fail")
 
 	return cmd
 }
@@ -112,10 +105,10 @@ func (o *repoUpdateOptions) run(out io.Writer) error {
 		}
 	}
 
-	return o.update(repos, out, o.failOnRepoUpdateFail)
+	return o.update(repos, out)
 }
 
-func updateCharts(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdateFail bool) error {
+func updateCharts(repos []*repo.ChartRepository, out io.Writer) error {
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
 	var repoFailList []string
@@ -133,7 +126,7 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer, failOnRepoUpdate
 	}
 	wg.Wait()
 
-	if len(repoFailList) > 0 && failOnRepoUpdateFail {
+	if len(repoFailList) > 0 {
 		return fmt.Errorf("Failed to update the following repositories: %s",
 			repoFailList)
 	}

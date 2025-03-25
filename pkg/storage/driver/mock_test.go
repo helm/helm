@@ -166,7 +166,7 @@ func (mock *MockConfigMapsInterface) Delete(_ context.Context, name string, _ me
 	return nil
 }
 
-// newTestFixture initializes a MockSecretsInterface.
+// newTestFixtureSecrets initializes a MockSecretsInterface.
 // Secrets are created for each release provided.
 func newTestFixtureSecrets(t *testing.T, releases ...*rspb.Release) *Secrets {
 	var mock MockSecretsInterface

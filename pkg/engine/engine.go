@@ -18,7 +18,7 @@ package engine
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -203,7 +203,7 @@ func (e Engine) initFunMap(t *template.Template) {
 		if val == nil {
 			if e.LintMode {
 				// Don't fail on missing required values when linting
-				log.Printf("[INFO] Missing required value: %s", warn)
+				slog.Warn("missing required value", "message", warn)
 				return "", nil
 			}
 			return val, errors.New(warnWrap(warn))
@@ -211,7 +211,7 @@ func (e Engine) initFunMap(t *template.Template) {
 			if val == "" {
 				if e.LintMode {
 					// Don't fail on missing required values when linting
-					log.Printf("[INFO] Missing required value: %s", warn)
+					slog.Warn("missing required values", "message", warn)
 					return "", nil
 				}
 				return val, errors.New(warnWrap(warn))
@@ -224,7 +224,7 @@ func (e Engine) initFunMap(t *template.Template) {
 	funcMap["fail"] = func(msg string) (string, error) {
 		if e.LintMode {
 			// Don't fail when linting
-			log.Printf("[INFO] Fail: %s", msg)
+			slog.Info("funcMap fail", "message", msg)
 			return "", nil
 		}
 		return "", errors.New(warnWrap(msg))

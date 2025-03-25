@@ -18,7 +18,7 @@ package engine
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -101,7 +101,7 @@ func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config)
 	gvk := schema.FromAPIVersionAndKind(apiversion, kind)
 	apiRes, err := getAPIResourceForGVK(gvk, config)
 	if err != nil {
-		log.Printf("[ERROR] unable to get apiresource from unstructured: %s , error %s", gvk.String(), err)
+		slog.Error("unable to get apiresource", "groupVersionKind", gvk.String(), "error", err)
 		return nil, false, errors.Wrapf(err, "unable to get apiresource from unstructured: %s", gvk.String())
 	}
 	gvr := schema.GroupVersionResource{
@@ -111,7 +111,7 @@ func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config)
 	}
 	intf, err := dynamic.NewForConfig(config)
 	if err != nil {
-		log.Printf("[ERROR] unable to get dynamic client %s", err)
+		slog.Error("unable to get dynamic client", slog.Any("error", err))
 		return nil, false, err
 	}
 	res := intf.Resource(gvr)
@@ -122,12 +122,12 @@ func getAPIResourceForGVK(gvk schema.GroupVersionKind, config *rest.Config) (met
 	res := metav1.APIResource{}
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
 	if err != nil {
-		log.Printf("[ERROR] unable to create discovery client %s", err)
+		slog.Error("unable to create discovery client", slog.Any("error", err))
 		return res, err
 	}
 	resList, err := discoveryClient.ServerResourcesForGroupVersion(gvk.GroupVersion().String())
 	if err != nil {
-		log.Printf("[ERROR] unable to retrieve resource list for: %s , error: %s", gvk.GroupVersion().String(), err)
+		slog.Error("unable to retrieve resource list", "GroupVersion", gvk.GroupVersion().String(), "error", err)
 		return res, err
 	}
 	for _, resource := range resList.APIResources {
