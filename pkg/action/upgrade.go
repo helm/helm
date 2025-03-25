@@ -64,8 +64,8 @@ type Upgrade struct {
 	SkipCRDs bool
 	// Timeout is the timeout for this operation
 	Timeout time.Duration
-	// Wait determines whether the wait operation should be performed after the upgrade is requested.
-	Wait bool
+	// WaitStrategy determines what type of waiting should be done
+	WaitStrategy kube.WaitStrategy
 	// WaitForJobs determines whether the wait operation for the Jobs should be performed after the upgrade is requested.
 	WaitForJobs bool
 	// DisableHooks disables hook processing if set to true.
@@ -155,7 +155,9 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
-	u.Wait = u.Wait || u.Atomic
+	if u.WaitStrategy == kube.HookOnlyStrategy && u.Atomic {
+		u.WaitStrategy = kube.StatusWatcherStrategy
+	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("release name is invalid: %s", name)
@@ -418,7 +420,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout); err != nil {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.WaitStrategy, u.Timeout); err != nil {
 			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 			return
 		}
@@ -442,29 +444,29 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 			u.cfg.Log(err.Error())
 		}
 	}
-
-	if u.Wait {
-		u.cfg.Log(
-			"waiting for release %s resources (created: %d updated: %d  deleted: %d)",
-			upgradedRelease.Name, len(results.Created), len(results.Updated), len(results.Deleted))
-		if u.WaitForJobs {
-			if err := u.cfg.KubeClient.WaitWithJobs(target, u.Timeout); err != nil {
-				u.cfg.recordRelease(originalRelease)
-				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-				return
-			}
-		} else {
-			if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
-				u.cfg.recordRelease(originalRelease)
-				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-				return
-			}
+	waiter, err := u.cfg.KubeClient.GetWaiter(u.WaitStrategy)
+	if err != nil {
+		u.cfg.recordRelease(originalRelease)
+		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+		return
+	}
+	if u.WaitForJobs {
+		if err := waiter.WaitWithJobs(target, u.Timeout); err != nil {
+			u.cfg.recordRelease(originalRelease)
+			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+			return
+		}
+	} else {
+		if err := waiter.Wait(target, u.Timeout); err != nil {
+			u.cfg.recordRelease(originalRelease)
+			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+			return
 		}
 	}
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.Timeout); err != nil {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.WaitStrategy, u.Timeout); err != nil {
 			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
 			return
 		}
@@ -526,7 +528,9 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 
 		rollin := NewRollback(u.cfg)
 		rollin.Version = filteredHistory[0].Version
-		rollin.Wait = true
+		if u.WaitStrategy == kube.HookOnlyStrategy {
+			rollin.WaitStrategy = kube.StatusWatcherStrategy
+		}
 		rollin.WaitForJobs = u.WaitForJobs
 		rollin.DisableHooks = u.DisableHooks
 		rollin.Recreate = u.Recreate

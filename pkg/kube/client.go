@@ -27,34 +27,28 @@ import (
 	"reflect"
 	"strings"
 	"sync"
-	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
-	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
-	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	cachetools "k8s.io/client-go/tools/cache"
-	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/client-go/util/retry"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
@@ -83,8 +77,17 @@ type Client struct {
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
 
+	Waiter
 	kubeClient kubernetes.Interface
 }
+
+type WaitStrategy string
+
+const (
+	StatusWatcherStrategy WaitStrategy = "watcher"
+	LegacyStrategy        WaitStrategy = "legacy"
+	HookOnlyStrategy      WaitStrategy = "hookOnly"
+)
 
 func init() {
 	// Add CRDs to the scheme. They are missing by default.
@@ -97,15 +100,71 @@ func init() {
 	}
 }
 
+func (c *Client) newStatusWatcher() (*statusWaiter, error) {
+	cfg, err := c.Factory.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+	dynamicClient, err := c.Factory.DynamicClient()
+	if err != nil {
+		return nil, err
+	}
+	httpClient, err := rest.HTTPClientFor(cfg)
+	if err != nil {
+		return nil, err
+	}
+	restMapper, err := apiutil.NewDynamicRESTMapper(cfg, httpClient)
+	if err != nil {
+		return nil, err
+	}
+	return &statusWaiter{
+		restMapper: restMapper,
+		client:     dynamicClient,
+		log:        c.Log,
+	}, nil
+}
+
+func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
+	switch strategy {
+	case LegacyStrategy:
+		kc, err := c.Factory.KubernetesClientSet()
+		if err != nil {
+			return nil, err
+		}
+		return &legacyWaiter{kubeClient: kc, log: c.Log}, nil
+	case StatusWatcherStrategy:
+		return c.newStatusWatcher()
+	case HookOnlyStrategy:
+		sw, err := c.newStatusWatcher()
+		if err != nil {
+			return nil, err
+		}
+		return &hookOnlyWaiter{sw: sw}, nil
+	default:
+		return nil, errors.New("unknown wait strategy")
+	}
+}
+
+func (c *Client) SetWaiter(ws WaitStrategy) error {
+	var err error
+	c.Waiter, err = c.GetWaiter(ws)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // New creates a new Client.
 func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
-	return &Client{
-		Factory: cmdutil.NewFactory(getter),
+	factory := cmdutil.NewFactory(getter)
+	c := &Client{
+		Factory: factory,
 		Log:     nopLogger,
 	}
+	return c
 }
 
 var nopLogger = func(_ string, _ ...interface{}) {}
@@ -279,45 +338,6 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 		return nil, err
 	}
 	return obj, nil
-}
-
-// Wait waits up to the given timeout for the specified resources to be ready.
-func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
-	cs, err := c.getKubeClient()
-	if err != nil {
-		return err
-	}
-	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
-	w := waiter{
-		c:       checker,
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForResources(resources)
-}
-
-// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
-func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
-	cs, err := c.getKubeClient()
-	if err != nil {
-		return err
-	}
-	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true), CheckJobs(true))
-	w := waiter{
-		c:       checker,
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForResources(resources)
-}
-
-// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
-func (c *Client) WaitForDelete(resources ResourceList, timeout time.Duration) error {
-	w := waiter{
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForDeletedResources(resources)
 }
 
 func (c *Client) namespace() string {
@@ -512,52 +532,6 @@ func rdelete(c *Client, resources ResourceList, propagation metav1.DeletionPropa
 	return res, nil
 }
 
-func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
-	return func(info *resource.Info) error {
-		return c.watchUntilReady(t, info)
-	}
-}
-
-// WatchUntilReady watches the resources given and waits until it is ready.
-//
-// This method is mainly for hook implementations. It watches for a resource to
-// hit a particular milestone. The milestone depends on the Kind.
-//
-// For most kinds, it checks to see if the resource is marked as Added or Modified
-// by the Kubernetes event stream. For some kinds, it does more:
-//
-//   - Jobs: A job is marked "Ready" when it has successfully completed. This is
-//     ascertained by watching the Status fields in a job's output.
-//   - Pods: A pod is marked "Ready" when it has successfully completed. This is
-//     ascertained by watching the status.phase field in a pod's output.
-//
-// Handling for other kinds will be added as necessary.
-func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
-	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
-	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
-	return perform(resources, c.watchTimeout(timeout))
-}
-
-func perform(infos ResourceList, fn func(*resource.Info) error) error {
-	var result error
-
-	if len(infos) == 0 {
-		return ErrNoObjectsVisited
-	}
-
-	errs := make(chan error)
-	go batchPerform(infos, fn, errs)
-
-	for range infos {
-		err := <-errs
-		if err != nil {
-			result = multierror.Append(result, err)
-		}
-	}
-
-	return result
-}
-
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.
 // Otherwise, one is calculated based on the name of the binary.
 func getManagedFieldsManager() string {
@@ -707,109 +681,6 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 
 	target.Refresh(obj, true)
 	return nil
-}
-
-func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) error {
-	kind := info.Mapping.GroupVersionKind.Kind
-	switch kind {
-	case "Job", "Pod":
-	default:
-		return nil
-	}
-
-	c.Log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
-
-	// Use a selector on the name of the resource. This should be unique for the
-	// given version and kind
-	selector, err := fields.ParseSelector(fmt.Sprintf("metadata.name=%s", info.Name))
-	if err != nil {
-		return err
-	}
-	lw := cachetools.NewListWatchFromClient(info.Client, info.Mapping.Resource.Resource, info.Namespace, selector)
-
-	// What we watch for depends on the Kind.
-	// - For a Job, we watch for completion.
-	// - For all else, we watch until Ready.
-	// In the future, we might want to add some special logic for types
-	// like Ingress, Volume, etc.
-
-	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
-	defer cancel()
-	_, err = watchtools.UntilWithSync(ctx, lw, &unstructured.Unstructured{}, nil, func(e watch.Event) (bool, error) {
-		// Make sure the incoming object is versioned as we use unstructured
-		// objects when we build manifests
-		obj := convertWithMapper(e.Object, info.Mapping)
-		switch e.Type {
-		case watch.Added, watch.Modified:
-			// For things like a secret or a config map, this is the best indicator
-			// we get. We care mostly about jobs, where what we want to see is
-			// the status go into a good state. For other types, like ReplicaSet
-			// we don't really do anything to support these as hooks.
-			c.Log("Add/Modify event for %s: %v", info.Name, e.Type)
-			switch kind {
-			case "Job":
-				return c.waitForJob(obj, info.Name)
-			case "Pod":
-				return c.waitForPodSuccess(obj, info.Name)
-			}
-			return true, nil
-		case watch.Deleted:
-			c.Log("Deleted event for %s", info.Name)
-			return true, nil
-		case watch.Error:
-			// Handle error and return with an error.
-			c.Log("Error event for %s", info.Name)
-			return true, errors.Errorf("failed to deploy %s", info.Name)
-		default:
-			return false, nil
-		}
-	})
-	return err
-}
-
-// waitForJob is a helper that waits for a job to complete.
-//
-// This operates on an event returned from a watcher.
-func (c *Client) waitForJob(obj runtime.Object, name string) (bool, error) {
-	o, ok := obj.(*batch.Job)
-	if !ok {
-		return true, errors.Errorf("expected %s to be a *batch.Job, got %T", name, obj)
-	}
-
-	for _, c := range o.Status.Conditions {
-		if c.Type == batch.JobComplete && c.Status == "True" {
-			return true, nil
-		} else if c.Type == batch.JobFailed && c.Status == "True" {
-			return true, errors.Errorf("job %s failed: %s", name, c.Reason)
-		}
-	}
-
-	c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
-	return false, nil
-}
-
-// waitForPodSuccess is a helper that waits for a pod to complete.
-//
-// This operates on an event returned from a watcher.
-func (c *Client) waitForPodSuccess(obj runtime.Object, name string) (bool, error) {
-	o, ok := obj.(*v1.Pod)
-	if !ok {
-		return true, errors.Errorf("expected %s to be a *v1.Pod, got %T", name, obj)
-	}
-
-	switch o.Status.Phase {
-	case v1.PodSucceeded:
-		c.Log("Pod %s succeeded", o.Name)
-		return true, nil
-	case v1.PodFailed:
-		return true, errors.Errorf("pod %s failed", o.Name)
-	case v1.PodPending:
-		c.Log("Pod %s pending", o.Name)
-	case v1.PodRunning:
-		c.Log("Pod %s running", o.Name)
-	}
-
-	return false, nil
 }
 
 // GetPodList uses the kubernetes interface to get the list of pods filtered by listOptions
