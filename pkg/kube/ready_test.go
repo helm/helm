@@ -37,7 +37,7 @@ const defaultNamespace = metav1.NamespaceDefault
 func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
+		log           Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -113,7 +113,7 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
+		log           Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -188,7 +188,7 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
+		log           Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -270,7 +270,7 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
+		log           Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -345,7 +345,7 @@ func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
 func Test_ReadyChecker_IsReady_Service(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
+		log           Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -420,7 +420,7 @@ func Test_ReadyChecker_IsReady_Service(t *testing.T) {
 func Test_ReadyChecker_IsReady_DaemonSet(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
+		log           Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -495,7 +495,7 @@ func Test_ReadyChecker_IsReady_DaemonSet(t *testing.T) {
 func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
+		log           Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -570,7 +570,7 @@ func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
+		log           Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -661,7 +661,7 @@ func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
 func Test_ReadyChecker_IsReady_ReplicaSet(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
+		log           Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
