@@ -63,7 +63,7 @@ func NewReadyChecker(cl kubernetes.Interface, logger Logger, opts ...ReadyChecke
 		log:    logger,
 	}
 	if c.log == nil {
-		c.log = nopLogger
+		c.log = DefaultLogger
 	}
 	for _, opt := range opts {
 		opt(&c)
