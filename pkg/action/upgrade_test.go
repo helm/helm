@@ -53,7 +53,7 @@ func TestUpgradeRelease_Success(t *testing.T) {
 	rel.Info.Status = release.StatusDeployed
 	req.NoError(upAction.cfg.Releases.Create(rel))
 
-	upAction.Wait = kube.StatusWatcherStrategy
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
 	ctx, done := context.WithCancel(context.Background())
@@ -83,7 +83,7 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	upAction.cfg.KubeClient = failer
-	upAction.Wait = kube.StatusWatcherStrategy
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
 	res, err := upAction.Run(rel.Name, buildChart(), vals)
@@ -105,7 +105,7 @@ func TestUpgradeRelease_WaitForJobs(t *testing.T) {
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	upAction.cfg.KubeClient = failer
-	upAction.Wait = kube.StatusWatcherStrategy
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	upAction.WaitForJobs = true
 	vals := map[string]interface{}{}
 
@@ -129,7 +129,7 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	failer.WaitError = fmt.Errorf("I timed out")
 	failer.DeleteError = fmt.Errorf("I tried to delete nil")
 	upAction.cfg.KubeClient = failer
-	upAction.Wait = kube.StatusWatcherStrategy
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	upAction.CleanupOnFail = true
 	vals := map[string]interface{}{}
 
@@ -396,7 +396,7 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 10 * time.Second
 	upAction.cfg.KubeClient = failer
-	upAction.Wait = kube.StatusWatcherStrategy
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
 	ctx := context.Background()

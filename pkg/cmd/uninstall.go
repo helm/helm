@@ -79,7 +79,7 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.DeletionPropagation, "cascade", "background", "Must be \"background\", \"orphan\", or \"foreground\". Selects the deletion cascading strategy for the dependents. Defaults to background.")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
-	AddWaitFlag(cmd, &client.Wait)
+	AddWaitFlag(cmd, &client.WaitStrategy)
 
 	return cmd
 }

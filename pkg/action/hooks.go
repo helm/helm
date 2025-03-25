@@ -35,7 +35,7 @@ import (
 )
 
 // execHook executes all of the hooks for the given hook event.
-func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, timeout time.Duration) error {
+func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, waitStrategy kube.WaitStrategy, timeout time.Duration) error {
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
@@ -59,7 +59,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			h.DeletePolicies = []release.HookDeletePolicy{release.HookBeforeHookCreation}
 		}
 
-		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation, timeout); err != nil {
+		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation, waitStrategy, timeout); err != nil {
 			return err
 		}
 
@@ -87,8 +87,12 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
 		}
 
+		waiter, err := cfg.KubeClient.GetWaiter(waitStrategy)
+		if err != nil {
+			return errors.Wrapf(err, "unable to get waiter")
+		}
 		// Watch hook resources until they have completed
-		err = cfg.KubeClient.WatchUntilReady(resources, timeout)
+		err = waiter.WatchUntilReady(resources, timeout)
 		// Note the time of success/failure
 		h.LastRun.CompletedAt = helmtime.Now()
 		// Mark hook as succeeded or failed
@@ -101,7 +105,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			}
 			// If a hook is failed, check the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
-			if errDeleting := cfg.deleteHookByPolicy(h, release.HookFailed, timeout); errDeleting != nil {
+			if errDeleting := cfg.deleteHookByPolicy(h, release.HookFailed, waitStrategy, timeout); errDeleting != nil {
 				// We log the error here as we want to propagate the hook failure upwards to the release object.
 				log.Printf("error deleting the hook resource on hook failure: %v", errDeleting)
 			}
@@ -118,7 +122,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			// We log here as we still want to attempt hook resource deletion even if output logging fails.
 			log.Printf("error outputting logs for hook failure: %v", err)
 		}
-		if err := cfg.deleteHookByPolicy(h, release.HookSucceeded, timeout); err != nil {
+		if err := cfg.deleteHookByPolicy(h, release.HookSucceeded, waitStrategy, timeout); err != nil {
 			return err
 		}
 	}
@@ -139,7 +143,7 @@ func (x hookByWeight) Less(i, j int) bool {
 }
 
 // deleteHookByPolicy deletes a hook if the hook policy instructs it to
-func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.HookDeletePolicy, timeout time.Duration) error {
+func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.HookDeletePolicy, waitStrategy kube.WaitStrategy, timeout time.Duration) error {
 	// Never delete CustomResourceDefinitions; this could cause lots of
 	// cascading garbage collection.
 	if h.Kind == "CustomResourceDefinition" {
@@ -155,7 +159,11 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 			return errors.New(joinErrors(errs))
 		}
 
-		if err := cfg.KubeClient.WaitForDelete(resources, timeout); err != nil {
+		waiter, err := cfg.KubeClient.GetWaiter(waitStrategy)
+		if err != nil {
+			return err
+		}
+		if err := waiter.WaitForDelete(resources, timeout); err != nil {
 			return err
 		}
 	}

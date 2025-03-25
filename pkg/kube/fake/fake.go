@@ -35,17 +35,27 @@ type FailingKubeClient struct {
 	PrintingKubeClient
 	CreateError                error
 	GetError                   error
-	WaitError                  error
-	WaitForDeleteError         error
 	DeleteError                error
 	DeleteWithPropagationError error
-	WatchUntilReadyError       error
 	UpdateError                error
 	BuildError                 error
 	BuildTableError            error
 	BuildDummy                 bool
 	BuildUnstructuredError     error
+	WaitError                  error
+	WaitForDeleteError         error
+	WatchUntilReadyError       error
 	WaitDuration               time.Duration
+}
+
+// FailingKubeWaiter implements kube.Waiter for testing purposes.
+// It also has additional errors you can set to fail different functions, otherwise it delegates all its calls to `PrintingKubeWaiter`
+type FailingKubeWaiter struct {
+	*PrintingKubeWaiter
+	waitError            error
+	waitForDeleteError   error
+	watchUntilReadyError error
+	waitDuration         time.Duration
 }
 
 // Create returns the configured error if set or prints
@@ -65,28 +75,28 @@ func (f *FailingKubeClient) Get(resources kube.ResourceList, related bool) (map[
 }
 
 // Waits the amount of time defined on f.WaitDuration, then returns the configured error if set or prints.
-func (f *FailingKubeClient) Wait(resources kube.ResourceList, d time.Duration) error {
-	time.Sleep(f.WaitDuration)
-	if f.WaitError != nil {
-		return f.WaitError
+func (f *FailingKubeWaiter) Wait(resources kube.ResourceList, d time.Duration) error {
+	time.Sleep(f.waitDuration)
+	if f.waitError != nil {
+		return f.waitError
 	}
-	return f.PrintingKubeClient.Wait(resources, d)
+	return f.PrintingKubeWaiter.Wait(resources, d)
 }
 
 // WaitWithJobs returns the configured error if set or prints
-func (f *FailingKubeClient) WaitWithJobs(resources kube.ResourceList, d time.Duration) error {
-	if f.WaitError != nil {
-		return f.WaitError
+func (f *FailingKubeWaiter) WaitWithJobs(resources kube.ResourceList, d time.Duration) error {
+	if f.waitError != nil {
+		return f.waitError
 	}
-	return f.PrintingKubeClient.WaitWithJobs(resources, d)
+	return f.PrintingKubeWaiter.WaitWithJobs(resources, d)
 }
 
 // WaitForDelete returns the configured error if set or prints
-func (f *FailingKubeClient) WaitForDelete(resources kube.ResourceList, d time.Duration) error {
-	if f.WaitForDeleteError != nil {
-		return f.WaitForDeleteError
+func (f *FailingKubeWaiter) WaitForDelete(resources kube.ResourceList, d time.Duration) error {
+	if f.waitForDeleteError != nil {
+		return f.waitForDeleteError
 	}
-	return f.PrintingKubeClient.WaitForDelete(resources, d)
+	return f.PrintingKubeWaiter.WaitForDelete(resources, d)
 }
 
 // Delete returns the configured error if set or prints
@@ -98,11 +108,11 @@ func (f *FailingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, [
 }
 
 // WatchUntilReady returns the configured error if set or prints
-func (f *FailingKubeClient) WatchUntilReady(resources kube.ResourceList, d time.Duration) error {
-	if f.WatchUntilReadyError != nil {
-		return f.WatchUntilReadyError
+func (f *FailingKubeWaiter) WatchUntilReady(resources kube.ResourceList, d time.Duration) error {
+	if f.watchUntilReadyError != nil {
+		return f.watchUntilReadyError
 	}
-	return f.PrintingKubeClient.WatchUntilReady(resources, d)
+	return f.PrintingKubeWaiter.WatchUntilReady(resources, d)
 }
 
 // Update returns the configured error if set or prints
@@ -140,8 +150,16 @@ func (f *FailingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceL
 	return f.PrintingKubeClient.DeleteWithPropagationPolicy(resources, policy)
 }
 
-func (f *FailingKubeClient) SetWaiter(_ kube.WaitStrategy) error {
-	return nil
+func (f *FailingKubeClient) GetWaiter(ws kube.WaitStrategy) (kube.Waiter, error) {
+	waiter, _ := f.PrintingKubeClient.GetWaiter(ws)
+	printingKubeWaiter, _ := waiter.(*PrintingKubeWaiter)
+	return &FailingKubeWaiter{
+		PrintingKubeWaiter:   printingKubeWaiter,
+		waitError:            f.WaitError,
+		waitForDeleteError:   f.WaitForDeleteError,
+		watchUntilReadyError: f.WatchUntilReadyError,
+		waitDuration:         f.WaitDuration,
+	}, nil
 }
 
 func createDummyResourceList() kube.ResourceList {
@@ -151,5 +169,4 @@ func createDummyResourceList() kube.ResourceList {
 	var resourceList kube.ResourceList
 	resourceList.Append(&resInfo)
 	return resourceList
-
 }

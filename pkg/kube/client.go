@@ -125,7 +125,7 @@ func (c *Client) newStatusWatcher() (*statusWaiter, error) {
 	}, nil
 }
 
-func (c *Client) newWaiter(strategy WaitStrategy) (Waiter, error) {
+func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
 	switch strategy {
 	case LegacyStrategy:
 		kc, err := c.Factory.KubernetesClientSet()
@@ -148,7 +148,7 @@ func (c *Client) newWaiter(strategy WaitStrategy) (Waiter, error) {
 
 func (c *Client) SetWaiter(ws WaitStrategy) error {
 	var err error
-	c.Waiter, err = c.newWaiter(ws)
+	c.Waiter, err = c.GetWaiter(ws)
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func (c *Client) SetWaiter(ws WaitStrategy) error {
 }
 
 // New creates a new Client.
-func New(getter genericclioptions.RESTClientGetter) (*Client, error) {
+func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
@@ -165,12 +165,7 @@ func New(getter genericclioptions.RESTClientGetter) (*Client, error) {
 		Factory: factory,
 		Log:     nopLogger,
 	}
-	var err error
-	c.Waiter, err = c.newWaiter(HookOnlyStrategy)
-	if err != nil {
-		return nil, err
-	}
-	return c, nil
+	return c
 }
 
 var nopLogger = func(_ string, _ ...interface{}) {}

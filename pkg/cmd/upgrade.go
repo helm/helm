@@ -136,7 +136,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.DisableHooks = client.DisableHooks
 					instClient.SkipCRDs = client.SkipCRDs
 					instClient.Timeout = client.Timeout
-					instClient.Wait = client.Wait
+					instClient.WaitStrategy = client.WaitStrategy
 					instClient.WaitForJobs = client.WaitForJobs
 					instClient.Devel = client.Devel
 					instClient.Namespace = client.Namespace
@@ -294,7 +294,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
-	AddWaitFlag(cmd, &client.Wait)
+	AddWaitFlag(cmd, &client.WaitStrategy)
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 2 {

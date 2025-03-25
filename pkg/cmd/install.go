@@ -211,7 +211,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, install will ignore the check for helm annotations and take ownership of the existing resources")
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
-	AddWaitFlag(cmd, &client.Wait)
+	AddWaitFlag(cmd, &client.WaitStrategy)
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		requiredArgs := 2

@@ -84,7 +84,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.WaitForJobs, "wait-for-jobs", false, "if set and --wait enabled, will wait until all Jobs have been completed before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this rollback when rollback fails")
 	f.IntVar(&client.MaxHistory, "history-max", settings.MaxHistory, "limit the maximum number of revisions saved per release. Use 0 for no limit")
-	AddWaitFlag(cmd, &client.Wait)
+	AddWaitFlag(cmd, &client.WaitStrategy)
 
 	return cmd
 }

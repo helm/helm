@@ -412,7 +412,7 @@ func TestInstallRelease_Wait(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	instAction.cfg.KubeClient = failer
-	instAction.Wait = kube.StatusWatcherStrategy
+	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
 	goroutines := runtime.NumGoroutine()
@@ -431,7 +431,7 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 10 * time.Second
 	instAction.cfg.KubeClient = failer
-	instAction.Wait = kube.StatusWatcherStrategy
+	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -454,7 +454,7 @@ func TestInstallRelease_WaitForJobs(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	instAction.cfg.KubeClient = failer
-	instAction.Wait = kube.StatusWatcherStrategy
+	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	instAction.WaitForJobs = true
 	vals := map[string]interface{}{}
 

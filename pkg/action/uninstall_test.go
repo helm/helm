@@ -83,7 +83,7 @@ func TestUninstallRelease_Wait(t *testing.T) {
 	unAction := uninstallAction(t)
 	unAction.DisableHooks = true
 	unAction.DryRun = false
-	unAction.Wait = kube.StatusWatcherStrategy
+	unAction.WaitStrategy = kube.StatusWatcherStrategy
 
 	rel := releaseStub()
 	rel.Name = "come-fail-away"
@@ -114,7 +114,7 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	unAction := uninstallAction(t)
 	unAction.DisableHooks = true
 	unAction.DryRun = false
-	unAction.Wait = kube.HookOnlyStrategy
+	unAction.WaitStrategy = kube.HookOnlyStrategy
 	unAction.DeletionPropagation = "foreground"
 
 	rel := releaseStub()

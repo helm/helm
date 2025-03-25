@@ -516,7 +516,7 @@ func TestWait(t *testing.T) {
 		}),
 	}
 	var err error
-	c.Waiter, err = c.newWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -573,7 +573,7 @@ func TestWaitJob(t *testing.T) {
 		}),
 	}
 	var err error
-	c.Waiter, err = c.newWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -632,7 +632,7 @@ func TestWaitDelete(t *testing.T) {
 		}),
 	}
 	var err error
-	c.Waiter, err = c.newWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -662,10 +662,7 @@ func TestWaitDelete(t *testing.T) {
 
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
-	c, err := New(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	c := New(nil)
 	resources, err := c.Build(strings.NewReader(guestbookManifest), false)
 	if err != nil {
 		t.Fatal(err)
@@ -675,10 +672,7 @@ func TestReal(t *testing.T) {
 	}
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
-	c, err = New(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	c = New(nil)
 	resources, err = c.Build(strings.NewReader(testSvcEndpointManifest), false)
 	if err != nil {
 		t.Fatal(err)

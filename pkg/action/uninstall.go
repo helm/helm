@@ -17,7 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -42,7 +41,7 @@ type Uninstall struct {
 	DryRun              bool
 	IgnoreNotFound      bool
 	KeepHistory         bool
-	Wait                kube.WaitStrategy
+	WaitStrategy        kube.WaitStrategy
 	DeletionPropagation string
 	Timeout             time.Duration
 	Description         string
@@ -61,8 +60,9 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		return nil, err
 	}
 
-	if err := u.cfg.KubeClient.SetWaiter(u.Wait); err != nil {
-		return nil, fmt.Errorf("failed to set kube client waiter: %w", err)
+	waiter, err := u.cfg.KubeClient.GetWaiter(u.WaitStrategy)
+	if err != nil {
+		return nil, err
 	}
 
 	if u.DryRun {
@@ -111,7 +111,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res := &release.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(rel, release.HookPreDelete, u.Timeout); err != nil {
+		if err := u.cfg.execHook(rel, release.HookPreDelete, u.WaitStrategy, u.Timeout); err != nil {
 			return res, err
 		}
 	} else {
@@ -135,12 +135,12 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 	res.Info = kept
 
-	if err := u.cfg.KubeClient.WaitForDelete(deletedResources, u.Timeout); err != nil {
+	if err := waiter.WaitForDelete(deletedResources, u.Timeout); err != nil {
 		errs = append(errs, err)
 	}
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(rel, release.HookPostDelete, u.Timeout); err != nil {
+		if err := u.cfg.execHook(rel, release.HookPostDelete, u.WaitStrategy, u.Timeout); err != nil {
 			errs = append(errs, err)
 		}
 	}

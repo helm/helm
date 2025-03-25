@@ -38,7 +38,7 @@ type Rollback struct {
 
 	Version       int
 	Timeout       time.Duration
-	Wait          kube.WaitStrategy
+	WaitStrategy  kube.WaitStrategy
 	WaitForJobs   bool
 	DisableHooks  bool
 	DryRun        bool
@@ -59,10 +59,6 @@ func NewRollback(cfg *Configuration) *Rollback {
 func (r *Rollback) Run(name string) error {
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
 		return err
-	}
-
-	if err := r.cfg.KubeClient.SetWaiter(r.Wait); err != nil {
-		return fmt.Errorf("failed to set kube client waiter: %w", err)
 	}
 
 	r.cfg.Releases.MaxHistory = r.MaxHistory
@@ -181,7 +177,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// pre-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.Timeout); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.Timeout); err != nil {
 			return targetRelease, err
 		}
 	} else {
@@ -227,16 +223,19 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 			r.cfg.Log(err.Error())
 		}
 	}
-
+	waiter, err := r.cfg.KubeClient.GetWaiter(r.WaitStrategy)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to set metadata visitor from target release")
+	}
 	if r.WaitForJobs {
-		if err := r.cfg.KubeClient.WaitWithJobs(target, r.Timeout); err != nil {
+		if err := waiter.WaitWithJobs(target, r.Timeout); err != nil {
 			targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
 			r.cfg.recordRelease(currentRelease)
 			r.cfg.recordRelease(targetRelease)
 			return targetRelease, errors.Wrapf(err, "release %s failed", targetRelease.Name)
 		}
 	} else {
-		if err := r.cfg.KubeClient.Wait(target, r.Timeout); err != nil {
+		if err := waiter.Wait(target, r.Timeout); err != nil {
 			targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
 			r.cfg.recordRelease(currentRelease)
 			r.cfg.recordRelease(targetRelease)
@@ -246,7 +245,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.Timeout); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.WaitStrategy, r.Timeout); err != nil {
 			return targetRelease, err
 		}
 	}
