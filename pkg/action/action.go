@@ -376,7 +376,7 @@ func (cfg *Configuration) recordRelease(r *release.Release) {
 // Init initializes the action configuration
 func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog) error {
 	kc := kube.New(getter)
-	kc.Log = log
+	kc.Log = log // TODO: Switch to slog compatible logger
 
 	lazyClient := &lazyClient{
 		namespace: namespace,

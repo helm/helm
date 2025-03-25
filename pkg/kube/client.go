@@ -79,7 +79,7 @@ type Client struct {
 	// needs. The smaller surface area of the interface means there is a lower
 	// chance of it changing.
 	Factory Factory
-	Log     func(string, ...interface{})
+	Log     Logger
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
 
@@ -104,11 +104,9 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 	}
 	return &Client{
 		Factory: cmdutil.NewFactory(getter),
-		Log:     nopLogger,
+		Log:     DefaultLogger,
 	}
 }
-
-var nopLogger = func(_ string, _ ...interface{}) {}
 
 // getKubeClient get or create a new KubernetesClientSet
 func (c *Client) getKubeClient() (kubernetes.Interface, error) {
@@ -139,7 +137,7 @@ func (c *Client) IsReachable() error {
 
 // Create creates Kubernetes resources specified in the resource list.
 func (c *Client) Create(resources ResourceList) (*Result, error) {
-	c.Log("creating %d resource(s)", len(resources))
+	c.Log.Debug("creating resource(s)", "resources", len(resources))
 	if err := perform(resources, createResource); err != nil {
 		return nil, err
 	}
@@ -191,7 +189,7 @@ func (c *Client) Get(resources ResourceList, related bool) (map[string][]runtime
 
 				objs, err = c.getSelectRelationPod(info, objs, isTable, &podSelectors)
 				if err != nil {
-					c.Log("Warning: get the relation pod is failed, err:%s", err.Error())
+					c.Log.Warn("get the relation pod is failed", "error", err)
 				}
 			}
 		}
@@ -209,7 +207,7 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objs map[string][]run
 	if info == nil {
 		return objs, nil
 	}
-	c.Log("get relation pod of object: %s/%s/%s", info.Namespace, info.Mapping.GroupVersionKind.Kind, info.Name)
+	c.Log.Debug("get relation pod of object", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 	selector, ok, _ := getSelectorFromObject(info.Object)
 	if !ok {
 		return objs, nil
@@ -390,7 +388,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	updateErrors := []string{}
 	res := &Result{}
 
-	c.Log("checking %d resources for changes", len(target))
+	c.Log.Debug("checking resources for changes", "resources", len(target))
 	err := target.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
@@ -411,7 +409,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			}
 
 			kind := info.Mapping.GroupVersionKind.Kind
-			c.Log("Created a new %s called %q in %s\n", kind, info.Name, info.Namespace)
+			c.Log.Debug("created a new resource", "namespace", info.Namespace, "name", info.Name, "kind", kind)
 			return nil
 		}
 
@@ -422,7 +420,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
-			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
+			c.Log.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
 			updateErrors = append(updateErrors, err.Error())
 		}
 		// Because we check for errors later, append the info regardless
@@ -439,22 +437,22 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	}
 
 	for _, info := range original.Difference(target) {
-		c.Log("Deleting %s %q in namespace %s...", info.Mapping.GroupVersionKind.Kind, info.Name, info.Namespace)
+		c.Log.Debug("deleting resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 
 		if err := info.Get(); err != nil {
-			c.Log("Unable to get obj %q, err: %s", info.Name, err)
+			c.Log.Debug("unable to get object", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
 			continue
 		}
 		annotations, err := metadataAccessor.Annotations(info.Object)
 		if err != nil {
-			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
+			c.Log.Debug("unable to get annotations", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
 		}
 		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
-			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
+			c.Log.Debug("skipping delete due to annotation", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "annotation", ResourcePolicyAnno, "value", KeepPolicy)
 			continue
 		}
 		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
-			c.Log("Failed to delete %q, err: %s", info.ObjectName(), err)
+			c.Log.Debug("failed to delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
 			continue
 		}
 		res.Deleted = append(res.Deleted, info)
@@ -483,11 +481,11 @@ func rdelete(c *Client, resources ResourceList, propagation metav1.DeletionPropa
 	res := &Result{}
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
-		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
+		c.Log.Debug("starting delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 		err := deleteResource(info, propagation)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
-				c.Log("Ignoring delete failure for %q %s: %v", info.Name, info.Mapping.GroupVersionKind, err)
+				c.Log.Debug("ignoring delete failure", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
 			}
 			mtx.Lock()
 			defer mtx.Unlock()
@@ -681,7 +679,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		if err != nil {
 			return errors.Wrap(err, "failed to replace object")
 		}
-		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
+		c.Log.Debug("replace succeeded", "name", target.Name, "initialKind", currentObj.GetObjectKind().GroupVersionKind().Kind, "kind", kind)
 	} else {
 		patch, patchType, err := createPatch(target, currentObj)
 		if err != nil {
@@ -689,7 +687,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 
 		if patch == nil || string(patch) == "{}" {
-			c.Log("Looks like there are no changes for %s %q", kind, target.Name)
+			c.Log.Debug("no changes detected", "kind", kind, "name", target.Name)
 			// This needs to happen to make sure that Helm has the latest info from the API
 			// Otherwise there will be no labels and other functions that use labels will panic
 			if err := target.Get(); err != nil {
@@ -698,7 +696,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 			return nil
 		}
 		// send patch to server
-		c.Log("Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
+		c.Log.Debug("patching resource", "kind", kind, "name", target.Name, "namespace", target.Namespace)
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
 			return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
@@ -717,7 +715,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 		return nil
 	}
 
-	c.Log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
+	c.Log.Debug("watching for changes", "namespace", info.Namespace, "name", info.Name, "timeout", timeout)
 
 	// Use a selector on the name of the resource. This should be unique for the
 	// given version and kind
@@ -745,7 +743,7 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 			// we get. We care mostly about jobs, where what we want to see is
 			// the status go into a good state. For other types, like ReplicaSet
 			// we don't really do anything to support these as hooks.
-			c.Log("Add/Modify event for %s: %v", info.Name, e.Type)
+			c.Log.Debug("add/modify event received", "namespace", info.Namespace, "name", info.Name, "type", e.Type)
 			switch kind {
 			case "Job":
 				return c.waitForJob(obj, info.Name)
@@ -754,11 +752,12 @@ func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) err
 			}
 			return true, nil
 		case watch.Deleted:
-			c.Log("Deleted event for %s", info.Name)
+			c.Log.Debug("deleted event received", "namespace", info.Namespace, "name", info.Name)
 			return true, nil
 		case watch.Error:
 			// Handle error and return with an error.
-			c.Log("Error event for %s", info.Name)
+			// c.Log("Error event for %s", info.Name)
+			c.Log.Debug("error event received", "namespace", info.Namespace, "name", info.Name)
 			return true, errors.Errorf("failed to deploy %s", info.Name)
 		default:
 			return false, nil
@@ -784,7 +783,7 @@ func (c *Client) waitForJob(obj runtime.Object, name string) (bool, error) {
 		}
 	}
 
-	c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
+	c.Log.Debug("job status", "namespace", o.Namespace, "name", name, "active", o.Status.Active, "failed", o.Status.Failed, "succeeded", o.Status.Succeeded)
 	return false, nil
 }
 
@@ -799,14 +798,14 @@ func (c *Client) waitForPodSuccess(obj runtime.Object, name string) (bool, error
 
 	switch o.Status.Phase {
 	case v1.PodSucceeded:
-		c.Log("Pod %s succeeded", o.Name)
+		c.Log.Debug("Pod succeeded", "namespace", o.Namespace, "name", o.Name)
 		return true, nil
 	case v1.PodFailed:
 		return true, errors.Errorf("pod %s failed", o.Name)
 	case v1.PodPending:
-		c.Log("Pod %s pending", o.Name)
+		c.Log.Debug("Pod pending", "namespace", o.Namespace, "name", o.Name)
 	case v1.PodRunning:
-		c.Log("Pod %s running", o.Name)
+		c.Log.Debug("Pod running", "namespace", o.Namespace, "name", o.Name)
 	}
 
 	return false, nil
@@ -847,9 +846,6 @@ func copyRequestStreamToWriter(request *rest.Request, podName, containerName str
 	_, err = io.Copy(writer, readCloser)
 	if err != nil {
 		return errors.Errorf("Failed to copy IO from logs for pod: %s, container: %s", podName, containerName)
-	}
-	if err != nil {
-		return errors.Errorf("Failed to close reader for pod: %s, container: %s", podName, containerName)
 	}
 	return nil
 }

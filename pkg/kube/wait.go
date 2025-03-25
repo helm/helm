@@ -42,13 +42,13 @@ import (
 type waiter struct {
 	c       ReadyChecker
 	timeout time.Duration
-	log     func(string, ...interface{})
+	log     Logger
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, Services and
 // Jobs(optional) until all are ready or a timeout is reached
 func (w *waiter) waitForResources(created ResourceList) error {
-	w.log("beginning wait for %d resources with timeout of %v", len(created), w.timeout)
+	w.log.Debug("beginning wait for resources", "count", len(created), "timeout", w.timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), w.timeout)
 	defer cancel()
@@ -66,10 +66,10 @@ func (w *waiter) waitForResources(created ResourceList) error {
 			if waitRetries > 0 && w.isRetryableError(err, v) {
 				numberOfErrors[i]++
 				if numberOfErrors[i] > waitRetries {
-					w.log("Max number of retries reached")
+					w.log.Debug("max number of retries reached", "retries", waitRetries)
 					return false, err
 				}
-				w.log("Retrying as current number of retries %d less than max number of retries %d", numberOfErrors[i]-1, waitRetries)
+				w.log.Debug("retrying as current number of retries is less than max number of retries", "retries", numberOfErrors[i]-1, "maxRetries", waitRetries)
 				return false, nil
 			}
 			numberOfErrors[i] = 0
@@ -85,14 +85,14 @@ func (w *waiter) isRetryableError(err error, resource *resource.Info) bool {
 	if err == nil {
 		return false
 	}
-	w.log("Error received when checking status of resource %s. Error: '%s', Resource details: '%s'", resource.Name, err, resource)
+	w.log.Debug("error received when checking status of resource", "error", err, "resourceNamespace", resource.Namespace, "resourceName", resource.Name, "resourceDetails", resource)
 	if ev, ok := err.(*apierrors.StatusError); ok {
 		statusCode := ev.Status().Code
 		retryable := w.isRetryableHTTPStatusCode(statusCode)
-		w.log("Status code received: %d. Retryable error? %t", statusCode, retryable)
+		w.log.Debug("status code received", "statusCode", statusCode, "retryable", retryable)
 		return retryable
 	}
-	w.log("Retryable error? %t", true)
+	w.log.Debug("retryable error")
 	return true
 }
 
