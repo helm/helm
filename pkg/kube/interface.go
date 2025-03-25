@@ -48,7 +48,7 @@ type Interface interface {
 	Build(reader io.Reader, validate bool) (ResourceList, error)
 	// IsReachable checks whether the client is able to connect to the cluster.
 	IsReachable() error
-	
+
 	// Get Waiter gets the Kube.Waiter
 	GetWaiter(ws WaitStrategy) (Waiter, error)
 }
