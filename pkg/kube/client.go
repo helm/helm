@@ -248,7 +248,7 @@ func (c *Client) Get(resources ResourceList, related bool) (map[string][]runtime
 
 				objs, err = c.getSelectRelationPod(info, objs, isTable, &podSelectors)
 				if err != nil {
-					c.Log.Debug("failed to get related pods", "error", err)
+					c.Log.Warn("get the relation pod is failed", "error", err)
 				}
 			}
 		}

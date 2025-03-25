@@ -19,6 +19,7 @@ package kube
 // Logger defines a minimal logging interface compatible with slog.Logger
 type Logger interface {
 	Debug(msg string, args ...any)
+	Warn(msg string, args ...any)
 }
 
 // NopLogger is a logger that does nothing
@@ -26,5 +27,6 @@ type NopLogger struct{}
 
 // Debug implements the Logger interface
 func (n NopLogger) Debug(msg string, args ...any) {}
+func (n NopLogger) Warn(msg string, args ...any)  {}
 
 var nopLogger = NopLogger{}
