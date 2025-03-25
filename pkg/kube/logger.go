@@ -33,10 +33,10 @@ type Logger interface {
 type NopLogger struct{}
 
 // Debug implements Logger.Debug by doing nothing.
-func (NopLogger) Debug(msg string, args ...any) {}
+func (NopLogger) Debug(_ string, args ...any) {}
 
 // Warn implements Logger.Warn by doing nothing.
-func (NopLogger) Warn(msg string, args ...any) {}
+func (NopLogger) Warn(_ string, args ...any) {}
 
 // DefaultLogger provides a no-op logger that discards all messages.
 // It can be used as a default when no logger is provided.
