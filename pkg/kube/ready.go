@@ -19,8 +19,6 @@ package kube // import "helm.sh/helm/v4/pkg/kube"
 import (
 	"context"
 	"fmt"
-	"io"
-	"log/slog"
 
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -65,7 +63,7 @@ func NewReadyChecker(cl kubernetes.Interface, logger Logger, opts ...ReadyChecke
 		log:    logger,
 	}
 	if c.log == nil {
-		c.log = slog.New(slog.NewTextHandler(io.Discard, nil))
+		c.log = nopLogger
 	}
 	for _, opt := range opts {
 		opt(&c)

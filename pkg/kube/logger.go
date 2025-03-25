@@ -16,17 +16,33 @@ limitations under the License.
 
 package kube
 
+import "log/slog"
+
 // Logger defines a minimal logging interface compatible with slog.Logger
 type Logger interface {
 	Debug(msg string, args ...any)
 	Warn(msg string, args ...any)
 }
 
-// NopLogger is a logger that does nothing
+type SlogAdapter struct {
+	logger *slog.Logger
+}
+
 type NopLogger struct{}
 
-// Debug implements the Logger interface
 func (n NopLogger) Debug(msg string, args ...any) {}
 func (n NopLogger) Warn(msg string, args ...any)  {}
 
 var nopLogger = NopLogger{}
+
+func (a SlogAdapter) Debug(msg string, args ...any) {
+	a.logger.Debug(msg, args...)
+}
+
+func (a SlogAdapter) Warn(msg string, args ...any) {
+	a.logger.Warn(msg, args...)
+}
+
+func NewSlogAdapter(logger *slog.Logger) Logger {
+	return SlogAdapter{logger: logger}
+}
