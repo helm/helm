@@ -511,7 +511,7 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 
 		var record SQLReleaseWrapper
 		if err := transaction.Get(&record, selectQuery, args...); err == nil {
-			s.Log("release %s already exists", key)
+			s.Log("release %s already exists in SQL database", key)
 			return ErrReleaseExists
 		}
 
