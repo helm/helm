@@ -14,7 +14,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4.2.2
-      - name: Import environment variables from file
+      - name: Add variables to environment file
         run: cat ".github/env" >> "$GITHUB_ENV"
       - name: Setup Go
         uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # pin@5.3.0
