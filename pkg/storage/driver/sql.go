@@ -30,6 +30,7 @@ import (
 	// Import pq for postgres dialect
 	_ "github.com/lib/pq"
 
+	"helm.sh/helm/v4/pkg/kube"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -87,7 +88,7 @@ type SQL struct {
 	namespace        string
 	statementBuilder sq.StatementBuilderType
 
-	Log func(string, ...interface{})
+	Log kube.Logger
 }
 
 // Name returns the name of the driver.
@@ -108,13 +109,13 @@ func (s *SQL) checkAlreadyApplied(migrations []*migrate.Migration) bool {
 	records, err := migrate.GetMigrationRecords(s.db.DB, postgreSQLDialect)
 	migrate.SetDisableCreateTable(false)
 	if err != nil {
-		s.Log("checkAlreadyApplied: failed to get migration records: %v", err)
+		s.Log.Debug("checkAlreadyApplied: failed to get migration records: %v", err)
 		return false
 	}
 
 	for _, record := range records {
 		if _, ok := migrationsIDs[record.Id]; ok {
-			s.Log("checkAlreadyApplied: found previous migration (Id: %v) applied at %v", record.Id, record.AppliedAt)
+			s.Log.Debug("checkAlreadyApplied: found previous migration (Id: %v) applied at %v", record.Id, record.AppliedAt)
 			delete(migrationsIDs, record.Id)
 		}
 	}
@@ -276,7 +277,7 @@ type SQLReleaseCustomLabelWrapper struct {
 }
 
 // NewSQL initializes a new sql driver.
-func NewSQL(connectionString string, logger func(string, ...interface{}), namespace string) (*SQL, error) {
+func NewSQL(connectionString string, logger kube.Logger, namespace string) (*SQL, error) {
 	db, err := sqlx.Connect(postgreSQLDialect, connectionString)
 	if err != nil {
 		return nil, err

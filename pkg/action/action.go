@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -96,7 +95,7 @@ type Configuration struct {
 	// Capabilities describes the capabilities of the Kubernetes cluster.
 	Capabilities *chartutil.Capabilities
 
-	Log func(string, ...interface{})
+	Log kube.Logger
 
 	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
 	HookOutputFunc func(namespace, pod, container string) io.Writer
@@ -270,8 +269,8 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
 		if discovery.IsGroupDiscoveryFailedError(err) {
-			cfg.Log("WARNING: The Kubernetes server has an orphaned API service. Server reports: %s", err)
-			cfg.Log("WARNING: To fix this, kubectl delete apiservice <service-name>")
+			cfg.Log.Warn("The Kubernetes server has an orphaned API service. Server reports: %s", err)
+			cfg.Log.Warn("To fix this, kubectl delete apiservice <service-name>")
 		} else {
 			return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
 		}
@@ -370,14 +369,14 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 // recordRelease with an update operation in case reuse has been set.
 func (cfg *Configuration) recordRelease(r *release.Release) {
 	if err := cfg.Releases.Update(r); err != nil {
-		cfg.Log("warning: Failed to update release %s: %s", r.Name, err)
+		cfg.Log.Warn("Failed to update release %s: %s", r.Name, err)
 	}
 }
 
 // Init initializes the action configuration
-func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog) error {
+func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log kube.Logger) error {
 	kc := kube.New(getter)
-	kc.Log = kube.NewSlogAdapter(slog.Default())
+	kc.Log = log
 
 	lazyClient := &lazyClient{
 		namespace: namespace,
