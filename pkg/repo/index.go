@@ -38,8 +38,6 @@ import (
 	"helm.sh/helm/v4/pkg/provenance"
 )
 
-var indexPath = "index.yaml"
-
 // APIVersionV1 is the v1 API version for index and repository files.
 const APIVersionV1 = "v1"
 
