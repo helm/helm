@@ -84,7 +84,7 @@ jobs:
       - name: Add variables to environment file
         run: cat ".github/env" >> "$GITHUB_ENV"
 
-      - name: Import environment variables from file
+      - name: Add variables to environment file
         run: cat ".github/env" >> "$GITHUB_ENV"
 
       - name: Setup Go
