@@ -416,17 +416,20 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		}
 
 		originalInfo := original.Get(info)
-		if originalInfo == nil {
-			kind := info.Mapping.GroupVersionKind.Kind
-			return errors.Errorf("no %s with the name %q found", kind, info.Name)
+		if originalInfo != nil {
+			// Proceed to update the resource
+			if err := updateResource(c, info, originalInfo.Object, force); err != nil {
+				c.Log("error updating the resource %q:\n\t %v", info.Name, err)
+				updateErrors = append(updateErrors, err.Error())
+			}
+			// Because we check for errors later, append the info regardless
+			res.Updated = append(res.Updated, info)
 		}
 
-		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
-			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
-			updateErrors = append(updateErrors, err.Error())
+		kind := info.Mapping.GroupVersionKind.Kind
+		if _, err := helper.Get(info.Namespace, info.Name); err != nil && !apierrors.IsNotFound(err) {
+			return errors.Errorf("no %s with the name %q found in namespace %q", kind, info.Name, info.Namespace)
 		}
-		// Because we check for errors later, append the info regardless
-		res.Updated = append(res.Updated, info)
 
 		return nil
 	})
