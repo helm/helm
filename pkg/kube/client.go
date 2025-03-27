@@ -432,17 +432,26 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		}
 
 		originalInfo := original.Get(info)
-		if originalInfo == nil {
-			kind := info.Mapping.GroupVersionKind.Kind
-			return errors.Errorf("no %s with the name %q found", kind, info.Name)
-		}
-
-		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
-			slog.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
-			updateErrors = append(updateErrors, err.Error())
+		if originalInfo != nil {
+			// Proceed to update the resource
+			if err := updateResource(c, info, originalInfo.Object, force); err != nil {
+				slog.Debug("Error updating the resource %q: %v", info.Name, err)
+				updateErrors = append(updateErrors, fmt.Sprintf("failed to update resource %q: %v", info.Name, err))
+			}
+		} else {
+			// If the original resource is not found, force update the resource
+			if err := updateResource(c, info, nil, true); err != nil {
+				slog.Debug("Error force updating the resource %q: %v", info.Name, err)
+				updateErrors = append(updateErrors, fmt.Sprintf("failed to force update resource %q: %v", info.Name, err))
+			}
 		}
 		// Because we check for errors later, append the info regardless
 		res.Updated = append(res.Updated, info)
+
+		kind := info.Mapping.GroupVersionKind.Kind
+		if _, err := helper.Get(info.Namespace, info.Name); err != nil && !apierrors.IsNotFound(err) {
+			return errors.Errorf("no %s with the name %q found in namespace %q", kind, info.Name, info.Namespace)
+		}
 
 		return nil
 	})
@@ -639,23 +648,31 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 
 func updateResource(_ *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
 	var (
-		obj    runtime.Object
-		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
-		kind   = target.Mapping.GroupVersionKind.Kind
+		obj       runtime.Object
+		helper    = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
+		kind      = target.Mapping.GroupVersionKind.Kind
+		patch     []byte
+		patchType types.PatchType
+		err       error
 	)
 
 	// if --force is applied, attempt to replace the existing resource with the new object.
 	if force {
-		var err error
 		obj, err = helper.Replace(target.Namespace, target.Name, true, target.Object)
 		if err != nil {
 			return errors.Wrap(err, "failed to replace object")
 		}
 		slog.Debug("replace succeeded", "name", target.Name, "initialKind", currentObj.GetObjectKind().GroupVersionKind().Kind, "kind", kind)
 	} else {
-		patch, patchType, err := createPatch(target, currentObj)
-		if err != nil {
-			return errors.Wrap(err, "failed to create patch")
+		if currentObj != nil {
+			patch, patchType, err = createPatch(target, currentObj)
+			if err != nil {
+				return errors.Wrap(err, "failed to create patch")
+			}
+		} else {
+			// If currentObj is nil, treat it as a full replacement
+			patch = nil
+			patchType = types.MergePatchType
 		}
 
 		if patch == nil || string(patch) == "{}" {
