@@ -14,6 +14,8 @@ limitations under the License.
 package driver
 
 import (
+	"bytes"
+	"crypto/rand"
 	"reflect"
 	"testing"
 )
@@ -104,5 +106,32 @@ func TestContainsSystemLabels(t *testing.T) {
 		if output := ContainsSystemLabels(test.input); !reflect.DeepEqual(test.output, output) {
 			t.Errorf("Expected {%v}, got {%v}", test.output, output)
 		}
+	}
+}
+
+func TestEncryptDecryptAES(t *testing.T) {
+	encryptionKey := make([]byte, 16)
+	_, err := rand.Read(encryptionKey)
+	if err != nil {
+		t.Errorf("error generating test encryption key: %v", err)
+		return
+	}
+
+	plaintext := []byte("Dummy release data.")
+
+	encryptedData, err := encryptDataAES(plaintext, []byte(encryptionKey))
+	if err != nil {
+		t.Errorf("Error while encrypting: %v", err)
+		return
+	}
+
+	decryptedData, err := decryptDataAES(encryptedData, encryptionKey)
+	if err != nil {
+		t.Errorf("Error while decrypting: %v", err)
+		return
+	}
+
+	if !bytes.Equal(decryptedData, plaintext) {
+		t.Error("Decrypted data does not match original plaintext")
 	}
 }
