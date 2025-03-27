@@ -308,6 +308,8 @@ func TestUpdate(t *testing.T) {
 		"/namespaces/default/pods/starfish:GET",
 		"/namespaces/default/pods/starfish:GET",
 		"/namespaces/default/pods/starfish:PATCH",
+		"/namespaces/default/pods/starfish:GET",
+		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/otter:GET",
