@@ -64,6 +64,8 @@ var InstallOrder KindSortOrder = []string{
 	"CronJob",
 	"IngressClass",
 	"Ingress",
+	"MutatingWebhookConfiguration",
+	"ValidatingWebhookConfiguration",
 	"APIService",
 }
 
@@ -72,6 +74,8 @@ var InstallOrder KindSortOrder = []string{
 // Those occurring earlier in the list get uninstalled before those occurring later in the list.
 var UninstallOrder KindSortOrder = []string{
 	"APIService",
+	"ValidatingWebhookConfiguration",
+	"MutatingWebhookConfiguration",
 	"Ingress",
 	"IngressClass",
 	"Service",
