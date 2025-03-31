@@ -130,17 +130,17 @@ func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 }
 
 func (o *searchRepoOptions) setupSearchedVersion() {
-	Debug("Original chart version: %q", o.version)
+	logger.Debug("original chart version", "version", o.version)
 
 	if o.version != "" {
 		return
 	}
 
 	if o.devel { // search for releases and prereleases (alpha, beta, and release candidate releases).
-		Debug("setting version to >0.0.0-0")
+		logger.Debug("setting version to >0.0.0-0")
 		o.version = ">0.0.0-0"
 	} else { // search only for stable releases, prerelease versions will be skipped
-		Debug("setting version to >0.0.0")
+		logger.Debug("setting version to >0.0.0")
 		o.version = ">0.0.0"
 	}
 }

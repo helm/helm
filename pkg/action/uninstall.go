@@ -104,7 +104,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		return nil, errors.Errorf("the release named %q is already deleted", name)
 	}
 
-	u.cfg.Log("uninstall: Deleting %s", name)
+	u.cfg.Log.Debug("uninstall: deleting release", "name", name)
 	rel.Info.Status = release.StatusUninstalling
 	rel.Info.Deleted = helmtime.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
@@ -115,18 +115,18 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 			return res, err
 		}
 	} else {
-		u.cfg.Log("delete hooks disabled for %s", name)
+		u.cfg.Log.Debug("delete hooks disabled", "release", name)
 	}
 
 	// From here on out, the release is currently considered to be in StatusUninstalling
 	// state.
 	if err := u.cfg.Releases.Update(rel); err != nil {
-		u.cfg.Log("uninstall: Failed to store updated release: %s", err)
+		u.cfg.Log.Debug("uninstall: Failed to store updated release", "error", err)
 	}
 
 	deletedResources, kept, errs := u.deleteRelease(rel)
 	if errs != nil {
-		u.cfg.Log("uninstall: Failed to delete release: %s", errs)
+		u.cfg.Log.Debug("uninstall: Failed to delete release", "errors", errs)
 		return nil, errors.Errorf("failed to delete release: %s", name)
 	}
 
@@ -153,7 +153,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if !u.KeepHistory {
-		u.cfg.Log("purge requested for %s", name)
+		u.cfg.Log.Debug("purge requested", "release", name)
 		err := u.purgeReleases(rels...)
 		if err != nil {
 			errs = append(errs, errors.Wrap(err, "uninstall: Failed to purge the release"))
@@ -168,7 +168,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if err := u.cfg.Releases.Update(rel); err != nil {
-		u.cfg.Log("uninstall: Failed to store updated release: %s", err)
+		u.cfg.Log.Debug("uninstall: Failed to store updated release", "error", err)
 	}
 
 	if len(errs) > 0 {
@@ -242,7 +242,7 @@ func parseCascadingFlag(cfg *Configuration, cascadingFlag string) v1.DeletionPro
 	case "background":
 		return v1.DeletePropagationBackground
 	default:
-		cfg.Log("uninstall: given cascade value: %s, defaulting to delete propagation background", cascadingFlag)
+		cfg.Log.Debug("uninstall: given cascade value, defaulting to delete propagation background", "value", cascadingFlag)
 		return v1.DeletePropagationBackground
 	}
 }

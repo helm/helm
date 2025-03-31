@@ -19,7 +19,6 @@ import (
 	"context"
 	"testing"
 
-	logadapter "helm.sh/helm/v4/internal/log"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -31,6 +30,8 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+
+	logadapter "helm.sh/helm/v4/internal/log"
 )
 
 const defaultNamespace = metav1.NamespaceDefault
@@ -114,7 +115,7 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           Logger
+		log           logadapter.Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -189,7 +190,7 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           Logger
+		log           logadapter.Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -271,7 +272,7 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           Logger
+		log           logadapter.Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -346,7 +347,7 @@ func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
 func Test_ReadyChecker_IsReady_Service(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           Logger
+		log           logadapter.Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -421,7 +422,7 @@ func Test_ReadyChecker_IsReady_Service(t *testing.T) {
 func Test_ReadyChecker_IsReady_DaemonSet(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           Logger
+		log           logadapter.Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -496,7 +497,7 @@ func Test_ReadyChecker_IsReady_DaemonSet(t *testing.T) {
 func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           Logger
+		log           logadapter.Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -571,7 +572,7 @@ func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           Logger
+		log           logadapter.Logger
 		checkJobs     bool
 		pausedAsReady bool
 	}

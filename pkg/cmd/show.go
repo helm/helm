@@ -211,9 +211,9 @@ func addShowFlags(subCmd *cobra.Command, client *action.Show) {
 }
 
 func runShow(args []string, client *action.Show) (string, error) {
-	Debug("Original chart version: %q", client.Version)
+	logger.Debug("original chart version", "version", client.Version)
 	if client.Version == "" && client.Devel {
-		Debug("setting version to >0.0.0-0")
+		logger.Debug("setting version to >0.0.0-0")
 		client.Version = ">0.0.0-0"
 	}
 

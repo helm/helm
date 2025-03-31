@@ -47,7 +47,7 @@ func main() {
 	}
 
 	if err := cmd.Execute(); err != nil {
-		helmcmd.Debug("%+v", err)
+		logger.Debug("error", err)
 		switch e := err.(type) {
 		case helmcmd.PluginError:
 			os.Exit(e.Code)

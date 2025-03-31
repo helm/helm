@@ -62,7 +62,7 @@ func (o *pluginUpdateOptions) complete(args []string) error {
 
 func (o *pluginUpdateOptions) run(out io.Writer) error {
 	installer.Debug = settings.Debug
-	Debug("loading installed plugins from %s", settings.PluginsDirectory)
+	logger.Debug("loading installed plugins", "path", settings.PluginsDirectory)
 	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
 	if err != nil {
 		return err
@@ -104,7 +104,7 @@ func updatePlugin(p *plugin.Plugin) error {
 		return err
 	}
 
-	Debug("loading plugin from %s", i.Path())
+	logger.Debug("loading plugin", "path", i.Path())
 	updatedPlugin, err := plugin.LoadDir(i.Path())
 	if err != nil {
 		return err

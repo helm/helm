@@ -229,9 +229,9 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 }
 
 func runInstall(args []string, client *action.Install, valueOpts *values.Options, out io.Writer) (*release.Release, error) {
-	Debug("Original chart version: %q", client.Version)
+	logger.Debug("Original chart version", "version", client.Version)
 	if client.Version == "" && client.Devel {
-		Debug("setting version to >0.0.0-0")
+		logger.Debug("setting version to >0.0.0-0")
 		client.Version = ">0.0.0-0"
 	}
 
@@ -246,7 +246,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
-	Debug("CHART PATH: %s\n", cp)
+	logger.Debug("Chart path", "path", cp)
 
 	p := getter.All(settings)
 	vals, err := valueOpts.MergeValues(p)

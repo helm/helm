@@ -173,7 +173,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if client.Version == "" && client.Devel {
-				Debug("setting version to >0.0.0-0")
+				logger.Debug("setting version to >0.0.0-0")
 				client.Version = ">0.0.0-0"
 			}
 

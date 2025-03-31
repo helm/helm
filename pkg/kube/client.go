@@ -51,6 +51,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+
+	logadapter "helm.sh/helm/v4/internal/log"
 )
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.

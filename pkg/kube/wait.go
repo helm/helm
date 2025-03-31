@@ -25,7 +25,6 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
-	logadapter "helm.sh/helm/v4/internal/log"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -45,6 +44,8 @@ import (
 	watchtools "k8s.io/client-go/tools/watch"
 
 	"k8s.io/apimachinery/pkg/util/wait"
+
+	logadapter "helm.sh/helm/v4/internal/log"
 )
 
 // legacyWaiter is the legacy implementation of the Waiter interface. This logic was used by default in Helm 3
