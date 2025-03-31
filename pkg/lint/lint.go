@@ -58,7 +58,12 @@ func RunAll(baseDir string, values map[string]interface{}, namespace string, opt
 
 	rules.Chartfile(&result)
 	rules.ValuesWithOverrides(&result, values)
-	rules.TemplatesWithSkipSchemaValidation(&result, values, namespace, lo.KubeVersion, lo.SkipSchemaValidation)
+	rules.Templates(
+		&result,
+		namespace,
+		values,
+		rules.TemplateLinterKubeVersion(lo.KubeVersion),
+		rules.TemplateLinterSkipSchemaValidation(lo.SkipSchemaValidation))
 	rules.Dependencies(&result)
 	rules.Crds(&result)
 
