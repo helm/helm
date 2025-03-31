@@ -31,6 +31,7 @@ import (
 	kblabels "k8s.io/apimachinery/pkg/labels"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
+	logadapter "helm.sh/helm/v4/internal/log"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -264,5 +265,6 @@ func newTestFixtureSQL(t *testing.T, _ ...*rspb.Release) (*SQL, sqlmock.Sqlmock)
 		db:               sqlxDB,
 		namespace:        "default",
 		statementBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
+		Log:              logadapter.DefaultLogger,
 	}, mock
 }
