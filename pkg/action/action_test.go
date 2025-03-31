@@ -16,7 +16,6 @@ limitations under the License.
 package action
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"testing"
@@ -35,8 +34,6 @@ import (
 	"helm.sh/helm/v4/pkg/time"
 )
 
-var verbose = flag.Bool("test.log", false, "enable test logging")
-
 func actionConfigFixture(t *testing.T) *Configuration {
 	t.Helper()
 
@@ -50,7 +47,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,
-		Log:            logadapter.DefaultLogger,
+		Log:            logadapter.DefaultLogger, // TODO: permit to log in test as before with `var verbose = flag.Bool("test.log", false, "enable test logging")``
 	}
 }
 
