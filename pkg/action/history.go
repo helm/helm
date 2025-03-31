@@ -53,6 +53,6 @@ func (h *History) Run(name string) ([]*release.Release, error) {
 		return nil, errors.Errorf("release name is invalid: %s", name)
 	}
 
-	h.cfg.Log("getting history for release %s", name)
+	h.cfg.Log.Debug("getting history for release", "release", name)
 	return h.cfg.Releases.History(name)
 }

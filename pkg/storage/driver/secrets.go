@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
-	"helm.sh/helm/v4/pkg/kube"
+	logadapter "helm.sh/helm/v4/internal/log"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -44,7 +44,7 @@ const SecretsDriverName = "Secret"
 // SecretsInterface.
 type Secrets struct {
 	impl corev1.SecretInterface
-	Log  kube.Logger
+	Log  logadapter.Logger
 }
 
 // NewSecrets initializes a new Secrets wrapping an implementation of

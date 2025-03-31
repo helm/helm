@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
+	logadapter "helm.sh/helm/v4/internal/log"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
@@ -49,12 +50,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,
-		Log: func(format string, v ...interface{}) {
-			t.Helper()
-			if *verbose {
-				t.Logf(format, v...)
-			}
-		},
+		Log:            logadapter.DefaultLogger,
 	}
 }
 

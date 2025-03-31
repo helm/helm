@@ -33,6 +33,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
+	logadapter "helm.sh/helm/v4/internal/log"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/engine"
@@ -95,7 +96,7 @@ type Configuration struct {
 	// Capabilities describes the capabilities of the Kubernetes cluster.
 	Capabilities *chartutil.Capabilities
 
-	Log kube.Logger
+	Log logadapter.Logger
 
 	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
 	HookOutputFunc func(namespace, pod, container string) io.Writer
@@ -374,7 +375,7 @@ func (cfg *Configuration) recordRelease(r *release.Release) {
 }
 
 // Init initializes the action configuration
-func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log kube.Logger) error {
+func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log logadapter.Logger) error {
 	kc := kube.New(getter)
 	kc.Log = log
 

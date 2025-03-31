@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 
+	logadapter "helm.sh/helm/v4/internal/log"
 	deploymentutil "helm.sh/helm/v4/internal/third_party/k8s.io/kubernetes/deployment/util"
 )
 
@@ -57,13 +58,13 @@ func CheckJobs(checkJobs bool) ReadyCheckerOption {
 
 // NewReadyChecker creates a new checker. Passed ReadyCheckerOptions can
 // be used to override defaults.
-func NewReadyChecker(cl kubernetes.Interface, logger Logger, opts ...ReadyCheckerOption) ReadyChecker {
+func NewReadyChecker(cl kubernetes.Interface, logger logadapter.Logger, opts ...ReadyCheckerOption) ReadyChecker {
 	c := ReadyChecker{
 		client: cl,
 		log:    logger,
 	}
 	if c.log == nil {
-		c.log = DefaultLogger
+		c.log = logadapter.DefaultLogger
 	}
 	for _, opt := range opts {
 		opt(&c)
@@ -74,7 +75,7 @@ func NewReadyChecker(cl kubernetes.Interface, logger Logger, opts ...ReadyChecke
 // ReadyChecker is a type that can check core Kubernetes types for readiness.
 type ReadyChecker struct {
 	client        kubernetes.Interface
-	log           Logger
+	log           logadapter.Logger
 	checkJobs     bool
 	pausedAsReady bool
 }

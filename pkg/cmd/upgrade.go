@@ -225,7 +225,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if ch.Metadata.Deprecated {
-				Warning("This chart is deprecated")
+				logger.Warn("this chart is deprecated")
 			}
 
 			// Create context and prepare the handle of SIGTERM

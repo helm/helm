@@ -14,33 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package kube provides Kubernetes client utilities for Helm.
-package kube
+package log
 
-import "log/slog"
-
-// Logger defines a minimal logging interface compatible with structured logging.
-// It provides methods for different log levels with structured key-value pairs.
-type Logger interface {
-	// Debug logs a message at debug level with structured key-value pairs.
-	Debug(msg string, args ...any)
-
-	// Warn logs a message at warning level with structured key-value pairs.
-	Warn(msg string, args ...any)
-}
-
-// NopLogger is a logger implementation that discards all log messages.
-type NopLogger struct{}
-
-// Debug implements Logger.Debug by doing nothing.
-func (NopLogger) Debug(_ string, args ...any) {}
-
-// Warn implements Logger.Warn by doing nothing.
-func (NopLogger) Warn(_ string, args ...any) {}
-
-// DefaultLogger provides a no-op logger that discards all messages.
-// It can be used as a default when no logger is provided.
-var DefaultLogger Logger = NopLogger{}
+import (
+	"io"
+	"log/slog"
+)
 
 // SlogAdapter adapts a standard library slog.Logger to the Logger interface.
 type SlogAdapter struct {
@@ -57,10 +36,36 @@ func (a SlogAdapter) Warn(msg string, args ...any) {
 	a.logger.Warn(msg, args...)
 }
 
+// Error implements Logger.Error by forwarding to the underlying slog.Logger.
+func (a SlogAdapter) Error(msg string, args ...any) {
+	// TODO: Handle error with `slog.Any`: slog.Info("something went wrong", slog.Any("err", err))
+	a.logger.Error(msg, args...)
+}
+
 // NewSlogAdapter creates a Logger that forwards log messages to a slog.Logger.
 func NewSlogAdapter(logger *slog.Logger) Logger {
 	if logger == nil {
 		return DefaultLogger
 	}
 	return SlogAdapter{logger: logger}
+}
+
+// NewReadableTextLogger creates a Logger that outputs in a readable text format without timestamps
+func NewReadableTextLogger(output io.Writer, debugEnabled bool) Logger {
+	level := slog.LevelInfo
+	if debugEnabled {
+		level = slog.LevelDebug
+	}
+
+	handler := slog.NewTextHandler(output, &slog.HandlerOptions{
+		Level: level,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.TimeKey {
+				return slog.Attr{}
+			}
+			return a
+		},
+	})
+
+	return NewSlogAdapter(slog.New(handler))
 }

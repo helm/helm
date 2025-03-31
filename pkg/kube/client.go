@@ -73,7 +73,7 @@ type Client struct {
 	// needs. The smaller surface area of the interface means there is a lower
 	// chance of it changing.
 	Factory Factory
-	Log     Logger
+	Log     logadapter.Logger
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
 

@@ -265,7 +265,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 
 	if chartRequested.Metadata.Deprecated {
-		Warning("This chart is deprecated")
+		logger.Warn("this chart is deprecated")
 	}
 
 	if req := chartRequested.Metadata.Dependencies; req != nil {

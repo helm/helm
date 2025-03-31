@@ -189,8 +189,7 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 		f := filepath.Join(o.repoCacheDir, helmpath.CacheIndexFile(n))
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			Warning("Repo %q is corrupt or missing. Try 'helm repo update'.", n)
-			Warning("%s", err)
+			logger.Warn("repo is corrupt or missing", "repo", n, "error", err)
 			continue
 		}
 

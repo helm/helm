@@ -26,10 +26,10 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
+	logadapter "helm.sh/helm/v4/internal/log"
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
-	"helm.sh/helm/v4/pkg/kube"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -64,7 +64,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewList(cfg)
 	var outfmt output.Format
 	slogger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	adapter := kube.NewSlogAdapter(slogger)
+	adapter := logadapter.NewSlogAdapter(slogger)
 
 	cmd := &cobra.Command{
 		Use:               "list",

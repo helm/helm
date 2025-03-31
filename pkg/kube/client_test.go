@@ -26,6 +26,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	logadapter "helm.sh/helm/v4/internal/log"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -107,7 +108,7 @@ func newTestClient(t *testing.T) *Client {
 
 	return &Client{
 		Factory: testFactory.WithNamespace("default"),
-		Log:     DefaultLogger,
+		Log:     logadapter.DefaultLogger,
 	}
 }
 
