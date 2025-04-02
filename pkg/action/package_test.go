@@ -29,8 +29,9 @@ import (
 func TestPassphraseFileFetcher(t *testing.T) {
 	secret := "secret"
 	directory := ensure.TempFile(t, "passphrase-file", []byte(secret))
+	testPkg := NewPackage()
 
-	fetcher, err := passphraseFileFetcher(path.Join(directory, "passphrase-file"), nil)
+	fetcher, err := testPkg.passphraseFileFetcher(path.Join(directory, "passphrase-file"), nil)
 	if err != nil {
 		t.Fatal("Unable to create passphraseFileFetcher", err)
 	}
@@ -48,8 +49,9 @@ func TestPassphraseFileFetcher(t *testing.T) {
 func TestPassphraseFileFetcher_WithLineBreak(t *testing.T) {
 	secret := "secret"
 	directory := ensure.TempFile(t, "passphrase-file", []byte(secret+"\n\n."))
+	testPkg := NewPackage()
 
-	fetcher, err := passphraseFileFetcher(path.Join(directory, "passphrase-file"), nil)
+	fetcher, err := testPkg.passphraseFileFetcher(path.Join(directory, "passphrase-file"), nil)
 	if err != nil {
 		t.Fatal("Unable to create passphraseFileFetcher", err)
 	}
@@ -66,14 +68,45 @@ func TestPassphraseFileFetcher_WithLineBreak(t *testing.T) {
 
 func TestPassphraseFileFetcher_WithInvalidStdin(t *testing.T) {
 	directory := t.TempDir()
+	testPkg := NewPackage()
 
 	stdin, err := os.CreateTemp(directory, "non-existing")
 	if err != nil {
 		t.Fatal("Unable to create test file", err)
 	}
 
-	if _, err := passphraseFileFetcher("-", stdin); err == nil {
+	if _, err := testPkg.passphraseFileFetcher("-", stdin); err == nil {
 		t.Error("Expected passphraseFileFetcher returning an error")
+	}
+}
+
+func TestPassphraseFileFetcher_WithStdinAndMultipleFetches(t *testing.T) {
+	testPkg := NewPackage()
+	stdin, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal("Unable to create pipe", err)
+	}
+
+	passphrase := "secret-from-stdin"
+
+	go func() {
+		w.Write([]byte(passphrase + "\n"))
+	}()
+
+	for i := 0; i < 4; i++ {
+		fetcher, err := testPkg.passphraseFileFetcher("-", stdin)
+		if err != nil {
+			t.Errorf("Expected passphraseFileFetcher to not return an error, but got %v", err)
+		}
+
+		pass, err := fetcher("key")
+		if err != nil {
+			t.Errorf("Expected passphraseFileFetcher invocation to succeed, failed with %v", err)
+		}
+
+		if string(pass) != string(passphrase) {
+			t.Errorf("Expected multiple passphrase fetch to return %q, got %q", passphrase, pass)
+		}
 	}
 }
 
