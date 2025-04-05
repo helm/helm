@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/kube"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
@@ -37,7 +38,7 @@ type Rollback struct {
 
 	Version       int
 	Timeout       time.Duration
-	Wait          bool
+	WaitStrategy  kube.WaitStrategy
 	WaitForJobs   bool
 	DisableHooks  bool
 	DryRun        bool
@@ -176,7 +177,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// pre-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.Timeout); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.Timeout); err != nil {
 			return targetRelease, err
 		}
 	} else {
@@ -222,28 +223,29 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 			r.cfg.Log(err.Error())
 		}
 	}
-
-	if r.Wait {
-		if r.WaitForJobs {
-			if err := r.cfg.KubeClient.WaitWithJobs(target, r.Timeout); err != nil {
-				targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
-				r.cfg.recordRelease(currentRelease)
-				r.cfg.recordRelease(targetRelease)
-				return targetRelease, errors.Wrapf(err, "release %s failed", targetRelease.Name)
-			}
-		} else {
-			if err := r.cfg.KubeClient.Wait(target, r.Timeout); err != nil {
-				targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
-				r.cfg.recordRelease(currentRelease)
-				r.cfg.recordRelease(targetRelease)
-				return targetRelease, errors.Wrapf(err, "release %s failed", targetRelease.Name)
-			}
+	waiter, err := r.cfg.KubeClient.GetWaiter(r.WaitStrategy)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to set metadata visitor from target release")
+	}
+	if r.WaitForJobs {
+		if err := waiter.WaitWithJobs(target, r.Timeout); err != nil {
+			targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
+			r.cfg.recordRelease(currentRelease)
+			r.cfg.recordRelease(targetRelease)
+			return targetRelease, errors.Wrapf(err, "release %s failed", targetRelease.Name)
+		}
+	} else {
+		if err := waiter.Wait(target, r.Timeout); err != nil {
+			targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
+			r.cfg.recordRelease(currentRelease)
+			r.cfg.recordRelease(targetRelease)
+			return targetRelease, errors.Wrapf(err, "release %s failed", targetRelease.Name)
 		}
 	}
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.Timeout); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.WaitStrategy, r.Timeout); err != nil {
 			return targetRelease, err
 		}
 	}

@@ -79,7 +79,7 @@ type Install struct {
 	HideSecret               bool
 	DisableHooks             bool
 	Replace                  bool
-	Wait                     bool
+	WaitStrategy             kube.WaitStrategy
 	WaitForJobs              bool
 	Devel                    bool
 	DependencyUpdate         bool
@@ -180,8 +180,12 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		totalItems = append(totalItems, res...)
 	}
 	if len(totalItems) > 0 {
+		waiter, err := i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+		if err != nil {
+			return errors.Wrapf(err, "unable to get waiter")
+		}
 		// Give time for the CRD to be recognized.
-		if err := i.cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
+		if err := waiter.Wait(totalItems, 60*time.Second); err != nil {
 			return err
 		}
 
@@ -289,7 +293,9 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
-	i.Wait = i.Wait || i.Atomic
+	if i.WaitStrategy == kube.HookOnlyStrategy && i.Atomic {
+		i.WaitStrategy = kube.StatusWatcherStrategy
+	}
 
 	caps, err := i.cfg.getCapabilities()
 	if err != nil {
@@ -448,7 +454,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.Timeout); err != nil {
 			return rel, fmt.Errorf("failed pre-install: %s", err)
 		}
 	}
@@ -465,19 +471,22 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		return rel, err
 	}
 
-	if i.Wait {
-		if i.WaitForJobs {
-			err = i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout)
-		} else {
-			err = i.cfg.KubeClient.Wait(resources, i.Timeout)
-		}
-		if err != nil {
-			return rel, err
-		}
+	waiter, err := i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+	if err != nil {
+		return rel, fmt.Errorf("failed to get waiter: %w", err)
+	}
+
+	if i.WaitForJobs {
+		err = waiter.WaitWithJobs(resources, i.Timeout)
+	} else {
+		err = waiter.Wait(resources, i.Timeout)
+	}
+	if err != nil {
+		return rel, err
 	}
 
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.Timeout); err != nil {
 			return rel, fmt.Errorf("failed post-install: %s", err)
 		}
 	}

@@ -20,6 +20,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubectl/pkg/validation"
 )
@@ -33,6 +34,9 @@ import (
 // Helm does not need are not impacted or exposed. This minimizes the impact of Kubernetes changes
 // being exposed.
 type Factory interface {
+	// ToRESTConfig returns restconfig
+	ToRESTConfig() (*rest.Config, error)
+
 	// ToRawKubeConfigLoader return kubeconfig loader as-is
 	ToRawKubeConfigLoader() clientcmd.ClientConfig
 
