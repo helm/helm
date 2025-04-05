@@ -172,7 +172,14 @@ func TestUpdateChartsFailWithError(t *testing.T) {
 	defer ts.Stop()
 
 	var invalidURL = ts.URL() + "55"
-	r, err := repo.NewChartRepository(&repo.Entry{
+	r1, err := repo.NewChartRepository(&repo.Entry{
+		Name: "charts",
+		URL:  invalidURL,
+	}, getter.All(settings))
+	if err != nil {
+		t.Error(err)
+	}
+	r2, err := repo.NewChartRepository(&repo.Entry{
 		Name: "charts",
 		URL:  invalidURL,
 	}, getter.All(settings))
@@ -181,7 +188,7 @@ func TestUpdateChartsFailWithError(t *testing.T) {
 	}
 
 	b := bytes.NewBuffer(nil)
-	err = updateCharts([]*repo.ChartRepository{r}, b)
+	err = updateCharts([]*repo.ChartRepository{r1, r2}, b)
 	if err == nil {
 		t.Error("Repo update should return error because update of repository fails and 'fail-on-repo-update-fail' flag set")
 		return
