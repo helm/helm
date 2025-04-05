@@ -16,6 +16,7 @@ limitations under the License.
 package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"sort"
