@@ -46,35 +46,27 @@ var (
 
 // Templates lints the templates in the Linter.
 func Templates(linter *support.Linter, namespace string, values map[string]any, options ...TemplateLinterOption) {
-	templateLinter := NewTemplateLinter(linter, namespace, values, options...)
+	templateLinter := newTemplateLinter(linter, namespace, values, options...)
 	templateLinter.Lint()
 }
 
-type TemplateLinter struct {
-	linter               *support.Linter
-	values               map[string]any
-	namespace            string
-	kubeVersion          *chartutil.KubeVersion
-	skipSchemaValidation bool
-}
-
-type TemplateLinterOption func(*TemplateLinter)
+type TemplateLinterOption func(*templateLinter)
 
 func TemplateLinterKubeVersion(kubeVersion *chartutil.KubeVersion) TemplateLinterOption {
-	return func(tl *TemplateLinter) {
+	return func(tl *templateLinter) {
 		tl.kubeVersion = kubeVersion
 	}
 }
 
 func TemplateLinterSkipSchemaValidation(skipSchemaValidation bool) TemplateLinterOption {
-	return func(tl *TemplateLinter) {
+	return func(tl *templateLinter) {
 		tl.skipSchemaValidation = skipSchemaValidation
 	}
 }
 
-func NewTemplateLinter(linter *support.Linter, namespace string, values map[string]any, options ...TemplateLinterOption) TemplateLinter {
+func newTemplateLinter(linter *support.Linter, namespace string, values map[string]any, options ...TemplateLinterOption) templateLinter {
 
-	result := TemplateLinter{
+	result := templateLinter{
 		linter:    linter,
 		values:    values,
 		namespace: namespace,
@@ -87,11 +79,19 @@ func NewTemplateLinter(linter *support.Linter, namespace string, values map[stri
 	return result
 }
 
-func (t *TemplateLinter) Lint() {
-	fpath := "templates/"
-	templatesPath := filepath.Join(t.linter.ChartDir, fpath)
+type templateLinter struct {
+	linter               *support.Linter
+	values               map[string]any
+	namespace            string
+	kubeVersion          *chartutil.KubeVersion
+	skipSchemaValidation bool
+}
 
-	templatesDirExist := t.linter.RunLinterRule(support.WarningSev, fpath, validateTemplatesDir(templatesPath))
+func (t *templateLinter) Lint() {
+	templatesDir := "templates/"
+	templatesPath := filepath.Join(t.linter.ChartDir, templatesDir)
+
+	templatesDirExist := t.linter.RunLinterRule(support.WarningSev, templatesDir, validateTemplatesDir(templatesPath))
 
 	// Templates directory is optional for now
 	if !templatesDirExist {
@@ -101,7 +101,7 @@ func (t *TemplateLinter) Lint() {
 	// Load chart and parse templates
 	chart, err := loader.Load(t.linter.ChartDir)
 
-	chartLoaded := t.linter.RunLinterRule(support.ErrorSev, fpath, err)
+	chartLoaded := t.linter.RunLinterRule(support.ErrorSev, templatesDir, err)
 
 	if !chartLoaded {
 		return
@@ -130,14 +130,14 @@ func (t *TemplateLinter) Lint() {
 
 	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, cvals, options, caps, t.skipSchemaValidation)
 	if err != nil {
-		t.linter.RunLinterRule(support.ErrorSev, fpath, err)
+		t.linter.RunLinterRule(support.ErrorSev, templatesDir, err)
 		return
 	}
 	var e engine.Engine
 	e.LintMode = true
 	renderedContentMap, err := e.Render(chart, valuesToRender)
 
-	renderOk := t.linter.RunLinterRule(support.ErrorSev, fpath, err)
+	renderOk := t.linter.RunLinterRule(support.ErrorSev, templatesDir, err)
 
 	if !renderOk {
 		return
@@ -152,13 +152,12 @@ func (t *TemplateLinter) Lint() {
 	*/
 	for _, template := range chart.Templates {
 		fileName, data := template.Name, template.Data
-		fpath = fileName
 
-		t.linter.RunLinterRule(support.ErrorSev, fpath, validateAllowedExtension(fileName))
+		t.linter.RunLinterRule(support.ErrorSev, fileName, validateAllowedExtension(fileName))
 		// These are v3 specific checks to make sure and warn people if their
 		// chart is not compatible with v3
-		t.linter.RunLinterRule(support.WarningSev, fpath, validateNoCRDHooks(data))
-		t.linter.RunLinterRule(support.ErrorSev, fpath, validateNoReleaseTime(data))
+		t.linter.RunLinterRule(support.WarningSev, fileName, validateNoCRDHooks(data))
+		t.linter.RunLinterRule(support.ErrorSev, fileName, validateNoReleaseTime(data))
 
 		// We only apply the following lint rules to yaml files
 		if filepath.Ext(fileName) != ".yaml" || filepath.Ext(fileName) == ".yml" {
@@ -174,7 +173,7 @@ func (t *TemplateLinter) Lint() {
 
 		renderedContent := renderedContentMap[path.Join(chart.Name(), fileName)]
 		if strings.TrimSpace(renderedContent) != "" {
-			t.linter.RunLinterRule(support.WarningSev, fpath, validateTopIndentLevel(renderedContent))
+			t.linter.RunLinterRule(support.WarningSev, fileName, validateTopIndentLevel(renderedContent))
 
 			decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(renderedContent), 4096)
 
@@ -191,17 +190,17 @@ func (t *TemplateLinter) Lint() {
 
 				//  If YAML linting fails here, it will always fail in the next block as well, so we should return here.
 				// fix https://github.com/helm/helm/issues/11391
-				if !t.linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err)) {
+				if !t.linter.RunLinterRule(support.ErrorSev, fileName, validateYamlContent(err)) {
 					return
 				}
 				if yamlStruct != nil {
 					// NOTE: set to warnings to allow users to support out-of-date kubernetes
 					// Refs https://github.com/helm/helm/issues/8596
-					t.linter.RunLinterRule(support.WarningSev, fpath, validateMetadataName(yamlStruct))
-					t.linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct, t.kubeVersion))
+					t.linter.RunLinterRule(support.WarningSev, fileName, validateMetadataName(yamlStruct))
+					t.linter.RunLinterRule(support.WarningSev, fileName, validateNoDeprecations(yamlStruct, t.kubeVersion))
 
-					t.linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(yamlStruct, renderedContent))
-					t.linter.RunLinterRule(support.ErrorSev, fpath, validateListAnnotations(yamlStruct, renderedContent))
+					t.linter.RunLinterRule(support.ErrorSev, fileName, validateMatchSelector(yamlStruct, renderedContent))
+					t.linter.RunLinterRule(support.ErrorSev, fileName, validateListAnnotations(yamlStruct, renderedContent))
 				}
 			}
 		}
@@ -258,7 +257,11 @@ func validateAllowedExtension(fileName string) error {
 }
 
 func validateYamlContent(err error) error {
-	return fmt.Errorf("unable to parse YAML: %w", err)
+	if err != nil {
+		return fmt.Errorf("unable to parse YAML: %w", err)
+	}
+
+	return nil
 }
 
 // validateMetadataName uses the correct validation function for the object
