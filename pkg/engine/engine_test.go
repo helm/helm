@@ -1300,3 +1300,49 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRenderCustomTemplateFuncs(t *testing.T) {
+	// Create a chart with a single template that uses a custom function "exclaim"
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "CustomFunc"},
+		Templates: []*chart.File{
+			{
+				Name: "templates/manifest",
+				Data: []byte(`{{exclaim .Values.message}}`),
+			},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{
+			"message": "hello",
+		},
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	// Define a custom template function "exclaim" that appends "!!!" to a string.
+	customFuncs := template.FuncMap{
+		"exclaim": func(input string) string {
+			return input + "!!!"
+		},
+	}
+
+	// Create an engine instance and set the CustomTemplateFuncs.
+	e := new(Engine)
+	e.CustomTemplateFuncs = customFuncs
+
+	// Render the chart.
+	out, err := e.Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Expected output should be "hello!!!".
+	expected := "hello!!!"
+	key := "CustomFunc/templates/manifest"
+	if rendered, ok := out[key]; !ok || rendered != expected {
+		t.Errorf("Expected %q, got %q", expected, rendered)
+	}
+}
