@@ -244,9 +244,6 @@ type RESTClientGetter interface {
 	ToRESTMapper() (meta.RESTMapper, error)
 }
 
-// DebugLog sets the logger that writes debug strings
-type DebugLog func(format string, v ...interface{})
-
 // capabilities builds a Capabilities from discovery information.
 func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	if cfg.Capabilities != nil {
@@ -270,8 +267,8 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
 		if discovery.IsGroupDiscoveryFailedError(err) {
-			cfg.Log.Warn("The Kubernetes server has an orphaned API service. Server reports: %s", err)
-			cfg.Log.Warn("To fix this, kubectl delete apiservice <service-name>")
+			cfg.Log.Warn("the kubernetes server has an orphaned API service", "errors", err)
+			cfg.Log.Warn("to fix this, kubectl delete apiservice <service-name>")
 		} else {
 			return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
 		}
@@ -370,7 +367,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 // recordRelease with an update operation in case reuse has been set.
 func (cfg *Configuration) recordRelease(r *release.Release) {
 	if err := cfg.Releases.Update(r); err != nil {
-		cfg.Log.Warn("Failed to update release %s: %s", r.Name, err)
+		cfg.Log.Warn("failed to update release", "name", r.Name, "revision", r.Version, "error", err)
 	}
 }
 
