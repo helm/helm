@@ -66,7 +66,7 @@ func runHook(p *plugin.Plugin, event string) error {
 
 	prog := exec.Command(main, argv...)
 
-	logger.Debug("running hook", "event", event, "program", prog)
+	Logger.Debug("running hook", "event", event, "program", prog)
 
 	prog.Stdout, prog.Stderr = os.Stdout, os.Stderr
 	if err := prog.Run(); err != nil {

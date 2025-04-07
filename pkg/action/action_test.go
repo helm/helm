@@ -18,12 +18,12 @@ package action
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
-	logadapter "helm.sh/helm/v4/internal/log"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
@@ -47,7 +47,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,
-		Log:            logadapter.DefaultLogger, // TODO: permit to log in test as before with `var verbose = flag.Bool("test.log", false, "enable test logging")``
+		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), // TODO: permit to log in test as before with `var verbose = flag.Bool("test.log", false, "enable test logging")``
 	}
 }
 

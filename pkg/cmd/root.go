@@ -31,7 +31,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
-	logadapter "helm.sh/helm/v4/internal/log"
 	"helm.sh/helm/v4/internal/tlsutil"
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cli"
@@ -96,7 +95,7 @@ By default, the default directories depend on the Operating System. The defaults
 `
 
 var settings = cli.New()
-var logger = logadapter.NewReadableTextLogger(os.Stderr, settings.Debug)
+var Logger = cli.NewLogger(settings.Debug)
 
 func NewRootCmd(out io.Writer, args []string) (*cobra.Command, error) {
 	actionConfig := new(action.Configuration)
@@ -106,7 +105,7 @@ func NewRootCmd(out io.Writer, args []string) (*cobra.Command, error) {
 	}
 	cobra.OnInitialize(func() {
 		helmDriver := os.Getenv("HELM_DRIVER")
-		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, logger); err != nil {
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, Logger); err != nil {
 			log.Fatal(err)
 		}
 		if helmDriver == "memory" {

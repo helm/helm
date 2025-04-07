@@ -23,7 +23,6 @@ import (
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	logadapter "helm.sh/helm/v4/internal/log"
 	helmcmd "helm.sh/helm/v4/pkg/cmd"
 	"helm.sh/helm/v4/pkg/kube"
 )
@@ -38,16 +37,15 @@ func main() {
 	// another name (e.g., helm2 or helm3) does not change the name of the
 	// manager as picked up by the automated name detection.
 	kube.ManagedFieldsManager = "helm"
-	logger := logadapter.NewReadableTextLogger(os.Stderr, false)
 
 	cmd, err := helmcmd.NewRootCmd(os.Stdout, os.Args[1:])
 	if err != nil {
-		logger.Warn("%+v", err)
+		helmcmd.Logger.Warn("%+v", err)
 		os.Exit(1)
 	}
 
 	if err := cmd.Execute(); err != nil {
-		logger.Debug("error", err)
+		helmcmd.Logger.Debug("error", err)
 		switch e := err.(type) {
 		case helmcmd.PluginError:
 			os.Exit(e.Code)

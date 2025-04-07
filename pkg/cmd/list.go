@@ -19,14 +19,12 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"strconv"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
-	logadapter "helm.sh/helm/v4/internal/log"
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
@@ -63,8 +61,6 @@ flag with the '--offset' flag allows you to page through results.
 func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewList(cfg)
 	var outfmt output.Format
-	slogger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	adapter := logadapter.NewSlogAdapter(slogger)
 
 	cmd := &cobra.Command{
 		Use:               "list",
@@ -75,7 +71,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if client.AllNamespaces {
-				if err := cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), adapter); err != nil {
+				if err := cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), Logger); err != nil {
 					return err
 				}
 			}

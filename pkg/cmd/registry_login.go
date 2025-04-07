@@ -122,7 +122,7 @@ func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStd
 			}
 		}
 	} else {
-		logger.Warn("using --password via the CLI is insecure. Use --password-stdin")
+		Logger.Warn("using --password via the CLI is insecure. Use --password-stdin")
 	}
 
 	return username, password, nil

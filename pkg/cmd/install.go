@@ -229,9 +229,9 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 }
 
 func runInstall(args []string, client *action.Install, valueOpts *values.Options, out io.Writer) (*release.Release, error) {
-	logger.Debug("Original chart version", "version", client.Version)
+	Logger.Debug("Original chart version", "version", client.Version)
 	if client.Version == "" && client.Devel {
-		logger.Debug("setting version to >0.0.0-0")
+		Logger.Debug("setting version to >0.0.0-0")
 		client.Version = ">0.0.0-0"
 	}
 
@@ -246,7 +246,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
-	logger.Debug("Chart path", "path", cp)
+	Logger.Debug("Chart path", "path", cp)
 
 	p := getter.All(settings)
 	vals, err := valueOpts.MergeValues(p)
@@ -265,7 +265,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 
 	if chartRequested.Metadata.Deprecated {
-		logger.Warn("this chart is deprecated")
+		Logger.Warn("this chart is deprecated")
 	}
 
 	if req := chartRequested.Metadata.Dependencies; req != nil {

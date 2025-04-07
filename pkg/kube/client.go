@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -51,8 +52,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-
-	logadapter "helm.sh/helm/v4/internal/log"
 )
 
 // ErrNoObjectsVisited indicates that during a visit operation, no matching objects were found.
@@ -75,7 +74,7 @@ type Client struct {
 	// needs. The smaller surface area of the interface means there is a lower
 	// chance of it changing.
 	Factory Factory
-	Log     logadapter.Logger
+	Log     *slog.Logger
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
 
@@ -164,7 +163,7 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 	factory := cmdutil.NewFactory(getter)
 	c := &Client{
 		Factory: factory,
-		Log:     nopLogger,
+		Log:     slog.Default(),
 	}
 	return c
 }

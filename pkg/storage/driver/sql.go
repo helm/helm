@@ -18,6 +18,7 @@ package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 
 import (
 	"fmt"
+	"log/slog"
 	"sort"
 	"strconv"
 	"time"
@@ -30,7 +31,6 @@ import (
 	// Import pq for postgres dialect
 	_ "github.com/lib/pq"
 
-	logadapter "helm.sh/helm/v4/internal/log"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -88,7 +88,7 @@ type SQL struct {
 	namespace        string
 	statementBuilder sq.StatementBuilderType
 
-	Log logadapter.Logger
+	Log *slog.Logger
 }
 
 // Name returns the name of the driver.
@@ -277,7 +277,7 @@ type SQLReleaseCustomLabelWrapper struct {
 }
 
 // NewSQL initializes a new sql driver.
-func NewSQL(connectionString string, logger logadapter.Logger, namespace string) (*SQL, error) {
+func NewSQL(connectionString string, logger *slog.Logger, namespace string) (*SQL, error) {
 	db, err := sqlx.Connect(postgreSQLDialect, connectionString)
 	if err != nil {
 		return nil, err

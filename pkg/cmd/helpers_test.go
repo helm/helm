@@ -19,6 +19,7 @@ package cmd
 import (
 	"bytes"
 	"io"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -26,7 +27,6 @@ import (
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
 
-	logadapter "helm.sh/helm/v4/internal/log"
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/action"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
@@ -93,7 +93,7 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 		Releases:     store,
 		KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
 		Capabilities: chartutil.DefaultCapabilities,
-		Log:          logadapter.DefaultLogger,
+		Log:          slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	root, err := newRootCmdWithConfig(actionConfig, buf, args)

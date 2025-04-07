@@ -19,6 +19,7 @@ package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -31,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
-	logadapter "helm.sh/helm/v4/internal/log"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -44,7 +44,7 @@ const ConfigMapsDriverName = "ConfigMap"
 // ConfigMapsInterface.
 type ConfigMaps struct {
 	impl corev1.ConfigMapInterface
-	Log  logadapter.Logger
+	Log  *slog.Logger
 }
 
 // NewConfigMaps initializes a new ConfigMaps wrapping an implementation of

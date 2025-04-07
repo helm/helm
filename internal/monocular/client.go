@@ -18,6 +18,7 @@ package monocular
 
 import (
 	"errors"
+	"log/slog"
 	"net/url"
 )
 
@@ -30,8 +31,7 @@ type Client struct {
 	// The base URL for requests
 	BaseURL string
 
-	// The internal logger to use
-	Log func(string, ...interface{})
+	Log *slog.Logger
 }
 
 // New creates a new client
@@ -44,11 +44,9 @@ func New(u string) (*Client, error) {
 
 	return &Client{
 		BaseURL: u,
-		Log:     nopLogger,
+		Log:     slog.Default(),
 	}, nil
 }
-
-var nopLogger = func(_ string, _ ...interface{}) {}
 
 // Validate if the base URL for monocular is valid.
 func validate(u string) error {

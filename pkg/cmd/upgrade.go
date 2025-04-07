@@ -173,7 +173,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if client.Version == "" && client.Devel {
-				logger.Debug("setting version to >0.0.0-0")
+				Logger.Debug("setting version to >0.0.0-0")
 				client.Version = ">0.0.0-0"
 			}
 
@@ -225,7 +225,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if ch.Metadata.Deprecated {
-				logger.Warn("this chart is deprecated")
+				Logger.Warn("this chart is deprecated")
 			}
 
 			// Create context and prepare the handle of SIGTERM

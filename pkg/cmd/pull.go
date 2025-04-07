@@ -60,7 +60,7 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			client.Settings = settings
 			if client.Version == "" && client.Devel {
-				logger.Debug("setting version to >0.0.0-0")
+				Logger.Debug("setting version to >0.0.0-0")
 				client.Version = ">0.0.0-0"
 			}
 

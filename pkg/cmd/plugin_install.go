@@ -79,7 +79,7 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 		return err
 	}
 
-	logger.Debug("loading plugin", "path", i.Path())
+	Logger.Debug("loading plugin", "path", i.Path())
 	p, err := plugin.LoadDir(i.Path())
 	if err != nil {
 		return errors.Wrap(err, "plugin is installed but unusable")
