@@ -16,9 +16,11 @@ limitations under the License.
 package action
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,6 +39,24 @@ import (
 func actionConfigFixture(t *testing.T) *Configuration {
 	t.Helper()
 
+	var verbose = flag.Bool("test.log", false, "enable test logging (debug by default)")
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	if *verbose {
+		// Create a handler that removes timestamps
+		handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+				// Remove the time attribute
+				if a.Key == slog.TimeKey {
+					return slog.Attr{}
+				}
+				return a
+			},
+		})
+		logger = slog.New(handler)
+	}
+
 	registryClient, err := registry.NewClient()
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +67,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,
-		Log:            slog.New(slog.NewTextHandler(io.Discard, nil)), // TODO: permit to log in test as before with `var verbose = flag.Bool("test.log", false, "enable test logging")``
+		Log:            logger,
 	}
 }
 
