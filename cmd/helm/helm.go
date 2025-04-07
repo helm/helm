@@ -17,6 +17,7 @@ limitations under the License.
 package main // import "helm.sh/helm/v4/cmd/helm"
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -40,7 +41,7 @@ func main() {
 
 	cmd, err := helmcmd.NewRootCmd(os.Stdout, os.Args[1:])
 	if err != nil {
-		helmcmd.Logger.Warn("%+v", err)
+		helmcmd.Logger.Warn(fmt.Sprintf("%+v", err))
 		os.Exit(1)
 	}
 
