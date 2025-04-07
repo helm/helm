@@ -19,6 +19,8 @@ package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 import (
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"

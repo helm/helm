@@ -19,6 +19,7 @@ package cmd
 import (
 	"bytes"
 	"io"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"

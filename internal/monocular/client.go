@@ -18,6 +18,7 @@ package monocular
 
 import (
 	"errors"
+	"log/slog"
 	"net/url"
 )
 
