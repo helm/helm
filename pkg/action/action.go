@@ -367,7 +367,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 // recordRelease with an update operation in case reuse has been set.
 func (cfg *Configuration) recordRelease(r *release.Release) {
 	if err := cfg.Releases.Update(r); err != nil {
-		cfg.Log.Warn("failed to update release", "name", r.Name, "revision", r.Version, "error", err)
+		cfg.Log.Warn("failed to update release", "name", r.Name, "revision", r.Version, slog.Any("error", err))
 	}
 }
 

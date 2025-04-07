@@ -104,7 +104,7 @@ func (hw *legacyWaiter) isRetryableError(err error, resource *resource.Info) boo
 	if err == nil {
 		return false
 	}
-	hw.log.Debug("error received when checking resource status", "resource", resource.Name, "error", err)
+	hw.log.Debug("error received when checking resource status", "resource", resource.Name, slog.Any("error", err))
 	if ev, ok := err.(*apierrors.StatusError); ok {
 		statusCode := ev.Status().Code
 		retryable := hw.isRetryableHTTPStatusCode(statusCode)
@@ -139,7 +139,7 @@ func (hw *legacyWaiter) WaitForDelete(deleted ResourceList, timeout time.Duratio
 
 	elapsed := time.Since(startTime).Round(time.Second)
 	if err != nil {
-		hw.log.Debug("wait for resources failed", "elapsed", elapsed, "error", err)
+		hw.log.Debug("wait for resources failed", "elapsed", elapsed, slog.Any("error", err))
 	} else {
 		hw.log.Debug("wait for resources succeeded", "elapsed", elapsed)
 	}

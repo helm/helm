@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -486,7 +487,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 
 func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, err error) (*release.Release, error) {
 	msg := fmt.Sprintf("Upgrade %q failed: %s", rel.Name, err)
-	u.cfg.Log.Warn("upgrade failed", "name", rel.Name, "error", err)
+	u.cfg.Log.Warn("upgrade failed", "name", rel.Name, slog.Any("error", err))
 
 	rel.Info.Status = release.StatusFailed
 	rel.Info.Description = msg

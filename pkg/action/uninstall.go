@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"log/slog"
 	"strings"
 	"time"
 
@@ -121,7 +122,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	// From here on out, the release is currently considered to be in StatusUninstalling
 	// state.
 	if err := u.cfg.Releases.Update(rel); err != nil {
-		u.cfg.Log.Debug("uninstall: Failed to store updated release", "error", err)
+		u.cfg.Log.Debug("uninstall: Failed to store updated release", slog.Any("error", err))
 	}
 
 	deletedResources, kept, errs := u.deleteRelease(rel)
@@ -168,7 +169,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if err := u.cfg.Releases.Update(rel); err != nil {
-		u.cfg.Log.Debug("uninstall: Failed to store updated release", "error", err)
+		u.cfg.Log.Debug("uninstall: Failed to store updated release", slog.Any("error", err))
 	}
 
 	if len(errs) > 0 {

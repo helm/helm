@@ -249,7 +249,7 @@ func (c *Client) Get(resources ResourceList, related bool) (map[string][]runtime
 
 				objs, err = c.getSelectRelationPod(info, objs, isTable, &podSelectors)
 				if err != nil {
-					c.Log.Warn("get the relation pod is failed", "error", err)
+					c.Log.Warn("get the relation pod is failed", slog.Any("error", err))
 				}
 			}
 		}
@@ -441,7 +441,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
-			c.Log.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
+			c.Log.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			updateErrors = append(updateErrors, err.Error())
 		}
 		// Because we check for errors later, append the info regardless
@@ -461,19 +461,19 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		c.Log.Debug("deleting resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 
 		if err := info.Get(); err != nil {
-			c.Log.Debug("unable to get object", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
+			c.Log.Debug("unable to get object", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			continue
 		}
 		annotations, err := metadataAccessor.Annotations(info.Object)
 		if err != nil {
-			c.Log.Debug("unable to get annotations", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
+			c.Log.Debug("unable to get annotations", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 		}
 		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
 			c.Log.Debug("skipping delete due to annotation", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "annotation", ResourcePolicyAnno, "value", KeepPolicy)
 			continue
 		}
 		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
-			c.Log.Debug("failed to delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
+			c.Log.Debug("failed to delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			continue
 		}
 		res.Deleted = append(res.Deleted, info)
@@ -506,7 +506,7 @@ func rdelete(c *Client, resources ResourceList, propagation metav1.DeletionPropa
 		err := deleteResource(info, propagation)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
-				c.Log.Debug("ignoring delete failure", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "error", err)
+				c.Log.Debug("ignoring delete failure", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			}
 			mtx.Lock()
 			defer mtx.Unlock()

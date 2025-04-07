@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/url"
 	"os"
 	"path"
@@ -249,12 +250,12 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	if err := i.availableName(); err != nil {
-		i.cfg.Log.Error("release name check failed", "error", err)
+		i.cfg.Log.Error("release name check failed", slog.Any("error", err))
 		return nil, errors.Wrap(err, "release name check failed")
 	}
 
 	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
-		i.cfg.Log.Error("chart dependencies processing failed", "error", err)
+		i.cfg.Log.Error("chart dependencies processing failed", slog.Any("error", err))
 		return nil, errors.Wrap(err, "chart dependencies processing failed")
 	}
 
@@ -505,7 +506,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	// One possible strategy would be to do a timed retry to see if we can get
 	// this stored in the future.
 	if err := i.recordRelease(rel); err != nil {
-		i.cfg.Log.Error("failed to record the release", "error", err)
+		i.cfg.Log.Error("failed to record the release", slog.Any("error", err))
 	}
 
 	return rel, nil

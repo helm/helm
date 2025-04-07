@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -189,7 +190,7 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 		f := filepath.Join(o.repoCacheDir, helmpath.CacheIndexFile(n))
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			Logger.Warn("repo is corrupt or missing", "repo", n, "error", err)
+			Logger.Warn("repo is corrupt or missing", "repo", n, slog.Any("error", err))
 			continue
 		}
 
