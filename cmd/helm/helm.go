@@ -17,8 +17,8 @@ limitations under the License.
 package main // import "helm.sh/helm/v4/cmd/helm"
 
 import (
-	"fmt"
 	"log"
+	"log/slog"
 	"os"
 
 	// Import to initialize client auth plugins.
@@ -41,7 +41,7 @@ func main() {
 
 	cmd, err := helmcmd.NewRootCmd(os.Stdout, os.Args[1:])
 	if err != nil {
-		helmcmd.Logger.Warn(fmt.Sprintf("%+v", err))
+		helmcmd.Logger.Warn("command failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 
