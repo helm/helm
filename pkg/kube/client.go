@@ -163,7 +163,7 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 	factory := cmdutil.NewFactory(getter)
 	c := &Client{
 		Factory: factory,
-		Log:     slog.Default(),
+		Log:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 	return c
 }
