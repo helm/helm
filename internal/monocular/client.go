@@ -18,6 +18,7 @@ package monocular
 
 import (
 	"errors"
+	"io"
 	"log/slog"
 	"net/url"
 )
@@ -44,7 +45,7 @@ func New(u string) (*Client, error) {
 
 	return &Client{
 		BaseURL: u,
-		Log:     slog.Default(),
+		Log:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}, nil
 }
 
