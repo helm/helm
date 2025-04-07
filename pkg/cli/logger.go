@@ -30,7 +30,7 @@ func NewLogger(debug bool) *slog.Logger {
 	// Create a handler that removes timestamps
 	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: level,
-		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
 			// Remove the time attribute
 			if a.Key == slog.TimeKey {
 				return slog.Attr{}
