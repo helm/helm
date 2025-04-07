@@ -36,10 +36,10 @@ import (
 	"helm.sh/helm/v4/pkg/time"
 )
 
+var verbose = flag.Bool("test.log", false, "enable test logging (debug by default)")
+
 func actionConfigFixture(t *testing.T) *Configuration {
 	t.Helper()
-
-	var verbose = flag.Bool("test.log", false, "enable test logging (debug by default)")
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	if *verbose {
