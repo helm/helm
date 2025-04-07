@@ -56,7 +56,6 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 			name: "IsReady Pod",
 			fields: fields{
 				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -72,7 +71,6 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 			name: "IsReady Pod returns error",
 			fields: fields{
 				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -130,7 +128,6 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 			name: "IsReady Job error while getting job",
 			fields: fields{
 				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -146,7 +143,6 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 			name: "IsReady Job",
 			fields: fields{
 				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -204,7 +200,6 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 			name: "IsReady Deployments error while getting current Deployment",
 			fields: fields{
 				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -221,7 +216,6 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 			name: "IsReady Deployments", //TODO fix this one
 			fields: fields{
 				client:        fake.NewSimpleClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
