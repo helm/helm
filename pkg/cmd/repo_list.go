@@ -39,13 +39,13 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		RunE: func(_ *cobra.Command, _ []string) error {
 			f, _ := repo.LoadFile(settings.RepositoryConfig)
 			if len(f.Repositories) == 0 {
-			    switch outfmt {
-			    case output.Table:
-				_, _ = fmt.Fprintln(out, "no repositories to show")
-				return nil
-			     case output.JSON, output.YAML:
-				return outfmt.Write(out, &repoListWriter{repos: []*repo.Entry{}})
-			     }
+				switch outfmt {
+				case output.Table:
+					_, _ = fmt.Fprintln(out, "no repositories to show")
+					return nil
+				case output.JSON, output.YAML:
+					return outfmt.Write(out, &repoListWriter{repos: []*repo.Entry{}})
+				}
 			}
 			return outfmt.Write(out, &repoListWriter{f.Repositories})
 		},
