@@ -24,7 +24,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -37,11 +36,6 @@ import (
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/engine"
 	"helm.sh/helm/v4/pkg/lint/support"
-)
-
-var (
-	crdHookSearch     = regexp.MustCompile(`"?helm\.sh/hook"?:\s+crd-install`)
-	releaseTimeSearch = regexp.MustCompile(`\.Release\.Time`)
 )
 
 // Templates lints the templates in the Linter.
@@ -119,14 +113,10 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 	- Metadata.Namespace is not set
 	*/
 	for _, template := range chart.Templates {
-		fileName, data := template.Name, template.Data
+		fileName := template.Name
 		fpath = fileName
 
 		linter.RunLinterRule(support.ErrorSev, fpath, validateAllowedExtension(fileName))
-		// These are v3 specific checks to make sure and warn people if their
-		// chart is not compatible with v3
-		linter.RunLinterRule(support.WarningSev, fpath, validateNoCRDHooks(data))
-		linter.RunLinterRule(support.ErrorSev, fpath, validateNoReleaseTime(data))
 
 		// We only apply the following lint rules to yaml files
 		if filepath.Ext(fileName) != ".yaml" || filepath.Ext(fileName) == ".yml" {
@@ -289,20 +279,6 @@ func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
 	default:
 		return validation.NameIsDNSSubdomain
 	}
-}
-
-func validateNoCRDHooks(manifest []byte) error {
-	if crdHookSearch.Match(manifest) {
-		return errors.New("manifest is a crd-install hook. This hook is no longer supported in v3 and all CRDs should also exist the crds/ directory at the top level of the chart")
-	}
-	return nil
-}
-
-func validateNoReleaseTime(manifest []byte) error {
-	if releaseTimeSearch.Match(manifest) {
-		return errors.New(".Release.Time has been removed in v3, please replace with the `now` function in your templates")
-	}
-	return nil
 }
 
 // validateMatchSelector ensures that template specs have a selector declared.
