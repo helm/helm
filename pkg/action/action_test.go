@@ -56,6 +56,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 		})
 		logger = slog.New(handler)
 	}
+	slog.SetDefault(logger)
 
 	registryClient, err := registry.NewClient()
 	if err != nil {
@@ -67,7 +68,6 @@ func actionConfigFixture(t *testing.T) *Configuration {
 		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,
-		Log:            logger,
 	}
 }
 
@@ -347,7 +347,7 @@ func TestConfiguration_Init(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &Configuration{}
 
-			actualErr := cfg.Init(nil, "default", tt.helmDriver, nil)
+			actualErr := cfg.Init(nil, "default", tt.helmDriver)
 			if tt.expectErr {
 				assert.Error(t, actualErr)
 				assert.Contains(t, actualErr.Error(), tt.errMsg)

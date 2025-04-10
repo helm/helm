@@ -44,7 +44,6 @@ const ConfigMapsDriverName = "ConfigMap"
 // ConfigMapsInterface.
 type ConfigMaps struct {
 	impl corev1.ConfigMapInterface
-	Log  *slog.Logger
 }
 
 // NewConfigMaps initializes a new ConfigMaps wrapping an implementation of
@@ -70,13 +69,13 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 			return nil, ErrReleaseNotFound
 		}
 
-		cfgmaps.Log.Debug("failed to get release", "key", key, slog.Any("error", err))
+		slog.Debug("failed to get release", "key", key, slog.Any("error", err))
 		return nil, err
 	}
 	// found the configmap, decode the base64 data string
 	r, err := decodeRelease(obj.Data["release"])
 	if err != nil {
-		cfgmaps.Log.Debug("failed to decode data", "key", key, slog.Any("error", err))
+		slog.Debug("failed to decode data", "key", key, slog.Any("error", err))
 		return nil, err
 	}
 	r.Labels = filterSystemLabels(obj.ObjectMeta.Labels)
@@ -93,7 +92,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 
 	list, err := cfgmaps.impl.List(context.Background(), opts)
 	if err != nil {
-		cfgmaps.Log.Debug("failed to list releases", slog.Any("error", err))
+		slog.Debug("failed to list releases", slog.Any("error", err))
 		return nil, err
 	}
 
@@ -104,7 +103,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 	for _, item := range list.Items {
 		rls, err := decodeRelease(item.Data["release"])
 		if err != nil {
-			cfgmaps.Log.Debug("failed to decode release", "item", item, slog.Any("error", err))
+			slog.Debug("failed to decode release", "item", item, slog.Any("error", err))
 			continue
 		}
 
@@ -132,7 +131,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 
 	list, err := cfgmaps.impl.List(context.Background(), opts)
 	if err != nil {
-		cfgmaps.Log.Debug("failed to query with labels", slog.Any("error", err))
+		slog.Debug("failed to query with labels", slog.Any("error", err))
 		return nil, err
 	}
 
@@ -144,7 +143,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 	for _, item := range list.Items {
 		rls, err := decodeRelease(item.Data["release"])
 		if err != nil {
-			cfgmaps.Log.Debug("failed to decode release", slog.Any("error", err))
+			slog.Debug("failed to decode release", slog.Any("error", err))
 			continue
 		}
 		rls.Labels = item.ObjectMeta.Labels
@@ -166,7 +165,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 	// create a new configmap to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
-		cfgmaps.Log.Debug("failed to encode release", "name", rls.Name, slog.Any("error", err))
+		slog.Debug("failed to encode release", "name", rls.Name, slog.Any("error", err))
 		return err
 	}
 	// push the configmap object out into the kubiverse
@@ -175,7 +174,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 			return ErrReleaseExists
 		}
 
-		cfgmaps.Log.Debug("failed to create release", slog.Any("error", err))
+		slog.Debug("failed to create release", slog.Any("error", err))
 		return err
 	}
 	return nil
@@ -194,13 +193,13 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 	// create a new configmap object to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
-		cfgmaps.Log.Debug("failed to encode release", "name", rls.Name, slog.Any("error", err))
+		slog.Debug("failed to encode release", "name", rls.Name, slog.Any("error", err))
 		return err
 	}
 	// push the configmap object out into the kubiverse
 	_, err = cfgmaps.impl.Update(context.Background(), obj, metav1.UpdateOptions{})
 	if err != nil {
-		cfgmaps.Log.Debug("failed to update release", slog.Any("error", err))
+		slog.Debug("failed to update release", slog.Any("error", err))
 		return err
 	}
 	return nil

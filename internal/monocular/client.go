@@ -18,8 +18,6 @@ package monocular
 
 import (
 	"errors"
-	"io"
-	"log/slog"
 	"net/url"
 )
 
@@ -31,8 +29,6 @@ type Client struct {
 
 	// The base URL for requests
 	BaseURL string
-
-	Log *slog.Logger
 }
 
 // New creates a new client
@@ -45,7 +41,6 @@ func New(u string) (*Client, error) {
 
 	return &Client{
 		BaseURL: u,
-		Log:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}, nil
 }
 

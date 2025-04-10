@@ -18,8 +18,6 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
 	"errors"
-	"io"
-	"log/slog"
 	"testing"
 	"time"
 
@@ -219,7 +217,6 @@ func TestStatusWaitForDelete(t *testing.T) {
 			statusWaiter := statusWaiter{
 				restMapper: fakeMapper,
 				client:     fakeClient,
-				log:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 			objsToCreate := getRuntimeObjFromManifests(t, tt.manifestsToCreate)
 			for _, objToCreate := range objsToCreate {
@@ -260,7 +257,6 @@ func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 	statusWaiter := statusWaiter{
 		restMapper: fakeMapper,
 		client:     fakeClient,
-		log:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 	// Don't create the object to test that the wait for delete works when the object doesn't exist
 	objManifest := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
@@ -319,7 +315,6 @@ func TestStatusWait(t *testing.T) {
 			statusWaiter := statusWaiter{
 				client:     fakeClient,
 				restMapper: fakeMapper,
-				log:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
@@ -373,7 +368,6 @@ func TestWaitForJobComplete(t *testing.T) {
 			statusWaiter := statusWaiter{
 				client:     fakeClient,
 				restMapper: fakeMapper,
-				log:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
@@ -433,7 +427,6 @@ func TestWatchForReady(t *testing.T) {
 			statusWaiter := statusWaiter{
 				client:     fakeClient,
 				restMapper: fakeMapper,
-				log:        slog.New(slog.NewTextHandler(io.Discard, nil)),
 			}
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {

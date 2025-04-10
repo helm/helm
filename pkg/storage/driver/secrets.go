@@ -44,7 +44,6 @@ const SecretsDriverName = "Secret"
 // SecretsInterface.
 type Secrets struct {
 	impl corev1.SecretInterface
-	Log  *slog.Logger
 }
 
 // NewSecrets initializes a new Secrets wrapping an implementation of
@@ -96,7 +95,7 @@ func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, 
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
-			secrets.Log.Debug("list failed to decode release", "key", item.Name, slog.Any("error", err))
+			slog.Debug("list failed to decode release", "key", item.Name, slog.Any("error", err))
 			continue
 		}
 
@@ -135,7 +134,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
-			secrets.Log.Debug("failed to decode release", "key", item.Name, slog.Any("error", err))
+			slog.Debug("failed to decode release", "key", item.Name, slog.Any("error", err))
 			continue
 		}
 		rls.Labels = item.ObjectMeta.Labels

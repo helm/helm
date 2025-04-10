@@ -173,7 +173,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
 				crdName := res[0].Name
-				i.cfg.Log.Debug("CRD is already present. Skipping", "crd", crdName)
+				slog.Debug("CRD is already present. Skipping", "crd", crdName)
 				continue
 			}
 			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
@@ -201,7 +201,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 				return err
 			}
 
-			i.cfg.Log.Debug("clearing discovery cache")
+			slog.Debug("clearing discovery cache")
 			discoveryClient.Invalidate()
 
 			_, _ = discoveryClient.ServerGroups()
@@ -214,7 +214,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 			return err
 		}
 		if resettable, ok := restMapper.(meta.ResettableRESTMapper); ok {
-			i.cfg.Log.Debug("clearing REST mapper cache")
+			slog.Debug("clearing REST mapper cache")
 			resettable.Reset()
 		}
 	}
@@ -238,24 +238,24 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
-			i.cfg.Log.Error(fmt.Sprintf("cluster reachability check failed: %v", err))
+			slog.Error(fmt.Sprintf("cluster reachability check failed: %v", err))
 			return nil, errors.Wrap(err, "cluster reachability check failed")
 		}
 	}
 
 	// HideSecret must be used with dry run. Otherwise, return an error.
 	if !i.isDryRun() && i.HideSecret {
-		i.cfg.Log.Error("hiding Kubernetes secrets requires a dry-run mode")
+		slog.Error("hiding Kubernetes secrets requires a dry-run mode")
 		return nil, errors.New("Hiding Kubernetes secrets requires a dry-run mode")
 	}
 
 	if err := i.availableName(); err != nil {
-		i.cfg.Log.Error("release name check failed", slog.Any("error", err))
+		slog.Error("release name check failed", slog.Any("error", err))
 		return nil, errors.Wrap(err, "release name check failed")
 	}
 
 	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
-		i.cfg.Log.Error("chart dependencies processing failed", slog.Any("error", err))
+		slog.Error("chart dependencies processing failed", slog.Any("error", err))
 		return nil, errors.Wrap(err, "chart dependencies processing failed")
 	}
 
@@ -269,7 +269,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	if crds := chrt.CRDObjects(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
 		// On dry run, bail here
 		if i.isDryRun() {
-			i.cfg.Log.Warn("This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
+			slog.Warn("This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
 		} else if err := i.installCRDs(crds); err != nil {
 			return nil, err
 		}
@@ -289,7 +289,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		mem.SetNamespace(i.Namespace)
 		i.cfg.Releases = storage.Init(mem)
 	} else if !i.ClientOnly && len(i.APIVersions) > 0 {
-		i.cfg.Log.Debug("API Version list given outside of client only mode, this list will be ignored")
+		slog.Debug("API Version list given outside of client only mode, this list will be ignored")
 	}
 
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
@@ -506,7 +506,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	// One possible strategy would be to do a timed retry to see if we can get
 	// this stored in the future.
 	if err := i.recordRelease(rel); err != nil {
-		i.cfg.Log.Error("failed to record the release", slog.Any("error", err))
+		slog.Error("failed to record the release", slog.Any("error", err))
 	}
 
 	return rel, nil
@@ -515,7 +515,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
 	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
 	if i.Atomic {
-		i.cfg.Log.Debug("install failed, uninstalling release", "release", i.ReleaseName)
+		slog.Debug("install failed, uninstalling release", "release", i.ReleaseName)
 		uninstall := NewUninstall(i.cfg)
 		uninstall.DisableHooks = i.DisableHooks
 		uninstall.KeepHistory = false

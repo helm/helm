@@ -131,17 +131,17 @@ func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 }
 
 func (o *searchRepoOptions) setupSearchedVersion() {
-	Logger.Debug("original chart version", "version", o.version)
+	slog.Debug("original chart version", "version", o.version)
 
 	if o.version != "" {
 		return
 	}
 
 	if o.devel { // search for releases and prereleases (alpha, beta, and release candidate releases).
-		Logger.Debug("setting version to >0.0.0-0")
+		slog.Debug("setting version to >0.0.0-0")
 		o.version = ">0.0.0-0"
 	} else { // search only for stable releases, prerelease versions will be skipped
-		Logger.Debug("setting version to >0.0.0")
+		slog.Debug("setting version to >0.0.0")
 		o.version = ">0.0.0"
 	}
 }
@@ -190,7 +190,7 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 		f := filepath.Join(o.repoCacheDir, helmpath.CacheIndexFile(n))
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			Logger.Warn("repo is corrupt or missing", "repo", n, slog.Any("error", err))
+			slog.Warn("repo is corrupt or missing", "repo", n, slog.Any("error", err))
 			continue
 		}
 

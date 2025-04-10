@@ -19,7 +19,6 @@ package kube
 import (
 	"bytes"
 	"io"
-	"log/slog"
 	"net/http"
 	"strings"
 	"testing"
@@ -108,7 +107,6 @@ func newTestClient(t *testing.T) *Client {
 
 	return &Client{
 		Factory: testFactory.WithNamespace("default"),
-		Log:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 }
 

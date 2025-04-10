@@ -19,8 +19,6 @@ package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 import (
 	"context"
 	"fmt"
-	"io"
-	"log/slog"
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
@@ -266,6 +264,5 @@ func newTestFixtureSQL(t *testing.T, _ ...*rspb.Release) (*SQL, sqlmock.Sqlmock)
 		db:               sqlxDB,
 		namespace:        "default",
 		statementBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
-		Log:              slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}, mock
 }

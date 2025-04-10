@@ -43,7 +43,6 @@ import (
 type statusWaiter struct {
 	client     dynamic.Interface
 	restMapper meta.RESTMapper
-	log        *slog.Logger
 }
 
 func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
@@ -56,7 +55,7 @@ func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
 func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	w.log.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
+	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	jobSR := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	podSR := helmStatusReaders.NewCustomPodStatusReader(w.restMapper)
@@ -77,7 +76,7 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
-	w.log.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
+	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	return w.wait(ctx, resourceList, sw)
 }
@@ -85,7 +84,7 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
-	w.log.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
+	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	customSR := statusreaders.NewStatusReader(w.restMapper, newCustomJobStatusReader)
@@ -96,7 +95,7 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 func (w *statusWaiter) WaitForDelete(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
-	w.log.Debug("waiting for resources to be deleted", "count", len(resourceList), "timeout", timeout)
+	slog.Debug("waiting for resources to be deleted", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	return w.waitForDelete(ctx, resourceList, sw)
 }
@@ -114,7 +113,7 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 	}
 	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus, w.log))
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -157,7 +156,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 
 	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus, w.log))
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -180,7 +179,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 	return nil
 }
 
-func statusObserver(cancel context.CancelFunc, desired status.Status, logger *slog.Logger) collector.ObserverFunc {
+func statusObserver(cancel context.CancelFunc, desired status.Status) collector.ObserverFunc {
 	return func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
 		var rss []*event.ResourceStatus
 		var nonDesiredResources []*event.ResourceStatus
@@ -210,7 +209,7 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 				return nonDesiredResources[i].Identifier.Name < nonDesiredResources[j].Identifier.Name
 			})
 			first := nonDesiredResources[0]
-			logger.Debug("waiting for resource", "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", desired, "actualStatus", first.Status)
+			slog.Debug("waiting for resource", "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", desired, "actualStatus", first.Status)
 		}
 	}
 }

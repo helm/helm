@@ -19,7 +19,6 @@ package cmd
 import (
 	"bytes"
 	"io"
-	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -93,7 +92,6 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 		Releases:     store,
 		KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
 		Capabilities: chartutil.DefaultCapabilities,
-		Log:          slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	root, err := newRootCmdWithConfig(actionConfig, buf, args)

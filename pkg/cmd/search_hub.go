@@ -90,7 +90,7 @@ func (o *searchHubOptions) run(out io.Writer, args []string) error {
 	q := strings.Join(args, " ")
 	results, err := c.Search(q)
 	if err != nil {
-		Logger.Debug("search failed", slog.Any("error", err))
+		slog.Debug("search failed", slog.Any("error", err))
 		return fmt.Errorf("unable to perform search against %q", o.searchEndpoint)
 	}
 

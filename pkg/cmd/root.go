@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -95,7 +96,6 @@ By default, the default directories depend on the Operating System. The defaults
 `
 
 var settings = cli.New()
-var Logger = cli.NewLogger(settings)
 
 func NewRootCmd(out io.Writer, args []string) (*cobra.Command, error) {
 	actionConfig := new(action.Configuration)
@@ -105,7 +105,7 @@ func NewRootCmd(out io.Writer, args []string) (*cobra.Command, error) {
 	}
 	cobra.OnInitialize(func() {
 		helmDriver := os.Getenv("HELM_DRIVER")
-		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, Logger); err != nil {
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver); err != nil {
 			log.Fatal(err)
 		}
 		if helmDriver == "memory" {
@@ -138,6 +138,9 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 
 	settings.AddFlags(flags)
 	addKlogFlags(flags)
+
+	logger := cli.NewLogger(settings)
+	slog.SetDefault(logger)
 
 	// Setup shell completion for the namespace flag
 	err := cmd.RegisterFlagCompletionFunc("namespace", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {

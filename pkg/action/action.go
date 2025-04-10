@@ -96,8 +96,6 @@ type Configuration struct {
 	// Capabilities describes the capabilities of the Kubernetes cluster.
 	Capabilities *chartutil.Capabilities
 
-	Log *slog.Logger
-
 	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
 	HookOutputFunc func(namespace, pod, container string) io.Writer
 }
@@ -267,8 +265,8 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
 		if discovery.IsGroupDiscoveryFailedError(err) {
-			cfg.Log.Warn("the kubernetes server has an orphaned API service", "errors", err)
-			cfg.Log.Warn("to fix this, kubectl delete apiservice <service-name>")
+			slog.Warn("the kubernetes server has an orphaned API service", "errors", err)
+			slog.Warn("to fix this, kubectl delete apiservice <service-name>")
 		} else {
 			return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
 		}
@@ -367,29 +365,28 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 // recordRelease with an update operation in case reuse has been set.
 func (cfg *Configuration) recordRelease(r *release.Release) {
 	if err := cfg.Releases.Update(r); err != nil {
-		cfg.Log.Warn("failed to update release", "name", r.Name, "revision", r.Version, slog.Any("error", err))
+		slog.Warn("failed to update release", "name", r.Name, "revision", r.Version, slog.Any("error", err))
 	}
 }
 
 // Init initializes the action configuration
-func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log *slog.Logger) error {
+func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string) error {
 	kc := kube.New(getter)
-	kc.Log = log
 
 	lazyClient := &lazyClient{
 		namespace: namespace,
 		clientFn:  kc.Factory.KubernetesClientSet,
 	}
 
+	// slog.SetDefault()
+
 	var store *storage.Storage
 	switch helmDriver {
 	case "secret", "secrets", "":
 		d := driver.NewSecrets(newSecretClient(lazyClient))
-		d.Log = log
 		store = storage.Init(d)
 	case "configmap", "configmaps":
 		d := driver.NewConfigMaps(newConfigMapClient(lazyClient))
-		d.Log = log
 		store = storage.Init(d)
 	case "memory":
 		var d *driver.Memory
@@ -409,7 +406,6 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	case "sql":
 		d, err := driver.NewSQL(
 			os.Getenv("HELM_DRIVER_SQL_CONNECTION_STRING"),
-			log,
 			namespace,
 		)
 		if err != nil {
@@ -423,7 +419,6 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	cfg.RESTClientGetter = getter
 	cfg.KubeClient = kc
 	cfg.Releases = store
-	cfg.Log = log
 	cfg.HookOutputFunc = func(_, _, _ string) io.Writer { return io.Discard }
 
 	return nil

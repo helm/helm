@@ -41,12 +41,12 @@ func main() {
 
 	cmd, err := helmcmd.NewRootCmd(os.Stdout, os.Args[1:])
 	if err != nil {
-		helmcmd.Logger.Warn("command failed", slog.Any("error", err))
+		slog.Warn("command failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	if err := cmd.Execute(); err != nil {
-		helmcmd.Logger.Debug("error", slog.Any("error", err))
+		slog.Debug("error", slog.Any("error", err))
 		switch e := err.(type) {
 		case helmcmd.PluginError:
 			os.Exit(e.Code)
