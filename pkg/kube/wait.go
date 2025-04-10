@@ -55,12 +55,12 @@ type legacyWaiter struct {
 }
 
 func (hw *legacyWaiter) Wait(resources ResourceList, timeout time.Duration) error {
-	hw.c = NewReadyChecker(hw.kubeClient, hw.log, PausedAsReady(true))
+	hw.c = NewReadyChecker(hw.kubeClient, PausedAsReady(true))
 	return hw.waitForResources(resources, timeout)
 }
 
 func (hw *legacyWaiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
-	hw.c = NewReadyChecker(hw.kubeClient, hw.log, PausedAsReady(true), CheckJobs(true))
+	hw.c = NewReadyChecker(hw.kubeClient, PausedAsReady(true), CheckJobs(true))
 	return hw.waitForResources(resources, timeout)
 }
 

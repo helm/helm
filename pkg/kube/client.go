@@ -719,9 +719,6 @@ func copyRequestStreamToWriter(request *rest.Request, podName, containerName str
 	if err != nil {
 		return errors.Errorf("Failed to copy IO from logs for pod: %s, container: %s", podName, containerName)
 	}
-	if err != nil {
-		return errors.Errorf("Failed to close reader for pod: %s, container: %s", podName, containerName)
-	}
 	return nil
 }
 
