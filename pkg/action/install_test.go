@@ -521,6 +521,8 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	time.AfterFunc(time.Second, cancel)
 
+	goroutines := runtime.NumGoroutine()
+
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
 	is.Contains(err.Error(), "context canceled")
@@ -531,6 +533,9 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
 	is.Error(err)
 	is.Equal(err, driver.ErrReleaseNotFound)
+	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
+	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
+	is.Equal(goroutines, runtime.NumGoroutine())
 
 }
 func TestNameTemplate(t *testing.T) {
