@@ -17,19 +17,53 @@ limitations under the License.
 package cli
 
 import (
+	"context"
 	"log/slog"
 	"os"
 )
 
-func NewLogger(debug bool) *slog.Logger {
-	level := slog.LevelInfo
-	if debug {
-		level = slog.LevelDebug
-	}
+// DebugCheckHandler checks settings.Debug at log time
+type DebugCheckHandler struct {
+	handler  slog.Handler
+	settings *EnvSettings
+}
 
-	// Create a handler that removes timestamps
-	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: level,
+// Enabled implements slog.Handler.Enabled
+func (h *DebugCheckHandler) Enabled(_ context.Context, level slog.Level) bool {
+	if level == slog.LevelDebug {
+		return h.settings.Debug // Check settings.Debug at log time
+	}
+	return true // Always log other levels
+}
+
+// Handle implements slog.Handler.Handle
+func (h *DebugCheckHandler) Handle(ctx context.Context, r slog.Record) error {
+	return h.handler.Handle(ctx, r)
+}
+
+// WithAttrs implements slog.Handler.WithAttrs
+func (h *DebugCheckHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &DebugCheckHandler{
+		handler:  h.handler.WithAttrs(attrs),
+		settings: h.settings,
+	}
+}
+
+// WithGroup implements slog.Handler.WithGroup
+func (h *DebugCheckHandler) WithGroup(name string) slog.Handler {
+	return &DebugCheckHandler{
+		handler:  h.handler.WithGroup(name),
+		settings: h.settings,
+	}
+}
+
+// NewLogger creates a new logger with dynamic debug checking
+func NewLogger(settings *EnvSettings) *slog.Logger {
+	// Create base handler that removes timestamps
+	baseHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		// Always use LevelDebug here to allow all messages through
+		// Our custom handler will do the filtering
+		Level: slog.LevelDebug,
 		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
 			// Remove the time attribute
 			if a.Key == slog.TimeKey {
@@ -39,5 +73,11 @@ func NewLogger(debug bool) *slog.Logger {
 		},
 	})
 
-	return slog.New(handler)
+	// Wrap with our dynamic debug-checking handler
+	dynamicHandler := &DebugCheckHandler{
+		handler:  baseHandler,
+		settings: settings,
+	}
+
+	return slog.New(dynamicHandler)
 }

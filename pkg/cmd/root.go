@@ -95,7 +95,7 @@ By default, the default directories depend on the Operating System. The defaults
 `
 
 var settings = cli.New()
-var Logger = cli.NewLogger(settings.Debug)
+var Logger = cli.NewLogger(settings)
 
 func NewRootCmd(out io.Writer, args []string) (*cobra.Command, error) {
 	actionConfig := new(action.Configuration)
