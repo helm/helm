@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"log/slog"
 	"strings"
 	"time"
 
@@ -104,7 +105,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		return nil, errors.Errorf("the release named %q is already deleted", name)
 	}
 
-	u.cfg.Log("uninstall: Deleting %s", name)
+	slog.Debug("uninstall: deleting release", "name", name)
 	rel.Info.Status = release.StatusUninstalling
 	rel.Info.Deleted = helmtime.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
@@ -115,18 +116,18 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 			return res, err
 		}
 	} else {
-		u.cfg.Log("delete hooks disabled for %s", name)
+		slog.Debug("delete hooks disabled", "release", name)
 	}
 
 	// From here on out, the release is currently considered to be in StatusUninstalling
 	// state.
 	if err := u.cfg.Releases.Update(rel); err != nil {
-		u.cfg.Log("uninstall: Failed to store updated release: %s", err)
+		slog.Debug("uninstall: Failed to store updated release", slog.Any("error", err))
 	}
 
 	deletedResources, kept, errs := u.deleteRelease(rel)
 	if errs != nil {
-		u.cfg.Log("uninstall: Failed to delete release: %s", errs)
+		slog.Debug("uninstall: Failed to delete release", slog.Any("error", errs))
 		return nil, errors.Errorf("failed to delete release: %s", name)
 	}
 
@@ -153,7 +154,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if !u.KeepHistory {
-		u.cfg.Log("purge requested for %s", name)
+		slog.Debug("purge requested", "release", name)
 		err := u.purgeReleases(rels...)
 		if err != nil {
 			errs = append(errs, errors.Wrap(err, "uninstall: Failed to purge the release"))
@@ -168,7 +169,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if err := u.cfg.Releases.Update(rel); err != nil {
-		u.cfg.Log("uninstall: Failed to store updated release: %s", err)
+		slog.Debug("uninstall: Failed to store updated release", slog.Any("error", err))
 	}
 
 	if len(errs) > 0 {
@@ -225,7 +226,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 	}
 	if len(resources) > 0 {
 		if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceDeletionPropagation); ok {
-			_, errs = kubeClient.DeleteWithPropagationPolicy(resources, parseCascadingFlag(u.cfg, u.DeletionPropagation))
+			_, errs = kubeClient.DeleteWithPropagationPolicy(resources, parseCascadingFlag(u.DeletionPropagation))
 			return resources, kept, errs
 		}
 		_, errs = u.cfg.KubeClient.Delete(resources)
@@ -233,7 +234,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 	return resources, kept, errs
 }
 
-func parseCascadingFlag(cfg *Configuration, cascadingFlag string) v1.DeletionPropagation {
+func parseCascadingFlag(cascadingFlag string) v1.DeletionPropagation {
 	switch cascadingFlag {
 	case "orphan":
 		return v1.DeletePropagationOrphan
@@ -242,7 +243,7 @@ func parseCascadingFlag(cfg *Configuration, cascadingFlag string) v1.DeletionPro
 	case "background":
 		return v1.DeletePropagationBackground
 	default:
-		cfg.Log("uninstall: given cascade value: %s, defaulting to delete propagation background", cascadingFlag)
+		slog.Debug("uninstall: given cascade value, defaulting to delete propagation background", "value", cascadingFlag)
 		return v1.DeletePropagationBackground
 	}
 }

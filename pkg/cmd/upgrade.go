@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -173,7 +174,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if client.Version == "" && client.Devel {
-				Debug("setting version to >0.0.0-0")
+				slog.Debug("setting version to >0.0.0-0")
 				client.Version = ">0.0.0-0"
 			}
 
@@ -225,7 +226,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if ch.Metadata.Deprecated {
-				Warning("This chart is deprecated")
+				slog.Warn("this chart is deprecated")
 			}
 
 			// Create context and prepare the handle of SIGTERM

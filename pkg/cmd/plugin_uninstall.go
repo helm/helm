@@ -18,6 +18,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -60,7 +61,7 @@ func (o *pluginUninstallOptions) complete(args []string) error {
 }
 
 func (o *pluginUninstallOptions) run(out io.Writer) error {
-	Debug("loading installed plugins from %s", settings.PluginsDirectory)
+	slog.Debug("loading installer plugins", "dir", settings.PluginsDirectory)
 	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
 	if err != nil {
 		return err

@@ -19,6 +19,7 @@ package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -43,7 +44,6 @@ const SecretsDriverName = "Secret"
 // SecretsInterface.
 type Secrets struct {
 	impl corev1.SecretInterface
-	Log  func(string, ...interface{})
 }
 
 // NewSecrets initializes a new Secrets wrapping an implementation of
@@ -51,7 +51,6 @@ type Secrets struct {
 func NewSecrets(impl corev1.SecretInterface) *Secrets {
 	return &Secrets{
 		impl: impl,
-		Log:  func(_ string, _ ...interface{}) {},
 	}
 }
 
@@ -96,7 +95,7 @@ func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, 
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
-			secrets.Log("list: failed to decode release: %v: %s", item, err)
+			slog.Debug("list failed to decode release", "key", item.Name, slog.Any("error", err))
 			continue
 		}
 
@@ -135,7 +134,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
-			secrets.Log("query: failed to decode release: %s", err)
+			slog.Debug("failed to decode release", "key", item.Name, slog.Any("error", err))
 			continue
 		}
 		rls.Labels = item.ObjectMeta.Labels

@@ -17,7 +17,7 @@ limitations under the License.
 package main // import "helm.sh/helm/v4/cmd/helm"
 
 import (
-	"log"
+	"log/slog"
 	"os"
 
 	// Import to initialize client auth plugins.
@@ -26,10 +26,6 @@ import (
 	helmcmd "helm.sh/helm/v4/pkg/cmd"
 	"helm.sh/helm/v4/pkg/kube"
 )
-
-func init() {
-	log.SetFlags(log.Lshortfile)
-}
 
 func main() {
 	// Setting the name of the app for managedFields in the Kubernetes client.
@@ -40,12 +36,12 @@ func main() {
 
 	cmd, err := helmcmd.NewRootCmd(os.Stdout, os.Args[1:])
 	if err != nil {
-		helmcmd.Warning("%+v", err)
+		slog.Warn("command failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	if err := cmd.Execute(); err != nil {
-		helmcmd.Debug("%+v", err)
+		slog.Debug("error", slog.Any("error", err))
 		switch e := err.(type) {
 		case helmcmd.PluginError:
 			os.Exit(e.Code)

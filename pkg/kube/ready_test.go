@@ -37,7 +37,6 @@ const defaultNamespace = metav1.NamespaceDefault
 func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -57,7 +56,6 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 			name: "IsReady Pod",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -73,7 +71,6 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 			name: "IsReady Pod returns error",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -90,7 +87,6 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -113,7 +109,6 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -133,7 +128,6 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 			name: "IsReady Job error while getting job",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -149,7 +143,6 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 			name: "IsReady Job",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -166,7 +159,6 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -188,7 +180,6 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -209,7 +200,6 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 			name: "IsReady Deployments error while getting current Deployment",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -226,7 +216,6 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 			name: "IsReady Deployments", //TODO fix this one
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -244,7 +233,6 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -270,7 +258,6 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -290,7 +277,6 @@ func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
 			name: "IsReady PersistentVolumeClaim",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -306,7 +292,6 @@ func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
 			name: "IsReady PersistentVolumeClaim with error",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -323,7 +308,6 @@ func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -345,7 +329,6 @@ func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
 func Test_ReadyChecker_IsReady_Service(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -365,7 +348,6 @@ func Test_ReadyChecker_IsReady_Service(t *testing.T) {
 			name: "IsReady Service",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -381,7 +363,6 @@ func Test_ReadyChecker_IsReady_Service(t *testing.T) {
 			name: "IsReady Service with error",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -398,7 +379,6 @@ func Test_ReadyChecker_IsReady_Service(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -420,7 +400,6 @@ func Test_ReadyChecker_IsReady_Service(t *testing.T) {
 func Test_ReadyChecker_IsReady_DaemonSet(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -440,7 +419,6 @@ func Test_ReadyChecker_IsReady_DaemonSet(t *testing.T) {
 			name: "IsReady DaemonSet",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -456,7 +434,6 @@ func Test_ReadyChecker_IsReady_DaemonSet(t *testing.T) {
 			name: "IsReady DaemonSet with error",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -473,7 +450,6 @@ func Test_ReadyChecker_IsReady_DaemonSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -495,7 +471,6 @@ func Test_ReadyChecker_IsReady_DaemonSet(t *testing.T) {
 func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -515,7 +490,6 @@ func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 			name: "IsReady StatefulSet",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -531,7 +505,6 @@ func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 			name: "IsReady StatefulSet with error",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -548,7 +521,6 @@ func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -570,7 +542,6 @@ func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -590,7 +561,6 @@ func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
 			name: "IsReady ReplicationController",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -606,7 +576,6 @@ func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
 			name: "IsReady ReplicationController with error",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -622,7 +591,6 @@ func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
 			name: "IsReady ReplicationController and pods not ready for object",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -639,7 +607,6 @@ func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -661,7 +628,6 @@ func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
 func Test_ReadyChecker_IsReady_ReplicaSet(t *testing.T) {
 	type fields struct {
 		client        kubernetes.Interface
-		log           func(string, ...interface{})
 		checkJobs     bool
 		pausedAsReady bool
 	}
@@ -681,7 +647,6 @@ func Test_ReadyChecker_IsReady_ReplicaSet(t *testing.T) {
 			name: "IsReady ReplicaSet",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -697,7 +662,6 @@ func Test_ReadyChecker_IsReady_ReplicaSet(t *testing.T) {
 			name: "IsReady ReplicaSet not ready",
 			fields: fields{
 				client:        fake.NewClientset(),
-				log:           func(string, ...interface{}) {},
 				checkJobs:     true,
 				pausedAsReady: false,
 			},
@@ -714,7 +678,6 @@ func Test_ReadyChecker_IsReady_ReplicaSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ReadyChecker{
 				client:        tt.fields.client,
-				log:           tt.fields.log,
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
@@ -791,7 +754,7 @@ func Test_ReadyChecker_deploymentReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewReadyChecker(fake.NewClientset(), nil)
+			c := NewReadyChecker(fake.NewClientset())
 			if got := c.deploymentReady(tt.args.rs, tt.args.dep); got != tt.want {
 				t.Errorf("deploymentReady() = %v, want %v", got, tt.want)
 			}
@@ -825,7 +788,7 @@ func Test_ReadyChecker_replicaSetReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewReadyChecker(fake.NewClientset(), nil)
+			c := NewReadyChecker(fake.NewClientset())
 			if got := c.replicaSetReady(tt.args.rs); got != tt.want {
 				t.Errorf("replicaSetReady() = %v, want %v", got, tt.want)
 			}
@@ -859,7 +822,7 @@ func Test_ReadyChecker_replicationControllerReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewReadyChecker(fake.NewClientset(), nil)
+			c := NewReadyChecker(fake.NewClientset())
 			if got := c.replicationControllerReady(tt.args.rc); got != tt.want {
 				t.Errorf("replicationControllerReady() = %v, want %v", got, tt.want)
 			}
@@ -914,7 +877,7 @@ func Test_ReadyChecker_daemonSetReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewReadyChecker(fake.NewClientset(), nil)
+			c := NewReadyChecker(fake.NewClientset())
 			if got := c.daemonSetReady(tt.args.ds); got != tt.want {
 				t.Errorf("daemonSetReady() = %v, want %v", got, tt.want)
 			}
@@ -990,7 +953,7 @@ func Test_ReadyChecker_statefulSetReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewReadyChecker(fake.NewClientset(), nil)
+			c := NewReadyChecker(fake.NewClientset())
 			if got := c.statefulSetReady(tt.args.sts); got != tt.want {
 				t.Errorf("statefulSetReady() = %v, want %v", got, tt.want)
 			}
@@ -1049,7 +1012,7 @@ func Test_ReadyChecker_podsReadyForObject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewReadyChecker(fake.NewClientset(), nil)
+			c := NewReadyChecker(fake.NewClientset())
 			for _, pod := range tt.existPods {
 				if _, err := c.client.CoreV1().Pods(defaultNamespace).Create(context.TODO(), &pod, metav1.CreateOptions{}); err != nil {
 					t.Errorf("Failed to create Pod error: %v", err)
@@ -1128,7 +1091,7 @@ func Test_ReadyChecker_jobReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewReadyChecker(fake.NewClientset(), nil)
+			c := NewReadyChecker(fake.NewClientset())
 			got, err := c.jobReady(tt.args.job)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("jobReady() error = %v, wantErr %v", err, tt.wantErr)
@@ -1167,7 +1130,7 @@ func Test_ReadyChecker_volumeReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewReadyChecker(fake.NewClientset(), nil)
+			c := NewReadyChecker(fake.NewClientset())
 			if got := c.volumeReady(tt.args.v); got != tt.want {
 				t.Errorf("volumeReady() = %v, want %v", got, tt.want)
 			}
@@ -1212,7 +1175,7 @@ func Test_ReadyChecker_serviceReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewReadyChecker(fake.NewClientset(), nil)
+			c := NewReadyChecker(fake.NewClientset())
 			got := c.serviceReady(tt.args.service)
 			if got != tt.want {
 				t.Errorf("serviceReady() = %v, want %v", got, tt.want)
@@ -1281,7 +1244,7 @@ func Test_ReadyChecker_crdBetaReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewReadyChecker(fake.NewClientset(), nil)
+			c := NewReadyChecker(fake.NewClientset())
 			got := c.crdBetaReady(tt.args.crdBeta)
 			if got != tt.want {
 				t.Errorf("crdBetaReady() = %v, want %v", got, tt.want)
@@ -1350,7 +1313,7 @@ func Test_ReadyChecker_crdReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewReadyChecker(fake.NewClientset(), nil)
+			c := NewReadyChecker(fake.NewClientset())
 			got := c.crdReady(tt.args.crdBeta)
 			if got != tt.want {
 				t.Errorf("crdBetaReady() = %v, want %v", got, tt.want)
