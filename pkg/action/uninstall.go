@@ -127,7 +127,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 
 	deletedResources, kept, errs := u.deleteRelease(rel)
 	if errs != nil {
-		slog.Debug("uninstall: Failed to delete release", "errors", errs)
+		slog.Debug("uninstall: Failed to delete release", slog.Any("error", errs))
 		return nil, errors.Errorf("failed to delete release: %s", name)
 	}
 
