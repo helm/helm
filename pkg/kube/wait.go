@@ -153,7 +153,7 @@ func (hw *legacyWaiter) WaitForDelete(deleted ResourceList, timeout time.Duratio
 	if err != nil {
 		hw.log.Debug("wait for resources failed", "elapsed", elapsed, "error", err)
 	} else {
-		hw.log.Debug("wait for resources succeeded", "elapsed", elapsed)
+		slog.Debug("wait for resources succeeded", "elapsed", elapsed)
 	}
 
 	return err
@@ -397,7 +397,7 @@ func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.In
 		return nil
 	}
 
-	hw.log.Debug("watching for resource changes", "kind", kind, "resource", info.Name, "timeout", timeout)
+	slog.Debug("watching for resource changes", "kind", kind, "resource", info.Name, "timeout", timeout)
 
 	// Use a selector on the name of the resource. This should be unique for the
 	// given version and kind
@@ -425,7 +425,7 @@ func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.In
 			// we get. We care mostly about jobs, where what we want to see is
 			// the status go into a good state. For other types, like ReplicaSet
 			// we don't really do anything to support these as hooks.
-			hw.log.Debug("add/modify event received", "resource", info.Name, "eventType", e.Type)
+			slog.Debug("add/modify event received", "resource", info.Name, "eventType", e.Type)
 
 			switch kind {
 			case "Job":
@@ -435,11 +435,11 @@ func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.In
 			}
 			return true, nil
 		case watch.Deleted:
-			hw.log.Debug("deleted event received", "resource", info.Name)
+			slog.Debug("deleted event received", "resource", info.Name)
 			return true, nil
 		case watch.Error:
 			// Handle error and return with an error.
-			hw.log.Error("error event received", "resource", info.Name)
+			slog.Error("error event received", "resource", info.Name)
 			return true, errors.Errorf("failed to deploy %s", info.Name)
 		default:
 			return false, nil
@@ -465,7 +465,7 @@ func (hw *HelmWaiter) waitForJob(obj runtime.Object, name string) (bool, error) 
 		}
 	}
 
-	hw.log.Debug("job status update", "job", name, "active", o.Status.Active, "failed", o.Status.Failed, "succeeded", o.Status.Succeeded)
+	slog.Debug("job status update", "job", name, "active", o.Status.Active, "failed", o.Status.Failed, "succeeded", o.Status.Succeeded)
 	return false, nil
 }
 

@@ -18,8 +18,6 @@ package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
 	"errors"
-	"io"
-	"log/slog"
 	"testing"
 	"time"
 

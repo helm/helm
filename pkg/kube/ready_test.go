@@ -17,8 +17,6 @@ package kube // import "helm.sh/helm/v4/pkg/kube"
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
