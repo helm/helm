@@ -35,9 +35,6 @@ type lookupFunc = func(apiversion string, resource string, namespace string, nam
 // NewLookupFunction returns a function for looking up objects in the cluster.
 //
 // If the resource does not exist, no error is raised.
-//
-// This function is considered deprecated, and will be renamed in Helm 4. It will no
-// longer be a public function.
 func NewLookupFunction(config *rest.Config) lookupFunc {
 	return newLookupFunction(clientProviderFromConfig{config: config})
 }
