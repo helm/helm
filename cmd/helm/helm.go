@@ -17,7 +17,6 @@ limitations under the License.
 package main // import "helm.sh/helm/v4/cmd/helm"
 
 import (
-	"log"
 	"log/slog"
 	"os"
 
@@ -27,10 +26,6 @@ import (
 	helmcmd "helm.sh/helm/v4/pkg/cmd"
 	"helm.sh/helm/v4/pkg/kube"
 )
-
-func init() {
-	log.SetFlags(log.Lshortfile)
-}
 
 func main() {
 	// Setting the name of the app for managedFields in the Kubernetes client.
