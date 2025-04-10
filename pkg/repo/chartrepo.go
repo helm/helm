@@ -126,6 +126,7 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile),
 		getter.WithBasicAuth(r.Config.Username, r.Config.Password),
 		getter.WithPassCredentialsAll(r.Config.PassCredentialsAll),
+		getter.WithCompression(),
 	)
 	if err != nil {
 		return "", err
