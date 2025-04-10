@@ -32,6 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/internal/tlsutil"
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cli"
@@ -139,7 +140,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	settings.AddFlags(flags)
 	addKlogFlags(flags)
 
-	logger := cli.NewLogger(settings)
+	logger := logging.NewLogger(func() bool { return settings.Debug })
 	slog.SetDefault(logger)
 
 	// Setup shell completion for the namespace flag

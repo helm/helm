@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
+	"helm.sh/helm/v4/internal/logging"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
@@ -41,21 +41,9 @@ var verbose = flag.Bool("test.log", false, "enable test logging (debug by defaul
 func actionConfigFixture(t *testing.T) *Configuration {
 	t.Helper()
 
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	if *verbose {
-		// Create a handler that removes timestamps
-		handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-			ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
-				// Remove the time attribute
-				if a.Key == slog.TimeKey {
-					return slog.Attr{}
-				}
-				return a
-			},
-		})
-		logger = slog.New(handler)
-	}
+	logger := logging.NewLogger(func() bool {
+		return *verbose
+	})
 	slog.SetDefault(logger)
 
 	registryClient, err := registry.NewClient()
