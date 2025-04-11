@@ -50,24 +50,23 @@ import (
 // Helm 4 now uses the StatusWaiter implementation instead
 type legacyWaiter struct {
 	c          ReadyChecker
-	log        func(string, ...interface{})
 	kubeClient *kubernetes.Clientset
 }
 
 func (hw *legacyWaiter) Wait(resources ResourceList, timeout time.Duration) error {
-	hw.c = NewReadyChecker(hw.kubeClient, hw.log, PausedAsReady(true))
+	hw.c = NewReadyChecker(hw.kubeClient, PausedAsReady(true))
 	return hw.waitForResources(resources, timeout)
 }
 
 func (hw *legacyWaiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
-	hw.c = NewReadyChecker(hw.kubeClient, hw.log, PausedAsReady(true), CheckJobs(true))
+	hw.c = NewReadyChecker(hw.kubeClient, PausedAsReady(true), CheckJobs(true))
 	return hw.waitForResources(resources, timeout)
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, Services and
 // Jobs(optional) until all are ready or a timeout is reached
 func (hw *legacyWaiter) waitForResources(created ResourceList, timeout time.Duration) error {
-	hw.log("beginning wait for %d resources with timeout of %v", len(created), timeout)
+	slog.Debug("beginning wait for resources", "count", len(created), "timeout", timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -85,10 +84,10 @@ func (hw *legacyWaiter) waitForResources(created ResourceList, timeout time.Dura
 			if waitRetries > 0 && hw.isRetryableError(err, v) {
 				numberOfErrors[i]++
 				if numberOfErrors[i] > waitRetries {
-					hw.log("Max number of retries reached")
+					slog.Debug("max number of retries reached", "resource", v.Name, "retries", numberOfErrors[i])
 					return false, err
 				}
-				hw.log("Retrying as current number of retries %d less than max number of retries %d", numberOfErrors[i]-1, waitRetries)
+				slog.Debug("retrying resource readiness", "resource", v.Name, "currentRetries", numberOfErrors[i]-1, "maxRetries", waitRetries)
 				return false, nil
 			}
 			numberOfErrors[i] = 0
@@ -104,14 +103,14 @@ func (hw *legacyWaiter) isRetryableError(err error, resource *resource.Info) boo
 	if err == nil {
 		return false
 	}
-	hw.log("Error received when checking status of resource %s. Error: '%s', Resource details: '%s'", resource.Name, err, resource)
+	slog.Debug("error received when checking resource status", "resource", resource.Name, slog.Any("error", err))
 	if ev, ok := err.(*apierrors.StatusError); ok {
 		statusCode := ev.Status().Code
 		retryable := hw.isRetryableHTTPStatusCode(statusCode)
-		hw.log("Status code received: %d. Retryable error? %t", statusCode, retryable)
+		slog.Debug("status code received", "resource", resource.Name, "statusCode", statusCode, "retryable", retryable)
 		return retryable
 	}
-	hw.log("Retryable error? %t", true)
+	slog.Debug("retryable error assumed", "resource", resource.Name)
 	return true
 }
 
@@ -249,7 +248,7 @@ func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.In
 		return nil
 	}
 
-	hw.log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
+	slog.Debug("watching for resource changes", "kind", kind, "resource", info.Name, "timeout", timeout)
 
 	// Use a selector on the name of the resource. This should be unique for the
 	// given version and kind
@@ -277,7 +276,8 @@ func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.In
 			// we get. We care mostly about jobs, where what we want to see is
 			// the status go into a good state. For other types, like ReplicaSet
 			// we don't really do anything to support these as hooks.
-			hw.log("Add/Modify event for %s: %v", info.Name, e.Type)
+			slog.Debug("add/modify event received", "resource", info.Name, "eventType", e.Type)
+
 			switch kind {
 			case "Job":
 				return hw.waitForJob(obj, info.Name)
@@ -286,11 +286,11 @@ func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.In
 			}
 			return true, nil
 		case watch.Deleted:
-			hw.log("Deleted event for %s", info.Name)
+			slog.Debug("deleted event received", "resource", info.Name)
 			return true, nil
 		case watch.Error:
 			// Handle error and return with an error.
-			hw.log("Error event for %s", info.Name)
+			slog.Error("error event received", "resource", info.Name)
 			return true, errors.Errorf("failed to deploy %s", info.Name)
 		default:
 			return false, nil
@@ -312,11 +312,12 @@ func (hw *legacyWaiter) waitForJob(obj runtime.Object, name string) (bool, error
 		if c.Type == batchv1.JobComplete && c.Status == "True" {
 			return true, nil
 		} else if c.Type == batchv1.JobFailed && c.Status == "True" {
+			slog.Error("job failed", "job", name, "reason", c.Reason)
 			return true, errors.Errorf("job %s failed: %s", name, c.Reason)
 		}
 	}
 
-	hw.log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
+	slog.Debug("job status update", "job", name, "active", o.Status.Active, "failed", o.Status.Failed, "succeeded", o.Status.Succeeded)
 	return false, nil
 }
 
@@ -331,14 +332,15 @@ func (hw *legacyWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool
 
 	switch o.Status.Phase {
 	case corev1.PodSucceeded:
-		hw.log("Pod %s succeeded", o.Name)
+		slog.Debug("pod succeeded", "pod", o.Name)
 		return true, nil
 	case corev1.PodFailed:
+		slog.Error("pod failed", "pod", o.Name)
 		return true, errors.Errorf("pod %s failed", o.Name)
 	case corev1.PodPending:
-		hw.log("Pod %s pending", o.Name)
+		slog.Debug("pod pending", "pod", o.Name)
 	case corev1.PodRunning:
-		hw.log("Pod %s running", o.Name)
+		slog.Debug("pod running", "pod", o.Name)
 	}
 
 	return false, nil

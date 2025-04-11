@@ -18,6 +18,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"log/slog"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -79,7 +80,7 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 		return err
 	}
 
-	Debug("loading plugin from %s", i.Path())
+	slog.Debug("loading plugin", "path", i.Path())
 	p, err := plugin.LoadDir(i.Path())
 	if err != nil {
 		return errors.Wrap(err, "plugin is installed but unusable")

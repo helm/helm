@@ -107,7 +107,6 @@ func newTestClient(t *testing.T) *Client {
 
 	return &Client{
 		Factory: testFactory.WithNamespace("default"),
-		Log:     nopLogger,
 	}
 }
 

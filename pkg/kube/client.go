@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -73,7 +74,6 @@ type Client struct {
 	// needs. The smaller surface area of the interface means there is a lower
 	// chance of it changing.
 	Factory Factory
-	Log     func(string, ...interface{})
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
 
@@ -120,7 +120,6 @@ func (c *Client) newStatusWatcher() (*statusWaiter, error) {
 	return &statusWaiter{
 		restMapper: restMapper,
 		client:     dynamicClient,
-		log:        c.Log,
 	}, nil
 }
 
@@ -131,7 +130,7 @@ func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &legacyWaiter{kubeClient: kc, log: c.Log}, nil
+		return &legacyWaiter{kubeClient: kc}, nil
 	case StatusWatcherStrategy:
 		return c.newStatusWatcher()
 	case HookOnlyStrategy:
@@ -162,12 +161,9 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 	factory := cmdutil.NewFactory(getter)
 	c := &Client{
 		Factory: factory,
-		Log:     nopLogger,
 	}
 	return c
 }
-
-var nopLogger = func(_ string, _ ...interface{}) {}
 
 // getKubeClient get or create a new KubernetesClientSet
 func (c *Client) getKubeClient() (kubernetes.Interface, error) {
@@ -198,7 +194,7 @@ func (c *Client) IsReachable() error {
 
 // Create creates Kubernetes resources specified in the resource list.
 func (c *Client) Create(resources ResourceList) (*Result, error) {
-	c.Log("creating %d resource(s)", len(resources))
+	slog.Debug("creating resource(s)", "resources", len(resources))
 	if err := perform(resources, createResource); err != nil {
 		return nil, err
 	}
@@ -250,7 +246,7 @@ func (c *Client) Get(resources ResourceList, related bool) (map[string][]runtime
 
 				objs, err = c.getSelectRelationPod(info, objs, isTable, &podSelectors)
 				if err != nil {
-					c.Log("Warning: get the relation pod is failed, err:%s", err.Error())
+					slog.Warn("get the relation pod is failed", slog.Any("error", err))
 				}
 			}
 		}
@@ -268,7 +264,7 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objs map[string][]run
 	if info == nil {
 		return objs, nil
 	}
-	c.Log("get relation pod of object: %s/%s/%s", info.Namespace, info.Mapping.GroupVersionKind.Kind, info.Name)
+	slog.Debug("get relation pod of object", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 	selector, ok, _ := getSelectorFromObject(info.Object)
 	if !ok {
 		return objs, nil
@@ -410,7 +406,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	updateErrors := []string{}
 	res := &Result{}
 
-	c.Log("checking %d resources for changes", len(target))
+	slog.Debug("checking resources for changes", "resources", len(target))
 	err := target.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
@@ -431,7 +427,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			}
 
 			kind := info.Mapping.GroupVersionKind.Kind
-			c.Log("Created a new %s called %q in %s\n", kind, info.Name, info.Namespace)
+			slog.Debug("created a new resource", "namespace", info.Namespace, "name", info.Name, "kind", kind)
 			return nil
 		}
 
@@ -442,7 +438,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
-			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
+			slog.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			updateErrors = append(updateErrors, err.Error())
 		}
 		// Because we check for errors later, append the info regardless
@@ -459,22 +455,22 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	}
 
 	for _, info := range original.Difference(target) {
-		c.Log("Deleting %s %q in namespace %s...", info.Mapping.GroupVersionKind.Kind, info.Name, info.Namespace)
+		slog.Debug("deleting resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 
 		if err := info.Get(); err != nil {
-			c.Log("Unable to get obj %q, err: %s", info.Name, err)
+			slog.Debug("unable to get object", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			continue
 		}
 		annotations, err := metadataAccessor.Annotations(info.Object)
 		if err != nil {
-			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
+			slog.Debug("unable to get annotations", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 		}
 		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
-			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
+			slog.Debug("skipping delete due to annotation", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "annotation", ResourcePolicyAnno, "value", KeepPolicy)
 			continue
 		}
 		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
-			c.Log("Failed to delete %q, err: %s", info.ObjectName(), err)
+			slog.Debug("failed to delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			continue
 		}
 		res.Deleted = append(res.Deleted, info)
@@ -498,16 +494,16 @@ func (c *Client) DeleteWithPropagationPolicy(resources ResourceList, policy meta
 	return rdelete(c, resources, policy)
 }
 
-func rdelete(c *Client, resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
+func rdelete(_ *Client, resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
-		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
+		slog.Debug("starting delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 		err := deleteResource(info, propagation)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
-				c.Log("Ignoring delete failure for %q %s: %v", info.Name, info.Mapping.GroupVersionKind, err)
+				slog.Debug("ignoring delete failure", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			}
 			mtx.Lock()
 			defer mtx.Unlock()
@@ -641,7 +637,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	return patch, types.StrategicMergePatchType, err
 }
 
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
+func updateResource(_ *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
 	var (
 		obj    runtime.Object
 		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
@@ -655,7 +651,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		if err != nil {
 			return errors.Wrap(err, "failed to replace object")
 		}
-		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
+		slog.Debug("replace succeeded", "name", target.Name, "initialKind", currentObj.GetObjectKind().GroupVersionKind().Kind, "kind", kind)
 	} else {
 		patch, patchType, err := createPatch(target, currentObj)
 		if err != nil {
@@ -663,7 +659,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 
 		if patch == nil || string(patch) == "{}" {
-			c.Log("Looks like there are no changes for %s %q", kind, target.Name)
+			slog.Debug("no changes detected", "kind", kind, "name", target.Name)
 			// This needs to happen to make sure that Helm has the latest info from the API
 			// Otherwise there will be no labels and other functions that use labels will panic
 			if err := target.Get(); err != nil {
@@ -672,7 +668,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 			return nil
 		}
 		// send patch to server
-		c.Log("Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
+		slog.Debug("patching resource", "kind", kind, "name", target.Name, "namespace", target.Namespace)
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
 			return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
@@ -718,9 +714,6 @@ func copyRequestStreamToWriter(request *rest.Request, podName, containerName str
 	_, err = io.Copy(writer, readCloser)
 	if err != nil {
 		return errors.Errorf("Failed to copy IO from logs for pod: %s, container: %s", podName, containerName)
-	}
-	if err != nil {
-		return errors.Errorf("Failed to close reader for pod: %s, container: %s", podName, containerName)
 	}
 	return nil
 }

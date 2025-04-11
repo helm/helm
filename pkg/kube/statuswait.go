@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"time"
 
@@ -42,7 +43,6 @@ import (
 type statusWaiter struct {
 	client     dynamic.Interface
 	restMapper meta.RESTMapper
-	log        func(string, ...interface{})
 }
 
 func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
@@ -55,7 +55,7 @@ func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
 func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	w.log("waiting for %d pods and jobs to complete with a timeout of %s", len(resourceList), timeout)
+	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	jobSR := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	podSR := helmStatusReaders.NewCustomPodStatusReader(w.restMapper)
@@ -76,7 +76,7 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
-	w.log("beginning wait for %d resources with timeout of %s", len(resourceList), timeout)
+	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	return w.wait(ctx, resourceList, sw)
 }
@@ -84,7 +84,7 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
-	w.log("beginning wait for %d resources with timeout of %s", len(resourceList), timeout)
+	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	customSR := statusreaders.NewStatusReader(w.restMapper, newCustomJobStatusReader)
@@ -95,7 +95,7 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 func (w *statusWaiter) WaitForDelete(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
-	w.log("beginning wait for %d resources to be deleted with timeout of %s", len(resourceList), timeout)
+	slog.Debug("waiting for resources to be deleted", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	return w.waitForDelete(ctx, resourceList, sw)
 }
@@ -113,7 +113,7 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 	}
 	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus, w.log))
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -156,7 +156,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 
 	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus, w.log))
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -179,7 +179,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 	return nil
 }
 
-func statusObserver(cancel context.CancelFunc, desired status.Status, logFn func(string, ...interface{})) collector.ObserverFunc {
+func statusObserver(cancel context.CancelFunc, desired status.Status) collector.ObserverFunc {
 	return func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
 		var rss []*event.ResourceStatus
 		var nonDesiredResources []*event.ResourceStatus
@@ -209,8 +209,7 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logFn func
 				return nonDesiredResources[i].Identifier.Name < nonDesiredResources[j].Identifier.Name
 			})
 			first := nonDesiredResources[0]
-			logFn("waiting for resource: name: %s, kind: %s, desired status: %s, actual status: %s \n",
-				first.Identifier.Name, first.Identifier.GroupKind.Kind, desired, first.Status)
+			slog.Debug("waiting for resource", "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", desired, "actualStatus", first.Status)
 		}
 	}
 }

@@ -217,7 +217,6 @@ func TestStatusWaitForDelete(t *testing.T) {
 			statusWaiter := statusWaiter{
 				restMapper: fakeMapper,
 				client:     fakeClient,
-				log:        t.Logf,
 			}
 			objsToCreate := getRuntimeObjFromManifests(t, tt.manifestsToCreate)
 			for _, objToCreate := range objsToCreate {
@@ -258,7 +257,6 @@ func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 	statusWaiter := statusWaiter{
 		restMapper: fakeMapper,
 		client:     fakeClient,
-		log:        t.Logf,
 	}
 	// Don't create the object to test that the wait for delete works when the object doesn't exist
 	objManifest := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
@@ -317,7 +315,6 @@ func TestStatusWait(t *testing.T) {
 			statusWaiter := statusWaiter{
 				client:     fakeClient,
 				restMapper: fakeMapper,
-				log:        t.Logf,
 			}
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
@@ -371,7 +368,6 @@ func TestWaitForJobComplete(t *testing.T) {
 			statusWaiter := statusWaiter{
 				client:     fakeClient,
 				restMapper: fakeMapper,
-				log:        t.Logf,
 			}
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
@@ -431,7 +427,6 @@ func TestWatchForReady(t *testing.T) {
 			statusWaiter := statusWaiter{
 				client:     fakeClient,
 				restMapper: fakeMapper,
-				log:        t.Logf,
 			}
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
