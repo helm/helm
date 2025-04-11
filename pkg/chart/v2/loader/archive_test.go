@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"os"
 	"testing"
 )
 
@@ -86,5 +87,48 @@ func TestLoadArchiveFiles(t *testing.T) {
 			files, err := LoadArchiveFiles(buf)
 			tc.check(t, files, err)
 		})
+	}
+}
+
+func TestEnvVarOverrides(t *testing.T) {
+	originalChartSize := MaxDecompressedChartSize
+	originalFileSize := MaxDecompressedFileSize
+
+	originalChartEnv, chartEnvExists := os.LookupEnv("HELM_MAX_DECOMPRESSED_CHART_SIZE")
+	originalFileEnv, fileEnvExists := os.LookupEnv("HELM_MAX_DECOMPRESSED_FILE_SIZE")
+
+	// Restore everything when test completes
+	defer func() {
+		MaxDecompressedChartSize = originalChartSize
+		MaxDecompressedFileSize = originalFileSize
+
+		if chartEnvExists {
+			os.Setenv("HELM_MAX_DECOMPRESSED_CHART_SIZE", originalChartEnv)
+		} else {
+			os.Unsetenv("HELM_MAX_DECOMPRESSED_CHART_SIZE")
+		}
+
+		if fileEnvExists {
+			os.Setenv("HELM_MAX_DECOMPRESSED_FILE_SIZE", originalFileEnv)
+		} else {
+			os.Unsetenv("HELM_MAX_DECOMPRESSED_FILE_SIZE")
+		}
+	}()
+
+	os.Setenv("HELM_MAX_DECOMPRESSED_CHART_SIZE", "50000000") // ~50MB
+	os.Setenv("HELM_MAX_DECOMPRESSED_FILE_SIZE", "3000000")   // ~3MB
+
+	// Reset to default values before testing
+	MaxDecompressedChartSize = 100 * 1024 * 1024
+	MaxDecompressedFileSize = 5 * 1024 * 1024
+
+	parseEnvSettings()
+
+	if MaxDecompressedChartSize != 50000000 {
+		t.Errorf("Expected MaxDecompressedChartSize = 50000000, got %d", MaxDecompressedChartSize)
+	}
+
+	if MaxDecompressedFileSize != 3000000 {
+		t.Errorf("Expected MaxDecompressedFileSize = 3000000, got %d", MaxDecompressedFileSize)
 	}
 }
