@@ -19,6 +19,7 @@ package kube
 import (
 	"bytes"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"testing"
@@ -320,6 +321,99 @@ func TestUpdate(t *testing.T) {
 		"/namespaces/default/pods/squid:GET",
 		"/namespaces/default/pods/squid:DELETE",
 	}
+	if len(expectedActions) != len(actions) {
+		t.Fatalf("unexpected number of requests, expected %d, got %d", len(expectedActions), len(actions))
+	}
+	for k, v := range expectedActions {
+		if actions[k] != v {
+			t.Errorf("expected %s request got %s", v, actions[k])
+		}
+	}
+}
+
+func TestUpdateWithNewPod(t *testing.T) {
+	listA := newPodList("starfish", "otter")
+	listB := newPodList("starfish", "otter", "dolphin")
+	listA.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "http", ContainerPort: 80}}
+	listB.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+
+	var actions []string
+	var iterationCounter int
+
+	c := newTestClient(t)
+	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			actions = append(actions, p+":"+m)
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/starfish" && m == "GET":
+				return newResponse(200, &listA.Items[0])
+			case p == "/namespaces/default/pods/starfish" && m == "PATCH":
+				data, err := io.ReadAll(req.Body)
+				if err != nil {
+					t.Fatalf("could not dump request: %s", err)
+				}
+				req.Body.Close()
+				expected := `{"spec":{"$setElementOrder/containers":[{"name":"app:v4"}],"containers":[{"$setElementOrder/ports":[{"containerPort":443}],"name":"app:v4","ports":[{"containerPort":443,"name":"https"},{"$patch":"delete","containerPort":80}]}]}}`
+				if string(data) != expected {
+					t.Errorf("expected patch\n%s\ngot\n%s", expected, string(data))
+				}
+				return newResponse(200, &listB.Items[0])
+			case p == "/namespaces/default/pods/otter" && m == "GET":
+				return newResponse(200, &listA.Items[1])
+			case p == "/namespaces/default/pods/dolphin" && m == "GET":
+				return newResponse(404, notFoundBody())
+			case p == "/namespaces/default/pods" && m == "POST":
+				if iterationCounter < 2 {
+					iterationCounter++
+					return newResponseJSON(409, resourceQuotaConflict)
+				}
+				return newResponse(200, &listB.Items[2])
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+
+	first, err := c.Build(objBody(&listA), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := c.Build(objBody(&listB), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := c.Update(first, second, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(result.Created) != 1 {
+		t.Errorf("expected 1 resource created, got %d", len(result.Created))
+	}
+	if len(result.Updated) != 2 {
+		t.Errorf("expected 2 resources updated, got %d", len(result.Updated))
+	}
+
+	expectedActions := []string{
+		"/namespaces/default/pods/starfish:GET",
+		"/namespaces/default/pods/starfish:GET",
+		"/namespaces/default/pods/starfish:PATCH", // Update "starfish" to match listB
+		"/namespaces/default/pods/starfish:GET",
+		"/namespaces/default/pods/otter:GET",
+		"/namespaces/default/pods/otter:GET",
+		"/namespaces/default/pods/otter:GET",
+		"/namespaces/default/pods/otter:GET",
+		"/namespaces/default/pods/dolphin:GET",
+		"/namespaces/default/pods:POST",
+		"/namespaces/default/pods:POST",
+		"/namespaces/default/pods:POST",
+	}
+	log.Println(actions)
 	if len(expectedActions) != len(actions) {
 		t.Fatalf("unexpected number of requests, expected %d, got %d", len(expectedActions), len(actions))
 	}
