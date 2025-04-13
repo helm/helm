@@ -240,6 +240,7 @@ func (c *ReadyChecker) jobReady(job *batchv1.Job) (bool, error) {
 		slog.Debug("Job is not completed", "namespace", job.GetNamespace(), "name", job.GetName())
 		return false, nil
 	}
+	slog.Debug("Job is completed", "namespace", job.GetNamespace(), "name", job.GetName())
 	return true, nil
 }
 
@@ -268,7 +269,7 @@ func (c *ReadyChecker) serviceReady(s *corev1.Service) bool {
 			return false
 		}
 	}
-
+	slog.Debug("Service is ready", "namespace", s.GetNamespace(), "name", s.GetName(), "clusterIP", s.Spec.ClusterIP, "externalIPs", s.Spec.ExternalIPs)
 	return true
 }
 
@@ -277,6 +278,7 @@ func (c *ReadyChecker) volumeReady(v *corev1.PersistentVolumeClaim) bool {
 		slog.Debug("PersistentVolumeClaim is not bound", "namespace", v.GetNamespace(), "name", v.GetName())
 		return false
 	}
+	slog.Debug("PersistentVolumeClaim is bound", "namespace", v.GetNamespace(), "name", v.GetName(), "phase", v.Status.Phase)
 	return true
 }
 
@@ -296,6 +298,7 @@ func (c *ReadyChecker) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deploy
 		slog.Debug("Deployment does not have enough pods ready", "namespace", dep.GetNamespace(), "name", dep.GetName(), "readyPods", rs.Status.ReadyReplicas, "totalPods", expectedReady)
 		return false
 	}
+	slog.Debug("Deployment is ready", "namespace", dep.GetNamespace(), "name", dep.GetName(), "readyPods", rs.Status.ReadyReplicas, "totalPods", expectedReady)
 	return true
 }
 
@@ -329,6 +332,7 @@ func (c *ReadyChecker) daemonSetReady(ds *appsv1.DaemonSet) bool {
 		slog.Debug("DaemonSet does not have enough Pods ready", "namespace", ds.GetNamespace(), "name", ds.GetName(), "readyPods", ds.Status.NumberReady, "totalPods", expectedReady)
 		return false
 	}
+	slog.Debug("DaemonSet is ready", "namespace", ds.GetNamespace(), "name", ds.GetName(), "readyPods", ds.Status.NumberReady, "totalPods", expectedReady)
 	return true
 }
 
@@ -425,7 +429,6 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 		slog.Debug("StatefulSet is not ready, currentRevision does not match updateRevision", "namespace", sts.GetNamespace(), "name", sts.GetName(), "currentRevision", sts.Status.CurrentRevision, "updateRevision", sts.Status.UpdateRevision)
 		return false
 	}
-
 	slog.Debug("StatefulSet is ready", "namespace", sts.GetNamespace(), "name", sts.GetName(), "readyPods", sts.Status.ReadyReplicas, "totalPods", replicas)
 	return true
 }
