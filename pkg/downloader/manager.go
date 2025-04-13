@@ -36,9 +36,9 @@ import (
 	"helm.sh/helm/v4/internal/resolver"
 	"helm.sh/helm/v4/internal/third_party/dep/fs"
 	"helm.sh/helm/v4/internal/urlutil"
-	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chart/loader"
-	"helm.sh/helm/v4/pkg/chartutil"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/registry"
@@ -659,10 +659,28 @@ func (m *Manager) UpdateRepositories() error {
 	return nil
 }
 
+// Filter out duplicate repos by URL, including those with trailing slashes.
+func dedupeRepos(repos []*repo.Entry) []*repo.Entry {
+	seen := make(map[string]*repo.Entry)
+	for _, r := range repos {
+		// Normalize URL by removing trailing slashes.
+		seenURL := strings.TrimSuffix(r.URL, "/")
+		seen[seenURL] = r
+	}
+	var unique []*repo.Entry
+	for _, r := range seen {
+		unique = append(unique, r)
+	}
+	return unique
+}
+
 func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 
 	var wg sync.WaitGroup
-	for _, c := range repos {
+
+	localRepos := dedupeRepos(repos)
+
+	for _, c := range localRepos {
 		r, err := repo.NewChartRepository(c, m.Getters)
 		if err != nil {
 			return err
@@ -742,7 +760,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			return
 		}
 	}
-	url, err = repo.FindChartInRepoURL(repoURL, name, version, certFile, keyFile, caFile, m.Getters)
+	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
 	if err == nil {
 		return url, username, password, false, false, "", "", "", err
 	}

@@ -24,7 +24,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"helm.sh/helm/v4/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
@@ -117,7 +117,16 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	}
 
 	if p.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(p.RepoURL, p.Username, p.Password, chartRef, p.Version, p.CertFile, p.KeyFile, p.CaFile, p.InsecureSkipTLSverify, p.PassCredentialsAll, getter.All(p.Settings))
+		chartURL, err := repo.FindChartInRepoURL(
+			p.RepoURL,
+			chartRef,
+			getter.All(p.Settings),
+			repo.WithChartVersion(p.Version),
+			repo.WithClientTLS(p.CertFile, p.KeyFile, p.CaFile),
+			repo.WithUsernamePassword(p.Username, p.Password),
+			repo.WithInsecureSkipTLSverify(p.InsecureSkipTLSverify),
+			repo.WithPassCredentialsAll(p.PassCredentialsAll),
+		)
 		if err != nil {
 			return out.String(), err
 		}

@@ -30,7 +30,7 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v4/pkg/chart"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 )
@@ -297,7 +297,12 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	chartURL, err := FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "", "", "", "", true, false, getter.All(&cli.EnvSettings{}))
+	chartURL, err := FindChartInRepoURL(
+		srv.URL,
+		"nginx",
+		getter.All(&cli.EnvSettings{}),
+		WithInsecureSkipTLSverify(true),
+	)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -306,7 +311,7 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 	}
 
 	// If the insecureSkipTLSVerify is false, it will return an error that contains "x509: certificate signed by unknown authority".
-	_, err = FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "0.1.0", "", "", "", false, false, getter.All(&cli.EnvSettings{}))
+	_, err = FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{}), WithChartVersion("0.1.0"))
 	// Go communicates with the platform and different platforms return different messages. Go itself tests darwin
 	// differently for its message. On newer versions of Darwin the message includes the "Acme Co" portion while older
 	// versions of Darwin do not. As there are people developing Helm using both old and new versions of Darwin we test
@@ -327,7 +332,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	chartURL, err := FindChartInRepoURL(srv.URL, "nginx", "", "", "", "", getter.All(&cli.EnvSettings{}))
+	chartURL, err := FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{}))
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -335,7 +340,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 		t.Errorf("%s is not the valid URL", chartURL)
 	}
 
-	chartURL, err = FindChartInRepoURL(srv.URL, "nginx", "0.1.0", "", "", "", getter.All(&cli.EnvSettings{}))
+	chartURL, err = FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{}), WithChartVersion("0.1.0"))
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -350,7 +355,7 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 		RepositoryCache: t.TempDir(),
 	})
 
-	if _, err := FindChartInRepoURL("http://someserver/something", "nginx", "", "", "", "", g); err == nil {
+	if _, err := FindChartInRepoURL("http://someserver/something", "nginx", g); err == nil {
 		t.Errorf("Expected error for bad chart URL, but did not get any errors")
 	} else if !strings.Contains(err.Error(), `looks like "http://someserver/something" is not a valid chart repository or cannot be reached`) {
 		t.Errorf("Expected error for bad chart URL, but got a different error (%v)", err)
@@ -362,19 +367,19 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	if _, err = FindChartInRepoURL(srv.URL, "nginx1", "", "", "", "", g); err == nil {
+	if _, err = FindChartInRepoURL(srv.URL, "nginx1", g); err == nil {
 		t.Errorf("Expected error for chart not found, but did not get any errors")
 	} else if err.Error() != `chart "nginx1" not found in `+srv.URL+` repository` {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
 	}
 
-	if _, err = FindChartInRepoURL(srv.URL, "nginx1", "0.1.0", "", "", "", g); err == nil {
+	if _, err = FindChartInRepoURL(srv.URL, "nginx1", g, WithChartVersion("0.1.0")); err == nil {
 		t.Errorf("Expected error for chart not found, but did not get any errors")
 	} else if err.Error() != `chart "nginx1" version "0.1.0" not found in `+srv.URL+` repository` {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
 	}
 
-	if _, err = FindChartInRepoURL(srv.URL, "chartWithNoURL", "", "", "", "", g); err == nil {
+	if _, err = FindChartInRepoURL(srv.URL, "chartWithNoURL", g); err == nil {
 		t.Errorf("Expected error for no chart URLs available, but did not get any errors")
 	} else if err.Error() != `chart "chartWithNoURL" has no downloadable URLs` {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)

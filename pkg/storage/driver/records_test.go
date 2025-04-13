@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	rspb "helm.sh/helm/v4/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func TestRecordsAdd(t *testing.T) {

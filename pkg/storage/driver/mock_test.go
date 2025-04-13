@@ -31,7 +31,7 @@ import (
 	kblabels "k8s.io/apimachinery/pkg/labels"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
-	rspb "helm.sh/helm/v4/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func releaseStub(name string, vers int, namespace string, status rspb.Status) *rspb.Release {
@@ -166,7 +166,7 @@ func (mock *MockConfigMapsInterface) Delete(_ context.Context, name string, _ me
 	return nil
 }
 
-// newTestFixture initializes a MockSecretsInterface.
+// newTestFixtureSecrets initializes a MockSecretsInterface.
 // Secrets are created for each release provided.
 func newTestFixtureSecrets(t *testing.T, releases ...*rspb.Release) *Secrets {
 	var mock MockSecretsInterface
@@ -262,7 +262,6 @@ func newTestFixtureSQL(t *testing.T, _ ...*rspb.Release) (*SQL, sqlmock.Sqlmock)
 	sqlxDB := sqlx.NewDb(sqlDB, "sqlmock")
 	return &SQL{
 		db:               sqlxDB,
-		Log:              func(_ string, _ ...interface{}) {},
 		namespace:        "default",
 		statementBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}, mock

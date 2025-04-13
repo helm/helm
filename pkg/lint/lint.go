@@ -19,7 +19,7 @@ package lint // import "helm.sh/helm/v4/pkg/lint"
 import (
 	"path/filepath"
 
-	"helm.sh/helm/v4/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/lint/rules"
 	"helm.sh/helm/v4/pkg/lint/support"
 )

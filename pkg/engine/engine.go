@@ -18,7 +18,7 @@ package engine
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -29,8 +29,8 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
 
-	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chartutil"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
 // Engine is an implementation of the Helm rendering implementation for templates.
@@ -203,7 +203,7 @@ func (e Engine) initFunMap(t *template.Template) {
 		if val == nil {
 			if e.LintMode {
 				// Don't fail on missing required values when linting
-				log.Printf("[INFO] Missing required value: %s", warn)
+				slog.Warn("missing required value", "message", warn)
 				return "", nil
 			}
 			return val, errors.New(warnWrap(warn))
@@ -211,7 +211,7 @@ func (e Engine) initFunMap(t *template.Template) {
 			if val == "" {
 				if e.LintMode {
 					// Don't fail on missing required values when linting
-					log.Printf("[INFO] Missing required value: %s", warn)
+					slog.Warn("missing required values", "message", warn)
 					return "", nil
 				}
 				return val, errors.New(warnWrap(warn))
@@ -224,7 +224,7 @@ func (e Engine) initFunMap(t *template.Template) {
 	funcMap["fail"] = func(msg string) (string, error) {
 		if e.LintMode {
 			// Don't fail when linting
-			log.Printf("[INFO] Fail: %s", msg)
+			slog.Info("funcMap fail", "message", msg)
 			return "", nil
 		}
 		return "", errors.New(warnWrap(msg))

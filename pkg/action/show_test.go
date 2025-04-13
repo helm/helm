@@ -19,7 +19,7 @@ package action
 import (
 	"testing"
 
-	"helm.sh/helm/v4/pkg/chart"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
 func TestShow(t *testing.T) {

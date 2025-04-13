@@ -21,7 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	rspb "helm.sh/helm/v4/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
 var (

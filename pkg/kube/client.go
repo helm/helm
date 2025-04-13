@@ -22,39 +22,34 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
-	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
-	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
-	multierror "github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	cachetools "k8s.io/client-go/tools/cache"
-	watchtools "k8s.io/client-go/tools/watch"
 	"k8s.io/client-go/util/retry"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
@@ -79,12 +74,20 @@ type Client struct {
 	// needs. The smaller surface area of the interface means there is a lower
 	// chance of it changing.
 	Factory Factory
-	Log     func(string, ...interface{})
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
 
-	kubeClient *kubernetes.Clientset
+	Waiter
+	kubeClient kubernetes.Interface
 }
+
+type WaitStrategy string
+
+const (
+	StatusWatcherStrategy WaitStrategy = "watcher"
+	LegacyStrategy        WaitStrategy = "legacy"
+	HookOnlyStrategy      WaitStrategy = "hookOnly"
+)
 
 func init() {
 	// Add CRDs to the scheme. They are missing by default.
@@ -97,21 +100,73 @@ func init() {
 	}
 }
 
+func (c *Client) newStatusWatcher() (*statusWaiter, error) {
+	cfg, err := c.Factory.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+	dynamicClient, err := c.Factory.DynamicClient()
+	if err != nil {
+		return nil, err
+	}
+	httpClient, err := rest.HTTPClientFor(cfg)
+	if err != nil {
+		return nil, err
+	}
+	restMapper, err := apiutil.NewDynamicRESTMapper(cfg, httpClient)
+	if err != nil {
+		return nil, err
+	}
+	return &statusWaiter{
+		restMapper: restMapper,
+		client:     dynamicClient,
+	}, nil
+}
+
+func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
+	switch strategy {
+	case LegacyStrategy:
+		kc, err := c.Factory.KubernetesClientSet()
+		if err != nil {
+			return nil, err
+		}
+		return &legacyWaiter{kubeClient: kc}, nil
+	case StatusWatcherStrategy:
+		return c.newStatusWatcher()
+	case HookOnlyStrategy:
+		sw, err := c.newStatusWatcher()
+		if err != nil {
+			return nil, err
+		}
+		return &hookOnlyWaiter{sw: sw}, nil
+	default:
+		return nil, errors.New("unknown wait strategy")
+	}
+}
+
+func (c *Client) SetWaiter(ws WaitStrategy) error {
+	var err error
+	c.Waiter, err = c.GetWaiter(ws)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // New creates a new Client.
 func New(getter genericclioptions.RESTClientGetter) *Client {
 	if getter == nil {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
-	return &Client{
-		Factory: cmdutil.NewFactory(getter),
-		Log:     nopLogger,
+	factory := cmdutil.NewFactory(getter)
+	c := &Client{
+		Factory: factory,
 	}
+	return c
 }
 
-var nopLogger = func(_ string, _ ...interface{}) {}
-
 // getKubeClient get or create a new KubernetesClientSet
-func (c *Client) getKubeClient() (*kubernetes.Clientset, error) {
+func (c *Client) getKubeClient() (kubernetes.Interface, error) {
 	var err error
 	if c.kubeClient == nil {
 		c.kubeClient, err = c.Factory.KubernetesClientSet()
@@ -131,7 +186,7 @@ func (c *Client) IsReachable() error {
 	if err != nil {
 		return errors.Wrap(err, "Kubernetes cluster unreachable")
 	}
-	if _, err := client.ServerVersion(); err != nil {
+	if _, err := client.Discovery().ServerVersion(); err != nil {
 		return errors.Wrap(err, "Kubernetes cluster unreachable")
 	}
 	return nil
@@ -139,7 +194,7 @@ func (c *Client) IsReachable() error {
 
 // Create creates Kubernetes resources specified in the resource list.
 func (c *Client) Create(resources ResourceList) (*Result, error) {
-	c.Log("creating %d resource(s)", len(resources))
+	slog.Debug("creating resource(s)", "resources", len(resources))
 	if err := perform(resources, createResource); err != nil {
 		return nil, err
 	}
@@ -191,7 +246,7 @@ func (c *Client) Get(resources ResourceList, related bool) (map[string][]runtime
 
 				objs, err = c.getSelectRelationPod(info, objs, isTable, &podSelectors)
 				if err != nil {
-					c.Log("Warning: get the relation pod is failed, err:%s", err.Error())
+					slog.Warn("get the relation pod is failed", slog.Any("error", err))
 				}
 			}
 		}
@@ -209,7 +264,7 @@ func (c *Client) getSelectRelationPod(info *resource.Info, objs map[string][]run
 	if info == nil {
 		return objs, nil
 	}
-	c.Log("get relation pod of object: %s/%s/%s", info.Namespace, info.Mapping.GroupVersionKind.Kind, info.Name)
+	slog.Debug("get relation pod of object", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 	selector, ok, _ := getSelectorFromObject(info.Object)
 	if !ok {
 		return objs, nil
@@ -279,45 +334,6 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 		return nil, err
 	}
 	return obj, nil
-}
-
-// Wait waits up to the given timeout for the specified resources to be ready.
-func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
-	cs, err := c.getKubeClient()
-	if err != nil {
-		return err
-	}
-	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true))
-	w := waiter{
-		c:       checker,
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForResources(resources)
-}
-
-// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
-func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
-	cs, err := c.getKubeClient()
-	if err != nil {
-		return err
-	}
-	checker := NewReadyChecker(cs, c.Log, PausedAsReady(true), CheckJobs(true))
-	w := waiter{
-		c:       checker,
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForResources(resources)
-}
-
-// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
-func (c *Client) WaitForDelete(resources ResourceList, timeout time.Duration) error {
-	w := waiter{
-		log:     c.Log,
-		timeout: timeout,
-	}
-	return w.waitForDeletedResources(resources)
 }
 
 func (c *Client) namespace() string {
@@ -390,7 +406,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	updateErrors := []string{}
 	res := &Result{}
 
-	c.Log("checking %d resources for changes", len(target))
+	slog.Debug("checking resources for changes", "resources", len(target))
 	err := target.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
@@ -411,7 +427,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			}
 
 			kind := info.Mapping.GroupVersionKind.Kind
-			c.Log("Created a new %s called %q in %s\n", kind, info.Name, info.Namespace)
+			slog.Debug("created a new resource", "namespace", info.Namespace, "name", info.Name, "kind", kind)
 			return nil
 		}
 
@@ -422,7 +438,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
-			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
+			slog.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			updateErrors = append(updateErrors, err.Error())
 		}
 		// Because we check for errors later, append the info regardless
@@ -439,22 +455,22 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	}
 
 	for _, info := range original.Difference(target) {
-		c.Log("Deleting %s %q in namespace %s...", info.Mapping.GroupVersionKind.Kind, info.Name, info.Namespace)
+		slog.Debug("deleting resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 
 		if err := info.Get(); err != nil {
-			c.Log("Unable to get obj %q, err: %s", info.Name, err)
+			slog.Debug("unable to get object", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			continue
 		}
 		annotations, err := metadataAccessor.Annotations(info.Object)
 		if err != nil {
-			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
+			slog.Debug("unable to get annotations", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 		}
 		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
-			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
+			slog.Debug("skipping delete due to annotation", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "annotation", ResourcePolicyAnno, "value", KeepPolicy)
 			continue
 		}
 		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
-			c.Log("Failed to delete %q, err: %s", info.ObjectName(), err)
+			slog.Debug("failed to delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			continue
 		}
 		res.Deleted = append(res.Deleted, info)
@@ -478,16 +494,16 @@ func (c *Client) DeleteWithPropagationPolicy(resources ResourceList, policy meta
 	return rdelete(c, resources, policy)
 }
 
-func rdelete(c *Client, resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
+func rdelete(_ *Client, resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
-		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
+		slog.Debug("starting delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 		err := deleteResource(info, propagation)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
-				c.Log("Ignoring delete failure for %q %s: %v", info.Name, info.Mapping.GroupVersionKind, err)
+				slog.Debug("ignoring delete failure", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			}
 			mtx.Lock()
 			defer mtx.Unlock()
@@ -510,52 +526,6 @@ func rdelete(c *Client, resources ResourceList, propagation metav1.DeletionPropa
 		return nil, errs
 	}
 	return res, nil
-}
-
-func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
-	return func(info *resource.Info) error {
-		return c.watchUntilReady(t, info)
-	}
-}
-
-// WatchUntilReady watches the resources given and waits until it is ready.
-//
-// This method is mainly for hook implementations. It watches for a resource to
-// hit a particular milestone. The milestone depends on the Kind.
-//
-// For most kinds, it checks to see if the resource is marked as Added or Modified
-// by the Kubernetes event stream. For some kinds, it does more:
-//
-//   - Jobs: A job is marked "Ready" when it has successfully completed. This is
-//     ascertained by watching the Status fields in a job's output.
-//   - Pods: A pod is marked "Ready" when it has successfully completed. This is
-//     ascertained by watching the status.phase field in a pod's output.
-//
-// Handling for other kinds will be added as necessary.
-func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
-	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
-	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
-	return perform(resources, c.watchTimeout(timeout))
-}
-
-func perform(infos ResourceList, fn func(*resource.Info) error) error {
-	var result error
-
-	if len(infos) == 0 {
-		return ErrNoObjectsVisited
-	}
-
-	errs := make(chan error)
-	go batchPerform(infos, fn, errs)
-
-	for range infos {
-		err := <-errs
-		if err != nil {
-			result = multierror.Append(result, err)
-		}
-	}
-
-	return result
 }
 
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.
@@ -667,7 +637,7 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 	return patch, types.StrategicMergePatchType, err
 }
 
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
+func updateResource(_ *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
 	var (
 		obj    runtime.Object
 		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
@@ -681,7 +651,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		if err != nil {
 			return errors.Wrap(err, "failed to replace object")
 		}
-		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
+		slog.Debug("replace succeeded", "name", target.Name, "initialKind", currentObj.GetObjectKind().GroupVersionKind().Kind, "kind", kind)
 	} else {
 		patch, patchType, err := createPatch(target, currentObj)
 		if err != nil {
@@ -689,7 +659,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 
 		if patch == nil || string(patch) == "{}" {
-			c.Log("Looks like there are no changes for %s %q", kind, target.Name)
+			slog.Debug("no changes detected", "kind", kind, "name", target.Name)
 			// This needs to happen to make sure that Helm has the latest info from the API
 			// Otherwise there will be no labels and other functions that use labels will panic
 			if err := target.Get(); err != nil {
@@ -698,7 +668,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 			return nil
 		}
 		// send patch to server
-		c.Log("Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
+		slog.Debug("patching resource", "kind", kind, "name", target.Name, "namespace", target.Namespace)
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
 			return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
@@ -709,107 +679,43 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 	return nil
 }
 
-func (c *Client) watchUntilReady(timeout time.Duration, info *resource.Info) error {
-	kind := info.Mapping.GroupVersionKind.Kind
-	switch kind {
-	case "Job", "Pod":
-	default:
-		return nil
-	}
-
-	c.Log("Watching for changes to %s %s with timeout of %v", kind, info.Name, timeout)
-
-	// Use a selector on the name of the resource. This should be unique for the
-	// given version and kind
-	selector, err := fields.ParseSelector(fmt.Sprintf("metadata.name=%s", info.Name))
+// GetPodList uses the kubernetes interface to get the list of pods filtered by listOptions
+func (c *Client) GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error) {
+	podList, err := c.kubeClient.CoreV1().Pods(namespace).List(context.Background(), listOptions)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed to get pod list with options: %+v with error: %v", listOptions, err)
 	}
-	lw := cachetools.NewListWatchFromClient(info.Client, info.Mapping.Resource.Resource, info.Namespace, selector)
+	return podList, nil
+}
 
-	// What we watch for depends on the Kind.
-	// - For a Job, we watch for completion.
-	// - For all else, we watch until Ready.
-	// In the future, we might want to add some special logic for types
-	// like Ingress, Volume, etc.
-
-	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
-	defer cancel()
-	_, err = watchtools.UntilWithSync(ctx, lw, &unstructured.Unstructured{}, nil, func(e watch.Event) (bool, error) {
-		// Make sure the incoming object is versioned as we use unstructured
-		// objects when we build manifests
-		obj := convertWithMapper(e.Object, info.Mapping)
-		switch e.Type {
-		case watch.Added, watch.Modified:
-			// For things like a secret or a config map, this is the best indicator
-			// we get. We care mostly about jobs, where what we want to see is
-			// the status go into a good state. For other types, like ReplicaSet
-			// we don't really do anything to support these as hooks.
-			c.Log("Add/Modify event for %s: %v", info.Name, e.Type)
-			switch kind {
-			case "Job":
-				return c.waitForJob(obj, info.Name)
-			case "Pod":
-				return c.waitForPodSuccess(obj, info.Name)
+// OutputContainerLogsForPodList is a helper that outputs logs for a list of pods
+func (c *Client) OutputContainerLogsForPodList(podList *v1.PodList, namespace string, writerFunc func(namespace, pod, container string) io.Writer) error {
+	for _, pod := range podList.Items {
+		for _, container := range pod.Spec.Containers {
+			options := &v1.PodLogOptions{
+				Container: container.Name,
 			}
-			return true, nil
-		case watch.Deleted:
-			c.Log("Deleted event for %s", info.Name)
-			return true, nil
-		case watch.Error:
-			// Handle error and return with an error.
-			c.Log("Error event for %s", info.Name)
-			return true, errors.Errorf("failed to deploy %s", info.Name)
-		default:
-			return false, nil
-		}
-	})
-	return err
-}
-
-// waitForJob is a helper that waits for a job to complete.
-//
-// This operates on an event returned from a watcher.
-func (c *Client) waitForJob(obj runtime.Object, name string) (bool, error) {
-	o, ok := obj.(*batch.Job)
-	if !ok {
-		return true, errors.Errorf("expected %s to be a *batch.Job, got %T", name, obj)
-	}
-
-	for _, c := range o.Status.Conditions {
-		if c.Type == batch.JobComplete && c.Status == "True" {
-			return true, nil
-		} else if c.Type == batch.JobFailed && c.Status == "True" {
-			return true, errors.Errorf("job %s failed: %s", name, c.Reason)
+			request := c.kubeClient.CoreV1().Pods(namespace).GetLogs(pod.Name, options)
+			err2 := copyRequestStreamToWriter(request, pod.Name, container.Name, writerFunc(namespace, pod.Name, container.Name))
+			if err2 != nil {
+				return err2
+			}
 		}
 	}
-
-	c.Log("%s: Jobs active: %d, jobs failed: %d, jobs succeeded: %d", name, o.Status.Active, o.Status.Failed, o.Status.Succeeded)
-	return false, nil
+	return nil
 }
 
-// waitForPodSuccess is a helper that waits for a pod to complete.
-//
-// This operates on an event returned from a watcher.
-func (c *Client) waitForPodSuccess(obj runtime.Object, name string) (bool, error) {
-	o, ok := obj.(*v1.Pod)
-	if !ok {
-		return true, errors.Errorf("expected %s to be a *v1.Pod, got %T", name, obj)
+func copyRequestStreamToWriter(request *rest.Request, podName, containerName string, writer io.Writer) error {
+	readCloser, err := request.Stream(context.Background())
+	if err != nil {
+		return errors.Errorf("Failed to stream pod logs for pod: %s, container: %s", podName, containerName)
 	}
-
-	switch o.Status.Phase {
-	case v1.PodSucceeded:
-		c.Log("Pod %s succeeded", o.Name)
-		return true, nil
-	case v1.PodFailed:
-		return true, errors.Errorf("pod %s failed", o.Name)
-	case v1.PodPending:
-		c.Log("Pod %s pending", o.Name)
-	case v1.PodRunning:
-		c.Log("Pod %s running", o.Name)
+	defer readCloser.Close()
+	_, err = io.Copy(writer, readCloser)
+	if err != nil {
+		return errors.Errorf("Failed to copy IO from logs for pod: %s, container: %s", podName, containerName)
 	}
-
-	return false, nil
+	return nil
 }
 
 // scrubValidationError removes kubectl info from the message.
@@ -823,36 +729,4 @@ func scrubValidationError(err error) error {
 		return errors.New(strings.ReplaceAll(err.Error(), "; "+stopValidateMessage, ""))
 	}
 	return err
-}
-
-// WaitAndGetCompletedPodPhase waits up to a timeout until a pod enters a completed phase
-// and returns said phase (PodSucceeded or PodFailed qualify).
-func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration) (v1.PodPhase, error) {
-	client, err := c.getKubeClient()
-	if err != nil {
-		return v1.PodUnknown, err
-	}
-	to := int64(timeout)
-	watcher, err := client.CoreV1().Pods(c.namespace()).Watch(context.Background(), metav1.ListOptions{
-		FieldSelector:  fmt.Sprintf("metadata.name=%s", name),
-		TimeoutSeconds: &to,
-	})
-	if err != nil {
-		return v1.PodUnknown, err
-	}
-
-	for event := range watcher.ResultChan() {
-		p, ok := event.Object.(*v1.Pod)
-		if !ok {
-			return v1.PodUnknown, fmt.Errorf("%s not a pod", name)
-		}
-		switch p.Status.Phase {
-		case v1.PodFailed:
-			return v1.PodFailed, nil
-		case v1.PodSucceeded:
-			return v1.PodSucceeded, nil
-		}
-	}
-
-	return v1.PodUnknown, err
 }

@@ -24,10 +24,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/resource"
+	k8sfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
 	cmdtesting "k8s.io/kubectl/pkg/cmd/testing"
@@ -104,7 +107,6 @@ func newTestClient(t *testing.T) *Client {
 
 	return &Client{
 		Factory: testFactory.WithNamespace("default"),
-		Log:     nopLogger,
 	}
 }
 
@@ -512,6 +514,11 @@ func TestWait(t *testing.T) {
 			}
 		}),
 	}
+	var err error
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	if err != nil {
+		t.Fatal(err)
+	}
 	resources, err := c.Build(objBody(&podList), false)
 	if err != nil {
 		t.Fatal(err)
@@ -563,6 +570,11 @@ func TestWaitJob(t *testing.T) {
 				return nil, nil
 			}
 		}),
+	}
+	var err error
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	if err != nil {
+		t.Fatal(err)
 	}
 	resources, err := c.Build(objBody(job), false)
 	if err != nil {
@@ -617,6 +629,11 @@ func TestWaitDelete(t *testing.T) {
 				return nil, nil
 			}
 		}),
+	}
+	var err error
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	if err != nil {
+		t.Fatal(err)
 	}
 	resources, err := c.Build(objBody(&pod), false)
 	if err != nil {
@@ -680,6 +697,39 @@ func TestReal(t *testing.T) {
 	if _, errs := c.Delete(resources); errs != nil {
 		t.Fatal(errs)
 	}
+}
+
+func TestGetPodList(t *testing.T) {
+
+	namespace := "some-namespace"
+	names := []string{"dave", "jimmy"}
+	var responsePodList v1.PodList
+	for _, name := range names {
+		responsePodList.Items = append(responsePodList.Items, newPodWithStatus(name, v1.PodStatus{}, namespace))
+	}
+
+	kubeClient := k8sfake.NewSimpleClientset(&responsePodList)
+	c := Client{Namespace: namespace, kubeClient: kubeClient}
+
+	podList, err := c.GetPodList(namespace, metav1.ListOptions{})
+	clientAssertions := assert.New(t)
+	clientAssertions.NoError(err)
+	clientAssertions.Equal(&responsePodList, podList)
+
+}
+
+func TestOutputContainerLogsForPodList(t *testing.T) {
+	namespace := "some-namespace"
+	somePodList := newPodList("jimmy", "three", "structs")
+
+	kubeClient := k8sfake.NewSimpleClientset(&somePodList)
+	c := Client{Namespace: namespace, kubeClient: kubeClient}
+	outBuffer := &bytes.Buffer{}
+	outBufferFunc := func(_, _, _ string) io.Writer { return outBuffer }
+	err := c.OutputContainerLogsForPodList(&somePodList, namespace, outBufferFunc)
+	clientAssertions := assert.New(t)
+	clientAssertions.NoError(err)
+	clientAssertions.Equal("fake logsfake logsfake logs", outBuffer.String())
 }
 
 const testServiceManifest = `
