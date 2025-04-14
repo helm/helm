@@ -1310,6 +1310,10 @@ func TestRenderCustomTemplateFuncs(t *testing.T) {
 				Name: "templates/manifest",
 				Data: []byte(`{{exclaim .Values.message}}`),
 			},
+			{
+				Name: "templates/override",
+				Data: []byte(`{{ upper .Values.message }}`),
+			},
 		},
 	}
 	v := chartutil.Values{
@@ -1327,6 +1331,9 @@ func TestRenderCustomTemplateFuncs(t *testing.T) {
 		"exclaim": func(input string) string {
 			return input + "!!!"
 		},
+		"upper": func(s string) string {
+			return "custom:" + s
+		},
 	}
 
 	// Create an engine instance and set the CustomTemplateFuncs.
@@ -1342,6 +1349,13 @@ func TestRenderCustomTemplateFuncs(t *testing.T) {
 	// Expected output should be "hello!!!".
 	expected := "hello!!!"
 	key := "CustomFunc/templates/manifest"
+	if rendered, ok := out[key]; !ok || rendered != expected {
+		t.Errorf("Expected %q, got %q", expected, rendered)
+	}
+
+	// Verify that the rendered template used the custom "upper" function.
+	expected = "custom:hello"
+	key = "CustomFunc/templates/override"
 	if rendered, ok := out[key]; !ok || rendered != expected {
 		t.Errorf("Expected %q, got %q", expected, rendered)
 	}

@@ -196,6 +196,11 @@ func (e Engine) initFunMap(t *template.Template) {
 	funcMap := funcMap()
 	includedNames := make(map[string]int)
 
+	// Set custom template funcs
+	for k, v := range e.CustomTemplateFuncs {
+		funcMap[k] = v
+	}
+
 	// Add the template-rendering functions here so we can close over t.
 	funcMap["include"] = includeFun(t, includedNames)
 	funcMap["tpl"] = tplFun(t, includedNames, e.Strict)
@@ -244,11 +249,6 @@ func (e Engine) initFunMap(t *template.Template) {
 		funcMap["getHostByName"] = func(_ string) string {
 			return ""
 		}
-	}
-
-	// Set custom template func, do it here to give opportunity to override standard functions
-	for k, v := range e.CustomTemplateFuncs {
-		funcMap[k] = v
 	}
 
 	t.Funcs(funcMap)
