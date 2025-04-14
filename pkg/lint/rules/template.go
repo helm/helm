@@ -287,7 +287,7 @@ func validateMatchSelector(yamlStruct *K8sYamlStruct, manifest string) error {
 	switch yamlStruct.Kind {
 	case "Deployment", "ReplicaSet", "DaemonSet", "StatefulSet":
 		// verify that matchLabels or matchExpressions is present
-		if !(strings.Contains(manifest, "matchLabels") || strings.Contains(manifest, "matchExpressions")) {
+		if !strings.Contains(manifest, "matchLabels") && !strings.Contains(manifest, "matchExpressions") {
 			return fmt.Errorf("a %s must contain matchLabels or matchExpressions, and %q does not", yamlStruct.Kind, yamlStruct.Metadata.Name)
 		}
 	}

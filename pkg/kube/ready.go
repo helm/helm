@@ -294,7 +294,7 @@ func (c *ReadyChecker) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deploy
 	}
 
 	expectedReady := *dep.Spec.Replicas - deploymentutil.MaxUnavailable(*dep)
-	if !(rs.Status.ReadyReplicas >= expectedReady) {
+	if rs.Status.ReadyReplicas < expectedReady {
 		slog.Debug("Deployment does not have enough pods ready", "namespace", dep.GetNamespace(), "name", dep.GetName(), "readyPods", rs.Status.ReadyReplicas, "totalPods", expectedReady)
 		return false
 	}
@@ -328,7 +328,7 @@ func (c *ReadyChecker) daemonSetReady(ds *appsv1.DaemonSet) bool {
 	}
 
 	expectedReady := int(ds.Status.DesiredNumberScheduled) - maxUnavailable
-	if !(int(ds.Status.NumberReady) >= expectedReady) {
+	if int(ds.Status.NumberReady) < expectedReady {
 		slog.Debug("DaemonSet does not have enough Pods ready", "namespace", ds.GetNamespace(), "name", ds.GetName(), "readyPods", ds.Status.NumberReady, "totalPods", expectedReady)
 		return false
 	}
