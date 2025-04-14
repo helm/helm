@@ -36,12 +36,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"sync"
 	"testing"
-)
-
-var (
-	mu sync.Mutex
 )
 
 func TestRenameWithFallback(t *testing.T) {
