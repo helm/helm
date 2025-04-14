@@ -69,7 +69,7 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	}
 	schema, err := os.ReadFile("./testdata/test-values.schema.json")
 	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
+		t.Fatalf("Error reading JSON file: %s", err)
 	}
 
 	var errString string
@@ -79,8 +79,8 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := `- (root): employmentInfo is required
-- age: Must be greater than or equal to 0
+	expectedErrString := `- at '': missing property 'employmentInfo'
+- at '/age': minimum: got -5, want 0
 `
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
@@ -174,7 +174,7 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 	}
 
 	expectedErrString := `subchart:
-- (root): age is required
+- at '': missing property 'age'
 `
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
@@ -238,9 +238,9 @@ func TestValidateAgainstSchema2020Negative(t *testing.T) {
 	}
 
 	expectedErrString := `subchart:
-jsonschema validation failed with 'file:///values.schema.json#'
 - at '/data': no items match contains schema
-  - at '/data/0': got number, want string`
+  - at '/data/0': got number, want string
+`
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
 	}
