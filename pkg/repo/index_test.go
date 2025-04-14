@@ -123,17 +123,17 @@ func TestIndexFile(t *testing.T) {
 	}
 
 	cv, err := i.Get("setter", "0.1.9")
-	if err == nil && !strings.Contains(cv.Metadata.Version, "0.1.9") {
-		t.Errorf("Unexpected version: %s", cv.Metadata.Version)
+	if err == nil && !strings.Contains(cv.Version, "0.1.9") {
+		t.Errorf("Unexpected version: %s", cv.Version)
 	}
 
 	cv, err = i.Get("setter", "0.1.9+alpha")
-	if err != nil || cv.Metadata.Version != "0.1.9+alpha" {
+	if err != nil || cv.Version != "0.1.9+alpha" {
 		t.Errorf("Expected version: 0.1.9+alpha")
 	}
 
 	cv, err = i.Get("setter", "0.1.8")
-	if err != nil || cv.Metadata.Version != "0.1.8" {
+	if err != nil || cv.Version != "0.1.8" {
 		t.Errorf("Expected version: 0.1.8")
 	}
 }

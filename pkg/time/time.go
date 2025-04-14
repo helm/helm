@@ -41,7 +41,7 @@ func Now() Time {
 }
 
 func (t Time) MarshalJSON() ([]byte, error) {
-	if t.Time.IsZero() {
+	if t.IsZero() {
 		return []byte(emptyString), nil
 	}
 

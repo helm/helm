@@ -78,7 +78,7 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 		slog.Debug("failed to decode data", "key", key, slog.Any("error", err))
 		return nil, err
 	}
-	r.Labels = filterSystemLabels(obj.ObjectMeta.Labels)
+	r.Labels = filterSystemLabels(obj.Labels)
 	// return the release object
 	return r, nil
 }
@@ -107,7 +107,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 			continue
 		}
 
-		rls.Labels = item.ObjectMeta.Labels
+		rls.Labels = item.Labels
 
 		if filter(rls) {
 			results = append(results, rls)
@@ -146,7 +146,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 			slog.Debug("failed to decode release", slog.Any("error", err))
 			continue
 		}
-		rls.Labels = item.ObjectMeta.Labels
+		rls.Labels = item.Labels
 		results = append(results, rls)
 	}
 	return results, nil

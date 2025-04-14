@@ -157,7 +157,7 @@ func (i *HTTPInstaller) Update() error {
 
 // Path is overridden because we want to join on the plugin name not the file name
 func (i HTTPInstaller) Path() string {
-	if i.base.Source == "" {
+	if i.Source == "" {
 		return ""
 	}
 	return helmpath.DataPath("plugins", i.PluginName)

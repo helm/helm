@@ -88,14 +88,14 @@ func (s *Storage) Delete(name string, version int) (*rspb.Release, error) {
 // storage backend fails to retrieve the releases.
 func (s *Storage) ListReleases() ([]*rspb.Release, error) {
 	slog.Debug("listing all releases in storage")
-	return s.Driver.List(func(_ *rspb.Release) bool { return true })
+	return s.List(func(_ *rspb.Release) bool { return true })
 }
 
 // ListUninstalled returns all releases with Status == UNINSTALLED. An error is returned
 // if the storage backend fails to retrieve the releases.
 func (s *Storage) ListUninstalled() ([]*rspb.Release, error) {
 	slog.Debug("listing uninstalled releases in storage")
-	return s.Driver.List(func(rls *rspb.Release) bool {
+	return s.List(func(rls *rspb.Release) bool {
 		return relutil.StatusFilter(rspb.StatusUninstalled).Check(rls)
 	})
 }
@@ -104,7 +104,7 @@ func (s *Storage) ListUninstalled() ([]*rspb.Release, error) {
 // if the storage backend fails to retrieve the releases.
 func (s *Storage) ListDeployed() ([]*rspb.Release, error) {
 	slog.Debug("listing all deployed releases in storage")
-	return s.Driver.List(func(rls *rspb.Release) bool {
+	return s.List(func(rls *rspb.Release) bool {
 		return relutil.StatusFilter(rspb.StatusDeployed).Check(rls)
 	})
 }
@@ -133,7 +133,7 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 	slog.Debug("getting deployed releases", "name", name)
 
-	ls, err := s.Driver.Query(map[string]string{
+	ls, err := s.Query(map[string]string{
 		"name":   name,
 		"owner":  "helm",
 		"status": "deployed",
@@ -152,7 +152,7 @@ func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 func (s *Storage) History(name string) ([]*rspb.Release, error) {
 	slog.Debug("getting release history", "name", name)
 
-	return s.Driver.Query(map[string]string{"name": name, "owner": "helm"})
+	return s.Query(map[string]string{"name": name, "owner": "helm"})
 }
 
 // removeLeastRecent removes items from history until the length number of releases

@@ -218,7 +218,7 @@ func runShow(args []string, client *action.Show) (string, error) {
 		client.Version = ">0.0.0-0"
 	}
 
-	cp, err := client.ChartPathOptions.LocateChart(args[0], settings)
+	cp, err := client.LocateChart(args[0], settings)
 	if err != nil {
 		return "", err
 	}

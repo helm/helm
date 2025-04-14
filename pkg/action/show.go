@@ -69,14 +69,14 @@ func NewShow(output ShowOutputFormat, cfg *Configuration) *Show {
 	sh := &Show{
 		OutputFormat: output,
 	}
-	sh.ChartPathOptions.registryClient = cfg.RegistryClient
+	sh.registryClient = cfg.RegistryClient
 
 	return sh
 }
 
 // SetRegistryClient sets the registry client to use when pulling a chart from a registry.
 func (s *Show) SetRegistryClient(client *registry.Client) {
-	s.ChartPathOptions.registryClient = client
+	s.registryClient = client
 }
 
 // Run executes 'helm show' against the given release.
