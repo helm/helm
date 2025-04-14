@@ -86,7 +86,7 @@ func (o *docsOptions) run(_ io.Writer) error {
 			hdrFunc := func(filename string) string {
 				base := filepath.Base(filename)
 				name := strings.TrimSuffix(base, path.Ext(base))
-				title := cases.Title(language.Und, cases.NoLower).String(strings.Replace(name, "_", " ", -1))
+				title := cases.Title(language.Und, cases.NoLower).String(strings.ReplaceAll(name, "_", " "))
 				return fmt.Sprintf("---\ntitle: \"%s\"\n---\n\n", title)
 			}
 
