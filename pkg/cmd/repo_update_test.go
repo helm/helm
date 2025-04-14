@@ -193,7 +193,7 @@ func TestUpdateChartsFailWithError(t *testing.T) {
 		t.Error("Repo update should return error because update of repository fails and 'fail-on-repo-update-fail' flag set")
 		return
 	}
-	var expectedErr = "Failed to update the following repositories"
+	var expectedErr = "failed to update the following repositories"
 	var receivedErr = err.Error()
 	if !strings.Contains(receivedErr, expectedErr) {
 		t.Errorf("Expected error (%s) but got (%s) instead", expectedErr, receivedErr)
