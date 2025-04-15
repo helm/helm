@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -31,6 +32,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kuberuntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest/fake"
 
 	"helm.sh/helm/v4/internal/test"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -46,6 +55,62 @@ type nameTemplateTestCase struct {
 	tpl              string
 	expected         string
 	expectedErrorStr string
+}
+
+func createDummyResourceList(owned bool) kube.ResourceList {
+	obj := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dummyName",
+			Namespace: "spaced",
+		},
+	}
+
+	if owned {
+		obj.Labels = map[string]string{
+			"app.kubernetes.io/managed-by": "Helm",
+		}
+		obj.Annotations = map[string]string{
+			"meta.helm.sh/release-name":      "test-install-release",
+			"meta.helm.sh/release-namespace": "spaced",
+		}
+	}
+
+	resInfo := resource.Info{
+		Name:      "dummyName",
+		Namespace: "spaced",
+		Mapping: &meta.RESTMapping{
+			Resource:         schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployment"},
+			GroupVersionKind: schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
+			Scope:            meta.RESTScopeNamespace,
+		},
+		Object: obj,
+	}
+	body := io.NopCloser(bytes.NewReader([]byte(kuberuntime.EncodeOrDie(appsv1Codec, obj))))
+
+	resInfo.Client = &fake.RESTClient{
+		GroupVersion:         schema.GroupVersion{Group: "apps", Version: "v1"},
+		NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
+		Client: fake.CreateHTTPClient(func(_ *http.Request) (*http.Response, error) {
+			header := http.Header{}
+			header.Set("Content-Type", kuberuntime.ContentTypeJSON)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     header,
+				Body:       body,
+			}, nil
+		}),
+	}
+	var resourceList kube.ResourceList
+	resourceList.Append(&resInfo)
+	return resourceList
+}
+
+func installActionWithConfig(config *Configuration) *Install {
+	instAction := NewInstall(config)
+	instAction.Namespace = "spaced"
+	instAction.ReleaseName = "test-install-release"
+
+	return instAction
 }
 
 func installAction(t *testing.T) *Install {
@@ -91,6 +156,61 @@ func TestInstallRelease(t *testing.T) {
 	lastRelease, err := instAction.cfg.Releases.Last(rel.Name)
 	req.NoError(err)
 	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+}
+
+func TestInstallReleaseWithTakeOwnership_ResourceNotOwned(t *testing.T) {
+	// This test will test checking ownership of a resource
+	// returned by the fake client. If the resource is not
+	// owned by the chart, ownership is taken.
+	// To verify ownership has been taken, the fake client
+	// needs to store state which is a bigger rewrite.
+	// TODO: Ensure fake kube client stores state. Maybe using
+	// "k8s.io/client-go/kubernetes/fake" could be sufficient? i.e
+	// "Client{Namespace: namespace, kubeClient: k8sfake.NewClientset()}"
+
+	is := assert.New(t)
+
+	// Resource list from cluster is NOT owned by helm chart
+	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
+	instAction := installActionWithConfig(config)
+	instAction.TakeOwnership = true
+	res, err := instAction.Run(buildChart(), nil)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
+	is.NoError(err)
+
+	is.Equal(rel.Info.Description, "Install complete")
+}
+
+func TestInstallReleaseWithTakeOwnership_ResourceOwned(t *testing.T) {
+	is := assert.New(t)
+
+	// Resource list from cluster is owned by helm chart
+	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(true))
+	instAction := installActionWithConfig(config)
+	instAction.TakeOwnership = false
+	res, err := instAction.Run(buildChart(), nil)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
+	is.NoError(err)
+
+	is.Equal(rel.Info.Description, "Install complete")
+}
+
+func TestInstallReleaseWithTakeOwnership_ResourceOwnedNoFlag(t *testing.T) {
+	is := assert.New(t)
+
+	// Resource list from cluster is NOT owned by helm chart
+	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
+	instAction := installActionWithConfig(config)
+	_, err := instAction.Run(buildChart(), nil)
+	is.Error(err)
+	is.Contains(err.Error(), "Unable to continue with install")
 }
 
 func TestInstallReleaseWithValues(t *testing.T) {
