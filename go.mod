@@ -33,7 +33,7 @@ require (
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 	github.com/xeipuuv/gojsonschema v1.2.0
-	golang.org/x/crypto v0.36.0
+	golang.org/x/crypto v0.37.0
 	golang.org/x/term v0.31.0
 	golang.org/x/text v0.24.0
 	gopkg.in/yaml.v3 v3.0.1
