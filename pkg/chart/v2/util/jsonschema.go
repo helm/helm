@@ -18,10 +18,12 @@ package util
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/xeipuuv/gojsonschema"
 	"sigs.k8s.io/yaml"
 
@@ -73,6 +75,11 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error
 	if bytes.Equal(valuesJSON, []byte("null")) {
 		valuesJSON = []byte("{}")
 	}
+
+	if schemaIs2020(schemaJSON) {
+		return validateUsingNewValidator(valuesJSON, schemaJSON)
+	}
+
 	schemaLoader := gojsonschema.NewBytesLoader(schemaJSON)
 	valuesLoader := gojsonschema.NewBytesLoader(valuesJSON)
 
@@ -90,4 +97,36 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error
 	}
 
 	return nil
+}
+
+func validateUsingNewValidator(valuesJSON, schemaJSON []byte) error {
+	schema, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaJSON))
+	if err != nil {
+		return err
+	}
+	values, err := jsonschema.UnmarshalJSON(bytes.NewReader(valuesJSON))
+	if err != nil {
+		return err
+	}
+
+	compiler := jsonschema.NewCompiler()
+	err = compiler.AddResource("file:///values.schema.json", schema)
+	if err != nil {
+		return err
+	}
+
+	validator, err := compiler.Compile("file:///values.schema.json")
+	if err != nil {
+		return err
+	}
+
+	return validator.Validate(values)
+}
+
+func schemaIs2020(schemaJSON []byte) bool {
+	var partialSchema struct {
+		Schema string `json:"$schema"`
+	}
+	_ = json.Unmarshal(schemaJSON, &partialSchema)
+	return partialSchema.Schema == "https://json-schema.org/draft/2020-12/schema"
 }

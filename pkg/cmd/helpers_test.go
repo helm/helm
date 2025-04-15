@@ -92,7 +92,6 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 		Releases:     store,
 		KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
 		Capabilities: chartutil.DefaultCapabilities,
-		Log:          func(_ string, _ ...interface{}) {},
 	}
 
 	root, err := newRootCmdWithConfig(actionConfig, buf, args)

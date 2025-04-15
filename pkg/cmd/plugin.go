@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 
@@ -66,7 +67,7 @@ func runHook(p *plugin.Plugin, event string) error {
 
 	prog := exec.Command(main, argv...)
 
-	Debug("running %s hook: %s", event, prog)
+	slog.Debug("running hook", "event", event, "program", prog)
 
 	prog.Stdout, prog.Stderr = os.Stdout, os.Stderr
 	if err := prog.Run(); err != nil {
