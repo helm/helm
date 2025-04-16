@@ -19,6 +19,7 @@ package util
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -31,13 +32,14 @@ import (
 func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) error {
 	var sb strings.Builder
 	if chrt.Schema != nil {
+		slog.Debug("chart name", "chart-name", chrt.Name)
 		err := ValidateAgainstSingleSchema(values, chrt.Schema)
 		if err != nil {
 			sb.WriteString(fmt.Sprintf("%s:\n", chrt.Name()))
 			sb.WriteString(err.Error())
 		}
 	}
-
+	slog.Debug("number of dependencies in the chart", "dependencies", len(chrt.Dependencies()))
 	// For each dependency, recursively call this function with the coalesced values
 	for _, subchart := range chrt.Dependencies() {
 		subchartValues := values[subchart.Name()].(map[string]interface{})
@@ -67,6 +69,7 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error
 	if err != nil {
 		return err
 	}
+	slog.Debug("unmarshalled JSON schema", "schema", schema)
 
 	compiler := jsonschema.NewCompiler()
 	err = compiler.AddResource("file:///values.schema.json", schema)
@@ -78,6 +81,7 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error
 	if err != nil {
 		return err
 	}
+	slog.Debug("validated JSON schema", "validator", validator)
 
 	err = validator.Validate(values.AsMap())
 	if err != nil {
