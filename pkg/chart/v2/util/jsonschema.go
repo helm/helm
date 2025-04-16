@@ -18,14 +18,11 @@ package util
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/santhosh-tekuri/jsonschema/v6"
-	"github.com/xeipuuv/gojsonschema"
-	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
@@ -64,47 +61,9 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error
 		}
 	}()
 
-	valuesData, err := yaml.Marshal(values)
-	if err != nil {
-		return err
-	}
-	valuesJSON, err := yaml.YAMLToJSON(valuesData)
-	if err != nil {
-		return err
-	}
-	if bytes.Equal(valuesJSON, []byte("null")) {
-		valuesJSON = []byte("{}")
-	}
-
-	if schemaIs2020(schemaJSON) {
-		return validateUsingNewValidator(valuesJSON, schemaJSON)
-	}
-
-	schemaLoader := gojsonschema.NewBytesLoader(schemaJSON)
-	valuesLoader := gojsonschema.NewBytesLoader(valuesJSON)
-
-	result, err := gojsonschema.Validate(schemaLoader, valuesLoader)
-	if err != nil {
-		return err
-	}
-
-	if !result.Valid() {
-		var sb strings.Builder
-		for _, desc := range result.Errors() {
-			sb.WriteString(fmt.Sprintf("- %s\n", desc))
-		}
-		return errors.New(sb.String())
-	}
-
-	return nil
-}
-
-func validateUsingNewValidator(valuesJSON, schemaJSON []byte) error {
+	// This unmarshal function leverages UseNumber() for number precision. The parser
+	// used for values does this as well.
 	schema, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaJSON))
-	if err != nil {
-		return err
-	}
-	values, err := jsonschema.UnmarshalJSON(bytes.NewReader(valuesJSON))
 	if err != nil {
 		return err
 	}
@@ -120,13 +79,32 @@ func validateUsingNewValidator(valuesJSON, schemaJSON []byte) error {
 		return err
 	}
 
-	return validator.Validate(values)
+	err = validator.Validate(values.AsMap())
+	if err != nil {
+		return JSONSchemaValidationError{err}
+	}
+
+	return nil
 }
 
-func schemaIs2020(schemaJSON []byte) bool {
-	var partialSchema struct {
-		Schema string `json:"$schema"`
-	}
-	_ = json.Unmarshal(schemaJSON, &partialSchema)
-	return partialSchema.Schema == "https://json-schema.org/draft/2020-12/schema"
+// Note, JSONSchemaValidationError is used to wrap the error from the underlying
+// validation package so that Helm has a clean interface and the validation package
+// could be replaced without changing the Helm SDK API.
+
+// JSONSchemaValidationError is the error returned when there is a schema validation
+// error.
+type JSONSchemaValidationError struct {
+	embeddedErr error
+}
+
+// Error prints the error message
+func (e JSONSchemaValidationError) Error() string {
+	errStr := e.embeddedErr.Error()
+
+	// This string prefixes all of our error details. Further up the stack of helm error message
+	// building more detail is provided to users. This is removed.
+	errStr = strings.TrimPrefix(errStr, "jsonschema validation failed with 'file:///values.schema.json#'\n")
+
+	// The extra new line is needed for when there are sub-charts.
+	return errStr + "\n"
 }
