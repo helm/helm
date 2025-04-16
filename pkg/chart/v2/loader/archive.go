@@ -27,29 +27,21 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"strconv"
 	"strings"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
-var drivePathPattern = regexp.MustCompile(`^[a-zA-Z]:/`)
-
 // MaxDecompressedChartSize is the maximum size of a chart archive that will be
 // decompressed. This is the decompressed size of all the files.
 // The default value is 100 MiB.
-// Can be overridden with the HELM_MAX_DECOMPRESSED_CHART_SIZE environment variable (in bytes).
 var MaxDecompressedChartSize int64 = 100 * 1024 * 1024 // Default 100 MiB
 
 // MaxDecompressedFileSize is the size of the largest file that Helm will attempt to load.
 // The size of the file is the decompressed version of it when it is stored in an archive.
-// Can be overridden with the HELM_MAX_DECOMPRESSED_FILE_SIZE environment variable (in bytes).
 var MaxDecompressedFileSize int64 = 5 * 1024 * 1024 // Default 5 MiB
 
-// init initializes the package variables from environment variables
-func init() {
-	parseEnvSettings()
-}
+var drivePathPattern = regexp.MustCompile(`^[a-zA-Z]:/`)
 
 // FileLoader loads a chart from a file
 type FileLoader string
@@ -239,19 +231,4 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 	}
 
 	return LoadFiles(files)
-}
-
-// ParseEnvSettings reads environment variables and updates the size limits
-func parseEnvSettings() {
-	if chartSizeStr := os.Getenv("HELM_MAX_DECOMPRESSED_CHART_SIZE"); chartSizeStr != "" {
-		if size, err := strconv.ParseInt(chartSizeStr, 10, 64); err == nil {
-			MaxDecompressedChartSize = size
-		}
-	}
-
-	if fileSizeStr := os.Getenv("HELM_MAX_DECOMPRESSED_FILE_SIZE"); fileSizeStr != "" {
-		if size, err := strconv.ParseInt(fileSizeStr, 10, 64); err == nil {
-			MaxDecompressedFileSize = size
-		}
-	}
 }
