@@ -143,19 +143,19 @@ func NewInstall(cfg *Configuration) *Install {
 	in := &Install{
 		cfg: cfg,
 	}
-	in.ChartPathOptions.registryClient = cfg.RegistryClient
+	in.registryClient = cfg.RegistryClient
 
 	return in
 }
 
 // SetRegistryClient sets the registry client for the install action
 func (i *Install) SetRegistryClient(registryClient *registry.Client) {
-	i.ChartPathOptions.registryClient = registryClient
+	i.registryClient = registryClient
 }
 
 // GetRegistryClient get the registry client.
 func (i *Install) GetRegistryClient() *registry.Client {
-	return i.ChartPathOptions.registryClient
+	return i.registryClient
 }
 
 func (i *Install) installCRDs(crds []chart.CRD) error {
@@ -628,7 +628,7 @@ func writeToFile(outputDir string, name string, data string, appendData bool) er
 
 	defer f.Close()
 
-	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s\n", name, data))
+	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, data)
 
 	if err != nil {
 		return err

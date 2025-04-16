@@ -132,14 +132,14 @@ func NewUpgrade(cfg *Configuration) *Upgrade {
 	up := &Upgrade{
 		cfg: cfg,
 	}
-	up.ChartPathOptions.registryClient = cfg.RegistryClient
+	up.registryClient = cfg.RegistryClient
 
 	return up
 }
 
 // SetRegistryClient sets the registry client to use when fetching charts.
 func (u *Upgrade) SetRegistryClient(client *registry.Client) {
-	u.ChartPathOptions.registryClient = client
+	u.registryClient = client
 }
 
 // Run executes the upgrade on the given release.

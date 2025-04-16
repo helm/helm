@@ -92,5 +92,5 @@ func update(filename string, in []byte) error {
 }
 
 func normalize(in []byte) []byte {
-	return bytes.Replace(in, []byte("\r\n"), []byte("\n"), -1)
+	return bytes.ReplaceAll(in, []byte("\r\n"), []byte("\n"))
 }

@@ -33,15 +33,9 @@ package fs
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
-	"sync"
 	"testing"
-)
-
-var (
-	mu sync.Mutex
 )
 
 func TestRenameWithFallback(t *testing.T) {
@@ -357,19 +351,6 @@ func TestCopyFile(t *testing.T) {
 
 	if wantinfo.Mode() != gotinfo.Mode() {
 		t.Fatalf("expected %s: %#v\n to be the same mode as %s: %#v", srcf.Name(), wantinfo.Mode(), destf, gotinfo.Mode())
-	}
-}
-
-func cleanUpDir(dir string) {
-	// NOTE(mattn): It seems that sometimes git.exe is not dead
-	// when cleanUpDir() is called. But we do not know any way to wait for it.
-	if runtime.GOOS == "windows" {
-		mu.Lock()
-		exec.Command(`taskkill`, `/F`, `/IM`, `git.exe`).Run()
-		mu.Unlock()
-	}
-	if dir != "" {
-		os.RemoveAll(dir)
 	}
 }
 

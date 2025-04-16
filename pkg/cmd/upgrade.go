@@ -178,7 +178,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.Version = ">0.0.0-0"
 			}
 
-			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
+			chartPath, err := client.LocateChart(args[1], settings)
 			if err != nil {
 				return err
 			}
@@ -205,7 +205,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						man := &downloader.Manager{
 							Out:              out,
 							ChartPath:        chartPath,
-							Keyring:          client.ChartPathOptions.Keyring,
+							Keyring:          client.Keyring,
 							SkipUpdate:       false,
 							Getters:          p,
 							RepositoryConfig: settings.RepositoryConfig,

@@ -260,7 +260,7 @@ func compVersionFlag(chartRef string, _ string) ([]string, cobra.ShellCompDirect
 	var versions []string
 	if indexFile, err := repo.LoadIndexFile(path); err == nil {
 		for _, details := range indexFile.Entries[chartName] {
-			appVersion := details.Metadata.AppVersion
+			appVersion := details.AppVersion
 			appVersionDesc := ""
 			if appVersion != "" {
 				appVersionDesc = fmt.Sprintf("App: %s, ", appVersion)
@@ -271,10 +271,10 @@ func compVersionFlag(chartRef string, _ string) ([]string, cobra.ShellCompDirect
 				createdDesc = fmt.Sprintf("Created: %s ", created)
 			}
 			deprecated := ""
-			if details.Metadata.Deprecated {
+			if details.Deprecated {
 				deprecated = "(deprecated)"
 			}
-			versions = append(versions, fmt.Sprintf("%s\t%s%s%s", details.Metadata.Version, appVersionDesc, createdDesc, deprecated))
+			versions = append(versions, fmt.Sprintf("%s\t%s%s%s", details.Version, appVersionDesc, createdDesc, deprecated))
 		}
 	}
 

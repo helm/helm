@@ -242,7 +242,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 	client.ReleaseName = name
 
-	cp, err := client.ChartPathOptions.LocateChart(chart, settings)
+	cp, err := client.LocateChart(chart, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +279,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 				man := &downloader.Manager{
 					Out:              out,
 					ChartPath:        cp,
-					Keyring:          client.ChartPathOptions.Keyring,
+					Keyring:          client.Keyring,
 					SkipUpdate:       false,
 					Getters:          p,
 					RepositoryConfig: settings.RepositoryConfig,

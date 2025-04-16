@@ -288,13 +288,13 @@ func (c *ReadyChecker) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deploy
 		return false
 	}
 	// Verify the generation observed by the deployment controller matches the spec generation
-	if dep.Status.ObservedGeneration != dep.ObjectMeta.Generation {
-		slog.Debug("Deployment is not ready, observedGeneration does not match spec generation", "namespace", dep.GetNamespace(), "name", dep.GetName(), "actualGeneration", dep.Status.ObservedGeneration, "expectedGeneration", dep.ObjectMeta.Generation)
+	if dep.Status.ObservedGeneration != dep.Generation {
+		slog.Debug("Deployment is not ready, observedGeneration does not match spec generation", "namespace", dep.GetNamespace(), "name", dep.GetName(), "actualGeneration", dep.Status.ObservedGeneration, "expectedGeneration", dep.Generation)
 		return false
 	}
 
 	expectedReady := *dep.Spec.Replicas - deploymentutil.MaxUnavailable(*dep)
-	if !(rs.Status.ReadyReplicas >= expectedReady) {
+	if rs.Status.ReadyReplicas < expectedReady {
 		slog.Debug("Deployment does not have enough pods ready", "namespace", dep.GetNamespace(), "name", dep.GetName(), "readyPods", rs.Status.ReadyReplicas, "totalPods", expectedReady)
 		return false
 	}
@@ -304,8 +304,8 @@ func (c *ReadyChecker) deploymentReady(rs *appsv1.ReplicaSet, dep *appsv1.Deploy
 
 func (c *ReadyChecker) daemonSetReady(ds *appsv1.DaemonSet) bool {
 	// Verify the generation observed by the daemonSet controller matches the spec generation
-	if ds.Status.ObservedGeneration != ds.ObjectMeta.Generation {
-		slog.Debug("DaemonSet is not ready, observedGeneration does not match spec generation", "namespace", ds.GetNamespace(), "name", ds.GetName(), "observedGeneration", ds.Status.ObservedGeneration, "expectedGeneration", ds.ObjectMeta.Generation)
+	if ds.Status.ObservedGeneration != ds.Generation {
+		slog.Debug("DaemonSet is not ready, observedGeneration does not match spec generation", "namespace", ds.GetNamespace(), "name", ds.GetName(), "observedGeneration", ds.Status.ObservedGeneration, "expectedGeneration", ds.Generation)
 		return false
 	}
 
@@ -328,7 +328,7 @@ func (c *ReadyChecker) daemonSetReady(ds *appsv1.DaemonSet) bool {
 	}
 
 	expectedReady := int(ds.Status.DesiredNumberScheduled) - maxUnavailable
-	if !(int(ds.Status.NumberReady) >= expectedReady) {
+	if int(ds.Status.NumberReady) < expectedReady {
 		slog.Debug("DaemonSet does not have enough Pods ready", "namespace", ds.GetNamespace(), "name", ds.GetName(), "readyPods", ds.Status.NumberReady, "totalPods", expectedReady)
 		return false
 	}
@@ -381,8 +381,8 @@ func (c *ReadyChecker) crdReady(crd apiextv1.CustomResourceDefinition) bool {
 
 func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 	// Verify the generation observed by the statefulSet controller matches the spec generation
-	if sts.Status.ObservedGeneration != sts.ObjectMeta.Generation {
-		slog.Debug("StatefulSet is not ready, observedGeneration doest not match spec generation", "namespace", sts.GetNamespace(), "name", sts.GetName(), "actualGeneration", sts.Status.ObservedGeneration, "expectedGeneration", sts.ObjectMeta.Generation)
+	if sts.Status.ObservedGeneration != sts.Generation {
+		slog.Debug("StatefulSet is not ready, observedGeneration doest not match spec generation", "namespace", sts.GetNamespace(), "name", sts.GetName(), "actualGeneration", sts.Status.ObservedGeneration, "expectedGeneration", sts.Generation)
 		return false
 	}
 
@@ -435,8 +435,8 @@ func (c *ReadyChecker) statefulSetReady(sts *appsv1.StatefulSet) bool {
 
 func (c *ReadyChecker) replicationControllerReady(rc *corev1.ReplicationController) bool {
 	// Verify the generation observed by the replicationController controller matches the spec generation
-	if rc.Status.ObservedGeneration != rc.ObjectMeta.Generation {
-		slog.Debug("ReplicationController is not ready, observedGeneration doest not match spec generation", "namespace", rc.GetNamespace(), "name", rc.GetName(), "actualGeneration", rc.Status.ObservedGeneration, "expectedGeneration", rc.ObjectMeta.Generation)
+	if rc.Status.ObservedGeneration != rc.Generation {
+		slog.Debug("ReplicationController is not ready, observedGeneration doest not match spec generation", "namespace", rc.GetNamespace(), "name", rc.GetName(), "actualGeneration", rc.Status.ObservedGeneration, "expectedGeneration", rc.Generation)
 		return false
 	}
 	return true
@@ -444,8 +444,8 @@ func (c *ReadyChecker) replicationControllerReady(rc *corev1.ReplicationControll
 
 func (c *ReadyChecker) replicaSetReady(rs *appsv1.ReplicaSet) bool {
 	// Verify the generation observed by the replicaSet controller matches the spec generation
-	if rs.Status.ObservedGeneration != rs.ObjectMeta.Generation {
-		slog.Debug("ReplicaSet is not ready, observedGeneration doest not match spec generation", "namespace", rs.GetNamespace(), "name", rs.GetName(), "actualGeneration", rs.Status.ObservedGeneration, "expectedGeneration", rs.ObjectMeta.Generation)
+	if rs.Status.ObservedGeneration != rs.Generation {
+		slog.Debug("ReplicaSet is not ready, observedGeneration doest not match spec generation", "namespace", rs.GetNamespace(), "name", rs.GetName(), "actualGeneration", rs.Status.ObservedGeneration, "expectedGeneration", rs.Generation)
 		return false
 	}
 	return true
