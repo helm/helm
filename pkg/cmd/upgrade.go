@@ -152,8 +152,6 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.EnableDNS = client.EnableDNS
 					instClient.HideSecret = client.HideSecret
 					instClient.TakeOwnership = client.TakeOwnership
-					instClient.MaxChartSize = client.MaxChartSize
-					instClient.MaxFileSize = client.MaxFileSize
 
 					if isReleaseUninstalled(versions) {
 						instClient.Replace = true
@@ -197,6 +195,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			chartPath, err := client.LocateChart(args[1], settings)
+			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
 			if err != nil {
 				return err
 			}
@@ -211,6 +210,12 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
+			if client.MaxChartSize > 0 {
+				loader.MaxDecompressedChartSize = client.MaxChartSize
+			}
+			if client.MaxFileSize > 0 {
+				loader.MaxDecompressedFileSize = client.MaxFileSize
+			}
 			// Check chart dependencies to make sure all are present in /charts
 			ch, err := loader.Load(chartPath)
 			if err != nil {

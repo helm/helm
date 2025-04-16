@@ -106,7 +106,6 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 						return err
 					}
 				}
-
 				p, err := client.Run(path, vals)
 				if err != nil {
 					return err

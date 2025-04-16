@@ -261,7 +261,6 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
-	// Set chart size limits from environment settings
 	if client.MaxChartSize > 0 {
 		loader.MaxDecompressedChartSize = client.MaxChartSize
 	}

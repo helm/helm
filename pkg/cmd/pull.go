@@ -25,7 +25,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
-	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/cmd/require"
 )
 
@@ -72,13 +71,6 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
 			client.SetRegistryClient(registryClient)
-
-			if client.MaxChartSize > 0 {
-				loader.MaxDecompressedChartSize = client.MaxChartSize
-			}
-			if client.MaxFileSize > 0 {
-				loader.MaxDecompressedFileSize = client.MaxFileSize
-			}
 
 			for i := 0; i < len(args); i++ {
 				output, err := client.Run(args[i])
