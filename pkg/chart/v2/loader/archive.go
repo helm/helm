@@ -189,11 +189,11 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 		}
 
 		if hd.Size > remainingSize {
-			return nil, fmt.Errorf("decompressed chart is larger than the maximum size %d", MaxDecompressedChartSize)
+			return nil, fmt.Errorf("decompressed chart is larger than the maximum size %d bytes", MaxDecompressedChartSize)
 		}
 
 		if hd.Size > MaxDecompressedFileSize {
-			return nil, fmt.Errorf("decompressed chart file %q is larger than the maximum file size %d", hd.Name, MaxDecompressedFileSize)
+			return nil, fmt.Errorf("decompressed chart file %q is larger than the maximum file size %d bytes", hd.Name, MaxDecompressedFileSize)
 		}
 
 		limitedReader := io.LimitReader(tr, remainingSize)
