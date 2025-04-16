@@ -128,6 +128,8 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	} else {
 		var e engine.Engine
 		e.EnableDNS = enableDNS
+		e.CustomTemplateFuncs = cfg.CustomTemplateFuncs
+
 		files, err2 = e.Render(ch, values)
 	}
 
