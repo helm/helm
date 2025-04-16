@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
@@ -33,6 +34,13 @@ func TestPullCmd(t *testing.T) {
 		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
 	)
 	defer srv.Stop()
+
+	originalChartSize := loader.MaxDecompressedChartSize
+	originalFileSize := loader.MaxDecompressedFileSize
+	defer func() {
+		loader.MaxDecompressedChartSize = originalChartSize
+		loader.MaxDecompressedFileSize = originalFileSize
+	}()
 
 	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
 	if err != nil {
@@ -209,6 +217,12 @@ func TestPullCmd(t *testing.T) {
 			args:         fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.2.0 --version 0.1.0", ociSrv.RegistryURL),
 			wantErrorMsg: "Error: chart reference and version mismatch: 0.2.0 is not 0.1.0",
 			wantError:    true,
+		},
+		{
+			name:         "Fail because of small max chart size",
+			args:         "test/test1 --max-chart-size=90",
+			wantError:    true,
+			wantErrorMsg: "decompressed chart is larger than the maximum size 90 bytes",
 		},
 	}
 
