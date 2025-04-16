@@ -24,6 +24,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/downloader"
@@ -171,6 +172,15 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			}
 		} else {
 			return out.String(), errors.Errorf("failed to untar: a file or directory with the name %s already exists", udCheck)
+		}
+
+		// Set limits for decompressed chart and file sizes
+		// before loader is called via ExpandFile.
+		if p.MaxChartSize > 0 {
+			loader.MaxDecompressedChartSize = p.MaxChartSize
+		}
+		if p.MaxFileSize > 0 {
+			loader.MaxDecompressedFileSize = p.MaxFileSize
 		}
 
 		return out.String(), chartutil.ExpandFile(ud, saved)
