@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
@@ -106,6 +107,14 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 						return err
 					}
 				}
+
+				if client.MaxChartSize > 0 {
+					loader.MaxDecompressedChartSize = client.MaxChartSize
+				}
+				if client.MaxFileSize > 0 {
+					loader.MaxDecompressedFileSize = client.MaxFileSize
+				}
+
 				p, err := client.Run(path, vals)
 				if err != nil {
 					return err
@@ -132,6 +141,8 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&client.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
 	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
 	f.StringVar(&client.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.Int64Var(&client.MaxChartSize, "max-chart-size", settings.MaxChartSize, "maximum size in bytes for a decompressed chart (default is 100mb)")
+	f.Int64Var(&client.MaxFileSize, "max-file-size", settings.MaxFileSize, "maximum size in bytes for a single file in a chart (default is 5mb)")
 
 	return cmd
 }

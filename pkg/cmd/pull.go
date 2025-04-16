@@ -65,6 +65,13 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.Version = ">0.0.0-0"
 			}
 
+			if settings.MaxChartSize > 0 {
+				client.MaxChartSize = settings.MaxChartSize
+			}
+			if settings.MaxFileSize > 0 {
+				client.MaxFileSize = settings.MaxFileSize
+			}
+
 			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
