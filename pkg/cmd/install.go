@@ -251,20 +251,19 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 
 	slog.Debug("Chart path", "path", cp)
 
-	// Set chart size limits from environment settings
-	if settings.MaxChartSize > 0 {
-		loader.MaxDecompressedChartSize = settings.MaxChartSize
-	}
-	if settings.MaxFileSize > 0 {
-		loader.MaxDecompressedFileSize = settings.MaxFileSize
-	}
-
 	p := getter.All(settings)
 	vals, err := valueOpts.MergeValues(p)
 	if err != nil {
 		return nil, err
 	}
 
+	// Set chart size limits from environment settings
+	if client.MaxChartSize > 0 {
+		loader.MaxDecompressedChartSize = client.MaxChartSize
+	}
+	if client.MaxFileSize > 0 {
+		loader.MaxDecompressedFileSize = client.MaxFileSize
+	}
 	// Check chart dependencies to make sure all are present in /charts
 	chartRequested, err := loader.Load(cp)
 	if err != nil {
