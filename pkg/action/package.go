@@ -54,10 +54,6 @@ type Package struct {
 	KeyFile               string
 	CaFile                string
 	InsecureSkipTLSverify bool
-	// MaxChartSize is the maximum size of a decompressed chart in bytes
-	MaxChartSize int64
-	// MaxFileSize is the maximum size of a single file in a chart in bytes
-	MaxFileSize int64
 }
 
 const (
