@@ -1302,7 +1302,7 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 }
 
 func TestRenderCustomTemplateFuncs(t *testing.T) {
-	// Create a chart with a single template that uses a custom function "exclaim"
+	// Create a chart with two templates that use custom functions
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "CustomFunc"},
 		Templates: []*chart.File{
@@ -1326,7 +1326,7 @@ func TestRenderCustomTemplateFuncs(t *testing.T) {
 		},
 	}
 
-	// Define a custom template function "exclaim" that appends "!!!" to a string.
+	// Define a custom template function "exclaim" that appends "!!!" to a string and override "upper" function
 	customFuncs := template.FuncMap{
 		"exclaim": func(input string) string {
 			return input + "!!!"
