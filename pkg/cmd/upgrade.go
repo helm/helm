@@ -152,6 +152,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.EnableDNS = client.EnableDNS
 					instClient.HideSecret = client.HideSecret
 					instClient.TakeOwnership = client.TakeOwnership
+					instClient.MaxChartSize = client.MaxChartSize
+					instClient.MaxFileSize = client.MaxFileSize
 
 					if isReleaseUninstalled(versions) {
 						instClient.Replace = true
@@ -176,6 +178,22 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if client.Version == "" && client.Devel {
 				slog.Debug("setting version to >0.0.0-0")
 				client.Version = ">0.0.0-0"
+			}
+
+			// Apply chart size limits if configured
+			if client.MaxChartSize > 0 {
+				loader.MaxDecompressedChartSize = client.MaxChartSize
+			}
+			if client.MaxFileSize > 0 {
+				loader.MaxDecompressedFileSize = client.MaxFileSize
+			}
+
+			// Apply chart size limits if configured
+			if client.MaxChartSize > 0 {
+				loader.MaxDecompressedChartSize = client.MaxChartSize
+			}
+			if client.MaxFileSize > 0 {
+				loader.MaxDecompressedFileSize = client.MaxFileSize
 			}
 
 			chartPath, err := client.LocateChart(args[1], settings)
@@ -292,6 +310,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
 	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, upgrade will ignore the check for helm annotations and take ownership of the existing resources")
+	f.Int64Var(&client.MaxChartSize, "max-chart-size", settings.MaxChartSize, "maximum size in bytes for a decompressed chart (default is 100mb)")
+	f.Int64Var(&client.MaxFileSize, "max-file-size", settings.MaxFileSize, "maximum size in bytes for a single file in a chart (default is 5mb)")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)

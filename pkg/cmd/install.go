@@ -178,6 +178,8 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	// it is added separately
 	f := cmd.Flags()
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
+	f.Int64Var(&client.MaxChartSize, "max-chart-size", settings.MaxChartSize, "maximum size in bytes for a decompressed chart (default is 100mb)")
+	f.Int64Var(&client.MaxFileSize, "max-file-size", settings.MaxFileSize, "maximum size in bytes for a single file in a chart (default is 5mb)")
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
@@ -252,6 +254,14 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 
 	slog.Debug("Chart path", "path", cp)
+
+	// Set chart size limits from environment settings
+	if settings.MaxChartSize > 0 {
+		loader.MaxDecompressedChartSize = settings.MaxChartSize
+	}
+	if settings.MaxFileSize > 0 {
+		loader.MaxDecompressedFileSize = settings.MaxFileSize
+	}
 
 	p := getter.All(settings)
 	vals, err := valueOpts.MergeValues(p)

@@ -117,6 +117,10 @@ type Upgrade struct {
 	EnableDNS bool
 	// TakeOwnership will skip the check for helm annotations and adopt all existing resources.
 	TakeOwnership bool
+	// MaxChartSize is the maximum decompressed size of a chart in bytes
+	MaxChartSize int64
+	// MaxFileSize is the maximum size of a single file in a chart in bytes
+	MaxFileSize int64
 }
 
 type resultMessage struct {
