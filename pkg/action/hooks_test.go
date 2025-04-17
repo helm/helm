@@ -228,6 +228,11 @@ type HookFailingKubeClient struct {
 	deleteRecord []resource.Info
 }
 
+type HookFailingKubeWaiter struct {
+	*kubefake.PrintingKubeWaiter
+	failOn resource.Info
+}
+
 func (*HookFailingKubeClient) Build(reader io.Reader, _ bool) (kube.ResourceList, error) {
 	configMap := &v1.ConfigMap{}
 
@@ -243,14 +248,13 @@ func (*HookFailingKubeClient) Build(reader io.Reader, _ bool) (kube.ResourceList
 	}}, nil
 }
 
-func (h *HookFailingKubeClient) WatchUntilReady(resources kube.ResourceList, duration time.Duration) error {
+func (h *HookFailingKubeWaiter) WatchUntilReady(resources kube.ResourceList, _ time.Duration) error {
 	for _, res := range resources {
 		if res.Name == h.failOn.Name && res.Namespace == h.failOn.Namespace {
 			return &HookFailedError{}
 		}
 	}
-
-	return h.PrintingKubeClient.WatchUntilReady(resources, duration)
+	return nil
 }
 
 func (h *HookFailingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, []error) {
@@ -262,6 +266,14 @@ func (h *HookFailingKubeClient) Delete(resources kube.ResourceList) (*kube.Resul
 	}
 
 	return h.PrintingKubeClient.Delete(resources)
+}
+
+func (h *HookFailingKubeClient) GetWaiter(strategy kube.WaitStrategy) (kube.Waiter, error) {
+	waiter, _ := h.PrintingKubeClient.GetWaiter(strategy)
+	return &HookFailingKubeWaiter{
+		PrintingKubeWaiter: waiter.(*kubefake.PrintingKubeWaiter),
+		failOn:             h.failOn,
+	}, nil
 }
 
 func TestHooksCleanUp(t *testing.T) {
@@ -369,15 +381,9 @@ data:
 				Releases:     storage.Init(driver.NewMemory()),
 				KubeClient:   kubeClient,
 				Capabilities: chartutil.DefaultCapabilities,
-				Log: func(format string, v ...interface{}) {
-					t.Helper()
-					if *verbose {
-						t.Logf(format, v...)
-					}
-				},
 			}
 
-			err := configuration.execHook(&tc.inputRelease, hookEvent, 600)
+			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, 600)
 
 			if !reflect.DeepEqual(kubeClient.deleteRecord, tc.expectedDeleteRecord) {
 				t.Fatalf("Got unexpected delete record, expected: %#v, but got: %#v", kubeClient.deleteRecord, tc.expectedDeleteRecord)
