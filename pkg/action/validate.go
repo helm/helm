@@ -32,10 +32,13 @@ var accessor = meta.NewAccessor()
 
 const (
 	appManagedByLabel              = "app.kubernetes.io/managed-by"
-	appManagedByHelm               = "Helm"
 	helmReleaseNameAnnotation      = "meta.helm.sh/release-name"
 	helmReleaseNamespaceAnnotation = "meta.helm.sh/release-namespace"
 )
+
+// AppManagedByLabel is the value Helm should use in the app.kubernetes.io/managed-by label to
+// identify resources it manages. Defaults to "Helm", but can be overridden via this variable.
+var AppManagedByValue = "Helm"
 
 // requireAdoption returns the subset of resources that already exist in the cluster.
 func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
@@ -102,7 +105,7 @@ func checkOwnership(obj runtime.Object, releaseName, releaseNamespace string) er
 	}
 
 	var errs []error
-	if err := requireValue(lbls, appManagedByLabel, appManagedByHelm); err != nil {
+	if err := requireValue(lbls, appManagedByLabel, AppManagedByValue); err != nil {
 		errs = append(errs, fmt.Errorf("label validation error: %s", err))
 	}
 	if err := requireValue(annos, helmReleaseNameAnnotation, releaseName); err != nil {
@@ -150,7 +153,7 @@ func setMetadataVisitor(releaseName, releaseNamespace string, force bool) resour
 		}
 
 		if err := mergeLabels(info.Object, map[string]string{
-			appManagedByLabel: appManagedByHelm,
+			appManagedByLabel: AppManagedByValue,
 		}); err != nil {
 			return fmt.Errorf(
 				"%s labels could not be updated: %s",

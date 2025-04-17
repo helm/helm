@@ -139,7 +139,7 @@ func TestExistingResourceConflict(t *testing.T) {
 		releaseName      = "rel-name"
 		releaseNamespace = "rel-namespace"
 		labels           = map[string]string{
-			appManagedByLabel: appManagedByHelm,
+			appManagedByLabel: AppManagedByValue,
 		}
 		annotations = map[string]string{
 			helmReleaseNameAnnotation:      releaseName,
@@ -172,7 +172,7 @@ func TestCheckOwnership(t *testing.T) {
 
 	// Set managed by label and verify annotation error message
 	_ = accessor.SetLabels(deployFoo.Object, map[string]string{
-		appManagedByLabel: appManagedByHelm,
+		appManagedByLabel: AppManagedByValue,
 	})
 	err = checkOwnership(deployFoo.Object, "rel-a", "ns-a")
 	assert.EqualError(t, err, `invalid ownership metadata; annotation validation error: missing key "meta.helm.sh/release-name": must be set to "rel-a"; annotation validation error: missing key "meta.helm.sh/release-namespace": must be set to "ns-a"`)
