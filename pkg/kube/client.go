@@ -433,7 +433,7 @@ func (c *Client) update(original, target ResourceList, force, threeWayMerge bool
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force, threeWayMerge); err != nil {
-      slog.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+			slog.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			updateErrors = append(updateErrors, err.Error())
 		}
 		// Because we check for errors later, append the info regardless
