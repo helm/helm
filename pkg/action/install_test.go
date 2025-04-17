@@ -35,6 +35,7 @@ import (
 	"helm.sh/helm/v4/internal/test"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -411,7 +412,7 @@ func TestInstallRelease_Wait(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	instAction.cfg.KubeClient = failer
-	instAction.Wait = true
+	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
 	goroutines := runtime.NumGoroutine()
@@ -430,7 +431,7 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 10 * time.Second
 	instAction.cfg.KubeClient = failer
-	instAction.Wait = true
+	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -453,7 +454,7 @@ func TestInstallRelease_WaitForJobs(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	instAction.cfg.KubeClient = failer
-	instAction.Wait = true
+	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	instAction.WaitForJobs = true
 	vals := map[string]interface{}{}
 
@@ -520,6 +521,8 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	time.AfterFunc(time.Second, cancel)
 
+	goroutines := runtime.NumGoroutine()
+
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
 	is.Contains(err.Error(), "context canceled")
@@ -530,6 +533,9 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
 	is.Error(err)
 	is.Equal(err, driver.ErrReleaseNotFound)
+	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
+	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
+	is.Equal(goroutines, runtime.NumGoroutine())
 
 }
 func TestNameTemplate(t *testing.T) {

@@ -156,7 +156,7 @@ format: $(GOIMPORTS)
 # Generate golden files used in unit tests
 .PHONY: gen-test-golden
 gen-test-golden:
-gen-test-golden: PKG = ./cmd/helm ./pkg/action
+gen-test-golden: PKG = ./pkg/cmd ./pkg/action
 gen-test-golden: TESTFLAGS = -update
 gen-test-golden: test-unit
 

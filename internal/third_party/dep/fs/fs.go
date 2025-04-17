@@ -172,28 +172,28 @@ func copyFile(src, dst string) (err error) {
 
 	in, err := os.Open(src)
 	if err != nil {
-		return
+		return err
 	}
 	defer in.Close()
 
 	out, err := os.Create(dst)
 	if err != nil {
-		return
+		return err
 	}
 
 	if _, err = io.Copy(out, in); err != nil {
 		out.Close()
-		return
+		return err
 	}
 
 	// Check for write errors on Close
 	if err = out.Close(); err != nil {
-		return
+		return err
 	}
 
 	si, err := os.Stat(src)
 	if err != nil {
-		return
+		return err
 	}
 
 	// Temporary fix for Go < 1.9
@@ -205,7 +205,7 @@ func copyFile(src, dst string) (err error) {
 	}
 	err = os.Chmod(dst, si.Mode())
 
-	return
+	return err
 }
 
 // cloneSymlink will create a new symlink that points to the resolved path of sl.

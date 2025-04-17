@@ -130,8 +130,8 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 
 	// Wrap in gzip writer
 	zipper := gzip.NewWriter(f)
-	zipper.Header.Extra = headerBytes
-	zipper.Header.Comment = "Helm"
+	zipper.Extra = headerBytes
+	zipper.Comment = "Helm"
 
 	// Wrap in tar writer
 	twriter := tar.NewWriter(zipper)

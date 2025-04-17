@@ -34,7 +34,7 @@ func TestUpdateCmd(t *testing.T) {
 	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer, _ bool) error {
+	updater := func(repos []*repo.ChartRepository, out io.Writer) error {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}
@@ -59,7 +59,7 @@ func TestUpdateCmdMultiple(t *testing.T) {
 	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer, _ bool) error {
+	updater := func(repos []*repo.ChartRepository, out io.Writer) error {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}
@@ -85,7 +85,7 @@ func TestUpdateCmdInvalid(t *testing.T) {
 	var out bytes.Buffer
 	// Instead of using the HTTP updater, we provide our own for this test.
 	// The TestUpdateCharts test verifies the HTTP behavior independently.
-	updater := func(repos []*repo.ChartRepository, out io.Writer, _ bool) error {
+	updater := func(repos []*repo.ChartRepository, out io.Writer) error {
 		for _, re := range repos {
 			fmt.Fprintln(out, re.Config.Name)
 		}
@@ -145,7 +145,7 @@ func TestUpdateCharts(t *testing.T) {
 	}
 
 	b := bytes.NewBuffer(nil)
-	updateCharts([]*repo.ChartRepository{r}, b, false)
+	updateCharts([]*repo.ChartRepository{r}, b)
 
 	got := b.String()
 	if strings.Contains(got, "Unable to get an update") {
@@ -161,39 +161,6 @@ func TestRepoUpdateFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "repo update repo1", false)
 }
 
-func TestUpdateChartsFail(t *testing.T) {
-	defer resetEnv()()
-	ensure.HelmHome(t)
-
-	ts := repotest.NewTempServer(
-		t,
-		repotest.WithChartSourceGlob("testdata/testserver/*.*"),
-	)
-	defer ts.Stop()
-
-	var invalidURL = ts.URL() + "55"
-	r, err := repo.NewChartRepository(&repo.Entry{
-		Name: "charts",
-		URL:  invalidURL,
-	}, getter.All(settings))
-	if err != nil {
-		t.Error(err)
-	}
-
-	b := bytes.NewBuffer(nil)
-	if err := updateCharts([]*repo.ChartRepository{r}, b, false); err != nil {
-		t.Error("Repo update should not return error if update of repository fails")
-	}
-
-	got := b.String()
-	if !strings.Contains(got, "Unable to get an update") {
-		t.Errorf("Repo should have failed update but instead got: %q", got)
-	}
-	if !strings.Contains(got, "Update Complete.") {
-		t.Error("Update was not successful")
-	}
-}
-
 func TestUpdateChartsFailWithError(t *testing.T) {
 	defer resetEnv()()
 	ensure.HelmHome(t)
@@ -205,7 +172,14 @@ func TestUpdateChartsFailWithError(t *testing.T) {
 	defer ts.Stop()
 
 	var invalidURL = ts.URL() + "55"
-	r, err := repo.NewChartRepository(&repo.Entry{
+	r1, err := repo.NewChartRepository(&repo.Entry{
+		Name: "charts",
+		URL:  invalidURL,
+	}, getter.All(settings))
+	if err != nil {
+		t.Error(err)
+	}
+	r2, err := repo.NewChartRepository(&repo.Entry{
 		Name: "charts",
 		URL:  invalidURL,
 	}, getter.All(settings))
@@ -214,12 +188,12 @@ func TestUpdateChartsFailWithError(t *testing.T) {
 	}
 
 	b := bytes.NewBuffer(nil)
-	err = updateCharts([]*repo.ChartRepository{r}, b, true)
+	err = updateCharts([]*repo.ChartRepository{r1, r2}, b)
 	if err == nil {
 		t.Error("Repo update should return error because update of repository fails and 'fail-on-repo-update-fail' flag set")
 		return
 	}
-	var expectedErr = "Failed to update the following repositories"
+	var expectedErr = "failed to update the following repositories"
 	var receivedErr = err.Error()
 	if !strings.Contains(receivedErr, expectedErr) {
 		t.Errorf("Expected error (%s) but got (%s) instead", expectedErr, receivedErr)

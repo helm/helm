@@ -184,9 +184,7 @@ func initCompromisedRegistryTestServer() string {
 			w.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
 			w.WriteHeader(200)
 
-			// layers[0] is the blob []byte("a")
-			w.Write([]byte(
-				fmt.Sprintf(`{ "schemaVersion": 2, "config": {
+			fmt.Fprintf(w, `{ "schemaVersion": 2, "config": {
     "mediaType": "%s",
     "digest": "sha256:a705ee2789ab50a5ba20930f246dbd5cc01ff9712825bb98f57ee8414377f133",
     "size": 181
@@ -198,7 +196,7 @@ func initCompromisedRegistryTestServer() string {
       "size": 1
     }
   ]
-}`, ConfigMediaType, ChartLayerMediaType)))
+}`, ConfigMediaType, ChartLayerMediaType)
 		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:a705ee2789ab50a5ba20930f246dbd5cc01ff9712825bb98f57ee8414377f133" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(200)

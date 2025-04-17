@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -144,7 +145,7 @@ func (i *HTTPInstaller) Install() error {
 		return err
 	}
 
-	debug("copying %s to %s", src, i.Path())
+	slog.Debug("copying", "source", src, "path", i.Path())
 	return fs.CopyDir(src, i.Path())
 }
 
@@ -156,7 +157,7 @@ func (i *HTTPInstaller) Update() error {
 
 // Path is overridden because we want to join on the plugin name not the file name
 func (i HTTPInstaller) Path() string {
-	if i.base.Source == "" {
+	if i.Source == "" {
 		return ""
 	}
 	return helmpath.DataPath("plugins", i.PluginName)

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -64,8 +65,8 @@ type Upgrade struct {
 	SkipCRDs bool
 	// Timeout is the timeout for this operation
 	Timeout time.Duration
-	// Wait determines whether the wait operation should be performed after the upgrade is requested.
-	Wait bool
+	// WaitStrategy determines what type of waiting should be done
+	WaitStrategy kube.WaitStrategy
 	// WaitForJobs determines whether the wait operation for the Jobs should be performed after the upgrade is requested.
 	WaitForJobs bool
 	// DisableHooks disables hook processing if set to true.
@@ -131,14 +132,14 @@ func NewUpgrade(cfg *Configuration) *Upgrade {
 	up := &Upgrade{
 		cfg: cfg,
 	}
-	up.ChartPathOptions.registryClient = cfg.RegistryClient
+	up.registryClient = cfg.RegistryClient
 
 	return up
 }
 
 // SetRegistryClient sets the registry client to use when fetching charts.
 func (u *Upgrade) SetRegistryClient(client *registry.Client) {
-	u.ChartPathOptions.registryClient = client
+	u.registryClient = client
 }
 
 // Run executes the upgrade on the given release.
@@ -155,13 +156,15 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
-	u.Wait = u.Wait || u.Atomic
+	if u.WaitStrategy == kube.HookOnlyStrategy && u.Atomic {
+		u.WaitStrategy = kube.StatusWatcherStrategy
+	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, errors.Errorf("release name is invalid: %s", name)
 	}
 
-	u.cfg.Log("preparing upgrade for %s", name)
+	slog.Debug("preparing upgrade", "name", name)
 	currentRelease, upgradedRelease, err := u.prepareUpgrade(name, chart, vals)
 	if err != nil {
 		return nil, err
@@ -169,7 +172,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 
 	u.cfg.Releases.MaxHistory = u.MaxHistory
 
-	u.cfg.Log("performing update for %s", name)
+	slog.Debug("performing update", "name", name)
 	res, err := u.performUpgrade(ctx, currentRelease, upgradedRelease)
 	if err != nil {
 		return res, err
@@ -177,7 +180,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 
 	// Do not update for dry runs
 	if !u.isDryRun() {
-		u.cfg.Log("updating status for upgraded release for %s", name)
+		slog.Debug("updating status for upgraded release", "name", name)
 		if err := u.cfg.Releases.Update(upgradedRelease); err != nil {
 			return res, err
 		}
@@ -363,7 +366,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 
 	// Run if it is a dry run
 	if u.isDryRun() {
-		u.cfg.Log("dry run for %s", upgradedRelease.Name)
+		slog.Debug("dry run for release", "name", upgradedRelease.Name)
 		if len(u.Description) > 0 {
 			upgradedRelease.Info.Description = u.Description
 		} else {
@@ -372,7 +375,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return upgradedRelease, nil
 	}
 
-	u.cfg.Log("creating upgraded release for %s", upgradedRelease.Name)
+	slog.Debug("creating upgraded release", "name", upgradedRelease.Name)
 	if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
 		return nil, err
 	}
@@ -418,12 +421,12 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout); err != nil {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.WaitStrategy, u.Timeout); err != nil {
 			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 			return
 		}
 	} else {
-		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
+		slog.Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
 	}
 
 	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
@@ -439,32 +442,32 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		// levels, we should make these error level logs so users are notified
 		// that they'll need to go do the cleanup on their own
 		if err := recreate(u.cfg, results.Updated); err != nil {
-			u.cfg.Log(err.Error())
+			slog.Error(err.Error())
 		}
 	}
-
-	if u.Wait {
-		u.cfg.Log(
-			"waiting for release %s resources (created: %d updated: %d  deleted: %d)",
-			upgradedRelease.Name, len(results.Created), len(results.Updated), len(results.Deleted))
-		if u.WaitForJobs {
-			if err := u.cfg.KubeClient.WaitWithJobs(target, u.Timeout); err != nil {
-				u.cfg.recordRelease(originalRelease)
-				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-				return
-			}
-		} else {
-			if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
-				u.cfg.recordRelease(originalRelease)
-				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-				return
-			}
+	waiter, err := u.cfg.KubeClient.GetWaiter(u.WaitStrategy)
+	if err != nil {
+		u.cfg.recordRelease(originalRelease)
+		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+		return
+	}
+	if u.WaitForJobs {
+		if err := waiter.WaitWithJobs(target, u.Timeout); err != nil {
+			u.cfg.recordRelease(originalRelease)
+			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+			return
+		}
+	} else {
+		if err := waiter.Wait(target, u.Timeout); err != nil {
+			u.cfg.recordRelease(originalRelease)
+			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+			return
 		}
 	}
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.Timeout); err != nil {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.WaitStrategy, u.Timeout); err != nil {
 			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
 			return
 		}
@@ -484,13 +487,13 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 
 func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, err error) (*release.Release, error) {
 	msg := fmt.Sprintf("Upgrade %q failed: %s", rel.Name, err)
-	u.cfg.Log("warning: %s", msg)
+	slog.Warn("upgrade failed", "name", rel.Name, slog.Any("error", err))
 
 	rel.Info.Status = release.StatusFailed
 	rel.Info.Description = msg
 	u.cfg.recordRelease(rel)
 	if u.CleanupOnFail && len(created) > 0 {
-		u.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(created))
+		slog.Debug("cleanup on fail set", "cleaning_resources", len(created))
 		_, errs := u.cfg.KubeClient.Delete(created)
 		if errs != nil {
 			var errorList []string
@@ -499,10 +502,10 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 			}
 			return rel, errors.Wrapf(fmt.Errorf("unable to cleanup resources: %s", strings.Join(errorList, ", ")), "an error occurred while cleaning up resources. original upgrade error: %s", err)
 		}
-		u.cfg.Log("Resource cleanup complete")
+		slog.Debug("resource cleanup complete")
 	}
 	if u.Atomic {
-		u.cfg.Log("Upgrade failed and atomic is set, rolling back to last successful release")
+		slog.Debug("upgrade failed and atomic is set, rolling back to last successful release")
 
 		// As a protection, get the last successful release before rollback.
 		// If there are no successful releases, bail out
@@ -526,7 +529,9 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 
 		rollin := NewRollback(u.cfg)
 		rollin.Version = filteredHistory[0].Version
-		rollin.Wait = true
+		if u.WaitStrategy == kube.HookOnlyStrategy {
+			rollin.WaitStrategy = kube.StatusWatcherStrategy
+		}
 		rollin.WaitForJobs = u.WaitForJobs
 		rollin.DisableHooks = u.DisableHooks
 		rollin.Recreate = u.Recreate
@@ -552,13 +557,13 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newVals map[string]interface{}) (map[string]interface{}, error) {
 	if u.ResetValues {
 		// If ResetValues is set, we completely ignore current.Config.
-		u.cfg.Log("resetting values to the chart's original version")
+		slog.Debug("resetting values to the chart's original version")
 		return newVals, nil
 	}
 
 	// If the ReuseValues flag is set, we always copy the old values over the new config's values.
 	if u.ReuseValues {
-		u.cfg.Log("reusing the old release's values")
+		slog.Debug("reusing the old release's values")
 
 		// We have to regenerate the old coalesced values:
 		oldVals, err := chartutil.CoalesceValues(current.Chart, current.Config)
@@ -575,7 +580,7 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 
 	// If the ResetThenReuseValues flag is set, we use the new chart's values, but we copy the old config's values over the new config's values.
 	if u.ResetThenReuseValues {
-		u.cfg.Log("merging values from old release to new values")
+		slog.Debug("merging values from old release to new values")
 
 		newVals = chartutil.CoalesceTables(newVals, current.Config)
 
@@ -583,7 +588,7 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 	}
 
 	if len(newVals) == 0 && len(current.Config) > 0 {
-		u.cfg.Log("copying values from %s (v%d) to new release.", current.Name, current.Version)
+		slog.Debug("copying values from old release", "name", current.Name, "version", current.Version)
 		newVals = current.Config
 	}
 	return newVals, nil

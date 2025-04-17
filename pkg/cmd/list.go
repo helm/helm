@@ -71,7 +71,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if client.AllNamespaces {
-				if err := cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), Debug); err != nil {
+				if err := cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER")); err != nil {
 					return err
 				}
 			}

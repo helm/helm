@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -32,6 +33,7 @@ import (
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/postrender"
 	"helm.sh/helm/v4/pkg/repo"
 )
@@ -49,6 +51,52 @@ func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 	f.StringArrayVar(&v.FileValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
 	f.StringArrayVar(&v.JSONValues, "set-json", []string{}, "set JSON values on the command line (can specify multiple or separate values with commas: key1=jsonval1,key2=jsonval2 or using json format: {\"key1\": jsonval1, \"key2\": \"jsonval2\"})")
 	f.StringArrayVar(&v.LiteralValues, "set-literal", []string{}, "set a literal STRING value on the command line")
+}
+
+func AddWaitFlag(cmd *cobra.Command, wait *kube.WaitStrategy) {
+	cmd.Flags().Var(
+		newWaitValue(kube.HookOnlyStrategy, wait),
+		"wait",
+		"if specified, will wait until all resources are in the expected state before marking the operation as successful. It will wait for as long as --timeout. Valid inputs are 'watcher' and 'legacy'",
+	)
+	// Sets the strategy to use the watcher strategy if `--wait` is used without an argument
+	cmd.Flags().Lookup("wait").NoOptDefVal = string(kube.StatusWatcherStrategy)
+}
+
+type waitValue kube.WaitStrategy
+
+func newWaitValue(defaultValue kube.WaitStrategy, ws *kube.WaitStrategy) *waitValue {
+	*ws = defaultValue
+	return (*waitValue)(ws)
+}
+
+func (ws *waitValue) String() string {
+	if ws == nil {
+		return ""
+	}
+	return string(*ws)
+}
+
+func (ws *waitValue) Set(s string) error {
+	switch s {
+	case string(kube.StatusWatcherStrategy), string(kube.LegacyStrategy):
+		*ws = waitValue(s)
+		return nil
+	case "true":
+		slog.Warn("--wait=true is deprecated (boolean value) and can be replaced with --wait=watcher")
+		*ws = waitValue(kube.StatusWatcherStrategy)
+		return nil
+	case "false":
+		slog.Warn("--wait=false is deprecated (boolean value) and can be replaced by omitting the --wait flag")
+		*ws = waitValue(kube.HookOnlyStrategy)
+		return nil
+	default:
+		return fmt.Errorf("invalid wait input %q. Valid inputs are %s, and %s", s, kube.StatusWatcherStrategy, kube.LegacyStrategy)
+	}
+}
+
+func (ws *waitValue) Type() string {
+	return "WaitStrategy"
 }
 
 func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
@@ -212,7 +260,7 @@ func compVersionFlag(chartRef string, _ string) ([]string, cobra.ShellCompDirect
 	var versions []string
 	if indexFile, err := repo.LoadIndexFile(path); err == nil {
 		for _, details := range indexFile.Entries[chartName] {
-			appVersion := details.Metadata.AppVersion
+			appVersion := details.AppVersion
 			appVersionDesc := ""
 			if appVersion != "" {
 				appVersionDesc = fmt.Sprintf("App: %s, ", appVersion)
@@ -223,10 +271,10 @@ func compVersionFlag(chartRef string, _ string) ([]string, cobra.ShellCompDirect
 				createdDesc = fmt.Sprintf("Created: %s ", created)
 			}
 			deprecated := ""
-			if details.Metadata.Deprecated {
+			if details.Deprecated {
 				deprecated = "(deprecated)"
 			}
-			versions = append(versions, fmt.Sprintf("%s\t%s%s%s", details.Metadata.Version, appVersionDesc, createdDesc, deprecated))
+			versions = append(versions, fmt.Sprintf("%s\t%s%s%s", details.Version, appVersionDesc, createdDesc, deprecated))
 		}
 	}
 

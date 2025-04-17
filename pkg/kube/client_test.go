@@ -107,7 +107,6 @@ func newTestClient(t *testing.T) *Client {
 
 	return &Client{
 		Factory: testFactory.WithNamespace("default"),
-		Log:     nopLogger,
 	}
 }
 
@@ -515,6 +514,11 @@ func TestWait(t *testing.T) {
 			}
 		}),
 	}
+	var err error
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	if err != nil {
+		t.Fatal(err)
+	}
 	resources, err := c.Build(objBody(&podList), false)
 	if err != nil {
 		t.Fatal(err)
@@ -566,6 +570,11 @@ func TestWaitJob(t *testing.T) {
 				return nil, nil
 			}
 		}),
+	}
+	var err error
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	if err != nil {
+		t.Fatal(err)
 	}
 	resources, err := c.Build(objBody(job), false)
 	if err != nil {
@@ -620,6 +629,11 @@ func TestWaitDelete(t *testing.T) {
 				return nil, nil
 			}
 		}),
+	}
+	var err error
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	if err != nil {
+		t.Fatal(err)
 	}
 	resources, err := c.Build(objBody(&pod), false)
 	if err != nil {
