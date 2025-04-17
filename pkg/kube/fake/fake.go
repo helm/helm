@@ -44,6 +44,7 @@ type FailingKubeClient struct {
 	BuildError                       error
 	BuildTableError                  error
 	BuildDummy                       bool
+	DummyResources                   kube.ResourceList
 	BuildUnstructuredError           error
 	WaitAndGetCompletedPodPhaseError error
 	WaitDuration                     time.Duration
@@ -126,6 +127,9 @@ func (f *FailingKubeClient) UpdateThreeWayMerge(r, modified kube.ResourceList, i
 func (f *FailingKubeClient) Build(r io.Reader, _ bool) (kube.ResourceList, error) {
 	if f.BuildError != nil {
 		return []*resource.Info{}, f.BuildError
+	}
+	if f.DummyResources != nil {
+		return f.DummyResources, nil
 	}
 	if f.BuildDummy {
 		return createDummyResourceList(), nil
