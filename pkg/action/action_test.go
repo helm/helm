@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v4/internal/logging"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/registry"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -39,6 +40,10 @@ import (
 var verbose = flag.Bool("test.log", false, "enable test logging (debug by default)")
 
 func actionConfigFixture(t *testing.T) *Configuration {
+	return actionConfigFixtureWithDummyResources(t, nil)
+}
+
+func actionConfigFixtureWithDummyResources(t *testing.T, dummyResources kube.ResourceList) *Configuration {
 	t.Helper()
 
 	logger := logging.NewLogger(func() bool {
@@ -53,7 +58,7 @@ func actionConfigFixture(t *testing.T) *Configuration {
 
 	return &Configuration{
 		Releases:       storage.Init(driver.NewMemory()),
-		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
+		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: dummyResources},
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,
 	}
