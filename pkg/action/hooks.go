@@ -112,7 +112,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 			// If a hook is failed, check the annotation of the previous successful hooks to determine whether the hooks
 			// should be deleted under succeeded condition.
-			if err := cfg.deleteHooksByPolicy(executingHooks[0:i], release.HookSucceeded, timeout); err != nil {
+			if err := cfg.deleteHooksByPolicy(executingHooks[0:i], release.HookSucceeded, waitStrategy, timeout); err != nil {
 				return err
 			}
 
@@ -178,9 +178,9 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 }
 
 // deleteHooksByPolicy deletes all hooks if the hook policy instructs it to
-func (cfg *Configuration) deleteHooksByPolicy(hooks []*release.Hook, policy release.HookDeletePolicy, timeout time.Duration) error {
+func (cfg *Configuration) deleteHooksByPolicy(hooks []*release.Hook, policy release.HookDeletePolicy, waitStrategy kube.WaitStrategy, timeout time.Duration) error {
 	for _, h := range hooks {
-		if err := cfg.deleteHookByPolicy(h, policy, timeout); err != nil {
+		if err := cfg.deleteHookByPolicy(h, policy, waitStrategy, timeout); err != nil {
 			return err
 		}
 	}
