@@ -48,7 +48,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	// hooke are pre-ordered by kind, so keep order stable
 	sort.Stable(hookByWeight(executingHooks))
 
-	for _, h := range executingHooks {
+	for i, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
 		if len(h.DeletePolicies) == 0 {
 			// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
@@ -104,6 +104,13 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 				// We log the error here as we want to propagate the hook failure upwards to the release object.
 				log.Printf("error deleting the hook resource on hook failure: %v", errDeleting)
 			}
+
+			// If a hook is failed, check the annotation of the previous successful hooks to determine whether the hooks
+			// should be deleted under succeeded condition.
+			if err := cfg.deleteHooksByPolicy(executingHooks[0:i], release.HookSucceeded, timeout); err != nil {
+				return err
+			}
+
 			return err
 		}
 		h.LastRun.Phase = release.HookPhaseSucceeded
@@ -161,6 +168,17 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 			}
 		}
 	}
+	return nil
+}
+
+// deleteHooksByPolicy deletes all hooks if the hook policy instructs it to
+func (cfg *Configuration) deleteHooksByPolicy(hooks []*release.Hook, policy release.HookDeletePolicy, timeout time.Duration) error {
+	for _, h := range hooks {
+		if err := cfg.deleteHookByPolicy(h, policy, timeout); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
