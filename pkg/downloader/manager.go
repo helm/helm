@@ -385,7 +385,7 @@ func parseOCIRef(chartRef string) (string, string, error) {
 	return chartRef, tag, nil
 }
 
-// safeMoveDep moves all dependencies in the source and moves them into dest.
+// safeMoveDeps moves all dependencies in the source and moves them into dest.
 //
 // It does this by first matching the file name to an expected pattern, then loading
 // the file to verify that it is a chart.
