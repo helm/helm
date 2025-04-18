@@ -18,7 +18,7 @@ package util
 
 import (
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -702,22 +702,26 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 		},
 	}
 
-	warnings := make([]string, 0)
-	printf := func(format string, v ...interface{}) {
-		t.Logf(format, v...)
-		warnings = append(warnings, fmt.Sprintf(format, v...))
-	}
+	// Capture logs emitted from slog
+	defaultLogger := slog.Default()
+	logCaptureHandler := NewLogCaptureHandler(nil)
+	slog.SetDefault(slog.New(logCaptureHandler))
 
-	_, err := coalesce(printf, c, vals, "", false)
+	_, err := coalesce(c, vals, "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Logf("vals: %v", vals)
-	assert.Contains(t, warnings, "warning: skipped value for level1.level2.level3.boat: Not a table.")
-	assert.Contains(t, warnings, "warning: destination for level1.level2.level3.spear.tip is a table. Ignoring non-table value (true)")
-	assert.Contains(t, warnings, "warning: cannot overwrite table with non table for level1.level2.level3.spear.sail (map[cotton:true])")
+	logOutput := logCaptureHandler.Records().AsMessageSlice()
 
+	t.Logf("vals: %v", vals)
+	assert.Contains(t, logOutput, "warning: skipped value for level1.level2.level3.boat: Not a table.")
+	assert.Contains(t, logOutput, "warning: destination for level1.level2.level3.spear.tip is a table. Ignoring non-table value (true)")
+	assert.Contains(t, logOutput, "warning: cannot overwrite table with non table for level1.level2.level3.spear.sail (map[cotton:true])")
+
+	// Reset and set the default logger back to its original state
+	logCaptureHandler.Reset()
+	slog.SetDefault(defaultLogger)
 }
 
 func TestConcatPrefix(t *testing.T) {
