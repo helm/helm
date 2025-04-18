@@ -15,12 +15,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4.2.2
 
+      - name: Add variables to environment file
+        run: cat ".github/env" >> "$GITHUB_ENV"
+
       - name: Setup Go
         uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # pin@5.1.0
         with:
-          go-version: '1.23'
+          go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@971e284b6050e8a5849b72094c50ab08da042db8 #pin@6.1.1
         with:
-          version: v1.62
+          version: ${{ env.GOLANGCI_LINT_VERSION }}

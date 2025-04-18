@@ -19,10 +19,12 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4.2.2
+      - name: Add variables to environment file
+        run: cat ".github/env" >> "$GITHUB_ENV"
       - name: Setup Go
         uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # pin@5.1.0
         with:
-          go-version: '1.23'
+          go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true
       - name: Test source headers are present
         run: make test-source-headers
