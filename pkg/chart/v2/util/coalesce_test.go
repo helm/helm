@@ -702,25 +702,50 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 		},
 	}
 
-	// Capture logs emitted from slog
+	// Get all logs emitted from slog
 	defaultLogger := slog.Default()
-	logCaptureHandler := NewLogCaptureHandler(nil)
-	slog.SetDefault(slog.New(logCaptureHandler))
+	handler := NewLogCaptureHandler(nil)
+	slog.SetDefault(slog.New(handler))
 
 	_, err := coalesce(c, vals, "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	logOutput := logCaptureHandler.Records().AsMessageSlice()
+	// Capture the logs
+	capturedLogOutput := handler.Capture()
 
 	t.Logf("vals: %v", vals)
-	assert.Contains(t, logOutput, "warning: skipped value for level1.level2.level3.boat: Not a table.")
-	assert.Contains(t, logOutput, "warning: destination for level1.level2.level3.spear.tip is a table. Ignoring non-table value (true)")
-	assert.Contains(t, logOutput, "warning: cannot overwrite table with non table for level1.level2.level3.spear.sail (map[cotton:true])")
+
+	// All warnings should have context as to where the warning is being emitted
+	capturedLogOutput.Filter(RecordLevelMatches(slog.LevelWarn)).
+		AssertThat(t).
+		HasAttr("chart").
+		HasAttr("error").
+		HasAttr("key")
+
+	capturedLogOutput.Filter(RecordMessageMatches("skipped value for level1.level2.level3.boat")).
+		AssertThat(t).
+		MatchesExactly(1).
+		AtLevel(slog.LevelWarn).
+		HasAttrValueString("chart", "level3")
+
+	capturedLogOutput.Filter(RecordMessageMatches("destination for level1.level2.level3.spear.tip is a table. Ignoring non-table value (true)")).
+		AssertThat(t).
+		MatchesExactly(1).
+		AtLevel(slog.LevelWarn).
+		HasAttrValueString("chart", "level3").
+		HasAttr("error")
+
+	capturedLogOutput.Filter(RecordMessageMatches("cannot overwrite table with non table for level1.level2.level3.spear.sail (map[cotton:true])")).
+		AssertThat(t).
+		MatchesExactly(1).
+		AtLevel(slog.LevelWarn).
+		HasAttrValueString("chart", "level3").
+		HasAttr("error")
 
 	// Reset and set the default logger back to its original state
-	logCaptureHandler.Reset()
+	handler.Reset()
 	slog.SetDefault(defaultLogger)
 }
 
