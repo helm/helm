@@ -18,7 +18,7 @@ package util
 
 import (
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -702,22 +702,51 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 		},
 	}
 
-	warnings := make([]string, 0)
-	printf := func(format string, v ...interface{}) {
-		t.Logf(format, v...)
-		warnings = append(warnings, fmt.Sprintf(format, v...))
-	}
+	// Get all logs emitted from slog
+	defaultLogger := slog.Default()
+	handler := NewLogCaptureHandler(nil)
+	slog.SetDefault(slog.New(handler))
 
-	_, err := coalesce(printf, c, vals, "", false)
+	_, err := coalesce(c, vals, "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Logf("vals: %v", vals)
-	assert.Contains(t, warnings, "warning: skipped value for level1.level2.level3.boat: Not a table.")
-	assert.Contains(t, warnings, "warning: destination for level1.level2.level3.spear.tip is a table. Ignoring non-table value (true)")
-	assert.Contains(t, warnings, "warning: cannot overwrite table with non table for level1.level2.level3.spear.sail (map[cotton:true])")
+	// Capture the logs
+	capturedLogOutput := handler.Capture()
 
+	t.Logf("vals: %v", vals)
+
+	// All warnings should have context as to where the warning is being emitted
+	capturedLogOutput.Filter(RecordLevelMatches(slog.LevelWarn)).
+		AssertThat(t).
+		HasAttr("chart").
+		HasAttr("error").
+		HasAttr("key")
+
+	capturedLogOutput.Filter(RecordMessageMatches("skipped value for level1.level2.level3.boat")).
+		AssertThat(t).
+		MatchesExactly(1).
+		AtLevel(slog.LevelWarn).
+		HasAttrValueString("chart", "level3")
+
+	capturedLogOutput.Filter(RecordMessageMatches("destination for level1.level2.level3.spear.tip is a table. Ignoring non-table value (true)")).
+		AssertThat(t).
+		MatchesExactly(1).
+		AtLevel(slog.LevelWarn).
+		HasAttrValueString("chart", "level3").
+		HasAttr("error")
+
+	capturedLogOutput.Filter(RecordMessageMatches("cannot overwrite table with non table for level1.level2.level3.spear.sail (map[cotton:true])")).
+		AssertThat(t).
+		MatchesExactly(1).
+		AtLevel(slog.LevelWarn).
+		HasAttrValueString("chart", "level3").
+		HasAttr("error")
+
+	// Reset and set the default logger back to its original state
+	handler.Reset()
+	slog.SetDefault(defaultLogger)
 }
 
 func TestConcatPrefix(t *testing.T) {
