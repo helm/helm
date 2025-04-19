@@ -44,6 +44,8 @@ type Engine struct {
 	clientProvider *ClientProvider
 	// EnableDNS tells the engine to allow DNS lookups when rendering templates
 	EnableDNS bool
+	// CustomTemplateFuncs is defined by users to provide custom template funcs
+	CustomTemplateFuncs template.FuncMap
 }
 
 // New creates a new instance of Engine using the passed in rest config.
@@ -242,6 +244,11 @@ func (e Engine) initFunMap(t *template.Template) {
 		funcMap["getHostByName"] = func(_ string) string {
 			return ""
 		}
+	}
+
+	// Set custom template funcs
+	for k, v := range e.CustomTemplateFuncs {
+		funcMap[k] = v
 	}
 
 	t.Funcs(funcMap)
