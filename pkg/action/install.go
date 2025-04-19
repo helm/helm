@@ -77,21 +77,22 @@ type Install struct {
 	DryRunOption    string
 	// HideSecret can be set to true when DryRun is enabled in order to hide
 	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
-	HideSecret               bool
-	DisableHooks             bool
-	Replace                  bool
-	WaitStrategy             kube.WaitStrategy
-	WaitForJobs              bool
-	Devel                    bool
-	DependencyUpdate         bool
-	Timeout                  time.Duration
-	Namespace                string
-	ReleaseName              string
-	GenerateName             bool
-	NameTemplate             string
-	Description              string
-	OutputDir                string
-	Atomic                   bool
+	HideSecret       bool
+	DisableHooks     bool
+	Replace          bool
+	WaitStrategy     kube.WaitStrategy
+	WaitForJobs      bool
+	Devel            bool
+	DependencyUpdate bool
+	Timeout          time.Duration
+	Namespace        string
+	ReleaseName      string
+	GenerateName     bool
+	NameTemplate     string
+	Description      string
+	OutputDir        string
+	// RollbackOnFailure enables rolling back (uninstalling) the release on failure if set
+	RollbackOnFailure        bool
 	SkipCRDs                 bool
 	SubNotes                 bool
 	HideNotes                bool
@@ -292,9 +293,9 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		slog.Debug("API Version list given outside of client only mode, this list will be ignored")
 	}
 
-	// Make sure if Atomic is set, that wait is set as well. This makes it so
+	// Make sure if RollbackOnFailure is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
-	if i.WaitStrategy == kube.HookOnlyStrategy && i.Atomic {
+	if i.WaitStrategy == kube.HookOnlyStrategy && i.RollbackOnFailure {
 		i.WaitStrategy = kube.StatusWatcherStrategy
 	}
 
@@ -518,8 +519,8 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
 	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
-	if i.Atomic {
-		slog.Debug("install failed, uninstalling release", "release", i.ReleaseName)
+	if i.RollbackOnFailure {
+		slog.Debug("install failed and rollback-on-failure is set, uninstalling release", "release", i.ReleaseName)
 		uninstall := NewUninstall(i.cfg)
 		uninstall.DisableHooks = i.DisableHooks
 		uninstall.KeepHistory = false
@@ -527,7 +528,7 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 		if _, uninstallErr := uninstall.Run(i.ReleaseName); uninstallErr != nil {
 			return rel, errors.Wrapf(uninstallErr, "an error occurred while uninstalling the release. original install error: %s", err)
 		}
-		return rel, errors.Wrapf(err, "release %s failed, and has been uninstalled due to atomic being set", i.ReleaseName)
+		return rel, errors.Wrapf(err, "release %s failed, and has been uninstalled due to rollback-on-failure being set", i.ReleaseName)
 	}
 	i.recordRelease(rel) // Ignore the error, since we have another error to deal with.
 	return rel, err
