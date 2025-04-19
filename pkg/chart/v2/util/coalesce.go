@@ -214,7 +214,7 @@ func coalesceValues(c *chart.Chart, v map[string]interface{}, prefix string, mer
 			// c.Values has a map[string]interface{} structure. If the copy of
 			// it cannot be treated as map[string]interface{} there is something
 			// strangely wrong. Log it and use c.Values
-			slog.Warn(fmt.Sprintf("warning: unable to convert values copy to values type"))
+			slog.Warn("warning: unable to convert values copy to values type")
 			vc = c.Values
 		}
 	}
@@ -293,12 +293,13 @@ func coalesceTablesFullKey(dst, src map[string]interface{}, prefix string, merge
 			dst[key] = val
 		} else if istable(val) {
 			if istable(dv) {
+				slog.Warn("testing")
 				coalesceTablesFullKey(dv.(map[string]interface{}), val.(map[string]interface{}), fullkey, merge)
 			} else {
-				slog.Warn(fmt.Sprintf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val))
+				slog.Warn(fmt.Sprintf("cannot overwrite table with non table for %s (%v)", fullkey, val))
 			}
 		} else if istable(dv) && val != nil {
-			slog.Warn(fmt.Sprintf("warning: destination for %s is a table. Ignoring non-table value (%v)", fullkey, val))
+			slog.Warn(fmt.Sprintf("destination for %s is a table. Ignoring non-table value (%v)", fullkey, val))
 		}
 	}
 	return dst
