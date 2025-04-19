@@ -87,8 +87,6 @@ func copyValues(vals map[string]interface{}) (Values, error) {
 	return valsCopy, nil
 }
 
-type printFn func(format string, v ...interface{})
-
 // coalesce coalesces the dest values and the chart values, giving priority to the dest values.
 //
 // This is a helper function for CoalesceValues and MergeValues.
