@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/cmd/require"
 )
 
@@ -72,6 +73,15 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.SetRegistryClient(registryClient)
 
+			// We set max size limits here to avoid setting at the action level
+			// loader will be called via chartutil.ExpandFile
+			if client.MaxChartSize > 0 {
+				loader.MaxDecompressedChartSize = client.MaxChartSize
+			}
+			if client.MaxFileSize > 0 {
+				loader.MaxDecompressedFileSize = client.MaxFileSize
+			}
+
 			for i := 0; i < len(args); i++ {
 				output, err := client.Run(args[i])
 				if err != nil {
@@ -89,6 +99,8 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.VerifyLater, "prov", false, "fetch the provenance file, but don't perform verification")
 	f.StringVar(&client.UntarDir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
 	f.StringVarP(&client.DestDir, "destination", "d", ".", "location to write the chart. If this and untardir are specified, untardir is appended to this")
+	f.Int64Var(&client.MaxChartSize, "max-chart-size", settings.MaxChartSize, "maximum size in bytes for a decompressed chart (default is 100mb)")
+	f.Int64Var(&client.MaxFileSize, "max-file-size", settings.MaxFileSize, "maximum size in bytes for a single file in a chart (default is 5mb)")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

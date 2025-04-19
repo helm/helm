@@ -46,6 +46,10 @@ type Pull struct {
 	UntarDir    string
 	DestDir     string
 	cfg         *Configuration
+	// MaxChartSize is the maximum decompressed size of a chart in bytes
+	MaxChartSize int64
+	// MaxFileSize is the maximum size of a single file in a chart in bytes
+	MaxFileSize int64
 }
 
 type PullOpt func(*Pull)
@@ -165,7 +169,6 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			if err := os.MkdirAll(udCheck, 0755); err != nil {
 				return out.String(), errors.Wrap(err, "failed to untar (mkdir)")
 			}
-
 		} else {
 			return out.String(), errors.Errorf("failed to untar: a file or directory with the name %s already exists", udCheck)
 		}

@@ -193,6 +193,12 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
+			if client.MaxChartSize > 0 {
+				loader.MaxDecompressedChartSize = client.MaxChartSize
+			}
+			if client.MaxFileSize > 0 {
+				loader.MaxDecompressedFileSize = client.MaxFileSize
+			}
 			// Check chart dependencies to make sure all are present in /charts
 			ch, err := loader.Load(chartPath)
 			if err != nil {
@@ -291,6 +297,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
 	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, upgrade will ignore the check for helm annotations and take ownership of the existing resources")
+	f.Int64Var(&client.MaxChartSize, "max-chart-size", settings.MaxChartSize, "maximum size in bytes for a decompressed chart (default is 100mb)")
+	f.Int64Var(&client.MaxFileSize, "max-file-size", settings.MaxFileSize, "maximum size in bytes for a single file in a chart (default is 5mb)")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
