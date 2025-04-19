@@ -92,7 +92,7 @@ func TestInvalidYaml(t *testing.T) {
 }
 
 func TestInvalidChartYaml(t *testing.T) {
-	m := All(invalidChartFileDir, values, namespace, strict).Messages
+	m := RunAll(invalidChartFileDir, values, namespace).Messages
 	if len(m) != 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
