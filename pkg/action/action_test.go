@@ -16,9 +16,11 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -68,6 +70,15 @@ metadata:
   name: test-cm
   annotations:
     "helm.sh/hook": post-install,pre-delete,post-upgrade
+data:
+  name: value`
+
+var manifestWithPostRenderHook = `kind: ConfigMap
+metadata:
+  name: pr-test-cm
+  annotations:
+    "helm.sh/hook": post-install,pre-delete,post-upgrade
+    "helm.sh/hook-post-render": "true"
 data:
   name: value`
 
@@ -364,5 +375,34 @@ func TestGetVersionSet(t *testing.T) {
 	}
 	if vs.Has("nosuchversion/v1") {
 		t.Error("Non-existent version is reported found.")
+	}
+}
+
+type mutatingPostRenderer struct {
+	Old, New []byte
+}
+
+func (pr *mutatingPostRenderer) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {
+	modifiedManifests := bytes.ReplaceAll(renderedManifests.Bytes(), pr.Old, pr.New)
+	return bytes.NewBuffer(modifiedManifests), nil
+}
+
+func TestRunPostRenderer(t *testing.T) {
+	files := map[string]string{
+		"pr-test-cm.yaml": manifestWithPostRenderHook,
+		"test-cm.yaml":    manifestWithHook,
+	}
+
+	postRenderer := &mutatingPostRenderer{[]byte("name: value"), []byte("name: VALUE")}
+	postRenderedFiles, err := runPostRenderer(postRenderer, files)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if postRenderedFiles["pr-test-cm.yaml"] != strings.ReplaceAll(manifestWithPostRenderHook, "name: value", "name: VALUE") {
+		t.Error("Expected pr-test-cm to be present and mutated by the post processor")
+	}
+	if postRenderedFiles["test-cm.yaml"] != manifestWithHook {
+		t.Error("Expected test-cm to be present and unmodified")
 	}
 }
