@@ -35,6 +35,7 @@ const badYamlFileDir = "rules/testdata/albatross"
 const goodChartDir = "rules/testdata/goodone"
 const subChartValuesDir = "rules/testdata/withsubchart"
 const malformedTemplate = "rules/testdata/malformed-template"
+const invalidChartFileDir = "rules/testdata/invalidchartfile"
 
 func TestBadChart(t *testing.T) {
 	m := RunAll(badChartDir, values, namespace).Messages
@@ -87,6 +88,16 @@ func TestInvalidYaml(t *testing.T) {
 	}
 	if !strings.Contains(m[0].Err.Error(), "deliberateSyntaxError") {
 		t.Errorf("All didn't have the error for deliberateSyntaxError")
+	}
+}
+
+func TestInvalidChartYaml(t *testing.T) {
+	m := RunAll(invalidChartFileDir, values, namespace).Messages
+	if len(m) != 1 {
+		t.Fatalf("All didn't fail with expected errors, got %#v", m)
+	}
+	if !strings.Contains(m[0].Err.Error(), "failed to strictly parse chart metadata file") {
+		t.Errorf("All didn't have the error for duplicate YAML keys")
 	}
 }
 
