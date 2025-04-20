@@ -408,7 +408,7 @@ func reformatExecErrorMsg(filename string, err error) error {
 		fmt.Fprintf(&finalErrorString, "%s", fileLocation.String())
 	}
 
-	return fmt.Errorf("%s", finalErrorString.String())
+	return errors.New(finalErrorString.String())
 }
 
 func sortTemplates(tpls map[string]renderable) []string {
