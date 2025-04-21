@@ -4,6 +4,7 @@ run:
 linters:
   default: none
   enable:
+    - depguard
     - dupl
     - govet
     - ineffassign
@@ -13,6 +14,12 @@ linters:
     - staticcheck
     - unused
   settings:
+    depguard:
+      rules:
+        Main:
+          deny:
+            - pkg: github.com/hashicorp/go-multierror
+              desc: "use errors instead"
     dupl:
       threshold: 400
   exclusions:
