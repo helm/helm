@@ -881,7 +881,7 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 			return nil, err
 		}
 		if len(tags) == 0 {
-			return nil, fmt.Errorf("Unable to locate any tags in provided repository: %s", ref)
+			return nil, fmt.Errorf("unable to locate any tags in provided repository: %s", ref)
 		}
 
 		// Determine if version provided

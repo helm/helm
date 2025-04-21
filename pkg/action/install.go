@@ -247,7 +247,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// HideSecret must be used with dry run. Otherwise, return an error.
 	if !i.isDryRun() && i.HideSecret {
 		slog.Error("hiding Kubernetes secrets requires a dry-run mode")
-		return nil, errors.New("Hiding Kubernetes secrets requires a dry-run mode")
+		return nil, errors.New("hiding Kubernetes secrets requires a dry-run mode")
 	}
 
 	if err := i.availableName(); err != nil {
@@ -365,7 +365,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 			toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("Unable to continue with install: %w", err)
+			return nil, fmt.Errorf("unable to continue with install: %w", err)
 		}
 	}
 

@@ -204,7 +204,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	// Save values.schema.json if it exists
 	if c.Schema != nil {
 		if !json.Valid(c.Schema) {
-			return errors.New("Invalid JSON in " + SchemafileName)
+			return errors.New("invalid JSON in " + SchemafileName)
 		}
 		if err := writeToTar(out, filepath.Join(base, SchemafileName), c.Schema); err != nil {
 			return err

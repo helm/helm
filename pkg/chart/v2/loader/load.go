@@ -163,7 +163,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	}
 
 	if c.Metadata == nil {
-		return c, errors.New("Chart.yaml file is missing")
+		return c, errors.New("Chart.yaml file is missing") //nolint:staticcheck
 	}
 
 	if err := c.Validate(); err != nil {

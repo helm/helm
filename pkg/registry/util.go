@@ -86,7 +86,7 @@ func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (str
 		}
 	}
 
-	return "", fmt.Errorf("Could not locate a version matching provided version string %s", versionString)
+	return "", fmt.Errorf("could not locate a version matching provided version string %s", versionString)
 }
 
 // extractChartMeta is used to extract a chart metadata from a byte array

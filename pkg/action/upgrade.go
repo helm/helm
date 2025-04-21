@@ -205,7 +205,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 
 	// HideSecret must be used with dry run. Otherwise, return an error.
 	if !u.isDryRun() && u.HideSecret {
-		return nil, nil, errors.New("Hiding Kubernetes secrets requires a dry-run mode")
+		return nil, nil, errors.New("hiding Kubernetes secrets requires a dry-run mode")
 	}
 
 	// finds the last non-deleted release with the given name
@@ -353,7 +353,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		toBeUpdated, err = existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("Unable to continue with update: %w", err)
+		return nil, fmt.Errorf("unable to continue with update: %w", err)
 	}
 
 	toBeUpdated.Visit(func(r *resource.Info, err error) error {
