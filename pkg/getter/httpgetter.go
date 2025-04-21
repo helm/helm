@@ -64,11 +64,11 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	// with the basic auth is the one being fetched.
 	u1, err := url.Parse(g.opts.url)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to parse getter URL: %w", err)
+		return nil, fmt.Errorf("unable to parse getter URL: %w", err)
 	}
 	u2, err := url.Parse(href)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to parse URL getting from: %w", err)
+		return nil, fmt.Errorf("unable to parse URL getting from: %w", err)
 	}
 
 	// Host on URL (returned from url.Parse) contains the port if present.

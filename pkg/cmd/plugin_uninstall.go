@@ -69,12 +69,12 @@ func (o *pluginUninstallOptions) run(out io.Writer) error {
 	for _, name := range o.names {
 		if found := findPlugin(plugins, name); found != nil {
 			if err := uninstallPlugin(found); err != nil {
-				errorPlugins = append(errorPlugins, fmt.Errorf("Failed to uninstall plugin %s, got error (%v)", name, err))
+				errorPlugins = append(errorPlugins, fmt.Errorf("failed to uninstall plugin %s, got error (%v)", name, err))
 			} else {
 				fmt.Fprintf(out, "Uninstalled plugin: %s\n", name)
 			}
 		} else {
-			errorPlugins = append(errorPlugins, fmt.Errorf("Plugin: %s not found", name))
+			errorPlugins = append(errorPlugins, fmt.Errorf("plugin: %s not found", name))
 		}
 	}
 	if len(errorPlugins) > 0 {

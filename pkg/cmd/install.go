@@ -294,7 +294,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					return nil, fmt.Errorf("failed reloading chart after repo update: %w", err)
 				}
 			} else {
-				return nil, fmt.Errorf("An error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies: %w", err)
+				return nil, fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies: %w", err)
 			}
 		}
 	}
@@ -358,7 +358,7 @@ func validateDryRunOptionFlag(dryRunOptionFlagValue string) error {
 		}
 	}
 	if !isAllowed {
-		return errors.New("Invalid dry-run flag. Flag must one of the following: false, true, none, client, server")
+		return errors.New("invalid dry-run flag. Flag must one of the following: false, true, none, client, server")
 	}
 	return nil
 }

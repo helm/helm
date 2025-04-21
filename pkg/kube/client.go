@@ -184,13 +184,13 @@ func (c *Client) IsReachable() error {
 	if err == genericclioptions.ErrEmptyConfig {
 		// re-replace kubernetes ErrEmptyConfig error with a friendly error
 		// moar workarounds for Kubernetes API breaking.
-		return errors.New("Kubernetes cluster unreachable")
+		return errors.New("kubernetes cluster unreachable")
 	}
 	if err != nil {
-		return fmt.Errorf("Kubernetes cluster unreachable: %w", err)
+		return fmt.Errorf("kubernetes cluster unreachable: %w", err)
 	}
 	if _, err := client.Discovery().ServerVersion(); err != nil {
-		return fmt.Errorf("Kubernetes cluster unreachable: %w", err)
+		return fmt.Errorf("kubernetes cluster unreachable: %w", err)
 	}
 	return nil
 }
@@ -742,12 +742,12 @@ func (c *Client) OutputContainerLogsForPodList(podList *v1.PodList, namespace st
 func copyRequestStreamToWriter(request *rest.Request, podName, containerName string, writer io.Writer) error {
 	readCloser, err := request.Stream(context.Background())
 	if err != nil {
-		return fmt.Errorf("Failed to stream pod logs for pod: %s, container: %s", podName, containerName)
+		return fmt.Errorf("failed to stream pod logs for pod: %s, container: %s", podName, containerName)
 	}
 	defer readCloser.Close()
 	_, err = io.Copy(writer, readCloser)
 	if err != nil {
-		return fmt.Errorf("Failed to copy IO from logs for pod: %s, container: %s", podName, containerName)
+		return fmt.Errorf("failed to copy IO from logs for pod: %s, container: %s", podName, containerName)
 	}
 	return nil
 }
