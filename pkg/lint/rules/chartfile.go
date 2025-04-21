@@ -107,7 +107,7 @@ func validateChartYamlFormat(chartFileError error) error {
 
 func validateChartYamlStrictFormat(chartFileError error) error {
 	if chartFileError != nil {
-		return errors.Errorf("failed to strictly parse chart metadata file\n\t%s", chartFileError.Error())
+		return fmt.Errorf("failed to strictly parse chart metadata file\n\t%w", chartFileError)
 	}
 	return nil
 }

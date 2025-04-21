@@ -66,7 +66,7 @@ func (p *execRender) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error)
 	// If the binary returned almost nothing, it's likely that it didn't
 	// successfully render anything
 	if len(bytes.TrimSpace(postRendered.Bytes())) == 0 {
-		return nil, errors.Errorf("post-renderer %q produced empty output", p.binaryPath)
+		return nil, fmt.Errorf("post-renderer %q produced empty output", p.binaryPath)
 	}
 
 	return postRendered, nil

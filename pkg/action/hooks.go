@@ -23,7 +23,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/pkg/errors"
 	"helm.sh/helm/v4/pkg/kube"
 
 	"gopkg.in/yaml.v3"
@@ -88,7 +87,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 		waiter, err := cfg.KubeClient.GetWaiter(waitStrategy)
 		if err != nil {
-			return errors.Wrapf(err, "unable to get waiter")
+			return fmt.Errorf("unable to get waiter: %w", err)
 		}
 		// Watch hook resources until they have completed
 		err = waiter.WatchUntilReady(resources, timeout)
@@ -238,7 +237,7 @@ func (cfg *Configuration) deriveNamespace(h *release.Hook, namespace string) (st
 	}{}
 	err := yaml.Unmarshal([]byte(h.Manifest), &tmp)
 	if err != nil {
-		return "", errors.Wrapf(err, "unable to parse metadata.namespace from kubernetes manifest for output logs hook %s", h.Path)
+		return "", fmt.Errorf("unable to parse metadata.namespace from kubernetes manifest for output logs hook %s: %w", h.Path, err)
 	}
 	if tmp.Metadata.Namespace == "" {
 		return namespace, nil

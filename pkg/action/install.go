@@ -184,7 +184,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 	if len(totalItems) > 0 {
 		waiter, err := i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
 		if err != nil {
-			return errors.Wrapf(err, "unable to get waiter")
+			return fmt.Errorf("unable to get waiter: %w", err)
 		}
 		// Give time for the CRD to be recognized.
 		if err := waiter.Wait(totalItems, 60*time.Second); err != nil {
@@ -240,7 +240,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	if !i.ClientOnly {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
 			slog.Error(fmt.Sprintf("cluster reachability check failed: %v", err))
-			return nil, errors.Wrap(err, "cluster reachability check failed")
+			return nil, fmt.Errorf("cluster reachability check failed: %w", err)
 		}
 	}
 
@@ -252,12 +252,12 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 
 	if err := i.availableName(); err != nil {
 		slog.Error("release name check failed", slog.Any("error", err))
-		return nil, errors.Wrap(err, "release name check failed")
+		return nil, fmt.Errorf("release name check failed: %w", err)
 	}
 
 	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
 		slog.Error("chart dependencies processing failed", slog.Any("error", err))
-		return nil, errors.Wrap(err, "chart dependencies processing failed")
+		return nil, fmt.Errorf("chart dependencies processing failed: %w", err)
 	}
 
 	var interactWithRemote bool
