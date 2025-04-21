@@ -80,6 +80,13 @@ type InterfaceExt interface {
 	WaitForDelete(resources ResourceList, timeout time.Duration) error
 }
 
+// InterfaceThreeWayMerge was introduced to avoid breaking backwards compatibility for Interface implementers.
+//
+// TODO Helm 4: Remove InterfaceThreeWayMerge and integrate its method(s) into the Interface.
+type InterfaceThreeWayMerge interface {
+	UpdateThreeWayMerge(original, target ResourceList, force bool) (*Result, error)
+}
+
 // InterfaceLogs was introduced to avoid breaking backwards compatibility for Interface implementers.
 //
 // TODO Helm 4: Remove InterfaceLogs and integrate its method(s) into the Interface.
@@ -123,6 +130,7 @@ type InterfaceResources interface {
 
 var _ Interface = (*Client)(nil)
 var _ InterfaceExt = (*Client)(nil)
+var _ InterfaceThreeWayMerge = (*Client)(nil)
 var _ InterfaceLogs = (*Client)(nil)
 var _ InterfaceDeletionPropagation = (*Client)(nil)
 var _ InterfaceResources = (*Client)(nil)
