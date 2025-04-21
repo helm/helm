@@ -212,7 +212,7 @@ func TestInstallReleaseWithTakeOwnership_ResourceOwnedNoFlag(t *testing.T) {
 	instAction := installActionWithConfig(config)
 	_, err := instAction.Run(buildChart(), nil)
 	is.Error(err)
-	is.Contains(err.Error(), "Unable to continue with install")
+	is.Contains(err.Error(), "unable to continue with install")
 }
 
 func TestInstallReleaseWithValues(t *testing.T) {
