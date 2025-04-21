@@ -22,7 +22,7 @@ package sympath
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -70,8 +70,8 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 		if err != nil {
 			return fmt.Errorf("error evaluating symlink %s: %w", path, err)
 		}
-		// This log message is to highlight a symlink that is being used within a chart, symlinks can be used for nefarious reasons.
-		log.Printf("found symbolic link in path: %s resolves to %s. Contents of linked file included and used", path, resolved)
+		//This log message is to highlight a symlink that is being used within a chart, symlinks can be used for nefarious reasons.
+		slog.Info("found symbolic link in path. Contents of linked file included and used", "path", path, "resolved", resolved)
 		if info, err = os.Lstat(resolved); err != nil {
 			return err
 		}

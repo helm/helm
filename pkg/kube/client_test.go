@@ -24,10 +24,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	jsonserializer "k8s.io/apimachinery/pkg/runtime/serializer/json"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/resource"
+	k8sfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
 	cmdtesting "k8s.io/kubectl/pkg/cmd/testing"
@@ -104,7 +112,6 @@ func newTestClient(t *testing.T) *Client {
 
 	return &Client{
 		Factory: testFactory.WithNamespace("default"),
-		Log:     nopLogger,
 	}
 }
 
@@ -205,7 +212,7 @@ func TestCreate(t *testing.T) {
 	})
 }
 
-func TestUpdate(t *testing.T) {
+func testUpdate(t *testing.T, threeWayMerge bool) {
 	listA := newPodList("starfish", "otter", "squid")
 	listB := newPodList("starfish", "otter", "dolphin")
 	listC := newPodList("starfish", "otter", "dolphin")
@@ -276,7 +283,12 @@ func TestUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := c.Update(first, second, false)
+	var result *Result
+	if threeWayMerge {
+		result, err = c.UpdateThreeWayMerge(first, second, false)
+	} else {
+		result, err = c.Update(first, second, false)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -323,6 +335,14 @@ func TestUpdate(t *testing.T) {
 			t.Errorf("expected %s request got %s", v, actions[k])
 		}
 	}
+}
+
+func TestUpdate(t *testing.T) {
+	testUpdate(t, false)
+}
+
+func TestUpdateThreeWayMerge(t *testing.T) {
+	testUpdate(t, true)
 }
 
 func TestBuild(t *testing.T) {
@@ -512,6 +532,11 @@ func TestWait(t *testing.T) {
 			}
 		}),
 	}
+	var err error
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	if err != nil {
+		t.Fatal(err)
+	}
 	resources, err := c.Build(objBody(&podList), false)
 	if err != nil {
 		t.Fatal(err)
@@ -563,6 +588,11 @@ func TestWaitJob(t *testing.T) {
 				return nil, nil
 			}
 		}),
+	}
+	var err error
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	if err != nil {
+		t.Fatal(err)
 	}
 	resources, err := c.Build(objBody(job), false)
 	if err != nil {
@@ -617,6 +647,11 @@ func TestWaitDelete(t *testing.T) {
 				return nil, nil
 			}
 		}),
+	}
+	var err error
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	if err != nil {
+		t.Fatal(err)
 	}
 	resources, err := c.Build(objBody(&pod), false)
 	if err != nil {
@@ -680,6 +715,39 @@ func TestReal(t *testing.T) {
 	if _, errs := c.Delete(resources); errs != nil {
 		t.Fatal(errs)
 	}
+}
+
+func TestGetPodList(t *testing.T) {
+
+	namespace := "some-namespace"
+	names := []string{"dave", "jimmy"}
+	var responsePodList v1.PodList
+	for _, name := range names {
+		responsePodList.Items = append(responsePodList.Items, newPodWithStatus(name, v1.PodStatus{}, namespace))
+	}
+
+	kubeClient := k8sfake.NewSimpleClientset(&responsePodList)
+	c := Client{Namespace: namespace, kubeClient: kubeClient}
+
+	podList, err := c.GetPodList(namespace, metav1.ListOptions{})
+	clientAssertions := assert.New(t)
+	clientAssertions.NoError(err)
+	clientAssertions.Equal(&responsePodList, podList)
+
+}
+
+func TestOutputContainerLogsForPodList(t *testing.T) {
+	namespace := "some-namespace"
+	somePodList := newPodList("jimmy", "three", "structs")
+
+	kubeClient := k8sfake.NewSimpleClientset(&somePodList)
+	c := Client{Namespace: namespace, kubeClient: kubeClient}
+	outBuffer := &bytes.Buffer{}
+	outBufferFunc := func(_, _, _ string) io.Writer { return outBuffer }
+	err := c.OutputContainerLogsForPodList(&somePodList, namespace, outBufferFunc)
+	clientAssertions := assert.New(t)
+	clientAssertions.NoError(err)
+	clientAssertions.Equal("fake logsfake logsfake logs", outBuffer.String())
 }
 
 const testServiceManifest = `
@@ -862,3 +930,150 @@ spec:
 
 var resourceQuotaConflict = []byte(`
 {"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Operation cannot be fulfilled on resourcequotas \"quota\": the object has been modified; please apply your changes to the latest version and try again","reason":"Conflict","details":{"name":"quota","kind":"resourcequotas"},"code":409}`)
+
+type createPatchTestCase struct {
+	name string
+
+	// The target state.
+	target *unstructured.Unstructured
+	// The current state as it exists in the release.
+	current *unstructured.Unstructured
+	// The actual state as it exists in the cluster.
+	actual *unstructured.Unstructured
+
+	threeWayMergeForUnstructured bool
+	// The patch is supposed to transfer the current state to the target state,
+	// thereby preserving the actual state, wherever possible.
+	expectedPatch     string
+	expectedPatchType types.PatchType
+}
+
+func (c createPatchTestCase) run(t *testing.T) {
+	scheme := runtime.NewScheme()
+	v1.AddToScheme(scheme)
+	encoder := jsonserializer.NewSerializerWithOptions(
+		jsonserializer.DefaultMetaFactory, scheme, scheme, jsonserializer.SerializerOptions{
+			Yaml: false, Pretty: false, Strict: true,
+		},
+	)
+	objBody := func(obj runtime.Object) io.ReadCloser {
+		return io.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(encoder, obj))))
+	}
+	header := make(http.Header)
+	header.Set("Content-Type", runtime.ContentTypeJSON)
+	restClient := &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Resp: &http.Response{
+			StatusCode: 200,
+			Body:       objBody(c.actual),
+			Header:     header,
+		},
+	}
+
+	targetInfo := &resource.Info{
+		Client:    restClient,
+		Namespace: "default",
+		Name:      "test-obj",
+		Object:    c.target,
+		Mapping: &meta.RESTMapping{
+			Resource: schema.GroupVersionResource{
+				Group:    "crd.com",
+				Version:  "v1",
+				Resource: "datas",
+			},
+			Scope: meta.RESTScopeNamespace,
+		},
+	}
+
+	patch, patchType, err := createPatch(targetInfo, c.current, c.threeWayMergeForUnstructured)
+	if err != nil {
+		t.Fatalf("Failed to create patch: %v", err)
+	}
+
+	if c.expectedPatch != string(patch) {
+		t.Errorf("Unexpected patch.\nTarget:\n%s\nCurrent:\n%s\nActual:\n%s\n\nExpected:\n%s\nGot:\n%s",
+			c.target,
+			c.current,
+			c.actual,
+			c.expectedPatch,
+			string(patch),
+		)
+	}
+
+	if patchType != types.MergePatchType {
+		t.Errorf("Expected patch type %s, got %s", types.MergePatchType, patchType)
+	}
+}
+
+func newTestCustomResourceData(metadata map[string]string, spec map[string]interface{}) *unstructured.Unstructured {
+	if metadata == nil {
+		metadata = make(map[string]string)
+	}
+	if _, ok := metadata["name"]; !ok {
+		metadata["name"] = "test-obj"
+	}
+	if _, ok := metadata["namespace"]; !ok {
+		metadata["namespace"] = "default"
+	}
+	o := map[string]interface{}{
+		"apiVersion": "crd.com/v1",
+		"kind":       "Data",
+		"metadata":   metadata,
+	}
+	if len(spec) > 0 {
+		o["spec"] = spec
+	}
+	return &unstructured.Unstructured{
+		Object: o,
+	}
+}
+
+func TestCreatePatchCustomResourceMetadata(t *testing.T) {
+	target := newTestCustomResourceData(map[string]string{
+		"meta.helm.sh/release-name":      "foo-simple",
+		"meta.helm.sh/release-namespace": "default",
+		"objectset.rio.cattle.io/id":     "default-foo-simple",
+	}, nil)
+	testCase := createPatchTestCase{
+		name:    "take ownership of resource",
+		target:  target,
+		current: target,
+		actual: newTestCustomResourceData(nil, map[string]interface{}{
+			"color": "red",
+		}),
+		threeWayMergeForUnstructured: true,
+		expectedPatch:                `{"metadata":{"meta.helm.sh/release-name":"foo-simple","meta.helm.sh/release-namespace":"default","objectset.rio.cattle.io/id":"default-foo-simple"}}`,
+		expectedPatchType:            types.MergePatchType,
+	}
+	t.Run(testCase.name, testCase.run)
+
+	// Previous behavior.
+	testCase.threeWayMergeForUnstructured = false
+	testCase.expectedPatch = `{}`
+	t.Run(testCase.name, testCase.run)
+}
+
+func TestCreatePatchCustomResourceSpec(t *testing.T) {
+	target := newTestCustomResourceData(nil, map[string]interface{}{
+		"color": "red",
+		"size":  "large",
+	})
+	testCase := createPatchTestCase{
+		name:    "merge with spec of existing custom resource",
+		target:  target,
+		current: target,
+		actual: newTestCustomResourceData(nil, map[string]interface{}{
+			"color":  "red",
+			"weight": "heavy",
+		}),
+		threeWayMergeForUnstructured: true,
+		expectedPatch:                `{"spec":{"size":"large"}}`,
+		expectedPatchType:            types.MergePatchType,
+	}
+	t.Run(testCase.name, testCase.run)
+
+	// Previous behavior.
+	testCase.threeWayMergeForUnstructured = false
+	testCase.expectedPatch = `{}`
+	t.Run(testCase.name, testCase.run)
+}

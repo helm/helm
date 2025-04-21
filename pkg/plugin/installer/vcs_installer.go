@@ -13,21 +13,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
+package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
 	"errors"
 	"fmt"
 	stdfs "io/fs"
+	"log/slog"
 	"os"
 	"sort"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/Masterminds/vcs"
 
-	"helm.sh/helm/v3/internal/third_party/dep/fs"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/plugin/cache"
+	"helm.sh/helm/v4/internal/third_party/dep/fs"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/plugin/cache"
 )
 
 // VCSInstaller installs plugins from remote a repository.
@@ -65,7 +66,7 @@ func NewVCSInstaller(source, version string) (*VCSInstaller, error) {
 		Version: version,
 		base:    newBase(source),
 	}
-	return i, err
+	return i, nil
 }
 
 // Install clones a remote repository and installs into the plugin directory.
@@ -90,13 +91,13 @@ func (i *VCSInstaller) Install() error {
 		return ErrMissingMetadata
 	}
 
-	debug("copying %s to %s", i.Repo.LocalPath(), i.Path())
+	slog.Debug("copying files", "source", i.Repo.LocalPath(), "destination", i.Path())
 	return fs.CopyDir(i.Repo.LocalPath(), i.Path())
 }
 
 // Update updates a remote repository
 func (i *VCSInstaller) Update() error {
-	debug("updating %s", i.Repo.Remote())
+	slog.Debug("updating", "source", i.Repo.Remote())
 	if i.Repo.IsDirty() {
 		return errors.New("plugin repo was modified")
 	}
@@ -130,7 +131,7 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	debug("found refs: %s", refs)
+	slog.Debug("found refs", "refs", refs)
 
 	// Convert and filter the list to semver.Version instances
 	semvers := getSemVers(refs)
@@ -141,7 +142,7 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 		if constraint.Check(v) {
 			// If the constraint passes get the original reference
 			ver := v.Original()
-			debug("setting to %s", ver)
+			slog.Debug("setting to version", "version", ver)
 			return ver, nil
 		}
 	}
@@ -151,17 +152,17 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 
 // setVersion attempts to checkout the version
 func (i *VCSInstaller) setVersion(repo vcs.Repo, ref string) error {
-	debug("setting version to %q", i.Version)
+	slog.Debug("setting version", "version", i.Version)
 	return repo.UpdateVersion(ref)
 }
 
 // sync will clone or update a remote repo.
 func (i *VCSInstaller) sync(repo vcs.Repo) error {
 	if _, err := os.Stat(repo.LocalPath()); errors.Is(err, stdfs.ErrNotExist) {
-		debug("cloning %s to %s", repo.Remote(), repo.LocalPath())
+		slog.Debug("cloning", "source", repo.Remote(), "destination", repo.LocalPath())
 		return repo.Get()
 	}
-	debug("updating %s", repo.Remote())
+	slog.Debug("updating", "source", repo.Remote(), "destination", repo.LocalPath())
 	return repo.Update()
 }
 

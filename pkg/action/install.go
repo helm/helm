@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"net/url"
 	"os"
 	"path"
@@ -40,20 +41,20 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/kube"
-	kubefake "helm.sh/helm/v3/pkg/kube/fake"
-	"helm.sh/helm/v3/pkg/postrender"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/releaseutil"
-	"helm.sh/helm/v3/pkg/repo"
-	"helm.sh/helm/v3/pkg/storage"
-	"helm.sh/helm/v3/pkg/storage/driver"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/downloader"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/kube"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/registry"
+	releaseutil "helm.sh/helm/v4/pkg/release/util"
+	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 // notesFileSuffix that we want to treat special. It goes through the templating engine
@@ -80,7 +81,7 @@ type Install struct {
 	HideSecret               bool
 	DisableHooks             bool
 	Replace                  bool
-	Wait                     bool
+	WaitStrategy             kube.WaitStrategy
 	WaitForJobs              bool
 	Devel                    bool
 	DependencyUpdate         bool
@@ -143,19 +144,19 @@ func NewInstall(cfg *Configuration) *Install {
 	in := &Install{
 		cfg: cfg,
 	}
-	in.ChartPathOptions.registryClient = cfg.RegistryClient
+	in.registryClient = cfg.RegistryClient
 
 	return in
 }
 
 // SetRegistryClient sets the registry client for the install action
 func (i *Install) SetRegistryClient(registryClient *registry.Client) {
-	i.ChartPathOptions.registryClient = registryClient
+	i.registryClient = registryClient
 }
 
 // GetRegistryClient get the registry client.
 func (i *Install) GetRegistryClient() *registry.Client {
-	return i.ChartPathOptions.registryClient
+	return i.registryClient
 }
 
 func (i *Install) installCRDs(crds []chart.CRD) error {
@@ -173,7 +174,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
 				crdName := res[0].Name
-				i.cfg.Log("CRD %s is already present. Skipping.", crdName)
+				slog.Debug("CRD is already present. Skipping", "crd", crdName)
 				continue
 			}
 			return fmt.Errorf("failed to install CRD %s: %w", obj.Name, err)
@@ -181,8 +182,12 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		totalItems = append(totalItems, res...)
 	}
 	if len(totalItems) > 0 {
+		waiter, err := i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+		if err != nil {
+			return errors.Wrapf(err, "unable to get waiter")
+		}
 		// Give time for the CRD to be recognized.
-		if err := i.cfg.KubeClient.Wait(totalItems, 60*time.Second); err != nil {
+		if err := waiter.Wait(totalItems, 60*time.Second); err != nil {
 			return err
 		}
 
@@ -197,7 +202,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 				return err
 			}
 
-			i.cfg.Log("Clearing discovery cache")
+			slog.Debug("clearing discovery cache")
 			discoveryClient.Invalidate()
 
 			_, _ = discoveryClient.ServerGroups()
@@ -210,7 +215,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 			return err
 		}
 		if resettable, ok := restMapper.(meta.ResettableRESTMapper); ok {
-			i.cfg.Log("Clearing REST mapper cache")
+			slog.Debug("clearing REST mapper cache")
 			resettable.Reset()
 		}
 	}
@@ -234,21 +239,25 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
-			return nil, err
+			slog.Error(fmt.Sprintf("cluster reachability check failed: %v", err))
+			return nil, errors.Wrap(err, "cluster reachability check failed")
 		}
 	}
 
 	// HideSecret must be used with dry run. Otherwise, return an error.
 	if !i.isDryRun() && i.HideSecret {
+		slog.Error("hiding Kubernetes secrets requires a dry-run mode")
 		return nil, errors.New("Hiding Kubernetes secrets requires a dry-run mode")
 	}
 
 	if err := i.availableName(); err != nil {
-		return nil, err
+		slog.Error("release name check failed", slog.Any("error", err))
+		return nil, errors.Wrap(err, "release name check failed")
 	}
 
-	if err := chartutil.ProcessDependenciesWithMerge(chrt, vals); err != nil {
-		return nil, err
+	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
+		slog.Error("chart dependencies processing failed", slog.Any("error", err))
+		return nil, errors.Wrap(err, "chart dependencies processing failed")
 	}
 
 	var interactWithRemote bool
@@ -261,7 +270,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	if crds := chrt.CRDObjects(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
 		// On dry run, bail here
 		if i.isDryRun() {
-			i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
+			slog.Warn("This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
 		} else if err := i.installCRDs(crds); err != nil {
 			return nil, err
 		}
@@ -281,12 +290,14 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		mem.SetNamespace(i.Namespace)
 		i.cfg.Releases = storage.Init(mem)
 	} else if !i.ClientOnly && len(i.APIVersions) > 0 {
-		i.cfg.Log("API Version list given outside of client only mode, this list will be ignored")
+		slog.Debug("API Version list given outside of client only mode, this list will be ignored")
 	}
 
 	// Make sure if Atomic is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
-	i.Wait = i.Wait || i.Atomic
+	if i.WaitStrategy == kube.HookOnlyStrategy && i.Atomic {
+		i.WaitStrategy = kube.StatusWatcherStrategy
+	}
 
 	caps, err := i.cfg.getCapabilities()
 	if err != nil {
@@ -445,7 +456,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.Timeout); err != nil {
 			return rel, fmt.Errorf("failed pre-install: %s", err)
 		}
 	}
@@ -456,25 +467,32 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
 		_, err = i.cfg.KubeClient.Create(resources)
 	} else if len(resources) > 0 {
-		_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force)
+		if i.TakeOwnership {
+			_, err = i.cfg.KubeClient.(kube.InterfaceThreeWayMerge).UpdateThreeWayMerge(toBeAdopted, resources, i.Force)
+		} else {
+			_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force)
+		}
 	}
 	if err != nil {
 		return rel, err
 	}
 
-	if i.Wait {
-		if i.WaitForJobs {
-			err = i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout)
-		} else {
-			err = i.cfg.KubeClient.Wait(resources, i.Timeout)
-		}
-		if err != nil {
-			return rel, err
-		}
+	waiter, err := i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+	if err != nil {
+		return rel, fmt.Errorf("failed to get waiter: %w", err)
+	}
+
+	if i.WaitForJobs {
+		err = waiter.WaitWithJobs(resources, i.Timeout)
+	} else {
+		err = waiter.Wait(resources, i.Timeout)
+	}
+	if err != nil {
+		return rel, err
 	}
 
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.Timeout); err != nil {
 			return rel, fmt.Errorf("failed post-install: %s", err)
 		}
 	}
@@ -493,7 +511,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	// One possible strategy would be to do a timed retry to see if we can get
 	// this stored in the future.
 	if err := i.recordRelease(rel); err != nil {
-		i.cfg.Log("failed to record the release: %s", err)
+		slog.Error("failed to record the release", slog.Any("error", err))
 	}
 
 	return rel, nil
@@ -502,7 +520,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
 	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
 	if i.Atomic {
-		i.cfg.Log("Install failed and atomic is set, uninstalling release")
+		slog.Debug("install failed, uninstalling release", "release", i.ReleaseName)
 		uninstall := NewUninstall(i.cfg)
 		uninstall.DisableHooks = i.DisableHooks
 		uninstall.KeepHistory = false
@@ -599,8 +617,8 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 	return i.recordRelease(last)
 }
 
-// write the <data> to <output-dir>/<name>. <append> controls if the file is created or content will be appended
-func writeToFile(outputDir string, name string, data string, append bool) error {
+// write the <data> to <output-dir>/<name>. <appendData> controls if the file is created or content will be appended
+func writeToFile(outputDir string, name string, data string, appendData bool) error {
 	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
 
 	err := ensureDirectoryForFile(outfileName)
@@ -608,14 +626,15 @@ func writeToFile(outputDir string, name string, data string, append bool) error 
 		return err
 	}
 
-	f, err := createOrOpenFile(outfileName, append)
+	f, err := createOrOpenFile(outfileName, appendData)
 	if err != nil {
 		return err
 	}
 
 	defer f.Close()
 
-	_, err = f.WriteString(fmt.Sprintf("---\n# Source: %s\n%s\n", name, data))
+	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, data)
+
 	if err != nil {
 		return err
 	}
@@ -624,8 +643,8 @@ func writeToFile(outputDir string, name string, data string, append bool) error 
 	return nil
 }
 
-func createOrOpenFile(filename string, append bool) (*os.File, error) {
-	if append {
+func createOrOpenFile(filename string, appendData bool) (*os.File, error) {
+	if appendData {
 		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
 	}
 	return os.Create(filename)
@@ -770,6 +789,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
 			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
 			getter.WithPlainHTTP(c.PlainHTTP),
+			getter.WithBasicAuth(c.Username, c.Password),
 		},
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
@@ -784,8 +804,16 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		dl.Verify = downloader.VerifyAlways
 	}
 	if c.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(c.RepoURL, c.Username, c.Password, name, version,
-			c.CertFile, c.KeyFile, c.CaFile, c.InsecureSkipTLSverify, c.PassCredentialsAll, getter.All(settings))
+		chartURL, err := repo.FindChartInRepoURL(
+			c.RepoURL,
+			name,
+			getter.All(settings),
+			repo.WithChartVersion(version),
+			repo.WithClientTLS(c.CertFile, c.KeyFile, c.CaFile),
+			repo.WithUsernamePassword(c.Username, c.Password),
+			repo.WithInsecureSkipTLSverify(c.InsecureSkipTLSverify),
+			repo.WithPassCredentialsAll(c.PassCredentialsAll),
+		)
 		if err != nil {
 			return "", err
 		}

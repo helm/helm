@@ -20,8 +20,8 @@ import (
 	"io"
 	"net/url"
 
-	"helm.sh/helm/v3/pkg/pusher"
-	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v4/pkg/pusher"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 // ChartUploader handles uploading a chart.

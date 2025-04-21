@@ -19,25 +19,37 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	kubefake "helm.sh/helm/v3/pkg/kube/fake"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/storage"
-	"helm.sh/helm/v3/pkg/storage/driver"
-	"helm.sh/helm/v3/pkg/time"
+	"helm.sh/helm/v4/internal/logging"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/kube"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/registry"
+	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
+	"helm.sh/helm/v4/pkg/time"
 )
 
-var verbose = flag.Bool("test.log", false, "enable test logging")
+var verbose = flag.Bool("test.log", false, "enable test logging (debug by default)")
 
 func actionConfigFixture(t *testing.T) *Configuration {
+	return actionConfigFixtureWithDummyResources(t, nil)
+}
+
+func actionConfigFixtureWithDummyResources(t *testing.T, dummyResources kube.ResourceList) *Configuration {
 	t.Helper()
+
+	logger := logging.NewLogger(func() bool {
+		return *verbose
+	})
+	slog.SetDefault(logger)
 
 	registryClient, err := registry.NewClient()
 	if err != nil {
@@ -46,15 +58,9 @@ func actionConfigFixture(t *testing.T) *Configuration {
 
 	return &Configuration{
 		Releases:       storage.Init(driver.NewMemory()),
-		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
+		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: dummyResources},
 		Capabilities:   chartutil.DefaultCapabilities,
 		RegistryClient: registryClient,
-		Log: func(format string, v ...interface{}) {
-			t.Helper()
-			if *verbose {
-				t.Logf(format, v...)
-			}
-		},
 	}
 }
 
@@ -111,6 +117,14 @@ type chartOptions struct {
 type chartOption func(*chartOptions)
 
 func buildChart(opts ...chartOption) *chart.Chart {
+	defaultTemplates := []*chart.File{
+		{Name: "templates/hello", Data: []byte("hello: world")},
+		{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+	}
+	return buildChartWithTemplates(defaultTemplates, opts...)
+}
+
+func buildChartWithTemplates(templates []*chart.File, opts ...chartOption) *chart.Chart {
 	c := &chartOptions{
 		Chart: &chart.Chart{
 			// TODO: This should be more complete.
@@ -119,18 +133,13 @@ func buildChart(opts ...chartOption) *chart.Chart {
 				Name:       "hello",
 				Version:    "0.1.0",
 			},
-			// This adds a basic template and hooks.
-			Templates: []*chart.File{
-				{Name: "templates/hello", Data: []byte("hello: world")},
-				{Name: "templates/hooks", Data: []byte(manifestWithHook)},
-			},
+			Templates: templates,
 		},
 	}
 
 	for _, opt := range opts {
 		opt(c)
 	}
-
 	return c.Chart
 }
 
@@ -331,7 +340,7 @@ func TestConfiguration_Init(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &Configuration{}
 
-			actualErr := cfg.Init(nil, "default", tt.helmDriver, nil)
+			actualErr := cfg.Init(nil, "default", tt.helmDriver)
 			if tt.expectErr {
 				assert.Error(t, actualErr)
 				assert.Contains(t, actualErr.Error(), tt.errMsg)
@@ -344,7 +353,7 @@ func TestConfiguration_Init(t *testing.T) {
 }
 
 func TestGetVersionSet(t *testing.T) {
-	client := fakeclientset.NewSimpleClientset()
+	client := fakeclientset.NewClientset()
 
 	vs, err := GetVersionSet(client.Discovery())
 	if err != nil {

@@ -23,8 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/plugin"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/plugin"
 )
 
 // collectPlugins scans for getter plugins.

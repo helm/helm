@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
+package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
 	"archive/tar"
@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -30,11 +31,11 @@ import (
 
 	securejoin "github.com/cyphar/filepath-securejoin"
 
-	"helm.sh/helm/v3/internal/third_party/dep/fs"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/plugin/cache"
+	"helm.sh/helm/v4/internal/third_party/dep/fs"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/plugin/cache"
 )
 
 // HTTPInstaller installs plugins from an archive served by a web server.
@@ -145,7 +146,7 @@ func (i *HTTPInstaller) Install() error {
 		return err
 	}
 
-	debug("copying %s to %s", src, i.Path())
+	slog.Debug("copying", "source", src, "path", i.Path())
 	return fs.CopyDir(src, i.Path())
 }
 
@@ -157,7 +158,7 @@ func (i *HTTPInstaller) Update() error {
 
 // Path is overridden because we want to join on the plugin name not the file name
 func (i HTTPInstaller) Path() string {
-	if i.base.Source == "" {
+	if i.Source == "" {
 		return ""
 	}
 	return helmpath.DataPath("plugins", i.PluginName)
@@ -207,6 +208,9 @@ func cleanJoin(root, dest string) (string, error) {
 	}
 
 	// SecureJoin will do some cleaning, as well as some rudimentary checking of symlinks.
+	// The directory needs to be cleaned prior to passing to SecureJoin or the location may end up
+	// being wrong or returning an error. This was introduced in v0.4.0.
+	root = filepath.Clean(root)
 	newpath, err := securejoin.SecureJoin(root, dest)
 	if err != nil {
 		return "", err

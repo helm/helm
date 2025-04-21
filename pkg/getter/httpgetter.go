@@ -24,9 +24,8 @@ import (
 	"net/url"
 	"sync"
 
-	"helm.sh/helm/v3/internal/tlsutil"
-	"helm.sh/helm/v3/internal/urlutil"
-	"helm.sh/helm/v3/internal/version"
+	"helm.sh/helm/v4/internal/tlsutil"
+	"helm.sh/helm/v4/internal/version"
 )
 
 // HTTPGetter is the default HTTP(/S) backend handler
@@ -127,16 +126,14 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 	})
 
 	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" || g.opts.insecureSkipVerifyTLS {
-		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile, g.opts.insecureSkipVerifyTLS)
+		tlsConf, err := tlsutil.NewTLSConfig(
+			tlsutil.WithInsecureSkipVerify(g.opts.insecureSkipVerifyTLS),
+			tlsutil.WithCertKeyPairFiles(g.opts.certFile, g.opts.keyFile),
+			tlsutil.WithCAFile(g.opts.caFile),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("can't create TLS config for client: %w", err)
 		}
-
-		sni, err := urlutil.ExtractHostname(g.opts.url)
-		if err != nil {
-			return nil, err
-		}
-		tlsConf.ServerName = sni
 
 		g.transport.TLSClientConfig = tlsConf
 	}

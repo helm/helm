@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rules // import "helm.sh/helm/v3/pkg/lint/rules"
+package rules // import "helm.sh/helm/v4/pkg/lint/rules"
 
 import (
 	"errors"
@@ -26,9 +26,9 @@ import (
 	"github.com/asaskevich/govalidator"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/lint/support"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 // Chartfile runs a set of linter rules related to Chart.yaml file
@@ -45,6 +45,9 @@ func Chartfile(linter *support.Linter) {
 	if !validChartFile {
 		return
 	}
+
+	_, err = chartutil.StrictLoadChartfile(chartPath)
+	linter.RunLinterRule(support.WarningSev, chartFileName, validateChartYamlStrictFormat(err))
 
 	// type check for Chart.yaml . ignoring error as any parse
 	// errors would already be caught in the above load function
@@ -98,6 +101,13 @@ func validateChartYamlNotDirectory(chartPath string) error {
 func validateChartYamlFormat(chartFileError error) error {
 	if chartFileError != nil {
 		return fmt.Errorf("unable to parse YAML\n\t%w", chartFileError)
+	}
+	return nil
+}
+
+func validateChartYamlStrictFormat(chartFileError error) error {
+	if chartFileError != nil {
+		return errors.Errorf("failed to strictly parse chart metadata file\n\t%s", chartFileError.Error())
 	}
 	return nil
 }

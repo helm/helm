@@ -22,7 +22,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	rspb "helm.sh/helm/v3/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func TestSecretName(t *testing.T) {
@@ -243,8 +243,6 @@ func TestSecretDelete(t *testing.T) {
 	if !reflect.DeepEqual(rel, rls) {
 		t.Errorf("Expected {%v}, got {%v}", rel, rls)
 	}
-
-	// fetch the deleted release
 	_, err = secrets.Get(key)
 	if !errors.Is(err, ErrReleaseNotFound) {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)

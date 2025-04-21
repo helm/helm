@@ -14,11 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v3/pkg/storage/driver"
+package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -30,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
-	rspb "helm.sh/helm/v3/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
 var _ Driver = (*Secrets)(nil)
@@ -42,7 +43,6 @@ const SecretsDriverName = "Secret"
 // SecretsInterface.
 type Secrets struct {
 	impl corev1.SecretInterface
-	Log  func(string, ...interface{})
 }
 
 // NewSecrets initializes a new Secrets wrapping an implementation of
@@ -50,7 +50,6 @@ type Secrets struct {
 func NewSecrets(impl corev1.SecretInterface) *Secrets {
 	return &Secrets{
 		impl: impl,
-		Log:  func(_ string, _ ...interface{}) {},
 	}
 }
 
@@ -75,7 +74,7 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 	if err != nil {
 		return r, fmt.Errorf("get: failed to decode data %q: %w", key, err)
 	}
-	r.Labels = filterSystemLabels(obj.ObjectMeta.Labels)
+	r.Labels = filterSystemLabels(obj.Labels)
 	return r, nil
 }
 
@@ -98,11 +97,11 @@ func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, 
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
-			secrets.Log("list: failed to decode release: %v: %s", item, err)
+			slog.Debug("list failed to decode release", "key", item.Name, slog.Any("error", err))
 			continue
 		}
 
-		rls.Labels = item.ObjectMeta.Labels
+		rls.Labels = item.Labels
 
 		if filter(rls) {
 			results = append(results, rls)
@@ -137,10 +136,10 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
-			secrets.Log("query: failed to decode release: %s", err)
+			slog.Debug("failed to decode release", "key", item.Name, slog.Any("error", err))
 			continue
 		}
-		rls.Labels = item.ObjectMeta.Labels
+		rls.Labels = item.Labels
 		results = append(results, rls)
 	}
 	return results, nil

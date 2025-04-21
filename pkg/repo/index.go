@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -32,14 +32,12 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/internal/fileutil"
-	"helm.sh/helm/v3/internal/urlutil"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/provenance"
+	"helm.sh/helm/v4/internal/fileutil"
+	"helm.sh/helm/v4/internal/urlutil"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/provenance"
 )
-
-var indexPath = "index.yaml"
 
 // APIVersionV1 is the v1 API version for index and repository files.
 const APIVersionV1 = "v1"
@@ -155,7 +153,7 @@ func (i IndexFile) MustAdd(md *chart.Metadata, filename, baseURL, digest string)
 // Deprecated: Use index.MustAdd instead.
 func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 	if err := i.MustAdd(md, filename, baseURL, digest); err != nil {
-		log.Printf("skipping loading invalid entry for chart %q %q from %s: %s", md.Name, md.Version, filename, err)
+		slog.Error("skipping loading invalid entry for chart %q %q from %s: %s", md.Name, md.Version, filename, err)
 	}
 }
 
@@ -357,7 +355,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 	for name, cvs := range i.Entries {
 		for idx := len(cvs) - 1; idx >= 0; idx-- {
 			if cvs[idx] == nil {
-				log.Printf("skipping loading invalid entry for chart %q from %s: empty entry", name, source)
+				slog.Warn("skipping loading invalid entry for chart %q from %s: empty entry", name, source)
 				continue
 			}
 			// When metadata section missing, initialize with no data
@@ -368,7 +366,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 				cvs[idx].APIVersion = chart.APIVersionV1
 			}
 			if err := cvs[idx].Validate(); ignoreSkippableChartValidationError(err) != nil {
-				log.Printf("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err)
+				slog.Warn("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err)
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}
 		}
