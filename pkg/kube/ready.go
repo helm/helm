@@ -42,7 +42,7 @@ import (
 // ReadyCheckerOption is a function that configures a ReadyChecker.
 type ReadyCheckerOption func(*ReadyChecker)
 
-var errJobFailed = errors.New("job is failed")
+var errJobFailed = errors.New("job has failed")
 
 var terminalErrors = []error{
 	errJobFailed,
