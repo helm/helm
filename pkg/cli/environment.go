@@ -115,6 +115,8 @@ func New() *EnvSettings {
 		RepositoryCache:           envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 		QPS:                       envFloat32Or("HELM_QPS", defaultQPS),
+		MaxChartSize:              envInt64Or("HELM_MAX_CHART_SIZE", 100 * 1024 * 1024), // Default 100 MiB
+		MaxFileSize:               envInt64Or("HELM_MAX_FILE_SIZE", 0),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
