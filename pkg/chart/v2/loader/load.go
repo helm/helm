@@ -45,10 +45,23 @@ func Loader(name string) (ChartLoader, error) {
 		return nil, err
 	}
 	if fi.IsDir() {
-		return DirLoader(name), nil
+		return NewDefaultDirLoader(name), nil
 	}
-	return FileLoader(name), nil
+	return NewDefaultFileLoader(name), nil
 
+}
+
+// LoaderWithOptions returns a new ChartLoader appropriate for the given chart name
+// with the provided options.
+func LoaderWithOptions(name string, opts ChartLoadOptions) (ChartLoader, error) {
+	fi, err := os.Stat(name)
+	if err != nil {
+		return nil, err
+	}
+	if fi.IsDir() {
+		return NewDirLoader(name, opts), nil
+	}
+	return NewFileLoader(name, opts), nil
 }
 
 // Load takes a string name, tries to resolve it to a file or directory, and then loads it.
