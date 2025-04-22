@@ -26,6 +26,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 
@@ -70,6 +71,8 @@ type Manager struct {
 	Keyring string
 	// SkipUpdate indicates that the repository should not be updated first.
 	SkipUpdate bool
+	// SkipDownloadIfExists indicates that the chart should not be downloaded if it already exists.
+	SkipDownloadIfExists bool
 	// Getter collection for the operation
 	Getters          []getter.Provider
 	RegistryClient   *registry.Client
@@ -270,6 +273,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
 	var saveError error
 	churls := make(map[string]struct{})
+	skippedCharts := make([]string, 0)
 	for _, dep := range deps {
 		// No repository means the chart is in charts directory
 		if dep.Repository == "" {
@@ -323,7 +327,13 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			continue
 		}
 
-		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
+		version := ""
+		if registry.IsOCI(churl) {
+			churl, version, err = parseOCIRef(churl)
+			if err != nil {
+				return errors.Wrapf(err, "could not parse OCI reference")
+			}
+		}
 
 		dl := ChartDownloader{
 			Out:              m.Out,
@@ -341,17 +351,29 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			},
 		}
 
-		version := ""
 		if registry.IsOCI(churl) {
-			churl, version, err = parseOCIRef(churl)
-			if err != nil {
-				return errors.Wrapf(err, "could not parse OCI reference")
-			}
 			dl.Options = append(dl.Options,
 				getter.WithRegistryClient(m.RegistryClient),
 				getter.WithTagName(version))
 		}
 
+		if m.SkipDownloadIfExists {
+			u, err := dl.parseChartURL(churl, version)
+
+			if err != nil {
+				return err
+			}
+
+			name := dl.getChartName(u.String())
+			if _, err = os.Stat(filepath.Join(destPath, name)); err == nil {
+				fmt.Fprintf(m.Out, "Already exists locally %s from repo %s\n", dep.Name, dep.Repository)
+
+				skippedCharts = append(skippedCharts, name)
+				continue
+			}
+		}
+
+		fmt.Fprintf(m.Out, "Downloading %s from repo %s\n", dep.Name, dep.Repository)
 		if _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
 			saveError = errors.Wrapf(err, "could not download %s", churl)
 			break
@@ -363,7 +385,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	// TODO: this should probably be refactored to be a []error, so we can capture and provide more information rather than "last error wins".
 	if saveError == nil {
 		// now we can move all downloaded charts to destPath and delete outdated dependencies
-		if err := m.safeMoveDeps(deps, tmpPath, destPath); err != nil {
+		if err := m.safeMoveDeps(deps, tmpPath, destPath, skippedCharts); err != nil {
 			return err
 		}
 	} else {
@@ -390,13 +412,14 @@ func parseOCIRef(chartRef string) (string, string, error) {
 // It does this by first matching the file name to an expected pattern, then loading
 // the file to verify that it is a chart.
 //
-// Any charts in dest that do not exist in source are removed (barring local dependencies)
+// Any charts in dest that do not exist in source and not in skippedCharts are removed (barring local dependencies)
+// skippedCharts is a list of charts that were skipped during the download process.
 //
 // Because it requires tar file introspection, it is more intensive than a basic move.
 //
 // This will only return errors that should stop processing entirely. Other errors
 // will emit log messages or be ignored.
-func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) error {
+func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string, skippedCharts []string) error {
 	existsInSourceDirectory := map[string]bool{}
 	isLocalDependency := map[string]bool{}
 	sourceFiles, err := os.ReadDir(source)
@@ -437,7 +460,7 @@ func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) er
 	fmt.Fprintln(m.Out, "Deleting outdated charts")
 	// find all files that exist in dest that do not exist in source; delete them (outdated dependencies)
 	for _, file := range destFiles {
-		if !file.IsDir() && !existsInSourceDirectory[file.Name()] {
+		if !file.IsDir() && !existsInSourceDirectory[file.Name()] && !slices.Contains(skippedCharts, file.Name()) {
 			fname := filepath.Join(dest, file.Name())
 			ch, err := loader.LoadFile(fname)
 			if err != nil {
