@@ -219,6 +219,7 @@ func envInt64Or(name string, def int64) int64 {
 	envVal := envOr(name, strconv.FormatInt(def, 10))
 	ret, err := strconv.ParseInt(envVal, 10, 64)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Environment variable %s has invalid value %q (expected an integer): %v\n", name, envVal, err)
 		return def
 	}
 	return ret
