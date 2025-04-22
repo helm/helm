@@ -31,17 +31,45 @@ import (
 var utf8bom = []byte{0xEF, 0xBB, 0xBF}
 
 // DirLoader loads a chart from a directory
-type DirLoader string
+type DirLoader struct {
+    path string
+    opts ChartLoadOptions
+}
+
+// NewDirLoader creates a new directory loader with default options
+func NewDefaultDirLoader(path string) DirLoader {
+	return DirLoader{path: path, opts: DefaultChartLoadOptions}
+}
+
+// NewDirLoader creates a new directory loader with custom options
+func NewDirLoader(path string, opts ChartLoadOptions) DirLoader {
+	return DirLoader{path: path, opts: opts}
+}
 
 // Load loads the chart
 func (l DirLoader) Load() (*chart.Chart, error) {
-	return LoadDir(string(l))
+	return LoadDir(l.path)
+}
+
+// LoadWithOptions loads the chart with custom options
+func (l DirLoader) LoadWithOptions(opts ChartLoadOptions) (*chart.Chart, error) {
+	return LoadDirWithOptions(l.path, opts)
+}
+
+// LoadDirWithOptions loads from a directory with custom options
+func (l DirLoader) LoadDirWithOptions(opts ChartLoadOptions) (*chart.Chart, error) {
+	return LoadDirWithOptions(l.path, opts)
+}
+
+// LoadDirWithOptions loads from a directory with default options
+func LoadDir(dir string) (*chart.Chart, error) {
+	return LoadDirWithOptions(dir, DefaultChartLoadOptions)
 }
 
 // LoadDir loads from a directory.
 //
 // This loads charts only from directories.
-func LoadDir(dir string) (*chart.Chart, error) {
+func LoadDirWithOptions(dir string, opts ChartLoadOptions) (*chart.Chart, error) {
 	topdir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
@@ -99,8 +127,8 @@ func LoadDir(dir string) (*chart.Chart, error) {
 			return fmt.Errorf("cannot load irregular file %s as it has file mode type bits set", name)
 		}
 
-		if fi.Size() > MaxDecompressedFileSize {
-			return fmt.Errorf("chart file %q is larger than the maximum file size %d", fi.Name(), MaxDecompressedFileSize)
+		if fi.Size() > opts.MaxDecompressedFileSize {
+			return fmt.Errorf("chart file %q is larger than the maximum file size %d", fi.Name(), opts.MaxDecompressedFileSize)
 		}
 
 		data, err := os.ReadFile(name)
