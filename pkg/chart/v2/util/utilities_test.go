@@ -151,6 +151,18 @@ func (h *LogCaptureHandler) Capture() *LogCaptureSlice {
 	return &result
 }
 
+func (c *LogCaptureSlice) String() string {
+	result := ""
+	for i, record := range c.records {
+		if i != 0 {
+			result += "\n"
+		}
+		result += record.record.Message
+	}
+
+	return result
+}
+
 func (c *LogCaptureSlice) Filter(filterFn func(r *LogCaptureRecord) bool) *LogCaptureSlice {
 	result := LogCaptureSlice{
 		records: make([]LogCaptureRecord, 0),
@@ -204,6 +216,30 @@ func RecordLevelBelowEqual(level slog.Level) func(r *LogCaptureRecord) bool {
 func RecordLevelBelow(level slog.Level) func(r *LogCaptureRecord) bool {
 	return func(r *LogCaptureRecord) bool {
 		return r.record.Level < level
+	}
+}
+
+func RecordHasAttr(key string) func(r *LogCaptureRecord) bool {
+	return func(r *LogCaptureRecord) bool {
+		for _, attr := range r.attrs {
+			if attr.Key == key {
+				return true
+			}
+		}
+
+		return false
+	}
+}
+
+func RecordHasAttrValue(key string, value string) func(r *LogCaptureRecord) bool {
+	return func(r *LogCaptureRecord) bool {
+		for _, attr := range r.attrs {
+			if attr.Key == key && attr.Value.String() == value {
+				return true
+			}
+		}
+
+		return false
 	}
 }
 

@@ -716,6 +716,7 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 	capturedLogOutput := handler.Capture()
 
 	t.Logf("vals: %v", vals)
+	t.Logf("logs: %s", capturedLogOutput.String())
 
 	// All warnings should have context as to where the warning is being emitted
 	capturedLogOutput.Filter(RecordLevelMatches(slog.LevelWarn)).
@@ -724,25 +725,93 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 		HasAttr("error").
 		HasAttr("key")
 
-	capturedLogOutput.Filter(RecordMessageMatches("skipped value for level1.level2.level3.boat")).
-		AssertThat(t).
-		MatchesExactly(1).
-		AtLevel(slog.LevelWarn).
-		HasAttrValueString("chart", "level3")
-
-	capturedLogOutput.Filter(RecordMessageMatches("destination for level1.level2.level3.spear.tip is a table. Ignoring non-table value (true)")).
+	capturedLogOutput.Filter(RecordMessageMatches("skipping key")).
+		Filter(RecordHasAttrValue("key", "level1.level2.level3.boat")).
 		AssertThat(t).
 		MatchesExactly(1).
 		AtLevel(slog.LevelWarn).
 		HasAttrValueString("chart", "level3").
-		HasAttr("error")
+		HasAttrValueString("error", "cannot merge table and non-table values")
 
-	capturedLogOutput.Filter(RecordMessageMatches("cannot overwrite table with non table for level1.level2.level3.spear.sail (map[cotton:true])")).
+	capturedLogOutput.Filter(RecordMessageMatches("skipping key")).
+		Filter(RecordHasAttrValue("key", "level1.level2.level3.spear.tip")).
 		AssertThat(t).
 		MatchesExactly(1).
 		AtLevel(slog.LevelWarn).
 		HasAttrValueString("chart", "level3").
-		HasAttr("error")
+		HasAttrValueString("error", "cannot merge table and non-table values")
+
+	capturedLogOutput.Filter(RecordMessageMatches("skipping key")).
+		Filter(RecordHasAttrValue("key", "level1.level2.level3.spear.sail")).
+		AssertThat(t).
+		MatchesExactly(1).
+		AtLevel(slog.LevelWarn).
+		HasAttrValueString("chart", "level3").
+		HasAttrValueString("error", "cannot merge table and non-table values")
+
+	// Reset and set the default logger back to its original state
+	handler.Reset()
+	slog.SetDefault(defaultLogger)
+}
+
+func TestCoalesceValuesTopLevelGlobalsWarningsSrc(t *testing.T) {
+
+	/*
+		Test case - user supplies a chart with the values setting the entire globals block to a value (true)
+		and not a map(table). This should result in a warning and immediately skips the global block
+	*/
+	c := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "level1"},
+		Values: map[string]interface{}{
+			"global": map[string]interface{}{
+				"inner": true,
+			},
+			"name": "moby",
+		},
+	}, withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "level2"},
+		Values: map[string]interface{}{
+			"global": map[string]interface{}{
+				"inner": true,
+			},
+			"name": "pequod",
+		},
+	}))
+
+	vals := map[string]interface{}{
+		"global": true,
+		"name":   "newmoby",
+	}
+
+	// Get all logs emitted from slog
+	defaultLogger := slog.Default()
+	handler := NewLogCaptureHandler(nil)
+	slog.SetDefault(slog.New(handler))
+
+	_, err := coalesce(c, vals, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Capture the logs
+	capturedLogOutput := handler.Capture()
+
+	t.Logf("vals: %v", vals)
+	t.Logf("logs: %s", capturedLogOutput.String())
+
+	// All warnings should have context as to where the warning is being emitted
+	capturedLogOutput.Filter(RecordLevelMatches(slog.LevelWarn)).
+		AssertThat(t).
+		HasAttr("chart").
+		HasAttr("error").
+		HasAttr("key")
+
+	capturedLogOutput.Filter(RecordMessageMatches("skipping coalescing global values")).
+		AssertThat(t).
+		MatchesExactly(1).
+		AtLevel(slog.LevelWarn).
+		HasAttrValueString("chart", "level1").
+		HasAttrValueString("key", "global")
 
 	// Reset and set the default logger back to its original state
 	handler.Reset()
