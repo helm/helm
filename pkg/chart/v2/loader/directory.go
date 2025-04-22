@@ -56,14 +56,14 @@ func (l DirLoader) LoadWithOptions() (*chart.Chart, error) {
 	return LoadDirWithOptions(l.path, l.opts)
 }
 
-// LoadDirWithOptions loads from a directory with custom options
-func (l DirLoader) LoadDirWithOptions() (*chart.Chart, error) {
-	return LoadDirWithOptions(l.path, l.opts)
-}
-
 // LoadDirWithOptions loads from a directory with default options
 func LoadDir(dir string) (*chart.Chart, error) {
 	return LoadDirWithOptions(dir, DefaultChartLoadOptions)
+}
+
+// LoadDirWithOptions loads from a directory with custom options
+func (l DirLoader) LoadDirWithOptions() (*chart.Chart, error) {
+	return LoadDirWithOptions(l.path, l.opts)
 }
 
 // LoadDir loads from a directory.

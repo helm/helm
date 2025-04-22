@@ -36,8 +36,8 @@ func Expand(dir string, r io.Reader) error {
 	return ExpandWithOptions(dir, r, loader.DefaultChartLoadOptions)
 }
 
-// Expand uncompresses and extracts a chart into the specified directory.
-// It uses the provided options to control the loading of the chart.
+// Expand uncompresses and extracts a chart into the specified directory
+// with custom options.
 func ExpandWithOptions(dir string, r io.Reader, opts loader.ChartLoadOptions) error {
 	files, err := loader.LoadArchiveFilesWithOptions(r, opts)
 	if err != nil {
