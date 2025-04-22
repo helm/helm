@@ -20,6 +20,8 @@ linters:
           deny:
             - pkg: github.com/hashicorp/go-multierror
               desc: "use errors instead"
+            - pkg: github.com/pkg/errors
+              desc: "use errors instead"
     dupl:
       threshold: 400
   exclusions:
