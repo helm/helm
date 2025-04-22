@@ -31,6 +31,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/internal/resolver"
@@ -241,6 +242,7 @@ func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) 
 // a conflict.
 func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	repos, err := m.loadChartRepositories()
+
 	if err != nil {
 		return err
 	}
@@ -675,7 +677,6 @@ func dedupeRepos(repos []*repo.Entry) []*repo.Entry {
 }
 
 func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
-
 	var wg sync.WaitGroup
 
 	localRepos := dedupeRepos(repos)
@@ -688,6 +689,8 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 		r.CachePath = m.RepositoryCache
 		wg.Add(1)
 		go func(r *repo.ChartRepository) {
+			defer wg.Done()
+
 			if _, err := r.DownloadIndexFile(); err != nil {
 				// For those dependencies that are not known to helm and using a
 				// generated key name we display the repo url.
@@ -705,7 +708,6 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 					fmt.Fprintf(m.Out, "...Successfully got an update from the %q chart repository\n", r.Config.Name)
 				}
 			}
-			wg.Done()
 		}(r)
 	}
 	wg.Wait()
@@ -841,21 +843,38 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 		return indices, errors.Wrapf(err, "failed to load %s", m.RepositoryConfig)
 	}
 
+	var (
+		g  errgroup.Group
+		mu sync.Mutex
+	)
 	for _, re := range rf.Repositories {
-		lname := re.Name
-		idxFile := filepath.Join(m.RepositoryCache, helmpath.CacheIndexFile(lname))
-		index, err := repo.LoadIndexFile(idxFile)
-		if err != nil {
-			return indices, err
-		}
+		g.Go(func() error {
+			lname := re.Name
+			idxFile := filepath.Join(m.RepositoryCache, helmpath.CacheIndexFile(lname))
+			index, err := repo.LoadIndexFile(idxFile)
+			if err != nil {
+				return err
+			}
 
-		// TODO: use constructor
-		cr := &repo.ChartRepository{
-			Config:    re,
-			IndexFile: index,
-		}
-		indices[lname] = cr
+			// TODO: use constructor
+			cr := &repo.ChartRepository{
+				Config:    re,
+				IndexFile: index,
+			}
+
+			mu.Lock()
+			indices[lname] = cr
+			mu.Unlock()
+
+			return nil
+		})
 	}
+
+	// Wait for all repositories to be loaded
+	if err := g.Wait(); err != nil {
+		return indices, err
+	}
+
 	return indices, nil
 }
 
