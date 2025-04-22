@@ -54,13 +54,6 @@ func TestUpgradeCmd(t *testing.T) {
 		Chart: ch,
 	})
 
-	originalChartSize := loader.MaxDecompressedChartSize
-	originalFileSize := loader.MaxDecompressedFileSize
-	defer func() {
-		loader.MaxDecompressedChartSize = originalChartSize
-		loader.MaxDecompressedFileSize = originalFileSize
-	}()
-
 	// update chart version
 	cfile.Metadata.Version = "0.1.2"
 

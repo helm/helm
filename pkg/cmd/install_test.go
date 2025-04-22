@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
@@ -34,13 +33,6 @@ func TestInstall(t *testing.T) {
 		repotest.WithMiddleware(repotest.BasicAuthMiddleware(t)),
 	)
 	defer srv.Stop()
-
-	originalChartSize := loader.MaxDecompressedChartSize
-	originalFileSize := loader.MaxDecompressedFileSize
-	defer func() {
-		loader.MaxDecompressedChartSize = originalChartSize
-		loader.MaxDecompressedFileSize = originalFileSize
-	}()
 
 	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.FileServer(http.Dir(srv.Root())).ServeHTTP(w, r)
