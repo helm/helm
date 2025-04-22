@@ -81,8 +81,7 @@ func Load(name string) (*chart.Chart, error) {
 }
 
 // LoadWithOptions takes a string name, tries to resolve it to a file or directory,
-// and then loads it.
-// It uses the provided options to load the chart
+// and then loads it. It uses the provided options to load the chart.
 //
 // This is the preferred way to load a chart. It will discover the chart encoding
 // and hand off to the appropriate chart reader.

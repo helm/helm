@@ -66,7 +66,7 @@ func NewDefaultFileLoader(path string) FileLoader {
 	return FileLoader{path: path, opts: DefaultChartLoadOptions}
 }
 
-// Load loads a chart using the provided options
+// Load loads a chart using default options
 func (l FileLoader) Load() (*chart.Chart, error) {
 	return LoadFileWithOptions(l.path, DefaultChartLoadOptions)
 }
@@ -81,7 +81,7 @@ func LoadFile(name string) (*chart.Chart, error) {
 	return LoadFileWithOptions(name, DefaultChartLoadOptions)
 }
 
-// LoadFile loads from an archive file.
+// LoadFile loads from an archive file with the provided options
 func LoadFileWithOptions(name string, opts ChartLoadOptions) (*chart.Chart, error) {
 	if fi, err := os.Stat(name); err != nil {
 		return nil, err
@@ -147,14 +147,14 @@ func isGZipApplication(data []byte) bool {
 
 // LoadArchiveFiles reads in files out of an archive into memory. This function
 // performs important path security checks and should always be used before
-// expanding a tarball. It use default options for MaxChartSize and MaxFileSize
+// expanding a tarball. It use default options.
 func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 	return LoadArchiveFilesWithOptions(in, DefaultChartLoadOptions)
 }
 
 // LoadArchiveFiles reads in files out of an archive into memory. This function
 // performs important path security checks and should always be used before
-// expanding a tarball
+// expanding a tarball. It uses the provided options.
 func LoadArchiveFilesWithOptions(in io.Reader, opts ChartLoadOptions) ([]*BufferedFile, error) {
 	unzipped, err := gzip.NewReader(in)
 	if err != nil {
@@ -265,7 +265,7 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 	return LoadArchiveWithOptions(in, DefaultChartLoadOptions)
 }
 
-// LoadArchive loads from a reader containing a compressed tar archive with custom options
+// LoadArchive loads from a reader containing a compressed tar archive with the provided options
 func LoadArchiveWithOptions(in io.Reader, opts ChartLoadOptions) (*chart.Chart, error) {
 	files, err := LoadArchiveFilesWithOptions(in, opts)
 	if err != nil {
