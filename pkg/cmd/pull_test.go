@@ -24,7 +24,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
@@ -34,13 +33,6 @@ func TestPullCmd(t *testing.T) {
 		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
 	)
 	defer srv.Stop()
-
-	originalChartSize := loader.MaxDecompressedChartSize
-	originalFileSize := loader.MaxDecompressedFileSize
-	defer func() {
-		loader.MaxDecompressedChartSize = originalChartSize
-		loader.MaxDecompressedFileSize = originalFileSize
-	}()
 
 	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
 	if err != nil {

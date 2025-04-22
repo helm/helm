@@ -193,14 +193,15 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
+			opts := loader.DefaultChartLoadOptions
 			if client.MaxChartSize > 0 {
-				loader.MaxDecompressedChartSize = client.MaxChartSize
+				opts.MaxDecompressedChartSize = client.MaxChartSize
 			}
 			if client.MaxChartFileSize > 0 {
-				loader.MaxDecompressedFileSize = client.MaxChartFileSize
+				opts.MaxDecompressedFileSize = client.MaxChartFileSize
 			}
 			// Check chart dependencies to make sure all are present in /charts
-			ch, err := loader.Load(chartPath)
+			ch, err := loader.LoadWithOptions(chartPath, opts)
 			if err != nil {
 				return err
 			}
@@ -222,7 +223,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							return err
 						}
 						// Reload the chart with the updated Chart.lock file.
-						if ch, err = loader.Load(chartPath); err != nil {
+						if ch, err = loader.LoadWithOptions(chartPath, opts); err != nil {
 							return errors.Wrap(err, "failed reloading chart after repo update")
 						}
 					} else {

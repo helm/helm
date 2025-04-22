@@ -34,8 +34,8 @@ var utf8bom = []byte{0xEF, 0xBB, 0xBF}
 
 // DirLoader loads a chart from a directory
 type DirLoader struct {
-    path string
-    opts ChartLoadOptions
+	path string
+	opts ChartLoadOptions
 }
 
 // NewDirLoader creates a new directory loader with default options
@@ -54,13 +54,13 @@ func (l DirLoader) Load() (*chart.Chart, error) {
 }
 
 // LoadWithOptions loads the chart with custom options
-func (l DirLoader) LoadWithOptions(opts ChartLoadOptions) (*chart.Chart, error) {
-	return LoadDirWithOptions(l.path, opts)
+func (l DirLoader) LoadWithOptions() (*chart.Chart, error) {
+	return LoadDirWithOptions(l.path, l.opts)
 }
 
 // LoadDirWithOptions loads from a directory with custom options
-func (l DirLoader) LoadDirWithOptions(opts ChartLoadOptions) (*chart.Chart, error) {
-	return LoadDirWithOptions(l.path, opts)
+func (l DirLoader) LoadDirWithOptions() (*chart.Chart, error) {
+	return LoadDirWithOptions(l.path, l.opts)
 }
 
 // LoadDirWithOptions loads from a directory with default options

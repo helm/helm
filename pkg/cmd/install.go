@@ -257,14 +257,15 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
+	opts := loader.DefaultChartLoadOptions
 	if client.MaxChartSize > 0 {
-		loader.MaxDecompressedChartSize = client.MaxChartSize
+		opts.MaxDecompressedChartSize = client.MaxChartSize
 	}
 	if client.MaxChartFileSize > 0 {
-		loader.MaxDecompressedFileSize = client.MaxChartFileSize
+		opts.MaxDecompressedFileSize = client.MaxChartFileSize
 	}
 	// Check chart dependencies to make sure all are present in /charts
-	chartRequested, err := loader.Load(cp)
+	chartRequested, err := loader.LoadWithOptions(cp, opts)
 	if err != nil {
 		return nil, err
 	}

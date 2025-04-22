@@ -68,7 +68,7 @@ func NewDefaultFileLoader(path string) FileLoader {
 
 // Load loads a chart using the provided options
 func (l FileLoader) Load() (*chart.Chart, error) {
-	return LoadFileWithOptions(l.path, l.opts)
+	return LoadFileWithOptions(l.path, DefaultChartLoadOptions)
 }
 
 // LoadWithOptions loads a chart using the provided options
@@ -100,7 +100,7 @@ func LoadFileWithOptions(name string, opts ChartLoadOptions) (*chart.Chart, erro
 		return nil, err
 	}
 
-	c, err := LoadArchive(raw)
+	c, err := LoadArchiveWithOptions(raw, opts)
 	if err != nil {
 		if err == gzip.ErrHeader {
 			return nil, fmt.Errorf("file '%s' does not appear to be a valid chart file (details: %s)", name, err)
@@ -260,9 +260,14 @@ func LoadArchiveFilesWithOptions(in io.Reader, opts ChartLoadOptions) ([]*Buffer
 	return files, nil
 }
 
-// LoadArchive loads from a reader containing a compressed tar archive.
+// LoadArchive loads from a reader containing a compressed tar archive with default options
 func LoadArchive(in io.Reader) (*chart.Chart, error) {
-	files, err := LoadArchiveFiles(in)
+	return LoadArchiveWithOptions(in, DefaultChartLoadOptions)
+}
+
+// LoadArchive loads from a reader containing a compressed tar archive with custom options
+func LoadArchiveWithOptions(in io.Reader, opts ChartLoadOptions) (*chart.Chart, error) {
+	files, err := LoadArchiveFilesWithOptions(in, opts)
 	if err != nil {
 		return nil, err
 	}
