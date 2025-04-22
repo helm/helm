@@ -78,8 +78,8 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if client.MaxChartSize > 0 {
 				loader.MaxDecompressedChartSize = client.MaxChartSize
 			}
-			if client.MaxFileSize > 0 {
-				loader.MaxDecompressedFileSize = client.MaxFileSize
+			if client.MaxChartFileSize > 0 {
+				loader.MaxDecompressedFileSize = client.MaxChartFileSize
 			}
 
 			for i := 0; i < len(args); i++ {
@@ -100,7 +100,7 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.UntarDir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
 	f.StringVarP(&client.DestDir, "destination", "d", ".", "location to write the chart. If this and untardir are specified, untardir is appended to this")
 	f.Int64Var(&client.MaxChartSize, "max-chart-size", settings.MaxChartSize, "maximum size in bytes for a decompressed chart (default is 100mb)")
-	f.Int64Var(&client.MaxFileSize, "max-file-size", settings.MaxFileSize, "maximum size in bytes for a single file in a chart (default is 5mb)")
+	f.Int64Var(&client.MaxChartFileSize, "max-file-size", settings.MaxChartFileSize, "maximum size in bytes for a single file in a chart (default is 5mb)")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

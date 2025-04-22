@@ -91,8 +91,8 @@ type EnvSettings struct {
 	QPS float32
 	// MaxChartSize is the maximum size of a decompressed chart in bytes
 	MaxChartSize int64
-	// MaxFileSize is the maximum size of a single file in a chart in bytes
-	MaxFileSize int64
+	// MaxChartFileSize is the maximum size of a single file in a chart in bytes
+	MaxChartFileSize int64
 }
 
 func New() *EnvSettings {
@@ -113,8 +113,8 @@ func New() *EnvSettings {
 		RepositoryCache:           envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 		QPS:                       envFloat32Or("HELM_QPS", defaultQPS),
-		MaxChartSize:              envInt64Or("HELM_MAX_CHART_SIZE", 100 * 1024 * 1024), // Default 100 MiB
-		MaxFileSize:               envInt64Or("HELM_MAX_FILE_SIZE", 0),
+		MaxChartSize:              envInt64Or("HELM_MAX_CHART_SIZE", 100*1024*1024), // 100 MiB
+		MaxChartFileSize:          envInt64Or("HELM_MAX_FILE_SIZE", 5*1024*1024), // 5 MiB
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -248,7 +248,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_BURST_LIMIT":       strconv.Itoa(s.BurstLimit),
 		"HELM_QPS":               strconv.FormatFloat(float64(s.QPS), 'f', 2, 32),
 		"HELM_MAX_CHART_SIZE":    strconv.FormatInt(s.MaxChartSize, 10),
-		"HELM_MAX_FILE_SIZE":     strconv.FormatInt(s.MaxFileSize, 10),
+		"HELM_MAX_FILE_SIZE":     strconv.FormatInt(s.MaxChartFileSize, 10),
 
 		// broken, these are populated from helm flags and not kubeconfig.
 		"HELM_KUBECONTEXT":                  s.KubeContext,

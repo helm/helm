@@ -48,8 +48,8 @@ type Pull struct {
 	cfg         *Configuration
 	// MaxChartSize is the maximum decompressed size of a chart in bytes
 	MaxChartSize int64
-	// MaxFileSize is the maximum size of a single file in a chart in bytes
-	MaxFileSize int64
+	// MaxChartFileSize is the maximum size of a single file in a chart in bytes
+	MaxChartFileSize int64
 }
 
 type PullOpt func(*Pull)
