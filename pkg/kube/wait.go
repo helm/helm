@@ -18,12 +18,12 @@ package kube // import "helm.sh/helm/v4/pkg/kube"
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
-	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
@@ -233,7 +233,7 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 	for range infos {
 		err := <-errs
 		if err != nil {
-			result = multierror.Append(result, err)
+			result = stderrors.Join(result, err)
 		}
 	}
 
