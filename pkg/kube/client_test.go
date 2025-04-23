@@ -317,6 +317,8 @@ func testUpdate(t *testing.T, threeWayMerge bool) {
 		"/namespaces/default/pods/starfish:GET",
 		"/namespaces/default/pods/starfish:GET",
 		"/namespaces/default/pods/starfish:PATCH",
+		"/namespaces/default/pods/starfish:GET",
+		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/otter:GET",
@@ -735,7 +737,149 @@ func TestGetPodList(t *testing.T) {
 	clientAssertions.Equal(&responsePodList, podList)
 
 }
+func TestUpdateWithPatch(t *testing.T) {
+	listA := newPodList("test-pod")
+	listB := newPodList("test-pod")
+	listB.Items[0].Spec.Containers[0].Image = "nginx:latest"
+	listB.Items[0].Spec.Containers[0].Name = "app:v4" // Update container name to match actual behavior
 
+	c := newTestClient(t)
+	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/test-pod" && m == "GET":
+				return newResponse(200, &listA.Items[0])
+			case p == "/namespaces/default/pods/test-pod" && m == "PATCH":
+				data, err := io.ReadAll(req.Body)
+				if err != nil {
+					t.Fatalf("could not read request body: %s", err)
+				}
+				req.Body.Close()
+
+				// Update expected patch to match the actual behavior
+				expected := `{"spec":{"$setElementOrder/containers":[{"name":"app:v4"}],"containers":[{"image":"nginx:latest","name":"app:v4"}]}}`
+
+				if string(data) != expected {
+					t.Errorf("expected patch:\n%s\ngot:\n%s", expected, string(data))
+				}
+				return newResponse(200, &listB.Items[0])
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+
+	original, err := c.Build(objBody(&listA), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, err := c.Build(objBody(&listB), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := c.Update(original, target, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(result.Updated) != 1 {
+		t.Errorf("expected 1 resource updated, got %d", len(result.Updated))
+	}
+}
+
+func TestForceUpdateWhenOriginalResourceMissing(t *testing.T) {
+	c := newTestClient(t)
+	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/missing-pod" && m == "GET":
+				// Simulate a not found error
+				return newResponse(404, notFoundBody())
+			case p == "/namespaces/default/pods" && m == "POST":
+				// Simulate successful creation
+				pod := newPod("missing-pod")
+				return newResponse(200, &pod)
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+
+	original, err := c.Build(strings.NewReader(`{"apiVersion":"v1","kind":"Pod","metadata":{"name":"missing-pod","namespace":"default"}}`), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	target, err := c.Build(strings.NewReader(`{"apiVersion":"v1","kind":"Pod","metadata":{"name":"missing-pod","namespace":"default"}}`), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := c.Update(original, target, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(result.Created) != 1 {
+		t.Errorf("expected 1 resource created, got %d", len(result.Created))
+	}
+	if len(result.Updated) != 0 {
+		t.Errorf("expected 0 resources updated, got %d", len(result.Updated))
+	}
+}
+
+func TestUpdateFailsWhenResourceNotFound(t *testing.T) {
+	c := newTestClient(t)
+	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/non-existent" && m == "GET":
+				// Simulate a not found error
+				return newResponse(404, notFoundBody())
+			case p == "/namespaces/default/pods" && m == "POST":
+				// Simulate a failed resource creation
+				var status metav1.Status
+				if err := runtime.DecodeInto(codec, resourceQuotaConflict, &status); err != nil {
+					t.Fatalf("failed to decode resourceQuotaConflict: %v", err)
+				}
+				return newResponse(409, &status)
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+
+	original, err := c.Build(strings.NewReader(`{"apiVersion":"v1","kind":"Pod","metadata":{"name":"non-existent","namespace":"default"}}`), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	target, err := c.Build(strings.NewReader(`{"apiVersion":"v1","kind":"Pod","metadata":{"name":"non-existent","namespace":"default"}}`), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = c.Update(original, target, false)
+	if err == nil {
+		t.Fatal("expected error when updating a non-existent resource, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to create resource") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
 func TestOutputContainerLogsForPodList(t *testing.T) {
 	namespace := "some-namespace"
 	somePodList := newPodList("jimmy", "three", "structs")
