@@ -31,6 +31,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+
 	"helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
@@ -134,6 +136,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
+	var kubeVersion string
 
 	cmd := &cobra.Command{
 		Use:   "install [NAME] [CHART]",
@@ -144,6 +147,14 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compInstall(args, toComplete, client)
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
+			if kubeVersion != "" {
+				parsedKubeVersion, err := chartutil.ParseKubeVersion(kubeVersion)
+				if err != nil {
+					return fmt.Errorf("invalid kube version '%s': %s", kubeVersion, err)
+				}
+				client.KubeVersion = parsedKubeVersion
+			}
+
 			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
@@ -157,6 +168,12 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if client.DryRunOption == "" {
 				client.DryRunOption = "none"
 			}
+
+			// If the user has set the dry-run option to client, we'll enforce that this indeed runs only on the client
+			if client.DryRunOption == "client" {
+				client.ClientOnly = true
+			}
+
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
 				return errors.Wrap(err, "INSTALLATION FAILED")
@@ -176,6 +193,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	// it is added separately
 	f := cmd.Flags()
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
+	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for Capabilities.KubeVersion when also using the --dry-run flag")
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
