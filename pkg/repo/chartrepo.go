@@ -219,7 +219,10 @@ func FindChartInRepoURL(repoURL string, chartName string, getters getter.Provide
 	}
 	cv, err := repoIndex.Get(chartName, opts.ChartVersion)
 	if err != nil {
-		return "", errors.Errorf("%s not found in %s repository", errMsg, repoURL)
+		return "", ChartNotFoundError{
+			Chart:   errMsg,
+			RepoURL: repoURL,
+		}
 	}
 
 	if len(cv.URLs) == 0 {
