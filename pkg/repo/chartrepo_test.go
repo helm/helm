@@ -18,6 +18,7 @@ package repo
 
 import (
 	"bytes"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -201,6 +202,9 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 		t.Errorf("Expected error for chart not found, but did not get any errors")
 	} else if err.Error() != `chart "nginx1" not found in `+srv.URL+` repository` {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
+	}
+	if !errors.Is(err, ChartNotFoundError{}) {
+		t.Errorf("error is not of correct error type structure")
 	}
 
 	if _, err = FindChartInRepoURL(srv.URL, "nginx1", g, WithChartVersion("0.1.0")); err == nil {
