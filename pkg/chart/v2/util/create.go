@@ -24,7 +24,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -651,7 +650,7 @@ var Stderr io.Writer = os.Stderr
 func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 	schart, err := loader.Load(src)
 	if err != nil {
-		return errors.Wrapf(err, "could not load %s", src)
+		return fmt.Errorf("could not load %s: %w", src, err)
 	}
 
 	schart.Metadata = chartfile
@@ -666,12 +665,12 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 	schart.Templates = updatedTemplates
 	b, err := yaml.Marshal(schart.Values)
 	if err != nil {
-		return errors.Wrap(err, "reading values file")
+		return fmt.Errorf("reading values file: %w", err)
 	}
 
 	var m map[string]interface{}
 	if err := yaml.Unmarshal(transform(string(b), schart.Name()), &m); err != nil {
-		return errors.Wrap(err, "transforming values file")
+		return fmt.Errorf("transforming values file: %w", err)
 	}
 	schart.Values = m
 
@@ -715,12 +714,12 @@ func Create(name, dir string) (string, error) {
 	if fi, err := os.Stat(path); err != nil {
 		return path, err
 	} else if !fi.IsDir() {
-		return path, errors.Errorf("no such directory %s", path)
+		return path, fmt.Errorf("no such directory %s", path)
 	}
 
 	cdir := filepath.Join(path, name)
 	if fi, err := os.Stat(cdir); err == nil && !fi.IsDir() {
-		return cdir, errors.Errorf("file %s already exists and is not a directory", cdir)
+		return cdir, fmt.Errorf("file %s already exists and is not a directory", cdir)
 	}
 
 	// Note: If adding a new template below (i.e., to `helm create`) which is disabled by default (similar to hpa and

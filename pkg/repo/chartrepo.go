@@ -28,8 +28,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
@@ -59,12 +57,12 @@ type ChartRepository struct {
 func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository, error) {
 	u, err := url.Parse(cfg.URL)
 	if err != nil {
-		return nil, errors.Errorf("invalid chart URL format: %s", cfg.URL)
+		return nil, fmt.Errorf("invalid chart URL format: %s", cfg.URL)
 	}
 
 	client, err := getters.ByScheme(u.Scheme)
 	if err != nil {
-		return nil, errors.Errorf("could not find protocol handler for: %s", u.Scheme)
+		return nil, fmt.Errorf("could not find protocol handler for: %s", u.Scheme)
 	}
 
 	return &ChartRepository{
@@ -200,7 +198,7 @@ func FindChartInRepoURL(repoURL string, chartName string, getters getter.Provide
 	}
 	idx, err := r.DownloadIndexFile()
 	if err != nil {
-		return "", errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", repoURL)
+		return "", fmt.Errorf("looks like %q is not a valid chart repository or cannot be reached: %w", repoURL, err)
 	}
 	defer func() {
 		os.RemoveAll(filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name)))
@@ -226,14 +224,14 @@ func FindChartInRepoURL(repoURL string, chartName string, getters getter.Provide
 	}
 
 	if len(cv.URLs) == 0 {
-		return "", errors.Errorf("%s has no downloadable URLs", errMsg)
+		return "", fmt.Errorf("%s has no downloadable URLs", errMsg)
 	}
 
 	chartURL := cv.URLs[0]
 
 	absoluteChartURL, err := ResolveReferenceURL(repoURL, chartURL)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to make chart URL absolute")
+		return "", fmt.Errorf("failed to make chart URL absolute: %w", err)
 	}
 
 	return absoluteChartURL, nil
@@ -244,7 +242,7 @@ func FindChartInRepoURL(repoURL string, chartName string, getters getter.Provide
 func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 	parsedRefURL, err := url.Parse(refURL)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to parse %s as URL", refURL)
+		return "", fmt.Errorf("failed to parse %s as URL: %w", refURL, err)
 	}
 
 	if parsedRefURL.IsAbs() {
@@ -253,7 +251,7 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 
 	parsedBaseURL, err := url.Parse(baseURL)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to parse %s as URL", baseURL)
+		return "", fmt.Errorf("failed to parse %s as URL: %w", baseURL, err)
 	}
 
 	// We need a trailing slash for ResolveReference to work, but make sure there isn't already one

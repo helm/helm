@@ -31,7 +31,6 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
 )
 
 var immutableOciAnnotations = []string{
@@ -87,7 +86,7 @@ func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (str
 		}
 	}
 
-	return "", errors.Errorf("Could not locate a version matching provided version string %s", versionString)
+	return "", fmt.Errorf("could not locate a version matching provided version string %s", versionString)
 }
 
 // extractChartMeta is used to extract a chart metadata from a byte array

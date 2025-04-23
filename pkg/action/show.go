@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/yaml"
 
@@ -105,7 +104,7 @@ func (s *Show) Run(chartpath string) (string, error) {
 		if s.JSONPathTemplate != "" {
 			printer, err := printers.NewJSONPathPrinter(s.JSONPathTemplate)
 			if err != nil {
-				return "", errors.Wrapf(err, "error parsing jsonpath %s", s.JSONPathTemplate)
+				return "", fmt.Errorf("error parsing jsonpath %s: %w", s.JSONPathTemplate, err)
 			}
 			printer.Execute(&out, s.chart.Values)
 		} else {

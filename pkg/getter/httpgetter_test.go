@@ -28,8 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"helm.sh/helm/v4/internal/tlsutil"
 	"helm.sh/helm/v4/internal/version"
 	"helm.sh/helm/v4/pkg/cli"
@@ -317,7 +315,7 @@ func TestDownloadTLS(t *testing.T) {
 		tlsutil.WithCAFile(ca),
 	)
 	if err != nil {
-		t.Fatal(errors.Wrap(err, "can't create TLS config for client"))
+		t.Fatal(fmt.Errorf("can't create TLS config for client: %w", err))
 	}
 	tlsConf.ServerName = "helm.sh"
 	tlsSrv.TLS = tlsConf
@@ -372,7 +370,7 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 	)
 
 	if err != nil {
-		t.Fatal(errors.Wrap(err, "can't create TLS config for client"))
+		t.Fatal(fmt.Errorf("can't create TLS config for client: %w", err))
 	}
 
 	tlsSrv2 := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
@@ -393,7 +391,7 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 	)
 
 	if err != nil {
-		t.Fatal(errors.Wrap(err, "can't create TLS config for client"))
+		t.Fatal(fmt.Errorf("can't create TLS config for client: %w", err))
 	}
 
 	tlsSrv1 := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {

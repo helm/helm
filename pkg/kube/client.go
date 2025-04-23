@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -30,7 +31,6 @@ import (
 	"sync"
 
 	jsonpatch "github.com/evanphx/json-patch"
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -183,13 +183,13 @@ func (c *Client) IsReachable() error {
 	if err == genericclioptions.ErrEmptyConfig {
 		// re-replace kubernetes ErrEmptyConfig error with a friendly error
 		// moar workarounds for Kubernetes API breaking.
-		return errors.New("Kubernetes cluster unreachable")
+		return errors.New("kubernetes cluster unreachable")
 	}
 	if err != nil {
-		return errors.Wrap(err, "Kubernetes cluster unreachable")
+		return fmt.Errorf("kubernetes cluster unreachable: %w", err)
 	}
 	if _, err := client.Discovery().ServerVersion(); err != nil {
-		return errors.Wrap(err, "Kubernetes cluster unreachable")
+		return fmt.Errorf("kubernetes cluster unreachable: %w", err)
 	}
 	return nil
 }
@@ -398,7 +398,7 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 }
 
 func (c *Client) update(original, target ResourceList, force, threeWayMerge bool) (*Result, error) {
-	updateErrors := []string{}
+	updateErrors := []error{}
 	res := &Result{}
 
 	slog.Debug("checking resources for changes", "resources", len(target))
@@ -410,7 +410,7 @@ func (c *Client) update(original, target ResourceList, force, threeWayMerge bool
 		helper := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager())
 		if _, err := helper.Get(info.Namespace, info.Name); err != nil {
 			if !apierrors.IsNotFound(err) {
-				return errors.Wrap(err, "could not get information about the resource")
+				return fmt.Errorf("could not get information about the resource: %w", err)
 			}
 
 			// Append the created resource to the results, even if something fails
@@ -418,7 +418,7 @@ func (c *Client) update(original, target ResourceList, force, threeWayMerge bool
 
 			// Since the resource does not exist, create it.
 			if err := createResource(info); err != nil {
-				return errors.Wrap(err, "failed to create resource")
+				return fmt.Errorf("failed to create resource: %w", err)
 			}
 
 			kind := info.Mapping.GroupVersionKind.Kind
@@ -429,12 +429,12 @@ func (c *Client) update(original, target ResourceList, force, threeWayMerge bool
 		originalInfo := original.Get(info)
 		if originalInfo == nil {
 			kind := info.Mapping.GroupVersionKind.Kind
-			return errors.Errorf("no %s with the name %q found", kind, info.Name)
+			return fmt.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force, threeWayMerge); err != nil {
 			slog.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
-			updateErrors = append(updateErrors, err.Error())
+			updateErrors = append(updateErrors, err)
 		}
 		// Because we check for errors later, append the info regardless
 		res.Updated = append(res.Updated, info)
@@ -446,7 +446,7 @@ func (c *Client) update(original, target ResourceList, force, threeWayMerge bool
 	case err != nil:
 		return res, err
 	case len(updateErrors) != 0:
-		return res, errors.New(strings.Join(updateErrors, " && "))
+		return res, joinErrors(updateErrors, " && ")
 	}
 
 	for _, info := range original.Difference(target) {
@@ -610,24 +610,24 @@ func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) erro
 func createPatch(target *resource.Info, current runtime.Object, threeWayMergeForUnstructured bool) ([]byte, types.PatchType, error) {
 	oldData, err := json.Marshal(current)
 	if err != nil {
-		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing current configuration")
+		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing current configuration: %w", err)
 	}
 	newData, err := json.Marshal(target.Object)
 	if err != nil {
-		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing target configuration")
+		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing target configuration: %w", err)
 	}
 
 	// Fetch the current object for the three way merge
 	helper := resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
 	currentObj, err := helper.Get(target.Namespace, target.Name)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return nil, types.StrategicMergePatchType, errors.Wrapf(err, "unable to get data for current object %s/%s", target.Namespace, target.Name)
+		return nil, types.StrategicMergePatchType, fmt.Errorf("unable to get data for current object %s/%s: %w", target.Namespace, target.Name, err)
 	}
 
 	// Even if currentObj is nil (because it was not found), it will marshal just fine
 	currentData, err := json.Marshal(currentObj)
 	if err != nil {
-		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing live configuration")
+		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing live configuration: %w", err)
 	}
 
 	// Get a versioned object
@@ -663,7 +663,7 @@ func createPatch(target *resource.Info, current runtime.Object, threeWayMergeFor
 
 	patchMeta, err := strategicpatch.NewPatchMetaFromStruct(versionedObject)
 	if err != nil {
-		return nil, types.StrategicMergePatchType, errors.Wrap(err, "unable to create patch metadata from object")
+		return nil, types.StrategicMergePatchType, fmt.Errorf("unable to create patch metadata from object: %w", err)
 	}
 
 	patch, err := strategicpatch.CreateThreeWayMergePatch(oldData, newData, currentData, patchMeta, true)
@@ -682,13 +682,13 @@ func updateResource(_ *Client, target *resource.Info, currentObj runtime.Object,
 		var err error
 		obj, err = helper.Replace(target.Namespace, target.Name, true, target.Object)
 		if err != nil {
-			return errors.Wrap(err, "failed to replace object")
+			return fmt.Errorf("failed to replace object: %w", err)
 		}
 		slog.Debug("replace succeeded", "name", target.Name, "initialKind", currentObj.GetObjectKind().GroupVersionKind().Kind, "kind", kind)
 	} else {
 		patch, patchType, err := createPatch(target, currentObj, threeWayMergeForUnstructured)
 		if err != nil {
-			return errors.Wrap(err, "failed to create patch")
+			return fmt.Errorf("failed to create patch: %w", err)
 		}
 
 		if patch == nil || string(patch) == "{}" {
@@ -696,7 +696,7 @@ func updateResource(_ *Client, target *resource.Info, currentObj runtime.Object,
 			// This needs to happen to make sure that Helm has the latest info from the API
 			// Otherwise there will be no labels and other functions that use labels will panic
 			if err := target.Get(); err != nil {
-				return errors.Wrap(err, "failed to refresh resource information")
+				return fmt.Errorf("failed to refresh resource information: %w", err)
 			}
 			return nil
 		}
@@ -704,7 +704,7 @@ func updateResource(_ *Client, target *resource.Info, currentObj runtime.Object,
 		slog.Debug("patching resource", "kind", kind, "name", target.Name, "namespace", target.Namespace)
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
-			return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
+			return fmt.Errorf("cannot patch %q with kind %s: %w", target.Name, kind, err)
 		}
 	}
 
@@ -741,12 +741,12 @@ func (c *Client) OutputContainerLogsForPodList(podList *v1.PodList, namespace st
 func copyRequestStreamToWriter(request *rest.Request, podName, containerName string, writer io.Writer) error {
 	readCloser, err := request.Stream(context.Background())
 	if err != nil {
-		return errors.Errorf("Failed to stream pod logs for pod: %s, container: %s", podName, containerName)
+		return fmt.Errorf("failed to stream pod logs for pod: %s, container: %s", podName, containerName)
 	}
 	defer readCloser.Close()
 	_, err = io.Copy(writer, readCloser)
 	if err != nil {
-		return errors.Errorf("Failed to copy IO from logs for pod: %s, container: %s", podName, containerName)
+		return fmt.Errorf("failed to copy IO from logs for pod: %s, container: %s", podName, containerName)
 	}
 	return nil
 }
@@ -762,4 +762,28 @@ func scrubValidationError(err error) error {
 		return errors.New(strings.ReplaceAll(err.Error(), "; "+stopValidateMessage, ""))
 	}
 	return err
+}
+
+type joinedErrors struct {
+	errs []error
+	sep  string
+}
+
+func joinErrors(errs []error, sep string) error {
+	return &joinedErrors{
+		errs: errs,
+		sep:  sep,
+	}
+}
+
+func (e *joinedErrors) Error() string {
+	errs := make([]string, 0, len(e.errs))
+	for _, err := range e.errs {
+		errs = append(errs, err.Error())
+	}
+	return strings.Join(errs, e.sep)
+}
+
+func (e *joinedErrors) Unwrap() []error {
+	return e.errs
 }

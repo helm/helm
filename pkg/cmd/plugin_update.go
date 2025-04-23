@@ -16,13 +16,12 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"path/filepath"
-	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/plugin"
@@ -68,21 +67,21 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	var errorPlugins []string
+	var errorPlugins []error
 
 	for _, name := range o.names {
 		if found := findPlugin(plugins, name); found != nil {
 			if err := updatePlugin(found); err != nil {
-				errorPlugins = append(errorPlugins, fmt.Sprintf("Failed to update plugin %s, got error (%v)", name, err))
+				errorPlugins = append(errorPlugins, fmt.Errorf("failed to update plugin %s, got error (%v)", name, err))
 			} else {
 				fmt.Fprintf(out, "Updated plugin: %s\n", name)
 			}
 		} else {
-			errorPlugins = append(errorPlugins, fmt.Sprintf("Plugin: %s not found", name))
+			errorPlugins = append(errorPlugins, fmt.Errorf("plugin: %s not found", name))
 		}
 	}
 	if len(errorPlugins) > 0 {
-		return errors.New(strings.Join(errorPlugins, "\n"))
+		return errors.Join(errorPlugins...)
 	}
 	return nil
 }

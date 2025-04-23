@@ -17,11 +17,10 @@ limitations under the License.
 package storage // import "helm.sh/helm/v4/pkg/storage"
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	relutil "helm.sh/helm/v4/pkg/release/util"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
@@ -212,7 +211,7 @@ func (s *Storage) removeLeastRecent(name string, maximum int) error {
 	case 1:
 		return errs[0]
 	default:
-		return errors.Errorf("encountered %d deletion errors. First is: %s", c, errs[0])
+		return fmt.Errorf("encountered %d deletion errors. First is: %w", c, errs[0])
 	}
 }
 
@@ -234,7 +233,7 @@ func (s *Storage) Last(name string) (*rspb.Release, error) {
 		return nil, err
 	}
 	if len(h) == 0 {
-		return nil, errors.Errorf("no revision for release %q", name)
+		return nil, fmt.Errorf("no revision for release %q", name)
 	}
 
 	relutil.Reverse(h, relutil.SortByRevision)

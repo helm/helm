@@ -18,11 +18,11 @@ package util
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"

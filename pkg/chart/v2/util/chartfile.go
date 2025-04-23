@@ -17,10 +17,12 @@ limitations under the License.
 package util
 
 import (
+	"errors"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -75,17 +77,17 @@ func IsChartDir(dirName string) (bool, error) {
 	if fi, err := os.Stat(dirName); err != nil {
 		return false, err
 	} else if !fi.IsDir() {
-		return false, errors.Errorf("%q is not a directory", dirName)
+		return false, fmt.Errorf("%q is not a directory", dirName)
 	}
 
 	chartYaml := filepath.Join(dirName, ChartfileName)
-	if _, err := os.Stat(chartYaml); os.IsNotExist(err) {
-		return false, errors.Errorf("no %s exists in directory %q", ChartfileName, dirName)
+	if _, err := os.Stat(chartYaml); errors.Is(err, fs.ErrNotExist) {
+		return false, fmt.Errorf("no %s exists in directory %q", ChartfileName, dirName)
 	}
 
 	chartYamlContent, err := os.ReadFile(chartYaml)
 	if err != nil {
-		return false, errors.Errorf("cannot read %s in directory %q", ChartfileName, dirName)
+		return false, fmt.Errorf("cannot read %s in directory %q", ChartfileName, dirName)
 	}
 
 	chartContent := new(chart.Metadata)
@@ -93,10 +95,10 @@ func IsChartDir(dirName string) (bool, error) {
 		return false, err
 	}
 	if chartContent == nil {
-		return false, errors.Errorf("chart metadata (%s) missing", ChartfileName)
+		return false, fmt.Errorf("chart metadata (%s) missing", ChartfileName)
 	}
 	if chartContent.Name == "" {
-		return false, errors.Errorf("invalid chart (%s): name must not be empty", ChartfileName)
+		return false, fmt.Errorf("invalid chart (%s): name must not be empty", ChartfileName)
 	}
 
 	return true, nil

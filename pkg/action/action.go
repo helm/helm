@@ -18,6 +18,7 @@ package action
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -27,7 +28,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
@@ -105,7 +105,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 
 	if ch.Metadata.KubeVersion != "" {
 		if !chartutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
-			return hs, b, "", errors.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
+			return hs, b, "", fmt.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
 		}
 	}
 
@@ -220,7 +220,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	if pr != nil {
 		b, err = pr.Run(b)
 		if err != nil {
-			return hs, b, notes, errors.Wrap(err, "error while running post render on files")
+			return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
 		}
 	}
 
@@ -241,13 +241,13 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	}
 	dc, err := cfg.RESTClientGetter.ToDiscoveryClient()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get Kubernetes discovery client")
+		return nil, fmt.Errorf("could not get Kubernetes discovery client: %w", err)
 	}
 	// force a discovery cache invalidation to always fetch the latest server version/capabilities.
 	dc.Invalidate()
 	kubeVersion, err := dc.ServerVersion()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get server version from Kubernetes")
+		return nil, fmt.Errorf("could not get server version from Kubernetes: %w", err)
 	}
 	// Issue #6361:
 	// Client-Go emits an error when an API service is registered but unimplemented.
@@ -260,7 +260,7 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 			slog.Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
 			slog.Warn("to fix this, kubectl delete apiservice <service-name>")
 		} else {
-			return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+			return nil, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
 		}
 	}
 
@@ -280,7 +280,7 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 func (cfg *Configuration) KubernetesClientSet() (kubernetes.Interface, error) {
 	conf, err := cfg.RESTClientGetter.ToRESTConfig()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to generate config for kubernetes client")
+		return nil, fmt.Errorf("unable to generate config for kubernetes client: %w", err)
 	}
 
 	return kubernetes.NewForConfig(conf)
@@ -296,7 +296,7 @@ func (cfg *Configuration) Now() time.Time {
 
 func (cfg *Configuration) releaseContent(name string, version int) (*release.Release, error) {
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, errors.Errorf("releaseContent: Release name is invalid: %s", name)
+		return nil, fmt.Errorf("releaseContent: Release name is invalid: %s", name)
 	}
 
 	if version <= 0 {
@@ -310,7 +310,7 @@ func (cfg *Configuration) releaseContent(name string, version int) (*release.Rel
 func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.VersionSet, error) {
 	groups, resources, err := client.ServerGroupsAndResources()
 	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
-		return chartutil.DefaultVersionSet, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+		return chartutil.DefaultVersionSet, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
 	}
 
 	// FIXME: The Kubernetes test fixture for cli appears to always return nil
@@ -399,11 +399,11 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 			namespace,
 		)
 		if err != nil {
-			return errors.Wrap(err, "unable to instantiate SQL driver")
+			return fmt.Errorf("unable to instantiate SQL driver: %w", err)
 		}
 		store = storage.Init(d)
 	default:
-		return errors.Errorf("unknown driver %q", helmDriver)
+		return fmt.Errorf("unknown driver %q", helmDriver)
 	}
 
 	cfg.RESTClientGetter = getter

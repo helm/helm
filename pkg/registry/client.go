@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,7 +34,6 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
@@ -463,7 +463,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 			PreCopy: func(_ context.Context, desc ocispec.Descriptor) error {
 				mediaType := desc.MediaType
 				if i := sort.SearchStrings(allowedMediaTypes, mediaType); i >= len(allowedMediaTypes) || allowedMediaTypes[i] != mediaType {
-					return errors.Errorf("media type %q is not allowed, found in descriptor with digest: %q", mediaType, desc.Digest)
+					return fmt.Errorf("media type %q is not allowed, found in descriptor with digest: %q", mediaType, desc.Digest)
 				}
 
 				mu.Lock()
@@ -846,7 +846,7 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 		version = registryReference.Tag
 	} else {
 		if registryReference.Tag != "" && registryReference.Tag != version {
-			return nil, errors.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
+			return nil, fmt.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
 		}
 	}
 
@@ -865,7 +865,7 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 			return u, nil
 		}
 		if desc.Digest.String() != registryReference.Digest {
-			return nil, errors.Errorf("chart reference digest mismatch: %s is not %s", desc.Digest.String(), registryReference.Digest)
+			return nil, fmt.Errorf("chart reference digest mismatch: %s is not %s", desc.Digest.String(), registryReference.Digest)
 		}
 		return u, nil
 	}
@@ -881,7 +881,7 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 			return nil, err
 		}
 		if len(tags) == 0 {
-			return nil, errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
+			return nil, fmt.Errorf("unable to locate any tags in provided repository: %s", ref)
 		}
 
 		// Determine if version provided

@@ -24,7 +24,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
@@ -64,7 +63,7 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, errors.Errorf("releaseTest: Release name is invalid: %s", name)
+		return nil, fmt.Errorf("releaseTest: Release name is invalid: %s", name)
 	}
 
 	// finds the non-deleted release with the given name
@@ -113,7 +112,7 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 	client, err := r.cfg.KubernetesClientSet()
 	if err != nil {
-		return errors.Wrap(err, "unable to get kubernetes client to fetch pod logs")
+		return fmt.Errorf("unable to get kubernetes client to fetch pod logs: %w", err)
 	}
 
 	hooksByWight := append([]*release.Hook{}, rel.Hooks...)
@@ -130,14 +129,14 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 				req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
 				logReader, err := req.Stream(context.Background())
 				if err != nil {
-					return errors.Wrapf(err, "unable to get pod logs for %s", h.Name)
+					return fmt.Errorf("unable to get pod logs for %s: %w", h.Name, err)
 				}
 
 				fmt.Fprintf(out, "POD LOGS: %s\n", h.Name)
 				_, err = io.Copy(out, logReader)
 				fmt.Fprintln(out)
 				if err != nil {
-					return errors.Wrapf(err, "unable to write pod logs for %s", h.Name)
+					return fmt.Errorf("unable to write pod logs for %s: %w", h.Name, err)
 				}
 			}
 		}

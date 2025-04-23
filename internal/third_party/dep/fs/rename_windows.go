@@ -34,10 +34,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package fs
 
 import (
+	"errors"
 	"os"
 	"syscall"
-
-	"github.com/pkg/errors"
 )
 
 // renameFallback attempts to determine the appropriate fallback to failed rename

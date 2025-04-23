@@ -19,12 +19,11 @@ package values
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/url"
 	"os"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/getter"
@@ -54,7 +53,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 		}
 		currentMap, err := loader.LoadValues(bytes.NewReader(raw))
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse %s", filePath)
+			return nil, fmt.Errorf("failed to parse %s: %w", filePath, err)
 		}
 		// Merge with the previous map
 		base = loader.MergeMaps(base, currentMap)
@@ -67,13 +66,13 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 			// If value is JSON object format, parse it as map
 			var jsonMap map[string]interface{}
 			if err := json.Unmarshal([]byte(trimmedValue), &jsonMap); err != nil {
-				return nil, errors.Errorf("failed parsing --set-json data JSON: %s", value)
+				return nil, fmt.Errorf("failed parsing --set-json data JSON: %s", value)
 			}
 			base = loader.MergeMaps(base, jsonMap)
 		} else {
 			// Otherwise, parse it as key=value format
 			if err := strvals.ParseJSON(value, base); err != nil {
-				return nil, errors.Errorf("failed parsing --set-json data %s", value)
+				return nil, fmt.Errorf("failed parsing --set-json data %s", value)
 			}
 		}
 	}
@@ -81,14 +80,14 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 	// User specified a value via --set
 	for _, value := range opts.Values {
 		if err := strvals.ParseInto(value, base); err != nil {
-			return nil, errors.Wrap(err, "failed parsing --set data")
+			return nil, fmt.Errorf("failed parsing --set data: %w", err)
 		}
 	}
 
 	// User specified a value via --set-string
 	for _, value := range opts.StringValues {
 		if err := strvals.ParseIntoString(value, base); err != nil {
-			return nil, errors.Wrap(err, "failed parsing --set-string data")
+			return nil, fmt.Errorf("failed parsing --set-string data: %w", err)
 		}
 	}
 
@@ -102,14 +101,14 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 			return string(bytes), err
 		}
 		if err := strvals.ParseIntoFile(value, base, reader); err != nil {
-			return nil, errors.Wrap(err, "failed parsing --set-file data")
+			return nil, fmt.Errorf("failed parsing --set-file data: %w", err)
 		}
 	}
 
 	// User specified a value via --set-literal
 	for _, value := range opts.LiteralValues {
 		if err := strvals.ParseLiteralInto(value, base); err != nil {
-			return nil, errors.Wrap(err, "failed parsing --set-literal data")
+			return nil, fmt.Errorf("failed parsing --set-literal data: %w", err)
 		}
 	}
 

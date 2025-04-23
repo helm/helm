@@ -25,10 +25,8 @@ import (
 
 	"helm.sh/helm/v4/pkg/kube"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	release "helm.sh/helm/v4/pkg/release/v1"
 	helmtime "helm.sh/helm/v4/pkg/time"
@@ -65,7 +63,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
 		if err != nil {
-			return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
+			return fmt.Errorf("unable to build kubernetes object for %s hook %s: %w", hook, h.Path, err)
 		}
 
 		// Record the time at which the hook was applied to the cluster
@@ -84,12 +82,12 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		if _, err := cfg.KubeClient.Create(resources); err != nil {
 			h.LastRun.CompletedAt = helmtime.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
-			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
+			return fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err)
 		}
 
 		waiter, err := cfg.KubeClient.GetWaiter(waitStrategy)
 		if err != nil {
-			return errors.Wrapf(err, "unable to get waiter")
+			return fmt.Errorf("unable to get waiter: %w", err)
 		}
 		// Watch hook resources until they have completed
 		err = waiter.WatchUntilReady(resources, timeout)
@@ -159,11 +157,11 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 	if hookHasDeletePolicy(h, policy) {
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), false)
 		if err != nil {
-			return errors.Wrapf(err, "unable to build kubernetes object for deleting hook %s", h.Path)
+			return fmt.Errorf("unable to build kubernetes object for deleting hook %s: %w", h.Path, err)
 		}
 		_, errs := cfg.KubeClient.Delete(resources)
 		if len(errs) > 0 {
-			return errors.New(joinErrors(errs))
+			return joinErrors(errs, "; ")
 		}
 
 		waiter, err := cfg.KubeClient.GetWaiter(waitStrategy)
@@ -239,7 +237,7 @@ func (cfg *Configuration) deriveNamespace(h *release.Hook, namespace string) (st
 	}{}
 	err := yaml.Unmarshal([]byte(h.Manifest), &tmp)
 	if err != nil {
-		return "", errors.Wrapf(err, "unable to parse metadata.namespace from kubernetes manifest for output logs hook %s", h.Path)
+		return "", fmt.Errorf("unable to parse metadata.namespace from kubernetes manifest for output logs hook %s: %w", h.Path, err)
 	}
 	if tmp.Metadata.Namespace == "" {
 		return namespace, nil

@@ -17,12 +17,12 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"slices"
 	"sync"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/cmd/require"
@@ -77,7 +77,7 @@ func (o *repoUpdateOptions) run(out io.Writer) error {
 	case isNotExist(err):
 		return errNoRepositories
 	case err != nil:
-		return errors.Wrapf(err, "failed loading file: %s", o.repoFile)
+		return fmt.Errorf("failed loading file: %s: %w", o.repoFile, err)
 	case len(f.Repositories) == 0:
 		return errNoRepositories
 	}
@@ -155,7 +155,7 @@ func checkRequestedRepos(requestedRepos []string, validRepos []*repo.Entry) erro
 			}
 		}
 		if !found {
-			return errors.Errorf("no repositories found matching '%s'.  Nothing will be updated", requestedRepo)
+			return fmt.Errorf("no repositories found matching '%s'.  Nothing will be updated", requestedRepo)
 		}
 	}
 	return nil

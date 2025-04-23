@@ -18,13 +18,12 @@ package kube // import "helm.sh/helm/v4/pkg/kube"
 
 import (
 	"context"
-	stderrors "errors"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
-	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -191,7 +190,11 @@ func SelectorsForObject(object runtime.Object) (selector labels.Selector, err er
 		return nil, fmt.Errorf("selector for %T not implemented", object)
 	}
 
-	return selector, errors.Wrap(err, "invalid label selector")
+	if err != nil {
+		return selector, fmt.Errorf("invalid label selector: %w", err)
+	}
+
+	return selector, nil
 }
 
 func (hw *legacyWaiter) watchTimeout(t time.Duration) func(*resource.Info) error {
@@ -233,7 +236,7 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 	for range infos {
 		err := <-errs
 		if err != nil {
-			result = stderrors.Join(result, err)
+			result = errors.Join(result, err)
 		}
 	}
 
@@ -291,7 +294,7 @@ func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.In
 		case watch.Error:
 			// Handle error and return with an error.
 			slog.Error("error event received", "resource", info.Name)
-			return true, errors.Errorf("failed to deploy %s", info.Name)
+			return true, fmt.Errorf("failed to deploy %s", info.Name)
 		default:
 			return false, nil
 		}
@@ -305,7 +308,7 @@ func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.In
 func (hw *legacyWaiter) waitForJob(obj runtime.Object, name string) (bool, error) {
 	o, ok := obj.(*batchv1.Job)
 	if !ok {
-		return true, errors.Errorf("expected %s to be a *batch.Job, got %T", name, obj)
+		return true, fmt.Errorf("expected %s to be a *batch.Job, got %T", name, obj)
 	}
 
 	for _, c := range o.Status.Conditions {
@@ -313,7 +316,7 @@ func (hw *legacyWaiter) waitForJob(obj runtime.Object, name string) (bool, error
 			return true, nil
 		} else if c.Type == batchv1.JobFailed && c.Status == "True" {
 			slog.Error("job failed", "job", name, "reason", c.Reason)
-			return true, errors.Errorf("job %s failed: %s", name, c.Reason)
+			return true, fmt.Errorf("job %s failed: %s", name, c.Reason)
 		}
 	}
 
@@ -327,7 +330,7 @@ func (hw *legacyWaiter) waitForJob(obj runtime.Object, name string) (bool, error
 func (hw *legacyWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool, error) {
 	o, ok := obj.(*corev1.Pod)
 	if !ok {
-		return true, errors.Errorf("expected %s to be a *v1.Pod, got %T", name, obj)
+		return true, fmt.Errorf("expected %s to be a *v1.Pod, got %T", name, obj)
 	}
 
 	switch o.Status.Phase {
@@ -336,7 +339,7 @@ func (hw *legacyWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool
 		return true, nil
 	case corev1.PodFailed:
 		slog.Error("pod failed", "pod", o.Name)
-		return true, errors.Errorf("pod %s failed", o.Name)
+		return true, fmt.Errorf("pod %s failed", o.Name)
 	case corev1.PodPending:
 		slog.Debug("pod pending", "pod", o.Name)
 	case corev1.PodRunning:

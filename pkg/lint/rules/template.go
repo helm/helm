@@ -19,6 +19,7 @@ package rules
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,7 +27,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/validation"
 	apipath "k8s.io/apimachinery/pkg/api/validation/path"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -212,11 +212,14 @@ func validateAllowedExtension(fileName string) error {
 		}
 	}
 
-	return errors.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .yml, .tpl, or .txt", ext)
+	return fmt.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .yml, .tpl, or .txt", ext)
 }
 
 func validateYamlContent(err error) error {
-	return errors.Wrap(err, "unable to parse YAML")
+	if err != nil {
+		return fmt.Errorf("unable to parse YAML: %w", err)
+	}
+	return nil
 }
 
 // validateMetadataName uses the correct validation function for the object
@@ -229,7 +232,7 @@ func validateMetadataName(obj *K8sYamlStruct) error {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("metadata").Child("name"), obj.Metadata.Name, msg))
 	}
 	if len(allErrs) > 0 {
-		return errors.Wrapf(allErrs.ToAggregate(), "object name does not conform to Kubernetes naming requirements: %q", obj.Metadata.Name)
+		return fmt.Errorf("object name does not conform to Kubernetes naming requirements: %q: %w", obj.Metadata.Name, allErrs.ToAggregate())
 	}
 	return nil
 }
@@ -293,6 +296,7 @@ func validateMatchSelector(yamlStruct *K8sYamlStruct, manifest string) error {
 	}
 	return nil
 }
+
 func validateListAnnotations(yamlStruct *K8sYamlStruct, manifest string) error {
 	if yamlStruct.Kind == "List" {
 		m := struct {
@@ -309,7 +313,7 @@ func validateListAnnotations(yamlStruct *K8sYamlStruct, manifest string) error {
 
 		for _, i := range m.Items {
 			if _, ok := i.Metadata.Annotations["helm.sh/resource-policy"]; ok {
-				return errors.New("Annotation 'helm.sh/resource-policy' within List objects are ignored")
+				return errors.New("annotation 'helm.sh/resource-policy' within List objects are ignored")
 			}
 		}
 	}

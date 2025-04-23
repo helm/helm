@@ -20,13 +20,14 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 
@@ -48,7 +49,6 @@ func Loader(name string) (ChartLoader, error) {
 		return DirLoader(name), nil
 	}
 	return FileLoader(name), nil
-
 }
 
 // Load takes a string name, tries to resolve it to a file or directory, and then loads it.
@@ -86,7 +86,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				c.Metadata = new(chart.Metadata)
 			}
 			if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
-				return c, errors.Wrap(err, "cannot load Chart.yaml")
+				return c, fmt.Errorf("cannot load Chart.yaml: %w", err)
 			}
 			// NOTE(bacongobbler): while the chart specification says that APIVersion must be set,
 			// Helm 2 accepted charts that did not provide an APIVersion in their chart metadata.
@@ -104,12 +104,12 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		case f.Name == "Chart.lock":
 			c.Lock = new(chart.Lock)
 			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
-				return c, errors.Wrap(err, "cannot load Chart.lock")
+				return c, fmt.Errorf("cannot load Chart.lock: %w", err)
 			}
 		case f.Name == "values.yaml":
 			values, err := LoadValues(bytes.NewReader(f.Data))
 			if err != nil {
-				return c, errors.Wrap(err, "cannot load values.yaml")
+				return c, fmt.Errorf("cannot load values.yaml: %w", err)
 			}
 			c.Values = values
 		case f.Name == "values.schema.json":
@@ -125,7 +125,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				log.Printf("Warning: Dependencies are handled in Chart.yaml since apiVersion \"v2\". We recommend migrating dependencies to Chart.yaml.")
 			}
 			if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
-				return c, errors.Wrap(err, "cannot load requirements.yaml")
+				return c, fmt.Errorf("cannot load requirements.yaml: %w", err)
 			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
 				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
@@ -134,7 +134,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		case f.Name == "requirements.lock":
 			c.Lock = new(chart.Lock)
 			if err := yaml.Unmarshal(f.Data, &c.Lock); err != nil {
-				return c, errors.Wrap(err, "cannot load requirements.lock")
+				return c, fmt.Errorf("cannot load requirements.lock: %w", err)
 			}
 			if c.Metadata == nil {
 				c.Metadata = new(chart.Metadata)
@@ -163,7 +163,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 	}
 
 	if c.Metadata == nil {
-		return c, errors.New("Chart.yaml file is missing")
+		return c, errors.New("Chart.yaml file is missing") //nolint:staticcheck
 	}
 
 	if err := c.Validate(); err != nil {
@@ -179,7 +179,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		case filepath.Ext(n) == ".tgz":
 			file := files[0]
 			if file.Name != n {
-				return c, errors.Errorf("error unpacking subchart tar in %s: expected %s, got %s", c.Name(), n, file.Name)
+				return c, fmt.Errorf("error unpacking subchart tar in %s: expected %s, got %s", c.Name(), n, file.Name)
 			}
 			// Untar the chart and add to c.Dependencies
 			sc, err = LoadArchive(bytes.NewBuffer(file.Data))
@@ -199,7 +199,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		}
 
 		if err != nil {
-			return c, errors.Wrapf(err, "error unpacking subchart %s in %s", n, c.Name())
+			return c, fmt.Errorf("error unpacking subchart %s in %s: %w", n, c.Name(), err)
 		}
 		c.AddDependency(sc)
 	}
@@ -221,13 +221,13 @@ func LoadValues(data io.Reader) (map[string]interface{}, error) {
 			if err == io.EOF {
 				break
 			}
-			return nil, errors.Wrap(err, "error reading yaml document")
+			return nil, fmt.Errorf("error reading yaml document: %w", err)
 		}
 		if err := yaml.Unmarshal(raw, &currentMap, func(d *json.Decoder) *json.Decoder {
 			d.UseNumber()
 			return d
 		}); err != nil {
-			return nil, errors.Wrap(err, "cannot unmarshal yaml document")
+			return nil, fmt.Errorf("cannot unmarshal yaml document: %w", err)
 		}
 		values = MergeMaps(values, currentMap)
 	}

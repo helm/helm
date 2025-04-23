@@ -19,7 +19,7 @@ package action
 import (
 	"log/slog"
 
-	"github.com/pkg/errors"
+	"fmt"
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -52,7 +52,7 @@ func (h *History) Run(name string) ([]*release.Release, error) {
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, errors.Errorf("release name is invalid: %s", name)
+		return nil, fmt.Errorf("release name is invalid: %s", name)
 	}
 
 	slog.Debug("getting history for release", "release", name)

@@ -27,7 +27,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
@@ -200,7 +199,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			if req := ch.Metadata.Dependencies; req != nil {
 				if err := action.CheckDependencies(ch, req); err != nil {
-					err = errors.Wrap(err, "An error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies")
+					err = fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies: %w", err)
 					if client.DependencyUpdate {
 						man := &downloader.Manager{
 							Out:              out,
@@ -217,7 +216,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						}
 						// Reload the chart with the updated Chart.lock file.
 						if ch, err = loader.Load(chartPath); err != nil {
-							return errors.Wrap(err, "failed reloading chart after repo update")
+							return fmt.Errorf("failed reloading chart after repo update: %w", err)
 						}
 					} else {
 						return err
@@ -246,7 +245,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
 			if err != nil {
-				return errors.Wrap(err, "UPGRADE FAILED")
+				return fmt.Errorf("UPGRADE FAILED: %w", err)
 			}
 
 			if outfmt == output.Table {

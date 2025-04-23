@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -27,7 +28,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -159,7 +159,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
-				return errors.Wrap(err, "INSTALLATION FAILED")
+				return fmt.Errorf("INSTALLATION FAILED: %w", err)
 			}
 
 			return outfmt.Write(out, &statusPrinter{
@@ -274,7 +274,6 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/helm/helm/issues/2209
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
-			err = errors.Wrap(err, "An error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies")
 			if client.DependencyUpdate {
 				man := &downloader.Manager{
 					Out:              out,
@@ -292,10 +291,10 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 				}
 				// Reload the chart with the updated Chart.lock file.
 				if chartRequested, err = loader.Load(cp); err != nil {
-					return nil, errors.Wrap(err, "failed reloading chart after repo update")
+					return nil, fmt.Errorf("failed reloading chart after repo update: %w", err)
 				}
 			} else {
-				return nil, err
+				return nil, fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies: %w", err)
 			}
 		}
 	}
@@ -333,7 +332,7 @@ func checkIfInstallable(ch *chart.Chart) error {
 	case "", "application":
 		return nil
 	}
-	return errors.Errorf("%s charts are not installable", ch.Metadata.Type)
+	return fmt.Errorf("%s charts are not installable", ch.Metadata.Type)
 }
 
 // Provide dynamic auto-completion for the install and template commands
@@ -359,7 +358,7 @@ func validateDryRunOptionFlag(dryRunOptionFlagValue string) error {
 		}
 	}
 	if !isAllowed {
-		return errors.New("Invalid dry-run flag. Flag must one of the following: false, true, none, client, server")
+		return errors.New("invalid dry-run flag. Flag must one of the following: false, true, none, client, server")
 	}
 	return nil
 }
