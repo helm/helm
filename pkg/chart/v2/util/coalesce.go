@@ -127,14 +127,14 @@ func coalesceDeps(chrt *chart.Chart, dest map[string]interface{}, prefix string,
 // coalesceGlobals copies the globals out of src and merges them into dest.
 //
 // For convenience, returns dest.
-func coalesceGlobals(log *slog.Logger, dest, src map[string]interface{}, prefix string, _ bool) {
+func coalesceGlobals(logger *slog.Logger, dest, src map[string]interface{}, prefix string, _ bool) {
 	var dg, sg map[string]interface{}
 
 	if destglob, ok := dest[GlobalKey]; !ok {
 		dg = make(map[string]interface{})
 	} else if dg, ok = destglob.(map[string]interface{}); !ok {
 		// Destination is not a table
-		log.Warn("skipping coalescing global values", slog.String("key", GlobalKey), slog.String("error", "key is not a table"))
+		logger.Warn("skipping coalescing global values", slog.String("key", GlobalKey), slog.String("error", "key is not a table"))
 		return
 	}
 
@@ -142,7 +142,7 @@ func coalesceGlobals(log *slog.Logger, dest, src map[string]interface{}, prefix 
 		sg = make(map[string]interface{})
 	} else if sg, ok = srcglob.(map[string]interface{}); !ok {
 		// Source is not a table
-		log.Warn("skipping coalescing global values", slog.String("key", GlobalKey), slog.String("error", "key is not a table"))
+		logger.Warn("skipping coalescing global values", slog.String("key", GlobalKey), slog.String("error", "key is not a table"))
 		return
 	}
 
@@ -158,7 +158,7 @@ func coalesceGlobals(log *slog.Logger, dest, src map[string]interface{}, prefix 
 				dg[key] = vv
 			} else {
 				if destvmap, ok := destv.(map[string]interface{}); !ok {
-					log.Warn("skipping key", slog.String("key", key), slog.String("error", "cannot merge table and non-table values"))
+					logger.Warn("skipping key", slog.String("key", key), slog.String("error", "cannot merge table and non-table values"))
 				} else {
 					// Basically, we reverse order of coalesce here to merge
 					// top-down.
@@ -166,13 +166,13 @@ func coalesceGlobals(log *slog.Logger, dest, src map[string]interface{}, prefix 
 					// In this location coalesceTablesFullKey should always have
 					// merge set to true. The output of coalesceGlobals is run
 					// through coalesce where any nils will be removed.
-					coalesceTablesFullKey(log, vv, destvmap, subPrefix, true)
+					coalesceTablesFullKey(logger, vv, destvmap, subPrefix, true)
 					dg[key] = vv
 				}
 			}
 		} else if dv, ok := dg[key]; ok && istable(dv) {
 			// It's not clear if this condition can actually ever trigger.
-			log.Warn("skipping key", slog.String("key", key), slog.String("error", "cannot merge table and non-table values"))
+			logger.Warn("skipping key", slog.String("key", key), slog.String("error", "cannot merge table and non-table values"))
 		} else {
 			// TODO: Do we need to do any additional checking on the value?
 			dg[key] = val
@@ -275,9 +275,9 @@ func MergeTables(dst, src map[string]interface{}) map[string]interface{} {
 // coalesceTablesFullKey merges a source map into a destination map.
 //
 // dest is considered authoritative.
-func coalesceTablesFullKey(log *slog.Logger, dst, src map[string]interface{}, prefix string, merge bool) map[string]interface{} {
-	if log == nil {
-		log = slog.Default()
+func coalesceTablesFullKey(logger *slog.Logger, dst, src map[string]interface{}, prefix string, merge bool) map[string]interface{} {
+	if logger == nil {
+		logger = slog.Default()
 	}
 
 	// When --reuse-values is set but there are no modifications yet, return new values
@@ -297,12 +297,12 @@ func coalesceTablesFullKey(log *slog.Logger, dst, src map[string]interface{}, pr
 			dst[key] = val
 		} else if istable(val) {
 			if istable(dv) {
-				coalesceTablesFullKey(log, dv.(map[string]interface{}), val.(map[string]interface{}), fullkey, merge)
+				coalesceTablesFullKey(logger, dv.(map[string]interface{}), val.(map[string]interface{}), fullkey, merge)
 			} else {
-				log.Warn("skipping key", slog.String("key", fullkey), slog.String("error", "cannot merge table and non-table values"))
+				logger.Warn("skipping key", slog.String("key", fullkey), slog.String("error", "cannot merge table and non-table values"))
 			}
 		} else if istable(dv) && val != nil {
-			log.Warn("skipping key", slog.String("key", fullkey), slog.String("error", "cannot merge table and non-table values"))
+			logger.Warn("skipping key", slog.String("key", fullkey), slog.String("error", "cannot merge table and non-table values"))
 		}
 	}
 	return dst
