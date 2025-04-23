@@ -23,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	capture_handler "helm.sh/helm/v4/internal/logging/test"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
@@ -704,7 +705,7 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 
 	// Get all logs emitted from slog
 	defaultLogger := slog.Default()
-	handler := NewLogCaptureHandler(nil)
+	handler := capture_handler.NewLogCaptureHandler(nil)
 	slog.SetDefault(slog.New(handler))
 
 	_, err := coalesce(c, vals, "", false)
@@ -719,30 +720,30 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 	t.Logf("logs: %s", capturedLogOutput.String())
 
 	// All warnings should have context as to where the warning is being emitted
-	capturedLogOutput.Filter(RecordLevelMatches(slog.LevelWarn)).
+	capturedLogOutput.Filter(capture_handler.RecordLevelMatches(slog.LevelWarn)).
 		AssertThat(t).
 		HasAttr("chart").
 		HasAttr("error").
 		HasAttr("key")
 
-	capturedLogOutput.Filter(RecordMessageMatches("skipping key")).
-		Filter(RecordHasAttrValue("key", "level1.level2.level3.boat")).
+	capturedLogOutput.Filter(capture_handler.RecordMessageMatches("skipping key")).
+		Filter(capture_handler.RecordHasAttrValue("key", "level1.level2.level3.boat")).
 		AssertThat(t).
 		MatchesExactly(1).
 		AtLevel(slog.LevelWarn).
 		HasAttrValueString("chart", "level3").
 		HasAttrValueString("error", "cannot merge table and non-table values")
 
-	capturedLogOutput.Filter(RecordMessageMatches("skipping key")).
-		Filter(RecordHasAttrValue("key", "level1.level2.level3.spear.tip")).
+	capturedLogOutput.Filter(capture_handler.RecordMessageMatches("skipping key")).
+		Filter(capture_handler.RecordHasAttrValue("key", "level1.level2.level3.spear.tip")).
 		AssertThat(t).
 		MatchesExactly(1).
 		AtLevel(slog.LevelWarn).
 		HasAttrValueString("chart", "level3").
 		HasAttrValueString("error", "cannot merge table and non-table values")
 
-	capturedLogOutput.Filter(RecordMessageMatches("skipping key")).
-		Filter(RecordHasAttrValue("key", "level1.level2.level3.spear.sail")).
+	capturedLogOutput.Filter(capture_handler.RecordMessageMatches("skipping key")).
+		Filter(capture_handler.RecordHasAttrValue("key", "level1.level2.level3.spear.sail")).
 		AssertThat(t).
 		MatchesExactly(1).
 		AtLevel(slog.LevelWarn).
@@ -785,7 +786,7 @@ func TestCoalesceValuesTopLevelGlobalsWarningsSrc(t *testing.T) {
 
 	// Get all logs emitted from slog
 	defaultLogger := slog.Default()
-	handler := NewLogCaptureHandler(nil)
+	handler := capture_handler.NewLogCaptureHandler(nil)
 	slog.SetDefault(slog.New(handler))
 
 	_, err := coalesce(c, vals, "", false)
@@ -800,13 +801,13 @@ func TestCoalesceValuesTopLevelGlobalsWarningsSrc(t *testing.T) {
 	t.Logf("logs: %s", capturedLogOutput.String())
 
 	// All warnings should have context as to where the warning is being emitted
-	capturedLogOutput.Filter(RecordLevelMatches(slog.LevelWarn)).
+	capturedLogOutput.Filter(capture_handler.RecordLevelMatches(slog.LevelWarn)).
 		AssertThat(t).
 		HasAttr("chart").
 		HasAttr("error").
 		HasAttr("key")
 
-	capturedLogOutput.Filter(RecordMessageMatches("skipping coalescing global values")).
+	capturedLogOutput.Filter(capture_handler.RecordMessageMatches("skipping coalescing global values")).
 		AssertThat(t).
 		MatchesExactly(1).
 		AtLevel(slog.LevelWarn).
