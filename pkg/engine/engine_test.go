@@ -22,6 +22,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"text/template"
 
 	"github.com/stretchr/testify/assert"
 
@@ -1322,6 +1323,40 @@ NestedHelperFunctions/templates/_helpers_1.tpl:1:39
 NestedHelperFunctions/charts/common/templates/_helpers_2.tpl:1:50
   executing "common.names.get_name" at <.Release.Name>:
     nil pointer evaluating interface {}.Name
+`
+
+	v := chartutil.Values{}
+
+	val, _ := chartutil.CoalesceValues(c, v)
+	vals := map[string]interface{}{
+		"Values": val.AsMap(),
+	}
+	_, err := Render(c, vals)
+
+	assert.NotNil(t, err)
+	assert.Equal(t, expectedErrorMessage, err.Error())
+}
+
+func TestMultilineNoTemplateAssociatedError(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "multiline"},
+		Templates: []*chart.File{
+			{Name: "templates/svc.yaml", Data: []byte(
+				`name: {{ include "nested_helper.name" . }}`,
+			)},
+			{Name: "templates/test.yaml", Data: []byte(
+				`{{ toYaml .Values }}`,
+			)},
+			{Name: "charts/common/templates/_helpers_2.tpl", Data: []byte(
+				`{{ toYaml .Values }}`,
+			)},
+		},
+	}
+
+	expectedErrorMessage := `multiline/templates/svc.yaml:1:9
+  executing "multiline/templates/svc.yaml" at <include "nested_helper.name" .>:
+    error calling include:
+template: no template "nested_helper.name" associated with template "gotpl"
 `
 
 	v := chartutil.Values{}

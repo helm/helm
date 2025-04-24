@@ -41,6 +41,10 @@ var execErrFmt = regexp.MustCompile(`^template: (?P<templateName>(?U).+): execut
 // > "template: %s: %s"
 var execErrFmtWithoutTemplate = regexp.MustCompile(`^template: (?P<templateName>(?U).+): (?P<errMsg>.*)(?P<nextErr>( template:.*)?)$`)
 
+// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=191
+// > "template: no template %q associated with template %q"
+var execErrNoTemplateAssociated = regexp.MustCompile(`^template: no template (?P<location>.*) associated with template (?P<functionName>(.*)?)$`)
+
 // Engine is an implementation of the Helm rendering implementation for templates.
 type Engine struct {
 	// If strict is enabled, template rendering will fail if a template references
@@ -345,7 +349,17 @@ type TraceableError struct {
 }
 
 func (t TraceableError) String() string {
-	return t.location + "\n  " + t.executedFunction + "\n    " + t.message + "\n"
+	var errorString strings.Builder
+	if t.location != "" {
+		fmt.Fprintf(&errorString, "%s\n  ", t.location)
+	}
+	if t.executedFunction != "" {
+		fmt.Fprintf(&errorString, "%s\n    ", t.executedFunction)
+	}
+	if t.message != "" {
+		fmt.Fprintf(&errorString, "%s\n", t.message)
+	}
+	return errorString.String()
 }
 
 // reformatExecErrorMsg takes an error message for template rendering and formats it into a formatted
@@ -393,6 +407,10 @@ func reformatExecErrorMsg(filename string, err error) error {
 			traceable = TraceableError{
 				location: templateName,
 				message:  errMsg,
+			}
+		} else if matches := execErrNoTemplateAssociated.FindStringSubmatch(current.Error()); matches != nil {
+			traceable = TraceableError{
+				message: current.Error(),
 			}
 		} else {
 			return err
