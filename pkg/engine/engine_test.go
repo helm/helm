@@ -1309,7 +1309,7 @@ func TestNestedHelpersProducesMultilineStacktrace(t *testing.T) {
 				`{{- define "nested_helper.name" -}}{{- include "common.names.get_name" . -}}{{- end -}}`,
 			)},
 			{Name: "charts/common/templates/_helpers_2.tpl", Data: []byte(
-				`{{- define "common.names.get_name" -}}{{- .Release.Name | trunc 63 | trimSuffix "-" -}}{{- end -}}`,
+				`{{- define "common.names.get_name" -}}{{- .Values.nonexistant.key | trunc 63 | trimSuffix "-" -}}{{- end -}}`,
 			)},
 		},
 	}
@@ -1320,9 +1320,9 @@ func TestNestedHelpersProducesMultilineStacktrace(t *testing.T) {
 NestedHelperFunctions/templates/_helpers_1.tpl:1:39
   executing "nested_helper.name" at <include "common.names.get_name" .>:
     error calling include:
-NestedHelperFunctions/charts/common/templates/_helpers_2.tpl:1:50
-  executing "common.names.get_name" at <.Release.Name>:
-    nil pointer evaluating interface {}.Name`
+NestedHelperFunctions/charts/common/templates/_helpers_2.tpl:1:49
+  executing "common.names.get_name" at <.Values.nonexistant.key>:
+    nil pointer evaluating interface {}.key`
 
 	v := chartutil.Values{}
 
