@@ -50,7 +50,7 @@ func renameFallback(err error, src, dst string) error {
 	if !ok {
 		return err
 	} else if terr.Err != syscall.EXDEV {
-		return fmt.Errorf("link error: cannot rename %s to %s: %w", src, dst, err)
+		return fmt.Errorf("link error: cannot rename %s to %s: %w", src, dst, terr)
 	}
 
 	return renameByCopy(src, dst)
