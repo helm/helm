@@ -1322,8 +1322,7 @@ NestedHelperFunctions/templates/_helpers_1.tpl:1:39
     error calling include:
 NestedHelperFunctions/charts/common/templates/_helpers_2.tpl:1:50
   executing "common.names.get_name" at <.Release.Name>:
-    nil pointer evaluating interface {}.Name
-`
+    nil pointer evaluating interface {}.Name`
 
 	v := chartutil.Values{}
 
@@ -1356,8 +1355,7 @@ func TestMultilineNoTemplateAssociatedError(t *testing.T) {
 	expectedErrorMessage := `multiline/templates/svc.yaml:1:9
   executing "multiline/templates/svc.yaml" at <include "nested_helper.name" .>:
     error calling include:
-template: no template "nested_helper.name" associated with template "gotpl"
-`
+template: no template "nested_helper.name" associated with template "gotpl"`
 
 	v := chartutil.Values{}
 
