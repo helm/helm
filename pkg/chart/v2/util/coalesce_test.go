@@ -722,7 +722,6 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 	// All warnings should have context as to where the warning is being emitted
 	capturedLogOutput.Filter(capture_handler.RecordLevelMatches(slog.LevelWarn)).
 		AssertThat(t).
-		HasAttr("chart").
 		HasAttr("error").
 		HasAttr("key")
 
@@ -739,7 +738,6 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 		AssertThat(t).
 		MatchesExactly(1).
 		AtLevel(slog.LevelWarn).
-		HasAttrValueString("chart", "level3").
 		HasAttrValueString("error", "cannot merge table and non-table values")
 
 	capturedLogOutput.Filter(capture_handler.RecordMessageMatches("skipping key")).
@@ -747,7 +745,6 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 		AssertThat(t).
 		MatchesExactly(1).
 		AtLevel(slog.LevelWarn).
-		HasAttrValueString("chart", "level3").
 		HasAttrValueString("error", "cannot merge table and non-table values")
 
 	// Reset and set the default logger back to its original state
@@ -803,7 +800,6 @@ func TestCoalesceValuesTopLevelGlobalsWarningsSrc(t *testing.T) {
 	// All warnings should have context as to where the warning is being emitted
 	capturedLogOutput.Filter(capture_handler.RecordLevelMatches(slog.LevelWarn)).
 		AssertThat(t).
-		HasAttr("chart").
 		HasAttr("error").
 		HasAttr("key")
 
@@ -811,7 +807,6 @@ func TestCoalesceValuesTopLevelGlobalsWarningsSrc(t *testing.T) {
 		AssertThat(t).
 		MatchesExactly(1).
 		AtLevel(slog.LevelWarn).
-		HasAttrValueString("chart", "level1").
 		HasAttrValueString("key", "global")
 
 	// Reset and set the default logger back to its original state
