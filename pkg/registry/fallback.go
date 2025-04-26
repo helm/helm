@@ -22,6 +22,10 @@ import (
 	"sync/atomic"
 )
 
+// NOTE(terryhowe): This fallback feature is only provided in v3 for backward
+// compatibility. ORAS v1 had this feature and this code was added when helm
+// updated to ORAS v2. This will not be supported in helm v4.
+
 type fallbackTransport struct {
 	Base      http.RoundTripper
 	forceHTTP atomic.Bool
