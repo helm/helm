@@ -1,0 +1,6 @@
+apiVersion: v2
+name: test
+version: 0.1.0
+
+files:
+  test-0.1.0.tgz: sha256:40ac18ea704177f883dab4a4fe7f8b27de9f79633c64649ddbc3a91011ed7be0
