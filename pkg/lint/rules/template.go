@@ -143,7 +143,7 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 				var yamlStruct *K8sYamlStruct
 
 				err := decoder.Decode(&yamlStruct)
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					break
 				}
 

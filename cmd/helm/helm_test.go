@@ -18,6 +18,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"os/exec"
 	"runtime"
@@ -57,7 +58,8 @@ func TestPluginExitCode(t *testing.T) {
 		cmd.Stdout = stdout
 		cmd.Stderr = stderr
 		err := cmd.Run()
-		exiterr, ok := err.(*exec.ExitError)
+		var exiterr *exec.ExitError
+		ok := errors.As(err, &exiterr)
 
 		if !ok {
 			t.Fatalf("Unexpected error returned by os.Exit: %T", err)

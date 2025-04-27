@@ -16,6 +16,7 @@ limitations under the License.
 package downloader
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -353,7 +354,7 @@ func TestScanReposForURL(t *testing.T) {
 
 	// A lookup failure should produce an ErrNoOwnerRepo
 	u = "https://no.such.repo/foo/bar-1.23.4.tgz"
-	if _, err = c.scanReposForURL(u, rf); err != ErrNoOwnerRepo {
+	if _, err = c.scanReposForURL(u, rf); !errors.Is(err, ErrNoOwnerRepo) {
 		t.Fatalf("expected ErrNoOwnerRepo, got %v", err)
 	}
 }

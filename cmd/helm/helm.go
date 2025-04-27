@@ -17,6 +17,7 @@ limitations under the License.
 package main // import "helm.sh/helm/v4/cmd/helm"
 
 import (
+	"errors"
 	"log/slog"
 	"os"
 
@@ -42,8 +43,9 @@ func main() {
 
 	if err := cmd.Execute(); err != nil {
 		slog.Debug("error", slog.Any("error", err))
-		switch e := err.(type) {
-		case helmcmd.PluginError:
+		var e helmcmd.PluginError
+		switch {
+		case errors.As(err, &e):
 			os.Exit(e.Code)
 		default:
 			os.Exit(1)
