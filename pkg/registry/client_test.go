@@ -17,7 +17,6 @@ limitations under the License.
 package registry
 
 import (
-	"context"
 	"io"
 	"testing"
 
@@ -31,7 +30,7 @@ import (
 func TestTagManifestTransformsReferences(t *testing.T) {
 	memStore := memory.New()
 	client := &Client{out: io.Discard}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	refWithPlus := "test-registry.io/charts/test:1.0.0+metadata"
 	expectedRef := "test-registry.io/charts/test:1.0.0_metadata" // + becomes _

@@ -50,7 +50,7 @@ func TestRepoAddCmd(t *testing.T) {
 	defer srv2.Stop()
 
 	tmpdir := filepath.Join(t.TempDir(), "path-component.yaml/data")
-	if err := os.MkdirAll(tmpdir, 0777); err != nil {
+	if err := os.MkdirAll(tmpdir, 0o777); err != nil {
 		t.Fatal(err)
 	}
 	repoFile := filepath.Join(tmpdir, "repositories.yaml")
@@ -99,7 +99,7 @@ func TestRepoAdd(t *testing.T) {
 		forceUpdate: false,
 		repoFile:    repoFile,
 	}
-	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
+	t.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
 	if err := o.run(io.Discard); err != nil {
 		t.Error(err)
@@ -153,7 +153,7 @@ func TestRepoAddCheckLegalName(t *testing.T) {
 		forceUpdate: false,
 		repoFile:    repoFile,
 	}
-	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
+	t.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
 	wantErrorMsg := fmt.Sprintf("repository name (%s) contains '/', please specify a different name without '/'", testRepoName)
 

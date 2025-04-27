@@ -149,15 +149,3 @@ func resetEnv() func() {
 		settings = cli.New()
 	}
 }
-
-func testChdir(t *testing.T, dir string) func() {
-	t.Helper()
-	old, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
-	return func() { os.Chdir(old) }
-}

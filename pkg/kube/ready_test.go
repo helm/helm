@@ -60,7 +60,7 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &corev1.Pod{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			pod:     newPodWithCondition("foo", corev1.ConditionTrue),
@@ -75,7 +75,7 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &corev1.Pod{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			pod:     newPodWithCondition("bar", corev1.ConditionTrue),
@@ -90,7 +90,7 @@ func Test_ReadyChecker_IsReady_Pod(t *testing.T) {
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
-			if _, err := c.client.CoreV1().Pods(defaultNamespace).Create(context.TODO(), tt.pod, metav1.CreateOptions{}); err != nil {
+			if _, err := c.client.CoreV1().Pods(defaultNamespace).Create(t.Context(), tt.pod, metav1.CreateOptions{}); err != nil {
 				t.Errorf("Failed to create Pod error: %v", err)
 				return
 			}
@@ -132,7 +132,7 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &batchv1.Job{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			job:     newJob("bar", 1, intToInt32(1), 1, 0),
@@ -147,7 +147,7 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &batchv1.Job{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			job:     newJob("foo", 1, intToInt32(1), 1, 0),
@@ -162,7 +162,7 @@ func Test_ReadyChecker_IsReady_Job(t *testing.T) {
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
-			if _, err := c.client.BatchV1().Jobs(defaultNamespace).Create(context.TODO(), tt.job, metav1.CreateOptions{}); err != nil {
+			if _, err := c.client.BatchV1().Jobs(defaultNamespace).Create(t.Context(), tt.job, metav1.CreateOptions{}); err != nil {
 				t.Errorf("Failed to create Job error: %v", err)
 				return
 			}
@@ -204,7 +204,7 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &appsv1.Deployment{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			replicaSet: newReplicaSet("foo", 0, 0, true),
@@ -220,7 +220,7 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &appsv1.Deployment{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			replicaSet: newReplicaSet("foo", 0, 0, true),
@@ -236,11 +236,11 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
-			if _, err := c.client.AppsV1().Deployments(defaultNamespace).Create(context.TODO(), tt.deployment, metav1.CreateOptions{}); err != nil {
+			if _, err := c.client.AppsV1().Deployments(defaultNamespace).Create(t.Context(), tt.deployment, metav1.CreateOptions{}); err != nil {
 				t.Errorf("Failed to create Deployment error: %v", err)
 				return
 			}
-			if _, err := c.client.AppsV1().ReplicaSets(defaultNamespace).Create(context.TODO(), tt.replicaSet, metav1.CreateOptions{}); err != nil {
+			if _, err := c.client.AppsV1().ReplicaSets(defaultNamespace).Create(t.Context(), tt.replicaSet, metav1.CreateOptions{}); err != nil {
 				t.Errorf("Failed to create ReplicaSet error: %v", err)
 				return
 			}
@@ -281,7 +281,7 @@ func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &corev1.PersistentVolumeClaim{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			pvc:     newPersistentVolumeClaim("foo", corev1.ClaimPending),
@@ -296,7 +296,7 @@ func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &corev1.PersistentVolumeClaim{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			pvc:     newPersistentVolumeClaim("bar", corev1.ClaimPending),
@@ -311,7 +311,7 @@ func Test_ReadyChecker_IsReady_PersistentVolumeClaim(t *testing.T) {
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
-			if _, err := c.client.CoreV1().PersistentVolumeClaims(defaultNamespace).Create(context.TODO(), tt.pvc, metav1.CreateOptions{}); err != nil {
+			if _, err := c.client.CoreV1().PersistentVolumeClaims(defaultNamespace).Create(t.Context(), tt.pvc, metav1.CreateOptions{}); err != nil {
 				t.Errorf("Failed to create PersistentVolumeClaim error: %v", err)
 				return
 			}
@@ -352,7 +352,7 @@ func Test_ReadyChecker_IsReady_Service(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &corev1.Service{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			svc:     newService("foo", corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer, ClusterIP: ""}),
@@ -367,7 +367,7 @@ func Test_ReadyChecker_IsReady_Service(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &corev1.Service{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			svc:     newService("bar", corev1.ServiceSpec{Type: corev1.ServiceTypeExternalName, ClusterIP: ""}),
@@ -382,7 +382,7 @@ func Test_ReadyChecker_IsReady_Service(t *testing.T) {
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
-			if _, err := c.client.CoreV1().Services(defaultNamespace).Create(context.TODO(), tt.svc, metav1.CreateOptions{}); err != nil {
+			if _, err := c.client.CoreV1().Services(defaultNamespace).Create(t.Context(), tt.svc, metav1.CreateOptions{}); err != nil {
 				t.Errorf("Failed to create Service error: %v", err)
 				return
 			}
@@ -423,7 +423,7 @@ func Test_ReadyChecker_IsReady_DaemonSet(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &appsv1.DaemonSet{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			ds:      newDaemonSet("foo", 0, 0, 1, 0, true),
@@ -438,7 +438,7 @@ func Test_ReadyChecker_IsReady_DaemonSet(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &appsv1.DaemonSet{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			ds:      newDaemonSet("bar", 0, 1, 1, 1, true),
@@ -453,7 +453,7 @@ func Test_ReadyChecker_IsReady_DaemonSet(t *testing.T) {
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
-			if _, err := c.client.AppsV1().DaemonSets(defaultNamespace).Create(context.TODO(), tt.ds, metav1.CreateOptions{}); err != nil {
+			if _, err := c.client.AppsV1().DaemonSets(defaultNamespace).Create(t.Context(), tt.ds, metav1.CreateOptions{}); err != nil {
 				t.Errorf("Failed to create DaemonSet error: %v", err)
 				return
 			}
@@ -494,7 +494,7 @@ func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &appsv1.StatefulSet{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			ss:      newStatefulSet("foo", 1, 0, 0, 1, true),
@@ -509,7 +509,7 @@ func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &appsv1.StatefulSet{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			ss:      newStatefulSet("bar", 1, 0, 1, 1, true),
@@ -524,7 +524,7 @@ func Test_ReadyChecker_IsReady_StatefulSet(t *testing.T) {
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
-			if _, err := c.client.AppsV1().StatefulSets(defaultNamespace).Create(context.TODO(), tt.ss, metav1.CreateOptions{}); err != nil {
+			if _, err := c.client.AppsV1().StatefulSets(defaultNamespace).Create(t.Context(), tt.ss, metav1.CreateOptions{}); err != nil {
 				t.Errorf("Failed to create StatefulSet error: %v", err)
 				return
 			}
@@ -565,7 +565,7 @@ func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &corev1.ReplicationController{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			rc:      newReplicationController("foo", false),
@@ -580,7 +580,7 @@ func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &corev1.ReplicationController{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			rc:      newReplicationController("bar", false),
@@ -595,7 +595,7 @@ func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &corev1.ReplicationController{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			rc:      newReplicationController("foo", true),
@@ -610,7 +610,7 @@ func Test_ReadyChecker_IsReady_ReplicationController(t *testing.T) {
 				checkJobs:     tt.fields.checkJobs,
 				pausedAsReady: tt.fields.pausedAsReady,
 			}
-			if _, err := c.client.CoreV1().ReplicationControllers(defaultNamespace).Create(context.TODO(), tt.rc, metav1.CreateOptions{}); err != nil {
+			if _, err := c.client.CoreV1().ReplicationControllers(defaultNamespace).Create(t.Context(), tt.rc, metav1.CreateOptions{}); err != nil {
 				t.Errorf("Failed to create ReplicationController error: %v", err)
 				return
 			}
@@ -651,7 +651,7 @@ func Test_ReadyChecker_IsReady_ReplicaSet(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &appsv1.ReplicaSet{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			rs:      newReplicaSet("foo", 1, 1, true),
@@ -666,7 +666,7 @@ func Test_ReadyChecker_IsReady_ReplicaSet(t *testing.T) {
 				pausedAsReady: false,
 			},
 			args: args{
-				ctx:      context.TODO(),
+				ctx:      t.Context(),
 				resource: &resource.Info{Object: &appsv1.ReplicaSet{}, Name: "foo", Namespace: defaultNamespace},
 			},
 			rs:      newReplicaSet("bar", 1, 1, false),
@@ -1014,12 +1014,12 @@ func Test_ReadyChecker_podsReadyForObject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := NewReadyChecker(fake.NewClientset())
 			for _, pod := range tt.existPods {
-				if _, err := c.client.CoreV1().Pods(defaultNamespace).Create(context.TODO(), &pod, metav1.CreateOptions{}); err != nil {
+				if _, err := c.client.CoreV1().Pods(defaultNamespace).Create(t.Context(), &pod, metav1.CreateOptions{}); err != nil {
 					t.Errorf("Failed to create Pod error: %v", err)
 					return
 				}
 			}
-			got, err := c.podsReadyForObject(context.TODO(), tt.args.namespace, tt.args.obj)
+			got, err := c.podsReadyForObject(t.Context(), tt.args.namespace, tt.args.obj)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("podsReadyForObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
