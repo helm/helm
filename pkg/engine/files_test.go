@@ -107,5 +107,5 @@ func TestBlankLines(t *testing.T) {
 	as.Len(out, 4)
 
 	as.Equal("bar", out[0])
-	as.Equal("", out[3])
+	as.Empty(out[3])
 }
