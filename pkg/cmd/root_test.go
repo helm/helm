@@ -80,7 +80,7 @@ func TestRootCmd(t *testing.T) {
 			ensure.HelmHome(t)
 
 			for k, v := range tt.envvars {
-				os.Setenv(k, v)
+				t.Setenv(k, v)
 			}
 
 			if _, _, err := executeActionCommand(tt.args); err != nil {

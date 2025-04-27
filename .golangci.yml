@@ -28,6 +28,7 @@ linters:
     - staticcheck
     - unused
     - usestdlibvars
+    - usetesting
 
   exclusions:
     generated: lax
