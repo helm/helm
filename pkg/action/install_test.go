@@ -130,7 +130,7 @@ func TestInstallRelease(t *testing.T) {
 
 	instAction := installAction(t)
 	vals := map[string]interface{}{}
-	ctx, done := context.WithCancel(context.Background())
+	ctx, done := context.WithCancel(t.Context())
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -556,7 +556,7 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
 	goroutines := runtime.NumGoroutine()
@@ -640,7 +640,7 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	instAction.Atomic = true
 	vals := map[string]interface{}{}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
 	goroutines := runtime.NumGoroutine()

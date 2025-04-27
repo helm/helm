@@ -29,12 +29,12 @@ import (
 func HelmHome(t *testing.T) {
 	t.Helper()
 	base := t.TempDir()
-	os.Setenv(xdg.CacheHomeEnvVar, base)
-	os.Setenv(xdg.ConfigHomeEnvVar, base)
-	os.Setenv(xdg.DataHomeEnvVar, base)
-	os.Setenv(helmpath.CacheHomeEnvVar, "")
-	os.Setenv(helmpath.ConfigHomeEnvVar, "")
-	os.Setenv(helmpath.DataHomeEnvVar, "")
+	t.Setenv(xdg.CacheHomeEnvVar, base)
+	t.Setenv(xdg.ConfigHomeEnvVar, base)
+	t.Setenv(xdg.DataHomeEnvVar, base)
+	t.Setenv(helmpath.CacheHomeEnvVar, "")
+	t.Setenv(helmpath.ConfigHomeEnvVar, "")
+	t.Setenv(helmpath.DataHomeEnvVar, "")
 }
 
 // TempFile ensures a temp file for unit testing purposes.
@@ -48,7 +48,7 @@ func HelmHome(t *testing.T) {
 func TempFile(t *testing.T, name string, data []byte) string {
 	path := t.TempDir()
 	filename := filepath.Join(path, name)
-	if err := os.WriteFile(filename, data, 0755); err != nil {
+	if err := os.WriteFile(filename, data, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	return path
