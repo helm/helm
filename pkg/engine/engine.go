@@ -129,9 +129,11 @@ type renderable struct {
 	basePath string
 }
 
-const warnStartDelim = "HELM_ERR_START"
-const warnEndDelim = "HELM_ERR_END"
-const recursionMaxNums = 1000
+const (
+	warnStartDelim   = "HELM_ERR_START"
+	warnEndDelim     = "HELM_ERR_END"
+	recursionMaxNums = 1000
+)
 
 var warnRegex = regexp.MustCompile(warnStartDelim + `((?s).*)` + warnEndDelim)
 
@@ -331,7 +333,7 @@ func cleanupParseError(filename string, err error) error {
 	tokens := strings.Split(err.Error(), ": ")
 	if len(tokens) == 1 {
 		// This might happen if a non-templating error occurs
-		return fmt.Errorf("parse error in (%s): %s", filename, err)
+		return fmt.Errorf("parse error in (%s): %w", filename, err)
 	}
 	// The first token is "template"
 	// The second token is either "filename:lineno" or "filename:lineNo:columnNo"
@@ -368,14 +370,15 @@ func reformatExecErrorMsg(filename string, err error) error {
 	// If the regex's can parse out details from that error message such as the line number, template it failed on,
 	// and error description, then it will construct a new error that displays these details in a structured way.
 	// If there are issues with parsing the error message, the err passed into the function should return instead.
-	if _, isExecError := err.(template.ExecError); !isExecError {
+	var execErr template.ExecError
+	if !errors.As(err, &execErr) {
 		return err
 	}
 
 	tokens := strings.SplitN(err.Error(), ": ", 3)
 	if len(tokens) != 3 {
 		// This might happen if a non-templating error occurs
-		return fmt.Errorf("execution error in (%s): %s", filename, err)
+		return fmt.Errorf("execution error in (%s): %w", filename, err)
 	}
 
 	// The first token is "template"
