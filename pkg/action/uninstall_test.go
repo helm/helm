@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
@@ -47,6 +48,7 @@ func TestUninstallRelease_ignoreNotFound(t *testing.T) {
 
 func TestUninstallRelease_deleteRelease(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	unAction := uninstallAction(t)
 	unAction.DisableHooks = true
@@ -71,7 +73,7 @@ func TestUninstallRelease_deleteRelease(t *testing.T) {
 	}`
 	unAction.cfg.Releases.Create(rel)
 	res, err := unAction.Run(rel.Name)
-	is.NoError(err)
+	req.NoError(err)
 	expected := `These resources were kept due to the resource policy:
 [Secret] secret
 `
@@ -80,6 +82,7 @@ func TestUninstallRelease_deleteRelease(t *testing.T) {
 
 func TestUninstallRelease_Wait(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	unAction := uninstallAction(t)
 	unAction.DisableHooks = true
@@ -104,9 +107,8 @@ func TestUninstallRelease_Wait(t *testing.T) {
 	failer.WaitForDeleteError = fmt.Errorf("U timed out")
 	unAction.cfg.KubeClient = failer
 	res, err := unAction.Run(rel.Name)
-	is.Error(err)
-	is.Contains(err.Error(), "U timed out")
-	is.Equal(res.Release.Info.Status, release.StatusUninstalled)
+	req.ErrorContains(err, "U timed out")
+	is.Equal(release.StatusUninstalled, res.Release.Info.Status)
 }
 
 func TestUninstallRelease_Cascade(t *testing.T) {
@@ -137,6 +139,5 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	failer.BuildDummy = true
 	unAction.cfg.KubeClient = failer
 	_, err := unAction.Run(rel.Name)
-	is.Error(err)
-	is.Contains(err.Error(), "failed to delete release: come-fail-away")
+	is.ErrorContains(err, "failed to delete release: come-fail-away")
 }

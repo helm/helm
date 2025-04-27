@@ -25,6 +25,7 @@ import (
 	"text/template"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1332,7 +1333,7 @@ NestedHelperFunctions/charts/common/templates/_helpers_2.tpl:1:49
 	}
 	_, err := Render(c, vals)
 
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, expectedErrorMessage, err.Error())
 }
 
@@ -1365,7 +1366,7 @@ template: no template "nested_helper.name" associated with template "gotpl"`
 	}
 	_, err := Render(c, vals)
 
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, expectedErrorMessage, err.Error())
 }
 

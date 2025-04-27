@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -677,7 +678,7 @@ func TestDedupeRepos(t *testing.T) {
 
 func TestWriteLock(t *testing.T) {
 	fixedTime, err := time.Parse(time.RFC3339, "2025-07-04T00:00:00Z")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	lock := &chart.Lock{
 		Generated: fixedTime,
 		Digest:    "sha256:12345",
@@ -690,76 +691,75 @@ func TestWriteLock(t *testing.T) {
 		},
 	}
 	expectedContent, err := yaml.Marshal(lock)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	t.Run("v2 lock file", func(t *testing.T) {
 		dir := t.TempDir()
 		err := writeLock(dir, lock, false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		lockfilePath := filepath.Join(dir, "Chart.lock")
 		_, err = os.Stat(lockfilePath)
-		assert.NoError(t, err, "Chart.lock should exist")
+		require.NoError(t, err, "Chart.lock should exist")
 
 		content, err := os.ReadFile(lockfilePath)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expectedContent, content)
 
 		// Check that requirements.lock does not exist
 		_, err = os.Stat(filepath.Join(dir, "requirements.lock"))
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.True(t, os.IsNotExist(err))
 	})
 
 	t.Run("v1 lock file", func(t *testing.T) {
 		dir := t.TempDir()
 		err := writeLock(dir, lock, true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		lockfilePath := filepath.Join(dir, "requirements.lock")
 		_, err = os.Stat(lockfilePath)
-		assert.NoError(t, err, "requirements.lock should exist")
+		require.NoError(t, err, "requirements.lock should exist")
 
 		content, err := os.ReadFile(lockfilePath)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expectedContent, content)
 
 		// Check that Chart.lock does not exist
 		_, err = os.Stat(filepath.Join(dir, "Chart.lock"))
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.True(t, os.IsNotExist(err))
 	})
 
 	t.Run("overwrite existing lock file", func(t *testing.T) {
 		dir := t.TempDir()
 		lockfilePath := filepath.Join(dir, "Chart.lock")
-		assert.NoError(t, os.WriteFile(lockfilePath, []byte("old content"), 0644))
+		require.NoError(t, os.WriteFile(lockfilePath, []byte("old content"), 0644))
 
 		err = writeLock(dir, lock, false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		content, err := os.ReadFile(lockfilePath)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expectedContent, content)
 	})
 
 	t.Run("lock file is a symlink", func(t *testing.T) {
 		dir := t.TempDir()
 		dummyFile := filepath.Join(dir, "dummy.txt")
-		assert.NoError(t, os.WriteFile(dummyFile, []byte("dummy"), 0644))
+		require.NoError(t, os.WriteFile(dummyFile, []byte("dummy"), 0644))
 
 		lockfilePath := filepath.Join(dir, "Chart.lock")
-		assert.NoError(t, os.Symlink(dummyFile, lockfilePath))
+		require.NoError(t, os.Symlink(dummyFile, lockfilePath))
 
 		err = writeLock(dir, lock, false)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "the Chart.lock file is a symlink to")
+		assert.ErrorContains(t, err, "the Chart.lock file is a symlink to")
 	})
 
 	t.Run("chart path is not a directory", func(t *testing.T) {
 		dir := t.TempDir()
 		filePath := filepath.Join(dir, "not-a-dir")
-		assert.NoError(t, os.WriteFile(filePath, []byte("file"), 0644))
+		require.NoError(t, os.WriteFile(filePath, []byte("file"), 0644))
 
 		err = writeLock(filePath, lock, false)
 		assert.Error(t, err)

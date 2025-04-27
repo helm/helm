@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -725,6 +726,8 @@ func TestReal(t *testing.T) {
 }
 
 func TestGetPodList(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
 	namespace := "some-namespace"
 	names := []string{"dave", "jimmy"}
 	var responsePodList v1.PodList
@@ -736,12 +739,13 @@ func TestGetPodList(t *testing.T) {
 	c := Client{Namespace: namespace, kubeClient: kubeClient}
 
 	podList, err := c.GetPodList(namespace, metav1.ListOptions{})
-	clientAssertions := assert.New(t)
-	clientAssertions.NoError(err)
-	clientAssertions.Equal(&responsePodList, podList)
+	req.NoError(err)
+	is.Equal(&responsePodList, podList)
 }
 
 func TestOutputContainerLogsForPodList(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
 	namespace := "some-namespace"
 	somePodList := newPodList("jimmy", "three", "structs")
 
@@ -750,9 +754,8 @@ func TestOutputContainerLogsForPodList(t *testing.T) {
 	outBuffer := &bytes.Buffer{}
 	outBufferFunc := func(_, _, _ string) io.Writer { return outBuffer }
 	err := c.OutputContainerLogsForPodList(&somePodList, namespace, outBufferFunc)
-	clientAssertions := assert.New(t)
-	clientAssertions.NoError(err)
-	clientAssertions.Equal("fake logsfake logsfake logs", outBuffer.String())
+	req.NoError(err)
+	is.Equal("fake logsfake logsfake logs", outBuffer.String())
 }
 
 const testServiceManifest = `

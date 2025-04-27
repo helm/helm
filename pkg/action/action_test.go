@@ -347,10 +347,9 @@ func TestConfiguration_Init(t *testing.T) {
 
 			actualErr := cfg.Init(nil, "default", tt.helmDriver)
 			if tt.expectErr {
-				assert.Error(t, actualErr)
-				assert.Contains(t, actualErr.Error(), tt.errMsg)
+				assert.ErrorContains(t, actualErr, tt.errMsg)
 			} else {
-				assert.NoError(t, actualErr)
+				require.NoError(t, actualErr)
 				assert.IsType(t, tt.expectedDriverType, cfg.Releases.Driver)
 			}
 		})
@@ -539,10 +538,9 @@ metadata:
 			merged, err := annotateAndMerge(tt.files)
 
 			if tt.expectedError != "" {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedError)
+				require.ErrorContains(t, err, tt.expectedError)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, merged)
 				assert.Equal(t, tt.expected, merged)
 			}
@@ -702,11 +700,10 @@ data:
 			files, err := splitAndDeannotate(tt.input)
 
 			if tt.expectedError != "" {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.ErrorContains(t, err, tt.expectedError)
 			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, len(tt.expectedFiles), len(files))
+				require.NoError(t, err)
+				assert.Len(t, files, len(tt.expectedFiles))
 
 				for expectedFile, expectedContent := range tt.expectedFiles {
 					actualContent, exists := files[expectedFile]
@@ -757,7 +754,7 @@ data:
 	require.NoError(t, err)
 
 	// Compare the results
-	assert.Equal(t, len(originalFiles), len(reconstructed))
+	assert.Len(t, reconstructed, len(originalFiles))
 	for filename, originalContent := range originalFiles {
 		reconstructedContent, exists := reconstructed[filename]
 		assert.True(t, exists, "File %s should exist in reconstructed files", filename)
@@ -791,10 +788,10 @@ func TestRenderResources_PostRenderer_Success(t *testing.T) {
 		mockPR, false, false, false,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, hooks)
 	assert.NotNil(t, buf)
-	assert.Equal(t, "", notes)
+	assert.Empty(t, notes)
 	expectedBuf := `---
 # Source: yellow/templates/foodpie
 foodpie: world
@@ -834,8 +831,7 @@ func TestRenderResources_PostRenderer_Error(t *testing.T) {
 		mockPR, false, false, false,
 	)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error while running post render on files")
+	assert.ErrorContains(t, err, "error while running post render on files")
 }
 
 func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
@@ -862,8 +858,7 @@ func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
 		mockPR, false, false, false,
 	)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error merging manifests")
+	assert.ErrorContains(t, err, "error merging manifests")
 }
 
 func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
@@ -884,8 +879,8 @@ func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
 		mockPR, false, false, false,
 	)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error while parsing post rendered output: error parsing YAML: MalformedYAMLError:")
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "error while parsing post rendered output: error parsing YAML: MalformedYAMLError:")
 }
 
 func TestRenderResources_PostRenderer_Integration(t *testing.T) {
@@ -905,10 +900,10 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 		mockPR, false, false, false,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, hooks)
 	assert.NotNil(t, buf)
-	assert.Equal(t, "", notes) // Notes should be empty for this test
+	assert.Empty(t, notes) // Notes should be empty for this test
 
 	// Verify that the post-renderer modifications are present in the output
 	output := buf.String()
@@ -941,8 +936,8 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 		nil, false, false, false,
 	)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, hooks)
 	assert.NotNil(t, buf)
-	assert.Equal(t, "", notes)
+	assert.Empty(t, notes)
 }
