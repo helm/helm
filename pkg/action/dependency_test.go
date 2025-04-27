@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -70,7 +71,7 @@ func TestDependencyStatus_Dashes(t *testing.T) {
 	dir := t.TempDir()
 
 	chartpath := filepath.Join(dir, "charts")
-	if err := os.MkdirAll(chartpath, 0700); err != nil {
+	if err := os.MkdirAll(chartpath, 0o700); err != nil {
 		t.Fatal(err)
 	}
 
@@ -104,7 +105,7 @@ func TestStatArchiveForStatus(t *testing.T) {
 	dir := t.TempDir()
 
 	chartpath := filepath.Join(dir, "charts")
-	if err := os.MkdirAll(chartpath, 0700); err != nil {
+	if err := os.MkdirAll(chartpath, 0o700); err != nil {
 		t.Fatal(err)
 	}
 
@@ -118,13 +119,14 @@ func TestStatArchiveForStatus(t *testing.T) {
 	}
 
 	is := assert.New(t)
+	req := require.New(t)
 
 	lilithpath := filepath.Join(chartpath, "lilith-1.2.3.tgz")
 	is.Empty(statArchiveForStatus(lilithpath, dep))
 
 	// save the chart (version 0.1.0, because that is the default)
 	where, err := chartutil.Save(lilith, chartpath)
-	is.NoError(err)
+	req.NoError(err)
 
 	// Should get "wrong version" because we asked for 1.2.3 and got 0.1.0
 	is.Equal("wrong version", statArchiveForStatus(where, dep))

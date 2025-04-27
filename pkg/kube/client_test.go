@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -41,8 +42,10 @@ import (
 	cmdtesting "k8s.io/kubectl/pkg/cmd/testing"
 )
 
-var unstructuredSerializer = resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer
-var codec = scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
+var (
+	unstructuredSerializer = resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer
+	codec                  = scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
+)
 
 func objBody(obj runtime.Object) io.ReadCloser {
 	return io.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
@@ -718,7 +721,6 @@ func TestReal(t *testing.T) {
 }
 
 func TestGetPodList(t *testing.T) {
-
 	namespace := "some-namespace"
 	names := []string{"dave", "jimmy"}
 	var responsePodList v1.PodList
@@ -731,9 +733,8 @@ func TestGetPodList(t *testing.T) {
 
 	podList, err := c.GetPodList(namespace, metav1.ListOptions{})
 	clientAssertions := assert.New(t)
-	clientAssertions.NoError(err)
+	require.NoError(t, err)
 	clientAssertions.Equal(&responsePodList, podList)
-
 }
 
 func TestOutputContainerLogsForPodList(t *testing.T) {
@@ -746,7 +747,7 @@ func TestOutputContainerLogsForPodList(t *testing.T) {
 	outBufferFunc := func(_, _, _ string) io.Writer { return outBuffer }
 	err := c.OutputContainerLogsForPodList(&somePodList, namespace, outBufferFunc)
 	clientAssertions := assert.New(t)
-	clientAssertions.NoError(err)
+	require.NoError(t, err)
 	clientAssertions.Equal("fake logsfake logsfake logs", outBuffer.String())
 }
 

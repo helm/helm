@@ -37,11 +37,12 @@ fi
 
 func TestGetFullPath(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	t.Run("full path resolves correctly", func(t *testing.T) {
 		testpath := setupTestingScript(t)
 
 		fullPath, err := getFullPath(testpath)
-		is.NoError(err)
+		req.NoError(err)
 		is.Equal(testpath, fullPath)
 	})
 
@@ -53,7 +54,7 @@ func TestGetFullPath(t *testing.T) {
 		relative, err := filepath.Rel(currentDir, testpath)
 		require.NoError(t, err)
 		fullPath, err := getFullPath(relative)
-		is.NoError(err)
+		require.NoError(t, err)
 		is.Equal(testpath, fullPath)
 	})
 
@@ -67,7 +68,7 @@ func TestGetFullPath(t *testing.T) {
 		}()
 
 		fullPath, err := getFullPath(filepath.Base(testpath))
-		is.NoError(err)
+		require.NoError(t, err)
 		is.Equal(testpath, fullPath)
 	})
 
@@ -117,7 +118,7 @@ func TestExecRun(t *testing.T) {
 	require.NoError(t, err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
-	is.NoError(err)
+	require.NoError(t, err)
 	is.Contains(output.String(), "BARTEST")
 }
 
@@ -148,7 +149,7 @@ func TestNewExecWithOneArgsRun(t *testing.T) {
 	require.NoError(t, err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
-	is.NoError(err)
+	require.NoError(t, err)
 	is.Contains(output.String(), "ARG1")
 }
 
@@ -164,7 +165,7 @@ func TestNewExecWithTwoArgsRun(t *testing.T) {
 	require.NoError(t, err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
-	is.NoError(err)
+	require.NoError(t, err)
 	is.Contains(output.String(), "ARG1 ARG2")
 }
 
@@ -183,7 +184,7 @@ func setupTestingScript(t *testing.T) (filepath string) {
 		t.Fatalf("unable to write tempfile for testing: %s", err)
 	}
 
-	err = f.Chmod(0755)
+	err = f.Chmod(0o755)
 	if err != nil {
 		t.Fatalf("unable to make tempfile executable for testing: %s", err)
 	}
