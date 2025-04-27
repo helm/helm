@@ -258,7 +258,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			return err
 		}
 	} else {
-		return fmt.Errorf("unable to retrieve file info for '%s': %v", destPath, err)
+		return fmt.Errorf("unable to retrieve file info for '%s': %w", destPath, err)
 	}
 
 	// Prepare tmpPath
@@ -278,17 +278,17 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			chartPath := filepath.Join(destPath, dep.Name)
 			ch, err := loader.LoadDir(chartPath)
 			if err != nil {
-				return fmt.Errorf("unable to load chart '%s': %v", chartPath, err)
+				return fmt.Errorf("unable to load chart '%s': %w", chartPath, err)
 			}
 
 			constraint, err := semver.NewConstraint(dep.Version)
 			if err != nil {
-				return fmt.Errorf("dependency %s has an invalid version/constraint format: %s", dep.Name, err)
+				return fmt.Errorf("dependency %s has an invalid version/constraint format: %w", dep.Name, err)
 			}
 
 			v, err := semver.NewVersion(ch.Metadata.Version)
 			if err != nil {
-				return fmt.Errorf("invalid version %s for dependency %s: %s", dep.Version, dep.Name, err)
+				return fmt.Errorf("invalid version %s for dependency %s: %w", dep.Version, dep.Name, err)
 			}
 
 			if !constraint.Check(v) {

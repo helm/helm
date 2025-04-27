@@ -460,7 +460,7 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 	transaction, err := s.db.Beginx()
 	if err != nil {
 		slog.Debug("failed to start SQL transaction", slog.Any("error", err))
-		return fmt.Errorf("error beginning transaction: %v", err)
+		return fmt.Errorf("error beginning transaction: %w", err)
 	}
 
 	insertQuery, args, err := s.statementBuilder.
@@ -594,7 +594,7 @@ func (s *SQL) Delete(key string) (*rspb.Release, error) {
 	transaction, err := s.db.Beginx()
 	if err != nil {
 		slog.Debug("failed to start SQL transaction", slog.Any("error", err))
-		return nil, fmt.Errorf("error beginning transaction: %v", err)
+		return nil, fmt.Errorf("error beginning transaction: %w", err)
 	}
 
 	selectQuery, args, err := s.statementBuilder.
