@@ -28,6 +28,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
@@ -637,10 +639,7 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 				return
 			}
 
-			if tc.Input != result {
-				t.Error("expected the result equal to input")
-			}
-
+			require.ErrorIs(t, tc.Input, result, "expected the result equal to input")
 		})
 	}
 }

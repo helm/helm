@@ -116,9 +116,11 @@ type renderable struct {
 	basePath string
 }
 
-const warnStartDelim = "HELM_ERR_START"
-const warnEndDelim = "HELM_ERR_END"
-const recursionMaxNums = 1000
+const (
+	warnStartDelim   = "HELM_ERR_START"
+	warnEndDelim     = "HELM_ERR_END"
+	recursionMaxNums = 1000
+)
 
 var warnRegex = regexp.MustCompile(warnStartDelim + `((?s).*)` + warnEndDelim)
 
@@ -320,7 +322,7 @@ func cleanupParseError(filename string, err error) error {
 	tokens := strings.Split(err.Error(), ": ")
 	if len(tokens) == 1 {
 		// This might happen if a non-templating error occurs
-		return fmt.Errorf("parse error in (%s): %s", filename, err)
+		return fmt.Errorf("parse error in (%s): %w", filename, err)
 	}
 	// The first token is "template"
 	// The second token is either "filename:lineno" or "filename:lineNo:columnNo"
@@ -331,14 +333,15 @@ func cleanupParseError(filename string, err error) error {
 }
 
 func cleanupExecError(filename string, err error) error {
-	if _, isExecError := err.(template.ExecError); !isExecError {
+	var execError template.ExecError
+	if !errors.As(err, &execError) {
 		return err
 	}
 
 	tokens := strings.SplitN(err.Error(), ": ", 3)
 	if len(tokens) != 3 {
 		// This might happen if a non-templating error occurs
-		return fmt.Errorf("execution error in (%s): %s", filename, err)
+		return fmt.Errorf("execution error in (%s): %w", filename, err)
 	}
 
 	// The first token is "template"
