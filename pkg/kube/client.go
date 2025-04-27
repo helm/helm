@@ -180,7 +180,7 @@ func (c *Client) getKubeClient() (kubernetes.Interface, error) {
 // IsReachable tests connectivity to the cluster.
 func (c *Client) IsReachable() error {
 	client, err := c.getKubeClient()
-	if err == genericclioptions.ErrEmptyConfig {
+	if errors.Is(err, genericclioptions.ErrEmptyConfig) {
 		// re-replace kubernetes ErrEmptyConfig error with a friendly error
 		// moar workarounds for Kubernetes API breaking.
 		return errors.New("kubernetes cluster unreachable")
@@ -720,7 +720,7 @@ func updateResource(_ *Client, target *resource.Info, currentObj runtime.Object,
 func (c *Client) GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error) {
 	podList, err := c.kubeClient.CoreV1().Pods(namespace).List(context.Background(), listOptions)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pod list with options: %+v with error: %v", listOptions, err)
+		return nil, fmt.Errorf("failed to get pod list with options: %+v with error: %w", listOptions, err)
 	}
 	return podList, nil
 }

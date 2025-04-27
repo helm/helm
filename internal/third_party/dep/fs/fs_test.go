@@ -36,6 +36,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestRenameWithFallback(t *testing.T) {
@@ -234,9 +236,7 @@ func TestCopyDirFail_SrcIsNotDir(t *testing.T) {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 
-	if err != errSrcNotDir {
-		t.Fatalf("expected %v error for CopyDir(%s, %s), got %s", errSrcNotDir, srcdir, dstdir, err)
-	}
+	require.ErrorIsf(t, err, errSrcNotDir, "expected %v error for CopyDir(%s, %s), got %s", errSrcNotDir, srcdir, dstdir, err)
 
 }
 
@@ -260,9 +260,7 @@ func TestCopyDirFail_DstExists(t *testing.T) {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 
-	if err != errDstExist {
-		t.Fatalf("expected %v error for CopyDir(%s, %s), got %s", errDstExist, srcdir, dstdir, err)
-	}
+	require.ErrorIsf(t, err, errDstExist, "expected %v error for CopyDir(%s, %s), got %s", errDstExist, srcdir, dstdir, err)
 }
 
 func TestCopyDirFailOpen(t *testing.T) {

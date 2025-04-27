@@ -161,7 +161,7 @@ func (t *parser) parse() error {
 		if err == nil {
 			continue
 		}
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		return err
@@ -190,8 +190,8 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 				return err
 			}
 			return fmt.Errorf("key %q has no value", string(k))
-			//set(data, string(k), "")
-			//return err
+			// set(data, string(k), "")
+			// return err
 		case last == '[':
 			// We are in a list index context, so we need to set an index.
 			i, err := t.keyIndex()
@@ -237,19 +237,19 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 				_, err = t.emptyVal()
 				return err
 			}
-			//End of key. Consume =, Get value.
+			// End of key. Consume =, Get value.
 			// FIXME: Get value list first
 			vl, e := t.valList()
-			switch e {
-			case nil:
+			switch {
+			case e == nil:
 				set(data, string(k), vl)
 				return nil
-			case io.EOF:
+			case errors.Is(e, io.EOF):
 				set(data, string(k), "")
 				return e
-			case ErrNotList:
+			case errors.Is(e, ErrNotList):
 				rs, e := t.val()
-				if e != nil && e != io.EOF {
+				if e != nil && !errors.Is(e, io.EOF) {
 					return e
 				}
 				v, e := t.reader(rs)
@@ -330,7 +330,6 @@ func (t *parser) keyIndex() (int, error) {
 	}
 	// v should be the index
 	return strconv.Atoi(string(v))
-
 }
 
 func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interface{}, error) {
@@ -373,14 +372,14 @@ func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interfa
 			return list, err
 		}
 		vl, e := t.valList()
-		switch e {
-		case nil:
+		switch {
+		case e == nil:
 			return setIndex(list, i, vl)
-		case io.EOF:
+		case errors.Is(e, io.EOF):
 			return setIndex(list, i, "")
-		case ErrNotList:
+		case errors.Is(e, ErrNotList):
 			rs, e := t.val()
-			if e != nil && e != io.EOF {
+			if e != nil && !errors.Is(e, io.EOF) {
 				return list, e
 			}
 			v, e := t.reader(rs)
@@ -479,7 +478,7 @@ func (t *parser) valList() ([]interface{}, error) {
 	for {
 		switch rs, last, err := runesUntil(t.sc, stop); {
 		case err != nil:
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				err = errors.New("list must terminate with '}'")
 			}
 			return list, err

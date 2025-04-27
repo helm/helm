@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 )
@@ -250,12 +252,8 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	if err == nil {
 		t.Error("expect nil value not found but found it")
 	}
-	switch xerr := err.(type) {
-	case ErrNoValue:
-		// We found what we expected
-	default:
-		t.Errorf("expected an ErrNoValue but got %q instead", xerr)
-	}
+	var xerr ErrNoValue
+	require.ErrorAs(t, err, &xerr, "expected an ErrNoValue but got %q instead", err)
 
 	c = loadChart(t, "testdata/subpop")
 	if err := processDependencyImportValues(c, true); err != nil {
@@ -458,7 +456,6 @@ func TestDependentChartAliases(t *testing.T) {
 	if aliasChart := getAliasDependency(c.Dependencies(), req[2]); aliasChart != nil {
 		t.Fatalf("expected no chart but got %s", aliasChart.Name())
 	}
-
 }
 
 func TestDependentChartWithSubChartsAbsentInDependency(t *testing.T) {

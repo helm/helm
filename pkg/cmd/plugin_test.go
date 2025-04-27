@@ -25,6 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/stretchr/testify/require"
 
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -142,10 +143,8 @@ func TestLoadPlugins(t *testing.T) {
 		if runtime.GOOS != "windows" {
 			if err := pp.RunE(pp, tt.args); err != nil {
 				if tt.code > 0 {
-					perr, ok := err.(PluginError)
-					if !ok {
-						t.Errorf("Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
-					}
+					var perr PluginError
+					require.ErrorAs(t, err, &perr, "Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
 					if perr.Code != tt.code {
 						t.Errorf("Expected %s to return %d: got %d", tt.use, tt.code, perr.Code)
 					}
@@ -217,10 +216,8 @@ func TestLoadPluginsWithSpace(t *testing.T) {
 		if runtime.GOOS != "windows" {
 			if err := pp.RunE(pp, tt.args); err != nil {
 				if tt.code > 0 {
-					perr, ok := err.(PluginError)
-					if !ok {
-						t.Errorf("Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
-					}
+					var perr PluginError
+					require.ErrorAs(t, err, &perr, "Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
 					if perr.Code != tt.code {
 						t.Errorf("Expected %s to return %d: got %d", tt.use, tt.code, perr.Code)
 					}

@@ -186,7 +186,7 @@ func LoadValues(data io.Reader) (map[string]interface{}, error) {
 		currentMap := map[string]interface{}{}
 		raw, err := reader.Read()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, fmt.Errorf("error reading yaml document: %w", err)

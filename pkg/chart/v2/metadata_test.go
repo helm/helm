@@ -17,6 +17,8 @@ package v2
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidate(t *testing.T) {
@@ -181,9 +183,7 @@ func TestValidate(t *testing.T) {
 
 	for _, tt := range tests {
 		result := tt.md.Validate()
-		if result != tt.err {
-			t.Errorf("expected %q, got %q in test %q", tt.err, result, tt.name)
-		}
+		require.ErrorIsf(t, result, tt.err, "expected %q, got %q in test %q", tt.err, result, tt.name)
 	}
 }
 

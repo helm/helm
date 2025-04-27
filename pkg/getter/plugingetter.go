@@ -17,6 +17,7 @@ package getter
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -82,7 +83,8 @@ func (p *pluginGetter) Get(href string, options ...Option) (*bytes.Buffer, error
 	prog.Stdout = buf
 	prog.Stderr = os.Stderr
 	if err := prog.Run(); err != nil {
-		if eerr, ok := err.(*exec.ExitError); ok {
+		var eerr *exec.ExitError
+		if errors.As(err, &eerr) {
 			os.Stderr.Write(eerr.Stderr)
 			return nil, fmt.Errorf("plugin %q exited with error", p.command)
 		}
