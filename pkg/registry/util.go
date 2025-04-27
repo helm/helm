@@ -102,7 +102,7 @@ func NewRegistryClientWithTLS(out io.Writer, certFile, keyFile, caFile string, i
 		tlsutil.WithCAFile(caFile),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("can't create TLS config for client: %s", err)
+		return nil, fmt.Errorf("can't create TLS config for client: %w", err)
 	}
 	// Create a new registry client
 	registryClient, err := NewClient(

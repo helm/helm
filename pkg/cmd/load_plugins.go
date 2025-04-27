@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -134,7 +135,8 @@ func callPluginExecutable(pluginName string, main string, argv []string, out io.
 	prog.Stdout = out
 	prog.Stderr = os.Stderr
 	if err := prog.Run(); err != nil {
-		if eerr, ok := err.(*exec.ExitError); ok {
+		var eerr *exec.ExitError
+		if errors.As(err, &eerr) {
 			os.Stderr.Write(eerr.Stderr)
 			status := eerr.Sys().(syscall.WaitStatus)
 			return PluginError{

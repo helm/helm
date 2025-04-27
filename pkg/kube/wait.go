@@ -103,7 +103,8 @@ func (hw *legacyWaiter) isRetryableError(err error, resource *resource.Info) boo
 		return false
 	}
 	slog.Debug("error received when checking resource status", "resource", resource.Name, slog.Any("error", err))
-	if ev, ok := err.(*apierrors.StatusError); ok {
+	var ev *apierrors.StatusError
+	if errors.As(err, &ev) {
 		statusCode := ev.Status().Code
 		retryable := hw.isRetryableHTTPStatusCode(statusCode)
 		slog.Debug("status code received", "resource", resource.Name, "statusCode", statusCode, "retryable", retryable)
