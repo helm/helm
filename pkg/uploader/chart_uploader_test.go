@@ -34,6 +34,7 @@ func TestChartUploader_UploadTo_Happy(t *testing.T) {
 	shasum := ""
 	var content []byte
 	contentSize := 0
+	// no significant meaning behind this uuid, just needs to be a uuid
 	uploadSessionId := "c6ce3ba4-788f-4e10-93ed-ff77d35c6851"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "HEAD" {
