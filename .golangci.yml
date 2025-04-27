@@ -27,6 +27,7 @@ linters:
     - revive
     - staticcheck
     - unused
+    - usestdlibvars
 
   exclusions:
     # Helm, and the Go source code itself, sometimes uses these names outside their built-in
