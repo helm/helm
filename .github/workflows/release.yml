@@ -38,6 +38,11 @@ jobs:
 
           make build-cross VERSION="${{ github.ref_name }}"
           make dist checksum VERSION="${{ github.ref_name }}"
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: _dist/helm-${{ github.ref_name }}-*
 
       - name: Set latest version
         run: |
