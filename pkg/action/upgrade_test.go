@@ -583,3 +583,109 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	done()
 	req.Error(err)
 }
+
+func TestGetUpgradeServerSideValue(t *testing.T) {
+	tests := []struct {
+		name                    string
+		actionServerSideOption  string
+		releaseApplyMethod      string
+		expectedServerSideApply bool
+	}{
+		{
+			name:                    "action ssa auto / release csa",
+			actionServerSideOption:  "auto",
+			releaseApplyMethod:      "csa",
+			expectedServerSideApply: false,
+		},
+		{
+			name:                    "action ssa auto / release ssa",
+			actionServerSideOption:  "auto",
+			releaseApplyMethod:      "ssa",
+			expectedServerSideApply: true,
+		},
+		{
+			name:                    "action ssa auto / release empty",
+			actionServerSideOption:  "auto",
+			releaseApplyMethod:      "",
+			expectedServerSideApply: false,
+		},
+		{
+			name:                    "action ssa true / release csa",
+			actionServerSideOption:  "true",
+			releaseApplyMethod:      "csa",
+			expectedServerSideApply: true,
+		},
+		{
+			name:                    "action ssa true / release ssa",
+			actionServerSideOption:  "true",
+			releaseApplyMethod:      "ssa",
+			expectedServerSideApply: true,
+		},
+		{
+			name:                    "action ssa true / release 'unknown'",
+			actionServerSideOption:  "true",
+			releaseApplyMethod:      "foo",
+			expectedServerSideApply: true,
+		},
+		{
+			name:                    "action ssa true / release empty",
+			actionServerSideOption:  "true",
+			releaseApplyMethod:      "",
+			expectedServerSideApply: true,
+		},
+		{
+			name:                    "action ssa false / release csa",
+			actionServerSideOption:  "false",
+			releaseApplyMethod:      "ssa",
+			expectedServerSideApply: false,
+		},
+		{
+			name:                    "action ssa false / release ssa",
+			actionServerSideOption:  "false",
+			releaseApplyMethod:      "ssa",
+			expectedServerSideApply: false,
+		},
+		{
+			name:                    "action ssa false / release 'unknown'",
+			actionServerSideOption:  "false",
+			releaseApplyMethod:      "foo",
+			expectedServerSideApply: false,
+		},
+		{
+			name:                    "action ssa false / release empty",
+			actionServerSideOption:  "false",
+			releaseApplyMethod:      "ssa",
+			expectedServerSideApply: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			serverSideApply, err := getUpgradeServerSideValue(tt.actionServerSideOption, tt.releaseApplyMethod)
+			assert.Nil(t, err)
+			assert.Equal(t, tt.expectedServerSideApply, serverSideApply)
+		})
+	}
+
+	testsError := []struct {
+		name                   string
+		actionServerSideOption string
+		releaseApplyMethod     string
+		expectedErrorMsg       string
+	}{
+		{
+			name:                   "action invalid option",
+			actionServerSideOption: "invalid",
+			releaseApplyMethod:     "ssa",
+			expectedErrorMsg:       "invalid/unknown release server-side apply method: invalid",
+		},
+	}
+
+	for _, tt := range testsError {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := getUpgradeServerSideValue(tt.actionServerSideOption, tt.releaseApplyMethod)
+			assert.ErrorContains(t, err, tt.expectedErrorMsg)
+		})
+	}
+
+}
