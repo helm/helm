@@ -78,10 +78,18 @@ type Upgrade struct {
 	// HideSecret can be set to true when DryRun is enabled in order to hide
 	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
 	HideSecret bool
-	// Force will, if set to `true`, ignore certain warnings and perform the upgrade anyway.
+	// ForceReplace will, if set to `true`, ignore certain warnings and perform the upgrade anyway.
 	//
 	// This should be used with caution.
-	Force bool
+	ForceReplace bool
+	// ForceConflicts causes server-side apply to force conflicts ("Overwrite value, become sole manager")
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+	ForceConflicts bool
+	// ServerSideApply enables changes to be applied via Kubernetes server-side apply
+	// Can be the string: "true", "false" or "auto"
+	// When "auto", sever-side usage will be based upon the releases previous usage
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
+	ServerSideApply string
 	// ResetValues will reset the values to the chart's built-ins rather than merging with existing.
 	ResetValues bool
 	// ReuseValues will reuse the user's last supplied values.
@@ -146,6 +154,32 @@ func (u *Upgrade) SetRegistryClient(client *registry.Client) {
 func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 	ctx := context.Background()
 	return u.RunWithContext(ctx, name, chart, vals)
+}
+
+func getServerSideValue(serverSideOption string, currentRelease *release.Release) (bool, error) {
+	switch serverSideOption {
+	case "auto":
+		return currentRelease.ApplyMethod != nil && *currentRelease.ApplyMethod != "csa", nil
+	case "false":
+		return false, nil
+	case "true":
+		return true, nil
+	default:
+		return false, fmt.Errorf("invalid server-side method: %s", serverSideOption)
+	}
+}
+
+func setReleaseApplyMethod(applyMethod **string, serverSideApply bool) {
+
+	var csa string = "csa"
+	var ssa string = "ssa"
+
+	if serverSideApply {
+		*applyMethod = &ssa
+		return
+	}
+
+	*applyMethod = &csa
 }
 
 // RunWithContext executes the upgrade on the given release with context.
@@ -375,6 +409,16 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return upgradedRelease, nil
 	}
 
+	serverSideApply, err := getServerSideValue(u.ServerSideApply, originalRelease)
+	if err != nil {
+		return nil, err
+	}
+	if serverSideApply {
+		upgradedRelease.SetApplyMethod(release.ApplyMethodServerSideApply)
+	} else {
+		upgradedRelease.SetApplyMethod(release.ApplyMethodClientSideApply)
+	}
+
 	slog.Debug("creating upgraded release", "name", upgradedRelease.Name)
 	if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
 		return nil, err
@@ -383,7 +427,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	ctxChan := make(chan resultMessage)
 	doneChan := make(chan interface{})
 	defer close(doneChan)
-	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease)
+	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease, serverSideApply)
 	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
 	select {
 	case result := <-rChan:
@@ -417,7 +461,7 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 		return
 	}
 }
-func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
+func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release, serverSideApply bool) {
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
@@ -429,7 +473,13 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		slog.Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
 	}
 
-	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
+	results, err := u.cfg.KubeClient.Update(
+		current,
+		target,
+		kube.ClientUpdateOptionForceReplace(u.ForceReplace),
+		kube.ClientUpdateOptionForceConflicts(u.ForceConflicts),
+		kube.ClientUpdateOptionServerSideApply(serverSideApply),
+		kube.ClientUpdateOptionThreeWayMerge(false))
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
@@ -494,7 +544,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 	u.cfg.recordRelease(rel)
 	if u.CleanupOnFail && len(created) > 0 {
 		slog.Debug("cleanup on fail set", "cleaning_resources", len(created))
-		_, errs := u.cfg.KubeClient.Delete(created)
+		_, errs := u.cfg.KubeClient.Delete(created, metav1.DeletePropagationBackground)
 		if errs != nil {
 			return rel, fmt.Errorf(
 				"an error occurred while cleaning up resources. original upgrade error: %w: %w",
@@ -538,7 +588,9 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		rollin.WaitForJobs = u.WaitForJobs
 		rollin.DisableHooks = u.DisableHooks
 		rollin.Recreate = u.Recreate
-		rollin.Force = u.Force
+		rollin.ForceReplace = u.ForceReplace
+		rollin.ForceConflicts = u.ForceConflicts
+		rollin.ServerSideApply = u.ServerSideApply
 		rollin.Timeout = u.Timeout
 		if rollErr := rollin.Run(rel.Name); rollErr != nil {
 			return rel, fmt.Errorf("an error occurred while rolling back the release. original upgrade error: %w: %w", err, rollErr)

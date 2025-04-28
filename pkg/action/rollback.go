@@ -27,6 +27,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	helmtime "helm.sh/helm/v4/pkg/time"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Rollback is the action for rolling back to a given release.
@@ -35,16 +36,27 @@ import (
 type Rollback struct {
 	cfg *Configuration
 
-	Version       int
-	Timeout       time.Duration
-	WaitStrategy  kube.WaitStrategy
-	WaitForJobs   bool
-	DisableHooks  bool
-	DryRun        bool
-	Recreate      bool // will (if true) recreate pods after a rollback.
-	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
-	CleanupOnFail bool
-	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
+	Version      int
+	Timeout      time.Duration
+	WaitStrategy kube.WaitStrategy
+	WaitForJobs  bool
+	DisableHooks bool
+	DryRun       bool
+	Recreate     bool // will (if true) recreate pods after a rollback.
+	// ForceReplace will, if set to `true`, ignore certain warnings and perform the rollback anyway.
+	//
+	// This should be used with caution.
+	ForceReplace bool
+	// ForceConflicts causes server-side apply to force conflicts ("Overwrite value, become sole manager")
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+	ForceConflicts bool
+	// ServerSideApply enables changes to be applied via Kubernetes server-side apply
+	// Can be the string: "true", "false" or "auto"
+	// When "auto", sever-side usage will be based upon the releases previous usage
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
+	ServerSideApply string
+	CleanupOnFail   bool
+	MaxHistory      int // MaxHistory limits the maximum number of revisions saved per release
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -188,7 +200,12 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	if err != nil {
 		return targetRelease, fmt.Errorf("unable to set metadata visitor from target release: %w", err)
 	}
-	results, err := r.cfg.KubeClient.Update(current, target, r.Force)
+	results, err := r.cfg.KubeClient.Update(
+		current,
+		target,
+		kube.ClientUpdateOptionForceReplace(r.ForceReplace),
+		kube.ClientUpdateOptionForceConflicts(r.ForceConflicts),
+		kube.ClientUpdateOptionThreeWayMerge(false))
 
 	if err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
@@ -200,7 +217,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		r.cfg.recordRelease(targetRelease)
 		if r.CleanupOnFail {
 			slog.Debug("cleanup on fail set, cleaning up resources", "count", len(results.Created))
-			_, errs := r.cfg.KubeClient.Delete(results.Created)
+			_, errs := r.cfg.KubeClient.Delete(results.Created, metav1.DeletePropagationBackground)
 			if errs != nil {
 				return targetRelease, fmt.Errorf(
 					"an error occurred while cleaning up resources. original rollback error: %w",
