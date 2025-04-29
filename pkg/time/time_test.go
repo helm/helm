@@ -31,197 +31,109 @@ var (
 )
 
 func givenTime(t *testing.T) Time {
-	result, err := Parse(time.RFC3339, timeParseString)
+	result, err := Parse(time.RFC3339, "1977-09-02T22:04:05Z")
 	require.NoError(t, err)
 	return result
 }
 
 func TestDate(t *testing.T) {
+	testingTime := givenTime(t)
 	got := Date(1977, 9, 2, 22, 04, 05, 0, time.UTC)
 	assert.Equal(t, timeString, got.String())
+	assert.True(t, testingTime.Equal(got))
+	assert.True(t, got.Equal(testingTime))
 }
 
 func TestNow(t *testing.T) {
 	testingTime := givenTime(t)
 	got := Now()
-	assert.Truef(t, testingTime.Before(got), "expected %s before %s", testingTime.String(), got.String())
+	assert.True(t, testingTime.Before(got))
+	assert.True(t, got.After(testingTime))
 }
 
-func TestParse(t *testing.T) {
+func TestTime_Add(t *testing.T) {
 	testingTime := givenTime(t)
-	got, err := Parse(time.RFC3339, timeParseString)
-	assert.NoError(t, err)
-	if testingTime.Before(got) {
-		t.Errorf("expected %s before %s", testingTime.String(), got.String())
-	}
+	got := testingTime.Add(time.Hour)
+	assert.Equal(t, timeString, testingTime.String())
+	assert.Equal(t, "1977-09-02 23:04:05 +0000 UTC", got.String())
 }
 
-//func TestParseInLocation(t *testing.T) {
-//
-//	got, err := ParseInLocation(tt.args.layout, tt.args.value, tt.args.loc)
-//	if (err != nil) != tt.wantErr {
-//		t.Errorf("ParseInLocation() error = %v, wantErr %v", err, tt.wantErr)
-//		return
-//	}
-//	if !reflect.DeepEqual(got, tt.want) {
-//		t.Errorf("ParseInLocation() got = %v, want %v", got, tt.want)
-//	}
-//}
+func TestTime_AddDate(t *testing.T) {
+	testingTime := givenTime(t)
+	got := testingTime.AddDate(1, 1, 1)
+	assert.Equal(t, "1978-10-03 22:04:05 +0000 UTC", got.String())
+}
 
-//func TestTime_Add(t *testing.T) {
-//
-//	sut := Time{
-//		Time: tt.fields.Time,
-//	}
-//	if got := t.Add(tt.args.d); !reflect.DeepEqual(got, tt.want) {
-//		t.Errorf("Add() = %v, want %v", got, tt.want)
-//	}
-//}
-//
-//func TestTime_AddDate(t *testing.T) {
-//
-//	sut := Time{
-//		Time: tt.fields.Time,
-//	}
-//	if got := t.AddDate(tt.args.years, tt.args.months, tt.args.days); !reflect.DeepEqual(got, tt.want) {
-//		t.Errorf("AddDate() = %v, want %v", got, tt.want)
-//	}
-//}
-
-//func TestTime_After(t *testing.T) {
-//
-//	sut := Time{
-//		Time: tt.fields.Time,
-//	}
-//	if got := t.After(tt.args.u); got != tt.want {
-//		t.Errorf("After() = %v, want %v", got, tt.want)
-//	}
-//
-//}
-//
-//func TestTime_Before(t *testing.T) {
-//
-//	sut := Time{
-//		Time: tt.fields.Time,
-//	}
-//	if got := t.Before(tt.args.u); got != tt.want {
-//		t.Errorf("Before() = %v, want %v", got, tt.want)
-//	}
-//
-//}
-//
-//func TestTime_Equal(t *testing.T) {
-//
-//	sut := Time{
-//		Time: tt.fields.Time,
-//	}
-//	if got := t.Equal(tt.args.u); got != tt.want {
-//		t.Errorf("Equal() = %v, want %v", got, tt.want)
-//	}
-//
-//}
-
-//func TestTime_In(t *testing.T) {
-//
-//	sut := Time{
-//		Time: tt.fields.Time,
-//	}
-//	if got := t.In(tt.args.loc); !reflect.DeepEqual(got, tt.want) {
-//		t.Errorf("In() = %v, want %v", got, tt.want)
-//	}
-//
-//}
-//
-//func TestTime_Local(t *testing.T) {
-//
-//	sut := Time{
-//		Time: tt.fields.Time,
-//	}
-//	if got := t.Local(); !reflect.DeepEqual(got, tt.want) {
-//		t.Errorf("Local() = %v, want %v", got, tt.want)
-//	}
-//
-//}
+func TestTime_In(t *testing.T) {
+	testingTime := givenTime(t)
+	edt, err := time.LoadLocation("America/New_York")
+	assert.NoError(t, err)
+	got := testingTime.In(edt)
+	assert.Equal(t, "America/New_York", got.Location().String())
+}
 
 func TestTime_MarshalJSONNonZero(t *testing.T) {
 	testingTime := givenTime(t)
 	res, err := json.Marshal(testingTime)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if timeParseString != string(res) {
-		t.Errorf("expected a marshaled value of %s, got %s", timeParseString, res)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, timeParseString, string(res))
 }
 
 func TestTime_MarshalJSONZeroValue(t *testing.T) {
 	res, err := json.Marshal(Time{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(res) != emptyString {
-		t.Errorf("expected zero value to marshal to empty string, got %s", res)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, `""`, string(res))
 }
 
-//func TestTime_Round(t *testing.T) {
-//	if got := t.Round(tt.args.d); !reflect.DeepEqual(got, tt.want) {
-//		t.Errorf("Round() = %v, want %v", got, tt.want)
-//	}
-//}
+func TestTime_Round(t *testing.T) {
+	testingTime := givenTime(t)
+	got := testingTime.Round(time.Hour)
+	assert.Equal(t, timeString, testingTime.String())
+	assert.Equal(t, "1977-09-02 22:00:00 +0000 UTC", got.String())
+}
 
-//func TestTime_Sub(t *testing.T) {
-//	sut := Time{
-//		Time: tt.fields.Time,
-//	}
-//	if got := t.Sub(tt.args.u); got != tt.want {
-//		t.Errorf("Sub() = %v, want %v", got, tt.want)
-//	}
-//}
+func TestTime_Sub(t *testing.T) {
+	testingTime := givenTime(t)
+	before, err := Parse(time.RFC3339, "1977-09-01T22:04:05Z")
+	require.NoError(t, err)
+	got := testingTime.Sub(before)
+	assert.Equal(t, "24h0m0s", got.String())
+}
 
-//func TestTime_Truncate(t *testing.T) {
-//
-//	sut := Time{
-//		Time: tt.fields.Time,
-//	}
-//	if got := t.Truncate(tt.args.d); !reflect.DeepEqual(got, tt.want) {
-//		t.Errorf("Truncate() = %v, want %v", got, tt.want)
-//	}
-//
-//}
-//
-//func TestTime_UTC(t *testing.T) {
-//
-//	sut := Time{
-//		Time: tt.fields.Time,
-//	}
-//	if got := t.UTC(); !reflect.DeepEqual(got, tt.want) {
-//		t.Errorf("UTC() = %v, want %v", got, tt.want)
-//	}
-//
-//}
+func TestTime_Truncate(t *testing.T) {
+	testingTime := givenTime(t)
+	got := testingTime.Truncate(time.Hour)
+	assert.Equal(t, timeString, testingTime.String())
+	assert.Equal(t, "1977-09-02 22:00:00 +0000 UTC", got.String())
+}
+
+func TestTime_UTC(t *testing.T) {
+	edtTime, err := Parse(time.RFC3339, "1977-09-03T05:04:05+07:00")
+	require.NoError(t, err)
+	got := edtTime.UTC()
+	assert.Equal(t, timeString, got.String())
+}
 
 func TestTime_UnmarshalJSONNonZeroValue(t *testing.T) {
 	testingTime := givenTime(t)
 	var myTime Time
 	err := json.Unmarshal([]byte(timeParseString), &myTime)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !myTime.Equal(testingTime) {
-		t.Errorf("expected time to be equal to %v, got %v", testingTime, myTime)
-	}
+	assert.NoError(t, err)
+	assert.True(t, testingTime.Equal(myTime))
 }
 
 func TestTime_UnmarshalJSONEmptyString(t *testing.T) {
 	var myTime Time
 	err := json.Unmarshal([]byte(emptyString), &myTime)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !myTime.IsZero() {
-		t.Errorf("expected time to be equal to zero value, got %v", myTime)
-	}
+	assert.NoError(t, err)
+	assert.True(t, myTime.IsZero())
+}
+
+func TestTime_UnmarshalJSONNullString(t *testing.T) {
+	var myTime Time
+	err := json.Unmarshal([]byte("null"), &myTime)
+	assert.NoError(t, err)
+	assert.True(t, myTime.IsZero())
 }
 
 func TestTime_UnmarshalJSONZeroValue(t *testing.T) {
@@ -229,18 +141,12 @@ func TestTime_UnmarshalJSONZeroValue(t *testing.T) {
 	// with the current go default value of "0001-01-01T00:00:00Z"
 	var myTime Time
 	err := json.Unmarshal([]byte(`"0001-01-01T00:00:00Z"`), &myTime)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !myTime.IsZero() {
-		t.Errorf("expected time to be equal to zero value, got %v", myTime)
-	}
+	assert.NoError(t, err)
+	assert.True(t, myTime.IsZero())
 }
 
-//func TestUnix(t *testing.T) {
-//
-//	if got := Unix(tt.args.sec, tt.args.nsec); !reflect.DeepEqual(got, tt.want) {
-//		t.Errorf("Unix() = %v, want %v", got, tt.want)
-//	}
-//
-//}
+func TestUnix(t *testing.T) {
+	got := Unix(242085845, 0)
+	assert.Equal(t, int64(242085845), got.Unix())
+	assert.Equal(t, timeString, got.UTC().String())
+}
