@@ -4,19 +4,24 @@ on:
   push:
   pull_request:
 
+permissions:  
+  contents: read
+
 jobs:
   golangci:
     name: golangci-lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # pin@v4.1.7
-
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4.2.2
+      - name: Add variables to environment file
+        run: cat ".github/env" >> "$GITHUB_ENV"
       - name: Setup Go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # pin@5.0.2
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # pin@5.4.0
         with:
-          go-version: "1.22"
+          go-version: '${{ env.GOLANG_VERSION }}'
+          check-latest: true
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@aaa42aa0628b4ae2578232a66b541047968fac86 #pin@6.1.0
+        uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd #pin@7.0.0
         with:
-          version: v1.58
+          version: ${{ env.GOLANGCI_LINT_VERSION }}

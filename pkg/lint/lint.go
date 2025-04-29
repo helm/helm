@@ -14,17 +14,35 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package lint // import "helm.sh/helm/v3/pkg/lint"
+package lint // import "helm.sh/helm/v4/pkg/lint"
 
 import (
 	"path/filepath"
 
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/lint/rules"
-	"helm.sh/helm/v3/pkg/lint/support"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/lint/rules"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
-// All runs all of the available linters on the given base directory.
+func AllWithOptions(baseDir string, values map[string]interface{}, namespace string, options ...LinterOption) support.Linter {
+	// Using abs path to get directory context
+	chartDir, _ := filepath.Abs(baseDir)
+
+	linter := support.Linter{ChartDir: chartDir}
+
+	for _, option := range options {
+		option(&linter)
+	}
+
+	rules.Chartfile(&linter)
+	rules.ValuesWithOverrides(&linter, values)
+	rules.TemplatesV2(&linter, values, namespace)
+	rules.Dependencies(&linter)
+
+	return linter
+}
+
+// All runs all the available linters on the given base directory.
 // Deprecated, use AllWithOptions instead.
 func All(basedir string, values map[string]interface{}, namespace string, _ bool) support.Linter {
 	return AllWithOptions(basedir, values, namespace)
@@ -35,25 +53,6 @@ func All(basedir string, values map[string]interface{}, namespace string, _ bool
 func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) support.Linter {
 	return AllWithOptions(basedir, values, namespace,
 		WithKubeVersion(kubeVersion),
-		WithSchemaValidation(false),
+		WithSkipSchemaValidation(false),
 	)
-}
-
-// AllWithOptions runs all the available linters on the given base directory, allowing to specify different options.
-func AllWithOptions(basedir string, values map[string]interface{}, namespace string, options ...LinterOption) support.Linter {
-	// Using abs path to get directory context
-	chartDir, _ := filepath.Abs(basedir)
-
-	linter := support.Linter{ChartDir: chartDir}
-
-	for _, optFn := range options {
-		optFn(&linter)
-	}
-
-	rules.Chartfile(&linter)
-	rules.ValuesWithOverrides(&linter, values)
-	rules.TemplatesV2(&linter, values, namespace)
-	rules.Dependencies(&linter)
-
-	return linter
 }

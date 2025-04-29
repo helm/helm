@@ -2,22 +2,30 @@ name: build-test
 on:
   push:
     branches:
-      - 'main'
-      - 'release-**'
+      - "main"
+      - "dev-v3"
+      - "release-**"
   pull_request:
     branches:
-      - main
+      - "main"
+      - "dev-v3"
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # pin@v4.1.7
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4.2.2
+      - name: Add variables to environment file
+        run: cat ".github/env" >> "$GITHUB_ENV"
       - name: Setup Go
-        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # pin@5.0.2
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # pin@5.4.0
         with:
-          go-version: '1.22'
+          go-version: '${{ env.GOLANG_VERSION }}'
+          check-latest: true
       - name: Test source headers are present
         run: make test-source-headers
       - name: Run unit tests

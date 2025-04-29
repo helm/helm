@@ -30,8 +30,8 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/fake"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
 func TestSortTemplates(t *testing.T) {
@@ -78,7 +78,7 @@ func TestFuncMap(t *testing.T) {
 	}
 
 	// Test for Engine-specific template functions.
-	expect := []string{"include", "required", "tpl", "toYaml", "fromYaml", "toToml", "toJson", "fromJson", "lookup"}
+	expect := []string{"include", "required", "tpl", "toYaml", "fromYaml", "toToml", "fromToml", "toJson", "fromJson", "lookup"}
 	for _, f := range expect {
 		if _, ok := fns[f]; !ok {
 			t.Errorf("Expected add-on function %q", f)
@@ -1298,5 +1298,65 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 	default:
 		// Some unexpected error.
 		t.Fatal(err)
+	}
+}
+
+func TestRenderCustomTemplateFuncs(t *testing.T) {
+	// Create a chart with two templates that use custom functions
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "CustomFunc"},
+		Templates: []*chart.File{
+			{
+				Name: "templates/manifest",
+				Data: []byte(`{{exclaim .Values.message}}`),
+			},
+			{
+				Name: "templates/override",
+				Data: []byte(`{{ upper .Values.message }}`),
+			},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{
+			"message": "hello",
+		},
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	// Define a custom template function "exclaim" that appends "!!!" to a string and override "upper" function
+	customFuncs := template.FuncMap{
+		"exclaim": func(input string) string {
+			return input + "!!!"
+		},
+		"upper": func(s string) string {
+			return "custom:" + s
+		},
+	}
+
+	// Create an engine instance and set the CustomTemplateFuncs.
+	e := new(Engine)
+	e.CustomTemplateFuncs = customFuncs
+
+	// Render the chart.
+	out, err := e.Render(c, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Expected output should be "hello!!!".
+	expected := "hello!!!"
+	key := "CustomFunc/templates/manifest"
+	if rendered, ok := out[key]; !ok || rendered != expected {
+		t.Errorf("Expected %q, got %q", expected, rendered)
+	}
+
+	// Verify that the rendered template used the custom "upper" function.
+	expected = "custom:hello"
+	key = "CustomFunc/templates/override"
+	if rendered, ok := out[key]; !ok || rendered != expected {
+		t.Errorf("Expected %q, got %q", expected, rendered)
 	}
 }

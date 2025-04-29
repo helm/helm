@@ -1,8 +1,8 @@
 package lint
 
 import (
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/lint/support"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 type LinterOption func(linter *support.Linter)
@@ -21,7 +21,7 @@ func WithKubeVersion(version *chartutil.KubeVersion) LinterOption {
 	}
 }
 
-func WithSchemaValidation(enabled bool) LinterOption {
+func WithSkipSchemaValidation(enabled bool) LinterOption {
 	return func(linter *support.Linter) {
 		linter.SkipSchemaValidation = enabled
 	}

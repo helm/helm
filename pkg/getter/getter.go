@@ -18,13 +18,12 @@ package getter
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/pkg/errors"
-
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 // options are generic parameters to be provided to the getter during instantiation.
@@ -38,6 +37,7 @@ type options struct {
 	unTar                 bool
 	insecureSkipVerifyTLS bool
 	plainHTTP             bool
+	acceptHeader          string
 	username              string
 	password              string
 	passCredentialsAll    bool
@@ -57,6 +57,13 @@ type Option func(*options)
 func WithURL(url string) Option {
 	return func(opts *options) {
 		opts.url = url
+	}
+}
+
+// WithAcceptHeader sets the request's Accept header as some REST APIs serve multiple content types
+func WithAcceptHeader(header string) Option {
+	return func(opts *options) {
+		opts.acceptHeader = header
 	}
 }
 
@@ -176,7 +183,7 @@ func (p Providers) ByScheme(scheme string) (Getter, error) {
 			return pp.New()
 		}
 	}
-	return nil, errors.Errorf("scheme %q not supported", scheme)
+	return nil, fmt.Errorf("scheme %q not supported", scheme)
 }
 
 const (

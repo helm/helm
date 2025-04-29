@@ -21,15 +21,14 @@ import (
 	"testing"
 	"time"
 
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/lint/support"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 var values map[string]interface{}
 
 const defaultName = "test-release"
 const namespace = "testNamespace"
-const strict = false
 
 const badChartDir = "rules/testdata/badchartfile"
 const badValuesFileDir = "rules/testdata/badvaluesfile"
@@ -37,6 +36,7 @@ const badYamlFileDir = "rules/testdata/albatross"
 const goodChartDir = "rules/testdata/goodone"
 const subChartValuesDir = "rules/testdata/withsubchart"
 const malformedTemplate = "rules/testdata/malformed-template"
+const invalidChartFileDir = "rules/testdata/invalidchartfile"
 
 func TestBadChart(t *testing.T) {
 	m := AllWithOptions(badChartDir, values, namespace, WithReleaseName(defaultName)).Messages
@@ -92,6 +92,16 @@ func TestInvalidYaml(t *testing.T) {
 	}
 }
 
+func TestInvalidChartYaml(t *testing.T) {
+	m := AllWithOptions(invalidChartFileDir, values, namespace).Messages
+	if len(m) != 1 {
+		t.Fatalf("All didn't fail with expected errors, got %#v", m)
+	}
+	if !strings.Contains(m[0].Err.Error(), "failed to strictly parse chart metadata file") {
+		t.Errorf("All didn't have the error for duplicate YAML keys")
+	}
+}
+
 func TestBadValues(t *testing.T) {
 	m := AllWithOptions(badValuesFileDir, values, namespace, WithReleaseName(defaultName)).Messages
 	if len(m) < 1 {
@@ -135,6 +145,53 @@ func TestHelmCreateChart(t *testing.T) {
 		}
 	} else if msg := m[0].Err.Error(); !strings.Contains(msg, "icon is recommended") {
 		t.Errorf("Unexpected lint error: %s", msg)
+	}
+}
+
+// TestHelmCreateChart_CheckDeprecatedWarnings checks if any default template created by `helm create` throws
+// deprecated warnings in the linter check against the current Kubernetes version (provided using ldflags).
+//
+// See https://github.com/helm/helm/issues/11495
+//
+// Resources like hpa and ingress, which are disabled by default in values.yaml are enabled here using the equivalent
+// of the `--set` flag.
+//
+// Note: This test requires the following ldflags to be set per the current Kubernetes version to avoid false-positive
+// results.
+// 1. -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMajor=<k8s-major-version>
+// 2. -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMinor=<k8s-minor-version>
+// or directly use '$(LDFLAGS)' in Makefile.
+//
+// When run without ldflags, the test passes giving a false-positive result. This is because the variables
+// `k8sVersionMajor` and `k8sVersionMinor` by default are set to an older version of Kubernetes, with which, there
+// might not be the deprecation warning.
+func TestHelmCreateChart_CheckDeprecatedWarnings(t *testing.T) {
+	createdChart, err := chartutil.Create("checkdeprecatedwarnings", t.TempDir())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Add values to enable hpa, and ingress which are disabled by default.
+	// This is the equivalent of:
+	//   helm lint checkdeprecatedwarnings --set 'autoscaling.enabled=true,ingress.enabled=true'
+	updatedValues := map[string]interface{}{
+		"autoscaling": map[string]interface{}{
+			"enabled": true,
+		},
+		"ingress": map[string]interface{}{
+			"enabled": true,
+		},
+	}
+
+	linterRunDetails := AllWithOptions(createdChart, updatedValues, namespace, WithSkipSchemaValidation(true))
+	for _, msg := range linterRunDetails.Messages {
+		if strings.HasPrefix(msg.Error(), "[WARNING]") &&
+			strings.Contains(msg.Error(), "deprecated") {
+			// When there is a deprecation warning for an object created
+			// by `helm create` for the current Kubernetes version, fail.
+			t.Errorf("Unexpected deprecation warning for %q: %s", msg.Path, msg.Error())
+		}
 	}
 }
 

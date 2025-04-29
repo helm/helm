@@ -19,7 +19,7 @@ package support
 import (
 	"fmt"
 
-	"helm.sh/helm/v3/pkg/chartutil"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
 // Severity indicates the severity of a Message.
