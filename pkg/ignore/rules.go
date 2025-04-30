@@ -19,13 +19,12 @@ package ignore
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // HelmIgnore default name of an ignorefile.
@@ -102,7 +101,7 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 	}
 	for _, p := range r.patterns {
 		if p.match == nil {
-			log.Printf("ignore: no matcher supplied for %q", p.raw)
+			slog.Info("this will be ignored no matcher supplied", "patterns", p.raw)
 			return false
 		}
 
@@ -177,7 +176,7 @@ func (r *Rules) parseRule(rule string) error {
 			rule = strings.TrimPrefix(rule, "/")
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				log.Printf("Failed to compile %q: %s", rule, err)
+				slog.Error("failed to compile", "rule", rule, slog.Any("error", err))
 				return false
 			}
 			return ok
@@ -187,7 +186,7 @@ func (r *Rules) parseRule(rule string) error {
 		p.match = func(n string, _ os.FileInfo) bool {
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				log.Printf("Failed to compile %q: %s", rule, err)
+				slog.Error("failed to compile", "rule", rule, slog.Any("error", err))
 				return false
 			}
 			return ok
@@ -199,7 +198,7 @@ func (r *Rules) parseRule(rule string) error {
 			n = filepath.Base(n)
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				log.Printf("Failed to compile %q: %s", rule, err)
+				slog.Error("failed to compile", "rule", rule, slog.Any("error", err))
 				return false
 			}
 			return ok

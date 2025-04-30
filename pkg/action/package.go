@@ -18,17 +18,17 @@ package action
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"syscall"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/pkg/errors"
 	"golang.org/x/term"
 
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/provenance"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/provenance"
 )
 
 // Package is the action for packaging a chart.
@@ -39,14 +39,26 @@ type Package struct {
 	Key              string
 	Keyring          string
 	PassphraseFile   string
+	cachedPassphrase []byte
 	Version          string
 	AppVersion       string
 	Destination      string
 	DependencyUpdate bool
 
-	RepositoryConfig string
-	RepositoryCache  string
+	RepositoryConfig      string
+	RepositoryCache       string
+	PlainHTTP             bool
+	Username              string
+	Password              string
+	CertFile              string
+	KeyFile               string
+	CaFile                string
+	InsecureSkipTLSverify bool
 }
+
+const (
+	passPhraseFileStdin = "-"
+)
 
 // NewPackage creates a new Package object with the given configuration.
 func NewPackage() *Package {
@@ -93,7 +105,7 @@ func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
 
 	name, err := chartutil.Save(ch, dest)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to save")
+		return "", fmt.Errorf("failed to save: %w", err)
 	}
 
 	if p.Sign {
@@ -121,7 +133,7 @@ func (p *Package) Clearsign(filename string) error {
 
 	passphraseFetcher := promptUser
 	if p.PassphraseFile != "" {
-		passphraseFetcher, err = passphraseFileFetcher(p.PassphraseFile, os.Stdin)
+		passphraseFetcher, err = p.passphraseFileFetcher(p.PassphraseFile, os.Stdin)
 		if err != nil {
 			return err
 		}
@@ -149,25 +161,42 @@ func promptUser(name string) ([]byte, error) {
 	return pw, err
 }
 
-func passphraseFileFetcher(passphraseFile string, stdin *os.File) (provenance.PassphraseFetcher, error) {
-	file, err := openPassphraseFile(passphraseFile, stdin)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
+func (p *Package) passphraseFileFetcher(passphraseFile string, stdin *os.File) (provenance.PassphraseFetcher, error) {
+	// When reading from stdin we cache the passphrase here. If we are
+	// packaging multiple charts, we reuse the cached passphrase. This
+	// allows giving the passphrase once on stdin without failing with
+	// complaints about stdin already being closed.
+	//
+	// An alternative to this would be to omit file.Close() for stdin
+	// below and require the user to provide the same passphrase once
+	// per chart on stdin, but that does not seem very user-friendly.
 
-	reader := bufio.NewReader(file)
-	passphrase, _, err := reader.ReadLine()
-	if err != nil {
-		return nil, err
+	if p.cachedPassphrase == nil {
+		file, err := openPassphraseFile(passphraseFile, stdin)
+		if err != nil {
+			return nil, err
+		}
+		defer file.Close()
+
+		reader := bufio.NewReader(file)
+		passphrase, _, err := reader.ReadLine()
+		if err != nil {
+			return nil, err
+		}
+		p.cachedPassphrase = passphrase
+
+		return func(_ string) ([]byte, error) {
+			return passphrase, nil
+		}, nil
 	}
+
 	return func(_ string) ([]byte, error) {
-		return passphrase, nil
+		return p.cachedPassphrase, nil
 	}, nil
 }
 
 func openPassphraseFile(passphraseFile string, stdin *os.File) (*os.File, error) {
-	if passphraseFile == "-" {
+	if passphraseFile == passPhraseFileStdin {
 		stat, err := stdin.Stat()
 		if err != nil {
 			return nil, err

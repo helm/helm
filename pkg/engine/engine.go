@@ -17,8 +17,9 @@ limitations under the License.
 package engine
 
 import (
+	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -26,11 +27,10 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
 // Engine is an implementation of the Helm rendering implementation for templates.
@@ -44,6 +44,8 @@ type Engine struct {
 	clientProvider *ClientProvider
 	// EnableDNS tells the engine to allow DNS lookups when rendering templates
 	EnableDNS bool
+	// CustomTemplateFuncs is defined by users to provide custom template funcs
+	CustomTemplateFuncs template.FuncMap
 }
 
 // New creates a new instance of Engine using the passed in rest config.
@@ -131,7 +133,9 @@ func includeFun(t *template.Template, includedNames map[string]int) func(string,
 		var buf strings.Builder
 		if v, ok := includedNames[name]; ok {
 			if v > recursionMaxNums {
-				return "", errors.Wrapf(fmt.Errorf("unable to execute template"), "rendering template has a nested reference name: %s", name)
+				return "", fmt.Errorf(
+					"rendering template has a nested reference name: %s: %w",
+					name, errors.New("unable to execute template"))
 			}
 			includedNames[name]++
 		} else {
@@ -149,7 +153,7 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 	return func(tpl string, vals interface{}) (string, error) {
 		t, err := parent.Clone()
 		if err != nil {
-			return "", errors.Wrapf(err, "cannot clone template")
+			return "", fmt.Errorf("cannot clone template: %w", err)
 		}
 
 		// Re-inject the missingkey option, see text/template issue https://github.com/golang/go/issues/43022
@@ -176,12 +180,12 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 		// text string. (Maybe we could use a hash appended to the name?)
 		t, err = t.New(parent.Name()).Parse(tpl)
 		if err != nil {
-			return "", errors.Wrapf(err, "cannot parse template %q", tpl)
+			return "", fmt.Errorf("cannot parse template %q: %w", tpl, err)
 		}
 
 		var buf strings.Builder
 		if err := t.Execute(&buf, vals); err != nil {
-			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
+			return "", fmt.Errorf("error during tpl function execution for %q: %w", tpl, err)
 		}
 
 		// See comment in renderWithReferences explaining the <no value> hack.
@@ -203,18 +207,18 @@ func (e Engine) initFunMap(t *template.Template) {
 		if val == nil {
 			if e.LintMode {
 				// Don't fail on missing required values when linting
-				log.Printf("[INFO] Missing required value: %s", warn)
+				slog.Warn("missing required value", "message", warn)
 				return "", nil
 			}
-			return val, errors.Errorf(warnWrap(warn))
+			return val, errors.New(warnWrap(warn))
 		} else if _, ok := val.(string); ok {
 			if val == "" {
 				if e.LintMode {
 					// Don't fail on missing required values when linting
-					log.Printf("[INFO] Missing required value: %s", warn)
+					slog.Warn("missing required values", "message", warn)
 					return "", nil
 				}
-				return val, errors.Errorf(warnWrap(warn))
+				return val, errors.New(warnWrap(warn))
 			}
 		}
 		return val, nil
@@ -224,7 +228,7 @@ func (e Engine) initFunMap(t *template.Template) {
 	funcMap["fail"] = func(msg string) (string, error) {
 		if e.LintMode {
 			// Don't fail when linting
-			log.Printf("[INFO] Fail: %s", msg)
+			slog.Info("funcMap fail", "message", msg)
 			return "", nil
 		}
 		return "", errors.New(warnWrap(msg))
@@ -244,6 +248,11 @@ func (e Engine) initFunMap(t *template.Template) {
 		}
 	}
 
+	// Set custom template funcs
+	for k, v := range e.CustomTemplateFuncs {
+		funcMap[k] = v
+	}
+
 	t.Funcs(funcMap)
 }
 
@@ -258,7 +267,7 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 	// template engine.
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.Errorf("rendering template failed: %v", r)
+			err = fmt.Errorf("rendering template failed: %v", r)
 		}
 	}()
 	t := template.New("gotpl")

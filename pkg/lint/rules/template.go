@@ -19,29 +19,23 @@ package rules
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/validation"
 	apipath "k8s.io/apimachinery/pkg/api/validation/path"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/engine"
-	"helm.sh/helm/v3/pkg/lint/support"
-)
-
-var (
-	crdHookSearch     = regexp.MustCompile(`"?helm\.sh/hook"?:\s+crd-install`)
-	releaseTimeSearch = regexp.MustCompile(`\.Release\.Time`)
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/engine"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 // Templates lints the templates in the Linter.
@@ -87,7 +81,7 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 
 	// lint ignores import-values
 	// See https://github.com/helm/helm/issues/9658
-	if err := chartutil.ProcessDependenciesWithMerge(chart, values); err != nil {
+	if err := chartutil.ProcessDependencies(chart, values); err != nil {
 		return
 	}
 
@@ -119,14 +113,10 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 	- Metadata.Namespace is not set
 	*/
 	for _, template := range chart.Templates {
-		fileName, data := template.Name, template.Data
+		fileName := template.Name
 		fpath = fileName
 
 		linter.RunLinterRule(support.ErrorSev, fpath, validateAllowedExtension(fileName))
-		// These are v3 specific checks to make sure and warn people if their
-		// chart is not compatible with v3
-		linter.RunLinterRule(support.WarningSev, fpath, validateNoCRDHooks(data))
-		linter.RunLinterRule(support.ErrorSev, fpath, validateNoReleaseTime(data))
 
 		// We only apply the following lint rules to yaml files
 		if filepath.Ext(fileName) != ".yaml" || filepath.Ext(fileName) == ".yml" {
@@ -222,11 +212,14 @@ func validateAllowedExtension(fileName string) error {
 		}
 	}
 
-	return errors.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .yml, .tpl, or .txt", ext)
+	return fmt.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .yml, .tpl, or .txt", ext)
 }
 
 func validateYamlContent(err error) error {
-	return errors.Wrap(err, "unable to parse YAML")
+	if err != nil {
+		return fmt.Errorf("unable to parse YAML: %w", err)
+	}
+	return nil
 }
 
 // validateMetadataName uses the correct validation function for the object
@@ -239,7 +232,7 @@ func validateMetadataName(obj *K8sYamlStruct) error {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("metadata").Child("name"), obj.Metadata.Name, msg))
 	}
 	if len(allErrs) > 0 {
-		return errors.Wrapf(allErrs.ToAggregate(), "object name does not conform to Kubernetes naming requirements: %q", obj.Metadata.Name)
+		return fmt.Errorf("object name does not conform to Kubernetes naming requirements: %q: %w", obj.Metadata.Name, allErrs.ToAggregate())
 	}
 	return nil
 }
@@ -291,32 +284,19 @@ func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
 	}
 }
 
-func validateNoCRDHooks(manifest []byte) error {
-	if crdHookSearch.Match(manifest) {
-		return errors.New("manifest is a crd-install hook. This hook is no longer supported in v3 and all CRDs should also exist the crds/ directory at the top level of the chart")
-	}
-	return nil
-}
-
-func validateNoReleaseTime(manifest []byte) error {
-	if releaseTimeSearch.Match(manifest) {
-		return errors.New(".Release.Time has been removed in v3, please replace with the `now` function in your templates")
-	}
-	return nil
-}
-
 // validateMatchSelector ensures that template specs have a selector declared.
 // See https://github.com/helm/helm/issues/1990
 func validateMatchSelector(yamlStruct *K8sYamlStruct, manifest string) error {
 	switch yamlStruct.Kind {
 	case "Deployment", "ReplicaSet", "DaemonSet", "StatefulSet":
 		// verify that matchLabels or matchExpressions is present
-		if !(strings.Contains(manifest, "matchLabels") || strings.Contains(manifest, "matchExpressions")) {
+		if !strings.Contains(manifest, "matchLabels") && !strings.Contains(manifest, "matchExpressions") {
 			return fmt.Errorf("a %s must contain matchLabels or matchExpressions, and %q does not", yamlStruct.Kind, yamlStruct.Metadata.Name)
 		}
 	}
 	return nil
 }
+
 func validateListAnnotations(yamlStruct *K8sYamlStruct, manifest string) error {
 	if yamlStruct.Kind == "List" {
 		m := struct {
@@ -333,7 +313,7 @@ func validateListAnnotations(yamlStruct *K8sYamlStruct, manifest string) error {
 
 		for _, i := range m.Items {
 			if _, ok := i.Metadata.Annotations["helm.sh/resource-policy"]; ok {
-				return errors.New("Annotation 'helm.sh/resource-policy' within List objects are ignored")
+				return errors.New("annotation 'helm.sh/resource-policy' within List objects are ignored")
 			}
 		}
 	}

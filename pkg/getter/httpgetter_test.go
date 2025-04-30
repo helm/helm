@@ -28,11 +28,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
-
-	"helm.sh/helm/v3/internal/tlsutil"
-	"helm.sh/helm/v3/internal/version"
-	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v4/internal/tlsutil"
+	"helm.sh/helm/v4/internal/version"
+	"helm.sh/helm/v4/pkg/cli"
 )
 
 func TestHTTPGetter(t *testing.T) {
@@ -280,6 +278,29 @@ func TestDownload(t *testing.T) {
 	if got.String() != expect {
 		t.Errorf("Expected %q, got %q", expect, got.String())
 	}
+
+	// test server with varied Accept Header
+	const expectedAcceptHeader = "application/gzip,application/octet-stream"
+	acceptHeaderSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Accept") != expectedAcceptHeader {
+			t.Errorf("Expected '%s', got '%s'", expectedAcceptHeader, r.Header.Get("Accept"))
+		}
+		fmt.Fprint(w, expect)
+	}))
+
+	defer acceptHeaderSrv.Close()
+
+	u, _ = url.ParseRequestURI(acceptHeaderSrv.URL)
+	httpgetter, err = NewHTTPGetter(
+		WithAcceptHeader(expectedAcceptHeader),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = httpgetter.Get(u.String())
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestDownloadTLS(t *testing.T) {
@@ -288,9 +309,13 @@ func TestDownloadTLS(t *testing.T) {
 	insecureSkipTLSverify := false
 
 	tlsSrv := httptest.NewUnstartedServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
-	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca, insecureSkipTLSverify)
+	tlsConf, err := tlsutil.NewTLSConfig(
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+		tlsutil.WithCertKeyPairFiles(pub, priv),
+		tlsutil.WithCAFile(ca),
+	)
 	if err != nil {
-		t.Fatal(errors.Wrap(err, "can't create TLS config for client"))
+		t.Fatal(fmt.Errorf("can't create TLS config for client: %w", err))
 	}
 	tlsConf.ServerName = "helm.sh"
 	tlsSrv.TLS = tlsConf
@@ -329,6 +354,131 @@ func TestDownloadTLS(t *testing.T) {
 	if _, err := g.Get(u.String(), WithURL(u.String()), WithTLSClientConfig("", "", ca)); err != nil {
 		t.Error(err)
 	}
+}
+
+func TestDownloadTLSWithRedirect(t *testing.T) {
+	cd := "../../testdata"
+	srv2Resp := "hello"
+	insecureSkipTLSverify := false
+
+	// Server 2 that will actually fulfil the request.
+	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "localhost-crt.pem"), filepath.Join(cd, "key.pem")
+	tlsConf, err := tlsutil.NewTLSConfig(
+		tlsutil.WithCAFile(ca),
+		tlsutil.WithCertKeyPairFiles(pub, priv),
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+	)
+
+	if err != nil {
+		t.Fatal(fmt.Errorf("can't create TLS config for client: %w", err))
+	}
+
+	tlsSrv2 := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.Write([]byte(srv2Resp))
+	}))
+
+	tlsSrv2.TLS = tlsConf
+	tlsSrv2.StartTLS()
+	defer tlsSrv2.Close()
+
+	// Server 1 responds with a redirect to Server 2.
+	ca, pub, priv = filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
+	tlsConf, err = tlsutil.NewTLSConfig(
+		tlsutil.WithCAFile(ca),
+		tlsutil.WithCertKeyPairFiles(pub, priv),
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+	)
+
+	if err != nil {
+		t.Fatal(fmt.Errorf("can't create TLS config for client: %w", err))
+	}
+
+	tlsSrv1 := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		u, _ := url.ParseRequestURI(tlsSrv2.URL)
+
+		// Make the request using the hostname 'localhost' (to which 'localhost-crt.pem' is issued)
+		// to verify that a successful TLS connection is made even if the client doesn't specify
+		// the hostname (SNI) in `tls.Config.ServerName`. By default the hostname is derived from the
+		// request URL for every request (including redirects). Setting `tls.Config.ServerName` on the
+		// client just overrides the remote endpoint's hostname.
+		// See https://github.com/golang/go/blob/3979fb9/src/net/http/transport.go#L1505-L1513.
+		u.Host = fmt.Sprintf("localhost:%s", u.Port())
+
+		http.Redirect(rw, r, u.String(), http.StatusTemporaryRedirect)
+	}))
+
+	tlsSrv1.TLS = tlsConf
+	tlsSrv1.StartTLS()
+	defer tlsSrv1.Close()
+
+	u, _ := url.ParseRequestURI(tlsSrv1.URL)
+
+	t.Run("Test with TLS", func(t *testing.T) {
+		g, err := NewHTTPGetter(
+			WithURL(u.String()),
+			WithTLSClientConfig(pub, priv, ca),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		buf, err := g.Get(u.String())
+		if err != nil {
+			t.Error(err)
+		}
+
+		b, err := io.ReadAll(buf)
+		if err != nil {
+			t.Error(err)
+		}
+
+		if string(b) != srv2Resp {
+			t.Errorf("expected response from Server2 to be '%s', instead got: %s", srv2Resp, string(b))
+		}
+	})
+
+	t.Run("Test with TLS config being passed along in .Get (see #6635)", func(t *testing.T) {
+		g, err := NewHTTPGetter()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		buf, err := g.Get(u.String(), WithURL(u.String()), WithTLSClientConfig(pub, priv, ca))
+		if err != nil {
+			t.Error(err)
+		}
+
+		b, err := io.ReadAll(buf)
+		if err != nil {
+			t.Error(err)
+		}
+
+		if string(b) != srv2Resp {
+			t.Errorf("expected response from Server2 to be '%s', instead got: %s", srv2Resp, string(b))
+		}
+	})
+
+	t.Run("Test with only the CA file (see also #6635)", func(t *testing.T) {
+		g, err := NewHTTPGetter()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		buf, err := g.Get(u.String(), WithURL(u.String()), WithTLSClientConfig("", "", ca))
+		if err != nil {
+			t.Error(err)
+		}
+
+		b, err := io.ReadAll(buf)
+		if err != nil {
+			t.Error(err)
+		}
+
+		if string(b) != srv2Resp {
+			t.Errorf("expected response from Server2 to be '%s', instead got: %s", srv2Resp, string(b))
+		}
+	})
 }
 
 func TestDownloadInsecureSkipTLSVerify(t *testing.T) {
@@ -422,9 +572,6 @@ func TestHttpClientInsecureSkipVerify(t *testing.T) {
 	transport := verifyInsecureSkipVerify(t, &g, "HTTPGetter with 2 way ssl", true)
 	if len(transport.TLSClientConfig.Certificates) <= 0 {
 		t.Fatal("transport.TLSClientConfig.Certificates is not present")
-	}
-	if transport.TLSClientConfig.ServerName == "" {
-		t.Fatal("TLSClientConfig.ServerName is blank")
 	}
 }
 
