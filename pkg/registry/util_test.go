@@ -22,6 +22,7 @@ import (
 	"time"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/stretchr/testify/assert"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	helmtime "helm.sh/helm/v4/pkg/time"
@@ -272,4 +273,186 @@ func TestGenerateOCICreatedAnnotations(t *testing.T) {
 
 	}
 
+}
+
+func TestIsOCI(t *testing.T) {
+
+	assert.True(t, IsOCI("oci://example.com/myregistry:1.2.3"), "OCI URL marked as invalid")
+	assert.False(t, IsOCI("noci://example.com/myregistry:1.2.3"), "Invalid OCI URL marked as valid")
+	assert.False(t, IsOCI("ocin://example.com/myregistry:1.2.3"), "Invalid OCI URL marked as valid")
+}
+
+func TestContainsTag(t *testing.T) {
+
+	tagList := []string{"1.0.0", "1.0.1", "2.0.0", "2.1.0"}
+	assert.True(t, ContainsTag(tagList, "1.0.1"), "The tag 1.0.1 is in the list")
+	assert.False(t, ContainsTag(tagList, "1.0.2"), "the tag 1.0.2 is not in the list")
+}
+
+func TestGetTagMatchingVersionOrConstraint(t *testing.T) {
+
+	// GetTagMatchingVersionOrConstraint expects the tag list to be sorted highest to lowest version
+	tagList := []string{
+		"10.0.1",
+		"9.0.1",
+		"3.1.0",
+		"3.0.0",
+		"2.0.11",
+		"2.0.9",
+		"2.0.0",
+		"1.10.0",
+		"1.9.1",
+		"1.9.0",
+		"1.0.0",
+		"0.3.0",
+		"0.2.2",
+		"0.2.1",
+		"0.2.0",
+		"0.1.0",
+		"0.0.3",
+		"0.0.2",
+		"0.0.1",
+	}
+
+	// Explicit verion
+	version, err := GetTagMatchingVersionOrConstraint(tagList, "1.10.0")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.10.0", version, "The expected matching version is 1.10.0")
+
+	// Implicit wildcard default from empty string
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "10.0.1", version, "The expected matching version is 10.0.1")
+
+	// No versions within wildcard constraint
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "50.*")
+	assert.Error(t, err, "An invalid version constraint (no valid version found) should produce an error")
+	assert.Equal(t, "", version, "An invalid version constraint (no valid version found) should return an empty string as the version")
+
+	// Invalid version constraint
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "<>!=20")
+	assert.Error(t, err, "An invalid version constraint (non-parsable constraint) should produce an error")
+	assert.Equal(t, "", version, "An invalid version constraint (non-parseable constraint) should return an empty string as the version")
+
+	// Explicit wildcard
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "*")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "10.0.1", version, "The expected matching version is 10.0.1")
+
+	// Major version wildcard selection
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "2.*")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "2.0.11", version, "The expected matching version is 2.0.11")
+
+	// Minor version wildcard selection
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "3.1.*")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "3.1.0", version, "The expected matching version is 3.1.0")
+
+	// ~ major
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "~1")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.10.0", version, "The expected matching version is 1.10.0")
+
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "~1.x")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.10.0", version, "The expected matching version is 1.10.0")
+
+	// ~ specific version
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "~1.9.0")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.9.1", version, "The expected matching version is 1.9.1")
+
+	// ~ minor version
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "~1.9")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.9.1", version, "The expected matching version is 1.9.1")
+
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "~1.9.x")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.9.1", version, "The expected matching version is 1.9.1")
+
+	// ^ specific version
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "^1.9.0")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.10.0", version, "The expected matching version is 1.10.0")
+
+	// ^ major version >= 1
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "^1.9.x")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.10.0", version, "The expected matching version is 1.10.0")
+
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "^1.9")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.10.0", version, "The expected matching version is 1.10.0")
+
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "^1.x")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.10.0", version, "The expected matching version is 1.10.0")
+
+	// ^ minor version < 1
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "^0.2.1")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "0.2.2", version, "The expected matching version is 0.2.2")
+
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "^0.2")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "0.2.2", version, "The expected matching version is 0.2.2")
+
+	// ^ patch version
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "^0.0.2")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "0.0.2", version, "The expected matching version is 0.0.2")
+
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "^0.0")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "0.0.3", version, "The expected matching version is 0.0.3")
+
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "^0")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "0.3.0", version, "The expected matching version is 0.3.0")
+
+	// =
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "=1.9.0")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.9.0", version, "The expected matching version is 1.9.0")
+
+	// !=
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "!=1.9.0")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "10.0.1", version, "The expected matching version is 10.0.1")
+
+	// >
+	version, err = GetTagMatchingVersionOrConstraint(tagList, ">1.9.0")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "10.0.1", version, "The expected matching version is 10.0.1")
+
+	// <
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "<1.9.0")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.0.0", version, "The expected matching version is 1.0.0")
+
+	// >=
+	version, err = GetTagMatchingVersionOrConstraint(tagList, ">=1.9.0")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "10.0.1", version, "The expected matching version is 10.0.1")
+
+	// <=
+	version, err = GetTagMatchingVersionOrConstraint(tagList, "<=1.9.0")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.9.0", version, "The expected matching version is 1.9.0")
+
+	// , separation
+	version, err = GetTagMatchingVersionOrConstraint(tagList, ">=1.9.0, <1.10.0")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.9.1", version, "The expected matching version is 1.9.1")
+
+	version, err = GetTagMatchingVersionOrConstraint(tagList, ">=1.9.0, <=1.10.0, !=1.10.0")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "1.9.1", version, "The expected matching version is 1.9.1")
+
+	// ||
+	version, err = GetTagMatchingVersionOrConstraint(tagList, ">=1.1.0, <=1.10.0 || >=2.0.0, <3.0.0")
+	assert.Nil(t, err, "Valid tag constraint query should not produce an error")
+	assert.Equal(t, "2.0.11", version, "The expected matching version is 2.0.11")
 }
