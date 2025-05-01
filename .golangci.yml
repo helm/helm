@@ -29,9 +29,6 @@ linters:
     - unused
 
   exclusions:
-    # Helm, and the Go source code itself, sometimes uses these names outside their built-in
-    # functions. As the Go source code has re-used these names it's ok for Helm to do the same.
-    # Linting will look for redefinition of built-in id's but we opt-in to the ones we choose to use.
     generated: lax
 
     presets:
