@@ -189,12 +189,7 @@ func (cfg *Configuration) deleteHooksByPolicy(hooks []*release.Hook, policy rele
 // hookHasDeletePolicy determines whether the defined hook deletion policy matches the hook deletion polices
 // supported by helm. If so, mark the hook as one should be deleted.
 func hookHasDeletePolicy(h *release.Hook, policy release.HookDeletePolicy) bool {
-	for _, v := range h.DeletePolicies {
-		if policy == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(h.DeletePolicies, policy)
 }
 
 // outputLogsByPolicy outputs a pods logs if the hook policy instructs it to
