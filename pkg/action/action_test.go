@@ -367,3 +367,15 @@ func TestGetVersionSet(t *testing.T) {
 		t.Error("Non-existent version is reported found.")
 	}
 }
+
+func TestIsDryRun(t *testing.T) {
+	assert.False(t, isDryRun(DryRunNone))
+	assert.True(t, isDryRun(DryRunClient))
+	assert.True(t, isDryRun(DryRunServer))
+}
+
+func TestInteractWithServer(t *testing.T) {
+	assert.True(t, interactWithServer(DryRunNone))
+	assert.False(t, interactWithServer(DryRunClient))
+	assert.True(t, interactWithServer(DryRunServer))
+}

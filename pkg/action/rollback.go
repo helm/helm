@@ -35,16 +35,18 @@ import (
 type Rollback struct {
 	cfg *Configuration
 
-	Version       int
-	Timeout       time.Duration
-	WaitStrategy  kube.WaitStrategy
-	WaitForJobs   bool
-	DisableHooks  bool
-	DryRun        bool
-	Recreate      bool // will (if true) recreate pods after a rollback.
-	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
-	CleanupOnFail bool
-	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
+	Version      int
+	Timeout      time.Duration
+	WaitStrategy kube.WaitStrategy
+	WaitForJobs  bool
+	DisableHooks bool
+	// DryRunStrategy controls whether the operation is prepared, but not executed with options on whether or not to interact with the remote cluster
+	// Must be one of the values: "none", "client", "server"
+	DryRunStrategy DryRunStrategy
+	Recreate       bool // will (if true) recreate pods after a rollback.
+	Force          bool // will (if true) force resource upgrade through uninstall/recreate if needed
+	CleanupOnFail  bool
+	MaxHistory     int // MaxHistory limits the maximum number of revisions saved per release
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -68,7 +70,7 @@ func (r *Rollback) Run(name string) error {
 		return err
 	}
 
-	if !r.DryRun {
+	if !isDryRun(r.DryRunStrategy) {
 		slog.Debug("creating rolled back release", "name", name)
 		if err := r.cfg.Releases.Create(targetRelease); err != nil {
 			return err
@@ -80,7 +82,7 @@ func (r *Rollback) Run(name string) error {
 		return err
 	}
 
-	if !r.DryRun {
+	if !isDryRun(r.DryRunStrategy) {
 		slog.Debug("updating status for rolled back release", "name", name)
 		if err := r.cfg.Releases.Update(targetRelease); err != nil {
 			return err
@@ -160,7 +162,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 }
 
 func (r *Rollback) performRollback(currentRelease, targetRelease *release.Release) (*release.Release, error) {
-	if r.DryRun {
+	if isDryRun(r.DryRunStrategy) {
 		slog.Debug("dry run", "name", targetRelease.Name)
 		return targetRelease, nil
 	}
