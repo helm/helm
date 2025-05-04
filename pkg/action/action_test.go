@@ -946,3 +946,15 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 	assert.NotNil(t, buf)
 	assert.Equal(t, "", notes)
 }
+
+func TestIsDryRun(t *testing.T) {
+	assert.False(t, isDryRun(DryRunNone))
+	assert.True(t, isDryRun(DryRunClient))
+	assert.True(t, isDryRun(DryRunServer))
+}
+
+func TestInteractWithServer(t *testing.T) {
+	assert.True(t, interactWithServer(DryRunNone))
+	assert.False(t, interactWithServer(DryRunClient))
+	assert.True(t, interactWithServer(DryRunServer))
+}
