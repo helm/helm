@@ -40,7 +40,8 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		RunE: func(_ *cobra.Command, _ []string) error {
 			f, _ := repo.LoadFile(settings.RepositoryConfig)
 			if len(f.Repositories) == 0 && outfmt != output.JSON && outfmt != output.YAML {
-				return errors.New("no repositories to show")
+				fmt.Fprintln(out, "no repositories to show")
+				return nil
 			}
 
 			return outfmt.Write(out, &repoListWriter{f.Repositories})
