@@ -17,6 +17,7 @@ limitations under the License.
 package rules
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -215,7 +216,11 @@ func TestDeprecatedAPIFails(t *testing.T) {
 		t.Fatalf("Expected 1 lint error, got %d", l)
 	}
 
-	err := linter.Messages[0].Err.(deprecatedAPIError)
+	err := func() deprecatedAPIError {
+		var target deprecatedAPIError
+		_ = errors.As(linter.Messages[0].Err, &target)
+		return target
+	}()
 	if err.Deprecated != "apps/v1beta1 Deployment" {
 		t.Errorf("Surprised to learn that %q is deprecated", err.Deprecated)
 	}

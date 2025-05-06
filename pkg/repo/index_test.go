@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -637,7 +638,7 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 				return
 			}
 
-			if tc.Input != result {
+			if !errors.Is(tc.Input, result) {
 				t.Error("expected the result equal to input")
 			}
 

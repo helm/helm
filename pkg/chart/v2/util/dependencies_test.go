@@ -16,6 +16,7 @@ package util
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -265,8 +266,9 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	if err == nil {
 		t.Error("expect nil value not found but found it")
 	}
-	switch xerr := err.(type) {
-	case ErrNoValue:
+	var xerr ErrNoValue
+	switch {
+	case errors.As(err, &xerr):
 		// We found what we expected
 	default:
 		t.Errorf("expected an ErrNoValue but got %q instead", xerr)
@@ -477,7 +479,6 @@ func TestDependentChartAliases(t *testing.T) {
 	if aliasChart := getAliasDependency(c.Dependencies(), req[2]); aliasChart != nil {
 		t.Fatalf("expected no chart but got %s", aliasChart.Name())
 	}
-
 }
 
 func TestDependentChartWithSubChartsAbsentInDependency(t *testing.T) {

@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"runtime"
 	"sort"
@@ -143,7 +144,8 @@ func TestLoadPlugins(t *testing.T) {
 		if runtime.GOOS != "windows" {
 			if err := pp.RunE(pp, tt.args); err != nil {
 				if tt.code > 0 {
-					perr, ok := err.(PluginError)
+					var perr PluginError
+					ok := errors.As(err, &perr)
 					if !ok {
 						t.Errorf("Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
 					}
@@ -218,7 +220,8 @@ func TestLoadPluginsWithSpace(t *testing.T) {
 		if runtime.GOOS != "windows" {
 			if err := pp.RunE(pp, tt.args); err != nil {
 				if tt.code > 0 {
-					perr, ok := err.(PluginError)
+					var perr PluginError
+					ok := errors.As(err, &perr)
 					if !ok {
 						t.Errorf("Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
 					}

@@ -16,6 +16,7 @@ limitations under the License.
 package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -59,7 +60,7 @@ func TestLocalInstallerNotAFolder(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if err != ErrPluginNotAFolder {
+	if !errors.Is(err, ErrPluginNotAFolder) {
 		t.Fatalf("expected error to equal: %q", err)
 	}
 }
