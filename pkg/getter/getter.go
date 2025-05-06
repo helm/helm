@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"helm.sh/helm/v4/pkg/cli"
@@ -163,12 +164,7 @@ type Provider struct {
 
 // Provides returns true if the given scheme is supported by this Provider.
 func (p Provider) Provides(scheme string) bool {
-	for _, i := range p.Schemes {
-		if i == scheme {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(p.Schemes, scheme)
 }
 
 // Providers is a collection of Provider objects.

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 
 	"github.com/gosuri/uitable"
@@ -203,13 +204,7 @@ func filterReleases(releases []*release.Release, ignoredReleaseNames []string) [
 
 	var filteredReleases []*release.Release
 	for _, rel := range releases {
-		found := false
-		for _, ignoredName := range ignoredReleaseNames {
-			if rel.Name == ignoredName {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(ignoredReleaseNames, rel.Name)
 		if !found {
 			filteredReleases = append(filteredReleases, rel)
 		}

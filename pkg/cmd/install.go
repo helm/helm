@@ -25,6 +25,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 	"time"
 
@@ -350,13 +351,7 @@ func compInstall(args []string, toComplete string, client *action.Install) ([]st
 func validateDryRunOptionFlag(dryRunOptionFlagValue string) error {
 	// Validate dry-run flag value with a set of allowed value
 	allowedDryRunValues := []string{"false", "true", "none", "client", "server"}
-	isAllowed := false
-	for _, v := range allowedDryRunValues {
-		if dryRunOptionFlagValue == v {
-			isAllowed = true
-			break
-		}
-	}
+	isAllowed := slices.Contains(allowedDryRunValues, dryRunOptionFlagValue)
 	if !isAllowed {
 		return errors.New("invalid dry-run flag. Flag must one of the following: false, true, none, client, server")
 	}

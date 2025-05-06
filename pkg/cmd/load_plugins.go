@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -163,10 +164,8 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 	}
 
 	isKnown := func(v string) string {
-		for _, i := range kvargs {
-			if i == v {
-				return v
-			}
+		if slices.Contains(kvargs, v) {
+			return v
 		}
 		return ""
 	}
