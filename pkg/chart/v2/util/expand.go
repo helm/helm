@@ -17,12 +17,13 @@ limitations under the License.
 package util
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -49,7 +50,7 @@ func ExpandWithOptions(dir string, r io.Reader, opts loader.ChartLoadOptions) er
 		if file.Name == "Chart.yaml" {
 			ch := &chart.Metadata{}
 			if err := yaml.Unmarshal(file.Data, ch); err != nil {
-				return errors.Wrap(err, "cannot load Chart.yaml")
+				return fmt.Errorf("cannot load Chart.yaml: %w", err)
 			}
 			chartName = ch.Name
 		}

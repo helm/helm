@@ -19,13 +19,12 @@ package ignore
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // HelmIgnore default name of an ignorefile.

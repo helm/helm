@@ -17,11 +17,13 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
+	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/cmd/require"
@@ -97,13 +99,13 @@ func index(dir, url, mergeTo string, json bool) error {
 	if mergeTo != "" {
 		// if index.yaml is missing then create an empty one to merge into
 		var i2 *repo.IndexFile
-		if _, err := os.Stat(mergeTo); os.IsNotExist(err) {
+		if _, err := os.Stat(mergeTo); errors.Is(err, fs.ErrNotExist) {
 			i2 = repo.NewIndexFile()
 			writeIndexFile(i2, mergeTo, json)
 		} else {
 			i2, err = repo.LoadIndexFile(mergeTo)
 			if err != nil {
-				return errors.Wrap(err, "merge failed")
+				return fmt.Errorf("merge failed: %w", err)
 			}
 		}
 		i.Merge(i2)
@@ -114,7 +116,7 @@ func index(dir, url, mergeTo string, json bool) error {
 
 func writeIndexFile(i *repo.IndexFile, out string, json bool) error {
 	if json {
-		return i.WriteJSONFile(out, 0644)
+		return i.WriteJSONFile(out, 0o644)
 	}
-	return i.WriteFile(out, 0644)
+	return i.WriteFile(out, 0o644)
 }

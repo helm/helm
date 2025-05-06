@@ -20,7 +20,6 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/cmd/require"
@@ -83,7 +82,7 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 	slog.Debug("loading plugin", "path", i.Path())
 	p, err := plugin.LoadDir(i.Path())
 	if err != nil {
-		return errors.Wrap(err, "plugin is installed but unusable")
+		return fmt.Errorf("plugin is installed but unusable: %w", err)
 	}
 
 	if err := runHook(p, plugin.Install); err != nil {

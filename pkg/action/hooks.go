@@ -25,10 +25,8 @@ import (
 
 	"helm.sh/helm/v4/pkg/kube"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	release "helm.sh/helm/v4/pkg/release/v1"
 	helmtime "helm.sh/helm/v4/pkg/time"
@@ -49,7 +47,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	// hooke are pre-ordered by kind, so keep order stable
 	sort.Stable(hookByWeight(executingHooks))
 
-	for _, h := range executingHooks {
+	for i, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
 		if len(h.DeletePolicies) == 0 {
 			// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
@@ -65,7 +63,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
 		if err != nil {
-			return errors.Wrapf(err, "unable to build kubernetes object for %s hook %s", hook, h.Path)
+			return fmt.Errorf("unable to build kubernetes object for %s hook %s: %w", hook, h.Path, err)
 		}
 
 		// Record the time at which the hook was applied to the cluster
@@ -84,12 +82,12 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		if _, err := cfg.KubeClient.Create(resources); err != nil {
 			h.LastRun.CompletedAt = helmtime.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
-			return errors.Wrapf(err, "warning: Hook %s %s failed", hook, h.Path)
+			return fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err)
 		}
 
 		waiter, err := cfg.KubeClient.GetWaiter(waitStrategy)
 		if err != nil {
-			return errors.Wrapf(err, "unable to get waiter")
+			return fmt.Errorf("unable to get waiter: %w", err)
 		}
 		// Watch hook resources until they have completed
 		err = waiter.WatchUntilReady(resources, timeout)
@@ -109,6 +107,13 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 				// We log the error here as we want to propagate the hook failure upwards to the release object.
 				log.Printf("error deleting the hook resource on hook failure: %v", errDeleting)
 			}
+
+			// If a hook is failed, check the annotation of the previous successful hooks to determine whether the hooks
+			// should be deleted under succeeded condition.
+			if err := cfg.deleteHooksByPolicy(executingHooks[0:i], release.HookSucceeded, waitStrategy, timeout); err != nil {
+				return err
+			}
+
 			return err
 		}
 		h.LastRun.Phase = release.HookPhaseSucceeded
@@ -152,11 +157,11 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 	if hookHasDeletePolicy(h, policy) {
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), false)
 		if err != nil {
-			return errors.Wrapf(err, "unable to build kubernetes object for deleting hook %s", h.Path)
+			return fmt.Errorf("unable to build kubernetes object for deleting hook %s: %w", h.Path, err)
 		}
 		_, errs := cfg.KubeClient.Delete(resources)
 		if len(errs) > 0 {
-			return errors.New(joinErrors(errs))
+			return joinErrors(errs, "; ")
 		}
 
 		waiter, err := cfg.KubeClient.GetWaiter(waitStrategy)
@@ -167,6 +172,17 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 			return err
 		}
 	}
+	return nil
+}
+
+// deleteHooksByPolicy deletes all hooks if the hook policy instructs it to
+func (cfg *Configuration) deleteHooksByPolicy(hooks []*release.Hook, policy release.HookDeletePolicy, waitStrategy kube.WaitStrategy, timeout time.Duration) error {
+	for _, h := range hooks {
+		if err := cfg.deleteHookByPolicy(h, policy, waitStrategy, timeout); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -221,7 +237,7 @@ func (cfg *Configuration) deriveNamespace(h *release.Hook, namespace string) (st
 	}{}
 	err := yaml.Unmarshal([]byte(h.Manifest), &tmp)
 	if err != nil {
-		return "", errors.Wrapf(err, "unable to parse metadata.namespace from kubernetes manifest for output logs hook %s", h.Path)
+		return "", fmt.Errorf("unable to parse metadata.namespace from kubernetes manifest for output logs hook %s: %w", h.Path, err)
 	}
 	if tmp.Metadata.Namespace == "" {
 		return namespace, nil

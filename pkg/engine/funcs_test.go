@@ -63,7 +63,7 @@ keyInElement0 = "valueInElement0"
 keyInElement1 = "valueInElement1"`,
 	}, {
 		tpl:    `{{ fromToml . }}`,
-		expect: "map[Error:toml: line 0: unexpected EOF; expected key separator '=']",
+		expect: "map[Error:toml: line 1: unexpected EOF; expected key separator '=']",
 		vars:   "one",
 	}, {
 		tpl:    `{{ toJson . }}`,

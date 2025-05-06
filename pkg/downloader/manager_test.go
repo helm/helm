@@ -17,6 +17,8 @@ package downloader
 
 import (
 	"bytes"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -262,7 +264,7 @@ func TestDownloadAll(t *testing.T) {
 		t.Error(err)
 	}
 
-	if _, err := os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz")); os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz")); errors.Is(err, fs.ErrNotExist) {
 		t.Error(err)
 	}
 

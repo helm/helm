@@ -19,13 +19,13 @@ package action
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 
@@ -136,14 +136,14 @@ func NewUpgrade(cfg *Configuration) *Upgrade {
 	up := &Upgrade{
 		cfg: cfg,
 	}
-	up.ChartPathOptions.registryClient = cfg.RegistryClient
+	up.registryClient = cfg.RegistryClient
 
 	return up
 }
 
 // SetRegistryClient sets the registry client to use when fetching charts.
 func (u *Upgrade) SetRegistryClient(client *registry.Client) {
-	u.ChartPathOptions.registryClient = client
+	u.registryClient = client
 }
 
 // Run executes the upgrade on the given release.
@@ -165,7 +165,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, errors.Errorf("release name is invalid: %s", name)
+		return nil, fmt.Errorf("release name is invalid: %s", name)
 	}
 
 	slog.Debug("preparing upgrade", "name", name)
@@ -209,7 +209,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 
 	// HideSecret must be used with dry run. Otherwise, return an error.
 	if !u.isDryRun() && u.HideSecret {
-		return nil, nil, errors.New("Hiding Kubernetes secrets requires a dry-run mode")
+		return nil, nil, errors.New("hiding Kubernetes secrets requires a dry-run mode")
 	}
 
 	// finds the last non-deleted release with the given name
@@ -320,15 +320,15 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		// Checking for removed Kubernetes API error so can provide a more informative error message to the user
 		// Ref: https://github.com/helm/helm/issues/7219
 		if strings.Contains(err.Error(), "unable to recognize \"\": no matches for kind") {
-			return upgradedRelease, errors.Wrap(err, "current release manifest contains removed kubernetes api(s) for this "+
+			return upgradedRelease, fmt.Errorf("current release manifest contains removed kubernetes api(s) for this "+
 				"kubernetes version and it is therefore unable to build the kubernetes "+
-				"objects for performing the diff. error from kubernetes")
+				"objects for performing the diff. error from kubernetes: %w", err)
 		}
-		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
+		return upgradedRelease, fmt.Errorf("unable to build kubernetes objects from current release manifest: %w", err)
 	}
 	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest), !u.DisableOpenAPIValidation)
 	if err != nil {
-		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
+		return upgradedRelease, fmt.Errorf("unable to build kubernetes objects from new release manifest: %w", err)
 	}
 
 	// It is safe to use force only on target because these are resources currently rendered by the chart.
@@ -357,7 +357,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		toBeUpdated, err = existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to continue with update")
+		return nil, fmt.Errorf("unable to continue with update: %w", err)
 	}
 
 	toBeUpdated.Visit(func(r *resource.Info, err error) error {
@@ -500,11 +500,14 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		slog.Debug("cleanup on fail set", "cleaning_resources", len(created))
 		_, errs := u.cfg.KubeClient.Delete(created)
 		if errs != nil {
-			var errorList []string
-			for _, e := range errs {
-				errorList = append(errorList, e.Error())
-			}
-			return rel, errors.Wrapf(fmt.Errorf("unable to cleanup resources: %s", strings.Join(errorList, ", ")), "an error occurred while cleaning up resources. original upgrade error: %s", err)
+			return rel, fmt.Errorf(
+				"an error occurred while cleaning up resources. original upgrade error: %w: %w",
+				err,
+				fmt.Errorf(
+					"unable to cleanup resources: %w",
+					joinErrors(errs, ", "),
+				),
+			)
 		}
 		slog.Debug("resource cleanup complete")
 	}
@@ -516,7 +519,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		hist := NewHistory(u.cfg)
 		fullHistory, herr := hist.Run(rel.Name)
 		if herr != nil {
-			return rel, errors.Wrapf(herr, "an error occurred while finding last successful release. original upgrade error: %s", err)
+			return rel, fmt.Errorf("an error occurred while finding last successful release. original upgrade error: %w: %w", err, herr)
 		}
 
 		// There isn't a way to tell if a previous release was successful, but
@@ -526,7 +529,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 			return r.Info.Status == release.StatusSuperseded || r.Info.Status == release.StatusDeployed
 		}).Filter(fullHistory)
 		if len(filteredHistory) == 0 {
-			return rel, errors.Wrap(err, "unable to find a previously successful release when attempting to rollback. original upgrade error")
+			return rel, fmt.Errorf("unable to find a previously successful release when attempting to rollback. original upgrade error: %w", err)
 		}
 
 		releaseutil.Reverse(filteredHistory, releaseutil.SortByRevision)
@@ -542,9 +545,9 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		rollin.Force = u.Force
 		rollin.Timeout = u.Timeout
 		if rollErr := rollin.Run(rel.Name); rollErr != nil {
-			return rel, errors.Wrapf(rollErr, "an error occurred while rolling back the release. original upgrade error: %s", err)
+			return rel, fmt.Errorf("an error occurred while rolling back the release. original upgrade error: %w: %w", err, rollErr)
 		}
-		return rel, errors.Wrapf(err, "release %s failed, and has been rolled back due to atomic being set", rel.Name)
+		return rel, fmt.Errorf("release %s failed, and has been rolled back due to atomic being set: %w", rel.Name, err)
 	}
 
 	return rel, err
@@ -572,7 +575,7 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 		// We have to regenerate the old coalesced values:
 		oldVals, err := chartutil.CoalesceValues(current.Chart, current.Config)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to rebuild old values")
+			return nil, fmt.Errorf("failed to rebuild old values: %w", err)
 		}
 
 		newVals = chartutil.CoalesceTables(newVals, current.Config)
@@ -618,21 +621,21 @@ func recreate(cfg *Configuration, resources kube.ResourceList) error {
 
 		client, err := cfg.KubernetesClientSet()
 		if err != nil {
-			return errors.Wrapf(err, "unable to recreate pods for object %s/%s because an error occurred", res.Namespace, res.Name)
+			return fmt.Errorf("unable to recreate pods for object %s/%s because an error occurred: %w", res.Namespace, res.Name, err)
 		}
 
 		pods, err := client.CoreV1().Pods(res.Namespace).List(context.Background(), metav1.ListOptions{
 			LabelSelector: selector.String(),
 		})
 		if err != nil {
-			return errors.Wrapf(err, "unable to recreate pods for object %s/%s because an error occurred", res.Namespace, res.Name)
+			return fmt.Errorf("unable to recreate pods for object %s/%s because an error occurred: %w", res.Namespace, res.Name, err)
 		}
 
 		// Restart pods
 		for _, pod := range pods.Items {
 			// Delete each pod for get them restarted with changed spec.
 			if err := client.CoreV1().Pods(pod.Namespace).Delete(context.Background(), pod.Name, *metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
-				return errors.Wrapf(err, "unable to recreate pods for object %s/%s because an error occurred", res.Namespace, res.Name)
+				return fmt.Errorf("unable to recreate pods for object %s/%s because an error occurred: %w", res.Namespace, res.Name, err)
 			}
 		}
 	}

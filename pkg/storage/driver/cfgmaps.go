@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -78,7 +77,7 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 		slog.Debug("failed to decode data", "key", key, slog.Any("error", err))
 		return nil, err
 	}
-	r.Labels = filterSystemLabels(obj.ObjectMeta.Labels)
+	r.Labels = filterSystemLabels(obj.Labels)
 	// return the release object
 	return r, nil
 }
@@ -107,7 +106,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 			continue
 		}
 
-		rls.Labels = item.ObjectMeta.Labels
+		rls.Labels = item.Labels
 
 		if filter(rls) {
 			results = append(results, rls)
@@ -122,7 +121,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 	ls := kblabels.Set{}
 	for k, v := range labels {
 		if errs := validation.IsValidLabelValue(v); len(errs) != 0 {
-			return nil, errors.Errorf("invalid label value: %q: %s", v, strings.Join(errs, "; "))
+			return nil, fmt.Errorf("invalid label value: %q: %s", v, strings.Join(errs, "; "))
 		}
 		ls[k] = v
 	}
@@ -146,7 +145,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 			slog.Debug("failed to decode release", slog.Any("error", err))
 			continue
 		}
-		rls.Labels = item.ObjectMeta.Labels
+		rls.Labels = item.Labels
 		results = append(results, rls)
 	}
 	return results, nil

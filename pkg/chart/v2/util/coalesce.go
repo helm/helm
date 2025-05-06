@@ -21,7 +21,6 @@ import (
 	"log"
 
 	"github.com/mitchellh/copystructure"
-	"github.com/pkg/errors"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
@@ -108,7 +107,7 @@ func coalesceDeps(printf printFn, chrt *chart.Chart, dest map[string]interface{}
 			// If dest doesn't already have the key, create it.
 			dest[subchart.Name()] = make(map[string]interface{})
 		} else if !istable(c) {
-			return dest, errors.Errorf("type mismatch on %s: %t", subchart.Name(), c)
+			return dest, fmt.Errorf("type mismatch on %s: %t", subchart.Name(), c)
 		}
 		if dv, ok := dest[subchart.Name()]; ok {
 			dvmap := dv.(map[string]interface{})
@@ -282,6 +281,11 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 	}
 	if dst == nil {
 		return src
+	}
+	for key, val := range dst {
+		if val == nil {
+			src[key] = nil
+		}
 	}
 	// Because dest has higher precedence than src, dest values override src
 	// values.

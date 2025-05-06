@@ -130,7 +130,7 @@ func (mock *MockConfigMapsInterface) List(_ context.Context, opts metav1.ListOpt
 	}
 
 	for _, cfgmap := range mock.objects {
-		if labelSelector.Matches(kblabels.Set(cfgmap.ObjectMeta.Labels)) {
+		if labelSelector.Matches(kblabels.Set(cfgmap.Labels)) {
 			list.Items = append(list.Items, *cfgmap)
 		}
 	}
@@ -139,7 +139,7 @@ func (mock *MockConfigMapsInterface) List(_ context.Context, opts metav1.ListOpt
 
 // Create creates a new ConfigMap.
 func (mock *MockConfigMapsInterface) Create(_ context.Context, cfgmap *v1.ConfigMap, _ metav1.CreateOptions) (*v1.ConfigMap, error) {
-	name := cfgmap.ObjectMeta.Name
+	name := cfgmap.Name
 	if object, ok := mock.objects[name]; ok {
 		return object, apierrors.NewAlreadyExists(v1.Resource("tests"), name)
 	}
@@ -149,7 +149,7 @@ func (mock *MockConfigMapsInterface) Create(_ context.Context, cfgmap *v1.Config
 
 // Update updates a ConfigMap.
 func (mock *MockConfigMapsInterface) Update(_ context.Context, cfgmap *v1.ConfigMap, _ metav1.UpdateOptions) (*v1.ConfigMap, error) {
-	name := cfgmap.ObjectMeta.Name
+	name := cfgmap.Name
 	if _, ok := mock.objects[name]; !ok {
 		return nil, apierrors.NewNotFound(v1.Resource("tests"), name)
 	}
@@ -216,7 +216,7 @@ func (mock *MockSecretsInterface) List(_ context.Context, opts metav1.ListOption
 	}
 
 	for _, secret := range mock.objects {
-		if labelSelector.Matches(kblabels.Set(secret.ObjectMeta.Labels)) {
+		if labelSelector.Matches(kblabels.Set(secret.Labels)) {
 			list.Items = append(list.Items, *secret)
 		}
 	}
@@ -225,7 +225,7 @@ func (mock *MockSecretsInterface) List(_ context.Context, opts metav1.ListOption
 
 // Create creates a new Secret.
 func (mock *MockSecretsInterface) Create(_ context.Context, secret *v1.Secret, _ metav1.CreateOptions) (*v1.Secret, error) {
-	name := secret.ObjectMeta.Name
+	name := secret.Name
 	if object, ok := mock.objects[name]; ok {
 		return object, apierrors.NewAlreadyExists(v1.Resource("tests"), name)
 	}
@@ -235,7 +235,7 @@ func (mock *MockSecretsInterface) Create(_ context.Context, secret *v1.Secret, _
 
 // Update updates a Secret.
 func (mock *MockSecretsInterface) Update(_ context.Context, secret *v1.Secret, _ metav1.UpdateOptions) (*v1.Secret, error) {
-	name := secret.ObjectMeta.Name
+	name := secret.Name
 	if _, ok := mock.objects[name]; !ok {
 		return nil, apierrors.NewNotFound(v1.Resource("tests"), name)
 	}

@@ -18,10 +18,9 @@ package getter
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/registry"
@@ -184,7 +183,7 @@ func (p Providers) ByScheme(scheme string) (Getter, error) {
 			return pp.New()
 		}
 	}
-	return nil, errors.Errorf("scheme %q not supported", scheme)
+	return nil, fmt.Errorf("scheme %q not supported", scheme)
 }
 
 const (

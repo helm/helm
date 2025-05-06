@@ -17,10 +17,9 @@ limitations under the License.
 package util
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
-
-	"github.com/pkg/errors"
 )
 
 // validName is a regular expression for resource names.

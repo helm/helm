@@ -17,11 +17,11 @@ limitations under the License.
 package repo // import "helm.sh/helm/v4/pkg/repo"
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 )
 
@@ -48,7 +48,7 @@ func LoadFile(path string) (*File, error) {
 	r := new(File)
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return r, errors.Wrapf(err, "couldn't load repositories file (%s)", path)
+		return r, fmt.Errorf("couldn't load repositories file (%s): %w", path, err)
 	}
 
 	err = yaml.Unmarshal(b, r)

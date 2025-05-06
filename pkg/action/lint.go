@@ -17,11 +17,10 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/lint"
@@ -94,26 +93,26 @@ func lintChart(path string, vals map[string]interface{}, namespace string, kubeV
 	if strings.HasSuffix(path, ".tgz") || strings.HasSuffix(path, ".tar.gz") {
 		tempDir, err := os.MkdirTemp("", "helm-lint")
 		if err != nil {
-			return linter, errors.Wrap(err, "unable to create temp dir to extract tarball")
+			return linter, fmt.Errorf("unable to create temp dir to extract tarball: %w", err)
 		}
 		defer os.RemoveAll(tempDir)
 
 		file, err := os.Open(path)
 		if err != nil {
-			return linter, errors.Wrap(err, "unable to open tarball")
+			return linter, fmt.Errorf("unable to open tarball: %w", err)
 		}
 		defer file.Close()
 
 		if err = chartutil.Expand(tempDir, file); err != nil {
-			return linter, errors.Wrap(err, "unable to extract tarball")
+			return linter, fmt.Errorf("unable to extract tarball: %w", err)
 		}
 
 		files, err := os.ReadDir(tempDir)
 		if err != nil {
-			return linter, errors.Wrapf(err, "unable to read temporary output directory %s", tempDir)
+			return linter, fmt.Errorf("unable to read temporary output directory %s: %w", tempDir, err)
 		}
 		if !files[0].IsDir() {
-			return linter, errors.Errorf("unexpected file %s in temporary output directory %s", files[0].Name(), tempDir)
+			return linter, fmt.Errorf("unexpected file %s in temporary output directory %s", files[0].Name(), tempDir)
 		}
 
 		chartPath = filepath.Join(tempDir, files[0].Name())
@@ -123,7 +122,7 @@ func lintChart(path string, vals map[string]interface{}, namespace string, kubeV
 
 	// Guard: Error out if this is not a chart.
 	if _, err := os.Stat(filepath.Join(chartPath, "Chart.yaml")); err != nil {
-		return linter, errors.Wrap(err, "unable to check Chart.yaml file in chart")
+		return linter, fmt.Errorf("unable to check Chart.yaml file in chart: %w", err)
 	}
 
 	return lint.RunAll(

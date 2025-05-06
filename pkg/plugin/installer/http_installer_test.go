@@ -20,7 +20,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -28,8 +30,6 @@ import (
 	"strings"
 	"syscall"
 	"testing"
-
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/getter"
@@ -150,7 +150,7 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 
 	// inject fake http client responding with error
 	httpInstaller.getter = &TestHTTPGetter{
-		MockError: errors.Errorf("failed to download plugin for some reason"),
+		MockError: fmt.Errorf("failed to download plugin for some reason"),
 	}
 
 	// attempt to install the plugin
@@ -276,7 +276,7 @@ func TestExtract(t *testing.T) {
 
 	pluginYAMLFullPath := filepath.Join(tempDir, "plugin.yaml")
 	if info, err := os.Stat(pluginYAMLFullPath); err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			t.Fatalf("Expected %s to exist but doesn't", pluginYAMLFullPath)
 		}
 		t.Fatal(err)
@@ -286,7 +286,7 @@ func TestExtract(t *testing.T) {
 
 	readmeFullPath := filepath.Join(tempDir, "README.md")
 	if info, err := os.Stat(readmeFullPath); err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			t.Fatalf("Expected %s to exist but doesn't", readmeFullPath)
 		}
 		t.Fatal(err)

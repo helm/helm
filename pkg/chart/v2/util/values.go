@@ -18,12 +18,12 @@ package util
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -169,8 +169,7 @@ func ToRenderValuesWithSchemaValidation(chrt *chart.Chart, chrtVals map[string]i
 
 	if !skipSchemaValidation {
 		if err := ValidateAgainstSchema(chrt, vals); err != nil {
-			errFmt := "values don't meet the specifications of the schema(s) in the following chart(s):\n%s"
-			return top, fmt.Errorf(errFmt, err.Error())
+			return top, fmt.Errorf("values don't meet the specifications of the schema(s) in the following chart(s):\n%w", err)
 		}
 	}
 

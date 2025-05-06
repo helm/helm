@@ -23,8 +23,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"helm.sh/helm/v4/internal/sympath"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/ignore"
@@ -135,7 +133,7 @@ func LoadDirWithOptions(dir string, opts ChartLoadOptions) (*chart.Chart, error)
 
 		data, err := os.ReadFile(name)
 		if err != nil {
-			return errors.Wrapf(err, "error reading %s", n)
+			return fmt.Errorf("error reading %s: %w", n, err)
 		}
 
 		data = bytes.TrimPrefix(data, utf8bom)
