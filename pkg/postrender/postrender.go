@@ -26,5 +26,27 @@ type PostRenderer interface {
 	// >   "templates/foo.yaml": "Kind: Pod..",
 	// >   "templates/baz.yaml": "Kind: ConfigMap...",
 	// > }
+	// Note: In Helm 4, the format of the data passed to the post-renderer command
+	// has changed in a backward-incompatible way. Helm 4 now passes a YAML-encoded
+	// map of filenames to their rendered content.
+	// Example:
+	// > templates/foo.yaml: |
+	// >   apiVersion: v1
+	// >   kind: Pod
+	// >   ...
+	// > templates/bar.yaml: |
+	// >   ...
+	//
+	// In contrast, Helm 3 passed a stream of YAML manifests (just the values of the map).
+	// Example:
+	// > # Source: templates/foo.yaml
+	// > apiVersion: v1
+	// > kind: Pod
+	// > ...
+	// > # Source: templates/bar.yaml
+	// > ...
+	//
+	// This change allows the post-renderer to view, add, remove, and modify all rendered
+	// files at once before they are sorted into hooks, manifests, and partials.
 	Run(renderedFiles map[string]string) (modifiedFiles map[string]string, err error)
 }
