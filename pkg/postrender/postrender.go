@@ -19,23 +19,12 @@ limitations under the License.
 // binaries and scripts
 package postrender
 
-import "bytes"
-
 type PostRenderer interface {
-	// Run expects a single buffer filled with Helm rendered manifests. It
-	// expects the modified results to be returned on a separate buffer or an
-	// error if there was an issue or failure while running the post render step
-	Run(renderedManifests *bytes.Buffer) (modifiedManifests *bytes.Buffer, err error)
-}
-
-type PostRendererWithHooks interface {
-	PostRenderer
-	// RunIncHooks expects and returns a map of file names and their rendered contents
+	// Run expects and returns a map of file names and their rendered contents
 	// Example:
 	// > map[string]string{
 	// >   "templates/foo.yaml": "Kind: Pod..",
 	// >   "templates/baz.yaml": "Kind: ConfigMap...",
 	// > }
-	RunIncHooks(renderedFiles map[string]string) (modifiedFiles map[string]string, err error)
-	IncHooks() bool
+	Run(renderedFiles map[string]string) (modifiedFiles map[string]string, err error)
 }

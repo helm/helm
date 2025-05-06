@@ -157,30 +157,32 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	}
 	notes := notesBuffer.String()
 
-	// Call the post renderer if one was provided and we were asked to pass hooks into it.
-	// Note that for backwards compatibility reasons, the format of the data passed into
-	// the post renderer is different when hooks are included vs when they are not:
-	// When hooks are included, we pass in the YAML encoded Map of filenames
-	// and their rendered content. Example:
+	// Call the post-renderer if one is provided.
+	// Note: In Helm 4, the format of the data passed to the post-renderer
+	// has changed in a backward-incompatible way. Helm 4 now passes a YAML-encoded
+	// map of filenames to their rendered content.
+	// Example:
 	// > templates/foo.yaml: |
 	// >   apiVersion: v1
 	// >   kind: Pod
 	// >   ...
 	// > templates/bar.yaml: |
 	// >   ...
-	// When hooks are not included, we pass in a stream of YAML manifests (just the
-	// values of the map). Example:
+	//
+	// In contrast, Helm 3 passed a stream of YAML manifests (just the values of the map).
+	// Example:
 	// > # Source: templates/foo.yaml
 	// > apiVersion: v1
 	// > kind: Pod
 	// > ...
 	// > # Source: templates/bar.yaml
 	// > ...
-	// This allows the post renderer to see and mofify all rendered files at once
-	// before they are sorted into hooks, manifests, and partials below, while keeping
-	// the behavior of not post-rendering hooks unchanged.
-	if pr != nil && shouldIncludeHooks(pr) {
-		files, err = pr.(postrender.PostRendererWithHooks).RunIncHooks(files)
+	//
+	// This change allows the post-renderer to view, add, remove, and modify all rendered
+	// files at once before they are sorted into hooks, manifests, and partials.
+
+	if pr != nil {
+		files, err = pr.Run(files)
 		if err != nil {
 			return hs, b, notes, fmt.Errorf("error while post rendering templates: %w", err)
 		}
@@ -246,25 +248,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		}
 	}
 
-	// Call the post renderer if one was provided and we were NOT asked to pass hooks into it.
-	// See the post render comment above for more details.
-	if pr != nil && !shouldIncludeHooks(pr) {
-		b, err = pr.Run(b)
-		if err != nil {
-			return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
-		}
-	}
-
 	return hs, b, notes, nil
-}
-
-func shouldIncludeHooks(pr postrender.PostRenderer) bool {
-	switch x := pr.(type) {
-	case postrender.PostRendererWithHooks:
-		return x.IncHooks()
-	default:
-		return false
-	}
 }
 
 // RESTClientGetter gets the rest client

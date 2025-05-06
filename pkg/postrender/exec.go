@@ -29,33 +29,21 @@ import (
 type execRender struct {
 	binaryPath string
 	args       []string
-	incHooks   bool
 }
 
 // NewExec returns a PostRenderer implementation that calls the provided binary.
 // It returns an error if the binary cannot be found. If the path does not
 // contain any separators, it will search in $PATH, otherwise it will resolve
 // any relative paths to a fully qualified path
-// The returned PostRenderer will not process hooks
 func NewExec(binaryPath string, args ...string) (PostRenderer, error) {
-	return NewExecHooks(binaryPath, false, args...)
-}
-
-// NewExecHooks returns a PostRenderer implementation that calls the provided binary.
-// The returned PostRenderer will process hooks if `incHooks` is true
-func NewExecHooks(binaryPath string, incHooks bool, args ...string) (PostRendererWithHooks, error) {
 	fullPath, err := getFullPath(binaryPath)
 	if err != nil {
 		return nil, err
 	}
-	return &execRender{fullPath, args, incHooks}, nil
+	return &execRender{fullPath, args}, nil
 }
 
-func (p *execRender) IncHooks() bool {
-	return p.incHooks
-}
-
-func (p *execRender) RunIncHooks(renderedFiles map[string]string) (modifiedFiles map[string]string, err error) {
+func (p *execRender) Run(renderedFiles map[string]string) (modifiedFiles map[string]string, err error) {
 	// Serialize rendered files into a YAML buffer
 	originalManifests, err := yaml.Marshal(renderedFiles)
 	if err != nil {
@@ -64,7 +52,7 @@ func (p *execRender) RunIncHooks(renderedFiles map[string]string) (modifiedFiles
 	originalManifestsBuffer := bytes.NewBuffer(originalManifests)
 
 	// Run the post-renderer on the YAML data
-	updatedManifests, err := p.Run(originalManifestsBuffer)
+	updatedManifests, err := p.executePRCommand(originalManifestsBuffer)
 	if err != nil {
 		return modifiedFiles, fmt.Errorf("error while running post render on files: %w", err)
 	}
@@ -79,7 +67,7 @@ func (p *execRender) RunIncHooks(renderedFiles map[string]string) (modifiedFiles
 }
 
 // Run the configured binary for the post render
-func (p *execRender) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {
+func (p *execRender) executePRCommand(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {
 	cmd := exec.Command(p.binaryPath, p.args...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

@@ -17,7 +17,6 @@ limitations under the License.
 package postrender
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,9 +28,11 @@ import (
 
 const testingScript = `#!/bin/sh
 if [ $# -eq 0 ]; then
-sed s/FOOTEST/BARTEST/g <&0
+	sed s/FOOTEST/BARTEST/g <&0
+elif [ "$1" = "--empty--" ]; then
+	exit 0
 else
-sed s/FOOTEST/"$*"/g <&0
+	sed s/FOOTEST/"$*"/g <&0
 fi
 `
 
@@ -116,9 +117,9 @@ func TestExecRun(t *testing.T) {
 	renderer, err := NewExec(testpath)
 	require.NoError(t, err)
 
-	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
+	output, err := renderer.Run(map[string]string{"templates/foo.yaml": "FOOTEST"})
 	is.NoError(err)
-	is.Contains(output.String(), "BARTEST")
+	is.Contains(output["templates/foo.yaml"], "BARTEST")
 }
 
 func TestExecRunWithNoOutput(t *testing.T) {
@@ -129,14 +130,14 @@ func TestExecRunWithNoOutput(t *testing.T) {
 	is := assert.New(t)
 	testpath := setupTestingScript(t)
 
-	renderer, err := NewExec(testpath)
+	renderer, err := NewExec(testpath, "--empty--")
 	require.NoError(t, err)
 
-	_, err = renderer.Run(bytes.NewBufferString(""))
+	_, err = renderer.Run(map[string]string{})
 	is.Error(err)
 }
 
-func TestExecRunIncHooks(t *testing.T) {
+func TestExecRunMultipleFiles(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// the actual Run test uses a basic sed example, so skip this test on windows
 		t.Skip("skipping on windows")
@@ -144,18 +145,19 @@ func TestExecRunIncHooks(t *testing.T) {
 	is := assert.New(t)
 	testpath := setupTestingScript(t)
 
-	renderer, err := NewExecHooks(testpath, true)
+	renderer, err := NewExec(testpath)
 	require.NoError(t, err)
 
 	input := map[string]string{
 		"templates/FOOTEST.yaml": "Kind: Pod",
 		"templates/baz.yaml":     "Kind: FOOTEST",
 	}
+	// one deleted file, one added file, one modified file
 	expectedOutput := map[string]string{
 		"templates/BARTEST.yaml": "Kind: Pod",
 		"templates/baz.yaml":     "Kind: BARTEST",
 	}
-	output, err := renderer.RunIncHooks(input)
+	output, err := renderer.Run(input)
 	is.NoError(err)
 	is.Exactly(expectedOutput, output)
 }
@@ -171,9 +173,9 @@ func TestNewExecWithOneArgsRun(t *testing.T) {
 	renderer, err := NewExec(testpath, "ARG1")
 	require.NoError(t, err)
 
-	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
+	output, err := renderer.Run(map[string]string{"templates/foo.yaml": "FOOTEST"})
 	is.NoError(err)
-	is.Contains(output.String(), "ARG1")
+	is.Contains(output["templates/foo.yaml"], "ARG1")
 }
 
 func TestNewExecWithTwoArgsRun(t *testing.T) {
@@ -187,9 +189,9 @@ func TestNewExecWithTwoArgsRun(t *testing.T) {
 	renderer, err := NewExec(testpath, "ARG1", "ARG2")
 	require.NoError(t, err)
 
-	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
+	output, err := renderer.Run(map[string]string{"templates/foo.yaml": "FOOTEST"})
 	is.NoError(err)
-	is.Contains(output.String(), "ARG1 ARG2")
+	is.Contains(output["templates/foo.yaml"], "ARG1 ARG2")
 }
 
 func setupTestingScript(t *testing.T) (filepath string) {
