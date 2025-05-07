@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/resource"
@@ -172,6 +173,7 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 		expectedOutput = fmt.Sprintf("attempted to output logs for namespace: %s", expectedNamespace)
 	}
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "failed-hooks"
 	outBuffer := &bytes.Buffer{}
@@ -184,7 +186,7 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 	vals := map[string]interface{}{}
 
 	res, err := instAction.Run(buildChartWithTemplates(templates), vals)
-	is.NoError(err)
+	req.NoError(err)
 	is.Equal(expectedOutput, outBuffer.String())
 	is.Equal(release.StatusDeployed, res.Info.Status)
 }
@@ -195,6 +197,7 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 		expectedOutput = fmt.Sprintf("attempted to output logs for namespace: %s", expectedNamespace)
 	}
 	is := assert.New(t)
+	req := require.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "failed-hooks"
 	failingClient := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -210,7 +213,7 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 	vals := map[string]interface{}{}
 
 	res, err := instAction.Run(buildChartWithTemplates(templates), vals)
-	is.Error(err)
+	req.Error(err)
 	is.Contains(res.Info.Description, "failed pre-install")
 	is.Equal(expectedOutput, outBuffer.String())
 	is.Equal(release.StatusFailed, res.Info.Status)
@@ -237,7 +240,6 @@ func (*HookFailingKubeClient) Build(reader io.Reader, _ bool) (kube.ResourceList
 	configMap := &v1.ConfigMap{}
 
 	err := yaml.NewYAMLOrJSONDecoder(reader, 1000).Decode(configMap)
-
 	if err != nil {
 		return kube.ResourceList{}, err
 	}
@@ -343,10 +345,12 @@ data:
 						},
 					},
 				},
-			}, resource.Info{
+			},
+			resource.Info{
 				Name:      "build-config-2",
 				Namespace: "test",
-			}, []resource.Info{
+			},
+			[]resource.Info{
 				{
 					// This should be in the record for `before-hook-creation`
 					Name:      "build-config-1",
@@ -367,7 +371,8 @@ data:
 					Name:      "build-config-1",
 					Namespace: "test",
 				},
-			}, true,
+			},
+			true,
 		},
 	}
 

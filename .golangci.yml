@@ -26,6 +26,7 @@ linters:
     - nakedret
     - revive
     - staticcheck
+    - testifylint
     - unused
 
   exclusions:
