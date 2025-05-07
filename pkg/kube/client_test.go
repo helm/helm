@@ -820,11 +820,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: redis-slave
+  name: redis-replica
   labels:
     app: redis
     tier: backend
-    role: slave
+    role: replica
 spec:
   ports:
     # the port that this service should serve on
@@ -832,24 +832,24 @@ spec:
   selector:
     app: redis
     tier: backend
-    role: slave
+    role: replica
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: redis-slave
+  name: redis-replica
 spec:
   replicas: 2
   template:
     metadata:
       labels:
         app: redis
-        role: slave
+        role: replica
         tier: backend
     spec:
       containers:
-      - name: slave
-        image: gcr.io/google_samples/gb-redisslave:v1
+      - name: replica
+        image: gcr.io/google_samples/gb-redisreplica:v1
         resources:
           requests:
             cpu: 100m
