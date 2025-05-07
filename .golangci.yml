@@ -27,6 +27,7 @@ linters:
     - revive
     - staticcheck
     - unused
+    - usetesting
 
   exclusions:
     generated: lax
