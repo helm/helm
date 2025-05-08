@@ -27,6 +27,7 @@ linters:
     - revive
     - staticcheck
     - unused
+    - usestdlibvars
 
   exclusions:
     generated: lax

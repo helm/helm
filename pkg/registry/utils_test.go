@@ -182,7 +182,7 @@ func initCompromisedRegistryTestServer() string {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "manifests") {
 			w.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 
 			fmt.Fprintf(w, `{ "schemaVersion": 2, "config": {
     "mediaType": "%s",
@@ -199,16 +199,16 @@ func initCompromisedRegistryTestServer() string {
 }`, ConfigMediaType, ChartLayerMediaType)
 		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:a705ee2789ab50a5ba20930f246dbd5cc01ff9712825bb98f57ee8414377f133" {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("{\"name\":\"mychart\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\\n" +
 				"an 'application' or a 'library' chart.\",\"apiVersion\":\"v2\",\"appVersion\":\"1.16.0\",\"type\":" +
 				"\"application\"}"))
 		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb" {
 			w.Header().Set("Content-Type", ChartLayerMediaType)
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("b"))
 		} else {
-			w.WriteHeader(500)
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}))
 
