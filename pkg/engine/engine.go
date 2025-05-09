@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -249,9 +250,7 @@ func (e Engine) initFunMap(t *template.Template) {
 	}
 
 	// Set custom template funcs
-	for k, v := range e.CustomTemplateFuncs {
-		funcMap[k] = v
-	}
+	maps.Copy(funcMap, e.CustomTemplateFuncs)
 
 	t.Funcs(funcMap)
 }
