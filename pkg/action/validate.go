@@ -18,6 +18,7 @@ package action
 
 import (
 	"fmt"
+	"maps"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -194,11 +195,7 @@ func mergeAnnotations(obj runtime.Object, annotations map[string]string) error {
 // merge two maps, always taking the value on the right
 func mergeStrStrMaps(current, desired map[string]string) map[string]string {
 	result := make(map[string]string)
-	for k, v := range current {
-		result[k] = v
-	}
-	for k, desiredVal := range desired {
-		result[k] = desiredVal
-	}
+	maps.Copy(result, current)
+	maps.Copy(result, desired)
 	return result
 }
