@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/url"
 	"os"
 	"path"
@@ -758,6 +759,11 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 			if _, err := downloader.VerifyChart(abs, c.Keyring); err != nil {
 				return "", err
 			}
+		}
+		// Issue #7862: Helm prioritizes local charts over --repo flag.
+		// This behavior is maintained for backwards compatibility but with a warning.
+		if c.RepoURL != "" {
+			slog.Warn("local chart found in current working directory. --repo flag ignored", "chart", name)
 		}
 		return abs, nil
 	}
