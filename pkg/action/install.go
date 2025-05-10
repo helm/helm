@@ -759,6 +759,11 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 				return "", err
 			}
 		}
+		// Issue #7862: Helm prioritizes local charts over --repo flag.
+		// This behavior is maintained for backwards compatibility but with a warning.
+		if c.RepoURL != "" {
+			fmt.Printf("WARNING: local chart %s found in current working directory. --repo flag will be ignored\n", name)
+		}
 		return abs, nil
 	}
 	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
