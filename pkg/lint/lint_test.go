@@ -21,14 +21,13 @@ import (
 	"testing"
 	"time"
 
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/lint/support"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 var values map[string]interface{}
 
 const namespace = "testNamespace"
-const strict = false
 
 const badChartDir = "rules/testdata/badchartfile"
 const badValuesFileDir = "rules/testdata/badvaluesfile"
@@ -36,24 +35,20 @@ const badYamlFileDir = "rules/testdata/albatross"
 const goodChartDir = "rules/testdata/goodone"
 const subChartValuesDir = "rules/testdata/withsubchart"
 const malformedTemplate = "rules/testdata/malformed-template"
+const invalidChartFileDir = "rules/testdata/invalidchartfile"
 
 func TestBadChart(t *testing.T) {
-	m := All(badChartDir, values, namespace, strict).Messages
+	m := RunAll(badChartDir, values, namespace).Messages
 	if len(m) != 8 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
-	// There should be one INFO, 2 WARNINGs and 2 ERROR messages, check for them
-	var i, w, e, e2, e3, e4, e5, e6 bool
+	// There should be one INFO, and 2 ERROR messages, check for them
+	var i, e, e2, e3, e4, e5, e6 bool
 	for _, msg := range m {
 		if msg.Severity == support.InfoSev {
 			if strings.Contains(msg.Err.Error(), "icon is recommended") {
 				i = true
-			}
-		}
-		if msg.Severity == support.WarningSev {
-			if strings.Contains(msg.Err.Error(), "directory not found") {
-				w = true
 			}
 		}
 		if msg.Severity == support.ErrorSev {
@@ -81,13 +76,13 @@ func TestBadChart(t *testing.T) {
 			}
 		}
 	}
-	if !e || !e2 || !e3 || !e4 || !e5 || !w || !i || !e6 {
+	if !e || !e2 || !e3 || !e4 || !e5 || !i || !e6 {
 		t.Errorf("Didn't find all the expected errors, got %#v", m)
 	}
 }
 
 func TestInvalidYaml(t *testing.T) {
-	m := All(badYamlFileDir, values, namespace, strict).Messages
+	m := RunAll(badYamlFileDir, values, namespace).Messages
 	if len(m) != 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -96,8 +91,18 @@ func TestInvalidYaml(t *testing.T) {
 	}
 }
 
+func TestInvalidChartYaml(t *testing.T) {
+	m := RunAll(invalidChartFileDir, values, namespace).Messages
+	if len(m) != 1 {
+		t.Fatalf("All didn't fail with expected errors, got %#v", m)
+	}
+	if !strings.Contains(m[0].Err.Error(), "failed to strictly parse chart metadata file") {
+		t.Errorf("All didn't have the error for duplicate YAML keys")
+	}
+}
+
 func TestBadValues(t *testing.T) {
-	m := All(badValuesFileDir, values, namespace, strict).Messages
+	m := RunAll(badValuesFileDir, values, namespace).Messages
 	if len(m) < 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -107,7 +112,7 @@ func TestBadValues(t *testing.T) {
 }
 
 func TestGoodChart(t *testing.T) {
-	m := All(goodChartDir, values, namespace, strict).Messages
+	m := RunAll(goodChartDir, values, namespace).Messages
 	if len(m) != 0 {
 		t.Error("All returned linter messages when it shouldn't have")
 		for i, msg := range m {
@@ -131,7 +136,7 @@ func TestHelmCreateChart(t *testing.T) {
 
 	// Note: we test with strict=true here, even though others have
 	// strict = false.
-	m := All(createdChart, values, namespace, true).Messages
+	m := RunAll(createdChart, values, namespace, WithSkipSchemaValidation(true)).Messages
 	if ll := len(m); ll != 1 {
 		t.Errorf("All should have had exactly 1 error. Got %d", ll)
 		for i, msg := range m {
@@ -142,10 +147,57 @@ func TestHelmCreateChart(t *testing.T) {
 	}
 }
 
+// TestHelmCreateChart_CheckDeprecatedWarnings checks if any default template created by `helm create` throws
+// deprecated warnings in the linter check against the current Kubernetes version (provided using ldflags).
+//
+// See https://github.com/helm/helm/issues/11495
+//
+// Resources like hpa and ingress, which are disabled by default in values.yaml are enabled here using the equivalent
+// of the `--set` flag.
+//
+// Note: This test requires the following ldflags to be set per the current Kubernetes version to avoid false-positive
+// results.
+// 1. -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMajor=<k8s-major-version>
+// 2. -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMinor=<k8s-minor-version>
+// or directly use '$(LDFLAGS)' in Makefile.
+//
+// When run without ldflags, the test passes giving a false-positive result. This is because the variables
+// `k8sVersionMajor` and `k8sVersionMinor` by default are set to an older version of Kubernetes, with which, there
+// might not be the deprecation warning.
+func TestHelmCreateChart_CheckDeprecatedWarnings(t *testing.T) {
+	createdChart, err := chartutil.Create("checkdeprecatedwarnings", t.TempDir())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Add values to enable hpa, and ingress which are disabled by default.
+	// This is the equivalent of:
+	//   helm lint checkdeprecatedwarnings --set 'autoscaling.enabled=true,ingress.enabled=true'
+	updatedValues := map[string]interface{}{
+		"autoscaling": map[string]interface{}{
+			"enabled": true,
+		},
+		"ingress": map[string]interface{}{
+			"enabled": true,
+		},
+	}
+
+	linterRunDetails := RunAll(createdChart, updatedValues, namespace, WithSkipSchemaValidation(true))
+	for _, msg := range linterRunDetails.Messages {
+		if strings.HasPrefix(msg.Error(), "[WARNING]") &&
+			strings.Contains(msg.Error(), "deprecated") {
+			// When there is a deprecation warning for an object created
+			// by `helm create` for the current Kubernetes version, fail.
+			t.Errorf("Unexpected deprecation warning for %q: %s", msg.Path, msg.Error())
+		}
+	}
+}
+
 // lint ignores import-values
 // See https://github.com/helm/helm/issues/9658
 func TestSubChartValuesChart(t *testing.T) {
-	m := All(subChartValuesDir, values, namespace, strict).Messages
+	m := RunAll(subChartValuesDir, values, namespace).Messages
 	if len(m) != 0 {
 		t.Error("All returned linter messages when it shouldn't have")
 		for i, msg := range m {
@@ -161,7 +213,7 @@ func TestMalformedTemplate(t *testing.T) {
 	ch := make(chan int, 1)
 	var m []support.Message
 	go func() {
-		m = All(malformedTemplate, values, namespace, strict).Messages
+		m = RunAll(malformedTemplate, values, namespace).Messages
 		ch <- 1
 	}()
 	select {

@@ -20,13 +20,20 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
+	"sort"
 	"time"
 
-	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/release"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/kube"
+	release "helm.sh/helm/v4/pkg/release/v1"
+)
+
+const (
+	ExcludeNameFilter = "!name"
+	IncludeNameFilter = "name"
 )
 
 // ReleaseTesting is the action for testing a release.
@@ -38,6 +45,7 @@ type ReleaseTesting struct {
 	// Used for fetching logs from test pods
 	Namespace string
 	Filters   map[string][]string
+	HideNotes bool
 }
 
 // NewReleaseTesting creates a new ReleaseTesting object with the given configuration.
@@ -55,7 +63,7 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, errors.Errorf("releaseTest: Release name is invalid: %s", name)
+		return nil, fmt.Errorf("releaseTest: Release name is invalid: %s", name)
 	}
 
 	// finds the non-deleted release with the given name
@@ -66,9 +74,9 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 
 	skippedHooks := []*release.Hook{}
 	executingHooks := []*release.Hook{}
-	if len(r.Filters["!name"]) != 0 {
+	if len(r.Filters[ExcludeNameFilter]) != 0 {
 		for _, h := range rel.Hooks {
-			if contains(r.Filters["!name"], h.Name) {
+			if slices.Contains(r.Filters[ExcludeNameFilter], h.Name) {
 				skippedHooks = append(skippedHooks, h)
 			} else {
 				executingHooks = append(executingHooks, h)
@@ -76,10 +84,10 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 		}
 		rel.Hooks = executingHooks
 	}
-	if len(r.Filters["name"]) != 0 {
+	if len(r.Filters[IncludeNameFilter]) != 0 {
 		executingHooks = nil
 		for _, h := range rel.Hooks {
-			if contains(r.Filters["name"], h.Name) {
+			if slices.Contains(r.Filters[IncludeNameFilter], h.Name) {
 				executingHooks = append(executingHooks, h)
 			} else {
 				skippedHooks = append(skippedHooks, h)
@@ -88,7 +96,7 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 		rel.Hooks = executingHooks
 	}
 
-	if err := r.cfg.execHook(rel, release.HookTest, r.Timeout); err != nil {
+	if err := r.cfg.execHook(rel, release.HookTest, kube.StatusWatcherStrategy, r.Timeout); err != nil {
 		rel.Hooks = append(skippedHooks, rel.Hooks...)
 		r.cfg.Releases.Update(rel)
 		return rel, err
@@ -104,35 +112,34 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 	client, err := r.cfg.KubernetesClientSet()
 	if err != nil {
-		return errors.Wrap(err, "unable to get kubernetes client to fetch pod logs")
+		return fmt.Errorf("unable to get kubernetes client to fetch pod logs: %w", err)
 	}
 
-	for _, h := range rel.Hooks {
+	hooksByWight := append([]*release.Hook{}, rel.Hooks...)
+	sort.Stable(hookByWeight(hooksByWight))
+	for _, h := range hooksByWight {
 		for _, e := range h.Events {
 			if e == release.HookTest {
+				if slices.Contains(r.Filters[ExcludeNameFilter], h.Name) {
+					continue
+				}
+				if len(r.Filters[IncludeNameFilter]) > 0 && !slices.Contains(r.Filters[IncludeNameFilter], h.Name) {
+					continue
+				}
 				req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
 				logReader, err := req.Stream(context.Background())
 				if err != nil {
-					return errors.Wrapf(err, "unable to get pod logs for %s", h.Name)
+					return fmt.Errorf("unable to get pod logs for %s: %w", h.Name, err)
 				}
 
 				fmt.Fprintf(out, "POD LOGS: %s\n", h.Name)
 				_, err = io.Copy(out, logReader)
 				fmt.Fprintln(out)
 				if err != nil {
-					return errors.Wrapf(err, "unable to write pod logs for %s", h.Name)
+					return fmt.Errorf("unable to write pod logs for %s: %w", h.Name, err)
 				}
 			}
 		}
 	}
 	return nil
-}
-
-func contains(arr []string, value string) bool {
-	for _, item := range arr {
-		if item == value {
-			return true
-		}
-	}
-	return false
 }

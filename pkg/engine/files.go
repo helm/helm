@@ -23,7 +23,7 @@ import (
 
 	"github.com/gobwas/glob"
 
-	"helm.sh/helm/v3/pkg/chart"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
 // files is a map of files in a chart that can be accessed from a template.
@@ -131,7 +131,7 @@ func (f files) AsConfig() string {
 //
 //	data:
 //
-// {{ .Files.Glob("secrets/*").AsSecrets() }}
+// {{ .Files.Glob("secrets/*").AsSecrets() | indent 4 }}
 func (f files) AsSecrets() string {
 	if f == nil {
 		return ""
@@ -157,6 +157,9 @@ func (f files) Lines(path string) []string {
 	if f == nil || f[path] == nil {
 		return []string{}
 	}
-
-	return strings.Split(string(f[path]), "\n")
+	s := string(f[path])
+	if s[len(s)-1] == '\n' {
+		s = s[:len(s)-1]
+	}
+	return strings.Split(s, "\n")
 }

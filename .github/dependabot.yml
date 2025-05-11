@@ -1,7 +1,39 @@
 version: 2
 
 updates:
+  - # Keep dev-v3 branch dependencies up to date, while Helm v3 is within support
+    package-ecosystem: "gomod"
+    target-branch: "dev-v3"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    groups:
+      k8s.io:
+        patterns:
+          - "k8s.io/api"
+          - "k8s.io/apiextensions-apiserver"
+          - "k8s.io/apimachinery"
+          - "k8s.io/apiserver"
+          - "k8s.io/cli-runtime"
+          - "k8s.io/client-go"
+          - "k8s.io/kubectl"
   - package-ecosystem: "gomod"
+    target-branch: "main"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    groups:
+      k8s.io:
+        patterns:
+          - "k8s.io/api"
+          - "k8s.io/apiextensions-apiserver"
+          - "k8s.io/apimachinery"
+          - "k8s.io/apiserver"
+          - "k8s.io/cli-runtime"
+          - "k8s.io/client-go"
+          - "k8s.io/kubectl"
+  - package-ecosystem: "github-actions"
+    target-branch: "main"
     directory: "/"
     schedule:
       interval: "daily"

@@ -1,20 +1,25 @@
 maintainers:
-  - hickeyma
+  - gjenkins8
   - joejulian
-  - jdolitsky
   - marckhouzam
   - mattfarina
+  - robertsirc
   - sabre1041
   - scottrigby
   - technosophos
 triage:
+  - banjoh
+  - TerryHowe
   - yxxhero
   - zonggen
+  - z4ce
 emeritus:
   - adamreese
   - bacongobbler
   - fibonacci1729
+  - hickeyma
   - jascott1
+  - jdolitsky
   - michelleN
   - migmartri
   - nebril

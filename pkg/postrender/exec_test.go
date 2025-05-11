@@ -25,8 +25,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"helm.sh/helm/v3/internal/test/ensure"
 )
 
 const testingScript = `#!/bin/sh
@@ -40,8 +38,7 @@ fi
 func TestGetFullPath(t *testing.T) {
 	is := assert.New(t)
 	t.Run("full path resolves correctly", func(t *testing.T) {
-		testpath, cleanup := setupTestingScript(t)
-		defer cleanup()
+		testpath := setupTestingScript(t)
 
 		fullPath, err := getFullPath(testpath)
 		is.NoError(err)
@@ -49,8 +46,7 @@ func TestGetFullPath(t *testing.T) {
 	})
 
 	t.Run("relative path resolves correctly", func(t *testing.T) {
-		testpath, cleanup := setupTestingScript(t)
-		defer cleanup()
+		testpath := setupTestingScript(t)
 
 		currentDir, err := os.Getwd()
 		require.NoError(t, err)
@@ -62,8 +58,7 @@ func TestGetFullPath(t *testing.T) {
 	})
 
 	t.Run("binary in PATH resolves correctly", func(t *testing.T) {
-		testpath, cleanup := setupTestingScript(t)
-		defer cleanup()
+		testpath := setupTestingScript(t)
 
 		realPath := os.Getenv("PATH")
 		os.Setenv("PATH", filepath.Dir(testpath))
@@ -116,8 +111,7 @@ func TestExecRun(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 	is := assert.New(t)
-	testpath, cleanup := setupTestingScript(t)
-	defer cleanup()
+	testpath := setupTestingScript(t)
 
 	renderer, err := NewExec(testpath)
 	require.NoError(t, err)
@@ -127,14 +121,28 @@ func TestExecRun(t *testing.T) {
 	is.Contains(output.String(), "BARTEST")
 }
 
+func TestExecRunWithNoOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// the actual Run test uses a basic sed example, so skip this test on windows
+		t.Skip("skipping on windows")
+	}
+	is := assert.New(t)
+	testpath := setupTestingScript(t)
+
+	renderer, err := NewExec(testpath)
+	require.NoError(t, err)
+
+	_, err = renderer.Run(bytes.NewBufferString(""))
+	is.Error(err)
+}
+
 func TestNewExecWithOneArgsRun(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// the actual Run test uses a basic sed example, so skip this test on windows
 		t.Skip("skipping on windows")
 	}
 	is := assert.New(t)
-	testpath, cleanup := setupTestingScript(t)
-	defer cleanup()
+	testpath := setupTestingScript(t)
 
 	renderer, err := NewExec(testpath, "ARG1")
 	require.NoError(t, err)
@@ -150,8 +158,7 @@ func TestNewExecWithTwoArgsRun(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 	is := assert.New(t)
-	testpath, cleanup := setupTestingScript(t)
-	defer cleanup()
+	testpath := setupTestingScript(t)
 
 	renderer, err := NewExec(testpath, "ARG1", "ARG2")
 	require.NoError(t, err)
@@ -161,10 +168,10 @@ func TestNewExecWithTwoArgsRun(t *testing.T) {
 	is.Contains(output.String(), "ARG1 ARG2")
 }
 
-func setupTestingScript(t *testing.T) (filepath string, cleanup func()) {
+func setupTestingScript(t *testing.T) (filepath string) {
 	t.Helper()
 
-	tempdir := ensure.TempDir(t)
+	tempdir := t.TempDir()
 
 	f, err := os.CreateTemp(tempdir, "post-render-test.sh")
 	if err != nil {
@@ -186,7 +193,5 @@ func setupTestingScript(t *testing.T) (filepath string, cleanup func()) {
 		t.Fatalf("unable to close tempfile after writing: %s", err)
 	}
 
-	return f.Name(), func() {
-		os.RemoveAll(tempdir)
-	}
+	return f.Name()
 }

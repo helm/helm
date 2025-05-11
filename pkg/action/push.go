@@ -20,10 +20,10 @@ import (
 	"io"
 	"strings"
 
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/pusher"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/uploader"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/pusher"
+	"helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/uploader"
 )
 
 // Push is the action for uploading a chart.
@@ -36,6 +36,7 @@ type Push struct {
 	keyFile               string
 	caFile                string
 	insecureSkipTLSverify bool
+	plainHTTP             bool
 	out                   io.Writer
 }
 
@@ -65,7 +66,14 @@ func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) PushOpt {
 	}
 }
 
-// WithOptWriter sets the registryOut field on the push configuration object.
+// WithPlainHTTP configures the use of plain HTTP connections.
+func WithPlainHTTP(plainHTTP bool) PushOpt {
+	return func(p *Push) {
+		p.plainHTTP = plainHTTP
+	}
+}
+
+// WithPushOptWriter sets the registryOut field on the push configuration object.
 func WithPushOptWriter(out io.Writer) PushOpt {
 	return func(p *Push) {
 		p.out = out
@@ -91,6 +99,7 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 		Options: []pusher.Option{
 			pusher.WithTLSClientConfig(p.certFile, p.keyFile, p.caFile),
 			pusher.WithInsecureSkipTLSVerify(p.insecureSkipTLSverify),
+			pusher.WithPlainHTTP(p.plainHTTP),
 		},
 	}
 

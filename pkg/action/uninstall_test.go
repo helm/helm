@@ -22,14 +22,26 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	kubefake "helm.sh/helm/v3/pkg/kube/fake"
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/pkg/kube"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func uninstallAction(t *testing.T) *Uninstall {
 	config := actionConfigFixture(t)
 	unAction := NewUninstall(config)
 	return unAction
+}
+
+func TestUninstallRelease_ignoreNotFound(t *testing.T) {
+	unAction := uninstallAction(t)
+	unAction.DryRun = false
+	unAction.IgnoreNotFound = true
+
+	is := assert.New(t)
+	res, err := unAction.Run("release-non-exist")
+	is.Nil(res)
+	is.NoError(err)
 }
 
 func TestUninstallRelease_deleteRelease(t *testing.T) {
@@ -71,7 +83,7 @@ func TestUninstallRelease_Wait(t *testing.T) {
 	unAction := uninstallAction(t)
 	unAction.DisableHooks = true
 	unAction.DryRun = false
-	unAction.Wait = true
+	unAction.WaitStrategy = kube.StatusWatcherStrategy
 
 	rel := releaseStub()
 	rel.Name = "come-fail-away"
@@ -88,7 +100,7 @@ func TestUninstallRelease_Wait(t *testing.T) {
 	}`
 	unAction.cfg.Releases.Create(rel)
 	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("U timed out")
+	failer.WaitForDeleteError = fmt.Errorf("U timed out")
 	unAction.cfg.KubeClient = failer
 	res, err := unAction.Run(rel.Name)
 	is.Error(err)
@@ -102,7 +114,7 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	unAction := uninstallAction(t)
 	unAction.DisableHooks = true
 	unAction.DryRun = false
-	unAction.Wait = false
+	unAction.WaitStrategy = kube.HookOnlyStrategy
 	unAction.DeletionPropagation = "foreground"
 
 	rel := releaseStub()

@@ -19,13 +19,12 @@ package action
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/resource"
 
-	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v4/pkg/kube"
 )
 
 var accessor = meta.NewAccessor()
@@ -36,6 +35,31 @@ const (
 	helmReleaseNameAnnotation      = "meta.helm.sh/release-name"
 	helmReleaseNamespaceAnnotation = "meta.helm.sh/release-namespace"
 )
+
+// requireAdoption returns the subset of resources that already exist in the cluster.
+func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
+	var requireUpdate kube.ResourceList
+
+	err := resources.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+
+		helper := resource.NewHelper(info.Client, info.Mapping)
+		_, err = helper.Get(info.Namespace, info.Name)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return fmt.Errorf("could not get information about the resource %s: %w", resourceString(info), err)
+		}
+
+		requireUpdate.Append(info)
+		return nil
+	})
+
+	return requireUpdate, err
+}
 
 func existingResourceConflict(resources kube.ResourceList, releaseName, releaseNamespace string) (kube.ResourceList, error) {
 	var requireUpdate kube.ResourceList
@@ -51,7 +75,7 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 			if apierrors.IsNotFound(err) {
 				return nil
 			}
-			return errors.Wrapf(err, "could not get information about the resource %s", resourceString(info))
+			return fmt.Errorf("could not get information about the resource %s: %w", resourceString(info), err)
 		}
 
 		// Allow adoption of the resource if it is managed by Helm and is annotated with correct release name and namespace.
@@ -88,11 +112,7 @@ func checkOwnership(obj runtime.Object, releaseName, releaseNamespace string) er
 	}
 
 	if len(errs) > 0 {
-		err := errors.New("invalid ownership metadata")
-		for _, e := range errs {
-			err = fmt.Errorf("%w; %s", err, e)
-		}
-		return err
+		return fmt.Errorf("invalid ownership metadata; %w", joinErrors(errs, "; "))
 	}
 
 	return nil

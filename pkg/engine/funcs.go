@@ -25,6 +25,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
 	"sigs.k8s.io/yaml"
+	goYaml "sigs.k8s.io/yaml/goyaml.v3"
 )
 
 // funcMap returns a mapping of all of the functions that Engine has.
@@ -48,10 +49,14 @@ func funcMap() template.FuncMap {
 	// Add some extra functionality
 	extra := template.FuncMap{
 		"toToml":        toTOML,
+		"fromToml":      fromTOML,
 		"toYaml":        toYAML,
+		"mustToYaml":    mustToYAML,
+		"toYamlPretty":  toYAMLPretty,
 		"fromYaml":      fromYAML,
 		"fromYamlArray": fromYAMLArray,
 		"toJson":        toJSON,
+		"mustToJson":    mustToJSON,
 		"fromJson":      fromJSON,
 		"fromJsonArray": fromJSONArray,
 
@@ -86,6 +91,32 @@ func toYAML(v interface{}) string {
 		return ""
 	}
 	return strings.TrimSuffix(string(data), "\n")
+}
+
+// mustToYAML takes an interface, marshals it to yaml, and returns a string.
+// It will panic if there is an error.
+//
+// This is designed to be called from a template when need to ensure that the
+// output YAML is valid.
+func mustToYAML(v interface{}) string {
+	data, err := yaml.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return strings.TrimSuffix(string(data), "\n")
+}
+
+func toYAMLPretty(v interface{}) string {
+	var data bytes.Buffer
+	encoder := goYaml.NewEncoder(&data)
+	encoder.SetIndent(2)
+	err := encoder.Encode(v)
+
+	if err != nil {
+		// Swallow errors inside of a template.
+		return ""
+	}
+	return strings.TrimSuffix(data.String(), "\n")
 }
 
 // fromYAML converts a YAML document into a map[string]interface{}.
@@ -132,6 +163,21 @@ func toTOML(v interface{}) string {
 	return b.String()
 }
 
+// fromTOML converts a TOML document into a map[string]interface{}.
+//
+// This is not a general-purpose TOML parser, and will not parse all valid
+// TOML documents. Additionally, because its intended use is within templates
+// it tolerates errors. It will insert the returned error message string into
+// m["Error"] in the returned map.
+func fromTOML(str string) map[string]interface{} {
+	m := make(map[string]interface{})
+
+	if err := toml.Unmarshal([]byte(str), &m); err != nil {
+		m["Error"] = err.Error()
+	}
+	return m
+}
+
 // toJSON takes an interface, marshals it to json, and returns a string. It will
 // always return a string, even on marshal error (empty string).
 //
@@ -141,6 +187,19 @@ func toJSON(v interface{}) string {
 	if err != nil {
 		// Swallow errors inside of a template.
 		return ""
+	}
+	return string(data)
+}
+
+// mustToJSON takes an interface, marshals it to json, and returns a string.
+// It will panic if there is an error.
+//
+// This is designed to be called from a template when need to ensure that the
+// output JSON is valid.
+func mustToJSON(v interface{}) string {
+	data, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
 	}
 	return string(data)
 }

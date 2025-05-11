@@ -7,6 +7,8 @@ on:
     branches:
       - main
 
+permissions: read-all
+
 # Note the only differences between release and canary-release jobs are:
 # - only canary passes --overwrite flag
 # - the VERSION make variable passed to 'make dist checksum' is expected to
@@ -15,23 +17,40 @@ on:
 jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     steps:
       - name: Checkout source code
-        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # pin@v3.2.0
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Add variables to environment file
+        run: cat ".github/env" >> "$GITHUB_ENV"
 
       - name: Setup Go
-        uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # pin@3.5.0
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # pin@5.4.0
         with:
-          go-version: '1.20'
-      
+          go-version: '${{ env.GOLANG_VERSION }}'
       - name: Run unit tests
         run: make test-coverage
-
       - name: Build Helm Binaries
         run: |
-          make build-cross
+          set -eu -o pipefail
+
+          make build-cross VERSION="${{ github.ref_name }}"
           make dist checksum VERSION="${{ github.ref_name }}"
+
+      - name: Set latest version
+        run: |
+          set -eu -o pipefail
+
+          mkdir -p _dist_versions
+
+          # Push the latest semver tag, excluding prerelease tags
+          LATEST_VERSION="$(git tag | sort -r --version-sort | grep '^v[0-9]' | grep -v '-' | head -n1)"
+          echo "LATEST_VERSION=${LATEST_VERSION}"
+          echo "${LATEST_VERSION}" > _dist_versions/helm-latest-version
+          echo "${LATEST_VERSION}" > _dist_versions/helm3-latest-version
 
       - name: Upload Binaries
         uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
@@ -44,17 +63,32 @@ jobs:
           connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           extra_args: '--pattern helm-*'
 
+      - name: Upload Version tag files
+        uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
+          AZURE_STORAGE_CONTAINER_NAME: "${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}"
+        with:
+          overwrite: 'true'
+          source_dir: _dist_versions
+          container_name: ${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
+          connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+
   canary-release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout source code
-        uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # pin@v3.2.0
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4.2.2
+
+      - name: Add variables to environment file
+        run: cat ".github/env" >> "$GITHUB_ENV"
 
       - name: Setup Go
-        uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # pin@3.5.0
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # pin@5.4.0
         with:
-          go-version: '1.20'
+          go-version: '${{ env.GOLANG_VERSION }}'
+          check-latest: true
 
       - name: Run unit tests
         run: make test-coverage

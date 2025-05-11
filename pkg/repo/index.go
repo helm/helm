@@ -18,7 +18,10 @@ package repo
 
 import (
 	"bytes"
-	"log"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -27,17 +30,14 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/internal/fileutil"
-	"helm.sh/helm/v3/internal/urlutil"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/provenance"
+	"helm.sh/helm/v4/internal/fileutil"
+	"helm.sh/helm/v4/internal/urlutil"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/provenance"
 )
-
-var indexPath = "index.yaml"
 
 // APIVersionV1 is the v1 API version for index and repository files.
 const APIVersionV1 = "v1"
@@ -109,7 +109,7 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 	}
 	i, err := loadIndex(b, path)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error loading %s", path)
+		return nil, fmt.Errorf("error loading %s: %w", path, err)
 	}
 	return i, nil
 }
@@ -125,7 +125,7 @@ func (i IndexFile) MustAdd(md *chart.Metadata, filename, baseURL, digest string)
 		md.APIVersion = chart.APIVersionV1
 	}
 	if err := md.Validate(); err != nil {
-		return errors.Wrapf(err, "validate failed for %s", filename)
+		return fmt.Errorf("validate failed for %s: %w", filename, err)
 	}
 
 	u := filename
@@ -153,7 +153,7 @@ func (i IndexFile) MustAdd(md *chart.Metadata, filename, baseURL, digest string)
 // Deprecated: Use index.MustAdd instead.
 func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 	if err := i.MustAdd(md, filename, baseURL, digest); err != nil {
-		log.Printf("skipping loading invalid entry for chart %q %q from %s: %s", md.Name, md.Version, filename, err)
+		slog.Error("skipping loading invalid entry for chart %q %q from %s: %s", md.Name, md.Version, filename, err)
 	}
 }
 
@@ -199,7 +199,7 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 		}
 	}
 
-	// when customer input exact version, check whether have exact match one first
+	// when customer inputs specific version, check whether there's an exact match first
 	if len(version) != 0 {
 		for _, ver := range vs {
 			if version == ver.Version {
@@ -218,7 +218,7 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 			return ver, nil
 		}
 	}
-	return nil, errors.Errorf("no chart version found for %s-%s", name, version)
+	return nil, fmt.Errorf("no chart version found for %s-%s", name, version)
 }
 
 // WriteFile writes an index file to the given destination path.
@@ -226,6 +226,18 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 // The mode on the file is set to 'mode'.
 func (i IndexFile) WriteFile(dest string, mode os.FileMode) error {
 	b, err := yaml.Marshal(i)
+	if err != nil {
+		return err
+	}
+	return fileutil.AtomicWriteFile(dest, bytes.NewReader(b), mode)
+}
+
+// WriteJSONFile writes an index file in JSON format to the given destination
+// path.
+//
+// The mode on the file is set to 'mode'.
+func (i IndexFile) WriteJSONFile(dest string, mode os.FileMode) error {
+	b, err := json.MarshalIndent(i, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -319,7 +331,7 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 			return index, err
 		}
 		if err := index.MustAdd(c.Metadata, fname, parentURL, hash); err != nil {
-			return index, errors.Wrapf(err, "failed adding to %s to index", fname)
+			return index, fmt.Errorf("failed adding to %s to index: %w", fname, err)
 		}
 	}
 	return index, nil
@@ -336,28 +348,68 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 		return i, ErrEmptyIndexYaml
 	}
 
-	if err := yaml.UnmarshalStrict(data, i); err != nil {
+	if err := jsonOrYamlUnmarshal(data, i); err != nil {
 		return i, err
 	}
 
 	for name, cvs := range i.Entries {
 		for idx := len(cvs) - 1; idx >= 0; idx-- {
 			if cvs[idx] == nil {
-				log.Printf("skipping loading invalid entry for chart %q from %s: empty entry", name, source)
+				slog.Warn("skipping loading invalid entry for chart %q from %s: empty entry", name, source)
 				continue
+			}
+			// When metadata section missing, initialize with no data
+			if cvs[idx].Metadata == nil {
+				cvs[idx].Metadata = &chart.Metadata{}
 			}
 			if cvs[idx].APIVersion == "" {
 				cvs[idx].APIVersion = chart.APIVersionV1
 			}
-			if err := cvs[idx].Validate(); err != nil {
-				log.Printf("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err)
+			if err := cvs[idx].Validate(); ignoreSkippableChartValidationError(err) != nil {
+				slog.Warn("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err)
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}
 		}
+		// adjust slice to only contain a set of valid versions
+		i.Entries[name] = cvs
 	}
 	i.SortEntries()
 	if i.APIVersion == "" {
 		return i, ErrNoAPIVersion
 	}
 	return i, nil
+}
+
+// jsonOrYamlUnmarshal unmarshals the given byte slice containing JSON or YAML
+// into the provided interface.
+//
+// It automatically detects whether the data is in JSON or YAML format by
+// checking its validity as JSON. If the data is valid JSON, it will use the
+// `encoding/json` package to unmarshal it. Otherwise, it will use the
+// `sigs.k8s.io/yaml` package to unmarshal the YAML data.
+func jsonOrYamlUnmarshal(b []byte, i interface{}) error {
+	if json.Valid(b) {
+		return json.Unmarshal(b, i)
+	}
+	return yaml.UnmarshalStrict(b, i)
+}
+
+// ignoreSkippableChartValidationError inspect the given error and returns nil if
+// the error isn't important for index loading
+//
+// In particular, charts may introduce validations that don't impact repository indexes
+// And repository indexes may be generated by older/non-compliant software, which doesn't
+// conform to all validations.
+func ignoreSkippableChartValidationError(err error) error {
+	verr, ok := err.(chart.ValidationError)
+	if !ok {
+		return err
+	}
+
+	// https://github.com/helm/helm/issues/12748 (JFrog repository strips alias field)
+	if strings.HasPrefix(verr.Error(), "validation: more than one dependency with name or alias") {
+		return nil
+	}
+
+	return err
 }

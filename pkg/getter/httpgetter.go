@@ -18,16 +18,14 @@ package getter
 import (
 	"bytes"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"sync"
 
-	"github.com/pkg/errors"
-
-	"helm.sh/helm/v3/internal/tlsutil"
-	"helm.sh/helm/v3/internal/urlutil"
-	"helm.sh/helm/v3/internal/version"
+	"helm.sh/helm/v4/internal/tlsutil"
+	"helm.sh/helm/v4/internal/version"
 )
 
 // HTTPGetter is the default HTTP(/S) backend handler
@@ -53,6 +51,10 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 		return nil, err
 	}
 
+	if g.opts.acceptHeader != "" {
+		req.Header.Set("Accept", g.opts.acceptHeader)
+	}
+
 	req.Header.Set("User-Agent", version.GetUserAgent())
 	if g.opts.userAgent != "" {
 		req.Header.Set("User-Agent", g.opts.userAgent)
@@ -62,11 +64,11 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	// with the basic auth is the one being fetched.
 	u1, err := url.Parse(g.opts.url)
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to parse getter URL")
+		return nil, fmt.Errorf("unable to parse getter URL: %w", err)
 	}
 	u2, err := url.Parse(href)
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to parse URL getting from")
+		return nil, fmt.Errorf("unable to parse URL getting from: %w", err)
 	}
 
 	// Host on URL (returned from url.Parse) contains the port if present.
@@ -89,7 +91,7 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("failed to fetch %s : %s", href, resp.Status)
+		return nil, fmt.Errorf("failed to fetch %s : %s", href, resp.Status)
 	}
 
 	buf := bytes.NewBuffer(nil)
@@ -124,16 +126,14 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 	})
 
 	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" || g.opts.insecureSkipVerifyTLS {
-		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile, g.opts.insecureSkipVerifyTLS)
+		tlsConf, err := tlsutil.NewTLSConfig(
+			tlsutil.WithInsecureSkipVerify(g.opts.insecureSkipVerifyTLS),
+			tlsutil.WithCertKeyPairFiles(g.opts.certFile, g.opts.keyFile),
+			tlsutil.WithCAFile(g.opts.caFile),
+		)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't create TLS config for client")
+			return nil, fmt.Errorf("can't create TLS config for client: %w", err)
 		}
-
-		sni, err := urlutil.ExtractHostname(g.opts.url)
-		if err != nil {
-			return nil, err
-		}
-		tlsConf.ServerName = sni
 
 		g.transport.TLSClientConfig = tlsConf
 	}
