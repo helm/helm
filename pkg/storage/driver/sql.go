@@ -19,6 +19,7 @@ package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 import (
 	"fmt"
 	"log/slog"
+	"maps"
 	"sort"
 	"strconv"
 	"time"
@@ -367,9 +368,7 @@ func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 			slog.Debug("failed to get release custom labels", "namespace", record.Namespace, "key", record.Key, slog.Any("error", err))
 			return nil, err
 		}
-		for k, v := range getReleaseSystemLabels(release) {
-			release.Labels[k] = v
-		}
+		maps.Copy(release.Labels, getReleaseSystemLabels(release))
 
 		if filter(release) {
 			releases = append(releases, release)

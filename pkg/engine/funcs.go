@@ -19,6 +19,7 @@ package engine
 import (
 	"bytes"
 	"encoding/json"
+	"maps"
 	"strings"
 	"text/template"
 
@@ -73,9 +74,7 @@ func funcMap() template.FuncMap {
 		},
 	}
 
-	for k, v := range extra {
-		f[k] = v
-	}
+	maps.Copy(f, extra)
 
 	return f
 }

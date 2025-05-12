@@ -19,6 +19,7 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -144,9 +145,7 @@ func TestCoalesceValues(t *testing.T) {
 	// to CoalesceValues as argument, so that we can
 	// use it for asserting later
 	valsCopy := make(Values, len(vals))
-	for key, value := range vals {
-		valsCopy[key] = value
-	}
+	maps.Copy(valsCopy, vals)
 
 	v, err := CoalesceValues(c, vals)
 	if err != nil {
@@ -304,9 +303,7 @@ func TestMergeValues(t *testing.T) {
 	// to MergeValues as argument, so that we can
 	// use it for asserting later
 	valsCopy := make(Values, len(vals))
-	for key, value := range vals {
-		valsCopy[key] = value
-	}
+	maps.Copy(valsCopy, vals)
 
 	v, err := MergeValues(c, vals)
 	if err != nil {
