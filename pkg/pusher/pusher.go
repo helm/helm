@@ -93,7 +93,7 @@ func (p Provider) Provides(scheme string) bool {
 // Providers is a collection of Provider objects.
 type Providers []Provider
 
-type ProvidersInterface interface {
+type ProvidersResolver interface {
 	ByScheme(scheme string) (Pusher, error)
 }
 
