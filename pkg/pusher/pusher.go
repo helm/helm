@@ -93,6 +93,7 @@ func (p Provider) Provides(scheme string) bool {
 // Providers is a collection of Provider objects.
 type Providers []Provider
 
+// ProvidersResolver is an interface for retrieving Pusher objects
 type ProvidersResolver interface {
 	ByScheme(scheme string) (Pusher, error)
 }
