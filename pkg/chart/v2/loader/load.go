@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -238,9 +239,7 @@ func LoadValues(data io.Reader) (map[string]interface{}, error) {
 // If the value is a map, the maps will be merged recursively.
 func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 	out := make(map[string]interface{}, len(a))
-	for k, v := range a {
-		out[k] = v
-	}
+	maps.Copy(out, a)
 	for k, v := range b {
 		if v, ok := v.(map[string]interface{}); ok {
 			if bv, ok := out[k]; ok {
