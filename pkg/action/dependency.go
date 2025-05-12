@@ -38,7 +38,6 @@ type Dependency struct {
 	Keyring                string
 	SkipRefresh            bool
 	ColumnWidth            uint
-	BuildOrUpdateRecursive bool
 	Username               string
 	Password               string
 	CertFile               string
@@ -46,6 +45,7 @@ type Dependency struct {
 	CaFile                 string
 	InsecureSkipTLSverify  bool
 	PlainHTTP              bool
+	BuildOrUpdateRecursive bool
 }
 
 // NewDependency creates a new Dependency object with the given configuration.

@@ -147,7 +147,7 @@ func TestTemplateCmd(t *testing.T) {
 		},
 		{
 			name: "template with dependency update recursive",
-			preCmd: func(t *testing.T) error {
+			preCmd: func(_ *testing.T) error {
 				// We must reset the chart's dependency to actually
 				// exercise the ability to provision missing nested depencendies.
 				// If we don't do this, the chart will contain the `tgz` files from previous runs

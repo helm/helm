@@ -26,7 +26,7 @@ import (
 
 func TestPluginExitCode(t *testing.T) {
 	if os.Getenv("RUN_MAIN_FOR_TESTING") == "1" {
-
+		os.Args = []string{"helm", "exitwith", "2"}
 		// We DO call helm's main() here. So this looks like a normal `helm` process.
 		main()
 

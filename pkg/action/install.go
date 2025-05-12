@@ -71,21 +71,17 @@ type Install struct {
 
 	ChartPathOptions
 
-	DryRunOption string
+	ClientOnly      bool
+	Force           bool
+	CreateNamespace bool
+	DryRun          bool
+	DryRunOption    string
 	// HideSecret can be set to true when DryRun is enabled in order to hide
 	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
 	HideSecret                bool
-	WaitStrategy              kube.WaitStrategy
-	HideNotes                 bool
-	SkipSchemaValidation      bool
-	Labels                    map[string]string
-	ClientOnly                bool
-	Force                     bool
-	CreateNamespace           bool
-	DryRun                    bool
 	DisableHooks              bool
 	Replace                   bool
-	Wait                      bool
+	WaitStrategy              kube.WaitStrategy
 	WaitForJobs               bool
 	Devel                     bool
 	DependencyUpdate          bool
@@ -100,8 +96,11 @@ type Install struct {
 	Atomic                    bool
 	SkipCRDs                  bool
 	SubNotes                  bool
+	HideNotes                 bool
+	SkipSchemaValidation      bool
 	DisableOpenAPIValidation  bool
 	IncludeCRDs               bool
+	Labels                    map[string]string
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
