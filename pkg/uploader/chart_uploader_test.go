@@ -17,77 +17,50 @@ limitations under the License.
 package uploader
 
 import (
-	"crypto/sha256"
 	"fmt"
-	"helm.sh/helm/v4/pkg/cli"
-	"helm.sh/helm/v4/pkg/pusher"
-	"helm.sh/helm/v4/pkg/registry"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
-	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/mock"
+
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/pusher"
 )
 
+type MockedPusher struct {
+	mock.Mock
+}
+
+func (m *MockedPusher) Push(chartRef string, url string, _ ...pusher.Option) error {
+	m.Called(chartRef, url)
+	return nil
+}
+
+type MockedProviders struct {
+	mock.Mock
+}
+
+func (m *MockedProviders) ByScheme(string) (pusher.Pusher, error) {
+	args := m.Called()
+	mockedPusher := args.Get(0).(pusher.Pusher)
+	return mockedPusher, nil
+}
+
 func TestChartUploader_UploadTo_Happy(t *testing.T) {
-	shasum := ""
-	var content []byte
-	contentSize := 0
-	// no significant meaning behind this uuid, just needs to be a uuid
-	uploadSessionId := "c6ce3ba4-788f-4e10-93ed-ff77d35c6851"
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "HEAD" {
-			w.WriteHeader(http.StatusNotFound)
-		} else if r.Method == "POST" && r.URL.Path == "/v2/test/blobs/uploads/" {
-			w.Header().Set("Location", "/v2/test/blobs/uploads/"+uploadSessionId)
-			w.WriteHeader(http.StatusAccepted)
-		} else if r.Method == "PUT" && r.URL.Path == "/v2/test/blobs/uploads/"+uploadSessionId {
-			w.Header().Set("Location", "/v2/test/blobs/sha256:irrelevant")
-			w.WriteHeader(http.StatusCreated)
-		} else if r.Method == "PUT" && strings.HasPrefix(r.URL.Path, "/v2/test/manifests/sha256:") {
-			content = make([]byte, r.ContentLength)
-			r.Body.Read(content)
-			h := sha256.New()
-			h.Write(content)
-			shasumBuilder := strings.Builder{}
-			fmt.Fprintf(&shasumBuilder, "%x", h.Sum(nil))
-			shasum = shasumBuilder.String()
-			contentSize = len(content)
-			w.Header().Set("Location", "/v2/test/manifests/sha256:"+shasum)
-			w.WriteHeader(http.StatusCreated)
-		} else if r.Method == "GET" && r.URL.Path == "/v2/test/manifests/sha256:"+shasum {
-			w.Header().Set("Content-Length", strconv.Itoa(contentSize))
-			w.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
-			w.Header().Set("Docker-Content-Digest", "sha256:"+shasum)
-			_, err := fmt.Fprint(w, string(content))
-			if err != nil {
-				t.Errorf("%s", err)
-			}
-		} else if r.Method == "PUT" && r.URL.Path == "/v2/test/manifests/0.1.0" {
-			w.Header().Set("Docker-Content-Digest", "sha256:"+shasum)
-			w.Header().Set("Content-Length", strconv.Itoa(contentSize))
-			w.Header().Set("Location", "/v2/test/manifests/sha256:"+shasum)
-			w.WriteHeader(http.StatusCreated)
-		}
-	}))
-	defer srv.Close()
+	mockedPusher := new(MockedPusher)
+	mockedPusher.On("Push").Return(nil)
 
-	envSettings := cli.EnvSettings{}
-	pushers := pusher.All(&envSettings)
+	mockedProviders := new(MockedProviders)
+	mockedProviders.On("ByScheme").Return(mockedPusher, nil)
 
-	u, _ := url.ParseRequestURI(srv.URL)
-	ociReplacedUrl := strings.Replace(u.String(), "http", "oci", 1)
-
-	srvClient := srv.Client()
-	client, _ := registry.NewClient(registry.ClientOptHTTPClient(srvClient))
 	uploader := ChartUploader{
-		Pushers:        pushers,
-		RegistryClient: client,
-		Options:        []pusher.Option{pusher.WithPlainHTTP(true)},
+		Pushers: mockedProviders,
 	}
 
-	err := uploader.UploadTo("testdata/test-0.1.0.tgz", ociReplacedUrl+"")
+	mockedPusher.On("Push", "testdata/test-0.1.0.tgz", "oci://test").Return(nil)
+	err := uploader.UploadTo("testdata/test-0.1.0.tgz", "oci://test")
+	mockedPusher.AssertCalled(t, "Push", "testdata/test-0.1.0.tgz", "oci://test")
+
 	if err != nil {
 		fmt.Println(err)
 		t.Errorf("Expected push to succeed but got error")

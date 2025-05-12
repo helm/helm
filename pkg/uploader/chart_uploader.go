@@ -29,7 +29,7 @@ type ChartUploader struct {
 	// Out is the location to write warning and info messages.
 	Out io.Writer
 	// Pusher collection for the operation
-	Pushers pusher.Providers
+	Pushers pusher.ProvidersInterface
 	// Options provide parameters to be passed along to the Pusher being initialized.
 	Options []pusher.Option
 	// RegistryClient is a client for interacting with registries.
