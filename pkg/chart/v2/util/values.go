@@ -189,12 +189,8 @@ func isNonEmptyTable(val interface{}) bool {
 }
 
 func isNonEmptyString(val interface{}) bool {
-	stringContent, ok := val.(string)
-	if !ok {
-		return false
-	}
-
-	return stringContent != ""
+	valueString := fmt.Sprintf("%s", val)
+	return valueString != ""
 }
 
 // PathValue takes a path that traverses a YAML structure and returns the value at the end of that path.
