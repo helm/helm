@@ -193,7 +193,7 @@ func isNonEmptyTable(val interface{}) bool {
 }
 
 func isNonEmptyString(val interface{}) bool {
-	valueString := fmt.Sprintf("%s", val)
+	valueString := fmt.Sprintf("%v", val)
 	return valueString != ""
 }
 
