@@ -48,5 +48,5 @@ type PostRenderer interface {
 	//
 	// This change allows the post-renderer to view, add, remove, and modify all rendered
 	// files at once before they are sorted into hooks, manifests, and partials.
-	Run(renderedFiles map[string]string) (modifiedFiles map[string]string, err error)
+	Run(renderedFiles map[string]string) (map[string]string, error)
 }
