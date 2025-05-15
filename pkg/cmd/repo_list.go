@@ -37,6 +37,9 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 		Args:              require.NoArgs,
 		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			// The error is silently ignored. If no repository file exists, it cannot be loaded,
+			// or the file isn't the right format to be parsed the error is ignored. The
+			// repositories will be 0.
 			f, _ := repo.LoadFile(settings.RepositoryConfig)
 			if len(f.Repositories) == 0 && outfmt != output.JSON && outfmt != output.YAML {
 				fmt.Fprintln(cmd.ErrOrStderr(), "no repositories to show")
