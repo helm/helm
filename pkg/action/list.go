@@ -173,7 +173,7 @@ func (l *List) Run() ([]*release.Release, error) {
 	}
 
 	if results == nil {
-		return results, nil
+		return nil, nil
 	}
 
 	// by definition, superseded releases are never shown if

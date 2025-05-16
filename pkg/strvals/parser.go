@@ -190,8 +190,8 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 				return err
 			}
 			return fmt.Errorf("key %q has no value", string(k))
-			//set(data, string(k), "")
-			//return err
+			// set(data, string(k), "")
+			// return err
 		case last == '[':
 			// We are in a list index context, so we need to set an index.
 			i, err := t.keyIndex()
@@ -226,7 +226,7 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 				// discard in t.sc the chars of the decoded json value (the number of those characters is returned by InputOffset).
 				var jsonval interface{}
 				dec := json.NewDecoder(strings.NewReader(t.sc.String()))
-				if err = dec.Decode(&jsonval); err != nil {
+				if err := dec.Decode(&jsonval); err != nil {
 					return err
 				}
 				set(data, string(k), jsonval)
@@ -237,7 +237,7 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 				_, err = t.emptyVal()
 				return err
 			}
-			//End of key. Consume =, Get value.
+			// End of key. Consume =, Get value.
 			// FIXME: Get value list first
 			vl, e := t.valList()
 			switch e {
@@ -290,7 +290,7 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 
 func set(data map[string]interface{}, key string, val interface{}) {
 	// If key is empty, don't set it.
-	if len(key) == 0 {
+	if key == "" {
 		return
 	}
 	data[key] = val
@@ -359,7 +359,7 @@ func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interfa
 			// discard in t.sc the chars of the decoded json value (the number of those characters is returned by InputOffset).
 			var jsonval interface{}
 			dec := json.NewDecoder(strings.NewReader(t.sc.String()))
-			if err = dec.Decode(&jsonval); err != nil {
+			if err := dec.Decode(&jsonval); err != nil {
 				return list, err
 			}
 			if list, err = setIndex(list, i, jsonval); err != nil {
@@ -550,7 +550,7 @@ func typedVal(v []rune, st bool) interface{} {
 	}
 
 	// If this value does not start with zero, try parsing it to an int
-	if len(val) != 0 && val[0] != '0' {
+	if val != "" && val[0] != '0' {
 		if iv, err := strconv.ParseInt(val, 10, 64); err == nil {
 			return iv
 		}
