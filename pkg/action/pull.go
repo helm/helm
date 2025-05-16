@@ -150,23 +150,6 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		if !filepath.IsAbs(ud) {
 			ud = filepath.Join(p.DestDir, ud)
 		}
-		// Let udCheck to check conflict file/dir without replacing ud when untarDir is the current directory(.).
-		udCheck := ud
-		if udCheck == "." {
-			_, udCheck = filepath.Split(chartRef)
-		} else {
-			_, chartName := filepath.Split(chartRef)
-			udCheck = filepath.Join(udCheck, chartName)
-		}
-
-		if _, err := os.Stat(udCheck); err != nil {
-			if err := os.MkdirAll(udCheck, 0755); err != nil {
-				return out.String(), fmt.Errorf("failed to untar (mkdir): %w", err)
-			}
-		} else {
-			return out.String(), fmt.Errorf("failed to untar: a file or directory with the name %s already exists", udCheck)
-		}
-
 		return out.String(), chartutil.ExpandFile(ud, saved)
 	}
 	return out.String(), nil
