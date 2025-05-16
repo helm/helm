@@ -140,7 +140,7 @@ func TestRepoRemove(t *testing.T) {
 	}
 }
 
-func createCacheFiles(rootDir string, repoName string) (cacheIndexFile string, cacheChartsFile string) {
+func createCacheFiles(rootDir, repoName string) (cacheIndexFile, cacheChartsFile string) {
 	cacheIndexFile = filepath.Join(rootDir, helmpath.CacheIndexFile(repoName))
 	mf, _ := os.Create(cacheIndexFile)
 	mf.Close()
@@ -152,7 +152,7 @@ func createCacheFiles(rootDir string, repoName string) (cacheIndexFile string, c
 	return cacheIndexFile, cacheChartsFile
 }
 
-func testCacheFiles(t *testing.T, cacheIndexFile string, cacheChartsFile string, repoName string) {
+func testCacheFiles(t *testing.T, cacheIndexFile, cacheChartsFile, repoName string) {
 	t.Helper()
 	if _, err := os.Stat(cacheIndexFile); err == nil {
 		t.Errorf("Error cache index file was not removed for repository %s", repoName)
