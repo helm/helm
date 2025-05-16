@@ -162,7 +162,7 @@ func TestValidateValuesFile(t *testing.T) {
 func createTestingSchema(t *testing.T, dir string) string {
 	t.Helper()
 	schemafile := filepath.Join(dir, "values.schema.json")
-	if err := os.WriteFile(schemafile, []byte(testSchema), 0700); err != nil {
+	if err := os.WriteFile(schemafile, []byte(testSchema), 0o700); err != nil {
 		t.Fatalf("Failed to write schema to tmpdir: %s", err)
 	}
 	return schemafile
