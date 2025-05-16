@@ -183,7 +183,7 @@ func setupTestingScript(t *testing.T) (filepath string) {
 		t.Fatalf("unable to write tempfile for testing: %s", err)
 	}
 
-	err = f.Chmod(0755)
+	err = f.Chmod(0o755)
 	if err != nil {
 		t.Fatalf("unable to make tempfile executable for testing: %s", err)
 	}

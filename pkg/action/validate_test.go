@@ -73,7 +73,7 @@ func newMissingDeployment(name, namespace string) *resource.Info {
 	return info
 }
 
-func newDeploymentWithOwner(name, namespace string, labels map[string]string, annotations map[string]string) *resource.Info {
+func newDeploymentWithOwner(name, namespace string, labels, annotations map[string]string) *resource.Info {
 	obj := &appsv1.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name:        name,

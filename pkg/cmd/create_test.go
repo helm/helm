@@ -64,19 +64,19 @@ func TestCreateStarterCmd(t *testing.T) {
 	ensure.HelmHome(t)
 	cname := "testchart"
 	defer resetEnv()()
-	os.MkdirAll(helmpath.CachePath(), 0755)
+	os.MkdirAll(helmpath.CachePath(), 0o755)
 	defer testChdir(t, helmpath.CachePath())()
 
 	// Create a starter.
 	starterchart := helmpath.DataPath("starters")
-	os.MkdirAll(starterchart, 0755)
+	os.MkdirAll(starterchart, 0o755)
 	if dest, err := chartutil.Create("starterchart", starterchart); err != nil {
 		t.Fatalf("Could not create chart: %s", err)
 	} else {
 		t.Logf("Created %s", dest)
 	}
 	tplpath := filepath.Join(starterchart, "starterchart", "templates", "foo.tpl")
-	if err := os.WriteFile(tplpath, []byte("test"), 0644); err != nil {
+	if err := os.WriteFile(tplpath, []byte("test"), 0o644); err != nil {
 		t.Fatalf("Could not write template: %s", err)
 	}
 
@@ -132,18 +132,18 @@ func TestCreateStarterAbsoluteCmd(t *testing.T) {
 
 	// Create a starter.
 	starterchart := helmpath.DataPath("starters")
-	os.MkdirAll(starterchart, 0755)
+	os.MkdirAll(starterchart, 0o755)
 	if dest, err := chartutil.Create("starterchart", starterchart); err != nil {
 		t.Fatalf("Could not create chart: %s", err)
 	} else {
 		t.Logf("Created %s", dest)
 	}
 	tplpath := filepath.Join(starterchart, "starterchart", "templates", "foo.tpl")
-	if err := os.WriteFile(tplpath, []byte("test"), 0644); err != nil {
+	if err := os.WriteFile(tplpath, []byte("test"), 0o644); err != nil {
 		t.Fatalf("Could not write template: %s", err)
 	}
 
-	os.MkdirAll(helmpath.CachePath(), 0755)
+	os.MkdirAll(helmpath.CachePath(), 0o755)
 	defer testChdir(t, helmpath.CachePath())()
 
 	starterChartPath := filepath.Join(starterchart, "starterchart")

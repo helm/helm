@@ -321,7 +321,7 @@ func validateListAnnotations(yamlStruct *K8sYamlStruct, manifest string) error {
 
 // K8sYamlStruct stubs a Kubernetes YAML file.
 //
-// DEPRECATED: In Helm 4, this will be made a private type, as it is for use only within
+// Deprecated: In Helm 4, this will be made a private type, as it is for use only within
 // the rules package.
 type K8sYamlStruct struct {
 	APIVersion string `json:"apiVersion"`

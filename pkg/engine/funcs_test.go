@@ -25,7 +25,7 @@ import (
 )
 
 func TestFuncs(t *testing.T) {
-	//TODO write tests for failure cases
+	// TODO write tests for failure cases
 	tests := []struct {
 		tpl, expect string
 		vars        interface{}
