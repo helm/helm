@@ -257,7 +257,7 @@ func TestDownloadAll(t *testing.T) {
 	}
 
 	// create a 'tmpcharts' directory to test #5567
-	if err := os.MkdirAll(filepath.Join(chartPath, "tmpcharts"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(chartPath, "tmpcharts"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := m.downloadAll([]*chart.Dependency{signDep, localDep}); err != nil {
@@ -275,10 +275,10 @@ func TestDownloadAll(t *testing.T) {
 description: A Helm chart for Kubernetes
 name: ../bad-local-subchart
 version: 0.1.0`
-	if err := os.MkdirAll(filepath.Join(chartPath, "testdata", "bad-local-subchart"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(chartPath, "testdata", "bad-local-subchart"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	err = os.WriteFile(filepath.Join(chartPath, "testdata", "bad-local-subchart", "Chart.yaml"), []byte(badchartyaml), 0644)
+	err = os.WriteFile(filepath.Join(chartPath, "testdata", "bad-local-subchart", "Chart.yaml"), []byte(badchartyaml), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}

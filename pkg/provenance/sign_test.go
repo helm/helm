@@ -309,13 +309,15 @@ func TestVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if ver, err := signer.Verify(testChartfile, testSigBlock); err != nil {
+	ver, err := signer.Verify(testChartfile, testSigBlock)
+	switch {
+	case err != nil:
 		t.Errorf("Failed to pass verify. Err: %s", err)
-	} else if len(ver.FileHash) == 0 {
+	case ver.FileHash == "":
 		t.Error("Verification is missing hash.")
-	} else if ver.SignedBy == nil {
+	case ver.SignedBy == nil:
 		t.Error("No SignedBy field")
-	} else if ver.FileName != filepath.Base(testChartfile) {
+	case ver.FileName != filepath.Base(testChartfile):
 		t.Errorf("FileName is unexpectedly %q", ver.FileName)
 	}
 

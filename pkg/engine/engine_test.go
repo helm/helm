@@ -1290,7 +1290,7 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 		return
 	}
 	switch err.(type) {
-	case (template.ExecError):
+	case template.ExecError:
 		errTxt := fmt.Sprint(err)
 		if !strings.Contains(errTxt, "noSuchKey") {
 			t.Errorf("Expected error to contain 'noSuchKey', got %s", errTxt)
