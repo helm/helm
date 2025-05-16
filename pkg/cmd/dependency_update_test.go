@@ -16,13 +16,14 @@ limitations under the License.
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -204,9 +205,8 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 
 	// Make sure tmpcharts-x is deleted
 	tmpPath := filepath.Join(dir(chartname), fmt.Sprintf("tmpcharts-%d", os.Getpid()))
-	if _, err := os.Stat(tmpPath); !errors.Is(err, fs.ErrNotExist) {
-		t.Fatalf("tmpcharts dir still exists")
-	}
+	_, err = os.Stat(tmpPath)
+	require.ErrorIsf(t, err, fs.ErrNotExist, "tmpcharts dir still exists")
 }
 
 func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
