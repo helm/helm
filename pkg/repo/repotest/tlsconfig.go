@@ -26,6 +26,7 @@ import (
 )
 
 func MakeTestTLSConfig(t *testing.T, path string) *tls.Config {
+	t.Helper()
 	ca, pub, priv := filepath.Join(path, "rootca.crt"), filepath.Join(path, "crt.pem"), filepath.Join(path, "key.pem")
 
 	insecure := false

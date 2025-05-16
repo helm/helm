@@ -576,6 +576,7 @@ func TestHttpClientInsecureSkipVerify(t *testing.T) {
 }
 
 func verifyInsecureSkipVerify(t *testing.T, g *HTTPGetter, caseName string, expectedValue bool) *http.Transport {
+	t.Helper()
 	returnVal, err := g.httpClient()
 
 	if err != nil {

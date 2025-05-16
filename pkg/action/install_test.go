@@ -116,6 +116,7 @@ func installActionWithConfig(config *Configuration) *Install {
 }
 
 func installAction(t *testing.T) *Install {
+	t.Helper()
 	config := actionConfigFixture(t)
 	instAction := NewInstall(config)
 	instAction.Namespace = "spaced"
