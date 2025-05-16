@@ -250,6 +250,7 @@ func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
 }
 
 func setupMockRepoServer(t *testing.T) *repotest.Server {
+	t.Helper()
 	srv := repotest.NewTempServer(
 		t,
 		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz"),

@@ -276,6 +276,7 @@ func TestLoadPluginsForCompletion(t *testing.T) {
 }
 
 func checkCommand(t *testing.T, plugins []*cobra.Command, tests []staticCompletionDetails) {
+	t.Helper()
 	if len(plugins) != len(tests) {
 		t.Fatalf("Expected commands %v, got %v", tests, plugins)
 	}

@@ -437,6 +437,7 @@ func TestUpdateWithNoRepo(t *testing.T) {
 // Parent chart includes local-subchart 0.1.0 subchart from a fake repository, by default.
 // If each of these main fields (name, version, repository) is not supplied by dep param, default value will be used.
 func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Dependency) {
+	t.Helper()
 	// Set up a fake repo
 	srv := repotest.NewTempServer(
 		t,

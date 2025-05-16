@@ -558,6 +558,7 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
 }
 
 func validateDependencyTree(t *testing.T, c *chart.Chart) {
+	t.Helper()
 	for _, dependency := range c.Dependencies() {
 		if dependency.Parent() != c {
 			if dependency.Parent() != c {

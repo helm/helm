@@ -153,6 +153,7 @@ func createCacheFiles(rootDir string, repoName string) (cacheIndexFile string, c
 }
 
 func testCacheFiles(t *testing.T, cacheIndexFile string, cacheChartsFile string, repoName string) {
+	t.Helper()
 	if _, err := os.Stat(cacheIndexFile); err == nil {
 		t.Errorf("Error cache index file was not removed for repository %s", repoName)
 	}

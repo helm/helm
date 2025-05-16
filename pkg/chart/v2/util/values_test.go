@@ -224,6 +224,7 @@ chapter:
 }
 
 func matchValues(t *testing.T, data map[string]interface{}) {
+	t.Helper()
 	if data["poet"] != "Coleridge" {
 		t.Errorf("Unexpected poet: %s", data["poet"])
 	}

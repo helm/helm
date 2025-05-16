@@ -29,6 +29,7 @@ import (
 )
 
 func outputFlagCompletionTest(t *testing.T, cmdName string) {
+	t.Helper()
 	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []*release.Release {
 		info.LastDeployed = helmtime.Unix(1452902400, 0).UTC()
 		return []*release.Release{{

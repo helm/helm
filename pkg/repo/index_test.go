@@ -352,6 +352,7 @@ func TestDownloadIndexFile(t *testing.T) {
 }
 
 func verifyLocalIndex(t *testing.T, i *IndexFile) {
+	t.Helper()
 	numEntries := len(i.Entries)
 	if numEntries != 3 {
 		t.Errorf("Expected 3 entries in index file but got %d", numEntries)
@@ -450,6 +451,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 }
 
 func verifyLocalChartsFile(t *testing.T, chartsContent []byte, indexContent *IndexFile) {
+	t.Helper()
 	var expected, reald []string
 	for chart := range indexContent.Entries {
 		expected = append(expected, chart)

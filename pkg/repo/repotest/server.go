@@ -42,6 +42,7 @@ import (
 )
 
 func BasicAuthMiddleware(t *testing.T) http.HandlerFunc {
+	t.Helper()
 	return http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
 		if !ok || username != "username" || password != "password" {
@@ -89,7 +90,7 @@ type Server struct {
 //
 // The temp dir will be removed by testing package automatically when test finished.
 func NewTempServer(t *testing.T, options ...ServerOption) *Server {
-
+	t.Helper()
 	docrootTempDir, err := os.MkdirTemp("", "helm-repotest-")
 	if err != nil {
 		t.Fatal(err)
@@ -110,6 +111,7 @@ func NewTempServer(t *testing.T, options ...ServerOption) *Server {
 
 // Create the server, but don't yet start it
 func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
+	t.Helper()
 	absdocroot, err := filepath.Abs(docroot)
 	if err != nil {
 		t.Fatal(err)
@@ -162,6 +164,7 @@ func WithDependingChart(c *chart.Chart) OCIServerOpt {
 }
 
 func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
+	t.Helper()
 	testHtpasswdFileBasename := "authtest.htpasswd"
 	testUsername, testPassword := "username", "password"
 
@@ -209,6 +212,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 }
 
 func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
+	t.Helper()
 	cfg := &OCIServerRunConfig{}
 	for _, fn := range opts {
 		fn(cfg)

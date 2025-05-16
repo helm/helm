@@ -191,6 +191,7 @@ func TestRepoAddConcurrentHiddenFile(t *testing.T) {
 }
 
 func repoAddConcurrent(t *testing.T, testName, repoFile string) {
+	t.Helper()
 	ts := repotest.NewTempServer(
 		t,
 		repotest.WithChartSourceGlob("testdata/testserver/*.*"),

@@ -36,6 +36,7 @@ import (
 )
 
 func upgradeAction(t *testing.T) *Upgrade {
+	t.Helper()
 	config := actionConfigFixture(t)
 	upAction := NewUpgrade(config)
 	upAction.Namespace = "spaced"

@@ -28,6 +28,7 @@ import (
 )
 
 func uninstallAction(t *testing.T) *Uninstall {
+	t.Helper()
 	config := actionConfigFixture(t)
 	unAction := NewUninstall(config)
 	return unAction
