@@ -52,7 +52,7 @@ func (r *testRepo) UpdateVersion(version string) error {
 func TestVCSInstaller(t *testing.T) {
 	ensure.HelmHome(t)
 
-	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
+	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0o755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 

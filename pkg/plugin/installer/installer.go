@@ -43,7 +43,7 @@ type Installer interface {
 
 // Install installs a plugin.
 func Install(i Installer) error {
-	if err := os.MkdirAll(filepath.Dir(i.Path()), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(i.Path()), 0o755); err != nil {
 		return err
 	}
 	if _, pathErr := os.Stat(i.Path()); !os.IsNotExist(pathErr) {
