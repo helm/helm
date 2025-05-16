@@ -121,7 +121,7 @@ func processParent(cmd *cobra.Command, args []string) ([]string, error) {
 
 // This function is used to setup the environment for the plugin and then
 // call the executable specified by the parameter 'main'
-func callPluginExecutable(pluginName string, main string, argv []string, out io.Writer) error {
+func callPluginExecutable(pluginName, main string, argv []string, out io.Writer) error {
 	env := os.Environ()
 	for k, v := range settings.EnvVars() {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
@@ -203,8 +203,7 @@ type pluginCommand struct {
 // and add the dynamic completion hook to call the optional plugin.complete
 func loadCompletionForPlugin(pluginCmd *cobra.Command, plugin *plugin.Plugin) {
 	// Parse the yaml file providing the plugin's sub-commands and flags
-	cmds, err := loadFile(strings.Join(
-		[]string{plugin.Dir, pluginStaticCompletionFile}, string(filepath.Separator)))
+	cmds, err := loadFile(plugin.Dir + string(filepath.Separator) + pluginStaticCompletionFile)
 
 	if err != nil {
 		// The file could be missing or invalid.  No static completion for this plugin.
@@ -228,7 +227,7 @@ func addPluginCommands(plugin *plugin.Plugin, baseCmd *cobra.Command, cmds *plug
 		return
 	}
 
-	if len(cmds.Name) == 0 {
+	if cmds.Name == "" {
 		// Missing name for a command
 		if settings.Debug {
 			log.Output(2, fmt.Sprintf("[info] sub-command name field missing for %s", baseCmd.CommandPath()))
@@ -329,7 +328,7 @@ func pluginDynamicComp(plug *plugin.Plugin, cmd *cobra.Command, args []string, t
 	}
 
 	// We will call the dynamic completion script of the plugin
-	main := strings.Join([]string{plug.Dir, pluginDynamicCompletionExecutable}, string(filepath.Separator))
+	main := plug.Dir + string(filepath.Separator) + pluginDynamicCompletionExecutable
 
 	// We must include all sub-commands passed on the command-line.
 	// To do that, we pass-in the entire CommandPath, except the first two elements
@@ -352,7 +351,7 @@ func pluginDynamicComp(plug *plugin.Plugin, cmd *cobra.Command, args []string, t
 	var completions []string
 	for comp := range strings.SplitSeq(buf.String(), "\n") {
 		// Remove any empty lines
-		if len(comp) > 0 {
+		if comp != "" {
 			completions = append(completions, comp)
 		}
 	}

@@ -119,7 +119,7 @@ func TestPackage(t *testing.T) {
 			}
 
 			// This is an unfortunate byproduct of the tmpdir
-			if v, ok := tt.flags["keyring"]; ok && len(v) > 0 {
+			if v, ok := tt.flags["keyring"]; ok && v != "" {
 				tt.flags["keyring"] = filepath.Join(origDir, v)
 			}
 
@@ -147,7 +147,7 @@ func TestPackage(t *testing.T) {
 				t.Fatalf("%q: expected error %q, got %q", tt.name, tt.expect, err)
 			}
 
-			if len(tt.hasfile) > 0 {
+			if tt.hasfile != "" {
 				if fi, err := os.Stat(tt.hasfile); err != nil {
 					t.Errorf("%q: expected file %q, got err %q", tt.name, tt.hasfile, err)
 				} else if fi.Size() == 0 {

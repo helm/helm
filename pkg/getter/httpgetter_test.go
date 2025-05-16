@@ -225,7 +225,7 @@ func TestDownload(t *testing.T) {
 	// A different host is provided for the WithURL from the one used for Get
 	u2, _ := url.ParseRequestURI(crossAuthSrv.URL)
 	host := strings.Split(u2.Host, ":")
-	host[0] = host[0] + "a"
+	host[0] += "a"
 	u2.Host = strings.Join(host, ":")
 	httpgetter, err = NewHTTPGetter(
 		WithURL(u2.String()),
@@ -260,7 +260,7 @@ func TestDownload(t *testing.T) {
 	// A different host is provided for the WithURL from the one used for Get
 	u2, _ = url.ParseRequestURI(crossAuthSrv.URL)
 	host = strings.Split(u2.Host, ":")
-	host[0] = host[0] + "a"
+	host[0] += "a"
 	u2.Host = strings.Join(host, ":")
 	httpgetter, err = NewHTTPGetter(
 		WithURL(u2.String()),
@@ -520,11 +520,11 @@ func TestHTTPGetterTarDownload(t *testing.T) {
 
 		b := make([]byte, 512)
 		f.Read(b)
-		//Get the file size
+		// Get the file size
 		FileStat, _ := f.Stat()
 		FileSize := strconv.FormatInt(FileStat.Size(), 10)
 
-		//Simulating improper header values from bitbucket
+		// Simulating improper header values from bitbucket
 		w.Header().Set("Content-Type", "application/x-tar")
 		w.Header().Set("Content-Encoding", "gzip")
 		w.Header().Set("Content-Length", FileSize)
@@ -570,7 +570,7 @@ func TestHttpClientInsecureSkipVerify(t *testing.T) {
 	g.opts.keyFile = "testdata/client.key"
 	g.opts.insecureSkipVerifyTLS = true
 	transport := verifyInsecureSkipVerify(t, &g, "HTTPGetter with 2 way ssl", true)
-	if len(transport.TLSClientConfig.Certificates) <= 0 {
+	if len(transport.TLSClientConfig.Certificates) == 0 {
 		t.Fatal("transport.TLSClientConfig.Certificates is not present")
 	}
 }

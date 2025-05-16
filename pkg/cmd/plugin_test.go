@@ -305,7 +305,7 @@ func checkCommand(t *testing.T, plugins []*cobra.Command, tests []staticCompleti
 		var pflags []string
 		pp.LocalFlags().VisitAll(func(flag *pflag.Flag) {
 			pflags = append(pflags, flag.Name)
-			if len(flag.Shorthand) > 0 && flag.Shorthand != flag.Name {
+			if flag.Shorthand != "" && flag.Shorthand != flag.Name {
 				pflags = append(pflags, flag.Shorthand)
 			}
 		})

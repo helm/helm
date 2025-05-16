@@ -90,7 +90,7 @@ func NewPushWithOpts(opts ...PushOpt) *Push {
 }
 
 // Run executes 'helm push' against the given chart archive.
-func (p *Push) Run(chartRef string, remote string) (string, error) {
+func (p *Push) Run(chartRef, remote string) (string, error) {
 	var out strings.Builder
 
 	c := uploader.ChartUploader{

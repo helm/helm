@@ -50,7 +50,7 @@ func newGetNotesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if len(res.Info.Notes) > 0 {
+			if res.Info.Notes != "" {
 				fmt.Fprintf(out, "NOTES:\n%s\n", res.Info.Notes)
 			}
 			return nil

@@ -71,11 +71,11 @@ func Expand(dir string, r io.Reader) error {
 
 		// Make sure the necessary subdirs get created.
 		basedir := filepath.Dir(outpath)
-		if err := os.MkdirAll(basedir, 0755); err != nil {
+		if err := os.MkdirAll(basedir, 0o755); err != nil {
 			return err
 		}
 
-		if err := os.WriteFile(outpath, file.Data, 0644); err != nil {
+		if err := os.WriteFile(outpath, file.Data, 0o644); err != nil {
 			return err
 		}
 	}

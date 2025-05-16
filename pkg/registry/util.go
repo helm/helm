@@ -156,7 +156,7 @@ func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationVersion, meta.Version)
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationURL, meta.Home)
 
-	if len(creationTime) == 0 {
+	if creationTime == "" {
 		creationTime = helmtime.Now().UTC().Format(time.RFC3339)
 	}
 
@@ -171,11 +171,11 @@ func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[
 
 		for maintainerIdx, maintainer := range meta.Maintainers {
 
-			if len(maintainer.Name) > 0 {
+			if maintainer.Name != "" {
 				maintainerSb.WriteString(maintainer.Name)
 			}
 
-			if len(maintainer.Email) > 0 {
+			if maintainer.Email != "" {
 				maintainerSb.WriteString(" (")
 				maintainerSb.WriteString(maintainer.Email)
 				maintainerSb.WriteString(")")
@@ -195,10 +195,10 @@ func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[
 }
 
 // addToMap takes an existing map and adds an item if the value is not empty
-func addToMap(inputMap map[string]string, newKey string, newValue string) map[string]string {
+func addToMap(inputMap map[string]string, newKey, newValue string) map[string]string {
 
 	// Add item to map if its
-	if len(strings.TrimSpace(newValue)) > 0 {
+	if strings.TrimSpace(newValue) != "" {
 		inputMap[newKey] = newValue
 	}
 

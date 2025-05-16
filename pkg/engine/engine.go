@@ -447,7 +447,7 @@ func (p byPathLen) Less(i, j int) bool {
 	a, b := p[i], p[j]
 	ca, cb := strings.Count(a, "/"), strings.Count(b, "/")
 	if ca == cb {
-		return strings.Compare(a, b) == -1
+		return a < b
 	}
 	return ca < cb
 }

@@ -49,7 +49,7 @@ func AssertGoldenString(t TestingT, actual, filename string) {
 }
 
 // AssertGoldenFile asserts that the content of the actual file matches the contents of the expected file
-func AssertGoldenFile(t TestingT, actualFileName string, expectedFilename string) {
+func AssertGoldenFile(t TestingT, actualFileName, expectedFilename string) {
 	t.Helper()
 
 	actual, err := os.ReadFile(actualFileName)
@@ -87,7 +87,7 @@ func update(filename string, in []byte) error {
 	if !*updateGolden {
 		return nil
 	}
-	return os.WriteFile(filename, normalize(in), 0666)
+	return os.WriteFile(filename, normalize(in), 0o666)
 }
 
 func normalize(in []byte) []byte {

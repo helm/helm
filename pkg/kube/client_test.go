@@ -1176,10 +1176,8 @@ func TestIsReachable(t *testing.T) {
 					t.Errorf("expected error message to contain '%s', got: %v", tt.errorContains, err)
 				}
 
-			} else {
-				if err != nil {
-					t.Errorf("expected no error but got: %v", err)
-				}
+			} else if err != nil {
+				t.Errorf("expected no error but got: %v", err)
 			}
 		})
 	}

@@ -301,12 +301,12 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 				dst.Close()
 
 				// Make the file unreadable
-				if err := os.Chmod(tempChart, 0000); err != nil {
+				if err := os.Chmod(tempChart, 0o000); err != nil {
 					t.Fatal(err)
 				}
 
 				return tempChart, func() {
-					os.Chmod(tempChart, 0644) // Restore permissions for cleanup
+					os.Chmod(tempChart, 0o644) // Restore permissions for cleanup
 				}
 			},
 			href:          "oci://localhost:5000/test",
@@ -342,7 +342,7 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 				dst.Close()
 
 				// Create provenance file
-				if err := os.WriteFile(tempProv, []byte("test provenance data"), 0644); err != nil {
+				if err := os.WriteFile(tempProv, []byte("test provenance data"), 0o644); err != nil {
 					t.Fatal(err)
 				}
 
@@ -384,10 +384,8 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
 					t.Errorf("Expected error containing %q, got %q", tt.errorContains, err.Error())
 				}
-			} else {
-				if err != nil {
-					t.Fatalf("Unexpected error: %v", err)
-				}
+			} else if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
 			}
 		})
 	}

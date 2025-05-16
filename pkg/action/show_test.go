@@ -76,7 +76,7 @@ func TestShowNoValues(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(output) != 0 {
+	if output != "" {
 		t.Errorf("expected empty values buffer, got %s", output)
 	}
 }
