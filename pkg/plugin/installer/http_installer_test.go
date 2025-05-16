@@ -85,7 +85,7 @@ func TestHTTPInstaller(t *testing.T) {
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 
-	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
+	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0o755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
@@ -133,7 +133,7 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 	defer srv.Close()
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 
-	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
+	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0o755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
@@ -166,7 +166,7 @@ func TestHTTPInstallerUpdate(t *testing.T) {
 	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
 	ensure.HelmHome(t)
 
-	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
+	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0o755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
 
@@ -211,7 +211,7 @@ func TestExtract(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Set the umask to default open permissions so we can actually test
-	oldmask := syscall.Umask(0000)
+	oldmask := syscall.Umask(0o000)
 	defer func() {
 		syscall.Umask(oldmask)
 	}()
@@ -223,8 +223,8 @@ func TestExtract(t *testing.T) {
 		Name, Body string
 		Mode       int64
 	}{
-		{"plugin.yaml", "plugin metadata", 0600},
-		{"README.md", "some text", 0777},
+		{"plugin.yaml", "plugin metadata", 0o600},
+		{"README.md", "some text", 0o777},
 	}
 	for _, file := range files {
 		hdr := &tar.Header{
@@ -280,7 +280,7 @@ func TestExtract(t *testing.T) {
 			t.Fatalf("Expected %s to exist but doesn't", pluginYAMLFullPath)
 		}
 		t.Fatal(err)
-	} else if info.Mode().Perm() != 0600 {
+	} else if info.Mode().Perm() != 0o600 {
 		t.Fatalf("Expected %s to have 0600 mode it but has %o", pluginYAMLFullPath, info.Mode().Perm())
 	}
 
@@ -290,7 +290,7 @@ func TestExtract(t *testing.T) {
 			t.Fatalf("Expected %s to exist but doesn't", readmeFullPath)
 		}
 		t.Fatal(err)
-	} else if info.Mode().Perm() != 0777 {
+	} else if info.Mode().Perm() != 0o777 {
 		t.Fatalf("Expected %s to have 0777 mode it but has %o", readmeFullPath, info.Mode().Perm())
 	}
 
@@ -343,7 +343,7 @@ func TestMediaTypeToExtension(t *testing.T) {
 		if shouldPass && ext == "" {
 			t.Errorf("Expected an extension but got empty string")
 		}
-		if !shouldPass && len(ext) != 0 {
+		if !shouldPass && ext != "" {
 			t.Error("Expected extension to be empty for unrecognized type")
 		}
 	}
