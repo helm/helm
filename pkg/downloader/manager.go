@@ -76,6 +76,7 @@ type Manager struct {
 	RegistryClient   *registry.Client
 	RepositoryConfig string
 	RepositoryCache  string
+	Untar            bool
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -356,6 +357,10 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		if _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
 			saveError = fmt.Errorf("could not download %s: %w", churl, err)
 			break
+		}
+
+		if m.Untar {
+			chartutil.ExpandFile(m.ChartPath+"/charts/", tmpPath)
 		}
 
 		churls[churl] = struct{}{}
