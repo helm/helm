@@ -255,7 +255,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			return fmt.Errorf("%q is not a directory", destPath)
 		}
 	} else if errors.Is(err, stdfs.ErrNotExist) {
-		if err := os.MkdirAll(destPath, 0755); err != nil {
+		if err := os.MkdirAll(destPath, 0o755); err != nil {
 			return err
 		}
 	} else {
@@ -263,7 +263,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 
 	// Prepare tmpPath
-	if err := os.MkdirAll(tmpPath, 0755); err != nil {
+	if err := os.MkdirAll(tmpPath, 0o755); err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpPath)
@@ -375,7 +375,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 }
 
 func parseOCIRef(chartRef string) (string, string, error) {
-	refTagRegexp := regexp.MustCompile(`^(oci://[^:]+(:[0-9]{1,5})?[^:]+):(.*)$`)
+	refTagRegexp := regexp.MustCompile(`^(oci://[^:]+(:\d{1,5})?[^:]+):(.*)$`)
 	caps := refTagRegexp.FindStringSubmatch(chartRef)
 	if len(caps) != 4 {
 		return "", "", fmt.Errorf("improperly formatted oci chart reference: %s", chartRef)
@@ -763,7 +763,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	}
 	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
 	if err == nil {
-		return url, username, password, false, false, "", "", "", err
+		return url, username, password, false, false, "", "", "", nil
 	}
 	err = fmt.Errorf("chart %s not found in %s: %w", name, repoURL, err)
 	return url, username, password, false, false, "", "", "", err
@@ -871,7 +871,7 @@ func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 		lockfileName = "requirements.lock"
 	}
 	dest := filepath.Join(chartpath, lockfileName)
-	return os.WriteFile(dest, data, 0644)
+	return os.WriteFile(dest, data, 0o644)
 }
 
 // archive a dep chart from local directory and save it into destPath

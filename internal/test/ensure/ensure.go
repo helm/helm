@@ -48,7 +48,7 @@ func HelmHome(t *testing.T) {
 func TempFile(t *testing.T, name string, data []byte) string {
 	path := t.TempDir()
 	filename := filepath.Join(path, name)
-	if err := os.WriteFile(filename, data, 0755); err != nil {
+	if err := os.WriteFile(filename, data, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	return path
