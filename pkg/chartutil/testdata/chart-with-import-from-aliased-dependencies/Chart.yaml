@@ -1,0 +1,20 @@
+apiVersion: v2
+appVersion: 1.0.0
+name: chart-with-dependency-aliased-twice
+type: application
+version: 1.0.0
+
+dependencies:
+  - name: child
+    alias: foo
+    version: 1.0.0
+    import-values:
+      - parent: foo-defaults
+        child: defaults
+  - name: child
+    alias: bar
+    version: 1.0.0
+    import-values:
+      - parent: bar-defaults
+        child: defaults
+
