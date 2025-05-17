@@ -38,6 +38,7 @@ import (
 // ChartLoader loads a chart.
 type ChartLoader interface {
 	Load() (*chart.Chart, error)
+	LoadWithOptions() (*chart.Chart, error)
 }
 
 // Loader returns a new ChartLoader appropriate for the given chart name
@@ -47,9 +48,22 @@ func Loader(name string) (ChartLoader, error) {
 		return nil, err
 	}
 	if fi.IsDir() {
-		return DirLoader(name), nil
+		return NewDefaultDirLoader(name), nil
 	}
-	return FileLoader(name), nil
+	return NewDefaultFileLoader(name), nil
+}
+
+// WithOptions returns a new ChartLoader appropriate for the given chart name
+// with the provided options.
+func WithOptions(name string, opts ChartLoadOptions) (ChartLoader, error) {
+	fi, err := os.Stat(name)
+	if err != nil {
+		return nil, err
+	}
+	if fi.IsDir() {
+		return NewDirLoader(name, opts), nil
+	}
+	return NewFileLoader(name, opts), nil
 }
 
 // Load takes a string name, tries to resolve it to a file or directory, and then loads it.
@@ -65,6 +79,22 @@ func Load(name string) (*chart.Chart, error) {
 		return nil, err
 	}
 	return l.Load()
+}
+
+// LoadWithOptions takes a string name, tries to resolve it to a file or directory,
+// and then loads it. It uses the provided options to load the chart.
+//
+// This is the preferred way to load a chart. It will discover the chart encoding
+// and hand off to the appropriate chart reader.
+//
+// If a .helmignore file is present, the directory loader will skip loading any files
+// matching it. But .helmignore is not evaluated when reading out of an archive.
+func LoadWithOptions(name string, opts ChartLoadOptions) (*chart.Chart, error) {
+	l, err := WithOptions(name, opts)
+	if err != nil {
+		return nil, err
+	}
+	return l.LoadWithOptions()
 }
 
 // BufferedFile represents an archive file buffered for later processing.
