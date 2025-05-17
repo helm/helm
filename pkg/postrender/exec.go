@@ -22,6 +22,8 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
+
+	"gopkg.in/yaml.v3"
 )
 
 type execRender struct {
@@ -41,8 +43,31 @@ func NewExec(binaryPath string, args ...string) (PostRenderer, error) {
 	return &execRender{fullPath, args}, nil
 }
 
+func (p *execRender) Run(renderedFiles map[string]string) (map[string]string, error) {
+	// Serialize rendered files into a YAML buffer
+	originalManifests, err := yaml.Marshal(renderedFiles)
+	if err != nil {
+		return nil, fmt.Errorf("error while generating post renderer input: %w", err)
+	}
+	originalManifestsBuffer := bytes.NewBuffer(originalManifests)
+
+	// Run the post-renderer on the YAML data
+	updatedManifests, err := p.executePRCommand(originalManifestsBuffer)
+	if err != nil {
+		return nil, fmt.Errorf("error while running post render on files: %w", err)
+	}
+
+	// Load the post-rendered manifests back into a list of rendered files
+	renderedFiles = make(map[string]string)
+	err = yaml.Unmarshal(updatedManifests.Bytes(), &renderedFiles)
+	if err != nil {
+		return nil, fmt.Errorf("error while parsing post renderer output: %w", err)
+	}
+	return renderedFiles, nil
+}
+
 // Run the configured binary for the post render
-func (p *execRender) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {
+func (p *execRender) executePRCommand(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {
 	cmd := exec.Command(p.binaryPath, p.args...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
