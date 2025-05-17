@@ -59,3 +59,42 @@ func TestResourceList(t *testing.T) {
 		t.Error("expected intersect to return bar")
 	}
 }
+
+func TestIsMatchingInfo(t *testing.T) {
+	gvk := schema.GroupVersionKind{Group: "group1", Version: "version1", Kind: "pod"}
+	resourceInfo := resource.Info{Name: "name1", Namespace: "namespace1", Mapping: &meta.RESTMapping{GroupVersionKind: gvk}}
+
+	gvkDiffGroup := schema.GroupVersionKind{Group: "diff", Version: "version1", Kind: "pod"}
+	resourceInfoDiffGroup := resource.Info{Name: "name1", Namespace: "namespace1", Mapping: &meta.RESTMapping{GroupVersionKind: gvkDiffGroup}}
+	if isMatchingInfo(&resourceInfo, &resourceInfoDiffGroup) {
+		t.Error("expected resources not equal")
+	}
+
+	gvkDiffVersion := schema.GroupVersionKind{Group: "group1", Version: "diff", Kind: "pod"}
+	resourceInfoDiffVersion := resource.Info{Name: "name1", Namespace: "namespace1", Mapping: &meta.RESTMapping{GroupVersionKind: gvkDiffVersion}}
+	if isMatchingInfo(&resourceInfo, &resourceInfoDiffVersion) {
+		t.Error("expected resources not equal")
+	}
+
+	gvkDiffKind := schema.GroupVersionKind{Group: "group1", Version: "version1", Kind: "deployment"}
+	resourceInfoDiffKind := resource.Info{Name: "name1", Namespace: "namespace1", Mapping: &meta.RESTMapping{GroupVersionKind: gvkDiffKind}}
+	if isMatchingInfo(&resourceInfo, &resourceInfoDiffKind) {
+		t.Error("expected resources not equal")
+	}
+
+	resourceInfoDiffName := resource.Info{Name: "diff", Namespace: "namespace1", Mapping: &meta.RESTMapping{GroupVersionKind: gvk}}
+	if isMatchingInfo(&resourceInfo, &resourceInfoDiffName) {
+		t.Error("expected resources not equal")
+	}
+
+	resourceInfoDiffNamespace := resource.Info{Name: "name1", Namespace: "diff", Mapping: &meta.RESTMapping{GroupVersionKind: gvk}}
+	if isMatchingInfo(&resourceInfo, &resourceInfoDiffNamespace) {
+		t.Error("expected resources not equal")
+	}
+
+	gvkEqual := schema.GroupVersionKind{Group: "group1", Version: "version1", Kind: "pod"}
+	resourceInfoEqual := resource.Info{Name: "name1", Namespace: "namespace1", Mapping: &meta.RESTMapping{GroupVersionKind: gvkEqual}}
+	if !isMatchingInfo(&resourceInfo, &resourceInfoEqual) {
+		t.Error("expected resources to be equal")
+	}
+}
