@@ -104,6 +104,7 @@ func TestPrepareCommandExtraArgsIgnored(t *testing.T) {
 				{OperatingSystem: runtime.GOOS, Architecture: runtime.GOARCH, Command: cmdMain, Args: cmdArgs},
 				{OperatingSystem: runtime.GOOS, Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
 				{OperatingSystem: runtime.GOOS, Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
+
 			},
 			IgnoreFlags: true,
 		},

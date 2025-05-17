@@ -90,6 +90,7 @@ Download Helm ${RELEASE}. The common platform binaries are here:
 - [Linux ppc64le](https://get.helm.sh/helm-${RELEASE}-linux-ppc64le.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-ppc64le.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-ppc64le.tar.gz.sha256))
 - [Linux s390x](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-s390x.tar.gz.sha256))
 - [Linux riscv64](https://get.helm.sh/helm-${RELEASE}-linux-riscv64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-riscv64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-riscv64.tar.gz.sha256))
+- [Linux loong64](https://get.helm.sh/helm-${RELEASE}-linux-loong64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-loong64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-loong64.tar.gz.sha256))
 - [Windows amd64](https://get.helm.sh/helm-${RELEASE}-windows-amd64.zip) ([checksum](https://get.helm.sh/helm-${RELEASE}-windows-amd64.zip.sha256sum) / $(cat _dist/helm-${RELEASE}-windows-amd64.zip.sha256))
 - [Windows arm64](https://get.helm.sh/helm-${RELEASE}-windows-arm64.zip) ([checksum](https://get.helm.sh/helm-${RELEASE}-windows-arm64.zip.sha256sum) / $(cat _dist/helm-${RELEASE}-windows-arm64.zip.sha256))
 
