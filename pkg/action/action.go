@@ -94,7 +94,7 @@ type Configuration struct {
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //
 //	This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS, hideSecret bool, lintMode bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -130,6 +130,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		e.EnableDNS = enableDNS
 		e.CustomTemplateFuncs = cfg.CustomTemplateFuncs
 
+		e.LintMode = lintMode
 		files, err2 = e.Render(ch, values)
 	}
 
