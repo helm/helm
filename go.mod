@@ -13,7 +13,7 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/cyphar/filepath-securejoin v0.4.1
 	github.com/distribution/distribution/v3 v3.0.0
-	github.com/evanphx/json-patch v5.9.11+incompatible
+	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/fluxcd/cli-utils v0.36.0-flux.13
 	github.com/foxcpp/go-mockdns v1.1.0
 	github.com/gobwas/glob v0.2.3
@@ -68,7 +68,6 @@ require (
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.12.1 // indirect
-	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
