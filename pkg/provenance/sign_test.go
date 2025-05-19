@@ -276,7 +276,7 @@ func TestDecodeSignature(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f, err := os.CreateTemp("", "helm-test-sig-")
+	f, err := os.CreateTemp(t.TempDir(), "helm-test-sig-")
 	if err != nil {
 		t.Fatal(err)
 	}
