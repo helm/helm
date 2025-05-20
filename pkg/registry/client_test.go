@@ -52,3 +52,23 @@ func TestTagManifestTransformsReferences(t *testing.T) {
 	_, err = memStore.Resolve(ctx, refWithPlus)
 	require.Error(t, err, "Should NOT find the reference with the original +")
 }
+
+func TestStripURL(t *testing.T) {
+	client := &Client{
+		out: io.Discard,
+	}
+	// no change with supported host formats
+	assert.Equal(t, "username@localhost:8000", client.stripURL("username@localhost:8000"))
+	assert.Equal(t, "localhost:8000", client.stripURL("localhost:8000"))
+	assert.Equal(t, "docker.pkg.dev", client.stripURL("docker.pkg.dev"))
+
+	// test strip scheme from host in URL
+	assert.Equal(t, "docker.pkg.dev", client.stripURL("oci://docker.pkg.dev"))
+	assert.Equal(t, "docker.pkg.dev", client.stripURL("http://docker.pkg.dev"))
+	assert.Equal(t, "docker.pkg.dev", client.stripURL("https://docker.pkg.dev"))
+
+	// test strip repo from Registry in URL
+	assert.Equal(t, "127.0.0.1:15000", client.stripURL("127.0.0.1:15000/asdf"))
+	assert.Equal(t, "127.0.0.1:15000", client.stripURL("127.0.0.1:15000/asdf/asdf"))
+	assert.Equal(t, "127.0.0.1:15000", client.stripURL("127.0.0.1:15000"))
+}
