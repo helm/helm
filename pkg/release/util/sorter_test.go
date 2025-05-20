@@ -43,6 +43,7 @@ func tsRelease(name string, vers int, dur time.Duration, status rspb.Status) *rs
 }
 
 func check(t *testing.T, by string, fn func(int, int) bool) {
+	t.Helper()
 	for i := len(releases) - 1; i > 0; i-- {
 		if fn(i, i-1) {
 			t.Errorf("release at positions '(%d,%d)' not sorted by %s", i-1, i, by)

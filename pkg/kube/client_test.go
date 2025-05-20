@@ -109,6 +109,7 @@ func newResponseJSON(code int, json []byte) (*http.Response, error) {
 }
 
 func newTestClient(t *testing.T) *Client {
+	t.Helper()
 	testFactory := cmdtesting.NewTestFactory()
 	t.Cleanup(testFactory.Cleanup)
 
@@ -215,6 +216,7 @@ func TestCreate(t *testing.T) {
 }
 
 func testUpdate(t *testing.T, threeWayMerge bool) {
+	t.Helper()
 	listA := newPodList("starfish", "otter", "squid")
 	listB := newPodList("starfish", "otter", "dolphin")
 	listC := newPodList("starfish", "otter", "dolphin")

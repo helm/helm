@@ -40,6 +40,7 @@ import (
 var verbose = flag.Bool("test.log", false, "enable test logging (debug by default)")
 
 func actionConfigFixture(t *testing.T) *Configuration {
+	t.Helper()
 	return actionConfigFixtureWithDummyResources(t, nil)
 }
 
