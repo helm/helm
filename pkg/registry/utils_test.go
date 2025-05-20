@@ -141,7 +141,7 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	suite.Nil(err, "no error creating mock DNS server")
 	suite.srv.PatchNet(net.DefaultResolver)
 
-	config.HTTP.Addr = fmt.Sprintf(":%d", port)
+	config.HTTP.Addr = fmt.Sprintf("127.0.0.1:%d", port)
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
 
