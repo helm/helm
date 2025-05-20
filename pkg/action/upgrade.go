@@ -303,7 +303,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		Labels:   mergeCustomLabels(lastRelease.Labels, u.Labels),
 	}
 
-	if len(notesTxt) > 0 {
+	if notesTxt != "" {
 		upgradedRelease.Info.Notes = notesTxt
 	}
 	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
@@ -367,7 +367,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	// Run if it is a dry run
 	if u.isDryRun() {
 		slog.Debug("dry run for release", "name", upgradedRelease.Name)
-		if len(u.Description) > 0 {
+		if u.Description != "" {
 			upgradedRelease.Info.Description = u.Description
 		} else {
 			upgradedRelease.Info.Description = "Dry run complete"
@@ -417,7 +417,7 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 		return
 	}
 }
-func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
+func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current, target kube.ResourceList, originalRelease *release.Release) {
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
@@ -477,7 +477,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	u.cfg.recordRelease(originalRelease)
 
 	upgradedRelease.Info.Status = release.StatusDeployed
-	if len(u.Description) > 0 {
+	if u.Description != "" {
 		upgradedRelease.Info.Description = u.Description
 	} else {
 		upgradedRelease.Info.Description = "Upgrade complete"

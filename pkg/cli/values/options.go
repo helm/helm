@@ -62,7 +62,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 	// User specified a value via --set-json
 	for _, value := range opts.JSONValues {
 		trimmedValue := strings.TrimSpace(value)
-		if len(trimmedValue) > 0 && trimmedValue[0] == '{' {
+		if trimmedValue != "" && trimmedValue[0] == '{' {
 			// If value is JSON object format, parse it as map
 			var jsonMap map[string]interface{}
 			if err := json.Unmarshal([]byte(trimmedValue), &jsonMap); err != nil {
