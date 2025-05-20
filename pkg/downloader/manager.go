@@ -25,7 +25,6 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -728,7 +727,6 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	}
 
 	for _, cr := range repos {
-
 		if urlutil.Equal(repoURL, cr.Config.URL) {
 			var entry repo.ChartVersions
 			entry, err = findEntryByName(name, cr)
@@ -745,7 +743,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 				//nolint:nakedret
 				return
 			}
-			url, err = normalizeURL(repoURL, ve.URLs[0])
+			url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
 			if err != nil {
 				//nolint:nakedret
 				return
@@ -809,24 +807,6 @@ func versionEquals(v1, v2 string) bool {
 		return false
 	}
 	return sv1.Equal(sv2)
-}
-
-func normalizeURL(baseURL, urlOrPath string) (string, error) {
-	u, err := url.Parse(urlOrPath)
-	if err != nil {
-		return urlOrPath, err
-	}
-	if u.IsAbs() {
-		return u.String(), nil
-	}
-	u2, err := url.Parse(baseURL)
-	if err != nil {
-		return urlOrPath, fmt.Errorf("base URL failed to parse: %w", err)
-	}
-
-	u2.RawPath = path.Join(u2.RawPath, urlOrPath)
-	u2.Path = path.Join(u2.Path, urlOrPath)
-	return u2.String(), nil
 }
 
 // loadChartRepositories reads the repositories.yaml, and then builds a map of

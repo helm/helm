@@ -224,11 +224,15 @@ func TestResolveReferenceURL(t *testing.T) {
 	for _, tt := range []struct {
 		baseURL, refURL, chartURL string
 	}{
+		{"http://localhost:8123/", "/nginx-0.2.0.tgz", "http://localhost:8123/nginx-0.2.0.tgz"},
 		{"http://localhost:8123/charts/", "nginx-0.2.0.tgz", "http://localhost:8123/charts/nginx-0.2.0.tgz"},
+		{"http://localhost:8123/charts/", "/nginx-0.2.0.tgz", "http://localhost:8123/nginx-0.2.0.tgz"},
 		{"http://localhost:8123/charts-with-no-trailing-slash", "nginx-0.2.0.tgz", "http://localhost:8123/charts-with-no-trailing-slash/nginx-0.2.0.tgz"},
 		{"http://localhost:8123", "https://charts.helm.sh/stable/nginx-0.2.0.tgz", "https://charts.helm.sh/stable/nginx-0.2.0.tgz"},
 		{"http://localhost:8123/charts%2fwith%2fescaped%2fslash", "nginx-0.2.0.tgz", "http://localhost:8123/charts%2fwith%2fescaped%2fslash/nginx-0.2.0.tgz"},
+		{"http://localhost:8123/charts%2fwith%2fescaped%2fslash", "/nginx-0.2.0.tgz", "http://localhost:8123/nginx-0.2.0.tgz"},
 		{"http://localhost:8123/charts?with=queryparameter", "nginx-0.2.0.tgz", "http://localhost:8123/charts/nginx-0.2.0.tgz?with=queryparameter"},
+		{"http://localhost:8123/charts?with=queryparameter", "/nginx-0.2.0.tgz", "http://localhost:8123/nginx-0.2.0.tgz?with=queryparameter"},
 	} {
 		chartURL, err := ResolveReferenceURL(tt.baseURL, tt.refURL)
 		if err != nil {
