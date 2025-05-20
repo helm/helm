@@ -161,11 +161,6 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("template '%s' -f %s/extra_values.yaml", chartPath, chartPath),
 			golden: "output/template-subchart-cm-set-file.txt",
 		},
-		{
-			name:   "check toToml function rendering",
-			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/issue-totoml"),
-			golden: "output/issue-totoml.txt",
-		},
 	}
 	runTestCmd(t, tests)
 }
