@@ -229,8 +229,39 @@ type (
 	}
 )
 
+// Deprecated: will be removed in Helm 4
+// Added for backwards compatibility for Helm < 3.18.0 after moving to ORAS v2
+// ref: https://github.com/helm/helm/issues/30873
+// TODO: document that Helm 4 `registry login` does accept full URLs
+func (c *Client) stripURL(host string) string {
+	// strip scheme from host in URL
+	for _, s := range []string{"oci://", "http://", "https://"} {
+		if strings.HasPrefix(host, s) {
+			plain := strings.TrimPrefix(host, s)
+			if c.debug {
+				fmt.Fprintf(c.out, "[WARNING] Invalid registry passed: registries should NOT be prefixed with a URL scheme. Use %q instead\n", plain)
+			}
+			host = plain
+			break
+		}
+	}
+	// strip repo from registry in URL
+	if idx := strings.Index(host, "/"); idx != -1 {
+		host = host[:idx]
+		if c.debug {
+			fmt.Fprintf(c.out, "[WARNING] Invalid registry passed: registries should NOT include a repository. Use %q instead\n", host)
+		}
+		return host
+	}
+
+	return host
+}
+
 // Login logs into a registry
 func (c *Client) Login(host string, options ...LoginOption) error {
+	// This is the lowest available point to strip incorrect URL parts
+	host = c.stripURL(host)
+
 	for _, option := range options {
 		option(&loginOperation{host, c})
 	}
