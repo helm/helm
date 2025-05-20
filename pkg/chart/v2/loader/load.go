@@ -19,7 +19,6 @@ package loader
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -224,10 +223,7 @@ func LoadValues(data io.Reader) (map[string]interface{}, error) {
 			}
 			return nil, fmt.Errorf("error reading yaml document: %w", err)
 		}
-		if err := yaml.Unmarshal(raw, &currentMap, func(d *json.Decoder) *json.Decoder {
-			d.UseNumber()
-			return d
-		}); err != nil {
+		if err := yaml.Unmarshal(raw, &currentMap); err != nil {
 			return nil, fmt.Errorf("cannot unmarshal yaml document: %w", err)
 		}
 		values = MergeMaps(values, currentMap)
