@@ -270,7 +270,7 @@ func validatePluginData(plug *Plugin, filepath string) error {
 	}
 
 	if len(plug.Metadata.PlatformHooks) > 0 && len(plug.Metadata.Hooks) > 0 {
-		fmt.Printf("both platformHooks and hooks are set in %q. It's deprecated and will not be possible in Helm v4\n", filepath)
+		fmt.Printf("WARNING: both 'platformHooks' and 'hooks' are set in %q (this will become an error in a future Helm version)\n", filepath)
 	}
 
 	// We could also validate SemVer, executable, and other fields should we so choose.
