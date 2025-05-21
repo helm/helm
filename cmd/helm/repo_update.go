@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -46,6 +47,7 @@ type repoUpdateOptions struct {
 	repoCache            string
 	names                []string
 	failOnRepoUpdateFail bool
+	timeout              time.Duration
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
@@ -73,6 +75,7 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 	// Adding this flag for Helm 3 as stop gap functionality for https://github.com/helm/helm/issues/10016.
 	// This should be deprecated in Helm 4 by update to the behaviour of `helm repo update` command.
 	f.BoolVar(&o.failOnRepoUpdateFail, "fail-on-repo-update-fail", false, "update fails if any of the repository updates fail")
+	f.DurationVar(&o.timeout, "timeout", getter.DefaultHTTPTimeout*time.Second, "time to wait for the index file download to complete")
 
 	return cmd
 }
@@ -100,7 +103,7 @@ func (o *repoUpdateOptions) run(out io.Writer) error {
 
 	for _, cfg := range f.Repositories {
 		if updateAllRepos || isRepoRequested(cfg.Name, o.names) {
-			r, err := repo.NewChartRepository(cfg, getter.All(settings))
+			r, err := repo.NewChartRepository(cfg, getter.All(settings, getter.WithTimeout(o.timeout)))
 			if err != nil {
 				return err
 			}
