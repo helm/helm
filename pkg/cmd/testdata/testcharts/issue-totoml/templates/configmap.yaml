@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: issue-totoml
-data: |
-  {{ .Values.global | toToml }}
