@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -234,7 +235,7 @@ func (c *ReadyChecker) jobReady(job *batchv1.Job) (bool, error) {
 	if job.Status.Failed > *job.Spec.BackoffLimit {
 		slog.Debug("Job is failed", "namespace", job.GetNamespace(), "name", job.GetName())
 		// If a job is failed, it can't recover, so throw an error
-		return false, fmt.Errorf("job is failed: %s/%s", job.GetNamespace(), job.GetName())
+		return false, errors.Wrapf(ErrNoRetryError, "job is failed: %s/%s", job.GetNamespace(), job.GetName())
 	}
 	if job.Spec.Completions != nil && job.Status.Succeeded < *job.Spec.Completions {
 		slog.Debug("Job is not completed", "namespace", job.GetNamespace(), "name", job.GetName())
