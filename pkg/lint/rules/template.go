@@ -40,17 +40,20 @@ import (
 )
 
 // Templates lints the templates in the Linter.
+// Deprecated, use TemplatesV2 instead.
 func Templates(linter *support.Linter, values map[string]interface{}, namespace string, _ bool) {
-	TemplatesWithKubeVersion(linter, values, namespace, nil)
+	TemplatesV2(linter, values, namespace)
 }
 
 // TemplatesWithKubeVersion lints the templates in the Linter, allowing to specify the kubernetes version.
+// Deprecated, use TemplatesV2 instead.
 func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) {
-	TemplatesWithSkipSchemaValidation(linter, values, namespace, kubeVersion, false)
+	linter.KubeVersion = kubeVersion
+	TemplatesV2(linter, values, namespace)
 }
 
-// TemplatesWithSkipSchemaValidation lints the templates in the Linter, allowing to specify the kubernetes version and if schema validation is enabled or not.
-func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, skipSchemaValidation bool) {
+// TemplatesV2 lints the templates in the Linter.
+func TemplatesV2(linter *support.Linter, values map[string]interface{}, namespace string) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
@@ -71,18 +74,18 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 	}
 
 	options := chartutil.ReleaseOptions{
-		Name:      "test-release",
+		Name:      linter.ReleaseName,
 		Namespace: namespace,
 	}
 
 	caps := chartutil.DefaultCapabilities.Copy()
-	if kubeVersion != nil {
-		caps.KubeVersion = *kubeVersion
+	if linter.KubeVersion != nil {
+		caps.KubeVersion = *linter.KubeVersion
 	}
 
 	// lint ignores import-values
 	// See https://github.com/helm/helm/issues/9658
-	if err := chartutil.ProcessDependencies(chart, values); err != nil {
+	if err = chartutil.ProcessDependencies(chart, values); err != nil {
 		return
 	}
 
@@ -91,7 +94,7 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 		return
 	}
 
-	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, cvals, options, caps, skipSchemaValidation)
+	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, cvals, options, caps, linter.SkipSchemaValidation)
 	if err != nil {
 		linter.RunLinterRule(support.ErrorSev, fpath, err)
 		return
@@ -157,7 +160,7 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 					// NOTE: set to warnings to allow users to support out-of-date kubernetes
 					// Refs https://github.com/helm/helm/issues/8596
 					linter.RunLinterRule(support.WarningSev, fpath, validateMetadataName(yamlStruct))
-					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct, kubeVersion))
+					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct, linter.KubeVersion))
 
 					linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(yamlStruct, renderedContent))
 					linter.RunLinterRule(support.ErrorSev, fpath, validateListAnnotations(yamlStruct, renderedContent))
