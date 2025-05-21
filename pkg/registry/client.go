@@ -711,19 +711,9 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	})
 
 	ociAnnotations := generateOCIAnnotations(meta, operation.creationTime)
-	manifest := ocispec.Manifest{
-		Versioned:   specs.Versioned{SchemaVersion: 2},
-		Config:      configDescriptor,
-		Layers:      layers,
-		Annotations: ociAnnotations,
-	}
 
-	manifestData, err := json.Marshal(manifest)
-	if err != nil {
-		return nil, err
-	}
-
-	manifestDescriptor, err := oras.TagBytes(ctx, memoryStore, ocispec.MediaTypeImageManifest, manifestData, ref)
+	manifestDescriptor, err := c.tagManifest(ctx, memoryStore, ref, configDescriptor,
+		layers, ociAnnotations)
 	if err != nil {
 		return nil, err
 	}
@@ -923,4 +913,30 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 	u.Path = fmt.Sprintf("%s:%s", registryReference.Repository, tag)
 
 	return u, err
+}
+
+// tagManifest prepares and tags a manifest in memory storage
+func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
+	ref string, configDescriptor ocispec.Descriptor, layers []ocispec.Descriptor,
+	ociAnnotations map[string]string) (ocispec.Descriptor, error) {
+
+	manifest := ocispec.Manifest{
+		Versioned:   specs.Versioned{SchemaVersion: 2},
+		Config:      configDescriptor,
+		Layers:      layers,
+		Annotations: ociAnnotations,
+	}
+
+	manifestData, err := json.Marshal(manifest)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+
+	parsedRef, err := newReference(ref)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+
+	return oras.TagBytes(ctx, memoryStore, ocispec.MediaTypeImageManifest,
+		manifestData, parsedRef.String())
 }
