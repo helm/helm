@@ -84,7 +84,7 @@ type Metadata struct {
 	PlatformCommand []PlatformCommand `json:"platformCommand"`
 
 	// Command is the plugin command, as a single string.
-	// Providing a command will result in an error if PlatformCommand is also set.
+	// Providing a command will result in an deprecation warning if PlatformCommand is also set.
 	//
 	// The command will be passed through environment expansion, so env vars can
 	// be present in this command. Unless IgnoreFlags is set, this will
@@ -266,11 +266,11 @@ func validatePluginData(plug *Plugin, filepath string) error {
 	plug.Metadata.Usage = sanitizeString(plug.Metadata.Usage)
 
 	if len(plug.Metadata.PlatformCommand) > 0 && len(plug.Metadata.Command) > 0 {
-		return fmt.Errorf("both platformCommand and command are set in %q", filepath)
+		fmt.Printf("WARNING: both 'platformCommand' and 'command' are set in %q (this will become an error in a future Helm version)\n", filepath)
 	}
 
 	if len(plug.Metadata.PlatformHooks) > 0 && len(plug.Metadata.Hooks) > 0 {
-		return fmt.Errorf("both platformHooks and hooks are set in %q", filepath)
+		fmt.Printf("WARNING: both 'platformHooks' and 'hooks' are set in %q (this will become an error in a future Helm version)\n", filepath)
 	}
 
 	// We could also validate SemVer, executable, and other fields should we so choose.
