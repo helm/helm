@@ -229,8 +229,23 @@ type (
 	}
 )
 
+// Added for backwards compatibility for Helm < 3.18.0 after moving to ORAS v2
+// ref: https://github.com/helm/helm/issues/30873
+// TODO: document that Helm 4 `registry login` does accept repositories
+func stripRepository(host string) string {
+	if idx := strings.Index(host, "/"); idx != -1 {
+		host = host[:idx]
+		fmt.Printf("WARNING: Invalid registry passed: registries must NOT include a repository. Use %q instead\n", host)
+		return host
+	}
+	return host
+}
+
 // Login logs into a registry
 func (c *Client) Login(host string, options ...LoginOption) error {
+	// This is the lowest available point to strip the repository
+	host = stripRepository(host)
+
 	for _, option := range options {
 		option(&loginOperation{host, c})
 	}

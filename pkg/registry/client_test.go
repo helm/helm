@@ -31,3 +31,9 @@ func TestNewClientResolverNotSupported(t *testing.T) {
 	require.Equal(t, err, errDeprecatedRemote)
 	assert.Nil(t, client)
 }
+
+func TestStripRepository(t *testing.T) {
+	assert.Equal(t, "127.0.0.1:15000", stripRepository("127.0.0.1:15000/asdf"))
+	assert.Equal(t, "127.0.0.1:15000", stripRepository("127.0.0.1:15000/asdf/asdf"))
+	assert.Equal(t, "127.0.0.1:15000", stripRepository("127.0.0.1:15000"))
+}
