@@ -266,7 +266,7 @@ func validatePluginData(plug *Plugin, filepath string) error {
 	plug.Metadata.Usage = sanitizeString(plug.Metadata.Usage)
 
 	if len(plug.Metadata.PlatformCommand) > 0 && len(plug.Metadata.Command) > 0 {
-		fmt.Printf("both platformCommand and command are set in %q. It's deprecated and will not be possible in Helm v4\n", filepath)
+		fmt.Printf("WARNING: both 'platformCommand' and 'command' are set in %q (this will become an error in a future Helm version)\n", filepath)
 	}
 
 	if len(plug.Metadata.PlatformHooks) > 0 && len(plug.Metadata.Hooks) > 0 {
