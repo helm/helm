@@ -20,6 +20,7 @@ linters:
   enable:
     - depguard
     - dupl
+    - gomodguard
     - govet
     - ineffassign
     - misspell
@@ -55,6 +56,13 @@ linters:
 
     dupl:
       threshold: 400
+
+    gomodguard:
+      blocked:
+        modules:
+          - github.com/evanphx/json-patch:
+              recommendations:
+                - github.com/evanphx/json-patch/v5
 
 run:
   timeout: 10m
