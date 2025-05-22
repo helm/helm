@@ -58,21 +58,21 @@ func (suite *HTTPRegistryClientTestSuite) Test_0_Login() {
 
 func (suite *HTTPRegistryClientTestSuite) Test_1_Push() {
 	if suite.protocol != "" || suite.Repo != "" {
-		return
+		suite.T().Skip("Skipping we don't strip protocol or repo prior to execution")
 	}
 	testPush(&suite.TestSuite)
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_2_Pull() {
 	if suite.protocol != "" || suite.Repo != "" {
-		return
+		suite.T().Skip("Skipping we don't strip protocol or repo prior to execution")
 	}
 	testPull(&suite.TestSuite)
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_3_Tags() {
 	if suite.protocol != "" || suite.Repo != "" {
-		return
+		suite.T().Skip("Skipping we don't strip protocol or repo prior to execution")
 	}
 	testTags(&suite.TestSuite)
 }
