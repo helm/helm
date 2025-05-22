@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -122,7 +123,7 @@ func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStd
 			}
 		}
 	} else {
-		Warning("Using --password via the CLI is insecure. Use --password-stdin.")
+		slog.Warn("using --password via the CLI is insecure. Use --password-stdin")
 	}
 
 	return username, password, nil

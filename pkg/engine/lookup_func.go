@@ -18,10 +18,10 @@ package engine
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"log/slog"
 	"strings"
 
-	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -35,9 +35,6 @@ type lookupFunc = func(apiversion string, resource string, namespace string, nam
 // NewLookupFunction returns a function for looking up objects in the cluster.
 //
 // If the resource does not exist, no error is raised.
-//
-// This function is considered deprecated, and will be renamed in Helm 4. It will no
-// longer be a public function.
 func NewLookupFunction(config *rest.Config) lookupFunc {
 	return newLookupFunction(clientProviderFromConfig{config: config})
 }
@@ -101,8 +98,8 @@ func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config)
 	gvk := schema.FromAPIVersionAndKind(apiversion, kind)
 	apiRes, err := getAPIResourceForGVK(gvk, config)
 	if err != nil {
-		log.Printf("[ERROR] unable to get apiresource from unstructured: %s , error %s", gvk.String(), err)
-		return nil, false, errors.Wrapf(err, "unable to get apiresource from unstructured: %s", gvk.String())
+		slog.Error("unable to get apiresource", "groupVersionKind", gvk.String(), slog.Any("error", err))
+		return nil, false, fmt.Errorf("unable to get apiresource from unstructured: %s: %w", gvk.String(), err)
 	}
 	gvr := schema.GroupVersionResource{
 		Group:    apiRes.Group,
@@ -111,7 +108,7 @@ func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config)
 	}
 	intf, err := dynamic.NewForConfig(config)
 	if err != nil {
-		log.Printf("[ERROR] unable to get dynamic client %s", err)
+		slog.Error("unable to get dynamic client", slog.Any("error", err))
 		return nil, false, err
 	}
 	res := intf.Resource(gvr)
@@ -122,12 +119,12 @@ func getAPIResourceForGVK(gvk schema.GroupVersionKind, config *rest.Config) (met
 	res := metav1.APIResource{}
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
 	if err != nil {
-		log.Printf("[ERROR] unable to create discovery client %s", err)
+		slog.Error("unable to create discovery client", slog.Any("error", err))
 		return res, err
 	}
 	resList, err := discoveryClient.ServerResourcesForGroupVersion(gvk.GroupVersion().String())
 	if err != nil {
-		log.Printf("[ERROR] unable to retrieve resource list for: %s , error: %s", gvk.GroupVersion().String(), err)
+		slog.Error("unable to retrieve resource list", "GroupVersion", gvk.GroupVersion().String(), slog.Any("error", err))
 		return res, err
 	}
 	for _, resource := range resList.APIResources {

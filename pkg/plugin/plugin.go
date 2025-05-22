@@ -24,7 +24,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/cli"
@@ -313,12 +312,12 @@ func LoadDir(dirname string) (*Plugin, error) {
 	pluginfile := filepath.Join(dirname, PluginFileName)
 	data, err := os.ReadFile(pluginfile)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read plugin at %q", pluginfile)
+		return nil, fmt.Errorf("failed to read plugin at %q: %w", pluginfile, err)
 	}
 
 	plug := &Plugin{Dir: dirname}
 	if err := yaml.UnmarshalStrict(data, &plug.Metadata); err != nil {
-		return nil, errors.Wrapf(err, "failed to load plugin at %q", pluginfile)
+		return nil, fmt.Errorf("failed to load plugin at %q: %w", pluginfile, err)
 	}
 	return plug, validatePluginData(plug, pluginfile)
 }
@@ -332,7 +331,7 @@ func LoadAll(basedir string) ([]*Plugin, error) {
 	scanpath := filepath.Join(basedir, "*", PluginFileName)
 	matches, err := filepath.Glob(scanpath)
 	if err != nil {
-		return plugins, errors.Wrapf(err, "failed to find plugins in %q", scanpath)
+		return plugins, fmt.Errorf("failed to find plugins in %q: %w", scanpath, err)
 	}
 
 	if matches == nil {

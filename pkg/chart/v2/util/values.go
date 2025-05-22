@@ -17,13 +17,12 @@ limitations under the License.
 package util
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -106,10 +105,7 @@ func tableLookup(v Values, simple string) (Values, error) {
 
 // ReadValues will parse YAML byte data into a Values.
 func ReadValues(data []byte) (vals Values, err error) {
-	err = yaml.Unmarshal(data, &vals, func(d *json.Decoder) *json.Decoder {
-		d.UseNumber()
-		return d
-	})
+	err = yaml.Unmarshal(data, &vals)
 	if len(vals) == 0 {
 		vals = Values{}
 	}
@@ -169,8 +165,7 @@ func ToRenderValuesWithSchemaValidation(chrt *chart.Chart, chrtVals map[string]i
 
 	if !skipSchemaValidation {
 		if err := ValidateAgainstSchema(chrt, vals); err != nil {
-			errFmt := "values don't meet the specifications of the schema(s) in the following chart(s):\n%s"
-			return top, fmt.Errorf(errFmt, err.Error())
+			return top, fmt.Errorf("values don't meet the specifications of the schema(s) in the following chart(s):\n%w", err)
 		}
 	}
 

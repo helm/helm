@@ -14,20 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry
+package repo
 
 import (
-	"testing"
-
-	"github.com/containerd/containerd/remotes"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"fmt"
 )
 
-func TestNewClientResolverNotSupported(t *testing.T) {
-	var r remotes.Resolver
+type ChartNotFoundError struct {
+	RepoURL string
+	Chart   string
+}
 
-	client, err := NewClient(ClientOptResolver(r))
-	require.Equal(t, err, errDeprecatedRemote)
-	assert.Nil(t, client)
+func (e ChartNotFoundError) Error() string {
+	return fmt.Sprintf("%s not found in %s repository", e.Chart, e.RepoURL)
+}
+
+func (e ChartNotFoundError) Is(err error) bool {
+	_, ok := err.(ChartNotFoundError)
+	return ok
 }

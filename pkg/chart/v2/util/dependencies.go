@@ -16,7 +16,7 @@ limitations under the License.
 package util
 
 import (
-	"log"
+	"log/slog"
 	"strings"
 
 	"github.com/mitchellh/copystructure"
@@ -48,10 +48,10 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath s
 						r.Enabled = bv
 						break
 					}
-					log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value", c, r.Name)
+					slog.Warn("returned non-bool value", "path", c, "chart", r.Name)
 				} else if _, ok := err.(ErrNoValue); !ok {
 					// this is a real error
-					log.Printf("Warning: PathValue returned error %v", err)
+					slog.Warn("the method PathValue returned error", slog.Any("error", err))
 				}
 			}
 		}
@@ -79,7 +79,7 @@ func processDependencyTags(reqs []*chart.Dependency, cvals Values) {
 						hasFalse = true
 					}
 				} else {
-					log.Printf("Warning: Tag '%s' for chart %s returned non-bool value", k, r.Name)
+					slog.Warn("returned non-bool value", "tag", k, "chart", r.Name)
 				}
 			}
 		}
@@ -91,6 +91,7 @@ func processDependencyTags(reqs []*chart.Dependency, cvals Values) {
 	}
 }
 
+// getAliasDependency finds the chart for an alias dependency and copies parts that will be modified
 func getAliasDependency(charts []*chart.Chart, dep *chart.Dependency) *chart.Chart {
 	for _, c := range charts {
 		if c == nil {
@@ -104,15 +105,36 @@ func getAliasDependency(charts []*chart.Chart, dep *chart.Dependency) *chart.Cha
 		}
 
 		out := *c
-		md := *c.Metadata
-		out.Metadata = &md
+		out.Metadata = copyMetadata(c.Metadata)
+
+		// empty dependencies and shallow copy all dependencies, otherwise parent info may be corrupted if
+		// there is more than one dependency aliasing this chart
+		out.SetDependencies()
+		for _, dependency := range c.Dependencies() {
+			cpy := *dependency
+			out.AddDependency(&cpy)
+		}
 
 		if dep.Alias != "" {
-			md.Name = dep.Alias
+			out.Metadata.Name = dep.Alias
 		}
 		return &out
 	}
 	return nil
+}
+
+func copyMetadata(metadata *chart.Metadata) *chart.Metadata {
+	md := *metadata
+
+	if md.Dependencies != nil {
+		dependencies := make([]*chart.Dependency, len(md.Dependencies))
+		for i := range md.Dependencies {
+			dependency := *md.Dependencies[i]
+			dependencies[i] = &dependency
+		}
+		md.Dependencies = dependencies
+	}
+	return &md
 }
 
 // processDependencyEnabled removes disabled charts from dependencies
@@ -254,7 +276,7 @@ func processImportValues(c *chart.Chart, merge bool) error {
 				// get child table
 				vv, err := cvals.Table(r.Name + "." + child)
 				if err != nil {
-					log.Printf("Warning: ImportValues missing table from chart %s: %v", r.Name, err)
+					slog.Warn("ImportValues missing table from chart", "chart", r.Name, slog.Any("error", err))
 					continue
 				}
 				// create value map from child to be merged into parent
@@ -271,7 +293,7 @@ func processImportValues(c *chart.Chart, merge bool) error {
 				})
 				vm, err := cvals.Table(r.Name + "." + child)
 				if err != nil {
-					log.Printf("Warning: ImportValues missing table: %v", err)
+					slog.Warn("ImportValues missing table", slog.Any("error", err))
 					continue
 				}
 				if merge {

@@ -23,11 +23,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 
@@ -50,7 +50,6 @@ type PluginError struct {
 // to inspect its environment and then add commands to the base command
 // as it finds them.
 func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
-
 	// If HELM_NO_PLUGINS is set to 1, do not load plugins.
 	if os.Getenv("HELM_NO_PLUGINS") == "1" {
 		return
@@ -87,7 +86,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 				main, argv, prepCmdErr := plug.PrepareCommand(u)
 				if prepCmdErr != nil {
 					os.Stderr.WriteString(prepCmdErr.Error())
-					return errors.Errorf("plugin %q exited with error", md.Name)
+					return fmt.Errorf("plugin %q exited with error", md.Name)
 				}
 
 				return callPluginExecutable(md.Name, main, argv, out)
@@ -139,7 +138,7 @@ func callPluginExecutable(pluginName string, main string, argv []string, out io.
 			os.Stderr.Write(eerr.Stderr)
 			status := eerr.Sys().(syscall.WaitStatus)
 			return PluginError{
-				error: errors.Errorf("plugin %q exited with error", pluginName),
+				error: fmt.Errorf("plugin %q exited with error", pluginName),
 				Code:  status.ExitStatus(),
 			}
 		}
@@ -165,10 +164,8 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 	}
 
 	isKnown := func(v string) string {
-		for _, i := range kvargs {
-			if i == v {
-				return v
-			}
+		if slices.Contains(kvargs, v) {
+			return v
 		}
 		return ""
 	}

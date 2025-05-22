@@ -33,6 +33,7 @@ func TestLoadArchiveFiles(t *testing.T) {
 			name:     "empty input should return no files",
 			generate: func(_ *tar.Writer) {},
 			check: func(t *testing.T, _ []*BufferedFile, err error) {
+				t.Helper()
 				if err.Error() != "no files in chart archive" {
 					t.Fatalf(`expected "no files in chart archive", got [%#v]`, err)
 				}
@@ -61,6 +62,7 @@ func TestLoadArchiveFiles(t *testing.T) {
 				}
 			},
 			check: func(t *testing.T, files []*BufferedFile, err error) {
+				t.Helper()
 				if err != nil {
 					t.Fatalf(`got unwanted error [%#v] for tar file with pax_global_header content`, err)
 				}

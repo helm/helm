@@ -69,7 +69,7 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	}
 	schema, err := os.ReadFile("./testdata/test-values.schema.json")
 	if err != nil {
-		t.Fatalf("Error reading YAML file: %s", err)
+		t.Fatalf("Error reading JSON file: %s", err)
 	}
 
 	var errString string
@@ -79,8 +79,8 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := `- (root): employmentInfo is required
-- age: Must be greater than or equal to 0
+	expectedErrString := `- at '': missing property 'employmentInfo'
+- at '/age': minimum: got -5, want 0
 `
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
@@ -101,6 +101,21 @@ const subchartSchema = `{
   "required": [
     "age"
   ]
+}
+`
+
+const subchartSchema2020 = `{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "Values",
+	"type": "object",
+	"properties": {
+		"data": {
+			"type": "array",
+			"contains": { "type": "string" },
+			"unevaluatedItems": { "type": "number" }
+		}
+	},
+	"required": ["data"]
 }
 `
 
@@ -159,7 +174,72 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 	}
 
 	expectedErrString := `subchart:
-- (root): age is required
+- at '': missing property 'age'
+`
+	if errString != expectedErrString {
+		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
+	}
+}
+
+func TestValidateAgainstSchema2020(t *testing.T) {
+	subchartJSON := []byte(subchartSchema2020)
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "subchart",
+		},
+		Schema: subchartJSON,
+	}
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "chrt",
+		},
+	}
+	chrt.AddDependency(subchart)
+
+	vals := map[string]interface{}{
+		"name": "John",
+		"subchart": map[string]interface{}{
+			"data": []any{"hello", 12},
+		},
+	}
+
+	if err := ValidateAgainstSchema(chrt, vals); err != nil {
+		t.Errorf("Error validating Values against Schema: %s", err)
+	}
+}
+
+func TestValidateAgainstSchema2020Negative(t *testing.T) {
+	subchartJSON := []byte(subchartSchema2020)
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "subchart",
+		},
+		Schema: subchartJSON,
+	}
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "chrt",
+		},
+	}
+	chrt.AddDependency(subchart)
+
+	vals := map[string]interface{}{
+		"name": "John",
+		"subchart": map[string]interface{}{
+			"data": []any{12},
+		},
+	}
+
+	var errString string
+	if err := ValidateAgainstSchema(chrt, vals); err == nil {
+		t.Fatalf("Expected an error, but got nil")
+	} else {
+		errString = err.Error()
+	}
+
+	expectedErrString := `subchart:
+- at '/data': no items match contains schema
+  - at '/data/0': got number, want string
 `
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)

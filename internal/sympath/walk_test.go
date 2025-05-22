@@ -76,6 +76,7 @@ func walkTree(n *Node, path string, f func(path string, n *Node)) {
 }
 
 func makeTree(t *testing.T) {
+	t.Helper()
 	walkTree(tree, tree.name, func(path string, n *Node) {
 		if n.entries == nil {
 			if n.symLinkedTo != "" {
@@ -99,6 +100,7 @@ func makeTree(t *testing.T) {
 }
 
 func checkMarks(t *testing.T, report bool) {
+	t.Helper()
 	walkTree(tree, tree.name, func(path string, n *Node) {
 		if n.marks != n.expectedMarks && report {
 			t.Errorf("node %s mark = %d; expected %d", path, n.marks, n.expectedMarks)

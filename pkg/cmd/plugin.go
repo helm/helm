@@ -16,11 +16,12 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/plugin"
@@ -66,13 +67,13 @@ func runHook(p *plugin.Plugin, event string) error {
 
 	prog := exec.Command(main, argv...)
 
-	Debug("running %s hook: %s", event, prog)
+	slog.Debug("running hook", "event", event, "program", prog)
 
 	prog.Stdout, prog.Stderr = os.Stdout, os.Stderr
 	if err := prog.Run(); err != nil {
 		if eerr, ok := err.(*exec.ExitError); ok {
 			os.Stderr.Write(eerr.Stderr)
-			return errors.Errorf("plugin %s hook for %q exited with error", event, p.Metadata.Name)
+			return fmt.Errorf("plugin %s hook for %q exited with error", event, p.Metadata.Name)
 		}
 		return err
 	}

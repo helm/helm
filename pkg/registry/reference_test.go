@@ -19,6 +19,7 @@ package registry
 import "testing"
 
 func verify(t *testing.T, actual reference, registry, repository, tag, digest string) {
+	t.Helper()
 	if registry != actual.orasReference.Registry {
 		t.Errorf("Oras reference registry expected %v actual %v", registry, actual.Registry)
 	}

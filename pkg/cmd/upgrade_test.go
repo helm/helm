@@ -193,7 +193,7 @@ func TestUpgradeCmd(t *testing.T) {
 
 func TestUpgradeWithValue(t *testing.T) {
 	releaseName := "funny-bunny-v2"
-	relMock, ch, chartPath := prepareMockRelease(releaseName, t)
+	relMock, ch, chartPath := prepareMockRelease(t, releaseName)
 
 	defer resetEnv()()
 
@@ -220,7 +220,7 @@ func TestUpgradeWithValue(t *testing.T) {
 
 func TestUpgradeWithStringValue(t *testing.T) {
 	releaseName := "funny-bunny-v3"
-	relMock, ch, chartPath := prepareMockRelease(releaseName, t)
+	relMock, ch, chartPath := prepareMockRelease(t, releaseName)
 
 	defer resetEnv()()
 
@@ -248,7 +248,7 @@ func TestUpgradeWithStringValue(t *testing.T) {
 func TestUpgradeInstallWithSubchartNotes(t *testing.T) {
 
 	releaseName := "wacky-bunny-v1"
-	relMock, ch, _ := prepareMockRelease(releaseName, t)
+	relMock, ch, _ := prepareMockRelease(t, releaseName)
 
 	defer resetEnv()()
 
@@ -280,7 +280,7 @@ func TestUpgradeInstallWithSubchartNotes(t *testing.T) {
 func TestUpgradeWithValuesFile(t *testing.T) {
 
 	releaseName := "funny-bunny-v4"
-	relMock, ch, chartPath := prepareMockRelease(releaseName, t)
+	relMock, ch, chartPath := prepareMockRelease(t, releaseName)
 
 	defer resetEnv()()
 
@@ -308,7 +308,7 @@ func TestUpgradeWithValuesFile(t *testing.T) {
 func TestUpgradeWithValuesFromStdin(t *testing.T) {
 
 	releaseName := "funny-bunny-v5"
-	relMock, ch, chartPath := prepareMockRelease(releaseName, t)
+	relMock, ch, chartPath := prepareMockRelease(t, releaseName)
 
 	defer resetEnv()()
 
@@ -340,7 +340,7 @@ func TestUpgradeWithValuesFromStdin(t *testing.T) {
 func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
 
 	releaseName := "funny-bunny-v6"
-	_, _, chartPath := prepareMockRelease(releaseName, t)
+	_, _, chartPath := prepareMockRelease(t, releaseName)
 
 	defer resetEnv()()
 
@@ -368,7 +368,8 @@ func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
 
 }
 
-func prepareMockRelease(releaseName string, t *testing.T) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
+func prepareMockRelease(t *testing.T, releaseName string) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
+	t.Helper()
 	tmpChart := t.TempDir()
 	configmapData, err := os.ReadFile("testdata/testcharts/upgradetest/templates/configmap.yaml")
 	if err != nil {
@@ -445,7 +446,7 @@ func TestUpgradeFileCompletion(t *testing.T) {
 
 func TestUpgradeInstallWithLabels(t *testing.T) {
 	releaseName := "funny-bunny-labels"
-	_, _, chartPath := prepareMockRelease(releaseName, t)
+	_, _, chartPath := prepareMockRelease(t, releaseName)
 
 	defer resetEnv()()
 
@@ -471,7 +472,8 @@ func TestUpgradeInstallWithLabels(t *testing.T) {
 	}
 }
 
-func prepareMockReleaseWithSecret(releaseName string, t *testing.T) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
+func prepareMockReleaseWithSecret(t *testing.T, releaseName string) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
+	t.Helper()
 	tmpChart := t.TempDir()
 	configmapData, err := os.ReadFile("testdata/testcharts/chart-with-secret/templates/configmap.yaml")
 	if err != nil {
@@ -512,7 +514,7 @@ func prepareMockReleaseWithSecret(releaseName string, t *testing.T) (func(n stri
 
 func TestUpgradeWithDryRun(t *testing.T) {
 	releaseName := "funny-bunny-labels"
-	_, _, chartPath := prepareMockReleaseWithSecret(releaseName, t)
+	_, _, chartPath := prepareMockReleaseWithSecret(t, releaseName)
 
 	defer resetEnv()()
 

@@ -41,7 +41,7 @@ func Now() Time {
 }
 
 func (t Time) MarshalJSON() ([]byte, error) {
-	if t.Time.IsZero() {
+	if t.IsZero() {
 		return []byte(emptyString), nil
 	}
 
@@ -65,6 +65,7 @@ func Parse(layout, value string) (Time, error) {
 	t, err := time.Parse(layout, value)
 	return Time{Time: t}, err
 }
+
 func ParseInLocation(layout, value string, loc *time.Location) (Time, error) {
 	t, err := time.ParseInLocation(layout, value, loc)
 	return Time{Time: t}, err

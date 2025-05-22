@@ -34,10 +34,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package fs
 
 import (
+	"fmt"
 	"os"
 	"syscall"
-
-	"github.com/pkg/errors"
 )
 
 // renameFallback attempts to determine the appropriate fallback to failed rename
@@ -51,7 +50,7 @@ func renameFallback(err error, src, dst string) error {
 	if !ok {
 		return err
 	} else if terr.Err != syscall.EXDEV {
-		return errors.Wrapf(terr, "link error: cannot rename %s to %s", src, dst)
+		return fmt.Errorf("link error: cannot rename %s to %s: %w", src, dst, terr)
 	}
 
 	return renameByCopy(src, dst)

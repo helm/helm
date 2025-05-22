@@ -113,6 +113,8 @@ func (ch *Chart) ChartPath() string {
 }
 
 // ChartFullPath returns the full path to this chart.
+// Note that the path may not correspond to the path where the file can be found on the file system if the path
+// points to an aliased subchart.
 func (ch *Chart) ChartFullPath() string {
 	if !ch.IsRoot() {
 		return ch.Parent().ChartFullPath() + "/charts/" + ch.Name()

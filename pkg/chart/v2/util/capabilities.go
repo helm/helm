@@ -17,6 +17,7 @@ package util
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/Masterminds/semver/v3"
@@ -102,12 +103,7 @@ type VersionSet []string
 //
 //	vs.Has("apps/v1")
 func (v VersionSet) Has(apiVersion string) bool {
-	for _, x := range v {
-		if x == apiVersion {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(v, apiVersion)
 }
 
 func allKnownVersions() VersionSet {

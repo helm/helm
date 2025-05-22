@@ -63,6 +63,7 @@ type testCase struct {
 }
 
 func runTestCases(t *testing.T, testCases []testCase) {
+	t.Helper()
 	for i, tc := range testCases {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			cmd := &cobra.Command{

@@ -17,6 +17,8 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
+	"path/filepath"
 	"testing"
 )
 
@@ -26,4 +28,27 @@ func TestRepoListOutputCompletion(t *testing.T) {
 
 func TestRepoListFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "repo list", false)
+}
+
+func TestRepoList(t *testing.T) {
+	rootDir := t.TempDir()
+	repoFile := filepath.Join(rootDir, "repositories.yaml")
+	repoFile2 := "testdata/repositories.yaml"
+
+	tests := []cmdTestCase{
+		{
+			name:      "list with no repos",
+			cmd:       fmt.Sprintf("repo list --repository-config %s --repository-cache %s", repoFile, rootDir),
+			golden:    "output/repo-list-empty.txt",
+			wantError: false,
+		},
+		{
+			name:      "list with repos",
+			cmd:       fmt.Sprintf("repo list --repository-config %s --repository-cache %s", repoFile2, rootDir),
+			golden:    "output/repo-list.txt",
+			wantError: false,
+		},
+	}
+
+	runTestCmd(t, tests)
 }

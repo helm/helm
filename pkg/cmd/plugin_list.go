@@ -18,6 +18,8 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"log/slog"
+	"slices"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
@@ -32,7 +34,7 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 		Short:             "list installed Helm plugins",
 		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			Debug("pluginDirs: %s", settings.PluginsDirectory)
+			slog.Debug("pluginDirs", "directory", settings.PluginsDirectory)
 			plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
 			if err != nil {
 				return err
@@ -59,13 +61,7 @@ func filterPlugins(plugins []*plugin.Plugin, ignoredPluginNames []string) []*plu
 
 	var filteredPlugins []*plugin.Plugin
 	for _, plugin := range plugins {
-		found := false
-		for _, ignoredName := range ignoredPluginNames {
-			if plugin.Metadata.Name == ignoredName {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(ignoredPluginNames, plugin.Metadata.Name)
 		if !found {
 			filteredPlugins = append(filteredPlugins, plugin)
 		}

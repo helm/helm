@@ -16,7 +16,9 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -202,7 +204,7 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 
 	// Make sure tmpcharts-x is deleted
 	tmpPath := filepath.Join(dir(chartname), fmt.Sprintf("tmpcharts-%d", os.Getpid()))
-	if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
+	if _, err := os.Stat(tmpPath); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("tmpcharts dir still exists")
 	}
 }
@@ -248,6 +250,7 @@ func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
 }
 
 func setupMockRepoServer(t *testing.T) *repotest.Server {
+	t.Helper()
 	srv := repotest.NewTempServer(
 		t,
 		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz"),

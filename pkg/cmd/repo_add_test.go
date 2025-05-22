@@ -17,8 +17,10 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -113,11 +115,11 @@ func TestRepoAdd(t *testing.T) {
 	}
 
 	idx := filepath.Join(helmpath.CachePath("repository"), helmpath.CacheIndexFile(testRepoName))
-	if _, err := os.Stat(idx); os.IsNotExist(err) {
+	if _, err := os.Stat(idx); errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("Error cache index file was not created for repository %s", testRepoName)
 	}
 	idx = filepath.Join(helmpath.CachePath("repository"), helmpath.CacheChartsFile(testRepoName))
-	if _, err := os.Stat(idx); os.IsNotExist(err) {
+	if _, err := os.Stat(idx); errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("Error cache charts file was not created for repository %s", testRepoName)
 	}
 
@@ -189,6 +191,7 @@ func TestRepoAddConcurrentHiddenFile(t *testing.T) {
 }
 
 func repoAddConcurrent(t *testing.T, testName, repoFile string) {
+	t.Helper()
 	ts := repotest.NewTempServer(
 		t,
 		repotest.WithChartSourceGlob("testdata/testserver/*.*"),

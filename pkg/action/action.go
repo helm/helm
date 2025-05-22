@@ -18,15 +18,16 @@ package action
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
+	"text/template"
 
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
@@ -63,21 +64,6 @@ var (
 	errPending = errors.New("another operation (install/upgrade/rollback) is in progress")
 )
 
-// ValidName is a regular expression for resource names.
-//
-// DEPRECATED: This will be removed in Helm 4, and is no longer used here. See
-// pkg/lint/rules.validateMetadataNameFunc for the replacement.
-//
-// According to the Kubernetes help text, the regular expression it uses is:
-//
-//	[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*
-//
-// This follows the above regular expression (but requires a full string match, not partial).
-//
-// The Kubernetes documentation is here, though it is not entirely correct:
-// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-var ValidName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
-
 // Configuration injects the dependencies that all actions share.
 type Configuration struct {
 	// RESTClientGetter is an interface that loads Kubernetes clients.
@@ -95,7 +81,8 @@ type Configuration struct {
 	// Capabilities describes the capabilities of the Kubernetes cluster.
 	Capabilities *chartutil.Capabilities
 
-	Log func(string, ...interface{})
+	// CustomTemplateFuncs is defined by users to provide custom template funcs
+	CustomTemplateFuncs template.FuncMap
 
 	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
 	HookOutputFunc func(namespace, pod, container string) io.Writer
@@ -118,7 +105,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 
 	if ch.Metadata.KubeVersion != "" {
 		if !chartutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
-			return hs, b, "", errors.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
+			return hs, b, "", fmt.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
 		}
 	}
 
@@ -135,10 +122,14 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		}
 		e := engine.New(restConfig)
 		e.EnableDNS = enableDNS
+		e.CustomTemplateFuncs = cfg.CustomTemplateFuncs
+
 		files, err2 = e.Render(ch, values)
 	} else {
 		var e engine.Engine
 		e.EnableDNS = enableDNS
+		e.CustomTemplateFuncs = cfg.CustomTemplateFuncs
+
 		files, err2 = e.Render(ch, values)
 	}
 
@@ -229,7 +220,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	if pr != nil {
 		b, err = pr.Run(b)
 		if err != nil {
-			return hs, b, notes, errors.Wrap(err, "error while running post render on files")
+			return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
 		}
 	}
 
@@ -243,9 +234,6 @@ type RESTClientGetter interface {
 	ToRESTMapper() (meta.RESTMapper, error)
 }
 
-// DebugLog sets the logger that writes debug strings
-type DebugLog func(format string, v ...interface{})
-
 // capabilities builds a Capabilities from discovery information.
 func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	if cfg.Capabilities != nil {
@@ -253,13 +241,13 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	}
 	dc, err := cfg.RESTClientGetter.ToDiscoveryClient()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get Kubernetes discovery client")
+		return nil, fmt.Errorf("could not get Kubernetes discovery client: %w", err)
 	}
 	// force a discovery cache invalidation to always fetch the latest server version/capabilities.
 	dc.Invalidate()
 	kubeVersion, err := dc.ServerVersion()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get server version from Kubernetes")
+		return nil, fmt.Errorf("could not get server version from Kubernetes: %w", err)
 	}
 	// Issue #6361:
 	// Client-Go emits an error when an API service is registered but unimplemented.
@@ -269,10 +257,10 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
 		if discovery.IsGroupDiscoveryFailedError(err) {
-			cfg.Log("WARNING: The Kubernetes server has an orphaned API service. Server reports: %s", err)
-			cfg.Log("WARNING: To fix this, kubectl delete apiservice <service-name>")
+			slog.Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
+			slog.Warn("to fix this, kubectl delete apiservice <service-name>")
 		} else {
-			return nil, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+			return nil, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
 		}
 	}
 
@@ -292,7 +280,7 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 func (cfg *Configuration) KubernetesClientSet() (kubernetes.Interface, error) {
 	conf, err := cfg.RESTClientGetter.ToRESTConfig()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to generate config for kubernetes client")
+		return nil, fmt.Errorf("unable to generate config for kubernetes client: %w", err)
 	}
 
 	return kubernetes.NewForConfig(conf)
@@ -308,7 +296,7 @@ func (cfg *Configuration) Now() time.Time {
 
 func (cfg *Configuration) releaseContent(name string, version int) (*release.Release, error) {
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, errors.Errorf("releaseContent: Release name is invalid: %s", name)
+		return nil, fmt.Errorf("releaseContent: Release name is invalid: %s", name)
 	}
 
 	if version <= 0 {
@@ -322,7 +310,7 @@ func (cfg *Configuration) releaseContent(name string, version int) (*release.Rel
 func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.VersionSet, error) {
 	groups, resources, err := client.ServerGroupsAndResources()
 	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
-		return chartutil.DefaultVersionSet, errors.Wrap(err, "could not get apiVersions from Kubernetes")
+		return chartutil.DefaultVersionSet, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
 	}
 
 	// FIXME: The Kubernetes test fixture for cli appears to always return nil
@@ -369,14 +357,13 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 // recordRelease with an update operation in case reuse has been set.
 func (cfg *Configuration) recordRelease(r *release.Release) {
 	if err := cfg.Releases.Update(r); err != nil {
-		cfg.Log("warning: Failed to update release %s: %s", r.Name, err)
+		slog.Warn("failed to update release", "name", r.Name, "revision", r.Version, slog.Any("error", err))
 	}
 }
 
 // Init initializes the action configuration
-func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string, log DebugLog) error {
+func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string) error {
 	kc := kube.New(getter)
-	kc.Log = log
 
 	lazyClient := &lazyClient{
 		namespace: namespace,
@@ -387,11 +374,9 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	switch helmDriver {
 	case "secret", "secrets", "":
 		d := driver.NewSecrets(newSecretClient(lazyClient))
-		d.Log = log
 		store = storage.Init(d)
 	case "configmap", "configmaps":
 		d := driver.NewConfigMaps(newConfigMapClient(lazyClient))
-		d.Log = log
 		store = storage.Init(d)
 	case "memory":
 		var d *driver.Memory
@@ -411,21 +396,19 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	case "sql":
 		d, err := driver.NewSQL(
 			os.Getenv("HELM_DRIVER_SQL_CONNECTION_STRING"),
-			log,
 			namespace,
 		)
 		if err != nil {
-			return errors.Wrap(err, "unable to instantiate SQL driver")
+			return fmt.Errorf("unable to instantiate SQL driver: %w", err)
 		}
 		store = storage.Init(d)
 	default:
-		return errors.Errorf("unknown driver %q", helmDriver)
+		return fmt.Errorf("unknown driver %q", helmDriver)
 	}
 
 	cfg.RESTClientGetter = getter
 	cfg.KubeClient = kc
 	cfg.Releases = store
-	cfg.Log = log
 	cfg.HookOutputFunc = func(_, _, _ string) io.Writer { return io.Discard }
 
 	return nil

@@ -129,7 +129,7 @@ func (c *Client) Search(term string) ([]SearchResult, error) {
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to fetch %s : %s", p.String(), res.Status)
 	}
 

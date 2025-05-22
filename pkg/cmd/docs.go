@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 	"golang.org/x/text/cases"
@@ -86,7 +85,7 @@ func (o *docsOptions) run(_ io.Writer) error {
 			hdrFunc := func(filename string) string {
 				base := filepath.Base(filename)
 				name := strings.TrimSuffix(base, path.Ext(base))
-				title := cases.Title(language.Und, cases.NoLower).String(strings.Replace(name, "_", " ", -1))
+				title := cases.Title(language.Und, cases.NoLower).String(strings.ReplaceAll(name, "_", " "))
 				return fmt.Sprintf("---\ntitle: \"%s\"\n---\n\n", title)
 			}
 
@@ -99,6 +98,6 @@ func (o *docsOptions) run(_ io.Writer) error {
 	case "bash":
 		return o.topCmd.GenBashCompletionFile(filepath.Join(o.dest, "completions.bash"))
 	default:
-		return errors.Errorf("unknown doc type %q. Try 'markdown' or 'man'", o.docTypeString)
+		return fmt.Errorf("unknown doc type %q. Try 'markdown' or 'man'", o.docTypeString)
 	}
 }

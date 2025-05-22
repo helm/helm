@@ -18,8 +18,8 @@ package action
 
 import (
 	"fmt"
+	"maps"
 
-	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -52,7 +52,7 @@ func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
 			if apierrors.IsNotFound(err) {
 				return nil
 			}
-			return errors.Wrapf(err, "could not get information about the resource %s", resourceString(info))
+			return fmt.Errorf("could not get information about the resource %s: %w", resourceString(info), err)
 		}
 
 		requireUpdate.Append(info)
@@ -76,7 +76,7 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 			if apierrors.IsNotFound(err) {
 				return nil
 			}
-			return errors.Wrapf(err, "could not get information about the resource %s", resourceString(info))
+			return fmt.Errorf("could not get information about the resource %s: %w", resourceString(info), err)
 		}
 
 		// Allow adoption of the resource if it is managed by Helm and is annotated with correct release name and namespace.
@@ -113,11 +113,7 @@ func checkOwnership(obj runtime.Object, releaseName, releaseNamespace string) er
 	}
 
 	if len(errs) > 0 {
-		err := errors.New("invalid ownership metadata")
-		for _, e := range errs {
-			err = fmt.Errorf("%w; %s", err, e)
-		}
-		return err
+		return fmt.Errorf("invalid ownership metadata; %w", joinErrors(errs, "; "))
 	}
 
 	return nil
@@ -199,11 +195,7 @@ func mergeAnnotations(obj runtime.Object, annotations map[string]string) error {
 // merge two maps, always taking the value on the right
 func mergeStrStrMaps(current, desired map[string]string) map[string]string {
 	result := make(map[string]string)
-	for k, v := range current {
-		result[k] = v
-	}
-	for k, desiredVal := range desired {
-		result[k] = desiredVal
-	}
+	maps.Copy(result, current)
+	maps.Copy(result, desired)
 	return result
 }

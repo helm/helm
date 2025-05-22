@@ -20,8 +20,6 @@ import (
 	"io"
 	"net/url"
 
-	"github.com/pkg/errors"
-
 	"helm.sh/helm/v4/pkg/pusher"
 	"helm.sh/helm/v4/pkg/registry"
 )
@@ -42,7 +40,7 @@ type ChartUploader struct {
 func (c *ChartUploader) UploadTo(ref, remote string) error {
 	u, err := url.Parse(remote)
 	if err != nil {
-		return errors.Errorf("invalid chart URL format: %s", remote)
+		return fmt.Errorf("invalid chart URL format: %s", remote)
 	}
 
 	if u.Scheme == "" {

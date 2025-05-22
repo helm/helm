@@ -16,10 +16,11 @@ limitations under the License.
 package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
+	"errors"
+	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 )
 
 // ErrPluginNotAFolder indicates that the plugin path is not a folder.
@@ -34,7 +35,7 @@ type LocalInstaller struct {
 func NewLocalInstaller(source string) (*LocalInstaller, error) {
 	src, err := filepath.Abs(source)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to get absolute path to plugin")
+		return nil, fmt.Errorf("unable to get absolute path to plugin: %w", err)
 	}
 	i := &LocalInstaller{
 		base: newBase(src),
@@ -57,12 +58,12 @@ func (i *LocalInstaller) Install() error {
 	if !isPlugin(i.Source) {
 		return ErrMissingMetadata
 	}
-	debug("symlinking %s to %s", i.Source, i.Path())
+	slog.Debug("symlinking", "source", i.Source, "path", i.Path())
 	return os.Symlink(i.Source, i.Path())
 }
 
 // Update updates a local repository
 func (i *LocalInstaller) Update() error {
-	debug("local repository is auto-updated")
+	slog.Debug("local repository is auto-updated")
 	return nil
 }

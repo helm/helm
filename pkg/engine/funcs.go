@@ -19,6 +19,7 @@ package engine
 import (
 	"bytes"
 	"encoding/json"
+	"maps"
 	"strings"
 	"text/template"
 
@@ -51,10 +52,12 @@ func funcMap() template.FuncMap {
 		"toToml":        toTOML,
 		"fromToml":      fromTOML,
 		"toYaml":        toYAML,
+		"mustToYaml":    mustToYAML,
 		"toYamlPretty":  toYAMLPretty,
 		"fromYaml":      fromYAML,
 		"fromYamlArray": fromYAMLArray,
 		"toJson":        toJSON,
+		"mustToJson":    mustToJSON,
 		"fromJson":      fromJSON,
 		"fromJsonArray": fromJSONArray,
 
@@ -71,9 +74,7 @@ func funcMap() template.FuncMap {
 		},
 	}
 
-	for k, v := range extra {
-		f[k] = v
-	}
+	maps.Copy(f, extra)
 
 	return f
 }
@@ -87,6 +88,19 @@ func toYAML(v interface{}) string {
 	if err != nil {
 		// Swallow errors inside of a template.
 		return ""
+	}
+	return strings.TrimSuffix(string(data), "\n")
+}
+
+// mustToYAML takes an interface, marshals it to yaml, and returns a string.
+// It will panic if there is an error.
+//
+// This is designed to be called from a template when need to ensure that the
+// output YAML is valid.
+func mustToYAML(v interface{}) string {
+	data, err := yaml.Marshal(v)
+	if err != nil {
+		panic(err)
 	}
 	return strings.TrimSuffix(string(data), "\n")
 }
@@ -172,6 +186,19 @@ func toJSON(v interface{}) string {
 	if err != nil {
 		// Swallow errors inside of a template.
 		return ""
+	}
+	return string(data)
+}
+
+// mustToJSON takes an interface, marshals it to json, and returns a string.
+// It will panic if there is an error.
+//
+// This is designed to be called from a template when need to ensure that the
+// output JSON is valid.
+func mustToJSON(v interface{}) string {
+	data, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
 	}
 	return string(data)
 }
