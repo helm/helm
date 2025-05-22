@@ -28,6 +28,7 @@ import (
 
 type HTTPRegistryClientTestSuite struct {
 	TestSuite
+	protocol string
 }
 
 func (suite *HTTPRegistryClientTestSuite) SetupSuite() {
@@ -56,14 +57,23 @@ func (suite *HTTPRegistryClientTestSuite) Test_0_Login() {
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_1_Push() {
+	if suite.protocol != "" {
+		return
+	}
 	testPush(&suite.TestSuite)
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_2_Pull() {
+	if suite.protocol != "" {
+		return
+	}
 	testPull(&suite.TestSuite)
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_3_Tags() {
+	if suite.protocol != "" {
+		return
+	}
 	testTags(&suite.TestSuite)
 }
 
@@ -78,4 +88,11 @@ func (suite *HTTPRegistryClientTestSuite) Test_4_ManInTheMiddle() {
 
 func TestHTTPRegistryClientTestSuite(t *testing.T) {
 	suite.Run(t, new(HTTPRegistryClientTestSuite))
+	for _, protocol := range []string{"oci://", "http://", "https://"} {
+		var protocolSpecificTestSuite = new(HTTPRegistryClientTestSuite)
+		protocolSpecificTestSuite.protocol = protocol
+		protocolSpecificTestSuite.DockerRegistryHost = protocol + "helm-test-registry"
+		suite.Run(t, protocolSpecificTestSuite)
+	}
+
 }
