@@ -17,6 +17,7 @@ limitations under the License.
 package registry
 
 import (
+	"io"
 	"testing"
 
 	"github.com/containerd/containerd/remotes"
@@ -33,7 +34,11 @@ func TestNewClientResolverNotSupported(t *testing.T) {
 }
 
 func TestStripRepository(t *testing.T) {
-	assert.Equal(t, "127.0.0.1:15000", stripRepository("127.0.0.1:15000/asdf"))
-	assert.Equal(t, "127.0.0.1:15000", stripRepository("127.0.0.1:15000/asdf/asdf"))
-	assert.Equal(t, "127.0.0.1:15000", stripRepository("127.0.0.1:15000"))
+	client := &Client{
+		out: io.Discard,
+	}
+
+	assert.Equal(t, "127.0.0.1:15000", client.stripRepository("127.0.0.1:15000/asdf"))
+	assert.Equal(t, "127.0.0.1:15000", client.stripRepository("127.0.0.1:15000/asdf/asdf"))
+	assert.Equal(t, "127.0.0.1:15000", client.stripRepository("127.0.0.1:15000"))
 }
