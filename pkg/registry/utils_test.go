@@ -65,6 +65,7 @@ type TestSuite struct {
 	CompromisedRegistryHost string
 	WorkspaceDir            string
 	RegistryClient          *Client
+	Repo                    string
 
 	// A mock DNS server needed for TLS connection testing.
 	srv *mockdns.Server
@@ -128,10 +129,10 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	// This is required because Docker enforces HTTP if the registry
 	// host is localhost/127.0.0.1.
 	if suite.DockerRegistryHost == "" {
-		suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
+		suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d%s", port, suite.Repo)
 	} else {
 		// may programmatically set this for custom protocol handling
-		suite.DockerRegistryHost = fmt.Sprintf("%s:%d", suite.DockerRegistryHost, port)
+		suite.DockerRegistryHost = fmt.Sprintf("%s:%d%s", suite.DockerRegistryHost, port, suite.Repo)
 	}
 	suite.srv, err = mockdns.NewServer(map[string]mockdns.Zone{
 		"helm-test-registry.": {

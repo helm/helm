@@ -57,21 +57,21 @@ func (suite *HTTPRegistryClientTestSuite) Test_0_Login() {
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_1_Push() {
-	if suite.protocol != "" {
+	if suite.protocol != "" || suite.Repo != "" {
 		return
 	}
 	testPush(&suite.TestSuite)
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_2_Pull() {
-	if suite.protocol != "" {
+	if suite.protocol != "" || suite.Repo != "" {
 		return
 	}
 	testPull(&suite.TestSuite)
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_3_Tags() {
-	if suite.protocol != "" {
+	if suite.protocol != "" || suite.Repo != "" {
 		return
 	}
 	testTags(&suite.TestSuite)
@@ -88,6 +88,9 @@ func (suite *HTTPRegistryClientTestSuite) Test_4_ManInTheMiddle() {
 
 func TestHTTPRegistryClientTestSuite(t *testing.T) {
 	suite.Run(t, new(HTTPRegistryClientTestSuite))
+	var suiteWithRepo = new(HTTPRegistryClientTestSuite)
+	suiteWithRepo.Repo = "/testrepo/"
+	suite.Run(t, suiteWithRepo)
 	for _, protocol := range []string{"oci://", "http://", "https://"} {
 		var protocolSpecificTestSuite = new(HTTPRegistryClientTestSuite)
 		protocolSpecificTestSuite.protocol = protocol
