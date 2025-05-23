@@ -69,7 +69,10 @@ func TestTagManifestTransformsReferences(t *testing.T) {
 	configDesc := ocispec.Descriptor{MediaType: ConfigMediaType, Digest: "sha256:config", Size: 100}
 	layers := []ocispec.Descriptor{{MediaType: ChartLayerMediaType, Digest: "sha256:layer", Size: 200}}
 
-	desc, err := client.tagManifest(ctx, memStore, refWithPlus, configDesc, layers, nil)
+	parsedRef, err := newReference(refWithPlus)
+	require.NoError(t, err)
+
+	desc, err := client.tagManifest(ctx, memStore, configDesc, layers, nil, parsedRef)
 	require.NoError(t, err)
 
 	transformedDesc, err := memStore.Resolve(ctx, expectedRef)
