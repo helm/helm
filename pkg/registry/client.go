@@ -463,7 +463,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 			PreCopy: func(_ context.Context, desc ocispec.Descriptor) error {
 				mediaType := desc.MediaType
 				if i := sort.SearchStrings(allowedMediaTypes, mediaType); i >= len(allowedMediaTypes) || allowedMediaTypes[i] != mediaType {
-					return fmt.Errorf("media type %q is not allowed, found in descriptor with digest: %q", mediaType, desc.Digest)
+					return oras.SkipNode
 				}
 
 				mu.Lock()
@@ -477,7 +477,6 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		return nil, err
 	}
 
-	descriptors = append(descriptors, manifest)
 	descriptors = append(descriptors, layers...)
 
 	numDescriptors := len(descriptors)
