@@ -477,7 +477,6 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		return nil, err
 	}
 
-	descriptors = append(descriptors, manifest)
 	descriptors = append(descriptors, layers...)
 
 	numDescriptors := len(descriptors)
