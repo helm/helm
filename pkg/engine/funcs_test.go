@@ -127,6 +127,14 @@ keyInElement1 = "valueInElement1"`,
 		tpl:    `{{ lookup "v1" "Namespace" "" "unlikelynamespace99999999" }}`,
 		expect: `map[]`,
 		vars:   `["one", "two"]`,
+	}, {
+		tpl:    `{{ typeOf . }}`,
+		expect: `string`,
+		vars:   `"WEB"`,
+	}, {
+		tpl:    `{{ typeOf . }}`,
+		expect: `int`,
+		vars:   `80`
 	}}
 
 	for _, tt := range tests {
