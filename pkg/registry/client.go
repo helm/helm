@@ -712,8 +712,8 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 
 	ociAnnotations := generateOCIAnnotations(meta, operation.creationTime)
 
-	manifestDescriptor, err := c.tagManifest(ctx, memoryStore, ref, configDescriptor,
-		layers, ociAnnotations)
+	manifestDescriptor, err := c.tagManifest(ctx, memoryStore, configDescriptor,
+		layers, ociAnnotations, parsedRef)
 	if err != nil {
 		return nil, err
 	}
@@ -917,8 +917,8 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 
 // tagManifest prepares and tags a manifest in memory storage
 func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
-	ref string, configDescriptor ocispec.Descriptor, layers []ocispec.Descriptor,
-	ociAnnotations map[string]string) (ocispec.Descriptor, error) {
+	configDescriptor ocispec.Descriptor, layers []ocispec.Descriptor,
+	ociAnnotations map[string]string, parsedRef reference) (ocispec.Descriptor, error) {
 
 	manifest := ocispec.Manifest{
 		Versioned:   specs.Versioned{SchemaVersion: 2},
@@ -928,11 +928,6 @@ func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 	}
 
 	manifestData, err := json.Marshal(manifest)
-	if err != nil {
-		return ocispec.Descriptor{}, err
-	}
-
-	parsedRef, err := newReference(ref)
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
