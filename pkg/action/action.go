@@ -157,6 +157,14 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	}
 	notes := notesBuffer.String()
 
+	// Call the post-renderer if one is provided.
+	if pr != nil {
+		files, err = pr.Run(files)
+		if err != nil {
+			return hs, b, notes, fmt.Errorf("error while post rendering templates: %w", err)
+		}
+	}
+
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
@@ -214,13 +222,6 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 				return hs, b, "", err
 			}
 			fileWritten[m.Name] = true
-		}
-	}
-
-	if pr != nil {
-		b, err = pr.Run(b)
-		if err != nil {
-			return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
 		}
 	}
 

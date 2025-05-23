@@ -19,11 +19,34 @@ limitations under the License.
 // binaries and scripts
 package postrender
 
-import "bytes"
-
 type PostRenderer interface {
-	// Run expects a single buffer filled with Helm rendered manifests. It
-	// expects the modified results to be returned on a separate buffer or an
-	// error if there was an issue or failure while running the post render step
-	Run(renderedManifests *bytes.Buffer) (modifiedManifests *bytes.Buffer, err error)
+	// Run expects and returns a map of file names and their rendered contents
+	// Example:
+	// > map[string]string{
+	// >   "templates/foo.yaml": "Kind: Pod..",
+	// >   "templates/baz.yaml": "Kind: ConfigMap...",
+	// > }
+	// Note: In Helm 4, the format of the data passed to the post-renderer command
+	// has changed in a backward-incompatible way. Helm 4 now passes a YAML-encoded
+	// map of filenames to their rendered content.
+	// Example:
+	// > templates/foo.yaml: |
+	// >   apiVersion: v1
+	// >   kind: Pod
+	// >   ...
+	// > templates/bar.yaml: |
+	// >   ...
+	//
+	// In contrast, Helm 3 passed a stream of YAML manifests (just the values of the map).
+	// Example:
+	// > # Source: templates/foo.yaml
+	// > apiVersion: v1
+	// > kind: Pod
+	// > ...
+	// > # Source: templates/bar.yaml
+	// > ...
+	//
+	// This change allows the post-renderer to view, add, remove, and modify all rendered
+	// files at once before they are sorted into hooks, manifests, and partials.
+	Run(renderedFiles map[string]string) (map[string]string, error)
 }
