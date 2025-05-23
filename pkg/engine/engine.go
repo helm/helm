@@ -34,6 +34,18 @@ import (
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
+// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
+// > "template: %s: executing %q at <%s>: %s"
+var execErrFmt = regexp.MustCompile(`^template: (?P<templateName>(?U).+): executing (?P<functionName>(?U).+) at (?P<location>(?U).+): (?P<errMsg>(?U).+)(?P<nextErr>( template:.*)?)$`)
+
+// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
+// > "template: %s: %s"
+var execErrFmtWithoutTemplate = regexp.MustCompile(`^template: (?P<templateName>(?U).+): (?P<errMsg>.*)(?P<nextErr>( template:.*)?)$`)
+
+// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=191
+// > "template: no template %q associated with template %q"
+var execErrNoTemplateAssociated = regexp.MustCompile(`^template: no template (?P<location>.*) associated with template (?P<functionName>(.*)?)$`)
+
 // Engine is an implementation of the Helm rendering implementation for templates.
 type Engine struct {
 	// If strict is enabled, template rendering will fail if a template references
@@ -303,7 +315,7 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 		vals["Template"] = chartutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
 		var buf strings.Builder
 		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
-			return map[string]string{}, cleanupExecError(filename, err)
+			return map[string]string{}, reformatExecErrorMsg(filename, err)
 		}
 
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
@@ -329,7 +341,33 @@ func cleanupParseError(filename string, err error) error {
 	return fmt.Errorf("parse error at (%s): %s", string(location), errMsg)
 }
 
-func cleanupExecError(filename string, err error) error {
+type TraceableError struct {
+	location         string
+	message          string
+	executedFunction string
+}
+
+func (t TraceableError) String() string {
+	var errorString strings.Builder
+	if t.location != "" {
+		fmt.Fprintf(&errorString, "%s\n  ", t.location)
+	}
+	if t.executedFunction != "" {
+		fmt.Fprintf(&errorString, "%s\n    ", t.executedFunction)
+	}
+	if t.message != "" {
+		fmt.Fprintf(&errorString, "%s\n", t.message)
+	}
+	return errorString.String()
+}
+
+// reformatExecErrorMsg takes an error message for template rendering and formats it into a formatted
+// multi-line error string
+func reformatExecErrorMsg(filename string, err error) error {
+	// This function matches the error message against regex's for the text/template package.
+	// If the regex's can parse out details from that error message such as the line number, template it failed on,
+	// and error description, then it will construct a new error that displays these details in a structured way.
+	// If there are issues with parsing the error message, the err passed into the function should return instead.
 	if _, isExecError := err.(template.ExecError); !isExecError {
 		return err
 	}
@@ -348,8 +386,46 @@ func cleanupExecError(filename string, err error) error {
 	if len(parts) >= 2 {
 		return fmt.Errorf("execution error at (%s): %s", string(location), parts[1])
 	}
+	current := err
+	fileLocations := []TraceableError{}
+	for current != nil {
+		var traceable TraceableError
+		if matches := execErrFmt.FindStringSubmatch(current.Error()); matches != nil {
+			templateName := matches[execErrFmt.SubexpIndex("templateName")]
+			functionName := matches[execErrFmt.SubexpIndex("functionName")]
+			locationName := matches[execErrFmt.SubexpIndex("location")]
+			errMsg := matches[execErrFmt.SubexpIndex("errMsg")]
+			traceable = TraceableError{
+				location:         templateName,
+				message:          errMsg,
+				executedFunction: "executing " + functionName + " at " + locationName + ":",
+			}
+		} else if matches := execErrFmtWithoutTemplate.FindStringSubmatch(current.Error()); matches != nil {
+			templateName := matches[execErrFmt.SubexpIndex("templateName")]
+			errMsg := matches[execErrFmt.SubexpIndex("errMsg")]
+			traceable = TraceableError{
+				location: templateName,
+				message:  errMsg,
+			}
+		} else if matches := execErrNoTemplateAssociated.FindStringSubmatch(current.Error()); matches != nil {
+			traceable = TraceableError{
+				message: current.Error(),
+			}
+		} else {
+			return err
+		}
+		if len(fileLocations) == 0 || fileLocations[len(fileLocations)-1] != traceable {
+			fileLocations = append(fileLocations, traceable)
+		}
+		current = errors.Unwrap(current)
+	}
 
-	return err
+	var finalErrorString strings.Builder
+	for _, fileLocation := range fileLocations {
+		fmt.Fprintf(&finalErrorString, "%s", fileLocation.String())
+	}
+
+	return errors.New(strings.TrimSpace(finalErrorString.String()))
 }
 
 func sortTemplates(tpls map[string]renderable) []string {

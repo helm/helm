@@ -447,7 +447,9 @@ func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
 	instAction.DryRun = true
 	vals := map[string]interface{}{}
 	_, err := instAction.Run(buildChart(withSampleIncludingIncorrectTemplates()), vals)
-	expectedErr := "\"hello/templates/incorrect\" at <.Values.bad.doh>: nil pointer evaluating interface {}.doh"
+	expectedErr := `hello/templates/incorrect:1:10
+  executing "hello/templates/incorrect" at <.Values.bad.doh>:
+    nil pointer evaluating interface {}.doh`
 	if err == nil {
 		t.Fatalf("Install should fail containing error: %s", expectedErr)
 	}
