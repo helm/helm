@@ -459,7 +459,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 			PreCopy: func(_ context.Context, desc ocispec.Descriptor) error {
 				mediaType := desc.MediaType
 				if i := sort.SearchStrings(allowedMediaTypes, mediaType); i >= len(allowedMediaTypes) || allowedMediaTypes[i] != mediaType {
-					return nil
+					return oras.SkipNode
 				}
 
 				mu.Lock()
