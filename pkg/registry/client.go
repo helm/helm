@@ -115,13 +115,29 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	store, err := credentials.NewStore(client.credentialsFile, storeOptions)
 	if err != nil {
-		return nil, err
+		fileInfo, fileErr := os.Stat(client.credentialsFile)
+		if fileErr != nil {
+			// Actual problem reading file
+			return nil, err
+		}
+		if fileInfo.Size() != 0 {
+			// Likely a parse error
+			return nil, err
+		}
+
+		fileErr = os.WriteFile(client.credentialsFile, []byte("{}"), 0600)
+		if fileErr != nil {
+			return nil, err
+		}
+
+		store, fileErr = credentials.NewStore(client.credentialsFile, storeOptions)
+		if fileErr != nil {
+			return nil, err
+		}
 	}
+	client.credentialsStore = store
 	dockerStore, err := credentials.NewStoreFromDocker(storeOptions)
-	if err != nil {
-		// should only fail if user home directory can't be determined
-		client.credentialsStore = store
-	} else {
+	if err == nil {
 		// use Helm credentials with fallback to Docker
 		client.credentialsStore = credentials.NewStoreWithFallbacks(store, dockerStore)
 	}
