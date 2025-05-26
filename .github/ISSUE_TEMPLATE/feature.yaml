@@ -1,0 +1,20 @@
+name: Enhancement Tracking Issue
+description: Provide supporting details for a feature in development
+labels: kind/feature
+body:
+  - type: textarea
+    id: feature
+    attributes:
+      label: What would you like to be added?
+      description: |
+        Feature requests are unlikely to make progress as issues.
+        A proposal that works through the design along with the implications of the change can be opened as a KEP.
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Why is this needed?
+    validations:
+      required: true
