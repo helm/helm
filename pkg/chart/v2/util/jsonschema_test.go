@@ -55,8 +55,8 @@ func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := "unable to validate schema: runtime error: invalid " +
-		"memory address or nil pointer dereference"
+	expectedErrString := `"file:///values.schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': got number, want boolean or object`
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
 	}
