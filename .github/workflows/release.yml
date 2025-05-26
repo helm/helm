@@ -31,14 +31,26 @@ jobs:
         uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # pin@5.5.0
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
+
       - name: Run unit tests
         run: make test-coverage
+
       - name: Build Helm Binaries
         run: |
           set -eu -o pipefail
 
-          make build-cross VERSION="${{ github.ref_name }}"
-          make dist checksum VERSION="${{ github.ref_name }}"
+      - name: Run Go Release
+        uses: goreleaser/goreleaser-action@v2
+        if: success() && startsWith(github.ref, 'refs/tags/')
+        with:
+          version: latest
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Verify checksum
+        run: |
+            make dist checksum VERSION="${{ github.ref_name }}"
 
       - name: Set latest version
         run: |
@@ -93,10 +105,18 @@ jobs:
       - name: Run unit tests
         run: make test-coverage
 
-      - name: Build Helm Binaries
+      - name: Run Go Release
+        uses: goreleaser/goreleaser-action@v2
+        if: success() && startsWith(github.ref, 'refs/tags/')
+        with:
+          version: latest
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Verify checksum
         run: |
-          make build-cross
-          make dist checksum VERSION="canary"
+            make dist checksum VERSION="canary"
 
       - name: Upload Binaries
         uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
