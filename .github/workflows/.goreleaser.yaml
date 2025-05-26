@@ -1,0 +1,38 @@
+project_name: helm
+
+builds:
+  - id: helm
+    main: ./cmd/helm
+    binary: helm
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    goarm:
+      - 6
+    env:
+      - CGO_ENABLED=0
+      - GOFLAGS=-trimpath
+    ldflags:
+      - -s -w -extldflags "-static"
+    flags:
+      - -tags=netgo
+    output: _dist/{{ .Os }}-{{ .Arch }}/helm
+
+archives:
+  - id: default
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format: tar.gz
+    files:
+      - LICENSE
+      - README.md
+      - _dist/{{ .Os }}-{{ .Arch }}/helm
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  name_template: "{{ .Commit }}"
