@@ -88,6 +88,32 @@ type (
 	ClientOption func(*Client)
 )
 
+// TODO remove in Helm 4
+// Deprecated
+// Helm 3 shim for ORAS v2 not tolerant of an empty config file
+// to workaround this, set configFile path to a non-existing path
+// so that ORAS v2 [config.Load] will handle this for us
+func orasV1CredentialsFileShim(credentialsFile string, client *Client) string {
+	f, err := os.Open(credentialsFile)
+	defer func(f *os.File) {
+		err := f.Close()
+		if err != nil {
+			client.err = err
+		}
+	}(f)
+	if err != nil {
+		// handle if credentials file does not exist
+		client.credentialsFile = ""
+	} else {
+		// handle if credentials file is empty
+		var configData map[string]json.RawMessage
+		if err := json.NewDecoder(f).Decode(&configData); err != nil && !errors.Is(err, io.EOF) {
+			client.credentialsFile = ""
+		}
+	}
+	return client.credentialsFile
+}
+
 // NewClient returns a new registry client with config
 func NewClient(options ...ClientOption) (*Client, error) {
 	client := &Client{
@@ -102,6 +128,9 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	if client.credentialsFile == "" {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
 	}
+
+	client.credentialsFile = orasV1CredentialsFileShim(client.credentialsFile, client)
+
 	if client.httpClient == nil {
 		transport := newTransport()
 		client.httpClient = &http.Client{
