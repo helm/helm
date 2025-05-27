@@ -94,7 +94,7 @@ type (
 // ORAS v1 was tolerant of an empty config file
 // ORAS v2 is not
 // to workaround this regression, ensure configfile is valid JSON
-func handleEmptyConfgFile(credentialsFile string, client *Client) string {
+func handleEmptyConfgFile(credentialsFile string, client *Client) {
 	f, err := os.Open(credentialsFile)
 	defer func(f *os.File) {
 		err := f.Close()
@@ -119,7 +119,6 @@ func handleEmptyConfgFile(credentialsFile string, client *Client) string {
 			}
 		}
 	}
-	return client.credentialsFile
 }
 
 // NewClient returns a new registry client with config
@@ -137,7 +136,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
 	}
 
-	client.credentialsFile = handleEmptyConfgFile(client.credentialsFile, client)
+	handleEmptyConfgFile(client.credentialsFile, client)
 
 	if client.httpClient == nil {
 		transport := newTransport()
