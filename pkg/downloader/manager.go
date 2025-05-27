@@ -814,7 +814,7 @@ func versionEquals(v1, v2 string) bool {
 //
 // The key is the local name (which is only present in the repositories.yaml).
 func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, error) {
-	indices := map[string]*repo.ChartRepository{}
+	indices := make(map[string]*repo.ChartRepository)
 
 	// Load repositories.yaml file
 	rf, err := loadRepoConfig(m.RepositoryConfig)
