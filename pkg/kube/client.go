@@ -585,10 +585,14 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 	}
 }
 
+var createMutex sync.Mutex
+
 func createResource(info *resource.Info) error {
 	return retry.RetryOnConflict(
 		retry.DefaultRetry,
 		func() error {
+			createMutex.Lock()
+			defer createMutex.Unlock()
 			obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
 			if err != nil {
 				return err
