@@ -109,10 +109,11 @@ func handleEmptyConfgFile(credentialsFile string, client *Client) string {
 		// handle only if credentials file is empty
 		if err := json.NewDecoder(f).Decode(&configData); err != nil && !errors.Is(err, io.EOF) {
 			// Attempt to write empty JSON map to config file
-			// Note that <3.18.0
 			client.credentialsFile = ""
 			encoder := json.NewEncoder(f)
 			err = encoder.Encode(configData)
+			// Note that <3.18.0 Helm would fail if the config file was not
+			// writable, so we can continue to error if that is the case
 			if err != nil {
 				client.err = err
 			}
