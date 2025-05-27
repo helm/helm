@@ -90,10 +90,11 @@ type (
 
 // TODO remove in Helm 4
 // Deprecated
-// Helm 3 shim for ORAS v2 not tolerant of an empty config file
-// to workaround this, set configFile path to a non-existing path
-// so that ORAS v2 [config.Load] will handle this for us
-func orasV1CredentialsFileShim(credentialsFile string, client *Client) string {
+// Fix for regression in v3.18.0
+// ORAS v1 was tolerant of an empty config file
+// ORAS v2 is not
+// to workaround this regression, ensure configfile is valid JSON
+func handleEmptyConfgFile(credentialsFile string, client *Client) string {
 	f, err := os.Open(credentialsFile)
 	defer func(f *os.File) {
 		err := f.Close()
@@ -101,14 +102,20 @@ func orasV1CredentialsFileShim(credentialsFile string, client *Client) string {
 			client.err = err
 		}
 	}(f)
-	if err != nil {
-		// handle if credentials file does not exist
-		client.credentialsFile = ""
-	} else {
-		// handle if credentials file is empty
+	// handle only if credentials file exists
+	// ORAS already handles if file does not exist
+	if err == nil {
 		var configData map[string]json.RawMessage
+		// handle only if credentials file is empty
 		if err := json.NewDecoder(f).Decode(&configData); err != nil && !errors.Is(err, io.EOF) {
+			// Attempt to write empty JSON map to config file
+			// Note that <3.18.0
 			client.credentialsFile = ""
+			encoder := json.NewEncoder(f)
+			err = encoder.Encode(configData)
+			if err != nil {
+				client.err = err
+			}
 		}
 	}
 	return client.credentialsFile
@@ -129,7 +136,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
 	}
 
-	client.credentialsFile = orasV1CredentialsFileShim(client.credentialsFile, client)
+	client.credentialsFile = handleEmptyConfgFile(client.credentialsFile, client)
 
 	if client.httpClient == nil {
 		transport := newTransport()
