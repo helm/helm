@@ -107,7 +107,7 @@ func handleEmptyConfgFile(credentialsFile string, client *Client) {
 	if err == nil {
 		var configData map[string]json.RawMessage
 		// handle only if credentials file is empty
-		if err := json.NewDecoder(f).Decode(&configData); err != nil && !errors.Is(err, io.EOF) {
+		if err := json.NewDecoder(f).Decode(&configData); err != nil && errors.Is(err, io.EOF) {
 			// Attempt to write empty JSON map to config file
 			client.credentialsFile = ""
 			encoder := json.NewEncoder(f)
