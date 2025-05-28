@@ -115,7 +115,7 @@ func TestFindChartURL(t *testing.T) {
 		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
 	}
 
-	name = "baz"
+	name = "foo"
 	version = "1.2.3"
 	repoURL = "http://example.com/helm"
 
@@ -124,7 +124,7 @@ func TestFindChartURL(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if churl != "http://example.com/path/to/baz-1.2.3.tgz" {
+	if churl != "http://example.com/helm/charts/foo-1.2.3.tgz" {
 		t.Errorf("Unexpected URL %q", churl)
 	}
 	if username != "" {
