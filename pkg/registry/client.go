@@ -105,13 +105,19 @@ func handleEmptyConfgFile(credentialsFile string, client *Client) {
 	// handle only if credentials file exists
 	// ORAS already handles if file does not exist
 	if err == nil {
-		var configData map[string]json.RawMessage
+		fileInfo, err := os.Stat(credentialsFile)
+		if err != nil {
+			client.err = err
+		}
 		// handle only if credentials file is empty
-		if err := json.NewDecoder(f).Decode(&configData); err != nil && errors.Is(err, io.EOF) {
+		if fileInfo.Size() == 0 {
+			emptyMap := make(map[string]interface{})
+			jsonData, err := json.Marshal(emptyMap)
+			if err != nil {
+				client.err = err
+			}
 			// Attempt to write empty JSON map to config file
-			client.credentialsFile = ""
-			encoder := json.NewEncoder(f)
-			err = encoder.Encode(configData)
+			err = os.WriteFile(credentialsFile, jsonData, 0644)
 			// Note that <3.18.0 Helm would fail if the config file was not
 			// writable, so we can continue to error if that is the case
 			if err != nil {
