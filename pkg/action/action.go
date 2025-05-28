@@ -33,6 +33,8 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/kustomize/kyaml/kio"
+	kyaml "sigs.k8s.io/kustomize/kyaml/yaml"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
@@ -86,6 +88,76 @@ type Configuration struct {
 
 	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
 	HookOutputFunc func(namespace, pod, container string) io.Writer
+}
+
+const (
+	// FilenameAnnotation is the annotation key used to store the original filename
+	// information in manifest annotations for post-rendering reconstruction.
+	FilenameAnnotation = "helm-postrender-filename"
+)
+
+// AnnotateAndMerge combines multiple YAML files into a single stream of documents,
+// adding filename annotations to each document for later reconstruction.
+func AnnotateAndMerge(files map[string]string) (string, error) {
+	var combinedManifests []*kyaml.RNode
+	for fname, content := range files {
+		// Skip partials and empty files.
+		if strings.HasPrefix(path.Base(fname), "_") || strings.TrimSpace(content) == "" {
+			continue
+		}
+
+		manifests, err := kio.ParseAll(content)
+		if err != nil {
+			return "", fmt.Errorf("parsing %s: %w", fname, err)
+		}
+		for _, manifest := range manifests {
+			if err := manifest.PipeE(kyaml.SetAnnotation(FilenameAnnotation, fname)); err != nil {
+				return "", fmt.Errorf("annotating %s: %w", fname, err)
+			}
+			combinedManifests = append(combinedManifests, manifest)
+		}
+	}
+
+	merged, err := kio.StringAll(combinedManifests)
+	if err != nil {
+		return "", fmt.Errorf("writing merged docs: %w", err)
+	}
+	return merged, nil
+}
+
+// SplitAndDeannotate reconstructs individual files from a merged YAML stream,
+// removing filename annotations and grouping documents by their original filenames.
+func SplitAndDeannotate(postrendered string) (map[string]string, error) {
+	manifests, err := kio.ParseAll(postrendered)
+	if err != nil {
+		return nil, fmt.Errorf("re-parsing merged buffer: %w", err)
+	}
+
+	manifestsByFilename := make(map[string][]*kyaml.RNode)
+	for i, manifest := range manifests {
+		meta, err := manifest.GetMeta()
+		if err != nil {
+			return nil, fmt.Errorf("getting metadata: %w", err)
+		}
+		fname := meta.Annotations[FilenameAnnotation]
+		if fname == "" {
+			fname = fmt.Sprintf("generated-by-postrender-%d.yaml", i)
+		}
+		if err := manifest.PipeE(kyaml.ClearAnnotation(FilenameAnnotation)); err != nil {
+			return nil, fmt.Errorf("clearing filename annotation: %w", err)
+		}
+		manifestsByFilename[fname] = append(manifestsByFilename[fname], manifest)
+	}
+
+	reconstructed := make(map[string]string, len(manifestsByFilename))
+	for fname, docs := range manifestsByFilename {
+		fileContents, err := kio.StringAll(docs)
+		if err != nil {
+			return nil, fmt.Errorf("re-writing %s: %w", fname, err)
+		}
+		reconstructed[fname] = fileContents
+	}
+	return reconstructed, nil
 }
 
 // renderResources renders the templates in a chart
@@ -157,6 +229,32 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	}
 	notes := notesBuffer.String()
 
+	if pr != nil {
+		// We need to send files to the post-renderer before sorting and splitting
+		// hooks from manifests. The post-renderer interface expects a stream of
+		// manifests (similar to what tools like Kustomize and kubectl expect), whereas
+		// the sorter uses filenames.
+		// Here, we merge the documents into a stream, post-render them, and then split
+		// them back into a map of filename -> content.
+
+		// Merge files as stream of documents for sending to post renderer
+		var merged string
+		if merged, err = AnnotateAndMerge(files); err != nil {
+			return hs, b, notes, fmt.Errorf("error merging manifests: %w", err)
+		}
+
+		// Run the post renderer
+		postRendered, err := pr.Run(bytes.NewBufferString(merged))
+		if err != nil {
+			return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
+		}
+
+		// Use the file list and contents received from the post renderer
+		if files, err = SplitAndDeannotate(postRendered.String()); err != nil {
+			return hs, b, notes, fmt.Errorf("error while parsing post rendered files: %w", err)
+		}
+	}
+
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
@@ -214,13 +312,6 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 				return hs, b, "", err
 			}
 			fileWritten[m.Name] = true
-		}
-	}
-
-	if pr != nil {
-		b, err = pr.Run(b)
-		if err != nil {
-			return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
 		}
 	}
 
