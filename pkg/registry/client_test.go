@@ -18,6 +18,7 @@ package registry
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"testing"
 
