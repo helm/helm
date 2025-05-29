@@ -81,6 +81,9 @@ type (
 		httpClient         *http.Client
 		plainHTTP          bool
 		err                error // pass any errors from the ClientOption functions
+
+		// credentialsFileTemp captures if the empty file / EOF work around is being used.
+		credentialsFileTemp bool
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -115,11 +118,26 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	store, err := credentials.NewStore(client.credentialsFile, storeOptions)
 	if err != nil {
-		return nil, err
+		// If the file exists and is empty there will be an EOF error. This error is not wrapped so
+		// a check with errors.Is will not work. The only way to capture it is an EOF error is
+		// with string parsing.
+		// This handling passes no file location which will cause NewStore to invoke its
+		// fault tolerance for a file not existing. A bool records this bypass so that if the
+		// credential store needs to be written to it this work around can be handled. See the
+		// Login method for more details.
+		if strings.Contains(err.Error(), "invalid config format: EOF") {
+			var err2 error
+			store, err2 = credentials.NewStore("", storeOptions)
+			if err2 != nil {
+				return nil, err
+			}
+			client.credentialsFileTemp = true
+		} else {
+			return nil, err
+		}
 	}
 	dockerStore, err := credentials.NewStoreFromDocker(storeOptions)
 	if err != nil {
-		// should only fail if user home directory can't be determined
 		client.credentialsStore = store
 	} else {
 		// use Helm credentials with fallback to Docker
@@ -284,6 +302,31 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 	}
 
 	key := credentials.ServerAddressFromRegistry(host)
+
+	// The credentialsStore loader does not handle empty files. So, there is a workaround.
+	// This can be removed when the credentials loader can handle empty files.
+	// When Helm catches an empty file error it causes the loader to trigger its fault
+	// tolerance for a file not existing and records it with a bool. If that bool is set and the
+	// file needs to be written, the file needs to be put into a usable state and loaded
+	// properly.
+	// See the NewClient function for the bypass setup.
+	if c.credentialsFileTemp {
+		err = os.WriteFile(c.credentialsFile, []byte("{}"), 0600)
+		if err != nil {
+			return err
+		}
+		storeOptions := credentials.StoreOptions{
+			AllowPlaintextPut:        true,
+			DetectDefaultNativeStore: true,
+		}
+		store, err := credentials.NewStore(c.credentialsFile, storeOptions)
+		if err != nil {
+			return err
+		}
+		c.credentialsStore = store
+		c.credentialsFileTemp = false
+	}
+
 	if err := c.credentialsStore.Put(ctx, key, cred); err != nil {
 		return err
 	}
