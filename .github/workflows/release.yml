@@ -40,7 +40,7 @@ jobs:
           set -eu -o pipefail
 
       - name: Run Go Release
-        uses: goreleaser/goreleaser-action@v2
+        uses: goreleaser/goreleaser-action@v6.3.0
         if: success() && startsWith(github.ref, 'refs/tags/')
         with:
           version: latest
