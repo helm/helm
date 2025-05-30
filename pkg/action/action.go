@@ -26,6 +26,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"text/template"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -86,6 +87,8 @@ type Configuration struct {
 
 	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
 	HookOutputFunc func(namespace, pod, container string) io.Writer
+
+	mutex sync.Mutex
 }
 
 // renderResources renders the templates in a chart

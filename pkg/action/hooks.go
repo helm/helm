@@ -49,13 +49,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 	for i, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
-		if len(h.DeletePolicies) == 0 {
-			// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
-			//                 resources. For all other resource types update in place if a
-			//                 resource with the same name already exists and is owned by the
-			//                 current release.
-			h.DeletePolicies = []release.HookDeletePolicy{release.HookBeforeHookCreation}
-		}
+		cfg.hookSetDeletePolicy(h)
 
 		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation, waitStrategy, timeout); err != nil {
 			return err
@@ -154,7 +148,7 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 	if h.Kind == "CustomResourceDefinition" {
 		return nil
 	}
-	if hookHasDeletePolicy(h, policy) {
+	if cfg.hookHasDeletePolicy(h, policy) {
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), false)
 		if err != nil {
 			return fmt.Errorf("unable to build kubernetes object for deleting hook %s: %w", h.Path, err)
@@ -188,8 +182,24 @@ func (cfg *Configuration) deleteHooksByPolicy(hooks []*release.Hook, policy rele
 
 // hookHasDeletePolicy determines whether the defined hook deletion policy matches the hook deletion polices
 // supported by helm. If so, mark the hook as one should be deleted.
-func hookHasDeletePolicy(h *release.Hook, policy release.HookDeletePolicy) bool {
+func (cfg *Configuration) hookHasDeletePolicy(h *release.Hook, policy release.HookDeletePolicy) bool {
+	cfg.mutex.Lock()
+	defer cfg.mutex.Unlock()
 	return slices.Contains(h.DeletePolicies, policy)
+}
+
+// hookClearDeletePolicy determines whether the defined hook deletion policy matches the hook deletion polices
+// supported by helm. If so, mark the hook as one should be deleted.
+func (cfg *Configuration) hookSetDeletePolicy(h *release.Hook) {
+	cfg.mutex.Lock()
+	defer cfg.mutex.Unlock()
+	if len(h.DeletePolicies) == 0 {
+		// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
+		//                 resources. For all other resource types update in place if a
+		//                 resource with the same name already exists and is owned by the
+		//                 current release.
+		h.DeletePolicies = []release.HookDeletePolicy{release.HookBeforeHookCreation}
+	}
 }
 
 // outputLogsByPolicy outputs a pods logs if the hook policy instructs it to
