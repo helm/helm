@@ -6,4 +6,3 @@ Output of `kubectl version`:
 
 Cloud Provider/Platform (AKS, GKE, Minikube etc.): 
 
-
