@@ -301,8 +301,6 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		return fmt.Errorf("authenticating to %q: %w", host, err)
 	}
 
-	key := credentials.ServerAddressFromRegistry(host)
-
 	// The credentialsStore loader does not handle empty files. So, there is a workaround.
 	// This can be removed when the credentials loader can handle empty files.
 	// When Helm catches an empty file error it causes the loader to trigger its fault
@@ -327,6 +325,8 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		c.credentialsFileTemp = false
 	}
 
+	key := credentials.ServerAddressFromRegistry(host)
+	key = credentials.ServerAddressFromHostname(key)
 	if err := c.credentialsStore.Put(ctx, key, cred); err != nil {
 		return err
 	}
