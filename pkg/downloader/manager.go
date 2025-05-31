@@ -501,7 +501,7 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 
 	var ru []*repo.Entry
 
-	for _, dd := range deps {
+	for i, dd := range deps {
 
 		// If the chart is in the local charts directory no repository needs
 		// to be specified.
@@ -510,7 +510,8 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 		}
 
 		// When the repoName for a dependency is known we can skip ensuring
-		if _, ok := repoNames[dd.Name]; ok {
+		depKey := dependencyKey(dd.Name, dd.Repository, i)
+		if _, ok := repoNames[depKey]; ok {
 			continue
 		}
 
@@ -526,7 +527,7 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 		}
 		rn = managerKeyPrefix + rn
 
-		repoNames[dd.Name] = rn
+		repoNames[depKey] = rn
 
 		// Assuming the repository is generally available. For Helm managed
 		// access controls the repository needs to be added through the user
@@ -571,7 +572,7 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 	// Verify that all repositories referenced in the deps are actually known
 	// by Helm.
 	missing := []string{}
-	for _, dd := range deps {
+	for i, dd := range deps {
 		// Don't map the repository, we don't need to download chart from charts directory
 		if dd.Repository == "" {
 			continue
@@ -585,12 +586,15 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Repository from local path: %s\n", dd.Repository)
 			}
-			reposMap[dd.Name] = dd.Repository
+			// Use composite key for unique identification
+			depKey := dependencyKey(dd.Name, dd.Repository, i)
+			reposMap[depKey] = dd.Repository
 			continue
 		}
 
 		if registry.IsOCI(dd.Repository) {
-			reposMap[dd.Name] = dd.Repository
+			depKey := dependencyKey(dd.Name, dd.Repository, i)
+			reposMap[depKey] = dd.Repository
 			continue
 		}
 
@@ -601,11 +605,13 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 				(strings.HasPrefix(dd.Repository, "alias:") && strings.TrimPrefix(dd.Repository, "alias:") == repo.Name) {
 				found = true
 				dd.Repository = repo.URL
-				reposMap[dd.Name] = repo.Name
+				depKey := dependencyKey(dd.Name, dd.Repository, i)
+				reposMap[depKey] = repo.Name
 				break
 			} else if urlutil.Equal(repo.URL, dd.Repository) {
 				found = true
-				reposMap[dd.Name] = repo.Name
+				depKey := dependencyKey(dd.Name, dd.Repository, i)
+				reposMap[depKey] = repo.Name
 				break
 			}
 		}
@@ -614,7 +620,8 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			// Add if URL
 			_, err := url.ParseRequestURI(repository)
 			if err == nil {
-				reposMap[repository] = repository
+				depKey := dependencyKey(dd.Name, repository, i)
+				reposMap[depKey] = repository
 				continue
 			}
 			missing = append(missing, repository)
@@ -639,6 +646,19 @@ repository, use "https://charts.example.com/" or "@example" instead of
 		return nil, errors.New(errorMessage)
 	}
 	return reposMap, nil
+}
+
+// dependencyKey creates a unique key for a dependency that includes name, repository, and index
+// to handle cases where multiple dependencies have the same name but different repositories
+func dependencyKey(name, repository string, index int) string {
+	// Use a combination of name, repository hash, and index to ensure uniqueness
+	repoHash := ""
+	if repository != "" {
+		hasher := crypto.SHA256.New()
+		hasher.Write([]byte(repository))
+		repoHash = hex.EncodeToString(hasher.Sum(nil))[:8] // Use first 8 chars for brevity
+	}
+	return fmt.Sprintf("%s-%s-%d", name, repoHash, index)
 }
 
 // UpdateRepositories updates all of the local repos to the latest.
