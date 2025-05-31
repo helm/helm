@@ -22,6 +22,7 @@ import (
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	migrate "github.com/rubenv/sql-migrate"
+	"github.com/stretchr/testify/require"
 
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -412,11 +413,7 @@ func TestSqlQuery(t *testing.T) {
 	mockGetReleaseCustomLabels(mock, "", deployedRelease.Namespace, deployedRelease.Labels)
 
 	_, err := sqlDriver.Query(labelSetUnknown)
-	if err == nil {
-		t.Errorf("Expected error {%v}, got nil", ErrReleaseNotFound)
-	} else if err != ErrReleaseNotFound {
-		t.Fatalf("failed to query for unknown smug-pigeon release: %v", err)
-	}
+	require.ErrorIsf(t, err, ErrReleaseNotFound, "failed to query for unknown smug-pigeon release: %v", err)
 
 	results, err := sqlDriver.Query(labelSetDeployed)
 	if err != nil {

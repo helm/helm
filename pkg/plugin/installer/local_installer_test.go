@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 
@@ -59,7 +61,5 @@ func TestLocalInstallerNotAFolder(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if err != ErrPluginNotAFolder {
-		t.Fatalf("expected error to equal: %q", err)
-	}
+	assert.ErrorIs(t, err, ErrPluginNotAFolder, "expected error to equal: %q", err)
 }

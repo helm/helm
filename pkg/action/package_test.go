@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 )
@@ -144,10 +145,7 @@ func TestValidateVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := validateVersion(tt.args.ver); err != nil {
-				if err != tt.wantErr {
-					t.Errorf("Expected {%v}, got {%v}", tt.wantErr, err)
-				}
-
+				require.ErrorIsf(t, err, tt.wantErr, "Expected {%v}, got {%v}", tt.wantErr, err)
 			}
 		})
 	}
