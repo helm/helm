@@ -19,13 +19,12 @@ package ignore
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // HelmIgnore default name of an ignorefile.
@@ -102,6 +101,7 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 	}
 	for _, p := range r.patterns {
 		if p.match == nil {
+			slog.Info("this will be ignored no matcher supplied", "patterns", p.raw)
 			return false
 		}
 
@@ -165,33 +165,33 @@ func (r *Rules) parseRule(rule string) error {
 
 	if strings.HasPrefix(rule, "/") {
 		// Require path matches the root path.
-		p.match = func(n string, fi os.FileInfo) bool {
+		p.match = func(n string, _ os.FileInfo) bool {
 			rule = strings.TrimPrefix(rule, "/")
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				log.Printf("Failed to compile %q: %s", rule, err)
+				slog.Error("failed to compile", "rule", rule, slog.Any("error", err))
 				return false
 			}
 			return ok
 		}
 	} else if strings.Contains(rule, "/") {
 		// require structural match.
-		p.match = func(n string, fi os.FileInfo) bool {
+		p.match = func(n string, _ os.FileInfo) bool {
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				log.Printf("Failed to compile %q: %s", rule, err)
+				slog.Error("failed to compile", "rule", rule, slog.Any("error", err))
 				return false
 			}
 			return ok
 		}
 	} else {
-		p.match = func(n string, fi os.FileInfo) bool {
+		p.match = func(n string, _ os.FileInfo) bool {
 			// When there is no slash in the pattern, we evaluate ONLY the
 			// filename.
 			n = filepath.Base(n)
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				log.Printf("Failed to compile %q: %s", rule, err)
+				slog.Error("failed to compile", "rule", rule, slog.Any("error", err))
 				return false
 			}
 			return ok

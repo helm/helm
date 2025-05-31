@@ -13,27 +13,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
+package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
+	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
-	"github.com/pkg/errors"
 
-	"helm.sh/helm/v3/internal/third_party/dep/fs"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/plugin/cache"
+	"helm.sh/helm/v4/internal/third_party/dep/fs"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/plugin/cache"
 )
 
 // HTTPInstaller installs plugins from an archive served by a web server.
@@ -78,7 +81,7 @@ func NewExtractor(source string) (Extractor, error) {
 			return extractor, nil
 		}
 	}
-	return nil, errors.Errorf("no extractor implemented yet for %s", source)
+	return nil, fmt.Errorf("no extractor implemented yet for %s", source)
 }
 
 // NewHTTPInstaller creates a new HttpInstaller.
@@ -132,7 +135,7 @@ func (i *HTTPInstaller) Install() error {
 	}
 
 	if err := i.extractor.Extract(pluginData, i.CacheDir); err != nil {
-		return errors.Wrap(err, "extracting files from archive")
+		return fmt.Errorf("extracting files from archive: %w", err)
 	}
 
 	if !isPlugin(i.CacheDir) {
@@ -144,19 +147,19 @@ func (i *HTTPInstaller) Install() error {
 		return err
 	}
 
-	debug("copying %s to %s", src, i.Path())
+	slog.Debug("copying", "source", src, "path", i.Path())
 	return fs.CopyDir(src, i.Path())
 }
 
 // Update updates a local repository
 // Not implemented for now since tarball most likely will be packaged by version
 func (i *HTTPInstaller) Update() error {
-	return errors.Errorf("method Update() not implemented for HttpInstaller")
+	return fmt.Errorf("method Update() not implemented for HttpInstaller")
 }
 
 // Path is overridden because we want to join on the plugin name not the file name
 func (i HTTPInstaller) Path() string {
-	if i.base.Source == "" {
+	if i.Source == "" {
 		return ""
 	}
 	return helmpath.DataPath("plugins", i.PluginName)
@@ -194,10 +197,8 @@ func cleanJoin(root, dest string) (string, error) {
 
 	// We want to alert the user that something bad was attempted. Cleaning it
 	// is not a good practice.
-	for _, part := range strings.Split(dest, "/") {
-		if part == ".." {
-			return "", errors.New("path contains '..', which is illegal")
-		}
+	if slices.Contains(strings.Split(dest, "/"), "..") {
+		return "", errors.New("path contains '..', which is illegal")
 	}
 
 	// If a path is absolute, the creator of the TAR is doing something shady.
@@ -206,6 +207,9 @@ func cleanJoin(root, dest string) (string, error) {
 	}
 
 	// SecureJoin will do some cleaning, as well as some rudimentary checking of symlinks.
+	// The directory needs to be cleaned prior to passing to SecureJoin or the location may end up
+	// being wrong or returning an error. This was introduced in v0.4.0.
+	root = filepath.Clean(root)
 	newpath, err := securejoin.SecureJoin(root, dest)
 	if err != nil {
 		return "", err
@@ -261,7 +265,7 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 		case tar.TypeXGlobalHeader, tar.TypeXHeader:
 			continue
 		default:
-			return errors.Errorf("unknown type: %b in %s", header.Typeflag, header.Name)
+			return fmt.Errorf("unknown type: %b in %s", header.Typeflag, header.Name)
 		}
 	}
 	return nil

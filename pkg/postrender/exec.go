@@ -18,11 +18,10 @@ package postrender
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os/exec"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 )
 
 type execRender struct {
@@ -61,7 +60,13 @@ func (p *execRender) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error)
 	}()
 	err = cmd.Run()
 	if err != nil {
-		return nil, errors.Wrapf(err, "error while running command %s. error output:\n%s", p.binaryPath, stderr.String())
+		return nil, fmt.Errorf("error while running command %s. error output:\n%s: %w", p.binaryPath, stderr.String(), err)
+	}
+
+	// If the binary returned almost nothing, it's likely that it didn't
+	// successfully render anything
+	if len(bytes.TrimSpace(postRendered.Bytes())) == 0 {
+		return nil, fmt.Errorf("post-renderer %q produced empty output", p.binaryPath)
 	}
 
 	return postRendered, nil
@@ -89,7 +94,7 @@ func getFullPath(binaryPath string) (string, error) {
 	// 	// The plugins variable can actually contain multiple paths, so loop through those
 	// 	for _, p := range filepath.SplitList(pluginDir) {
 	// 		_, err := os.Stat(filepath.Join(p, binaryPath))
-	// 		if err != nil && !os.IsNotExist(err) {
+	// 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 	// 			return "", err
 	// 		} else if err == nil {
 	// 			binaryPath = filepath.Join(p, binaryPath)
@@ -102,7 +107,7 @@ func getFullPath(binaryPath string) (string, error) {
 	// the path and is executable
 	checkedPath, err := exec.LookPath(binaryPath)
 	if err != nil {
-		return "", errors.Wrapf(err, "unable to find binary at %s", binaryPath)
+		return "", fmt.Errorf("unable to find binary at %s: %w", binaryPath, err)
 	}
 
 	return filepath.Abs(checkedPath)

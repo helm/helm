@@ -1,0 +1,5 @@
+Error: INSTALLATION FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
+empty:
+- at '': missing property 'employmentInfo'
+- at '/age': minimum: got -5, want 0
+

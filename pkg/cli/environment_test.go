@@ -24,7 +24,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"helm.sh/helm/v3/internal/version"
+	"helm.sh/helm/v4/internal/version"
 )
 
 func TestSetNamespace(t *testing.T) {
@@ -110,6 +110,14 @@ func TestEnvSettings(t *testing.T) {
 			kubeCaFile:    "/my/ca.crt",
 			kubeTLSServer: "example.org",
 			kubeInsecure:  true,
+		},
+		{
+			name:       "invalid kubeconfig",
+			ns:         "testns",
+			args:       "--namespace=testns --kubeconfig=/path/to/fake/file",
+			maxhistory: defaultMaxHistory,
+			burstLimit: defaultBurstLimit,
+			qps:        defaultQPS,
 		},
 	}
 

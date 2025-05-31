@@ -21,8 +21,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/helmpath/xdg"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/helmpath/xdg"
 )
 
 // HelmHome sets up a Helm Home in a temp dir.
@@ -46,6 +46,7 @@ func HelmHome(t *testing.T) {
 //	tempdir := TempFile(t, "foo", []byte("bar"))
 //	filename := filepath.Join(tempdir, "foo")
 func TempFile(t *testing.T, name string, data []byte) string {
+	t.Helper()
 	path := t.TempDir()
 	filename := filepath.Join(path, name)
 	if err := os.WriteFile(filename, data, 0755); err != nil {

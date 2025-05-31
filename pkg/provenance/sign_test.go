@@ -34,7 +34,7 @@ const (
 	// phrase. Use `gpg --export-secret-keys helm-test` to export the secret.
 	testKeyfile = "testdata/helm-test-key.secret"
 
-	// testPasswordKeyFile is a keyfile with a password.
+	// testPasswordKeyfile is a keyfile with a password.
 	testPasswordKeyfile = "testdata/helm-password-key.secret"
 
 	// testPubfile is the public key file.
@@ -196,7 +196,7 @@ func TestDecryptKey(t *testing.T) {
 	}
 
 	// We give this a simple callback that returns the password.
-	if err := k.DecryptKey(func(s string) ([]byte, error) {
+	if err := k.DecryptKey(func(_ string) ([]byte, error) {
 		return []byte("secret"), nil
 	}); err != nil {
 		t.Fatal(err)
@@ -208,7 +208,7 @@ func TestDecryptKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Now we give it a bogus password.
-	if err := k.DecryptKey(func(s string) ([]byte, error) {
+	if err := k.DecryptKey(func(_ string) ([]byte, error) {
 		return []byte("secrets_and_lies"), nil
 	}); err == nil {
 		t.Fatal("Expected an error when giving a bogus passphrase")
