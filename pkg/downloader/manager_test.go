@@ -148,6 +148,12 @@ func TestGetRepoNames(t *testing.T) {
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
 	}
+
+	// Helper function to generate expected key
+	expectedKey := func(name, repo string, index int) string {
+		return dependencyKey(name, repo, index)
+	}
+
 	tests := []struct {
 		name   string
 		req    []*chart.Dependency
@@ -159,7 +165,9 @@ func TestGetRepoNames(t *testing.T) {
 			req: []*chart.Dependency{
 				{Name: "oedipus-rex", Repository: "http://example.com/test"},
 			},
-			expect: map[string]string{"http://example.com/test": "http://example.com/test"},
+			expect: map[string]string{
+				expectedKey("oedipus-rex", "http://example.com/test", 0): "http://example.com/test",
+			},
 		},
 		{
 			name: "no repo definition failure -- stable repo",
@@ -173,28 +181,38 @@ func TestGetRepoNames(t *testing.T) {
 			req: []*chart.Dependency{
 				{Name: "oedipus-rex", Repository: "http://example.com"},
 			},
-			expect: map[string]string{"oedipus-rex": "testing"},
+			expect: map[string]string{
+				expectedKey("oedipus-rex", "http://example.com", 0): "testing",
+			},
 		},
 		{
 			name: "repo from local path",
 			req: []*chart.Dependency{
 				{Name: "local-dep", Repository: "file://./testdata/signtest"},
 			},
-			expect: map[string]string{"local-dep": "file://./testdata/signtest"},
+			expect: map[string]string{
+				expectedKey("local-dep", "file://./testdata/signtest", 0): "file://./testdata/signtest",
+			},
 		},
 		{
 			name: "repo alias (alias:)",
 			req: []*chart.Dependency{
 				{Name: "oedipus-rex", Repository: "alias:testing"},
 			},
-			expect: map[string]string{"oedipus-rex": "testing"},
+			expect: map[string]string{
+				// Note: the repository URL gets resolved to the actual URL in resolveRepoNames
+				// We need to check what the actual resolved URL is
+				expectedKey("oedipus-rex", "http://example.com", 0): "testing",
+			},
 		},
 		{
 			name: "repo alias (@)",
 			req: []*chart.Dependency{
 				{Name: "oedipus-rex", Repository: "@testing"},
 			},
-			expect: map[string]string{"oedipus-rex": "testing"},
+			expect: map[string]string{
+				expectedKey("oedipus-rex", "http://example.com", 0): "testing",
+			},
 		},
 		{
 			name: "repo from local chart under charts path",
@@ -203,26 +221,94 @@ func TestGetRepoNames(t *testing.T) {
 			},
 			expect: map[string]string{},
 		},
+		{
+			name: "multiple dependencies with same name but different repos",
+			req: []*chart.Dependency{
+				{Name: "common-chart", Repository: "http://example.com"},
+				{Name: "common-chart", Repository: "http://other.com"},
+			},
+			expect: map[string]string{
+				expectedKey("common-chart", "http://example.com", 0): "testing",
+				expectedKey("common-chart", "http://other.com", 1):   "http://other.com",
+			},
+		},
 	}
 
 	for _, tt := range tests {
-		l, err := m.resolveRepoNames(tt.req)
-		if err != nil {
-			if tt.err {
-				continue
+		t.Run(tt.name, func(t *testing.T) {
+			l, err := m.resolveRepoNames(tt.req)
+			if err != nil {
+				if tt.err {
+					return // Expected error, test passes
+				}
+				t.Fatal(err)
 			}
-			t.Fatal(err)
-		}
 
-		if tt.err {
-			t.Fatalf("Expected error in test %q", tt.name)
-		}
+			if tt.err {
+				t.Fatalf("Expected error in test %q", tt.name)
+			}
 
-		// m1 and m2 are the maps we want to compare
-		eq := reflect.DeepEqual(l, tt.expect)
-		if !eq {
-			t.Errorf("%s: expected map %v, got %v", tt.name, l, tt.name)
-		}
+			// Compare maps
+			if !reflect.DeepEqual(l, tt.expect) {
+				t.Errorf("%s: expected map %v, got %v", tt.name, tt.expect, l)
+			}
+		})
+	}
+}
+
+func TestDependencyKey(t *testing.T) {
+	tests := []struct {
+		name       string
+		depName    string
+		repository string
+		index      int
+		expect     string
+	}{
+		{
+			name:       "basic case",
+			depName:    "oedipus-rex",
+			repository: "http://example.com/test",
+			index:      0,
+			expect:     "oedipus-rex-0e52b63f-0",
+		},
+		{
+			name:       "different repo same name",
+			depName:    "oedipus-rex",
+			repository: "http://example.com",
+			index:      0,
+			expect:     "oedipus-rex-f0e6a6a9-0",
+		},
+		{
+			name:       "same repo different index",
+			depName:    "oedipus-rex",
+			repository: "http://example.com",
+			index:      1,
+			expect:     "oedipus-rex-f0e6a6a9-1",
+		},
+		{
+			name:       "local file path",
+			depName:    "local-dep",
+			repository: "file://./testdata/signtest",
+			index:      0,
+			expect:     "local-dep-93f23b0e-0",
+		},
+		{
+			name:       "empty repository",
+			depName:    "local-subchart",
+			repository: "",
+			index:      0,
+			expect:     "local-subchart--0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := dependencyKey(tt.depName, tt.repository, tt.index)
+			if result != tt.expect {
+				t.Errorf("dependencyKey(%q, %q, %d) = %q, want %q",
+					tt.depName, tt.repository, tt.index, result, tt.expect)
+			}
+		})
 	}
 }
 

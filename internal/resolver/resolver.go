@@ -17,6 +17,8 @@ package resolver
 
 import (
 	"bytes"
+	"crypto"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,6 +52,19 @@ func New(chartpath, cachepath string, registryClient *registry.Client) *Resolver
 		cachepath:      cachepath,
 		registryClient: registryClient,
 	}
+}
+
+// dependencyKey creates a unique key for a dependency that includes name, repository, and index
+// to handle cases where multiple dependencies have the same name but different repositories
+func dependencyKey(name, repository string, index int) string {
+	// Use a combination of name, repository hash, and index to ensure uniqueness
+	repoHash := ""
+	if repository != "" {
+		hasher := crypto.SHA256.New()
+		hasher.Write([]byte(repository))
+		repoHash = hex.EncodeToString(hasher.Sum(nil))[:8] // Use first 8 chars for brevity
+	}
+	return fmt.Sprintf("%s-%s-%d", name, repoHash, index)
 }
 
 // Resolve resolves dependencies and returns a lock file with the resolution.
@@ -107,7 +122,15 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			continue
 		}
 
-		repoName := repoNames[d.Name]
+		// Try to get repository name using composite key first, then fall back to simple name
+		key := dependencyKey(d.Name, d.Repository, i)
+		repoName := repoNames[key]
+		
+		// Fall back to simple name lookup for backward compatibility
+		if repoName == "" {
+			repoName = repoNames[d.Name]
+		}
+
 		// if the repository was not defined, but the dependency defines a repository url, bypass the cache
 		if repoName == "" && d.Repository != "" {
 			locked[i] = &chart.Dependency{
