@@ -68,7 +68,7 @@ func TestTime_AddDate(t *testing.T) {
 func TestTime_In(t *testing.T) {
 	testingTime := givenTime(t)
 	edt, err := time.LoadLocation("America/New_York")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	got := testingTime.In(edt)
 	assert.Equal(t, "America/New_York", got.Location().String())
 }
@@ -76,13 +76,13 @@ func TestTime_In(t *testing.T) {
 func TestTime_MarshalJSONNonZero(t *testing.T) {
 	testingTime := givenTime(t)
 	res, err := json.Marshal(testingTime)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, timeParseString, string(res))
 }
 
 func TestTime_MarshalJSONZeroValue(t *testing.T) {
 	res, err := json.Marshal(Time{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, `""`, string(res))
 }
 
@@ -119,21 +119,21 @@ func TestTime_UnmarshalJSONNonZeroValue(t *testing.T) {
 	testingTime := givenTime(t)
 	var myTime Time
 	err := json.Unmarshal([]byte(timeParseString), &myTime)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, testingTime.Equal(myTime))
 }
 
 func TestTime_UnmarshalJSONEmptyString(t *testing.T) {
 	var myTime Time
 	err := json.Unmarshal([]byte(emptyString), &myTime)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, myTime.IsZero())
 }
 
 func TestTime_UnmarshalJSONNullString(t *testing.T) {
 	var myTime Time
 	err := json.Unmarshal([]byte("null"), &myTime)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, myTime.IsZero())
 }
 
@@ -142,7 +142,7 @@ func TestTime_UnmarshalJSONZeroValue(t *testing.T) {
 	// with the current go default value of "0001-01-01T00:00:00Z"
 	var myTime Time
 	err := json.Unmarshal([]byte(`"0001-01-01T00:00:00Z"`), &myTime)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, myTime.IsZero())
 }
 

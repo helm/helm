@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -734,7 +735,7 @@ func TestGetPodList(t *testing.T) {
 
 	podList, err := c.GetPodList(namespace, metav1.ListOptions{})
 	clientAssertions := assert.New(t)
-	clientAssertions.NoError(err)
+	require.NoError(t, err)
 	clientAssertions.Equal(&responsePodList, podList)
 }
 
@@ -748,7 +749,7 @@ func TestOutputContainerLogsForPodList(t *testing.T) {
 	outBufferFunc := func(_, _, _ string) io.Writer { return outBuffer }
 	err := c.OutputContainerLogsForPodList(&somePodList, namespace, outBufferFunc)
 	clientAssertions := assert.New(t)
-	clientAssertions.NoError(err)
+	require.NoError(t, err)
 	clientAssertions.Equal("fake logsfake logsfake logs", outBuffer.String())
 }
 

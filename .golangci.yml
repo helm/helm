@@ -27,6 +27,7 @@ linters:
     - nakedret
     - revive
     - staticcheck
+    - testifylint
     - thelper
     - unused
     - usestdlibvars

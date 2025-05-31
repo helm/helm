@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v4/internal/logging"
@@ -343,10 +344,9 @@ func TestConfiguration_Init(t *testing.T) {
 
 			actualErr := cfg.Init(nil, "default", tt.helmDriver)
 			if tt.expectErr {
-				assert.Error(t, actualErr)
-				assert.Contains(t, actualErr.Error(), tt.errMsg)
+				assert.ErrorContains(t, actualErr, tt.errMsg)
 			} else {
-				assert.NoError(t, actualErr)
+				require.NoError(t, actualErr)
 				assert.IsType(t, tt.expectedDriverType, cfg.Releases.Driver)
 			}
 		})

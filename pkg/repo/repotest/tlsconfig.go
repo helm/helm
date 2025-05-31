@@ -35,8 +35,7 @@ func MakeTestTLSConfig(t *testing.T, path string) *tls.Config {
 		tlsutil.WithCertKeyPairFiles(pub, priv),
 		tlsutil.WithCAFile(ca),
 	)
-	//require.Nil(t, err, err.Error())
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	tlsConf.ServerName = "helm.sh"
 
