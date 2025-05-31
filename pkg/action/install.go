@@ -70,7 +70,6 @@ type Install struct {
 
 	ChartPathOptions
 
-	ClientOnly      bool
 	Force           bool
 	CreateNamespace bool
 	DryRun          bool
@@ -231,8 +230,13 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 // When the task is cancelled through ctx, the function returns and the install
 // proceeds in the background.
 func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	var interactWithRemote bool
+	if !i.isDryRun() || i.DryRunOption == "server" || i.DryRunOption == "none" || i.DryRunOption == "false" {
+		interactWithRemote = true
+	}
+
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
-	if !i.ClientOnly {
+	if interactWithRemote {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
 			return nil, err
 		}
@@ -251,14 +255,9 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, err
 	}
 
-	var interactWithRemote bool
-	if !i.isDryRun() || i.DryRunOption == "server" || i.DryRunOption == "none" || i.DryRunOption == "false" {
-		interactWithRemote = true
-	}
-
 	// Pre-install anything in the crd/ directory. We do this before Helm
 	// contacts the upstream server and builds the capabilities object.
-	if crds := chrt.CRDObjects(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
+	if crds := chrt.CRDObjects(); interactWithRemote && !i.SkipCRDs && len(crds) > 0 {
 		// On dry run, bail here
 		if i.isDryRun() {
 			i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
@@ -267,7 +266,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		}
 	}
 
-	if i.ClientOnly {
+	if !interactWithRemote {
 		// Add mock objects in here so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
 		i.cfg.Capabilities = chartutil.DefaultCapabilities.Copy()
@@ -280,7 +279,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		mem := driver.NewMemory()
 		mem.SetNamespace(i.Namespace)
 		i.cfg.Releases = storage.Init(mem)
-	} else if !i.ClientOnly && len(i.APIVersions) > 0 {
+	} else if interactWithRemote && len(i.APIVersions) > 0 {
 		i.cfg.Log("API Version list given outside of client only mode, this list will be ignored")
 	}
 
@@ -347,7 +346,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// we'll end up in a state where we will delete those resources upon
 	// deleting the release because the manifest will be pointing at that
 	// resource
-	if !i.ClientOnly && !isUpgrade && len(resources) > 0 {
+	if interactWithRemote && !isUpgrade && len(resources) > 0 {
 		if i.TakeOwnership {
 			toBeAdopted, err = requireAdoption(resources)
 		} else {
