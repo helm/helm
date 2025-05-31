@@ -30,6 +30,7 @@ linters:
     - thelper
     - unused
     - usestdlibvars
+    - usetesting
 
   exclusions:
     generated: lax

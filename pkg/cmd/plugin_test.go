@@ -79,7 +79,6 @@ func TestManuallyProcessArgs(t *testing.T) {
 			t.Errorf("expected unknown flag %d to be %q, got %q", i, expectUnknown[i], k)
 		}
 	}
-
 }
 
 func TestLoadPlugins(t *testing.T) {
@@ -327,7 +326,6 @@ func checkCommand(t *testing.T, plugins []*cobra.Command, tests []staticCompleti
 }
 
 func TestPluginDynamicCompletion(t *testing.T) {
-
 	tests := []cmdTestCase{{
 		name:   "completion for plugin",
 		cmd:    "__complete args ''",
@@ -364,7 +362,7 @@ func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
 	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
 	settings.RepositoryConfig = "testdata/helmhome/helm/repository"
 
-	os.Setenv("HELM_NO_PLUGINS", "1")
+	t.Setenv("HELM_NO_PLUGINS", "1")
 
 	out := bytes.NewBuffer(nil)
 	cmd := &cobra.Command{}
@@ -377,7 +375,6 @@ func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
 }
 
 func TestPluginCmdsCompletion(t *testing.T) {
-
 	tests := []cmdTestCase{{
 		name:   "completion for plugin update",
 		cmd:    "__complete plugin update ''",

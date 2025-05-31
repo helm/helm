@@ -70,7 +70,7 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	}
 	repo.CachePath = t.TempDir()
 
-	tempIndexFile, err := os.CreateTemp("", "test-repo")
+	tempIndexFile, err := os.CreateTemp(t.TempDir(), "test-repo")
 	if err != nil {
 		t.Fatalf("Failed to create temp index file: %v", err)
 	}
