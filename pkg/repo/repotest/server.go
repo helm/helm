@@ -173,7 +173,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 		t.Fatal("error generating bcrypt password for test htpasswd file")
 	}
 	htpasswdPath := filepath.Join(dir, testHtpasswdFileBasename)
-	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0o644)
 	if err != nil {
 		t.Fatalf("error creating test htpasswd file")
 	}
@@ -331,7 +331,7 @@ func (s *Server) CopyCharts(origin string) ([]string, error) {
 		if err != nil {
 			return []string{}, err
 		}
-		if err := os.WriteFile(newname, data, 0644); err != nil {
+		if err := os.WriteFile(newname, data, 0o644); err != nil {
 			return []string{}, err
 		}
 		copied[i] = newname
@@ -355,7 +355,7 @@ func (s *Server) CreateIndex() error {
 	}
 
 	ifile := filepath.Join(s.docroot, "index.yaml")
-	return os.WriteFile(ifile, d, 0644)
+	return os.WriteFile(ifile, d, 0o644)
 }
 
 func (s *Server) start() {
@@ -407,5 +407,5 @@ func setTestingRepository(url, fname string) error {
 		Name: "test",
 		URL:  url,
 	})
-	return r.WriteFile(fname, 0640)
+	return r.WriteFile(fname, 0o640)
 }

@@ -70,7 +70,7 @@ func TestDependencyStatus_Dashes(t *testing.T) {
 	dir := t.TempDir()
 
 	chartpath := filepath.Join(dir, "charts")
-	if err := os.MkdirAll(chartpath, 0700); err != nil {
+	if err := os.MkdirAll(chartpath, 0o700); err != nil {
 		t.Fatal(err)
 	}
 
@@ -104,7 +104,7 @@ func TestStatArchiveForStatus(t *testing.T) {
 	dir := t.TempDir()
 
 	chartpath := filepath.Join(dir, "charts")
-	if err := os.MkdirAll(chartpath, 0700); err != nil {
+	if err := os.MkdirAll(chartpath, 0o700); err != nil {
 		t.Fatal(err)
 	}
 

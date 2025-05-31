@@ -29,7 +29,7 @@ func TestAtomicWriteFile(t *testing.T) {
 	testpath := filepath.Join(dir, "test")
 	stringContent := "Test content"
 	reader := bytes.NewReader([]byte(stringContent))
-	mode := os.FileMode(0644)
+	mode := os.FileMode(0o644)
 
 	err := AtomicWriteFile(testpath, reader, mode)
 	if err != nil {

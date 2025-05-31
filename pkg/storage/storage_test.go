@@ -309,7 +309,7 @@ func (d *MaxHistoryMockDriver) Name() string {
 }
 
 func TestMaxHistoryErrorHandling(t *testing.T) {
-	//func TestStorageRemoveLeastRecentWithError(t *testing.T) {
+	// func TestStorageRemoveLeastRecentWithError(t *testing.T) {
 	storage := Init(NewMaxHistoryMockDriver(driver.NewMemory()))
 
 	storage.MaxHistory = 1
