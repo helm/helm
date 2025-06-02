@@ -79,7 +79,7 @@ func NewTransport(debug bool) *retry.Transport {
 			}
 			return a
 		}
-		logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 			ReplaceAttr: replace,
 			Level:       slog.LevelDebug}))
 		slog.SetDefault(logger)
