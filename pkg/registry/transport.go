@@ -49,6 +49,7 @@ const payloadSizeLimit int64 = 16 * 1024 // 16 KiB
 // request and add hooks to report HTTP tracing events.
 type LoggingTransport struct {
 	http.RoundTripper
+	logger *slog.Logger
 }
 
 // NewTransport creates and returns a new instance of LoggingTransport
@@ -79,11 +80,10 @@ func NewTransport(debug bool) *retry.Transport {
 			}
 			return a
 		}
-		logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 			ReplaceAttr: replace,
 			Level:       slog.LevelDebug}))
-		slog.SetDefault(logger)
-		transport = &LoggingTransport{RoundTripper: transport}
+		transport = &LoggingTransport{RoundTripper: transport, logger: logger}
 	}
 
 	return retry.NewTransport(transport)
@@ -93,14 +93,14 @@ func NewTransport(debug bool) *retry.Transport {
 func (t *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	id := atomic.AddUint64(&requestCount, 1) - 1
 
-	slog.Debug("Request", "id", id, "url", req.URL, "method", req.Method, "header", logHeader(req.Header))
+	t.logger.Debug("Request", "id", id, "url", req.URL, "method", req.Method, "header", logHeader(req.Header))
 	resp, err = t.RoundTripper.RoundTrip(req)
 	if err != nil {
-		slog.Debug("Response", "id", id, "error", err)
+		t.logger.Debug("Response", "id", id, "error", err)
 	} else if resp != nil {
-		slog.Debug("Response", "id", id, "status", resp.Status, "header", logHeader(resp.Header), "body", logResponseBody(resp))
+		t.logger.Debug("Response", "id", id, "status", resp.Status, "header", logHeader(resp.Header), "body", logResponseBody(resp))
 	} else {
-		slog.Debug("Response", "id", id, "response", "nil")
+		t.logger.Debug("Response", "id", id, "response", "nil")
 	}
 
 	return resp, err
