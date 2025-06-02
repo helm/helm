@@ -510,7 +510,7 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 		}
 
 		// When the repoName for a dependency is known we can skip ensuring
-		depKey := dependencyKey(dd.Name, dd.Repository, i)
+		depKey := resolver.DependencyKey(dd.Name, dd.Repository, i)
 		if _, ok := repoNames[depKey]; ok {
 			continue
 		}
@@ -587,13 +587,13 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 				fmt.Fprintf(m.Out, "Repository from local path: %s\n", dd.Repository)
 			}
 			// Use composite key for unique identification
-			depKey := dependencyKey(dd.Name, dd.Repository, i)
+			depKey := resolver.DependencyKey(dd.Name, dd.Repository, i)
 			reposMap[depKey] = dd.Repository
 			continue
 		}
 
 		if registry.IsOCI(dd.Repository) {
-			depKey := dependencyKey(dd.Name, dd.Repository, i)
+			depKey := resolver.DependencyKey(dd.Name, dd.Repository, i)
 			reposMap[depKey] = dd.Repository
 			continue
 		}
@@ -605,12 +605,12 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 				(strings.HasPrefix(dd.Repository, "alias:") && strings.TrimPrefix(dd.Repository, "alias:") == repo.Name) {
 				found = true
 				dd.Repository = repo.URL
-				depKey := dependencyKey(dd.Name, dd.Repository, i)
+				depKey := resolver.DependencyKey(dd.Name, dd.Repository, i)
 				reposMap[depKey] = repo.Name
 				break
 			} else if urlutil.Equal(repo.URL, dd.Repository) {
 				found = true
-				depKey := dependencyKey(dd.Name, dd.Repository, i)
+				depKey := resolver.DependencyKey(dd.Name, dd.Repository, i)
 				reposMap[depKey] = repo.Name
 				break
 			}
@@ -620,7 +620,7 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			// Add if URL
 			_, err := url.ParseRequestURI(repository)
 			if err == nil {
-				depKey := dependencyKey(dd.Name, repository, i)
+				depKey := resolver.DependencyKey(dd.Name, repository, i)
 				reposMap[depKey] = repository
 				continue
 			}
@@ -646,19 +646,6 @@ repository, use "https://charts.example.com/" or "@example" instead of
 		return nil, errors.New(errorMessage)
 	}
 	return reposMap, nil
-}
-
-// dependencyKey creates a unique key for a dependency that includes name, repository, and index
-// to handle cases where multiple dependencies have the same name but different repositories
-func dependencyKey(name, repository string, index int) string {
-	// Use a combination of name, repository hash, and index to ensure uniqueness
-	repoHash := ""
-	if repository != "" {
-		hasher := crypto.SHA256.New()
-		hasher.Write([]byte(repository))
-		repoHash = hex.EncodeToString(hasher.Sum(nil))[:8] // Use first 8 chars for brevity
-	}
-	return fmt.Sprintf("%s-%s-%d", name, repoHash, index)
 }
 
 // UpdateRepositories updates all of the local repos to the latest.
