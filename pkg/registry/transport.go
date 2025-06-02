@@ -72,8 +72,16 @@ func NewTransport(debug bool) *retry.Transport {
 		transport = t.Clone()
 	}
 	if debug {
+		replace := func(groups []string, a slog.Attr) slog.Attr {
+			// Remove time.
+			if a.Key == slog.TimeKey && len(groups) == 0 {
+				return slog.Attr{}
+			}
+			return a
+		}
 		logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelDebug}))
+			ReplaceAttr: replace,
+			Level:       slog.LevelDebug}))
 		slog.SetDefault(logger)
 		transport = &LoggingTransport{RoundTripper: transport}
 	}
