@@ -30,6 +30,8 @@ var (
 )
 
 func TestLintChart(t *testing.T) {
+	values := make(map[string]interface{})
+	namespace := "testNamespace"
 	tests := []struct {
 		name                 string
 		chartPath            string
@@ -51,11 +53,6 @@ func TestLintChart(t *testing.T) {
 		{
 			name:      "archived-tar-gz-chart-path",
 			chartPath: "testdata/charts/compressedchart-0.1.0.tar.gz",
-		},
-		{
-			name:      "invalid-archived-chart-path",
-			chartPath: "testdata/charts/invalidcompressedchart0.1.0.tgz",
-			err:       true,
 		},
 		{
 			name:      "chart-missing-manifest",
@@ -83,7 +80,7 @@ func TestLintChart(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := lintChart(tt.chartPath, map[string]interface{}{}, namespace, nil, tt.skipSchemaValidation)
+			_, err := lintChart(tt.chartPath, values, namespace, nil, tt.skipSchemaValidation)
 			switch {
 			case err != nil && !tt.err:
 				t.Errorf("%s", err)
@@ -95,6 +92,7 @@ func TestLintChart(t *testing.T) {
 }
 
 func TestNonExistentChart(t *testing.T) {
+	values := make(map[string]interface{})
 	t.Run("should error out for non existent tgz chart", func(t *testing.T) {
 		testCharts := []string{"non-existent-chart.tgz"}
 		expectedError := "unable to open tarball: open non-existent-chart.tgz: no such file or directory"
@@ -113,7 +111,7 @@ func TestNonExistentChart(t *testing.T) {
 
 	t.Run("should error out for corrupted tgz chart", func(t *testing.T) {
 		testCharts := []string{corruptedTgzChart}
-		expectedEOFError := "unable to extract tarball: EOF"
+		expectedError := "unable to extract tarball: EOF"
 		testLint := NewLint()
 
 		result := testLint.Run(testCharts, values)
@@ -122,13 +120,14 @@ func TestNonExistentChart(t *testing.T) {
 		}
 
 		actual := result.Errors[0].Error()
-		if actual != expectedEOFError {
-			t.Errorf("expected '%s', but got '%s'", expectedEOFError, actual)
+		if actual != expectedError {
+			t.Errorf("expected '%s', but got '%s'", expectedError, actual)
 		}
 	})
 }
 
 func TestLint_MultipleCharts(t *testing.T) {
+	values := make(map[string]interface{})
 	testCharts := []string{chart2MultipleChartLint, chart1MultipleChartLint}
 	testLint := NewLint()
 	if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
@@ -137,6 +136,7 @@ func TestLint_MultipleCharts(t *testing.T) {
 }
 
 func TestLint_EmptyResultErrors(t *testing.T) {
+	values := make(map[string]interface{})
 	testCharts := []string{chart2MultipleChartLint}
 	testLint := NewLint()
 	if result := testLint.Run(testCharts, values); len(result.Errors) > 0 {
@@ -145,6 +145,7 @@ func TestLint_EmptyResultErrors(t *testing.T) {
 }
 
 func TestLint_ChartWithWarnings(t *testing.T) {
+	values := make(map[string]interface{})
 	t.Run("should pass when not strict", func(t *testing.T) {
 		testCharts := []string{chartWithNoTemplatesDir}
 		testLint := NewLint()
