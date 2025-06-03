@@ -21,10 +21,10 @@ coverdir=$(mktemp -d /tmp/coverage.XXXXXXXXXX)
 profile="${coverdir}/cover.out"
 
 generate_cover_data() {
-  for d in $(go list ./...) ; do
+  for d in $(go list ./...); do
     (
       local output="${coverdir}/${d//\//-}.cover"
-      go test -coverprofile="${output}" -covermode="$covermode" "$d"
+      go test -coverprofile="${output}" -covermode="$covermode" ${TESTFLAGS:-} "$d"
     )
   done
 
@@ -40,4 +40,3 @@ case "${1-}" in
     go tool cover -html "${profile}"
     ;;
 esac
-
