@@ -1,4 +1,5 @@
-name: build-test
+name: Build and Test
+
 on:
   push:
     branches:
@@ -28,7 +29,22 @@ jobs:
           check-latest: true
       - name: Test source headers are present
         run: make test-source-headers
-      - name: Run unit tests
+      - name: Run unit tests with coverage
         run: make test-coverage
+      - name: Run unit tests with shuffle for flaky test detection
+        env:
+          TESTFLAGS: -shuffle=on -count=5 -v
+        run: |
+          ./scripts/coverage.sh | tee test_output.txt
+          if grep -B 5 "FAIL" test_output.txt; then
+            echo "Flaky tests detected. Please review test_output.txt for details."
+            exit 1
+          fi
+      - name: Upload test output for debugging
+        if: always()
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # pin@v4.4.0
+        with:
+          name: test-output
+          path: test_output.txt
       - name: Test build
         run: make build

@@ -11,17 +11,17 @@ GOBIN         = $(shell go env GOPATH)/bin
 endif
 GOX           = $(GOBIN)/gox
 GOIMPORTS     = $(GOBIN)/goimports
+GOLANGCI_LINT = $(GOBIN)/golangci-lint
 ARCH          = $(shell go env GOARCH)
 
 ACCEPTANCE_DIR:=../acceptance-testing
-# To specify the subset of acceptance tests to run. '.' means all tests
 ACCEPTANCE_RUN_TESTS=.
 
 # go option
 PKG         := ./...
 TAGS        :=
 TESTS       := .
-TESTFLAGS   :=
+TESTFLAGS   := -shuffle=on -count=2
 LDFLAGS     := -w -s
 GOFLAGS     :=
 CGO_ENABLED ?= 0
@@ -42,13 +42,11 @@ ifdef VERSION
 endif
 BINARY_VERSION ?= ${GIT_TAG}
 
-# Only set Version if building a tag or VERSION is set
 ifneq ($(BINARY_VERSION),)
 	LDFLAGS += -X helm.sh/helm/v4/internal/version.version=${BINARY_VERSION}
 endif
 
 VERSION_METADATA = unreleased
-# Clear the "unreleased" string in BuildMetadata
 ifneq ($(GIT_TAG),)
 	VERSION_METADATA =
 endif
@@ -58,7 +56,6 @@ LDFLAGS += -X helm.sh/helm/v4/internal/version.gitCommit=${GIT_COMMIT}
 LDFLAGS += -X helm.sh/helm/v4/internal/version.gitTreeState=${GIT_DIRTY}
 LDFLAGS += $(EXT_LDFLAGS)
 
-# Define constants based on the client-go version
 K8S_MODULES_VER=$(subst ., ,$(subst v,,$(shell go list -f '{{.Version}}' -m k8s.io/client-go)))
 K8S_MODULES_MAJOR_VER=$(shell echo $$(($(firstword $(K8S_MODULES_VER)) + 1)))
 K8S_MODULES_MINOR_VER=$(word 2,$(K8S_MODULES_VER))
@@ -71,24 +68,15 @@ LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/util.k8sVersionMinor=$(K8S_MODULES_MI
 .PHONY: all
 all: build
 
-# ------------------------------------------------------------------------------
-#  build
-
 .PHONY: build
 build: $(BINDIR)/$(BINNAME)
 
 $(BINDIR)/$(BINNAME): $(SRC)
 	CGO_ENABLED=$(CGO_ENABLED) go build $(GOFLAGS) -trimpath -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/helm
 
-# ------------------------------------------------------------------------------
-#  install
-
 .PHONY: install
 install: build
 	@install "$(BINDIR)/$(BINNAME)" "$(INSTALL_PATH)/$(BINNAME)"
-
-# ------------------------------------------------------------------------------
-#  test
 
 .PHONY: test
 test: build
@@ -107,13 +95,7 @@ test-unit:
 	go test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
 	@echo
 	@echo "==> Running unit test(s) with ldflags <=="
-# Test to check the deprecation warnings on Kubernetes templates created by `helm create` against the current Kubernetes
-# version. Note: The version details are set in var LDFLAGS. To avoid the ldflags impact on other unit tests that are
-# based on older versions, this is run separately. When run without the ldflags in the unit test (above) or coverage
-# test, it still passes with a false-positive result as the resources shouldn’t be deprecated in the older Kubernetes
-# version if it only starts failing with the latest.
 	go test $(GOFLAGS) -run ^TestHelmCreateChart_CheckDeprecatedWarnings$$ ./pkg/lint/ $(TESTFLAGS) -ldflags '$(LDFLAGS)'
-
 
 .PHONY: test-coverage
 test-coverage:
@@ -122,8 +104,8 @@ test-coverage:
 	@ ./scripts/coverage.sh
 
 .PHONY: test-style
-test-style:
-	golangci-lint run ./...
+test-style: $(GOLANGCI_LINT)
+	$(GOLANGCI_LINT) run --timeout 5m ./...
 	@scripts/validate-license.sh
 
 .PHONY: test-source-headers
@@ -153,19 +135,11 @@ coverage:
 format: $(GOIMPORTS)
 	go list -f '{{.Dir}}' ./... | xargs $(GOIMPORTS) -w -local helm.sh/helm
 
-# Generate golden files used in unit tests
 .PHONY: gen-test-golden
 gen-test-golden:
 gen-test-golden: PKG = ./pkg/cmd ./pkg/action
 gen-test-golden: TESTFLAGS = -update
 gen-test-golden: test-unit
-
-# ------------------------------------------------------------------------------
-#  dependencies
-
-# If go install is run from inside the project directory it will add the
-# dependencies to the go.mod file. To avoid that we change to a directory
-# without a go.mod file when downloading the following dependencies
 
 $(GOX):
 	(cd /; go install github.com/mitchellh/gox@v1.0.2-0.20220701044238-9f712387e2d2)
@@ -173,8 +147,8 @@ $(GOX):
 $(GOIMPORTS):
 	(cd /; go install golang.org/x/tools/cmd/goimports@latest)
 
-# ------------------------------------------------------------------------------
-#  release
+$(GOLANGCI_LINT):
+	(cd /; go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2)
 
 .PHONY: build-cross
 build-cross: LDFLAGS += -extldflags "-static"
@@ -205,13 +179,6 @@ sign:
 		gpg --armor --detach-sign $${f} ; \
 	done
 
-# The contents of the .sha256sum file are compatible with tools like
-# shasum. For example, using the following command will verify
-# the file helm-3.1.0-rc.1-darwin-amd64.tar.gz:
-#   shasum -a 256 -c helm-3.1.0-rc.1-darwin-amd64.tar.gz.sha256sum
-# The .sha256 files hold only the hash and are not compatible with
-# verification tools like shasum or sha256sum. This method and file can be
-# removed in Helm v4.
 .PHONY: checksum
 checksum:
 	for f in $$(ls _dist/*.{gz,zip} 2>/dev/null) ; do \
@@ -219,30 +186,25 @@ checksum:
 		shasum -a 256 "$${f}" | awk '{print $$1}' > "$${f}.sha256" ; \
 	done
 
-# ------------------------------------------------------------------------------
-
 .PHONY: clean
 clean:
 	@rm -rf '$(BINDIR)' ./_dist
 
 .PHONY: release-notes
 release-notes:
-		@if [ ! -d "./_dist" ]; then \
-			echo "please run 'make fetch-dist' first" && \
-			exit 1; \
-		fi
-		@if [ -z "${PREVIOUS_RELEASE}" ]; then \
-			echo "please set PREVIOUS_RELEASE environment variable" \
-			&& exit 1; \
-		fi
-
-		@./scripts/release-notes.sh ${PREVIOUS_RELEASE} ${VERSION}
-
-
+	@if [ ! -d "./_dist" ]; then \
+		echo "please run 'make fetch-dist' first" && \
+		exit 1; \
+	fi
+	@if [ -z "${PREVIOUS_RELEASE}" ]; then \
+		echo "please set PREVIOUS_RELEASE environment variable" \
+		&& exit 1; \
+	fi
+	@./scripts/release-notes.sh ${PREVIOUS_RELEASE} ${VERSION}
 
 .PHONY: info
 info:
-	 @echo "Version:           ${VERSION}"
-	 @echo "Git Tag:           ${GIT_TAG}"
-	 @echo "Git Commit:        ${GIT_COMMIT}"
-	 @echo "Git Tree State:    ${GIT_DIRTY}"
+	@echo "Version:           ${VERSION}"
+	@echo "Git Tag:           ${GIT_TAG}"
+	@echo "Git Commit:        ${GIT_COMMIT}"
+	@echo "Git Tree State:    ${GIT_DIRTY}"

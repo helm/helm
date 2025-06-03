@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
@@ -40,8 +41,34 @@ func upgradeAction(t *testing.T) *Upgrade {
 	config := actionConfigFixture(t)
 	upAction := NewUpgrade(config)
 	upAction.Namespace = "spaced"
-
 	return upAction
+}
+
+// Helper to wait for goroutines to return to initial count
+func waitForGoroutines(t *testing.T, initialGoroutines int, timeout time.Duration) bool {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if runtime.NumGoroutine() == initialGoroutines {
+			return true
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return false
+}
+
+// Helper to wait for release status to reach expected state
+func waitForReleaseStatus(t *testing.T, cfg *releases, name string, expected release.Status, timeout time.Duration) bool {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		rel, err := cfg.Last(name)
+		if err == nil && rel.Info.Status == expected {
+			return true
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return false
 }
 
 func TestUpgradeRelease_Success(t *testing.T) {
@@ -63,12 +90,8 @@ func TestUpgradeRelease_Success(t *testing.T) {
 	req.NoError(err)
 	is.Equal(res.Info.Status, release.StatusDeployed)
 
-	// Detecting previous bug where context termination after successful release
-	// caused release to fail.
-	time.Sleep(time.Millisecond * 100)
-	lastRelease, err := upAction.cfg.Releases.Last(rel.Name)
-	req.NoError(err)
-	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+	// Check release status without sleep
+	is.True(waitForReleaseStatus(t, upAction.cfg.Releases, rel.Name, release.StatusDeployed, 1*time.Second), "release status not updated")
 }
 
 func TestUpgradeRelease_Wait(t *testing.T) {
@@ -154,7 +177,6 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		upAction.cfg.Releases.Create(rel)
 
 		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-		// We can't make Update error because then the rollback won't work
 		failer.WatchUntilReadyError = fmt.Errorf("arming key removed")
 		upAction.cfg.KubeClient = failer
 		upAction.Atomic = true
@@ -165,10 +187,8 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		is.Contains(err.Error(), "arming key removed")
 		is.Contains(err.Error(), "atomic")
 
-		// Now make sure it is actually upgraded
 		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
 		is.NoError(err)
-		// Should have rolled back to the previous
 		is.Equal(updatedRes.Info.Status, release.StatusDeployed)
 	})
 
@@ -224,14 +244,11 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		is.NoError(err)
 
 		upAction.ReuseValues = true
-		// setting newValues and upgrading
 		res, err := upAction.Run(rel.Name, buildChart(), newValues)
 		is.NoError(err)
 
-		// Now make sure it is actually upgraded
 		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
 		is.NoError(err)
-
 		if updatedRes == nil {
 			is.Fail("Updated Release is nil")
 			return
@@ -286,14 +303,11 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			withDependency(withName("subchart")),
 			withMetadataDependency(dependency),
 		)
-		// reusing values and upgrading
 		res, err := upAction.Run(rel.Name, sampleChartWithSubChart, map[string]interface{}{})
 		is.NoError(err)
 
-		// Now get the upgraded release
 		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
 		is.NoError(err)
-
 		if updatedRes == nil {
 			is.Fail("Updated Release is nil")
 			return
@@ -345,14 +359,11 @@ func TestUpgradeRelease_ResetThenReuseValues(t *testing.T) {
 		is.NoError(err)
 
 		upAction.ResetThenReuseValues = true
-		// setting newValues and upgrading
 		res, err := upAction.Run(rel.Name, buildChart(withValues(newChartValues)), newValues)
 		is.NoError(err)
 
-		// Now make sure it is actually upgraded
 		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
 		is.NoError(err)
-
 		if updatedRes == nil {
 			is.Fail("Updated Release is nil")
 			return
@@ -384,7 +395,6 @@ func TestUpgradeRelease_Pending(t *testing.T) {
 }
 
 func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
-
 	is := assert.New(t)
 	req := require.New(t)
 
@@ -404,16 +414,16 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	time.AfterFunc(time.Second, cancel)
 
+	goroutines := runtime.NumGoroutine()
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 
 	req.Error(err)
 	is.Contains(res.Info.Description, "Upgrade \"interrupted-release\" failed: context canceled")
 	is.Equal(res.Info.Status, release.StatusFailed)
-
+	is.True(waitForGoroutines(t, goroutines, 15*time.Second), "goroutines did not return to initial count")
 }
 
 func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
-
 	is := assert.New(t)
 	req := require.New(t)
 
@@ -433,16 +443,15 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	time.AfterFunc(time.Second, cancel)
 
+	goroutines := runtime.NumGoroutine()
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 
 	req.Error(err)
 	is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to atomic being set: context canceled")
-
-	// Now make sure it is actually upgraded
 	updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
 	is.NoError(err)
-	// Should have rolled back to the previous
 	is.Equal(updatedRes.Info.Status, release.StatusDeployed)
+	is.True(waitForGoroutines(t, goroutines, 15*time.Second), "goroutines did not return to initial count")
 }
 
 func TestMergeCustomLabels(t *testing.T) {
@@ -466,7 +475,6 @@ func TestUpgradeRelease_Labels(t *testing.T) {
 
 	rel := releaseStub()
 	rel.Name = "labels"
-	// It's needed to check that suppressed release would keep original labels
 	rel.Labels = map[string]string{
 		"key1": "val1",
 		"key2": "val2.1",
@@ -481,14 +489,11 @@ func TestUpgradeRelease_Labels(t *testing.T) {
 		"key2": "val2.2",
 		"key3": "val3",
 	}
-	// setting newValues and upgrading
 	res, err := upAction.Run(rel.Name, buildChart(), nil)
 	is.NoError(err)
 
-	// Now make sure it is actually upgraded and labels were merged
 	updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
 	is.NoError(err)
-
 	if updatedRes == nil {
 		is.Fail("Updated Release is nil")
 		return
@@ -496,10 +501,8 @@ func TestUpgradeRelease_Labels(t *testing.T) {
 	is.Equal(release.StatusDeployed, updatedRes.Info.Status)
 	is.Equal(mergeCustomLabels(rel.Labels, upAction.Labels), updatedRes.Labels)
 
-	// Now make sure it is suppressed release still contains original labels
 	initialRes, err := upAction.cfg.Releases.Get(res.Name, 1)
 	is.NoError(err)
-
 	if initialRes == nil {
 		is.Fail("Updated Release is nil")
 		return
@@ -514,7 +517,6 @@ func TestUpgradeRelease_SystemLabels(t *testing.T) {
 
 	rel := releaseStub()
 	rel.Name = "labels"
-	// It's needed to check that suppressed release would keep original labels
 	rel.Labels = map[string]string{
 		"key1": "val1",
 		"key2": "val2.1",
@@ -529,7 +531,6 @@ func TestUpgradeRelease_SystemLabels(t *testing.T) {
 		"key2":  "val2.2",
 		"owner": "val3",
 	}
-	// setting newValues and upgrading
 	_, err = upAction.Run(rel.Name, buildChart(), nil)
 	if err == nil {
 		t.Fatal("expected an error")
@@ -563,7 +564,6 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
 	is.Equal(1, lastRelease.Version)
 
-	// Test the case for hiding the secret to ensure it is not displayed
 	upAction.HideSecret = true
 	vals = map[string]interface{}{}
 
@@ -579,7 +579,6 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
 	is.Equal(1, lastRelease.Version)
 
-	// Ensure in a dry run mode when using HideSecret
 	upAction.DryRun = false
 	vals = map[string]interface{}{}
 

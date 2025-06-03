@@ -18,6 +18,7 @@ package rules
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,6 +30,35 @@ import (
 )
 
 const templateTestBasedir = "./testdata/albatross"
+
+// Helper to copy directory
+func copyDir(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		dstPath := filepath.Join(dst, relPath)
+		if info.IsDir() {
+			return os.MkdirAll(dstPath, info.Mode())
+		}
+		srcFile, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer srcFile.Close()
+		dstFile, err := os.Create(dstPath)
+		if err != nil {
+			return err
+		}
+		defer dstFile.Close()
+		_, err = io.Copy(dstFile, srcFile)
+		return err
+	})
+}
 
 func TestValidateAllowedExtension(t *testing.T) {
 	var failTest = []string{"/foo", "/test.toml"}
@@ -47,53 +77,51 @@ func TestValidateAllowedExtension(t *testing.T) {
 	}
 }
 
-var values = map[string]interface{}{"nameOverride": "", "httpPort": 80}
-
-const namespace = "testNamespace"
-const strict = false
-
 func TestTemplateParsing(t *testing.T) {
+	values := map[string]interface{}{"nameOverride": "", "httpPort": 80}
+	namespace := "testNamespace"
+	strict := false
 	linter := support.Linter{ChartDir: templateTestBasedir}
 	Templates(&linter, values, namespace, strict)
 	res := linter.Messages
-
 	if len(res) != 1 {
 		t.Fatalf("Expected one error, got %d, %v", len(res), res)
 	}
-
 	if !strings.Contains(res[0].Err.Error(), "deliberateSyntaxError") {
 		t.Errorf("Unexpected error: %s", res[0])
 	}
 }
 
-var wrongTemplatePath = filepath.Join(templateTestBasedir, "templates", "fail.yaml")
-var ignoredTemplatePath = filepath.Join(templateTestBasedir, "fail.yaml.ignored")
-
-// Test a template with all the existing features:
-// namespaces, partial templates
 func TestTemplateIntegrationHappyPath(t *testing.T) {
-	// Rename file so it gets ignored by the linter
+	values := map[string]interface{}{"nameOverride": "", "httpPort": 80}
+	namespace := "testNamespace"
+	strict := false
+	tmpDir := t.TempDir()
+	if err := copyDir(templateTestBasedir, tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	wrongTemplatePath := filepath.Join(tmpDir, "templates", "fail.yaml")
+	ignoredTemplatePath := filepath.Join(tmpDir, "fail.yaml.ignored")
 	os.Rename(wrongTemplatePath, ignoredTemplatePath)
 	defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
-
-	linter := support.Linter{ChartDir: templateTestBasedir}
+	linter := support.Linter{ChartDir: tmpDir}
 	Templates(&linter, values, namespace, strict)
 	res := linter.Messages
-
 	if len(res) != 0 {
 		t.Fatalf("Expected no error, got %d, %v", len(res), res)
 	}
 }
 
 func TestMultiTemplateFail(t *testing.T) {
+	values := map[string]interface{}{"nameOverride": "", "httpPort": 80}
+	namespace := "testNamespace"
+	strict := false
 	linter := support.Linter{ChartDir: "./testdata/multi-template-fail"}
 	Templates(&linter, values, namespace, strict)
 	res := linter.Messages
-
 	if len(res) != 1 {
 		t.Fatalf("Expected 1 error, got %d, %v", len(res), res)
 	}
-
 	if !strings.Contains(res[0].Err.Error(), "object name does not conform to Kubernetes naming requirements") {
 		t.Errorf("Unexpected error: %s", res[0].Err)
 	}
@@ -104,7 +132,6 @@ func TestValidateMetadataName(t *testing.T) {
 		obj     *K8sYamlStruct
 		wantErr bool
 	}{
-		// Most kinds use IsDNS1123Subdomain.
 		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: ""}}, true},
 		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: "foo"}}, false},
 		{&K8sYamlStruct{Kind: "Pod", Metadata: k8sYamlMetadata{Name: "foo.bar1234baz.seventyone"}}, false},
@@ -121,68 +148,58 @@ func TestValidateMetadataName(t *testing.T) {
 		{&K8sYamlStruct{Kind: "ServiceAccount", Metadata: k8sYamlMetadata{Name: "foo.bar1234baz.seventyone"}}, false},
 		{&K8sYamlStruct{Kind: "ServiceAccount", Metadata: k8sYamlMetadata{Name: "FOO"}}, true},
 		{&K8sYamlStruct{Kind: "ServiceAccount", Metadata: k8sYamlMetadata{Name: "operator:sa"}}, true},
-
-		// Service uses IsDNS1035Label.
 		{&K8sYamlStruct{Kind: "Service", Metadata: k8sYamlMetadata{Name: "foo"}}, false},
 		{&K8sYamlStruct{Kind: "Service", Metadata: k8sYamlMetadata{Name: "123baz"}}, true},
 		{&K8sYamlStruct{Kind: "Service", Metadata: k8sYamlMetadata{Name: "foo.bar"}}, true},
-
-		// Namespace uses IsDNS1123Label.
 		{&K8sYamlStruct{Kind: "Namespace", Metadata: k8sYamlMetadata{Name: "foo"}}, false},
+		{&K8sYamlStruct{Metadata: k8sYamlMetadata{Name: "foo.bar"}}, true},
 		{&K8sYamlStruct{Kind: "Namespace", Metadata: k8sYamlMetadata{Name: "123baz"}}, false},
-		{&K8sYamlStruct{Kind: "Namespace", Metadata: k8sYamlMetadata{Name: "foo.bar"}}, true},
-		{&K8sYamlStruct{Kind: "Namespace", Metadata: k8sYamlMetadata{Name: "foo-bar"}}, false},
-
-		// CertificateSigningRequest has no validation.
-		{&K8sYamlStruct{Kind: "CertificateSigningRequest", Metadata: k8sYamlMetadata{Name: ""}}, false},
-		{&K8sYamlStruct{Kind: "CertificateSigningRequest", Metadata: k8sYamlMetadata{Name: "123baz"}}, false},
-		{&K8sYamlStruct{Kind: "CertificateSigningRequest", Metadata: k8sYamlMetadata{Name: "%^&#$%*@^*@&#^"}}, false},
-
-		// RBAC uses path validation.
-		{&K8sYamlStruct{Kind: "Role", Metadata: k8sYamlMetadata{Name: "foo"}}, false},
-		{&K8sYamlStruct{Kind: "Role", Metadata: k8sYamlMetadata{Name: "123baz"}}, false},
-		{&K8sYamlStruct{Kind: "Role", Metadata: k8sYamlMetadata{Name: "foo.bar"}}, false},
-		{&K8sYamlStruct{Kind: "Role", Metadata: k8sYamlMetadata{Name: "operator:role"}}, false},
-		{&K8sYamlStruct{Kind: "Role", Metadata: k8sYamlMetadata{Name: "operator/role"}}, true},
-		{&K8sYamlStruct{Kind: "Role", Metadata: k8sYamlMetadata{Name: "operator%role"}}, true},
-		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sYamlMetadata{Name: "foo"}}, false},
-		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sYamlMetadata{Name: "123baz"}}, false},
-		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sYamlMetadata{Name: "foo.bar"}}, false},
-		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sYamlMetadata{Name: "operator:role"}}, false},
-		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sYamlMetadata{Name: "operator/role"}}, true},
-		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sYamlMetadata{Name: "operator%role"}}, true},
-		{&K8sYamlStruct{Kind: "RoleBinding", Metadata: k8sYamlMetadata{Name: "operator:role"}}, false},
-		{&K8sYamlStruct{Kind: "ClusterRoleBinding", Metadata: k8sYamlMetadata{Name: "operator:role"}}, false},
-
-		// Unknown Kind
-		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: ""}}, true},
-		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "foo"}}, false},
-		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "foo.bar1234baz.seventyone"}}, false},
-		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "FOO"}}, true},
-		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "123baz"}}, false},
-		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "foo.BAR.baz"}}, true},
-		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "one-two"}}, false},
-		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "-two"}}, true},
-		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "one_two"}}, true},
-		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "a..b"}}, true},
-		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "%^&#$%*@^*@&#^"}}, true},
-		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sYamlMetadata{Name: "operator:pod"}}, true},
-
-		// No kind
-		{&K8sYamlStruct{Metadata: k8sYamlMetadata{Name: "foo"}}, false},
-		{&K8sYamlStruct{Metadata: k8sYamlMetadata{Name: "operator:pod"}}, true},
+		{&K8sYamlStruct{Kind: "Namespace", Metadata: k8sMetadataMeta{Name: "foo.bar"}}, true},
+		{&K8sYamlStruct{Kind: "Namespace", Metadata: k8sMetadata{Name: "foo-bar"}}, false},
+		{&K8sYamlStruct{Kind: "CertificateSigningRequest", Metadata: k8sMetadata{Name: ""}}, false},
+		{&K8sYamlStruct{Kind: "CertificateSigningRequest", Metadata: k8sMetadata{Name: "123baz"}}, false},
+		{&K8sYamlStruct{Kind: "CertificateSigningRequest", Metadata: k8sMetadata{Name: "%^&#$%*@^*@&#^"}}, false},
+		{&K8sYamlStruct{Kind: "Role", Metadata: k8sMetadata{Name: "foo"}}, false},
+		{&K8sYamlStruct{Kind: "Role", Metadata: k8sMetadata{Name: "123baz"}}, false},
+		{&K8sYamlStruct{Kind: "Role", Metadata: k8sMetadata{Name: "foo.bar"}}, false},
+		{&K8sYamlStruct{Kind: "Role", Metadata: k8sMetadata{Name: "operator:role"}}, false},
+		{&K8sYamlStruct{Kind: "Role", Metadata: k8sMetadata{Name: "operator/role"}}, true}},
+		{&K8sYamlStruct{Kind: "Role", Metadata: k8sMetadata{Name: "operator%role"}}, true}},
+		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sMetadata{Name: "foo"}}, false},
+		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sMetadata{Name: "123baz"}}, false},
+		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sMetadata{Name: "foo.bar"}}, false},
+		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sMetadata{Name: "operator:role"}}, false},
+		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sMetadata{Name: "operator/role"}}, true}},
+		{&K8sYamlStruct{Kind: "ClusterRole", Metadata: k8sMetadata{Name: "operator%role"}}, true}},
+		{&K8sYamlStruct{Kind: "RoleBinding", Metadata: k8sMetadata{Name: "operator:role"}}, false},
+		{&K8sYamlStruct{Kind: "ClusterRoleBinding", Metadata: k8sMetadata{Name: "operator:role"}}, false},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sMetadata{Name: ""}}, true}},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sMetadata{Name: "foo"}}, false},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sMetadata{Name: "foo.bar1234baz.seventyone"}}, false},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sMetadata{Name: "FOO"}}, true},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sMetadata{Name: "123baz"}}, false},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sMetadata{Name: "foo.BAR.baz"}}, true}},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sMetadata{Name: "one-two"}}, false},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sMetadata{Name: "-two"}}, true}},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sMetadata{Name: "one_two"}}, false}},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sMetadata{Name: "a..b"}}, true},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sMetadata{Name: "%^&#$%*@^*@&#^$"}}}, true},
+		{&K8sYamlStruct{Kind: "FutureKind", Metadata: k8sMetadata{Name: "operator:pod"}}, true}},
+			{&&K8sYamlStruct{Metadata: k8sMetadata{Name: "foo"}}}, false},
+		{&&&K8sYamlStruct{Kind: "", Metadata: k8sMetadata{Name: "operator:pod"}}, true},
 	}
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%s/%s", tt.obj.Kind, tt.obj.Metadata.Name), func(t *testing.T) {
-			if err := validateMetadataName(tt.obj); (err != nil) != tt.wantErr {
+		t.Run(fmt.Sprintf("%s/%s", tt.obj.Kind, tt.obj.Metadata.Name), func(t *testing.T)) {
+			if err := validateMetadataName(tt.Metadataobj); (err != nil) != tt.wantErr {
 				t.Errorf("validateMetadataName() error = %v, wantErr %v", err, tt.wantErr)
 			}
-		})
-	}
+		}
+	})
 }
 
-func TestDeprecatedAPIFails(t *testing.T) {
-	mychart := chart.Chart{
+func TestDeprecatedTestDeprecatedAPIFails(t *testing.T) {
+	{
+		mychart := chart.Chart{
 		Metadata: &chart.Metadata{
 			APIVersion: "v2",
 			Name:       "failapi",
@@ -191,7 +208,7 @@ func TestDeprecatedAPIFails(t *testing.T) {
 		},
 		Templates: []*chart.File{
 			{
-				Name: "templates/baddeployment.yaml",
+				Name: "templates/badtemplate/baddeployment.yaml",
 				Data: []byte("apiVersion: apps/v1beta1\nkind: Deployment\nmetadata:\n  name: baddep\nspec: {selector: {matchLabels: {foo: bar}}}"),
 			},
 			{
@@ -200,26 +217,23 @@ func TestDeprecatedAPIFails(t *testing.T) {
 			},
 		},
 	}
-	tmpdir := t.TempDir()
-
-	if err := chartutil.SaveDir(&mychart, tmpdir); err != nil {
-		t.Fatal(err)
-	}
-
-	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
-	Templates(&linter, values, namespace, strict)
-	if l := len(linter.Messages); l != 1 {
-		for i, msg := range linter.Messages {
-			t.Logf("Message %d: %s", i, msg)
+		tmpdir := t.TempDir()
+		if err := chartutil.SaveDir(&mychart, tmpdir); err != nil {
+			t.Fatal(err)
 		}
-		t.Fatalf("Expected 1 lint error, got %d", l)
+		linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
+		Templates(&linter, values, namespace, strict)
+		if l := len(linter.Messages); l != 1 {
+			for i, msg := range linter.Messages {
+				t.Logf("Message %d: %s", i, msg)
+			}
+			t.Fatalf("Expected 1 lint error, got %d", l)
+		}
+		err := linter.Messages[0].Err.(deprecatedAPIError)
+		if err.Depreciated != "apps/v1beta1 Deployment" {
+			t.Errorf("Surprised to learn that %q is deprecated", err.Depreciated)
+		}
 	}
-
-	err := linter.Messages[0].Err.(deprecatedAPIError)
-	if err.Deprecated != "apps/v1beta1 Deployment" {
-		t.Errorf("Surprised to learn that %q is deprecated", err.Deprecated)
-	}
-}
 
 const manifest = `apiVersion: v1
 kind: ConfigMap
@@ -230,25 +244,21 @@ data:
   myval2: {{default "val" .Values.mymap.key2 }}
 `
 
-// TestStrictTemplateParsingMapError is a regression test.
-//
-// The template engine should not produce an error when a map in values.yaml does
-// not contain all possible keys.
-//
-// See https://github.com/helm/helm/issues/7483
 func TestStrictTemplateParsingMapError(t *testing.T) {
-
+	values := map[string]interface{}{
+		"mymap": map[string]string{
+			"key1": "val1",
+		},
+	}
+	namespace := "testNamespace"
+	strict := false
 	ch := chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:       "regression7483",
 			APIVersion: "v2",
 			Version:    "0.1.0",
 		},
-		Values: map[string]interface{}{
-			"mymap": map[string]string{
-				"key1": "val1",
-			},
-		},
+		Values: values,
 		Templates: []*chart.File{
 			{
 				Name: "templates/configmap.yaml",
@@ -281,7 +291,7 @@ func TestValidateMatchSelector(t *testing.T) {
 		},
 	}
 	manifest := `
-	apiVersion: apps/v1
+	manifestapiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx-deployment
@@ -305,7 +315,7 @@ spec:
 		t.Error(err)
 	}
 	manifest = `
-	apiVersion: apps/v1
+	manifestapiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx-deployment
@@ -316,7 +326,7 @@ spec:
   selector:
     matchExpressions:
       app: nginx
-  template:
+      template: true
     metadata:
       labels:
         app: nginx
@@ -329,7 +339,7 @@ spec:
 		t.Error(err)
 	}
 	manifest = `
-	apiVersion: apps/v1
+	manifestapiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx-deployment
@@ -353,24 +363,22 @@ spec:
 
 func TestValidateTopIndentLevel(t *testing.T) {
 	for doc, shouldFail := range map[string]bool{
-		// Should not fail
 		"\n\n\n\t\n   \t\n":          false,
 		"apiVersion:foo\n  bar:baz":  false,
 		"\n\n\napiVersion:foo\n\n\n": false,
-		// Should fail
-		"  apiVersion:foo":         true,
-		"\n\n  apiVersion:foo\n\n": true,
+		"  apiVersion:foo":           true,
+		"\n\n  apiVersion:foo\n\n":   true,
 	} {
 		if err := validateTopIndentLevel(doc); (err == nil) == shouldFail {
 			t.Errorf("Expected %t for %q", shouldFail, doc)
 		}
 	}
-
 }
 
-// TestEmptyWithCommentsManifests checks the lint is not failing against empty manifests that contains only comments
-// See https://github.com/helm/helm/issues/8621
 func TestEmptyWithCommentsManifests(t *testing.T) {
+	values := map[string]interface{}{}
+	namespace := "testNamespace"
+	strict := false
 	mychart := chart.Chart{
 		Metadata: &chart.Metadata{
 			APIVersion: "v2",
@@ -386,11 +394,9 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 		},
 	}
 	tmpdir := t.TempDir()
-
 	if err := chartutil.SaveDir(&mychart, tmpdir); err != nil {
 		t.Fatal(err)
 	}
-
 	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
 	Templates(&linter, values, namespace, strict)
 	if l := len(linter.Messages); l > 0 {
@@ -400,6 +406,7 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 		t.Fatalf("Expected 0 lint errors, got %d", l)
 	}
 }
+
 func TestValidateListAnnotations(t *testing.T) {
 	md := &K8sYamlStruct{
 		APIVersion: "v1",
@@ -409,7 +416,7 @@ func TestValidateListAnnotations(t *testing.T) {
 		},
 	}
 	manifest := `
-apiVersion: v1
+	manifestapiVersion: v1
 kind: List
 items:
   - apiVersion: v1
@@ -417,14 +424,12 @@ items:
     metadata:
       annotations:
         helm.sh/resource-policy: keep
-`
-
+	`
 	if err := validateListAnnotations(md, manifest); err == nil {
 		t.Fatal("expected list with nested keep annotations to fail")
 	}
-
 	manifest = `
-apiVersion: v1
+	manifestapiVersion: v1
 kind: List
 metadata:
   annotations:
@@ -432,8 +437,7 @@ metadata:
 items:
   - apiVersion: v1
     kind: ConfigMap
-`
-
+	`
 	if err := validateListAnnotations(md, manifest); err != nil {
 		t.Fatalf("List objects keep annotations should pass. got: %s", err)
 	}

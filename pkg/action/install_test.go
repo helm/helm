@@ -59,6 +59,18 @@ type nameTemplateTestCase struct {
 	expectedErrorStr string
 }
 
+func waitForGoroutines(t *testing.T, initialGoroutines int, timeout time.Duration) bool {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if runtime.NumGoroutine() == initialGoroutines {
+			return true
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return false
+}
+
 func createDummyResourceList(owned bool) kube.ResourceList {
 	obj := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -566,9 +578,8 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	is.Error(err)
 	is.Contains(err.Error(), "context canceled")
 
-	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
-	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
-	is.Equal(goroutines, runtime.NumGoroutine())
+	is.Equal(goroutines+1, runtime.NumGoroutine())
+	is.True(waitForGoroutines(t, goroutines, 15*time.Second), "goroutines did not return to initial count")
 }
 func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
@@ -631,7 +642,6 @@ func TestInstallRelease_Atomic(t *testing.T) {
 	})
 }
 func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
-
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "interrupted-release"
@@ -656,10 +666,8 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
 	is.Error(err)
 	is.Equal(err, driver.ErrReleaseNotFound)
-	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
-	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
-	is.Equal(goroutines, runtime.NumGoroutine())
-
+	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still in background
+	is.True(waitForGoroutines(t, goroutines, 15*time.Second), "goroutines did not return to initial count")
 }
 func TestNameTemplate(t *testing.T) {
 	testCases := []nameTemplateTestCase{
@@ -845,9 +853,13 @@ func TestNameAndChart(t *testing.T) {
 func TestNameAndChartGenerateName(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-
 	instAction.ReleaseName = ""
 	instAction.GenerateName = true
+
+	// Mock helmtime.Now for deterministic output
+	originalNow := helmtime.Now
+	helmtime.Now = func() time.Time { return time.Unix(1234567890, 0) }
+	t.Cleanup(func() { helmtime.Now = originalNow })
 
 	tests := []struct {
 		Name         string
@@ -857,32 +869,32 @@ func TestNameAndChartGenerateName(t *testing.T) {
 		{
 			"local filepath",
 			"./chart",
-			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
+			"chart-1234567890",
 		},
 		{
 			"dot filepath",
 			".",
-			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
+			"chart-1234567890",
 		},
 		{
 			"empty filepath",
 			"",
-			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
+			"chart-1234567890",
 		},
 		{
 			"packaged chart",
 			"chart.tgz",
-			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
+			"chart-1234567890",
 		},
 		{
 			"packaged chart with .tar.gz extension",
 			"chart.tar.gz",
-			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
+			"chart-1234567890",
 		},
 		{
 			"packaged chart with local extension",
 			"./chart.tgz",
-			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
+			"chart-1234567890",
 		},
 	}
 
