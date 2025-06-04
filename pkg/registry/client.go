@@ -289,16 +289,17 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		return err
 	}
 	reg.PlainHTTP = c.plainHTTP
+	cred := auth.Credential{Username: c.username, Password: c.password}
+	c.authorizer.ForceAttemptOAuth2 = true
+	c.authorizer.Credential = auth.StaticCredential(reg.Reference.Registry, cred)
 	reg.Client = c.authorizer
 
 	ctx := context.Background()
-	cred, err := c.authorizer.Credential(ctx, host)
-	if err != nil {
-		return fmt.Errorf("fetching credentials for %q: %w", host, err)
-	}
-
 	if err := reg.Ping(ctx); err != nil {
-		return fmt.Errorf("authenticating to %q: %w", host, err)
+		c.authorizer.ForceAttemptOAuth2 = false
+		if err := reg.Ping(ctx); err != nil {
+			return fmt.Errorf("authenticating to %q: %w", host, err)
+		}
 	}
 
 	// The credentialsStore loader does not handle empty files. So, there is a workaround.
