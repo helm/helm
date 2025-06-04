@@ -188,7 +188,7 @@ func (cfg *Configuration) hookHasDeletePolicy(h *release.Hook, policy release.Ho
 	return slices.Contains(h.DeletePolicies, policy)
 }
 
-// hookClearDeletePolicy determines whether the defined hook deletion policy matches the hook deletion polices
+// hookSetDeletePolicy determines whether the defined hook deletion policy matches the hook deletion polices
 // supported by helm. If so, mark the hook as one should be deleted.
 func (cfg *Configuration) hookSetDeletePolicy(h *release.Hook) {
 	cfg.mutex.Lock()
