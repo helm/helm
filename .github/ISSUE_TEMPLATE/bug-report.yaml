@@ -1,5 +1,5 @@
 name: Bug Report
-description: Report a bug encountered while operating helm
+description: Report a bug encountered in Helm
 labels: kind/bug
 body:
   - type: textarea
@@ -49,32 +49,10 @@ body:
   - type: textarea
     id: cloudProvider
     attributes:
-      label: Cloud provider
+      label: Cloud provider/platform (AKS, GKE, Minikube etc.)
       value: |
         <details>
 
         </details>
     validations:
       required: true
-
-  - type: textarea
-    id: osVersion
-    attributes:
-      label: OS version
-      value: |
-        <details>
-
-        ```console
-        # On Linux:
-        $ cat /etc/os-release
-        # paste output here
-        $ uname -a
-        # paste output here
-
-        # On Windows:
-        C:\> wmic os get Caption, Version, BuildNumber, OSArchitecture
-        # paste output here
-        ```
-
-        </details>
-

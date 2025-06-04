@@ -1,4 +1,4 @@
-name: Enhancement Tracking Issue
+name: Enhancement/feature
 description: Provide supporting details for a feature in development
 labels: kind/feature
 body:
@@ -8,7 +8,8 @@ body:
       label: What would you like to be added?
       description: |
         Feature requests are unlikely to make progress as issues.
-        A proposal that works through the design along with the implications of the change can be opened as a KEP.
+        Initial discussion and ideas can happen on an issue.
+        But significant changes or features must be proposed as a [Helm Improvement Proposal](https://github.com/helm/community/blob/main/hips/hip-0001.md) (HIP)
     validations:
       required: true
 
