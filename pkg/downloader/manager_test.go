@@ -166,9 +166,7 @@ func TestGetRepoNames(t *testing.T) {
 			req: []*chart.Dependency{
 				{Name: "oedipus-rex", Repository: "http://example.com/test"},
 			},
-			expect: map[string]string{
-				expectedKey("oedipus-rex", "http://example.com/test", 0): "http://example.com/test",
-			},
+			expect: map[string]string{},
 		},
 		{
 			name: "no repo definition failure -- stable repo",
@@ -225,12 +223,11 @@ func TestGetRepoNames(t *testing.T) {
 		{
 			name: "multiple dependencies with same name but different repos",
 			req: []*chart.Dependency{
-				{Name: "common-chart", Repository: "http://example.com"},
-				{Name: "common-chart", Repository: "http://other.com"},
+				{Name: "common-chart", Repository: "http://example.com"}, // Known repo
+				{Name: "common-chart", Repository: "http://other.com"},   // Unknown repo
 			},
 			expect: map[string]string{
 				expectedKey("common-chart", "http://example.com", 0): "testing",
-				expectedKey("common-chart", "http://other.com", 1):   "http://other.com",
 			},
 		},
 	}

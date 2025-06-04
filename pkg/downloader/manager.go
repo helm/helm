@@ -617,11 +617,9 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 		}
 		if !found {
 			repository := dd.Repository
-			// Add if URL
+			// Check if it's a valid URL
 			_, err := url.ParseRequestURI(repository)
 			if err == nil {
-				depKey := resolver.DependencyKey(dd.Name, repository, i)
-				reposMap[depKey] = repository
 				continue
 			}
 			missing = append(missing, repository)
