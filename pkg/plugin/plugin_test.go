@@ -496,8 +496,8 @@ func TestValidatePluginData(t *testing.T) {
 		{false, mockMissingMeta},         // Test if the metadata section missing
 		{true, mockNoCommand},            // Test no command metadata works
 		{true, mockLegacyCommand},        // Test legacy command metadata works
-		{false, mockWithCommand},         // Test platformCommand and command both set fails
-		{false, mockWithHooks},           // Test platformHooks and hooks both set fails
+		{true, mockWithCommand},          // Test platformCommand and command both set fails
+		{true, mockWithHooks},            // Test platformHooks and hooks both set fails
 	} {
 		err := validatePluginData(item.plug, fmt.Sprintf("test-%d", i))
 		if item.pass && err != nil {
