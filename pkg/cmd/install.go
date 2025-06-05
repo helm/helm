@@ -232,7 +232,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	AddWaitFlag(cmd, &client.WaitStrategy)
-	cmd.MarkFlagsMutuallyExclusive("force-recreate", "force-conflicts")
+	cmd.MarkFlagsMutuallyExclusive("force-replace", "force-conflicts")
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		requiredArgs := 2

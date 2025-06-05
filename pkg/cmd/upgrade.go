@@ -299,7 +299,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 	AddWaitFlag(cmd, &client.WaitStrategy)
-	cmd.MarkFlagsMutuallyExclusive("force-recreate", "force-conflicts")
+	cmd.MarkFlagsMutuallyExclusive("force-replace", "force-conflicts")
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) != 2 {

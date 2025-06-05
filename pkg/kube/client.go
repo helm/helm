@@ -195,7 +195,9 @@ func (c *Client) IsReachable() error {
 	return nil
 }
 
-type resourceInfoOperation func(*resource.Info) error
+// perform an operation on a resource (from original to target state)
+// `original` may be nil in the case of a create operation
+type resourceOperation func(original *resource.Info, target *resource.Info) error
 
 type clientCreateOptions struct {
 	serverSideApply bool
@@ -248,13 +250,14 @@ func (c *Client) Create(resources ResourceList, options ...ClientCreateOption) (
 		o(&createOptions)
 	}
 
-	makeApplyFunc := func() resourceInfoOperation {
+	makeApplyFunc := func() resourceOperation {
 		if createOptions.serverSideApply {
 			return func(info *resource.Info) error {
 				return patchResource(info, createOptions.dryRun, createOptions.forceConflicts, metav1.FieldValidationStrict)
 			}
 		}
 
+		panic("booyah")
 		return createResource
 	}
 
@@ -458,7 +461,7 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 	return result, scrubValidationError(err)
 }
 
-func (c *Client) update(original, target ResourceList, forceReplace, threeWayMerge bool) (*Result, error) {
+func (c *Client) update(original, target ResourceList, forceReplace, threeWayMerge, serverSideApply bool) (*Result, error) {
 	updateErrors := []error{}
 	res := &Result{}
 
@@ -494,16 +497,24 @@ func (c *Client) update(original, target ResourceList, forceReplace, threeWayMer
 		}
 
 		if forceReplace {
-			if err := replaceResource(info, originalInfo.Object); err != nil {
+			if err := replaceResource(info); err != nil {
 				slog.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 				updateErrors = append(updateErrors, err)
+			} else {
+				originalObject := originalInfo.Object
+				kind := info.Mapping.GroupVersionKind.Kind
+				slog.Debug("replace succeeded", "name", info.Name, "initialKind", originalObject.GetObjectKind().GroupVersionKind().Kind, "kind", kind)
 			}
+
+		} else if serverSideApply {
+			patchResource(info, createOptions.dryRun, forceConflicts, metav1.FieldValidationStrict)
 		} else {
 			if err := updateResource(info, originalInfo.Object, threeWayMerge); err != nil {
 				slog.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 				updateErrors = append(updateErrors, err)
 			}
 		}
+
 		// Because we check for errors later, append the info regardless
 		res.Updated = append(res.Updated, info)
 
@@ -611,14 +622,44 @@ func (c *Client) Update(original, target ResourceList, options ...ClientUpdateOp
 	}
 
 	if updateOptions.threeWayMerge && updateOptions.serverSideApply {
-		return nil, fmt.Errorf("")
+		return nil, fmt.Errorf("invalid operation: cannot use three-way merge and server-side apply together")
 	}
 
 	if updateOptions.forceConflicts && updateOptions.forceReplace {
-		return nil, fmt.Errorf("")
+		return nil, fmt.Errorf("invalid operation: cannot use force conflicts and force replace together")
 	}
 
-	return c.update(original, target, updateOptions.forceReplace, updateOptions.threeWayMerge)
+	//type updateApplier struct {
+	//	updateErrors []error
+	//	updateFunc resourceOperation
+	//}
+
+	//func (u *updateApplier) Apply(current *resource.Info, target *resource.Info)
+
+	makeUpdateApplyFunc := func() resourceOperation {
+
+		if updateOptions.forceReplace {
+			return func(original *resource.Info, target *resource.Info) error {
+				if err := replaceResource(target); err != nil {
+					slog.Debug("error updating the resource", "namespace", original.Namespace, "name", original.Name, "kind", original.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+					return err
+				}
+
+				originalObject := original.Object
+				kind := target.Mapping.GroupVersionKind.Kind
+				slog.Debug("replace succeeded", "name", original.Name, "initialKind", originalObject.GetObjectKind().GroupVersionKind().Kind, "kind", kind)
+			}
+		} else if updateOptions.serverSideApply {
+			return func(original *resource.Info, target *resource.Info) error {
+				return patchResource(target, updateOptions.dryRun, updateOptions.forceConflicts, metav1.FieldValidationStrict)
+			}
+		}
+
+		panic("booyah")
+		return updateResource
+	}
+
+	return c.update(original, target, makeUdpateApplyFunc())
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
@@ -796,7 +837,7 @@ func createPatch(target *resource.Info, current runtime.Object, threeWayMergeFor
 	return patch, types.StrategicMergePatchType, err
 }
 
-func replaceResource(target *resource.Info, currentObj runtime.Object) error {
+func replaceResource(target *resource.Info) error {
 
 	helper := resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
 
@@ -805,28 +846,22 @@ func replaceResource(target *resource.Info, currentObj runtime.Object) error {
 		return fmt.Errorf("failed to replace object: %w", err)
 	}
 
-	kind := target.Mapping.GroupVersionKind.Kind
-	slog.Debug("replace succeeded", "name", target.Name, "initialKind", currentObj.GetObjectKind().GroupVersionKind().Kind, "kind", kind)
-
-	target.Refresh(obj, true)
+	if err := target.Refresh(obj, true); err != nil {
+		return fmt.Errorf("failed to refresh object after replace: %w", err)
+	}
 
 	return nil
 
 }
 
-func updateResource(target *resource.Info, currentObj runtime.Object, threeWayMergeForUnstructured bool) error {
-	var (
-		obj    runtime.Object
-		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
-		kind   = target.Mapping.GroupVersionKind.Kind
-	)
+func updateResourceThreeWayMerge(target *resource.Info, currentObj runtime.Object, threeWayMergeForUnstructured bool) error {
 
-	// if --force is applied, attempt to replace the existing resource with the new object.
 	patch, patchType, err := createPatch(target, currentObj, threeWayMergeForUnstructured)
 	if err != nil {
 		return fmt.Errorf("failed to create patch: %w", err)
 	}
 
+	kind := target.Mapping.GroupVersionKind.Kind
 	if patch == nil || string(patch) == "{}" {
 		slog.Debug("no changes detected", "kind", kind, "name", target.Name)
 		// This needs to happen to make sure that Helm has the latest info from the API
@@ -836,9 +871,11 @@ func updateResource(target *resource.Info, currentObj runtime.Object, threeWayMe
 		}
 		return nil
 	}
+
 	// send patch to server
 	slog.Debug("patching resource", "kind", kind, "name", target.Name, "namespace", target.Namespace)
-	obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
+	helper := resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
+	obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 	if err != nil {
 		return fmt.Errorf("cannot patch %q with kind %s: %w", target.Name, kind, err)
 	}
