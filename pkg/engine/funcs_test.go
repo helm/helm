@@ -22,10 +22,11 @@ import (
 	"text/template"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFuncs(t *testing.T) {
-	//TODO write tests for failure cases
+	// TODO write tests for failure cases
 	tests := []struct {
 		tpl, expect string
 		vars        interface{}
@@ -132,7 +133,7 @@ keyInElement1 = "valueInElement1"`,
 	for _, tt := range tests {
 		var b strings.Builder
 		err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, tt.expect, b.String(), tt.tpl)
 	}
 
@@ -166,7 +167,7 @@ keyInElement1 = "valueInElement1"`,
 		var b strings.Builder
 		err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars)
 		if tt.expect != nil {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expect, b.String(), tt.tpl)
 		} else {
 			assert.Error(t, err)
@@ -221,7 +222,7 @@ func TestMerge(t *testing.T) {
 	tpl := `{{merge .dst .src1 .src2}}`
 	var b strings.Builder
 	err := template.Must(template.New("test").Funcs(funcMap()).Parse(tpl)).Execute(&b, dict)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expected := map[string]interface{}{
 		"a": "one", // key overridden

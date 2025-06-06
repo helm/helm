@@ -37,11 +37,12 @@ fi
 
 func TestGetFullPath(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	t.Run("full path resolves correctly", func(t *testing.T) {
 		testpath := setupTestingScript(t)
 
 		fullPath, err := getFullPath(testpath)
-		is.NoError(err)
+		req.NoError(err)
 		is.Equal(testpath, fullPath)
 	})
 
@@ -53,7 +54,7 @@ func TestGetFullPath(t *testing.T) {
 		relative, err := filepath.Rel(currentDir, testpath)
 		require.NoError(t, err)
 		fullPath, err := getFullPath(relative)
-		is.NoError(err)
+		req.NoError(err)
 		is.Equal(testpath, fullPath)
 	})
 
@@ -63,7 +64,7 @@ func TestGetFullPath(t *testing.T) {
 		t.Setenv("PATH", filepath.Dir(testpath))
 
 		fullPath, err := getFullPath(filepath.Base(testpath))
-		is.NoError(err)
+		req.NoError(err)
 		is.Equal(testpath, fullPath)
 	})
 
@@ -107,13 +108,14 @@ func TestExecRun(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 	is := assert.New(t)
+	req := require.New(t)
 	testpath := setupTestingScript(t)
 
 	renderer, err := NewExec(testpath)
 	require.NoError(t, err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
-	is.NoError(err)
+	req.NoError(err)
 	is.Contains(output.String(), "BARTEST")
 }
 
@@ -138,13 +140,14 @@ func TestNewExecWithOneArgsRun(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 	is := assert.New(t)
+	req := require.New(t)
 	testpath := setupTestingScript(t)
 
 	renderer, err := NewExec(testpath, "ARG1")
 	require.NoError(t, err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
-	is.NoError(err)
+	req.NoError(err)
 	is.Contains(output.String(), "ARG1")
 }
 
@@ -154,13 +157,14 @@ func TestNewExecWithTwoArgsRun(t *testing.T) {
 		t.Skip("skipping on windows")
 	}
 	is := assert.New(t)
+	req := require.New(t)
 	testpath := setupTestingScript(t)
 
 	renderer, err := NewExec(testpath, "ARG1", "ARG2")
 	require.NoError(t, err)
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
-	is.NoError(err)
+	req.NoError(err)
 	is.Contains(output.String(), "ARG1 ARG2")
 }
 
