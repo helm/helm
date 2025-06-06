@@ -31,25 +31,8 @@ type fallbackTransport struct {
 	forceHTTP atomic.Bool
 }
 
-func newTransport() *fallbackTransport {
-	type cloner[T any] interface {
-		Clone() T
-	}
-	// try to copy (clone) the http.DefaultTransport so any mutations we
-	// perform on it (e.g. TLS config) are not reflected globally
-	// follow https://github.com/golang/go/issues/39299 for a more elegant
-	// solution in the future
-	baseTransport := http.DefaultTransport
-	if t, ok := baseTransport.(cloner[*http.Transport]); ok {
-		baseTransport = t.Clone()
-	} else if t, ok := baseTransport.(cloner[http.RoundTripper]); ok {
-		// this branch will not be used with go 1.20, it was added
-		// optimistically to try to clone if the http.DefaultTransport
-		// implementation changes, still the Clone method in that case
-		// might not return http.RoundTripper...
-		baseTransport = t.Clone()
-	}
-
+func newTransport(debug bool) *fallbackTransport {
+	baseTransport := NewTransport(debug)
 	return &fallbackTransport{
 		Base: baseTransport,
 	}
