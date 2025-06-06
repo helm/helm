@@ -501,7 +501,7 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 
 	var ru []*repo.Entry
 
-	for _, dd := range deps {
+	for i, dd := range deps {
 
 		// If the chart is in the local charts directory no repository needs
 		// to be specified.
@@ -510,7 +510,8 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 		}
 
 		// When the repoName for a dependency is known we can skip ensuring
-		if _, ok := repoNames[dd.Name]; ok {
+		depKey := resolver.DependencyKey(dd.Name, dd.Repository, i)
+		if _, ok := repoNames[depKey]; ok {
 			continue
 		}
 
@@ -526,7 +527,7 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 		}
 		rn = managerKeyPrefix + rn
 
-		repoNames[dd.Name] = rn
+		repoNames[depKey] = rn
 
 		// Assuming the repository is generally available. For Helm managed
 		// access controls the repository needs to be added through the user
@@ -571,7 +572,7 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 	// Verify that all repositories referenced in the deps are actually known
 	// by Helm.
 	missing := []string{}
-	for _, dd := range deps {
+	for i, dd := range deps {
 		// Don't map the repository, we don't need to download chart from charts directory
 		if dd.Repository == "" {
 			continue
@@ -585,12 +586,15 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Repository from local path: %s\n", dd.Repository)
 			}
-			reposMap[dd.Name] = dd.Repository
+			// Use composite key for unique identification
+			depKey := resolver.DependencyKey(dd.Name, dd.Repository, i)
+			reposMap[depKey] = dd.Repository
 			continue
 		}
 
 		if registry.IsOCI(dd.Repository) {
-			reposMap[dd.Name] = dd.Repository
+			depKey := resolver.DependencyKey(dd.Name, dd.Repository, i)
+			reposMap[depKey] = dd.Repository
 			continue
 		}
 
@@ -601,20 +605,21 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 				(strings.HasPrefix(dd.Repository, "alias:") && strings.TrimPrefix(dd.Repository, "alias:") == repo.Name) {
 				found = true
 				dd.Repository = repo.URL
-				reposMap[dd.Name] = repo.Name
+				depKey := resolver.DependencyKey(dd.Name, dd.Repository, i)
+				reposMap[depKey] = repo.Name
 				break
 			} else if urlutil.Equal(repo.URL, dd.Repository) {
 				found = true
-				reposMap[dd.Name] = repo.Name
+				depKey := resolver.DependencyKey(dd.Name, dd.Repository, i)
+				reposMap[depKey] = repo.Name
 				break
 			}
 		}
 		if !found {
 			repository := dd.Repository
-			// Add if URL
+			// Check if it's a valid URL
 			_, err := url.ParseRequestURI(repository)
 			if err == nil {
-				reposMap[repository] = repository
 				continue
 			}
 			missing = append(missing, repository)
