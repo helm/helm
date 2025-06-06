@@ -16,6 +16,7 @@ limitations under the License.
 package strvals
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -296,7 +297,7 @@ func TestParseLiteral(t *testing.T) {
 			t.Fatalf("Error serializing parsed value: %s", err)
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.str, y1, y2)
 		}
 	}
@@ -409,7 +410,7 @@ func TestParseLiteralInto(t *testing.T) {
 			t.Fatalf("Error serializing parsed value: %s", err)
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.input, y1, y2)
 		}
 	}
@@ -421,7 +422,7 @@ func TestParseLiteralNestedLevels(t *testing.T) {
 	for i := 1; i <= MaxNestedNameLevel+2; i++ {
 		tmpStr := fmt.Sprintf("name%d", i)
 		if i <= MaxNestedNameLevel+1 {
-			tmpStr = tmpStr + "."
+			tmpStr += "."
 		}
 		keyMultipleNestedLevels += tmpStr
 	}
@@ -473,7 +474,7 @@ func TestParseLiteralNestedLevels(t *testing.T) {
 			t.Fatalf("Error serializing parsed value: %s", err)
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.str, y1, y2)
 		}
 	}

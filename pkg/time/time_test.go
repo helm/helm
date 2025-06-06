@@ -39,7 +39,7 @@ func givenTime(t *testing.T) Time {
 
 func TestDate(t *testing.T) {
 	testingTime := givenTime(t)
-	got := Date(1977, 9, 2, 22, 04, 05, 0, time.UTC)
+	got := Date(1977, 9, 2, 22, 4, 5, 0, time.UTC)
 	assert.Equal(t, timeString, got.String())
 	assert.True(t, testingTime.Equal(got))
 	assert.True(t, got.Equal(testingTime))

@@ -220,7 +220,7 @@ func TestPullCmd(t *testing.T) {
 			}
 			if tt.existDir != "" {
 				file := filepath.Join(outdir, tt.existDir)
-				err := os.Mkdir(file, 0755)
+				err := os.Mkdir(file, 0o755)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -331,7 +331,7 @@ func TestPullWithCredentialsCmd(t *testing.T) {
 			}
 			if tt.existDir != "" {
 				file := filepath.Join(outdir, tt.existDir)
-				err := os.Mkdir(file, 0755)
+				err := os.Mkdir(file, 0o755)
 				if err != nil {
 					t.Fatal(err)
 				}
