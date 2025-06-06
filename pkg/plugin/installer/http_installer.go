@@ -31,8 +31,8 @@ import (
 	"strings"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
+	cp "github.com/otiai10/copy"
 
-	"helm.sh/helm/v4/internal/third_party/dep/fs"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
@@ -148,7 +148,7 @@ func (i *HTTPInstaller) Install() error {
 	}
 
 	slog.Debug("copying", "source", src, "path", i.Path())
-	return fs.CopyDir(src, i.Path())
+	return cp.Copy(src, i.Path())
 }
 
 // Update updates a local repository
