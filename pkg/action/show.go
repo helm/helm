@@ -95,6 +95,17 @@ func (s *Show) Run(chartpath string) (string, error) {
 	var out strings.Builder
 	if s.OutputFormat == ShowChart || s.OutputFormat == ShowAll {
 		fmt.Fprintf(&out, "%s\n", cf)
+
+		// Display OCI annotations if they exist
+		if s.chart.Metadata != nil && len(s.chart.Metadata.Annotations) > 0 {
+			fmt.Fprintln(&out, "---")
+			fmt.Fprintln(&out, "Annotations:")
+			for k, v := range s.chart.Metadata.Annotations {
+				if strings.HasPrefix(k, "org.opencontainers.image.") {
+					fmt.Fprintf(&out, "  %s: %s\n", k, v)
+				}
+			}
+		}
 	}
 
 	if (s.OutputFormat == ShowValues || s.OutputFormat == ShowAll) && s.chart.Values != nil {
