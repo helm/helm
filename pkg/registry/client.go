@@ -156,6 +156,8 @@ func NewClient(options ...ClientOption) (*Client, error) {
 			authorizer.Cache = auth.NewCache()
 		}
 
+		authorizer.ForceAttemptOAuth2 = true
+
 		client.authorizer = &authorizer
 	}
 
