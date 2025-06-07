@@ -153,7 +153,7 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 		if err != nil {
 			return fmt.Errorf("unable to build kubernetes object for deleting hook %s: %w", h.Path, err)
 		}
-		_, errs := cfg.KubeClient.Delete(resources)
+		_, errs := cfg.KubeClient.Delete(resources, metav1.DeletePropagationBackground)
 		if len(errs) > 0 {
 			return joinErrors(errs, "; ")
 		}

@@ -49,7 +49,7 @@ func (p *PrintingKubeClient) IsReachable() error {
 }
 
 // Create prints the values of what would be created with a real KubeClient.
-func (p *PrintingKubeClient) Create(resources kube.ResourceList) (*kube.Result, error) {
+func (p *PrintingKubeClient) Create(resources kube.ResourceList, _ ...kube.ClientCreateOption) (*kube.Result, error) {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	if err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func (p *PrintingKubeWaiter) WatchUntilReady(resources kube.ResourceList, _ time
 // Delete implements KubeClient delete.
 //
 // It only prints out the content to be deleted.
-func (p *PrintingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, []error) {
+func (p *PrintingKubeClient) Delete(resources kube.ResourceList, _ metav1.DeletionPropagation) (*kube.Result, []error) {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	if err != nil {
 		return nil, []error{err}
@@ -98,7 +98,7 @@ func (p *PrintingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, 
 }
 
 // Update implements KubeClient Update.
-func (p *PrintingKubeClient) Update(_, modified kube.ResourceList, _ bool) (*kube.Result, error) {
+func (p *PrintingKubeClient) Update(_, modified kube.ResourceList, options ...kube.ClientUpdateOption) (*kube.Result, error) {
 	_, err := io.Copy(p.Out, bufferize(modified))
 	if err != nil {
 		return nil, err
@@ -133,17 +133,6 @@ func (p *PrintingKubeClient) GetPodList(_ string, _ metav1.ListOptions) (*v1.Pod
 func (p *PrintingKubeClient) OutputContainerLogsForPodList(_ *v1.PodList, someNamespace string, _ func(namespace, pod, container string) io.Writer) error {
 	_, err := io.Copy(p.LogOutput, strings.NewReader(fmt.Sprintf("attempted to output logs for namespace: %s", someNamespace)))
 	return err
-}
-
-// DeleteWithPropagationPolicy implements KubeClient delete.
-//
-// It only prints out the content to be deleted.
-func (p *PrintingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceList, _ metav1.DeletionPropagation) (*kube.Result, []error) {
-	_, err := io.Copy(p.Out, bufferize(resources))
-	if err != nil {
-		return nil, []error{err}
-	}
-	return &kube.Result{Deleted: resources}, nil
 }
 
 func (p *PrintingKubeClient) GetWaiter(_ kube.WaitStrategy) (kube.Waiter, error) {

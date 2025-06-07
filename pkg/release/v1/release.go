@@ -42,10 +42,23 @@ type Release struct {
 	// Labels of the release.
 	// Disabled encoding into Json cause labels are stored in storage driver metadata field.
 	Labels map[string]string `json:"-"`
+	// ApplyMethod stores whether server-side or client-side apply was used for the release
+	// Unset (nil) is the default client-side apply
+	ApplyMethod *string `json:"apply_method,omitempty"` // "ssa" | "csa"
 }
+
+type ApplyMethod string
+
+const ApplyMethodClientSideApply ApplyMethod = "csa"
+const ApplyMethodServerSideApply ApplyMethod = "ssa"
 
 // SetStatus is a helper for setting the status on a release.
 func (r *Release) SetStatus(status Status, msg string) {
 	r.Info.Status = status
 	r.Info.Description = msg
+}
+
+func (r *Release) SetApplyMethod(applyMethod ApplyMethod) {
+	applyMethodString := string(applyMethod)
+	r.ApplyMethod = &applyMethodString
 }
