@@ -38,11 +38,19 @@ body:
     validations:
       required: true
 
-
   - type: textarea
-    id: additional
+    id: helmVersion
     attributes:
-      label: Anything else we need to know?
+      label: Helm version
+      value: |
+        <details>
+        ```console
+        $ helm version
+        # paste output here
+        ```
+        </details>
+    validations:
+      required: true
 
   - type: textarea
     id: kubeVersion
