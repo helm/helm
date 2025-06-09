@@ -22,8 +22,22 @@ body:
     id: repro
     attributes:
       label: How can we reproduce it (as minimally and precisely as possible)?
+      description: |
+        Please list steps someone can follow to trigger the issue.
+        
+        For example:
+        1. Run `helm install mychart ./path-to-chart -f values.yaml`
+        2. Observe the following error: ...
+
+        You can include:
+        - a sample `values.yaml` block
+        - a link to a chart
+        - specific `helm` commands used
+
+        This helps others reproduce and debug your issue more effectively.
     validations:
       required: true
+
 
   - type: textarea
     id: additional
@@ -41,17 +55,6 @@ body:
         $ kubectl version
         # paste output here
         ```
-
-        </details>
-    validations:
-      required: true
-
-  - type: textarea
-    id: cloudProvider
-    attributes:
-      label: Cloud provider/platform (AKS, GKE, Minikube etc.)
-      value: |
-        <details>
 
         </details>
     validations:
