@@ -91,6 +91,19 @@ type Configuration struct {
 	mutex sync.Mutex
 }
 
+// postRenderReleaseHook render the manifests of release hooks with postrender.PostRenderer
+func postRenderHookManifests(hs []*release.Hook, pr postrender.PostRenderer) error {
+
+	for _, hook := range hs {
+		sb, err := pr.Run(bytes.NewBufferString(hook.Manifest))
+		if err != nil {
+			return errors.Wrapf(err, "error while running postRender on hook: %s, which is path: %s and kind: %s", hook.Name, hook.Path, hook.Kind)
+		}
+		hook.Manifest = sb.String()
+	}
+	return nil
+}
+
 // renderResources renders the templates in a chart
 //
 // TODO: This function is badly in need of a refactor.
@@ -224,6 +237,11 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		b, err = pr.Run(b)
 		if err != nil {
 			return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
+		}
+
+		err = postRenderHookManifests(hs, pr)
+		if err != nil {
+			return hs, b, notes, err
 		}
 	}
 
