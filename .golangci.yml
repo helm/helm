@@ -67,5 +67,3 @@ linters:
 
 run:
   timeout: 10m
-
-version: "2"
