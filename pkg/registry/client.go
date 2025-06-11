@@ -106,9 +106,9 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
 	}
 	if client.httpClient == nil {
-		transport := newTransport()
+		transport := newTransport(client.debug)
 		client.httpClient = &http.Client{
-			Transport: retry.NewTransport(transport),
+			Transport: transport,
 		}
 	}
 
@@ -357,14 +357,19 @@ func ensureTLSConfig(client *auth.Client) (*tls.Config, error) {
 	switch t := client.Client.Transport.(type) {
 	case *http.Transport:
 		transport = t
-	case *retry.Transport:
+	case *fallbackTransport:
 		switch t := t.Base.(type) {
 		case *http.Transport:
 			transport = t
-		case *fallbackTransport:
+		case *retry.Transport:
 			switch t := t.Base.(type) {
 			case *http.Transport:
 				transport = t
+			case *LoggingTransport:
+				switch t := t.RoundTripper.(type) {
+				case *http.Transport:
+					transport = t
+				}
 			}
 		}
 	}
