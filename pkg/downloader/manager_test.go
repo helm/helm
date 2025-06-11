@@ -298,6 +298,24 @@ version: 0.1.0`
 	if err == nil {
 		t.Fatal("Expected error for bad dependency name")
 	}
+
+	remoteDep := &chart.Dependency{
+		Name:       "sub",
+		Repository: "oci://remote",
+		Version:    "0.0.1",
+	}
+
+	// create a 'tmpcharts' directory to test #30710
+	if err := os.MkdirAll(filepath.Join(chartPath, "charts", "sub"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	err = m.downloadAll([]*chart.Dependency{remoteDep})
+	if err == nil {
+		t.Fatal("Expected error as subchart already exist")
+	}
+	if err.Error() != "dependency conflict detected: A subchart named 'sub' already exists in charts/ directory" {
+		t.Fatal("Download should failed with conflict issue")
+	}
 }
 
 func TestUpdateBeforeBuild(t *testing.T) {

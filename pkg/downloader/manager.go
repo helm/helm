@@ -271,11 +271,11 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	var saveError error
 	churls := make(map[string]struct{})
 	for _, dep := range deps {
+		chartPath := filepath.Join(destPath, dep.Name)
 		// No repository means the chart is in charts directory
 		if dep.Repository == "" {
 			fmt.Fprintf(m.Out, "Dependency %s did not declare a repository. Assuming it exists in the charts directory\n", dep.Name)
 			// NOTE: we are only validating the local dependency conforms to the constraints. No copying to tmpPath is necessary.
-			chartPath := filepath.Join(destPath, dep.Name)
 			ch, err := loader.LoadDir(chartPath)
 			if err != nil {
 				return fmt.Errorf("unable to load chart '%s': %v", chartPath, err)
@@ -297,6 +297,13 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			}
 			continue
 		}
+
+		// Check if subchart already exist before downloading tarball.
+		// https://github.com/helm/helm/issues/30710
+		if _, err := os.Stat(chartPath); !os.IsNotExist(err) {
+			return fmt.Errorf("dependency conflict detected: A subchart named '%s' already exists in charts/ directory", dep.Name)
+		}
+
 		if strings.HasPrefix(dep.Repository, "file://") {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
