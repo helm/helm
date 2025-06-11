@@ -13,18 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
+package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Masterminds/vcs"
 
-	"helm.sh/helm/v3/internal/test/ensure"
-	"helm.sh/helm/v3/pkg/helmpath"
+	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 var _ Installer = new(VCSInstaller)
@@ -119,6 +120,8 @@ func TestVCSInstallerNonExistentVersion(t *testing.T) {
 
 	if err := Install(i); err == nil {
 		t.Fatalf("expected error for version does not exists, got none")
+	} else if strings.Contains(err.Error(), "Could not resolve host: github.com") {
+		t.Skip("Unable to run test without Internet access")
 	} else if err.Error() != fmt.Sprintf("requested version %q does not exist for plugin %q", version, source) {
 		t.Fatalf("expected error for version does not exists, got (%v)", err)
 	}
@@ -146,7 +149,11 @@ func TestVCSInstallerUpdate(t *testing.T) {
 
 	// Install plugin before update
 	if err := Install(i); err != nil {
-		t.Fatal(err)
+		if strings.Contains(err.Error(), "Could not resolve host: github.com") {
+			t.Skip("Unable to run test without Internet access")
+		} else {
+			t.Fatal(err)
+		}
 	}
 
 	// Test FindSource method for positive result

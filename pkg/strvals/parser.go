@@ -18,13 +18,13 @@ package strvals
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 	"unicode"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 )
 
@@ -189,14 +189,14 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 			if len(k) == 0 {
 				return err
 			}
-			return errors.Errorf("key %q has no value", string(k))
+			return fmt.Errorf("key %q has no value", string(k))
 			//set(data, string(k), "")
 			//return err
 		case last == '[':
 			// We are in a list index context, so we need to set an index.
 			i, err := t.keyIndex()
 			if err != nil {
-				return errors.Wrap(err, "error parsing index")
+				return fmt.Errorf("error parsing index: %w", err)
 			}
 			kk := string(k)
 			// Find or create target list
@@ -261,7 +261,7 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 		case last == ',':
 			// No value given. Set the value to empty string. Return error.
 			set(data, string(k), "")
-			return errors.Errorf("key %q has no value (cannot end with ,)", string(k))
+			return fmt.Errorf("key %q has no value (cannot end with ,)", string(k))
 		case last == '.':
 			// Check value name is within the maximum nested name level
 			nestedNameLevel++
@@ -278,7 +278,7 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 			// Recurse
 			e := t.key(inner, nestedNameLevel)
 			if e == nil && len(inner) == 0 {
-				return errors.Errorf("key map %q has no value", string(k))
+				return fmt.Errorf("key map %q has no value", string(k))
 			}
 			if len(inner) != 0 {
 				set(data, string(k), inner)
@@ -332,6 +332,7 @@ func (t *parser) keyIndex() (int, error) {
 	return strconv.Atoi(string(v))
 
 }
+
 func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interface{}, error) {
 	if i < 0 {
 		return list, fmt.Errorf("negative %d index not allowed", i)
@@ -339,7 +340,7 @@ func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interfa
 	stop := runeSet([]rune{'[', '.', '='})
 	switch k, last, err := runesUntil(t.sc, stop); {
 	case len(k) > 0:
-		return list, errors.Errorf("unexpected data at end of array index: %q", k)
+		return list, fmt.Errorf("unexpected data at end of array index: %q", k)
 	case err != nil:
 		return list, err
 	case last == '=':
@@ -394,7 +395,7 @@ func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interfa
 		// now we have a nested list. Read the index and handle.
 		nextI, err := t.keyIndex()
 		if err != nil {
-			return list, errors.Wrap(err, "error parsing index")
+			return list, fmt.Errorf("error parsing index: %w", err)
 		}
 		var crtList []interface{}
 		if len(list) > i {
@@ -430,7 +431,7 @@ func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interfa
 		}
 		return setIndex(list, i, inner)
 	default:
-		return nil, errors.Errorf("parse error: unexpected token %v", last)
+		return nil, fmt.Errorf("parse error: unexpected token %v", last)
 	}
 }
 

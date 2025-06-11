@@ -197,7 +197,7 @@ func TestWriteFile(t *testing.T) {
 		},
 	)
 
-	file, err := os.CreateTemp("", "helm-repo")
+	file, err := os.CreateTemp(t.TempDir(), "helm-repo")
 	if err != nil {
 		t.Errorf("failed to create test-file (%v)", err)
 	}

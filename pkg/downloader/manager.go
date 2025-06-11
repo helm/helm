@@ -18,31 +18,31 @@ package downloader
 import (
 	"crypto"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
+	stdfs "io/fs"
 	"log"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/internal/resolver"
-	"helm.sh/helm/v3/internal/third_party/dep/fs"
-	"helm.sh/helm/v3/internal/urlutil"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/helmpath"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/internal/resolver"
+	"helm.sh/helm/v4/internal/third_party/dep/fs"
+	"helm.sh/helm/v4/internal/urlutil"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
 // ErrRepoNotFound indicates that chart repositories can't be found in local repo cache.
@@ -220,7 +220,7 @@ func (m *Manager) Update() error {
 
 func (m *Manager) loadChartDir() (*chart.Chart, error) {
 	if fi, err := os.Stat(m.ChartPath); err != nil {
-		return nil, errors.Wrapf(err, "could not find %s", m.ChartPath)
+		return nil, fmt.Errorf("could not find %s: %w", m.ChartPath, err)
 	} else if !fi.IsDir() {
 		return nil, errors.New("only unpacked charts can be updated")
 	}
@@ -251,9 +251,9 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	// Check if 'charts' directory is not actually a directory. If it does not exist, create it.
 	if fi, err := os.Stat(destPath); err == nil {
 		if !fi.IsDir() {
-			return errors.Errorf("%q is not a directory", destPath)
+			return fmt.Errorf("%q is not a directory", destPath)
 		}
-	} else if os.IsNotExist(err) {
+	} else if errors.Is(err, stdfs.ErrNotExist) {
 		if err := os.MkdirAll(destPath, 0755); err != nil {
 			return err
 		}
@@ -314,7 +314,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		// https://github.com/helm/helm/issues/1439
 		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
-			saveError = errors.Wrapf(err, "could not find %s", churl)
+			saveError = fmt.Errorf("could not find %s: %w", churl, err)
 			break
 		}
 
@@ -345,7 +345,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		if registry.IsOCI(churl) {
 			churl, version, err = parseOCIRef(churl)
 			if err != nil {
-				return errors.Wrapf(err, "could not parse OCI reference")
+				return fmt.Errorf("could not parse OCI reference: %w", err)
 			}
 			dl.Options = append(dl.Options,
 				getter.WithRegistryClient(m.RegistryClient),
@@ -353,7 +353,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		}
 
 		if _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
-			saveError = errors.Wrapf(err, "could not download %s", churl)
+			saveError = fmt.Errorf("could not download %s: %w", churl, err)
 			break
 		}
 
@@ -377,7 +377,7 @@ func parseOCIRef(chartRef string) (string, string, error) {
 	refTagRegexp := regexp.MustCompile(`^(oci://[^:]+(:[0-9]{1,5})?[^:]+):(.*)$`)
 	caps := refTagRegexp.FindStringSubmatch(chartRef)
 	if len(caps) != 4 {
-		return "", "", errors.Errorf("improperly formatted oci chart reference: %s", chartRef)
+		return "", "", fmt.Errorf("improperly formatted oci chart reference: %s", chartRef)
 	}
 	chartRef = caps[1]
 	tag := caps[3]
@@ -385,7 +385,7 @@ func parseOCIRef(chartRef string) (string, string, error) {
 	return chartRef, tag, nil
 }
 
-// safeMoveDep moves all dependencies in the source and moves them into dest.
+// safeMoveDeps moves all dependencies in the source and moves them into dest.
 //
 // It does this by first matching the file name to an expected pattern, then loading
 // the file to verify that it is a chart.
@@ -559,7 +559,7 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string, error) {
 	rf, err := loadRepoConfig(m.RepositoryConfig)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, stdfs.ErrNotExist) {
 			return make(map[string]string), nil
 		}
 		return nil, err
@@ -663,10 +663,28 @@ func (m *Manager) UpdateRepositories() error {
 	return nil
 }
 
+// Filter out duplicate repos by URL, including those with trailing slashes.
+func dedupeRepos(repos []*repo.Entry) []*repo.Entry {
+	seen := make(map[string]*repo.Entry)
+	for _, r := range repos {
+		// Normalize URL by removing trailing slashes.
+		seenURL := strings.TrimSuffix(r.URL, "/")
+		seen[seenURL] = r
+	}
+	var unique []*repo.Entry
+	for _, r := range seen {
+		unique = append(unique, r)
+	}
+	return unique
+}
+
 func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 
 	var wg sync.WaitGroup
-	for _, c := range repos {
+
+	localRepos := dedupeRepos(repos)
+
+	for _, c := range localRepos {
 		r, err := repo.NewChartRepository(c, m.Getters)
 		if err != nil {
 			return err
@@ -713,7 +731,6 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	}
 
 	for _, cr := range repos {
-
 		if urlutil.Equal(repoURL, cr.Config.URL) {
 			var entry repo.ChartVersions
 			entry, err = findEntryByName(name, cr)
@@ -730,7 +747,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 				//nolint:nakedret
 				return
 			}
-			url, err = normalizeURL(repoURL, ve.URLs[0])
+			url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
 			if err != nil {
 				//nolint:nakedret
 				return
@@ -746,11 +763,11 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			return
 		}
 	}
-	url, err = repo.FindChartInRepoURL(repoURL, name, version, certFile, keyFile, caFile, m.Getters)
+	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
 	if err == nil {
 		return url, username, password, false, false, "", "", "", err
 	}
-	err = errors.Errorf("chart %s not found in %s: %s", name, repoURL, err)
+	err = fmt.Errorf("chart %s not found in %s: %w", name, repoURL, err)
 	return url, username, password, false, false, "", "", "", err
 }
 
@@ -796,24 +813,6 @@ func versionEquals(v1, v2 string) bool {
 	return sv1.Equal(sv2)
 }
 
-func normalizeURL(baseURL, urlOrPath string) (string, error) {
-	u, err := url.Parse(urlOrPath)
-	if err != nil {
-		return urlOrPath, err
-	}
-	if u.IsAbs() {
-		return u.String(), nil
-	}
-	u2, err := url.Parse(baseURL)
-	if err != nil {
-		return urlOrPath, errors.Wrap(err, "base URL failed to parse")
-	}
-
-	u2.RawPath = path.Join(u2.RawPath, urlOrPath)
-	u2.Path = path.Join(u2.Path, urlOrPath)
-	return u2.String(), nil
-}
-
 // loadChartRepositories reads the repositories.yaml, and then builds a map of
 // ChartRepositories.
 //
@@ -824,7 +823,7 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 	// Load repositories.yaml file
 	rf, err := loadRepoConfig(m.RepositoryConfig)
 	if err != nil {
-		return indices, errors.Wrapf(err, "failed to load %s", m.RepositoryConfig)
+		return indices, fmt.Errorf("failed to load %s: %w", m.RepositoryConfig, err)
 	}
 
 	for _, re := range rf.Repositories {
@@ -862,7 +861,7 @@ func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 // archive a dep chart from local directory and save it into destPath
 func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, error) {
 	if !strings.HasPrefix(repo, "file://") {
-		return "", errors.Errorf("wrong format: chart %s repository %s", name, repo)
+		return "", fmt.Errorf("wrong format: chart %s repository %s", name, repo)
 	}
 
 	origPath, err := resolver.GetLocalPath(repo, chartpath)
@@ -877,7 +876,7 @@ func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, e
 
 	constraint, err := semver.NewConstraint(version)
 	if err != nil {
-		return "", errors.Wrapf(err, "dependency %s has an invalid version/constraint format", name)
+		return "", fmt.Errorf("dependency %s has an invalid version/constraint format: %w", name, err)
 	}
 
 	v, err := semver.NewVersion(ch.Metadata.Version)
@@ -890,7 +889,7 @@ func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, e
 		return ch.Metadata.Version, err
 	}
 
-	return "", errors.Errorf("can't get a valid version for dependency %s", name)
+	return "", fmt.Errorf("can't get a valid version for dependency %s", name)
 }
 
 // The prefix to use for cache keys created by the manager for repo names

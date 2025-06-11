@@ -34,7 +34,7 @@ const (
 	// phrase. Use `gpg --export-secret-keys helm-test` to export the secret.
 	testKeyfile = "testdata/helm-test-key.secret"
 
-	// testPasswordKeyFile is a keyfile with a password.
+	// testPasswordKeyfile is a keyfile with a password.
 	testPasswordKeyfile = "testdata/helm-password-key.secret"
 
 	// testPubfile is the public key file.
@@ -276,7 +276,7 @@ func TestDecodeSignature(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f, err := os.CreateTemp("", "helm-test-sig-")
+	f, err := os.CreateTemp(t.TempDir(), "helm-test-sig-")
 	if err != nil {
 		t.Fatal(err)
 	}
