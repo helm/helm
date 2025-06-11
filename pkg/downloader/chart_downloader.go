@@ -164,6 +164,10 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 	}
 
 	if registry.IsOCI(u.String()) {
+		if c.RegistryClient == nil {
+			return nil, fmt.Errorf("unable to resolve chart version for %s, missing registry client", ref)
+		}
+
 		return c.RegistryClient.ValidateReference(ref, version, u)
 	}
 

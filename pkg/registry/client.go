@@ -757,6 +757,7 @@ func (c *Client) Tags(ref string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	repository.PlainHTTP = c.plainHTTP
 	repository.Client = c.authorizer
 
