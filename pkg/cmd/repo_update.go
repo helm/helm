@@ -22,6 +22,7 @@ import (
 	"io"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -46,6 +47,7 @@ type repoUpdateOptions struct {
 	repoFile  string
 	repoCache string
 	names     []string
+	timeout   time.Duration
 }
 
 func newRepoUpdateCmd(out io.Writer) *cobra.Command {
@@ -67,6 +69,9 @@ func newRepoUpdateCmd(out io.Writer) *cobra.Command {
 			return o.run(out)
 		},
 	}
+
+	f := cmd.Flags()
+	f.DurationVar(&o.timeout, "timeout", getter.DefaultHTTPTimeout*time.Second, "time to wait for the index file download to complete")
 
 	return cmd
 }
@@ -94,7 +99,7 @@ func (o *repoUpdateOptions) run(out io.Writer) error {
 
 	for _, cfg := range f.Repositories {
 		if updateAllRepos || isRepoRequested(cfg.Name, o.names) {
-			r, err := repo.NewChartRepository(cfg, getter.All(settings))
+			r, err := repo.NewChartRepository(cfg, getter.All(settings, getter.WithTimeout(o.timeout)))
 			if err != nil {
 				return err
 			}

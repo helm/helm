@@ -17,6 +17,7 @@ package getter
 
 import (
 	"testing"
+	"time"
 
 	"helm.sh/helm/v4/pkg/cli"
 )
@@ -49,6 +50,23 @@ func TestProviders(t *testing.T) {
 
 	if _, err := ps.ByScheme("five"); err == nil {
 		t.Error("Did not expect handler for five")
+	}
+}
+
+func TestProvidersWithTimeout(t *testing.T) {
+	want := time.Hour
+	getters := Getters(WithTimeout(want))
+	getter, err := getters.ByScheme("http")
+	if err != nil {
+		t.Error(err)
+	}
+	client, err := getter.(*HTTPGetter).httpClient()
+	if err != nil {
+		t.Error(err)
+	}
+	got := client.Timeout
+	if got != want {
+		t.Errorf("Expected %q, got %q", want, got)
 	}
 }
 
