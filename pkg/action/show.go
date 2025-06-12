@@ -40,6 +40,8 @@ const (
 	ShowChart ShowOutputFormat = "chart"
 	// ShowValues is the format which only shows the chart's values
 	ShowValues ShowOutputFormat = "values"
+	// ShowSchema is the format which only shows the chart's schema values
+	ShowSchema ShowOutputFormat = "schema"
 	// ShowReadme is the format which only shows the chart's README
 	ShowReadme ShowOutputFormat = "readme"
 	// ShowCRDs is the format which only shows the chart's CRDs
@@ -135,6 +137,12 @@ func (s *Show) Run(chartpath string) (string, error) {
 			for _, crd := range crds {
 				fmt.Fprintf(&out, "%s\n", string(crd.File.Data))
 			}
+		}
+	}
+
+	if s.OutputFormat == ShowSchema {
+		if len(s.chart.Schema) != 0 {
+			fmt.Fprintf(&out, "%s\n", s.chart.Schema)
 		}
 	}
 	return out.String(), nil

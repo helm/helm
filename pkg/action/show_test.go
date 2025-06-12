@@ -22,6 +22,23 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
+var valuesSchema = `{
+			"$schema": "https://json-schema.org/draft-07/schema#",
+			"properties":{
+				"property1":{
+					"description": "desc1",
+					"properties":{
+						"subProp1":{"type": "string"},
+						"subProp2":{
+							"description": "desc2",
+							"type": "object"
+							}
+					},
+					"type": "object"
+				}
+			}
+	}`
+
 func TestShow(t *testing.T) {
 	config := actionConfigFixture(t)
 	client := NewShow(ShowAll, config)
@@ -91,6 +108,42 @@ func TestShowValuesByJsonPathFormat(t *testing.T) {
 		t.Fatal(err)
 	}
 	expect := "simpleValue"
+	if output != expect {
+		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
+	}
+}
+
+func TestShowNoSchema(t *testing.T) {
+	config := actionConfigFixture(t)
+	client := NewShow(ShowSchema, config)
+	client.chart = new(chart.Chart)
+	client.OutputFormat = ShowSchema
+	output, err := client.Run("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(output) != 0 {
+		t.Errorf("expected empty values buffer, got %s", output)
+	}
+}
+
+func withSampleSchema() chartOption {
+	return func(opts *chartOptions) {
+		opts.Schema = []byte(valuesSchema)
+	}
+}
+
+func TestShowSchema(t *testing.T) {
+	config := actionConfigFixture(t)
+	client := NewShow(ShowSchema, config)
+	client.chart = buildChart(withSampleSchema())
+	output, err := client.Run("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Like other `helm show` commands, output ends with a trailing newline
+	expect := valuesSchema + "\n"
 	if output != expect {
 		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
 	}

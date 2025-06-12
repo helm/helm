@@ -42,6 +42,11 @@ This command inspects a chart (directory, file, or URL) and displays the content
 of the values.yaml file
 `
 
+const showSchemaDesc = `
+This command inspects a chart (directory, file, or URL) and displays the contents
+of the values.schema.json file
+`
+
 const showChartDesc = `
 This command inspects a chart (directory, file, or URL) and displays the contents
 of the Chart.yaml file
@@ -118,6 +123,27 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
+	schemaSubCmd := &cobra.Command{
+		Use:               "schema [CHART]",
+		Short:             "show the chart's schema values",
+		Long:              showSchemaDesc,
+		Args:              require.ExactArgs(1),
+		ValidArgsFunction: validArgsFunc,
+		RunE: func(_ *cobra.Command, args []string) error {
+			client.OutputFormat = action.ShowSchema
+			err := addRegistryClient(client)
+			if err != nil {
+				return err
+			}
+			output, err := runShow(args, client)
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(out, output)
+			return nil
+		},
+	}
+
 	chartSubCmd := &cobra.Command{
 		Use:               "chart [CHART]",
 		Short:             "show the chart's definition",
@@ -181,7 +207,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	cmds := []*cobra.Command{all, readmeSubCmd, valuesSubCmd, chartSubCmd, crdsSubCmd}
+	cmds := []*cobra.Command{all, readmeSubCmd, valuesSubCmd, schemaSubCmd, chartSubCmd, crdsSubCmd}
 	for _, subCmd := range cmds {
 		addShowFlags(subCmd, client)
 		showCommand.AddCommand(subCmd)
