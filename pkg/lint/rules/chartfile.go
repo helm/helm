@@ -152,7 +152,7 @@ func validateChartVersion(cf *chart.Metadata) error {
 	valid, msg := c.Validate(version)
 
 	if !valid && len(msg) > 0 {
-		return fmt.Errorf("version %v", msg[0])
+		return fmt.Errorf("version %w", msg[0])
 	}
 
 	return nil

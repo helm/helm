@@ -22,6 +22,8 @@ import (
 	"os/exec"
 	"runtime"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestPluginExitCode(t *testing.T) {
@@ -57,11 +59,9 @@ func TestPluginExitCode(t *testing.T) {
 		cmd.Stdout = stdout
 		cmd.Stderr = stderr
 		err := cmd.Run()
-		exiterr, ok := err.(*exec.ExitError)
+		var exiterr *exec.ExitError
 
-		if !ok {
-			t.Fatalf("Unexpected error returned by os.Exit: %T", err)
-		}
+		require.ErrorAs(t, err, &exiterr, "Unexpected error returned by os.Exit: %T", err)
 
 		if stdout.String() != "" {
 			t.Errorf("Expected no write to stdout: Got %q", stdout.String())
