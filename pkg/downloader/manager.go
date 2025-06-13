@@ -162,6 +162,13 @@ func (m *Manager) Update() error {
 		return nil
 	}
 
+	// Check if there is already subchart in charts directory before downloading tarball.
+	// https://github.com/helm/helm/issues/30710
+	err = m.checkSubchartConflict(req)
+	if err != nil {
+		return fmt.Errorf("%s. Please remove the manually added subchart or exclude it from Chart.yaml dependencies", err.Error())
+	}
+
 	// Get the names of the repositories the dependencies need that Helm is
 	// configured to know about.
 	repoNames, err := m.resolveRepoNames(req)
@@ -296,12 +303,6 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				break
 			}
 			continue
-		}
-
-		// Check if subchart already exist before downloading tarball.
-		// https://github.com/helm/helm/issues/30710
-		if _, err := os.Stat(chartPath); !os.IsNotExist(err) {
-			return fmt.Errorf("dependency conflict detected: A subchart named '%s' already exists in charts/ directory", dep.Name)
 		}
 
 		if strings.HasPrefix(dep.Repository, "file://") {
@@ -845,6 +846,22 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 		indices[lname] = cr
 	}
 	return indices, nil
+}
+
+// checkSubchartConflict Check if subchart already exist before downloading tarball.
+func (m *Manager) checkSubchartConflict(req []*chart.Dependency) error {
+	for _, dep := range req {
+		// No repository means the chart is in charts directory
+		if dep.Repository == "" {
+			continue
+		}
+		chartPath := filepath.Join(m.ChartPath, "charts", dep.Name)
+		if _, err := os.Stat(chartPath); !os.IsNotExist(err) {
+			return fmt.Errorf("dependency conflict detected: A subchart named '%s' already exists in charts/ directory", dep.Name)
+		}
+	}
+
+	return nil
 }
 
 // writeLock writes a lockfile to disk
