@@ -162,6 +162,13 @@ func (m *Manager) Update() error {
 		return nil
 	}
 
+	// Check if there is already subchart in charts directory before downloading tarball.
+	// https://github.com/helm/helm/issues/30710
+	err = m.checkSubchartConflict(req)
+	if err != nil {
+		return fmt.Errorf("%s. Please remove the manually added subchart or exclude it from Chart.yaml dependencies", err.Error())
+	}
+
 	// Get the names of the repositories the dependencies need that Helm is
 	// configured to know about.
 	repoNames, err := m.resolveRepoNames(req)
@@ -271,11 +278,11 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	var saveError error
 	churls := make(map[string]struct{})
 	for _, dep := range deps {
+		chartPath := filepath.Join(destPath, dep.Name)
 		// No repository means the chart is in charts directory
 		if dep.Repository == "" {
 			fmt.Fprintf(m.Out, "Dependency %s did not declare a repository. Assuming it exists in the charts directory\n", dep.Name)
 			// NOTE: we are only validating the local dependency conforms to the constraints. No copying to tmpPath is necessary.
-			chartPath := filepath.Join(destPath, dep.Name)
 			ch, err := loader.LoadDir(chartPath)
 			if err != nil {
 				return fmt.Errorf("unable to load chart '%s': %v", chartPath, err)
@@ -297,6 +304,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			}
 			continue
 		}
+
 		if strings.HasPrefix(dep.Repository, "file://") {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
@@ -838,6 +846,22 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 		indices[lname] = cr
 	}
 	return indices, nil
+}
+
+// checkSubchartConflict Check if subchart already exist before downloading tarball.
+func (m *Manager) checkSubchartConflict(req []*chart.Dependency) error {
+	for _, dep := range req {
+		// No repository means the chart is in charts directory
+		if dep.Repository == "" {
+			continue
+		}
+		chartPath := filepath.Join(m.ChartPath, "charts", dep.Name)
+		if _, err := os.Stat(chartPath); !os.IsNotExist(err) {
+			return fmt.Errorf("dependency conflict detected: A subchart named '%s' already exists in charts/ directory", dep.Name)
+		}
+	}
+
+	return nil
 }
 
 // writeLock writes a lockfile to disk
