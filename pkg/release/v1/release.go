@@ -48,7 +48,7 @@ type Release struct {
 	// Disabled encoding into Json cause labels are stored in storage driver metadata field.
 	Labels map[string]string `json:"-"`
 	// ApplyMethod stores whether server-side or client-side apply was used for the release
-	// Unset (empty string) is the default client-side apply
+	// Unset (empty string) should be treated as the default of client-side apply
 	ApplyMethod string `json:"apply_method,omitzero"` // "ssa" | "csa"
 }
 
