@@ -33,7 +33,7 @@ import (
 )
 
 // execHook executes all of the hooks for the given hook event.
-func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, waitStrategy kube.WaitStrategy, timeout time.Duration) error {
+func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, waitStrategy kube.WaitStrategy, timeout time.Duration, serverSideApply bool) error {
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
@@ -73,7 +73,9 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		h.LastRun.Phase = release.HookPhaseUnknown
 
 		// Create hook resources
-		if _, err := cfg.KubeClient.Create(resources); err != nil {
+		if _, err := cfg.KubeClient.Create(
+			resources,
+			kube.ClientCreateOptionServerSideApply(serverSideApply)); err != nil {
 			h.LastRun.CompletedAt = helmtime.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
 			return fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err)
@@ -153,7 +155,7 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 		if err != nil {
 			return fmt.Errorf("unable to build kubernetes object for deleting hook %s: %w", h.Path, err)
 		}
-		_, errs := cfg.KubeClient.Delete(resources)
+		_, errs := cfg.KubeClient.Delete(resources, metav1.DeletePropagationBackground)
 		if len(errs) > 0 {
 			return joinErrors(errs, "; ")
 		}
