@@ -96,7 +96,7 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 		rel.Hooks = executingHooks
 	}
 
-	serverSideApply := rel.ApplyMethod != nil && *rel.ApplyMethod == string(release.ApplyMethodServerSideApply)
+	serverSideApply := rel.ApplyMethod == string(release.ApplyMethodServerSideApply)
 	if err := r.cfg.execHook(rel, release.HookTest, kube.StatusWatcherStrategy, r.Timeout, serverSideApply); err != nil {
 		rel.Hooks = append(skippedHooks, rel.Hooks...)
 		r.cfg.Releases.Update(rel)

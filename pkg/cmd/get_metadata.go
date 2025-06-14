@@ -78,18 +78,16 @@ func newGetMetadataCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 
 func (w metadataWriter) WriteTable(out io.Writer) error {
 
-	formatApplyMethod := func(applyMethod *string) string {
-		if applyMethod == nil {
+	formatApplyMethod := func(applyMethod string) string {
+		switch applyMethod {
+		case "":
 			return "client-side apply (defaulted)"
-		}
-
-		switch *applyMethod {
 		case string(release.ApplyMethodClientSideApply):
 			return "client-side apply"
 		case string(release.ApplyMethodServerSideApply):
 			return "server-side apply"
 		default:
-			return fmt.Sprintf("(unknown: %q)", *applyMethod)
+			return fmt.Sprintf("unknown (%q)", applyMethod)
 		}
 	}
 

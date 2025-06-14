@@ -586,6 +586,7 @@ func (i *Install) availableName() error {
 // createRelease creates a new release object
 func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{}, labels map[string]string) *release.Release {
 	ts := i.cfg.Now()
+
 	r := &release.Release{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
@@ -596,14 +597,11 @@ func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{
 			LastDeployed:  ts,
 			Status:        release.StatusUnknown,
 		},
-		Version: 1,
-		Labels:  labels,
+		Version:     1,
+		Labels:      labels,
+		ApplyMethod: string(determineReleaseSSApplyMethod(i.ServerSideApply)),
 	}
-	if i.ServerSideApply {
-		r.SetApplyMethod(release.ApplyMethodServerSideApply)
-	} else {
-		r.SetApplyMethod(release.ApplyMethodClientSideApply)
-	}
+
 	return r
 }
 

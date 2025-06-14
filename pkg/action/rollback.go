@@ -147,6 +147,11 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		return nil, nil, false, err
 	}
 
+	serverSideApply, err := getUpgradeServerSideValue(r.ServerSideApply, previousRelease.ApplyMethod)
+	if err != nil {
+		return nil, nil, false, err
+	}
+
 	// Store a new release object with previous release's configuration
 	targetRelease := &release.Release{
 		Name:      name,
@@ -162,20 +167,11 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 			// message here, and only override it later if we experience failure.
 			Description: fmt.Sprintf("Rollback to %d", previousVersion),
 		},
-		Version:  currentRelease.Version + 1,
-		Labels:   previousRelease.Labels,
-		Manifest: previousRelease.Manifest,
-		Hooks:    previousRelease.Hooks,
-	}
-
-	serverSideApply, err := getServerSideValue(r.ServerSideApply, previousRelease)
-	if err != nil {
-		return nil, nil, false, err
-	}
-	if serverSideApply {
-		targetRelease.SetApplyMethod(release.ApplyMethodServerSideApply)
-	} else {
-		targetRelease.SetApplyMethod(release.ApplyMethodClientSideApply)
+		Version:     currentRelease.Version + 1,
+		Labels:      previousRelease.Labels,
+		Manifest:    previousRelease.Manifest,
+		Hooks:       previousRelease.Hooks,
+		ApplyMethod: string(determineReleaseSSApplyMethod(serverSideApply)),
 	}
 
 	return currentRelease, targetRelease, serverSideApply, nil

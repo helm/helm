@@ -19,6 +19,11 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
+type ApplyMethod string
+
+const ApplyMethodClientSideApply ApplyMethod = "csa"
+const ApplyMethodServerSideApply ApplyMethod = "ssa"
+
 // Release describes a deployment of a chart, together with the chart
 // and the variables used to deploy that chart.
 type Release struct {
@@ -43,22 +48,12 @@ type Release struct {
 	// Disabled encoding into Json cause labels are stored in storage driver metadata field.
 	Labels map[string]string `json:"-"`
 	// ApplyMethod stores whether server-side or client-side apply was used for the release
-	// Unset (nil) is the default client-side apply
-	ApplyMethod *string `json:"apply_method,omitempty"` // "ssa" | "csa"
+	// Unset (empty string) is the default client-side apply
+	ApplyMethod string `json:"apply_method,omitzero"` // "ssa" | "csa"
 }
-
-type ApplyMethod string
-
-const ApplyMethodClientSideApply ApplyMethod = "csa"
-const ApplyMethodServerSideApply ApplyMethod = "ssa"
 
 // SetStatus is a helper for setting the status on a release.
 func (r *Release) SetStatus(status Status, msg string) {
 	r.Info.Status = status
 	r.Info.Description = msg
-}
-
-func (r *Release) SetApplyMethod(applyMethod ApplyMethod) {
-	applyMethodString := string(applyMethod)
-	r.ApplyMethod = &applyMethodString
 }

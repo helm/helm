@@ -44,7 +44,7 @@ type Metadata struct {
 	Revision     int                 `json:"revision" yaml:"revision"`
 	Status       string              `json:"status" yaml:"status"`
 	DeployedAt   string              `json:"deployedAt" yaml:"deployedAt"`
-	ApplyMethod  *string             `json:"applyMethod,omitempty" yaml:"applyMethod,omitempty"`
+	ApplyMethod  string              `json:"applyMethod,omitzero" yaml:"applyMethod,omitzero"`
 }
 
 // NewGetMetadata creates a new GetMetadata object with the given configuration.
