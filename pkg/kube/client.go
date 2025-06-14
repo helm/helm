@@ -195,10 +195,6 @@ func (c *Client) IsReachable() error {
 	return nil
 }
 
-// perform an operation on a resource (from original to target state)
-// `original` may be nil in the case of a create operation
-type resourceOperation func(original *resource.Info, target *resource.Info) error
-
 type clientCreateOptions struct {
 	serverSideApply bool
 	forceConflicts  bool
@@ -209,7 +205,6 @@ type ClientCreateOption func(*clientCreateOptions) error
 
 // ClientUpdateOptionServerSideApply enables performing object apply server-side
 // see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
-// Must not be enabled when ClientUpdateOptionThreeWayMerge enabled
 func ClientCreateOptionServerSideApply(serverSideApply bool) ClientCreateOption {
 	return func(o *clientCreateOptions) error {
 		o.serverSideApply = serverSideApply
@@ -250,18 +245,18 @@ func (c *Client) Create(resources ResourceList, options ...ClientCreateOption) (
 		o(&createOptions)
 	}
 
-	makeApplyFunc := func() resourceOperation {
+	makeCreateApplyFunc := func() func(target *resource.Info) error {
 		if createOptions.serverSideApply {
-			return func(info *resource.Info) error {
-				return patchResource(info, createOptions.dryRun, createOptions.forceConflicts, metav1.FieldValidationStrict)
+			return func(target *resource.Info) error {
+				return patchResource(target, createOptions.dryRun, createOptions.forceConflicts, metav1.FieldValidationStrict)
 			}
 		}
 
-		panic("booyah")
-		return createResource
+		panic("booyah create")
+		//	return createResource
 	}
 
-	if err := perform(resources, makeApplyFunc()); err != nil {
+	if err := perform(resources, makeCreateApplyFunc()); err != nil {
 		return nil, err
 	}
 	return &Result{Created: resources}, nil
@@ -461,7 +456,7 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 	return result, scrubValidationError(err)
 }
 
-func (c *Client) update(original, target ResourceList, forceReplace, threeWayMerge, serverSideApply bool) (*Result, error) {
+func (c *Client) update(original, target ResourceList, updateApplyFunc func(original *resource.Info, target *resource.Info) error) (*Result, error) {
 	updateErrors := []error{}
 	res := &Result{}
 
@@ -496,23 +491,8 @@ func (c *Client) update(original, target ResourceList, forceReplace, threeWayMer
 			return fmt.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
-		if forceReplace {
-			if err := replaceResource(info); err != nil {
-				slog.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
-				updateErrors = append(updateErrors, err)
-			} else {
-				originalObject := originalInfo.Object
-				kind := info.Mapping.GroupVersionKind.Kind
-				slog.Debug("replace succeeded", "name", info.Name, "initialKind", originalObject.GetObjectKind().GroupVersionKind().Kind, "kind", kind)
-			}
-
-		} else if serverSideApply {
-			patchResource(info, createOptions.dryRun, forceConflicts, metav1.FieldValidationStrict)
-		} else {
-			if err := updateResource(info, originalInfo.Object, threeWayMerge); err != nil {
-				slog.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
-				updateErrors = append(updateErrors, err)
-			}
+		if err := updateApplyFunc(originalInfo, info); err != nil {
+			updateErrors = append(updateErrors, err)
 		}
 
 		// Because we check for errors later, append the info regardless
@@ -557,6 +537,7 @@ type clientUpdateOptions struct {
 	serverSideApply bool
 	forceReplace    bool
 	forceConflicts  bool
+	dryRun          bool
 }
 
 type ClientUpdateOption func(*clientUpdateOptions) error
@@ -621,6 +602,10 @@ func (c *Client) Update(original, target ResourceList, options ...ClientUpdateOp
 		o(&updateOptions)
 	}
 
+	if !updateOptions.threeWayMerge && !updateOptions.serverSideApply {
+		return nil, fmt.Errorf("invalid operation: either three-way merge or server-side apply must be specified")
+	}
+
 	if updateOptions.threeWayMerge && updateOptions.serverSideApply {
 		return nil, fmt.Errorf("invalid operation: cannot use three-way merge and server-side apply together")
 	}
@@ -629,25 +614,24 @@ func (c *Client) Update(original, target ResourceList, options ...ClientUpdateOp
 		return nil, fmt.Errorf("invalid operation: cannot use force conflicts and force replace together")
 	}
 
-	//type updateApplier struct {
-	//	updateErrors []error
-	//	updateFunc resourceOperation
-	//}
+	if updateOptions.serverSideApply && updateOptions.forceReplace {
+		return nil, fmt.Errorf("invalid operation: cannot use server-side apply and force replace together")
+	}
 
-	//func (u *updateApplier) Apply(current *resource.Info, target *resource.Info)
-
-	makeUpdateApplyFunc := func() resourceOperation {
+	makeUpdateApplyFunc := func() func(original *resource.Info, target *resource.Info) error {
 
 		if updateOptions.forceReplace {
 			return func(original *resource.Info, target *resource.Info) error {
 				if err := replaceResource(target); err != nil {
-					slog.Debug("error updating the resource", "namespace", original.Namespace, "name", original.Name, "kind", original.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+					slog.Debug("error replacing the resource", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 					return err
 				}
 
 				originalObject := original.Object
 				kind := target.Mapping.GroupVersionKind.Kind
 				slog.Debug("replace succeeded", "name", original.Name, "initialKind", originalObject.GetObjectKind().GroupVersionKind().Kind, "kind", kind)
+
+				return nil
 			}
 		} else if updateOptions.serverSideApply {
 			return func(original *resource.Info, target *resource.Info) error {
@@ -656,10 +640,12 @@ func (c *Client) Update(original, target ResourceList, options ...ClientUpdateOp
 		}
 
 		panic("booyah")
-		return updateResource
+		//return func(original *resource.Info, target *resource.Info) error {
+		//	return updateResourceThreeWayMerge(original, target.Object, updateOptions.threeWayMerge)
+		//}
 	}
 
-	return c.update(original, target, makeUdpateApplyFunc())
+	return c.update(original, target, makeUpdateApplyFunc())
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
@@ -745,8 +731,8 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 			kind = currentKind
 		}
 		wg.Add(1)
-		go func(i *resource.Info) {
-			errs <- fn(i)
+		go func(info *resource.Info) {
+			errs <- fn(info)
 			wg.Done()
 		}(info)
 	}
@@ -839,7 +825,8 @@ func createPatch(target *resource.Info, current runtime.Object, threeWayMergeFor
 
 func replaceResource(target *resource.Info) error {
 
-	helper := resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
+	helper := resource.NewHelper(target.Client, target.Mapping).
+		WithFieldManager(getManagedFieldsManager())
 
 	obj, err := helper.Replace(target.Namespace, target.Name, true, target.Object)
 	if err != nil {

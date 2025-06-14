@@ -409,7 +409,9 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		if err != nil {
 			return nil, err
 		}
-		if _, err := i.cfg.KubeClient.Create(resourceList); err != nil && !apierrors.IsAlreadyExists(err) {
+		if _, err := i.cfg.KubeClient.Create(
+			resourceList,
+			kube.ClientCreateOptionServerSideApply(i.ServerSideApply)); err != nil && !apierrors.IsAlreadyExists(err) {
 			return nil, err
 		}
 	}
@@ -468,7 +470,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
 			return rel, fmt.Errorf("failed pre-install: %s", err)
 		}
 	}
@@ -477,7 +479,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	// do an update, but it's not clear whether we WANT to do an update if the reuse is set
 	// to true, since that is basically an upgrade operation.
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
-		_, err = i.cfg.KubeClient.Create(resources)
+		_, err = i.cfg.KubeClient.Create(resources, kube.ClientCreateOptionServerSideApply(i.ServerSideApply))
 	} else if len(resources) > 0 {
 		useUpdateThreeWayMerge := i.TakeOwnership // Use three-way merge when taking ownership
 		_, err = i.cfg.KubeClient.Update(
@@ -507,7 +509,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	}
 
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
 			return rel, fmt.Errorf("failed post-install: %s", err)
 		}
 	}
