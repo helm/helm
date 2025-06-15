@@ -241,8 +241,8 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		// them back into a map of filename -> content.
 
 		// Merge files as stream of documents for sending to post renderer
-		var merged string
-		if merged, err = annotateAndMerge(files); err != nil {
+		merged, err := annotateAndMerge(files)
+		if err != nil {
 			return hs, b, notes, fmt.Errorf("error merging manifests: %w", err)
 		}
 
@@ -253,7 +253,8 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		}
 
 		// Use the file list and contents received from the post renderer
-		if files, err = splitAndDeannotate(postRendered.String()); err != nil {
+		files, err = splitAndDeannotate(postRendered.String())
+		if err != nil {
 			return hs, b, notes, fmt.Errorf("error while parsing post rendered output: %w", err)
 		}
 	}
