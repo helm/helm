@@ -675,7 +675,7 @@ data:
 		{
 			name:          "invalid yaml input",
 			input:         "invalid: yaml: content:",
-			expectedError: "re-parsing merged buffer",
+			expectedError: "error parsing YAML: MalformedYAMLError",
 		},
 		{
 			name: "manifest without filename annotation",
@@ -885,7 +885,7 @@ func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
 	)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error while parsing post rendered files")
+	assert.Contains(t, err.Error(), "error while parsing post rendered output: error parsing YAML: MalformedYAMLError:")
 }
 
 func TestRenderResources_PostRenderer_Integration(t *testing.T) {
