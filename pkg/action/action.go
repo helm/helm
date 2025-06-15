@@ -99,9 +99,9 @@ const (
 	filenameAnnotation = "helm-postrender-filename"
 )
 
-// AnnotateAndMerge combines multiple YAML files into a single stream of documents,
+// annotateAndMerge combines multiple YAML files into a single stream of documents,
 // adding filename annotations to each document for later reconstruction.
-func AnnotateAndMerge(files map[string]string) (string, error) {
+func annotateAndMerge(files map[string]string) (string, error) {
 	var combinedManifests []*kyaml.RNode
 	for fname, content := range files {
 		// Skip partials and empty files.
@@ -242,7 +242,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 
 		// Merge files as stream of documents for sending to post renderer
 		var merged string
-		if merged, err = AnnotateAndMerge(files); err != nil {
+		if merged, err = annotateAndMerge(files); err != nil {
 			return hs, b, notes, fmt.Errorf("error merging manifests: %w", err)
 		}
 
