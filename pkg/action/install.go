@@ -71,8 +71,10 @@ type Install struct {
 
 	ChartPathOptions
 
-	ClientOnly      bool
-	Force           bool
+	ClientOnly   bool
+	ForceReplace bool
+	// ForceConflicts causes server-side apply to force conflicts ("Overwrite value, become sole manager")
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
 	CreateNamespace bool
 	DryRun          bool
 	DryRunOption    string
@@ -346,7 +348,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, fmt.Errorf("unable to build kubernetes objects from release manifest: %w", err)
 	}
 
-	// It is safe to use "force" here because these are resources currently rendered by the chart.
+	// It is safe to use "forceOwnership" here because these are resources currently rendered by the chart.
 	err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
 	if err != nil {
 		return nil, err
@@ -468,9 +470,9 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		_, err = i.cfg.KubeClient.Create(resources)
 	} else if len(resources) > 0 {
 		if i.TakeOwnership {
-			_, err = i.cfg.KubeClient.(kube.InterfaceThreeWayMerge).UpdateThreeWayMerge(toBeAdopted, resources, i.Force)
+			_, err = i.cfg.KubeClient.(kube.InterfaceThreeWayMerge).UpdateThreeWayMerge(toBeAdopted, resources, i.ForceReplace)
 		} else {
-			_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force)
+			_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.ForceReplace)
 		}
 	}
 	if err != nil {
