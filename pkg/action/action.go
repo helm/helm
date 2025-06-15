@@ -133,7 +133,7 @@ func annotateAndMerge(files map[string]string) (string, error) {
 func splitAndDeannotate(postrendered string) (map[string]string, error) {
 	manifests, err := kio.ParseAll(postrendered)
 	if err != nil {
-		return nil, fmt.Errorf("re-parsing merged buffer: %w", err)
+		return nil, fmt.Errorf("error parsing YAML: %w", err)
 	}
 
 	manifestsByFilename := make(map[string][]*kyaml.RNode)
@@ -254,7 +254,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 
 		// Use the file list and contents received from the post renderer
 		if files, err = splitAndDeannotate(postRendered.String()); err != nil {
-			return hs, b, notes, fmt.Errorf("error while parsing post rendered files: %w", err)
+			return hs, b, notes, fmt.Errorf("error while parsing post rendered output: %w", err)
 		}
 	}
 
