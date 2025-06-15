@@ -699,7 +699,7 @@ data:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			files, err := SplitAndDeannotate(tt.input)
+			files, err := splitAndDeannotate(tt.input)
 
 			if tt.expectedError != "" {
 				assert.Error(t, err)
@@ -753,7 +753,7 @@ data:
 	require.NoError(t, err)
 
 	// Split and deannotate
-	reconstructed, err := SplitAndDeannotate(merged)
+	reconstructed, err := splitAndDeannotate(merged)
 	require.NoError(t, err)
 
 	// Compare the results
