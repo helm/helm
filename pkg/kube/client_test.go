@@ -215,7 +215,7 @@ func TestCreate(t *testing.T) {
 	})
 }
 
-func testUpdate(t *testing.T, threeWayMerge bool) {
+func testUpdate(t *testing.T, threeWayMerge bool, serverSideApply bool) {
 	t.Helper()
 	listA := newPodList("starfish", "otter", "squid")
 	listB := newPodList("starfish", "otter", "dolphin")
@@ -291,7 +291,8 @@ func testUpdate(t *testing.T, threeWayMerge bool) {
 		first,
 		second,
 		ClientUpdateOptionThreeWayMerge(threeWayMerge),
-		ClientUpdateOptionForceReplace(false))
+		ClientUpdateOptionForceReplace(false),
+		ClientUpdateOptionServerSideApply(serverSideApply))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -341,11 +342,15 @@ func testUpdate(t *testing.T, threeWayMerge bool) {
 }
 
 func TestUpdate(t *testing.T) {
-	testUpdate(t, false)
+	testUpdate(t, false, false)
 }
 
 func TestUpdateThreeWayMerge(t *testing.T) {
-	testUpdate(t, true)
+	testUpdate(t, true, false)
+}
+
+func TestUpdateServerSideApply(t *testing.T) {
+	testUpdate(t, false, true)
 }
 
 func TestBuild(t *testing.T) {

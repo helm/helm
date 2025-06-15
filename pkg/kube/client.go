@@ -617,10 +617,6 @@ func (c *Client) Update(original, target ResourceList, options ...ClientUpdateOp
 		o(&updateOptions)
 	}
 
-	if !updateOptions.threeWayMerge && !updateOptions.serverSideApply {
-		return nil, fmt.Errorf("invalid operation: either three-way merge or server-side apply must be specified")
-	}
-
 	if updateOptions.threeWayMerge && updateOptions.serverSideApply {
 		return nil, fmt.Errorf("invalid operation: cannot use three-way merge and server-side apply together")
 	}
