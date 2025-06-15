@@ -94,9 +94,9 @@ type Configuration struct {
 }
 
 const (
-	// FilenameAnnotation is the annotation key used to store the original filename
+	// filenameAnnotation is the annotation key used to store the original filename
 	// information in manifest annotations for post-rendering reconstruction.
-	FilenameAnnotation = "helm-postrender-filename"
+	filenameAnnotation = "helm-postrender-filename"
 )
 
 // AnnotateAndMerge combines multiple YAML files into a single stream of documents,
@@ -114,7 +114,7 @@ func AnnotateAndMerge(files map[string]string) (string, error) {
 			return "", fmt.Errorf("parsing %s: %w", fname, err)
 		}
 		for _, manifest := range manifests {
-			if err := manifest.PipeE(kyaml.SetAnnotation(FilenameAnnotation, fname)); err != nil {
+			if err := manifest.PipeE(kyaml.SetAnnotation(filenameAnnotation, fname)); err != nil {
 				return "", fmt.Errorf("annotating %s: %w", fname, err)
 			}
 			combinedManifests = append(combinedManifests, manifest)
@@ -142,11 +142,11 @@ func SplitAndDeannotate(postrendered string) (map[string]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("getting metadata: %w", err)
 		}
-		fname := meta.Annotations[FilenameAnnotation]
+		fname := meta.Annotations[filenameAnnotation]
 		if fname == "" {
 			fname = fmt.Sprintf("generated-by-postrender-%d.yaml", i)
 		}
-		if err := manifest.PipeE(kyaml.ClearAnnotation(FilenameAnnotation)); err != nil {
+		if err := manifest.PipeE(kyaml.ClearAnnotation(filenameAnnotation)); err != nil {
 			return nil, fmt.Errorf("clearing filename annotation: %w", err)
 		}
 		manifestsByFilename[fname] = append(manifestsByFilename[fname], manifest)
