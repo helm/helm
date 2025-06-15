@@ -536,7 +536,7 @@ metadata:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			merged, err := AnnotateAndMerge(tt.files)
+			merged, err := annotateAndMerge(tt.files)
 
 			if tt.expectedError != "" {
 				assert.Error(t, err)
@@ -749,7 +749,7 @@ data:
 	}
 
 	// Merge and annotate
-	merged, err := AnnotateAndMerge(originalFiles)
+	merged, err := annotateAndMerge(originalFiles)
 	require.NoError(t, err)
 
 	// Split and deannotate
