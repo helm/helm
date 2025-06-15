@@ -26,7 +26,7 @@ body:
         Please list steps someone can follow to trigger the issue.
         
         For example:
-        1. Run `helm install mychart ./path-to-chart -f values.yaml`
+        1. Run `helm install mychart ./path-to-chart -f values.yaml --debug`
         2. Observe the following error: ...
 
         You can include:
