@@ -183,20 +183,6 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-//type ObjectManagement struct {
-//	ForceReplacement bool
-//	ForceConflicts   bool
-//	ServerSide       bool
-//}
-//
-//func addObjectManagementFlags(f *pflag.FlagSet, o *ObjectFlags) {
-//	f.BoolVar(&o.ForceReplacement, "force-replacement", false, "force resource updates through a replacement strategy")
-//	f.BoolVar(&o.ForceReplacement, "force", false, "deprecated")
-//	f.MarkDeprecated("force", "use --force-replacement instead")
-//	f.BoolVar(&o.ForceConflicts, "force-conflicts", false, "if set server-side apply will force changes against conflicts")
-//	f.BoolVar(&o.ServerSide, "server-side", true, "object updates run in the server instead of the client")
-//}
-
 func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
 	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
 	// --dry-run options with expected outcome:

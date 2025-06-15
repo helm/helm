@@ -215,7 +215,7 @@ func ClientCreateOptionServerSideApply(serverSideApply bool) ClientCreateOption 
 
 // ClientCreateOptionForceConflicts forces field conflicts to be resolved
 // see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
-// Must not be enabled when ClientUpdateOptionForceReplace enabled
+// Only valid when ClientUpdateOptionServerSideApply enabled
 func ClientCreateOptionForceConflicts(forceConflicts bool) ClientCreateOption {
 	return func(o *clientCreateOptions) error {
 		o.forceConflicts = forceConflicts
@@ -224,12 +224,10 @@ func ClientCreateOptionForceConflicts(forceConflicts bool) ClientCreateOption {
 	}
 }
 
-// ClientCreateOptionDryRun
-// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
-// Must not be enabled when ClientUpdateOptionForceReplace enabled
-func ClientCreateOptionDryRun(forceConflicts bool) ClientCreateOption {
+// ClientCreateOptionDryRun performs non-mutating operations
+func ClientCreateOptionDryRun(dryRun bool) ClientCreateOption {
 	return func(o *clientCreateOptions) error {
-		o.forceConflicts = forceConflicts
+		o.dryRun = dryRun
 
 		return nil
 	}
@@ -245,15 +243,21 @@ func (c *Client) Create(resources ResourceList, options ...ClientCreateOption) (
 		o(&createOptions)
 	}
 
+	if createOptions.forceConflicts && !createOptions.serverSideApply {
+		return nil, fmt.Errorf("invalid operation: force conflicts can only be used with server-side apply")
+	}
+
 	makeCreateApplyFunc := func() func(target *resource.Info) error {
 		if createOptions.serverSideApply {
+			slog.Debug("using server-side apply for resource creation", slog.Bool("forceConflicts", createOptions.forceConflicts), slog.Bool("dryRun", createOptions.dryRun))
+			panic("error")
 			return func(target *resource.Info) error {
 				return patchResource(target, createOptions.dryRun, createOptions.forceConflicts, metav1.FieldValidationStrict)
 			}
 		}
 
-		panic("booyah create")
-		//	return createResource
+		slog.Debug("using client-side apply for resource creation")
+		return createResource
 	}
 
 	if err := perform(resources, makeCreateApplyFunc()); err != nil {
@@ -584,6 +588,17 @@ func ClientUpdateOptionForceConflicts(forceConflicts bool) ClientUpdateOption {
 	}
 }
 
+// ClientUpdateOptionForceConflicts forces field conflicts to be resolved
+// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+// Must not be enabled when ClientUpdateOptionForceReplace enabled
+func ClientUpdateOptionDryRun(dryRun bool) ClientUpdateOption {
+	return func(o *clientUpdateOptions) error {
+		o.dryRun = dryRun
+
+		return nil
+	}
+}
+
 // Update takes the current list of objects and target list of objects and
 // creates resources that don't already exist, updates resources that have been
 // modified in the target configuration, and deletes resources from the current
@@ -595,7 +610,7 @@ func ClientUpdateOptionForceConflicts(forceConflicts bool) ClientUpdateOption {
 // The default is to do a three-way merge: `ClientUpdateOptionThreeWayMerge(true)`
 func (c *Client) Update(original, target ResourceList, options ...ClientUpdateOption) (*Result, error) {
 	updateOptions := clientUpdateOptions{
-		threeWayMerge: true,
+		threeWayMerge: true, // Default to three-way merge
 	}
 
 	for _, o := range options {
@@ -619,8 +634,8 @@ func (c *Client) Update(original, target ResourceList, options ...ClientUpdateOp
 	}
 
 	makeUpdateApplyFunc := func() func(original *resource.Info, target *resource.Info) error {
-
 		if updateOptions.forceReplace {
+			slog.Debug("using resource replace update strategy")
 			return func(original *resource.Info, target *resource.Info) error {
 				if err := replaceResource(target); err != nil {
 					slog.Debug("error replacing the resource", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
@@ -634,15 +649,16 @@ func (c *Client) Update(original, target ResourceList, options ...ClientUpdateOp
 				return nil
 			}
 		} else if updateOptions.serverSideApply {
+			slog.Debug("using server-side apply for resource creation", slog.Bool("forceConflicts", updateOptions.forceConflicts), slog.Bool("dryRun", updateOptions.dryRun))
 			return func(original *resource.Info, target *resource.Info) error {
 				return patchResource(target, updateOptions.dryRun, updateOptions.forceConflicts, metav1.FieldValidationStrict)
 			}
 		}
 
-		panic("booyah")
-		//return func(original *resource.Info, target *resource.Info) error {
-		//	return updateResourceThreeWayMerge(original, target.Object, updateOptions.threeWayMerge)
-		//}
+		slog.Debug("using client-side apply for resource creation", slog.Bool("threeWayMergeForUnstructured", updateOptions.threeWayMerge))
+		return func(original *resource.Info, target *resource.Info) error {
+			return updateResourceThreeWayMerge(original, target.Object, updateOptions.threeWayMerge)
+		}
 	}
 
 	return c.update(original, target, makeUpdateApplyFunc())
