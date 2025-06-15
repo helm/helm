@@ -96,7 +96,7 @@ type Configuration struct {
 const (
 	// filenameAnnotation is the annotation key used to store the original filename
 	// information in manifest annotations for post-rendering reconstruction.
-	filenameAnnotation = "helm-postrender-filename"
+	filenameAnnotation = "postrenderer.helm.sh/postrender-filename"
 )
 
 // annotateAndMerge combines multiple YAML files into a single stream of documents,

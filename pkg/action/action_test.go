@@ -419,7 +419,7 @@ kind: ConfigMap
 metadata:
   name: test-cm
   annotations:
-    helm-postrender-filename: 'templates/configmap.yaml'
+    postrenderer.helm.sh/postrender-filename: 'templates/configmap.yaml'
 data:
   key: value
 `,
@@ -445,7 +445,7 @@ kind: ConfigMap
 metadata:
   name: test-cm
   annotations:
-    helm-postrender-filename: 'templates/configmap.yaml'
+    postrenderer.helm.sh/postrender-filename: 'templates/configmap.yaml'
 data:
   key: value
 ---
@@ -454,7 +454,7 @@ kind: Secret
 metadata:
   name: test-secret
   annotations:
-    helm-postrender-filename: 'templates/secret.yaml'
+    postrenderer.helm.sh/postrender-filename: 'templates/secret.yaml'
 data:
   password: dGVzdA==
 `,
@@ -481,7 +481,7 @@ kind: ConfigMap
 metadata:
   name: test-cm1
   annotations:
-    helm-postrender-filename: 'templates/multi.yaml'
+    postrenderer.helm.sh/postrender-filename: 'templates/multi.yaml'
 data:
   key: value1
 ---
@@ -490,7 +490,7 @@ kind: ConfigMap
 metadata:
   name: test-cm2
   annotations:
-    helm-postrender-filename: 'templates/multi.yaml'
+    postrenderer.helm.sh/postrender-filename: 'templates/multi.yaml'
 data:
   key: value2
 `,
@@ -514,7 +514,7 @@ kind: ConfigMap
 metadata:
   name: test-cm1
   annotations:
-    helm-postrender-filename: 'templates/cm.yaml'
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
 `,
 		},
 		{
@@ -564,7 +564,7 @@ kind: ConfigMap
 metadata:
   name: test-cm
   annotations:
-    helm-postrender-filename: templates/configmap.yaml
+    postrenderer.helm.sh/postrender-filename: templates/configmap.yaml
 data:
   key: value`,
 			expectedFiles: map[string]string{
@@ -584,7 +584,7 @@ kind: ConfigMap
 metadata:
   name: test-cm
   annotations:
-    helm-postrender-filename: templates/configmap.yaml
+    postrenderer.helm.sh/postrender-filename: templates/configmap.yaml
 data:
   key: value
 ---
@@ -593,7 +593,7 @@ kind: Secret
 metadata:
   name: test-secret
   annotations:
-    helm-postrender-filename: templates/secret.yaml
+    postrenderer.helm.sh/postrender-filename: templates/secret.yaml
 data:
   password: dGVzdA==`,
 			expectedFiles: map[string]string{
@@ -620,7 +620,7 @@ kind: ConfigMap
 metadata:
   name: test-cm1
   annotations:
-    helm-postrender-filename: templates/multi.yaml
+    postrenderer.helm.sh/postrender-filename: templates/multi.yaml
 data:
   key: value1
 ---
@@ -629,7 +629,7 @@ kind: ConfigMap
 metadata:
   name: test-cm2
   annotations:
-    helm-postrender-filename: templates/multi.yaml
+    postrenderer.helm.sh/postrender-filename: templates/multi.yaml
 data:
   key: value2`,
 			expectedFiles: map[string]string{
@@ -656,7 +656,7 @@ kind: ConfigMap
 metadata:
   name: test-cm
   annotations:
-    helm-postrender-filename: templates/configmap.yaml
+    postrenderer.helm.sh/postrender-filename: templates/configmap.yaml
     other-annotation: should-remain
 data:
   key: value`,
