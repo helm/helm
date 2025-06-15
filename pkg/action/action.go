@@ -128,9 +128,9 @@ func annotateAndMerge(files map[string]string) (string, error) {
 	return merged, nil
 }
 
-// SplitAndDeannotate reconstructs individual files from a merged YAML stream,
+// splitAndDeannotate reconstructs individual files from a merged YAML stream,
 // removing filename annotations and grouping documents by their original filenames.
-func SplitAndDeannotate(postrendered string) (map[string]string, error) {
+func splitAndDeannotate(postrendered string) (map[string]string, error) {
 	manifests, err := kio.ParseAll(postrendered)
 	if err != nil {
 		return nil, fmt.Errorf("re-parsing merged buffer: %w", err)
@@ -253,7 +253,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		}
 
 		// Use the file list and contents received from the post renderer
-		if files, err = SplitAndDeannotate(postRendered.String()); err != nil {
+		if files, err = splitAndDeannotate(postRendered.String()); err != nil {
 			return hs, b, notes, fmt.Errorf("error while parsing post rendered files: %w", err)
 		}
 	}
