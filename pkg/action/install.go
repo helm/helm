@@ -151,7 +151,8 @@ type ChartPathOptions struct {
 // NewInstall creates a new Install object with the given configuration.
 func NewInstall(cfg *Configuration) *Install {
 	in := &Install{
-		cfg: cfg,
+		cfg:             cfg,
+		ServerSideApply: true,
 	}
 	in.registryClient = cfg.RegistryClient
 
