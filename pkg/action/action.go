@@ -421,3 +421,10 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 func (cfg *Configuration) SetHookOutputFunc(hookOutputFunc func(_, _, _ string) io.Writer) {
 	cfg.HookOutputFunc = hookOutputFunc
 }
+
+func determineReleaseSSApplyMethod(serverSideApply bool) release.ApplyMethod {
+	if serverSideApply {
+		return release.ApplyMethodServerSideApply
+	}
+	return release.ApplyMethodClientSideApply
+}

@@ -44,6 +44,7 @@ type Metadata struct {
 	Revision     int                 `json:"revision" yaml:"revision"`
 	Status       string              `json:"status" yaml:"status"`
 	DeployedAt   string              `json:"deployedAt" yaml:"deployedAt"`
+	ApplyMethod  string              `json:"applyMethod,omitempty" yaml:"applyMethod,omitempty"`
 }
 
 // NewGetMetadata creates a new GetMetadata object with the given configuration.
@@ -75,6 +76,7 @@ func (g *GetMetadata) Run(name string) (*Metadata, error) {
 		Revision:     rel.Version,
 		Status:       rel.Info.Status.String(),
 		DeployedAt:   rel.Info.LastDeployed.Format(time.RFC3339),
+		ApplyMethod:  rel.ApplyMethod,
 	}, nil
 }
 

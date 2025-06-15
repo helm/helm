@@ -215,7 +215,7 @@ func TestCreate(t *testing.T) {
 	})
 }
 
-func testUpdate(t *testing.T, threeWayMerge bool) {
+func testUpdate(t *testing.T, threeWayMerge bool, serverSideApply bool) {
 	t.Helper()
 	listA := newPodList("starfish", "otter", "squid")
 	listB := newPodList("starfish", "otter", "dolphin")
@@ -287,12 +287,12 @@ func testUpdate(t *testing.T, threeWayMerge bool) {
 		t.Fatal(err)
 	}
 
-	var result *Result
-	if threeWayMerge {
-		result, err = c.UpdateThreeWayMerge(first, second, false)
-	} else {
-		result, err = c.Update(first, second, false)
-	}
+	result, err := c.Update(
+		first,
+		second,
+		ClientUpdateOptionThreeWayMerge(threeWayMerge),
+		ClientUpdateOptionForceReplace(false),
+		ClientUpdateOptionServerSideApply(serverSideApply))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,11 +342,15 @@ func testUpdate(t *testing.T, threeWayMerge bool) {
 }
 
 func TestUpdate(t *testing.T) {
-	testUpdate(t, false)
+	testUpdate(t, false, false)
 }
 
 func TestUpdateThreeWayMerge(t *testing.T) {
-	testUpdate(t, true)
+	testUpdate(t, true, false)
+}
+
+func TestUpdateServerSideApply(t *testing.T) {
+	testUpdate(t, false, true)
 }
 
 func TestBuild(t *testing.T) {
@@ -668,7 +672,7 @@ func TestWaitDelete(t *testing.T) {
 	if len(result.Created) != 1 {
 		t.Errorf("expected 1 resource created, got %d", len(result.Created))
 	}
-	if _, err := c.Delete(resources); err != nil {
+	if _, err := c.Delete(resources, metav1.DeletePropagationBackground); err != nil {
 		t.Fatal(err)
 	}
 
@@ -707,7 +711,7 @@ func TestReal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, errs := c.Delete(resources); errs != nil {
+	if _, errs := c.Delete(resources, metav1.DeletePropagationBackground); errs != nil {
 		t.Fatal(errs)
 	}
 
@@ -716,7 +720,7 @@ func TestReal(t *testing.T) {
 		t.Fatal(err)
 	}
 	// ensures that delete does not fail if a resource is not found
-	if _, errs := c.Delete(resources); errs != nil {
+	if _, errs := c.Delete(resources, metav1.DeletePropagationBackground); errs != nil {
 		t.Fatal(errs)
 	}
 }
