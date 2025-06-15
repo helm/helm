@@ -18,7 +18,6 @@ package action
 
 import (
 	"bytes"
-	"errors"
 
 	"helm.sh/helm/v4/pkg/kube"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -55,28 +54,25 @@ func (s *Status) Run(name string) (*release.Release, error) {
 		return nil, err
 	}
 
-	if kubeClient, ok := s.cfg.KubeClient.(kube.InterfaceResources); ok {
-		var resources kube.ResourceList
-		if s.ShowResourcesTable {
-			resources, err = kubeClient.BuildTable(bytes.NewBufferString(rel.Manifest), false)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			resources, err = s.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), false)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		resp, err := kubeClient.Get(resources, true)
+	var resources kube.ResourceList
+	if s.ShowResourcesTable {
+		resources, err = s.cfg.KubeClient.BuildTable(bytes.NewBufferString(rel.Manifest), false)
 		if err != nil {
 			return nil, err
 		}
-
-		rel.Info.Resources = resp
-
-		return rel, nil
+	} else {
+		resources, err = s.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), false)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return nil, errors.New("unable to get kubeClient with interface InterfaceResources")
+
+	resp, err := s.cfg.KubeClient.Get(resources, true)
+	if err != nil {
+		return nil, err
+	}
+
+	rel.Info.Resources = resp
+
+	return rel, nil
 }
