@@ -130,7 +130,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient := action.NewInstall(cfg)
 					instClient.CreateNamespace = createNamespace
 					instClient.ChartPathOptions = client.ChartPathOptions
-					instClient.Force = client.Force
+					instClient.ForceReplace = client.ForceReplace
 					instClient.DryRun = client.DryRun
 					instClient.DryRunOption = client.DryRunOption
 					instClient.DisableHooks = client.DisableHooks
@@ -268,7 +268,9 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
 	f.Lookup("dry-run").NoOptDefVal = "client"
-	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
+	f.BoolVar(&client.ForceReplace, "force-replace", false, "force resource updates by replacement")
+	f.BoolVar(&client.ForceReplace, "force", false, "deprecated")
+	f.MarkDeprecated("force", "use --force-replace instead")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
 	f.BoolVar(&client.DisableOpenAPIValidation, "disable-openapi-validation", false, "if set, the upgrade process will not validate rendered templates against the Kubernetes OpenAPI Schema")
 	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed when an upgrade is performed with install flag enabled. By default, CRDs are installed if not already present, when an upgrade is performed with install flag enabled")

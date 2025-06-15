@@ -130,16 +130,16 @@ func requireValue(meta map[string]string, k, v string) error {
 	return nil
 }
 
-// setMetadataVisitor adds release tracking metadata to all resources. If force is enabled, existing
+// setMetadataVisitor adds release tracking metadata to all resources. If forceOwnership is enabled, existing
 // ownership metadata will be overwritten. Otherwise an error will be returned if any resource has an
 // existing and conflicting value for the managed by label or Helm release/namespace annotations.
-func setMetadataVisitor(releaseName, releaseNamespace string, force bool) resource.VisitorFunc {
+func setMetadataVisitor(releaseName, releaseNamespace string, forceOwnership bool) resource.VisitorFunc {
 	return func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if !force {
+		if !forceOwnership {
 			if err := checkOwnership(info.Object, releaseName, releaseNamespace); err != nil {
 				return fmt.Errorf("%s cannot be owned: %s", resourceString(info), err)
 			}
