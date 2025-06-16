@@ -280,28 +280,28 @@ func TestIsOCI(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		url     string
+		uri     string
 		isValid bool
 	}{
 		{
-			name:    "Valid url",
-			url:     "oci://example.com/myregistry:1.2.3",
+			name:    "Valid URI",
+			uri:     "oci://example.com/myregistry:1.2.3",
 			isValid: true,
 		},
 		{
-			name:    "Invalid URL prefix (boundary test 1)",
-			url:     "noci://example.com/myregistry:1.2.3",
+			name:    "Invalid URI prefix (boundary test 1)",
+			uri:     "noci://example.com/myregistry:1.2.3",
 			isValid: false,
 		},
 		{
-			name:    "Invalid URL prefix (boundary test 2)",
-			url:     "ocin://example.com/myregistry:1.2.3",
+			name:    "Invalid URI prefix (boundary test 2)",
+			uri:     "ocin://example.com/myregistry:1.2.3",
 			isValid: false,
 		},
 	}
 
 	for _, tt := range tests {
-		assert.Equal(t, tt.isValid, IsOCI(tt.url), tt.name)
+		assert.Equal(t, tt.isValid, IsOCI(tt.uri), tt.name)
 	}
 }
 
