@@ -22,9 +22,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"text/template"
@@ -103,7 +105,12 @@ const (
 // adding filename annotations to each document for later reconstruction.
 func annotateAndMerge(files map[string]string) (string, error) {
 	var combinedManifests []*kyaml.RNode
-	for fname, content := range files {
+
+	// Get sorted filenames to ensure result is deterministic
+	fnames := slices.Sorted(maps.Keys(files))
+
+	for _, fname := range fnames {
+		content := files[fname]
 		// Skip partials and empty files.
 		if strings.HasPrefix(path.Base(fname), "_") || strings.TrimSpace(content) == "" {
 			continue
