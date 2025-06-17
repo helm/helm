@@ -113,14 +113,19 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer) error {
 	var wg sync.WaitGroup
 	failRepoURLChan := make(chan string, len(repos))
 
+	writeMutex := sync.Mutex{}
 	for _, re := range repos {
 		wg.Add(1)
 		go func(re *repo.ChartRepository) {
 			defer wg.Done()
 			if _, err := re.DownloadIndexFile(); err != nil {
+				writeMutex.Lock()
+				defer writeMutex.Unlock()
 				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
 				failRepoURLChan <- re.Config.URL
 			} else {
+				writeMutex.Lock()
+				defer writeMutex.Unlock()
 				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)
 			}
 		}(re)

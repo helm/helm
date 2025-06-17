@@ -34,6 +34,10 @@ import (
 
 const registryLoginDesc = `
 Authenticate to a remote registry.
+
+For example for Github Container Registry:
+
+    echo "$GITHUB_TOKEN" | helm registry login ghcr.io -u $GITHUB_USER --password-stdin
 `
 
 type registryLoginOptions struct {

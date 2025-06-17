@@ -31,6 +31,7 @@ var (
 )
 
 func givenTime(t *testing.T) Time {
+	t.Helper()
 	result, err := Parse(time.RFC3339, "1977-09-02T22:04:05Z")
 	require.NoError(t, err)
 	return result

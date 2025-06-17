@@ -39,7 +39,7 @@ func LoadChartfile(filename string) (*chart.Metadata, error) {
 	return y, err
 }
 
-// StrictLoadChartFile loads a Chart.yaml into a *chart.Metadata using a strict unmarshaling
+// StrictLoadChartfile loads a Chart.yaml into a *chart.Metadata using a strict unmarshaling
 func StrictLoadChartfile(filename string) (*chart.Metadata, error) {
 	b, err := os.ReadFile(filename)
 	if err != nil {

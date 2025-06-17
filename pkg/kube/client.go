@@ -30,7 +30,7 @@ import (
 	"strings"
 	"sync"
 
-	jsonpatch "github.com/evanphx/json-patch"
+	jsonpatch "github.com/evanphx/json-patch/v5"
 	v1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -585,10 +585,14 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 	}
 }
 
+var createMutex sync.Mutex
+
 func createResource(info *resource.Info) error {
 	return retry.RetryOnConflict(
 		retry.DefaultRetry,
 		func() error {
+			createMutex.Lock()
+			defer createMutex.Unlock()
 			obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
 			if err != nil {
 				return err

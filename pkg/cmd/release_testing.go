@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -85,7 +86,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 				// Print a newline to stdout to separate the output
 				fmt.Fprintln(out)
 				if err := client.GetPodLogs(out, rel); err != nil {
-					return err
+					return errors.Join(runErr, err)
 				}
 			}
 
