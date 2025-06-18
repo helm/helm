@@ -368,3 +368,8 @@ func TestGetVersionSet(t *testing.T) {
 		t.Error("Non-existent version is reported found.")
 	}
 }
+
+func TestDetermineReleaseSSAApplyMethod(t *testing.T) {
+	assert.Equal(t, release.ApplyMethodClientSideApply, determineReleaseSSApplyMethod(false))
+	assert.Equal(t, release.ApplyMethodServerSideApply, determineReleaseSSApplyMethod(true))
+}
