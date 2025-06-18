@@ -26,6 +26,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/resource"
 
@@ -259,7 +260,7 @@ func (h *HookFailingKubeWaiter) WatchUntilReady(resources kube.ResourceList, _ t
 	return nil
 }
 
-func (h *HookFailingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, []error) {
+func (h *HookFailingKubeClient) Delete(resources kube.ResourceList, deletionPropagation metav1.DeletionPropagation) (*kube.Result, []error) {
 	for _, res := range resources {
 		h.deleteRecord = append(h.deleteRecord, resource.Info{
 			Name:      res.Name,
@@ -267,7 +268,7 @@ func (h *HookFailingKubeClient) Delete(resources kube.ResourceList) (*kube.Resul
 		})
 	}
 
-	return h.PrintingKubeClient.Delete(resources)
+	return h.PrintingKubeClient.Delete(resources, deletionPropagation)
 }
 
 func (h *HookFailingKubeClient) GetWaiter(strategy kube.WaitStrategy) (kube.Waiter, error) {

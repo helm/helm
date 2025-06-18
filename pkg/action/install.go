@@ -467,11 +467,8 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
 		_, err = i.cfg.KubeClient.Create(resources)
 	} else if len(resources) > 0 {
-		if i.TakeOwnership {
-			_, err = i.cfg.KubeClient.(kube.InterfaceThreeWayMerge).UpdateThreeWayMerge(toBeAdopted, resources, i.Force)
-		} else {
-			_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force)
-		}
+		updateThreeWayMerge := i.TakeOwnership // Use three-way merge when taking ownership
+		_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force, updateThreeWayMerge)
 	}
 	if err != nil {
 		return rel, err
