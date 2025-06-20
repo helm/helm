@@ -119,6 +119,7 @@ func isGZipApplication(data []byte) bool {
 	return bytes.HasPrefix(data, sig)
 }
 
+// getMaxDecompressedChartSize retrieves the maximum size of a decompressed chart from the environment variable
 func getMaxDecompressedChartSize() int64 {
 	chartSizeEnv, ok := os.LookupEnv(MaxChartSizeEnv)
 	if !ok {
@@ -132,6 +133,7 @@ func getMaxDecompressedChartSize() int64 {
 	return maxSize
 }
 
+// getMaxDecompressedFileSize retrieves the maximum size of a decompressed file from the environment variable
 func getMaxDecompressedFileSize() int64 {
 	fileSizeEnv, ok := os.LookupEnv(MaxChartFileSizeEnv)
 	if !ok {
