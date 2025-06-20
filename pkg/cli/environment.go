@@ -89,15 +89,9 @@ type EnvSettings struct {
 	BurstLimit int
 	// QPS is queries per second which may be used to avoid throttling.
 	QPS float32
-	// Max DecompressedChartSize is the maximum size of a chart archive that will be decompressed.
-	MaxDecompressedChartSize int
-	// MaxDecompressedFileSize is the size of the largest file that Helm will attempt to load.
-	MaxDecompressedFileSize int
 }
 
 func New() *EnvSettings {
-	var defaultMaxDecompressedFileSize int = 5 * 1024 * 1024    // Default 5 MiB
-	var defaultMaxDecompressedChartSize int = 100 * 1024 * 1024 // Default 100 MiB
 
 	env := &EnvSettings{
 		namespace:                 os.Getenv("HELM_NAMESPACE"),
@@ -116,8 +110,6 @@ func New() *EnvSettings {
 		RepositoryCache:           envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
 		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 		QPS:                       envFloat32Or("HELM_QPS", defaultQPS),
-		MaxDecompressedChartSize:  envIntOr("HELM_MAX_DECOMPRESSED_CHART_SIZE", defaultMaxDecompressedChartSize),
-		MaxDecompressedFileSize:   envIntOr("HELM_MAX_DECOMPRESSED_FILE_SIZE", defaultMaxDecompressedFileSize),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
