@@ -84,3 +84,23 @@ If you're interested in contributing, please refer to the [Contributing Guide](C
 ### Code of conduct
 
 Participation in the Helm community is governed by the [Code of Conduct](code-of-conduct.md).
+
+
+## Troubleshooting Helm Install Errors
+
+If you encounter the following error while running `helm install`:
+
+
+This error can occur when network proxies or VPN clients like **Z-Scaler** interfere with Helm’s communication with the Kubernetes API server. In some cases, even if Z-Scaler appears to be disabled, it may still be running in the background.
+
+To resolve this issue:
+
+- Ensure Z-Scaler is fully **terminated or logged out**, not just disabled.
+- Retry the `helm install` command after confirming your network is not filtered through such a service.
+- This issue and its resolution were discussed in [GitHub issue #30860](https://github.com/helm/helm/issues/30860).
+
+If the issue persists, also verify:
+
+- Your Kubernetes cluster is reachable (`kubectl get nodes` works).
+- You have the correct Kubernetes context selected (`kubectl config current-context`).
+
