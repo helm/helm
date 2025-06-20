@@ -27,10 +27,14 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
+
+const MaxChartFileSizeEnv = "HELM_MAX_DECOMPRESSED_FILE_SIZE"
+const MaxChartSizeEnv = "HELM_MAX_DECOMPRESSED_CHART_SIZE"
 
 // MaxDecompressedChartSize is the maximum size of a chart archive that will be
 // decompressed. This is the decompressed size of all the files.
@@ -115,6 +119,34 @@ func isGZipApplication(data []byte) bool {
 	return bytes.HasPrefix(data, sig)
 }
 
+// getMaxDecompressedChartSize retrieves the maximum size of a decompressed chart from the environment variable
+func getMaxDecompressedChartSize() int64 {
+	chartSizeEnv, ok := os.LookupEnv(MaxChartSizeEnv)
+	if !ok {
+		return MaxDecompressedChartSize
+	}
+
+	maxSize, err := strconv.ParseInt(chartSizeEnv, 10, 64)
+	if err != nil {
+		return MaxDecompressedChartSize
+	}
+	return maxSize
+}
+
+// getMaxDecompressedFileSize retrieves the maximum size of a decompressed file from the environment variable
+func getMaxDecompressedFileSize() int64 {
+	fileSizeEnv, ok := os.LookupEnv(MaxChartFileSizeEnv)
+	if !ok {
+		return MaxDecompressedFileSize
+	}
+
+	maxSize, err := strconv.ParseInt(fileSizeEnv, 10, 64)
+	if err != nil {
+		return MaxDecompressedFileSize
+	}
+	return maxSize
+}
+
 // LoadArchiveFiles reads in files out of an archive into memory. This function
 // performs important path security checks and should always be used before
 // expanding a tarball
@@ -127,7 +159,14 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 
 	files := []*BufferedFile{}
 	tr := tar.NewReader(unzipped)
-	remainingSize := MaxDecompressedChartSize
+
+	// Set the maximum size of the decompressed chart.
+	maxChartSize := getMaxDecompressedChartSize()
+	remainingSize := maxChartSize
+
+	// Set the maximum size of a single file in the decompressed chart.
+	maxChartFileSize := getMaxDecompressedFileSize()
+
 	for {
 		b := bytes.NewBuffer(nil)
 		hd, err := tr.Next()
@@ -188,11 +227,11 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 		}
 
 		if hd.Size > remainingSize {
-			return nil, fmt.Errorf("decompressed chart is larger than the maximum size %d", MaxDecompressedChartSize)
+			return nil, fmt.Errorf("decompressed chart is larger than the maximum size %d", maxChartSize)
 		}
 
-		if hd.Size > MaxDecompressedFileSize {
-			return nil, fmt.Errorf("decompressed chart file %q is larger than the maximum file size %d", hd.Name, MaxDecompressedFileSize)
+		if hd.Size > maxChartFileSize {
+			return nil, fmt.Errorf("decompressed chart file %q is larger than the maximum file size %d", hd.Name, maxChartFileSize)
 		}
 
 		limitedReader := io.LimitReader(tr, remainingSize)
@@ -208,7 +247,7 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 		// is the one that goes over the limit. It assumes the Size stored in the tar header
 		// is correct, something many applications do.
 		if bytesWritten < hd.Size || remainingSize <= 0 {
-			return nil, fmt.Errorf("decompressed chart is larger than the maximum size %d", MaxDecompressedChartSize)
+			return nil, fmt.Errorf("decompressed chart is larger than the maximum size %d", maxChartSize)
 		}
 
 		data := bytes.TrimPrefix(b.Bytes(), utf8bom)
