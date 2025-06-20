@@ -92,7 +92,6 @@ type EnvSettings struct {
 }
 
 func New() *EnvSettings {
-
 	env := &EnvSettings{
 		namespace:                 os.Getenv("HELM_NAMESPACE"),
 		MaxHistory:                envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
