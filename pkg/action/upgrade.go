@@ -128,7 +128,8 @@ type resultMessage struct {
 // NewUpgrade creates a new Upgrade object with the given configuration.
 func NewUpgrade(cfg *Configuration) *Upgrade {
 	up := &Upgrade{
-		cfg: cfg,
+		cfg:            cfg,
+		DryRunStrategy: DryRunNone,
 	}
 	up.registryClient = cfg.RegistryClient
 
