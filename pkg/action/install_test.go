@@ -45,7 +45,6 @@ import (
 
 	"helm.sh/helm/v4/internal/test"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -251,16 +250,6 @@ func TestInstallReleaseWithValues(t *testing.T) {
 	is.Equal(expectedUserValues, rel.Config)
 }
 
-func TestInstallReleaseClient(t *testing.T) {
-	is := assert.New(t)
-	instAction := installAction(t)
-	instAction.DryRunStrategy = DryRunClient
-	instAction.Run(buildChart(), nil) // disregard output
-
-	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)
-	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: io.Discard})
-}
-
 func TestInstallRelease_NoName(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = ""
@@ -357,27 +346,30 @@ func TestInstallRelease_WithChartAndDependencyAllNotes(t *testing.T) {
 	is.Equal(rel.Info.Description, "Install complete")
 }
 
-func TestInstallRelease_DryRun(t *testing.T) {
-	is := assert.New(t)
-	instAction := installAction(t)
-	instAction.DryRunStrategy = DryRunClient
-	vals := map[string]interface{}{}
-	res, err := instAction.Run(buildChart(withSampleTemplates()), vals)
-	if err != nil {
-		t.Fatalf("Failed install: %s", err)
+func TestInstallRelease_DryRunClient(t *testing.T) {
+	for _, dryRunStrategy := range []DryRunStrategy{DryRunClient, DryRunServer} {
+		is := assert.New(t)
+		instAction := installAction(t)
+		instAction.DryRunStrategy = dryRunStrategy
+
+		vals := map[string]interface{}{}
+		res, err := instAction.Run(buildChart(withSampleTemplates()), vals)
+		if err != nil {
+			t.Fatalf("Failed install: %s", err)
+		}
+
+		is.Contains(res.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
+		is.Contains(res.Manifest, "---\n# Source: hello/templates/goodbye\ngoodbye: world")
+		is.Contains(res.Manifest, "hello: Earth")
+		is.NotContains(res.Manifest, "hello: {{ template \"_planet\" . }}")
+		is.NotContains(res.Manifest, "empty")
+
+		_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
+		is.Error(err)
+		is.Len(res.Hooks, 1)
+		is.True(res.Hooks[0].LastRun.CompletedAt.IsZero(), "expect hook to not be marked as run")
+		is.Equal(res.Info.Description, "Dry run complete")
 	}
-
-	is.Contains(res.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
-	is.Contains(res.Manifest, "---\n# Source: hello/templates/goodbye\ngoodbye: world")
-	is.Contains(res.Manifest, "hello: Earth")
-	is.NotContains(res.Manifest, "hello: {{ template \"_planet\" . }}")
-	is.NotContains(res.Manifest, "empty")
-
-	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.Error(err)
-	is.Len(res.Hooks, 1)
-	is.True(res.Hooks[0].LastRun.CompletedAt.IsZero(), "expect hook to not be marked as run")
-	is.Equal(res.Info.Description, "Dry run complete")
 }
 
 func TestInstallRelease_DryRunHiddenSecret(t *testing.T) {

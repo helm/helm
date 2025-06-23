@@ -87,7 +87,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if validate { // Mimic depercated --validate flag behavior by enabling server dry run
+			if validate {
+				// Mimic deprecated --validate flag behavior by enabling server dry run
 				dryRunStrategy = action.DryRunServer
 			}
 			client.DryRunStrategy = dryRunStrategy
