@@ -251,10 +251,10 @@ func TestInstallReleaseWithValues(t *testing.T) {
 	is.Equal(expectedUserValues, rel.Config)
 }
 
-func TestInstallReleaseClientOnly(t *testing.T) {
+func TestInstallReleaseClient(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	instAction.ClientOnly = true
+	instAction.DryRunStrategy = DryRunClient
 	instAction.Run(buildChart(), nil) // disregard output
 
 	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)

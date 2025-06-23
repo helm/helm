@@ -87,10 +87,12 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if validate { // Mimic depercated --validate flag behavior by enabling server dry run
+				dryRunStrategy = action.DryRunServer
+			}
 			client.DryRunStrategy = dryRunStrategy
 			client.ReleaseName = "release-name"
 			client.Replace = true // Skip the name check
-			client.ClientOnly = !validate
 			client.APIVersions = chartutil.VersionSet(extraAPIs)
 			client.IncludeCRDs = includeCrds
 			rel, err := runInstall(args, client, valueOpts, out)
@@ -194,7 +196,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addInstallFlags(cmd, f, client, valueOpts)
 	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
-	f.BoolVar(&validate, "validate", false, "validate your manifests against the Kubernetes cluster you are currently pointing at. This is the same validation performed on an install")
+	f.BoolVar(&validate, "validate", false, "deprecated")
+	f.MarkDeprecated("validate", "use '--dry-run=server' instead")
 	f.BoolVar(&includeCrds, "include-crds", false, "include CRDs in the templated output")
 	f.BoolVar(&skipTests, "skip-tests", false, "skip tests from templated output")
 	f.BoolVar(&client.IsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
@@ -203,10 +206,11 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.UseReleaseName, "release-name", false, "use release name in the output-dir path.")
 	f.String(
 		"dry-run",
-		"server",
-		`simulates the operation either client-side or server-side. Must be either: "client", or "server". '--dry-run=client simulates the operation client-side only and avoids cluster connections. '--dry-run=server' simulates the operation on the server, requiring cluster connectivity.`)
+		"client",
+		`simulates the operation either client-side or server-side. Must be either: "client", or "server". '--dry-run=client simulates the operation client-side only and avoids cluster connections. '--dry-run=server' simulates/validates the operation on the server, requiring cluster connectivity.`)
 	f.Lookup("dry-run").NoOptDefVal = "unset"
 	bindPostRenderFlag(cmd, &client.PostRenderer)
+	cmd.MarkFlagsMutuallyExclusive("validate", "dry-run")
 
 	return cmd
 }

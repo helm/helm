@@ -69,7 +69,7 @@ func cmdGetDryRunFlagStrategy(cmd *cobra.Command, isTemplate bool) (action.DryRu
 	}
 
 	if isTemplate && !b {
-		// Special case hack for `helm template`, which is always a dry run
+		// Special case for `helm template`, which is always a dry run
 		return action.DryRunNone, fmt.Errorf(`invalid dry-run value (%q). Must be "server" or "client"`, v)
 	}
 
