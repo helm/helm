@@ -25,7 +25,6 @@ import (
 	"text/template"
 
 	"github.com/stretchr/testify/assert"
-
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -646,7 +645,6 @@ func TestRenderDependency(t *testing.T) {
 	if out["outerchart/templates/outer"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["outer"])
 	}
-
 }
 
 func TestRenderNestedValues(t *testing.T) {
@@ -800,7 +798,6 @@ func TestRenderBuiltinValues(t *testing.T) {
 			t.Errorf("Expected %q, got %q", expect, out[file])
 		}
 	}
-
 }
 
 func TestAlterFuncMap_include(t *testing.T) {
@@ -993,7 +990,6 @@ func TestAlterFuncMap_tplinclude(t *testing.T) {
 	if got := out["TplFunction/templates/base"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
-
 }
 
 func TestRenderRecursionLimit(t *testing.T) {
@@ -1048,7 +1044,6 @@ func TestRenderRecursionLimit(t *testing.T) {
 	if got := out["overlook/templates/quote"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
-
 }
 
 func TestRenderLoadTemplateForTplFromFile(t *testing.T) {
