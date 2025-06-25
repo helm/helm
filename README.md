@@ -57,7 +57,7 @@ including installing pre-releases.
 
 ## Docs
 
-Get started with the [Quick Start guide](https://helm.sh/docs/intro/quickstart/) or plunge into the [complete documentation](https://helm.sh/docs)
+Get started with the [Quick Start guide](https://helm.sh/docs/intro/quickstart/) or plunge into the [complete documentation](https://helm.sh/docs).
 
 ## Roadmap
 
