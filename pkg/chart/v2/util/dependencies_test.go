@@ -133,7 +133,7 @@ func TestDependencyEnabled(t *testing.T) {
 	}
 }
 
-// extractCharts recursively searches chart dependencies returning all charts found
+// extractChartNames recursively searches chart dependencies returning all charts found
 func extractChartNames(c *chart.Chart) []string {
 	var out []string
 	var fn func(c *chart.Chart)

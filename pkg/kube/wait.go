@@ -117,7 +117,7 @@ func (hw *legacyWaiter) isRetryableHTTPStatusCode(httpStatusCode int32) bool {
 	return httpStatusCode == 0 || httpStatusCode == http.StatusTooManyRequests || (httpStatusCode >= 500 && httpStatusCode != http.StatusNotImplemented)
 }
 
-// waitForDeletedResources polls to check if all the resources are deleted or a timeout is reached
+// WaitForDelete polls to check if all the resources are deleted or a timeout is reached
 func (hw *legacyWaiter) WaitForDelete(deleted ResourceList, timeout time.Duration) error {
 	slog.Debug("beginning wait for resources to be deleted", "count", len(deleted), "timeout", timeout)
 
