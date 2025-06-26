@@ -1,0 +1,51 @@
+/*
+Copyright The Helm Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package rules
+
+import (
+	"strings"
+	"testing"
+
+	"helm.sh/helm/v4/pkg/lint/support"
+)
+
+const crdsTestBasedir = "./testdata/withcrd"
+const invalidCrdsDir = "./testdata/invalidcrdsdir"
+
+func TestCrdsDir(t *testing.T) {
+	linter := support.Linter{ChartDir: crdsTestBasedir}
+	Crds(&linter)
+	res := linter.Messages
+
+	if len(res) > 0 {
+		t.Fatalf("Expected no errors, got %d, %v", len(res), res)
+	}
+}
+
+func TestInvalidCrdsDir(t *testing.T) {
+	linter := support.Linter{ChartDir: invalidCrdsDir}
+	Crds(&linter)
+	res := linter.Messages
+
+	if len(res) != 1 {
+		t.Fatalf("Expected one error, got %d, %v", len(res), res)
+	}
+
+	if !strings.Contains(res[0].Err.Error(), "not a directory") {
+		t.Errorf("Unexpected error: %s", res[0])
+	}
+}
