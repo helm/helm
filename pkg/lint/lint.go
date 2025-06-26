@@ -60,6 +60,7 @@ func RunAll(baseDir string, values map[string]interface{}, namespace string, opt
 	rules.ValuesWithOverrides(&result, values)
 	rules.TemplatesWithSkipSchemaValidation(&result, values, namespace, lo.KubeVersion, lo.SkipSchemaValidation)
 	rules.Dependencies(&result)
+	rules.Crds(&result)
 
 	return result
 }
