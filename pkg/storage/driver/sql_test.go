@@ -81,12 +81,14 @@ func TestSQLGet(t *testing.T) {
 
 func TestSQLList(t *testing.T) {
 	releases := []*rspb.Release{}
-	releases = append(releases, releaseStub("key-1", 1, "default", rspb.StatusUninstalled))
-	releases = append(releases, releaseStub("key-2", 1, "default", rspb.StatusUninstalled))
-	releases = append(releases, releaseStub("key-3", 1, "default", rspb.StatusDeployed))
-	releases = append(releases, releaseStub("key-4", 1, "default", rspb.StatusDeployed))
-	releases = append(releases, releaseStub("key-5", 1, "default", rspb.StatusSuperseded))
-	releases = append(releases, releaseStub("key-6", 1, "default", rspb.StatusSuperseded))
+	releases = append(releases,
+		releaseStub("key-1", 1, "default", rspb.StatusUninstalled),
+		releaseStub("key-2", 1, "default", rspb.StatusUninstalled),
+		releaseStub("key-3", 1, "default", rspb.StatusDeployed),
+		releaseStub("key-4", 1, "default", rspb.StatusDeployed),
+		releaseStub("key-5", 1, "default", rspb.StatusSuperseded),
+		releaseStub("key-6", 1, "default", rspb.StatusSuperseded),
+	)
 
 	sqlDriver, mock := newTestFixtureSQL(t)
 
@@ -520,7 +522,7 @@ func TestSqlDelete(t *testing.T) {
 	}
 }
 
-func mockGetReleaseCustomLabels(mock sqlmock.Sqlmock, key string, namespace string, labels map[string]string) {
+func mockGetReleaseCustomLabels(mock sqlmock.Sqlmock, key, namespace string, labels map[string]string) {
 	query := fmt.Sprintf(
 		regexp.QuoteMeta("SELECT %s, %s FROM %s WHERE %s = $1 AND %s = $2"),
 		sqlCustomLabelsTableKeyColumn,

@@ -253,7 +253,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 }
 
 // LoginOptBasicAuth returns a function that sets the username/password settings on login
-func LoginOptBasicAuth(username string, password string) LoginOption {
+func LoginOptBasicAuth(username, password string) LoginOption {
 	return func(o *loginOperation) {
 		o.client.username = username
 		o.client.password = password
@@ -279,8 +279,7 @@ func ensureTLSConfig(client *auth.Client) (*tls.Config, error) {
 		case *http.Transport:
 			transport = t
 		case *LoggingTransport:
-			switch t := t.RoundTripper.(type) {
-			case *http.Transport:
+			if t, ok := t.RoundTripper.(*http.Transport); ok {
 				transport = t
 			}
 		}
@@ -820,10 +819,8 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 	if version == "" {
 		// Use OCI URI tag as default
 		version = registryReference.Tag
-	} else {
-		if registryReference.Tag != "" && registryReference.Tag != version {
-			return nil, fmt.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
-		}
+	} else if registryReference.Tag != "" && registryReference.Tag != version {
+		return nil, fmt.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
 	}
 
 	if registryReference.Digest != "" {
