@@ -52,7 +52,7 @@ func Crds(linter *support.Linter) {
 	}
 
 	/* Iterate over all the CRDs to check:
-	- It is a YAML file
+	- It is a YAML file and not a template
 	- The kind is CustomResourceDefinition
 	*/
 	for _, crd := range chart.CRDObjects() {
@@ -68,7 +68,8 @@ func Crds(linter *support.Linter) {
 				break
 			}
 
-			// If YAML linting fails here, it will always fail in the next block as well, so we should return here.
+			// If YAML parsing fails here, it will always fail in the next block as well, so we should return here.
+			// This also confirms the YAML is not a template, since templates can't be decoded into a K8sYamlStruct.
 			if !linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err)) {
 				return
 			}
