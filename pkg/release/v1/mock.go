@@ -46,6 +46,7 @@ type MockReleaseOptions struct {
 	Chart     *chart.Chart
 	Status    Status
 	Namespace string
+	Labels    map[string]string
 }
 
 // Mock creates a mock release object based on options set by MockReleaseOptions. This function should typically not be used outside of testing.
@@ -65,6 +66,10 @@ func Mock(opts *MockReleaseOptions) *Release {
 	namespace := opts.Namespace
 	if namespace == "" {
 		namespace = "default"
+	}
+	var labels map[string]string
+	if len(opts.Labels) > 0 {
+		labels = opts.Labels
 	}
 
 	ch := opts.Chart
@@ -130,5 +135,6 @@ func Mock(opts *MockReleaseOptions) *Release {
 			},
 		},
 		Manifest: MockManifest,
+		Labels:   labels,
 	}
 }
