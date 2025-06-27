@@ -32,6 +32,7 @@ const namespace = "testNamespace"
 const badChartDir = "rules/testdata/badchartfile"
 const badValuesFileDir = "rules/testdata/badvaluesfile"
 const badYamlFileDir = "rules/testdata/albatross"
+const badCrdFileDir = "rules/testdata/badcrdfile"
 const goodChartDir = "rules/testdata/goodone"
 const subChartValuesDir = "rules/testdata/withsubchart"
 const malformedTemplate = "rules/testdata/malformed-template"
@@ -39,7 +40,7 @@ const invalidChartFileDir = "rules/testdata/invalidchartfile"
 
 func TestBadChart(t *testing.T) {
 	m := RunAll(badChartDir, values, namespace).Messages
-	if len(m) != 8 {
+	if len(m) != 9 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
@@ -108,6 +109,16 @@ func TestBadValues(t *testing.T) {
 	}
 	if !strings.Contains(m[0].Err.Error(), "unable to parse YAML") {
 		t.Errorf("All didn't have the error for invalid key format: %s", m[0].Err)
+	}
+}
+
+func TestBadCrdFile(t *testing.T) {
+	m := RunAll(badCrdFileDir, values, namespace).Messages
+	if len(m) < 1 {
+		t.Fatalf("All didn't fail with expected errors, got %#v", m)
+	}
+	if !strings.Contains(m[0].Err.Error(), "object kind is not 'CustomResourceDefinition'") {
+		t.Errorf("All didn't have the error for invalid CRD: %s", m[0].Err)
 	}
 }
 
