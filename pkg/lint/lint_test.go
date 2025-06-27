@@ -40,7 +40,7 @@ const invalidChartFileDir = "rules/testdata/invalidchartfile"
 
 func TestBadChart(t *testing.T) {
 	m := RunAll(badChartDir, values, namespace).Messages
-	if len(m) != 8 {
+	if len(m) != 9 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
