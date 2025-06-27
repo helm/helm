@@ -154,6 +154,7 @@ spec:
 `
 
 func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured) schema.GroupVersionResource {
+	t.Helper()
 	gvk := obj.GroupVersionKind()
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	require.NoError(t, err)
@@ -161,6 +162,7 @@ func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured
 }
 
 func getRuntimeObjFromManifests(t *testing.T, manifests []string) []runtime.Object {
+	t.Helper()
 	objects := []runtime.Object{}
 	for _, manifest := range manifests {
 		m := make(map[string]interface{})
@@ -173,6 +175,7 @@ func getRuntimeObjFromManifests(t *testing.T, manifests []string) []runtime.Obje
 }
 
 func getResourceListFromRuntimeObjs(t *testing.T, c *Client, objs []runtime.Object) ResourceList {
+	t.Helper()
 	resourceList := ResourceList{}
 	for _, obj := range objs {
 		list, err := c.Build(objBody(obj), false)

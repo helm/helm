@@ -16,7 +16,6 @@ limitations under the License.
 package repotest
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -42,6 +41,7 @@ import (
 )
 
 func BasicAuthMiddleware(t *testing.T) http.HandlerFunc {
+	t.Helper()
 	return http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
 		if !ok || username != "username" || password != "password" {
@@ -89,11 +89,8 @@ type Server struct {
 //
 // The temp dir will be removed by testing package automatically when test finished.
 func NewTempServer(t *testing.T, options ...ServerOption) *Server {
-
-	docrootTempDir, err := os.MkdirTemp("", "helm-repotest-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Helper()
+	docrootTempDir := t.TempDir()
 
 	srv := newServer(t, docrootTempDir, options...)
 
@@ -110,6 +107,7 @@ func NewTempServer(t *testing.T, options ...ServerOption) *Server {
 
 // Create the server, but don't yet start it
 func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
+	t.Helper()
 	absdocroot, err := filepath.Abs(docroot)
 	if err != nil {
 		t.Fatal(err)
@@ -162,6 +160,7 @@ func WithDependingChart(c *chart.Chart) OCIServerOpt {
 }
 
 func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
+	t.Helper()
 	testHtpasswdFileBasename := "authtest.htpasswd"
 	testUsername, testPassword := "username", "password"
 
@@ -170,7 +169,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 		t.Fatal("error generating bcrypt password for test htpasswd file")
 	}
 	htpasswdPath := filepath.Join(dir, testHtpasswdFileBasename)
-	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0o644)
 	if err != nil {
 		t.Fatalf("error creating test htpasswd file")
 	}
@@ -194,7 +193,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 
 	registryURL := fmt.Sprintf("localhost:%d", port)
 
-	r, err := registry.NewRegistry(context.Background(), config)
+	r, err := registry.NewRegistry(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,6 +208,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 }
 
 func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
+	t.Helper()
 	cfg := &OCIServerRunConfig{}
 	for _, fn := range opts {
 		fn(cfg)
@@ -327,7 +327,7 @@ func (s *Server) CopyCharts(origin string) ([]string, error) {
 		if err != nil {
 			return []string{}, err
 		}
-		if err := os.WriteFile(newname, data, 0644); err != nil {
+		if err := os.WriteFile(newname, data, 0o644); err != nil {
 			return []string{}, err
 		}
 		copied[i] = newname
@@ -351,7 +351,7 @@ func (s *Server) CreateIndex() error {
 	}
 
 	ifile := filepath.Join(s.docroot, "index.yaml")
-	return os.WriteFile(ifile, d, 0644)
+	return os.WriteFile(ifile, d, 0o644)
 }
 
 func (s *Server) start() {
@@ -403,5 +403,5 @@ func setTestingRepository(url, fname string) error {
 		Name: "test",
 		URL:  url,
 	})
-	return r.WriteFile(fname, 0640)
+	return r.WriteFile(fname, 0o640)
 }

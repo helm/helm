@@ -53,26 +53,6 @@ func TestVersionEquals(t *testing.T) {
 	}
 }
 
-func TestNormalizeURL(t *testing.T) {
-	tests := []struct {
-		name, base, path, expect string
-	}{
-		{name: "basic URL", base: "https://example.com", path: "http://helm.sh/foo", expect: "http://helm.sh/foo"},
-		{name: "relative path", base: "https://helm.sh/charts", path: "foo", expect: "https://helm.sh/charts/foo"},
-		{name: "Encoded path", base: "https://helm.sh/a%2Fb/charts", path: "foo", expect: "https://helm.sh/a%2Fb/charts/foo"},
-	}
-
-	for _, tt := range tests {
-		got, err := normalizeURL(tt.base, tt.path)
-		if err != nil {
-			t.Errorf("%s: error %s", tt.name, err)
-			continue
-		} else if got != tt.expect {
-			t.Errorf("%s: expected %q, got %q", tt.name, tt.expect, got)
-		}
-	}
-}
-
 func TestFindChartURL(t *testing.T) {
 	var b bytes.Buffer
 	m := &Manager{
@@ -133,6 +113,31 @@ func TestFindChartURL(t *testing.T) {
 	}
 	if passcredentialsall != false {
 		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
+	}
+
+	name = "foo"
+	version = "1.2.3"
+	repoURL = "http://example.com/helm"
+
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if churl != "http://example.com/helm/charts/foo-1.2.3.tgz" {
+		t.Errorf("Unexpected URL %q", churl)
+	}
+	if username != "" {
+		t.Errorf("Unexpected username %q", username)
+	}
+	if password != "" {
+		t.Errorf("Unexpected password %q", password)
+	}
+	if passcredentialsall != false {
+		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
+	}
+	if insecureSkipTLSVerify {
+		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
 	}
 }
 
@@ -437,6 +442,7 @@ func TestUpdateWithNoRepo(t *testing.T) {
 // Parent chart includes local-subchart 0.1.0 subchart from a fake repository, by default.
 // If each of these main fields (name, version, repository) is not supplied by dep param, default value will be used.
 func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Dependency) {
+	t.Helper()
 	// Set up a fake repo
 	srv := repotest.NewTempServer(
 		t,

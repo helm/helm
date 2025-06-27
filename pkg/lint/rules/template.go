@@ -25,6 +25,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/validation"
@@ -206,10 +207,8 @@ func validateAllowedExtension(fileName string) error {
 	ext := filepath.Ext(fileName)
 	validExtensions := []string{".yaml", ".yml", ".tpl", ".txt"}
 
-	for _, b := range validExtensions {
-		if b == ext {
-			return nil
-		}
+	if slices.Contains(validExtensions, ext) {
+		return nil
 	}
 
 	return fmt.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .yml, .tpl, or .txt", ext)

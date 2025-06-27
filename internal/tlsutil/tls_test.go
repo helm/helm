@@ -30,8 +30,9 @@ const (
 )
 
 func testfile(t *testing.T, file string) (path string) {
-	var err error
-	if path, err = filepath.Abs(filepath.Join(tlsTestDir, file)); err != nil {
+	t.Helper()
+	path, err := filepath.Abs(filepath.Join(tlsTestDir, file))
+	if err != nil {
 		t.Fatalf("error getting absolute path to test file %q: %v", file, err)
 	}
 	return path

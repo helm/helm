@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"helm.sh/helm/v4/pkg/cli"
@@ -163,12 +164,7 @@ type Provider struct {
 
 // Provides returns true if the given scheme is supported by this Provider.
 func (p Provider) Provides(scheme string) bool {
-	for _, i := range p.Schemes {
-		if i == scheme {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(p.Schemes, scheme)
 }
 
 // Providers is a collection of Provider objects.
@@ -195,24 +191,32 @@ const (
 
 var defaultOptions = []Option{WithTimeout(time.Second * DefaultHTTPTimeout)}
 
-var httpProvider = Provider{
-	Schemes: []string{"http", "https"},
-	New: func(options ...Option) (Getter, error) {
-		options = append(options, defaultOptions...)
-		return NewHTTPGetter(options...)
-	},
-}
-
-var ociProvider = Provider{
-	Schemes: []string{registry.OCIScheme},
-	New:     NewOCIGetter,
+func Getters(extraOpts ...Option) Providers {
+	return Providers{
+		Provider{
+			Schemes: []string{"http", "https"},
+			New: func(options ...Option) (Getter, error) {
+				options = append(options, defaultOptions...)
+				options = append(options, extraOpts...)
+				return NewHTTPGetter(options...)
+			},
+		},
+		Provider{
+			Schemes: []string{registry.OCIScheme},
+			New: func(options ...Option) (Getter, error) {
+				options = append(options, defaultOptions...)
+				options = append(options, extraOpts...)
+				return NewOCIGetter(options...)
+			},
+		},
+	}
 }
 
 // All finds all of the registered getters as a list of Provider instances.
 // Currently, the built-in getters and the discovered plugins with downloader
 // notations are collected.
-func All(settings *cli.EnvSettings) Providers {
-	result := Providers{httpProvider, ociProvider}
+func All(settings *cli.EnvSettings, opts ...Option) Providers {
+	result := Getters(opts...)
 	pluginDownloaders, _ := collectPlugins(settings)
 	result = append(result, pluginDownloaders...)
 	return result

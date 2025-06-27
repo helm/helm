@@ -116,6 +116,7 @@ func installActionWithConfig(config *Configuration) *Install {
 }
 
 func installAction(t *testing.T) *Install {
+	t.Helper()
 	config := actionConfigFixture(t)
 	instAction := NewInstall(config)
 	instAction.Namespace = "spaced"
@@ -130,7 +131,7 @@ func TestInstallRelease(t *testing.T) {
 
 	instAction := installAction(t)
 	vals := map[string]interface{}{}
-	ctx, done := context.WithCancel(context.Background())
+	ctx, done := context.WithCancel(t.Context())
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -446,7 +447,9 @@ func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
 	instAction.DryRun = true
 	vals := map[string]interface{}{}
 	_, err := instAction.Run(buildChart(withSampleIncludingIncorrectTemplates()), vals)
-	expectedErr := "\"hello/templates/incorrect\" at <.Values.bad.doh>: nil pointer evaluating interface {}.doh"
+	expectedErr := `hello/templates/incorrect:1:10
+  executing "hello/templates/incorrect" at <.Values.bad.doh>:
+    nil pointer evaluating interface {}.doh`
 	if err == nil {
 		t.Fatalf("Install should fail containing error: %s", expectedErr)
 	}
@@ -556,7 +559,7 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
 	goroutines := runtime.NumGoroutine()
@@ -640,7 +643,7 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	instAction.Atomic = true
 	vals := map[string]interface{}{}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
 	goroutines := runtime.NumGoroutine()

@@ -41,8 +41,10 @@ import (
 	cmdtesting "k8s.io/kubectl/pkg/cmd/testing"
 )
 
-var unstructuredSerializer = resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer
-var codec = scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
+var (
+	unstructuredSerializer = resource.UnstructuredPlusDefaultContentConfig().NegotiatedSerializer
+	codec                  = scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
+)
 
 func objBody(obj runtime.Object) io.ReadCloser {
 	return io.NopCloser(bytes.NewReader([]byte(runtime.EncodeOrDie(codec, obj))))
@@ -107,6 +109,7 @@ func newResponseJSON(code int, json []byte) (*http.Response, error) {
 }
 
 func newTestClient(t *testing.T) *Client {
+	t.Helper()
 	testFactory := cmdtesting.NewTestFactory()
 	t.Cleanup(testFactory.Cleanup)
 
@@ -138,15 +141,15 @@ func TestCreate(t *testing.T) {
 			actions = append(actions, path+":"+method)
 			t.Logf("got request %s %s", path, method)
 			switch {
-			case path == "/namespaces/default/pods" && method == "POST":
+			case path == "/namespaces/default/pods" && method == http.MethodPost:
 				if strings.Contains(body, "starfish") {
 					if iterationCounter < 2 {
 						iterationCounter++
-						return newResponseJSON(409, resourceQuotaConflict)
+						return newResponseJSON(http.StatusConflict, resourceQuotaConflict)
 					}
-					return newResponse(200, &listA.Items[0])
+					return newResponse(http.StatusOK, &listA.Items[0])
 				}
-				return newResponseJSON(409, resourceQuotaConflict)
+				return newResponseJSON(http.StatusConflict, resourceQuotaConflict)
 			default:
 				t.Fatalf("unexpected request: %s %s", method, path)
 				return nil, nil
@@ -213,6 +216,7 @@ func TestCreate(t *testing.T) {
 }
 
 func testUpdate(t *testing.T, threeWayMerge bool) {
+	t.Helper()
 	listA := newPodList("starfish", "otter", "squid")
 	listB := newPodList("starfish", "otter", "dolphin")
 	listC := newPodList("starfish", "otter", "dolphin")
@@ -230,11 +234,11 @@ func testUpdate(t *testing.T, threeWayMerge bool) {
 			actions = append(actions, p+":"+m)
 			t.Logf("got request %s %s", p, m)
 			switch {
-			case p == "/namespaces/default/pods/starfish" && m == "GET":
-				return newResponse(200, &listA.Items[0])
-			case p == "/namespaces/default/pods/otter" && m == "GET":
-				return newResponse(200, &listA.Items[1])
-			case p == "/namespaces/default/pods/otter" && m == "PATCH":
+			case p == "/namespaces/default/pods/starfish" && m == http.MethodGet:
+				return newResponse(http.StatusOK, &listA.Items[0])
+			case p == "/namespaces/default/pods/otter" && m == http.MethodGet:
+				return newResponse(http.StatusOK, &listA.Items[1])
+			case p == "/namespaces/default/pods/otter" && m == http.MethodPatch:
 				data, err := io.ReadAll(req.Body)
 				if err != nil {
 					t.Fatalf("could not dump request: %s", err)
@@ -244,10 +248,10 @@ func testUpdate(t *testing.T, threeWayMerge bool) {
 				if string(data) != expected {
 					t.Errorf("expected patch\n%s\ngot\n%s", expected, string(data))
 				}
-				return newResponse(200, &listB.Items[0])
-			case p == "/namespaces/default/pods/dolphin" && m == "GET":
-				return newResponse(404, notFoundBody())
-			case p == "/namespaces/default/pods/starfish" && m == "PATCH":
+				return newResponse(http.StatusOK, &listB.Items[0])
+			case p == "/namespaces/default/pods/dolphin" && m == http.MethodGet:
+				return newResponse(http.StatusNotFound, notFoundBody())
+			case p == "/namespaces/default/pods/starfish" && m == http.MethodPatch:
 				data, err := io.ReadAll(req.Body)
 				if err != nil {
 					t.Fatalf("could not dump request: %s", err)
@@ -257,17 +261,17 @@ func testUpdate(t *testing.T, threeWayMerge bool) {
 				if string(data) != expected {
 					t.Errorf("expected patch\n%s\ngot\n%s", expected, string(data))
 				}
-				return newResponse(200, &listB.Items[0])
-			case p == "/namespaces/default/pods" && m == "POST":
+				return newResponse(http.StatusOK, &listB.Items[0])
+			case p == "/namespaces/default/pods" && m == http.MethodPost:
 				if iterationCounter < 2 {
 					iterationCounter++
-					return newResponseJSON(409, resourceQuotaConflict)
+					return newResponseJSON(http.StatusConflict, resourceQuotaConflict)
 				}
-				return newResponse(200, &listB.Items[1])
-			case p == "/namespaces/default/pods/squid" && m == "DELETE":
-				return newResponse(200, &listB.Items[1])
-			case p == "/namespaces/default/pods/squid" && m == "GET":
-				return newResponse(200, &listB.Items[2])
+				return newResponse(http.StatusOK, &listB.Items[1])
+			case p == "/namespaces/default/pods/squid" && m == http.MethodDelete:
+				return newResponse(http.StatusOK, &listB.Items[1])
+			case p == "/namespaces/default/pods/squid" && m == http.MethodGet:
+				return newResponse(http.StatusOK, &listB.Items[2])
 			default:
 				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
 				return nil, nil
@@ -485,7 +489,7 @@ func TestWait(t *testing.T) {
 			p, m := req.URL.Path, req.Method
 			t.Logf("got request %s %s", p, m)
 			switch {
-			case p == "/api/v1/namespaces/default/pods/starfish" && m == "GET":
+			case p == "/api/v1/namespaces/default/pods/starfish" && m == http.MethodGet:
 				pod := &podList.Items[0]
 				if created != nil && time.Since(*created) >= time.Second*5 {
 					pod.Status.Conditions = []v1.PodCondition{
@@ -495,8 +499,8 @@ func TestWait(t *testing.T) {
 						},
 					}
 				}
-				return newResponse(200, pod)
-			case p == "/api/v1/namespaces/default/pods/otter" && m == "GET":
+				return newResponse(http.StatusOK, pod)
+			case p == "/api/v1/namespaces/default/pods/otter" && m == http.MethodGet:
 				pod := &podList.Items[1]
 				if created != nil && time.Since(*created) >= time.Second*5 {
 					pod.Status.Conditions = []v1.PodCondition{
@@ -506,8 +510,8 @@ func TestWait(t *testing.T) {
 						},
 					}
 				}
-				return newResponse(200, pod)
-			case p == "/api/v1/namespaces/default/pods/squid" && m == "GET":
+				return newResponse(http.StatusOK, pod)
+			case p == "/api/v1/namespaces/default/pods/squid" && m == http.MethodGet:
 				pod := &podList.Items[2]
 				if created != nil && time.Since(*created) >= time.Second*5 {
 					pod.Status.Conditions = []v1.PodCondition{
@@ -517,15 +521,15 @@ func TestWait(t *testing.T) {
 						},
 					}
 				}
-				return newResponse(200, pod)
-			case p == "/namespaces/default/pods" && m == "POST":
+				return newResponse(http.StatusOK, pod)
+			case p == "/namespaces/default/pods" && m == http.MethodPost:
 				resources, err := c.Build(req.Body, false)
 				if err != nil {
 					t.Fatal(err)
 				}
 				now := time.Now()
 				created = &now
-				return newResponse(200, resources[0].Object)
+				return newResponse(http.StatusOK, resources[0].Object)
 			default:
 				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
 				return nil, nil
@@ -570,19 +574,19 @@ func TestWaitJob(t *testing.T) {
 			p, m := req.URL.Path, req.Method
 			t.Logf("got request %s %s", p, m)
 			switch {
-			case p == "/apis/batch/v1/namespaces/default/jobs/starfish" && m == "GET":
+			case p == "/apis/batch/v1/namespaces/default/jobs/starfish" && m == http.MethodGet:
 				if created != nil && time.Since(*created) >= time.Second*5 {
 					job.Status.Succeeded = 1
 				}
-				return newResponse(200, job)
-			case p == "/namespaces/default/jobs" && m == "POST":
+				return newResponse(http.StatusOK, job)
+			case p == "/namespaces/default/jobs" && m == http.MethodPost:
 				resources, err := c.Build(req.Body, false)
 				if err != nil {
 					t.Fatal(err)
 				}
 				now := time.Now()
 				created = &now
-				return newResponse(200, resources[0].Object)
+				return newResponse(http.StatusOK, resources[0].Object)
 			default:
 				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
 				return nil, nil
@@ -627,21 +631,21 @@ func TestWaitDelete(t *testing.T) {
 			p, m := req.URL.Path, req.Method
 			t.Logf("got request %s %s", p, m)
 			switch {
-			case p == "/namespaces/default/pods/starfish" && m == "GET":
+			case p == "/namespaces/default/pods/starfish" && m == http.MethodGet:
 				if deleted != nil && time.Since(*deleted) >= time.Second*5 {
-					return newResponse(404, notFoundBody())
+					return newResponse(http.StatusNotFound, notFoundBody())
 				}
-				return newResponse(200, &pod)
-			case p == "/namespaces/default/pods/starfish" && m == "DELETE":
+				return newResponse(http.StatusOK, &pod)
+			case p == "/namespaces/default/pods/starfish" && m == http.MethodDelete:
 				now := time.Now()
 				deleted = &now
-				return newResponse(200, &pod)
-			case p == "/namespaces/default/pods" && m == "POST":
+				return newResponse(http.StatusOK, &pod)
+			case p == "/namespaces/default/pods" && m == http.MethodPost:
 				resources, err := c.Build(req.Body, false)
 				if err != nil {
 					t.Fatal(err)
 				}
-				return newResponse(200, resources[0].Object)
+				return newResponse(http.StatusOK, resources[0].Object)
 			default:
 				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
 				return nil, nil
@@ -718,7 +722,6 @@ func TestReal(t *testing.T) {
 }
 
 func TestGetPodList(t *testing.T) {
-
 	namespace := "some-namespace"
 	names := []string{"dave", "jimmy"}
 	var responsePodList v1.PodList
@@ -733,7 +736,6 @@ func TestGetPodList(t *testing.T) {
 	clientAssertions := assert.New(t)
 	clientAssertions.NoError(err)
 	clientAssertions.Equal(&responsePodList, podList)
-
 }
 
 func TestOutputContainerLogsForPodList(t *testing.T) {
@@ -820,11 +822,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: redis-slave
+  name: redis-replica
   labels:
     app: redis
     tier: backend
-    role: slave
+    role: replica
 spec:
   ports:
     # the port that this service should serve on
@@ -832,24 +834,24 @@ spec:
   selector:
     app: redis
     tier: backend
-    role: slave
+    role: replica
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: redis-slave
+  name: redis-replica
 spec:
   replicas: 2
   template:
     metadata:
       labels:
         app: redis
-        role: slave
+        role: replica
         tier: backend
     spec:
       containers:
-      - name: slave
-        image: gcr.io/google_samples/gb-redisslave:v1
+      - name: replica
+        image: gcr.io/google_samples/gb-redisreplica:v1
         resources:
           requests:
             cpu: 100m
@@ -964,7 +966,7 @@ func (c createPatchTestCase) run(t *testing.T) {
 	restClient := &fake.RESTClient{
 		NegotiatedSerializer: unstructuredSerializer,
 		Resp: &http.Response{
-			StatusCode: 200,
+			StatusCode: http.StatusOK,
 			Body:       objBody(c.actual),
 			Header:     header,
 		},
