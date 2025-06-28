@@ -429,7 +429,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		slog.Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
 	}
 
-	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
+	results, err := u.cfg.KubeClient.Update(current, target, u.Force, false)
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
@@ -494,7 +494,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 	u.cfg.recordRelease(rel)
 	if u.CleanupOnFail && len(created) > 0 {
 		slog.Debug("cleanup on fail set", "cleaning_resources", len(created))
-		_, errs := u.cfg.KubeClient.Delete(created)
+		_, errs := u.cfg.KubeClient.Delete(created, metav1.DeletePropagationBackground)
 		if errs != nil {
 			return rel, fmt.Errorf(
 				"an error occurred while cleaning up resources. original upgrade error: %w: %w",
