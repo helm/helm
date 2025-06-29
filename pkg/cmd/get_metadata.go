@@ -27,6 +27,8 @@ import (
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
+
+	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 type metadataWriter struct {
@@ -75,6 +77,20 @@ func newGetMetadataCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 }
 
 func (w metadataWriter) WriteTable(out io.Writer) error {
+
+	formatApplyMethod := func(applyMethod string) string {
+		switch applyMethod {
+		case "":
+			return "client-side apply (defaulted)"
+		case string(release.ApplyMethodClientSideApply):
+			return "client-side apply"
+		case string(release.ApplyMethodServerSideApply):
+			return "server-side apply"
+		default:
+			return fmt.Sprintf("unknown (%q)", applyMethod)
+		}
+	}
+
 	_, _ = fmt.Fprintf(out, "NAME: %v\n", w.metadata.Name)
 	_, _ = fmt.Fprintf(out, "CHART: %v\n", w.metadata.Chart)
 	_, _ = fmt.Fprintf(out, "VERSION: %v\n", w.metadata.Version)
@@ -85,6 +101,7 @@ func (w metadataWriter) WriteTable(out io.Writer) error {
 	_, _ = fmt.Fprintf(out, "REVISION: %v\n", w.metadata.Revision)
 	_, _ = fmt.Fprintf(out, "STATUS: %v\n", w.metadata.Status)
 	_, _ = fmt.Fprintf(out, "DEPLOYED_AT: %v\n", w.metadata.DeployedAt)
+	_, _ = fmt.Fprintf(out, "APPLY_METHOD: %v\n", formatApplyMethod(w.metadata.ApplyMethod))
 
 	return nil
 }

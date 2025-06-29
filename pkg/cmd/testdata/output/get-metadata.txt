@@ -8,3 +8,4 @@ NAMESPACE: default
 REVISION: 1
 STATUS: deployed
 DEPLOYED_AT: 1977-09-02T22:04:05Z
+APPLY_METHOD: client-side apply (defaulted)
