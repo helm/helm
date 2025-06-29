@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -62,6 +63,8 @@ var (
 	// errPending indicates that another instance of Helm is already applying an operation on a release.
 	errPending = errors.New("another operation (install/upgrade/rollback) is in progress")
 )
+
+const HookPostRenderAnnotation = "helm.sh/hook-post-render"
 
 // ValidName is a regular expression for resource names.
 //
@@ -99,6 +102,94 @@ type Configuration struct {
 
 	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
 	HookOutputFunc func(namespace, pod, container string) io.Writer
+}
+
+var sep = regexp.MustCompile("(?:^|\\s*\n)---\\s*")
+var sourceFilename = regexp.MustCompile("^# Source: (\\S+)\n")
+
+// Runs the PostRenderer on the given files, returning an updated map when complete.
+func runPostRenderer(pr postrender.PostRenderer, files map[string]string) (map[string]string, error) {
+	postRenderedFiles := make(map[string]string)
+
+	// Serialize to a giant buffer, with a comment to indicate the filename
+	b := bytes.NewBuffer(nil)
+	for filename, content := range files {
+		// Skip partials and empty manifests
+		if content == "" || strings.HasPrefix(path.Base(filename), "_") {
+			continue
+		}
+
+		// We want to maintain compatibility with the original behavior of hooks not being
+		// passed to the post renderer.  To do so, we pass through everything that is *not*
+		// a hook, and only the hooks with a `helm.sh/hook-post-render=true` annotation.
+		//
+		// This would be a good candidate for simplification via a change in behavior in helm 4.
+		rawManifests := releaseutil.SplitManifests(content)
+		for _, manifest := range rawManifests {
+			var entry releaseutil.SimpleHead
+			if err := yaml.Unmarshal([]byte(manifest), &entry); err != nil {
+				return nil, errors.Wrapf(err, "YAML parse error on %s", filename)
+			}
+
+			// If it's a hook, we need to see an explicit hook-post-render=true annotation
+			shouldPostRender := true
+			if entry.Metadata != nil {
+				if _, ok := entry.Metadata.Annotations[release.HookAnnotation]; ok {
+					if entry.Metadata.Annotations[HookPostRenderAnnotation] != "true" {
+						shouldPostRender = false
+					}
+				}
+			}
+
+			if shouldPostRender {
+				// Buffer for the post renderer
+				_, err := fmt.Fprintf(b, "\n---\n# Source: %s\n%s", filename, manifest)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				// Append the doc to the named pseudo-file
+				if data, ok := postRenderedFiles[filename]; ok {
+					postRenderedFiles[filename] = data + "\n---\n" + manifest
+				} else {
+					postRenderedFiles[filename] = manifest
+				}
+			}
+		}
+	}
+
+	// Run through the post renderer.
+	b, err := pr.Run(b)
+	if err != nil {
+		return nil, err
+	}
+
+	// Rebuild the files map from the post render output.
+	docs := sep.Split(b.String(), -1)
+	for i, d := range docs {
+		if d == "" {
+			continue
+		}
+
+		// If the "# Source: ..." comments were preserved, we will keep the same filename here.
+		var filename string
+		m := sourceFilename.FindStringSubmatch(d)
+		if m != nil {
+			filename = m[1]
+			d = d[len(m[0]):]
+		} else {
+			filename = fmt.Sprintf("manifest-%d", i)
+		}
+
+		// Append the doc to the named pseudo-file
+		if data, ok := postRenderedFiles[filename]; ok {
+			postRenderedFiles[filename] = data + "\n---\n" + d
+		} else {
+			postRenderedFiles[filename] = d
+		}
+	}
+
+	return postRenderedFiles, nil
 }
 
 // renderResources renders the templates in a chart
@@ -166,6 +257,14 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	}
 	notes := notesBuffer.String()
 
+	// Invoke the post renderer, if using.
+	if pr != nil {
+		files, err = runPostRenderer(pr, files)
+		if err != nil {
+			return hs, b, "", errors.Wrap(err, "error while running post renderer on files")
+		}
+	}
+
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
@@ -214,8 +313,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 			if useReleaseName {
 				newDir = filepath.Join(outputDir, releaseName)
 			}
-			// NOTE: We do not have to worry about the post-renderer because
-			// output dir is only used by `helm template`. In the next major
+			// NOTE: Output dir is only used by `helm template`. In the next major
 			// release, we should move this logic to template only as it is not
 			// used by install or upgrade
 			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
@@ -223,13 +321,6 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 				return hs, b, "", err
 			}
 			fileWritten[m.Name] = true
-		}
-	}
-
-	if pr != nil {
-		b, err = pr.Run(b)
-		if err != nil {
-			return hs, b, notes, errors.Wrap(err, "error while running post render on files")
 		}
 	}
 
