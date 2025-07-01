@@ -83,7 +83,7 @@ type Metadata struct {
 	PlatformCommand []PlatformCommand `json:"platformCommand"`
 
 	// Command is the plugin command, as a single string.
-	// Providing a command will result in an deprecation warning if PlatformCommand is also set.
+	// Providing Command and PlatformCommand will result in a warning being emitted (PlatformCommand takes precedence).
 	//
 	// The command will be passed through environment expansion, so env vars can
 	// be present in this command. Unless IgnoreFlags is set, this will
@@ -119,7 +119,7 @@ type Metadata struct {
 	PlatformHooks PlatformHooks `json:"platformHooks"`
 
 	// Hooks are commands that will run on plugin events, as a single string.
-	// Providing a command will result in an deprecation warning if PlatformHooks is also set.
+	// Providing Hook and PlatformHooks will result in a warning being emitted (PlatformHooks takes precedence).
 	//
 	// The command will be passed through environment expansion, so env vars can
 	// be present in this command.
