@@ -23,11 +23,11 @@ import (
 	"helm.sh/helm/v4/pkg/lint/support"
 )
 
-const crdsTestBasedir = "./testdata/withcrd"
+const crdsTestBaseDir = "./testdata/withcrd"
 const invalidCrdsDir = "./testdata/invalidcrdsdir"
 
 func TestCrdsDir(t *testing.T) {
-	linter := support.Linter{ChartDir: crdsTestBasedir}
+	linter := support.Linter{ChartDir: crdsTestBaseDir}
 	Crds(&linter)
 	res := linter.Messages
 

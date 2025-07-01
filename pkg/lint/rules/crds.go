@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -35,12 +36,12 @@ func Crds(linter *support.Linter) {
 	fpath := "crds/"
 	crdsPath := filepath.Join(linter.ChartDir, fpath)
 
-	crdsDirExist := linter.RunLinterRule(support.WarningSev, fpath, validateCrdsDir(crdsPath))
-
 	// crds directory is optional
-	if !crdsDirExist {
+	if _, err := os.Stat(crdsPath); errors.Is(err, fs.ErrNotExist) {
 		return
 	}
+
+	linter.RunLinterRule(support.WarningSev, fpath, validateCrdsDir(crdsPath))
 
 	// Load chart and parse CRDs
 	chart, err := loader.Load(linter.ChartDir)
@@ -81,10 +82,12 @@ func Crds(linter *support.Linter) {
 
 // Validation functions
 func validateCrdsDir(crdsPath string) error {
-	if fi, err := os.Stat(crdsPath); err == nil {
-		if !fi.IsDir() {
-			return errors.New("not a directory")
-		}
+	fi, err := os.Stat(crdsPath)
+	if err != nil {
+		return err
+	}
+	if !fi.IsDir() {
+		return errors.New("not a directory")
 	}
 	return nil
 }
