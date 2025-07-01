@@ -30,10 +30,9 @@ import (
 )
 
 func TestCreateCmd(t *testing.T) {
+	t.Chdir(t.TempDir())
 	ensure.HelmHome(t)
 	cname := "testchart"
-	dir := t.TempDir()
-	defer t.Chdir(dir)
 
 	// Run a create
 	if _, _, err := executeActionCommand("create " + cname); err != nil {
@@ -64,9 +63,7 @@ func TestCreateStarterCmd(t *testing.T) {
 	ensure.HelmHome(t)
 	cname := "testchart"
 	defer resetEnv()()
-	os.MkdirAll(helmpath.CachePath(), 0o755)
-	defer t.Chdir(helmpath.CachePath())
-
+	t.Chdir(t.TempDir())
 	// Create a starter.
 	starterchart := helmpath.DataPath("starters")
 	os.MkdirAll(starterchart, 0o755)
@@ -125,6 +122,7 @@ func TestCreateStarterCmd(t *testing.T) {
 }
 
 func TestCreateStarterAbsoluteCmd(t *testing.T) {
+	t.Chdir(t.TempDir())
 	defer resetEnv()()
 	ensure.HelmHome(t)
 	cname := "testchart"

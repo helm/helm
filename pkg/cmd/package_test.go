@@ -110,8 +110,7 @@ func TestPackage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cachePath := t.TempDir()
-			defer t.Chdir(cachePath)
+			t.Chdir(t.TempDir())
 
 			if err := os.MkdirAll("toot", 0o777); err != nil {
 				t.Fatal(err)
