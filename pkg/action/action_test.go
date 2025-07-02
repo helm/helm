@@ -16,10 +16,12 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -366,5 +368,30 @@ func TestGetVersionSet(t *testing.T) {
 	}
 	if vs.Has("nosuchversion/v1") {
 		t.Error("Non-existent version is reported found.")
+	}
+}
+
+type mutatingPostRenderer struct {
+	Old, New []byte
+}
+
+func (pr *mutatingPostRenderer) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {
+	modifiedManifests := bytes.ReplaceAll(renderedManifests.Bytes(), pr.Old, pr.New)
+	return bytes.NewBuffer(modifiedManifests), nil
+}
+
+func TestRunPostRenderer(t *testing.T) {
+	files := map[string]string{
+		"test-cm.yaml": manifestWithHook,
+	}
+
+	postRenderer := &mutatingPostRenderer{[]byte("name: value"), []byte("name: VALUE")}
+	postRenderedFiles, err := runPostRenderer(postRenderer, files)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if postRenderedFiles["test-cm.yaml"] != strings.ReplaceAll(manifestWithHook, "name: value", "name: VALUE") {
+		t.Error("Expected test-cm to be present and mutated by the post processor")
 	}
 }
