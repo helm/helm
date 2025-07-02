@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"helm.sh/helm/v4/internal/test/ensure"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 )
@@ -111,6 +112,7 @@ func TestPackage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Chdir(t.TempDir())
+			ensure.HelmHome(t)
 
 			if err := os.MkdirAll("toot", 0o777); err != nil {
 				t.Fatal(err)
