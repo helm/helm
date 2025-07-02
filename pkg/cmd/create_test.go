@@ -60,10 +60,10 @@ func TestCreateCmd(t *testing.T) {
 }
 
 func TestCreateStarterCmd(t *testing.T) {
+	t.Chdir(t.TempDir())
 	ensure.HelmHome(t)
 	cname := "testchart"
 	defer resetEnv()()
-	t.Chdir(t.TempDir())
 	// Create a starter.
 	starterchart := helmpath.DataPath("starters")
 	os.MkdirAll(starterchart, 0o755)
@@ -139,9 +139,6 @@ func TestCreateStarterAbsoluteCmd(t *testing.T) {
 	if err := os.WriteFile(tplpath, []byte("test"), 0o644); err != nil {
 		t.Fatalf("Could not write template: %s", err)
 	}
-
-	os.MkdirAll(helmpath.CachePath(), 0o755)
-	defer t.Chdir(helmpath.CachePath())
 
 	starterChartPath := filepath.Join(starterchart, "starterchart")
 
