@@ -1,0 +1,4 @@
+NAME                            	CHART VERSION	APP VERSION	DESCRIPTION      
+oci://127.0.0.1:<PORT>/test/chart	1.0.1        	2.0.1      	Test chart v1.0.1
+oci://127.0.0.1:<PORT>/test/chart	1.0.0        	2.0.0      	Test chart v1.0.0
+oci://127.0.0.1:<PORT>/test/chart	0.9.0        	1.9.0      	Test chart v0.9.0

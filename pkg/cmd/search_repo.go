@@ -31,6 +31,7 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/search"
 	"helm.sh/helm/v4/pkg/helmpath"
@@ -64,19 +65,27 @@ Repositories are managed with 'helm repo' commands.
 const searchMaxScore = 25
 
 type searchRepoOptions struct {
-	versions       bool
-	regexp         bool
-	devel          bool
-	version        string
-	maxColWidth    uint
-	repoFile       string
-	repoCacheDir   string
-	outputFormat   output.Format
-	failOnNoResult bool
+	versions              bool
+	regexp                bool
+	devel                 bool
+	version               string
+	maxColWidth           uint
+	repoFile              string
+	repoCacheDir          string
+	outputFormat          output.Format
+	failOnNoResult        bool
+	certFile              string
+	keyFile               string
+	caFile                string
+	insecureSkipTLSverify bool
+	plainHTTP             bool
+	username              string
+	password              string
+	maxVersions           int
 }
 
 func newSearchRepoCmd(out io.Writer) *cobra.Command {
-	o := &searchRepoOptions{}
+	o := &searchRepoOptions{maxVersions: 5}
 
 	cmd := &cobra.Command{
 		Use:   "repo [keyword]",
@@ -96,6 +105,11 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.version, "version", "", "search using semantic versioning constraints on repositories you have added")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
 	f.BoolVar(&o.failOnNoResult, "fail-on-no-result", false, "search fails if no results are found")
+	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the registry")
+	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip TLS certificate checks for the registry")
+	f.StringVar(&o.username, "username", "", "registry username")
+	f.StringVar(&o.password, "password", "", "registry password")
+	f.IntVar(&o.maxVersions, "max-versions", 5, "maximum number of versions to fetch when searching OCI registries (to prevent rate limiting)")
 
 	bindOutputFlag(cmd, &o.outputFormat)
 
@@ -104,6 +118,11 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 
 func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 	o.setupSearchedVersion()
+
+	// Check if searching for OCI registry
+	if len(args) > 0 && strings.HasPrefix(args[0], "oci://") {
+		return o.searchOCI(out, args[0])
+	}
 
 	index, err := o.buildIndex()
 	if err != nil {
@@ -197,6 +216,59 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 		i.AddRepo(n, ind, o.versions || len(o.version) > 0)
 	}
 	return i, nil
+}
+
+func (o *searchRepoOptions) searchOCI(out io.Writer, ref string) error {
+	// Create registry client
+	registryClient, err := newRegistryClient(o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSverify, o.plainHTTP, o.username, o.password)
+	if err != nil {
+		return fmt.Errorf("failed to create registry client: %w", err)
+	}
+
+	// Search the OCI registry
+	results, err := registryClient.Search(ref, o.maxVersions)
+	if err != nil {
+		return fmt.Errorf("failed to search OCI registry %s: %w", ref, err)
+	}
+
+	// Convert registry.SearchResult to search.Result
+	var searchResults []*search.Result
+	for _, r := range results {
+		// Apply version constraint if specified
+		if o.version != "" {
+			constraint, err := semver.NewConstraint(o.version)
+			if err != nil {
+				return fmt.Errorf("invalid version/constraint format: %w", err)
+			}
+			v, err := semver.NewVersion(r.Version)
+			if err != nil {
+				continue
+			}
+			if !constraint.Check(v) {
+				continue
+			}
+		}
+
+		// Create a search.Result from the registry.SearchResult
+		searchResult := &search.Result{
+			Name: ref,
+			Chart: &repo.ChartVersion{
+				Metadata: &chart.Metadata{
+					Version:     r.Version,
+					AppVersion:  r.AppVersion,
+					Description: r.Description,
+				},
+			},
+		}
+		searchResults = append(searchResults, searchResult)
+
+		// If not showing all versions, only show the first (latest) result
+		if !o.versions {
+			break
+		}
+	}
+
+	return o.outputFormat.Write(out, &repoSearchWriter{searchResults, o.maxColWidth, o.failOnNoResult})
 }
 
 type repoChartElement struct {
