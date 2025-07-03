@@ -73,7 +73,9 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		h.LastRun.Phase = release.HookPhaseUnknown
 
 		// Create hook resources
-		if _, err := cfg.KubeClient.Create(resources); err != nil {
+		if _, err := cfg.KubeClient.Create(
+			resources,
+			kube.ClientCreateOptionServerSideApply(false)); err != nil {
 			h.LastRun.CompletedAt = helmtime.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
 			return fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err)
