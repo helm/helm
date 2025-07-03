@@ -33,21 +33,22 @@ import (
 // delegates all its calls to `PrintingKubeClient`
 type FailingKubeClient struct {
 	PrintingKubeClient
-	CreateError                error
-	GetError                   error
-	DeleteError                error
-	DeleteWithPropagationError error
-	UpdateError                error
-	BuildError                 error
-	BuildTableError            error
-	BuildDummy                 bool
-	DummyResources             kube.ResourceList
-	BuildUnstructuredError     error
-	WaitError                  error
-	WaitForDeleteError         error
-	WatchUntilReadyError       error
-	WaitDuration               time.Duration
+	CreateError            error
+	GetError               error
+	DeleteError            error
+	UpdateError            error
+	BuildError             error
+	BuildTableError        error
+	BuildDummy             bool
+	DummyResources         kube.ResourceList
+	BuildUnstructuredError error
+	WaitError              error
+	WaitForDeleteError     error
+	WatchUntilReadyError   error
+	WaitDuration           time.Duration
 }
+
+var _ kube.Interface = &FailingKubeClient{}
 
 // FailingKubeWaiter implements kube.Waiter for testing purposes.
 // It also has additional errors you can set to fail different functions, otherwise it delegates all its calls to `PrintingKubeWaiter`
@@ -101,11 +102,12 @@ func (f *FailingKubeWaiter) WaitForDelete(resources kube.ResourceList, d time.Du
 }
 
 // Delete returns the configured error if set or prints
-func (f *FailingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, []error) {
+func (f *FailingKubeClient) Delete(resources kube.ResourceList, deletionPropagation metav1.DeletionPropagation) (*kube.Result, []error) {
 	if f.DeleteError != nil {
 		return nil, []error{f.DeleteError}
 	}
-	return f.PrintingKubeClient.Delete(resources)
+
+	return f.PrintingKubeClient.Delete(resources, deletionPropagation)
 }
 
 // WatchUntilReady returns the configured error if set or prints
@@ -117,19 +119,11 @@ func (f *FailingKubeWaiter) WatchUntilReady(resources kube.ResourceList, d time.
 }
 
 // Update returns the configured error if set or prints
-func (f *FailingKubeClient) Update(r, modified kube.ResourceList, ignoreMe bool) (*kube.Result, error) {
+func (f *FailingKubeClient) Update(r, modified kube.ResourceList, ignoreMe bool, threeWayMerge bool) (*kube.Result, error) {
 	if f.UpdateError != nil {
 		return &kube.Result{}, f.UpdateError
 	}
-	return f.PrintingKubeClient.Update(r, modified, ignoreMe)
-}
-
-// Update returns the configured error if set or prints
-func (f *FailingKubeClient) UpdateThreeWayMerge(r, modified kube.ResourceList, ignoreMe bool) (*kube.Result, error) {
-	if f.UpdateError != nil {
-		return &kube.Result{}, f.UpdateError
-	}
-	return f.PrintingKubeClient.Update(r, modified, ignoreMe)
+	return f.PrintingKubeClient.Update(r, modified, ignoreMe, threeWayMerge)
 }
 
 // Build returns the configured error if set or prints
@@ -152,14 +146,6 @@ func (f *FailingKubeClient) BuildTable(r io.Reader, _ bool) (kube.ResourceList, 
 		return []*resource.Info{}, f.BuildTableError
 	}
 	return f.PrintingKubeClient.BuildTable(r, false)
-}
-
-// DeleteWithPropagationPolicy returns the configured error if set or prints
-func (f *FailingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceList, policy metav1.DeletionPropagation) (*kube.Result, []error) {
-	if f.DeleteWithPropagationError != nil {
-		return nil, []error{f.DeleteWithPropagationError}
-	}
-	return f.PrintingKubeClient.DeleteWithPropagationPolicy(resources, policy)
 }
 
 func (f *FailingKubeClient) GetWaiter(ws kube.WaitStrategy) (kube.Waiter, error) {

@@ -153,7 +153,7 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 		if err != nil {
 			return fmt.Errorf("unable to build kubernetes object for deleting hook %s: %w", h.Path, err)
 		}
-		_, errs := cfg.KubeClient.Delete(resources)
+		_, errs := cfg.KubeClient.Delete(resources, metav1.DeletePropagationBackground)
 		if len(errs) > 0 {
 			return joinErrors(errs, "; ")
 		}
@@ -222,16 +222,12 @@ func (cfg *Configuration) outputLogsByPolicy(h *release.Hook, releaseNamespace s
 }
 
 func (cfg *Configuration) outputContainerLogsForListOptions(namespace string, listOptions metav1.ListOptions) error {
-	// TODO Helm 4: Remove this check when GetPodList and OutputContainerLogsForPodList are moved from InterfaceLogs to Interface
-	if kubeClient, ok := cfg.KubeClient.(kube.InterfaceLogs); ok {
-		podList, err := kubeClient.GetPodList(namespace, listOptions)
-		if err != nil {
-			return err
-		}
-		err = kubeClient.OutputContainerLogsForPodList(podList, namespace, cfg.HookOutputFunc)
+	podList, err := cfg.KubeClient.GetPodList(namespace, listOptions)
+	if err != nil {
 		return err
 	}
-	return nil
+
+	return cfg.KubeClient.OutputContainerLogsForPodList(podList, namespace, cfg.HookOutputFunc)
 }
 
 func (cfg *Configuration) deriveNamespace(h *release.Hook, namespace string) (string, error) {
