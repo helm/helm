@@ -268,8 +268,6 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
 	f.Lookup("dry-run").NoOptDefVal = "client"
-	f.BoolVar(&client.Recreate, "recreate-pods", false, "performs pods restart for the resource if applicable")
-	f.MarkDeprecated("recreate-pods", "functionality will no longer be updated. Consult the documentation for other methods to recreate pods")
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "disable pre/post upgrade hooks")
 	f.BoolVar(&client.DisableOpenAPIValidation, "disable-openapi-validation", false, "if set, the upgrade process will not validate rendered templates against the Kubernetes OpenAPI Schema")
