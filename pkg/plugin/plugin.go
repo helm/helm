@@ -17,6 +17,7 @@ package plugin // import "helm.sh/helm/v4/pkg/plugin"
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -265,11 +266,11 @@ func validatePluginData(plug *Plugin, filepath string) error {
 	plug.Metadata.Usage = sanitizeString(plug.Metadata.Usage)
 
 	if len(plug.Metadata.PlatformCommand) > 0 && len(plug.Metadata.Command) > 0 {
-		fmt.Printf("WARNING: both 'platformCommand' and 'command' are set in %q (this will become an error in a future Helm version)\n", filepath)
+		slog.Warn("both 'platformCommand' and 'command' are set (this will become an error in a future Helm version)", slog.String("filepath", filepath))
 	}
 
 	if len(plug.Metadata.PlatformHooks) > 0 && len(plug.Metadata.Hooks) > 0 {
-		fmt.Printf("WARNING: both 'platformHooks' and 'hooks' are set in %q (this will become an error in a future Helm version)\n", filepath)
+		slog.Warn("both 'platformHooks' and 'hooks' are set (this will become an error in a future Helm version)", slog.String("filepath", filepath))
 	}
 
 	// We could also validate SemVer, executable, and other fields should we so choose.
