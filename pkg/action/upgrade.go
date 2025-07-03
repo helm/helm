@@ -26,7 +26,6 @@ import (
 	"sync"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -88,8 +87,6 @@ type Upgrade struct {
 	ReuseValues bool
 	// ResetThenReuseValues will reset the values to the chart's built-ins then merge with user's last supplied values.
 	ResetThenReuseValues bool
-	// Recreate will (if true) recreate pods after a rollback.
-	Recreate bool
 	// MaxHistory limits the maximum number of revisions saved per release
 	MaxHistory int
 	// Atomic, if true, will roll back on failure.
@@ -436,15 +433,6 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		return
 	}
 
-	if u.Recreate {
-		// NOTE: Because this is not critical for a release to succeed, we just
-		// log if an error occurs and continue onward. If we ever introduce log
-		// levels, we should make these error level logs so users are notified
-		// that they'll need to go do the cleanup on their own
-		if err := recreate(u.cfg, results.Updated); err != nil {
-			slog.Error(err.Error())
-		}
-	}
 	waiter, err := u.cfg.KubeClient.GetWaiter(u.WaitStrategy)
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
@@ -537,7 +525,6 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		}
 		rollin.WaitForJobs = u.WaitForJobs
 		rollin.DisableHooks = u.DisableHooks
-		rollin.Recreate = u.Recreate
 		rollin.Force = u.Force
 		rollin.Timeout = u.Timeout
 		if rollErr := rollin.Run(rel.Name); rollErr != nil {
@@ -600,42 +587,6 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 func validateManifest(c kube.Interface, manifest []byte, openAPIValidation bool) error {
 	_, err := c.Build(bytes.NewReader(manifest), openAPIValidation)
 	return err
-}
-
-// recreate captures all the logic for recreating pods for both upgrade and
-// rollback. If we end up refactoring rollback to use upgrade, this can just be
-// made an unexported method on the upgrade action.
-func recreate(cfg *Configuration, resources kube.ResourceList) error {
-	for _, res := range resources {
-		versioned := kube.AsVersioned(res)
-		selector, err := kube.SelectorsForObject(versioned)
-		if err != nil {
-			// If no selector is returned, it means this object is
-			// definitely not a pod, so continue onward
-			continue
-		}
-
-		client, err := cfg.KubernetesClientSet()
-		if err != nil {
-			return fmt.Errorf("unable to recreate pods for object %s/%s because an error occurred: %w", res.Namespace, res.Name, err)
-		}
-
-		pods, err := client.CoreV1().Pods(res.Namespace).List(context.Background(), metav1.ListOptions{
-			LabelSelector: selector.String(),
-		})
-		if err != nil {
-			return fmt.Errorf("unable to recreate pods for object %s/%s because an error occurred: %w", res.Namespace, res.Name, err)
-		}
-
-		// Restart pods
-		for _, pod := range pods.Items {
-			// Delete each pod for get them restarted with changed spec.
-			if err := client.CoreV1().Pods(pod.Namespace).Delete(context.Background(), pod.Name, *metav1.NewPreconditionDeleteOptions(string(pod.UID))); err != nil {
-				return fmt.Errorf("unable to recreate pods for object %s/%s because an error occurred: %w", res.Namespace, res.Name, err)
-			}
-		}
-	}
-	return nil
 }
 
 func objectKey(r *resource.Info) string {
