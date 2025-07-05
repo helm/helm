@@ -139,9 +139,9 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 
 			// Lint all resources if the file contains multiple documents separated by ---
 			for {
-				// Even though K8sYamlStruct only defines a few fields, an error in any other
+				// Even though k8sYamlStruct only defines a few fields, an error in any other
 				// key will be raised as well
-				var yamlStruct *K8sYamlStruct
+				var yamlStruct *k8sYamlStruct
 
 				err := decoder.Decode(&yamlStruct)
 				if err == io.EOF {
@@ -224,7 +224,7 @@ func validateYamlContent(err error) error {
 // validateMetadataName uses the correct validation function for the object
 // Kind, or if not set, defaults to the standard definition of a subdomain in
 // DNS (RFC 1123), used by most resources.
-func validateMetadataName(obj *K8sYamlStruct) error {
+func validateMetadataName(obj *k8sYamlStruct) error {
 	fn := validateMetadataNameFunc(obj)
 	allErrs := field.ErrorList{}
 	for _, msg := range fn(obj.Metadata.Name, false) {
@@ -249,7 +249,7 @@ func validateMetadataName(obj *K8sYamlStruct) error {
 // If no mapping is defined, returns NameIsDNSSubdomain.  This is used by object
 // kinds that don't have special requirements, so is the most likely to work if
 // new kinds are added.
-func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
+func validateMetadataNameFunc(obj *k8sYamlStruct) validation.ValidateNameFunc {
 	switch strings.ToLower(obj.Kind) {
 	case "pod", "node", "secret", "endpoints", "resourcequota", // core
 		"controllerrevision", "daemonset", "deployment", "replicaset", "statefulset", // apps
@@ -285,7 +285,7 @@ func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
 
 // validateMatchSelector ensures that template specs have a selector declared.
 // See https://github.com/helm/helm/issues/1990
-func validateMatchSelector(yamlStruct *K8sYamlStruct, manifest string) error {
+func validateMatchSelector(yamlStruct *k8sYamlStruct, manifest string) error {
 	switch yamlStruct.Kind {
 	case "Deployment", "ReplicaSet", "DaemonSet", "StatefulSet":
 		// verify that matchLabels or matchExpressions is present
@@ -296,7 +296,7 @@ func validateMatchSelector(yamlStruct *K8sYamlStruct, manifest string) error {
 	return nil
 }
 
-func validateListAnnotations(yamlStruct *K8sYamlStruct, manifest string) error {
+func validateListAnnotations(yamlStruct *k8sYamlStruct, manifest string) error {
 	if yamlStruct.Kind == "List" {
 		m := struct {
 			Items []struct {
@@ -319,11 +319,8 @@ func validateListAnnotations(yamlStruct *K8sYamlStruct, manifest string) error {
 	return nil
 }
 
-// K8sYamlStruct stubs a Kubernetes YAML file.
-//
-// DEPRECATED: In Helm 4, this will be made a private type, as it is for use only within
-// the rules package.
-type K8sYamlStruct struct {
+// k8sYamlStruct stubs a Kubernetes YAML file.
+type k8sYamlStruct struct {
 	APIVersion string `json:"apiVersion"`
 	Kind       string
 	Metadata   k8sYamlMetadata
