@@ -54,12 +54,12 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
-	templatesDirExist := linter.RunLinterRule(support.WarningSev, fpath, validateTemplatesDir(templatesPath))
-
 	// Templates directory is optional for now
-	if !templatesDirExist {
+	if _, err := os.Stat(templatesPath); errors.Is(err, os.ErrNotExist) {
 		return
 	}
+
+	linter.RunLinterRule(support.WarningSev, fpath, validateTemplatesDir(templatesPath))
 
 	// Load chart and parse templates
 	chart, err := loader.Load(linter.ChartDir)
@@ -195,10 +195,12 @@ func validateTopIndentLevel(content string) error {
 
 // Validation functions
 func validateTemplatesDir(templatesPath string) error {
-	if fi, err := os.Stat(templatesPath); err == nil {
-		if !fi.IsDir() {
-			return errors.New("not a directory")
-		}
+	fi, err := os.Stat(templatesPath)
+	if err != nil {
+		return err
+	}
+	if !fi.IsDir() {
+		return errors.New("not a directory")
 	}
 	return nil
 }
