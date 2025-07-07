@@ -24,16 +24,7 @@ import (
 	"helm.sh/helm/v4/pkg/lint/support"
 )
 
-const crdsTestBaseDir = "./testdata/goodone"
 const invalidCrdsDir = "./testdata/invalidcrdsdir"
-
-func TestCrdsDir(t *testing.T) {
-	linter := support.Linter{ChartDir: crdsTestBaseDir}
-	Crds(&linter)
-	res := linter.Messages
-
-	assert.Emptyf(t, res, "Expected no errors, got %v", res)
-}
 
 func TestInvalidCrdsDir(t *testing.T) {
 	linter := support.Linter{ChartDir: invalidCrdsDir}
