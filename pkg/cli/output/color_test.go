@@ -17,7 +17,6 @@ limitations under the License.
 package output
 
 import (
-	"os"
 	"strings"
 	"testing"
 
@@ -25,13 +24,6 @@ import (
 )
 
 func TestColorizeStatus(t *testing.T) {
-	// Save original NO_COLOR env var
-	originalNoColor := os.Getenv("NO_COLOR")
-	defer func() {
-		if err := os.Setenv("NO_COLOR", originalNoColor); err != nil {
-			t.Errorf("Failed to restore NO_COLOR env var: %v", err)
-		}
-	}()
 
 	tests := []struct {
 		name       string
@@ -93,9 +85,7 @@ func TestColorizeStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := os.Setenv("NO_COLOR", tt.envNoColor); err != nil {
-				t.Fatalf("Failed to set NO_COLOR env var: %v", err)
-			}
+			t.Setenv("NO_COLOR", tt.envNoColor)
 
 			result := ColorizeStatus(tt.status, tt.noColor)
 
@@ -117,13 +107,6 @@ func TestColorizeStatus(t *testing.T) {
 }
 
 func TestColorizeHeader(t *testing.T) {
-	// Save original NO_COLOR env var
-	originalNoColor := os.Getenv("NO_COLOR")
-	defer func() {
-		if err := os.Setenv("NO_COLOR", originalNoColor); err != nil {
-			t.Errorf("Failed to restore NO_COLOR env var: %v", err)
-		}
-	}()
 
 	tests := []struct {
 		name       string
@@ -153,9 +136,7 @@ func TestColorizeHeader(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := os.Setenv("NO_COLOR", tt.envNoColor); err != nil {
-				t.Fatalf("Failed to set NO_COLOR env var: %v", err)
-			}
+			t.Setenv("NO_COLOR", tt.envNoColor)
 
 			result := ColorizeHeader(tt.header, tt.noColor)
 
@@ -168,13 +149,6 @@ func TestColorizeHeader(t *testing.T) {
 }
 
 func TestColorizeNamespace(t *testing.T) {
-	// Save original NO_COLOR env var
-	originalNoColor := os.Getenv("NO_COLOR")
-	defer func() {
-		if err := os.Setenv("NO_COLOR", originalNoColor); err != nil {
-			t.Errorf("Failed to restore NO_COLOR env var: %v", err)
-		}
-	}()
 
 	tests := []struct {
 		name       string
@@ -204,9 +178,7 @@ func TestColorizeNamespace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := os.Setenv("NO_COLOR", tt.envNoColor); err != nil {
-				t.Fatalf("Failed to set NO_COLOR env var: %v", err)
-			}
+			t.Setenv("NO_COLOR", tt.envNoColor)
 
 			result := ColorizeNamespace(tt.namespace, tt.noColor)
 
