@@ -67,7 +67,7 @@ func Crds(linter *support.Linter) {
 
 		decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(crd.File.Data), 4096)
 		for {
-			var yamlStruct *K8sYamlStruct
+			var yamlStruct *k8sYamlStruct
 
 			err := decoder.Decode(&yamlStruct)
 			if err == io.EOF {
@@ -98,14 +98,14 @@ func validateCrdsDir(crdsPath string) error {
 	return nil
 }
 
-func validateCrdAPIVersion(obj *K8sYamlStruct) error {
+func validateCrdAPIVersion(obj *k8sYamlStruct) error {
 	if !strings.HasPrefix(obj.APIVersion, "apiextensions.k8s.io") {
 		return fmt.Errorf("apiVersion is not in 'apiextensions.k8s.io'")
 	}
 	return nil
 }
 
-func validateCrdKind(obj *K8sYamlStruct) error {
+func validateCrdKind(obj *k8sYamlStruct) error {
 	if obj.Kind != "CustomResourceDefinition" {
 		return fmt.Errorf("object kind is not 'CustomResourceDefinition'")
 	}
