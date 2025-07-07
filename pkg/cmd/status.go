@@ -84,6 +84,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				debug:        false,
 				showMetadata: false,
 				hideNotes:    false,
+				noColor:      settings.NoColor,
 			})
 		},
 	}
@@ -112,6 +113,7 @@ type statusPrinter struct {
 	debug        bool
 	showMetadata bool
 	hideNotes    bool
+	noColor      bool
 }
 
 func (s statusPrinter) WriteJSON(out io.Writer) error {
@@ -130,8 +132,8 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	if !s.release.Info.LastDeployed.IsZero() {
 		_, _ = fmt.Fprintf(out, "LAST DEPLOYED: %s\n", s.release.Info.LastDeployed.Format(time.ANSIC))
 	}
-	_, _ = fmt.Fprintf(out, "NAMESPACE: %s\n", s.release.Namespace)
-	_, _ = fmt.Fprintf(out, "STATUS: %s\n", s.release.Info.Status.String())
+	_, _ = fmt.Fprintf(out, "NAMESPACE: %s\n", output.ColorizeNamespace(s.release.Namespace, s.noColor))
+	_, _ = fmt.Fprintf(out, "STATUS: %s\n", output.ColorizeStatus(s.release.Info.Status, s.noColor))
 	_, _ = fmt.Fprintf(out, "REVISION: %d\n", s.release.Version)
 	if s.showMetadata {
 		_, _ = fmt.Fprintf(out, "CHART: %s\n", s.release.Chart.Metadata.Name)
@@ -218,7 +220,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 
 	// Hide notes from output - option in install and upgrades
 	if !s.hideNotes && len(s.release.Info.Notes) > 0 {
-		fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(s.release.Info.Notes))
+		_, _ = fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(s.release.Info.Notes))
 	}
 	return nil
 }
