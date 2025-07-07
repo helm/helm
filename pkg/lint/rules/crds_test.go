@@ -31,6 +31,6 @@ func TestInvalidCrdsDir(t *testing.T) {
 	Crds(&linter)
 	res := linter.Messages
 
-	assert.Lenf(t, res, 1, "Expected one error, got %d, %v", len(res), res)
+	assert.Len(t, res, 1)
 	assert.ErrorContains(t, res[0].Err, "not a directory")
 }
