@@ -1428,7 +1428,7 @@ func TestReplaceResource(t *testing.T) {
 	}
 }
 
-func TestUpdateResourceThreeWayMerge(t *testing.T) {
+func TestPatchResourceClientSide(t *testing.T) {
 	type testCase struct {
 		OriginalPods                 v1.PodList
 		TargetPods                   v1.PodList
