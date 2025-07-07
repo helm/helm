@@ -24,6 +24,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/util/yaml"
 
@@ -41,7 +42,10 @@ func Crds(linter *support.Linter) {
 		return
 	}
 
-	linter.RunLinterRule(support.WarningSev, fpath, validateCrdsDir(crdsPath))
+	crdsDirValid := linter.RunLinterRule(support.WarningSev, fpath, validateCrdsDir(crdsPath))
+	if !crdsDirValid {
+		return
+	}
 
 	// Load chart and parse CRDs
 	chart, err := loader.Load(linter.ChartDir)
@@ -53,8 +57,9 @@ func Crds(linter *support.Linter) {
 	}
 
 	/* Iterate over all the CRDs to check:
-	- It is a YAML file and not a template
-	- The kind is CustomResourceDefinition
+	1. It is a YAML file and not a template
+	2. The API version is apiextensions.k8s.io
+	3. The kind is CustomResourceDefinition
 	*/
 	for _, crd := range chart.CRDObjects() {
 		fileName := crd.Name
@@ -75,6 +80,7 @@ func Crds(linter *support.Linter) {
 				return
 			}
 
+			linter.RunLinterRule(support.ErrorSev, fpath, validateCrdApiVersion(yamlStruct))
 			linter.RunLinterRule(support.ErrorSev, fpath, validateCrdKind(yamlStruct))
 		}
 	}
@@ -88,6 +94,13 @@ func validateCrdsDir(crdsPath string) error {
 	}
 	if !fi.IsDir() {
 		return errors.New("not a directory")
+	}
+	return nil
+}
+
+func validateCrdApiVersion(obj *K8sYamlStruct) error {
+	if !strings.HasPrefix(obj.APIVersion, "apiextensions.k8s.io") {
+		return fmt.Errorf("apiVersion is not in 'apiextensions.k8s.io'")
 	}
 	return nil
 }

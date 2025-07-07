@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/lint/support"
 )
@@ -114,12 +116,9 @@ func TestBadValues(t *testing.T) {
 
 func TestBadCrdFile(t *testing.T) {
 	m := RunAll(badCrdFileDir, values, namespace).Messages
-	if len(m) < 1 {
-		t.Fatalf("All didn't fail with expected errors, got %#v", m)
-	}
-	if !strings.Contains(m[0].Err.Error(), "object kind is not 'CustomResourceDefinition'") {
-		t.Errorf("All didn't have the error for invalid CRD: %s", m[0].Err)
-	}
+	assert.Lenf(t, m, 2, "All didn't fail with expected errors, got %#v", m)
+	assert.ErrorContains(t, m[0].Err, "apiVersion is not in 'apiextensions.k8s.io'")
+	assert.ErrorContains(t, m[1].Err, "object kind is not 'CustomResourceDefinition'")
 }
 
 func TestGoodChart(t *testing.T) {

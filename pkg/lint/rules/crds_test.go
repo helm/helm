@@ -17,13 +17,14 @@ limitations under the License.
 package rules
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"helm.sh/helm/v4/pkg/lint/support"
 )
 
-const crdsTestBaseDir = "./testdata/withcrd"
+const crdsTestBaseDir = "./testdata/goodone"
 const invalidCrdsDir = "./testdata/invalidcrdsdir"
 
 func TestCrdsDir(t *testing.T) {
@@ -31,9 +32,7 @@ func TestCrdsDir(t *testing.T) {
 	Crds(&linter)
 	res := linter.Messages
 
-	if len(res) > 0 {
-		t.Fatalf("Expected no errors, got %d, %v", len(res), res)
-	}
+	assert.Emptyf(t, res, "Expected no errors, got %v", res)
 }
 
 func TestInvalidCrdsDir(t *testing.T) {
@@ -41,11 +40,6 @@ func TestInvalidCrdsDir(t *testing.T) {
 	Crds(&linter)
 	res := linter.Messages
 
-	if len(res) != 1 {
-		t.Fatalf("Expected one error, got %d, %v", len(res), res)
-	}
-
-	if !strings.Contains(res[0].Err.Error(), "not a directory") {
-		t.Errorf("Unexpected error: %s", res[0])
-	}
+	assert.Lenf(t, res, 1, "Expected one error, got %d, %v", len(res), res)
+	assert.ErrorContains(t, res[0].Err, "not a directory")
 }
