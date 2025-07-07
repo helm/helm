@@ -80,7 +80,7 @@ func Crds(linter *support.Linter) {
 				return
 			}
 
-			linter.RunLinterRule(support.ErrorSev, fpath, validateCrdApiVersion(yamlStruct))
+			linter.RunLinterRule(support.ErrorSev, fpath, validateCrdAPIVersion(yamlStruct))
 			linter.RunLinterRule(support.ErrorSev, fpath, validateCrdKind(yamlStruct))
 		}
 	}
@@ -98,7 +98,7 @@ func validateCrdsDir(crdsPath string) error {
 	return nil
 }
 
-func validateCrdApiVersion(obj *K8sYamlStruct) error {
+func validateCrdAPIVersion(obj *K8sYamlStruct) error {
 	if !strings.HasPrefix(obj.APIVersion, "apiextensions.k8s.io") {
 		return fmt.Errorf("apiVersion is not in 'apiextensions.k8s.io'")
 	}
