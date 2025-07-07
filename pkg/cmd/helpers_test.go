@@ -94,7 +94,7 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 		Capabilities: chartutil.DefaultCapabilities,
 	}
 
-	root, err := newRootCmdWithConfig(actionConfig, buf, args)
+	root, err := newRootCmdWithConfig(actionConfig, buf, args, SetupLogging)
 	if err != nil {
 		return nil, "", err
 	}

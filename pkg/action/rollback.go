@@ -41,7 +41,6 @@ type Rollback struct {
 	WaitForJobs   bool
 	DisableHooks  bool
 	DryRun        bool
-	Recreate      bool // will (if true) recreate pods after a rollback.
 	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
 	CleanupOnFail bool
 	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
@@ -211,15 +210,6 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		return targetRelease, err
 	}
 
-	if r.Recreate {
-		// NOTE: Because this is not critical for a release to succeed, we just
-		// log if an error occurs and continue onward. If we ever introduce log
-		// levels, we should make these error level logs so users are notified
-		// that they'll need to go do the cleanup on their own
-		if err := recreate(r.cfg, results.Updated); err != nil {
-			slog.Error(err.Error())
-		}
-	}
 	waiter, err := r.cfg.KubeClient.GetWaiter(r.WaitStrategy)
 	if err != nil {
 		return nil, fmt.Errorf("unable to set metadata visitor from target release: %w", err)

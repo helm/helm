@@ -98,9 +98,9 @@ By default, the default directories depend on the Operating System. The defaults
 
 var settings = cli.New()
 
-func NewRootCmd(out io.Writer, args []string) (*cobra.Command, error) {
+func NewRootCmd(out io.Writer, args []string, logSetup func(bool)) (*cobra.Command, error) {
 	actionConfig := new(action.Configuration)
-	cmd, err := newRootCmdWithConfig(actionConfig, out, args)
+	cmd, err := newRootCmdWithConfig(actionConfig, out, args, logSetup)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,19 @@ func NewRootCmd(out io.Writer, args []string) (*cobra.Command, error) {
 	return cmd, nil
 }
 
-func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, args []string) (*cobra.Command, error) {
+// SetupLogging sets up Helm logging used by the Helm client.
+// This function is passed to the NewRootCmd function to enable logging. Any other
+// application that uses the NewRootCmd function to setup all the Helm commands may
+// use this function to setup logging or their own. Using a custom logging setup function
+// enables applications using Helm commands to integrate with their existing logging
+// system.
+// The debug argument is the value if Helm is set for debugging (i.e. --debug flag)
+func SetupLogging(debug bool) {
+	logger := logging.NewLogger(func() bool { return debug })
+	slog.SetDefault(logger)
+}
+
+func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, args []string, logSetup func(bool)) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
@@ -140,8 +152,14 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	settings.AddFlags(flags)
 	addKlogFlags(flags)
 
-	logger := logging.NewLogger(func() bool { return settings.Debug })
-	slog.SetDefault(logger)
+	// We can safely ignore any errors that flags.Parse encounters since
+	// those errors will be caught later during the call to cmd.Execution.
+	// This call is required to gather configuration information prior to
+	// execution.
+	flags.ParseErrorsWhitelist.UnknownFlags = true
+	flags.Parse(args)
+
+	logSetup(settings.Debug)
 
 	// Setup shell completion for the namespace flag
 	err := cmd.RegisterFlagCompletionFunc("namespace", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
@@ -189,13 +207,6 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// We can safely ignore any errors that flags.Parse encounters since
-	// those errors will be caught later during the call to cmd.Execution.
-	// This call is required to gather configuration information prior to
-	// execution.
-	flags.ParseErrorsWhitelist.UnknownFlags = true
-	flags.Parse(args)
 
 	registryClient, err := newDefaultRegistryClient(false, "", "")
 	if err != nil {
