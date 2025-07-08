@@ -59,7 +59,10 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 		return
 	}
 
-	linter.RunLinterRule(support.WarningSev, fpath, validateTemplatesDir(templatesPath))
+	validTemplatesDir := linter.RunLinterRule(support.ErrorSev, fpath, validateTemplatesDir(templatesPath))
+	if !validTemplatesDir {
+		return
+	}
 
 	// Load chart and parse templates
 	chart, err := loader.Load(linter.ChartDir)
