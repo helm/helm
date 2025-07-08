@@ -47,7 +47,7 @@ func (e deprecatedAPIError) Error() string {
 	return msg
 }
 
-func validateNoDeprecations(resource *K8sYamlStruct, kubeVersion *chartutil.KubeVersion) error {
+func validateNoDeprecations(resource *k8sYamlStruct, kubeVersion *chartutil.KubeVersion) error {
 	// if `resource` does not have an APIVersion or Kind, we cannot test it for deprecation
 	if resource.APIVersion == "" {
 		return nil
@@ -92,7 +92,7 @@ func validateNoDeprecations(resource *K8sYamlStruct, kubeVersion *chartutil.Kube
 	}
 }
 
-func resourceToRuntimeObject(resource *K8sYamlStruct) (runtime.Object, error) {
+func resourceToRuntimeObject(resource *k8sYamlStruct) (runtime.Object, error) {
 	scheme := runtime.NewScheme()
 	kscheme.AddToScheme(scheme)
 
