@@ -15,6 +15,10 @@ limitations under the License.
 
 package downloader
 
+// Linter failing for unknown reason on assert. This is gofmt'd using goimports. Does not
+// happen with newer version of linter.
+// TODO: upgrade linter and fix code issues
+//nolint:goimports
 import (
 	"bytes"
 	"os"
