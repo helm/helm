@@ -20,13 +20,16 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo/repotest"
+	"sigs.k8s.io/yaml"
 )
 
 func TestVersionEquals(t *testing.T) {
@@ -597,4 +600,147 @@ func TestKey(t *testing.T) {
 			t.Errorf("wrong key name generated for %q, expected %q but got %q", tt.name, tt.expect, o)
 		}
 	}
+}
+
+func TestWriteLock(t *testing.T) {
+	fixedTime, err := time.Parse(time.RFC3339, "2025-07-04T00:00:00Z")
+	if err != nil {
+		t.Fatalf("failed to parse fixed time: %v", err)
+	}
+	lock := &chart.Lock{
+		Generated: fixedTime,
+		Digest:    "sha256:12345",
+		Dependencies: []*chart.Dependency{
+			{
+				Name:       "fantastic-chart",
+				Version:    "1.2.3",
+				Repository: "https://example.com/charts",
+			},
+		},
+	}
+	expectedContent, err := yaml.Marshal(lock)
+	if err != nil {
+		t.Fatalf("failed to marshal lock: %v", err)
+	}
+
+	t.Run("v2 lock file", func(t *testing.T) {
+		dir := t.TempDir()
+		err := writeLock(dir, lock, false)
+		if err != nil {
+			t.Fatalf("failed to write lock file: %v", err)
+		}
+
+		lockfilePath := filepath.Join(dir, "Chart.lock")
+		_, err = os.Stat(lockfilePath)
+		if err != nil {
+			t.Fatalf("Chart.lock should exist: %v", err)
+		}
+
+		content, err := os.ReadFile(lockfilePath)
+		if err != nil {
+			t.Fatalf("failed to read Chart.lock: %v", err)
+		}
+		if !bytes.Equal(content, expectedContent) {
+			t.Fatalf("Chart.lock content mismatch:\nExpected: %s\nGot: %s", expectedContent, content)
+		}
+
+		// Check that requirements.lock does not exist
+		_, err = os.Stat(filepath.Join(dir, "requirements.lock"))
+		if err == nil {
+			t.Fatal("requirements.lock should not exist")
+		}
+		if !os.IsNotExist(err) {
+			t.Fatalf("requirements.lock should not exist, got error: %v", err)
+		}
+	})
+
+	t.Run("v1 lock file", func(t *testing.T) {
+		dir := t.TempDir()
+		err := writeLock(dir, lock, true)
+		if err != nil {
+			t.Fatalf("failed to write lock file: %v", err)
+		}
+
+		lockfilePath := filepath.Join(dir, "requirements.lock")
+		_, err = os.Stat(lockfilePath)
+		if err != nil {
+			t.Fatalf("requirements.lock should exist: %v", err)
+		}
+
+		content, err := os.ReadFile(lockfilePath)
+		if err != nil {
+			t.Fatalf("failed to read requirements.lock: %v", err)
+		}
+		if !bytes.Equal(content, expectedContent) {
+			t.Fatalf("requirements.lock content mismatch:\nExpected: %s\nGot: %s", expectedContent, content)
+		}
+
+		// Check that Chart.lock does not exist
+		_, err = os.Stat(filepath.Join(dir, "Chart.lock"))
+		if err == nil {
+			t.Fatal("Chart.lock should not exist")
+		}
+		if !os.IsNotExist(err) {
+			t.Fatalf("Chart.lock should not exist, got error: %v", err)
+		}
+	})
+
+	t.Run("overwrite existing lock file", func(t *testing.T) {
+		dir := t.TempDir()
+		lockfilePath := filepath.Join(dir, "Chart.lock")
+		err := os.WriteFile(lockfilePath, []byte("old content"), 0644)
+		if err != nil {
+			t.Fatalf("failed to create initial Chart.lock: %v", err)
+		}
+
+		err = writeLock(dir, lock, false)
+		if err != nil {
+			t.Fatalf("failed to overwrite lock file: %v", err)
+		}
+
+		content, err := os.ReadFile(lockfilePath)
+		if err != nil {
+			t.Fatalf("failed to read overwritten Chart.lock: %v", err)
+		}
+		if !bytes.Equal(content, expectedContent) {
+			t.Fatalf("Overwritten Chart.lock content mismatch:\nExpected: %s\nGot: %s", expectedContent, content)
+		}
+	})
+
+	t.Run("lock file is a symlink", func(t *testing.T) {
+		dir := t.TempDir()
+		dummyFile := filepath.Join(dir, "dummy.txt")
+		err := os.WriteFile(dummyFile, []byte("dummy"), 0644)
+		if err != nil {
+			t.Fatalf("failed to create dummy file: %v", err)
+		}
+
+		lockfilePath := filepath.Join(dir, "Chart.lock")
+		err = os.Symlink(dummyFile, lockfilePath)
+		if err != nil {
+			t.Fatalf("failed to create symlink for Chart.lock: %v", err)
+		}
+
+		err = writeLock(dir, lock, false)
+		if err == nil {
+			t.Fatal("expected error when writing lock file to a symlink")
+		}
+		if !strings.Contains(err.Error(), "the Chart.lock file is a symlink to") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("chart path is not a directory", func(t *testing.T) {
+		dir := t.TempDir()
+		filePath := filepath.Join(dir, "not-a-dir")
+		err := os.WriteFile(filePath, []byte("file"), 0644)
+		if err != nil {
+			t.Fatalf("failed to create file: %v", err)
+		}
+
+		err = writeLock(filePath, lock, false)
+		if err == nil {
+			t.Fatal("expected error when writing lock file to a non-directory path")
+		}
+	})
 }
