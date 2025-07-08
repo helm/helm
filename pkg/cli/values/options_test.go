@@ -35,7 +35,7 @@ type mockGetter struct {
 	err     error
 }
 
-func (m *mockGetter) Get(url string, options ...getter.Option) (*bytes.Buffer, error) {
+func (m *mockGetter) Get(_ string, _ ...getter.Option) (*bytes.Buffer, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -87,6 +87,7 @@ func TestReadFile(t *testing.T) {
 			filePath:  "test.txt",
 			providers: getter.Providers{},
 			setupFunc: func(t *testing.T) (string, func()) {
+				t.Helper()
 				tmpDir := t.TempDir()
 				filePath := filepath.Join(tmpDir, "test.txt")
 				content := []byte("local file content")
@@ -147,6 +148,7 @@ func TestReadFile(t *testing.T) {
 				mockProvider([]string{"http"}, []byte("should not be used"), nil),
 			},
 			setupFunc: func(t *testing.T) (string, func()) {
+				t.Helper()
 				// Create a local file named "ftp://example.com/file.txt"
 				// This tests the fallback behavior when scheme is not supported
 				tmpDir := t.TempDir()
