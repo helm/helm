@@ -42,7 +42,7 @@ func Crds(linter *support.Linter) {
 		return
 	}
 
-	crdsDirValid := linter.RunLinterRule(support.WarningSev, fpath, validateCrdsDir(crdsPath))
+	crdsDirValid := linter.RunLinterRule(support.ErrorSev, fpath, validateCrdsDir(crdsPath))
 	if !crdsDirValid {
 		return
 	}
