@@ -16,14 +16,11 @@ limitations under the License.
 package installer
 
 import (
-	"fmt"
-	"log"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"helm.sh/helm/v4/pkg/plugin"
 )
@@ -124,12 +121,4 @@ func isRemoteHTTPArchive(source string) bool {
 func isPlugin(dirname string) bool {
 	_, err := os.Stat(filepath.Join(dirname, plugin.PluginFileName))
 	return err == nil
-}
-
-var logger = log.New(os.Stderr, "[debug] ", log.Lshortfile)
-
-func debug(format string, args ...interface{}) {
-	if Debug {
-		logger.Output(2, fmt.Sprintf(format, args...))
-	}
 }

@@ -1,45 +1,71 @@
-run:
-  timeout: 10m
-
-linters:
-  disable-all: true
+formatters:
   enable:
-    - dupl
     - gofmt
     - goimports
-    - gosimple
+
+  exclusions:
+    generated: lax
+
+  settings:
+    gofmt:
+      simplify: true
+
+    goimports:
+      local-prefixes:
+        - helm.sh/helm/v4
+
+linters:
+  default: none
+
+  enable:
+    - depguard
+    - dupl
+    - gomodguard
     - govet
     - ineffassign
     - misspell
     - nakedret
     - revive
-    - unused
     - staticcheck
+    - thelper
+    - unused
+    - usestdlibvars
+    - usetesting
 
-linters-settings:
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: helm.sh/helm/v4
-  dupl:
-    threshold: 400
-issues:
-  exclude-rules:
-    # Helm, and the Go source code itself, sometimes uses these names outside their built-in
-    # functions. As the Go source code has re-used these names it's ok for Helm to do the same.
-    # Linting will look for redefinition of built-in id's but we opt-in to the ones we choose to use.
-    - linters:
-        - revive
-      text: "redefines-builtin-id: redefinition of the built-in function append"
-    - linters:
-        - revive
-      text: "redefines-builtin-id: redefinition of the built-in function clear"
-    - linters:
-        - revive
-      text: "redefines-builtin-id: redefinition of the built-in function max"
-    - linters:
-        - revive
-      text: "redefines-builtin-id: redefinition of the built-in function min"
-    - linters:
-        - revive
-      text: "redefines-builtin-id: redefinition of the built-in function new"
+  exclusions:
+    generated: lax
+
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+
+    rules: []
+
+    warn-unused: true
+
+  settings:
+    depguard:
+      rules:
+        Main:
+          deny:
+            - pkg: github.com/hashicorp/go-multierror
+              desc: "use errors instead"
+            - pkg: github.com/pkg/errors
+              desc: "use errors instead"
+
+    dupl:
+      threshold: 400
+
+    gomodguard:
+      blocked:
+        modules:
+          - github.com/evanphx/json-patch:
+              recommendations:
+                - github.com/evanphx/json-patch/v5
+
+run:
+  timeout: 10m
+
+version: "2"

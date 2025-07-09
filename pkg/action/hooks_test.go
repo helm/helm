@@ -20,13 +20,22 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/cli-runtime/pkg/resource"
 
-	"helm.sh/helm/v4/pkg/chart"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
-	"helm.sh/helm/v4/pkg/release"
+	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 func podManifestWithOutputLogs(hookDefinitions []release.HookOutputLogPolicy) string {
@@ -158,6 +167,7 @@ func TestInstallRelease_HooksOutputLogsOnSuccessAndFailure(t *testing.T) {
 }
 
 func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace string, shouldOutput bool) {
+	t.Helper()
 	var expectedOutput string
 	if shouldOutput {
 		expectedOutput = fmt.Sprintf("attempted to output logs for namespace: %s", expectedNamespace)
@@ -181,6 +191,7 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 }
 
 func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace string, shouldOutput bool) {
+	t.Helper()
 	var expectedOutput string
 	if shouldOutput {
 		expectedOutput = fmt.Sprintf("attempted to output logs for namespace: %s", expectedNamespace)
@@ -205,4 +216,188 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 	is.Contains(res.Info.Description, "failed pre-install")
 	is.Equal(expectedOutput, outBuffer.String())
 	is.Equal(release.StatusFailed, res.Info.Status)
+}
+
+type HookFailedError struct{}
+
+func (e *HookFailedError) Error() string {
+	return "Hook failed!"
+}
+
+type HookFailingKubeClient struct {
+	kubefake.PrintingKubeClient
+	failOn       resource.Info
+	deleteRecord []resource.Info
+}
+
+type HookFailingKubeWaiter struct {
+	*kubefake.PrintingKubeWaiter
+	failOn resource.Info
+}
+
+func (*HookFailingKubeClient) Build(reader io.Reader, _ bool) (kube.ResourceList, error) {
+	configMap := &v1.ConfigMap{}
+
+	err := yaml.NewYAMLOrJSONDecoder(reader, 1000).Decode(configMap)
+
+	if err != nil {
+		return kube.ResourceList{}, err
+	}
+
+	return kube.ResourceList{{
+		Name:      configMap.Name,
+		Namespace: configMap.Namespace,
+	}}, nil
+}
+
+func (h *HookFailingKubeWaiter) WatchUntilReady(resources kube.ResourceList, _ time.Duration) error {
+	for _, res := range resources {
+		if res.Name == h.failOn.Name && res.Namespace == h.failOn.Namespace {
+			return &HookFailedError{}
+		}
+	}
+	return nil
+}
+
+func (h *HookFailingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, []error) {
+	for _, res := range resources {
+		h.deleteRecord = append(h.deleteRecord, resource.Info{
+			Name:      res.Name,
+			Namespace: res.Namespace,
+		})
+	}
+
+	return h.PrintingKubeClient.Delete(resources)
+}
+
+func (h *HookFailingKubeClient) GetWaiter(strategy kube.WaitStrategy) (kube.Waiter, error) {
+	waiter, _ := h.PrintingKubeClient.GetWaiter(strategy)
+	return &HookFailingKubeWaiter{
+		PrintingKubeWaiter: waiter.(*kubefake.PrintingKubeWaiter),
+		failOn:             h.failOn,
+	}, nil
+}
+
+func TestHooksCleanUp(t *testing.T) {
+	hookEvent := release.HookPreInstall
+
+	testCases := []struct {
+		name                 string
+		inputRelease         release.Release
+		failOn               resource.Info
+		expectedDeleteRecord []resource.Info
+		expectError          bool
+	}{
+		{
+			"Deletion hook runs for previously successful hook on failure of a heavier weight hook",
+			release.Release{
+				Name:      "test-release",
+				Namespace: "test",
+				Hooks: []*release.Hook{
+					{
+						Name: "hook-1",
+						Kind: "ConfigMap",
+						Path: "templates/service_account.yaml",
+						Manifest: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: build-config-1
+  namespace: test
+data:
+  foo: bar
+`,
+						Weight: -5,
+						Events: []release.HookEvent{
+							hookEvent,
+						},
+						DeletePolicies: []release.HookDeletePolicy{
+							release.HookBeforeHookCreation,
+							release.HookSucceeded,
+							release.HookFailed,
+						},
+						LastRun: release.HookExecution{
+							Phase: release.HookPhaseSucceeded,
+						},
+					},
+					{
+						Name: "hook-2",
+						Kind: "ConfigMap",
+						Path: "templates/job.yaml",
+						Manifest: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: build-config-2
+  namespace: test
+data:
+  foo: bar
+`,
+						Weight: 0,
+						Events: []release.HookEvent{
+							hookEvent,
+						},
+						DeletePolicies: []release.HookDeletePolicy{
+							release.HookBeforeHookCreation,
+							release.HookSucceeded,
+							release.HookFailed,
+						},
+						LastRun: release.HookExecution{
+							Phase: release.HookPhaseFailed,
+						},
+					},
+				},
+			}, resource.Info{
+				Name:      "build-config-2",
+				Namespace: "test",
+			}, []resource.Info{
+				{
+					// This should be in the record for `before-hook-creation`
+					Name:      "build-config-1",
+					Namespace: "test",
+				},
+				{
+					// This should be in the record for `before-hook-creation`
+					Name:      "build-config-2",
+					Namespace: "test",
+				},
+				{
+					// This should be in the record for cleaning up (the failure first)
+					Name:      "build-config-2",
+					Namespace: "test",
+				},
+				{
+					// This should be in the record for cleaning up (then the previously successful)
+					Name:      "build-config-1",
+					Namespace: "test",
+				},
+			}, true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			kubeClient := &HookFailingKubeClient{
+				kubefake.PrintingKubeClient{Out: io.Discard}, tc.failOn, []resource.Info{},
+			}
+
+			configuration := &Configuration{
+				Releases:     storage.Init(driver.NewMemory()),
+				KubeClient:   kubeClient,
+				Capabilities: chartutil.DefaultCapabilities,
+			}
+
+			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, 600)
+
+			if !reflect.DeepEqual(kubeClient.deleteRecord, tc.expectedDeleteRecord) {
+				t.Fatalf("Got unexpected delete record, expected: %#v, but got: %#v", kubeClient.deleteRecord, tc.expectedDeleteRecord)
+			}
+
+			if err != nil && !tc.expectError {
+				t.Fatalf("Got an unexpected error.")
+			}
+
+			if err == nil && tc.expectError {
+				t.Fatalf("Expected and error but did not get it.")
+			}
+		})
+	}
 }

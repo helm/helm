@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"helm.sh/helm/v4/internal/version"
-	"helm.sh/helm/v4/pkg/chart"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
 // SearchPath is the url path to the search API in monocular.
@@ -129,7 +129,7 @@ func (c *Client) Search(term string) ([]SearchResult, error) {
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to fetch %s : %s", p.String(), res.Status)
 	}
 

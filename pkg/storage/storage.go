@@ -17,13 +17,13 @@ limitations under the License.
 package storage // import "helm.sh/helm/v4/pkg/storage"
 
 import (
+	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
-	"github.com/pkg/errors"
-
-	rspb "helm.sh/helm/v4/pkg/release"
-	relutil "helm.sh/helm/v4/pkg/releaseutil"
+	relutil "helm.sh/helm/v4/pkg/release/util"
+	rspb "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
@@ -42,15 +42,13 @@ type Storage struct {
 	// be retained, including the most recent release. Values of 0 or less are
 	// ignored (meaning no limits are imposed).
 	MaxHistory int
-
-	Log func(string, ...interface{})
 }
 
 // Get retrieves the release from storage. An error is returned
 // if the storage driver failed to fetch the release, or the
 // release identified by the key, version pair does not exist.
 func (s *Storage) Get(name string, version int) (*rspb.Release, error) {
-	s.Log("getting release %q", makeKey(name, version))
+	slog.Debug("getting release", "key", makeKey(name, version))
 	return s.Driver.Get(makeKey(name, version))
 }
 
@@ -58,7 +56,7 @@ func (s *Storage) Get(name string, version int) (*rspb.Release, error) {
 // error is returned if the storage driver fails to store the
 // release, or a release with an identical key already exists.
 func (s *Storage) Create(rls *rspb.Release) error {
-	s.Log("creating release %q", makeKey(rls.Name, rls.Version))
+	slog.Debug("creating release", "key", makeKey(rls.Name, rls.Version))
 	if s.MaxHistory > 0 {
 		// Want to make space for one more release.
 		if err := s.removeLeastRecent(rls.Name, s.MaxHistory-1); err != nil &&
@@ -73,7 +71,7 @@ func (s *Storage) Create(rls *rspb.Release) error {
 // storage backend fails to update the release or if the release
 // does not exist.
 func (s *Storage) Update(rls *rspb.Release) error {
-	s.Log("updating release %q", makeKey(rls.Name, rls.Version))
+	slog.Debug("updating release", "key", makeKey(rls.Name, rls.Version))
 	return s.Driver.Update(makeKey(rls.Name, rls.Version), rls)
 }
 
@@ -81,22 +79,22 @@ func (s *Storage) Update(rls *rspb.Release) error {
 // the storage backend fails to delete the release or if the release
 // does not exist.
 func (s *Storage) Delete(name string, version int) (*rspb.Release, error) {
-	s.Log("deleting release %q", makeKey(name, version))
+	slog.Debug("deleting release", "key", makeKey(name, version))
 	return s.Driver.Delete(makeKey(name, version))
 }
 
 // ListReleases returns all releases from storage. An error is returned if the
 // storage backend fails to retrieve the releases.
 func (s *Storage) ListReleases() ([]*rspb.Release, error) {
-	s.Log("listing all releases in storage")
-	return s.Driver.List(func(_ *rspb.Release) bool { return true })
+	slog.Debug("listing all releases in storage")
+	return s.List(func(_ *rspb.Release) bool { return true })
 }
 
 // ListUninstalled returns all releases with Status == UNINSTALLED. An error is returned
 // if the storage backend fails to retrieve the releases.
 func (s *Storage) ListUninstalled() ([]*rspb.Release, error) {
-	s.Log("listing uninstalled releases in storage")
-	return s.Driver.List(func(rls *rspb.Release) bool {
+	slog.Debug("listing uninstalled releases in storage")
+	return s.List(func(rls *rspb.Release) bool {
 		return relutil.StatusFilter(rspb.StatusUninstalled).Check(rls)
 	})
 }
@@ -104,8 +102,8 @@ func (s *Storage) ListUninstalled() ([]*rspb.Release, error) {
 // ListDeployed returns all releases with Status == DEPLOYED. An error is returned
 // if the storage backend fails to retrieve the releases.
 func (s *Storage) ListDeployed() ([]*rspb.Release, error) {
-	s.Log("listing all deployed releases in storage")
-	return s.Driver.List(func(rls *rspb.Release) bool {
+	slog.Debug("listing all deployed releases in storage")
+	return s.List(func(rls *rspb.Release) bool {
 		return relutil.StatusFilter(rspb.StatusDeployed).Check(rls)
 	})
 }
@@ -132,9 +130,9 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 // DeployedAll returns all deployed releases with the provided name, or
 // returns driver.NewErrNoDeployedReleases if not found.
 func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
-	s.Log("getting deployed releases from %q history", name)
+	slog.Debug("getting deployed releases", "name", name)
 
-	ls, err := s.Driver.Query(map[string]string{
+	ls, err := s.Query(map[string]string{
 		"name":   name,
 		"owner":  "helm",
 		"status": "deployed",
@@ -151,9 +149,9 @@ func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 // History returns the revision history for the release with the provided name, or
 // returns driver.ErrReleaseNotFound if no such release name exists.
 func (s *Storage) History(name string) ([]*rspb.Release, error) {
-	s.Log("getting release history for %q", name)
+	slog.Debug("getting release history", "name", name)
 
-	return s.Driver.Query(map[string]string{"name": name, "owner": "helm"})
+	return s.Query(map[string]string{"name": name, "owner": "helm"})
 }
 
 // removeLeastRecent removes items from history until the length number of releases
@@ -206,14 +204,14 @@ func (s *Storage) removeLeastRecent(name string, maximum int) error {
 		}
 	}
 
-	s.Log("Pruned %d record(s) from %s with %d error(s)", len(toDelete), name, len(errs))
+	slog.Debug("pruned records", "count", len(toDelete), "release", name, "errors", len(errs))
 	switch c := len(errs); c {
 	case 0:
 		return nil
 	case 1:
 		return errs[0]
 	default:
-		return errors.Errorf("encountered %d deletion errors. First is: %s", c, errs[0])
+		return fmt.Errorf("encountered %d deletion errors. First is: %w", c, errs[0])
 	}
 }
 
@@ -221,7 +219,7 @@ func (s *Storage) deleteReleaseVersion(name string, version int) error {
 	key := makeKey(name, version)
 	_, err := s.Delete(name, version)
 	if err != nil {
-		s.Log("error pruning %s from release history: %s", key, err)
+		slog.Debug("error pruning release", "key", key, slog.Any("error", err))
 		return err
 	}
 	return nil
@@ -229,13 +227,13 @@ func (s *Storage) deleteReleaseVersion(name string, version int) error {
 
 // Last fetches the last revision of the named release.
 func (s *Storage) Last(name string) (*rspb.Release, error) {
-	s.Log("getting last revision of %q", name)
+	slog.Debug("getting last revision", "name", name)
 	h, err := s.History(name)
 	if err != nil {
 		return nil, err
 	}
 	if len(h) == 0 {
-		return nil, errors.Errorf("no revision for release %q", name)
+		return nil, fmt.Errorf("no revision for release %q", name)
 	}
 
 	relutil.Reverse(h, relutil.SortByRevision)
@@ -261,6 +259,5 @@ func Init(d driver.Driver) *Storage {
 	}
 	return &Storage{
 		Driver: d,
-		Log:    func(_ string, _ ...interface{}) {},
 	}
 }

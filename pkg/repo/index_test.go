@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v4/pkg/chart"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
@@ -123,17 +123,17 @@ func TestIndexFile(t *testing.T) {
 	}
 
 	cv, err := i.Get("setter", "0.1.9")
-	if err == nil && !strings.Contains(cv.Metadata.Version, "0.1.9") {
-		t.Errorf("Unexpected version: %s", cv.Metadata.Version)
+	if err == nil && !strings.Contains(cv.Version, "0.1.9") {
+		t.Errorf("Unexpected version: %s", cv.Version)
 	}
 
 	cv, err = i.Get("setter", "0.1.9+alpha")
-	if err != nil || cv.Metadata.Version != "0.1.9+alpha" {
+	if err != nil || cv.Version != "0.1.9+alpha" {
 		t.Errorf("Expected version: 0.1.9+alpha")
 	}
 
 	cv, err = i.Get("setter", "0.1.8")
-	if err != nil || cv.Metadata.Version != "0.1.8" {
+	if err != nil || cv.Version != "0.1.8" {
 		t.Errorf("Expected version: 0.1.8")
 	}
 }
@@ -352,6 +352,7 @@ func TestDownloadIndexFile(t *testing.T) {
 }
 
 func verifyLocalIndex(t *testing.T, i *IndexFile) {
+	t.Helper()
 	numEntries := len(i.Entries)
 	if numEntries != 3 {
 		t.Errorf("Expected 3 entries in index file but got %d", numEntries)
@@ -450,6 +451,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 }
 
 func verifyLocalChartsFile(t *testing.T, chartsContent []byte, indexContent *IndexFile) {
+	t.Helper()
 	var expected, reald []string
 	for chart := range indexContent.Entries {
 		expected = append(expected, chart)

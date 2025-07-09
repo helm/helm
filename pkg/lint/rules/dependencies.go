@@ -20,10 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-
-	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chart/loader"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/lint/support"
 )
 
@@ -43,7 +41,7 @@ func Dependencies(linter *support.Linter) {
 
 func validateChartFormat(chartError error) error {
 	if chartError != nil {
-		return errors.Errorf("unable to load chart\n\t%s", chartError)
+		return fmt.Errorf("unable to load chart\n\t%w", chartError)
 	}
 	return nil
 }

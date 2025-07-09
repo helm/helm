@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,10 +32,8 @@ import (
 	"sync"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/containerd/containerd/remotes"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
@@ -45,7 +44,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote/retry"
 
 	"helm.sh/helm/v4/internal/version"
-	"helm.sh/helm/v4/pkg/chart"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 
@@ -55,8 +54,6 @@ OCI artifact references (e.g. tags) do not support the plus sign (+). To support
 storing semantic versions, Helm adopts the convention of changing plus (+) to
 an underscore (_) in chart version tags when pushing to a registry and back to
 a plus (+) when pulling from a registry.`
-
-var errDeprecatedRemote = errors.New("providing github.com/containerd/containerd/remotes.Resolver via ClientOptResolver is no longer suported")
 
 type (
 	// RemoteClient shadows the ORAS remote.Client interface
@@ -103,27 +100,8 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
 	}
 	if client.httpClient == nil {
-		type cloner[T any] interface {
-			Clone() T
-		}
-
-		// try to copy (clone) the http.DefaultTransport so any mutations we
-		// perform on it (e.g. TLS config) are not reflected globally
-		// follow https://github.com/golang/go/issues/39299 for a more elegant
-		// solution in the future
-		transport := http.DefaultTransport
-		if t, ok := transport.(cloner[*http.Transport]); ok {
-			transport = t.Clone()
-		} else if t, ok := transport.(cloner[http.RoundTripper]); ok {
-			// this branch will not be used with go 1.20, it was added
-			// optimistically to try to clone if the http.DefaultTransport
-			// implementation changes, still the Clone method in that case
-			// might not return http.RoundTripper...
-			transport = t.Clone()
-		}
-
 		client.httpClient = &http.Client{
-			Transport: retry.NewTransport(transport),
+			Transport: NewTransport(client.debug),
 		}
 	}
 
@@ -231,12 +209,6 @@ func ClientOptPlainHTTP() ClientOption {
 	}
 }
 
-func ClientOptResolver(_ remotes.Resolver) ClientOption {
-	return func(c *Client) {
-		c.err = errDeprecatedRemote
-	}
-}
-
 type (
 	// LoginOption allows specifying various settings on login
 	LoginOption func(*loginOperation)
@@ -258,19 +230,20 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		return err
 	}
 	reg.PlainHTTP = c.plainHTTP
+	cred := auth.Credential{Username: c.username, Password: c.password}
+	c.authorizer.ForceAttemptOAuth2 = true
 	reg.Client = c.authorizer
 
 	ctx := context.Background()
-	cred, err := c.authorizer.Credential(ctx, host)
-	if err != nil {
-		return fmt.Errorf("fetching credentials for %q: %w", host, err)
-	}
-
 	if err := reg.Ping(ctx); err != nil {
-		return fmt.Errorf("authenticating to %q: %w", host, err)
+		c.authorizer.ForceAttemptOAuth2 = false
+		if err := reg.Ping(ctx); err != nil {
+			return fmt.Errorf("authenticating to %q: %w", host, err)
+		}
 	}
 
 	key := credentials.ServerAddressFromRegistry(host)
+	key = credentials.ServerAddressFromHostname(key)
 	if err := c.credentialsStore.Put(ctx, key, cred); err != nil {
 		return err
 	}
@@ -305,6 +278,11 @@ func ensureTLSConfig(client *auth.Client) (*tls.Config, error) {
 		switch t := t.Base.(type) {
 		case *http.Transport:
 			transport = t
+		case *LoggingTransport:
+			switch t := t.RoundTripper.(type) {
+			case *http.Transport:
+				transport = t
+			}
 		}
 	}
 
@@ -472,7 +450,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 			PreCopy: func(_ context.Context, desc ocispec.Descriptor) error {
 				mediaType := desc.MediaType
 				if i := sort.SearchStrings(allowedMediaTypes, mediaType); i >= len(allowedMediaTypes) || allowedMediaTypes[i] != mediaType {
-					return errors.Errorf("media type %q is not allowed, found in descriptor with digest: %q", mediaType, desc.Digest)
+					return oras.SkipNode
 				}
 
 				mu.Lock()
@@ -486,7 +464,6 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		return nil, err
 	}
 
-	descriptors = append(descriptors, manifest)
 	descriptors = append(descriptors, layers...)
 
 	numDescriptors := len(descriptors)
@@ -694,19 +671,9 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	})
 
 	ociAnnotations := generateOCIAnnotations(meta, operation.creationTime)
-	manifest := ocispec.Manifest{
-		Versioned:   specs.Versioned{SchemaVersion: 2},
-		Config:      configDescriptor,
-		Layers:      layers,
-		Annotations: ociAnnotations,
-	}
 
-	manifestData, err := json.Marshal(manifest)
-	if err != nil {
-		return nil, err
-	}
-
-	manifestDescriptor, err := oras.TagBytes(ctx, memoryStore, ocispec.MediaTypeImageManifest, manifestData, ref)
+	manifestDescriptor, err := c.tagManifest(ctx, memoryStore, configDescriptor,
+		layers, ociAnnotations, parsedRef)
 	if err != nil {
 		return nil, err
 	}
@@ -771,7 +738,7 @@ func PushOptStrictMode(strictMode bool) PushOption {
 	}
 }
 
-// PushOptCreationDate returns a function that sets the creation time
+// PushOptCreationTime returns a function that sets the creation time
 func PushOptCreationTime(creationTime string) PushOption {
 	return func(operation *pushOperation) {
 		operation.creationTime = creationTime
@@ -855,7 +822,7 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 		version = registryReference.Tag
 	} else {
 		if registryReference.Tag != "" && registryReference.Tag != version {
-			return nil, errors.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
+			return nil, fmt.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
 		}
 	}
 
@@ -874,7 +841,7 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 			return u, nil
 		}
 		if desc.Digest.String() != registryReference.Digest {
-			return nil, errors.Errorf("chart reference digest mismatch: %s is not %s", desc.Digest.String(), registryReference.Digest)
+			return nil, fmt.Errorf("chart reference digest mismatch: %s is not %s", desc.Digest.String(), registryReference.Digest)
 		}
 		return u, nil
 	}
@@ -890,7 +857,7 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 			return nil, err
 		}
 		if len(tags) == 0 {
-			return nil, errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
+			return nil, fmt.Errorf("unable to locate any tags in provided repository: %s", ref)
 		}
 
 		// Determine if version provided
@@ -906,4 +873,25 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 	u.Path = fmt.Sprintf("%s:%s", registryReference.Repository, tag)
 
 	return u, err
+}
+
+// tagManifest prepares and tags a manifest in memory storage
+func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
+	configDescriptor ocispec.Descriptor, layers []ocispec.Descriptor,
+	ociAnnotations map[string]string, parsedRef reference) (ocispec.Descriptor, error) {
+
+	manifest := ocispec.Manifest{
+		Versioned:   specs.Versioned{SchemaVersion: 2},
+		Config:      configDescriptor,
+		Layers:      layers,
+		Annotations: ociAnnotations,
+	}
+
+	manifestData, err := json.Marshal(manifest)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+
+	return oras.TagBytes(ctx, memoryStore, ocispec.MediaTypeImageManifest,
+		manifestData, parsedRef.String())
 }

@@ -21,17 +21,17 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
 	"helm.sh/helm/v4/internal/tlsutil"
-	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chart/loader"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	helmtime "helm.sh/helm/v4/pkg/time"
 
 	"github.com/Masterminds/semver/v3"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
 )
 
 var immutableOciAnnotations = []string{
@@ -46,12 +46,7 @@ func IsOCI(url string) bool {
 
 // ContainsTag determines whether a tag is found in a provided list of tags
 func ContainsTag(tags []string, tag string) bool {
-	for _, t := range tags {
-		if tag == t {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(tags, tag)
 }
 
 func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (string, error) {
@@ -87,7 +82,7 @@ func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (str
 		}
 	}
 
-	return "", errors.Errorf("Could not locate a version matching provided version string %s", versionString)
+	return "", fmt.Errorf("could not locate a version matching provided version string %s", versionString)
 }
 
 // extractChartMeta is used to extract a chart metadata from a byte array

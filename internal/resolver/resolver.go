@@ -18,17 +18,18 @@ package resolver
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/pkg/errors"
 
-	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chart/loader"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/provenance"
 	"helm.sh/helm/v4/pkg/registry"
@@ -66,7 +67,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		if d.Version != "" {
 			constraint, err = semver.NewConstraint(d.Version)
 			if err != nil {
-				return nil, errors.Wrapf(err, "dependency %q has an invalid version/constraint format", d.Name)
+				return nil, fmt.Errorf("dependency %q has an invalid version/constraint format: %w", d.Name, err)
 			}
 		}
 
@@ -132,12 +133,12 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		if !registry.IsOCI(d.Repository) {
 			repoIndex, err := repo.LoadIndexFile(filepath.Join(r.cachepath, helmpath.CacheIndexFile(repoName)))
 			if err != nil {
-				return nil, errors.Wrapf(err, "no cached repository for %s found. (try 'helm repo update')", repoName)
+				return nil, fmt.Errorf("no cached repository for %s found. (try 'helm repo update'): %w", repoName, err)
 			}
 
 			vs, ok = repoIndex.Entries[d.Name]
 			if !ok {
-				return nil, errors.Errorf("%s chart not found in repo %s", d.Name, d.Repository)
+				return nil, fmt.Errorf("%s chart not found in repo %s", d.Name, d.Repository)
 			}
 			found = false
 		} else {
@@ -159,7 +160,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				ref := fmt.Sprintf("%s/%s", strings.TrimPrefix(d.Repository, fmt.Sprintf("%s://", registry.OCIScheme)), d.Name)
 				tags, err := r.registryClient.Tags(ref)
 				if err != nil {
-					return nil, errors.Wrapf(err, "could not retrieve list of tags for repository %s", d.Repository)
+					return nil, fmt.Errorf("could not retrieve list of tags for repository %s: %w", d.Repository, err)
 				}
 
 				vs = make(repo.ChartVersions, len(tags))
@@ -200,7 +201,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 		}
 	}
 	if len(missing) > 0 {
-		return nil, errors.Errorf("can't get a valid version for %d subchart(s): %s. Make sure a matching chart version exists in the repo, or change the version constraint in Chart.yaml", len(missing), strings.Join(missing, ", "))
+		return nil, fmt.Errorf("can't get a valid version for %d subchart(s): %s. Make sure a matching chart version exists in the repo, or change the version constraint in Chart.yaml", len(missing), strings.Join(missing, ", "))
 	}
 
 	digest, err := HashReq(reqs, locked)
@@ -260,8 +261,8 @@ func GetLocalPath(repo, chartpath string) (string, error) {
 		depPath = filepath.Join(chartpath, p)
 	}
 
-	if _, err = os.Stat(depPath); os.IsNotExist(err) {
-		return "", errors.Errorf("directory %s not found", depPath)
+	if _, err = os.Stat(depPath); errors.Is(err, fs.ErrNotExist) {
+		return "", fmt.Errorf("directory %s not found", depPath)
 	} else if err != nil {
 		return "", err
 	}

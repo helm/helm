@@ -22,19 +22,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
-	"sigs.k8s.io/yaml"
-
-	"helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
-	"helm.sh/helm/v4/pkg/provenance"
 )
 
 // Entry represents a collection of parameters for chart repository
@@ -52,23 +47,22 @@ type Entry struct {
 
 // ChartRepository represents a chart repository
 type ChartRepository struct {
-	Config     *Entry
-	ChartPaths []string
-	IndexFile  *IndexFile
-	Client     getter.Getter
-	CachePath  string
+	Config    *Entry
+	IndexFile *IndexFile
+	Client    getter.Getter
+	CachePath string
 }
 
 // NewChartRepository constructs ChartRepository
 func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository, error) {
 	u, err := url.Parse(cfg.URL)
 	if err != nil {
-		return nil, errors.Errorf("invalid chart URL format: %s", cfg.URL)
+		return nil, fmt.Errorf("invalid chart URL format: %s", cfg.URL)
 	}
 
 	client, err := getters.ByScheme(u.Scheme)
 	if err != nil {
-		return nil, errors.Errorf("could not find protocol handler for: %s", u.Scheme)
+		return nil, fmt.Errorf("could not find protocol handler for: %s", u.Scheme)
 	}
 
 	return &ChartRepository{
@@ -77,40 +71,6 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 		Client:    client,
 		CachePath: helmpath.CachePath("repository"),
 	}, nil
-}
-
-// Load loads a directory of charts as if it were a repository.
-//
-// It requires the presence of an index.yaml file in the directory.
-//
-// Deprecated: remove in Helm 4.
-func (r *ChartRepository) Load() error {
-	dirInfo, err := os.Stat(r.Config.Name)
-	if err != nil {
-		return err
-	}
-	if !dirInfo.IsDir() {
-		return errors.Errorf("%q is not a directory", r.Config.Name)
-	}
-
-	// FIXME: Why are we recursively walking directories?
-	// FIXME: Why are we not reading the repositories.yaml to figure out
-	// what repos to use?
-	filepath.Walk(r.Config.Name, func(path string, f os.FileInfo, _ error) error {
-		if !f.IsDir() {
-			if strings.Contains(f.Name(), "-index.yaml") {
-				i, err := LoadIndexFile(path)
-				if err != nil {
-					return err
-				}
-				r.IndexFile = i
-			} else if strings.HasSuffix(f.Name(), ".tgz") {
-				r.ChartPaths = append(r.ChartPaths, path)
-			}
-		}
-		return nil
-	})
-	return nil
 }
 
 // DownloadIndexFile fetches the index from a repository.
@@ -154,46 +114,6 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(fname), 0755)
 	return fname, os.WriteFile(fname, index, 0644)
-}
-
-// Index generates an index for the chart repository and writes an index.yaml file.
-func (r *ChartRepository) Index() error {
-	err := r.generateIndex()
-	if err != nil {
-		return err
-	}
-	return r.saveIndexFile()
-}
-
-func (r *ChartRepository) saveIndexFile() error {
-	index, err := yaml.Marshal(r.IndexFile)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(r.Config.Name, indexPath), index, 0644)
-}
-
-func (r *ChartRepository) generateIndex() error {
-	for _, path := range r.ChartPaths {
-		ch, err := loader.Load(path)
-		if err != nil {
-			return err
-		}
-
-		digest, err := provenance.DigestFile(path)
-		if err != nil {
-			return err
-		}
-
-		if !r.IndexFile.Has(ch.Name(), ch.Metadata.Version) {
-			if err := r.IndexFile.MustAdd(ch.Metadata, path, r.Config.URL, digest); err != nil {
-				return errors.Wrapf(err, "failed adding to %s to index", path)
-			}
-		}
-		// TODO: If a chart exists, but has a different Digest, should we error?
-	}
-	r.IndexFile.SortEntries()
-	return nil
 }
 
 type findChartInRepoURLOptions struct {
@@ -278,7 +198,7 @@ func FindChartInRepoURL(repoURL string, chartName string, getters getter.Provide
 	}
 	idx, err := r.DownloadIndexFile()
 	if err != nil {
-		return "", errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", repoURL)
+		return "", fmt.Errorf("looks like %q is not a valid chart repository or cannot be reached: %w", repoURL, err)
 	}
 	defer func() {
 		os.RemoveAll(filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name)))
@@ -297,18 +217,21 @@ func FindChartInRepoURL(repoURL string, chartName string, getters getter.Provide
 	}
 	cv, err := repoIndex.Get(chartName, opts.ChartVersion)
 	if err != nil {
-		return "", errors.Errorf("%s not found in %s repository", errMsg, repoURL)
+		return "", ChartNotFoundError{
+			Chart:   errMsg,
+			RepoURL: repoURL,
+		}
 	}
 
 	if len(cv.URLs) == 0 {
-		return "", errors.Errorf("%s has no downloadable URLs", errMsg)
+		return "", fmt.Errorf("%s has no downloadable URLs", errMsg)
 	}
 
 	chartURL := cv.URLs[0]
 
 	absoluteChartURL, err := ResolveReferenceURL(repoURL, chartURL)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to make chart URL absolute")
+		return "", fmt.Errorf("failed to make chart URL absolute: %w", err)
 	}
 
 	return absoluteChartURL, nil
@@ -319,7 +242,7 @@ func FindChartInRepoURL(repoURL string, chartName string, getters getter.Provide
 func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 	parsedRefURL, err := url.Parse(refURL)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to parse %s as URL", refURL)
+		return "", fmt.Errorf("failed to parse %s as URL: %w", refURL, err)
 	}
 
 	if parsedRefURL.IsAbs() {
@@ -328,7 +251,7 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 
 	parsedBaseURL, err := url.Parse(baseURL)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to parse %s as URL", baseURL)
+		return "", fmt.Errorf("failed to parse %s as URL: %w", baseURL, err)
 	}
 
 	// We need a trailing slash for ResolveReference to work, but make sure there isn't already one
@@ -343,7 +266,8 @@ func ResolveReferenceURL(baseURL, refURL string) (string, error) {
 func (e *Entry) String() string {
 	buf, err := json.Marshal(e)
 	if err != nil {
-		log.Panic(err)
+		slog.Error("failed to marshal entry", slog.Any("error", err))
+		panic(err)
 	}
 	return string(buf)
 }

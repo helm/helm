@@ -17,13 +17,12 @@ limitations under the License.
 package storage // import "helm.sh/helm/v4/pkg/storage"
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
 
-	"github.com/pkg/errors"
-
-	rspb "helm.sh/helm/v4/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
@@ -312,7 +311,6 @@ func (d *MaxHistoryMockDriver) Name() string {
 func TestMaxHistoryErrorHandling(t *testing.T) {
 	//func TestStorageRemoveLeastRecentWithError(t *testing.T) {
 	storage := Init(NewMaxHistoryMockDriver(driver.NewMemory()))
-	storage.Log = t.Logf
 
 	storage.MaxHistory = 1
 
@@ -338,7 +336,6 @@ func TestMaxHistoryErrorHandling(t *testing.T) {
 
 func TestStorageRemoveLeastRecent(t *testing.T) {
 	storage := Init(driver.NewMemory())
-	storage.Log = t.Logf
 
 	// Make sure that specifying this at the outset doesn't cause any bugs.
 	storage.MaxHistory = 10
@@ -395,7 +392,6 @@ func TestStorageRemoveLeastRecent(t *testing.T) {
 
 func TestStorageDoNotDeleteDeployed(t *testing.T) {
 	storage := Init(driver.NewMemory())
-	storage.Log = t.Logf
 	storage.MaxHistory = 3
 
 	const name = "angry-bird"
@@ -476,7 +472,7 @@ func TestStorageLast(t *testing.T) {
 	}
 }
 
-// TestUpgradeInitiallyFailedRelease tests a case when there are no deployed release yet, but history limit has been
+// TestUpgradeInitiallyFailedReleaseWithHistoryLimit tests a case when there are no deployed release yet, but history limit has been
 // reached: the has-no-deployed-releases error should not occur in such case.
 func TestUpgradeInitiallyFailedReleaseWithHistoryLimit(t *testing.T) {
 	storage := Init(driver.NewMemory())

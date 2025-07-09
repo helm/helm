@@ -24,14 +24,16 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/stretchr/testify/assert"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/fake"
 
-	"helm.sh/helm/v4/pkg/chart"
-	chartutil "helm.sh/helm/v4/pkg/chart/util"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
 func TestSortTemplates(t *testing.T) {
@@ -1289,14 +1291,140 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 		t.Errorf("Expected error, got %v", out)
 		return
 	}
-	switch err.(type) {
-	case (template.ExecError):
-		errTxt := fmt.Sprint(err)
-		if !strings.Contains(errTxt, "noSuchKey") {
-			t.Errorf("Expected error to contain 'noSuchKey', got %s", errTxt)
-		}
-	default:
-		// Some unexpected error.
+	errTxt := fmt.Sprint(err)
+	if !strings.Contains(errTxt, "noSuchKey") {
+		t.Errorf("Expected error to contain 'noSuchKey', got %s", errTxt)
+	}
+
+}
+
+func TestNestedHelpersProducesMultilineStacktrace(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "NestedHelperFunctions"},
+		Templates: []*chart.File{
+			{Name: "templates/svc.yaml", Data: []byte(
+				`name: {{ include "nested_helper.name" . }}`,
+			)},
+			{Name: "templates/_helpers_1.tpl", Data: []byte(
+				`{{- define "nested_helper.name" -}}{{- include "common.names.get_name" . -}}{{- end -}}`,
+			)},
+			{Name: "charts/common/templates/_helpers_2.tpl", Data: []byte(
+				`{{- define "common.names.get_name" -}}{{- .Values.nonexistant.key | trunc 63 | trimSuffix "-" -}}{{- end -}}`,
+			)},
+		},
+	}
+
+	expectedErrorMessage := `NestedHelperFunctions/templates/svc.yaml:1:9
+  executing "NestedHelperFunctions/templates/svc.yaml" at <include "nested_helper.name" .>:
+    error calling include:
+NestedHelperFunctions/templates/_helpers_1.tpl:1:39
+  executing "nested_helper.name" at <include "common.names.get_name" .>:
+    error calling include:
+NestedHelperFunctions/charts/common/templates/_helpers_2.tpl:1:49
+  executing "common.names.get_name" at <.Values.nonexistant.key>:
+    nil pointer evaluating interface {}.key`
+
+	v := chartutil.Values{}
+
+	val, _ := chartutil.CoalesceValues(c, v)
+	vals := map[string]interface{}{
+		"Values": val.AsMap(),
+	}
+	_, err := Render(c, vals)
+
+	assert.NotNil(t, err)
+	assert.Equal(t, expectedErrorMessage, err.Error())
+}
+
+func TestMultilineNoTemplateAssociatedError(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "multiline"},
+		Templates: []*chart.File{
+			{Name: "templates/svc.yaml", Data: []byte(
+				`name: {{ include "nested_helper.name" . }}`,
+			)},
+			{Name: "templates/test.yaml", Data: []byte(
+				`{{ toYaml .Values }}`,
+			)},
+			{Name: "charts/common/templates/_helpers_2.tpl", Data: []byte(
+				`{{ toYaml .Values }}`,
+			)},
+		},
+	}
+
+	expectedErrorMessage := `multiline/templates/svc.yaml:1:9
+  executing "multiline/templates/svc.yaml" at <include "nested_helper.name" .>:
+    error calling include:
+template: no template "nested_helper.name" associated with template "gotpl"`
+
+	v := chartutil.Values{}
+
+	val, _ := chartutil.CoalesceValues(c, v)
+	vals := map[string]interface{}{
+		"Values": val.AsMap(),
+	}
+	_, err := Render(c, vals)
+
+	assert.NotNil(t, err)
+	assert.Equal(t, expectedErrorMessage, err.Error())
+}
+
+func TestRenderCustomTemplateFuncs(t *testing.T) {
+	// Create a chart with two templates that use custom functions
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "CustomFunc"},
+		Templates: []*chart.File{
+			{
+				Name: "templates/manifest",
+				Data: []byte(`{{exclaim .Values.message}}`),
+			},
+			{
+				Name: "templates/override",
+				Data: []byte(`{{ upper .Values.message }}`),
+			},
+		},
+	}
+	v := chartutil.Values{
+		"Values": chartutil.Values{
+			"message": "hello",
+		},
+		"Chart": c.Metadata,
+		"Release": chartutil.Values{
+			"Name": "TestRelease",
+		},
+	}
+
+	// Define a custom template function "exclaim" that appends "!!!" to a string and override "upper" function
+	customFuncs := template.FuncMap{
+		"exclaim": func(input string) string {
+			return input + "!!!"
+		},
+		"upper": func(s string) string {
+			return "custom:" + s
+		},
+	}
+
+	// Create an engine instance and set the CustomTemplateFuncs.
+	e := new(Engine)
+	e.CustomTemplateFuncs = customFuncs
+
+	// Render the chart.
+	out, err := e.Render(c, v)
+	if err != nil {
 		t.Fatal(err)
+	}
+
+	// Expected output should be "hello!!!".
+	expected := "hello!!!"
+	key := "CustomFunc/templates/manifest"
+	if rendered, ok := out[key]; !ok || rendered != expected {
+		t.Errorf("Expected %q, got %q", expected, rendered)
+	}
+
+	// Verify that the rendered template used the custom "upper" function.
+	expected = "custom:hello"
+	key = "CustomFunc/templates/override"
+	if rendered, ok := out[key]; !ok || rendered != expected {
+		t.Errorf("Expected %q, got %q", expected, rendered)
 	}
 }

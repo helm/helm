@@ -19,7 +19,9 @@ package repo
 import (
 	"bytes"
 	"encoding/json"
-	"log"
+	"errors"
+	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -28,17 +30,14 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/internal/fileutil"
 	"helm.sh/helm/v4/internal/urlutil"
-	"helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/chart/loader"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/provenance"
 )
-
-var indexPath = "index.yaml"
 
 // APIVersionV1 is the v1 API version for index and repository files.
 const APIVersionV1 = "v1"
@@ -110,7 +109,7 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 	}
 	i, err := loadIndex(b, path)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error loading %s", path)
+		return nil, fmt.Errorf("error loading %s: %w", path, err)
 	}
 	return i, nil
 }
@@ -126,7 +125,7 @@ func (i IndexFile) MustAdd(md *chart.Metadata, filename, baseURL, digest string)
 		md.APIVersion = chart.APIVersionV1
 	}
 	if err := md.Validate(); err != nil {
-		return errors.Wrapf(err, "validate failed for %s", filename)
+		return fmt.Errorf("validate failed for %s: %w", filename, err)
 	}
 
 	u := filename
@@ -154,7 +153,7 @@ func (i IndexFile) MustAdd(md *chart.Metadata, filename, baseURL, digest string)
 // Deprecated: Use index.MustAdd instead.
 func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 	if err := i.MustAdd(md, filename, baseURL, digest); err != nil {
-		log.Printf("skipping loading invalid entry for chart %q %q from %s: %s", md.Name, md.Version, filename, err)
+		slog.Error("skipping loading invalid entry for chart %q %q from %s: %s", md.Name, md.Version, filename, err)
 	}
 }
 
@@ -219,7 +218,7 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 			return ver, nil
 		}
 	}
-	return nil, errors.Errorf("no chart version found for %s-%s", name, version)
+	return nil, fmt.Errorf("no chart version found for %s-%s", name, version)
 }
 
 // WriteFile writes an index file to the given destination path.
@@ -332,7 +331,7 @@ func IndexDirectory(dir, baseURL string) (*IndexFile, error) {
 			return index, err
 		}
 		if err := index.MustAdd(c.Metadata, fname, parentURL, hash); err != nil {
-			return index, errors.Wrapf(err, "failed adding to %s to index", fname)
+			return index, fmt.Errorf("failed adding to %s to index: %w", fname, err)
 		}
 	}
 	return index, nil
@@ -356,7 +355,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 	for name, cvs := range i.Entries {
 		for idx := len(cvs) - 1; idx >= 0; idx-- {
 			if cvs[idx] == nil {
-				log.Printf("skipping loading invalid entry for chart %q from %s: empty entry", name, source)
+				slog.Warn("skipping loading invalid entry for chart %q from %s: empty entry", name, source)
 				continue
 			}
 			// When metadata section missing, initialize with no data
@@ -367,7 +366,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 				cvs[idx].APIVersion = chart.APIVersionV1
 			}
 			if err := cvs[idx].Validate(); ignoreSkippableChartValidationError(err) != nil {
-				log.Printf("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err)
+				slog.Warn("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err)
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}
 		}

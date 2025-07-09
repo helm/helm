@@ -21,7 +21,7 @@ import (
 	"errors"
 
 	"helm.sh/helm/v4/pkg/kube"
-	"helm.sh/helm/v4/pkg/release"
+	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 // Status is the action for checking the deployment status of releases.

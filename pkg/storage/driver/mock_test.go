@@ -31,7 +31,7 @@ import (
 	kblabels "k8s.io/apimachinery/pkg/labels"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
-	rspb "helm.sh/helm/v4/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func releaseStub(name string, vers int, namespace string, status rspb.Status) *rspb.Release {
@@ -52,6 +52,7 @@ func testKey(name string, vers int) string {
 }
 
 func tsFixtureMemory(t *testing.T) *Memory {
+	t.Helper()
 	hs := []*rspb.Release{
 		// rls-a
 		releaseStub("rls-a", 4, "default", rspb.StatusDeployed),
@@ -83,6 +84,7 @@ func tsFixtureMemory(t *testing.T) *Memory {
 // newTestFixtureCfgMaps initializes a MockConfigMapsInterface.
 // ConfigMaps are created for each release provided.
 func newTestFixtureCfgMaps(t *testing.T, releases ...*rspb.Release) *ConfigMaps {
+	t.Helper()
 	var mock MockConfigMapsInterface
 	mock.Init(t, releases...)
 
@@ -98,6 +100,7 @@ type MockConfigMapsInterface struct {
 
 // Init initializes the MockConfigMapsInterface with the set of releases.
 func (mock *MockConfigMapsInterface) Init(t *testing.T, releases ...*rspb.Release) {
+	t.Helper()
 	mock.objects = map[string]*v1.ConfigMap{}
 
 	for _, rls := range releases {
@@ -130,7 +133,7 @@ func (mock *MockConfigMapsInterface) List(_ context.Context, opts metav1.ListOpt
 	}
 
 	for _, cfgmap := range mock.objects {
-		if labelSelector.Matches(kblabels.Set(cfgmap.ObjectMeta.Labels)) {
+		if labelSelector.Matches(kblabels.Set(cfgmap.Labels)) {
 			list.Items = append(list.Items, *cfgmap)
 		}
 	}
@@ -139,7 +142,7 @@ func (mock *MockConfigMapsInterface) List(_ context.Context, opts metav1.ListOpt
 
 // Create creates a new ConfigMap.
 func (mock *MockConfigMapsInterface) Create(_ context.Context, cfgmap *v1.ConfigMap, _ metav1.CreateOptions) (*v1.ConfigMap, error) {
-	name := cfgmap.ObjectMeta.Name
+	name := cfgmap.Name
 	if object, ok := mock.objects[name]; ok {
 		return object, apierrors.NewAlreadyExists(v1.Resource("tests"), name)
 	}
@@ -149,7 +152,7 @@ func (mock *MockConfigMapsInterface) Create(_ context.Context, cfgmap *v1.Config
 
 // Update updates a ConfigMap.
 func (mock *MockConfigMapsInterface) Update(_ context.Context, cfgmap *v1.ConfigMap, _ metav1.UpdateOptions) (*v1.ConfigMap, error) {
-	name := cfgmap.ObjectMeta.Name
+	name := cfgmap.Name
 	if _, ok := mock.objects[name]; !ok {
 		return nil, apierrors.NewNotFound(v1.Resource("tests"), name)
 	}
@@ -166,9 +169,10 @@ func (mock *MockConfigMapsInterface) Delete(_ context.Context, name string, _ me
 	return nil
 }
 
-// newTestFixture initializes a MockSecretsInterface.
+// newTestFixtureSecrets initializes a MockSecretsInterface.
 // Secrets are created for each release provided.
 func newTestFixtureSecrets(t *testing.T, releases ...*rspb.Release) *Secrets {
+	t.Helper()
 	var mock MockSecretsInterface
 	mock.Init(t, releases...)
 
@@ -184,6 +188,7 @@ type MockSecretsInterface struct {
 
 // Init initializes the MockSecretsInterface with the set of releases.
 func (mock *MockSecretsInterface) Init(t *testing.T, releases ...*rspb.Release) {
+	t.Helper()
 	mock.objects = map[string]*v1.Secret{}
 
 	for _, rls := range releases {
@@ -216,7 +221,7 @@ func (mock *MockSecretsInterface) List(_ context.Context, opts metav1.ListOption
 	}
 
 	for _, secret := range mock.objects {
-		if labelSelector.Matches(kblabels.Set(secret.ObjectMeta.Labels)) {
+		if labelSelector.Matches(kblabels.Set(secret.Labels)) {
 			list.Items = append(list.Items, *secret)
 		}
 	}
@@ -225,7 +230,7 @@ func (mock *MockSecretsInterface) List(_ context.Context, opts metav1.ListOption
 
 // Create creates a new Secret.
 func (mock *MockSecretsInterface) Create(_ context.Context, secret *v1.Secret, _ metav1.CreateOptions) (*v1.Secret, error) {
-	name := secret.ObjectMeta.Name
+	name := secret.Name
 	if object, ok := mock.objects[name]; ok {
 		return object, apierrors.NewAlreadyExists(v1.Resource("tests"), name)
 	}
@@ -235,7 +240,7 @@ func (mock *MockSecretsInterface) Create(_ context.Context, secret *v1.Secret, _
 
 // Update updates a Secret.
 func (mock *MockSecretsInterface) Update(_ context.Context, secret *v1.Secret, _ metav1.UpdateOptions) (*v1.Secret, error) {
-	name := secret.ObjectMeta.Name
+	name := secret.Name
 	if _, ok := mock.objects[name]; !ok {
 		return nil, apierrors.NewNotFound(v1.Resource("tests"), name)
 	}
@@ -254,6 +259,7 @@ func (mock *MockSecretsInterface) Delete(_ context.Context, name string, _ metav
 
 // newTestFixtureSQL mocks the SQL database (for testing purposes)
 func newTestFixtureSQL(t *testing.T, _ ...*rspb.Release) (*SQL, sqlmock.Sqlmock) {
+	t.Helper()
 	sqlDB, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("error when opening stub database connection: %v", err)
@@ -262,7 +268,6 @@ func newTestFixtureSQL(t *testing.T, _ ...*rspb.Release) (*SQL, sqlmock.Sqlmock)
 	sqlxDB := sqlx.NewDb(sqlDB, "sqlmock")
 	return &SQL{
 		db:               sqlxDB,
-		Log:              func(_ string, _ ...interface{}) {},
 		namespace:        "default",
 		statementBuilder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}, mock

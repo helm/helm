@@ -23,18 +23,20 @@ import (
 	"testing"
 	"time"
 
-	"helm.sh/helm/v4/pkg/chart"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/storage/driver"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
-	"helm.sh/helm/v4/pkg/release"
+	release "helm.sh/helm/v4/pkg/release/v1"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func upgradeAction(t *testing.T) *Upgrade {
+	t.Helper()
 	config := actionConfigFixture(t)
 	upAction := NewUpgrade(config)
 	upAction.Namespace = "spaced"
@@ -52,10 +54,10 @@ func TestUpgradeRelease_Success(t *testing.T) {
 	rel.Info.Status = release.StatusDeployed
 	req.NoError(upAction.cfg.Releases.Create(rel))
 
-	upAction.Wait = true
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
-	ctx, done := context.WithCancel(context.Background())
+	ctx, done := context.WithCancel(t.Context())
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 	done()
 	req.NoError(err)
@@ -82,7 +84,7 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	upAction.cfg.KubeClient = failer
-	upAction.Wait = true
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
 	res, err := upAction.Run(rel.Name, buildChart(), vals)
@@ -104,7 +106,7 @@ func TestUpgradeRelease_WaitForJobs(t *testing.T) {
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	upAction.cfg.KubeClient = failer
-	upAction.Wait = true
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	upAction.WaitForJobs = true
 	vals := map[string]interface{}{}
 
@@ -128,7 +130,7 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	failer.WaitError = fmt.Errorf("I timed out")
 	failer.DeleteError = fmt.Errorf("I tried to delete nil")
 	upAction.cfg.KubeClient = failer
-	upAction.Wait = true
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	upAction.CleanupOnFail = true
 	vals := map[string]interface{}{}
 
@@ -382,7 +384,6 @@ func TestUpgradeRelease_Pending(t *testing.T) {
 }
 
 func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
-
 	is := assert.New(t)
 	req := require.New(t)
 
@@ -395,11 +396,10 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 10 * time.Second
 	upAction.cfg.KubeClient = failer
-	upAction.Wait = true
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
@@ -407,11 +407,9 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	req.Error(err)
 	is.Contains(res.Info.Description, "Upgrade \"interrupted-release\" failed: context canceled")
 	is.Equal(res.Info.Status, release.StatusFailed)
-
 }
 
 func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
-
 	is := assert.New(t)
 	req := require.New(t)
 
@@ -427,8 +425,7 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	upAction.Atomic = true
 	vals := map[string]interface{}{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
@@ -444,7 +441,7 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 }
 
 func TestMergeCustomLabels(t *testing.T) {
-	var tests = [][3]map[string]string{
+	tests := [][3]map[string]string{
 		{nil, nil, map[string]string{}},
 		{map[string]string{}, map[string]string{}, map[string]string{}},
 		{map[string]string{"k1": "v1", "k2": "v2"}, nil, map[string]string{"k1": "v1", "k2": "v2"}},
@@ -549,7 +546,7 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	upAction.DryRun = true
 	vals := map[string]interface{}{}
 
-	ctx, done := context.WithCancel(context.Background())
+	ctx, done := context.WithCancel(t.Context())
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
 	done()
 	req.NoError(err)
@@ -565,7 +562,7 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	upAction.HideSecret = true
 	vals = map[string]interface{}{}
 
-	ctx, done = context.WithCancel(context.Background())
+	ctx, done = context.WithCancel(t.Context())
 	res, err = upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
 	done()
 	req.NoError(err)
@@ -581,7 +578,7 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	upAction.DryRun = false
 	vals = map[string]interface{}{}
 
-	ctx, done = context.WithCancel(context.Background())
+	ctx, done = context.WithCancel(t.Context())
 	_, err = upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
 	done()
 	req.Error(err)
