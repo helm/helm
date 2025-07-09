@@ -59,35 +59,44 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 	locked := make([]*chart.Dependency, len(reqs))
 	missing := []string{}
 	for i, d := range reqs {
-		var constraint *semver.Constraints
-		var chartpath string
-		var err error
-
-		// If version is defined
-		if d.Version != "" {
-			constraint, err = semver.NewConstraint(d.Version)
-			if err != nil {
-				return nil, fmt.Errorf("dependency %q has an invalid version/constraint format: %w", d.Name, err)
+		// Handle local chart dependencies (empty repository)
+		if d.Repository == "" {
+			// Local chart subfolder - maintain backward compatibility
+			if _, err := GetLocalPath(filepath.Join("charts", d.Name), r.chartpath); err != nil {
+				return nil, err
 			}
+
+			// For empty repository, determine version from local chart if not specified
+			version := d.Version
+			if version == "" {
+				chartpath, err := GetLocalPath(filepath.Join("charts", d.Name), r.chartpath)
+				if err != nil {
+					return nil, err
+				}
+
+				ch, err := loader.LoadDir(chartpath)
+				if err != nil {
+					return nil, err
+				}
+
+				version = ch.Metadata.Version
+			}
+
+			locked[i] = &chart.Dependency{
+				Name:       d.Name,
+				Repository: "",
+				Version:    version,
+			}
+			continue
 		}
 
-		// Local chart
-		if d.Repository == "" || strings.HasPrefix(d.Repository, "file://") {
-			if d.Repository == "" {
-				// From charts subfolder
-				chartpath, err = GetLocalPath(filepath.Join("charts", d.Name), r.chartpath)
-				if err != nil {
-					return nil, err
-				}
-			} else {
-				// From file:// repository
-				chartpath, err = GetLocalPath(d.Repository, r.chartpath)
-				if err != nil {
-					return nil, err
-				}
+		// Handle file:// repository dependencies
+		if strings.HasPrefix(d.Repository, "file://") {
+			chartpath, err := GetLocalPath(d.Repository, r.chartpath)
+			if err != nil {
+				return nil, err
 			}
 
-			// Load chart to validate the version
 			ch, err := loader.LoadDir(chartpath)
 			if err != nil {
 				return nil, err
@@ -95,16 +104,24 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 
 			v, err := semver.NewVersion(ch.Metadata.Version)
 			if err != nil {
+				// If no version specified, add to missing list
 				if d.Version == "" {
 					missing = append(missing, fmt.Sprintf("%q (repository %q)", d.Name, d.Repository))
 				}
 				continue
 			}
 
-			// If version is set but does not match the local chart
-			if d.Version != "" && !constraint.Check(v) {
-				missing = append(missing, fmt.Sprintf("%q (repository %q, version %q)", d.Name, d.Repository, d.Version))
-				continue
+			// If version is specified, validate it against the local chart
+			if d.Version != "" {
+				constraint, err := semver.NewConstraint(d.Version)
+				if err != nil {
+					return nil, fmt.Errorf("dependency %q has an invalid version/constraint format: %w", d.Name, err)
+				}
+
+				if !constraint.Check(v) {
+					missing = append(missing, fmt.Sprintf("%q (repository %q, version %q)", d.Name, d.Repository, d.Version))
+					continue
+				}
 			}
 
 			locked[i] = &chart.Dependency{
@@ -113,6 +130,16 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				Version:    ch.Metadata.Version,
 			}
 			continue
+		}
+
+		// Handle remote repository dependencies
+		var constraint *semver.Constraints
+		if d.Version != "" {
+			var err error
+			constraint, err = semver.NewConstraint(d.Version)
+			if err != nil {
+				return nil, fmt.Errorf("dependency %q has an invalid version/constraint format: %w", d.Name, err)
+			}
 		}
 
 		repoName := repoNames[d.Name]
@@ -189,7 +216,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				// Not a legit entry.
 				continue
 			}
-			if constraint.Check(v) {
+			if constraint == nil || constraint.Check(v) {
 				found = true
 				locked[i].Version = v.Original()
 				break
