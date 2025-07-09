@@ -96,7 +96,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 			v, err := semver.NewVersion(ch.Metadata.Version)
 			if err != nil {
 				if d.Version == "" {
-					missing = append(missing, d.Name)
+					missing = append(missing, fmt.Sprintf("%q (repository %q)", d.Name, d.Repository))
 				}
 				continue
 			}
