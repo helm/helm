@@ -160,7 +160,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		}
 
 		if _, err := os.Stat(udCheck); err != nil {
-			if err := os.MkdirAll(udCheck, 0755); err != nil {
+			if err := os.MkdirAll(udCheck, 0o755); err != nil {
 				return out.String(), fmt.Errorf("failed to untar (mkdir): %w", err)
 			}
 		} else {
