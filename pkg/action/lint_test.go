@@ -154,12 +154,12 @@ func TestLint_ChartWithWarnings(t *testing.T) {
 		}
 	})
 
-	t.Run("should pass with no errors when strict", func(t *testing.T) {
+	t.Run("should fail with one error when strict", func(t *testing.T) {
 		testCharts := []string{chartWithNoTemplatesDir}
 		testLint := NewLint()
 		testLint.Strict = true
-		if result := testLint.Run(testCharts, values); len(result.Errors) != 0 {
-			t.Error("expected no errors, but got", len(result.Errors))
+		if result := testLint.Run(testCharts, values); len(result.Errors) != 1 {
+			t.Error("expected one error, but got", len(result.Errors))
 		}
 	})
 }

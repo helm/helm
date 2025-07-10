@@ -1,6 +1,6 @@
 ==> Linting testdata/testcharts/chart-with-bad-subcharts
 [INFO] Chart.yaml: icon is recommended
-[ERROR] templates/: error unpacking subchart bad-subchart in chart-with-bad-subcharts: validation: chart.metadata.name is required
+[WARNING] templates/: directory does not exist
 [ERROR] : unable to load chart
 	error unpacking subchart bad-subchart in chart-with-bad-subcharts: validation: chart.metadata.name is required
 
