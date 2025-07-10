@@ -192,8 +192,15 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
+			opts := loader.DefaultChartLoadOptions
+			if client.MaxChartSize > 0 {
+				opts.MaxDecompressedChartSize = client.MaxChartSize
+			}
+			if client.MaxChartFileSize > 0 {
+				opts.MaxDecompressedFileSize = client.MaxChartFileSize
+			}
 			// Check chart dependencies to make sure all are present in /charts
-			ch, err := loader.Load(chartPath)
+			ch, err := loader.LoadWithOptions(chartPath, opts)
 			if err != nil {
 				return err
 			}
@@ -215,7 +222,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							return err
 						}
 						// Reload the chart with the updated Chart.lock file.
-						if ch, err = loader.Load(chartPath); err != nil {
+						if ch, err = loader.LoadWithOptions(chartPath, opts); err != nil {
 							return fmt.Errorf("failed reloading chart after repo update: %w", err)
 						}
 					} else {
@@ -288,6 +295,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
 	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, upgrade will ignore the check for helm annotations and take ownership of the existing resources")
+	f.Int64Var(&client.MaxChartSize, "max-chart-size", settings.MaxChartSize, "maximum size in bytes for a decompressed chart (default is 100mb)")
+	f.Int64Var(&client.MaxChartFileSize, "max-file-size", settings.MaxChartFileSize, "maximum size in bytes for a single file in a chart (default is 5mb)")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
