@@ -27,23 +27,23 @@ func TestGetMetadataCmd(t *testing.T) {
 		name:   "get metadata with a release",
 		cmd:    "get metadata thomas-guide",
 		golden: "output/get-metadata.txt",
-		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide"})},
+		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide", Labels: map[string]string{"key1": "value1"}})},
 	}, {
 		name:      "get metadata requires release name arg",
 		cmd:       "get metadata",
 		golden:    "output/get-metadata-args.txt",
-		rels:      []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide"})},
+		rels:      []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide", Labels: map[string]string{"key1": "value1"}})},
 		wantError: true,
 	}, {
 		name:   "get metadata to json",
 		cmd:    "get metadata thomas-guide --output json",
 		golden: "output/get-metadata.json",
-		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide"})},
+		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide", Labels: map[string]string{"key1": "value1"}})},
 	}, {
 		name:   "get metadata to yaml",
 		cmd:    "get metadata thomas-guide --output yaml",
 		golden: "output/get-metadata.yaml",
-		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide"})},
+		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide", Labels: map[string]string{"key1": "value1"}})},
 	}}
 	runTestCmd(t, tests)
 }
