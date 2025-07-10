@@ -148,6 +148,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.SkipSchemaValidation = client.SkipSchemaValidation
 					instClient.Description = client.Description
 					instClient.DependencyUpdate = client.DependencyUpdate
+					instClient.DependencyUpdateRecursive = client.DependencyUpdateRecursive
 					instClient.Labels = client.Labels
 					instClient.EnableDNS = client.EnableDNS
 					instClient.HideSecret = client.HideSecret
@@ -211,7 +212,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							RepositoryCache:  settings.RepositoryCache,
 							Debug:            settings.Debug,
 						}
-						if err := man.Update(); err != nil {
+						if err := man.Update(client.DependencyUpdateRecursive); err != nil {
 							return err
 						}
 						// Reload the chart with the updated Chart.lock file.
