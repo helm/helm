@@ -29,6 +29,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/distribution/distribution/v3/configuration"
@@ -172,6 +173,9 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 }
 
 func teardown(suite *TestSuite) {
+	var lock sync.Mutex
+	lock.Lock()
+	defer lock.Unlock()
 	if suite.srv != nil {
 		mockdns.UnpatchNet(net.DefaultResolver)
 		suite.srv.Close()
