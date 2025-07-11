@@ -106,7 +106,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 			}
 
-			return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat, client.NoHeaders, settings.NoColor))
+			return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat, client.NoHeaders, settings.ShouldDisableColor()))
 		},
 	}
 

@@ -84,7 +84,7 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				debug:        false,
 				showMetadata: false,
 				hideNotes:    false,
-				noColor:      settings.NoColor,
+				noColor:      settings.ShouldDisableColor(),
 			})
 		},
 	}

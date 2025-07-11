@@ -166,7 +166,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						debug:        settings.Debug,
 						showMetadata: false,
 						hideNotes:    instClient.HideNotes,
-						noColor:      settings.NoColor,
+						noColor:      settings.ShouldDisableColor(),
 					})
 				} else if err != nil {
 					return err
@@ -258,7 +258,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				debug:        settings.Debug,
 				showMetadata: false,
 				hideNotes:    client.HideNotes,
-				noColor:      settings.NoColor,
+				noColor:      settings.ShouldDisableColor(),
 			})
 		},
 	}
