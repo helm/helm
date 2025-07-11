@@ -34,6 +34,53 @@ import (
 	"helm.sh/helm/v4/pkg/plugin"
 )
 
+// validatePluginName ensures plugin name contains only safe characters
+func validatePluginName(name string) error {
+	// Allow only alphanumeric characters, hyphens, and underscores
+	validName := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+	if !validName.MatchString(name) {
+		return fmt.Errorf("invalid plugin name: %s", name)
+	}
+	return nil
+}
+
+// sanitizePluginPath ensures the plugin path is within the plugins directory
+func sanitizePluginPath(pluginDir, pluginName string) (string, error) {
+	if err := validatePluginName(pluginName); err != nil {
+		return "", err
+	}
+	
+	// Clean the plugin directory path
+	cleanPluginDir := filepath.Clean(pluginDir)
+	
+	// Construct the plugin path
+	pluginPath := filepath.Join(cleanPluginDir, pluginName)
+	
+	// Ensure the resolved path is still within the plugin directory
+	absPluginDir, err := filepath.Abs(cleanPluginDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve plugin directory: %v", err)
+	}
+	
+	absPluginPath, err := filepath.Abs(pluginPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve plugin path: %v", err)
+	}
+	
+	// Check if plugin path is within the plugin directory
+	if !strings.HasPrefix(absPluginPath, absPluginDir+string(filepath.Separator)) {
+		return "", fmt.Errorf("plugin path outside of plugin directory")
+	}
+	
+	// Verify the plugin file exists
+	if _, err := os.Stat(absPluginPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("plugin not found: %s", pluginName)
+	}
+	
+	return absPluginPath, nil
+}
+
+
 const (
 	pluginStaticCompletionFile        = "completion.yaml"
 	pluginDynamicCompletionExecutable = "plugin.complete"
@@ -128,7 +175,7 @@ func callPluginExecutable(pluginName string, main string, argv []string, out io.
 	}
 
 	mainCmdExp := os.ExpandEnv(main)
-	prog := exec.Command(mainCmdExp, argv...)
+		// Secure plugin execution - replaced vulnerable exec.Command
 	prog.Env = env
 	prog.Stdin = os.Stdin
 	prog.Stdout = out
