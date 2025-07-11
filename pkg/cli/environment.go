@@ -231,8 +231,8 @@ func envColorMode() string {
 			return v
 		}
 	}
-	// Default to auto
-	return "auto"
+	// Default to never (disabled) until more commands support color
+	return "never"
 }
 
 func (s *EnvSettings) EnvVars() map[string]string {
