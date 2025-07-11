@@ -31,6 +31,7 @@ import (
 	"helm.sh/helm/v4/pkg/action"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/cli/output"
+	coloroutput "helm.sh/helm/v4/internal/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -132,8 +133,8 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	if !s.release.Info.LastDeployed.IsZero() {
 		_, _ = fmt.Fprintf(out, "LAST DEPLOYED: %s\n", s.release.Info.LastDeployed.Format(time.ANSIC))
 	}
-	_, _ = fmt.Fprintf(out, "NAMESPACE: %s\n", output.ColorizeNamespace(s.release.Namespace, s.noColor))
-	_, _ = fmt.Fprintf(out, "STATUS: %s\n", output.ColorizeStatus(s.release.Info.Status, s.noColor))
+	_, _ = fmt.Fprintf(out, "NAMESPACE: %s\n", coloroutput.ColorizeNamespace(s.release.Namespace, s.noColor))
+	_, _ = fmt.Fprintf(out, "STATUS: %s\n", coloroutput.ColorizeStatus(s.release.Info.Status, s.noColor))
 	_, _ = fmt.Fprintf(out, "REVISION: %d\n", s.release.Version)
 	if s.showMetadata {
 		_, _ = fmt.Fprintf(out, "CHART: %s\n", s.release.Chart.Metadata.Name)

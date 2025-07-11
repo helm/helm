@@ -28,6 +28,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cli/output"
+	coloroutput "helm.sh/helm/v4/internal/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -181,13 +182,13 @@ func (w *releaseListWriter) WriteTable(out io.Writer) error {
 	table := uitable.New()
 	if !w.noHeaders {
 		table.AddRow(
-			output.ColorizeHeader("NAME", w.noColor),
-			output.ColorizeHeader("NAMESPACE", w.noColor),
-			output.ColorizeHeader("REVISION", w.noColor),
-			output.ColorizeHeader("UPDATED", w.noColor),
-			output.ColorizeHeader("STATUS", w.noColor),
-			output.ColorizeHeader("CHART", w.noColor),
-			output.ColorizeHeader("APP VERSION", w.noColor),
+			coloroutput.ColorizeHeader("NAME", w.noColor),
+			coloroutput.ColorizeHeader("NAMESPACE", w.noColor),
+			coloroutput.ColorizeHeader("REVISION", w.noColor),
+			coloroutput.ColorizeHeader("UPDATED", w.noColor),
+			coloroutput.ColorizeHeader("STATUS", w.noColor),
+			coloroutput.ColorizeHeader("CHART", w.noColor),
+			coloroutput.ColorizeHeader("APP VERSION", w.noColor),
 		)
 	}
 	for _, r := range w.releases {
@@ -215,7 +216,7 @@ func (w *releaseListWriter) WriteTable(out io.Writer) error {
 		default:
 			status = release.Status(r.Status)
 		}
-		table.AddRow(r.Name, output.ColorizeNamespace(r.Namespace, w.noColor), r.Revision, r.Updated, output.ColorizeStatus(status, w.noColor), r.Chart, r.AppVersion)
+		table.AddRow(r.Name, coloroutput.ColorizeNamespace(r.Namespace, w.noColor), r.Revision, r.Updated, coloroutput.ColorizeStatus(status, w.noColor), r.Chart, r.AppVersion)
 	}
 	return output.EncodeTable(out, table)
 }
