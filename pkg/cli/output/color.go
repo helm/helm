@@ -17,18 +17,15 @@ limitations under the License.
 package output
 
 import (
-	"os"
-
 	"github.com/fatih/color"
-	"golang.org/x/term"
 
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 // ColorizeStatus returns a colorized version of the status string based on the status value
 func ColorizeStatus(status release.Status, noColor bool) string {
-	// Disable color if requested or if not in a terminal
-	if noColor || os.Getenv("NO_COLOR") != "" || !term.IsTerminal(int(os.Stdout.Fd())) {
+	// Disable color if requested
+	if noColor {
 		return status.String()
 	}
 
@@ -49,8 +46,8 @@ func ColorizeStatus(status release.Status, noColor bool) string {
 
 // ColorizeHeader returns a colorized version of a header string
 func ColorizeHeader(header string, noColor bool) string {
-	// Disable color if requested or if not in a terminal
-	if noColor || os.Getenv("NO_COLOR") != "" || !term.IsTerminal(int(os.Stdout.Fd())) {
+	// Disable color if requested
+	if noColor {
 		return header
 	}
 
@@ -60,8 +57,8 @@ func ColorizeHeader(header string, noColor bool) string {
 
 // ColorizeNamespace returns a colorized version of a namespace string
 func ColorizeNamespace(namespace string, noColor bool) string {
-	// Disable color if requested or if not in a terminal
-	if noColor || os.Getenv("NO_COLOR") != "" || !term.IsTerminal(int(os.Stdout.Fd())) {
+	// Disable color if requested
+	if noColor {
 		return namespace
 	}
 
