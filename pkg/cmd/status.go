@@ -28,10 +28,10 @@ import (
 
 	"k8s.io/kubectl/pkg/cmd/get"
 
+	coloroutput "helm.sh/helm/v4/internal/cli/output"
 	"helm.sh/helm/v4/pkg/action"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/cli/output"
-	coloroutput "helm.sh/helm/v4/internal/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )

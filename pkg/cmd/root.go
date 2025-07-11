@@ -177,7 +177,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	flags.Parse(args)
 
 	logSetup(settings.Debug)
-	
+
 	// Validate color mode setting
 	switch settings.ColorMode {
 	case "never", "auto", "always":
@@ -185,7 +185,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	default:
 		return nil, fmt.Errorf("invalid color mode %q: must be one of: never, auto, always", settings.ColorMode)
 	}
-	
+
 	// Configure color output based on ColorMode setting
 	configureColorOutput(settings)
 
@@ -193,7 +193,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	_ = cmd.RegisterFlagCompletionFunc("color", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"never", "auto", "always"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	
+
 	// Setup shell completion for the colour flag
 	_ = cmd.RegisterFlagCompletionFunc("colour", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"never", "auto", "always"}, cobra.ShellCompDirectiveNoFileComp
