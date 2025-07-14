@@ -45,6 +45,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
+var ErrNoRetryError = errors.New("this error will stop retry")
+
+type waiter struct {
+	c       ReadyChecker
+	timeout time.Duration
+	log     func(string, ...interface{})
+}
+
 // legacyWaiter is the legacy implementation of the Waiter interface. This logic was used by default in Helm 3
 // Helm 4 now uses the StatusWaiter implementation instead
 type legacyWaiter struct {
@@ -108,6 +116,10 @@ func (hw *legacyWaiter) isRetryableError(err error, resource *resource.Info) boo
 		retryable := hw.isRetryableHTTPStatusCode(statusCode)
 		slog.Debug("status code received", "resource", resource.Name, "statusCode", statusCode, "retryable", retryable)
 		return retryable
+	}
+	if errors.Is(err, ErrNoRetryError) {
+		slog.Debug("The error is a NoRetryError", Retryable", false)
+		return false
 	}
 	slog.Debug("retryable error assumed", "resource", resource.Name)
 	return true
