@@ -24,12 +24,13 @@ import (
 	"testing"
 	"time"
 
+	"sigs.k8s.io/yaml"
+
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo/repotest"
-	"sigs.k8s.io/yaml"
 )
 
 func TestVersionEquals(t *testing.T) {
