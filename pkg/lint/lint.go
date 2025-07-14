@@ -24,42 +24,35 @@ import (
 	"helm.sh/helm/v4/pkg/lint/support"
 )
 
-type linterOptions struct {
-	KubeVersion          *chartutil.KubeVersion
-	SkipSchemaValidation bool
-}
-
-type LinterOption func(lo *linterOptions)
-
-func WithKubeVersion(kubeVersion *chartutil.KubeVersion) LinterOption {
-	return func(lo *linterOptions) {
-		lo.KubeVersion = kubeVersion
-	}
-}
-
-func WithSkipSchemaValidation(skipSchemaValidation bool) LinterOption {
-	return func(lo *linterOptions) {
-		lo.SkipSchemaValidation = skipSchemaValidation
-	}
-}
-
-func RunAll(baseDir string, values map[string]interface{}, namespace string, options ...LinterOption) support.Linter {
-
+func AllWithOptions(baseDir string, values map[string]interface{}, namespace string, options ...LinterOption) support.Linter {
+	// Using abs path to get directory context
 	chartDir, _ := filepath.Abs(baseDir)
 
-	lo := linterOptions{}
+	linter := support.Linter{ChartDir: chartDir}
+
 	for _, option := range options {
-		option(&lo)
+		option(&linter)
 	}
 
-	result := support.Linter{
-		ChartDir: chartDir,
-	}
+	rules.Chartfile(&linter)
+	rules.ValuesWithOverrides(&linter, values)
+	rules.TemplatesV2(&linter, values, namespace)
+	rules.Dependencies(&linter)
 
-	rules.Chartfile(&result)
-	rules.ValuesWithOverrides(&result, values)
-	rules.TemplatesWithSkipSchemaValidation(&result, values, namespace, lo.KubeVersion, lo.SkipSchemaValidation)
-	rules.Dependencies(&result)
+	return linter
+}
 
-	return result
+// All runs all the available linters on the given base directory.
+// Deprecated, use AllWithOptions instead.
+func All(basedir string, values map[string]interface{}, namespace string, _ bool) support.Linter {
+	return AllWithOptions(basedir, values, namespace)
+}
+
+// AllWithKubeVersion runs all the available linters on the given base directory, allowing to specify the kubernetes version.
+// Deprecated, use AllWithOptions instead.
+func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) support.Linter {
+	return AllWithOptions(basedir, values, namespace,
+		WithKubeVersion(kubeVersion),
+		WithSkipSchemaValidation(false),
+	)
 }

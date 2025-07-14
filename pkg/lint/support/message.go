@@ -16,7 +16,11 @@ limitations under the License.
 
 package support
 
-import "fmt"
+import (
+	"fmt"
+
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+)
 
 // Severity indicates the severity of a Message.
 const (
@@ -37,8 +41,11 @@ var sev = []string{"UNKNOWN", "INFO", "WARNING", "ERROR"}
 type Linter struct {
 	Messages []Message
 	// The highest severity of all the failing lint rules
-	HighestSeverity int
-	ChartDir        string
+	HighestSeverity      int
+	ChartDir             string
+	ReleaseName          string
+	KubeVersion          *chartutil.KubeVersion
+	SkipSchemaValidation bool
 }
 
 // Message describes an error encountered while linting.
