@@ -107,13 +107,13 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 		fmt.Fprintln(&charts, name)
 	}
 	chartsFile := filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
-	os.MkdirAll(filepath.Dir(chartsFile), 0755)
-	os.WriteFile(chartsFile, []byte(charts.String()), 0644)
+	os.MkdirAll(filepath.Dir(chartsFile), 0o755)
+	os.WriteFile(chartsFile, []byte(charts.String()), 0o644)
 
 	// Create the index file in the cache directory
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
-	os.MkdirAll(filepath.Dir(fname), 0755)
-	return fname, os.WriteFile(fname, index, 0644)
+	os.MkdirAll(filepath.Dir(fname), 0o755)
+	return fname, os.WriteFile(fname, index, 0o644)
 }
 
 type findChartInRepoURLOptions struct {
@@ -169,7 +169,7 @@ func WithInsecureSkipTLSverify(insecureSkipTLSverify bool) FindChartInRepoURLOpt
 
 // FindChartInRepoURL finds chart in chart repository pointed by repoURL
 // without adding repo to repositories
-func FindChartInRepoURL(repoURL string, chartName string, getters getter.Providers, options ...FindChartInRepoURLOption) (string, error) {
+func FindChartInRepoURL(repoURL, chartName string, getters getter.Providers, options ...FindChartInRepoURLOption) (string, error) {
 
 	opts := findChartInRepoURLOptions{}
 	for _, option := range options {

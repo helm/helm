@@ -264,7 +264,7 @@ func TestDownloadAll(t *testing.T) {
 	}
 
 	// create a 'tmpcharts' directory to test #5567
-	if err := os.MkdirAll(filepath.Join(chartPath, "tmpcharts"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(chartPath, "tmpcharts"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := m.downloadAll([]*chart.Dependency{signDep, localDep}); err != nil {
@@ -282,10 +282,10 @@ func TestDownloadAll(t *testing.T) {
 description: A Helm chart for Kubernetes
 name: ../bad-local-subchart
 version: 0.1.0`
-	if err := os.MkdirAll(filepath.Join(chartPath, "testdata", "bad-local-subchart"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(chartPath, "testdata", "bad-local-subchart"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	err = os.WriteFile(filepath.Join(chartPath, "testdata", "bad-local-subchart", "Chart.yaml"), []byte(badchartyaml), 0644)
+	err = os.WriteFile(filepath.Join(chartPath, "testdata", "bad-local-subchart", "Chart.yaml"), []byte(badchartyaml), 0o644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -733,7 +733,7 @@ func TestWriteLock(t *testing.T) {
 	t.Run("overwrite existing lock file", func(t *testing.T) {
 		dir := t.TempDir()
 		lockfilePath := filepath.Join(dir, "Chart.lock")
-		assert.NoError(t, os.WriteFile(lockfilePath, []byte("old content"), 0644))
+		assert.NoError(t, os.WriteFile(lockfilePath, []byte("old content"), 0o644))
 
 		err = writeLock(dir, lock, false)
 		assert.NoError(t, err)
@@ -746,7 +746,7 @@ func TestWriteLock(t *testing.T) {
 	t.Run("lock file is a symlink", func(t *testing.T) {
 		dir := t.TempDir()
 		dummyFile := filepath.Join(dir, "dummy.txt")
-		assert.NoError(t, os.WriteFile(dummyFile, []byte("dummy"), 0644))
+		assert.NoError(t, os.WriteFile(dummyFile, []byte("dummy"), 0o644))
 
 		lockfilePath := filepath.Join(dir, "Chart.lock")
 		assert.NoError(t, os.Symlink(dummyFile, lockfilePath))
@@ -759,7 +759,7 @@ func TestWriteLock(t *testing.T) {
 	t.Run("chart path is not a directory", func(t *testing.T) {
 		dir := t.TempDir()
 		filePath := filepath.Join(dir, "not-a-dir")
-		assert.NoError(t, os.WriteFile(filePath, []byte("file"), 0644))
+		assert.NoError(t, os.WriteFile(filePath, []byte("file"), 0o644))
 
 		err = writeLock(filePath, lock, false)
 		assert.Error(t, err)
