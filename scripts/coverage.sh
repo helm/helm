@@ -24,7 +24,7 @@ generate_cover_data() {
   for d in $(go list ./...) ; do
     (
       local output="${coverdir}/${d//\//-}.cover"
-      go test -coverprofile="${output}" -covermode="$covermode" "$d"
+      go test -coverprofile="${output}" -covermode="$covermode" "$d" $(TESTARGS)
     )
   done
 
