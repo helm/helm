@@ -240,7 +240,7 @@ where `n` is the number of times you want to run the tests.
 For example, to run the tests in order and only once, you can use the following command:
 
 ```bash
-make test TESTARGS="-shuffle=off -count=1"
+make test TESTFLAGS="-shuffle=off -count=1"
 ```
 
 If a test fails, the seed that was used to randomize the tests will be printed. You can use this
@@ -248,7 +248,7 @@ seed to reproduce the failure. For example, if the seed was `12345`, you can use
 command to reproduce the failure:
 
 ```bash
-make test TESTARGS="-shuffle=on -seed=12345"
+make test TESTFLAGS="-shuffle=on -seed=12345"
 ```
 
 ## Pull Requests
