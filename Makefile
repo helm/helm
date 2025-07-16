@@ -105,7 +105,7 @@ test: test-unit
 test-unit:
 	@echo
 	@echo "==> Running unit tests <=="
-	go test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS) $(TESTARGS)
+	go test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
 	@echo
 	@echo "==> Running unit test(s) with ldflags <=="
 # Test to check the deprecation warnings on Kubernetes templates created by `helm create` against the current Kubernetes
