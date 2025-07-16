@@ -24,12 +24,12 @@ generate_cover_data() {
   for d in $(go list ./...) ; do
     (
       local output="${coverdir}/${d//\//-}.cover"
-      go test -coverprofile="${output}" -covermode="$covermode" "$d" $(TESTARGS)
+      go test -coverprofile="${output}" -covermode="$covermode" "$d"
     )
   done
 
   echo "mode: $covermode" >"$profile"
-  grep -h -v "^mode:" "$coverdir"/*.cover >>"$profile"
+  grep -h -v "^mode:" "$dir"/*.cover >>"$profile"
 }
 
 generate_cover_data
@@ -40,4 +40,3 @@ case "${1-}" in
     go tool cover -html "${profile}"
     ;;
 esac
-
