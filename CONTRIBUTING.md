@@ -228,6 +228,29 @@ guide](https://helm.sh/docs/community/developers/) to get started.
 Coding conventions and standards are explained in the [official developer
 docs](https://helm.sh/docs/developers/).
 
+### Running tests
+
+To run the test suite, use the `make test` command. This will run all the unit tests.
+
+By default, the tests are run in a randomized order and each test is run 3 times. This is to help
+detect flaky tests. If you want to run the tests in a specific order, you can use the `-shuffle=off`
+flag. If you want to run the tests a different number of times, you can use the `-count=n` flag,
+where `n` is the number of times you want to run the tests.
+
+For example, to run the tests in order and only once, you can use the following command:
+
+```bash
+make test TESTARGS="-shuffle=off -count=1"
+```
+
+If a test fails, the seed that was used to randomize the tests will be printed. You can use this
+seed to reproduce the failure. For example, if the seed was `12345`, you can use the following
+command to reproduce the failure:
+
+```bash
+make test TESTARGS="-shuffle=on -seed=12345"
+```
+
 ## Pull Requests
 
 Like any good open source project, we use Pull Requests (PRs) to track code changes.
