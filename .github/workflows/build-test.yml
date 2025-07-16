@@ -26,11 +26,11 @@ jobs:
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
       - name: Test source headers are present
         run: make test-source-headers
       - name: Run unit tests
         run: make test-coverage
+        env:
+          TESTFLAGS: "-count=2 -shuffle=on"
       - name: Test build
         run: make build
