@@ -17,92 +17,136 @@ package getter
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
 
+	"helm.sh/helm/v4/internal/plugins"
+	pluginloader "helm.sh/helm/v4/internal/plugins/loader"
+	"helm.sh/helm/v4/internal/plugins/schema"
 	"helm.sh/helm/v4/pkg/cli"
-	"helm.sh/helm/v4/pkg/plugin"
 )
 
-// collectPlugins scans for getter plugins.
+// collectDownloaderPlugins scans for getter plugins.
 // This will load plugins according to the cli.
-func collectPlugins(settings *cli.EnvSettings) (Providers, error) {
-	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
+func collectDownloaderPlugins(settings *cli.EnvSettings) (Providers, error) {
+
+	d := plugins.PluginDescriptor{
+		TypeVersion: "getter/v1",
+	}
+
+	plgs, err := pluginloader.FindPlugins([]string{settings.PluginsDirectory}, d)
 	if err != nil {
 		return nil, err
 	}
-	var result Providers
-	for _, plugin := range plugins {
-		for _, downloader := range plugin.Metadata.Downloaders {
-			result = append(result, Provider{
-				Schemes: downloader.Protocols,
-				New: NewPluginGetter(
-					downloader.Command,
-					settings,
-					plugin.Metadata.Name,
-					plugin.Dir,
-				),
-			})
+
+	pluginConstructorBuilder := func(plg plugins.Plugin) Constructor {
+		return func(option ...Option) (Getter, error) {
+
+			return &getterPlugin{
+				options: append([]Option{}, option...),
+				plg:     plg,
+			}, nil
 		}
 	}
+
+	results := make([]Provider, 0, len(plgs))
+
+	for _, plg := range plgs {
+
+		downloaderSchemes, ok := (plg.Manifest().Config["downloader_schemes"]).([]string)
+		if !ok {
+			return nil, fmt.Errorf("plugin %q does not have downloader_schemes defined", plg.Manifest().Name)
+		}
+
+		results = append(results, Provider{
+			Schemes: downloaderSchemes,
+			New:     pluginConstructorBuilder(plg),
+		})
+	}
+	return results, nil
+}
+
+func convertOptions(globalOptions, options []Option) (schema.GetterOptionsV1, error) {
+	opts := getterOptions{}
+	for _, opt := range globalOptions {
+		opt(&opts)
+	}
+	for _, opt := range options {
+		opt(&opts)
+	}
+
+	result := schema.GetterOptionsV1{
+		URL: opts.url,
+		// CertFile              string
+		// KeyFile               string
+		// CAFile                string
+		UNTar:                 opts.unTar,
+		InsecureSkipVerifyTLS: opts.insecureSkipVerifyTLS,
+		PlainHTTP:             opts.plainHTTP,
+		AcceptHeader:          opts.acceptHeader,
+		Username:              opts.username,
+		Password:              opts.password,
+		PassCredentialsAll:    opts.passCredentialsAll,
+		UserAgent:             opts.userAgent,
+		Version:               opts.version,
+		Timeout:               opts.timeout,
+	}
+
+	if opts.caFile != "" {
+		caData, err := os.ReadFile(opts.caFile)
+		if err != nil {
+			return schema.GetterOptionsV1{}, fmt.Errorf("unable to read CA file: %q: %w", opts.caFile, err)
+		}
+		result.CA = caData
+	}
+
+	if opts.certFile != "" || opts.keyFile != "" {
+
+		certData, err := os.ReadFile(opts.certFile)
+		if err != nil {
+			return schema.GetterOptionsV1{}, fmt.Errorf("unable to read cert file: %q: %w", opts.certFile, err)
+		}
+
+		keyData, err := os.ReadFile(opts.keyFile)
+		if err != nil {
+			return schema.GetterOptionsV1{}, fmt.Errorf("unable to read key file: %q: %w", opts.keyFile, err)
+		}
+
+		result.Cert = certData
+		result.Key = keyData
+	}
+
 	return result, nil
 }
 
-// pluginGetter is a generic type to invoke custom downloaders,
-// implemented in plugins.
-type pluginGetter struct {
-	command  string
-	settings *cli.EnvSettings
-	name     string
-	base     string
-	opts     options
+type getterPlugin struct {
+	options []Option
+	plg     plugins.Plugin
 }
 
-func (p *pluginGetter) setupOptionsEnv(env []string) []string {
-	env = append(env, fmt.Sprintf("HELM_PLUGIN_USERNAME=%s", p.opts.username))
-	env = append(env, fmt.Sprintf("HELM_PLUGIN_PASSWORD=%s", p.opts.password))
-	env = append(env, fmt.Sprintf("HELM_PLUGIN_PASS_CREDENTIALS_ALL=%t", p.opts.passCredentialsAll))
-	return env
-}
+func (g *getterPlugin) Get(url string, options ...Option) (*bytes.Buffer, error) {
 
-// Get runs downloader plugin command
-func (p *pluginGetter) Get(href string, options ...Option) (*bytes.Buffer, error) {
-	for _, opt := range options {
-		opt(&p.opts)
-	}
-	commands := strings.Split(p.command, " ")
-	argv := append(commands[1:], p.opts.certFile, p.opts.keyFile, p.opts.caFile, href)
-	prog := exec.Command(filepath.Join(p.base, commands[0]), argv...)
-	plugin.SetupPluginEnv(p.settings, p.name, p.base)
-	prog.Env = p.setupOptionsEnv(os.Environ())
-	buf := bytes.NewBuffer(nil)
-	prog.Stdout = buf
-	prog.Stderr = os.Stderr
-	if err := prog.Run(); err != nil {
-		if eerr, ok := err.(*exec.ExitError); ok {
-			os.Stderr.Write(eerr.Stderr)
-			return nil, fmt.Errorf("plugin %q exited with error", p.command)
-		}
+	opts, err := convertOptions(g.options, options)
+	if err != nil {
 		return nil, err
 	}
-	return buf, nil
-}
 
-// NewPluginGetter constructs a valid plugin getter
-func NewPluginGetter(command string, settings *cli.EnvSettings, name, base string) Constructor {
-	return func(options ...Option) (Getter, error) {
-		result := &pluginGetter{
-			command:  command,
-			settings: settings,
-			name:     name,
-			base:     base,
-		}
-		for _, opt := range options {
-			opt(&result.opts)
-		}
-		return result, nil
+	input := &plugins.Input{
+		Message: schema.GetterInputV1{
+			URL:     url,
+			Options: opts,
+		},
 	}
+	output, err := g.plg.Invoke(context.Background(), input)
+	if err != nil {
+		return nil, fmt.Errorf("plugin %q failed to invoke: %w", g.plg, err)
+	}
+
+	outputMessage, ok := output.Message.(schema.GetterOutputV1)
+	if !ok {
+		return nil, fmt.Errorf("invalid output message type from plugin %q", g.plg.Manifest().Name)
+	}
+
+	return outputMessage.Data, nil
 }

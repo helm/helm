@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package plugin // import "helm.sh/helm/v4/pkg/plugin"
+package subprocess // import "helm.sh/helm/v4/internal/plugins/runtimes/subprocess"
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -26,10 +29,12 @@ import (
 
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/internal/plugins"
+	"helm.sh/helm/v4/internal/plugins/schema"
 	"helm.sh/helm/v4/pkg/cli"
 )
 
-const PluginFileName = "plugin.yaml"
+const PluginFileName = plugins.PluginFileName
 
 // Downloaders represents the plugins capability if it can retrieve
 // charts from special sources
@@ -141,6 +146,8 @@ type Plugin struct {
 	// Dir is the string path to the directory that holds the plugin.
 	Dir string
 }
+
+var _ plugins.Plugin = (*Plugin)(nil)
 
 // Returns command and args strings based on the following rules in priority order:
 // - From the PlatformCommand where OS and Arch match the current platform
@@ -311,7 +318,7 @@ func LoadDir(dirname string) (*Plugin, error) {
 
 	plug := &Plugin{Dir: dirname}
 	if err := yaml.UnmarshalStrict(data, &plug.Metadata); err != nil {
-		return nil, fmt.Errorf("failed to load plugin at %q: %w", pluginfile, err)
+		return nil, fmt.Errorf("failed to load %s at %q: %w", PluginFileName, pluginfile, err)
 	}
 	return plug, validatePluginData(plug, pluginfile)
 }
@@ -366,5 +373,143 @@ func SetupPluginEnv(settings *cli.EnvSettings, name, base string) {
 	env["HELM_PLUGIN_DIR"] = base
 	for key, val := range env {
 		os.Setenv(key, val)
+	}
+}
+
+type pluginExec struct {
+	command string
+	argv    []string
+	env     []string
+}
+
+func convertInputGetterInputV1(p *Plugin, command string, argvBase []string, msg schema.GetterInputV1) (pluginExec, error) {
+	tmpDir, err := os.MkdirTemp(os.TempDir(), fmt.Sprintf("helm-plugin-%s-", p.Metadata.Name))
+	if err != nil {
+		return pluginExec{}, fmt.Errorf("failed to create temporary directory: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	writeTempFile := func(name string, data []byte) (string, error) {
+		if len(data) == 0 {
+			return "", nil
+		}
+
+		tempFile := filepath.Join(tmpDir, name)
+		err := os.WriteFile(tempFile, msg.Options.Cert, 0o640)
+		if err != nil {
+			return "", fmt.Errorf("failed to write temporary file: %w", err)
+		}
+		return tempFile, nil
+	}
+
+	certFile, err := writeTempFile("cert", msg.Options.Cert)
+	if err != nil {
+		return pluginExec{}, err
+	}
+
+	keyFile, err := writeTempFile("key", msg.Options.Cert)
+	if err != nil {
+		return pluginExec{}, err
+	}
+
+	caFile, err := writeTempFile("ca", msg.Options.Cert)
+	if err != nil {
+		return pluginExec{}, err
+	}
+
+	argv := append(
+		argvBase,
+		certFile,
+		keyFile,
+		caFile,
+		msg.URL)
+
+	env := append(
+		os.Environ(),
+		fmt.Sprintf("HELM_PLUGIN_USERNAME=%s", msg.Options.Username),
+		fmt.Sprintf("HELM_PLUGIN_PASSWORD=%s", msg.Options.Password),
+		fmt.Sprintf("HELM_PLUGIN_PASS_CREDENTIALS_ALL=%t", msg.Options.PassCredentialsAll))
+
+	return pluginExec{
+		command: command,
+		argv:    argv,
+		env:     env,
+	}, nil
+}
+
+func convertInput(p *Plugin, input *plugins.Input) (pluginExec, error) {
+	command, argv, err := p.PrepareCommand([]string{})
+	if err != nil {
+		return pluginExec{}, fmt.Errorf("failed to prepare command for plugin %q: %w", p.Dir, err)
+	}
+
+	switch inputMsg := input.Message.(type) {
+	case schema.GetterInputV1:
+		return convertInputGetterInputV1(
+			p,
+			command,
+			argv,
+			inputMsg)
+	}
+
+	return pluginExec{}, fmt.Errorf("unsupported plugin input type %T", input)
+}
+
+func convertOutput(buf *bytes.Buffer) *plugins.Output {
+	return &plugins.Output{
+		Message: schema.GetterOutputV1{
+			Data: buf,
+		},
+	}
+}
+
+func (p *Plugin) Invoke(_ context.Context, input *plugins.Input) (*plugins.Output, error) {
+
+	pluginExec, err := convertInput(p, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert plugin input: %w", err)
+	}
+
+	pluginCommand := filepath.Join(p.Dir, pluginExec.command)
+	prog := exec.Command(
+		pluginCommand,
+		pluginExec.argv...)
+	prog.Env = pluginExec.env
+	buf := bytes.NewBuffer(nil)
+	prog.Stdout = buf
+	prog.Stderr = os.Stderr
+	if err := prog.Run(); err != nil {
+		if eerr, ok := err.(*exec.ExitError); ok {
+			os.Stderr.Write(eerr.Stderr)
+			return nil, fmt.Errorf("plugin %q exited with error", pluginCommand)
+		}
+		return nil, fmt.Errorf("failed to run plugin %q: %w", pluginCommand, err)
+	}
+
+	return convertOutput(buf), nil
+}
+
+func (p *Plugin) Manifest() plugins.Manifest {
+	typeVersion := "cli/v1"
+	config := map[string]any{}
+
+	if IsDownloader(p) {
+		typeVersion = "getter/v1"
+
+		schemes := make([]string, 0, len(p.Metadata.Downloaders))
+		for _, d := range p.Metadata.Downloaders {
+			schemes = append(schemes, d.Protocols...)
+		}
+		config["downloader_schemes"] = schemes
+	}
+
+	return plugins.Manifest{
+		APIVersion:   "legacy",
+		Name:         p.Metadata.Name,
+		Version:      p.Metadata.Version,
+		Description:  p.Metadata.Description,
+		TypeVersion:  typeVersion,
+		RuntimeClass: "subprocess",
+		Config:       config,
 	}
 }

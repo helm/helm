@@ -24,7 +24,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v4/pkg/plugin"
+	"helm.sh/helm/v4/internal/plugins"
+	pluginloader "helm.sh/helm/v4/internal/plugins/loader"
+	"helm.sh/helm/v4/internal/plugins/runtimes/subprocess"
 )
 
 type pluginUninstallOptions struct {
@@ -61,7 +63,9 @@ func (o *pluginUninstallOptions) complete(args []string) error {
 
 func (o *pluginUninstallOptions) run(out io.Writer) error {
 	slog.Debug("loading installer plugins", "dir", settings.PluginsDirectory)
-	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
+	plugins, err := pluginloader.FindPlugins(
+		[]string{settings.PluginsDirectory},
+		cliPluginDescriptor)
 	if err != nil {
 		return err
 	}
@@ -83,16 +87,18 @@ func (o *pluginUninstallOptions) run(out io.Writer) error {
 	return nil
 }
 
-func uninstallPlugin(p *plugin.Plugin) error {
-	if err := os.RemoveAll(p.Dir); err != nil {
+func uninstallPlugin(p plugins.Plugin) error {
+	sp := p.(*subprocess.Plugin)
+	if err := os.RemoveAll(sp.Dir); err != nil {
 		return err
 	}
-	return runHook(p, plugin.Delete)
+	return runHook(sp, subprocess.Delete)
 }
 
-func findPlugin(plugins []*plugin.Plugin, name string) *plugin.Plugin {
-	for _, p := range plugins {
-		if p.Metadata.Name == name {
+func findPlugin(ps []plugins.Plugin, name string) plugins.Plugin {
+	for _, p := range ps {
+		sp := p.(*subprocess.Plugin)
+		if sp.Metadata.Name == name {
 			return p
 		}
 	}

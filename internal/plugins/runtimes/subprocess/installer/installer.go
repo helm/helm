@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"helm.sh/helm/v4/pkg/plugin"
+	plugins "helm.sh/helm/v4/internal/plugins"
 )
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.
@@ -119,6 +119,6 @@ func isRemoteHTTPArchive(source string) bool {
 
 // isPlugin checks if the directory contains a plugin.yaml file.
 func isPlugin(dirname string) bool {
-	_, err := os.Stat(filepath.Join(dirname, plugin.PluginFileName))
+	_, err := os.Stat(filepath.Join(dirname, plugins.PluginFileName))
 	return err == nil
 }

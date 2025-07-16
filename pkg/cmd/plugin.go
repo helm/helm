@@ -24,7 +24,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v4/pkg/plugin"
+	"helm.sh/helm/v4/internal/plugins"
+	"helm.sh/helm/v4/internal/plugins/runtimes/subprocess"
 )
 
 const pluginHelp = `
@@ -47,20 +48,20 @@ func newPluginCmd(out io.Writer) *cobra.Command {
 }
 
 // runHook will execute a plugin hook.
-func runHook(p *plugin.Plugin, event string) error {
-	plugin.SetupPluginEnv(settings, p.Metadata.Name, p.Dir)
+func runHook(p *subprocess.Plugin, event string) error {
+	subprocess.SetupPluginEnv(settings, p.Metadata.Name, p.Dir)
 
 	cmds := p.Metadata.PlatformHooks[event]
 	expandArgs := true
 	if len(cmds) == 0 && len(p.Metadata.Hooks) > 0 {
 		cmd := p.Metadata.Hooks[event]
 		if len(cmd) > 0 {
-			cmds = []plugin.PlatformCommand{{Command: "sh", Args: []string{"-c", cmd}}}
+			cmds = []subprocess.PlatformCommand{{Command: "sh", Args: []string{"-c", cmd}}}
 			expandArgs = false
 		}
 	}
 
-	main, argv, err := plugin.PrepareCommands(cmds, expandArgs, []string{})
+	main, argv, err := subprocess.PrepareCommands(cmds, expandArgs, []string{})
 	if err != nil {
 		return nil
 	}
@@ -78,4 +79,8 @@ func runHook(p *plugin.Plugin, event string) error {
 		return err
 	}
 	return nil
+}
+
+var cliPluginDescriptor = plugins.PluginDescriptor{
+	TypeVersion: "cli/v1",
 }
