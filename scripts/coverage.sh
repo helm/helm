@@ -29,7 +29,7 @@ generate_cover_data() {
   done
 
   echo "mode: $covermode" >"$profile"
-  grep -h -v "^mode:" "$dir"/*.cover >>"$profile"
+  grep -h -v "^mode:" "$coverdir"/*.cover >>"$profile"
 }
 
 generate_cover_data
