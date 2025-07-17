@@ -83,6 +83,8 @@ type Client struct {
 	kubeClient kubernetes.Interface
 }
 
+var _ Interface = (*Client)(nil)
+
 type WaitStrategy string
 
 const (
@@ -480,41 +482,20 @@ func (c *Client) update(original, target ResourceList, force, threeWayMerge bool
 // occurs, a Result will still be returned with the error, containing all
 // resource updates, creations, and deletions that were attempted. These can be
 // used for cleanup or other logging purposes.
-//
-// The difference to Update is that UpdateThreeWayMerge does a three-way-merge
-// for unstructured objects.
-func (c *Client) UpdateThreeWayMerge(original, target ResourceList, force bool) (*Result, error) {
-	return c.update(original, target, force, true)
-}
-
-// Update takes the current list of objects and target list of objects and
-// creates resources that don't already exist, updates resources that have been
-// modified in the target configuration, and deletes resources from the current
-// configuration that are not present in the target configuration. If an error
-// occurs, a Result will still be returned with the error, containing all
-// resource updates, creations, and deletions that were attempted. These can be
-// used for cleanup or other logging purposes.
-func (c *Client) Update(original, target ResourceList, force bool) (*Result, error) {
-	return c.update(original, target, force, false)
-}
-
-// Delete deletes Kubernetes resources specified in the resources list with
-// background cascade deletion. It will attempt to delete all resources even
-// if one or more fail and collect any errors. All successfully deleted items
-// will be returned in the `Deleted` ResourceList that is part of the result.
-func (c *Client) Delete(resources ResourceList) (*Result, []error) {
-	return rdelete(c, resources, metav1.DeletePropagationBackground)
+// `threeWayMerge` controls whether Helm does a three-way-merge for unstructured objects.
+func (c *Client) Update(original, target ResourceList, force, threeWayMerge bool) (*Result, error) {
+	return c.update(original, target, force, threeWayMerge)
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
 // given deletion propagation policy. It will attempt to delete all resources even
 // if one or more fail and collect any errors. All successfully deleted items
 // will be returned in the `Deleted` ResourceList that is part of the result.
-func (c *Client) DeleteWithPropagationPolicy(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error) {
-	return rdelete(c, resources, policy)
+func (c *Client) Delete(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error) {
+	return rdelete(resources, policy)
 }
 
-func rdelete(_ *Client, resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
+func rdelete(resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
