@@ -18,14 +18,12 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"log/slog"
 	"os"
 	"os/signal"
-	"slices"
 	"syscall"
 	"time"
 
@@ -144,7 +142,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstall(args, toComplete, client)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
@@ -152,12 +150,12 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.SetRegistryClient(registryClient)
 
-			// This is for the case where "" is specifically passed in as a
-			// value. When there is no value passed in NoOptDefVal will be used
-			// and it is set to client. See addInstallFlags.
-			if client.DryRunOption == "" {
-				client.DryRunOption = "none"
+			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, false)
+			if err != nil {
+				return err
 			}
+			client.DryRunStrategy = dryRunStrategy
+
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
 				return fmt.Errorf("INSTALLATION FAILED: %w", err)
@@ -172,11 +170,12 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	addInstallFlags(cmd, cmd.Flags(), client, valueOpts)
+	f := cmd.Flags()
+	addInstallFlags(cmd, f, client, valueOpts)
 	// hide-secret is not available in all places the install flags are used so
 	// it is added separately
-	f := cmd.Flags()
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
+	addDryRunFlag(cmd)
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
@@ -185,13 +184,6 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
 	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
-	// --dry-run options with expected outcome:
-	// - Not set means no dry run and server is contacted.
-	// - Set with no value, a value of client, or a value of true and the server is not contacted
-	// - Set with a value of false, none, or false and the server is contacted
-	// The true/false part is meant to reflect some legacy behavior while none is equal to "".
-	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
-	f.Lookup("dry-run").NoOptDefVal = "client"
 	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&client.Replace, "replace", false, "reuse the given name, only if that name is a deleted release which remains in the history. This is unsafe in production")
@@ -302,11 +294,6 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 
 	client.Namespace = settings.Namespace()
 
-	// Validate DryRunOption member is one of the allowed values
-	if err := validateDryRunOptionFlag(client.DryRunOption); err != nil {
-		return nil, err
-	}
-
 	// Create context and prepare the handle of SIGTERM
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -346,14 +333,4 @@ func compInstall(args []string, toComplete string, client *action.Install) ([]st
 		return compListCharts(toComplete, true)
 	}
 	return nil, cobra.ShellCompDirectiveNoFileComp
-}
-
-func validateDryRunOptionFlag(dryRunOptionFlagValue string) error {
-	// Validate dry-run flag value with a set of allowed value
-	allowedDryRunValues := []string{"false", "true", "none", "client", "server"}
-	isAllowed := slices.Contains(allowedDryRunValues, dryRunOptionFlagValue)
-	if !isAllowed {
-		return errors.New("invalid dry-run flag. Flag must one of the following: false, true, none, client, server")
-	}
-	return nil
 }
