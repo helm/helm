@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/lint/support"
 )
@@ -32,6 +34,7 @@ const namespace = "testNamespace"
 const badChartDir = "rules/testdata/badchartfile"
 const badValuesFileDir = "rules/testdata/badvaluesfile"
 const badYamlFileDir = "rules/testdata/albatross"
+const badCrdFileDir = "rules/testdata/badcrdfile"
 const goodChartDir = "rules/testdata/goodone"
 const subChartValuesDir = "rules/testdata/withsubchart"
 const malformedTemplate = "rules/testdata/malformed-template"
@@ -109,6 +112,13 @@ func TestBadValues(t *testing.T) {
 	if !strings.Contains(m[0].Err.Error(), "unable to parse YAML") {
 		t.Errorf("All didn't have the error for invalid key format: %s", m[0].Err)
 	}
+}
+
+func TestBadCrdFile(t *testing.T) {
+	m := RunAll(badCrdFileDir, values, namespace).Messages
+	assert.Lenf(t, m, 2, "All didn't fail with expected errors, got %#v", m)
+	assert.ErrorContains(t, m[0].Err, "apiVersion is not in 'apiextensions.k8s.io'")
+	assert.ErrorContains(t, m[1].Err, "object kind is not 'CustomResourceDefinition'")
 }
 
 func TestGoodChart(t *testing.T) {
