@@ -67,6 +67,7 @@ func Chartfile(linter *support.Linter) {
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartIconURL(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartType(chartFile))
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartDependencies(chartFile))
+	linter.RunLinterRule(support.WarningSev, chartFileName, validateChartVersionStrictSemVerV2(chartFile))
 }
 
 func validateChartVersionType(data map[string]interface{}) error {
@@ -153,6 +154,16 @@ func validateChartVersion(cf *chart.Metadata) error {
 
 	if !valid && len(msg) > 0 {
 		return fmt.Errorf("version %v", msg[0])
+	}
+
+	return nil
+}
+
+func validateChartVersionStrictSemVerV2(cf *chart.Metadata) error {
+	_, err := semver.StrictNewVersion(cf.Version)
+
+	if err != nil {
+		return fmt.Errorf("version '%s' is not a valid SemVerV2", cf.Version)
 	}
 
 	return nil
