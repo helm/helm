@@ -32,7 +32,6 @@ jobs:
         run: make test-coverage TESTCOUNT=2
       - name: Test build
         run: make build
-
 name: build-test
 on:
   push:
