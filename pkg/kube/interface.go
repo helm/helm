@@ -30,14 +30,14 @@ import (
 // A KubernetesClient must be concurrency safe.
 type Interface interface {
 	// Create creates one or more resources.
-	Create(resources ResourceList) (*Result, error)
+	Create(resources ResourceList, options ...ClientCreateOption) (*Result, error)
 
 	// Delete destroys one or more resources.
 	Delete(resources ResourceList) (*Result, []error)
 
 	// Update updates one or more resources or creates the resource
 	// if it doesn't exist.
-	Update(original, target ResourceList, force bool) (*Result, error)
+	Update(original, target ResourceList, options ...ClientUpdateOption) (*Result, error)
 
 	// Build creates a resource list from a Reader.
 	//
@@ -51,13 +51,6 @@ type Interface interface {
 
 	// Get Waiter gets the Kube.Waiter
 	GetWaiter(ws WaitStrategy) (Waiter, error)
-}
-
-// InterfaceThreeWayMerge was introduced to avoid breaking backwards compatibility for Interface implementers.
-//
-// TODO Helm 4: Remove InterfaceThreeWayMerge and integrate its method(s) into the Interface.
-type InterfaceThreeWayMerge interface {
-	UpdateThreeWayMerge(original, target ResourceList, force bool) (*Result, error)
 }
 
 // Waiter defines methods related to waiting for resource states.
@@ -125,7 +118,6 @@ type InterfaceResources interface {
 }
 
 var _ Interface = (*Client)(nil)
-var _ InterfaceThreeWayMerge = (*Client)(nil)
 var _ InterfaceLogs = (*Client)(nil)
 var _ InterfaceDeletionPropagation = (*Client)(nil)
 var _ InterfaceResources = (*Client)(nil)
