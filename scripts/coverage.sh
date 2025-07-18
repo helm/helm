@@ -40,4 +40,3 @@ case "${1-}" in
     go tool cover -html "${profile}"
     ;;
 esac
-
