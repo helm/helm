@@ -21,7 +21,12 @@ ACCEPTANCE_RUN_TESTS=.
 PKG         := ./...
 TAGS        :=
 TESTS       := .
-TESTFLAGS   :=
+TESTFLAGS   := -shuffle=on
+ifneq ($(TESTCOUNT),)
+TESTFLAGS += -count=$(TESTCOUNT)
+else
+TESTFLAGS += -count=1
+endif
 LDFLAGS     := -w -s
 GOFLAGS     :=
 CGO_ENABLED ?= 0
