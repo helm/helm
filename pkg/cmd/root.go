@@ -80,6 +80,8 @@ Environment variables:
 | $HELM_KUBETLS_SERVER_NAME          | set the server name used to validate the Kubernetes API server certificate                                 |
 | $HELM_BURST_LIMIT                  | set the default burst limit in the case the server contains many CRDs (default 100, -1 to disable)         |
 | $HELM_QPS                          | set the Queries Per Second in cases where a high number of calls exceed the option for higher burst values |
+| $HELM_MAX_CHART_SIZE               | set the maximum size in bytes for a decompressed chart (default: 100MiB, 0 means use default limit)        |
+| $HELM_MAX_FILE_SIZE                | set the maximum size in bytes for a single file in a chart (default: 5MiB, 0 means use default limit)      |
 
 Helm stores cache, configuration, and data based on the following configuration order:
 
