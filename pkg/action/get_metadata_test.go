@@ -433,3 +433,21 @@ func TestMetadata_FormattedDepNames_WithComplexDependencies(t *testing.T) {
 	result := metadata.FormattedDepNames()
 	assert.Equal(t, "apache,mysql,zookeeper", result)
 }
+
+
+func TestGetMetadata_Labels(t *testing.T) {
+	rel := releaseStub()
+	rel.Info.Status = release.StatusDeployed
+	customLabels := map[string]string{"key1": "value1", "key2": "value2"}
+	rel.Labels = customLabels
+
+	metaGetter := NewGetMetadata(actionConfigFixture(t))
+	err := metaGetter.cfg.Releases.Create(rel)
+	assert.NoError(t, err)
+
+	metadata, err := metaGetter.Run(rel.Name)
+	assert.NoError(t, err)
+
+	assert.Equal(t, metadata.Name, rel.Name)
+	assert.Equal(t, metadata.Labels, customLabels)
+}

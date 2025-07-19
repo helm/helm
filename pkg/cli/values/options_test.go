@@ -17,13 +17,275 @@ limitations under the License.
 package values
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"helm.sh/helm/v4/pkg/getter"
 )
 
+// mockGetter implements getter.Getter for testing
+type mockGetter struct {
+	content []byte
+	err     error
+}
+
+func (m *mockGetter) Get(_ string, _ ...getter.Option) (*bytes.Buffer, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return bytes.NewBuffer(m.content), nil
+}
+
+// mockProvider creates a test provider
+func mockProvider(schemes []string, content []byte, err error) getter.Provider {
+	return getter.Provider{
+		Schemes: schemes,
+		New: func(_ ...getter.Option) (getter.Getter, error) {
+			return &mockGetter{content: content, err: err}, nil
+		},
+	}
+}
+
 func TestReadFile(t *testing.T) {
+	tests := []struct {
+		name         string
+		filePath     string
+		providers    getter.Providers
+		setupFunc    func(*testing.T) (string, func()) // setup temp files, return cleanup
+		expectError  bool
+		expectStdin  bool
+		expectedData []byte
+	}{
+		{
+			name:        "stdin input with dash",
+			filePath:    "-",
+			providers:   getter.Providers{},
+			expectStdin: true,
+			expectError: false,
+		},
+		{
+			name:        "stdin input with whitespace",
+			filePath:    "  -  ",
+			providers:   getter.Providers{},
+			expectStdin: true,
+			expectError: false,
+		},
+		{
+			name:        "invalid URL parsing",
+			filePath:    "://invalid-url",
+			providers:   getter.Providers{},
+			expectError: true,
+		},
+		{
+			name:      "local file - existing",
+			filePath:  "test.txt",
+			providers: getter.Providers{},
+			setupFunc: func(t *testing.T) (string, func()) {
+				t.Helper()
+				tmpDir := t.TempDir()
+				filePath := filepath.Join(tmpDir, "test.txt")
+				content := []byte("local file content")
+				err := os.WriteFile(filePath, content, 0644)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return filePath, func() {} // cleanup handled by t.TempDir()
+			},
+			expectError:  false,
+			expectedData: []byte("local file content"),
+		},
+		{
+			name:        "local file - non-existent",
+			filePath:    "/non/existent/file.txt",
+			providers:   getter.Providers{},
+			expectError: true,
+		},
+		{
+			name:     "remote file with http scheme - success",
+			filePath: "http://example.com/values.yaml",
+			providers: getter.Providers{
+				mockProvider([]string{"http", "https"}, []byte("remote content"), nil),
+			},
+			expectError:  false,
+			expectedData: []byte("remote content"),
+		},
+		{
+			name:     "remote file with https scheme - success",
+			filePath: "https://example.com/values.yaml",
+			providers: getter.Providers{
+				mockProvider([]string{"http", "https"}, []byte("https content"), nil),
+			},
+			expectError:  false,
+			expectedData: []byte("https content"),
+		},
+		{
+			name:     "remote file with custom scheme - success",
+			filePath: "oci://registry.example.com/chart",
+			providers: getter.Providers{
+				mockProvider([]string{"oci"}, []byte("oci content"), nil),
+			},
+			expectError:  false,
+			expectedData: []byte("oci content"),
+		},
+		{
+			name:     "remote file - getter error",
+			filePath: "http://example.com/values.yaml",
+			providers: getter.Providers{
+				mockProvider([]string{"http"}, nil, errors.New("network error")),
+			},
+			expectError: true,
+		},
+		{
+			name:     "unsupported scheme fallback to local file",
+			filePath: "ftp://example.com/file.txt",
+			providers: getter.Providers{
+				mockProvider([]string{"http"}, []byte("should not be used"), nil),
+			},
+			setupFunc: func(t *testing.T) (string, func()) {
+				t.Helper()
+				// Create a local file named "ftp://example.com/file.txt"
+				// This tests the fallback behavior when scheme is not supported
+				tmpDir := t.TempDir()
+				fileName := "ftp_file.txt" // Valid filename for filesystem
+				filePath := filepath.Join(tmpDir, fileName)
+				content := []byte("local fallback content")
+				err := os.WriteFile(filePath, content, 0644)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return filePath, func() {}
+			},
+			expectError:  false,
+			expectedData: []byte("local fallback content"),
+		},
+		{
+			name:        "empty file path",
+			filePath:    "",
+			providers:   getter.Providers{},
+			expectError: true, // Empty path should cause error
+		},
+		{
+			name:     "multiple providers - correct selection",
+			filePath: "custom://example.com/resource",
+			providers: getter.Providers{
+				mockProvider([]string{"http", "https"}, []byte("wrong content"), nil),
+				mockProvider([]string{"custom"}, []byte("correct content"), nil),
+				mockProvider([]string{"oci"}, []byte("also wrong"), nil),
+			},
+			expectError:  false,
+			expectedData: []byte("correct content"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var actualFilePath string
+			var cleanup func()
+
+			if tt.setupFunc != nil {
+				actualFilePath, cleanup = tt.setupFunc(t)
+				defer cleanup()
+			} else {
+				actualFilePath = tt.filePath
+			}
+
+			// Handle stdin test case
+			if tt.expectStdin {
+				// Save original stdin
+				originalStdin := os.Stdin
+				defer func() { os.Stdin = originalStdin }()
+
+				// Create a pipe for stdin
+				r, w, err := os.Pipe()
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer r.Close()
+				defer w.Close()
+
+				// Replace stdin with our pipe
+				os.Stdin = r
+
+				// Write test data to stdin
+				testData := []byte("stdin test data")
+				go func() {
+					defer w.Close()
+					w.Write(testData)
+				}()
+
+				// Test the function
+				got, err := readFile(actualFilePath, tt.providers)
+				if err != nil {
+					t.Errorf("readFile() error = %v, expected no error for stdin", err)
+					return
+				}
+
+				if !bytes.Equal(got, testData) {
+					t.Errorf("readFile() = %v, want %v", got, testData)
+				}
+				return
+			}
+
+			// Regular test cases
+			got, err := readFile(actualFilePath, tt.providers)
+			if (err != nil) != tt.expectError {
+				t.Errorf("readFile() error = %v, expectError %v", err, tt.expectError)
+				return
+			}
+
+			if !tt.expectError && tt.expectedData != nil {
+				if !bytes.Equal(got, tt.expectedData) {
+					t.Errorf("readFile() = %v, want %v", got, tt.expectedData)
+				}
+			}
+		})
+	}
+}
+
+// TestReadFileErrorMessages tests specific error scenarios and their messages
+func TestReadFileErrorMessages(t *testing.T) {
+	tests := []struct {
+		name      string
+		filePath  string
+		providers getter.Providers
+		wantErr   string
+	}{
+		{
+			name:      "URL parse error",
+			filePath:  "://invalid",
+			providers: getter.Providers{},
+			wantErr:   "missing protocol scheme",
+		},
+		{
+			name:      "getter error with message",
+			filePath:  "http://example.com/file",
+			providers: getter.Providers{mockProvider([]string{"http"}, nil, fmt.Errorf("connection refused"))},
+			wantErr:   "connection refused",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := readFile(tt.filePath, tt.providers)
+			if err == nil {
+				t.Errorf("readFile() expected error containing %q, got nil", tt.wantErr)
+				return
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("readFile() error = %v, want error containing %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// Original test case - keeping for backward compatibility
+func TestReadFileOriginal(t *testing.T) {
 	var p getter.Providers
 	filePath := "%a.txt"
 	_, err := readFile(filePath, p)
