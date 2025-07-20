@@ -32,11 +32,11 @@ import (
 )
 
 // unreachableKubeClient is a test client that always returns an error for IsReachable
-type unreachableKubeClientForMetadata struct {
+type unreachableKubeClient struct {
 	kubefake.PrintingKubeClient
 }
 
-func (u *unreachableKubeClientForMetadata) IsReachable() error {
+func (u *unreachableKubeClient) IsReachable() error {
 	return errors.New("connection refused")
 }
 
@@ -294,7 +294,7 @@ func TestGetMetadata_Run_DifferentStatuses(t *testing.T) {
 
 func TestGetMetadata_Run_UnreachableKubeClient(t *testing.T) {
 	cfg := actionConfigFixture(t)
-	cfg.KubeClient = &unreachableKubeClientForMetadata{
+	cfg.KubeClient = &unreachableKubeClient{
 		PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
 	}
 

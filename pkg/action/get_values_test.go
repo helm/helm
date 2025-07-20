@@ -17,7 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"errors"
 	"io"
 	"testing"
 
@@ -28,15 +27,6 @@ import (
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
-
-// unreachableKubeClient is a test client that always returns an error for IsReachable
-type unreachableKubeClient struct {
-	kubefake.PrintingKubeClient
-}
-
-func (u *unreachableKubeClient) IsReachable() error {
-	return errors.New("connection refused")
-}
 
 func TestNewGetValues(t *testing.T) {
 	cfg := actionConfigFixture(t)
