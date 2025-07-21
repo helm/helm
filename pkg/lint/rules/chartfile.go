@@ -125,7 +125,7 @@ func validateChartName(cf *chart.Metadata) error {
 		return fmt.Errorf("chart name must be between 1 and %d characters", maxChartNameLength)
 	}
 	if !chartName.MatchString(cf.Name) {
-		return fmt.Errorf("chart name must use only lowercase letters, digits, and dashes (no underscores, dots, or uppercase letters)")
+		return fmt.Errorf("chart name must use only lowercase letters or digits optionally with dash separators")
 	}
 	return nil
 }

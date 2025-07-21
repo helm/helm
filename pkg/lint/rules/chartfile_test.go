@@ -78,7 +78,6 @@ func TestValidateChartName(t *testing.T) {
 	}
 
 	failTests := []*chart.Metadata{
-
 		{Name: ""},                       // empty
 		{Name: "ChartName"},              // uppercase
 		{Name: "chart_name"},             // underscore
@@ -90,15 +89,13 @@ func TestValidateChartName(t *testing.T) {
 		{Name: "chart/name"},             // forward slash
 		{Name: "chart\\name"},            // backslash
 		{Name: "chart name"},             // space
-		{Name: strings.Repeat("a", 251)}, // 241 chars — too long
-
+		{Name: strings.Repeat("a", 251)}, // 251 chars — too long
 	}
 
 	successTests := []*chart.Metadata{
-		{Name: "nginx"},
-		{Name: "nginx-lego"},
-		{Name: "aws-cluster-autoscaler"},
-		{Name: "abc123"},
+		{Name: "chartname"},
+		{Name: "chart-name"},
+		{Name: "chart-name-success"},
 		{Name: "chartname123"},
 		{Name: strings.Repeat("a", 250)},
 	}

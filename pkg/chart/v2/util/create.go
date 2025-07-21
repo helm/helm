@@ -823,7 +823,7 @@ func validateChartName(name string) error {
 		return fmt.Errorf("chart name must be between 1 and %d characters", maxChartNameLength)
 	}
 	if !chartName.MatchString(name) {
-		return fmt.Errorf("chart name must match the regular expression %q", chartName.String())
+		return fmt.Errorf("chart name must use only lowercase letters or digits optionally with dash separators")
 	}
 	return nil
 }
