@@ -82,7 +82,7 @@ func TestValidateChartName(t *testing.T) {
 		{Name: "ChartName"},              // uppercase
 		{Name: "chart_name"},             // underscore
 		{Name: "chart.name"},             // dot
-		{Name: "chart--name"},            // double dash (optional)
+		{Name: "chart--name"},            // double dash
 		{Name: "-chartname"},             // starts with dash
 		{Name: "chartname-"},             // ends with dash
 		{Name: "chart$name"},             // special character
