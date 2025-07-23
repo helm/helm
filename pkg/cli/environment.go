@@ -231,8 +231,8 @@ func envColorMode() string {
 			return v
 		}
 	}
-	// Default to never (disabled) until more commands support color
-	return "never"
+	// Default to auto
+	return "auto"
 }
 
 func (s *EnvSettings) EnvVars() map[string]string {
@@ -288,24 +288,7 @@ func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
 	return s.config
 }
 
-// ColorEnabled returns true if color output should be enabled based on the ColorMode setting
-func (s *EnvSettings) ColorEnabled() bool {
-	switch s.ColorMode {
-	case "never":
-		return false
-	case "always":
-		return true
-	case "auto":
-		// Auto mode is handled by fatih/color's built-in terminal detection
-		// We just need to not override it
-		return true
-	default:
-		return true
-	}
-}
-
 // ShouldDisableColor returns true if color output should be disabled
-// This is the inverse of ColorEnabled for backward compatibility with noColor parameters
 func (s *EnvSettings) ShouldDisableColor() bool {
 	return s.ColorMode == "never"
 }
