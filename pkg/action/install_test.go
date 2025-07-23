@@ -24,6 +24,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -932,4 +933,69 @@ func TestInstallWithSystemLabels(t *testing.T) {
 	}
 
 	is.Equal(fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
+}
+
+func TestUrlEqual(t *testing.T) {
+	is := assert.New(t)
+
+	tests := []struct {
+		name     string
+		url1     string
+		url2     string
+		expected bool
+	}{
+		{
+			name:     "identical URLs",
+			url1:     "https://example.com:443",
+			url2:     "https://example.com:443",
+			expected: true,
+		},
+		{
+			name:     "same host, scheme, default HTTPS port vs explicit",
+			url1:     "https://example.com",
+			url2:     "https://example.com:443",
+			expected: true,
+		},
+		{
+			name:     "same host, scheme, default HTTP port vs explicit",
+			url1:     "http://example.com",
+			url2:     "http://example.com:80",
+			expected: true,
+		},
+		{
+			name:     "different schemes",
+			url1:     "http://example.com",
+			url2:     "https://example.com",
+			expected: false,
+		},
+		{
+			name:     "different hosts",
+			url1:     "https://example.com",
+			url2:     "https://www.example.com",
+			expected: false,
+		},
+		{
+			name:     "different ports",
+			url1:     "https://example.com:8080",
+			url2:     "https://example.com:9090",
+			expected: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			u1, err := url.Parse(tc.url1)
+			if err != nil {
+				t.Fatalf("Failed to parse URL1 %s: %v", tc.url1, err)
+			}
+			u2, err := url.Parse(tc.url2)
+			if err != nil {
+				t.Fatalf("Failed to parse URL2 %s: %v", tc.url2, err)
+			}
+
+			is.Equal(tc.expected, urlEqual(u1, u2))
+		})
+	}
 }

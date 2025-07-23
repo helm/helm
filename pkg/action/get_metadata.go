@@ -34,11 +34,14 @@ type GetMetadata struct {
 }
 
 type Metadata struct {
-	Name         string              `json:"name" yaml:"name"`
-	Chart        string              `json:"chart" yaml:"chart"`
-	Version      string              `json:"version" yaml:"version"`
-	AppVersion   string              `json:"appVersion" yaml:"appVersion"`
-	Annotations  map[string]string   `json:"annotations,omitempty" yaml:"annotations,omitempty"`
+	Name       string `json:"name" yaml:"name"`
+	Chart      string `json:"chart" yaml:"chart"`
+	Version    string `json:"version" yaml:"version"`
+	AppVersion string `json:"appVersion" yaml:"appVersion"`
+	// Annotations are fetched from the Chart.yaml file
+	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
+	// Labels of the release which are stored in driver metadata fields storage
+	Labels       map[string]string   `json:"labels,omitempty" yaml:"labels,omitempty"`
 	Dependencies []*chart.Dependency `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
 	Namespace    string              `json:"namespace" yaml:"namespace"`
 	Revision     int                 `json:"revision" yaml:"revision"`
@@ -71,6 +74,7 @@ func (g *GetMetadata) Run(name string) (*Metadata, error) {
 		AppVersion:   rel.Chart.Metadata.AppVersion,
 		Dependencies: rel.Chart.Metadata.Dependencies,
 		Annotations:  rel.Chart.Metadata.Annotations,
+		Labels:       rel.Labels,
 		Namespace:    rel.Namespace,
 		Revision:     rel.Version,
 		Status:       rel.Info.Status.String(),

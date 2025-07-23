@@ -80,6 +80,7 @@ func (w metadataWriter) WriteTable(out io.Writer) error {
 	_, _ = fmt.Fprintf(out, "VERSION: %v\n", w.metadata.Version)
 	_, _ = fmt.Fprintf(out, "APP_VERSION: %v\n", w.metadata.AppVersion)
 	_, _ = fmt.Fprintf(out, "ANNOTATIONS: %v\n", k8sLabels.Set(w.metadata.Annotations).String())
+	_, _ = fmt.Fprintf(out, "LABELS: %v\n", k8sLabels.Set(w.metadata.Labels).String())
 	_, _ = fmt.Fprintf(out, "DEPENDENCIES: %v\n", w.metadata.FormattedDepNames())
 	_, _ = fmt.Fprintf(out, "NAMESPACE: %v\n", w.metadata.Namespace)
 	_, _ = fmt.Fprintf(out, "REVISION: %v\n", w.metadata.Revision)

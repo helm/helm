@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/lint/support"
 )
@@ -32,6 +34,7 @@ const namespace = "testNamespace"
 const badChartDir = "rules/testdata/badchartfile"
 const badValuesFileDir = "rules/testdata/badvaluesfile"
 const badYamlFileDir = "rules/testdata/albatross"
+const badCrdFileDir = "rules/testdata/badcrdfile"
 const goodChartDir = "rules/testdata/goodone"
 const subChartValuesDir = "rules/testdata/withsubchart"
 const malformedTemplate = "rules/testdata/malformed-template"
@@ -43,12 +46,17 @@ func TestBadChart(t *testing.T) {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
-	// There should be one INFO, and 2 ERROR messages, check for them
-	var i, e, e2, e3, e4, e5, e6 bool
+	// There should be one INFO, one WARNING, and 2 ERROR messages, check for them
+	var i, w, e, e2, e3, e4, e5, e6 bool
 	for _, msg := range m {
 		if msg.Severity == support.InfoSev {
 			if strings.Contains(msg.Err.Error(), "icon is recommended") {
 				i = true
+			}
+		}
+		if msg.Severity == support.WarningSev {
+			if strings.Contains(msg.Err.Error(), "does not exist") {
+				w = true
 			}
 		}
 		if msg.Severity == support.ErrorSev {
@@ -76,7 +84,7 @@ func TestBadChart(t *testing.T) {
 			}
 		}
 	}
-	if !e || !e2 || !e3 || !e4 || !e5 || !i || !e6 {
+	if !e || !e2 || !e3 || !e4 || !e5 || !i || !e6 || !w {
 		t.Errorf("Didn't find all the expected errors, got %#v", m)
 	}
 }
@@ -93,7 +101,7 @@ func TestInvalidYaml(t *testing.T) {
 
 func TestInvalidChartYaml(t *testing.T) {
 	m := RunAll(invalidChartFileDir, values, namespace).Messages
-	if len(m) != 1 {
+	if len(m) != 2 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
 	if !strings.Contains(m[0].Err.Error(), "failed to strictly parse chart metadata file") {
@@ -109,6 +117,13 @@ func TestBadValues(t *testing.T) {
 	if !strings.Contains(m[0].Err.Error(), "unable to parse YAML") {
 		t.Errorf("All didn't have the error for invalid key format: %s", m[0].Err)
 	}
+}
+
+func TestBadCrdFile(t *testing.T) {
+	m := RunAll(badCrdFileDir, values, namespace).Messages
+	assert.Lenf(t, m, 2, "All didn't fail with expected errors, got %#v", m)
+	assert.ErrorContains(t, m[0].Err, "apiVersion is not in 'apiextensions.k8s.io'")
+	assert.ErrorContains(t, m[1].Err, "object kind is not 'CustomResourceDefinition'")
 }
 
 func TestGoodChart(t *testing.T) {
