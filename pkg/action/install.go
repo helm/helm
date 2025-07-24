@@ -746,6 +746,25 @@ OUTER:
 	return nil
 }
 
+func portOrDefault(u *url.URL) string {
+	if p := u.Port(); p != "" {
+		return p
+	}
+
+	switch u.Scheme {
+	case "http":
+		return "80"
+	case "https":
+		return "443"
+	default:
+		return ""
+	}
+}
+
+func urlEqual(u1, u2 *url.URL) bool {
+	return u1.Scheme == u2.Scheme && u1.Hostname() == u2.Hostname() && portOrDefault(u1) == portOrDefault(u2)
+}
+
 // LocateChart looks for a chart directory in known places, and returns either the full path or an error.
 //
 // This does not ensure that the chart is well-formed; only that the requested filename exists.
@@ -833,7 +852,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		// Host on URL (returned from url.Parse) contains the port if present.
 		// This check ensures credentials are not passed between different
 		// services on different ports.
-		if c.PassCredentialsAll || (u1.Scheme == u2.Scheme && u1.Host == u2.Host) {
+		if c.PassCredentialsAll || urlEqual(u1, u2) {
 			dl.Options = append(dl.Options, getter.WithBasicAuth(c.Username, c.Password))
 		} else {
 			dl.Options = append(dl.Options, getter.WithBasicAuth("", ""))
