@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -382,7 +383,8 @@ type pluginExec struct {
 	env     []string
 }
 
-func convertInputGetterInputV1(p *Plugin, command string, argvBase []string, msg schema.GetterInputV1) (pluginExec, error) {
+func convertInputGetterInputV1(p *Plugin, msg schema.GetterInputV1) (pluginExec, error) {
+
 	tmpDir, err := os.MkdirTemp(os.TempDir(), fmt.Sprintf("helm-plugin-%s-", p.Metadata.Name))
 	if err != nil {
 		return pluginExec{}, fmt.Errorf("failed to create temporary directory: %w", err)
@@ -417,12 +419,28 @@ func convertInputGetterInputV1(p *Plugin, command string, argvBase []string, msg
 		return pluginExec{}, err
 	}
 
+	getDownloaderCommand := func(p *Plugin, protocol string) *Downloaders {
+		for _, d := range p.Metadata.Downloaders {
+			if slices.Contains(d.Protocols, protocol) {
+				return &d
+			}
+		}
+
+		return nil
+	}
+
+	d := getDownloaderCommand(p, msg.Scheme)
+	if d == nil {
+		return pluginExec{}, fmt.Errorf("unable to match downloader scheme: %q", msg.Scheme)
+	}
+
+	commands := strings.Split(d.Command, " ")
 	argv := append(
-		argvBase,
+		commands[1:],
 		certFile,
 		keyFile,
 		caFile,
-		msg.URL)
+		msg.Href)
 
 	env := append(
 		os.Environ(),
@@ -431,24 +449,18 @@ func convertInputGetterInputV1(p *Plugin, command string, argvBase []string, msg
 		fmt.Sprintf("HELM_PLUGIN_PASS_CREDENTIALS_ALL=%t", msg.Options.PassCredentialsAll))
 
 	return pluginExec{
-		command: command,
+		command: commands[0],
 		argv:    argv,
 		env:     env,
 	}, nil
 }
 
 func convertInput(p *Plugin, input *plugins.Input) (pluginExec, error) {
-	command, argv, err := p.PrepareCommand([]string{})
-	if err != nil {
-		return pluginExec{}, fmt.Errorf("failed to prepare command for plugin %q: %w", p.Dir, err)
-	}
 
 	switch inputMsg := input.Message.(type) {
 	case schema.GetterInputV1:
 		return convertInputGetterInputV1(
 			p,
-			command,
-			argv,
 			inputMsg)
 	}
 

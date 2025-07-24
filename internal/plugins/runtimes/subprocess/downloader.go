@@ -16,9 +16,5 @@ limitations under the License.
 package subprocess // import "helm.sh/helm/v4/internal/plugins/runtimes/subprocess"
 
 func IsDownloader(p *Plugin) bool {
-	if p.Metadata == nil {
-		return false
-	}
-
-	return len(p.Metadata.Downloaders) > 0
+	return p.Metadata != nil && len(p.Metadata.Downloaders) > 0
 }

@@ -40,7 +40,8 @@ type GetterOptionsV1 struct {
 }
 
 type GetterInputV1 struct {
-	URL     string          `json:"url"`
+	Href    string          `json:"href"`
+	Scheme  string          `json:"scheme"`
 	Options GetterOptionsV1 `json:"options"`
 }
 

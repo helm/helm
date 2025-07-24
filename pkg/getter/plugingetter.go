@@ -125,7 +125,7 @@ type getterPlugin struct {
 	plg     plugins.Plugin
 }
 
-func (g *getterPlugin) Get(url string, options ...Option) (*bytes.Buffer, error) {
+func (g *getterPlugin) Get(href string, options ...Option) (*bytes.Buffer, error) {
 
 	opts, err := convertOptions(g.options, options)
 	if err != nil {
@@ -134,7 +134,7 @@ func (g *getterPlugin) Get(url string, options ...Option) (*bytes.Buffer, error)
 
 	input := &plugins.Input{
 		Message: schema.GetterInputV1{
-			URL:     url,
+			Href:    href,
 			Options: opts,
 		},
 	}
