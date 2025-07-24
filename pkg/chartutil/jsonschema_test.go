@@ -55,8 +55,9 @@ func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := "unable to validate schema: runtime error: invalid " +
-		"memory address or nil pointer dereference"
+	expectedErrString := `"file:///values.schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': got number, want boolean or object`
+
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
 	}
@@ -79,8 +80,8 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := `- (root): employmentInfo is required
-- age: Must be greater than or equal to 0
+	expectedErrString := `- at '': missing property 'employmentInfo'
+- at '/age': minimum: got -5, want 0
 `
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
@@ -159,7 +160,7 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 	}
 
 	expectedErrString := `subchart:
-- (root): age is required
+- at '': missing property 'age'
 `
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
