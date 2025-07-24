@@ -18,12 +18,11 @@ package chartutil
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/xeipuuv/gojsonschema"
-	"sigs.k8s.io/yaml"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"helm.sh/helm/v3/pkg/chart"
 )
@@ -32,6 +31,7 @@ import (
 func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) error {
 	var sb strings.Builder
 	if chrt.Schema != nil {
+
 		err := ValidateAgainstSingleSchema(values, chrt.Schema)
 		if err != nil {
 			sb.WriteString(fmt.Sprintf("%s:\n", chrt.Name()))
@@ -39,7 +39,6 @@ func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) err
 		}
 	}
 
-	// For each dependency, recursively call this function with the coalesced values
 	for _, subchart := range chrt.Dependencies() {
 		subchartValues := values[subchart.Name()].(map[string]interface{})
 		if err := ValidateAgainstSchema(subchart, subchartValues); err != nil {
@@ -62,32 +61,40 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error
 		}
 	}()
 
-	valuesData, err := yaml.Marshal(values)
-	if err != nil {
-		return err
-	}
-	valuesJSON, err := yaml.YAMLToJSON(valuesData)
-	if err != nil {
-		return err
-	}
-	if bytes.Equal(valuesJSON, []byte("null")) {
-		valuesJSON = []byte("{}")
-	}
-	schemaLoader := gojsonschema.NewBytesLoader(schemaJSON)
-	valuesLoader := gojsonschema.NewBytesLoader(valuesJSON)
-
-	result, err := gojsonschema.Validate(schemaLoader, valuesLoader)
+	// This unmarshal function leverages UseNumber() for number precision. The parser
+	// used for values does this as well.
+	schema, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaJSON))
 	if err != nil {
 		return err
 	}
 
-	if !result.Valid() {
-		var sb strings.Builder
-		for _, desc := range result.Errors() {
-			sb.WriteString(fmt.Sprintf("- %s\n", desc))
-		}
-		return errors.New(sb.String())
+	compiler := jsonschema.NewCompiler()
+	err = compiler.AddResource("file:///values.schema.json", schema)
+	if err != nil {
+		return err
+	}
+
+	validator, err := compiler.Compile("file:///values.schema.json")
+	if err != nil {
+		return err
+	}
+
+	err = validator.Validate(values.AsMap())
+	if err != nil {
+		return JSONSchemaValidationError{err}
 	}
 
 	return nil
+}
+
+type JSONSchemaValidationError struct {
+	embeddedErr error
+}
+
+func (e JSONSchemaValidationError) Error() string {
+	errStr := e.embeddedErr.Error()
+
+	errStr = strings.TrimPrefix(errStr, "jsonschema validation failed with 'file:///values.schema.json#'\n")
+
+	return errStr + "\n"
 }
