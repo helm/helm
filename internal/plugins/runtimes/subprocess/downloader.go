@@ -13,5 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package installer provides an interface for installing Helm plugins.
-package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
+package subprocess // import "helm.sh/helm/v4/internal/plugins/runtimes/subprocess"
+
+func IsDownloader(p *Plugin) bool {
+	return p.Metadata != nil && len(p.Metadata.Downloaders) > 0
+}
