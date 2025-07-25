@@ -48,7 +48,6 @@ type Entry struct {
 	CAFile                string `json:"caFile"`
 	InsecureSkipTLSverify bool   `json:"insecure_skip_tls_verify"`
 	PassCredentialsAll    bool   `json:"pass_credentials_all"`
-	CachePath             string `json:"cache_path"`
 }
 
 // ChartRepository represents a chart repository
@@ -72,16 +71,11 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 		return nil, errors.Errorf("could not find protocol handler for: %s", u.Scheme)
 	}
 
-	cachePath := helmpath.CachePath("repository")
-	if cfg.CachePath != "" {
-		cachePath = cfg.CachePath
-	}
-
 	return &ChartRepository{
 		Config:    cfg,
 		IndexFile: NewIndexFile(),
 		Client:    client,
-		CachePath: cachePath,
+		CachePath: helmpath.CachePath("repository"),
 	}, nil
 }
 
@@ -245,11 +239,13 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 		CAFile:                caFile,
 		Name:                  name,
 		InsecureSkipTLSverify: insecureSkipTLSverify,
-		CachePath:             cachePath,
 	}
 	r, err := NewChartRepository(&c, getters)
 	if err != nil {
 		return "", err
+	}
+	if cachePath != "" {
+		r.CachePath = cachePath
 	}
 	idx, err := r.DownloadIndexFile()
 	if err != nil {

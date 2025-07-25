@@ -83,13 +83,14 @@ func TestNewChartRepositoryWithCachePath(t *testing.T) {
 
 	cacheDir := t.TempDir()
 	r, err := NewChartRepository(&Entry{
-		Name:      testRepository,
-		URL:       srv.URL,
-		CachePath: cacheDir,
+		Name: testRepository,
+		URL:  srv.URL,
 	}, getter.All(&cli.EnvSettings{}))
 	if err != nil {
 		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
 	}
+
+	r.CachePath = cacheDir
 
 	if err := r.Load(); err != nil {
 		t.Errorf("Problem loading chart repository from %s: %v", testRepository, err)
