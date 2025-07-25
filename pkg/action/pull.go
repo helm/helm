@@ -114,6 +114,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		defer os.RemoveAll(dest)
 	}
 
+	downloadSourceRef := chartRef
 	if p.RepoURL != "" {
 		chartURL, err := repo.FindChartInRepoURL(
 			p.RepoURL,
@@ -128,10 +129,10 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		if err != nil {
 			return out.String(), err
 		}
-		chartRef = chartURL
+		downloadSourceRef = chartURL
 	}
 
-	saved, v, err := c.DownloadTo(chartRef, p.Version, dest)
+	saved, v, err := c.DownloadTo(downloadSourceRef, p.Version, dest)
 	if err != nil {
 		return out.String(), err
 	}
