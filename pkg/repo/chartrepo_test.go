@@ -333,7 +333,7 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	chartURL, err := FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "", "", "", "", true, false, getter.All(&cli.EnvSettings{}), "")
+	chartURL, err := FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "", "", "", "", true, false, getter.All(&cli.EnvSettings{}))
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -342,7 +342,7 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 	}
 
 	// If the insecureSkipTLSVerify is false, it will return an error that contains "x509: certificate signed by unknown authority".
-	_, err = FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "0.1.0", "", "", "", false, false, getter.All(&cli.EnvSettings{}), "")
+	_, err = FindChartInAuthAndTLSAndPassRepoURL(srv.URL, "", "", "nginx", "0.1.0", "", "", "", false, false, getter.All(&cli.EnvSettings{}))
 	// Go communicates with the platform and different platforms return different messages. Go itself tests darwin
 	// differently for its message. On newer versions of Darwin the message includes the "Acme Co" portion while older
 	// versions of Darwin do not. As there are people developing Helm using both old and new versions of Darwin we test
@@ -363,7 +363,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	chartURL, err := FindChartInRepoURL(srv.URL, "nginx", "", "", "", "", getter.All(&cli.EnvSettings{}), "")
+	chartURL, err := FindChartInRepoURL(srv.URL, "nginx", "", "", "", "", getter.All(&cli.EnvSettings{}))
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -371,7 +371,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 		t.Errorf("%s is not the valid URL", chartURL)
 	}
 
-	chartURL, err = FindChartInRepoURL(srv.URL, "nginx", "0.1.0", "", "", "", getter.All(&cli.EnvSettings{}), "")
+	chartURL, err = FindChartInRepoURL(srv.URL, "nginx", "0.1.0", "", "", "", getter.All(&cli.EnvSettings{}))
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -380,7 +380,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 	}
 }
 
-func TestFindChartInRepoURLWithCachePath(t *testing.T) {
+func TestFindChartInAuthAndTLSAndPassAndCacheRepoURL(t *testing.T) {
 	srv, err := startLocalServerForTests(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -388,7 +388,7 @@ func TestFindChartInRepoURLWithCachePath(t *testing.T) {
 	defer srv.Close()
 
 	cacheDir := t.TempDir()
-	chartURL, err := FindChartInRepoURL(srv.URL, "nginx", "", "", "", "", getter.All(&cli.EnvSettings{}), cacheDir)
+	chartURL, err := FindChartInAuthAndTLSAndPassAndCacheRepoURL(srv.URL, "", "", "nginx", "", "", "", "", false, false, getter.All(&cli.EnvSettings{}), cacheDir)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -398,7 +398,7 @@ func TestFindChartInRepoURLWithCachePath(t *testing.T) {
 }
 
 func TestErrorFindChartInRepoURL(t *testing.T) {
-	if _, err := FindChartInRepoURL("http://someserver/something", "nginx", "", "", "", "", getter.All(&cli.EnvSettings{}), ""); err == nil {
+	if _, err := FindChartInRepoURL("http://someserver/something", "nginx", "", "", "", "", getter.All(&cli.EnvSettings{})); err == nil {
 		t.Errorf("Expected error for bad chart URL, but did not get any errors")
 	} else if !strings.Contains(err.Error(), `looks like "http://someserver/something" is not a valid chart repository or cannot be reached`) {
 		t.Errorf("Expected error for bad chart URL, but got a different error (%v)", err)
@@ -410,19 +410,19 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	if _, err = FindChartInRepoURL(srv.URL, "nginx1", "", "", "", "", getter.All(&cli.EnvSettings{}), ""); err == nil {
+	if _, err = FindChartInRepoURL(srv.URL, "nginx1", "", "", "", "", getter.All(&cli.EnvSettings{})); err == nil {
 		t.Errorf("Expected error for chart not found, but did not get any errors")
 	} else if err.Error() != `chart "nginx1" not found in `+srv.URL+` repository` {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
 	}
 
-	if _, err = FindChartInRepoURL(srv.URL, "nginx1", "0.1.0", "", "", "", getter.All(&cli.EnvSettings{}), ""); err == nil {
+	if _, err = FindChartInRepoURL(srv.URL, "nginx1", "0.1.0", "", "", "", getter.All(&cli.EnvSettings{})); err == nil {
 		t.Errorf("Expected error for chart not found, but did not get any errors")
 	} else if err.Error() != `chart "nginx1" version "0.1.0" not found in `+srv.URL+` repository` {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
 	}
 
-	if _, err = FindChartInRepoURL(srv.URL, "chartWithNoURL", "", "", "", "", getter.All(&cli.EnvSettings{}), ""); err == nil {
+	if _, err = FindChartInRepoURL(srv.URL, "chartWithNoURL", "", "", "", "", getter.All(&cli.EnvSettings{})); err == nil {
 		t.Errorf("Expected error for no chart URLs available, but did not get any errors")
 	} else if err.Error() != `chart "chartWithNoURL" has no downloadable URLs` {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)

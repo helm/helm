@@ -796,7 +796,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		dl.Verify = downloader.VerifyAlways
 	}
 	if c.RepoURL != "" {
-		chartURL, err := repo.FindChartInAuthAndTLSAndPassRepoURL(c.RepoURL, c.Username, c.Password, name, version,
+		chartURL, err := repo.FindChartInAuthAndTLSAndPassAndCacheRepoURL(c.RepoURL, c.Username, c.Password, name, version,
 			c.CertFile, c.KeyFile, c.CaFile, c.InsecureSkipTLSverify, c.PassCredentialsAll, getter.All(settings), settings.RepositoryCache)
 		if err != nil {
 			return "", err

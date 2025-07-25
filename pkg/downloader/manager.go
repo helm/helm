@@ -742,7 +742,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			return
 		}
 	}
-	url, err = repo.FindChartInRepoURL(repoURL, name, version, certFile, keyFile, caFile, m.Getters, m.RepositoryCache)
+	url, err = repo.FindChartInAuthAndTLSAndPassAndCacheRepoURL(repoURL, "", "", name, version, certFile, keyFile, caFile, false, false, m.Getters, m.RepositoryCache)
 	if err == nil {
 		return url, username, password, false, false, "", "", "", err
 	}
