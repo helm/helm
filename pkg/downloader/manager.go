@@ -269,7 +269,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	defer os.RemoveAll(tmpPath)
 
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
-	var saveError error
+	var saveErrors []error
 	churls := make(map[string]struct{})
 	for _, dep := range deps {
 		// No repository means the chart is in charts directory
@@ -293,7 +293,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			}
 
 			if !constraint.Check(v) {
-				saveError = fmt.Errorf("dependency %s at version %s does not satisfy the constraint %s", dep.Name, ch.Metadata.Version, dep.Version)
+				saveErrors = append(saveErrors, fmt.Errorf("dependency %s at version %s does not satisfy the constraint %s", dep.Name, ch.Metadata.Version, dep.Version))
 				break
 			}
 			continue
@@ -304,7 +304,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			}
 			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version, tmpPath)
 			if err != nil {
-				saveError = err
+				saveErrors = append(saveErrors, err)
 				break
 			}
 			dep.Version = ver
@@ -315,7 +315,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		// https://github.com/helm/helm/issues/1439
 		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
-			saveError = fmt.Errorf("could not find %s: %w", churl, err)
+			saveErrors = append(saveErrors, fmt.Errorf("could not find %s: %w", churl, err))
 			break
 		}
 
@@ -355,7 +355,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		_, v, err := dl.DownloadTo(churl, version, tmpPath)
 		if err != nil {
-			saveError = fmt.Errorf("could not download %s: %w", churl, err)
+			saveErrors = append(saveErrors, fmt.Errorf("could not download %s: %w", churl, err))
 			break
 		}
 
@@ -374,15 +374,14 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		churls[churl] = struct{}{}
 	}
 
-	// TODO: this should probably be refactored to be a []error, so we can capture and provide more information rather than "last error wins".
-	if saveError == nil {
+	if saveErrors == nil {
 		// now we can move all downloaded charts to destPath and delete outdated dependencies
 		if err := m.safeMoveDeps(deps, tmpPath, destPath); err != nil {
 			return err
 		}
 	} else {
-		fmt.Fprintln(m.Out, "Save error occurred: ", saveError)
-		return saveError
+		fmt.Fprintln(m.Out, "Save error occurred: ", saveErrors)
+		return errors.Join(saveErrors...)
 	}
 	return nil
 }
