@@ -25,8 +25,8 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/Masterminds/vcs"
+	cp "github.com/otiai10/copy"
 
-	"helm.sh/helm/v4/internal/third_party/dep/fs"
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/plugin/cache"
 )
@@ -92,7 +92,7 @@ func (i *VCSInstaller) Install() error {
 	}
 
 	slog.Debug("copying files", "source", i.Repo.LocalPath(), "destination", i.Path())
-	return fs.CopyDir(i.Repo.LocalPath(), i.Path())
+	return cp.Copy(i.Repo.LocalPath(), i.Path())
 }
 
 // Update updates a remote repository
