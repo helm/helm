@@ -371,7 +371,16 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		}
 
 		if m.Untar {
-			chartutil.ExpandFile(m.ChartPath+"/charts/", tmpPath)
+			tmpDest, err := os.MkdirTemp("", "helm-dependency-")
+			if err != nil {
+				saveErrors = append(saveErrors, fmt.Errorf("failed to create temp dir: %w", err))
+				break
+			}
+			if err := chartutil.ExpandFile(tmpDest, tmpPath); err != nil {
+				saveErrors = append(saveErrors, fmt.Errorf("failed to expand chart %s: %w", tmpPath, err))
+				break
+			}
+			defer os.RemoveAll(tmpDest)
 		}
 
 		churls[churl] = struct{}{}
