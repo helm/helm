@@ -434,7 +434,6 @@ func TestMetadata_FormattedDepNames_WithComplexDependencies(t *testing.T) {
 	assert.Equal(t, "apache,mysql,zookeeper", result)
 }
 
-
 func TestGetMetadata_Labels(t *testing.T) {
 	rel := releaseStub()
 	rel.Info.Status = release.StatusDeployed
