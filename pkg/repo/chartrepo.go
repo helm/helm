@@ -223,7 +223,14 @@ func FindChartInAuthAndTLSRepoURL(repoURL, username, password, chartName, chartV
 // be passed on to other domains.
 // TODO Helm 4, FindChartInAuthAndTLSAndPassRepoURL should be integrated into FindChartInAuthRepoURL.
 func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify, passCredentialsAll bool, getters getter.Providers) (string, error) {
+	return FindChartInAuthAndTLSAndPassAndCacheRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile, insecureSkipTLSverify, passCredentialsAll, getters, "")
+}
 
+// FindChartInAuthAndTLSAndPassAndCacheRepoURL finds chart in chart repository pointed by repoURL
+// without adding repo to repositories, like FindChartInRepoURL,
+// but it also receives credentials, TLS verify flag, if credentials should
+// be passed on to other domains, and a custom cache path.
+func FindChartInAuthAndTLSAndPassAndCacheRepoURL(repoURL, username, password, chartName, chartVersion, certFile, keyFile, caFile string, insecureSkipTLSverify, passCredentialsAll bool, getters getter.Providers, cachePath string) (string, error) {
 	// Download and write the index file to a temporary location
 	buf := make([]byte, 20)
 	rand.Read(buf)
@@ -243,6 +250,9 @@ func FindChartInAuthAndTLSAndPassRepoURL(repoURL, username, password, chartName,
 	r, err := NewChartRepository(&c, getters)
 	if err != nil {
 		return "", err
+	}
+	if cachePath != "" {
+		r.CachePath = cachePath
 	}
 	idx, err := r.DownloadIndexFile()
 	if err != nil {
