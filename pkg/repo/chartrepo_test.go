@@ -73,6 +73,40 @@ func TestLoadChartRepository(t *testing.T) {
 	}
 }
 
+func TestNewChartRepositoryWithCachePath(t *testing.T) {
+	srv, err := startLocalServerForTests(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Close()
+
+	cacheDir := t.TempDir()
+	r, err := NewChartRepository(&Entry{
+		Name:      testRepository,
+		URL:       srv.URL,
+		CachePath: cacheDir,
+	}, getter.All(&cli.EnvSettings{}))
+	if err != nil {
+		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
+	}
+
+	if err := r.Load(); err != nil {
+		t.Errorf("Problem loading chart repository from %s: %v", testRepository, err)
+	}
+
+	_, err = r.DownloadIndexFile()
+	if err != nil {
+		t.Errorf("Problem downloading index file from %s: %v", testRepository, err)
+	}
+
+	if _, err := os.Stat(filepath.Join(cacheDir, helmpath.CacheIndexFile(r.Config.Name))); err != nil {
+		t.Errorf("Expected index.yaml to be created in %s, but got an error: %v", cacheDir, err)
+	}
+	if _, err := os.Stat(filepath.Join(cacheDir, helmpath.CacheChartsFile(r.Config.Name))); err != nil {
+		t.Errorf("Expected charts to be created in %s, but got an error: %v", cacheDir, err)
+	}
+}
+
 func TestIndex(t *testing.T) {
 	r, err := NewChartRepository(&Entry{
 		Name: testRepository,

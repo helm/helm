@@ -48,6 +48,7 @@ type Entry struct {
 	CAFile                string `json:"caFile"`
 	InsecureSkipTLSverify bool   `json:"insecure_skip_tls_verify"`
 	PassCredentialsAll    bool   `json:"pass_credentials_all"`
+	CachePath             string `json:"cache_path"`
 }
 
 // ChartRepository represents a chart repository
@@ -71,11 +72,16 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 		return nil, errors.Errorf("could not find protocol handler for: %s", u.Scheme)
 	}
 
+	cachePath := helmpath.CachePath("repository")
+	if cfg.CachePath != "" {
+		cachePath = cfg.CachePath
+	}
+
 	return &ChartRepository{
 		Config:    cfg,
 		IndexFile: NewIndexFile(),
 		Client:    client,
-		CachePath: helmpath.CachePath("repository"),
+		CachePath: cachePath,
 	}, nil
 }
 
