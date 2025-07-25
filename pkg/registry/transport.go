@@ -83,11 +83,12 @@ func (t *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 
 	slog.Debug(req.Method, "id", id, "url", req.URL, "header", logHeader(req.Header))
 	resp, err = t.RoundTripper.RoundTrip(req)
-	if err != nil {
+	switch {
+	case err != nil:
 		slog.Debug("Response"[:len(req.Method)], "id", id, "error", err)
-	} else if resp != nil {
+	case resp != nil:
 		slog.Debug("Response"[:len(req.Method)], "id", id, "status", resp.Status, "header", logHeader(resp.Header), "body", logResponseBody(resp))
-	} else {
+	default:
 		slog.Debug("Response"[:len(req.Method)], "id", id, "response", "nil")
 	}
 
@@ -142,7 +143,7 @@ func logResponseBody(resp *http.Response) string {
 	}
 
 	readBody := buf.String()
-	if len(readBody) == 0 {
+	if readBody == "" {
 		return "   Response body is empty"
 	}
 	if containsCredentials(readBody) {

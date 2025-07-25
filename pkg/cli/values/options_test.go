@@ -91,7 +91,7 @@ func TestReadFile(t *testing.T) {
 				tmpDir := t.TempDir()
 				filePath := filepath.Join(tmpDir, "test.txt")
 				content := []byte("local file content")
-				err := os.WriteFile(filePath, content, 0644)
+				err := os.WriteFile(filePath, content, 0o644)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -155,7 +155,7 @@ func TestReadFile(t *testing.T) {
 				fileName := "ftp_file.txt" // Valid filename for filesystem
 				filePath := filepath.Join(tmpDir, fileName)
 				content := []byte("local fallback content")
-				err := os.WriteFile(filePath, content, 0644)
+				err := os.WriteFile(filePath, content, 0o644)
 				if err != nil {
 					t.Fatal(err)
 				}

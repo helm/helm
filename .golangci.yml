@@ -20,6 +20,7 @@ linters:
   enable:
     - depguard
     - dupl
+    - gocritic
     - gomodguard
     - govet
     - ineffassign
@@ -57,6 +58,26 @@ linters:
 
     dupl:
       threshold: 400
+      
+    gocritic:
+      disabled-checks:
+        - appendAssign
+        - badCall
+        - commentedOutCode
+        - deferInLoop
+        - exposedSyncMutex
+        - filepathJoin
+        - hugeParam
+        - importShadow
+        - nestingReduce
+        - ptrToRefParam
+        - rangeValCopy
+        - tooManyResultsChecker
+        - typeAssertChain
+        - unnamedResult
+        - unnecessaryDefer
+        - whyNoLint
+      enable-all: true
 
     gomodguard:
       blocked:

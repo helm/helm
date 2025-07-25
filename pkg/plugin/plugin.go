@@ -92,7 +92,7 @@ type Metadata struct {
 	// Note that command is not executed in a shell. To do so, we suggest
 	// pointing the command to a shell script.
 	//
-	// DEPRECATED: Use PlatformCommand instead. Remove in Helm 4.
+	// Deprecated: Use PlatformCommand instead. Remove in Helm 4.
 	Command string `json:"command"`
 
 	// IgnoreFlags ignores any flags passed in from Helm
@@ -126,7 +126,7 @@ type Metadata struct {
 	//
 	// Note that the command is executed in the sh shell.
 	//
-	// DEPRECATED: Use PlatformHooks instead. Remove in Helm 4.
+	// Deprecated: Use PlatformHooks instead. Remove in Helm 4.
 	Hooks Hooks
 
 	// Downloaders field is used if the plugin supply downloader mechanism
@@ -160,12 +160,12 @@ func getPlatformCommand(cmds []PlatformCommand) ([]string, []string) {
 			return strings.Split(c.Command, " "), c.Args
 		}
 
-		if (len(c.OperatingSystem) > 0 && !eq(c.OperatingSystem, runtime.GOOS)) || len(c.Architecture) > 0 {
+		if (c.OperatingSystem != "" && !eq(c.OperatingSystem, runtime.GOOS)) || c.Architecture != "" {
 			// Skip if OS is not empty and doesn't match or if arch is set as a set arch requires an OS match
 			continue
 		}
 
-		if !foundOs && len(c.OperatingSystem) > 0 && eq(c.OperatingSystem, runtime.GOOS) {
+		if !foundOs && c.OperatingSystem != "" && eq(c.OperatingSystem, runtime.GOOS) {
 			// First OS match with empty arch, can only be overridden by a direct match
 			command = strings.Split(c.Command, " ")
 			args = c.Args
@@ -235,7 +235,7 @@ func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string, error) {
 	}
 
 	cmds := p.Metadata.PlatformCommand
-	if len(cmds) == 0 && len(p.Metadata.Command) > 0 {
+	if len(cmds) == 0 && p.Metadata.Command != "" {
 		cmds = []PlatformCommand{{Command: p.Metadata.Command}}
 	}
 
@@ -258,7 +258,7 @@ func validatePluginData(plug *Plugin, filepath string) error {
 	}
 	plug.Metadata.Usage = sanitizeString(plug.Metadata.Usage)
 
-	if len(plug.Metadata.PlatformCommand) > 0 && len(plug.Metadata.Command) > 0 {
+	if len(plug.Metadata.PlatformCommand) > 0 && plug.Metadata.Command != "" {
 		return fmt.Errorf("both platformCommand and command are set in %q", filepath)
 	}
 
