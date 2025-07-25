@@ -61,14 +61,14 @@ func TestUpgradeRelease_Success(t *testing.T) {
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 	done()
 	req.NoError(err)
-	is.Equal(res.Info.Status, release.StatusDeployed)
+	is.Equal(release.StatusDeployed, res.Info.Status)
 
 	// Detecting previous bug where context termination after successful release
 	// caused release to fail.
 	time.Sleep(time.Millisecond * 100)
 	lastRelease, err := upAction.cfg.Releases.Last(rel.Name)
 	req.NoError(err)
-	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+	is.Equal(release.StatusDeployed, lastRelease.Info.Status)
 }
 
 func TestUpgradeRelease_Wait(t *testing.T) {
@@ -90,7 +90,7 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	res, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Error(err)
 	is.Contains(res.Info.Description, "I timed out")
-	is.Equal(res.Info.Status, release.StatusFailed)
+	is.Equal(release.StatusFailed, res.Info.Status)
 }
 
 func TestUpgradeRelease_WaitForJobs(t *testing.T) {
@@ -113,7 +113,7 @@ func TestUpgradeRelease_WaitForJobs(t *testing.T) {
 	res, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Error(err)
 	is.Contains(res.Info.Description, "I timed out")
-	is.Equal(res.Info.Status, release.StatusFailed)
+	is.Equal(release.StatusFailed, res.Info.Status)
 }
 
 func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
@@ -138,7 +138,7 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	req.Error(err)
 	is.NotContains(err.Error(), "unable to cleanup resources")
 	is.Contains(res.Info.Description, "I timed out")
-	is.Equal(res.Info.Status, release.StatusFailed)
+	is.Equal(release.StatusFailed, res.Info.Status)
 }
 
 func TestUpgradeRelease_Atomic(t *testing.T) {
@@ -161,15 +161,14 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		vals := map[string]interface{}{}
 
 		res, err := upAction.Run(rel.Name, buildChart(), vals)
-		req.Error(err)
-		is.Contains(err.Error(), "arming key removed")
-		is.Contains(err.Error(), "atomic")
+		req.ErrorContains(err, "arming key removed")
+		req.ErrorContains(err, "atomic")
 
 		// Now make sure it is actually upgraded
 		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
-		is.NoError(err)
+		req.NoError(err)
 		// Should have rolled back to the previous
-		is.Equal(updatedRes.Info.Status, release.StatusDeployed)
+		is.Equal(release.StatusDeployed, updatedRes.Info.Status)
 	})
 
 	t.Run("atomic uninstall fails", func(t *testing.T) {
@@ -186,14 +185,14 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		vals := map[string]interface{}{}
 
 		_, err := upAction.Run(rel.Name, buildChart(), vals)
-		req.Error(err)
-		is.Contains(err.Error(), "update fail")
-		is.Contains(err.Error(), "an error occurred while rolling back the release")
+		req.ErrorContains(err, "update fail")
+		is.ErrorContains(err, "an error occurred while rolling back the release")
 	})
 }
 
 func TestUpgradeRelease_ReuseValues(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	t.Run("reuse values should work with values", func(t *testing.T) {
 		upAction := upgradeAction(t)
@@ -221,16 +220,16 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		rel.Config = existingValues
 
 		err := upAction.cfg.Releases.Create(rel)
-		is.NoError(err)
+		req.NoError(err)
 
 		upAction.ReuseValues = true
 		// setting newValues and upgrading
 		res, err := upAction.Run(rel.Name, buildChart(), newValues)
-		is.NoError(err)
+		req.NoError(err)
 
 		// Now make sure it is actually upgraded
 		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
-		is.NoError(err)
+		req.NoError(err)
 
 		if updatedRes == nil {
 			is.Fail("Updated Release is nil")
@@ -277,7 +276,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			Version: 1,
 		}
 		err := upAction.cfg.Releases.Create(rel)
-		is.NoError(err)
+		req.NoError(err)
 
 		upAction.ReuseValues = true
 		sampleChartWithSubChart := buildChart(
@@ -288,18 +287,18 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		)
 		// reusing values and upgrading
 		res, err := upAction.Run(rel.Name, sampleChartWithSubChart, map[string]interface{}{})
-		is.NoError(err)
+		req.NoError(err)
 
 		// Now get the upgraded release
 		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
-		is.NoError(err)
+		req.NoError(err)
 
 		if updatedRes == nil {
 			is.Fail("Updated Release is nil")
 			return
 		}
 		is.Equal(release.StatusDeployed, updatedRes.Info.Status)
-		is.Equal(0, len(updatedRes.Chart.Dependencies()), "expected 0 dependencies")
+		is.Empty(updatedRes.Chart.Dependencies(), "expected 0 dependencies")
 
 		expectedValues := map[string]interface{}{
 			"subchart": map[string]interface{}{
@@ -312,6 +311,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 
 func TestUpgradeRelease_ResetThenReuseValues(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 
 	t.Run("reset then reuse values should work with values", func(t *testing.T) {
 		upAction := upgradeAction(t)
@@ -342,16 +342,16 @@ func TestUpgradeRelease_ResetThenReuseValues(t *testing.T) {
 		rel.Config = existingValues
 
 		err := upAction.cfg.Releases.Create(rel)
-		is.NoError(err)
+		req.NoError(err)
 
 		upAction.ResetThenReuseValues = true
 		// setting newValues and upgrading
 		res, err := upAction.Run(rel.Name, buildChart(withValues(newChartValues)), newValues)
-		is.NoError(err)
+		req.NoError(err)
 
 		// Now make sure it is actually upgraded
 		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
-		is.NoError(err)
+		req.NoError(err)
 
 		if updatedRes == nil {
 			is.Fail("Updated Release is nil")
@@ -380,7 +380,7 @@ func TestUpgradeRelease_Pending(t *testing.T) {
 	vals := map[string]interface{}{}
 
 	_, err := upAction.Run(rel.Name, buildChart(), vals)
-	req.Contains(err.Error(), "progress", err)
+	req.ErrorContains(err, "progress", "%+v", err)
 }
 
 func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
@@ -406,7 +406,7 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 
 	req.Error(err)
 	is.Contains(res.Info.Description, "Upgrade \"interrupted-release\" failed: context canceled")
-	is.Equal(res.Info.Status, release.StatusFailed)
+	is.Equal(release.StatusFailed, res.Info.Status)
 }
 
 func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
@@ -430,14 +430,13 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 
-	req.Error(err)
-	is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to atomic being set: context canceled")
+	req.ErrorContains(err, "release interrupted-release failed, and has been rolled back due to atomic being set: context canceled")
 
 	// Now make sure it is actually upgraded
 	updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
-	is.NoError(err)
+	req.NoError(err)
 	// Should have rolled back to the previous
-	is.Equal(updatedRes.Info.Status, release.StatusDeployed)
+	is.Equal(release.StatusDeployed, updatedRes.Info.Status)
 }
 
 func TestMergeCustomLabels(t *testing.T) {
@@ -457,6 +456,7 @@ func TestMergeCustomLabels(t *testing.T) {
 
 func TestUpgradeRelease_Labels(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	upAction := upgradeAction(t)
 
 	rel := releaseStub()
@@ -469,7 +469,7 @@ func TestUpgradeRelease_Labels(t *testing.T) {
 	rel.Info.Status = release.StatusDeployed
 
 	err := upAction.cfg.Releases.Create(rel)
-	is.NoError(err)
+	req.NoError(err)
 
 	upAction.Labels = map[string]string{
 		"key1": "null",
@@ -478,11 +478,11 @@ func TestUpgradeRelease_Labels(t *testing.T) {
 	}
 	// setting newValues and upgrading
 	res, err := upAction.Run(rel.Name, buildChart(), nil)
-	is.NoError(err)
+	req.NoError(err)
 
 	// Now make sure it is actually upgraded and labels were merged
 	updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
-	is.NoError(err)
+	req.NoError(err)
 
 	if updatedRes == nil {
 		is.Fail("Updated Release is nil")
@@ -493,18 +493,19 @@ func TestUpgradeRelease_Labels(t *testing.T) {
 
 	// Now make sure it is suppressed release still contains original labels
 	initialRes, err := upAction.cfg.Releases.Get(res.Name, 1)
-	is.NoError(err)
+	req.NoError(err)
 
 	if initialRes == nil {
 		is.Fail("Updated Release is nil")
 		return
 	}
-	is.Equal(initialRes.Info.Status, release.StatusSuperseded)
+	is.Equal(release.StatusSuperseded, initialRes.Info.Status)
 	is.Equal(initialRes.Labels, rel.Labels)
 }
 
 func TestUpgradeRelease_SystemLabels(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	upAction := upgradeAction(t)
 
 	rel := releaseStub()
@@ -517,7 +518,7 @@ func TestUpgradeRelease_SystemLabels(t *testing.T) {
 	rel.Info.Status = release.StatusDeployed
 
 	err := upAction.cfg.Releases.Create(rel)
-	is.NoError(err)
+	req.NoError(err)
 
 	upAction.Labels = map[string]string{
 		"key1":  "null",
@@ -555,7 +556,7 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 
 	lastRelease, err := upAction.cfg.Releases.Last(rel.Name)
 	req.NoError(err)
-	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+	is.Equal(release.StatusDeployed, lastRelease.Info.Status)
 	is.Equal(1, lastRelease.Version)
 
 	// Test the case for hiding the secret to ensure it is not displayed
@@ -571,7 +572,7 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 
 	lastRelease, err = upAction.cfg.Releases.Last(rel.Name)
 	req.NoError(err)
-	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+	is.Equal(release.StatusDeployed, lastRelease.Info.Status)
 	is.Equal(1, lastRelease.Version)
 
 	// Ensure in a dry run mode when using HideSecret

@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -32,10 +33,10 @@ func TestGetMetadata_Labels(t *testing.T) {
 
 	metaGetter := NewGetMetadata(actionConfigFixture(t))
 	err := metaGetter.cfg.Releases.Create(rel)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	metadata, err := metaGetter.Run(rel.Name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, metadata.Name, rel.Name)
 	assert.Equal(t, metadata.Labels, customLabels)
