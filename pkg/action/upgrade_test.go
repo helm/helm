@@ -141,11 +141,11 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
 
-func TestUpgradeRelease_Atomic(t *testing.T) {
+func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
 
-	t.Run("atomic rollback succeeds", func(t *testing.T) {
+	t.Run("rollback-on-failure rollback succeeds", func(t *testing.T) {
 		upAction := upgradeAction(t)
 
 		rel := releaseStub()
@@ -157,13 +157,13 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		// We can't make Update error because then the rollback won't work
 		failer.WatchUntilReadyError = fmt.Errorf("arming key removed")
 		upAction.cfg.KubeClient = failer
-		upAction.Atomic = true
+		upAction.RollbackOnFailure = true
 		vals := map[string]interface{}{}
 
 		res, err := upAction.Run(rel.Name, buildChart(), vals)
 		req.Error(err)
 		is.Contains(err.Error(), "arming key removed")
-		is.Contains(err.Error(), "atomic")
+		is.Contains(err.Error(), "rollback-on-failure")
 
 		// Now make sure it is actually upgraded
 		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
@@ -172,7 +172,7 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		is.Equal(updatedRes.Info.Status, release.StatusDeployed)
 	})
 
-	t.Run("atomic uninstall fails", func(t *testing.T) {
+	t.Run("rollback-on-failure uninstall fails", func(t *testing.T) {
 		upAction := upgradeAction(t)
 		rel := releaseStub()
 		rel.Name = "fallout"
@@ -182,7 +182,7 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 		failer.UpdateError = fmt.Errorf("update fail")
 		upAction.cfg.KubeClient = failer
-		upAction.Atomic = true
+		upAction.RollbackOnFailure = true
 		vals := map[string]interface{}{}
 
 		_, err := upAction.Run(rel.Name, buildChart(), vals)
@@ -409,7 +409,8 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
 
-func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
+func TestUpgradeRelease_Interrupted_RollbackOnFailure(t *testing.T) {
+
 	is := assert.New(t)
 	req := require.New(t)
 
@@ -422,7 +423,7 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 5 * time.Second
 	upAction.cfg.KubeClient = failer
-	upAction.Atomic = true
+	upAction.RollbackOnFailure = true
 	vals := map[string]interface{}{}
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -431,7 +432,7 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 
 	req.Error(err)
-	is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to atomic being set: context canceled")
+	is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to rollback-on-failure being set: context canceled")
 
 	// Now make sure it is actually upgraded
 	updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
