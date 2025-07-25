@@ -356,9 +356,18 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				getter.WithTagName(version))
 		}
 
-		if _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
+		_, v, err := dl.DownloadTo(churl, version, tmpPath)
+		if err != nil {
 			saveError = fmt.Errorf("could not download %s: %w", churl, err)
 			break
+		}
+
+		if m.Verify != VerifyNever {
+			for name := range v.SignedBy.Identities {
+				fmt.Fprintf(m.Out, "Signed by: %v\n", name)
+			}
+			fmt.Fprintf(m.Out, "Using Key With Fingerprint: %X\n", v.SignedBy.PrimaryKey.Fingerprint)
+			fmt.Fprintf(m.Out, "Chart Hash Verified: %s\n", v.FileHash)
 		}
 
 		if m.Untar {
