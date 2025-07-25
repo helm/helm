@@ -82,3 +82,19 @@ func TestParseKubeVersion(t *testing.T) {
 		t.Errorf("Expected parsed KubeVersion.Minor to be 16, got %q", kv.Minor)
 	}
 }
+
+func TestParseKubeVersionSuffix(t *testing.T) {
+	kv, err := ParseKubeVersion("v1.28+")
+	if err != nil {
+		t.Errorf("Expected v1.28+ to parse successfully")
+	}
+	if kv.Version != "v1.28" {
+		t.Errorf("Expected parsed KubeVersion.Version to be v1.28, got %q", kv.String())
+	}
+	if kv.Major != "1" {
+		t.Errorf("Expected parsed KubeVersion.Major to be 1, got %q", kv.Major)
+	}
+	if kv.Minor != "28" {
+		t.Errorf("Expected parsed KubeVersion.Minor to be 28, got %q", kv.Minor)
+	}
+}
