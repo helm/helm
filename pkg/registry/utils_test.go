@@ -37,7 +37,6 @@ import (
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
 	"github.com/foxcpp/go-mockdns"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
@@ -127,12 +126,14 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 
 	// Registry config
 	config := &configuration.Configuration{}
-	port, err := freeport.GetFreePort()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	suite.Nil(err, "no error finding free port for test registry")
+	defer ln.Close()
 
 	// Change the registry host to another host which is not localhost.
 	// This is required because Docker enforces HTTP if the registry
 	// host is localhost/127.0.0.1.
+	port := ln.Addr().(*net.TCPAddr).Port
 	suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
 	suite.srv, err = mockdns.NewServer(map[string]mockdns.Zone{
 		"helm-test-registry.": {
@@ -142,7 +143,7 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	suite.Nil(err, "no error creating mock DNS server")
 	suite.srv.PatchNet(net.DefaultResolver)
 
-	config.HTTP.Addr = fmt.Sprintf("127.0.0.1:%d", port)
+	config.HTTP.Addr = ln.Addr().String()
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
 
