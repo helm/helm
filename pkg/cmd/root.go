@@ -26,6 +26,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 
@@ -80,6 +81,8 @@ Environment variables:
 | $HELM_KUBETLS_SERVER_NAME          | set the server name used to validate the Kubernetes API server certificate                                 |
 | $HELM_BURST_LIMIT                  | set the default burst limit in the case the server contains many CRDs (default 100, -1 to disable)         |
 | $HELM_QPS                          | set the Queries Per Second in cases where a high number of calls exceed the option for higher burst values |
+| $HELM_COLOR                        | set color output mode. Allowed values: never, always, auto (default: never)                                |
+| $NO_COLOR                          | set to any non-empty value to disable all colored output (overrides $HELM_COLOR)                           |
 
 Helm stores cache, configuration, and data based on the following configuration order:
 
@@ -129,6 +132,20 @@ func SetupLogging(debug bool) {
 	slog.SetDefault(logger)
 }
 
+// configureColorOutput configures the color output based on the ColorMode setting
+func configureColorOutput(settings *cli.EnvSettings) {
+	switch settings.ColorMode {
+	case "never":
+		color.NoColor = true
+	case "always":
+		color.NoColor = false
+	case "auto":
+		// Let fatih/color handle automatic detection
+		// It will check if output is a terminal and NO_COLOR env var
+		// We don't need to do anything here
+	}
+}
+
 func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, args []string, logSetup func(bool)) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:          "helm",
@@ -160,6 +177,27 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	flags.Parse(args)
 
 	logSetup(settings.Debug)
+
+	// Validate color mode setting
+	switch settings.ColorMode {
+	case "never", "auto", "always":
+		// Valid color mode
+	default:
+		return nil, fmt.Errorf("invalid color mode %q: must be one of: never, auto, always", settings.ColorMode)
+	}
+
+	// Configure color output based on ColorMode setting
+	configureColorOutput(settings)
+
+	// Setup shell completion for the color flag
+	_ = cmd.RegisterFlagCompletionFunc("color", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"never", "auto", "always"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	// Setup shell completion for the colour flag
+	_ = cmd.RegisterFlagCompletionFunc("colour", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"never", "auto", "always"}, cobra.ShellCompDirectiveNoFileComp
+	})
 
 	// Setup shell completion for the namespace flag
 	err := cmd.RegisterFlagCompletionFunc("namespace", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
