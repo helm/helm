@@ -71,8 +71,11 @@ type Install struct {
 
 	ChartPathOptions
 
-	ClientOnly      bool
-	Force           bool
+	ClientOnly bool
+	// ForceReplace will, if set to `true`, ignore certain warnings and perform the install anyway.
+	//
+	// This should be used with caution.
+	ForceReplace    bool
 	CreateNamespace bool
 	DryRun          bool
 	DryRunOption    string
@@ -346,7 +349,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, fmt.Errorf("unable to build kubernetes objects from release manifest: %w", err)
 	}
 
-	// It is safe to use "force" here because these are resources currently rendered by the chart.
+	// It is safe to use "forceOwnership" here because these are resources currently rendered by the chart.
 	err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
 	if err != nil {
 		return nil, err
@@ -468,9 +471,9 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		_, err = i.cfg.KubeClient.Create(resources)
 	} else if len(resources) > 0 {
 		if i.TakeOwnership {
-			_, err = i.cfg.KubeClient.(kube.InterfaceThreeWayMerge).UpdateThreeWayMerge(toBeAdopted, resources, i.Force)
+			_, err = i.cfg.KubeClient.(kube.InterfaceThreeWayMerge).UpdateThreeWayMerge(toBeAdopted, resources, i.ForceReplace)
 		} else {
-			_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force)
+			_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.ForceReplace)
 		}
 	}
 	if err != nil {
