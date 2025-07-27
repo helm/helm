@@ -1,0 +1,14 @@
+Release "luffy" has been upgraded. Happy Helming!
+NAME: luffy
+LAST DEPLOYED: Fri Sep  2 22:04:05 1977
+NAMESPACE: default
+STATUS: pending-upgrade
+REVISION: 2
+DESCRIPTION: Dry run complete
+TEST SUITE: None
+HOOKS:
+MANIFEST:
+---
+# Source: empty/templates/empty.yaml
+# This file is intentionally blank
+

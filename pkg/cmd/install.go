@@ -172,7 +172,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	addInstallFlags(cmd, f, client, valueOpts)
+	addInstallFlags(cmd, f, client, valueOpts, false)
 	// hide-secret is not available in all places the install flags are used so
 	// it is added separately
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
@@ -183,7 +183,8 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
+func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options,
+	isTemplateCommand bool) {
 	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
 	f.BoolVar(&client.ForceReplace, "force-replace", false, "force resource updates by replacement")
 	f.BoolVar(&client.ForceReplace, "force", false, "deprecated")
@@ -203,12 +204,21 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.RollbackOnFailure, "rollback-on-failure", false, "if set, Helm will rollback (uninstall) the installation upon failure. The --wait flag will be default to \"watcher\" if --rollback-on-failure is set")
 	f.MarkDeprecated("atomic", "use --rollback-on-failure instead")
 	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed. By default, CRDs are installed if not already present")
-	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	f.BoolVar(&client.SkipSchemaValidation, "skip-schema-validation", false, "if set, disables JSON schema validation")
 	f.StringToStringVarP(&client.Labels, "labels", "l", nil, "Labels that would be added to release metadata. Should be divided by comma.")
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
 	f.BoolVar(&client.HideNotes, "hide-notes", false, "if set, do not show notes in install output. Does not affect presence in chart metadata")
 	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, install will ignore the check for helm annotations and take ownership of the existing resources")
+
+	// Set the --render-subchart-notes flag description based on the command. The template command requires some
+	// additional information than the install/upgrade commands.
+	renderSubchartNotesFlagDesc := "if set, render subchart notes along with the parent"
+	if isTemplateCommand {
+		renderSubchartNotesFlagDesc = fmt.Sprintf("%s. Note: This will only work if --notes flag is enabled.",
+			renderSubchartNotesFlagDesc)
+	}
+	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, renderSubchartNotesFlagDesc)
+
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	AddWaitFlag(cmd, &client.WaitStrategy)

@@ -1,0 +1,13 @@
+NAME: luffy
+LAST DEPLOYED: Fri Sep  2 22:04:05 1977
+NAMESPACE: default
+STATUS: pending-install
+REVISION: 1
+DESCRIPTION: Dry run complete
+TEST SUITE: None
+HOOKS:
+MANIFEST:
+---
+# Source: empty/templates/empty.yaml
+# This file is intentionally blank
+

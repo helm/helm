@@ -1,0 +1,3 @@
+---
+# Source: empty/templates/empty.yaml
+# This file is intentionally blank

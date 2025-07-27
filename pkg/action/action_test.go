@@ -793,7 +793,7 @@ func TestRenderResources_PostRenderer_Success(t *testing.T) {
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, false,
 	)
 
 	assert.NoError(t, err)
@@ -836,7 +836,7 @@ func TestRenderResources_PostRenderer_Error(t *testing.T) {
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, false,
 	)
 
 	assert.Error(t, err)
@@ -864,7 +864,7 @@ func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, false,
 	)
 
 	assert.Error(t, err)
@@ -886,7 +886,7 @@ func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, false,
 	)
 
 	assert.Error(t, err)
@@ -907,7 +907,7 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, false,
 	)
 
 	assert.NoError(t, err)
@@ -943,7 +943,7 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		nil, false, false, false,
+		nil, false, false, false, false,
 	)
 
 	assert.NoError(t, err)

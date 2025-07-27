@@ -1,0 +1,15 @@
+Release "luffy" has been upgraded. Happy Helming!
+NAME: luffy
+LAST DEPLOYED: Fri Sep  2 22:04:05 1977
+NAMESPACE: default
+STATUS: deployed
+REVISION: 2
+DESCRIPTION: Upgrade complete
+NOTES:
+Sample notes for foo
+
+Sample notes for bar
+
+Sample notes for baz
+
+Sample notes for qux

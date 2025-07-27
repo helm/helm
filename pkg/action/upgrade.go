@@ -294,7 +294,8 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 		return nil, nil, false, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false,
+		u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret, isDryRun(u.DryRunStrategy))
 	if err != nil {
 		return nil, nil, false, err
 	}
