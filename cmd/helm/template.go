@@ -55,6 +55,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	var kubeVersion string
 	var extraAPIs []string
 	var showFiles []string
+	var renderNotes bool
 
 	cmd := &cobra.Command{
 		Use:   "template [NAME] [CHART]",
@@ -133,6 +134,38 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					}
 				}
 
+				// If --notes flag is enabled, add the rendered notes file (templates/NOTES.txt) content to the output.
+				// Since the template command is considered a dry run, the rendered notes include the source file name
+				// and the separator as follows:
+				//
+				// 		---
+				// 		# Source: foo/templates/NOTES.txt
+				// 		foo NOTES HERE
+				//
+				// If --render-subchart-notes flag is also enabled, the rendered notes will include notes from subcharts
+				// as follows:
+				//
+				// 		---
+				// 		# Source: foo/templates/NOTES.txt
+				// 		foo NOTES HERE
+				// 		---
+				// 		# Source: foo/charts/bar/templates/NOTES.txt
+				// 		bar NOTES HERE
+				// 		---
+				// 		# Source: foo/charts/baz/templates/NOTES.txt
+				// 		baz NOTES HERE
+				// 		---
+				// 		# Source: foo/charts/bar/charts/qux/templates/NOTES.txt
+				// 		qux NOTES HERE
+				//
+				// Note: The order of the notes files above is based on depth first, and then in alphabetical order.
+				//
+				// If just --render-subchart-notes flag is enabled and --notes flag is not, skip adding any notes to
+				// output.
+				if renderNotes {
+					fmt.Fprint(&manifests, rel.Info.Notes)
+				}
+
 				// if we have a list of files to render, then check that each of the
 				// provided files exists in the chart.
 				if len(showFiles) > 0 {
@@ -190,7 +223,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	addInstallFlags(cmd, f, client, valueOpts)
+	addInstallFlags(cmd, f, client, valueOpts, true)
 	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "validate your manifests against the Kubernetes cluster you are currently pointing at. This is the same validation performed on an install")
@@ -200,6 +233,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for Capabilities.KubeVersion")
 	f.StringSliceVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions")
 	f.BoolVar(&client.UseReleaseName, "release-name", false, "use release name in the output-dir path.")
+	f.BoolVar(&renderNotes, "notes", false, "if set, render the current chart's notes file")
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
 	return cmd
