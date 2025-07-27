@@ -1,0 +1,80 @@
+---
+# Source: foo/templates/rbac/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: foo-sa
+---
+# Source: foo/templates/rbac/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: foo-role
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get","list","watch"]
+---
+# Source: foo/templates/rbac/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: foo-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: foo-role
+subjects:
+- kind: ServiceAccount
+  name: foo-sa
+  namespace: default
+---
+# Source: foo/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: foo
+  labels:
+    helm.sh/chart: "foo-0.1.0"
+    app.kubernetes.io/instance: "luffy"
+    kube-version/major: "1"
+    kube-version/minor: "20"
+    kube-version/version: "v1.20.0"
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: sanji
+  selector:
+    app.kubernetes.io/name: foo
+---
+# Source: foo/templates/tests/test-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "luffy-testconfig"
+  annotations:
+    "helm.sh/hook": test
+data:
+  message: Hello World
+---
+# Source: foo/templates/tests/test-nothing.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "luffy-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: test
+      image: "alpine:latest"
+      envFrom:
+        - configMapRef:
+            name: "luffy-testconfig"
+      command:
+        - echo
+        - "$message"
+  restartPolicy: Never
