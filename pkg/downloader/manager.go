@@ -356,7 +356,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				getter.WithTagName(version))
 		}
 
-		_, v, err := dl.DownloadTo(churl, version, tmpPath)
+		d, v, err := dl.DownloadTo(churl, version, tmpPath)
 		if err != nil {
 			saveErrors = append(saveErrors, fmt.Errorf("could not download %s: %w", churl, err))
 			break
@@ -371,16 +371,11 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		}
 
 		if m.Untar {
-			tmpDest, err := os.MkdirTemp("", "helm-dependency-")
-			if err != nil {
-				saveErrors = append(saveErrors, fmt.Errorf("failed to create temp dir: %w", err))
-				break
-			}
-			if err := chartutil.ExpandFile(tmpDest, tmpPath); err != nil {
+			if err := chartutil.ExpandFile(tmpPath, d); err != nil {
 				saveErrors = append(saveErrors, fmt.Errorf("failed to expand chart %s: %w", tmpPath, err))
 				break
 			}
-			defer os.RemoveAll(tmpDest)
+			defer os.Remove(d)
 		}
 
 		churls[churl] = struct{}{}
@@ -441,9 +436,36 @@ func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) er
 	}
 
 	for _, file := range sourceFiles {
-		if file.IsDir() {
+
+		if file.IsDir() && m.Untar {
+			dirName := file.Name()
+			sourcedir := filepath.Join(source, dirName)
+			destdir := filepath.Join(dest, dirName)
+
+			// Ensure destination directory exists
+			if err := os.MkdirAll(destdir, 0755); err != nil {
+				fmt.Fprintf(m.Out, "Could not create directory %s: %s (Skipping)\n", destdir, err)
+				continue
+			}
+
+			// Load the chart to verify it's valid
+			_, err := loader.Load(sourcedir)
+			if err != nil {
+				fmt.Fprintf(m.Out, "Could not verify %s for moving: %s (Skipping)\n", sourcedir, err)
+				continue
+			}
+
+			// Mark this chart as existing in source
+			existsInSourceDirectory[dirName] = true
+
+			// Copy directory contents to destination
+			if err := fs.CopyDir(sourcedir, destdir); err != nil {
+				fmt.Fprintf(m.Out, "Unable to copy %s to charts dir: %s (Skipping)\n", sourcedir, err)
+				continue
+			}
 			continue
 		}
+
 		filename := file.Name()
 		sourcefile := filepath.Join(source, filename)
 		destfile := filepath.Join(dest, filename)
