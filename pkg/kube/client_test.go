@@ -1083,8 +1083,8 @@ type createPatchTestCase struct {
 
 	// The target state.
 	target *unstructured.Unstructured
-	// The current state as it exists in the release.
-	current *unstructured.Unstructured
+	// The state as it exists in the release.
+	original *unstructured.Unstructured
 	// The actual state as it exists in the cluster.
 	actual *unstructured.Unstructured
 
@@ -1132,15 +1132,15 @@ func (c createPatchTestCase) run(t *testing.T) {
 		},
 	}
 
-	patch, patchType, err := createPatch(targetInfo, c.current, c.threeWayMergeForUnstructured)
+	patch, patchType, err := createPatch(c.original, targetInfo, c.threeWayMergeForUnstructured)
 	if err != nil {
 		t.Fatalf("Failed to create patch: %v", err)
 	}
 
 	if c.expectedPatch != string(patch) {
-		t.Errorf("Unexpected patch.\nTarget:\n%s\nCurrent:\n%s\nActual:\n%s\n\nExpected:\n%s\nGot:\n%s",
+		t.Errorf("Unexpected patch.\nTarget:\n%s\nOriginal:\n%s\nActual:\n%s\n\nExpected:\n%s\nGot:\n%s",
 			c.target,
-			c.current,
+			c.original,
 			c.actual,
 			c.expectedPatch,
 			string(patch),
@@ -1182,9 +1182,9 @@ func TestCreatePatchCustomResourceMetadata(t *testing.T) {
 		"objectset.rio.cattle.io/id":     "default-foo-simple",
 	}, nil)
 	testCase := createPatchTestCase{
-		name:    "take ownership of resource",
-		target:  target,
-		current: target,
+		name:     "take ownership of resource",
+		target:   target,
+		original: target,
 		actual: newTestCustomResourceData(nil, map[string]interface{}{
 			"color": "red",
 		}),
@@ -1206,9 +1206,9 @@ func TestCreatePatchCustomResourceSpec(t *testing.T) {
 		"size":  "large",
 	})
 	testCase := createPatchTestCase{
-		name:    "merge with spec of existing custom resource",
-		target:  target,
-		current: target,
+		name:     "merge with spec of existing custom resource",
+		target:   target,
+		original: target,
 		actual: newTestCustomResourceData(nil, map[string]interface{}{
 			"color":  "red",
 			"weight": "heavy",
@@ -1561,18 +1561,18 @@ func TestPatchResourceClientSide(t *testing.T) {
 				Client:               fake.CreateHTTPClient(client.Do),
 			}
 
-			resourceListCurrent, err := buildResourceList(testFactory, v1.NamespaceDefault, FieldValidationDirectiveStrict, objBody(&tc.OriginalPods), nil)
+			resourceListOriginal, err := buildResourceList(testFactory, v1.NamespaceDefault, FieldValidationDirectiveStrict, objBody(&tc.OriginalPods), nil)
 			require.NoError(t, err)
-			require.Len(t, resourceListCurrent, 1)
+			require.Len(t, resourceListOriginal, 1)
 
 			resourceListTarget, err := buildResourceList(testFactory, v1.NamespaceDefault, FieldValidationDirectiveStrict, objBody(&tc.TargetPods), nil)
 			require.NoError(t, err)
 			require.Len(t, resourceListTarget, 1)
 
-			current := resourceListCurrent[0]
+			original := resourceListOriginal[0]
 			target := resourceListTarget[0]
 
-			err = patchResourceClientSide(target, current.Object, tc.ThreeWayMergeForUnstructured)
+			err = patchResourceClientSide(original.Object, target, tc.ThreeWayMergeForUnstructured)
 			if tc.ExpectedErrorContains != "" {
 				require.ErrorContains(t, err, tc.ExpectedErrorContains)
 			} else {
