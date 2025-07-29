@@ -499,12 +499,12 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 		transformRequests)
 }
 
-func (c *Client) update(target, original ResourceList, updateApplyFunc func(target, original *resource.Info) error) (*Result, error) {
+func (c *Client) update(originals, targets ResourceList, updateApplyFunc func(original, target *resource.Info) error) (*Result, error) {
 	updateErrors := []error{}
 	res := &Result{}
 
-	slog.Debug("checking resources for changes", "resources", len(target))
-	err := target.Visit(func(target *resource.Info, err error) error {
+	slog.Debug("checking resources for changes", "resources", len(targets))
+	err := targets.Visit(func(target *resource.Info, err error) error {
 		if err != nil {
 			return err
 		}
@@ -528,13 +528,13 @@ func (c *Client) update(target, original ResourceList, updateApplyFunc func(targ
 			return nil
 		}
 
-		original := original.Get(target)
+		original := originals.Get(target)
 		if original == nil {
 			kind := target.Mapping.GroupVersionKind.Kind
 			return fmt.Errorf("original object %s with the name %q not found", kind, target.Name)
 		}
 
-		if err := updateApplyFunc(target, original); err != nil {
+		if err := updateApplyFunc(original, target); err != nil {
 			updateErrors = append(updateErrors, err)
 		}
 
@@ -551,7 +551,7 @@ func (c *Client) update(target, original ResourceList, updateApplyFunc func(targ
 		return res, joinErrors(updateErrors, " && ")
 	}
 
-	for _, info := range original.Difference(target) {
+	for _, info := range originals.Difference(targets) {
 		slog.Debug("deleting resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 
 		if err := info.Get(); err != nil {
@@ -661,7 +661,7 @@ func ClientUpdateOptionFieldValidationDirective(fieldValidationDirective FieldVa
 // used for cleanup or other logging purposes.
 //
 // The default is to use server-side apply, equivalent to: `ClientUpdateOptionServerSideApply(true)`
-func (c *Client) Update(original, target ResourceList, options ...ClientUpdateOption) (*Result, error) {
+func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdateOption) (*Result, error) {
 	updateOptions := clientUpdateOptions{
 		serverSideApply:          true, // Default to server-side apply
 		fieldValidationDirective: FieldValidationDirectiveStrict,
@@ -683,12 +683,12 @@ func (c *Client) Update(original, target ResourceList, options ...ClientUpdateOp
 		return nil, fmt.Errorf("invalid operation: cannot use server-side apply and force replace together")
 	}
 
-	makeUpdateApplyFunc := func() func(target, original *resource.Info) error {
+	makeUpdateApplyFunc := func() func(original, target *resource.Info) error {
 		if updateOptions.forceReplace {
 			slog.Debug(
 				"using resource replace update strategy",
 				slog.String("fieldValidationDirective", string(updateOptions.fieldValidationDirective)))
-			return func(target, original *resource.Info) error {
+			return func(original, target *resource.Info) error {
 				if err := replaceResource(target, updateOptions.fieldValidationDirective); err != nil {
 					slog.Debug("error replacing the resource", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 					return err
@@ -706,7 +706,7 @@ func (c *Client) Update(original, target ResourceList, options ...ClientUpdateOp
 				slog.Bool("forceConflicts", updateOptions.forceConflicts),
 				slog.Bool("dryRun", updateOptions.dryRun),
 				slog.String("fieldValidationDirective", string(updateOptions.fieldValidationDirective)))
-			return func(target, _ *resource.Info) error {
+			return func(_, target *resource.Info) error {
 				err := patchResourceServerSide(target, updateOptions.dryRun, updateOptions.forceConflicts, updateOptions.fieldValidationDirective)
 
 				logger := slog.With(
@@ -725,12 +725,12 @@ func (c *Client) Update(original, target ResourceList, options ...ClientUpdateOp
 		}
 
 		slog.Debug("using client-side apply for resource update", slog.Bool("threeWayMergeForUnstructured", updateOptions.threeWayMergeForUnstructured))
-		return func(target, original *resource.Info) error {
-			return patchResourceClientSide(target, original.Object, updateOptions.threeWayMergeForUnstructured)
+		return func(original, target *resource.Info) error {
+			return patchResourceClientSide(original.Object, target, updateOptions.threeWayMergeForUnstructured)
 		}
 	}
 
-	return c.update(target, original, makeUpdateApplyFunc())
+	return c.update(originals, targets, makeUpdateApplyFunc())
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
@@ -753,16 +753,16 @@ func deleteResources(resources ResourceList, propagation metav1.DeletionPropagat
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
-	err := perform(resources, func(info *resource.Info) error {
-		slog.Debug("starting delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
-		err := deleteResource(info, propagation)
+	err := perform(resources, func(target *resource.Info) error {
+		slog.Debug("starting delete resource", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind)
+		err := deleteResource(target, propagation)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
-				slog.Debug("ignoring delete failure", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+				slog.Debug("ignoring delete failure", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			}
 			mtx.Lock()
 			defer mtx.Unlock()
-			res.Deleted = append(res.Deleted, info)
+			res.Deleted = append(res.Deleted, target)
 			return nil
 		}
 		mtx.Lock()
@@ -881,8 +881,8 @@ func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) erro
 		})
 }
 
-func createPatch(target *resource.Info, current runtime.Object, threeWayMergeForUnstructured bool) ([]byte, types.PatchType, error) {
-	oldData, err := json.Marshal(current)
+func createPatch(original runtime.Object, target *resource.Info, threeWayMergeForUnstructured bool) ([]byte, types.PatchType, error) {
+	oldData, err := json.Marshal(original)
 	if err != nil {
 		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing current configuration: %w", err)
 	}
@@ -963,9 +963,9 @@ func replaceResource(target *resource.Info, fieldValidationDirective FieldValida
 
 }
 
-func patchResourceClientSide(target *resource.Info, original runtime.Object, threeWayMergeForUnstructured bool) error {
+func patchResourceClientSide(original runtime.Object, target *resource.Info, threeWayMergeForUnstructured bool) error {
 
-	patch, patchType, err := createPatch(target, original, threeWayMergeForUnstructured)
+	patch, patchType, err := createPatch(original, target, threeWayMergeForUnstructured)
 	if err != nil {
 		return fmt.Errorf("failed to create patch: %w", err)
 	}
@@ -995,25 +995,25 @@ func patchResourceClientSide(target *resource.Info, original runtime.Object, thr
 }
 
 // Patch reource using server-side apply
-func patchResourceServerSide(info *resource.Info, dryRun bool, forceConflicts bool, fieldValidationDirective FieldValidationDirective) error {
+func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts bool, fieldValidationDirective FieldValidationDirective) error {
 	helper := resource.NewHelper(
-		info.Client,
-		info.Mapping).
+		target.Client,
+		target.Mapping).
 		DryRun(dryRun).
 		WithFieldManager(ManagedFieldsManager).
 		WithFieldValidation(string(fieldValidationDirective))
 
 	// Send the full object to be applied on the server side.
-	data, err := runtime.Encode(unstructured.UnstructuredJSONScheme, info.Object)
+	data, err := runtime.Encode(unstructured.UnstructuredJSONScheme, target.Object)
 	if err != nil {
-		return fmt.Errorf("failed to encode object %s/%s with kind %s: %w", info.Namespace, info.Name, info.Mapping.GroupVersionKind.Kind, err)
+		return fmt.Errorf("failed to encode object %s/%s with kind %s: %w", target.Namespace, target.Name, target.Mapping.GroupVersionKind.Kind, err)
 	}
 	options := metav1.PatchOptions{
 		Force: &forceConflicts,
 	}
 	obj, err := helper.Patch(
-		info.Namespace,
-		info.Name,
+		target.Namespace,
+		target.Name,
 		types.ApplyPatchType,
 		data,
 		&options,
@@ -1024,13 +1024,13 @@ func patchResourceServerSide(info *resource.Info, dryRun bool, forceConflicts bo
 		}
 
 		if apierrors.IsConflict(err) {
-			return fmt.Errorf("conflict occurred while applying %s/%s with kind %s: %w", info.Namespace, info.Name, info.Mapping.GroupVersionKind.Kind, err)
+			return fmt.Errorf("conflict occurred while applying %s/%s with kind %s: %w", target.Namespace, target.Name, target.Mapping.GroupVersionKind.Kind, err)
 		}
 
 		return err
 	}
 
-	return info.Refresh(obj, true)
+	return target.Refresh(obj, true)
 }
 
 // GetPodList uses the kubernetes interface to get the list of pods filtered by listOptions
