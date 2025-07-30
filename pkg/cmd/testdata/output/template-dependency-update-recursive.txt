@@ -1,0 +1,22 @@
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "kube-sigs-external-dns" chart repository
+Update Complete. ⎈Happy Helming!⎈
+Saving 1 charts
+Deleting outdated charts
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "kube-sigs-external-dns" chart repository
+Update Complete. ⎈Happy Helming!⎈
+Saving 1 charts
+Deleting outdated charts
+---
+# Source: root/charts/dep1/templates/configmap1.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dep1
+---
+# Source: root/templates/configmaproot.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: root

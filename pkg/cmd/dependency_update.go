@@ -78,7 +78,7 @@ func newDependencyUpdateCmd(_ *action.Configuration, out io.Writer) *cobra.Comma
 			if client.Verify {
 				man.Verify = downloader.VerifyAlways
 			}
-			return man.Update()
+			return man.Update(client.BuildOrUpdateRecursive)
 		},
 	}
 
