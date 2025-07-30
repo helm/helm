@@ -75,6 +75,7 @@ type Manager struct {
 	RegistryClient   *registry.Client
 	RepositoryConfig string
 	RepositoryCache  string
+	Untar            bool
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -268,7 +269,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	defer os.RemoveAll(tmpPath)
 
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
-	var saveError error
+	var saveErrors []error
 	churls := make(map[string]struct{})
 	for _, dep := range deps {
 		// No repository means the chart is in charts directory
@@ -292,7 +293,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			}
 
 			if !constraint.Check(v) {
-				saveError = fmt.Errorf("dependency %s at version %s does not satisfy the constraint %s", dep.Name, ch.Metadata.Version, dep.Version)
+				saveErrors = append(saveErrors, fmt.Errorf("dependency %s at version %s does not satisfy the constraint %s", dep.Name, ch.Metadata.Version, dep.Version))
 				break
 			}
 			continue
@@ -303,7 +304,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			}
 			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version, tmpPath)
 			if err != nil {
-				saveError = err
+				saveErrors = append(saveErrors, err)
 				break
 			}
 			dep.Version = ver
@@ -314,7 +315,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		// https://github.com/helm/helm/issues/1439
 		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
-			saveError = fmt.Errorf("could not find %s: %w", churl, err)
+			saveErrors = append(saveErrors, fmt.Errorf("could not find %s: %w", churl, err))
 			break
 		}
 
@@ -352,23 +353,39 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				getter.WithTagName(version))
 		}
 
-		if _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
-			saveError = fmt.Errorf("could not download %s: %w", churl, err)
+		d, v, err := dl.DownloadTo(churl, version, tmpPath)
+		if err != nil {
+			saveErrors = append(saveErrors, fmt.Errorf("could not download %s: %w", churl, err))
 			break
+		}
+
+		if m.Verify != VerifyNever {
+			for name := range v.SignedBy.Identities {
+				fmt.Fprintf(m.Out, "Signed by: %v\n", name)
+			}
+			fmt.Fprintf(m.Out, "Using Key With Fingerprint: %X\n", v.SignedBy.PrimaryKey.Fingerprint)
+			fmt.Fprintf(m.Out, "Chart Hash Verified: %s\n", v.FileHash)
+		}
+
+		if m.Untar {
+			if err := chartutil.ExpandFile(tmpPath, d); err != nil {
+				saveErrors = append(saveErrors, fmt.Errorf("failed to expand chart %s: %w", tmpPath, err))
+				break
+			}
+			defer os.Remove(d)
 		}
 
 		churls[churl] = struct{}{}
 	}
 
-	// TODO: this should probably be refactored to be a []error, so we can capture and provide more information rather than "last error wins".
-	if saveError == nil {
+	if saveErrors == nil {
 		// now we can move all downloaded charts to destPath and delete outdated dependencies
 		if err := m.safeMoveDeps(deps, tmpPath, destPath); err != nil {
 			return err
 		}
 	} else {
-		fmt.Fprintln(m.Out, "Save error occurred: ", saveError)
-		return saveError
+		fmt.Fprintln(m.Out, "Save error occurred: ", saveErrors)
+		return errors.Join(saveErrors...)
 	}
 	return nil
 }
@@ -416,9 +433,36 @@ func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) er
 	}
 
 	for _, file := range sourceFiles {
-		if file.IsDir() {
+
+		if file.IsDir() && m.Untar {
+			dirName := file.Name()
+			sourcedir := filepath.Join(source, dirName)
+			destdir := filepath.Join(dest, dirName)
+
+			// Ensure destination directory exists
+			if err := os.MkdirAll(destdir, 0755); err != nil {
+				fmt.Fprintf(m.Out, "Could not create directory %s: %s (Skipping)\n", destdir, err)
+				continue
+			}
+
+			// Load the chart to verify it's valid
+			_, err := loader.Load(sourcedir)
+			if err != nil {
+				fmt.Fprintf(m.Out, "Could not verify %s for moving: %s (Skipping)\n", sourcedir, err)
+				continue
+			}
+
+			// Mark this chart as existing in source
+			existsInSourceDirectory[dirName] = true
+
+			// Copy directory contents to destination
+			if err := fs.CopyDir(sourcedir, destdir); err != nil {
+				fmt.Fprintf(m.Out, "Unable to copy %s to charts dir: %s (Skipping)\n", sourcedir, err)
+				continue
+			}
 			continue
 		}
+
 		filename := file.Name()
 		sourcefile := filepath.Join(source, filename)
 		destfile := filepath.Join(dest, filename)
@@ -727,6 +771,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	}
 
 	for _, cr := range repos {
+
 		if urlutil.Equal(repoURL, cr.Config.URL) {
 			var entry repo.ChartVersions
 			entry, err = findEntryByName(name, cr)
