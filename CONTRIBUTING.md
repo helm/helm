@@ -228,6 +228,73 @@ guide](https://helm.sh/docs/community/developers/) to get started.
 Coding conventions and standards are explained in the [official developer
 docs](https://helm.sh/docs/developers/).
 
+### Running tests
+
+To run the test suite, use the `make test` command. This will run all the unit tests.
+
+#### Test Configuration Variables
+
+Helm uses two main variables to configure test execution:
+
+- **TESTFLAGS**: Controls test execution flags (default: `-shuffle=on`)
+- **TESTCOUNT**: Controls how many times tests are run (default: 1, CI uses 2)
+
+#### Default Test Behavior
+
+By default, tests are run in a randomized order with shuffle enabled. This helps detect order-dependent and flaky tests that might pass in development but fail in different environments.
+
+#### Common Test Commands
+
+Run tests with default settings (shuffle enabled, run once):
+```bash
+make test
+```
+
+Run tests without shuffle for faster debugging:
+```bash
+make test TESTFLAGS="-shuffle=off"
+```
+
+Run tests multiple times to catch flaky behavior:
+```bash
+make test TESTCOUNT=3
+```
+
+Run tests with a specific seed to reproduce failures:
+```bash
+make test TESTFLAGS="-shuffle=on -seed=12345"
+```
+
+Run tests multiple times with a specific seed:
+```bash
+make test TESTFLAGS="-shuffle=on -seed=12345" TESTCOUNT=3
+```
+
+Run only coverage tests:
+```bash
+make test-coverage
+```
+
+#### CI Behavior
+
+The continuous integration system runs tests with enhanced settings to catch more issues:
+- Tests are run twice (`TESTCOUNT=2`) to detect flaky behavior
+- Shuffle is always enabled with random seeds
+- Both unit tests and coverage tests are executed
+
+#### Reproducing Test Failures
+
+If a test fails, the seed used for randomization will be printed in the output. Use this seed to reproduce the exact failure:
+
+```bash
+make test TESTFLAGS="-shuffle=on -seed=1642529943"
+```
+
+For persistent issues, run the test multiple times with the same seed:
+```bash
+make test TESTFLAGS="-shuffle=on -seed=1642529943" TESTCOUNT=5
+```
+
 ## Pull Requests
 
 Like any good open source project, we use Pull Requests (PRs) to track code changes.
