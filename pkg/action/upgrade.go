@@ -273,7 +273,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		interactWithRemote = true
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithRemote, u.EnableDNS, u.HideSecret)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithRemote, u.EnableDNS, u.HideSecret, false)
 	if err != nil {
 		return nil, nil, err
 	}
