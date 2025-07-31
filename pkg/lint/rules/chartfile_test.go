@@ -143,6 +143,16 @@ func TestValidateChartMaintainer(t *testing.T) {
 			t.Errorf("validateChartMaintainer(%s, %s) to return no error, got %s", test.Name, test.Email, err.Error())
 		}
 	}
+
+	// Testing for an empty maintainer
+	badChart.Maintainers = []*chart.Maintainer{nil}
+	err := validateChartMaintainer(badChart)
+	if err == nil {
+		t.Errorf("validateChartMaintainer did not return error for nil maintainer as expected")
+	}
+	if err.Error() != "a maintainer entry is empty" {
+		t.Errorf("validateChartMaintainer returned unexpected error for nil maintainer: %s", err.Error())
+	}
 }
 
 func TestValidateChartSources(t *testing.T) {

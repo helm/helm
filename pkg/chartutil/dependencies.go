@@ -16,6 +16,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -255,8 +256,8 @@ func processImportValues(c *chart.Chart, merge bool) error {
 		for _, riv := range r.ImportValues {
 			switch iv := riv.(type) {
 			case map[string]interface{}:
-				child := iv["child"].(string)
-				parent := iv["parent"].(string)
+				child := fmt.Sprintf("%v", iv["child"])
+				parent := fmt.Sprintf("%v", iv["parent"])
 
 				outiv = append(outiv, map[string]string{
 					"child":  child,
