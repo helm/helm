@@ -95,6 +95,7 @@ func New() *EnvSettings {
 	env := &EnvSettings{
 		namespace:                 os.Getenv("HELM_NAMESPACE"),
 		MaxHistory:                envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
+		KubeConfig:                os.Getenv("KUBECONFIG"),
 		KubeContext:               os.Getenv("HELM_KUBECONTEXT"),
 		KubeToken:                 os.Getenv("HELM_KUBETOKEN"),
 		KubeAsUser:                os.Getenv("HELM_KUBEASUSER"),
