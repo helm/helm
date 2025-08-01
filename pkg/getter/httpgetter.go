@@ -35,6 +35,7 @@ type HTTPGetter struct {
 	once      sync.Once
 }
 
+
 // Get performs a Get from repo.Getter and returns the body.
 func (g *HTTPGetter) Get(href string, options ...Option) (*bytes.Buffer, error) {
 	for _, opt := range options {
@@ -80,9 +81,13 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 		}
 	}
 
-	client, err := g.httpClient()
-	if err != nil {
-		return nil, err
+	client := g.opts.client
+	if client == nil {
+		var err error
+		client, err = g.httpClient()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	resp, err := client.Do(req)
@@ -154,4 +159,11 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 	}
 
 	return client, nil
+}
+
+// WithClient sets the HTTP client for the getter
+func WithClient(client *http.Client) Option {
+	return func(opts *options) {
+		opts.client = client
+	}
 }
