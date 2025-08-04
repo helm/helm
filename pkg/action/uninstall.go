@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
@@ -164,6 +165,18 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		}
 
 		return res, nil
+	}
+
+	deployed, err := u.cfg.Releases.DeployedAll(rel.Name)
+	if err != nil && !errors.Is(err, driver.ErrNoDeployedReleases) {
+		return nil, err
+	}
+	// Supersede all previous deployments, see issue #12556 (which is a
+	// variation on #2941).
+	for _, rel := range deployed {
+		u.cfg.Log("superseding previous deployment %d", rel.Version)
+		rel.Info.Status = release.StatusSuperseded
+		u.cfg.recordRelease(rel)
 	}
 
 	if err := u.cfg.Releases.Update(rel); err != nil {
