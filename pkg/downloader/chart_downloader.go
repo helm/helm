@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net/url"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -71,7 +71,7 @@ type ChartDownloader struct {
 	Getters getter.Providers
 	// Options provide parameters to be passed along to the Getter being initialized.
 	Options          []getter.Option
-        Debug bool	//Added to capture the --debug flag
+	Debug            bool //Added to capture the --debug flag
 	RegistryClient   *registry.Client
 	RepositoryConfig string
 	RepositoryCache  string
@@ -79,33 +79,38 @@ type ChartDownloader struct {
 
 type debugTransport struct {
 	*http.Transport
-	out       io.Writer
+	out   io.Writer
+	debug bool
 }
 
 func (t *debugTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-
-	fmt.Fprintf(t.out, "DEBUG: HTTP request to %s\n", req.URL.String())
-	// Log the request
-	reqDump, err := httputil.DumpRequestOut(req, false)
-	if err == nil {
-		fmt.Fprintf(t.out, "%s\n", reqDump)
+	if t.debug {
+		fmt.Fprintf(t.out, "DEBUG: HTTP request to %s\n", req.URL.String())
+		// Log the request
+		reqDump, err := httputil.DumpRequestOut(req, false)
+		if err == nil {
+			fmt.Fprintf(t.out, "%s\n", reqDump)
+		}
 	}
 	// Perform the request
 	resp, err := t.Transport.RoundTrip(req)
 	if err != nil {
-		fmt.Fprintf(t.out, "HTTP request failed: %v\n", err)
+		if t.debug {
+			fmt.Fprintf(t.out, "HTTP request failed: %v\n", err)
+		}
 		return nil, err
 	}
 	// Log the response
-	respDump, err := httputil.DumpResponse(resp, false)
-	if err == nil {
-		fmt.Fprintf(t.out, "HTTP Response: \n%s\n", respDump)
+	if t.debug {
+		respDump, err := httputil.DumpResponse(resp, false)
+		if err == nil {
+			fmt.Fprintf(t.out, "HTTP Response: \n%s\n", respDump)
+		}
+		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+			location := resp.Header["Location"]
+			fmt.Fprintf(t.out, "DEBUG: Redirect to: %v\n", location)
+		}
 	}
-	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
-            	location, _ := resp.Header["Location"]
-          	fmt.Fprintf(t.out, "DEBUG: Redirect to: %v\n", location)
-        }
-
 	return resp, err
 }
 
@@ -123,17 +128,24 @@ func (t *debugTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *provenance.Verification, error) {
 	u, err := c.ResolveChartVersion(ref, version)
 	if err != nil {
-		fmt.Fprintf(c.Out, "DEBUG: Failed to resolve chart version: %v\n", err)
+		if c.Debug {
+			fmt.Fprintf(c.Out, "DEBUG: Failed to resolve chart version: %v\n", err)
+		}
 		return "", nil, err
 	}
-	fmt.Fprintf(c.Out, "DEBUG: Resolved chart URL: %s\n", u.String())
+	if c.Debug {
+		fmt.Fprintf(c.Out, "DEBUG: Resolved chart URL: %s\n", u.String())
+	}
 	g, err := c.Getters.ByScheme(u.Scheme)
 	if err != nil {
-		fmt.Fprintf(c.Out, "DEBUG: Failed to get getter for scheme %s: %v\n", u.Scheme, err)
+		if c.Debug {
+			fmt.Fprintf(c.Out, "DEBUG: Failed to get getter for scheme %s: %v\n", u.Scheme, err)
+		}
 		return "", nil, err
 	}
-	fmt.Fprintf(c.Out, "DEBUG: Using getter for scheme: %s\n", u.Scheme)
-
+	if c.Debug {
+		fmt.Fprintf(c.Out, "DEBUG: Using getter for scheme: %s\n", u.Scheme)
+	}
 	c.Options = append(c.Options, getter.WithAcceptHeader("application/gzip,application/octet-stream"))
 
 	// If debug is enabled, wrap the getter's HTTP client with a debug transport
@@ -141,19 +153,24 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		dt := &debugTransport{
 			Transport: http.DefaultTransport.(*http.Transport).Clone(),
 			out:       c.Out,
+			debug:     c.Debug,
 		}
-		dt.Transport.DisableKeepAlives = true
+		dt.DisableKeepAlives = true
 		c.Options = append(c.Options, getter.WithClient(&http.Client{
-            		Transport: dt,
-            		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-                		fmt.Fprintf(c.Out, "DEBUG: Following redirect to %s\n", req.URL.String())
-                		return nil
-            		},
-        	}))
+			Transport: dt,
+			CheckRedirect: func(req *http.Request, _ []*http.Request) error {
+				if c.Debug {
+					fmt.Fprintf(c.Out, "DEBUG: Following redirect to %s\n", req.URL.String())
+				}
+				return nil
+			},
+		}))
 	}
 	data, err := g.Get(u.String(), c.Options...)
 	if err != nil {
-		fmt.Fprintf(c.Out, "DEBUG: Failed to fetch chart: %v\n", err)
+		if c.Debug {
+			fmt.Fprintf(c.Out, "DEBUG: Failed to fetch chart: %v\n", err)
+		}
 		return "", nil, err
 	}
 
@@ -175,16 +192,18 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		if c.Debug {
 			dt := &debugTransport{
 				Transport: http.DefaultTransport.(*http.Transport).Clone(),
-				out: c.Out,
+				out:       c.Out,
 			}
-			dt.Transport.DisableKeepAlives = true
+			dt.DisableKeepAlives = true
 			c.Options = append(c.Options, getter.WithClient(&http.Client{
-            			Transport: dt,
-            			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-                			fmt.Fprintf(c.Out, "DEBUG: Following redirect to %s\n", req.URL.String())
-                			return nil
-            			},
-        		}))
+				Transport: dt,
+				CheckRedirect: func(req *http.Request, _ []*http.Request) error {
+					if c.Debug {
+						fmt.Fprintf(c.Out, "DEBUG: Following redirect to %s\n", req.URL.String())
+					}
+					return nil
+				},
+			}))
 		}
 		body, err := g.Get(u.String() + ".prov")
 		if err != nil {

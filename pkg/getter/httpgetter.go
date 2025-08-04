@@ -35,7 +35,6 @@ type HTTPGetter struct {
 	once      sync.Once
 }
 
-
 // Get performs a Get from repo.Getter and returns the body.
 func (g *HTTPGetter) Get(href string, options ...Option) (*bytes.Buffer, error) {
 	for _, opt := range options {
