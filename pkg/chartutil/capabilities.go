@@ -19,11 +19,11 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Masterminds/semver/v3"
 	"k8s.io/client-go/kubernetes/scheme"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	k8sversion "k8s.io/apimachinery/pkg/util/version"
 
 	helmversion "helm.sh/helm/v3/internal/version"
 )
@@ -84,14 +84,16 @@ func (kv *KubeVersion) GitVersion() string { return kv.Version }
 
 // ParseKubeVersion parses kubernetes version from string
 func ParseKubeVersion(version string) (*KubeVersion, error) {
-	sv, err := semver.NewVersion(version)
+	// Based on the original k8s version parser.
+	// https://github.com/kubernetes/kubernetes/blob/b266ac2c3e42c2c4843f81e20213d2b2f43e450a/staging/src/k8s.io/apimachinery/pkg/util/version/version.go#L137
+	sv, err := k8sversion.ParseGeneric(version)
 	if err != nil {
 		return nil, err
 	}
 	return &KubeVersion{
 		Version: "v" + sv.String(),
-		Major:   strconv.FormatUint(sv.Major(), 10),
-		Minor:   strconv.FormatUint(sv.Minor(), 10),
+		Major:   strconv.FormatUint(uint64(sv.Major()), 10),
+		Minor:   strconv.FormatUint(uint64(sv.Minor()), 10),
 	}, nil
 }
 
