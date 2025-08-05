@@ -168,6 +168,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				debug:        settings.Debug,
 				showMetadata: false,
 				hideNotes:    client.HideNotes,
+				noColor:      settings.ShouldDisableColor(),
 			})
 		},
 	}
@@ -239,13 +240,13 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		client.Version = ">0.0.0-0"
 	}
 
-	name, chart, err := client.NameAndChart(args)
+	name, chartRef, err := client.NameAndChart(args)
 	if err != nil {
 		return nil, err
 	}
 	client.ReleaseName = name
 
-	cp, err := client.LocateChart(chart, settings)
+	cp, err := client.LocateChart(chartRef, settings)
 	if err != nil {
 		return nil, err
 	}
