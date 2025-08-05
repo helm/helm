@@ -77,7 +77,9 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.BoolVar(&client.DryRun, "dry-run", false, "simulate a rollback")
-	f.BoolVar(&client.Force, "force", false, "force resource update through delete/recreate if needed")
+	f.BoolVar(&client.ForceReplace, "force-replace", false, "force resource updates by replacement")
+	f.BoolVar(&client.ForceReplace, "force", false, "deprecated")
+	f.MarkDeprecated("force", "use --force-replace instead")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during rollback")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&client.WaitForJobs, "wait-for-jobs", false, "if set and --wait enabled, will wait until all Jobs have been completed before marking the release as successful. It will wait for as long as --timeout")
