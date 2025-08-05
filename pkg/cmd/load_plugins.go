@@ -31,7 +31,8 @@ import (
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v4/pkg/plugin"
+	pluginloader "helm.sh/helm/v4/internal/plugins/loader"
+	"helm.sh/helm/v4/internal/plugins/runtimes/subprocess"
 )
 
 const (
@@ -55,7 +56,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 		return
 	}
 
-	found, err := plugin.FindPlugins(settings.PluginsDirectory)
+	found, err := pluginloader.FindPlugins([]string{settings.PluginsDirectory}, cliPluginDescriptor)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load plugins: %s\n", err)
 		return
@@ -63,15 +64,17 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 
 	// Now we create commands for all of these.
 	for _, plug := range found {
-		plug := plug
-		md := plug.Metadata
-		if md.Usage == "" {
-			md.Usage = fmt.Sprintf("the %q plugin", md.Name)
+
+		splug := plug.(*subprocess.Plugin)
+		md := splug.Metadata
+		usage := splug.Metadata.Usage
+		if usage == "" {
+			usage = fmt.Sprintf("the %q plugin", md.Name)
 		}
 
 		c := &cobra.Command{
 			Use:   md.Name,
-			Short: md.Usage,
+			Short: usage,
 			Long:  md.Description,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				u, err := processParent(cmd, args)
@@ -82,8 +85,8 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 				// Call setupEnv before PrepareCommand because
 				// PrepareCommand uses os.ExpandEnv and expects the
 				// setupEnv vars.
-				plugin.SetupPluginEnv(settings, md.Name, plug.Dir)
-				main, argv, prepCmdErr := plug.PrepareCommand(u)
+				subprocess.SetupPluginEnv(settings, md.Name, splug.Dir)
+				main, argv, prepCmdErr := splug.PrepareCommand(u)
 				if prepCmdErr != nil {
 					os.Stderr.WriteString(prepCmdErr.Error())
 					return fmt.Errorf("plugin %q exited with error", md.Name)
@@ -106,7 +109,7 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 		if (err == nil &&
 			((subCmd.HasParent() && subCmd.Parent().Name() == "completion") || subCmd.Name() == cobra.ShellCompRequestCmd)) ||
 			/* for the tests */ subCmd == baseCmd.Root() {
-			loadCompletionForPlugin(c, plug)
+			loadCompletionForPlugin(c, splug)
 		}
 	}
 }
@@ -201,7 +204,7 @@ type pluginCommand struct {
 
 // loadCompletionForPlugin will load and parse any completion.yaml provided by the plugin
 // and add the dynamic completion hook to call the optional plugin.complete
-func loadCompletionForPlugin(pluginCmd *cobra.Command, plugin *plugin.Plugin) {
+func loadCompletionForPlugin(pluginCmd *cobra.Command, plugin *subprocess.Plugin) {
 	// Parse the yaml file providing the plugin's sub-commands and flags
 	cmds, err := loadFile(strings.Join(
 		[]string{plugin.Dir, pluginStaticCompletionFile}, string(filepath.Separator)))
@@ -223,7 +226,7 @@ func loadCompletionForPlugin(pluginCmd *cobra.Command, plugin *plugin.Plugin) {
 
 // addPluginCommands is a recursive method that adds each different level
 // of sub-commands and flags for the plugins that have provided such information
-func addPluginCommands(plugin *plugin.Plugin, baseCmd *cobra.Command, cmds *pluginCommand) {
+func addPluginCommands(plugin *subprocess.Plugin, baseCmd *cobra.Command, cmds *pluginCommand) {
 	if cmds == nil {
 		return
 	}
@@ -320,7 +323,7 @@ func loadFile(path string) (*pluginCommand, error) {
 // pluginDynamicComp call the plugin.complete script of the plugin (if available)
 // to obtain the dynamic completion choices.  It must pass all the flags and sub-commands
 // specified in the command-line to the plugin.complete executable (except helm's global flags)
-func pluginDynamicComp(plug *plugin.Plugin, cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func pluginDynamicComp(plug *subprocess.Plugin, cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	md := plug.Metadata
 
 	u, err := processParent(cmd, args)
@@ -339,7 +342,7 @@ func pluginDynamicComp(plug *plugin.Plugin, cmd *cobra.Command, args []string, t
 		argv = append(argv, u...)
 		argv = append(argv, toComplete)
 	}
-	plugin.SetupPluginEnv(settings, md.Name, plug.Dir)
+	subprocess.SetupPluginEnv(settings, md.Name, plug.Dir)
 
 	cobra.CompDebugln(fmt.Sprintf("calling %s with args %v", main, argv), settings.Debug)
 	buf := new(bytes.Buffer)

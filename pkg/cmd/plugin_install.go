@@ -22,9 +22,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"helm.sh/helm/v4/internal/plugins/runtimes/subprocess"
+
+	"helm.sh/helm/v4/internal/plugins/runtimes/subprocess/installer"
 	"helm.sh/helm/v4/pkg/cmd/require"
-	"helm.sh/helm/v4/pkg/plugin"
-	"helm.sh/helm/v4/pkg/plugin/installer"
 )
 
 type pluginInstallOptions struct {
@@ -80,12 +81,12 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 	}
 
 	slog.Debug("loading plugin", "path", i.Path())
-	p, err := plugin.LoadDir(i.Path())
+	p, err := subprocess.LoadDir(i.Path())
 	if err != nil {
 		return fmt.Errorf("plugin is installed but unusable: %w", err)
 	}
 
-	if err := runHook(p, plugin.Install); err != nil {
+	if err := runHook(p, subprocess.Install); err != nil {
 		return err
 	}
 

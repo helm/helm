@@ -24,8 +24,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v4/pkg/plugin"
-	"helm.sh/helm/v4/pkg/plugin/installer"
+	"helm.sh/helm/v4/internal/plugins"
+	pluginloader "helm.sh/helm/v4/internal/plugins/loader"
+	"helm.sh/helm/v4/internal/plugins/runtimes/subprocess"
+
+	"helm.sh/helm/v4/internal/plugins/runtimes/subprocess/installer"
 )
 
 type pluginUpdateOptions struct {
@@ -63,7 +66,9 @@ func (o *pluginUpdateOptions) complete(args []string) error {
 func (o *pluginUpdateOptions) run(out io.Writer) error {
 	installer.Debug = settings.Debug
 	slog.Debug("loading installed plugins", "path", settings.PluginsDirectory)
-	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
+	plugins, err := pluginloader.FindPlugins(
+		[]string{settings.PluginsDirectory},
+		cliPluginDescriptor)
 	if err != nil {
 		return err
 	}
@@ -86,8 +91,10 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 	return nil
 }
 
-func updatePlugin(p *plugin.Plugin) error {
-	exactLocation, err := filepath.EvalSymlinks(p.Dir)
+func updatePlugin(p plugins.Plugin) error {
+	sp := p.(*subprocess.Plugin)
+
+	exactLocation, err := filepath.EvalSymlinks(sp.Dir)
 	if err != nil {
 		return err
 	}
@@ -105,10 +112,10 @@ func updatePlugin(p *plugin.Plugin) error {
 	}
 
 	slog.Debug("loading plugin", "path", i.Path())
-	updatedPlugin, err := plugin.LoadDir(i.Path())
+	updatedPlugin, err := subprocess.LoadDir(i.Path())
 	if err != nil {
 		return err
 	}
 
-	return runHook(updatedPlugin, plugin.Update)
+	return runHook(updatedPlugin, subprocess.Update)
 }
