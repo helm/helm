@@ -258,13 +258,13 @@ func TestGetMetadata_Run_WithMixedDependencies(t *testing.T) {
 	assert.Equal(t, "1.0.0", result.Version)
 	assert.Equal(t, dependencies, result.Dependencies)
 	assert.Len(t, result.Dependencies, 4)
-	
+
 	// Verify dependencies with aliases
 	assert.Equal(t, "mysql", result.Dependencies[0].Name)
 	assert.Equal(t, "database", result.Dependencies[0].Alias)
 	assert.Equal(t, "redis", result.Dependencies[2].Name)
 	assert.Equal(t, "cache", result.Dependencies[2].Alias)
-	
+
 	// Verify dependencies without aliases
 	assert.Equal(t, "nginx", result.Dependencies[1].Name)
 	assert.Equal(t, "", result.Dependencies[1].Alias)
