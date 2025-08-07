@@ -129,7 +129,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		authorizer.SetUserAgent(version.GetUserAgent())
 
 		if client.username != "" && client.password != "" {
-			authorizer.Credential = func(_ context.Context, hostport string) (auth.Credential, error) {
+			authorizer.Credential = func(_ context.Context, _ string) (auth.Credential, error) {
 				return auth.Credential{Username: client.username, Password: client.password}, nil
 			}
 		} else {
