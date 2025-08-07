@@ -75,7 +75,7 @@ all: build
 #  build
 
 .PHONY: build
-build: $(BINDIR)/$(BINNAME)
+build: $(BINDIR)/$(BINNAME) info
 
 $(BINDIR)/$(BINNAME): $(SRC)
 	CGO_ENABLED=$(CGO_ENABLED) go build $(GOFLAGS) -trimpath -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/helm
