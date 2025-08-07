@@ -142,6 +142,136 @@ func TestGetMetadata_Run_WithDependencies(t *testing.T) {
 	assert.Equal(t, "redis", result.Dependencies[1].Name)
 }
 
+func TestGetMetadata_Run_WithDependenciesAliases(t *testing.T) {
+	cfg := actionConfigFixture(t)
+	client := NewGetMetadata(cfg)
+
+	releaseName := "test-release"
+	deployedTime := helmtime.Now()
+
+	dependencies := []*chart.Dependency{
+		{
+			Name:       "mysql",
+			Version:    "8.0.25",
+			Repository: "https://charts.bitnami.com/bitnami",
+			Alias:      "database",
+		},
+		{
+			Name:       "redis",
+			Version:    "6.2.4",
+			Repository: "https://charts.bitnami.com/bitnami",
+			Alias:      "cache",
+		},
+	}
+
+	rel := &release.Release{
+		Name: releaseName,
+		Info: &release.Info{
+			Status:       release.StatusDeployed,
+			LastDeployed: deployedTime,
+		},
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:         "test-chart",
+				Version:      "1.0.0",
+				AppVersion:   "v1.2.3",
+				Dependencies: dependencies,
+			},
+		},
+		Version:   1,
+		Namespace: "default",
+	}
+
+	cfg.Releases.Create(rel)
+
+	result, err := client.Run(releaseName)
+	require.NoError(t, err)
+
+	assert.Equal(t, releaseName, result.Name)
+	assert.Equal(t, "test-chart", result.Chart)
+	assert.Equal(t, "1.0.0", result.Version)
+	assert.Equal(t, dependencies, result.Dependencies)
+	assert.Len(t, result.Dependencies, 2)
+	assert.Equal(t, "mysql", result.Dependencies[0].Name)
+	assert.Equal(t, "database", result.Dependencies[0].Alias)
+	assert.Equal(t, "redis", result.Dependencies[1].Name)
+	assert.Equal(t, "cache", result.Dependencies[1].Alias)
+}
+
+func TestGetMetadata_Run_WithMixedDependencies(t *testing.T) {
+	cfg := actionConfigFixture(t)
+	client := NewGetMetadata(cfg)
+
+	releaseName := "test-release"
+	deployedTime := helmtime.Now()
+
+	dependencies := []*chart.Dependency{
+		{
+			Name:       "mysql",
+			Version:    "8.0.25",
+			Repository: "https://charts.bitnami.com/bitnami",
+			Alias:      "database",
+		},
+		{
+			Name:       "nginx",
+			Version:    "1.20.0",
+			Repository: "https://charts.bitnami.com/bitnami",
+		},
+		{
+			Name:       "redis",
+			Version:    "6.2.4",
+			Repository: "https://charts.bitnami.com/bitnami",
+			Alias:      "cache",
+		},
+		{
+			Name:       "postgresql",
+			Version:    "11.0.0",
+			Repository: "https://charts.bitnami.com/bitnami",
+		},
+	}
+
+	rel := &release.Release{
+		Name: releaseName,
+		Info: &release.Info{
+			Status:       release.StatusDeployed,
+			LastDeployed: deployedTime,
+		},
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:         "test-chart",
+				Version:      "1.0.0",
+				AppVersion:   "v1.2.3",
+				Dependencies: dependencies,
+			},
+		},
+		Version:   1,
+		Namespace: "default",
+	}
+
+	cfg.Releases.Create(rel)
+
+	result, err := client.Run(releaseName)
+	require.NoError(t, err)
+
+	assert.Equal(t, releaseName, result.Name)
+	assert.Equal(t, "test-chart", result.Chart)
+	assert.Equal(t, "1.0.0", result.Version)
+	assert.Equal(t, dependencies, result.Dependencies)
+	assert.Len(t, result.Dependencies, 4)
+	
+	// Verify dependencies with aliases
+	assert.Equal(t, "mysql", result.Dependencies[0].Name)
+	assert.Equal(t, "database", result.Dependencies[0].Alias)
+	assert.Equal(t, "redis", result.Dependencies[2].Name)
+	assert.Equal(t, "cache", result.Dependencies[2].Alias)
+	
+	// Verify dependencies without aliases
+	assert.Equal(t, "nginx", result.Dependencies[1].Name)
+	assert.Equal(t, "", result.Dependencies[1].Alias)
+	assert.Equal(t, "postgresql", result.Dependencies[3].Name)
+	assert.Equal(t, "", result.Dependencies[3].Alias)
+}
+
 func TestGetMetadata_Run_WithAnnotations(t *testing.T) {
 	cfg := actionConfigFixture(t)
 	client := NewGetMetadata(cfg)
@@ -432,6 +562,59 @@ func TestMetadata_FormattedDepNames_WithComplexDependencies(t *testing.T) {
 
 	result := metadata.FormattedDepNames()
 	assert.Equal(t, "apache,mysql,zookeeper", result)
+}
+
+func TestMetadata_FormattedDepNames_WithAliases(t *testing.T) {
+	testCases := []struct {
+		name         string
+		dependencies []*chart.Dependency
+		expected     string
+	}{
+		{
+			name: "dependencies with aliases",
+			dependencies: []*chart.Dependency{
+				{Name: "mysql", Alias: "database"},
+				{Name: "redis", Alias: "cache"},
+			},
+			expected: "mysql,redis",
+		},
+		{
+			name: "mixed dependencies with and without aliases",
+			dependencies: []*chart.Dependency{
+				{Name: "mysql", Alias: "database"},
+				{Name: "nginx"},
+				{Name: "redis", Alias: "cache"},
+			},
+			expected: "mysql,nginx,redis",
+		},
+		{
+			name: "empty alias should use name",
+			dependencies: []*chart.Dependency{
+				{Name: "mysql", Alias: ""},
+				{Name: "redis", Alias: "cache"},
+			},
+			expected: "mysql,redis",
+		},
+		{
+			name: "sorted by name not alias",
+			dependencies: []*chart.Dependency{
+				{Name: "zookeeper", Alias: "a-service"},
+				{Name: "apache", Alias: "z-service"},
+			},
+			expected: "apache,zookeeper",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			metadata := &Metadata{
+				Dependencies: tc.dependencies,
+			}
+
+			result := metadata.FormattedDepNames()
+			assert.Equal(t, tc.expected, result)
+		})
+	}
 }
 
 func TestGetMetadata_Labels(t *testing.T) {
