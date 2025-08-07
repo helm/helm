@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -70,8 +71,8 @@ type ChartDownloader struct {
 	// Getter collection for the operation
 	Getters getter.Providers
 	// Options provide parameters to be passed along to the Getter being initialized.
-	Options          []getter.Option
-	Debug            bool //Added to capture the --debug flag
+	Options []getter.Option
+	// Debug            bool //Added to capture the --debug flag
 	RegistryClient   *registry.Client
 	RepositoryConfig string
 	RepositoryCache  string
@@ -79,36 +80,37 @@ type ChartDownloader struct {
 
 type debugTransport struct {
 	*http.Transport
-	out   io.Writer
-	debug bool
+	out io.Writer
 }
 
 func (t *debugTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if t.debug {
-		fmt.Fprintf(t.out, "DEBUG: HTTP request to %s\n", req.URL.String())
+	debug := os.Getenv("HELM_DEBUG") == "true"
+
+	if debug {
+		slog.Debug("HTTP request", "url", req.URL.String())
 		// Log the request
 		reqDump, err := httputil.DumpRequestOut(req, false)
 		if err == nil {
-			fmt.Fprintf(t.out, "%s\n", reqDump)
+			slog.Debug("HTTP request dump", "dump", string(reqDump))
 		}
 	}
 	// Perform the request
 	resp, err := t.Transport.RoundTrip(req)
 	if err != nil {
-		if t.debug {
-			fmt.Fprintf(t.out, "HTTP request failed: %v\n", err)
+		if debug {
+			slog.Debug("HTTP request failed", "error", err)
 		}
 		return nil, err
 	}
 	// Log the response
-	if t.debug {
+	if debug {
 		respDump, err := httputil.DumpResponse(resp, false)
 		if err == nil {
-			fmt.Fprintf(t.out, "HTTP Response: \n%s\n", respDump)
+			slog.Debug("HTTP response dump", "dump", string(respDump))
 		}
 		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
 			location := resp.Header["Location"]
-			fmt.Fprintf(t.out, "DEBUG: Redirect to: %v\n", location)
+			slog.Debug("HTTP redirect", "location", location)
 		}
 	}
 	return resp, err
@@ -126,51 +128,43 @@ func (t *debugTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 // Returns a string path to the location where the file was downloaded and a verification
 // (if provenance was verified), or an error if something bad happened.
 func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *provenance.Verification, error) {
-	u, err := c.ResolveChartVersion(ref, version)
-	if err != nil {
-		if c.Debug {
-			fmt.Fprintf(c.Out, "DEBUG: Failed to resolve chart version: %v\n", err)
-		}
-		return "", nil, err
-	}
-	if c.Debug {
-		fmt.Fprintf(c.Out, "DEBUG: Resolved chart URL: %s\n", u.String())
-	}
-	g, err := c.Getters.ByScheme(u.Scheme)
-	if err != nil {
-		if c.Debug {
-			fmt.Fprintf(c.Out, "DEBUG: Failed to get getter for scheme %s: %v\n", u.Scheme, err)
-		}
-		return "", nil, err
-	}
-	if c.Debug {
-		fmt.Fprintf(c.Out, "DEBUG: Using getter for scheme: %s\n", u.Scheme)
-	}
-	c.Options = append(c.Options, getter.WithAcceptHeader("application/gzip,application/octet-stream"))
+	debug := os.Getenv("HELM_DEBUG") == "true"
 
 	// If debug is enabled, wrap the getter's HTTP client with a debug transport
-	if c.Debug {
+	if debug {
 		dt := &debugTransport{
 			Transport: http.DefaultTransport.(*http.Transport).Clone(),
 			out:       c.Out,
-			debug:     c.Debug,
 		}
 		dt.DisableKeepAlives = true
 		c.Options = append(c.Options, getter.WithClient(&http.Client{
 			Transport: dt,
 			CheckRedirect: func(req *http.Request, _ []*http.Request) error {
-				if c.Debug {
-					fmt.Fprintf(c.Out, "DEBUG: Following redirect to %s\n", req.URL.String())
-				}
+				slog.Debug("Following redirect", "url", req.URL.String())
 				return nil
 			},
 		}))
 	}
+
+	c.Options = append(c.Options, getter.WithAcceptHeader("application/gzip,application/octet-stream"))
+
+	u, err := c.ResolveChartVersion(ref, version)
+	if err != nil {
+		slog.Debug("Failed to resolve chart version", "error", err)
+		return "", nil, err
+	}
+	slog.Debug("Resolved chart URL", "url", u.String())
+
+	g, err := c.Getters.ByScheme(u.Scheme)
+	if err != nil {
+		slog.Debug("Failed to get getter for scheme", "scheme", u.Scheme, "error", err)
+		return "", nil, err
+	}
+	slog.Debug("Using getter for scheme", "scheme", u.Scheme)
+
 	data, err := g.Get(u.String(), c.Options...)
 	if err != nil {
-		if c.Debug {
-			fmt.Fprintf(c.Out, "DEBUG: Failed to fetch chart: %v\n", err)
-		}
+		slog.Debug("Failed to fetch chart", "error", err)
 		return "", nil, err
 	}
 
@@ -189,7 +183,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	ver := &provenance.Verification{}
 	if c.Verify > VerifyNever {
 		// If debug is enabled, use the same debug transport for provenance file
-		if c.Debug {
+		if debug {
 			dt := &debugTransport{
 				Transport: http.DefaultTransport.(*http.Transport).Clone(),
 				out:       c.Out,
@@ -198,9 +192,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			c.Options = append(c.Options, getter.WithClient(&http.Client{
 				Transport: dt,
 				CheckRedirect: func(req *http.Request, _ []*http.Request) error {
-					if c.Debug {
-						fmt.Fprintf(c.Out, "DEBUG: Following redirect to %s\n", req.URL.String())
-					}
+					slog.Debug("Following redirect for prov file", "url", req.URL.String())
 					return nil
 				},
 			}))

@@ -19,7 +19,9 @@ package getter
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"os"
 	"slices"
 	"time"
 
@@ -191,6 +193,18 @@ const (
 )
 
 var defaultOptions = []Option{WithTimeout(time.Second * DefaultHTTPTimeout)}
+
+func init() {
+	level := slog.LevelInfo
+	if os.Getenv("HELM_DEBUG") == "true" {
+		level = slog.LevelDebug
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: level,
+	}))
+	slog.SetDefault(logger)
+}
 
 func Getters(extraOpts ...Option) Providers {
 	return Providers{

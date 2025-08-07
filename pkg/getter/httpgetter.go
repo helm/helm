@@ -20,8 +20,10 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"sync"
 
 	"helm.sh/helm/v4/internal/tlsutil"
@@ -46,6 +48,8 @@ func (g *HTTPGetter) Get(href string, options ...Option) (*bytes.Buffer, error) 
 func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	// Set a helm specific user agent so that a repo server and metrics can
 	// separate helm calls from other tools interacting with repos.
+	debug := os.Getenv("HELM_DEBUG") == "true"
+
 	req, err := http.NewRequest(http.MethodGet, href, nil)
 	if err != nil {
 		return nil, err
@@ -89,12 +93,20 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 		}
 	}
 
+	if debug {
+		slog.Debug("HTTP GET request", "url", href)
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
+		if debug {
+			slog.Debug("HTTP GET failed", "error", err)
+		}
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		slog.Debug("HTTP GET non-OK response", "url", href, "status", resp.Status)
 		return nil, fmt.Errorf("failed to fetch %s : %s", href, resp.Status)
 	}
 

@@ -88,7 +88,6 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		RegistryClient:   p.cfg.RegistryClient,
 		RepositoryConfig: p.Settings.RepositoryConfig,
 		RepositoryCache:  p.Settings.RepositoryCache,
-		Debug:            p.Settings.Debug,
 	}
 
 	if registry.IsOCI(chartRef) {
