@@ -283,6 +283,11 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 	if dst == nil {
 		return src
 	}
+	for key, val := range dst {
+		if val == nil {
+			src[key] = nil
+		}
+	}
 	// Because dest has higher precedence than src, dest values override src
 	// values.
 	for key, val := range src {
