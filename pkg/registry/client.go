@@ -128,7 +128,13 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		}
 		authorizer.SetUserAgent(version.GetUserAgent())
 
-		authorizer.Credential = credentials.Credential(client.credentialsStore)
+		if client.username != "" && client.password != "" {
+			authorizer.Credential = func(_ context.Context, hostport string) (auth.Credential, error) {
+				return auth.Credential{Username: client.username, Password: client.password}, nil
+			}
+		} else {
+			authorizer.Credential = credentials.Credential(client.credentialsStore)
+		}
 
 		if client.enableCache {
 			authorizer.Cache = auth.NewCache()
