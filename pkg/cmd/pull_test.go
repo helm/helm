@@ -267,6 +267,7 @@ func runPullTests(t *testing.T, tests []struct {
 	expectFile   string
 	expectDir    bool
 }, outdir string, additionalFlags string) {
+	t.Helper()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := fmt.Sprintf("pull %s -d '%s' --repository-config %s --repository-cache %s --registry-config %s %s",
