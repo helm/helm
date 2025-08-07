@@ -1,0 +1,8 @@
+dependencies:
+  - name: alpine
+    version: "0.1.0"
+    repository: https://example.com/charts
+  - name: mariner
+    version: "4.3.2"
+    repository: https://example.com/charts
+digest: invalid

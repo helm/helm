@@ -23,6 +23,7 @@ import (
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/registry"
 	"helm.sh/helm/v4/pkg/repo"
 	"helm.sh/helm/v4/pkg/repo/repotest"
 )
@@ -60,10 +61,17 @@ func TestResolveChartRef(t *testing.T) {
 		{name: "oci ref with sha256 and version mismatch", ref: "oci://example.com/install/by/sha:0.1.1@sha256:d234555386402a5867ef0169fefe5486858b6d8d209eaf32fd26d29b16807fd6", version: "0.1.2", fail: true},
 	}
 
+	// Create a mock registry client for OCI references
+	registryClient, err := registry.NewClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	c := ChartDownloader{
 		Out:              os.Stderr,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
+		RegistryClient:   registryClient,
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,

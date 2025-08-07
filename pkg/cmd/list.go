@@ -26,6 +26,7 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
+	coloroutput "helm.sh/helm/v4/internal/cli/output"
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
@@ -106,7 +107,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 			}
 
-			return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat, client.NoHeaders))
+			return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat, client.NoHeaders, settings.ShouldDisableColor()))
 		},
 	}
 
@@ -146,9 +147,10 @@ type releaseElement struct {
 type releaseListWriter struct {
 	releases  []releaseElement
 	noHeaders bool
+	noColor   bool
 }
 
-func newReleaseListWriter(releases []*release.Release, timeFormat string, noHeaders bool) *releaseListWriter {
+func newReleaseListWriter(releases []*release.Release, timeFormat string, noHeaders bool, noColor bool) *releaseListWriter {
 	// Initialize the array so no results returns an empty array instead of null
 	elements := make([]releaseElement, 0, len(releases))
 	for _, r := range releases {
@@ -173,26 +175,58 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string, noHead
 
 		elements = append(elements, element)
 	}
-	return &releaseListWriter{elements, noHeaders}
+	return &releaseListWriter{elements, noHeaders, noColor}
 }
 
-func (r *releaseListWriter) WriteTable(out io.Writer) error {
+func (w *releaseListWriter) WriteTable(out io.Writer) error {
 	table := uitable.New()
-	if !r.noHeaders {
-		table.AddRow("NAME", "NAMESPACE", "REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION")
+	if !w.noHeaders {
+		table.AddRow(
+			coloroutput.ColorizeHeader("NAME", w.noColor),
+			coloroutput.ColorizeHeader("NAMESPACE", w.noColor),
+			coloroutput.ColorizeHeader("REVISION", w.noColor),
+			coloroutput.ColorizeHeader("UPDATED", w.noColor),
+			coloroutput.ColorizeHeader("STATUS", w.noColor),
+			coloroutput.ColorizeHeader("CHART", w.noColor),
+			coloroutput.ColorizeHeader("APP VERSION", w.noColor),
+		)
 	}
-	for _, r := range r.releases {
-		table.AddRow(r.Name, r.Namespace, r.Revision, r.Updated, r.Status, r.Chart, r.AppVersion)
+	for _, r := range w.releases {
+		// Parse the status string back to a release.Status to use color
+		var status release.Status
+		switch r.Status {
+		case "deployed":
+			status = release.StatusDeployed
+		case "failed":
+			status = release.StatusFailed
+		case "pending-install":
+			status = release.StatusPendingInstall
+		case "pending-upgrade":
+			status = release.StatusPendingUpgrade
+		case "pending-rollback":
+			status = release.StatusPendingRollback
+		case "uninstalling":
+			status = release.StatusUninstalling
+		case "uninstalled":
+			status = release.StatusUninstalled
+		case "superseded":
+			status = release.StatusSuperseded
+		case "unknown":
+			status = release.StatusUnknown
+		default:
+			status = release.Status(r.Status)
+		}
+		table.AddRow(r.Name, coloroutput.ColorizeNamespace(r.Namespace, w.noColor), r.Revision, r.Updated, coloroutput.ColorizeStatus(status, w.noColor), r.Chart, r.AppVersion)
 	}
 	return output.EncodeTable(out, table)
 }
 
-func (r *releaseListWriter) WriteJSON(out io.Writer) error {
-	return output.EncodeJSON(out, r.releases)
+func (w *releaseListWriter) WriteJSON(out io.Writer) error {
+	return output.EncodeJSON(out, w.releases)
 }
 
-func (r *releaseListWriter) WriteYAML(out io.Writer) error {
-	return output.EncodeYAML(out, r.releases)
+func (w *releaseListWriter) WriteYAML(out io.Writer) error {
+	return output.EncodeYAML(out, w.releases)
 }
 
 // Returns all releases from 'releases', except those with names matching 'ignoredReleases'

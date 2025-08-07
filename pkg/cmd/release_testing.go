@@ -78,6 +78,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 				debug:        settings.Debug,
 				showMetadata: false,
 				hideNotes:    client.HideNotes,
+				noColor:      settings.ShouldDisableColor(),
 			}); err != nil {
 				return err
 			}

@@ -18,6 +18,7 @@ package kube
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -34,7 +35,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	jsonserializer "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/kubernetes"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
@@ -1078,4 +1081,106 @@ func TestCreatePatchCustomResourceSpec(t *testing.T) {
 	testCase.threeWayMergeForUnstructured = false
 	testCase.expectedPatch = `{}`
 	t.Run(testCase.name, testCase.run)
+}
+
+type errorFactory struct {
+	*cmdtesting.TestFactory
+	err error
+}
+
+func (f *errorFactory) KubernetesClientSet() (*kubernetes.Clientset, error) {
+	return nil, f.err
+}
+
+func newTestClientWithDiscoveryError(t *testing.T, err error) *Client {
+	t.Helper()
+	c := newTestClient(t)
+	c.Factory.(*cmdtesting.TestFactory).Client = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			if req.URL.Path == "/version" {
+				return nil, err
+			}
+			resp, respErr := newResponse(http.StatusOK, &v1.Pod{})
+			return resp, respErr
+		}),
+	}
+	return c
+}
+
+func TestIsReachable(t *testing.T) {
+	const (
+		expectedUnreachableMsg = "kubernetes cluster unreachable"
+	)
+	tests := []struct {
+		name          string
+		setupClient   func(*testing.T) *Client
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "successful reachability test",
+			setupClient: func(t *testing.T) *Client {
+				t.Helper()
+				client := newTestClient(t)
+				client.kubeClient = k8sfake.NewSimpleClientset()
+				return client
+			},
+			expectError: false,
+		},
+		{
+			name: "client creation error with ErrEmptyConfig",
+			setupClient: func(t *testing.T) *Client {
+				t.Helper()
+				client := newTestClient(t)
+				client.Factory = &errorFactory{err: genericclioptions.ErrEmptyConfig}
+				return client
+			},
+			expectError:   true,
+			errorContains: expectedUnreachableMsg,
+		},
+		{
+			name: "client creation error with general error",
+			setupClient: func(t *testing.T) *Client {
+				t.Helper()
+				client := newTestClient(t)
+				client.Factory = &errorFactory{err: errors.New("connection refused")}
+				return client
+			},
+			expectError:   true,
+			errorContains: "kubernetes cluster unreachable: connection refused",
+		},
+		{
+			name: "discovery error with cluster unreachable",
+			setupClient: func(t *testing.T) *Client {
+				t.Helper()
+				return newTestClientWithDiscoveryError(t, http.ErrServerClosed)
+			},
+			expectError:   true,
+			errorContains: expectedUnreachableMsg,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := tt.setupClient(t)
+			err := client.IsReachable()
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected error but got nil")
+					return
+				}
+
+				if !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("expected error message to contain '%s', got: %v", tt.errorContains, err)
+				}
+
+			} else {
+				if err != nil {
+					t.Errorf("expected no error but got: %v", err)
+				}
+			}
+		})
+	}
 }
