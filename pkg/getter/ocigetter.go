@@ -17,6 +17,7 @@ package getter
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -124,6 +125,9 @@ func (g *OCIGetter) newRegistryClient() (*registry.Client, error) {
 			TLSHandshakeTimeout:   10 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,
 			Proxy:                 http.ProxyFromEnvironment,
+			// Being nil would cause the tls.Config default to be used
+			// "NewTLSConfig" modifies an empty TLS config, not the default one
+			TLSClientConfig: &tls.Config{},
 		}
 	})
 
