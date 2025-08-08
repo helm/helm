@@ -69,6 +69,21 @@ var (
 	errPending = errors.New("another operation (install/upgrade/rollback) is in progress")
 )
 
+type DryRunStrategy string
+
+const (
+	// DryRunNone indicates the client will make all mutating calls
+	DryRunNone DryRunStrategy = "none"
+
+	// DryRunClient, or client-side dry-run, indicates the client will avoid
+	// making calls to the server
+	DryRunClient DryRunStrategy = "client"
+
+	// DryRunServer, or server-side dry-run, indicates the client will send
+	// calls to the APIServer with the dry-run parameter to prevent persisting changes
+	DryRunServer DryRunStrategy = "server"
+)
+
 // Configuration injects the dependencies that all actions share.
 type Configuration struct {
 	// RESTClientGetter is an interface that loads Kubernetes clients.
@@ -519,4 +534,14 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 // SetHookOutputFunc sets the HookOutputFunc on the Configuration.
 func (cfg *Configuration) SetHookOutputFunc(hookOutputFunc func(_, _, _ string) io.Writer) {
 	cfg.HookOutputFunc = hookOutputFunc
+}
+
+// isDryRun returns true if the strategy is set to run as a DryRun
+func isDryRun(strategy DryRunStrategy) bool {
+	return strategy == DryRunClient || strategy == DryRunServer
+}
+
+// interactWithServer determine whether or not to interact with a remote Kubernetes server
+func interactWithServer(strategy DryRunStrategy) bool {
+	return strategy == DryRunNone || strategy == DryRunServer
 }
