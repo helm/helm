@@ -30,7 +30,7 @@ func TestLocalInstaller(t *testing.T) {
 	ensure.HelmHome(t)
 	// Make a temp dir
 	tdir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tdir, "plugin.yaml"), []byte{}, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tdir, "plugin.yaml"), []byte{}, 0o644); err != nil {
 		t.Fatal(err)
 	}
 

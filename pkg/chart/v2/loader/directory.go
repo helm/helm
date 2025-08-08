@@ -113,7 +113,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 		files = append(files, &BufferedFile{Name: n, Data: data})
 		return nil
 	}
-	if err = sympath.Walk(topdir, walk); err != nil {
+	if err := sympath.Walk(topdir, walk); err != nil {
 		return c, err
 	}
 

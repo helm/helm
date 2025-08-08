@@ -161,7 +161,7 @@ func TestVerifyChart(t *testing.T) {
 	}
 	// The verification is tested at length in the provenance package. Here,
 	// we just want a quick sanity check that the v is not empty.
-	if len(v.FileHash) == 0 {
+	if v.FileHash == "" {
 		t.Error("Digest missing")
 	}
 }

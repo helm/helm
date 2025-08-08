@@ -73,7 +73,7 @@ type TestSuite struct {
 func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	suite.WorkspaceDir = testWorkspaceDir
 	os.RemoveAll(suite.WorkspaceDir)
-	os.Mkdir(suite.WorkspaceDir, 0700)
+	os.Mkdir(suite.WorkspaceDir, 0o700)
 
 	var (
 		out bytes.Buffer
@@ -121,7 +121,7 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
 	suite.Nil(err, "no error generating bcrypt password for test htpasswd file")
 	htpasswdPath := filepath.Join(suite.WorkspaceDir, testHtpasswdFileBasename)
-	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0o644)
 	suite.Nil(err, "no error creating test htpasswd file")
 
 	// Registry config
@@ -185,7 +185,8 @@ func teardown(suite *TestSuite) {
 
 func initCompromisedRegistryTestServer() string {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.URL.Path, "manifests") {
+		switch {
+		case strings.Contains(r.URL.Path, "manifests"):
 			w.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
 			w.WriteHeader(http.StatusOK)
 
@@ -202,17 +203,17 @@ func initCompromisedRegistryTestServer() string {
     }
   ]
 }`, ConfigMediaType, ChartLayerMediaType)
-		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:a705ee2789ab50a5ba20930f246dbd5cc01ff9712825bb98f57ee8414377f133" {
+		case r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:a705ee2789ab50a5ba20930f246dbd5cc01ff9712825bb98f57ee8414377f133":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("{\"name\":\"mychart\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\\n" +
 				"an 'application' or a 'library' chart.\",\"apiVersion\":\"v2\",\"appVersion\":\"1.16.0\",\"type\":" +
 				"\"application\"}"))
-		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb" {
+		case r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb":
 			w.Header().Set("Content-Type", ChartLayerMediaType)
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("b"))
-		} else {
+		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}))

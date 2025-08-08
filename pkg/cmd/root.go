@@ -227,7 +227,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		cobra.CompDebugln("About to get the different kube-contexts", settings.Debug)
 
 		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-		if len(settings.KubeConfig) > 0 {
+		if settings.KubeConfig != "" {
 			loadingRules = &clientcmd.ClientConfigLoadingRules{ExplicitPath: settings.KubeConfig}
 		}
 		if config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(

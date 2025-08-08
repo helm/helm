@@ -290,17 +290,19 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 	// values.
 	for key, val := range src {
 		fullkey := concatPrefix(prefix, key)
-		if dv, ok := dst[key]; ok && !merge && dv == nil {
+		dv, ok := dst[key]
+		switch {
+		case ok && !merge && dv == nil:
 			delete(dst, key)
-		} else if !ok {
+		case !ok:
 			dst[key] = val
-		} else if istable(val) {
+		case istable(val):
 			if istable(dv) {
 				coalesceTablesFullKey(printf, dv.(map[string]interface{}), val.(map[string]interface{}), fullkey, merge)
 			} else {
 				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
 			}
-		} else if istable(dv) && val != nil {
+		case istable(dv) && val != nil:
 			printf("warning: destination for %s is a table. Ignoring non-table value (%v)", fullkey, val)
 		}
 	}

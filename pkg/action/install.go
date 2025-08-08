@@ -63,7 +63,7 @@ import (
 // since there can be filepath in front of it.
 const notesFileSuffix = "NOTES.txt"
 
-const defaultDirectoryPermission = 0755
+const defaultDirectoryPermission = 0o755
 
 // Install performs an installation operation.
 type Install struct {
@@ -427,7 +427,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	return rel, err
 }
 
-func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {
+func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, toBeAdopted, resources kube.ResourceList) (*release.Release, error) {
 	type Msg struct {
 		r *release.Release
 		e error
@@ -455,7 +455,7 @@ func (i *Install) isDryRun() bool {
 	return false
 }
 
-func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {
+func (i *Install) performInstall(rel *release.Release, toBeAdopted, resources kube.ResourceList) (*release.Release, error) {
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
@@ -500,7 +500,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		}
 	}
 
-	if len(i.Description) > 0 {
+	if i.Description != "" {
 		rel.SetStatus(release.StatusDeployed, i.Description)
 	} else {
 		rel.SetStatus(release.StatusDeployed, "Install complete")
@@ -621,8 +621,8 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 }
 
 // write the <data> to <output-dir>/<name>. <appendData> controls if the file is created or content will be appended
-func writeToFile(outputDir string, name string, data string, appendData bool) error {
-	outfileName := strings.Join([]string{outputDir, name}, string(filepath.Separator))
+func writeToFile(outputDir, name, data string, appendData bool) error {
+	outfileName := outputDir + string(filepath.Separator) + name
 
 	err := ensureDirectoryForFile(outfileName)
 	if err != nil {
@@ -648,7 +648,7 @@ func writeToFile(outputDir string, name string, data string, appendData bool) er
 
 func createOrOpenFile(filename string, appendData bool) (*os.File, error) {
 	if appendData {
-		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
+		return os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0o600)
 	}
 	return os.Create(filename)
 }
@@ -864,7 +864,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		dl.Options = append(dl.Options, getter.WithBasicAuth(c.Username, c.Password))
 	}
 
-	if err := os.MkdirAll(settings.RepositoryCache, 0755); err != nil {
+	if err := os.MkdirAll(settings.RepositoryCache, 0o755); err != nil {
 		return "", err
 	}
 

@@ -110,7 +110,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	}
 
 	destfile := filepath.Join(dest, name)
-	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
+	if err := fileutil.AtomicWriteFile(destfile, data, 0o644); err != nil {
 		return destfile, nil, err
 	}
 
@@ -126,7 +126,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			return destfile, ver, nil
 		}
 		provfile := destfile + ".prov"
-		if err := fileutil.AtomicWriteFile(provfile, body, 0644); err != nil {
+		if err := fileutil.AtomicWriteFile(provfile, body, 0o644); err != nil {
 			return destfile, nil, err
 		}
 
@@ -176,7 +176,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 		return u, err
 	}
 
-	if u.IsAbs() && len(u.Host) > 0 && len(u.Path) > 0 {
+	if u.IsAbs() && u.Host != "" && u.Path != "" {
 		// In this case, we have to find the parent repo that contains this chart
 		// URL. And this is an unfortunate problem, as it requires actually going
 		// through each repo cache file and finding a matching URL. But basically
