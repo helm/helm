@@ -205,6 +205,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
+	f.BoolVar(&client.DependencyUpdateRecursive, "dependency-update-recursive", false, "update dependencies recursively if they are missing before installing the chart")
 	f.BoolVar(&client.DisableOpenAPIValidation, "disable-openapi-validation", false, "if set, the installation process will not validate rendered templates against the Kubernetes OpenAPI Schema")
 	f.BoolVar(&client.Atomic, "atomic", false, "if set, the installation process deletes the installation on failure. The --wait flag will be set automatically to \"watcher\" if --atomic is used")
 	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed. By default, CRDs are installed if not already present")
@@ -278,7 +279,8 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/helm/helm/issues/2209
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
-			if client.DependencyUpdate {
+			err = fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies: %w", err)
+			if client.DependencyUpdate || client.DependencyUpdateRecursive {
 				man := &downloader.Manager{
 					Out:              out,
 					ChartPath:        cp,
@@ -290,7 +292,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					Debug:            settings.Debug,
 					RegistryClient:   client.GetRegistryClient(),
 				}
-				if err := man.Update(); err != nil {
+				if err := man.Update(client.DependencyUpdateRecursive); err != nil {
 					return nil, err
 				}
 				// Reload the chart with the updated Chart.lock file.
@@ -298,7 +300,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					return nil, fmt.Errorf("failed reloading chart after repo update: %w", err)
 				}
 			} else {
-				return nil, fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies: %w", err)
+				return nil, err
 			}
 		}
 	}
