@@ -22,6 +22,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
@@ -329,9 +331,7 @@ func TestMaxHistoryErrorHandling(t *testing.T) {
 	rls2 := ReleaseTestData{Name: name, Version: 2, Status: rspb.StatusSuperseded}.ToRelease()
 	wantErr := errMaxHistoryMockDriverSomethingHappened
 	gotErr := storage.Create(rls2)
-	if !errors.Is(gotErr, wantErr) {
-		t.Fatalf("Storing release 'angry-bird' (v2) should return the error %#v, but returned %#v", wantErr, gotErr)
-	}
+	require.ErrorIsf(t, gotErr, wantErr, "Storing release 'angry-bird' (v2) should return the error %#v, but returned %#v", wantErr, gotErr)
 }
 
 func TestStorageRemoveLeastRecent(t *testing.T) {

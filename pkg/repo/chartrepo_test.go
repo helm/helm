@@ -18,7 +18,6 @@ package repo
 
 import (
 	"bytes"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -27,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/cli"
@@ -203,9 +203,7 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 	} else if err.Error() != `chart "nginx1" not found in `+srv.URL+` repository` {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
 	}
-	if !errors.Is(err, ChartNotFoundError{}) {
-		t.Errorf("error is not of correct error type structure")
-	}
+	require.ErrorIsf(t, err, ChartNotFoundError{}, "error is not of correct error type structure")
 
 	if _, err = FindChartInRepoURL(srv.URL, "nginx1", g, WithChartVersion("0.1.0")); err == nil {
 		t.Errorf("Expected error for chart not found, but did not get any errors")

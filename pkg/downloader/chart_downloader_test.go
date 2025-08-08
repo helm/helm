@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
@@ -362,7 +364,6 @@ func TestScanReposForURL(t *testing.T) {
 
 	// A lookup failure should produce an ErrNoOwnerRepo
 	u = "https://no.such.repo/foo/bar-1.23.4.tgz"
-	if _, err = c.scanReposForURL(u, rf); err != ErrNoOwnerRepo {
-		t.Fatalf("expected ErrNoOwnerRepo, got %v", err)
-	}
+	_, err = c.scanReposForURL(u, rf)
+	require.ErrorIs(t, err, ErrNoOwnerRepo, "expected ErrNoOwnerRepo, got %v", err)
 }

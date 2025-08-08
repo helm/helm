@@ -16,10 +16,11 @@ package driver
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 
 	rspb "helm.sh/helm/v4/pkg/release/v1"
@@ -160,9 +161,7 @@ func TestSecretQuery(t *testing.T) {
 	}
 
 	_, err = secrets.Query(map[string]string{"name": "notExist"})
-	if err != ErrReleaseNotFound {
-		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
-	}
+	assert.ErrorIsf(t, err, ErrReleaseNotFound, "Expected {%v}, got {%v}", ErrReleaseNotFound, err)
 }
 
 func TestSecretCreate(t *testing.T) {
@@ -231,9 +230,7 @@ func TestSecretDelete(t *testing.T) {
 
 	// perform the delete on a non-existing release
 	_, err := secrets.Delete("nonexistent")
-	if err != ErrReleaseNotFound {
-		t.Fatalf("Expected ErrReleaseNotFound, got: {%v}", err)
-	}
+	require.ErrorIsf(t, err, ErrReleaseNotFound, "Expected ErrReleaseNotFound, got: {%v}", err)
 
 	// perform the delete
 	rls, err := secrets.Delete(key)
@@ -244,7 +241,5 @@ func TestSecretDelete(t *testing.T) {
 		t.Errorf("Expected {%v}, got {%v}", rel, rls)
 	}
 	_, err = secrets.Get(key)
-	if !errors.Is(err, ErrReleaseNotFound) {
-		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
-	}
+	require.ErrorIsf(t, err, ErrReleaseNotFound, "Expected {%v}, got {%v}", ErrReleaseNotFound, err)
 }

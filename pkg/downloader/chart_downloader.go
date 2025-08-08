@@ -187,7 +187,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (*url.URL, er
 		if err != nil {
 			// If there is no special config, return the default HTTP client and
 			// swallow the error.
-			if err == ErrNoOwnerRepo {
+			if errors.Is(err, ErrNoOwnerRepo) {
 				// Make sure to add the ref URL as the URL for the getter
 				c.Options = append(c.Options, getter.WithURL(ref))
 				return u, nil
