@@ -14,7 +14,7 @@ require (
 	github.com/cyphar/filepath-securejoin v0.4.1
 	github.com/distribution/distribution/v3 v3.0.0
 	github.com/evanphx/json-patch/v5 v5.9.11
-	github.com/fatih/color v1.13.0
+	github.com/fatih/color v1.18.0
 	github.com/fluxcd/cli-utils v0.36.0-flux.14
 	github.com/foxcpp/go-mockdns v1.1.0
 	github.com/gobwas/glob v0.2.3
@@ -102,7 +102,7 @@ require (
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.17 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/miekg/dns v1.1.57 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
