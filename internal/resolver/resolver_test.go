@@ -81,7 +81,7 @@ func TestResolve(t *testing.T) {
 			},
 			expect: &chart.Lock{
 				Dependencies: []*chart.Dependency{
-					{Name: "alpine", Repository: "http://example.com", Version: "0.2.0"},
+					{Name: "alpine", Repository: "http://example.com", Version: "0.2.0", ChartURL: "https://charts.helm.sh/stable/alpine-0.1.0.tgz"},
 				},
 			},
 		},
