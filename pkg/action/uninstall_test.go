@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
@@ -133,10 +134,10 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	}`
 	unAction.cfg.Releases.Create(rel)
 	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.DeleteWithPropagationError = fmt.Errorf("Uninstall with cascade failed")
+	failer.DeleteError = fmt.Errorf("Uninstall with cascade failed")
 	failer.BuildDummy = true
 	unAction.cfg.KubeClient = failer
 	_, err := unAction.Run(rel.Name)
-	is.Error(err)
+	require.Error(t, err)
 	is.Contains(err.Error(), "failed to delete release: come-fail-away")
 }
