@@ -162,7 +162,7 @@ func (i HTTPInstaller) Path() string {
 	if i.Source == "" {
 		return ""
 	}
-	return helmpath.DataPath("plugins", i.PluginName)
+	return filepath.Join(i.base.PluginsDirectory, i.PluginName)
 }
 
 // cleanJoin resolves dest as a subpath of root.
