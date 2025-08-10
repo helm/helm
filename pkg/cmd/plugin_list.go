@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"slices"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
@@ -60,13 +61,7 @@ func filterPlugins(plugins []*plugin.Plugin, ignoredPluginNames []string) []*plu
 
 	var filteredPlugins []*plugin.Plugin
 	for _, plugin := range plugins {
-		found := false
-		for _, ignoredName := range ignoredPluginNames {
-			if plugin.Metadata.Name == ignoredName {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(ignoredPluginNames, plugin.Metadata.Name)
 		if !found {
 			filteredPlugins = append(filteredPlugins, plugin)
 		}

@@ -19,6 +19,7 @@ package util
 import (
 	"fmt"
 	"log"
+	"maps"
 
 	"github.com/mitchellh/copystructure"
 
@@ -182,9 +183,7 @@ func coalesceGlobals(printf printFn, dest, src map[string]interface{}, prefix st
 
 func copyMap(src map[string]interface{}) map[string]interface{} {
 	m := make(map[string]interface{}, len(src))
-	for k, v := range src {
-		m[k] = v
-	}
+	maps.Copy(m, src)
 	return m
 }
 

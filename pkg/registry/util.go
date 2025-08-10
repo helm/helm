@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -45,12 +46,7 @@ func IsOCI(url string) bool {
 
 // ContainsTag determines whether a tag is found in a provided list of tags
 func ContainsTag(tags []string, tag string) bool {
-	for _, t := range tags {
-		if tag == t {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(tags, tag)
 }
 
 func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (string, error) {

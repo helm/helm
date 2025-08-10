@@ -185,7 +185,7 @@ func (file *manifestFile) sort(result *result) error {
 		}
 
 		isUnknownHook := false
-		for _, hookType := range strings.Split(hookTypes, ",") {
+		for hookType := range strings.SplitSeq(hookTypes, ",") {
 			hookType = strings.ToLower(strings.TrimSpace(hookType))
 			e, ok := events[hookType]
 			if !ok {
@@ -236,7 +236,7 @@ func calculateHookWeight(entry SimpleHead) int {
 // operateAnnotationValues finds the given annotation and runs the operate function with the value of that annotation
 func operateAnnotationValues(entry SimpleHead, annotation string, operate func(p string)) {
 	if dps, ok := entry.Metadata.Annotations[annotation]; ok {
-		for _, dp := range strings.Split(dps, ",") {
+		for dp := range strings.SplitSeq(dps, ",") {
 			dp = strings.ToLower(strings.TrimSpace(dp))
 			operate(dp)
 		}

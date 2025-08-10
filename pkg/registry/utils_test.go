@@ -29,6 +29,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/distribution/distribution/v3/configuration"
@@ -36,7 +37,6 @@ import (
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
 	"github.com/foxcpp/go-mockdns"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
@@ -126,12 +126,14 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 
 	// Registry config
 	config := &configuration.Configuration{}
-	port, err := freeport.GetFreePort()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	suite.Nil(err, "no error finding free port for test registry")
+	defer ln.Close()
 
 	// Change the registry host to another host which is not localhost.
 	// This is required because Docker enforces HTTP if the registry
 	// host is localhost/127.0.0.1.
+	port := ln.Addr().(*net.TCPAddr).Port
 	suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
 	suite.srv, err = mockdns.NewServer(map[string]mockdns.Zone{
 		"helm-test-registry.": {
@@ -141,7 +143,7 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	suite.Nil(err, "no error creating mock DNS server")
 	suite.srv.PatchNet(net.DefaultResolver)
 
-	config.HTTP.Addr = fmt.Sprintf(":%d", port)
+	config.HTTP.Addr = ln.Addr().String()
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
 
@@ -172,6 +174,9 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 }
 
 func teardown(suite *TestSuite) {
+	var lock sync.Mutex
+	lock.Lock()
+	defer lock.Unlock()
 	if suite.srv != nil {
 		mockdns.UnpatchNet(net.DefaultResolver)
 		suite.srv.Close()
@@ -182,7 +187,7 @@ func initCompromisedRegistryTestServer() string {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "manifests") {
 			w.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 
 			fmt.Fprintf(w, `{ "schemaVersion": 2, "config": {
     "mediaType": "%s",
@@ -199,16 +204,16 @@ func initCompromisedRegistryTestServer() string {
 }`, ConfigMediaType, ChartLayerMediaType)
 		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:a705ee2789ab50a5ba20930f246dbd5cc01ff9712825bb98f57ee8414377f133" {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("{\"name\":\"mychart\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\\n" +
 				"an 'application' or a 'library' chart.\",\"apiVersion\":\"v2\",\"appVersion\":\"1.16.0\",\"type\":" +
 				"\"application\"}"))
 		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb" {
 			w.Header().Set("Content-Type", ChartLayerMediaType)
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("b"))
 		} else {
-			w.WriteHeader(500)
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}))
 

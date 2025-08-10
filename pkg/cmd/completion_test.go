@@ -27,6 +27,7 @@ import (
 
 // Check if file completion should be performed according to parameter 'shouldBePerformed'
 func checkFileCompletion(t *testing.T, cmdName string, shouldBePerformed bool) {
+	t.Helper()
 	storage := storageFixture()
 	storage.Create(&release.Release{
 		Name: "myrelease",
@@ -64,6 +65,7 @@ func TestCompletionFileCompletion(t *testing.T) {
 }
 
 func checkReleaseCompletion(t *testing.T, cmdName string, multiReleasesAllowed bool) {
+	t.Helper()
 	multiReleaseTestGolden := "output/empty_nofile_comp.txt"
 	if multiReleasesAllowed {
 		multiReleaseTestGolden = "output/release_list_repeat_comp.txt"

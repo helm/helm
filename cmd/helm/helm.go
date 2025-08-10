@@ -34,14 +34,13 @@ func main() {
 	// manager as picked up by the automated name detection.
 	kube.ManagedFieldsManager = "helm"
 
-	cmd, err := helmcmd.NewRootCmd(os.Stdout, os.Args[1:])
+	cmd, err := helmcmd.NewRootCmd(os.Stdout, os.Args[1:], helmcmd.SetupLogging)
 	if err != nil {
 		slog.Warn("command failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	if err := cmd.Execute(); err != nil {
-		slog.Debug("error", slog.Any("error", err))
 		switch e := err.(type) {
 		case helmcmd.PluginError:
 			os.Exit(e.Code)

@@ -65,6 +65,7 @@ func Parse(layout, value string) (Time, error) {
 	t, err := time.Parse(layout, value)
 	return Time{Time: t}, err
 }
+
 func ParseInLocation(layout, value string, loc *time.Location) (Time, error) {
 	t, err := time.ParseInLocation(layout, value, loc)
 	return Time{Time: t}, err

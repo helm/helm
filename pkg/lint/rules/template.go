@@ -25,6 +25,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/validation"
@@ -53,10 +54,14 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
-	templatesDirExist := linter.RunLinterRule(support.WarningSev, fpath, validateTemplatesDir(templatesPath))
-
 	// Templates directory is optional for now
-	if !templatesDirExist {
+	templatesDirExists := linter.RunLinterRule(support.WarningSev, fpath, templatesDirExists(templatesPath))
+	if !templatesDirExists {
+		return
+	}
+
+	validTemplatesDir := linter.RunLinterRule(support.ErrorSev, fpath, validateTemplatesDir(templatesPath))
+	if !validTemplatesDir {
 		return
 	}
 
@@ -138,9 +143,9 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 
 			// Lint all resources if the file contains multiple documents separated by ---
 			for {
-				// Even though K8sYamlStruct only defines a few fields, an error in any other
+				// Even though k8sYamlStruct only defines a few fields, an error in any other
 				// key will be raised as well
-				var yamlStruct *K8sYamlStruct
+				var yamlStruct *k8sYamlStruct
 
 				err := decoder.Decode(&yamlStruct)
 				if err == io.EOF {
@@ -193,11 +198,21 @@ func validateTopIndentLevel(content string) error {
 }
 
 // Validation functions
+func templatesDirExists(templatesPath string) error {
+	_, err := os.Stat(templatesPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return errors.New("directory does not exist")
+	}
+	return nil
+}
+
 func validateTemplatesDir(templatesPath string) error {
-	if fi, err := os.Stat(templatesPath); err == nil {
-		if !fi.IsDir() {
-			return errors.New("not a directory")
-		}
+	fi, err := os.Stat(templatesPath)
+	if err != nil {
+		return err
+	}
+	if !fi.IsDir() {
+		return errors.New("not a directory")
 	}
 	return nil
 }
@@ -206,10 +221,8 @@ func validateAllowedExtension(fileName string) error {
 	ext := filepath.Ext(fileName)
 	validExtensions := []string{".yaml", ".yml", ".tpl", ".txt"}
 
-	for _, b := range validExtensions {
-		if b == ext {
-			return nil
-		}
+	if slices.Contains(validExtensions, ext) {
+		return nil
 	}
 
 	return fmt.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .yml, .tpl, or .txt", ext)
@@ -225,7 +238,7 @@ func validateYamlContent(err error) error {
 // validateMetadataName uses the correct validation function for the object
 // Kind, or if not set, defaults to the standard definition of a subdomain in
 // DNS (RFC 1123), used by most resources.
-func validateMetadataName(obj *K8sYamlStruct) error {
+func validateMetadataName(obj *k8sYamlStruct) error {
 	fn := validateMetadataNameFunc(obj)
 	allErrs := field.ErrorList{}
 	for _, msg := range fn(obj.Metadata.Name, false) {
@@ -250,7 +263,7 @@ func validateMetadataName(obj *K8sYamlStruct) error {
 // If no mapping is defined, returns NameIsDNSSubdomain.  This is used by object
 // kinds that don't have special requirements, so is the most likely to work if
 // new kinds are added.
-func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
+func validateMetadataNameFunc(obj *k8sYamlStruct) validation.ValidateNameFunc {
 	switch strings.ToLower(obj.Kind) {
 	case "pod", "node", "secret", "endpoints", "resourcequota", // core
 		"controllerrevision", "daemonset", "deployment", "replicaset", "statefulset", // apps
@@ -286,7 +299,7 @@ func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
 
 // validateMatchSelector ensures that template specs have a selector declared.
 // See https://github.com/helm/helm/issues/1990
-func validateMatchSelector(yamlStruct *K8sYamlStruct, manifest string) error {
+func validateMatchSelector(yamlStruct *k8sYamlStruct, manifest string) error {
 	switch yamlStruct.Kind {
 	case "Deployment", "ReplicaSet", "DaemonSet", "StatefulSet":
 		// verify that matchLabels or matchExpressions is present
@@ -297,7 +310,7 @@ func validateMatchSelector(yamlStruct *K8sYamlStruct, manifest string) error {
 	return nil
 }
 
-func validateListAnnotations(yamlStruct *K8sYamlStruct, manifest string) error {
+func validateListAnnotations(yamlStruct *k8sYamlStruct, manifest string) error {
 	if yamlStruct.Kind == "List" {
 		m := struct {
 			Items []struct {
@@ -320,11 +333,8 @@ func validateListAnnotations(yamlStruct *K8sYamlStruct, manifest string) error {
 	return nil
 }
 
-// K8sYamlStruct stubs a Kubernetes YAML file.
-//
-// DEPRECATED: In Helm 4, this will be made a private type, as it is for use only within
-// the rules package.
-type K8sYamlStruct struct {
+// k8sYamlStruct stubs a Kubernetes YAML file.
+type k8sYamlStruct struct {
 	APIVersion string `json:"apiVersion"`
 	Kind       string
 	Metadata   k8sYamlMetadata

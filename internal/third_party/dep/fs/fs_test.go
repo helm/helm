@@ -457,6 +457,7 @@ func TestCopyFileFail(t *testing.T) {
 // files this function creates. It is the caller's responsibility to call
 // this function before the test is done running, whether there's an error or not.
 func setupInaccessibleDir(t *testing.T, op func(dir string) error) func() {
+	t.Helper()
 	dir := t.TempDir()
 
 	subdir := filepath.Join(dir, "dir")

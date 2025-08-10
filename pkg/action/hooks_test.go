@@ -167,6 +167,7 @@ func TestInstallRelease_HooksOutputLogsOnSuccessAndFailure(t *testing.T) {
 }
 
 func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace string, shouldOutput bool) {
+	t.Helper()
 	var expectedOutput string
 	if shouldOutput {
 		expectedOutput = fmt.Sprintf("attempted to output logs for namespace: %s", expectedNamespace)
@@ -190,6 +191,7 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 }
 
 func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace string, shouldOutput bool) {
+	t.Helper()
 	var expectedOutput string
 	if shouldOutput {
 		expectedOutput = fmt.Sprintf("attempted to output logs for namespace: %s", expectedNamespace)

@@ -94,7 +94,7 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 		Capabilities: chartutil.DefaultCapabilities,
 	}
 
-	root, err := newRootCmdWithConfig(actionConfig, buf, args)
+	root, err := newRootCmdWithConfig(actionConfig, buf, args, SetupLogging)
 	if err != nil {
 		return nil, "", err
 	}
@@ -148,16 +148,4 @@ func resetEnv() func() {
 		}
 		settings = cli.New()
 	}
-}
-
-func testChdir(t *testing.T, dir string) func() {
-	t.Helper()
-	old, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
-	return func() { os.Chdir(old) }
 }

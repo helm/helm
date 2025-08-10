@@ -14,6 +14,8 @@ dependencies:
   repository: ""
   version: 2.7.1
 deployedAt: "1977-09-02T22:04:05Z"
+labels:
+  key1: value1
 name: thomas-guide
 namespace: default
 revision: 1

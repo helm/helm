@@ -27,6 +27,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
@@ -196,10 +197,8 @@ func cleanJoin(root, dest string) (string, error) {
 
 	// We want to alert the user that something bad was attempted. Cleaning it
 	// is not a good practice.
-	for _, part := range strings.Split(dest, "/") {
-		if part == ".." {
-			return "", errors.New("path contains '..', which is illegal")
-		}
+	if slices.Contains(strings.Split(dest, "/"), "..") {
+		return "", errors.New("path contains '..', which is illegal")
 	}
 
 	// If a path is absolute, the creator of the TAR is doing something shady.

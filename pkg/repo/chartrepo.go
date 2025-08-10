@@ -160,7 +160,7 @@ func WithClientTLS(certFile, keyFile, caFile string) FindChartInRepoURLOption {
 	}
 }
 
-// WithInsecureSkipTLSverify skips TLS verification for repostory communication
+// WithInsecureSkipTLSverify skips TLS verification for repository communication
 func WithInsecureSkipTLSverify(insecureSkipTLSverify bool) FindChartInRepoURLOption {
 	return func(options *findChartInRepoURLOptions) {
 		options.InsecureSkipTLSverify = insecureSkipTLSverify

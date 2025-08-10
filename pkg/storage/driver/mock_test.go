@@ -52,6 +52,7 @@ func testKey(name string, vers int) string {
 }
 
 func tsFixtureMemory(t *testing.T) *Memory {
+	t.Helper()
 	hs := []*rspb.Release{
 		// rls-a
 		releaseStub("rls-a", 4, "default", rspb.StatusDeployed),
@@ -83,6 +84,7 @@ func tsFixtureMemory(t *testing.T) *Memory {
 // newTestFixtureCfgMaps initializes a MockConfigMapsInterface.
 // ConfigMaps are created for each release provided.
 func newTestFixtureCfgMaps(t *testing.T, releases ...*rspb.Release) *ConfigMaps {
+	t.Helper()
 	var mock MockConfigMapsInterface
 	mock.Init(t, releases...)
 
@@ -98,6 +100,7 @@ type MockConfigMapsInterface struct {
 
 // Init initializes the MockConfigMapsInterface with the set of releases.
 func (mock *MockConfigMapsInterface) Init(t *testing.T, releases ...*rspb.Release) {
+	t.Helper()
 	mock.objects = map[string]*v1.ConfigMap{}
 
 	for _, rls := range releases {
@@ -169,6 +172,7 @@ func (mock *MockConfigMapsInterface) Delete(_ context.Context, name string, _ me
 // newTestFixtureSecrets initializes a MockSecretsInterface.
 // Secrets are created for each release provided.
 func newTestFixtureSecrets(t *testing.T, releases ...*rspb.Release) *Secrets {
+	t.Helper()
 	var mock MockSecretsInterface
 	mock.Init(t, releases...)
 
@@ -184,6 +188,7 @@ type MockSecretsInterface struct {
 
 // Init initializes the MockSecretsInterface with the set of releases.
 func (mock *MockSecretsInterface) Init(t *testing.T, releases ...*rspb.Release) {
+	t.Helper()
 	mock.objects = map[string]*v1.Secret{}
 
 	for _, rls := range releases {
@@ -254,6 +259,7 @@ func (mock *MockSecretsInterface) Delete(_ context.Context, name string, _ metav
 
 // newTestFixtureSQL mocks the SQL database (for testing purposes)
 func newTestFixtureSQL(t *testing.T, _ ...*rspb.Release) (*SQL, sqlmock.Sqlmock) {
+	t.Helper()
 	sqlDB, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("error when opening stub database connection: %v", err)

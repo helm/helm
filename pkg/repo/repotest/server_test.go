@@ -92,7 +92,7 @@ func TestServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.StatusCode != 404 {
+	if res.StatusCode != http.StatusNotFound {
 		t.Fatalf("Expected 404, got %d", res.StatusCode)
 	}
 }
@@ -140,7 +140,7 @@ func TestNewTempServer(t *testing.T) {
 
 				res.Body.Close()
 
-				if res.StatusCode != 200 {
+				if res.StatusCode != http.StatusOK {
 					t.Errorf("Expected 200, got %d", res.StatusCode)
 				}
 
@@ -153,7 +153,7 @@ func TestNewTempServer(t *testing.T) {
 				}
 				res.Body.Close()
 
-				if res.StatusCode != 200 {
+				if res.StatusCode != http.StatusOK {
 					t.Errorf("Expected 200, got %d", res.StatusCode)
 				}
 			}
@@ -198,7 +198,7 @@ func TestNewTempServer(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if res.StatusCode != 404 {
+			if res.StatusCode != http.StatusNotFound {
 				t.Fatalf("Expected 404, got %d", res.StatusCode)
 			}
 		})

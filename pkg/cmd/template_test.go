@@ -22,18 +22,6 @@ import (
 	"testing"
 )
 
-func TestTemplateCmdWithToml(t *testing.T) {
-
-	tests := []cmdTestCase{
-		{
-			name:   "check toToml function rendering",
-			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/issue-totoml"),
-			golden: "output/issue-totoml.txt",
-		},
-	}
-	runTestCmd(t, tests)
-}
-
 var chartPath = "testdata/testcharts/subchart"
 
 func TestTemplateCmd(t *testing.T) {
@@ -95,7 +83,12 @@ func TestTemplateCmd(t *testing.T) {
 		},
 		{
 			name:   "check kube api versions",
-			cmd:    fmt.Sprintf("template --api-versions helm.k8s.io/test '%s'", chartPath),
+			cmd:    fmt.Sprintf("template --api-versions helm.k8s.io/test,helm.k8s.io/test2 '%s'", chartPath),
+			golden: "output/template-with-api-version.txt",
+		},
+		{
+			name:   "check kube api versions",
+			cmd:    fmt.Sprintf("template --api-versions helm.k8s.io/test --api-versions helm.k8s.io/test2 '%s'", chartPath),
 			golden: "output/template-with-api-version.txt",
 		},
 		{

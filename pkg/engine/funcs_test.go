@@ -135,6 +135,43 @@ keyInElement1 = "valueInElement1"`,
 		assert.NoError(t, err)
 		assert.Equal(t, tt.expect, b.String(), tt.tpl)
 	}
+
+	loopMap := map[string]interface{}{
+		"foo": "bar",
+	}
+	loopMap["loop"] = []interface{}{loopMap}
+
+	mustFuncsTests := []struct {
+		tpl    string
+		expect interface{}
+		vars   interface{}
+	}{{
+		tpl:  `{{ mustToYaml . }}`,
+		vars: loopMap,
+	}, {
+		tpl:  `{{ mustToJson . }}`,
+		vars: loopMap,
+	}, {
+		tpl:    `{{ toYaml . }}`,
+		expect: "", // should return empty string and swallow error
+		vars:   loopMap,
+	}, {
+		tpl:    `{{ toJson . }}`,
+		expect: "", // should return empty string and swallow error
+		vars:   loopMap,
+	},
+	}
+
+	for _, tt := range mustFuncsTests {
+		var b strings.Builder
+		err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars)
+		if tt.expect != nil {
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expect, b.String(), tt.tpl)
+		} else {
+			assert.Error(t, err)
+		}
+	}
 }
 
 // This test to check a function provided by sprig is due to a change in a

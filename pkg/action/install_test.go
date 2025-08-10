@@ -24,6 +24,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -116,6 +117,7 @@ func installActionWithConfig(config *Configuration) *Install {
 }
 
 func installAction(t *testing.T) *Install {
+	t.Helper()
 	config := actionConfigFixture(t)
 	instAction := NewInstall(config)
 	instAction.Namespace = "spaced"
@@ -130,7 +132,7 @@ func TestInstallRelease(t *testing.T) {
 
 	instAction := installAction(t)
 	vals := map[string]interface{}{}
-	ctx, done := context.WithCancel(context.Background())
+	ctx, done := context.WithCancel(t.Context())
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -446,7 +448,9 @@ func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
 	instAction.DryRun = true
 	vals := map[string]interface{}{}
 	_, err := instAction.Run(buildChart(withSampleIncludingIncorrectTemplates()), vals)
-	expectedErr := "\"hello/templates/incorrect\" at <.Values.bad.doh>: nil pointer evaluating interface {}.doh"
+	expectedErr := `hello/templates/incorrect:1:10
+  executing "hello/templates/incorrect" at <.Values.bad.doh>:
+    nil pointer evaluating interface {}.doh`
 	if err == nil {
 		t.Fatalf("Install should fail containing error: %s", expectedErr)
 	}
@@ -556,7 +560,7 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
 	goroutines := runtime.NumGoroutine()
@@ -640,7 +644,7 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	instAction.Atomic = true
 	vals := map[string]interface{}{}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
 	goroutines := runtime.NumGoroutine()
@@ -929,4 +933,69 @@ func TestInstallWithSystemLabels(t *testing.T) {
 	}
 
 	is.Equal(fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
+}
+
+func TestUrlEqual(t *testing.T) {
+	is := assert.New(t)
+
+	tests := []struct {
+		name     string
+		url1     string
+		url2     string
+		expected bool
+	}{
+		{
+			name:     "identical URLs",
+			url1:     "https://example.com:443",
+			url2:     "https://example.com:443",
+			expected: true,
+		},
+		{
+			name:     "same host, scheme, default HTTPS port vs explicit",
+			url1:     "https://example.com",
+			url2:     "https://example.com:443",
+			expected: true,
+		},
+		{
+			name:     "same host, scheme, default HTTP port vs explicit",
+			url1:     "http://example.com",
+			url2:     "http://example.com:80",
+			expected: true,
+		},
+		{
+			name:     "different schemes",
+			url1:     "http://example.com",
+			url2:     "https://example.com",
+			expected: false,
+		},
+		{
+			name:     "different hosts",
+			url1:     "https://example.com",
+			url2:     "https://www.example.com",
+			expected: false,
+		},
+		{
+			name:     "different ports",
+			url1:     "https://example.com:8080",
+			url2:     "https://example.com:9090",
+			expected: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			u1, err := url.Parse(tc.url1)
+			if err != nil {
+				t.Fatalf("Failed to parse URL1 %s: %v", tc.url1, err)
+			}
+			u2, err := url.Parse(tc.url2)
+			if err != nil {
+				t.Fatalf("Failed to parse URL2 %s: %v", tc.url2, err)
+			}
+
+			is.Equal(tc.expected, urlEqual(u1, u2))
+		})
+	}
 }

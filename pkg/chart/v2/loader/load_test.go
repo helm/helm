@@ -648,6 +648,7 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 }
 
 func verifyDependencies(t *testing.T, c *chart.Chart) {
+	t.Helper()
 	if len(c.Metadata.Dependencies) != 2 {
 		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
 	}
@@ -670,6 +671,7 @@ func verifyDependencies(t *testing.T, c *chart.Chart) {
 }
 
 func verifyDependenciesLock(t *testing.T, c *chart.Chart) {
+	t.Helper()
 	if len(c.Metadata.Dependencies) != 2 {
 		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
 	}
@@ -692,10 +694,12 @@ func verifyDependenciesLock(t *testing.T, c *chart.Chart) {
 }
 
 func verifyFrobnitz(t *testing.T, c *chart.Chart) {
+	t.Helper()
 	verifyChartFileAndTemplate(t, c, "frobnitz")
 }
 
 func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
+	t.Helper()
 	if c.Metadata == nil {
 		t.Fatal("Metadata is nil")
 	}
@@ -750,6 +754,7 @@ func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
 }
 
 func verifyBomStripped(t *testing.T, files []*chart.File) {
+	t.Helper()
 	for _, file := range files {
 		if bytes.HasPrefix(file.Data, utf8bom) {
 			t.Errorf("Byte Order Mark still present in processed file %s", file.Name)

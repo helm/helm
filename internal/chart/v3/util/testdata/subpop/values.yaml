@@ -1,0 +1,45 @@
+# parent/values.yaml
+
+imported-chart1:
+  SPextra1: "helm rocks"
+
+overridden-chart1:
+  SC1bool: false
+  SC1float: 3.141592
+  SC1int: 99
+  SC1string: "pollywog"
+  SPextra2: 42
+
+
+imported-chartA:
+  SPextra3: 1.337
+
+overridden-chartA:
+  SCAbool: true
+  SCAfloat: 41.3
+  SCAint: 808
+  SCAstring: "jabberwocky"
+  SPextra4: true
+
+imported-chartA-B:
+  SPextra5: "k8s"
+
+overridden-chartA-B:
+  SCAbool: true
+  SCAfloat: 41.3
+  SCAint: 808
+  SCAstring: "jabberwocky"
+  SCBbool: false
+  SCBfloat: 1.99
+  SCBint: 77
+  SCBstring: "jango"
+  SPextra6: 111
+
+tags:
+  front-end: true
+  back-end: false
+
+subchart2alias:
+  enabled: false
+
+ensurenull: null

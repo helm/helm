@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -163,10 +164,8 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 	}
 
 	isKnown := func(v string) string {
-		for _, i := range kvargs {
-			if i == v {
-				return v
-			}
+		if slices.Contains(kvargs, v) {
+			return v
 		}
 		return ""
 	}
@@ -351,7 +350,7 @@ func pluginDynamicComp(plug *plugin.Plugin, cmd *cobra.Command, args []string, t
 	}
 
 	var completions []string
-	for _, comp := range strings.Split(buf.String(), "\n") {
+	for comp := range strings.SplitSeq(buf.String(), "\n") {
 		// Remove any empty lines
 		if len(comp) > 0 {
 			completions = append(completions, comp)

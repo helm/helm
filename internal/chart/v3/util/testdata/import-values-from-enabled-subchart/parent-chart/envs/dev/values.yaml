@@ -1,0 +1,9 @@
+# Dev values parent-chart
+nameOverride: parent-chart-dev
+exports:
+  data:
+    resources:
+      autoscaler:
+        minReplicas: 1
+        maxReplicas: 3
+        targetCPUUtilizationPercentage: 80

@@ -148,6 +148,18 @@ func TestPullCmd(t *testing.T) {
 			wantError:  true,
 		},
 		{
+			name:       "Chart fetch using repo URL with untardir",
+			args:       "signtest --version=0.1.0 --untar --untardir repo-url-test --repo " + srv.URL(),
+			expectFile: "./signtest",
+			expectDir:  true,
+		},
+		{
+			name:       "Chart fetch using repo URL with untardir and previous pull",
+			args:       "signtest --version=0.1.0 --untar --untardir repo-url-test --repo " + srv.URL(),
+			failExpect: "failed to untar",
+			wantError:  true,
+		},
+		{
 			name:       "Fetch OCI Chart",
 			args:       fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart --version 0.1.0", ociSrv.RegistryURL),
 			expectFile: "./oci-dependent-chart-0.1.0.tgz",

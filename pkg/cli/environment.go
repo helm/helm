@@ -93,6 +93,8 @@ type EnvSettings struct {
 	MaxChartSize int64
 	// MaxChartFileSize is the maximum size of a single file in a chart in bytes
 	MaxChartFileSize int64
+	// ColorMode controls colorized output (never, auto, always)
+	ColorMode string
 }
 
 func New() *EnvSettings {
@@ -115,6 +117,7 @@ func New() *EnvSettings {
 		QPS:                       envFloat32Or("HELM_QPS", defaultQPS),
 		MaxChartSize:              envInt64Or("HELM_MAX_CHART_SIZE", 100*1024*1024), // 100 MiB
 		MaxChartFileSize:          envInt64Or("HELM_MAX_FILE_SIZE", 5*1024*1024),    // 5 MiB
+		ColorMode:                 envColorMode(),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -166,6 +169,8 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the directory containing cached repository indexes")
 	fs.IntVar(&s.BurstLimit, "burst-limit", s.BurstLimit, "client-side default throttling limit")
 	fs.Float32Var(&s.QPS, "qps", s.QPS, "queries per second used when communicating with the Kubernetes API, not including bursting")
+	fs.StringVar(&s.ColorMode, "color", s.ColorMode, "use colored output (never, auto, always)")
+	fs.StringVar(&s.ColorMode, "colour", s.ColorMode, "use colored output (never, auto, always)")
 }
 
 func envOr(name, def string) string {
@@ -233,6 +238,23 @@ func envCSV(name string) (ls []string) {
 	return
 }
 
+func envColorMode() string {
+	// Check NO_COLOR environment variable first (standard)
+	if v, ok := os.LookupEnv("NO_COLOR"); ok && v != "" {
+		return "never"
+	}
+	// Check HELM_COLOR environment variable
+	if v, ok := os.LookupEnv("HELM_COLOR"); ok {
+		v = strings.ToLower(v)
+		switch v {
+		case "never", "auto", "always":
+			return v
+		}
+	}
+	// Default to auto
+	return "auto"
+}
+
 func (s *EnvSettings) EnvVars() map[string]string {
 	envvars := map[string]string{
 		"HELM_BIN":               os.Args[0],
@@ -286,4 +308,9 @@ func (s *EnvSettings) SetNamespace(namespace string) {
 // RESTClientGetter gets the kubeconfig from EnvSettings
 func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
 	return s.config
+}
+
+// ShouldDisableColor returns true if color output should be disabled
+func (s *EnvSettings) ShouldDisableColor() bool {
+	return s.ColorMode == "never"
 }
