@@ -119,3 +119,29 @@ func TestAtomicWriteFile_LargeContent(t *testing.T) {
 		t.Fatalf("expected large content to match, got different length: %d vs %d", len(largeContent), len(got))
 	}
 }
+
+// TestPlatformAtomicWriteFile_OverwritesExisting verifies that the platform
+// helper replaces existing files instead of silently skipping them.
+func TestPlatformAtomicWriteFile_OverwritesExisting(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "overwrite_test")
+
+	first := bytes.NewReader([]byte("first"))
+	if err := PlatformAtomicWriteFile(path, first, 0644); err != nil {
+		t.Fatalf("first write failed: %v", err)
+	}
+
+	second := bytes.NewReader([]byte("second"))
+	if err := PlatformAtomicWriteFile(path, second, 0644); err != nil {
+		t.Fatalf("second write failed: %v", err)
+	}
+
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed reading result: %v", err)
+	}
+
+	if string(contents) != "second" {
+		t.Fatalf("expected file to be overwritten, got %q", string(contents))
+	}
+}
