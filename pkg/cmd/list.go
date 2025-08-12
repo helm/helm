@@ -150,7 +150,7 @@ type releaseListWriter struct {
 	noColor   bool
 }
 
-func newReleaseListWriter(releases []*release.Release, timeFormat string, noHeaders bool, noColor bool) *releaseListWriter {
+func newReleaseListWriter(releases []*release.Release, timeFormat string, noHeaders, noColor bool) *releaseListWriter {
 	// Initialize the array so no results returns an empty array instead of null
 	elements := make([]releaseElement, 0, len(releases))
 	for _, r := range releases {

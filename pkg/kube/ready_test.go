@@ -213,7 +213,7 @@ func Test_ReadyChecker_IsReady_Deployment(t *testing.T) {
 			wantErr:    true,
 		},
 		{
-			name: "IsReady Deployments", //TODO fix this one
+			name: "IsReady Deployments", // TODO fix this one
 			fields: fields{
 				client:        fake.NewClientset(),
 				checkJobs:     true,
@@ -1469,7 +1469,7 @@ func newReplicationController(name string, generationInSync bool) *corev1.Replic
 	}
 }
 
-func newReplicaSet(name string, replicas int, readyReplicas int, generationInSync bool) *appsv1.ReplicaSet {
+func newReplicaSet(name string, replicas, readyReplicas int, generationInSync bool) *appsv1.ReplicaSet {
 	d := newDeployment(name, replicas, 0, 0, generationInSync)
 	return &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1528,7 +1528,7 @@ func newPersistentVolumeClaim(name string, phase corev1.PersistentVolumeClaimPha
 	}
 }
 
-func newJob(name string, backoffLimit int, completions *int32, succeeded int, failed int) *batchv1.Job {
+func newJob(name string, backoffLimit int, completions *int32, succeeded, failed int) *batchv1.Job {
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

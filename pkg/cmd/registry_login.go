@@ -91,19 +91,20 @@ func newRegistryLoginCmd(cfg *action.Configuration, out io.Writer) *cobra.Comman
 }
 
 // Adapted from https://github.com/oras-project/oras
-func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStdinOpt bool) (string, string, error) {
+func getUsernamePassword(usernameOpt, passwordOpt string, passwordFromStdinOpt bool) (string, string, error) {
 	var err error
 	username := usernameOpt
 	password := passwordOpt
 
-	if passwordFromStdinOpt {
+	switch {
+	case passwordFromStdinOpt:
 		passwordFromStdin, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return "", "", err
 		}
 		password = strings.TrimSuffix(string(passwordFromStdin), "\n")
 		password = strings.TrimSuffix(password, "\r")
-	} else if password == "" {
+	case password == "":
 		if username == "" {
 			username, err = readLine("Username: ", false)
 			if err != nil {
@@ -126,7 +127,7 @@ func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStd
 				return "", "", errors.New("password required")
 			}
 		}
-	} else {
+	default:
 		slog.Warn("using --password via the CLI is insecure. Use --password-stdin")
 	}
 

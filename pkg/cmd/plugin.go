@@ -52,9 +52,9 @@ func runHook(p *plugin.Plugin, event string) error {
 
 	cmds := p.Metadata.PlatformHooks[event]
 	expandArgs := true
-	if len(cmds) == 0 && len(p.Metadata.Hooks) > 0 {
-		cmd := p.Metadata.Hooks[event]
-		if len(cmd) > 0 {
+	if len(cmds) == 0 && len(p.Metadata.Hooks) > 0 { //nolint:staticcheck
+		cmd := p.Metadata.Hooks[event] //nolint:staticcheck
+		if cmd != "" {
 			cmds = []plugin.PlatformCommand{{Command: "sh", Args: []string{"-c", cmd}}}
 			expandArgs = false
 		}

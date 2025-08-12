@@ -120,7 +120,7 @@ func stripPluginName(name string) string {
 			break
 		}
 	}
-	re := regexp.MustCompile(`(.*)-[0-9]+\..*`)
+	re := regexp.MustCompile(`(.*)-\d+\..*`)
 	return re.ReplaceAllString(strippedName, `$1`)
 }
 
@@ -227,7 +227,7 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 		return err
 	}
 
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
 		return err
 	}
 
@@ -248,7 +248,7 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.Mkdir(path, 0755); err != nil {
+			if err := os.Mkdir(path, 0o755); err != nil {
 				return err
 			}
 		case tar.TypeReg:

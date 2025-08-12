@@ -75,10 +75,10 @@ func Date(year int, month time.Month, day, hour, minute, second, nanoSecond int,
 	return Time{Time: time.Date(year, month, day, hour, minute, second, nanoSecond, loc)}
 }
 
-func Unix(sec int64, nsec int64) Time { return Time{Time: time.Unix(sec, nsec)} }
+func Unix(sec, nsec int64) Time { return Time{Time: time.Unix(sec, nsec)} }
 
 func (t Time) Add(d time.Duration) Time { return Time{Time: t.Time.Add(d)} }
-func (t Time) AddDate(years int, months int, days int) Time {
+func (t Time) AddDate(years, months, days int) Time {
 	return Time{Time: t.Time.AddDate(years, months, days)}
 }
 func (t Time) After(u Time) bool             { return t.Time.After(u.Time) }

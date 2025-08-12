@@ -558,7 +558,7 @@ func getManagedFieldsManager() string {
 	}
 
 	// When no manager is set and no calling application can be found it is unknown
-	if len(os.Args[0]) == 0 {
+	if os.Args[0] == "" {
 		return "unknown"
 	}
 

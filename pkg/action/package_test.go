@@ -90,7 +90,7 @@ func TestPassphraseFileFetcher_WithStdinAndMultipleFetches(t *testing.T) {
 	passphrase := "secret-from-stdin"
 
 	go func() {
-		w.Write([]byte(passphrase + "\n"))
+		w.WriteString(passphrase + "\n")
 	}()
 
 	for i := 0; i < 4; i++ {

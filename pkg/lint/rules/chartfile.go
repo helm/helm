@@ -160,11 +160,12 @@ func validateChartVersion(cf *chart.Metadata) error {
 
 func validateChartMaintainer(cf *chart.Metadata) error {
 	for _, maintainer := range cf.Maintainers {
-		if maintainer.Name == "" {
+		switch {
+		case maintainer.Name == "":
 			return errors.New("each maintainer requires a name")
-		} else if maintainer.Email != "" && !govalidator.IsEmail(maintainer.Email) {
+		case maintainer.Email != "" && !govalidator.IsEmail(maintainer.Email):
 			return fmt.Errorf("invalid email '%s' for maintainer '%s'", maintainer.Email, maintainer.Name)
-		} else if maintainer.URL != "" && !govalidator.IsURL(maintainer.URL) {
+		case maintainer.URL != "" && !govalidator.IsURL(maintainer.URL):
 			return fmt.Errorf("invalid url '%s' for maintainer '%s'", maintainer.URL, maintainer.Name)
 		}
 	}
@@ -202,7 +203,7 @@ func validateChartDependencies(cf *chart.Metadata) error {
 }
 
 func validateChartType(cf *chart.Metadata) error {
-	if len(cf.Type) > 0 && cf.APIVersion != chart.APIVersionV2 {
+	if cf.Type != "" && cf.APIVersion != chart.APIVersionV2 {
 		return fmt.Errorf("chart type is not valid in apiVersion '%s'. It is valid in apiVersion '%s'", cf.APIVersion, chart.APIVersionV2)
 	}
 	return nil

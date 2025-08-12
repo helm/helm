@@ -200,7 +200,7 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 	}
 
 	// when customer inputs specific version, check whether there's an exact match first
-	if len(version) != 0 {
+	if version != "" {
 		for _, ver := range vs {
 			if version == ver.Version {
 				return ver, nil
@@ -365,7 +365,8 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 			if cvs[idx].APIVersion == "" {
 				cvs[idx].APIVersion = chart.APIVersionV1
 			}
-			if err := cvs[idx].Validate(); ignoreSkippableChartValidationError(err) != nil {
+			err := cvs[idx].Validate()
+			if ignoreSkippableChartValidationError(err) != nil {
 				slog.Warn("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err)
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}

@@ -16,6 +16,7 @@ limitations under the License.
 package strvals
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -398,7 +399,7 @@ func TestParseSet(t *testing.T) {
 			t.Fatalf("Error serializing parsed value: %s", err)
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.str, y1, y2)
 		}
 	}
@@ -423,7 +424,7 @@ func TestParseSet(t *testing.T) {
 			t.Fatalf("Error serializing parsed value: %s", err)
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.str, y1, y2)
 		}
 	}
@@ -536,7 +537,7 @@ func TestParseInto(t *testing.T) {
 			t.Fatalf("Error serializing parsed value: %s", err)
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.input, y1, y2)
 		}
 	}
@@ -571,7 +572,7 @@ func TestParseIntoString(t *testing.T) {
 		t.Fatalf("Error serializing parsed value: %s", err)
 	}
 
-	if string(y1) != string(y2) {
+	if !bytes.Equal(y1, y2) {
 		t.Errorf("%s: Expected:\n%s\nGot:\n%s", input, y1, y2)
 	}
 }
@@ -671,7 +672,7 @@ func TestParseJSON(t *testing.T) {
 			t.Fatalf("Error serializing parsed value: %s", err)
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.input, y1, y2)
 		}
 	}
@@ -705,7 +706,7 @@ func TestParseFile(t *testing.T) {
 		t.Fatalf("Error serializing parsed value: %s", err)
 	}
 
-	if string(y1) != string(y2) {
+	if !bytes.Equal(y1, y2) {
 		t.Errorf("%s: Expected:\n%s\nGot:\n%s", input, y1, y2)
 	}
 }
@@ -738,7 +739,7 @@ func TestParseIntoFile(t *testing.T) {
 		t.Fatalf("Error serializing parsed value: %s", err)
 	}
 
-	if string(y1) != string(y2) {
+	if !bytes.Equal(y1, y2) {
 		t.Errorf("%s: Expected:\n%s\nGot:\n%s", input, y1, y2)
 	}
 }
@@ -761,7 +762,7 @@ func TestParseSetNestedLevels(t *testing.T) {
 	for i := 1; i <= MaxNestedNameLevel+2; i++ {
 		tmpStr := fmt.Sprintf("name%d", i)
 		if i <= MaxNestedNameLevel+1 {
-			tmpStr = tmpStr + "."
+			tmpStr += "."
 		}
 		keyMultipleNestedLevels += tmpStr
 	}
@@ -811,7 +812,7 @@ func TestParseSetNestedLevels(t *testing.T) {
 			t.Fatalf("Error serializing parsed value: %s", err)
 		}
 
-		if string(y1) != string(y2) {
+		if !bytes.Equal(y1, y2) {
 			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.str, y1, y2)
 		}
 	}

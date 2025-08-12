@@ -251,7 +251,7 @@ func TestSaveDir(t *testing.T) {
 	tmp2 := t.TempDir()
 	c.Metadata.Name = "../ahab"
 	pth := filepath.Join(tmp2, "tmpcharts")
-	if err := os.MkdirAll(filepath.Join(pth), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(pth), 0o755); err != nil {
 		t.Fatal(err)
 	}
 

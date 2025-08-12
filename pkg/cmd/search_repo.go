@@ -194,7 +194,7 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 			continue
 		}
 
-		i.AddRepo(n, ind, o.versions || len(o.version) > 0)
+		i.AddRepo(n, ind, o.versions || o.version != "")
 	}
 	return i, nil
 }
@@ -268,7 +268,7 @@ func (r *repoSearchWriter) encodeByFormat(out io.Writer, format output.Format) e
 }
 
 // Provides the list of charts that are part of the specified repo, and that starts with 'prefix'.
-func compListChartsOfRepo(repoName string, prefix string) []string {
+func compListChartsOfRepo(repoName, prefix string) []string {
 	var charts []string
 
 	path := filepath.Join(settings.RepositoryCache, helmpath.CacheChartsFile(repoName))
@@ -361,7 +361,7 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 	// 2- If there is some input from the user (or else we will end up
 	//    listing the entire content of the current directory which will
 	//    be too many choices for the user to find the real repos)
-	if includeFiles && len(completions) > 0 && len(toComplete) > 0 {
+	if includeFiles && len(completions) > 0 && toComplete != "" {
 		if files, err := os.ReadDir("."); err == nil {
 			for _, file := range files {
 				if strings.HasPrefix(file.Name(), toComplete) {
@@ -375,22 +375,22 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 
 	// If the user didn't provide any input to completion,
 	// we provide a hint that a path can also be used
-	if includeFiles && len(toComplete) == 0 {
+	if includeFiles && toComplete == "" {
 		completions = append(completions, "./\tRelative path prefix to local chart", "/\tAbsolute path prefix to local chart")
 	}
 	cobra.CompDebugln(fmt.Sprintf("Completions after checking empty input: %v", completions), settings.Debug)
 
 	directive := cobra.ShellCompDirectiveDefault
 	if noFile {
-		directive = directive | cobra.ShellCompDirectiveNoFileComp
+		directive |= cobra.ShellCompDirectiveNoFileComp
 	}
 	if noSpace {
-		directive = directive | cobra.ShellCompDirectiveNoSpace
+		directive |= cobra.ShellCompDirectiveNoSpace
 	}
 	if !includeFiles {
 		// If we should not include files in the completions,
 		// we should disable file completion
-		directive = directive | cobra.ShellCompDirectiveNoFileComp
+		directive |= cobra.ShellCompDirectiveNoFileComp
 	}
 	return completions, directive
 }

@@ -67,7 +67,7 @@ func SaveChartfile(filename string, cf *chart.Metadata) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filename, out, 0644)
+	return os.WriteFile(filename, out, 0o644)
 }
 
 // IsChartDir validate a chart directory.
