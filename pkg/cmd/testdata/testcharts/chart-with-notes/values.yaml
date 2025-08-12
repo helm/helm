@@ -1,0 +1,5 @@
+service:
+  name: sanji
+  type: ClusterIP
+  externalPort: 80
+  internalPort: 80
