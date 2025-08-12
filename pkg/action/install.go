@@ -175,7 +175,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		// Send them to Kube
 		if _, err := i.cfg.KubeClient.Create(
 			res,
-			kube.ClientCreateOptionServerSideApply(false)); err != nil {
+			kube.ClientCreateOptionServerSideApply(false, false)); err != nil {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
 				crdName := res[0].Name
@@ -403,7 +403,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		}
 		if _, err := i.cfg.KubeClient.Create(
 			resourceList,
-			kube.ClientCreateOptionServerSideApply(false)); err != nil && !apierrors.IsAlreadyExists(err) {
+			kube.ClientCreateOptionServerSideApply(false, false)); err != nil && !apierrors.IsAlreadyExists(err) {
 			return nil, err
 		}
 	}
@@ -474,13 +474,13 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
 		_, err = i.cfg.KubeClient.Create(
 			resources,
-			kube.ClientCreateOptionServerSideApply(false))
+			kube.ClientCreateOptionServerSideApply(false, false))
 	} else if len(resources) > 0 {
 		updateThreeWayMergeForUnstructured := i.TakeOwnership
 		_, err = i.cfg.KubeClient.Update(
 			toBeAdopted,
 			resources,
-			kube.ClientUpdateOptionServerSideApply(false),
+			kube.ClientUpdateOptionServerSideApply(false, false),
 			kube.ClientUpdateOptionThreeWayMergeForUnstructured(updateThreeWayMergeForUnstructured),
 			kube.ClientUpdateOptionForceReplace(i.ForceReplace))
 	}

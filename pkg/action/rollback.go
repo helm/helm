@@ -193,7 +193,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	results, err := r.cfg.KubeClient.Update(
 		current,
 		target,
-		kube.ClientUpdateOptionServerSideApply(false),
+		kube.ClientUpdateOptionServerSideApply(false, false),
 		kube.ClientUpdateOptionForceReplace(r.ForceReplace))
 
 	if err != nil {

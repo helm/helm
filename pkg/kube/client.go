@@ -214,26 +214,23 @@ type ClientCreateOption func(*clientCreateOptions) error
 
 // ClientUpdateOptionServerSideApply enables performing object apply server-side
 // see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
-func ClientCreateOptionServerSideApply(serverSideApply bool) ClientCreateOption {
-	return func(o *clientCreateOptions) error {
-		o.serverSideApply = serverSideApply
-
-		return nil
-	}
-}
-
-// ClientCreateOptionForceConflicts forces field conflicts to be resolved
+//
+// `forceConflicts` forces conflicts to be resolved (may be  when serverSideApply enabled only)
 // see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
-// Only valid when ClientUpdateOptionServerSideApply enabled
-func ClientCreateOptionForceConflicts(forceConflicts bool) ClientCreateOption {
+func ClientCreateOptionServerSideApply(serverSideApply, forceConflicts bool) ClientCreateOption {
 	return func(o *clientCreateOptions) error {
+		if !serverSideApply && forceConflicts {
+			return fmt.Errorf("forceConflicts enabled when serverSideApply disabled")
+		}
+
+		o.serverSideApply = serverSideApply
 		o.forceConflicts = forceConflicts
 
 		return nil
 	}
 }
 
-// ClientCreateOptionDryRun performs non-mutating operations only
+// ClientCreateOptionDryRun requests the server to perform non-mutating operations only
 func ClientCreateOptionDryRun(dryRun bool) ClientCreateOption {
 	return func(o *clientCreateOptions) error {
 		o.dryRun = dryRun
@@ -264,8 +261,12 @@ func (c *Client) Create(resources ResourceList, options ...ClientCreateOption) (
 		fieldValidationDirective: FieldValidationDirectiveStrict,
 	}
 
+	errs := make([]error, 0, len(options))
 	for _, o := range options {
-		o(&createOptions)
+		errs = append(errs, o(&createOptions))
+	}
+	if err := errors.Join(errs...); err != nil {
+		return nil, fmt.Errorf("invalid client create option(s): %w", err)
 	}
 
 	if createOptions.forceConflicts && !createOptions.serverSideApply {
@@ -499,7 +500,7 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 		transformRequests)
 }
 
-func (c *Client) update(originals, targets ResourceList, updateApplyFunc func(original, target *resource.Info) error) (*Result, error) {
+func (c *Client) update(originals, targets ResourceList, updateApplyFunc UpdateApplyFunc) (*Result, error) {
 	updateErrors := []error{}
 	res := &Result{}
 
@@ -599,9 +600,17 @@ func ClientUpdateOptionThreeWayMergeForUnstructured(threeWayMergeForUnstructured
 // ClientUpdateOptionServerSideApply enables performing object apply server-side (default)
 // see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
 // Must not be enabled when ClientUpdateOptionThreeWayMerge is enabled
-func ClientUpdateOptionServerSideApply(serverSideApply bool) ClientUpdateOption {
+//
+// `forceConflicts` forces conflicts to be resolved (may be enabled when serverSideApply enabled only)
+// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+func ClientUpdateOptionServerSideApply(serverSideApply, forceConflicts bool) ClientUpdateOption {
 	return func(o *clientUpdateOptions) error {
+		if !serverSideApply && forceConflicts {
+			return fmt.Errorf("forceConflicts enabled when serverSideApply disabled")
+		}
+
 		o.serverSideApply = serverSideApply
+		o.forceConflicts = forceConflicts
 
 		return nil
 	}
@@ -617,20 +626,7 @@ func ClientUpdateOptionForceReplace(forceReplace bool) ClientUpdateOption {
 	}
 }
 
-// ClientUpdateOptionForceConflicts forces field conflicts to be resolved
-// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
-// Must not be enabled when ClientUpdateOptionForceReplace is enabled
-func ClientUpdateOptionForceConflicts(forceConflicts bool) ClientUpdateOption {
-	return func(o *clientUpdateOptions) error {
-		o.forceConflicts = forceConflicts
-
-		return nil
-	}
-}
-
-// ClientUpdateOptionForceConflicts forces field conflicts to be resolved
-// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
-// Must not be enabled when ClientUpdateOptionForceReplace is enabled
+// ClientUpdateOptionDryRun requests the server to perform non-mutating operations only
 func ClientUpdateOptionDryRun(dryRun bool) ClientUpdateOption {
 	return func(o *clientUpdateOptions) error {
 		o.dryRun = dryRun
@@ -652,6 +648,8 @@ func ClientUpdateOptionFieldValidationDirective(fieldValidationDirective FieldVa
 	}
 }
 
+type UpdateApplyFunc func(original, target *resource.Info) error
+
 // Update takes the current list of objects and target list of objects and
 // creates resources that don't already exist, updates resources that have been
 // modified in the target configuration, and deletes resources from the current
@@ -667,8 +665,12 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 		fieldValidationDirective: FieldValidationDirectiveStrict,
 	}
 
+	errs := make([]error, 0, len(options))
 	for _, o := range options {
-		o(&updateOptions)
+		errs = append(errs, o(&updateOptions))
+	}
+	if err := errors.Join(errs...); err != nil {
+		return nil, fmt.Errorf("invalid client update option(s): %w", err)
 	}
 
 	if updateOptions.threeWayMergeForUnstructured && updateOptions.serverSideApply {
@@ -683,7 +685,7 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 		return nil, fmt.Errorf("invalid operation: cannot use server-side apply and force replace together")
 	}
 
-	makeUpdateApplyFunc := func() func(original, target *resource.Info) error {
+	makeUpdateApplyFunc := func() UpdateApplyFunc {
 		if updateOptions.forceReplace {
 			slog.Debug(
 				"using resource replace update strategy",

@@ -292,7 +292,7 @@ func TestCreate(t *testing.T) {
 
 			result, err := c.Create(
 				list,
-				ClientCreateOptionServerSideApply(tc.ServerSideApply))
+				ClientCreateOptionServerSideApply(tc.ServerSideApply, false))
 			if tc.ExpectedErrorContains != "" {
 				require.ErrorContains(t, err, tc.ExpectedErrorContains)
 			} else {
@@ -467,7 +467,7 @@ func TestUpdate(t *testing.T) {
 				second,
 				ClientUpdateOptionThreeWayMergeForUnstructured(tc.ThreeWayMergeForUnstructured),
 				ClientUpdateOptionForceReplace(false),
-				ClientUpdateOptionServerSideApply(tc.ServerSideApply))
+				ClientUpdateOptionServerSideApply(tc.ServerSideApply, false))
 			require.NoError(t, err)
 
 			assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
@@ -684,7 +684,7 @@ func TestWait(t *testing.T) {
 
 	result, err := c.Create(
 		resources,
-		ClientCreateOptionServerSideApply(false))
+		ClientCreateOptionServerSideApply(false, false))
 
 	if err != nil {
 		t.Fatal(err)
@@ -744,7 +744,7 @@ func TestWaitJob(t *testing.T) {
 	}
 	result, err := c.Create(
 		resources,
-		ClientCreateOptionServerSideApply(false))
+		ClientCreateOptionServerSideApply(false, false))
 
 	if err != nil {
 		t.Fatal(err)
@@ -806,7 +806,7 @@ func TestWaitDelete(t *testing.T) {
 	}
 	result, err := c.Create(
 		resources,
-		ClientCreateOptionServerSideApply(false))
+		ClientCreateOptionServerSideApply(false, false))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1225,7 +1225,6 @@ func TestCreatePatchCustomResourceSpec(t *testing.T) {
 	t.Run(testCase.name, testCase.run)
 }
 
-<<<<<<< HEAD
 type errorFactory struct {
 	*cmdtesting.TestFactory
 	err error
@@ -1326,8 +1325,8 @@ func TestIsReachable(t *testing.T) {
 			}
 		})
 	}
-||||||| parent of 36a476ff4 (Kube client support server-side apply)
-=======
+}
+
 func TestIsIncompatibleServerError(t *testing.T) {
 	testCases := map[string]struct {
 		Err  error
@@ -1749,5 +1748,4 @@ func TestDetermineFieldValidationDirective(t *testing.T) {
 
 	assert.Equal(t, FieldValidationDirectiveIgnore, determineFieldValidationDirective(false))
 	assert.Equal(t, FieldValidationDirectiveStrict, determineFieldValidationDirective(true))
->>>>>>> 36a476ff4 (Kube client support server-side apply)
 }

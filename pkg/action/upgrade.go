@@ -429,7 +429,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	results, err := u.cfg.KubeClient.Update(
 		current,
 		target,
-		kube.ClientUpdateOptionServerSideApply(false),
+		kube.ClientUpdateOptionServerSideApply(false, false),
 		kube.ClientUpdateOptionForceReplace(u.ForceReplace))
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
