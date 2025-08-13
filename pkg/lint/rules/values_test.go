@@ -96,7 +96,7 @@ func TestValidateValuesFileSchemaFailure(t *testing.T) {
 		t.Fatal("expected values file to fail parsing")
 	}
 
-	assert.Contains(t, err.Error(), "Expected: string, given: integer", "integer should be caught by schema")
+	assert.Contains(t, err.Error(), "- at '/username': got number, want string")
 }
 
 func TestValidateValuesFileSchemaOverrides(t *testing.T) {
@@ -129,7 +129,7 @@ func TestValidateValuesFile(t *testing.T) {
 			name:         "value not overridden",
 			yaml:         "username: admin\npassword:",
 			overrides:    map[string]interface{}{"username": "anotherUser"},
-			errorMessage: "Expected: string, given: null",
+			errorMessage: "- at '/password': got null, want string",
 		},
 		{
 			name:      "value overridden",
