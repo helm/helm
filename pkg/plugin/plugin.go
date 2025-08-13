@@ -17,6 +17,7 @@ package plugin // import "helm.sh/helm/v4/pkg/plugin"
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -83,7 +84,7 @@ type Metadata struct {
 	PlatformCommand []PlatformCommand `json:"platformCommand"`
 
 	// Command is the plugin command, as a single string.
-	// Providing a command will result in an error if PlatformCommand is also set.
+	// Providing Command and PlatformCommand will result in a warning being emitted (PlatformCommand takes precedence).
 	//
 	// The command will be passed through environment expansion, so env vars can
 	// be present in this command. Unless IgnoreFlags is set, this will
@@ -92,7 +93,7 @@ type Metadata struct {
 	// Note that command is not executed in a shell. To do so, we suggest
 	// pointing the command to a shell script.
 	//
-	// DEPRECATED: Use PlatformCommand instead. Remove in Helm 4.
+	// DEPRECATED: Use PlatformCommand instead
 	Command string `json:"command"`
 
 	// IgnoreFlags ignores any flags passed in from Helm
@@ -119,14 +120,14 @@ type Metadata struct {
 	PlatformHooks PlatformHooks `json:"platformHooks"`
 
 	// Hooks are commands that will run on plugin events, as a single string.
-	// Providing a hooks will result in an error if PlatformHooks is also set.
+	// Providing Hook and PlatformHooks will result in a warning being emitted (PlatformHooks takes precedence).
 	//
 	// The command will be passed through environment expansion, so env vars can
 	// be present in this command.
 	//
 	// Note that the command is executed in the sh shell.
 	//
-	// DEPRECATED: Use PlatformHooks instead. Remove in Helm 4.
+	// DEPRECATED: Use PlatformHooks instead
 	Hooks Hooks
 
 	// Downloaders field is used if the plugin supply downloader mechanism
@@ -259,11 +260,11 @@ func validatePluginData(plug *Plugin, filepath string) error {
 	plug.Metadata.Usage = sanitizeString(plug.Metadata.Usage)
 
 	if len(plug.Metadata.PlatformCommand) > 0 && len(plug.Metadata.Command) > 0 {
-		return fmt.Errorf("both platformCommand and command are set in %q", filepath)
+		slog.Warn("both 'platformCommand' and 'command' are set (this will become an error in a future Helm version)", slog.String("filepath", filepath))
 	}
 
 	if len(plug.Metadata.PlatformHooks) > 0 && len(plug.Metadata.Hooks) > 0 {
-		return fmt.Errorf("both platformHooks and hooks are set in %q", filepath)
+		slog.Warn("both 'platformHooks' and 'hooks' are set (this will become an error in a future Helm version)", slog.String("filepath", filepath))
 	}
 
 	// We could also validate SemVer, executable, and other fields should we so choose.
