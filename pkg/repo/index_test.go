@@ -28,10 +28,10 @@ import (
 	"strings"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/helmpath"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 const (
@@ -123,17 +123,17 @@ func TestIndexFile(t *testing.T) {
 	}
 
 	cv, err := i.Get("setter", "0.1.9")
-	if err == nil && !strings.Contains(cv.Metadata.Version, "0.1.9") {
-		t.Errorf("Unexpected version: %s", cv.Metadata.Version)
+	if err == nil && !strings.Contains(cv.Version, "0.1.9") {
+		t.Errorf("Unexpected version: %s", cv.Version)
 	}
 
 	cv, err = i.Get("setter", "0.1.9+alpha")
-	if err != nil || cv.Metadata.Version != "0.1.9+alpha" {
+	if err != nil || cv.Version != "0.1.9+alpha" {
 		t.Errorf("Expected version: 0.1.9+alpha")
 	}
 
 	cv, err = i.Get("setter", "0.1.8")
-	if err != nil || cv.Metadata.Version != "0.1.8" {
+	if err != nil || cv.Version != "0.1.8" {
 		t.Errorf("Expected version: 0.1.8")
 	}
 }
@@ -352,6 +352,7 @@ func TestDownloadIndexFile(t *testing.T) {
 }
 
 func verifyLocalIndex(t *testing.T, i *IndexFile) {
+	t.Helper()
 	numEntries := len(i.Entries)
 	if numEntries != 3 {
 		t.Errorf("Expected 3 entries in index file but got %d", numEntries)
@@ -450,6 +451,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 }
 
 func verifyLocalChartsFile(t *testing.T, chartsContent []byte, indexContent *IndexFile) {
+	t.Helper()
 	var expected, reald []string
 	for chart := range indexContent.Entries {
 		expected = append(expected, chart)
@@ -641,6 +643,80 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 				t.Error("expected the result equal to input")
 			}
 
+		})
+	}
+}
+
+var indexWithDuplicatesInChartDeps = `
+apiVersion: v1
+entries:
+  nginx:
+    - urls:
+        - https://charts.helm.sh/stable/alpine-1.0.0.tgz
+        - http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
+      name: alpine
+      description: string
+      home: https://github.com/something
+      digest: "sha256:1234567890abcdef"
+    - urls:
+        - https://charts.helm.sh/stable/nginx-0.2.0.tgz
+      name: nginx
+      description: string
+      version: 0.2.0
+      home: https://github.com/something/else
+      digest: "sha256:1234567890abcdef"
+`
+var indexWithDuplicatesInLastChartDeps = `
+apiVersion: v1
+entries:
+  nginx:
+    - urls:
+        - https://charts.helm.sh/stable/nginx-0.2.0.tgz
+      name: nginx
+      description: string
+      version: 0.2.0
+      home: https://github.com/something/else
+      digest: "sha256:1234567890abcdef"
+    - urls:
+        - https://charts.helm.sh/stable/alpine-1.0.0.tgz
+        - http://storage2.googleapis.com/kubernetes-charts/alpine-1.0.0.tgz
+      name: alpine
+      description: string
+      home: https://github.com/something
+      digest: "sha256:111"
+`
+
+func TestLoadIndex_DuplicateChartDeps(t *testing.T) {
+	tests := []struct {
+		source string
+		data   string
+	}{
+		{
+			source: "indexWithDuplicatesInChartDeps",
+			data:   indexWithDuplicatesInChartDeps,
+		},
+		{
+			source: "indexWithDuplicatesInLastChartDeps",
+			data:   indexWithDuplicatesInLastChartDeps,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.source, func(t *testing.T) {
+			idx, err := loadIndex([]byte(tc.data), tc.source)
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			cvs := idx.Entries["nginx"]
+			if cvs == nil {
+				if err != nil {
+					t.Error("expected one chart version not to be filtered out")
+				}
+			}
+			for _, v := range cvs {
+				if v.Name == "alpine" {
+					t.Error("malformed version was not filtered out")
+				}
+			}
 		})
 	}
 }

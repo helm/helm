@@ -34,9 +34,37 @@ func TestFuncs(t *testing.T) {
 		expect: `foo: bar`,
 		vars:   map[string]interface{}{"foo": "bar"},
 	}, {
+		tpl:    `{{ toYamlPretty . }}`,
+		expect: "baz:\n  - 1\n  - 2\n  - 3",
+		vars:   map[string]interface{}{"baz": []int{1, 2, 3}},
+	}, {
 		tpl:    `{{ toToml . }}`,
 		expect: "foo = \"bar\"\n",
 		vars:   map[string]interface{}{"foo": "bar"},
+	}, {
+		tpl:    `{{ fromToml . }}`,
+		expect: "map[hello:world]",
+		vars:   `hello = "world"`,
+	}, {
+		tpl:    `{{ fromToml . }}`,
+		expect: "map[table:map[keyInTable:valueInTable subtable:map[keyInSubtable:valueInSubTable]]]",
+		vars: `
+[table]
+keyInTable = "valueInTable"
+[table.subtable]
+keyInSubtable = "valueInSubTable"`,
+	}, {
+		tpl:    `{{ fromToml . }}`,
+		expect: "map[tableArray:[map[keyInElement0:valueInElement0] map[keyInElement1:valueInElement1]]]",
+		vars: `
+[[tableArray]]
+keyInElement0 = "valueInElement0"
+[[tableArray]]
+keyInElement1 = "valueInElement1"`,
+	}, {
+		tpl:    `{{ fromToml . }}`,
+		expect: "map[Error:toml: line 1: unexpected EOF; expected key separator '=']",
+		vars:   "one",
 	}, {
 		tpl:    `{{ toJson . }}`,
 		expect: `{"foo":"bar"}`,
@@ -106,6 +134,43 @@ func TestFuncs(t *testing.T) {
 		err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars)
 		assert.NoError(t, err)
 		assert.Equal(t, tt.expect, b.String(), tt.tpl)
+	}
+
+	loopMap := map[string]interface{}{
+		"foo": "bar",
+	}
+	loopMap["loop"] = []interface{}{loopMap}
+
+	mustFuncsTests := []struct {
+		tpl    string
+		expect interface{}
+		vars   interface{}
+	}{{
+		tpl:  `{{ mustToYaml . }}`,
+		vars: loopMap,
+	}, {
+		tpl:  `{{ mustToJson . }}`,
+		vars: loopMap,
+	}, {
+		tpl:    `{{ toYaml . }}`,
+		expect: "", // should return empty string and swallow error
+		vars:   loopMap,
+	}, {
+		tpl:    `{{ toJson . }}`,
+		expect: "", // should return empty string and swallow error
+		vars:   loopMap,
+	},
+	}
+
+	for _, tt := range mustFuncsTests {
+		var b strings.Builder
+		err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars)
+		if tt.expect != nil {
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expect, b.String(), tt.tpl)
+		} else {
+			assert.Error(t, err)
+		}
 	}
 }
 

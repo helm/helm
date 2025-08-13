@@ -7,6 +7,6 @@
 **Special notes for your reviewer**:
 
 **If applicable**:
-- [ ] this PR contains documentation
+- [ ] this PR contains user facing changes (the `docs needed` label should be applied if so)
 - [ ] this PR contains unit tests
 - [ ] this PR has been tested for backwards compatibility

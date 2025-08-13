@@ -60,11 +60,7 @@ func TestGetFullPath(t *testing.T) {
 	t.Run("binary in PATH resolves correctly", func(t *testing.T) {
 		testpath := setupTestingScript(t)
 
-		realPath := os.Getenv("PATH")
-		os.Setenv("PATH", filepath.Dir(testpath))
-		defer func() {
-			os.Setenv("PATH", realPath)
-		}()
+		t.Setenv("PATH", filepath.Dir(testpath))
 
 		fullPath, err := getFullPath(filepath.Base(testpath))
 		is.NoError(err)
@@ -121,6 +117,21 @@ func TestExecRun(t *testing.T) {
 	is.Contains(output.String(), "BARTEST")
 }
 
+func TestExecRunWithNoOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// the actual Run test uses a basic sed example, so skip this test on windows
+		t.Skip("skipping on windows")
+	}
+	is := assert.New(t)
+	testpath := setupTestingScript(t)
+
+	renderer, err := NewExec(testpath)
+	require.NoError(t, err)
+
+	_, err = renderer.Run(bytes.NewBufferString(""))
+	is.Error(err)
+}
+
 func TestNewExecWithOneArgsRun(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// the actual Run test uses a basic sed example, so skip this test on windows
@@ -168,7 +179,7 @@ func setupTestingScript(t *testing.T) (filepath string) {
 		t.Fatalf("unable to write tempfile for testing: %s", err)
 	}
 
-	err = f.Chmod(0755)
+	err = f.Chmod(0o755)
 	if err != nil {
 		t.Fatalf("unable to make tempfile executable for testing: %s", err)
 	}

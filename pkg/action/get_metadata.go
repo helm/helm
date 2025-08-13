@@ -16,7 +16,13 @@ limitations under the License.
 
 package action
 
-import "time"
+import (
+	"sort"
+	"strings"
+	"time"
+
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+)
 
 // GetMetadata is the action for checking a given release's metadata.
 //
@@ -32,10 +38,15 @@ type Metadata struct {
 	Chart      string `json:"chart" yaml:"chart"`
 	Version    string `json:"version" yaml:"version"`
 	AppVersion string `json:"appVersion" yaml:"appVersion"`
-	Namespace  string `json:"namespace" yaml:"namespace"`
-	Revision   int    `json:"revision" yaml:"revision"`
-	Status     string `json:"status" yaml:"status"`
-	DeployedAt string `json:"deployedAt" yaml:"deployedAt"`
+	// Annotations are fetched from the Chart.yaml file
+	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
+	// Labels of the release which are stored in driver metadata fields storage
+	Labels       map[string]string   `json:"labels,omitempty" yaml:"labels,omitempty"`
+	Dependencies []*chart.Dependency `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
+	Namespace    string              `json:"namespace" yaml:"namespace"`
+	Revision     int                 `json:"revision" yaml:"revision"`
+	Status       string              `json:"status" yaml:"status"`
+	DeployedAt   string              `json:"deployedAt" yaml:"deployedAt"`
 }
 
 // NewGetMetadata creates a new GetMetadata object with the given configuration.
@@ -57,13 +68,27 @@ func (g *GetMetadata) Run(name string) (*Metadata, error) {
 	}
 
 	return &Metadata{
-		Name:       rel.Name,
-		Chart:      rel.Chart.Metadata.Name,
-		Version:    rel.Chart.Metadata.Version,
-		AppVersion: rel.Chart.Metadata.AppVersion,
-		Namespace:  rel.Namespace,
-		Revision:   rel.Version,
-		Status:     rel.Info.Status.String(),
-		DeployedAt: rel.Info.LastDeployed.Format(time.RFC3339),
+		Name:         rel.Name,
+		Chart:        rel.Chart.Metadata.Name,
+		Version:      rel.Chart.Metadata.Version,
+		AppVersion:   rel.Chart.Metadata.AppVersion,
+		Dependencies: rel.Chart.Metadata.Dependencies,
+		Annotations:  rel.Chart.Metadata.Annotations,
+		Labels:       rel.Labels,
+		Namespace:    rel.Namespace,
+		Revision:     rel.Version,
+		Status:       rel.Info.Status.String(),
+		DeployedAt:   rel.Info.LastDeployed.Format(time.RFC3339),
 	}, nil
+}
+
+// FormattedDepNames formats metadata.dependencies names into a comma-separated list.
+func (m *Metadata) FormattedDepNames() string {
+	depsNames := make([]string, 0, len(m.Dependencies))
+	for _, dep := range m.Dependencies {
+		depsNames = append(depsNames, dep.Name)
+	}
+	sort.StringSlice(depsNames).Sort()
+
+	return strings.Join(depsNames, ",")
 }
