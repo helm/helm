@@ -68,6 +68,7 @@ entries:
   grafana:
   - apiVersion: v2
     name: grafana
+  - null
   foo:
   -
   bar:

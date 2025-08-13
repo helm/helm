@@ -357,6 +357,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 		for idx := len(cvs) - 1; idx >= 0; idx-- {
 			if cvs[idx] == nil {
 				log.Printf("skipping loading invalid entry for chart %q from %s: empty entry", name, source)
+				cvs = append(cvs[:idx], cvs[idx+1:]...)
 				continue
 			}
 			// When metadata section missing, initialize with no data
