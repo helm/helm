@@ -13,19 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
+package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/helmpath"
+	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 var _ Installer = new(LocalInstaller)
 
 func TestLocalInstaller(t *testing.T) {
+	ensure.HelmHome(t)
 	// Make a temp dir
 	tdir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tdir, "plugin.yaml"), []byte{}, 0644); err != nil {

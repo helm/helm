@@ -13,14 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
+package installer // import "helm.sh/helm/v4/pkg/plugin/installer"
 
 import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,11 +31,9 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/pkg/errors"
-
-	"helm.sh/helm/v3/internal/test/ensure"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/helmpath"
+	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 var _ Installer = new(HTTPInstaller)
@@ -44,7 +44,7 @@ type TestHTTPGetter struct {
 	MockError    error
 }
 
-func (t *TestHTTPGetter) Get(href string, _ ...getter.Option) (*bytes.Buffer, error) {
+func (t *TestHTTPGetter) Get(_ string, _ ...getter.Option) (*bytes.Buffer, error) {
 	return t.MockResponse, t.MockError
 }
 
@@ -150,7 +150,7 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 
 	// inject fake http client responding with error
 	httpInstaller.getter = &TestHTTPGetter{
-		MockError: errors.Errorf("failed to download plugin for some reason"),
+		MockError: fmt.Errorf("failed to download plugin for some reason"),
 	}
 
 	// attempt to install the plugin
@@ -276,7 +276,7 @@ func TestExtract(t *testing.T) {
 
 	pluginYAMLFullPath := filepath.Join(tempDir, "plugin.yaml")
 	if info, err := os.Stat(pluginYAMLFullPath); err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			t.Fatalf("Expected %s to exist but doesn't", pluginYAMLFullPath)
 		}
 		t.Fatal(err)
@@ -286,7 +286,7 @@ func TestExtract(t *testing.T) {
 
 	readmeFullPath := filepath.Join(tempDir, "README.md")
 	if info, err := os.Stat(readmeFullPath); err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			t.Fatalf("Expected %s to exist but doesn't", readmeFullPath)
 		}
 		t.Fatal(err)

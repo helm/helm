@@ -17,16 +17,18 @@ package getter
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"time"
 
-	"helm.sh/helm/v3/internal/tlsutil"
-	"helm.sh/helm/v3/internal/urlutil"
-	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v4/internal/tlsutil"
+	"helm.sh/helm/v4/internal/urlutil"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 // OCIGetter is the default HTTP(/S) backend handler
@@ -58,6 +60,9 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 
 	ref := strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme))
 
+	if version := g.opts.version; version != "" && !strings.Contains(path.Base(ref), ":") {
+		ref = fmt.Sprintf("%s:%s", ref, version)
+	}
 	var pullOpts []registry.PullOption
 	requestingProv := strings.HasSuffix(ref, ".prov")
 	if requestingProv {
@@ -119,11 +124,19 @@ func (g *OCIGetter) newRegistryClient() (*registry.Client, error) {
 			IdleConnTimeout:       90 * time.Second,
 			TLSHandshakeTimeout:   10 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,
+			Proxy:                 http.ProxyFromEnvironment,
+			// Being nil would cause the tls.Config default to be used
+			// "NewTLSConfig" modifies an empty TLS config, not the default one
+			TLSClientConfig: &tls.Config{},
 		}
 	})
 
 	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" || g.opts.insecureSkipVerifyTLS {
-		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile, g.opts.insecureSkipVerifyTLS)
+		tlsConf, err := tlsutil.NewTLSConfig(
+			tlsutil.WithInsecureSkipVerify(g.opts.insecureSkipVerifyTLS),
+			tlsutil.WithCertKeyPairFiles(g.opts.certFile, g.opts.keyFile),
+			tlsutil.WithCAFile(g.opts.caFile),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("can't create TLS config for client: %w", err)
 		}

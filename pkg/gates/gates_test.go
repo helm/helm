@@ -23,14 +23,13 @@ import (
 const name string = "HELM_EXPERIMENTAL_FEATURE"
 
 func TestIsEnabled(t *testing.T) {
-	os.Unsetenv(name)
 	g := Gate(name)
 
 	if g.IsEnabled() {
 		t.Errorf("feature gate shows as available, but the environment variable %s was not set", name)
 	}
 
-	os.Setenv(name, "1")
+	t.Setenv(name, "1")
 
 	if !g.IsEnabled() {
 		t.Errorf("feature gate shows as disabled, but the environment variable %s was set", name)

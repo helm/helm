@@ -17,29 +17,31 @@ limitations under the License.
 package rules
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/pkg/errors"
-
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/lint/support"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 const (
+	badChartNameDir    = "testdata/badchartname"
 	badChartDir        = "testdata/badchartfile"
 	anotherBadChartDir = "testdata/anotherbadchartfile"
 )
 
 var (
+	badChartNamePath         = filepath.Join(badChartNameDir, "Chart.yaml")
 	badChartFilePath         = filepath.Join(badChartDir, "Chart.yaml")
 	nonExistingChartFilePath = filepath.Join(os.TempDir(), "Chart.yaml")
 )
 
 var badChart, _ = chartutil.LoadChartfile(badChartFilePath)
+var badChartName, _ = chartutil.LoadChartfile(badChartNamePath)
 
 // Validation functions Test
 func TestValidateChartYamlNotDirectory(t *testing.T) {
@@ -68,6 +70,11 @@ func TestValidateChartName(t *testing.T) {
 	err := validateChartName(badChart)
 	if err == nil {
 		t.Errorf("validateChartName to return a linter error, got no error")
+	}
+
+	err = validateChartName(badChartName)
+	if err == nil {
+		t.Error("expected validateChartName to return a linter error for an invalid name, got no error")
 	}
 }
 
@@ -135,6 +142,16 @@ func TestValidateChartMaintainer(t *testing.T) {
 			t.Errorf("validateChartMaintainer(%s, %s) to return no error, got %s", test.Name, test.Email, err.Error())
 		}
 	}
+
+	// Testing for an empty maintainer
+	badChart.Maintainers = []*chart.Maintainer{nil}
+	err := validateChartMaintainer(badChart)
+	if err == nil {
+		t.Errorf("validateChartMaintainer did not return error for nil maintainer as expected")
+	}
+	if err.Error() != "a maintainer entry is empty" {
+		t.Errorf("validateChartMaintainer returned unexpected error for nil maintainer: %s", err.Error())
+	}
 }
 
 func TestValidateChartSources(t *testing.T) {
@@ -158,10 +175,30 @@ func TestValidateChartSources(t *testing.T) {
 }
 
 func TestValidateChartIconPresence(t *testing.T) {
-	err := validateChartIconPresence(badChart)
-	if err == nil {
-		t.Errorf("validateChartIconPresence to return a linter error, got no error")
-	}
+	t.Run("Icon absent", func(t *testing.T) {
+		testChart := &chart.Metadata{
+			Icon: "",
+		}
+
+		err := validateChartIconPresence(testChart)
+
+		if err == nil {
+			t.Errorf("validateChartIconPresence to return a linter error, got no error")
+		} else if !strings.Contains(err.Error(), "icon is recommended") {
+			t.Errorf("expected %q, got %q", "icon is recommended", err.Error())
+		}
+	})
+	t.Run("Icon present", func(t *testing.T) {
+		testChart := &chart.Metadata{
+			Icon: "http://example.org/icon.png",
+		}
+
+		err := validateChartIconPresence(testChart)
+
+		if err != nil {
+			t.Errorf("Unexpected error: %q", err.Error())
+		}
+	})
 }
 
 func TestValidateChartIconURL(t *testing.T) {

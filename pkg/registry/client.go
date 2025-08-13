@@ -14,32 +14,38 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "helm.sh/helm/v3/pkg/registry"
+package registry // import "helm.sh/helm/v4/pkg/registry"
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"os"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/containerd/containerd/remotes"
+	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
-	"oras.land/oras-go/pkg/auth"
-	dockerauth "oras.land/oras-go/pkg/auth/docker"
-	"oras.land/oras-go/pkg/content"
-	"oras.land/oras-go/pkg/oras"
-	"oras.land/oras-go/pkg/registry"
-	registryremote "oras.land/oras-go/pkg/registry/remote"
-	registryauth "oras.land/oras-go/pkg/registry/remote/auth"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/credentials"
+	"oras.land/oras-go/v2/registry/remote/retry"
 
-	"helm.sh/helm/v3/internal/version"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/helmpath"
+	"helm.sh/helm/v4/internal/version"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 // See https://github.com/helm/helm/issues/10166
@@ -50,18 +56,28 @@ an underscore (_) in chart version tags when pushing to a registry and back to
 a plus (+) when pulling from a registry.`
 
 type (
+	// RemoteClient shadows the ORAS remote.Client interface
+	// (hiding the ORAS type from Helm client visibility)
+	// https://pkg.go.dev/oras.land/oras-go/pkg/registry/remote#Client
+	RemoteClient interface {
+		Do(req *http.Request) (*http.Response, error)
+	}
+
 	// Client works with OCI-compliant registries
 	Client struct {
 		debug       bool
 		enableCache bool
 		// path to repository config file e.g. ~/.docker/config.json
 		credentialsFile    string
+		username           string
+		password           string
 		out                io.Writer
-		authorizer         auth.Client
-		registryAuthorizer *registryauth.Client
-		resolver           func(ref registry.Reference) (remotes.Resolver, error)
+		authorizer         *auth.Client
+		registryAuthorizer RemoteClient
+		credentialsStore   credentials.Store
 		httpClient         *http.Client
 		plainHTTP          bool
+		err                error // pass any errors from the ClientOption functions
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -76,81 +92,51 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	for _, option := range options {
 		option(client)
+		if client.err != nil {
+			return nil, client.err
+		}
 	}
 	if client.credentialsFile == "" {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
 	}
+	if client.httpClient == nil {
+		client.httpClient = &http.Client{
+			Transport: NewTransport(client.debug),
+		}
+	}
+
+	storeOptions := credentials.StoreOptions{
+		AllowPlaintextPut:        true,
+		DetectDefaultNativeStore: true,
+	}
+	store, err := credentials.NewStore(client.credentialsFile, storeOptions)
+	if err != nil {
+		return nil, err
+	}
+	dockerStore, err := credentials.NewStoreFromDocker(storeOptions)
+	if err != nil {
+		// should only fail if user home directory can't be determined
+		client.credentialsStore = store
+	} else {
+		// use Helm credentials with fallback to Docker
+		client.credentialsStore = credentials.NewStoreWithFallbacks(store, dockerStore)
+	}
+
 	if client.authorizer == nil {
-		authClient, err := dockerauth.NewClientWithDockerFallback(client.credentialsFile)
-		if err != nil {
-			return nil, err
-		}
-		client.authorizer = authClient
-	}
-
-	resolverFn := client.resolver // copy for avoiding recursive call
-	client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
-		if resolverFn != nil {
-			// validate if the resolverFn returns a valid resolver
-			if resolver, err := resolverFn(ref); resolver != nil && err == nil {
-				return resolver, nil
-			}
-		}
-		headers := http.Header{}
-		headers.Set("User-Agent", version.GetUserAgent())
-		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
-		if client.httpClient != nil {
-			opts = append(opts, auth.WithResolverClient(client.httpClient))
-		}
-		if client.plainHTTP {
-			opts = append(opts, auth.WithResolverPlainHTTP())
-		}
-		resolver, err := client.authorizer.ResolverWithOpts(opts...)
-		if err != nil {
-			return nil, err
-		}
-		return resolver, nil
-	}
-
-	// allocate a cache if option is set
-	var cache registryauth.Cache
-	if client.enableCache {
-		cache = registryauth.DefaultCache
-	}
-	if client.registryAuthorizer == nil {
-		client.registryAuthorizer = &registryauth.Client{
+		authorizer := auth.Client{
 			Client: client.httpClient,
-			Header: http.Header{
-				"User-Agent": {version.GetUserAgent()},
-			},
-			Cache: cache,
-			Credential: func(ctx context.Context, reg string) (registryauth.Credential, error) {
-				dockerClient, ok := client.authorizer.(*dockerauth.Client)
-				if !ok {
-					return registryauth.EmptyCredential, errors.New("unable to obtain docker client")
-				}
+		}
+		authorizer.SetUserAgent(version.GetUserAgent())
 
-				username, password, err := dockerClient.Credential(reg)
-				if err != nil {
-					return registryauth.EmptyCredential, errors.New("unable to retrieve credentials")
-				}
+		authorizer.Credential = credentials.Credential(client.credentialsStore)
 
-				// A blank returned username and password value is a bearer token
-				if username == "" && password != "" {
-					return registryauth.Credential{
-						RefreshToken: password,
-					}, nil
-				}
-
-				return registryauth.Credential{
-					Username: username,
-					Password: password,
-				}, nil
-
-			},
+		if client.enableCache {
+			authorizer.Cache = auth.NewCache()
 		}
 
+		client.authorizer = &authorizer
 	}
+
 	return client, nil
 }
 
@@ -168,10 +154,38 @@ func ClientOptEnableCache(enableCache bool) ClientOption {
 	}
 }
 
+// ClientOptBasicAuth returns a function that sets the username and password setting on client options set
+func ClientOptBasicAuth(username, password string) ClientOption {
+	return func(client *Client) {
+		client.username = username
+		client.password = password
+	}
+}
+
 // ClientOptWriter returns a function that sets the writer setting on client options set
 func ClientOptWriter(out io.Writer) ClientOption {
 	return func(client *Client) {
 		client.out = out
+	}
+}
+
+// ClientOptAuthorizer returns a function that sets the authorizer setting on a client options set. This
+// can be used to override the default authorization mechanism.
+//
+// Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
+func ClientOptAuthorizer(authorizer auth.Client) ClientOption {
+	return func(client *Client) {
+		client.authorizer = &authorizer
+	}
+}
+
+// ClientOptRegistryAuthorizer returns a function that sets the registry authorizer setting on a client options set. This
+// can be used to override the default authorization mechanism.
+//
+// Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
+func ClientOptRegistryAuthorizer(registryAuthorizer RemoteClient) ClientOption {
+	return func(client *Client) {
+		client.registryAuthorizer = registryAuthorizer
 	}
 }
 
@@ -195,74 +209,153 @@ func ClientOptPlainHTTP() ClientOption {
 	}
 }
 
-// ClientOptResolver returns a function that sets the resolver setting on a client options set
-func ClientOptResolver(resolver remotes.Resolver) ClientOption {
-	return func(client *Client) {
-		client.resolver = func(ref registry.Reference) (remotes.Resolver, error) {
-			return resolver, nil
-		}
-	}
-}
-
 type (
 	// LoginOption allows specifying various settings on login
 	LoginOption func(*loginOperation)
 
 	loginOperation struct {
-		username string
-		password string
-		insecure bool
-		certFile string
-		keyFile  string
-		caFile   string
+		host   string
+		client *Client
 	}
 )
 
 // Login logs into a registry
 func (c *Client) Login(host string, options ...LoginOption) error {
-	operation := &loginOperation{}
 	for _, option := range options {
-		option(operation)
+		option(&loginOperation{host, c})
 	}
-	authorizerLoginOpts := []auth.LoginOption{
-		auth.WithLoginContext(ctx(c.out, c.debug)),
-		auth.WithLoginHostname(host),
-		auth.WithLoginUsername(operation.username),
-		auth.WithLoginSecret(operation.password),
-		auth.WithLoginUserAgent(version.GetUserAgent()),
-		auth.WithLoginTLS(operation.certFile, operation.keyFile, operation.caFile),
-	}
-	if operation.insecure {
-		authorizerLoginOpts = append(authorizerLoginOpts, auth.WithLoginInsecure())
-	}
-	if err := c.authorizer.LoginWithOpts(authorizerLoginOpts...); err != nil {
+
+	reg, err := remote.NewRegistry(host)
+	if err != nil {
 		return err
 	}
+	reg.PlainHTTP = c.plainHTTP
+	cred := auth.Credential{Username: c.username, Password: c.password}
+	c.authorizer.ForceAttemptOAuth2 = true
+	reg.Client = c.authorizer
+
+	ctx := context.Background()
+	if err := reg.Ping(ctx); err != nil {
+		c.authorizer.ForceAttemptOAuth2 = false
+		if err := reg.Ping(ctx); err != nil {
+			return fmt.Errorf("authenticating to %q: %w", host, err)
+		}
+	}
+
+	key := credentials.ServerAddressFromRegistry(host)
+	key = credentials.ServerAddressFromHostname(key)
+	if err := c.credentialsStore.Put(ctx, key, cred); err != nil {
+		return err
+	}
+
 	fmt.Fprintln(c.out, "Login Succeeded")
 	return nil
 }
 
 // LoginOptBasicAuth returns a function that sets the username/password settings on login
 func LoginOptBasicAuth(username string, password string) LoginOption {
-	return func(operation *loginOperation) {
-		operation.username = username
-		operation.password = password
+	return func(o *loginOperation) {
+		o.client.username = username
+		o.client.password = password
+		o.client.authorizer.Credential = auth.StaticCredential(o.host, auth.Credential{Username: username, Password: password})
 	}
+}
+
+// LoginOptPlainText returns a function that allows plaintext (HTTP) login
+func LoginOptPlainText(isPlainText bool) LoginOption {
+	return func(o *loginOperation) {
+		o.client.plainHTTP = isPlainText
+	}
+}
+
+func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, error) {
+	var transport *http.Transport
+
+	switch t := client.Client.Transport.(type) {
+	case *http.Transport:
+		transport = t
+	case *retry.Transport:
+		switch t := t.Base.(type) {
+		case *http.Transport:
+			transport = t
+		case *LoggingTransport:
+			switch t := t.RoundTripper.(type) {
+			case *http.Transport:
+				transport = t
+			}
+		}
+	}
+
+	if transport == nil {
+		// we don't know how to access the http.Transport, most likely the
+		// auth.Client.Client was provided by API user
+		return nil, fmt.Errorf("unable to access TLS client configuration, the provided HTTP Transport is not supported, given: %T", client.Client.Transport)
+	}
+
+	switch {
+	case setConfig != nil:
+		transport.TLSClientConfig = setConfig
+	case transport.TLSClientConfig == nil:
+		transport.TLSClientConfig = &tls.Config{}
+	}
+
+	return transport.TLSClientConfig, nil
 }
 
 // LoginOptInsecure returns a function that sets the insecure setting on login
 func LoginOptInsecure(insecure bool) LoginOption {
-	return func(operation *loginOperation) {
-		operation.insecure = insecure
+	return func(o *loginOperation) {
+		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
+
+		if err != nil {
+			panic(err)
+		}
+
+		tlsConfig.InsecureSkipVerify = insecure
 	}
 }
 
 // LoginOptTLSClientConfig returns a function that sets the TLS settings on login.
 func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
-	return func(operation *loginOperation) {
-		operation.certFile = certFile
-		operation.keyFile = keyFile
-		operation.caFile = caFile
+	return func(o *loginOperation) {
+		if (certFile == "" || keyFile == "") && caFile == "" {
+			return
+		}
+		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
+		if err != nil {
+			panic(err)
+		}
+
+		if certFile != "" && keyFile != "" {
+			authCert, err := tls.LoadX509KeyPair(certFile, keyFile)
+			if err != nil {
+				panic(err)
+			}
+			tlsConfig.Certificates = []tls.Certificate{authCert}
+		}
+
+		if caFile != "" {
+			certPool := x509.NewCertPool()
+			ca, err := os.ReadFile(caFile)
+			if err != nil {
+				panic(err)
+			}
+			if !certPool.AppendCertsFromPEM(ca) {
+				panic(fmt.Errorf("unable to parse CA file: %q", caFile))
+			}
+			tlsConfig.RootCAs = certPool
+		}
+	}
+}
+
+// LoginOptTLSClientConfigFromConfig returns a function that sets the TLS settings on login
+// receiving the configuration in memory rather than from files.
+func LoginOptTLSClientConfigFromConfig(conf *tls.Config) LoginOption {
+	return func(o *loginOperation) {
+		_, err := ensureTLSConfig(o.client.authorizer, conf)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -279,7 +372,8 @@ func (c *Client) Logout(host string, opts ...LogoutOption) error {
 	for _, opt := range opts {
 		opt(operation)
 	}
-	if err := c.authorizer.Logout(ctx(c.out, c.debug), host); err != nil {
+
+	if err := credentials.Logout(context.Background(), c.credentialsStore, host); err != nil {
 		return err
 	}
 	fmt.Fprintf(c.out, "Removing login credentials for %s\n", host)
@@ -319,7 +413,7 @@ type (
 
 // Pull downloads a chart from a registry
 func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
-	parsedRef, err := parseReference(ref)
+	parsedRef, err := newReference(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -334,8 +428,9 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		return nil, errors.New(
 			"must specify at least one layer to pull (chart/prov)")
 	}
-	memoryStore := content.NewMemory()
+	memoryStore := memory.New()
 	allowedMediaTypes := []string{
+		ocispec.MediaTypeImageManifest,
 		ConfigMediaType,
 	}
 	minNumDescriptors := 1 // 1 for the config
@@ -351,23 +446,38 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 
 	var descriptors, layers []ocispec.Descriptor
-	remotesResolver, err := c.resolver(parsedRef)
+
+	repository, err := remote.NewRepository(parsedRef.String())
 	if err != nil {
 		return nil, err
 	}
-	registryStore := content.Registry{Resolver: remotesResolver}
+	repository.PlainHTTP = c.plainHTTP
+	repository.Client = c.authorizer
 
-	manifest, err := oras.Copy(ctx(c.out, c.debug), registryStore, parsedRef.String(), memoryStore, "",
-		oras.WithPullEmptyNameAllowed(),
-		oras.WithAllowedMediaTypes(allowedMediaTypes),
-		oras.WithLayerDescriptors(func(l []ocispec.Descriptor) {
-			layers = l
-		}))
+	ctx := context.Background()
+
+	sort.Strings(allowedMediaTypes)
+
+	var mu sync.Mutex
+	manifest, err := oras.Copy(ctx, repository, parsedRef.String(), memoryStore, "", oras.CopyOptions{
+		CopyGraphOptions: oras.CopyGraphOptions{
+			PreCopy: func(_ context.Context, desc ocispec.Descriptor) error {
+				mediaType := desc.MediaType
+				if i := sort.SearchStrings(allowedMediaTypes, mediaType); i >= len(allowedMediaTypes) || allowedMediaTypes[i] != mediaType {
+					return oras.SkipNode
+				}
+
+				mu.Lock()
+				layers = append(layers, desc)
+				mu.Unlock()
+				return nil
+			},
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	descriptors = append(descriptors, manifest)
 	descriptors = append(descriptors, layers...)
 
 	numDescriptors := len(descriptors)
@@ -421,54 +531,37 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		Prov:  &DescriptorPullSummary{},
 		Ref:   parsedRef.String(),
 	}
-	var getManifestErr error
-	if _, manifestData, ok := memoryStore.Get(manifest); !ok {
-		getManifestErr = errors.Errorf("Unable to retrieve blob with digest %s", manifest.Digest)
-	} else {
-		result.Manifest.Data = manifestData
+
+	result.Manifest.Data, err = content.FetchAll(ctx, memoryStore, manifest)
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve blob with digest %s: %w", manifest.Digest, err)
 	}
-	if getManifestErr != nil {
-		return nil, getManifestErr
+
+	result.Config.Data, err = content.FetchAll(ctx, memoryStore, *configDescriptor)
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve blob with digest %s: %w", configDescriptor.Digest, err)
 	}
-	var getConfigDescriptorErr error
-	if _, configData, ok := memoryStore.Get(*configDescriptor); !ok {
-		getConfigDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", configDescriptor.Digest)
-	} else {
-		result.Config.Data = configData
-		var meta *chart.Metadata
-		if err := json.Unmarshal(configData, &meta); err != nil {
-			return nil, err
-		}
-		result.Chart.Meta = meta
+
+	if err := json.Unmarshal(result.Config.Data, &result.Chart.Meta); err != nil {
+		return nil, err
 	}
-	if getConfigDescriptorErr != nil {
-		return nil, getConfigDescriptorErr
-	}
+
 	if operation.withChart {
-		var getChartDescriptorErr error
-		if _, chartData, ok := memoryStore.Get(*chartDescriptor); !ok {
-			getChartDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", chartDescriptor.Digest)
-		} else {
-			result.Chart.Data = chartData
-			result.Chart.Digest = chartDescriptor.Digest.String()
-			result.Chart.Size = chartDescriptor.Size
+		result.Chart.Data, err = content.FetchAll(ctx, memoryStore, *chartDescriptor)
+		if err != nil {
+			return nil, fmt.Errorf("unable to retrieve blob with digest %s: %w", chartDescriptor.Digest, err)
 		}
-		if getChartDescriptorErr != nil {
-			return nil, getChartDescriptorErr
-		}
+		result.Chart.Digest = chartDescriptor.Digest.String()
+		result.Chart.Size = chartDescriptor.Size
 	}
+
 	if operation.withProv && !provMissing {
-		var getProvDescriptorErr error
-		if _, provData, ok := memoryStore.Get(*provDescriptor); !ok {
-			getProvDescriptorErr = errors.Errorf("Unable to retrieve blob with digest %s", provDescriptor.Digest)
-		} else {
-			result.Prov.Data = provData
-			result.Prov.Digest = provDescriptor.Digest.String()
-			result.Prov.Size = provDescriptor.Size
+		result.Prov.Data, err = content.FetchAll(ctx, memoryStore, *provDescriptor)
+		if err != nil {
+			return nil, fmt.Errorf("unable to retrieve blob with digest %s: %w", provDescriptor.Digest, err)
 		}
-		if getProvDescriptorErr != nil {
-			return nil, getProvDescriptorErr
-		}
+		result.Prov.Digest = provDescriptor.Digest.String()
+		result.Prov.Size = provDescriptor.Size
 	}
 
 	fmt.Fprintf(c.out, "Pulled: %s\n", result.Ref)
@@ -527,15 +620,15 @@ type (
 	}
 
 	pushOperation struct {
-		provData   []byte
-		strictMode bool
-		test       bool
+		provData     []byte
+		strictMode   bool
+		creationTime string
 	}
 )
 
 // Push uploads a chart to a registry.
 func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResult, error) {
-	parsedRef, err := parseReference(ref)
+	parsedRef, err := newReference(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -556,8 +649,11 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 				"strict mode enabled, ref basename and tag must match the chart name and version")
 		}
 	}
-	memoryStore := content.NewMemory()
-	chartDescriptor, err := memoryStore.Add("", ChartLayerMediaType, data)
+
+	ctx := context.Background()
+
+	memoryStore := memory.New()
+	chartDescriptor, err := oras.PushBytes(ctx, memoryStore, ChartLayerMediaType, data)
 	if err != nil {
 		return nil, err
 	}
@@ -567,43 +663,47 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 
-	configDescriptor, err := memoryStore.Add("", ConfigMediaType, configData)
+	configDescriptor, err := oras.PushBytes(ctx, memoryStore, ConfigMediaType, configData)
 	if err != nil {
 		return nil, err
 	}
 
-	descriptors := []ocispec.Descriptor{chartDescriptor}
+	layers := []ocispec.Descriptor{chartDescriptor}
 	var provDescriptor ocispec.Descriptor
 	if operation.provData != nil {
-		provDescriptor, err = memoryStore.Add("", ProvLayerMediaType, operation.provData)
+		provDescriptor, err = oras.PushBytes(ctx, memoryStore, ProvLayerMediaType, operation.provData)
 		if err != nil {
 			return nil, err
 		}
 
-		descriptors = append(descriptors, provDescriptor)
+		layers = append(layers, provDescriptor)
 	}
 
-	ociAnnotations := generateOCIAnnotations(meta, operation.test)
+	// sort layers for determinism, similar to how ORAS v1 does it
+	sort.Slice(layers, func(i, j int) bool {
+		return layers[i].Digest < layers[j].Digest
+	})
 
-	manifestData, manifest, err := content.GenerateManifest(&configDescriptor, ociAnnotations, descriptors...)
+	ociAnnotations := generateOCIAnnotations(meta, operation.creationTime)
+
+	manifestDescriptor, err := c.tagManifest(ctx, memoryStore, configDescriptor,
+		layers, ociAnnotations, parsedRef)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := memoryStore.StoreManifest(parsedRef.String(), manifest, manifestData); err != nil {
+	repository, err := remote.NewRepository(parsedRef.String())
+	if err != nil {
+		return nil, err
+	}
+	repository.PlainHTTP = c.plainHTTP
+	repository.Client = c.authorizer
+
+	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
+	if err != nil {
 		return nil, err
 	}
 
-	remotesResolver, err := c.resolver(parsedRef)
-	if err != nil {
-		return nil, err
-	}
-	registryStore := content.Registry{Resolver: remotesResolver}
-	_, err = oras.Copy(ctx(c.out, c.debug), memoryStore, parsedRef.String(), registryStore, "",
-		oras.WithNameValidation(nil))
-	if err != nil {
-		return nil, err
-	}
 	chartSummary := &descriptorPushSummaryWithMeta{
 		Meta: meta,
 	}
@@ -611,8 +711,8 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	chartSummary.Size = chartDescriptor.Size
 	result := &PushResult{
 		Manifest: &descriptorPushSummary{
-			Digest: manifest.Digest.String(),
-			Size:   manifest.Size,
+			Digest: manifestDescriptor.Digest.String(),
+			Size:   manifestDescriptor.Size,
 		},
 		Config: &descriptorPushSummary{
 			Digest: configDescriptor.Digest.String(),
@@ -630,7 +730,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 	fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
 	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
-	if strings.Contains(parsedRef.Reference, "_") {
+	if strings.Contains(parsedRef.orasReference.Reference, "_") {
 		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
 		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
 	}
@@ -652,10 +752,10 @@ func PushOptStrictMode(strictMode bool) PushOption {
 	}
 }
 
-// PushOptTest returns a function that sets whether test setting on push
-func PushOptTest(test bool) PushOption {
+// PushOptCreationTime returns a function that sets the creation time
+func PushOptCreationTime(creationTime string) PushOption {
 	return func(operation *pushOperation) {
-		operation.test = test
+		operation.creationTime = creationTime
 	}
 }
 
@@ -666,27 +766,29 @@ func (c *Client) Tags(ref string) ([]string, error) {
 		return nil, err
 	}
 
-	repository := registryremote.Repository{
-		Reference: parsedReference,
-		Client:    c.registryAuthorizer,
-		PlainHTTP: c.plainHTTP,
-	}
-
-	var registryTags []string
-
-	registryTags, err = registry.Tags(ctx(c.out, c.debug), &repository)
+	ctx := context.Background()
+	repository, err := remote.NewRepository(parsedReference.String())
 	if err != nil {
 		return nil, err
 	}
+	repository.PlainHTTP = c.plainHTTP
+	repository.Client = c.authorizer
 
 	var tagVersions []*semver.Version
-	for _, tag := range registryTags {
-		// Change underscore (_) back to plus (+) for Helm
-		// See https://github.com/helm/helm/issues/10166
-		tagVersion, err := semver.StrictNewVersion(strings.ReplaceAll(tag, "_", "+"))
-		if err == nil {
-			tagVersions = append(tagVersions, tagVersion)
+	err = repository.Tags(ctx, "", func(tags []string) error {
+		for _, tag := range tags {
+			// Change underscore (_) back to plus (+) for Helm
+			// See https://github.com/helm/helm/issues/10166
+			tagVersion, err := semver.StrictNewVersion(strings.ReplaceAll(tag, "_", "+"))
+			if err == nil {
+				tagVersions = append(tagVersions, tagVersion)
+			}
 		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	// Sort the collection
@@ -700,4 +802,110 @@ func (c *Client) Tags(ref string) ([]string, error) {
 
 	return tags, nil
 
+}
+
+// Resolve a reference to a descriptor.
+func (c *Client) Resolve(ref string) (desc ocispec.Descriptor, err error) {
+	remoteRepository, err := remote.NewRepository(ref)
+	if err != nil {
+		return desc, err
+	}
+	remoteRepository.PlainHTTP = c.plainHTTP
+
+	parsedReference, err := newReference(ref)
+	if err != nil {
+		return desc, err
+	}
+
+	ctx := context.Background()
+	parsedString := parsedReference.String()
+	return remoteRepository.Resolve(ctx, parsedString)
+}
+
+// ValidateReference for path and version
+func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, error) {
+	var tag string
+
+	registryReference, err := newReference(u.Host + u.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	if version == "" {
+		// Use OCI URI tag as default
+		version = registryReference.Tag
+	} else {
+		if registryReference.Tag != "" && registryReference.Tag != version {
+			return nil, fmt.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
+		}
+	}
+
+	if registryReference.Digest != "" {
+		if version == "" {
+			// Install by digest only
+			return u, nil
+		}
+		u.Path = fmt.Sprintf("%s@%s", registryReference.Repository, registryReference.Digest)
+
+		// Validate the tag if it was specified
+		path := registryReference.Registry + "/" + registryReference.Repository + ":" + version
+		desc, err := c.Resolve(path)
+		if err != nil {
+			// The resource does not have to be tagged when digest is specified
+			return u, nil
+		}
+		if desc.Digest.String() != registryReference.Digest {
+			return nil, fmt.Errorf("chart reference digest mismatch: %s is not %s", desc.Digest.String(), registryReference.Digest)
+		}
+		return u, nil
+	}
+
+	// Evaluate whether an explicit version has been provided. Otherwise, determine version to use
+	_, errSemVer := semver.NewVersion(version)
+	if errSemVer == nil {
+		tag = version
+	} else {
+		// Retrieve list of repository tags
+		tags, err := c.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", OCIScheme)))
+		if err != nil {
+			return nil, err
+		}
+		if len(tags) == 0 {
+			return nil, fmt.Errorf("unable to locate any tags in provided repository: %s", ref)
+		}
+
+		// Determine if version provided
+		// If empty, try to get the highest available tag
+		// If exact version, try to find it
+		// If semver constraint string, try to find a match
+		tag, err = GetTagMatchingVersionOrConstraint(tags, version)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	u.Path = fmt.Sprintf("%s:%s", registryReference.Repository, tag)
+
+	return u, err
+}
+
+// tagManifest prepares and tags a manifest in memory storage
+func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
+	configDescriptor ocispec.Descriptor, layers []ocispec.Descriptor,
+	ociAnnotations map[string]string, parsedRef reference) (ocispec.Descriptor, error) {
+
+	manifest := ocispec.Manifest{
+		Versioned:   specs.Versioned{SchemaVersion: 2},
+		Config:      configDescriptor,
+		Layers:      layers,
+		Annotations: ociAnnotations,
+	}
+
+	manifestData, err := json.Marshal(manifest)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+
+	return oras.TagBytes(ctx, memoryStore, ocispec.MediaTypeImageManifest,
+		manifestData, parsedRef.String())
 }

@@ -17,10 +17,11 @@ limitations under the License.
 package pusher
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
+	"slices"
 
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 // options are generic parameters to be provided to the pusher during instantiation.
@@ -86,12 +87,7 @@ type Provider struct {
 
 // Provides returns true if the given scheme is supported by this Provider.
 func (p Provider) Provides(scheme string) bool {
-	for _, i := range p.Schemes {
-		if i == scheme {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(p.Schemes, scheme)
 }
 
 // Providers is a collection of Provider objects.
@@ -106,7 +102,7 @@ func (p Providers) ByScheme(scheme string) (Pusher, error) {
 			return pp.New()
 		}
 	}
-	return nil, errors.Errorf("scheme %q not supported", scheme)
+	return nil, fmt.Errorf("scheme %q not supported", scheme)
 }
 
 var ociProvider = Provider{
@@ -116,7 +112,7 @@ var ociProvider = Provider{
 
 // All finds all of the registered pushers as a list of Provider instances.
 // Currently, just the built-in pushers are collected.
-func All(settings *cli.EnvSettings) Providers {
+func All(_ *cli.EnvSettings) Providers {
 	result := Providers{ociProvider}
 	return result
 }

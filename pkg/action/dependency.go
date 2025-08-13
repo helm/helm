@@ -26,18 +26,25 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/gosuri/uitable"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 )
 
 // Dependency is the action for building a given chart's dependency tree.
 //
 // It provides the implementation of 'helm dependency' and its respective subcommands.
 type Dependency struct {
-	Verify      bool
-	Keyring     string
-	SkipRefresh bool
-	ColumnWidth uint
+	Verify                bool
+	Keyring               string
+	SkipRefresh           bool
+	ColumnWidth           uint
+	Username              string
+	Password              string
+	CertFile              string
+	KeyFile               string
+	CaFile                string
+	InsecureSkipTLSverify bool
+	PlainHTTP             bool
 }
 
 // NewDependency creates a new Dependency object with the given configuration.
