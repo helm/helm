@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeRoundTripper struct {
@@ -138,11 +139,10 @@ func TestRetryingRoundTripper_RoundTrip(t *testing.T) {
 			resp, err := rt.RoundTrip(req)
 
 			if tt.expectedErr != "" {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedErr)
+				assert.ErrorContains(t, err, tt.expectedErr)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, tt.expectedCode, resp.StatusCode)
 			assert.Equal(t, tt.expectedCalls, fakeRT.calls)

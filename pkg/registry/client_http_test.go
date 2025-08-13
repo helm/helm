@@ -17,7 +17,6 @@ limitations under the License.
 package registry
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -47,12 +46,12 @@ func (suite *HTTPRegistryClientTestSuite) Test_0_Login() {
 	err := suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth("badverybad", "ohsobad"),
 		LoginOptPlainText(true))
-	suite.NotNil(err, "error logging into registry with bad credentials")
+	suite.Require().Error(err, "error logging into registry with bad credentials")
 
 	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth(testUsername, testPassword),
 		LoginOptPlainText(true))
-	suite.Nil(err, "no error logging into registry with good credentials")
+	suite.Require().NoError(err, "no error logging into registry with good credentials")
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_1_Push() {
@@ -72,8 +71,7 @@ func (suite *HTTPRegistryClientTestSuite) Test_4_ManInTheMiddle() {
 
 	// returns content that does not match the expected digest
 	_, err := suite.RegistryClient.Pull(ref)
-	suite.NotNil(err)
-	suite.True(errors.Is(err, content.ErrMismatchedDigest))
+	suite.Assert().ErrorIs(err, content.ErrMismatchedDigest)
 }
 
 func TestHTTPRegistryClientTestSuite(t *testing.T) {

@@ -27,6 +27,7 @@ linters:
     - nakedret
     - revive
     - staticcheck
+    - testifylint
     - thelper
     - unused
     - usestdlibvars
@@ -64,6 +65,10 @@ linters:
           - github.com/evanphx/json-patch:
               recommendations:
                 - github.com/evanphx/json-patch/v5
+    
+    testifylint:
+      suite-extra-assert-call:
+        mode: require
 
 run:
   timeout: 10m
