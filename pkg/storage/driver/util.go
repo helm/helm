@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package driver // import "helm.sh/helm/v3/pkg/storage/driver"
+package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 
 import (
 	"bytes"
@@ -22,8 +22,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"slices"
 
-	rspb "helm.sh/helm/v3/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
 var b64 = base64.StdEncoding
@@ -88,12 +89,7 @@ func decodeRelease(data string) (*rspb.Release, error) {
 
 // Checks if label is system
 func isSystemLabel(key string) bool {
-	for _, v := range GetSystemLabels() {
-		if key == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(GetSystemLabels(), key)
 }
 
 // Removes system labels from labels map

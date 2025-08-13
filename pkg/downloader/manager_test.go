@@ -17,16 +17,23 @@ package downloader
 
 import (
 	"bytes"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/repo/repotest"
+	"github.com/stretchr/testify/assert"
+	"sigs.k8s.io/yaml"
+
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/repotest"
 )
 
 func TestVersionEquals(t *testing.T) {
@@ -44,26 +51,6 @@ func TestVersionEquals(t *testing.T) {
 	for _, tt := range tests {
 		if versionEquals(tt.v1, tt.v2) != tt.expect {
 			t.Errorf("%s: failed comparison of %q and %q (expect equal: %t)", tt.name, tt.v1, tt.v2, tt.expect)
-		}
-	}
-}
-
-func TestNormalizeURL(t *testing.T) {
-	tests := []struct {
-		name, base, path, expect string
-	}{
-		{name: "basic URL", base: "https://example.com", path: "http://helm.sh/foo", expect: "http://helm.sh/foo"},
-		{name: "relative path", base: "https://helm.sh/charts", path: "foo", expect: "https://helm.sh/charts/foo"},
-		{name: "Encoded path", base: "https://helm.sh/a%2Fb/charts", path: "foo", expect: "https://helm.sh/a%2Fb/charts/foo"},
-	}
-
-	for _, tt := range tests {
-		got, err := normalizeURL(tt.base, tt.path)
-		if err != nil {
-			t.Errorf("%s: error %s", tt.name, err)
-			continue
-		} else if got != tt.expect {
-			t.Errorf("%s: expected %q, got %q", tt.name, tt.expect, got)
 		}
 	}
 }
@@ -128,6 +115,31 @@ func TestFindChartURL(t *testing.T) {
 	}
 	if passcredentialsall != false {
 		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
+	}
+
+	name = "foo"
+	version = "1.2.3"
+	repoURL = "http://example.com/helm"
+
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if churl != "http://example.com/helm/charts/foo-1.2.3.tgz" {
+		t.Errorf("Unexpected URL %q", churl)
+	}
+	if username != "" {
+		t.Errorf("Unexpected username %q", username)
+	}
+	if password != "" {
+		t.Errorf("Unexpected password %q", password)
+	}
+	if passcredentialsall != false {
+		t.Errorf("Unexpected passcredentialsall %t", passcredentialsall)
+	}
+	if insecureSkipTLSVerify {
+		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
 	}
 }
 
@@ -259,7 +271,7 @@ func TestDownloadAll(t *testing.T) {
 		t.Error(err)
 	}
 
-	if _, err := os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz")); os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz")); errors.Is(err, fs.ErrNotExist) {
 		t.Error(err)
 	}
 
@@ -292,10 +304,10 @@ version: 0.1.0`
 
 func TestUpdateBeforeBuild(t *testing.T) {
 	// Set up a fake repo
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/*.tgz*"),
+	)
 	defer srv.Stop()
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
@@ -347,13 +359,11 @@ func TestUpdateBeforeBuild(t *testing.T) {
 	}
 
 	// Update before Build. see issue: https://github.com/helm/helm/issues/7101
-	err = m.Update()
-	if err != nil {
+	if err := m.Update(); err != nil {
 		t.Fatal(err)
 	}
 
-	err = m.Build()
-	if err != nil {
+	if err := m.Build(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -363,10 +373,10 @@ func TestUpdateBeforeBuild(t *testing.T) {
 // to be fetched.
 func TestUpdateWithNoRepo(t *testing.T) {
 	// Set up a fake repo
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/*.tgz*"),
+	)
 	defer srv.Stop()
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
@@ -422,8 +432,7 @@ func TestUpdateWithNoRepo(t *testing.T) {
 	}
 
 	// Test the update
-	err = m.Update()
-	if err != nil {
+	if err := m.Update(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -435,11 +444,12 @@ func TestUpdateWithNoRepo(t *testing.T) {
 // Parent chart includes local-subchart 0.1.0 subchart from a fake repository, by default.
 // If each of these main fields (name, version, repository) is not supplied by dep param, default value will be used.
 func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Dependency) {
+	t.Helper()
 	// Set up a fake repo
-	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz*")
-	if err != nil {
-		t.Fatal(err)
-	}
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/*.tgz*"),
+	)
 	defer srv.Stop()
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
@@ -487,14 +497,12 @@ func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Depe
 	}
 
 	// First build will update dependencies and create Chart.lock file.
-	err = m.Build()
-	if err != nil {
+	if err := m.Build(); err != nil {
 		t.Fatal(err)
 	}
 
 	// Second build should be passed. See PR #6655.
-	err = m.Build()
-	if err != nil {
+	if err := m.Build(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -597,4 +605,163 @@ func TestKey(t *testing.T) {
 			t.Errorf("wrong key name generated for %q, expected %q but got %q", tt.name, tt.expect, o)
 		}
 	}
+}
+
+// Test dedupeRepos tests that the dedupeRepos function correctly deduplicates
+func TestDedupeRepos(t *testing.T) {
+	tests := []struct {
+		name  string
+		repos []*repo.Entry
+		want  []*repo.Entry
+	}{
+		{
+			name: "no duplicates",
+			repos: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+				{
+					URL: "https://example.com/charts2",
+				},
+			},
+			want: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+				{
+					URL: "https://example.com/charts2",
+				},
+			},
+		},
+		{
+			name: "duplicates",
+			repos: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+				{
+					URL: "https://example.com/charts",
+				},
+			},
+			want: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+			},
+		},
+		{
+			name: "duplicates with trailing slash",
+			repos: []*repo.Entry{
+				{
+					URL: "https://example.com/charts",
+				},
+				{
+					URL: "https://example.com/charts/",
+				},
+			},
+			want: []*repo.Entry{
+				{
+					// the last one wins
+					URL: "https://example.com/charts/",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := dedupeRepos(tt.repos)
+			assert.ElementsMatch(t, tt.want, got)
+		})
+	}
+}
+
+func TestWriteLock(t *testing.T) {
+	fixedTime, err := time.Parse(time.RFC3339, "2025-07-04T00:00:00Z")
+	assert.NoError(t, err)
+	lock := &chart.Lock{
+		Generated: fixedTime,
+		Digest:    "sha256:12345",
+		Dependencies: []*chart.Dependency{
+			{
+				Name:       "fantastic-chart",
+				Version:    "1.2.3",
+				Repository: "https://example.com/charts",
+			},
+		},
+	}
+	expectedContent, err := yaml.Marshal(lock)
+	assert.NoError(t, err)
+
+	t.Run("v2 lock file", func(t *testing.T) {
+		dir := t.TempDir()
+		err := writeLock(dir, lock, false)
+		assert.NoError(t, err)
+
+		lockfilePath := filepath.Join(dir, "Chart.lock")
+		_, err = os.Stat(lockfilePath)
+		assert.NoError(t, err, "Chart.lock should exist")
+
+		content, err := os.ReadFile(lockfilePath)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedContent, content)
+
+		// Check that requirements.lock does not exist
+		_, err = os.Stat(filepath.Join(dir, "requirements.lock"))
+		assert.Error(t, err)
+		assert.True(t, os.IsNotExist(err))
+	})
+
+	t.Run("v1 lock file", func(t *testing.T) {
+		dir := t.TempDir()
+		err := writeLock(dir, lock, true)
+		assert.NoError(t, err)
+
+		lockfilePath := filepath.Join(dir, "requirements.lock")
+		_, err = os.Stat(lockfilePath)
+		assert.NoError(t, err, "requirements.lock should exist")
+
+		content, err := os.ReadFile(lockfilePath)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedContent, content)
+
+		// Check that Chart.lock does not exist
+		_, err = os.Stat(filepath.Join(dir, "Chart.lock"))
+		assert.Error(t, err)
+		assert.True(t, os.IsNotExist(err))
+	})
+
+	t.Run("overwrite existing lock file", func(t *testing.T) {
+		dir := t.TempDir()
+		lockfilePath := filepath.Join(dir, "Chart.lock")
+		assert.NoError(t, os.WriteFile(lockfilePath, []byte("old content"), 0644))
+
+		err = writeLock(dir, lock, false)
+		assert.NoError(t, err)
+
+		content, err := os.ReadFile(lockfilePath)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedContent, content)
+	})
+
+	t.Run("lock file is a symlink", func(t *testing.T) {
+		dir := t.TempDir()
+		dummyFile := filepath.Join(dir, "dummy.txt")
+		assert.NoError(t, os.WriteFile(dummyFile, []byte("dummy"), 0644))
+
+		lockfilePath := filepath.Join(dir, "Chart.lock")
+		assert.NoError(t, os.Symlink(dummyFile, lockfilePath))
+
+		err = writeLock(dir, lock, false)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "the Chart.lock file is a symlink to")
+	})
+
+	t.Run("chart path is not a directory", func(t *testing.T) {
+		dir := t.TempDir()
+		filePath := filepath.Join(dir, "not-a-dir")
+		assert.NoError(t, os.WriteFile(filePath, []byte("file"), 0644))
+
+		err = writeLock(filePath, lock, false)
+		assert.Error(t, err)
+	})
 }

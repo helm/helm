@@ -30,6 +30,7 @@ HAS_WGET="$(type "wget" &> /dev/null && echo true || echo false)"
 HAS_OPENSSL="$(type "openssl" &> /dev/null && echo true || echo false)"
 HAS_GPG="$(type "gpg" &> /dev/null && echo true || echo false)"
 HAS_GIT="$(type "git" &> /dev/null && echo true || echo false)"
+HAS_TAR="$(type "tar" &> /dev/null && echo true || echo false)"
 
 # initArch discovers the architecture for this system.
 initArch() {
@@ -101,6 +102,11 @@ verifySupported() {
 
   if [ "${HAS_GIT}" != "true" ]; then
     echo "[WARNING] Could not find git. It is required for plugin installation."
+  fi
+
+  if [ "${HAS_TAR}" != "true" ]; then
+    echo "[ERROR] Could not find tar. It is required to extract the helm binary archive."
+    exit 1
   fi
 }
 
@@ -273,7 +279,7 @@ testVersion() {
 help () {
   echo "Accepted cli arguments are:"
   echo -e "\t[--help|-h ] ->> prints this help"
-  echo -e "\t[--version|-v <desired_version>] . When not defined it fetches the latest release from GitHub"
+  echo -e "\t[--version|-v <desired_version>] . When not defined it fetches the latest release tag from the Helm CDN"
   echo -e "\te.g. --version v3.0.0 or -v canary"
   echo -e "\t[--no-sudo]  ->> install without sudo"
 }

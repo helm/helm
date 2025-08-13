@@ -33,15 +33,9 @@ package fs
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
-	"sync"
 	"testing"
-)
-
-var (
-	mu sync.Mutex
 )
 
 func TestRenameWithFallback(t *testing.T) {
@@ -360,19 +354,6 @@ func TestCopyFile(t *testing.T) {
 	}
 }
 
-func cleanUpDir(dir string) {
-	// NOTE(mattn): It seems that sometimes git.exe is not dead
-	// when cleanUpDir() is called. But we do not know any way to wait for it.
-	if runtime.GOOS == "windows" {
-		mu.Lock()
-		exec.Command(`taskkill`, `/F`, `/IM`, `git.exe`).Run()
-		mu.Unlock()
-	}
-	if dir != "" {
-		os.RemoveAll(dir)
-	}
-}
-
 func TestCopyFileSymlink(t *testing.T) {
 	tempdir := t.TempDir()
 
@@ -476,6 +457,7 @@ func TestCopyFileFail(t *testing.T) {
 // files this function creates. It is the caller's responsibility to call
 // this function before the test is done running, whether there's an error or not.
 func setupInaccessibleDir(t *testing.T, op func(dir string) error) func() {
+	t.Helper()
 	dir := t.TempDir()
 
 	subdir := filepath.Join(dir, "dir")

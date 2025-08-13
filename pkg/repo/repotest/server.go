@@ -16,8 +16,9 @@ limitations under the License.
 package repotest
 
 import (
-	"context"
+	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,46 +30,112 @@ import (
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"           // used for docker test registry
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory" // used for docker test registry
-	"github.com/phayes/freeport"
 	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v3/internal/tlsutil"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	ociRegistry "helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/repo"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	ociRegistry "helm.sh/helm/v4/pkg/registry"
+	"helm.sh/helm/v4/pkg/repo"
 )
 
-// NewTempServerWithCleanup creates a server inside of a temp dir.
-//
-// If the passed in string is not "", it will be treated as a shell glob, and files
-// will be copied from that path to the server's docroot.
-//
-// The caller is responsible for stopping the server.
-// The temp dir will be removed by testing package automatically when test finished.
-func NewTempServerWithCleanup(t *testing.T, glob string) (*Server, error) {
-	srv, err := NewTempServer(glob)
-	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
-	return srv, err
-}
-
-// Set up a fake repo with basic auth enabled
-func NewTempServerWithCleanupAndBasicAuth(t *testing.T, glob string) *Server {
-	srv, err := NewTempServerWithCleanup(t, glob)
-	srv.Stop()
-	if err != nil {
-		t.Fatal(err)
-	}
-	srv.WithMiddleware(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+func BasicAuthMiddleware(t *testing.T) http.HandlerFunc {
+	t.Helper()
+	return http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
 		if !ok || username != "username" || password != "password" {
 			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
 		}
-	}))
-	srv.Start()
+	})
+}
+
+type ServerOption func(*testing.T, *Server)
+
+func WithTLSConfig(tlsConfig *tls.Config) ServerOption {
+	return func(_ *testing.T, server *Server) {
+		server.tlsConfig = tlsConfig
+	}
+}
+
+func WithMiddleware(middleware http.HandlerFunc) ServerOption {
+	return func(_ *testing.T, server *Server) {
+		server.middleware = middleware
+	}
+}
+
+func WithChartSourceGlob(glob string) ServerOption {
+	return func(_ *testing.T, server *Server) {
+		server.chartSourceGlob = glob
+	}
+}
+
+// Server is an implementation of a repository server for testing.
+type Server struct {
+	docroot         string
+	srv             *httptest.Server
+	middleware      http.HandlerFunc
+	tlsConfig       *tls.Config
+	chartSourceGlob string
+}
+
+// NewTempServer creates a server inside of a temp dir.
+//
+// If the passed in string is not "", it will be treated as a shell glob, and files
+// will be copied from that path to the server's docroot.
+//
+// The server is started automatically. The caller is responsible for stopping
+// the server.
+//
+// The temp dir will be removed by testing package automatically when test finished.
+func NewTempServer(t *testing.T, options ...ServerOption) *Server {
+	t.Helper()
+	docrootTempDir := t.TempDir()
+
+	srv := newServer(t, docrootTempDir, options...)
+
+	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
+
+	if srv.chartSourceGlob != "" {
+		if _, err := srv.CopyCharts(srv.chartSourceGlob); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	return srv
+}
+
+// Create the server, but don't yet start it
+func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
+	t.Helper()
+	absdocroot, err := filepath.Abs(docroot)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s := &Server{
+		docroot: absdocroot,
+	}
+
+	for _, option := range options {
+		option(t, s)
+	}
+
+	s.srv = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.middleware != nil {
+			s.middleware.ServeHTTP(w, r)
+		}
+		http.FileServer(http.Dir(s.Root())).ServeHTTP(w, r)
+	}))
+
+	s.start()
+
+	// Add the testing repository as the only repo. Server must be started for the server's URL to be valid
+	if err := setTestingRepository(s.URL(), filepath.Join(s.docroot, "repositories.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	return s
 }
 
 type OCIServer struct {
@@ -93,6 +160,7 @@ func WithDependingChart(c *chart.Chart) OCIServerOpt {
 }
 
 func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
+	t.Helper()
 	testHtpasswdFileBasename := "authtest.htpasswd"
 	testUsername, testPassword := "username", "password"
 
@@ -101,19 +169,21 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 		t.Fatal("error generating bcrypt password for test htpasswd file")
 	}
 	htpasswdPath := filepath.Join(dir, testHtpasswdFileBasename)
-	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0o644)
 	if err != nil {
 		t.Fatalf("error creating test htpasswd file")
 	}
 
 	// Registry config
 	config := &configuration.Configuration{}
-	port, err := freeport.GetFreePort()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("error finding free port for test registry")
 	}
+	defer ln.Close()
 
-	config.HTTP.Addr = fmt.Sprintf(":%d", port)
+	port := ln.Addr().(*net.TCPAddr).Port
+	config.HTTP.Addr = ln.Addr().String()
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
 	config.Auth = configuration.Auth{
@@ -125,7 +195,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 
 	registryURL := fmt.Sprintf("localhost:%d", port)
 
-	r, err := registry.NewRegistry(context.Background(), config)
+	r, err := registry.NewRegistry(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,6 +210,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 }
 
 func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
+	t.Helper()
 	cfg := &OCIServerRunConfig{}
 	for _, fn := range opts {
 		fn(cfg)
@@ -163,9 +234,10 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 	err = registryClient.Login(
 		srv.RegistryURL,
 		ociRegistry.LoginOptBasicAuth(srv.TestUsername, srv.TestPassword),
-		ociRegistry.LoginOptInsecure(false))
+		ociRegistry.LoginOptInsecure(true),
+		ociRegistry.LoginOptPlainText(true))
 	if err != nil {
-		t.Fatalf("error logging into registry with good credentials")
+		t.Fatalf("error logging into registry with good credentials: %v", err)
 	}
 
 	ref := fmt.Sprintf("%s/u/ocitestuser/oci-dependent-chart:0.1.0", srv.RegistryURL)
@@ -238,69 +310,6 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		result.Chart.Digest, result.Chart.Size)
 }
 
-// NewTempServer creates a server inside of a temp dir.
-//
-// If the passed in string is not "", it will be treated as a shell glob, and files
-// will be copied from that path to the server's docroot.
-//
-// The caller is responsible for destroying the temp directory as well as stopping
-// the server.
-//
-// Deprecated: use NewTempServerWithCleanup
-func NewTempServer(glob string) (*Server, error) {
-	tdir, err := os.MkdirTemp("", "helm-repotest-")
-	if err != nil {
-		return nil, err
-	}
-	srv := NewServer(tdir)
-
-	if glob != "" {
-		if _, err := srv.CopyCharts(glob); err != nil {
-			srv.Stop()
-			return srv, err
-		}
-	}
-
-	return srv, nil
-}
-
-// NewServer creates a repository server for testing.
-//
-// docroot should be a temp dir managed by the caller.
-//
-// This will start the server, serving files off of the docroot.
-//
-// Use CopyCharts to move charts into the repository and then index them
-// for service.
-func NewServer(docroot string) *Server {
-	root, err := filepath.Abs(docroot)
-	if err != nil {
-		panic(err)
-	}
-	srv := &Server{
-		docroot: root,
-	}
-	srv.Start()
-	// Add the testing repository as the only repo.
-	if err := setTestingRepository(srv.URL(), filepath.Join(root, "repositories.yaml")); err != nil {
-		panic(err)
-	}
-	return srv
-}
-
-// Server is an implementation of a repository server for testing.
-type Server struct {
-	docroot    string
-	srv        *httptest.Server
-	middleware http.HandlerFunc
-}
-
-// WithMiddleware injects middleware in front of the server. This can be used to inject
-// additional functionality like layering in an authentication frontend.
-func (s *Server) WithMiddleware(middleware http.HandlerFunc) {
-	s.middleware = middleware
-}
-
 // Root gets the docroot for the server.
 func (s *Server) Root() string {
 	return s.docroot
@@ -320,7 +329,7 @@ func (s *Server) CopyCharts(origin string) ([]string, error) {
 		if err != nil {
 			return []string{}, err
 		}
-		if err := os.WriteFile(newname, data, 0644); err != nil {
+		if err := os.WriteFile(newname, data, 0o644); err != nil {
 			return []string{}, err
 		}
 		copied[i] = newname
@@ -344,49 +353,15 @@ func (s *Server) CreateIndex() error {
 	}
 
 	ifile := filepath.Join(s.docroot, "index.yaml")
-	return os.WriteFile(ifile, d, 0644)
+	return os.WriteFile(ifile, d, 0o644)
 }
 
-func (s *Server) Start() {
-	s.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.middleware != nil {
-			s.middleware.ServeHTTP(w, r)
-		}
-		http.FileServer(http.Dir(s.docroot)).ServeHTTP(w, r)
-	}))
-}
-
-func (s *Server) StartTLS() {
-	cd := "../../testdata"
-	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
-	insecure := false
-
-	s.srv = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.middleware != nil {
-			s.middleware.ServeHTTP(w, r)
-		}
-		http.FileServer(http.Dir(s.Root())).ServeHTTP(w, r)
-	}))
-	tlsConf, err := tlsutil.NewClientTLS(pub, priv, ca, insecure)
-	if err != nil {
-		panic(err)
-	}
-	tlsConf.ServerName = "helm.sh"
-	s.srv.TLS = tlsConf
-	s.srv.StartTLS()
-
-	// Set up repositories config with ca file
-	repoConfig := filepath.Join(s.Root(), "repositories.yaml")
-
-	r := repo.NewFile()
-	r.Add(&repo.Entry{
-		Name:   "test",
-		URL:    s.URL(),
-		CAFile: filepath.Join("../../testdata", "rootca.crt"),
-	})
-
-	if err := r.WriteFile(repoConfig, 0600); err != nil {
-		panic(err)
+func (s *Server) start() {
+	if s.tlsConfig != nil {
+		s.srv.TLS = s.tlsConfig
+		s.srv.StartTLS()
+	} else {
+		s.srv.Start()
 	}
 }
 
@@ -406,6 +381,10 @@ func (s *Server) URL() string {
 	return s.srv.URL
 }
 
+func (s *Server) Client() *http.Client {
+	return s.srv.Client()
+}
+
 // LinkIndices links the index created with CreateIndex and makes a symbolic link to the cache index.
 //
 // This makes it possible to simulate a local cache of a repository.
@@ -417,10 +396,14 @@ func (s *Server) LinkIndices() error {
 
 // setTestingRepository sets up a testing repository.yaml with only the given URL.
 func setTestingRepository(url, fname string) error {
+	if url == "" {
+		panic("no url")
+	}
+
 	r := repo.NewFile()
 	r.Add(&repo.Entry{
 		Name: "test",
 		URL:  url,
 	})
-	return r.WriteFile(fname, 0640)
+	return r.WriteFile(fname, 0o640)
 }

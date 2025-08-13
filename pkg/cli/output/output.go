@@ -22,7 +22,6 @@ import (
 	"io"
 
 	"github.com/gosuri/uitable"
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 )
 
@@ -107,7 +106,7 @@ func EncodeJSON(out io.Writer, obj interface{}) error {
 	enc := json.NewEncoder(out)
 	err := enc.Encode(obj)
 	if err != nil {
-		return errors.Wrap(err, "unable to write JSON output")
+		return fmt.Errorf("unable to write JSON output: %w", err)
 	}
 	return nil
 }
@@ -117,12 +116,12 @@ func EncodeJSON(out io.Writer, obj interface{}) error {
 func EncodeYAML(out io.Writer, obj interface{}) error {
 	raw, err := yaml.Marshal(obj)
 	if err != nil {
-		return errors.Wrap(err, "unable to write YAML output")
+		return fmt.Errorf("unable to write YAML output: %w", err)
 	}
 
 	_, err = out.Write(raw)
 	if err != nil {
-		return errors.Wrap(err, "unable to write YAML output")
+		return fmt.Errorf("unable to write YAML output: %w", err)
 	}
 	return nil
 }
@@ -134,7 +133,7 @@ func EncodeTable(out io.Writer, table *uitable.Table) error {
 	raw = append(raw, []byte("\n")...)
 	_, err := out.Write(raw)
 	if err != nil {
-		return errors.Wrap(err, "unable to write table output")
+		return fmt.Errorf("unable to write table output: %w", err)
 	}
 	return nil
 }

@@ -16,17 +16,16 @@
 package helmpath
 
 import (
-	"os"
 	"runtime"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/helmpath/xdg"
+	"helm.sh/helm/v4/pkg/helmpath/xdg"
 )
 
 func TestHelmHome(t *testing.T) {
-	os.Setenv(xdg.CacheHomeEnvVar, "/cache")
-	os.Setenv(xdg.ConfigHomeEnvVar, "/config")
-	os.Setenv(xdg.DataHomeEnvVar, "/data")
+	t.Setenv(xdg.CacheHomeEnvVar, "/cache")
+	t.Setenv(xdg.ConfigHomeEnvVar, "/config")
+	t.Setenv(xdg.DataHomeEnvVar, "/data")
 	isEq := func(t *testing.T, got, expected string) {
 		t.Helper()
 		if expected != got {
@@ -40,7 +39,7 @@ func TestHelmHome(t *testing.T) {
 	isEq(t, DataPath(), "/data/helm")
 
 	// test to see if lazy-loading environment variables at runtime works
-	os.Setenv(xdg.CacheHomeEnvVar, "/cache2")
+	t.Setenv(xdg.CacheHomeEnvVar, "/cache2")
 
 	isEq(t, CachePath(), "/cache2/helm")
 }

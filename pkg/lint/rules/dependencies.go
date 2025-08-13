@@ -14,17 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rules // import "helm.sh/helm/v3/pkg/lint/rules"
+package rules // import "helm.sh/helm/v4/pkg/lint/rules"
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/lint/support"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 // Dependencies runs lints against a chart's dependencies
@@ -43,7 +41,7 @@ func Dependencies(linter *support.Linter) {
 
 func validateChartFormat(chartError error) error {
 	if chartError != nil {
-		return errors.Errorf("unable to load chart\n\t%s", chartError)
+		return fmt.Errorf("unable to load chart\n\t%w", chartError)
 	}
 	return nil
 }

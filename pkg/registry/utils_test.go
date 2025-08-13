@@ -29,6 +29,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/distribution/distribution/v3/configuration"
@@ -36,11 +37,10 @@ import (
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
 	"github.com/foxcpp/go-mockdns"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
-	"helm.sh/helm/v3/internal/tlsutil"
+	"helm.sh/helm/v4/internal/tlsutil"
 )
 
 const (
@@ -88,15 +88,20 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 		ClientOptEnableCache(true),
 		ClientOptWriter(suite.Out),
 		ClientOptCredentialsFile(credentialsFile),
-		ClientOptResolver(nil),
+		ClientOptBasicAuth(testUsername, testPassword),
 	}
 
 	if tlsEnabled {
 		var tlsConf *tls.Config
 		if insecure {
-			tlsConf, err = tlsutil.NewClientTLS("", "", "", true)
+			tlsConf, err = tlsutil.NewTLSConfig(
+				tlsutil.WithInsecureSkipVerify(true),
+			)
 		} else {
-			tlsConf, err = tlsutil.NewClientTLS(tlsCert, tlsKey, tlsCA, false)
+			tlsConf, err = tlsutil.NewTLSConfig(
+				tlsutil.WithCertKeyPairFiles(tlsCert, tlsKey),
+				tlsutil.WithCAFile(tlsCA),
+			)
 		}
 		httpClient := &http.Client{
 			Transport: &http.Transport{
@@ -121,32 +126,32 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 
 	// Registry config
 	config := &configuration.Configuration{}
-	port, err := freeport.GetFreePort()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	suite.Nil(err, "no error finding free port for test registry")
+	defer ln.Close()
 
 	// Change the registry host to another host which is not localhost.
 	// This is required because Docker enforces HTTP if the registry
 	// host is localhost/127.0.0.1.
+	port := ln.Addr().(*net.TCPAddr).Port
 	suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
-	suite.srv, _ = mockdns.NewServer(map[string]mockdns.Zone{
+	suite.srv, err = mockdns.NewServer(map[string]mockdns.Zone{
 		"helm-test-registry.": {
 			A: []string{"127.0.0.1"},
 		},
 	}, false)
+	suite.Nil(err, "no error creating mock DNS server")
 	suite.srv.PatchNet(net.DefaultResolver)
 
-	config.HTTP.Addr = fmt.Sprintf(":%d", port)
+	config.HTTP.Addr = ln.Addr().String()
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
 
-	// Basic auth is not possible if we are serving HTTP.
-	if tlsEnabled {
-		config.Auth = configuration.Auth{
-			"htpasswd": configuration.Parameters{
-				"realm": "localhost",
-				"path":  htpasswdPath,
-			},
-		}
+	config.Auth = configuration.Auth{
+		"htpasswd": configuration.Parameters{
+			"realm": "localhost",
+			"path":  htpasswdPath,
+		},
 	}
 
 	// config tls
@@ -169,6 +174,9 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 }
 
 func teardown(suite *TestSuite) {
+	var lock sync.Mutex
+	lock.Lock()
+	defer lock.Unlock()
 	if suite.srv != nil {
 		mockdns.UnpatchNet(net.DefaultResolver)
 		suite.srv.Close()
@@ -179,11 +187,9 @@ func initCompromisedRegistryTestServer() string {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "manifests") {
 			w.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 
-			// layers[0] is the blob []byte("a")
-			w.Write([]byte(
-				fmt.Sprintf(`{ "schemaVersion": 2, "config": {
+			fmt.Fprintf(w, `{ "schemaVersion": 2, "config": {
     "mediaType": "%s",
     "digest": "sha256:a705ee2789ab50a5ba20930f246dbd5cc01ff9712825bb98f57ee8414377f133",
     "size": 181
@@ -195,19 +201,19 @@ func initCompromisedRegistryTestServer() string {
       "size": 1
     }
   ]
-}`, ConfigMediaType, ChartLayerMediaType)))
+}`, ConfigMediaType, ChartLayerMediaType)
 		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:a705ee2789ab50a5ba20930f246dbd5cc01ff9712825bb98f57ee8414377f133" {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("{\"name\":\"mychart\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\\n" +
 				"an 'application' or a 'library' chart.\",\"apiVersion\":\"v2\",\"appVersion\":\"1.16.0\",\"type\":" +
 				"\"application\"}"))
 		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb" {
 			w.Header().Set("Content-Type", ChartLayerMediaType)
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("b"))
 		} else {
-			w.WriteHeader(500)
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}))
 
@@ -275,7 +281,7 @@ func testPush(suite *TestSuite) {
 	result, err := suite.RegistryClient.Push(chartData, ref, PushOptProvData(provData), PushOptCreationTime(testingChartCreationTime))
 	suite.Nil(err, "no error pushing good ref with prov")
 
-	_, err = suite.RegistryClient.Pull(ref)
+	_, err = suite.RegistryClient.Pull(ref, PullOptWithProv(true))
 	suite.Nil(err, "no error pulling a simple chart")
 
 	// Validate the output
@@ -349,7 +355,7 @@ func testPull(suite *TestSuite) {
 
 	// full pull with chart and prov
 	result, err := suite.RegistryClient.Pull(ref, PullOptWithProv(true))
-	suite.Nil(err, "no error pulling a chart with prov")
+	suite.Require().Nil(err, "no error pulling a chart with prov")
 
 	// Validate the output
 	// Note: these digests/sizes etc may change if the test chart/prov files are modified,
