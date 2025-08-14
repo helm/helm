@@ -733,12 +733,12 @@ func Create(name, dir string) (string, error) {
 		{
 			// Chart.yaml
 			path:    filepath.Join(cdir, ChartfileName),
-			content: []byte(fmt.Sprintf(defaultChartfile, name)),
+			content: fmt.Appendf(nil, defaultChartfile, name),
 		},
 		{
 			// values.yaml
 			path:    filepath.Join(cdir, ValuesfileName),
-			content: []byte(fmt.Sprintf(defaultValues, name)),
+			content: fmt.Appendf(nil, defaultValues, name),
 		},
 		{
 			// .helmignore

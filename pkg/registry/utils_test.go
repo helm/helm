@@ -121,7 +121,7 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
 	suite.Nil(err, "no error generating bcrypt password for test htpasswd file")
 	htpasswdPath := filepath.Join(suite.WorkspaceDir, testHtpasswdFileBasename)
-	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	err = os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0644)
 	suite.Nil(err, "no error creating test htpasswd file")
 
 	// Registry config
