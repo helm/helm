@@ -32,7 +32,7 @@ func (suite *RegistryScopeTestSuite) Test_1_Cehck_Push_Request_Scope() {
 	server := &http.Server{
 		Addr: suite.AuthServerHost,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			suite.Equal(r.URL.String(), string("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull%2Cpush&service=testservice"))
+			suite.Equal(string("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull%2Cpush&service=testservice"), r.URL.String())
 			w.WriteHeader(http.StatusOK)
 		}),
 	}
@@ -65,7 +65,7 @@ func (suite *RegistryScopeTestSuite) Test_2_Cehck_Pull_Request_Scope() {
 	server := &http.Server{
 		Addr: suite.AuthServerHost,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			suite.Equal(r.URL.String(), string("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull&service=testservice"))
+			suite.Equal(string("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull&service=testservice"), r.URL.String())
 			w.WriteHeader(http.StatusOK)
 		}),
 	}
