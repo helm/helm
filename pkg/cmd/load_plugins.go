@@ -63,7 +63,6 @@ func loadPlugins(baseCmd *cobra.Command, out io.Writer) {
 
 	// Now we create commands for all of these.
 	for _, plug := range found {
-		plug := plug
 		md := plug.Metadata
 		if md.Usage == "" {
 			md.Usage = fmt.Sprintf("the %q plugin", md.Name)
