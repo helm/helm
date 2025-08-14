@@ -426,7 +426,11 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		slog.Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
 	}
 
-	results, err := u.cfg.KubeClient.Update(current, target, u.ForceReplace)
+	results, err := u.cfg.KubeClient.Update(
+		current,
+		target,
+		kube.ClientUpdateOptionServerSideApply(false, false),
+		kube.ClientUpdateOptionForceReplace(u.ForceReplace))
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
