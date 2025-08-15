@@ -300,7 +300,7 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 			} else {
 				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
 			}
-		} else if istable(dv) && val != nil && isNonEmptyString(val) && isNonEmptyTable(dv) {
+		} else if istable(dv) && val != nil {
 			printf("warning: destination for %s is a table. Ignoring non-table value (%v)", fullkey, val)
 		}
 	}
