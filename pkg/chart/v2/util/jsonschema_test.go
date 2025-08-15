@@ -17,7 +17,10 @@ limitations under the License.
 package util
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -244,4 +247,41 @@ func TestValidateAgainstSchema2020Negative(t *testing.T) {
 	if errString != expectedErrString {
 		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
 	}
+}
+
+func TestHTTPURLLoader_Load(t *testing.T) {
+	// Test successful JSON schema loading
+	t.Run("successful load", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"type": "object", "properties": {"name": {"type": "string"}}}`))
+		}))
+		defer server.Close()
+
+		loader := newHTTPURLLoader()
+		result, err := loader.Load(server.URL)
+		if err != nil {
+			t.Fatalf("Expected no error, got: %v", err)
+		}
+		if result == nil {
+			t.Fatal("Expected result to be non-nil")
+		}
+	})
+
+	t.Run("HTTP error status", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		loader := newHTTPURLLoader()
+		_, err := loader.Load(server.URL)
+		if err == nil {
+			t.Fatal("Expected error for HTTP 404")
+		}
+		if !strings.Contains(err.Error(), "404") {
+			t.Errorf("Expected error message to contain '404', got: %v", err)
+		}
+	})
 }
