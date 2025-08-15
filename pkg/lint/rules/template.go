@@ -40,35 +40,66 @@ import (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values map[string]interface{}, namespace string, _ bool) {
-	TemplatesWithKubeVersion(linter, values, namespace, nil)
+func Templates(linter *support.Linter, namespace string, values map[string]any, options ...TemplateLinterOption) {
+	templateLinter := newTemplateLinter(linter, namespace, values, options...)
+	templateLinter.Lint()
 }
 
-// TemplatesWithKubeVersion lints the templates in the Linter, allowing to specify the kubernetes version.
-func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) {
-	TemplatesWithSkipSchemaValidation(linter, values, namespace, kubeVersion, false)
+type TemplateLinterOption func(*templateLinter)
+
+func TemplateLinterKubeVersion(kubeVersion *chartutil.KubeVersion) TemplateLinterOption {
+	return func(tl *templateLinter) {
+		tl.kubeVersion = kubeVersion
+	}
 }
 
-// TemplatesWithSkipSchemaValidation lints the templates in the Linter, allowing to specify the kubernetes version and if schema validation is enabled or not.
-func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, skipSchemaValidation bool) {
-	fpath := "templates/"
-	templatesPath := filepath.Join(linter.ChartDir, fpath)
+func TemplateLinterSkipSchemaValidation(skipSchemaValidation bool) TemplateLinterOption {
+	return func(tl *templateLinter) {
+		tl.skipSchemaValidation = skipSchemaValidation
+	}
+}
 
-	// Templates directory is optional for now
-	templatesDirExists := linter.RunLinterRule(support.WarningSev, fpath, templatesDirExists(templatesPath))
+func newTemplateLinter(linter *support.Linter, namespace string, values map[string]any, options ...TemplateLinterOption) templateLinter {
+
+	result := templateLinter{
+		linter:    linter,
+		values:    values,
+		namespace: namespace,
+	}
+
+	for _, o := range options {
+		o(&result)
+	}
+
+	return result
+}
+
+type templateLinter struct {
+	linter               *support.Linter
+	values               map[string]any
+	namespace            string
+	kubeVersion          *chartutil.KubeVersion
+	skipSchemaValidation bool
+}
+
+func (t *templateLinter) Lint() {
+	templatesDir := "templates/"
+	templatesPath := filepath.Join(t.linter.ChartDir, templatesDir)
+
+	templatesDirExists := t.linter.RunLinterRule(support.WarningSev, templatesDir, templatesDirExists(templatesPath))
 	if !templatesDirExists {
 		return
 	}
 
-	validTemplatesDir := linter.RunLinterRule(support.ErrorSev, fpath, validateTemplatesDir(templatesPath))
+	validTemplatesDir := t.linter.RunLinterRule(support.ErrorSev, templatesDir, validateTemplatesDir(templatesPath))
 	if !validTemplatesDir {
 		return
 	}
 
 	// Load chart and parse templates
-	chart, err := loader.Load(linter.ChartDir)
+	chart, err := loader.Load(t.linter.ChartDir)
 
-	chartLoaded := linter.RunLinterRule(support.ErrorSev, fpath, err)
+	chartLoaded := t.linter.RunLinterRule(support.ErrorSev, templatesDir, err)
 
 	if !chartLoaded {
 		return
@@ -76,35 +107,35 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 
 	options := chartutil.ReleaseOptions{
 		Name:      "test-release",
-		Namespace: namespace,
+		Namespace: t.namespace,
 	}
 
 	caps := chartutil.DefaultCapabilities.Copy()
-	if kubeVersion != nil {
-		caps.KubeVersion = *kubeVersion
+	if t.kubeVersion != nil {
+		caps.KubeVersion = *t.kubeVersion
 	}
 
 	// lint ignores import-values
 	// See https://github.com/helm/helm/issues/9658
-	if err := chartutil.ProcessDependencies(chart, values); err != nil {
+	if err := chartutil.ProcessDependencies(chart, t.values); err != nil {
 		return
 	}
 
-	cvals, err := chartutil.CoalesceValues(chart, values)
+	cvals, err := chartutil.CoalesceValues(chart, t.values)
 	if err != nil {
 		return
 	}
 
-	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, cvals, options, caps, skipSchemaValidation)
+	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, cvals, options, caps, t.skipSchemaValidation)
 	if err != nil {
-		linter.RunLinterRule(support.ErrorSev, fpath, err)
+		t.linter.RunLinterRule(support.ErrorSev, templatesDir, err)
 		return
 	}
 	var e engine.Engine
 	e.LintMode = true
 	renderedContentMap, err := e.Render(chart, valuesToRender)
 
-	renderOk := linter.RunLinterRule(support.ErrorSev, fpath, err)
+	renderOk := t.linter.RunLinterRule(support.ErrorSev, templatesDir, err)
 
 	if !renderOk {
 		return
@@ -119,9 +150,8 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 	*/
 	for _, template := range chart.Templates {
 		fileName := template.Name
-		fpath = fileName
 
-		linter.RunLinterRule(support.ErrorSev, fpath, validateAllowedExtension(fileName))
+		t.linter.RunLinterRule(support.ErrorSev, fileName, validateAllowedExtension(fileName))
 
 		// We only apply the following lint rules to yaml files
 		if filepath.Ext(fileName) != ".yaml" || filepath.Ext(fileName) == ".yml" {
@@ -137,7 +167,7 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 
 		renderedContent := renderedContentMap[path.Join(chart.Name(), fileName)]
 		if strings.TrimSpace(renderedContent) != "" {
-			linter.RunLinterRule(support.WarningSev, fpath, validateTopIndentLevel(renderedContent))
+			t.linter.RunLinterRule(support.WarningSev, fileName, validateTopIndentLevel(renderedContent))
 
 			decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(renderedContent), 4096)
 
@@ -154,17 +184,17 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 
 				//  If YAML linting fails here, it will always fail in the next block as well, so we should return here.
 				// fix https://github.com/helm/helm/issues/11391
-				if !linter.RunLinterRule(support.ErrorSev, fpath, validateYamlContent(err)) {
+				if !t.linter.RunLinterRule(support.ErrorSev, fileName, validateYamlContent(err)) {
 					return
 				}
 				if yamlStruct != nil {
 					// NOTE: set to warnings to allow users to support out-of-date kubernetes
 					// Refs https://github.com/helm/helm/issues/8596
-					linter.RunLinterRule(support.WarningSev, fpath, validateMetadataName(yamlStruct))
-					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct, kubeVersion))
+					t.linter.RunLinterRule(support.WarningSev, fileName, validateMetadataName(yamlStruct))
+					t.linter.RunLinterRule(support.WarningSev, fileName, validateNoDeprecations(yamlStruct, t.kubeVersion))
 
-					linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(yamlStruct, renderedContent))
-					linter.RunLinterRule(support.ErrorSev, fpath, validateListAnnotations(yamlStruct, renderedContent))
+					t.linter.RunLinterRule(support.ErrorSev, fileName, validateMatchSelector(yamlStruct, renderedContent))
+					t.linter.RunLinterRule(support.ErrorSev, fileName, validateListAnnotations(yamlStruct, renderedContent))
 				}
 			}
 		}
@@ -232,6 +262,7 @@ func validateYamlContent(err error) error {
 	if err != nil {
 		return fmt.Errorf("unable to parse YAML: %w", err)
 	}
+
 	return nil
 }
 
