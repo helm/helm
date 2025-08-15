@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
+	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -68,10 +71,49 @@ type ChartDownloader struct {
 	// Getter collection for the operation
 	Getters getter.Providers
 	// Options provide parameters to be passed along to the Getter being initialized.
-	Options          []getter.Option
+	Options []getter.Option
+	// Debug            bool //Added to capture the --debug flag
 	RegistryClient   *registry.Client
 	RepositoryConfig string
 	RepositoryCache  string
+}
+
+type debugTransport struct {
+	*http.Transport
+	out io.Writer
+}
+
+func (t *debugTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	debug := os.Getenv("HELM_DEBUG") == "true"
+
+	if debug {
+		slog.Debug("HTTP request", "url", req.URL.String())
+		// Log the request
+		reqDump, err := httputil.DumpRequestOut(req, false)
+		if err == nil {
+			slog.Debug("HTTP request dump", "dump", string(reqDump))
+		}
+	}
+	// Perform the request
+	resp, err := t.Transport.RoundTrip(req)
+	if err != nil {
+		if debug {
+			slog.Debug("HTTP request failed", "error", err)
+		}
+		return nil, err
+	}
+	// Log the response
+	if debug {
+		respDump, err := httputil.DumpResponse(resp, false)
+		if err == nil {
+			slog.Debug("HTTP response dump", "dump", string(respDump))
+		}
+		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+			location := resp.Header["Location"]
+			slog.Debug("HTTP redirect", "location", location)
+		}
+	}
+	return resp, err
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -86,20 +128,43 @@ type ChartDownloader struct {
 // Returns a string path to the location where the file was downloaded and a verification
 // (if provenance was verified), or an error if something bad happened.
 func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *provenance.Verification, error) {
-	u, err := c.ResolveChartVersion(ref, version)
-	if err != nil {
-		return "", nil, err
-	}
+	debug := os.Getenv("HELM_DEBUG") == "true"
 
-	g, err := c.Getters.ByScheme(u.Scheme)
-	if err != nil {
-		return "", nil, err
+	// If debug is enabled, wrap the getter's HTTP client with a debug transport
+	if debug {
+		dt := &debugTransport{
+			Transport: http.DefaultTransport.(*http.Transport).Clone(),
+			out:       c.Out,
+		}
+		dt.DisableKeepAlives = true
+		c.Options = append(c.Options, getter.WithClient(&http.Client{
+			Transport: dt,
+			CheckRedirect: func(req *http.Request, _ []*http.Request) error {
+				slog.Debug("Following redirect", "url", req.URL.String())
+				return nil
+			},
+		}))
 	}
 
 	c.Options = append(c.Options, getter.WithAcceptHeader("application/gzip,application/octet-stream"))
 
+	u, err := c.ResolveChartVersion(ref, version)
+	if err != nil {
+		slog.Debug("Failed to resolve chart version", "error", err)
+		return "", nil, err
+	}
+	slog.Debug("Resolved chart URL", "url", u.String())
+
+	g, err := c.Getters.ByScheme(u.Scheme)
+	if err != nil {
+		slog.Debug("Failed to get getter for scheme", "scheme", u.Scheme, "error", err)
+		return "", nil, err
+	}
+	slog.Debug("Using getter for scheme", "scheme", u.Scheme)
+
 	data, err := g.Get(u.String(), c.Options...)
 	if err != nil {
+		slog.Debug("Failed to fetch chart", "error", err)
 		return "", nil, err
 	}
 
@@ -117,6 +182,21 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	// If provenance is requested, verify it.
 	ver := &provenance.Verification{}
 	if c.Verify > VerifyNever {
+		// If debug is enabled, use the same debug transport for provenance file
+		if debug {
+			dt := &debugTransport{
+				Transport: http.DefaultTransport.(*http.Transport).Clone(),
+				out:       c.Out,
+			}
+			dt.DisableKeepAlives = true
+			c.Options = append(c.Options, getter.WithClient(&http.Client{
+				Transport: dt,
+				CheckRedirect: func(req *http.Request, _ []*http.Request) error {
+					slog.Debug("Following redirect for prov file", "url", req.URL.String())
+					return nil
+				},
+			}))
+		}
 		body, err := g.Get(u.String() + ".prov")
 		if err != nil {
 			if c.Verify == VerifyAlways {
