@@ -86,6 +86,19 @@ func TestResolve(t *testing.T) {
 			},
 		},
 		{
+			name: "two dependencies same repo",
+			req: []*chart.Dependency{
+				{Name: "alpine", Repository: "http://example.com", Version: ">=0.1.0"},
+				{Name: "mariadb", Repository: "http://example.com", Version: ">=0.1.0"},
+			},
+			expect: &chart.Lock{
+				Dependencies: []*chart.Dependency{
+					{Name: "alpine", Repository: "http://example.com", Version: "0.2.0", ChartURL: "https://charts.helm.sh/stable/alpine-0.1.0.tgz"},
+					{Name: "mariadb", Repository: "http://example.com", Version: "0.3.0", ChartURL: "https://charts.helm.sh/stable/mariadb-0.3.0.tgz"},
+				},
+			},
+		},
+		{
 			name: "repo from valid local path",
 			req: []*chart.Dependency{
 				{Name: "base", Repository: "file://base", Version: "0.1.0"},
@@ -139,7 +152,7 @@ func TestResolve(t *testing.T) {
 		},
 	}
 
-	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}
+	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts", "mariadb": "kubernetes-charts"}
 	registryClient, _ := registry.NewClient()
 	r := New("testdata/chartpath", "testdata/repository", registryClient)
 	for _, tt := range tests {
