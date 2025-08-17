@@ -179,24 +179,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.Version = ">0.0.0-0"
 			}
 
-			// Apply chart size limits if configured
-			if client.MaxChartSize > 0 {
-				loader.MaxDecompressedChartSize = client.MaxChartSize
-			}
-			if client.MaxFileSize > 0 {
-				loader.MaxDecompressedFileSize = client.MaxFileSize
-			}
-
-			// Apply chart size limits if configured
-			if client.MaxChartSize > 0 {
-				loader.MaxDecompressedChartSize = client.MaxChartSize
-			}
-			if client.MaxFileSize > 0 {
-				loader.MaxDecompressedFileSize = client.MaxFileSize
-			}
-
 			chartPath, err := client.LocateChart(args[1], settings)
-			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
 			if err != nil {
 				return err
 			}
