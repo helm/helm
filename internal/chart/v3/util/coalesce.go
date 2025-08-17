@@ -18,7 +18,7 @@ package util
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"maps"
 
 	"github.com/mitchellh/copystructure"
@@ -47,7 +47,7 @@ func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, err
 	if err != nil {
 		return vals, err
 	}
-	return coalesce(log.Printf, chrt, valsCopy, "", false)
+	return coalesce(slog.Warn, chrt, valsCopy, "", false)
 }
 
 // MergeValues is used to merge the values in a chart and its subcharts. This
@@ -69,7 +69,7 @@ func MergeValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error)
 	if err != nil {
 		return vals, err
 	}
-	return coalesce(log.Printf, chrt, valsCopy, "", true)
+	return coalesce(slog.Warn, chrt, valsCopy, "", true)
 }
 
 func copyValues(vals map[string]interface{}) (Values, error) {
@@ -263,11 +263,11 @@ func childChartMergeTrue(chrt *chart.Chart, key string, merge bool) bool {
 //
 // dest is considered authoritative.
 func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {
-	return coalesceTablesFullKey(log.Printf, dst, src, "", false)
+	return coalesceTablesFullKey(slog.Warn, dst, src, "", false)
 }
 
 func MergeTables(dst, src map[string]interface{}) map[string]interface{} {
-	return coalesceTablesFullKey(log.Printf, dst, src, "", true)
+	return coalesceTablesFullKey(slog.Warn, dst, src, "", true)
 }
 
 // coalesceTablesFullKey merges a source map into a destination map.
