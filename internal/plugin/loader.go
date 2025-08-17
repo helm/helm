@@ -58,6 +58,29 @@ func loadMetadataLegacy(metadataData []byte) (*Metadata, error) {
 	return m, nil
 }
 
+func loadMetadataV1(metadataData []byte) (*Metadata, error) {
+
+	var mv1 MetadataV1
+	d := yaml.NewDecoder(bytes.NewReader(metadataData))
+	if err := d.Decode(&mv1); err != nil {
+		return nil, err
+	}
+
+	if err := mv1.Validate(); err != nil {
+		return nil, err
+	}
+
+	m, err := fromMetadataV1(mv1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert MetadataV1 to Metadata: %w", err)
+	}
+
+	if err := m.Validate(); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func loadMetadata(metadataData []byte) (*Metadata, error) {
 	apiVersion, err := peekAPIVersion(bytes.NewReader(metadataData))
 	if err != nil {
@@ -67,6 +90,8 @@ func loadMetadata(metadataData []byte) (*Metadata, error) {
 	switch apiVersion {
 	case "": // legacy
 		return loadMetadataLegacy(metadataData)
+	case "v1":
+		return loadMetadataV1(metadataData)
 	}
 
 	return nil, fmt.Errorf("invalid plugin apiVersion: %q", apiVersion)

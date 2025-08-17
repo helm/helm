@@ -17,6 +17,8 @@ package plugin
 
 import (
 	"fmt"
+
+	"go.yaml.in/yaml/v3"
 )
 
 // Config interface defines the methods that all plugin type configurations must implement
@@ -63,4 +65,18 @@ func (c *ConfigGetter) Validate() error {
 		}
 	}
 	return nil
+}
+
+func remarshalConfig[T Config](configData map[string]any) (Config, error) {
+	data, err := yaml.Marshal(configData)
+	if err != nil {
+		return nil, err
+	}
+
+	var config T
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, err
+	}
+
+	return config, nil
 }

@@ -20,7 +20,7 @@ import (
 	"fmt"
 )
 
-// Metadata of a plugin, converted from the "on-disk" plugin.yaml
+// Metadata of a plugin, converted from the "on-disk" legacy or v1 plugin.yaml
 // Specifically, Config and RuntimeConfig are converted to their respective types based on the plugin type and runtime
 type Metadata struct {
 	// APIVersion specifies the plugin API version
@@ -152,4 +152,65 @@ func buildLegacyRuntimeConfig(m MetadataLegacy) RuntimeConfig {
 		Hooks:            m.Hooks,
 		ProtocolCommands: protocolCommands,
 	}
+}
+
+func fromMetadataV1(mv1 MetadataV1) (*Metadata, error) {
+
+	config, err := convertMetadataConfig(mv1.Type, mv1.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	runtimeConfig, err := convertMetdataRuntimeConfig(mv1.Runtime, mv1.RuntimeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Metadata{
+		APIVersion:    mv1.APIVersion,
+		Name:          mv1.Name,
+		Type:          mv1.Type,
+		Runtime:       mv1.Runtime,
+		Version:       mv1.Version,
+		SourceURL:     mv1.SourceURL,
+		Config:        config,
+		RuntimeConfig: runtimeConfig,
+	}, nil
+}
+
+func convertMetadataConfig(pluginType string, configRaw map[string]any) (Config, error) {
+	var err error
+	var config Config
+
+	switch pluginType {
+	case "cli/v1":
+		config, err = remarshalConfig[*ConfigCLI](configRaw)
+	case "getter/v1":
+		config, err = remarshalConfig[*ConfigGetter](configRaw)
+	default:
+		return nil, fmt.Errorf("unsupported plugin type: %s", pluginType)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config for %s plugin type: %w", pluginType, err)
+	}
+
+	return config, nil
+}
+
+func convertMetdataRuntimeConfig(runtimeType string, runtimeConfigRaw map[string]any) (RuntimeConfig, error) {
+	var runtimeConfig RuntimeConfig
+	var err error
+
+	switch runtimeType {
+	case "subprocess":
+		runtimeConfig, err = remarshalRuntimeConfig[*RuntimeConfigSubprocess](runtimeConfigRaw)
+	default:
+		return nil, fmt.Errorf("unsupported plugin runtime type: %q", runtimeType)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal runtimeConfig for %s runtime: %w", runtimeType, err)
+	}
+	return runtimeConfig, nil
 }

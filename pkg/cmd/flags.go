@@ -164,7 +164,6 @@ func (o *outputValue) Set(s string) error {
 	return nil
 }
 
-// TODO there is probably a better way to pass cobra settings than as a param
 func bindPostRenderFlag(cmd *cobra.Command, varRef *postrender.PostRenderer) {
 	p := &postRendererOptions{varRef, "", []string{}}
 	cmd.Flags().Var(&postRendererString{p}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")

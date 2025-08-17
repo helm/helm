@@ -34,7 +34,7 @@ func TestLocalInstaller(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	source := "../testdata/plugdir/good/echo-legacy"
+	source := "../testdata/plugdir/good/echo-v1"
 	i, err := NewForSource(source, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
@@ -44,14 +44,14 @@ func TestLocalInstaller(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if i.Path() != helmpath.DataPath("plugins", "echo-legacy") {
+	if i.Path() != helmpath.DataPath("plugins", "echo-v1") {
 		t.Fatalf("expected path '$XDG_CONFIG_HOME/helm/plugins/helm-env', got %q", i.Path())
 	}
 	defer os.RemoveAll(filepath.Dir(helmpath.DataPath())) // helmpath.DataPath is like /tmp/helm013130971/helm
 }
 
 func TestLocalInstallerNotAFolder(t *testing.T) {
-	source := "../testdata/plugdir/good/echo-legacy/plugin.yaml"
+	source := "../testdata/plugdir/good/echo-v1/plugin.yaml"
 	i, err := NewForSource(source, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
