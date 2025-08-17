@@ -291,8 +291,8 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		newPushCmd(actionConfig, out),
 	)
 
-	// Find and add plugins
-	loadPlugins(cmd, out)
+	// Find and add CLI plugins
+	loadCLIPlugins(cmd, out)
 
 	// Check for expired repositories
 	checkForExpiredRepos(settings.RepositoryConfig)

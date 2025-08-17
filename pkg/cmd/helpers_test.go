@@ -104,6 +104,10 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	root.SetArgs(args)
 
 	oldStdin := os.Stdin
+	defer func() {
+		os.Stdin = oldStdin
+	}()
+
 	if in != nil {
 		root.SetIn(in)
 		os.Stdin = in
@@ -115,8 +119,6 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	c, err := root.ExecuteC()
 
 	result := buf.String()
-
-	os.Stdin = oldStdin
 
 	return c, result, err
 }

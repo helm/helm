@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"path/filepath"
 	"slices"
 
 	"github.com/gosuri/uitable"
@@ -28,6 +29,7 @@ import (
 )
 
 func newPluginListCmd(out io.Writer) *cobra.Command {
+	var pluginType string
 	cmd := &cobra.Command{
 		Use:               "list",
 		Aliases:           []string{"ls"},
@@ -35,33 +37,46 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			slog.Debug("pluginDirs", "directory", settings.PluginsDirectory)
-			plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
+			dirs := filepath.SplitList(settings.PluginsDirectory)
+			descriptor := plugin.Descriptor{
+				Type: pluginType,
+			}
+			plugins, err := plugin.FindPlugins(dirs, descriptor)
 			if err != nil {
 				return err
 			}
 
 			table := uitable.New()
-			table.AddRow("NAME", "VERSION", "DESCRIPTION")
+			table.AddRow("NAME", "VERSION", "TYPE", "APIVERSION", "SOURCE")
 			for _, p := range plugins {
-				table.AddRow(p.Metadata.Name, p.Metadata.Version, p.Metadata.Description)
+				m := p.Metadata()
+				sourceURL := m.SourceURL
+				if sourceURL == "" {
+					sourceURL = "unknown"
+				}
+				table.AddRow(m.Name, m.Version, m.Type, m.APIVersion, sourceURL)
 			}
 			fmt.Fprintln(out, table)
 			return nil
 		},
 	}
+
+	f := cmd.Flags()
+	f.StringVar(&pluginType, "type", "", "Plugin type")
+
 	return cmd
 }
 
 // Returns all plugins from plugins, except those with names matching ignoredPluginNames
-func filterPlugins(plugins []*plugin.Plugin, ignoredPluginNames []string) []*plugin.Plugin {
-	// if ignoredPluginNames is nil, just return plugins
-	if ignoredPluginNames == nil {
+func filterPlugins(plugins []plugin.Plugin, ignoredPluginNames []string) []plugin.Plugin {
+	// if ignoredPluginNames is nil or empty, just return plugins
+	if len(ignoredPluginNames) == 0 {
 		return plugins
 	}
 
-	var filteredPlugins []*plugin.Plugin
+	var filteredPlugins []plugin.Plugin
 	for _, plugin := range plugins {
-		found := slices.Contains(ignoredPluginNames, plugin.Metadata.Name)
+		found := slices.Contains(ignoredPluginNames, plugin.Metadata().Name)
 		if !found {
 			filteredPlugins = append(filteredPlugins, plugin)
 		}
@@ -73,11 +88,20 @@ func filterPlugins(plugins []*plugin.Plugin, ignoredPluginNames []string) []*plu
 // Provide dynamic auto-completion for plugin names
 func compListPlugins(_ string, ignoredPluginNames []string) []string {
 	var pNames []string
-	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
+	dirs := filepath.SplitList(settings.PluginsDirectory)
+	descriptor := plugin.Descriptor{
+		Type: "cli/v1",
+	}
+	plugins, err := plugin.FindPlugins(dirs, descriptor)
 	if err == nil && len(plugins) > 0 {
 		filteredPlugins := filterPlugins(plugins, ignoredPluginNames)
 		for _, p := range filteredPlugins {
-			pNames = append(pNames, fmt.Sprintf("%s\t%s", p.Metadata.Name, p.Metadata.Usage))
+			m := p.Metadata()
+			var shortHelp string
+			if config, ok := m.Config.(*plugin.ConfigCLI); ok {
+				shortHelp = config.ShortHelp
+			}
+			pNames = append(pNames, fmt.Sprintf("%s\t%s", p.Metadata().Name, shortHelp))
 		}
 	}
 	return pNames

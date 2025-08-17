@@ -177,7 +177,7 @@ func splitAndDeannotate(postrendered string) (map[string]string, error) {
 //
 //	This code has to do with writing files to disk.
 func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
-	hs := []*release.Hook{}
+	var hs []*release.Hook
 	b := bytes.NewBuffer(nil)
 
 	caps, err := cfg.getCapabilities()

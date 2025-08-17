@@ -236,7 +236,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	return i.RunWithContext(ctx, chrt, vals)
 }
 
-// Run executes the installation with Context
+// RunWithContext executes the installation with Context
 //
 // When the task is cancelled through ctx, the function returns and the install
 // proceeds in the background.
