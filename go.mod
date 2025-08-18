@@ -14,7 +14,7 @@ require (
 	github.com/cyphar/filepath-securejoin v0.4.1
 	github.com/distribution/distribution/v3 v3.0.0
 	github.com/evanphx/json-patch/v5 v5.9.11
-  github.com/fatih/color v1.18.0
+	github.com/fatih/color v1.18.0
 	github.com/fluxcd/cli-utils v0.36.0-flux.14
 	github.com/foxcpp/go-mockdns v1.1.0
 	github.com/gobwas/glob v0.2.3
