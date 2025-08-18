@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
@@ -227,10 +228,9 @@ func TestSelectorsForObject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			selector, err := SelectorsForObject(tt.object.(runtime.Object))
 			if tt.expectError {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errorContains)
+				assert.ErrorContains(t, err, tt.errorContains)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				expected := labels.Set(tt.expectedLabels)
 				assert.True(t, selector.Matches(expected), "expected selector to match")
 			}
