@@ -2,8 +2,6 @@ name: "Close stale issues"
 on:
   schedule:
   - cron: "0 0 * * *"
-permissions:  
-  contents: read
 
 jobs:
   stale:
@@ -16,4 +14,4 @@ jobs:
         exempt-issue-labels: 'keep open,v4.x,in progress'
         days-before-stale: 90
         days-before-close: 30
-        operations-per-run: 100
+        operations-per-run: 200
