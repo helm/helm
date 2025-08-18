@@ -18,6 +18,7 @@ package chartutil
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"strings"
@@ -62,6 +63,7 @@ func newHTTPURLLoader() *HTTPURLLoader {
 		Timeout: 15 * time.Second,
 		Transport: &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
+			TLSClientConfig: &tls.Config{},
 		},
 	})
 	return &httpLoader
