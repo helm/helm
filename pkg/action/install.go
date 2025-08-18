@@ -482,13 +482,13 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 			resources,
 			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false))
 	} else if len(resources) > 0 {
-		useUpdateThreeWayMergeForUnstructured := i.TakeOwnership && !i.ServerSideApply // Use three-way merge when taking ownership (and not using server-side apply)
+		updateThreeWayMergeForUnstructured := i.TakeOwnership && !i.ServerSideApply // Use three-way merge when taking ownership (and not using server-side apply)
 		_, err = i.cfg.KubeClient.Update(
 			toBeAdopted,
 			resources,
 			kube.ClientUpdateOptionForceReplace(i.ForceReplace),
 			kube.ClientUpdateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts),
-			kube.ClientUpdateOptionThreeWayMergeForUnstructured(useUpdateThreeWayMergeForUnstructured))
+			kube.ClientUpdateOptionThreeWayMergeForUnstructured(updateThreeWayMergeForUnstructured))
 	}
 	if err != nil {
 		return rel, err

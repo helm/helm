@@ -108,14 +108,6 @@ func (f *FailingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, [
 	return f.PrintingKubeClient.Delete(resources)
 }
 
-// DeleteWithPropagationPolicy returns the configured error if set or prints
-func (f *FailingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceList, policy metav1.DeletionPropagation) (*kube.Result, []error) {
-	if f.DeleteWithPropagationError != nil {
-		return nil, []error{f.DeleteWithPropagationError}
-	}
-	return f.PrintingKubeClient.DeleteWithPropagationPolicy(resources, policy)
-}
-
 // WatchUntilReady returns the configured error if set or prints
 func (f *FailingKubeWaiter) WatchUntilReady(resources kube.ResourceList, d time.Duration) error {
 	if f.watchUntilReadyError != nil {
@@ -152,6 +144,14 @@ func (f *FailingKubeClient) BuildTable(r io.Reader, _ bool) (kube.ResourceList, 
 		return []*resource.Info{}, f.BuildTableError
 	}
 	return f.PrintingKubeClient.BuildTable(r, false)
+}
+
+// DeleteWithPropagationPolicy returns the configured error if set or prints
+func (f *FailingKubeClient) DeleteWithPropagationPolicy(resources kube.ResourceList, policy metav1.DeletionPropagation) (*kube.Result, []error) {
+	if f.DeleteWithPropagationError != nil {
+		return nil, []error{f.DeleteWithPropagationError}
+	}
+	return f.PrintingKubeClient.DeleteWithPropagationPolicy(resources, policy)
 }
 
 func (f *FailingKubeClient) GetWaiter(ws kube.WaitStrategy) (kube.Waiter, error) {

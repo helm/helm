@@ -246,13 +246,11 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		return nil, "", []error{fmt.Errorf("unable to build kubernetes objects for delete: %w", err)}
 	}
 	if len(resources) > 0 {
-		if len(resources) > 0 {
-			if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceDeletionPropagation); ok {
-				_, errs = kubeClient.DeleteWithPropagationPolicy(resources, parseCascadingFlag(u.DeletionPropagation))
-				return resources, kept, errs
-			}
-			_, errs = u.cfg.KubeClient.Delete(resources)
+		if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceDeletionPropagation); ok {
+			_, errs = kubeClient.DeleteWithPropagationPolicy(resources, parseCascadingFlag(u.DeletionPropagation))
+			return resources, kept, errs
 		}
+		_, errs = u.cfg.KubeClient.Delete(resources)
 	}
 	return resources, kept, errs
 }
