@@ -173,7 +173,9 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		}
 
 		// Send them to Kube
-		if _, err := i.cfg.KubeClient.Create(res); err != nil {
+		if _, err := i.cfg.KubeClient.Create(
+			res,
+			kube.ClientCreateOptionServerSideApply(false, false)); err != nil {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
 				crdName := res[0].Name
@@ -399,7 +401,9 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		if err != nil {
 			return nil, err
 		}
-		if _, err := i.cfg.KubeClient.Create(resourceList); err != nil && !apierrors.IsAlreadyExists(err) {
+		if _, err := i.cfg.KubeClient.Create(
+			resourceList,
+			kube.ClientCreateOptionServerSideApply(false, false)); err != nil && !apierrors.IsAlreadyExists(err) {
 			return nil, err
 		}
 	}
@@ -468,13 +472,17 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	// do an update, but it's not clear whether we WANT to do an update if the reuse is set
 	// to true, since that is basically an upgrade operation.
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
-		_, err = i.cfg.KubeClient.Create(resources)
+		_, err = i.cfg.KubeClient.Create(
+			resources,
+			kube.ClientCreateOptionServerSideApply(false, false))
 	} else if len(resources) > 0 {
-		if i.TakeOwnership {
-			_, err = i.cfg.KubeClient.(kube.InterfaceThreeWayMerge).UpdateThreeWayMerge(toBeAdopted, resources, i.ForceReplace)
-		} else {
-			_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.ForceReplace)
-		}
+		updateThreeWayMergeForUnstructured := i.TakeOwnership
+		_, err = i.cfg.KubeClient.Update(
+			toBeAdopted,
+			resources,
+			kube.ClientUpdateOptionServerSideApply(false, false),
+			kube.ClientUpdateOptionThreeWayMergeForUnstructured(updateThreeWayMergeForUnstructured),
+			kube.ClientUpdateOptionForceReplace(i.ForceReplace))
 	}
 	if err != nil {
 		return rel, err
