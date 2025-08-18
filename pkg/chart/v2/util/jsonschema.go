@@ -18,6 +18,7 @@ package util
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -63,6 +64,7 @@ func newHTTPURLLoader() *HTTPURLLoader {
 		Timeout: 15 * time.Second,
 		Transport: &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
+			TLSClientConfig: &tls.Config{},
 		},
 	})
 	return &httpLoader
