@@ -22,11 +22,43 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"net/http"
+	"crypto/tls"
+	"time"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
+
+type HTTPURLLoader http.Client
+
+func (l *HTTPURLLoader) Load(url string) (any, error) {
+	client := (*http.Client)(l)
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("%s returned status code %d", url, resp.StatusCode)
+	}
+	defer resp.Body.Close()
+
+	return jsonschema.UnmarshalJSON(resp.Body)
+}
+
+func newHTTPURLLoader(insecure bool) *HTTPURLLoader {
+	httpLoader := HTTPURLLoader(http.Client{
+		Timeout: 15 * time.Second,
+	})
+	if insecure {
+		httpLoader.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+	return &httpLoader
+}
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
 func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) error {
@@ -71,7 +103,14 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error
 	}
 	slog.Debug("unmarshalled JSON schema", "schema", schemaJSON)
 
+	loader := jsonschema.SchemeURLLoader{
+		"file":  jsonschema.FileLoader{},
+		"http":  newHTTPURLLoader(false),
+		"https": newHTTPURLLoader(false),
+	}
+
 	compiler := jsonschema.NewCompiler()
+	compiler.UseLoader(loader)
 	err = compiler.AddResource("file:///values.schema.json", schema)
 	if err != nil {
 		return err
