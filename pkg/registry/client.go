@@ -68,16 +68,15 @@ type (
 		debug       bool
 		enableCache bool
 		// path to repository config file e.g. ~/.docker/config.json
-		credentialsFile    string
-		username           string
-		password           string
-		out                io.Writer
-		authorizer         *auth.Client
-		registryAuthorizer RemoteClient
-		credentialsStore   credentials.Store
-		httpClient         *http.Client
-		plainHTTP          bool
-		err                error // pass any errors from the ClientOption functions
+		credentialsFile  string
+		username         string
+		password         string
+		out              io.Writer
+		authorizer       *auth.Client
+		credentialsStore credentials.Store
+		httpClient       *http.Client
+		plainHTTP        bool
+		err              error // pass any errors from the ClientOption functions
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -105,21 +104,23 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		}
 	}
 
-	storeOptions := credentials.StoreOptions{
-		AllowPlaintextPut:        true,
-		DetectDefaultNativeStore: true,
-	}
-	store, err := credentials.NewStore(client.credentialsFile, storeOptions)
-	if err != nil {
-		return nil, err
-	}
-	dockerStore, err := credentials.NewStoreFromDocker(storeOptions)
-	if err != nil {
-		// should only fail if user home directory can't be determined
-		client.credentialsStore = store
-	} else {
-		// use Helm credentials with fallback to Docker
-		client.credentialsStore = credentials.NewStoreWithFallbacks(store, dockerStore)
+	if client.credentialsStore == nil {
+		storeOptions := credentials.StoreOptions{
+			AllowPlaintextPut:        true,
+			DetectDefaultNativeStore: true,
+		}
+		store, err := credentials.NewStore(client.credentialsFile, storeOptions)
+		if err != nil {
+			return nil, err
+		}
+		dockerStore, err := credentials.NewStoreFromDocker(storeOptions)
+		if err != nil {
+			// should only fail if user home directory can't be determined
+			client.credentialsStore = store
+		} else {
+			// use Helm credentials with fallback to Docker
+			client.credentialsStore = credentials.NewStoreWithFallbacks(store, dockerStore)
+		}
 	}
 
 	if client.authorizer == nil {
@@ -161,7 +162,8 @@ func ClientOptEnableCache(enableCache bool) ClientOption {
 	}
 }
 
-// ClientOptBasicAuth returns a function that sets the username and password setting on client options set
+// ClientOptBasicAuth returns a function that sets the username and password setting on client options set.
+// This will override the configured/default credentials store in the default authorizer.
 func ClientOptBasicAuth(username, password string) ClientOption {
 	return func(client *Client) {
 		client.username = username
@@ -178,21 +180,17 @@ func ClientOptWriter(out io.Writer) ClientOption {
 
 // ClientOptAuthorizer returns a function that sets the authorizer setting on a client options set. This
 // can be used to override the default authorization mechanism.
-//
-// Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
 func ClientOptAuthorizer(authorizer auth.Client) ClientOption {
 	return func(client *Client) {
 		client.authorizer = &authorizer
 	}
 }
 
-// ClientOptRegistryAuthorizer returns a function that sets the registry authorizer setting on a client options set. This
-// can be used to override the default authorization mechanism.
-//
-// Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
-func ClientOptRegistryAuthorizer(registryAuthorizer RemoteClient) ClientOption {
+// ClientOptCredentialsStore returns a function that sets the credentialsStore setting on a client options set.
+// This will override the default Helm/Docker on-disk credentials store.
+func ClientOptCredentialsStore(credentialsStore credentials.Store) ClientOption {
 	return func(client *Client) {
-		client.registryAuthorizer = registryAuthorizer
+		client.credentialsStore = credentialsStore
 	}
 }
 
