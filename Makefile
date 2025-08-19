@@ -13,9 +13,9 @@ GOX           = $(GOBIN)/gox
 GOIMPORTS     = $(GOBIN)/goimports
 ARCH          = $(shell go env GOARCH)
 
-ACCEPTANCE_DIR:=../acceptance-testing
+ACCEPTANCE_DIR := ../acceptance-testing
 # To specify the subset of acceptance tests to run. '.' means all tests
-ACCEPTANCE_RUN_TESTS=.
+ACCEPTANCE_RUN_TESTS = .
 
 # go option
 PKG         := ./...
@@ -227,22 +227,19 @@ clean:
 
 .PHONY: release-notes
 release-notes:
-		@if [ ! -d "./_dist" ]; then \
-			echo "please run 'make fetch-dist' first" && \
-			exit 1; \
-		fi
-		@if [ -z "${PREVIOUS_RELEASE}" ]; then \
-			echo "please set PREVIOUS_RELEASE environment variable" \
-			&& exit 1; \
-		fi
-
-		@./scripts/release-notes.sh ${PREVIOUS_RELEASE} ${VERSION}
-
-
+	@if [ ! -d "./_dist" ]; then \
+		echo "please run 'make fetch-dist' first" && \
+		exit 1; \
+	fi
+	@if [ -z "${PREVIOUS_RELEASE}" ]; then \
+		echo "please set PREVIOUS_RELEASE environment variable" && \
+		exit 1; \
+	fi
+	@./scripts/release-notes.sh ${PREVIOUS_RELEASE} ${VERSION}
 
 .PHONY: info
 info:
-	 @echo "Version:           ${VERSION}"
-	 @echo "Git Tag:           ${GIT_TAG}"
-	 @echo "Git Commit:        ${GIT_COMMIT}"
-	 @echo "Git Tree State:    ${GIT_DIRTY}"
+	@echo "Version:           ${VERSION}"
+	@echo "Git Tag:           ${GIT_TAG}"
+	@echo "Git Commit:        ${GIT_COMMIT}"
+	@echo "Git Tree State:    ${GIT_DIRTY}"
