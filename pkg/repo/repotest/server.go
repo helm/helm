@@ -169,7 +169,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 		t.Fatal("error generating bcrypt password for test htpasswd file")
 	}
 	htpasswdPath := filepath.Join(dir, testHtpasswdFileBasename)
-	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0o644)
+	err = os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0o644)
 	if err != nil {
 		t.Fatalf("error creating test htpasswd file")
 	}
