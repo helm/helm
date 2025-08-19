@@ -79,7 +79,7 @@ func TestResolveChartRef(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		u, err := c.ResolveChartVersion(tt.ref, tt.version)
+		_, u, err := c.ResolveChartVersion(tt.ref, tt.version)
 		if err != nil {
 			if tt.fail {
 				continue
@@ -131,7 +131,7 @@ func TestResolveChartOpts(t *testing.T) {
 			continue
 		}
 
-		u, err := c.ResolveChartVersion(tt.ref, tt.version)
+		_, u, err := c.ResolveChartVersion(tt.ref, tt.version)
 		if err != nil {
 			t.Errorf("%s: failed with error %s", tt.name, err)
 			continue
@@ -155,7 +155,7 @@ func TestResolveChartOpts(t *testing.T) {
 }
 
 func TestVerifyChart(t *testing.T) {
-	v, err := VerifyChart("testdata/signtest-0.1.0.tgz", "testdata/helm-test-key.pub")
+	v, err := VerifyChart("testdata/signtest-0.1.0.tgz", "testdata/signtest-0.1.0.tgz.prov", "testdata/helm-test-key.pub")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -792,7 +792,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 			return abs, err
 		}
 		if c.Verify {
-			if _, err := downloader.VerifyChart(abs, c.Keyring); err != nil {
+			if _, err := downloader.VerifyChart(abs, abs+".prov", c.Keyring); err != nil {
 				return "", err
 			}
 		}
@@ -868,7 +868,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		return "", err
 	}
 
-	filename, _, err := dl.DownloadTo(name, version, settings.RepositoryCache)
+	filename, _, err := dl.DownloadToCache(name, version)
 	if err != nil {
 		return "", err
 	}
