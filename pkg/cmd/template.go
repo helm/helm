@@ -31,6 +31,7 @@ import (
 
 	release "helm.sh/helm/v4/pkg/release/v1"
 
+	"github.com/gobwas/glob"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
@@ -151,9 +152,16 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
 					var manifestsToRender []string
 					for _, f := range showFiles {
-						missing := true
 						// Use linux-style filepath separators to unify user's input path
 						f = filepath.ToSlash(f)
+						// manifest.Path is connected using linux-style filepath separators on Windows as
+						// well as macOS/linux
+						g, err := glob.Compile(f, '/')
+						if err != nil {
+							return fmt.Errorf("invalid pattern %q", f)
+						}
+
+						missing := true
 						for _, manifestKey := range manifestsKeys {
 							manifest := splitManifests[manifestKey]
 							submatch := manifestNameRegex.FindStringSubmatch(manifest)
@@ -161,20 +169,12 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 								continue
 							}
 							manifestName := submatch[1]
-							// manifest.Name is rendered using linux-style filepath separators on Windows as
-							// well as macOS/linux.
-							manifestPathSplit := strings.Split(manifestName, "/")
-							// manifest.Path is connected using linux-style filepath separators on Windows as
-							// well as macOS/linux
-							manifestPath := strings.Join(manifestPathSplit, "/")
-
 							// if the filepath provided matches a manifest path in the
 							// chart, render that manifest
-							if matched, _ := filepath.Match(f, manifestPath); !matched {
-								continue
+							if g.Match(manifestName) {
+								manifestsToRender = append(manifestsToRender, manifest)
+								missing = false
 							}
-							manifestsToRender = append(manifestsToRender, manifest)
-							missing = false
 						}
 						if missing {
 							return fmt.Errorf("could not find template %s in chart", f)
