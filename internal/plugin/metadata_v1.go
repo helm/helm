@@ -27,7 +27,7 @@ type MetadataV1 struct {
 	// Name is the name of the plugin
 	Name string `yaml:"name"`
 
-	// Type of plugin (eg, cli/v1, getter/v1)
+	// Type of plugin (eg, cli/v1, getter/v1, postrenderer/v1)
 	Type string `yaml:"type"`
 
 	// Runtime specifies the runtime type (subprocess, wasm)
