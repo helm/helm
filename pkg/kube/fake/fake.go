@@ -47,6 +47,10 @@ type FailingKubeClient struct {
 	WaitForDeleteError         error
 	WatchUntilReadyError       error
 	WaitDuration               time.Duration
+	// ExistingResources represents resources that already exist in the cluster
+	ExistingResources []*resource.Info
+	// ResourcesAdopted tracks how many resources were adopted
+	ResourcesAdopted int
 }
 
 // FailingKubeWaiter implements kube.Waiter for testing purposes.
@@ -134,6 +138,12 @@ func (f *FailingKubeClient) Build(r io.Reader, _ bool) (kube.ResourceList, error
 	}
 	if f.BuildDummy {
 		return createDummyResourceList(), nil
+	}
+	// If we have existing resources, return them
+	if len(f.ExistingResources) > 0 {
+		// Track that resources were adopted
+		f.ResourcesAdopted++
+		return f.ExistingResources, nil
 	}
 	return f.PrintingKubeClient.Build(r, false)
 }
