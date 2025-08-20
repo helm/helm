@@ -31,7 +31,7 @@ type Metadata struct {
 	// Name is the name of the plugin
 	Name string
 
-	// Type of plugin (eg, cli/v1, getter/v1)
+	// Type of plugin (eg, cli/v1, getter/v1, postrenderer/v1)
 	Type string
 
 	// Runtime specifies the runtime type (subprocess, wasm)
@@ -191,6 +191,8 @@ func convertMetadataConfig(pluginType string, configRaw map[string]any) (Config,
 		config, err = remarshalConfig[*ConfigCLI](configRaw)
 	case "getter/v1":
 		config, err = remarshalConfig[*ConfigGetter](configRaw)
+	case "postrenderer/v1":
+		config, err = remarshalConfig[*ConfigPostrenderer](configRaw)
 	default:
 		return nil, fmt.Errorf("unsupported plugin type: %s", pluginType)
 	}

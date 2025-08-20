@@ -46,8 +46,9 @@ type ConfigGetter struct {
 	Protocols []string `yaml:"protocols"`
 }
 
-func (c *ConfigCLI) GetType() string    { return "cli/v1" }
-func (c *ConfigGetter) GetType() string { return "getter/v1" }
+// ConfigPostrenderer represents the configuration for postrenderer plugins
+// there are no runtime-independent configurations for postrenderer/v1 plugin type
+type ConfigPostrenderer struct{}
 
 func (c *ConfigCLI) Validate() error {
 	// Config validation for CLI plugins
@@ -63,6 +64,11 @@ func (c *ConfigGetter) Validate() error {
 			return fmt.Errorf("getter has empty protocol at index %d", i)
 		}
 	}
+	return nil
+}
+
+func (c *ConfigPostrenderer) Validate() error {
+	// Config validation for postrenderer plugins
 	return nil
 }
 

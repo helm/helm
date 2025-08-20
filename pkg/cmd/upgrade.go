@@ -300,7 +300,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
-	bindPostRenderFlag(cmd, &client.PostRenderer)
+	bindPostRenderFlag(cmd, &client.PostRenderer, settings)
 	AddWaitFlag(cmd, &client.WaitStrategy)
 	cmd.MarkFlagsMutuallyExclusive("force-replace", "force-conflicts")
 	cmd.MarkFlagsMutuallyExclusive("force", "force-conflicts")

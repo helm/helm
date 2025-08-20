@@ -48,7 +48,7 @@ import (
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
-	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/registry"
 	releaseutil "helm.sh/helm/v4/pkg/release/util"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -124,7 +124,7 @@ type Install struct {
 	UseReleaseName bool
 	// TakeOwnership will ignore the check for helm annotations and take ownership of the resources.
 	TakeOwnership bool
-	PostRenderer  postrender.PostRenderer
+	PostRenderer  postrenderer.PostRenderer
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
 }
