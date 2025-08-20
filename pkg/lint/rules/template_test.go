@@ -438,3 +438,48 @@ items:
 		t.Fatalf("List objects keep annotations should pass. got: %s", err)
 	}
 }
+
+func TestIsListResource(t *testing.T) {
+	tests := []struct {
+		kind     string
+		expected bool
+	}{
+		{"ConfigMap", false},
+		{"ConfigMapList", true},
+		{"Secret", false},
+		{"SecretList", true},
+		{"List", true},
+		{"", false},
+		{"SomethingListExtra", false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.kind, func(t *testing.T) {
+			obj := &k8sYamlStruct{Kind: test.kind}
+			result := isListResource(obj)
+			if result != test.expected {
+				t.Errorf("isListResource(%q) = %v, expected %v", test.kind, result, test.expected)
+			}
+		})
+	}
+}
+
+func TestConfigMapListLinting(t *testing.T) {
+	linter := support.Linter{ChartDir: "./testdata/configmaplist-chart"}
+	Templates(&linter, values, namespace, strict)
+
+	// The ConfigMapList should not generate any lint warnings about metadata.name
+	for _, msg := range linter.Messages {
+		if strings.Contains(msg.Err.Error(), "object name does not conform to Kubernetes naming requirements") {
+			t.Errorf("ConfigMapList should not generate metadata name validation errors, but got: %v", msg.Err)
+		}
+	}
+
+	// Should have no errors or warnings
+	if len(linter.Messages) > 0 {
+		t.Errorf("Expected no lint messages for ConfigMapList, got %d messages:", len(linter.Messages))
+		for i, msg := range linter.Messages {
+			t.Logf("Message %d: %s", i, msg)
+		}
+	}
+}

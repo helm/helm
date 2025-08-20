@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMapList
+metadata:
+  # ConfigMapList objects don't require meaningful names
+  # This should not trigger lint warnings
+items:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: {{ .Release.Name }}-database-config
+      namespace: {{ .Release.Namespace }}
+    data:
+      host: {{ .Values.configs.database.host }}
+      port: "{{ .Values.configs.database.port }}"
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: {{ .Release.Name }}-cache-config
+      namespace: {{ .Release.Namespace }}
+    data:
+      redis-url: {{ .Values.configs.cache.redis }}

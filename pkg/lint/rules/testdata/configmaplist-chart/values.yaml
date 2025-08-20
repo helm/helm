@@ -1,0 +1,7 @@
+# Default values for configmaplist-chart
+configs:
+  database:
+    host: localhost
+    port: 5432
+  cache:
+    redis: redis://localhost:6379

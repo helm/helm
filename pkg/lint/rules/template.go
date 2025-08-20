@@ -160,7 +160,11 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 				if yamlStruct != nil {
 					// NOTE: set to warnings to allow users to support out-of-date kubernetes
 					// Refs https://github.com/helm/helm/issues/8596
-					linter.RunLinterRule(support.WarningSev, fpath, validateMetadataName(yamlStruct))
+					// Skip metadata name validation for List resources as they don't require meaningful names
+					// Refs https://github.com/helm/helm/issues/13192
+					if !isListResource(yamlStruct) {
+						linter.RunLinterRule(support.WarningSev, fpath, validateMetadataName(yamlStruct))
+					}
 					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct, kubeVersion))
 
 					linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(yamlStruct, renderedContent))
@@ -233,6 +237,12 @@ func validateYamlContent(err error) error {
 		return fmt.Errorf("unable to parse YAML: %w", err)
 	}
 	return nil
+}
+
+// isListResource returns true if the resource is a Kubernetes List type
+// (e.g. ConfigMapList, SecretList).
+func isListResource(obj *k8sYamlStruct) bool {
+	return strings.HasSuffix(obj.Kind, "List")
 }
 
 // validateMetadataName uses the correct validation function for the object
