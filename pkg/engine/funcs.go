@@ -60,6 +60,7 @@ func funcMap() template.FuncMap {
 		"mustToJson":    mustToJSON,
 		"fromJson":      fromJSON,
 		"fromJsonArray": fromJSONArray,
+		"checkHostByName": checkHostByName,
 
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the
@@ -231,4 +232,35 @@ func fromJSONArray(str string) []interface{} {
 		a = []interface{}{err.Error()}
 	}
 	return a
+}
+
+// checkHostByName resolves a hostname to its first IP address.
+//
+// - If the host is found, it returns the IP address.
+// - If the host does not exist (NXDOMAIN), it returns an empty string.
+// - If DNS fails for other reasons (SERVFAIL, timeout, etc.), it returns an error and aborts rendering.
+//
+// This function was introduced because Sprig's getHostByName silently swallows DNS errors.
+// It retries DNS resolution up to 3 times on transient errors, with a 15-second delay between attempts.
+func checkHostByName(name string) (string, error) {
+	var lastErr error
+	for tries := 3; tries > 0; tries-- {
+		addrs, err := net.LookupHost(name)
+		if err == nil && len(addrs) > 0 {
+			return addrs[0], nil
+		}
+		lastErr = err
+
+		dnsErr, ok := err.(*net.DNSError)
+		if !ok {
+			return "", fmt.Errorf("checkHostByName: DNS error: %v", err)
+		}
+		if dnsErr.IsNotFound {
+			return "", nil // NXDOMAIN is not considered fatal
+		}
+
+		time.Sleep(15 * time.Second)
+	}
+
+	return "", fmt.Errorf("checkHostByName: DNS resolution failed for %s: %v", name, lastErr)
 }
