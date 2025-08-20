@@ -19,7 +19,9 @@ package getter
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"os"
 	"slices"
 	"time"
 
@@ -47,6 +49,7 @@ type options struct {
 	registryClient        *registry.Client
 	timeout               time.Duration
 	transport             *http.Transport
+	client                *http.Client
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -190,6 +193,18 @@ const (
 )
 
 var defaultOptions = []Option{WithTimeout(time.Second * DefaultHTTPTimeout)}
+
+func init() {
+	level := slog.LevelInfo
+	if os.Getenv("HELM_DEBUG") == "true" {
+		level = slog.LevelDebug
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: level,
+	}))
+	slog.SetDefault(logger)
+}
 
 func Getters(extraOpts ...Option) Providers {
 	return Providers{
