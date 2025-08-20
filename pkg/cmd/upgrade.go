@@ -27,7 +27,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
@@ -225,7 +224,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						}
 						// Reload the chart with the updated Chart.lock file.
 						if ch, err = loader.LoadWithOptions(chartPath, opts); err != nil {
-							return errors.Wrap(err, "failed reloading chart after repo update")
+							return fmt.Errorf("failed reloading chart after repo update: %w", err)
 						}
 					} else {
 						return err
