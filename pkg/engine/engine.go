@@ -259,6 +259,9 @@ func (e Engine) initFunMap(t *template.Template) {
 		funcMap["getHostByName"] = func(_ string) string {
 			return ""
 		}
+		funcMap["checkHostByName"] = func(_ string) string {
+			return ""
+		}
 	}
 
 	// Set custom template funcs
