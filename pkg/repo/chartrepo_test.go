@@ -33,6 +33,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/helmpath"
 )
 
 const (
@@ -70,6 +71,41 @@ func TestLoadChartRepository(t *testing.T) {
 
 	if r.Config.URL != testURL {
 		t.Errorf("Expected url for chart repository to be %s but got %s", testURL, r.Config.URL)
+	}
+}
+
+func TestNewChartRepositoryWithCachePath(t *testing.T) {
+	srv, err := startLocalServerForTests(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Close()
+
+	cacheDir := t.TempDir()
+	r, err := NewChartRepository(&Entry{
+		Name: testRepository,
+		URL:  srv.URL,
+	}, getter.All(&cli.EnvSettings{}))
+	if err != nil {
+		t.Errorf("Problem creating chart repository from %s: %v", testRepository, err)
+	}
+
+	r.CachePath = cacheDir
+
+	if err := r.Load(); err != nil {
+		t.Errorf("Problem loading chart repository from %s: %v", testRepository, err)
+	}
+
+	_, err = r.DownloadIndexFile()
+	if err != nil {
+		t.Errorf("Problem downloading index file from %s: %v", testRepository, err)
+	}
+
+	if _, err := os.Stat(filepath.Join(cacheDir, helmpath.CacheIndexFile(r.Config.Name))); err != nil {
+		t.Errorf("Expected index.yaml to be created in %s, but got an error: %v", cacheDir, err)
+	}
+	if _, err := os.Stat(filepath.Join(cacheDir, helmpath.CacheChartsFile(r.Config.Name))); err != nil {
+		t.Errorf("Expected charts to be created in %s, but got an error: %v", cacheDir, err)
 	}
 }
 
@@ -344,13 +380,25 @@ func TestFindChartInRepoURL(t *testing.T) {
 	}
 }
 
+func TestFindChartInAuthAndTLSAndPassAndCacheRepoURL(t *testing.T) {
+	srv, err := startLocalServerForTests(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Close()
+
+	cacheDir := t.TempDir()
+	chartURL, err := FindChartInAuthAndTLSAndPassAndCacheRepoURL(srv.URL, "", "", "nginx", "", "", "", "", false, false, getter.All(&cli.EnvSettings{}), cacheDir)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if chartURL != "https://charts.helm.sh/stable/nginx-0.2.0.tgz" {
+		t.Errorf("%s is not the valid URL", chartURL)
+	}
+}
+
 func TestErrorFindChartInRepoURL(t *testing.T) {
-
-	g := getter.All(&cli.EnvSettings{
-		RepositoryCache: t.TempDir(),
-	})
-
-	if _, err := FindChartInRepoURL("http://someserver/something", "nginx", "", "", "", "", g); err == nil {
+	if _, err := FindChartInRepoURL("http://someserver/something", "nginx", "", "", "", "", getter.All(&cli.EnvSettings{})); err == nil {
 		t.Errorf("Expected error for bad chart URL, but did not get any errors")
 	} else if !strings.Contains(err.Error(), `looks like "http://someserver/something" is not a valid chart repository or cannot be reached`) {
 		t.Errorf("Expected error for bad chart URL, but got a different error (%v)", err)
@@ -362,19 +410,19 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	if _, err = FindChartInRepoURL(srv.URL, "nginx1", "", "", "", "", g); err == nil {
+	if _, err = FindChartInRepoURL(srv.URL, "nginx1", "", "", "", "", getter.All(&cli.EnvSettings{})); err == nil {
 		t.Errorf("Expected error for chart not found, but did not get any errors")
 	} else if err.Error() != `chart "nginx1" not found in `+srv.URL+` repository` {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
 	}
 
-	if _, err = FindChartInRepoURL(srv.URL, "nginx1", "0.1.0", "", "", "", g); err == nil {
+	if _, err = FindChartInRepoURL(srv.URL, "nginx1", "0.1.0", "", "", "", getter.All(&cli.EnvSettings{})); err == nil {
 		t.Errorf("Expected error for chart not found, but did not get any errors")
 	} else if err.Error() != `chart "nginx1" version "0.1.0" not found in `+srv.URL+` repository` {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
 	}
 
-	if _, err = FindChartInRepoURL(srv.URL, "chartWithNoURL", "", "", "", "", g); err == nil {
+	if _, err = FindChartInRepoURL(srv.URL, "chartWithNoURL", "", "", "", "", getter.All(&cli.EnvSettings{})); err == nil {
 		t.Errorf("Expected error for no chart URLs available, but did not get any errors")
 	} else if err.Error() != `chart "chartWithNoURL" has no downloadable URLs` {
 		t.Errorf("Expected error for chart not found, but got a different error (%v)", err)
