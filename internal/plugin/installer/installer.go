@@ -92,6 +92,15 @@ func isLocalReference(source string) bool {
 // HEAD operation to see if the remote resource is a file that we understand.
 func isRemoteHTTPArchive(source string) bool {
 	if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
+		// First, check if the URL ends with a known archive suffix
+		// This is more reliable than content-type detection
+		for suffix := range Extractors {
+			if strings.HasSuffix(source, suffix) {
+				return true
+			}
+		}
+
+		// If no suffix match, try HEAD request to check content type
 		res, err := http.Head(source)
 		if err != nil {
 			// If we get an error at the network layer, we can't install it. So
