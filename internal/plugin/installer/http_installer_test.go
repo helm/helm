@@ -348,3 +348,255 @@ func TestMediaTypeToExtension(t *testing.T) {
 		}
 	}
 }
+
+func TestExtractWithNestedDirectories(t *testing.T) {
+	source := "https://repo.localdomain/plugins/nested-plugin-0.0.1.tar.gz"
+	tempDir := t.TempDir()
+
+	// Set the umask to default open permissions so we can actually test
+	oldmask := syscall.Umask(0000)
+	defer func() {
+		syscall.Umask(oldmask)
+	}()
+
+	// Write a tarball with nested directory structure
+	var tarbuf bytes.Buffer
+	tw := tar.NewWriter(&tarbuf)
+	var files = []struct {
+		Name     string
+		Body     string
+		Mode     int64
+		TypeFlag byte
+	}{
+		{"plugin.yaml", "plugin metadata", 0600, tar.TypeReg},
+		{"bin/", "", 0755, tar.TypeDir},
+		{"bin/plugin", "#!/bin/bash\necho plugin", 0755, tar.TypeReg},
+		{"docs/", "", 0755, tar.TypeDir},
+		{"docs/README.md", "readme content", 0644, tar.TypeReg},
+		{"docs/examples/", "", 0755, tar.TypeDir},
+		{"docs/examples/example1.yaml", "example content", 0644, tar.TypeReg},
+	}
+
+	for _, file := range files {
+		hdr := &tar.Header{
+			Name:     file.Name,
+			Typeflag: file.TypeFlag,
+			Mode:     file.Mode,
+			Size:     int64(len(file.Body)),
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			t.Fatal(err)
+		}
+		if file.TypeFlag == tar.TypeReg {
+			if _, err := tw.Write([]byte(file.Body)); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write(tarbuf.Bytes()); err != nil {
+		t.Fatal(err)
+	}
+	gz.Close()
+
+	extractor, err := NewExtractor(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// First extraction
+	if err = extractor.Extract(&buf, tempDir); err != nil {
+		t.Fatalf("First extraction failed: %v", err)
+	}
+
+	// Verify nested structure was created
+	nestedFile := filepath.Join(tempDir, "docs", "examples", "example1.yaml")
+	if _, err := os.Stat(nestedFile); err != nil {
+		t.Fatalf("Expected nested file %s to exist but got error: %v", nestedFile, err)
+	}
+
+	// Reset buffer for second extraction
+	buf.Reset()
+	gz = gzip.NewWriter(&buf)
+	if _, err := gz.Write(tarbuf.Bytes()); err != nil {
+		t.Fatal(err)
+	}
+	gz.Close()
+
+	// Second extraction to same directory (should not fail)
+	if err = extractor.Extract(&buf, tempDir); err != nil {
+		t.Fatalf("Second extraction to existing directory failed: %v", err)
+	}
+}
+
+func TestExtractWithExistingDirectory(t *testing.T) {
+	source := "https://repo.localdomain/plugins/test-plugin-0.0.1.tar.gz"
+	tempDir := t.TempDir()
+
+	// Pre-create the cache directory structure
+	cacheDir := filepath.Join(tempDir, "cache")
+	if err := os.MkdirAll(filepath.Join(cacheDir, "existing", "dir"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a file in the existing directory
+	existingFile := filepath.Join(cacheDir, "existing", "file.txt")
+	if err := os.WriteFile(existingFile, []byte("existing content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write a tarball
+	var tarbuf bytes.Buffer
+	tw := tar.NewWriter(&tarbuf)
+	files := []struct {
+		Name     string
+		Body     string
+		Mode     int64
+		TypeFlag byte
+	}{
+		{"plugin.yaml", "plugin metadata", 0600, tar.TypeReg},
+		{"existing/", "", 0755, tar.TypeDir},
+		{"existing/dir/", "", 0755, tar.TypeDir},
+		{"existing/dir/newfile.txt", "new content", 0644, tar.TypeReg},
+	}
+
+	for _, file := range files {
+		hdr := &tar.Header{
+			Name:     file.Name,
+			Typeflag: file.TypeFlag,
+			Mode:     file.Mode,
+			Size:     int64(len(file.Body)),
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			t.Fatal(err)
+		}
+		if file.TypeFlag == tar.TypeReg {
+			if _, err := tw.Write([]byte(file.Body)); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write(tarbuf.Bytes()); err != nil {
+		t.Fatal(err)
+	}
+	gz.Close()
+
+	extractor, err := NewExtractor(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Extract to directory with existing content
+	if err = extractor.Extract(&buf, cacheDir); err != nil {
+		t.Fatalf("Extraction to directory with existing content failed: %v", err)
+	}
+
+	// Verify new file was created
+	newFile := filepath.Join(cacheDir, "existing", "dir", "newfile.txt")
+	if _, err := os.Stat(newFile); err != nil {
+		t.Fatalf("Expected new file %s to exist but got error: %v", newFile, err)
+	}
+
+	// Verify existing file is still there
+	if _, err := os.Stat(existingFile); err != nil {
+		t.Fatalf("Expected existing file %s to still exist but got error: %v", existingFile, err)
+	}
+}
+
+func TestExtractPluginInSubdirectory(t *testing.T) {
+	source := "https://repo.localdomain/plugins/subdir-plugin-1.0.0.tar.gz"
+	tempDir := t.TempDir()
+
+	// Create a tarball where plugin files are in a subdirectory
+	var tarbuf bytes.Buffer
+	tw := tar.NewWriter(&tarbuf)
+	files := []struct {
+		Name     string
+		Body     string
+		Mode     int64
+		TypeFlag byte
+	}{
+		{"my-plugin/", "", 0755, tar.TypeDir},
+		{"my-plugin/plugin.yaml", "name: my-plugin\nversion: 1.0.0\nusage: test\ndescription: test plugin\ncommand: $HELM_PLUGIN_DIR/bin/my-plugin", 0644, tar.TypeReg},
+		{"my-plugin/bin/", "", 0755, tar.TypeDir},
+		{"my-plugin/bin/my-plugin", "#!/bin/bash\necho test", 0755, tar.TypeReg},
+	}
+
+	for _, file := range files {
+		hdr := &tar.Header{
+			Name:     file.Name,
+			Typeflag: file.TypeFlag,
+			Mode:     file.Mode,
+			Size:     int64(len(file.Body)),
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			t.Fatal(err)
+		}
+		if file.TypeFlag == tar.TypeReg {
+			if _, err := tw.Write([]byte(file.Body)); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write(tarbuf.Bytes()); err != nil {
+		t.Fatal(err)
+	}
+	gz.Close()
+
+	// Test the installer
+	installer := &HTTPInstaller{
+		CacheDir:   tempDir,
+		PluginName: "subdir-plugin",
+		base:       newBase(source),
+		extractor:  &TarGzExtractor{},
+	}
+
+	// Create a mock getter
+	installer.getter = &TestHTTPGetter{
+		MockResponse: &buf,
+	}
+
+	// Ensure the destination directory doesn't exist
+	// (In a real scenario, this is handled by installer.Install() wrapper)
+	destPath := installer.Path()
+	if err := os.RemoveAll(destPath); err != nil {
+		t.Fatalf("Failed to clean destination path: %v", err)
+	}
+
+	// Install should handle the subdirectory correctly
+	if err := installer.Install(); err != nil {
+		t.Fatalf("Failed to install plugin with subdirectory: %v", err)
+	}
+
+	// The plugin should be installed from the subdirectory
+	// Check that detectPluginRoot found the correct location
+	pluginRoot, err := detectPluginRoot(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to detect plugin root: %v", err)
+	}
+
+	expectedRoot := filepath.Join(tempDir, "my-plugin")
+	if pluginRoot != expectedRoot {
+		t.Errorf("Expected plugin root to be %s but got %s", expectedRoot, pluginRoot)
+	}
+}

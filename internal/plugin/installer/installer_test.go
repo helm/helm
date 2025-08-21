@@ -26,8 +26,15 @@ func TestIsRemoteHTTPArchive(t *testing.T) {
 		t.Errorf("Expected non-URL to return false")
 	}
 
-	if isRemoteHTTPArchive("https://127.0.0.1:123/fake/plugin-1.2.3.tgz") {
-		t.Errorf("Bad URL should not have succeeded.")
+	// URLs with valid archive extensions are considered valid archives
+	// even if the server is unreachable (optimization to avoid unnecessary HTTP requests)
+	if !isRemoteHTTPArchive("https://127.0.0.1:123/fake/plugin-1.2.3.tgz") {
+		t.Errorf("URL with .tgz extension should be considered a valid archive")
+	}
+
+	// Test with invalid extension and unreachable server
+	if isRemoteHTTPArchive("https://127.0.0.1:123/fake/plugin-1.2.3.notanarchive") {
+		t.Errorf("Bad URL without valid extension should not succeed")
 	}
 
 	if !isRemoteHTTPArchive(source) {
