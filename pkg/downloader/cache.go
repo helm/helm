@@ -17,6 +17,7 @@ package downloader
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -31,10 +32,16 @@ import (
 // digests in index files providing a common key for checking content.
 type Cache interface {
 	// Get returns a reader for the given key.
-	Get(key [sha256.Size]byte, prov bool) (string, error)
+	Get(key [sha256.Size]byte, cacheType string) (string, error)
 	// Put stores the given reader for the given key.
-	Put(key [sha256.Size]byte, data io.Reader, prov bool) (string, error)
+	Put(key [sha256.Size]byte, data io.Reader, cacheType string) (string, error)
 }
+
+// CacheChart specifies the content is a chart
+var CacheChart = ".chart"
+
+// CacheProv specifies the content is a provenance file
+var CacheProv = ".prov"
 
 // TODO: The cache assumes files because much of Helm assumes files. Convert
 // Helm to pass content around instead of file locations.
@@ -45,8 +52,8 @@ type DiskCache struct {
 }
 
 // Get returns a reader for the given key.
-func (c *DiskCache) Get(key [sha256.Size]byte, prov bool) (string, error) {
-	p := c.fileName(key, prov)
+func (c *DiskCache) Get(key [sha256.Size]byte, cacheType string) (string, error) {
+	p := c.fileName(key, cacheType)
 	fi, err := os.Stat(p)
 	if err != nil {
 		return "", err
@@ -58,16 +65,16 @@ func (c *DiskCache) Get(key [sha256.Size]byte, prov bool) (string, error) {
 	// directories should never happen unless something outside helm is operating
 	// on this content.
 	if fi.IsDir() {
-		return p, os.ErrInvalid
+		return p, errors.New("is a directory")
 	}
 	return p, nil
 }
 
 // Put stores the given reader for the given key.
 // It returns the path to the stored file.
-func (c *DiskCache) Put(key [sha256.Size]byte, data io.Reader, prov bool) (string, error) {
+func (c *DiskCache) Put(key [sha256.Size]byte, data io.Reader, cacheType string) (string, error) {
 	// TODO: verify the key and digest of the key are the same.
-	p := c.fileName(key, prov)
+	p := c.fileName(key, cacheType)
 	if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
 		slog.Error("failed to create cache directory")
 		return p, err
@@ -77,10 +84,6 @@ func (c *DiskCache) Put(key [sha256.Size]byte, data io.Reader, prov bool) (strin
 
 // fileName generates the filename in a structured manner where the first part is the
 // directory and the full hash is the filename.
-func (c *DiskCache) fileName(id [sha256.Size]byte, prov bool) string {
-	suffix := ".tgz"
-	if prov {
-		suffix = ".prov"
-	}
-	return filepath.Join(c.Root, fmt.Sprintf("%02x", id[0]), fmt.Sprintf("%x", id)+suffix)
+func (c *DiskCache) fileName(id [sha256.Size]byte, cacheType string) string {
+	return filepath.Join(c.Root, fmt.Sprintf("%02x", id[0]), fmt.Sprintf("%x", id)+cacheType)
 }

@@ -287,6 +287,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					Getters:          p,
 					RepositoryConfig: settings.RepositoryConfig,
 					RepositoryCache:  settings.RepositoryCache,
+					ContentCache:     settings.ContentCache,
 					Debug:            settings.Debug,
 					RegistryClient:   client.GetRegistryClient(),
 				}

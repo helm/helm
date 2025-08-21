@@ -210,6 +210,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							Getters:          p,
 							RepositoryConfig: settings.RepositoryConfig,
 							RepositoryCache:  settings.RepositoryCache,
+							ContentCache:     settings.ContentCache,
 							Debug:            settings.Debug,
 						}
 						if err := man.Update(); err != nil {

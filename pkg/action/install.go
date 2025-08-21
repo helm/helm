@@ -815,6 +815,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		},
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
+		ContentCache:     settings.ContentCache,
 		RegistryClient:   c.registryClient,
 	}
 
