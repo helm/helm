@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"helm.sh/helm/v4/pkg/plugin"
+	"helm.sh/helm/v4/internal/plugin"
 )
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.

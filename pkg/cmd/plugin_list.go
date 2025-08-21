@@ -24,7 +24,7 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v4/pkg/plugin"
+	"helm.sh/helm/v4/internal/plugin"
 )
 
 func newPluginListCmd(out io.Writer) *cobra.Command {

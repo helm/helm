@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package plugin // import "helm.sh/helm/v4/pkg/plugin"
+package plugin // import "helm.sh/helm/v4/internal/plugin"
 
 // Types of hooks
 const (
