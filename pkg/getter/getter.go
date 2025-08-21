@@ -48,6 +48,7 @@ type getterOptions struct {
 	registryClient        *registry.Client
 	timeout               time.Duration
 	transport             *http.Transport
+	artifactType          string
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -141,6 +142,13 @@ func WithUntar() Option {
 func WithTransport(transport *http.Transport) Option {
 	return func(opts *getterOptions) {
 		opts.transport = transport
+	}
+}
+
+// WithArtifactType sets the type of OCI artifact ("chart" or "plugin")
+func WithArtifactType(artifactType string) Option {
+	return func(opts *getterOptions) {
+		opts.artifactType = artifactType
 	}
 }
 

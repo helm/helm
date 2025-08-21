@@ -21,6 +21,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -87,6 +88,36 @@ func uninstallPlugin(p plugin.Plugin) error {
 	if err := os.RemoveAll(p.Dir()); err != nil {
 		return err
 	}
+
+	// Clean up versioned tarball and provenance files from HELM_PLUGINS directory
+	// These files are saved with pattern: PLUGIN_NAME-VERSION.tgz and PLUGIN_NAME-VERSION.tgz.prov
+	pluginName := p.Metadata().Name
+	pluginVersion := p.Metadata().Version
+	pluginsDir := settings.PluginsDirectory
+
+	// Remove versioned files: plugin-name-version.tgz and plugin-name-version.tgz.prov
+	if pluginVersion != "" {
+		versionedBasename := fmt.Sprintf("%s-%s.tgz", pluginName, pluginVersion)
+
+		// Remove tarball file
+		tarballPath := filepath.Join(pluginsDir, versionedBasename)
+		if _, err := os.Stat(tarballPath); err == nil {
+			slog.Debug("removing versioned tarball", "path", tarballPath)
+			if err := os.Remove(tarballPath); err != nil {
+				slog.Debug("failed to remove tarball file", "path", tarballPath, "error", err)
+			}
+		}
+
+		// Remove provenance file
+		provPath := filepath.Join(pluginsDir, versionedBasename+".prov")
+		if _, err := os.Stat(provPath); err == nil {
+			slog.Debug("removing versioned provenance", "path", provPath)
+			if err := os.Remove(provPath); err != nil {
+				slog.Debug("failed to remove provenance file", "path", provPath, "error", err)
+			}
+		}
+	}
+
 	return runHook(p, plugin.Delete)
 }
 
