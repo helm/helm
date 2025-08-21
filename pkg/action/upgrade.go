@@ -399,6 +399,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	defer close(doneChan)
 	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease, serverSideApply)
 	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
+
 	select {
 	case result := <-rChan:
 		return result.r, result.e
@@ -431,6 +432,11 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 		return
 	}
 }
+
+func isReleaseApplyMethodClientSideApply(applyMethod string) bool {
+	return applyMethod == "" || applyMethod == string(release.ApplyMethodClientSideApply)
+}
+
 func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release, serverSideApply bool) {
 	// pre-upgrade hooks
 
@@ -443,11 +449,13 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		slog.Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
 	}
 
+	upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply // Update client-side field manager if transitioning from client-side to server-side apply
 	results, err := u.cfg.KubeClient.Update(
 		current,
 		target,
 		kube.ClientUpdateOptionForceReplace(u.ForceReplace),
-		kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts))
+		kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
+		kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager))
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
