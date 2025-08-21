@@ -25,6 +25,9 @@ import (
 	"testing"
 
 	pgperrors "golang.org/x/crypto/openpgp/errors" //nolint
+	"sigs.k8s.io/yaml"
+
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 )
 
 const (
@@ -75,8 +78,27 @@ files:
   hashtest-1.2.3.tgz: sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888
 `
 
+// loadChartMetadataForSigning is a test helper that loads chart metadata and marshals it to YAML bytes
+func loadChartMetadataForSigning(t *testing.T, chartPath string) []byte {
+	t.Helper()
+
+	chart, err := loader.LoadFile(chartPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	metadataBytes, err := yaml.Marshal(chart.Metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return metadataBytes
+}
+
 func TestMessageBlock(t *testing.T) {
-	out, err := messageBlock(testChartfile)
+	metadataBytes := loadChartMetadataForSigning(t, testChartfile)
+
+	out, err := messageBlock(testChartfile, metadataBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,14 +110,12 @@ func TestMessageBlock(t *testing.T) {
 }
 
 func TestParseMessageBlock(t *testing.T) {
-	md, sc, err := parseMessageBlock([]byte(testMessageBlock))
+	sc, err := parseMessageBlock([]byte(testMessageBlock))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if md.Name != "hashtest" {
-		t.Errorf("Expected name %q, got %q", "hashtest", md.Name)
-	}
+	// parseMessageBlock only returns checksums, not metadata (like upstream)
 
 	if lsc := len(sc.Files); lsc != 1 {
 		t.Errorf("Expected 1 file, got %d", lsc)
@@ -221,7 +241,9 @@ func TestClearSign(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sig, err := signer.ClearSign(testChartfile)
+	metadataBytes := loadChartMetadataForSigning(t, testChartfile)
+
+	sig, err := signer.ClearSign(testChartfile, metadataBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +274,9 @@ func TestClearSignError(t *testing.T) {
 	// ensure that signing always fails
 	signer.Entity.PrivateKey.PrivateKey = failSigner{}
 
-	sig, err := signer.ClearSign(testChartfile)
+	metadataBytes := loadChartMetadataForSigning(t, testChartfile)
+
+	sig, err := signer.ClearSign(testChartfile, metadataBytes)
 	if err == nil {
 		t.Fatal("didn't get an error from ClearSign but expected one")
 	}
@@ -271,7 +295,9 @@ func TestDecodeSignature(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sig, err := signer.ClearSign(testChartfile)
+	metadataBytes := loadChartMetadataForSigning(t, testChartfile)
+
+	sig, err := signer.ClearSign(testChartfile, metadataBytes)
 	if err != nil {
 		t.Fatal(err)
 	}

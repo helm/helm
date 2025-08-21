@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/internal/plugin"
+	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 type pluginUninstallOptions struct {
@@ -87,6 +88,26 @@ func uninstallPlugin(p plugin.Plugin) error {
 	if err := os.RemoveAll(p.Dir()); err != nil {
 		return err
 	}
+
+	// Remove preserved tarball and its provenance file
+	pluginName := p.Metadata().Name
+	tarballPath := helmpath.DataPath("plugins", pluginName+".tgz")
+	provPath := tarballPath + ".prov"
+
+	// Remove tarball
+	if _, err := os.Stat(tarballPath); err == nil {
+		if err := os.Remove(tarballPath); err != nil {
+			slog.Warn("failed to remove plugin tarball", "file", tarballPath, "error", err)
+		}
+	}
+
+	// Remove provenance file
+	if _, err := os.Stat(provPath); err == nil {
+		if err := os.Remove(provPath); err != nil {
+			slog.Warn("failed to remove provenance file", "file", provPath, "error", err)
+		}
+	}
+
 	return runHook(p, plugin.Delete)
 }
 

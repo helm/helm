@@ -83,8 +83,9 @@ func TestVCSInstaller(t *testing.T) {
 	if repo.current != "0.1.1" {
 		t.Fatalf("expected version '0.1.1', got %q", repo.current)
 	}
-	if i.Path() != helmpath.DataPath("plugins", "helm-env") {
-		t.Fatalf("expected path '$XDG_CONFIG_HOME/helm/plugins/helm-env', got %q", i.Path())
+	expectedPath := helmpath.DataPath("plugins", "helm-env")
+	if i.Path() != expectedPath {
+		t.Fatalf("expected path %q, got %q", expectedPath, i.Path())
 	}
 
 	// Install again to test plugin exists error
