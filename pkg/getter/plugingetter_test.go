@@ -110,8 +110,7 @@ func (t *TestPlugin) Metadata() plugin.Metadata {
 		Type:       "cli/v1",
 		APIVersion: "v1",
 		Runtime:    "subprocess",
-		// TODO: either change Config to plugin.ConfigCLI, or change APIVersion to getter/v1?
-		Config: &plugin.ConfigGetter{},
+		Config:     &plugin.ConfigCLI{},
 		RuntimeConfig: &plugin.RuntimeConfigSubprocess{
 			PlatformCommands: []plugin.PlatformCommand{
 				{
