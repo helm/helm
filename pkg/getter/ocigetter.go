@@ -33,7 +33,7 @@ import (
 
 // OCIGetter is the default HTTP(/S) backend handler
 type OCIGetter struct {
-	opts      options
+	opts      getterOptions
 	transport *http.Transport
 	once      sync.Once
 }
@@ -63,6 +63,8 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 	if version := g.opts.version; version != "" && !strings.Contains(path.Base(ref), ":") {
 		ref = fmt.Sprintf("%s:%s", ref, version)
 	}
+
+	// Default to chart behavior for backward compatibility
 	var pullOpts []registry.PullOption
 	requestingProv := strings.HasSuffix(ref, ".prov")
 	if requestingProv {

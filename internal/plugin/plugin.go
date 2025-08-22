@@ -13,359 +13,69 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package plugin // import "helm.sh/helm/v4/pkg/plugin"
+package plugin // import "helm.sh/helm/v4/internal/plugin"
 
 import (
-	"fmt"
-	"log/slog"
-	"os"
-	"path/filepath"
+	"context"
+	"io"
 	"regexp"
-	"runtime"
-	"strings"
-	"unicode"
-
-	"sigs.k8s.io/yaml"
-
-	"helm.sh/helm/v4/pkg/cli"
 )
 
 const PluginFileName = "plugin.yaml"
 
-// Downloaders represents the plugins capability if it can retrieve
-// charts from special sources
-type Downloaders struct {
-	// Protocols are the list of schemes from the charts URL.
-	Protocols []string `json:"protocols"`
-	// Command is the executable path with which the plugin performs
-	// the actual download for the corresponding Protocols
-	Command string `json:"command"`
+// Plugin defines a plugin instance. The client (Helm codebase) facing type that can be used to introspect and invoke a plugin
+type Plugin interface {
+	// Dir return the plugin directory (as an absolute path) on the filesystem
+	Dir() string
+
+	// Metadata describes the plugin's type, version, etc.
+	// (This metadata type is the converted and plugin version independented in-memory representation of the plugin.yaml file)
+	Metadata() Metadata
+
+	// Invoke takes the given input, and dispatches the contents to plugin instance
+	// The input is expected to be a JSON-serializable object, which the plugin will interpret according to its type
+	// The plugin is expected to return a JSON-serializable object, which the invoker
+	// will interpret according to the plugin's type
+	//
+	// Invoke can be thought of as a request/response mechanism. Similar to e.g. http.RoundTripper
+	//
+	// If plugin's execution fails with a non-zero "return code" (this is plugin runtime implementation specific)
+	// an InvokeExecError is returned
+	Invoke(ctx context.Context, input *Input) (*Output, error)
 }
 
-// PlatformCommand represents a command for a particular operating system and architecture
-type PlatformCommand struct {
-	OperatingSystem string   `json:"os"`
-	Architecture    string   `json:"arch"`
-	Command         string   `json:"command"`
-	Args            []string `json:"args"`
+// PluginHook allows plugins to implement hooks that are invoked on plugin management events (install, upgrade, etc)
+type PluginHook interface { //nolint:revive
+	InvokeHook(event string) error
 }
 
-// Metadata describes a plugin.
-//
-// This is the plugin equivalent of a chart.Metadata.
-type Metadata struct {
-	// Name is the name of the plugin
-	Name string `json:"name"`
+// Input defines the input message and parameters to be passed to the plugin
+type Input struct {
+	// Message represents the type-elided value to be passed to the plugin.
+	// The plugin is expected to interpret the message according to its type
+	// The message object must be JSON-serializable
+	Message any
 
-	// Version is a SemVer 2 version of the plugin.
-	Version string `json:"version"`
+	// Optional: Reader to be consumed plugin's "stdin"
+	Stdin io.Reader
 
-	// Usage is the single-line usage text shown in help
-	Usage string `json:"usage"`
+	// Optional: Writers to consume the plugin's "stdout" and "stderr"
+	Stdout, Stderr io.Writer
 
-	// Description is a long description shown in places like `helm help`
-	Description string `json:"description"`
-
-	// PlatformCommand is the plugin command, with a platform selector and support for args.
-	//
-	// The command and args will be passed through environment expansion, so env vars can
-	// be present in this command. Unless IgnoreFlags is set, this will
-	// also merge the flags passed from Helm.
-	//
-	// Note that the command is not executed in a shell. To do so, we suggest
-	// pointing the command to a shell script.
-	//
-	// The following rules will apply to processing platform commands:
-	// - If PlatformCommand is present, it will be used
-	// - If both OS and Arch match the current platform, search will stop and the command will be executed
-	// - If OS matches and Arch is empty, the command will be executed
-	// - If no OS/Arch match is found, the default command will be executed
-	// - If no matches are found in platformCommand, Helm will exit with an error
-	PlatformCommand []PlatformCommand `json:"platformCommand"`
-
-	// Command is the plugin command, as a single string.
-	// Providing Command and PlatformCommand will result in a warning being emitted (PlatformCommand takes precedence).
-	//
-	// The command will be passed through environment expansion, so env vars can
-	// be present in this command. Unless IgnoreFlags is set, this will
-	// also merge the flags passed from Helm.
-	//
-	// Note that command is not executed in a shell. To do so, we suggest
-	// pointing the command to a shell script.
-	//
-	// DEPRECATED: Use PlatformCommand instead
-	Command string `json:"command"`
-
-	// IgnoreFlags ignores any flags passed in from Helm
-	//
-	// For example, if the plugin is invoked as `helm --debug myplugin`, if this
-	// is false, `--debug` will be appended to `--command`. If this is true,
-	// the `--debug` flag will be discarded.
-	IgnoreFlags bool `json:"ignoreFlags"`
-
-	// PlatformHooks are commands that will run on plugin events, with a platform selector and support for args.
-	//
-	// The command and args will be passed through environment expansion, so env vars can
-	// be present in the command.
-	//
-	// Note that the command is not executed in a shell. To do so, we suggest
-	// pointing the command to a shell script.
-	//
-	// The following rules will apply to processing platform hooks:
-	// - If PlatformHooks is present, it will be used
-	// - If both OS and Arch match the current platform, search will stop and the command will be executed
-	// - If OS matches and Arch is empty, the command will be executed
-	// - If no OS/Arch match is found, the default command will be executed
-	// - If no matches are found in platformHooks, Helm will skip the event
-	PlatformHooks PlatformHooks `json:"platformHooks"`
-
-	// Hooks are commands that will run on plugin events, as a single string.
-	// Providing Hook and PlatformHooks will result in a warning being emitted (PlatformHooks takes precedence).
-	//
-	// The command will be passed through environment expansion, so env vars can
-	// be present in this command.
-	//
-	// Note that the command is executed in the sh shell.
-	//
-	// DEPRECATED: Use PlatformHooks instead
-	Hooks Hooks
-
-	// Downloaders field is used if the plugin supply downloader mechanism
-	// for special protocols.
-	Downloaders []Downloaders `json:"downloaders"`
+	// Optional: Env represents the environment as a list of "key=value" strings
+	// see os.Environ
+	Env []string
 }
 
-// Plugin represents a plugin.
-type Plugin struct {
-	// Metadata is a parsed representation of a plugin.yaml
-	Metadata *Metadata
-	// Dir is the string path to the directory that holds the plugin.
-	Dir string
-}
-
-// Returns command and args strings based on the following rules in priority order:
-// - From the PlatformCommand where OS and Arch match the current platform
-// - From the PlatformCommand where OS matches the current platform and Arch is empty/unspecified
-// - From the PlatformCommand where OS is empty/unspecified and Arch matches the current platform
-// - From the PlatformCommand where OS and Arch are both empty/unspecified
-// - Return nil, nil
-func getPlatformCommand(cmds []PlatformCommand) ([]string, []string) {
-	var command, args []string
-	found := false
-	foundOs := false
-
-	eq := strings.EqualFold
-	for _, c := range cmds {
-		if eq(c.OperatingSystem, runtime.GOOS) && eq(c.Architecture, runtime.GOARCH) {
-			// Return early for an exact match
-			return strings.Split(c.Command, " "), c.Args
-		}
-
-		if (len(c.OperatingSystem) > 0 && !eq(c.OperatingSystem, runtime.GOOS)) || len(c.Architecture) > 0 {
-			// Skip if OS is not empty and doesn't match or if arch is set as a set arch requires an OS match
-			continue
-		}
-
-		if !foundOs && len(c.OperatingSystem) > 0 && eq(c.OperatingSystem, runtime.GOOS) {
-			// First OS match with empty arch, can only be overridden by a direct match
-			command = strings.Split(c.Command, " ")
-			args = c.Args
-			found = true
-			foundOs = true
-		} else if !found {
-			// First empty match, can be overridden by a direct match or an OS match
-			command = strings.Split(c.Command, " ")
-			args = c.Args
-			found = true
-		}
-	}
-
-	return command, args
-}
-
-// PrepareCommands takes a []Plugin.PlatformCommand
-// and prepares the command and arguments for execution.
-//
-// It merges extraArgs into any arguments supplied in the plugin. It
-// returns the main command and an args array.
-//
-// The result is suitable to pass to exec.Command.
-func PrepareCommands(cmds []PlatformCommand, expandArgs bool, extraArgs []string) (string, []string, error) {
-	cmdParts, args := getPlatformCommand(cmds)
-	if len(cmdParts) == 0 || cmdParts[0] == "" {
-		return "", nil, fmt.Errorf("no plugin command is applicable")
-	}
-
-	main := os.ExpandEnv(cmdParts[0])
-	baseArgs := []string{}
-	if len(cmdParts) > 1 {
-		for _, cmdPart := range cmdParts[1:] {
-			if expandArgs {
-				baseArgs = append(baseArgs, os.ExpandEnv(cmdPart))
-			} else {
-				baseArgs = append(baseArgs, cmdPart)
-			}
-		}
-	}
-
-	for _, arg := range args {
-		if expandArgs {
-			baseArgs = append(baseArgs, os.ExpandEnv(arg))
-		} else {
-			baseArgs = append(baseArgs, arg)
-		}
-	}
-
-	if len(extraArgs) > 0 {
-		baseArgs = append(baseArgs, extraArgs...)
-	}
-
-	return main, baseArgs, nil
-}
-
-// PrepareCommand gets the correct command and arguments for a plugin.
-//
-// It merges extraArgs into any arguments supplied in the plugin. It returns the name of the command and an args array.
-//
-// The result is suitable to pass to exec.Command.
-func (p *Plugin) PrepareCommand(extraArgs []string) (string, []string, error) {
-	var extraArgsIn []string
-
-	if !p.Metadata.IgnoreFlags {
-		extraArgsIn = extraArgs
-	}
-
-	cmds := p.Metadata.PlatformCommand
-	if len(cmds) == 0 && len(p.Metadata.Command) > 0 {
-		cmds = []PlatformCommand{{Command: p.Metadata.Command}}
-	}
-
-	return PrepareCommands(cmds, true, extraArgsIn)
+// Output defines the output message and parameters the passed from the plugin
+type Output struct {
+	// Message represents the type-elided value returned from the plugin
+	// The invoker is expected to interpret the message according to the plugin's type
+	// The message object must be JSON-serializable
+	Message any
 }
 
 // validPluginName is a regular expression that validates plugin names.
 //
 // Plugin names can only contain the ASCII characters a-z, A-Z, 0-9, ​_​ and ​-.
 var validPluginName = regexp.MustCompile("^[A-Za-z0-9_-]+$")
-
-// validatePluginData validates a plugin's YAML data.
-func validatePluginData(plug *Plugin, filepath string) error {
-	// When metadata section missing, initialize with no data
-	if plug.Metadata == nil {
-		plug.Metadata = &Metadata{}
-	}
-	if !validPluginName.MatchString(plug.Metadata.Name) {
-		return fmt.Errorf("invalid plugin name at %q", filepath)
-	}
-	plug.Metadata.Usage = sanitizeString(plug.Metadata.Usage)
-
-	if len(plug.Metadata.PlatformCommand) > 0 && len(plug.Metadata.Command) > 0 {
-		slog.Warn("both 'platformCommand' and 'command' are set (this will become an error in a future Helm version)", slog.String("filepath", filepath))
-	}
-
-	if len(plug.Metadata.PlatformHooks) > 0 && len(plug.Metadata.Hooks) > 0 {
-		slog.Warn("both 'platformHooks' and 'hooks' are set (this will become an error in a future Helm version)", slog.String("filepath", filepath))
-	}
-
-	// We could also validate SemVer, executable, and other fields should we so choose.
-	return nil
-}
-
-// sanitizeString normalize spaces and removes non-printable characters.
-func sanitizeString(str string) string {
-	return strings.Map(func(r rune) rune {
-		if unicode.IsSpace(r) {
-			return ' '
-		}
-		if unicode.IsPrint(r) {
-			return r
-		}
-		return -1
-	}, str)
-}
-
-func detectDuplicates(plugs []*Plugin) error {
-	names := map[string]string{}
-
-	for _, plug := range plugs {
-		if oldpath, ok := names[plug.Metadata.Name]; ok {
-			return fmt.Errorf(
-				"two plugins claim the name %q at %q and %q",
-				plug.Metadata.Name,
-				oldpath,
-				plug.Dir,
-			)
-		}
-		names[plug.Metadata.Name] = plug.Dir
-	}
-
-	return nil
-}
-
-// LoadDir loads a plugin from the given directory.
-func LoadDir(dirname string) (*Plugin, error) {
-	pluginfile := filepath.Join(dirname, PluginFileName)
-	data, err := os.ReadFile(pluginfile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read plugin at %q: %w", pluginfile, err)
-	}
-
-	plug := &Plugin{Dir: dirname}
-	if err := yaml.UnmarshalStrict(data, &plug.Metadata); err != nil {
-		return nil, fmt.Errorf("failed to load plugin at %q: %w", pluginfile, err)
-	}
-	return plug, validatePluginData(plug, pluginfile)
-}
-
-// LoadAll loads all plugins found beneath the base directory.
-//
-// This scans only one directory level.
-func LoadAll(basedir string) ([]*Plugin, error) {
-	plugins := []*Plugin{}
-	// We want basedir/*/plugin.yaml
-	scanpath := filepath.Join(basedir, "*", PluginFileName)
-	matches, err := filepath.Glob(scanpath)
-	if err != nil {
-		return plugins, fmt.Errorf("failed to find plugins in %q: %w", scanpath, err)
-	}
-
-	if matches == nil {
-		return plugins, nil
-	}
-
-	for _, yaml := range matches {
-		dir := filepath.Dir(yaml)
-		p, err := LoadDir(dir)
-		if err != nil {
-			return plugins, err
-		}
-		plugins = append(plugins, p)
-	}
-	return plugins, detectDuplicates(plugins)
-}
-
-// FindPlugins returns a list of YAML files that describe plugins.
-func FindPlugins(plugdirs string) ([]*Plugin, error) {
-	found := []*Plugin{}
-	// Let's get all UNIXy and allow path separators
-	for _, p := range filepath.SplitList(plugdirs) {
-		matches, err := LoadAll(p)
-		if err != nil {
-			return matches, err
-		}
-		found = append(found, matches...)
-	}
-	return found, nil
-}
-
-// SetupPluginEnv prepares os.Env for plugins. It operates on os.Env because
-// the plugin subsystem itself needs access to the environment variables
-// created here.
-func SetupPluginEnv(settings *cli.EnvSettings, name, base string) {
-	env := settings.EnvVars()
-	env["HELM_PLUGIN_NAME"] = name
-	env["HELM_PLUGIN_DIR"] = base
-	for key, val := range env {
-		os.Setenv(key, val)
-	}
-}
