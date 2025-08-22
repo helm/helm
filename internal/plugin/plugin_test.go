@@ -24,11 +24,13 @@ func mockSubprocessCLIPlugin(t *testing.T, pluginName string) *SubprocessPluginR
 
 	rc := RuntimeConfigSubprocess{
 		PlatformCommand: []PlatformCommand{
+			{OperatingSystem: "darwin", Architecture: "", Command: "sh", Args: []string{"-c", "echo \"mock plugin\""}},
 			{OperatingSystem: "linux", Architecture: "", Command: "sh", Args: []string{"-c", "echo \"mock plugin\""}},
 			{OperatingSystem: "windows", Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"mock plugin\""}},
 		},
 		PlatformHooks: map[string][]PlatformCommand{
 			Install: {
+				{OperatingSystem: "darwin", Architecture: "", Command: "sh", Args: []string{"-c", "echo \"installing...\""}},
 				{OperatingSystem: "linux", Architecture: "", Command: "sh", Args: []string{"-c", "echo \"installing...\""}},
 				{OperatingSystem: "windows", Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"installing...\""}},
 			},

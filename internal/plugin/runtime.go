@@ -16,6 +16,7 @@ limitations under the License.
 package plugin
 
 import (
+	"fmt"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
@@ -70,6 +71,14 @@ func parseEnv(env []string) map[string]string {
 			}
 			result[key] = value
 		}
+	}
+	return result
+}
+
+func formatEnv(env map[string]string) []string {
+	result := make([]string, 0, len(env))
+	for key, value := range env {
+		result = append(result, fmt.Sprintf("%s=%s", key, value))
 	}
 	return result
 }

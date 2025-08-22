@@ -19,8 +19,8 @@ package plugin
 // - subprocess plugin: child process exit code
 // - extism plugin: wasm function return code
 type InvokeExecError struct {
-	Err  error // Underlying error
-	Code int   // Exeit code from plugin code execution
+	ExitCode int   // Exit code from plugin code execution
+	Err      error // Underlying error
 }
 
 // Error implements the error interface

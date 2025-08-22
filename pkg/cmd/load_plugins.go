@@ -46,11 +46,6 @@ const (
 	pluginDynamicCompletionExecutable = "plugin.complete"
 )
 
-type PluginError struct {
-	error
-	Code int
-}
-
 // loadCLIPlugins loads CLI plugins into the command list.
 //
 // This follows a different pattern than the other commands because it has
@@ -101,8 +96,6 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 				if err != nil {
 					return err
 				}
-				// Setup plugin environment
-				plugin.SetupPluginEnv(settings, plug.Metadata().Name, plug.Dir())
 
 				// For CLI plugin types runtime, set extra args and settings
 				extraArgs := []string{}
@@ -128,12 +121,10 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 					Stderr: os.Stderr,
 				}
 				_, err = plug.Invoke(context.Background(), input)
-				// TODO do we want to keep execErr here?
 				if execErr, ok := err.(*plugin.InvokeExecError); ok {
-					// TODO can we replace cmd.PluginError with plugin.Error?
-					return PluginError{
-						error: execErr.Err,
-						Code:  execErr.Code,
+					return CommandError{
+						error:    execErr.Err,
+						ExitCode: execErr.ExitCode,
 					}
 				}
 				return err
@@ -369,7 +360,6 @@ func pluginDynamicComp(plug plugin.Plugin, cmd *cobra.Command, args []string, to
 		argv = append(argv, u...)
 		argv = append(argv, toComplete)
 	}
-	plugin.SetupPluginEnv(settings, plug.Metadata().Name, plug.Dir())
 
 	cobra.CompDebugln(fmt.Sprintf("calling %s with args %v", main, argv), settings.Debug)
 	buf := new(bytes.Buffer)

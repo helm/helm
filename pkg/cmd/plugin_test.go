@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -93,14 +94,14 @@ func TestLoadCLIPlugins(t *testing.T) {
 	)
 	loadCLIPlugins(&cmd, &out)
 
-	envs := strings.Join([]string{
-		"fullenv",
-		"testdata/helmhome/helm/plugins/fullenv",
-		"testdata/helmhome/helm/plugins",
-		"testdata/helmhome/helm/repositories.yaml",
-		"testdata/helmhome/helm/repository",
-		os.Args[0],
-	}, "\n")
+	fullEnvOutput := strings.Join([]string{
+		"HELM_PLUGIN_NAME=fullenv",
+		"HELM_PLUGIN_DIR=testdata/helmhome/helm/plugins/fullenv",
+		"HELM_PLUGINS=testdata/helmhome/helm/plugins",
+		"HELM_REPOSITORY_CONFIG=testdata/helmhome/helm/repositories.yaml",
+		"HELM_REPOSITORY_CACHE=testdata/helmhome/helm/repository",
+		fmt.Sprintf("HELM_BIN=%s", os.Args[0]),
+	}, "\n") + "\n"
 
 	// Test that the YAML file was correctly converted to a command.
 	tests := []struct {
@@ -113,47 +114,50 @@ func TestLoadCLIPlugins(t *testing.T) {
 	}{
 		{"args", "echo args", "This echos args", "-a -b -c\n", []string{"-a", "-b", "-c"}, 0},
 		{"echo", "echo stuff", "This echos stuff", "hello\n", []string{}, 0},
-		{"env", "env stuff", "show the env", "env\n", []string{}, 0},
+		{"env", "env stuff", "show the env", "HELM_PLUGIN_NAME=env\n", []string{}, 0},
 		{"exitwith", "exitwith code", "This exits with the specified exit code", "", []string{"2"}, 2},
-		{"fullenv", "show env vars", "show all env vars", envs + "\n", []string{}, 0},
+		{"fullenv", "show env vars", "show all env vars", fullEnvOutput, []string{}, 0},
 	}
 
-	plugins := cmd.Commands()
+	pluginCmds := cmd.Commands()
 
-	require.Len(t, plugins, len(tests), "Expected %d plugins, got %d", len(tests), len(plugins))
+	require.Len(t, pluginCmds, len(tests), "Expected %d plugins, got %d", len(tests), len(pluginCmds))
 
-	for i := range plugins {
+	for i := range pluginCmds {
 		out.Reset()
 		tt := tests[i]
-		pp := plugins[i]
-		if pp.Use != tt.use {
-			t.Errorf("%d: Expected Use=%q, got %q", i, tt.use, pp.Use)
-		}
-		if pp.Short != tt.short {
-			t.Errorf("%d: Expected Use=%q, got %q", i, tt.short, pp.Short)
-		}
-		if pp.Long != tt.long {
-			t.Errorf("%d: Expected Use=%q, got %q", i, tt.long, pp.Long)
-		}
-
-		// Currently, plugins assume a Linux subsystem. Skip the execution
-		// tests until this is fixed
-		if runtime.GOOS != "windows" {
-			if err := pp.RunE(pp, tt.args); err != nil {
-				if tt.code > 0 {
-					perr, ok := err.(PluginError)
-					if !ok {
-						t.Errorf("Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
-					}
-					if perr.Code != tt.code {
-						t.Errorf("Expected %s to return %d: got %d", tt.use, tt.code, perr.Code)
-					}
-				} else {
-					t.Errorf("Error running %s: %+v", tt.use, err)
-				}
+		pluginCmd := pluginCmds[i]
+		t.Run(fmt.Sprintf("%s-%d", pluginCmd.Name(), i), func(t *testing.T) {
+			out.Reset()
+			if pluginCmd.Use != tt.use {
+				t.Errorf("%d: Expected Use=%q, got %q", i, tt.use, pluginCmd.Use)
 			}
-			assert.Equal(t, tt.expect, out.String(), "expected output for %s", tt.use)
-		}
+			if pluginCmd.Short != tt.short {
+				t.Errorf("%d: Expected Use=%q, got %q", i, tt.short, pluginCmd.Short)
+			}
+			if pluginCmd.Long != tt.long {
+				t.Errorf("%d: Expected Use=%q, got %q", i, tt.long, pluginCmd.Long)
+			}
+
+			// Currently, plugins assume a Linux subsystem. Skip the execution
+			// tests until this is fixed
+			if runtime.GOOS != "windows" {
+				if err := pluginCmd.RunE(pluginCmd, tt.args); err != nil {
+					if tt.code > 0 {
+						cerr, ok := err.(CommandError)
+						if !ok {
+							t.Errorf("Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
+						}
+						if cerr.ExitCode != tt.code {
+							t.Errorf("Expected %s to return %d: got %d", tt.use, tt.code, cerr.ExitCode)
+						}
+					} else {
+						t.Errorf("Error running %s: %+v", tt.use, err)
+					}
+				}
+				assert.Equal(t, tt.expect, out.String(), "expected output for %q", tt.use)
+			}
+		})
 	}
 }
 
@@ -214,12 +218,12 @@ func TestLoadPluginsWithSpace(t *testing.T) {
 		if runtime.GOOS != "windows" {
 			if err := pp.RunE(pp, tt.args); err != nil {
 				if tt.code > 0 {
-					perr, ok := err.(PluginError)
+					cerr, ok := err.(CommandError)
 					if !ok {
 						t.Errorf("Expected %s to return pluginError: got %v(%T)", tt.use, err, err)
 					}
-					if perr.Code != tt.code {
-						t.Errorf("Expected %s to return %d: got %d", tt.use, tt.code, perr.Code)
+					if cerr.ExitCode != tt.code {
+						t.Errorf("Expected %s to return %d: got %d", tt.use, tt.code, cerr.ExitCode)
 					}
 				} else {
 					t.Errorf("Error running %s: %+v", tt.use, err)

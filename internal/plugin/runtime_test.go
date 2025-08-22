@@ -61,3 +61,40 @@ func TestParseEnv(t *testing.T) {
 		})
 	}
 }
+
+func TestFormatEnv(t *testing.T) {
+	type testCase struct {
+		env      map[string]string
+		expected []string
+	}
+
+	testCases := map[string]testCase{
+		"empty": {
+			env:      map[string]string{},
+			expected: []string{},
+		},
+		"single": {
+			env:      map[string]string{"KEY": "value"},
+			expected: []string{"KEY=value"},
+		},
+		"multiple": {
+			env:      map[string]string{"KEY1": "value1", "KEY2": "value2"},
+			expected: []string{"KEY1=value1", "KEY2=value2"},
+		},
+		"empty_key": {
+			env:      map[string]string{"": "value1", "KEY2": "value2"},
+			expected: []string{"=value1", "KEY2=value2"},
+		},
+		"empty_value": {
+			env:      map[string]string{"KEY1": "value1", "KEY2": "", "KEY3": "value3"},
+			expected: []string{"KEY1=value1", "KEY2=", "KEY3=value3"},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := formatEnv(tc.env)
+			assert.ElementsMatch(t, tc.expected, result)
+		})
+	}
+}

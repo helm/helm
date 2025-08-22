@@ -9,4 +9,4 @@ config:
   ignoreFlags: false
 runtimeConfig:
   platformCommand:
-  - command: "echo $HELM_PLUGIN_NAME"
+  - command: ${HELM_PLUGIN_DIR}/plugin-name.sh

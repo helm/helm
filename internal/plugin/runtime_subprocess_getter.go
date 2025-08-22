@@ -18,6 +18,8 @@ package plugin
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -54,10 +56,20 @@ func (r *SubprocessPluginRuntime) runGetter(input *Input) (*Output, error) {
 		return nil, fmt.Errorf("no downloader found for protocol %q", msg.Protocol)
 	}
 
-	command, args, err := PrepareCommands(d.PlatformCommand, false, []string{})
+	env := parseEnv(os.Environ())
+	maps.Insert(env, maps.All(r.EnvVars))
+	maps.Insert(env, maps.All(parseEnv(input.Env)))
+	env["HELM_PLUGIN_NAME"] = r.metadata.Name
+	env["HELM_PLUGIN_DIR"] = r.pluginDir
+	env["HELM_PLUGIN_USERNAME"] = msg.Options.Username
+	env["HELM_PLUGIN_PASSWORD"] = msg.Options.Password
+	env["HELM_PLUGIN_PASS_CREDENTIALS_ALL"] = fmt.Sprintf("%t", msg.Options.PassCredentialsAll)
+
+	command, args, err := PrepareCommands(d.PlatformCommand, false, []string{}, env)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare commands for protocol %q: %w", msg.Protocol, err)
 	}
+
 	args = append(
 		args,
 		msg.Options.CertFile,
@@ -65,24 +77,18 @@ func (r *SubprocessPluginRuntime) runGetter(input *Input) (*Output, error) {
 		msg.Options.CAFile,
 		msg.Href)
 
-	// TODO should we append to input.Env too?
-	env := append(
-		os.Environ(),
-		fmt.Sprintf("HELM_PLUGIN_USERNAME=%s", msg.Options.Username),
-		fmt.Sprintf("HELM_PLUGIN_PASSWORD=%s", msg.Options.Password),
-		fmt.Sprintf("HELM_PLUGIN_PASS_CREDENTIALS_ALL=%t", msg.Options.PassCredentialsAll))
-
-	// TODO should we pass along input.Stdout?
 	buf := bytes.Buffer{} // subprocess getters are expected to write content to stdout
 
 	pluginCommand := filepath.Join(r.pluginDir, command)
-	prog := exec.Command(
+	cmd := exec.Command(
 		pluginCommand,
 		args...)
-	prog.Env = env
-	prog.Stdout = &buf
-	prog.Stderr = os.Stderr
-	if err := executeCmd(prog, r.metadata.Name); err != nil {
+	cmd.Env = formatEnv(env)
+	cmd.Stdout = &buf
+	cmd.Stderr = os.Stderr
+
+	slog.Debug("executing plugin command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
+	if err := executeCmd(cmd, r.metadata.Name); err != nil {
 		return nil, err
 	}
 

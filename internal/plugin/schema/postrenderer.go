@@ -18,16 +18,13 @@ package schema
 
 import (
 	"bytes"
-
-	"helm.sh/helm/v4/pkg/cli"
 )
 
 // InputMessagePostRendererV1 implements Input.Message
 type InputMessagePostRendererV1 struct {
 	Manifests *bytes.Buffer `json:"manifests"`
 	// from CLI --post-renderer-args
-	ExtraArgs []string         `json:"extraArgs"`
-	Settings  *cli.EnvSettings `json:"settings"`
+	ExtraArgs []string `json:"extraArgs"`
 }
 
 type OutputMessagePostRendererV1 struct {

@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
 	"os/exec"
-	"syscall"
+	"slices"
 
 	"helm.sh/helm/v4/internal/plugin/schema"
-	"helm.sh/helm/v4/pkg/cli"
 )
 
 // SubprocessProtocolCommand maps a given protocol to the getter command used to retrieve artifacts for that protcol
@@ -62,7 +62,9 @@ func (r *RuntimeConfigSubprocess) Validate() error {
 	return nil
 }
 
-type RuntimeSubprocess struct{}
+type RuntimeSubprocess struct {
+	EnvVars map[string]string
+}
 
 var _ Runtime = (*RuntimeSubprocess)(nil)
 
@@ -72,6 +74,7 @@ func (r *RuntimeSubprocess) CreatePlugin(pluginDir string, metadata *Metadata) (
 		metadata:      *metadata,
 		pluginDir:     pluginDir,
 		RuntimeConfig: *(metadata.RuntimeConfig.(*RuntimeConfigSubprocess)),
+		EnvVars:       maps.Clone(r.EnvVars),
 	}, nil
 }
 
@@ -80,6 +83,7 @@ type SubprocessPluginRuntime struct {
 	metadata      Metadata
 	pluginDir     string
 	RuntimeConfig RuntimeConfigSubprocess
+	EnvVars       map[string]string
 }
 
 var _ Plugin = (*SubprocessPluginRuntime)(nil)
@@ -109,22 +113,22 @@ func (r *SubprocessPluginRuntime) Invoke(_ context.Context, input *Input) (*Outp
 // This method allows execution with different command/args than the plugin's default
 func (r *SubprocessPluginRuntime) InvokeWithEnv(main string, argv []string, env []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	mainCmdExp := os.ExpandEnv(main)
-	prog := exec.Command(mainCmdExp, argv...)
-	prog.Env = env
-	prog.Stdin = stdin
-	prog.Stdout = stdout
-	prog.Stderr = stderr
+	cmd := exec.Command(mainCmdExp, argv...)
+	cmd.Env = slices.Clone(os.Environ())
+	cmd.Env = append(
+		cmd.Env,
+		fmt.Sprintf("HELM_PLUGIN_NAME=%s", r.metadata.Name),
+		fmt.Sprintf("HELM_PLUGIN_DIR=%s", r.pluginDir))
+	cmd.Env = append(cmd.Env, env...)
 
-	if err := prog.Run(); err != nil {
-		if eerr, ok := err.(*exec.ExitError); ok {
-			os.Stderr.Write(eerr.Stderr)
-			status := eerr.Sys().(syscall.WaitStatus)
-			return &InvokeExecError{
-				Err:  fmt.Errorf("plugin %q exited with error", r.metadata.Name),
-				Code: status.ExitStatus(),
-			}
-		}
+	cmd.Stdin = stdin
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	if err := executeCmd(cmd, r.metadata.Name); err != nil {
+		return err
 	}
+
 	return nil
 }
 
@@ -135,15 +139,23 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 		return nil
 	}
 
-	main, argv, err := PrepareCommands(cmds, r.RuntimeConfig.expandHookArgs, []string{})
+	env := parseEnv(os.Environ())
+	maps.Insert(env, maps.All(r.EnvVars))
+	env["HELM_PLUGIN_NAME"] = r.metadata.Name
+	env["HELM_PLUGIN_DIR"] = r.pluginDir
+
+	main, argv, err := PrepareCommands(cmds, r.RuntimeConfig.expandHookArgs, []string{}, env)
 	if err != nil {
 		return err
 	}
 
-	prog := exec.Command(main, argv...)
-	prog.Stdout, prog.Stderr = os.Stdout, os.Stderr
+	cmd := exec.Command(main, argv...)
+	cmd.Env = formatEnv(env)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
-	if err := prog.Run(); err != nil {
+	slog.Debug("executing plugin hook command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
+	if err := cmd.Run(); err != nil {
 		if eerr, ok := err.(*exec.ExitError); ok {
 			os.Stderr.Write(eerr.Stderr)
 			return fmt.Errorf("plugin %s hook for %q exited with error", event, r.metadata.Name)
@@ -159,10 +171,15 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 func executeCmd(prog *exec.Cmd, pluginName string) error {
 	if err := prog.Run(); err != nil {
 		if eerr, ok := err.(*exec.ExitError); ok {
-			os.Stderr.Write(eerr.Stderr)
+			slog.Debug(
+				"plugin execution failed",
+				slog.String("pluginName", pluginName),
+				slog.String("error", err.Error()),
+				slog.Int("exitCode", eerr.ExitCode()),
+				slog.String("stderr", string(bytes.TrimSpace(eerr.Stderr))))
 			return &InvokeExecError{
-				Err:  fmt.Errorf("plugin %q exited with error", pluginName),
-				Code: eerr.ExitCode(),
+				Err:      fmt.Errorf("plugin %q exited with error", pluginName),
+				ExitCode: eerr.ExitCode(),
 			}
 		}
 
@@ -181,14 +198,27 @@ func (r *SubprocessPluginRuntime) runCLI(input *Input) (*Output, error) {
 
 	cmds := r.RuntimeConfig.PlatformCommand
 
-	command, args, err := PrepareCommands(cmds, true, extraArgs)
+	env := parseEnv(os.Environ())
+	maps.Insert(env, maps.All(r.EnvVars))
+	maps.Insert(env, maps.All(parseEnv(input.Env)))
+	env["HELM_PLUGIN_NAME"] = r.metadata.Name
+	env["HELM_PLUGIN_DIR"] = r.pluginDir
+
+	command, args, err := PrepareCommands(cmds, true, extraArgs, env)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare plugin command: %w", err)
 	}
 
-	err2 := r.InvokeWithEnv(command, args, input.Env, input.Stdin, input.Stdout, input.Stderr)
-	if err2 != nil {
-		return nil, err2
+	cmd := exec.Command(command, args...)
+	cmd.Env = formatEnv(env)
+
+	cmd.Stdin = input.Stdin
+	cmd.Stdout = input.Stdout
+	cmd.Stderr = input.Stderr
+
+	slog.Debug("executing plugin command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
+	if err := executeCmd(cmd, r.metadata.Name); err != nil {
+		return nil, err
 	}
 
 	return &Output{
@@ -201,20 +231,19 @@ func (r *SubprocessPluginRuntime) runPostrenderer(input *Input) (*Output, error)
 		return nil, fmt.Errorf("plugin %q input message does not implement InputMessagePostRendererV1", r.metadata.Name)
 	}
 
+	env := parseEnv(os.Environ())
+	maps.Insert(env, maps.All(r.EnvVars))
+	maps.Insert(env, maps.All(parseEnv(input.Env)))
+	env["HELM_PLUGIN_NAME"] = r.metadata.Name
+	env["HELM_PLUGIN_DIR"] = r.pluginDir
+
 	msg := input.Message.(schema.InputMessagePostRendererV1)
-	extraArgs := msg.ExtraArgs
-	settings := msg.Settings
-
-	// Setup plugin environment
-	SetupPluginEnv(settings, r.metadata.Name, r.pluginDir)
-
 	cmds := r.RuntimeConfig.PlatformCommand
-	command, args, err := PrepareCommands(cmds, true, extraArgs)
+	command, args, err := PrepareCommands(cmds, true, msg.ExtraArgs, env)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare plugin command: %w", err)
 	}
 
-	// TODO de-duplicate code here by calling RuntimeSubprocess.invokeWithEnv()
 	cmd := exec.Command(
 		command,
 		args...)
@@ -232,12 +261,12 @@ func (r *SubprocessPluginRuntime) runPostrenderer(input *Input) (*Output, error)
 	postRendered := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
-	//cmd.Env = pluginExec.env
+	cmd.Env = formatEnv(env)
 	cmd.Stdout = postRendered
 	cmd.Stderr = stderr
 
+	slog.Debug("executing plugin command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
 	if err := executeCmd(cmd, r.metadata.Name); err != nil {
-		slog.Info("plugin execution failed", slog.String("stderr", stderr.String()))
 		return nil, err
 	}
 
@@ -246,16 +275,4 @@ func (r *SubprocessPluginRuntime) runPostrenderer(input *Input) (*Output, error)
 			Manifests: postRendered,
 		},
 	}, nil
-}
-
-// SetupPluginEnv prepares os.Env for plugins. It operates on os.Env because
-// the plugin subsystem itself needs access to the environment variables
-// created here.
-func SetupPluginEnv(settings *cli.EnvSettings, name, base string) { // TODO: remove
-	env := settings.EnvVars()
-	env["HELM_PLUGIN_NAME"] = name
-	env["HELM_PLUGIN_DIR"] = base
-	for key, val := range env {
-		os.Setenv(key, val)
-	}
 }

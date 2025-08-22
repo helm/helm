@@ -65,7 +65,6 @@ func (r *postRendererPlugin) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer
 		Message: schema.InputMessagePostRendererV1{
 			ExtraArgs: r.args,
 			Manifests: renderedManifests,
-			Settings:  r.settings,
 		},
 	}
 	output, err := r.plugin.Invoke(context.Background(), input)
