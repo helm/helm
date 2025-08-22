@@ -89,8 +89,8 @@ type Upgrade struct {
 	ResetThenReuseValues bool
 	// MaxHistory limits the maximum number of revisions saved per release
 	MaxHistory int
-	// Atomic, if true, will roll back on failure.
-	Atomic bool
+	// RollbackOnFailure enables rolling back the upgraded release on failure
+	RollbackOnFailure bool
 	// CleanupOnFail will, if true, cause the upgrade to delete newly-created resources on a failed update.
 	CleanupOnFail bool
 	// SubNotes determines whether sub-notes are rendered in the chart.
@@ -151,9 +151,9 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 		return nil, err
 	}
 
-	// Make sure if Atomic is set, that wait is set as well. This makes it so
+	// Make sure wait is set if RollbackOnFailure. This makes it so
 	// the user doesn't have to specify both
-	if u.WaitStrategy == kube.HookOnlyStrategy && u.Atomic {
+	if u.WaitStrategy == kube.HookOnlyStrategy && u.RollbackOnFailure {
 		u.WaitStrategy = kube.StatusWatcherStrategy
 	}
 
@@ -390,7 +390,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	}
 }
 
-// Function used to lock the Mutex, this is important for the case when the atomic flag is set.
+// Function used to lock the Mutex, this is important for the case when RollbackOnFailure is set.
 // In that case the upgrade will finish before the rollback is finished so it is necessary to wait for the rollback to finish.
 // The rollback will be trigger by the function failRelease
 func (u *Upgrade) reportToPerformUpgrade(c chan<- resultMessage, rel *release.Release, created kube.ResourceList, err error) {
@@ -408,7 +408,7 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 	case <-ctx.Done():
 		err := ctx.Err()
 
-		// when the atomic flag is set the ongoing release finish first and doesn't give time for the rollback happens.
+		// when RollbackOnFailure is set, the ongoing release finish first and doesn't give time for the rollback happens.
 		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, err)
 	case <-done:
 		return
@@ -499,8 +499,9 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		}
 		slog.Debug("resource cleanup complete")
 	}
-	if u.Atomic {
-		slog.Debug("upgrade failed and atomic is set, rolling back to last successful release")
+
+	if u.RollbackOnFailure {
+		slog.Debug("Upgrade failed and rollback-on-failure is set, rolling back to previous successful release")
 
 		// As a protection, get the last successful release before rollback.
 		// If there are no successful releases, bail out
@@ -534,7 +535,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		if rollErr := rollin.Run(rel.Name); rollErr != nil {
 			return rel, fmt.Errorf("an error occurred while rolling back the release. original upgrade error: %w: %w", err, rollErr)
 		}
-		return rel, fmt.Errorf("release %s failed, and has been rolled back due to atomic being set: %w", rel.Name, err)
+		return rel, fmt.Errorf("release %s failed, and has been rolled back due to rollback-on-failure being set: %w", rel.Name, err)
 	}
 
 	return rel, err

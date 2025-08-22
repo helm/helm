@@ -140,7 +140,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.WaitForJobs = client.WaitForJobs
 					instClient.Devel = client.Devel
 					instClient.Namespace = client.Namespace
-					instClient.Atomic = client.Atomic
+					instClient.RollbackOnFailure = client.RollbackOnFailure
 					instClient.PostRenderer = client.PostRenderer
 					instClient.DisableOpenAPIValidation = client.DisableOpenAPIValidation
 					instClient.SubNotes = client.SubNotes
@@ -281,7 +281,9 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.ReuseValues, "reuse-values", false, "when upgrading, reuse the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' is specified, this is ignored")
 	f.BoolVar(&client.ResetThenReuseValues, "reset-then-reuse-values", false, "when upgrading, reset the values to the ones built into the chart, apply the last release's values and merge in any overrides from the command line via --set and -f. If '--reset-values' or '--reuse-values' is specified, this is ignored")
 	f.BoolVar(&client.WaitForJobs, "wait-for-jobs", false, "if set and --wait enabled, will wait until all Jobs have been completed before marking the release as successful. It will wait for as long as --timeout")
-	f.BoolVar(&client.Atomic, "atomic", false, "if set, upgrade process rolls back changes made in case of failed upgrade. The --wait flag will be set automatically to \"watcher\" if --atomic is used")
+	f.BoolVar(&client.RollbackOnFailure, "rollback-on-failure", false, "if set, Helm will rollback the upgrade to previous success release upon failure. The --wait flag will be defaulted to \"watcher\" if --rollback-on-failure is set")
+	f.BoolVar(&client.RollbackOnFailure, "atomic", false, "deprecated")
+	f.MarkDeprecated("atomic", "use --rollback-on-failure instead")
 	f.IntVar(&client.MaxHistory, "history-max", settings.MaxHistory, "limit the maximum number of revisions saved per release. Use 0 for no limit")
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this upgrade when upgrade fails")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
