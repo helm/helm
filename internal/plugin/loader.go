@@ -85,7 +85,6 @@ func newPrototypePluginManager() *prototypePluginManager {
 }
 
 func (pm *prototypePluginManager) RegisterRuntime(runtimeName string, runtime Runtime) {
-	//if _, exists := pm.runtimes[runtimeName]; exists {
 	pm.runtimes[runtimeName] = runtime
 }
 
