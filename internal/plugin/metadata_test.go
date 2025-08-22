@@ -66,25 +66,29 @@ func TestValidatePluginData(t *testing.T) {
 	}
 
 	for i, item := range []struct {
-		pass bool
-		plug Plugin
+		pass      bool
+		plug      Plugin
+		errString string
 	}{
-		{true, mockSubprocessCLIPlugin(t, "abcdefghijklmnopqrstuvwxyz0123456789_-ABC")},
-		{true, mockSubprocessCLIPlugin(t, "foo-bar-FOO-BAR_1234")},
-		{false, mockSubprocessCLIPlugin(t, "foo -bar")},
-		{false, mockSubprocessCLIPlugin(t, "$foo -bar")}, // Test leading chars
-		{false, mockSubprocessCLIPlugin(t, "foo -bar ")}, // Test trailing chars
-		{false, mockSubprocessCLIPlugin(t, "foo\nbar")},  // Test newline
-		{true, mockNoCommand},     // Test no command metadata works
-		{true, mockLegacyCommand}, // Test legacy command metadata works
-		{false, mockWithCommand},  // Test platformCommand and command both set fails
-		{false, mockWithHooks},    // Test platformHooks and hooks both set fails
+		{true, mockSubprocessCLIPlugin(t, "abcdefghijklmnopqrstuvwxyz0123456789_-ABC"), ""},
+		{true, mockSubprocessCLIPlugin(t, "foo-bar-FOO-BAR_1234"), ""},
+		{false, mockSubprocessCLIPlugin(t, "foo -bar"), "invalid name"},
+		{false, mockSubprocessCLIPlugin(t, "$foo -bar"), "invalid name"}, // Test leading chars
+		{false, mockSubprocessCLIPlugin(t, "foo -bar "), "invalid name"}, // Test trailing chars
+		{false, mockSubprocessCLIPlugin(t, "foo\nbar"), "invalid name"},  // Test newline
+		{true, mockNoCommand, ""},     // Test no command metadata works
+		{true, mockLegacyCommand, ""}, // Test legacy command metadata works
+		{false, mockWithCommand, "runtime config validation failed: both platformCommand and command are set"}, // Test platformCommand and command both set fails
+		{false, mockWithHooks, "runtime config validation failed: both platformHooks and hooks are set"},       // Test platformHooks and hooks both set fails
 	} {
 		err := item.plug.Metadata().Validate()
 		if item.pass && err != nil {
 			t.Errorf("failed to validate case %d: %s", i, err)
 		} else if !item.pass && err == nil {
 			t.Errorf("expected case %d to fail", i)
+		}
+		if !item.pass && err.Error() != item.errString {
+			t.Errorf("index [%d]: expected the following error: %s, but got: %s", i, item.errString, err.Error())
 		}
 	}
 }
