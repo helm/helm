@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-single-config
+  namespace: {{ .Release.Namespace }}
+data:
+  setting: "value"
