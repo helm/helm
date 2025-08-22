@@ -39,7 +39,7 @@ func NewVerify() *Verify {
 // Run executes 'helm verify'.
 func (v *Verify) Run(chartfile string) error {
 	var out strings.Builder
-	p, err := downloader.VerifyChart(chartfile, v.Keyring)
+	p, err := downloader.VerifyChart(chartfile, chartfile+".prov", v.Keyring)
 	if err != nil {
 		return err
 	}

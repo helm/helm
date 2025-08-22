@@ -831,12 +831,12 @@ func (c *Client) Resolve(ref string) (desc ocispec.Descriptor, err error) {
 }
 
 // ValidateReference for path and version
-func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, error) {
+func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *url.URL, error) {
 	var tag string
 
 	registryReference, err := newReference(u.Host + u.Path)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	if version == "" {
@@ -844,14 +844,14 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 		version = registryReference.Tag
 	} else {
 		if registryReference.Tag != "" && registryReference.Tag != version {
-			return nil, fmt.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
+			return "", nil, fmt.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
 		}
 	}
 
 	if registryReference.Digest != "" {
 		if version == "" {
 			// Install by digest only
-			return u, nil
+			return "", u, nil
 		}
 		u.Path = fmt.Sprintf("%s@%s", registryReference.Repository, registryReference.Digest)
 
@@ -860,12 +860,12 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 		desc, err := c.Resolve(path)
 		if err != nil {
 			// The resource does not have to be tagged when digest is specified
-			return u, nil
+			return "", u, nil
 		}
 		if desc.Digest.String() != registryReference.Digest {
-			return nil, fmt.Errorf("chart reference digest mismatch: %s is not %s", desc.Digest.String(), registryReference.Digest)
+			return "", nil, fmt.Errorf("chart reference digest mismatch: %s is not %s", desc.Digest.String(), registryReference.Digest)
 		}
-		return u, nil
+		return registryReference.Digest, u, nil
 	}
 
 	// Evaluate whether an explicit version has been provided. Otherwise, determine version to use
@@ -876,10 +876,10 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 		// Retrieve list of repository tags
 		tags, err := c.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", OCIScheme)))
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		if len(tags) == 0 {
-			return nil, fmt.Errorf("unable to locate any tags in provided repository: %s", ref)
+			return "", nil, fmt.Errorf("unable to locate any tags in provided repository: %s", ref)
 		}
 
 		// Determine if version provided
@@ -888,13 +888,14 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 		// If semver constraint string, try to find a match
 		tag, err = GetTagMatchingVersionOrConstraint(tags, version)
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 	}
 
 	u.Path = fmt.Sprintf("%s:%s", registryReference.Repository, tag)
+	// desc, err := c.Resolve(u.Path)
 
-	return u, err
+	return "", u, err
 }
 
 // tagManifest prepares and tags a manifest in memory storage
