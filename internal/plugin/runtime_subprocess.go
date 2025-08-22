@@ -33,28 +33,25 @@ import (
 type SubprocessProtocolCommand struct {
 	// Protocols are the list of schemes from the charts URL.
 	Protocols []string `yaml:"protocols"`
-	// Command is the executable path with which the plugin performs
-	// the actual download for the corresponding Protocols
-	Command string `yaml:"command"`
+	// PlatformCommand is the platform based command which the plugin performs
+	// to download for the corresponding getter Protocols.
+	PlatformCommand []PlatformCommand `yaml:"platformCommand"`
 }
 
 // RuntimeConfigSubprocess implements RuntimeConfig for RuntimeSubprocess
 type RuntimeConfigSubprocess struct {
 	// PlatformCommand is a list containing a plugin command, with a platform selector and support for args.
-	PlatformCommands []PlatformCommand `yaml:"platformCommand"`
-	// Command is the plugin command, as a single string.
-	// DEPRECATED: Use PlatformCommand instead. Remove in Helm 4.
-	Command string `yaml:"command"`
+	PlatformCommand []PlatformCommand `yaml:"platformCommand"`
 	// PlatformHooks are commands that will run on plugin events, with a platform selector and support for args.
 	PlatformHooks PlatformHooks `yaml:"platformHooks"`
-	// Hooks are commands that will run on plugin events, as a single string.
-	// DEPRECATED: Use PlatformHooks instead. Remove in Helm 4.
-	Hooks Hooks `yaml:"hooks"`
-	// ProtocolCommands field is used if the plugin supply downloader mechanism
-	// for special protocols.
-	// (This is a compatibility hangover from the old plugin downloader mechanism, which was extended to support multiple
-	// protocols in a given plugin)
+	// ProtocolCommands allows the plugin to specify protocol specific commands
+	//
+	// Obsolete/deprecated: This is a compatibility hangover from the old plugin downloader mechanism, which was extended
+	// to support multiple protocols in a given plugin. The command supplied in PlatformCommand should implement protocol
+	// specific logic by inspecting the download URL
 	ProtocolCommands []SubprocessProtocolCommand `yaml:"protocolCommands,omitempty"`
+
+	expandHookArgs bool
 }
 
 var _ RuntimeConfig = (*RuntimeConfigSubprocess)(nil)
@@ -62,12 +59,6 @@ var _ RuntimeConfig = (*RuntimeConfigSubprocess)(nil)
 func (r *RuntimeConfigSubprocess) GetType() string { return "subprocess" }
 
 func (r *RuntimeConfigSubprocess) Validate() error {
-	if len(r.PlatformCommands) > 0 && len(r.Command) > 0 {
-		return fmt.Errorf("both platformCommand and command are set")
-	}
-	if len(r.PlatformHooks) > 0 && len(r.Hooks) > 0 {
-		return fmt.Errorf("both platformHooks and hooks are set")
-	}
 	return nil
 }
 
@@ -138,25 +129,13 @@ func (r *SubprocessPluginRuntime) InvokeWithEnv(main string, argv []string, env 
 }
 
 func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
-	// Get hook commands for the event
-	var cmds []PlatformCommand
-	expandArgs := true
+	cmds := r.RuntimeConfig.PlatformHooks[event]
 
-	cmds = r.RuntimeConfig.PlatformHooks[event]
-	if len(cmds) == 0 && len(r.RuntimeConfig.Hooks) > 0 {
-		cmd := r.RuntimeConfig.Hooks[event]
-		if len(cmd) > 0 {
-			cmds = []PlatformCommand{{Command: "sh", Args: []string{"-c", cmd}}}
-			expandArgs = false
-		}
-	}
-
-	// If no hook commands are defined, just return successfully
 	if len(cmds) == 0 {
 		return nil
 	}
 
-	main, argv, err := PrepareCommands(cmds, expandArgs, []string{})
+	main, argv, err := PrepareCommands(cmds, r.RuntimeConfig.expandHookArgs, []string{})
 	if err != nil {
 		return err
 	}
@@ -200,10 +179,7 @@ func (r *SubprocessPluginRuntime) runCLI(input *Input) (*Output, error) {
 
 	extraArgs := input.Message.(schema.InputMessageCLIV1).ExtraArgs
 
-	cmds := r.RuntimeConfig.PlatformCommands
-	if len(cmds) == 0 && len(r.RuntimeConfig.Command) > 0 {
-		cmds = []PlatformCommand{{Command: r.RuntimeConfig.Command}}
-	}
+	cmds := r.RuntimeConfig.PlatformCommand
 
 	command, args, err := PrepareCommands(cmds, true, extraArgs)
 	if err != nil {
@@ -232,11 +208,7 @@ func (r *SubprocessPluginRuntime) runPostrenderer(input *Input) (*Output, error)
 	// Setup plugin environment
 	SetupPluginEnv(settings, r.metadata.Name, r.pluginDir)
 
-	cmds := r.RuntimeConfig.PlatformCommands
-	if len(cmds) == 0 && len(r.RuntimeConfig.Command) > 0 {
-		cmds = []PlatformCommand{{Command: r.RuntimeConfig.Command}}
-	}
-
+	cmds := r.RuntimeConfig.PlatformCommand
 	command, args, err := PrepareCommands(cmds, true, extraArgs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare plugin command: %w", err)

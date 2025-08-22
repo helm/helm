@@ -27,14 +27,14 @@ func TestPrepareCommand(t *testing.T) {
 	cmdMain := "sh"
 	cmdArgs := []string{"-c", "echo \"test\""}
 
-	platformCommands := []PlatformCommand{
+	platformCommand := []PlatformCommand{
 		{OperatingSystem: "no-os", Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
 		{OperatingSystem: runtime.GOOS, Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
 		{OperatingSystem: runtime.GOOS, Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
 		{OperatingSystem: runtime.GOOS, Architecture: runtime.GOARCH, Command: cmdMain, Args: cmdArgs},
 	}
 
-	cmd, args, err := PrepareCommands(platformCommands, true, []string{})
+	cmd, args, err := PrepareCommands(platformCommand, true, []string{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestPrepareCommandExtraArgs(t *testing.T) {
 
 	cmdMain := "sh"
 	cmdArgs := []string{"-c", "echo \"test\""}
-	platformCommands := []PlatformCommand{
+	platformCommand := []PlatformCommand{
 		{OperatingSystem: "no-os", Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
 		{OperatingSystem: runtime.GOOS, Architecture: runtime.GOARCH, Command: cmdMain, Args: cmdArgs},
 		{OperatingSystem: runtime.GOOS, Architecture: "no-arch", Command: "pwsh", Args: []string{"-c", "echo \"error\""}},
@@ -91,7 +91,7 @@ func TestPrepareCommandExtraArgs(t *testing.T) {
 			if tc.ignoreFlags {
 				testExtraArgs = []string{}
 			}
-			cmd, args, err := PrepareCommands(platformCommands, true, testExtraArgs)
+			cmd, args, err := PrepareCommands(platformCommand, true, testExtraArgs)
 			if err != nil {
 				t.Fatal(err)
 			}

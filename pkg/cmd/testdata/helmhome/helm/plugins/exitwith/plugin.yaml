@@ -1,10 +1,12 @@
+---
+apiVersion: v1
 name: exitwith
 type: cli/v1
-apiVersion: v1
 runtime: subprocess
 config:
   shortHelp: "exitwith code"
   longHelp: "This exits with the specified exit code"
   ignoreFlags: false
 runtimeConfig:
-  command: "$HELM_PLUGIN_DIR/exitwith.sh"
+  platformCommand:
+  - command: "$HELM_PLUGIN_DIR/exitwith.sh"

@@ -9,8 +9,11 @@ config:
     description
   ignoreFlags: true
 runtimeConfig:
-  command: "echo hello"
-  hooks:
-    install: "echo installing..."
-  hooks:
-    install: "echo installing something different"
+  platformCommand:
+  - command: "echo hello"
+  platformHooks:
+    install:
+    - command: "echo installing..."
+  platformHooks:
+    install:
+    - command: "echo installing something different"

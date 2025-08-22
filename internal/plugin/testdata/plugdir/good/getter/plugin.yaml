@@ -10,7 +10,8 @@ config:
     - "myprotocols"
 runtimeConfig:
   protocolCommands:
-    - command: "echo getter"
+    - platformCommand:
+      - command: "echo getter"
       protocols:
         - "myprotocol"
         - "myprotocols"

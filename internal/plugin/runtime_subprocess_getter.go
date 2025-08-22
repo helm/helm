@@ -22,7 +22,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"helm.sh/helm/v4/internal/plugin/schema"
 )
@@ -55,9 +54,12 @@ func (r *SubprocessPluginRuntime) runGetter(input *Input) (*Output, error) {
 		return nil, fmt.Errorf("no downloader found for protocol %q", msg.Protocol)
 	}
 
-	commands := strings.Split(d.Command, " ")
-	args := append(
-		commands[1:],
+	command, args, err := PrepareCommands(d.PlatformCommand, false, []string{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare commands for protocol %q: %w", msg.Protocol, err)
+	}
+	args = append(
+		args,
 		msg.Options.CertFile,
 		msg.Options.KeyFile,
 		msg.Options.CAFile,
@@ -73,7 +75,7 @@ func (r *SubprocessPluginRuntime) runGetter(input *Input) (*Output, error) {
 	// TODO should we pass along input.Stdout?
 	buf := bytes.Buffer{} // subprocess getters are expected to write content to stdout
 
-	pluginCommand := filepath.Join(r.pluginDir, commands[0])
+	pluginCommand := filepath.Join(r.pluginDir, command)
 	prog := exec.Command(
 		pluginCommand,
 		args...)

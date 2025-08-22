@@ -1,10 +1,12 @@
+---
+apiVersion: v1
 name: env
 type: cli/v1
-apiVersion: v1
 runtime: subprocess
 config:
   shortHelp: "env stuff"
   longHelp: "show the env"
   ignoreFlags: false
 runtimeConfig:
-  command: "echo $HELM_PLUGIN_NAME"
+  platformCommand:
+  - command: "echo $HELM_PLUGIN_NAME"

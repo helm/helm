@@ -86,7 +86,7 @@ func TestLocalInstallerTarball(t *testing.T) {
 		Body string
 		Mode int64
 	}{
-		{"test-plugin/plugin.yaml", "name: test-plugin\nversion: 1.0.0\nusage: test\ndescription: test\ncommand: echo", 0644},
+		{"test-plugin/plugin.yaml", "name: test-plugin\napiVersion: v1\ntype: cli/v1\nruntime: subprocess\nversion: 1.0.0\nconfig:\n  shortHelp: test\n  longHelp: test\nruntimeConfig:\n  platformCommand:\n  - command: echo", 0644},
 		{"test-plugin/bin/test-plugin", "#!/bin/bash\necho test", 0755},
 	}
 

@@ -34,7 +34,7 @@ config:
   shortHelp: A test plugin
   longHelp: A test plugin for testing purposes
 runtimeConfig:
-  platformCommands:
+  platformCommand:
     - os: linux
       command: echo
       args: ["test"]`
