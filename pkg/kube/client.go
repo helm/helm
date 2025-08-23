@@ -47,12 +47,14 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/jsonmergepatch"
 	"k8s.io/apimachinery/pkg/util/mergepatch"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/util/csaupgrade"
 	"k8s.io/client-go/util/retry"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
@@ -577,12 +579,13 @@ func (c *Client) update(originals, targets ResourceList, updateApplyFunc UpdateA
 }
 
 type clientUpdateOptions struct {
-	threeWayMergeForUnstructured bool
-	serverSideApply              bool
-	forceReplace                 bool
-	forceConflicts               bool
-	dryRun                       bool
-	fieldValidationDirective     FieldValidationDirective
+	threeWayMergeForUnstructured  bool
+	serverSideApply               bool
+	forceReplace                  bool
+	forceConflicts                bool
+	dryRun                        bool
+	fieldValidationDirective      FieldValidationDirective
+	upgradeClientSideFieldManager bool
 }
 
 type ClientUpdateOption func(*clientUpdateOptions) error
@@ -640,9 +643,27 @@ func ClientUpdateOptionDryRun(dryRun bool) ClientUpdateOption {
 //   - For server-side apply: the directive is sent to the server to perform the validation
 //
 // Defaults to `FieldValidationDirectiveStrict`
-func ClientUpdateOptionFieldValidationDirective(fieldValidationDirective FieldValidationDirective) ClientCreateOption {
-	return func(o *clientCreateOptions) error {
+func ClientUpdateOptionFieldValidationDirective(fieldValidationDirective FieldValidationDirective) ClientUpdateOption {
+	return func(o *clientUpdateOptions) error {
 		o.fieldValidationDirective = fieldValidationDirective
+
+		return nil
+	}
+}
+
+// ClientUpdateOptionUpgradeClientSideFieldManager specifies that resources client-side field manager should be upgraded to server-side apply
+// (before applying the object server-side)
+// This is required when upgrading a chart from client-side to server-side apply, otherwise the client-side field management remains. Conflicting with server-side applied updates.
+//
+// Note:
+// if this option is specified, but the object is not managed by client-side field manager, it will be a no-op. However, the cost of fetching the objects will be incurred.
+//
+// see:
+// - https://github.com/kubernetes/kubernetes/pull/112905
+// - `UpgradeManagedFields` / https://github.com/kubernetes/kubernetes/blob/f47e9696d7237f1011d23c9b55f6947e60526179/staging/src/k8s.io/client-go/util/csaupgrade/upgrade.go#L81
+func ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager bool) ClientUpdateOption {
+	return func(o *clientUpdateOptions) error {
+		o.upgradeClientSideFieldManager = upgradeClientSideFieldManager
 
 		return nil
 	}
@@ -707,15 +728,28 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 				"using server-side apply for resource update",
 				slog.Bool("forceConflicts", updateOptions.forceConflicts),
 				slog.Bool("dryRun", updateOptions.dryRun),
-				slog.String("fieldValidationDirective", string(updateOptions.fieldValidationDirective)))
-			return func(_, target *resource.Info) error {
-				err := patchResourceServerSide(target, updateOptions.dryRun, updateOptions.forceConflicts, updateOptions.fieldValidationDirective)
+				slog.String("fieldValidationDirective", string(updateOptions.fieldValidationDirective)),
+				slog.Bool("upgradeClientSideFieldManager", updateOptions.upgradeClientSideFieldManager))
+			return func(original, target *resource.Info) error {
 
 				logger := slog.With(
 					slog.String("namespace", target.Namespace),
 					slog.String("name", target.Name),
 					slog.String("gvk", target.Mapping.GroupVersionKind.String()))
-				if err != nil {
+
+				if updateOptions.upgradeClientSideFieldManager {
+					patched, err := upgradeClientSideFieldManager(original, updateOptions.dryRun, updateOptions.fieldValidationDirective)
+					if err != nil {
+						slog.Debug("Error patching resource to replace CSA field management", slog.Any("error", err))
+						return err
+					}
+
+					if patched {
+						logger.Debug("Upgraded object client-side field management with server-side apply field management")
+					}
+				}
+
+				if err := patchResourceServerSide(target, updateOptions.dryRun, updateOptions.forceConflicts, updateOptions.fieldValidationDirective); err != nil {
 					logger.Debug("Error patching resource", slog.Any("error", err))
 					return err
 				}
@@ -996,19 +1030,76 @@ func patchResourceClientSide(original runtime.Object, target *resource.Info, thr
 	return nil
 }
 
+// upgradeClientSideFieldManager is simply a wrapper around csaupgrade.UpgradeManagedFields
+// that ugrade CSA managed fields to SSA apply
+// see: https://github.com/kubernetes/kubernetes/pull/112905
+func upgradeClientSideFieldManager(info *resource.Info, dryRun bool, fieldValidationDirective FieldValidationDirective) (bool, error) {
+
+	fieldManagerName := getManagedFieldsManager()
+
+	patched := false
+	err := retry.RetryOnConflict(
+		retry.DefaultRetry,
+		func() error {
+
+			if err := info.Get(); err != nil {
+				return fmt.Errorf("failed to get object %s/%s %s: %w", info.Namespace, info.Name, info.Mapping.GroupVersionKind.String(), err)
+			}
+
+			helper := resource.NewHelper(
+				info.Client,
+				info.Mapping).
+				DryRun(dryRun).
+				WithFieldManager(fieldManagerName).
+				WithFieldValidation(string(fieldValidationDirective))
+
+			patchData, err := csaupgrade.UpgradeManagedFieldsPatch(
+				info.Object,
+				sets.New(fieldManagerName),
+				fieldManagerName)
+			if err != nil {
+				return fmt.Errorf("failed to upgrade managed fields for object %s/%s %s: %w", info.Namespace, info.Name, info.Mapping.GroupVersionKind.String(), err)
+			}
+
+			if len(patchData) == 0 {
+				return nil
+			}
+
+			obj, err := helper.Patch(
+				info.Namespace,
+				info.Name,
+				types.JSONPatchType,
+				patchData,
+				nil)
+
+			if err == nil {
+				patched = true
+				return info.Refresh(obj, true)
+			}
+
+			if !apierrors.IsConflict(err) {
+				return fmt.Errorf("failed to patch object to upgrade CSA field manager %s/%s %s: %w", info.Namespace, info.Name, info.Mapping.GroupVersionKind.String(), err)
+			}
+
+			return err
+		})
+
+	return patched, err
+}
+
 // Patch reource using server-side apply
 func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts bool, fieldValidationDirective FieldValidationDirective) error {
 	helper := resource.NewHelper(
 		target.Client,
 		target.Mapping).
 		DryRun(dryRun).
-		WithFieldManager(ManagedFieldsManager).
+		WithFieldManager(getManagedFieldsManager()).
 		WithFieldValidation(string(fieldValidationDirective))
 
 	// Send the full object to be applied on the server side.
 	data, err := runtime.Encode(unstructured.UnstructuredJSONScheme, target.Object)
 	if err != nil {
-		return fmt.Errorf("failed to encode object %s/%s with kind %s: %w", target.Namespace, target.Name, target.Mapping.GroupVersionKind.Kind, err)
+		return fmt.Errorf("failed to encode object %s/%s %s: %w", target.Namespace, target.Name, target.Mapping.GroupVersionKind.String(), err)
 	}
 	options := metav1.PatchOptions{
 		Force: &forceConflicts,
@@ -1026,7 +1117,7 @@ func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts 
 		}
 
 		if apierrors.IsConflict(err) {
-			return fmt.Errorf("conflict occurred while applying %s/%s with kind %s: %w", target.Namespace, target.Name, target.Mapping.GroupVersionKind.Kind, err)
+			return fmt.Errorf("conflict occurred while applying object %s/%s %s: %w", target.Namespace, target.Name, target.Mapping.GroupVersionKind.String(), err)
 		}
 
 		return err

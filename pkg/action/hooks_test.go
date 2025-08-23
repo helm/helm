@@ -385,7 +385,8 @@ data:
 				Capabilities: chartutil.DefaultCapabilities,
 			}
 
-			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, 600)
+			serverSideApply := true
+			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, 600, serverSideApply)
 
 			if !reflect.DeepEqual(kubeClient.deleteRecord, tc.expectedDeleteRecord) {
 				t.Fatalf("Got unexpected delete record, expected: %#v, but got: %#v", kubeClient.deleteRecord, tc.expectedDeleteRecord)

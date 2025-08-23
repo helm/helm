@@ -946,3 +946,8 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 	assert.NotNil(t, buf)
 	assert.Equal(t, "", notes)
 }
+
+func TestDetermineReleaseSSAApplyMethod(t *testing.T) {
+	assert.Equal(t, release.ApplyMethodClientSideApply, determineReleaseSSApplyMethod(false))
+	assert.Equal(t, release.ApplyMethodServerSideApply, determineReleaseSSApplyMethod(true))
+}

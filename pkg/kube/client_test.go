@@ -340,7 +340,9 @@ func TestUpdate(t *testing.T) {
 
 	expectedActionsServerSideApply := []string{
 		"/namespaces/default/pods/starfish:GET",
+		"/namespaces/default/pods/starfish:GET",
 		"/namespaces/default/pods/starfish:PATCH",
+		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/otter:PATCH",
 		"/namespaces/default/pods/dolphin:GET",
@@ -467,7 +469,8 @@ func TestUpdate(t *testing.T) {
 				second,
 				ClientUpdateOptionThreeWayMergeForUnstructured(tc.ThreeWayMergeForUnstructured),
 				ClientUpdateOptionForceReplace(false),
-				ClientUpdateOptionServerSideApply(tc.ServerSideApply, false))
+				ClientUpdateOptionServerSideApply(tc.ServerSideApply, false),
+				ClientUpdateOptionUpgradeClientSideFieldManager(true))
 			require.NoError(t, err)
 
 			assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
