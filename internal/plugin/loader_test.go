@@ -163,6 +163,31 @@ func TestLoadDirGetter(t *testing.T) {
 	assert.Equal(t, expect, plug.Metadata())
 }
 
+func TestPostRenderer(t *testing.T) {
+	dirname := "testdata/plugdir/good/postrenderer-v1"
+
+	expect := Metadata{
+		Name:       "postrenderer-v1",
+		Version:    "1.2.3",
+		Type:       "postrenderer/v1",
+		APIVersion: "v1",
+		Runtime:    "subprocess",
+		Config:     &ConfigPostrenderer{},
+		RuntimeConfig: &RuntimeConfigSubprocess{
+			PlatformCommands: []PlatformCommand{
+				{
+					Command: "${HELM_PLUGIN_DIR}/sed-test.sh",
+				},
+			},
+		},
+	}
+
+	plug, err := LoadDir(dirname)
+	require.NoError(t, err)
+	assert.Equal(t, dirname, plug.Dir())
+	assert.Equal(t, expect, plug.Metadata())
+}
+
 func TestDetectDuplicates(t *testing.T) {
 	plugs := []Plugin{
 		mockSubprocessCLIPlugin(t, "foo"),
@@ -195,13 +220,14 @@ func TestLoadAll(t *testing.T) {
 		plugsMap[p.Metadata().Name] = p
 	}
 
-	assert.Len(t, plugsMap, 6)
+	assert.Len(t, plugsMap, 7)
 	assert.Contains(t, plugsMap, "downloader")
 	assert.Contains(t, plugsMap, "echo-legacy")
 	assert.Contains(t, plugsMap, "echo-v1")
 	assert.Contains(t, plugsMap, "getter")
 	assert.Contains(t, plugsMap, "hello-legacy")
 	assert.Contains(t, plugsMap, "hello-v1")
+	assert.Contains(t, plugsMap, "postrenderer-v1")
 }
 
 func TestFindPlugins(t *testing.T) {
@@ -228,7 +254,7 @@ func TestFindPlugins(t *testing.T) {
 		{
 			name:     "normal",
 			plugdirs: "./testdata/plugdir/good",
-			expected: 6,
+			expected: 7,
 		},
 	}
 	for _, c := range cases {

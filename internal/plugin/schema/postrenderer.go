@@ -14,16 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package postrender contains an interface that can be implemented for custom
-// post-renderers and an exec implementation that can be used for arbitrary
-// binaries and scripts
-package postrender
+package schema
 
-import "bytes"
+import (
+	"bytes"
 
-type PostRenderer interface {
-	// Run expects a single buffer filled with Helm rendered manifests. It
-	// expects the modified results to be returned on a separate buffer or an
-	// error if there was an issue or failure while running the post render step
-	Run(renderedManifests *bytes.Buffer) (modifiedManifests *bytes.Buffer, err error)
+	"helm.sh/helm/v4/pkg/cli"
+)
+
+// InputMessagePostRendererV1 implements Input.Message
+type InputMessagePostRendererV1 struct {
+	Manifests *bytes.Buffer `json:"manifests"`
+	// from CLI --post-renderer-args
+	ExtraArgs []string         `json:"extraArgs"`
+	Settings  *cli.EnvSettings `json:"settings"`
+}
+
+type OutputMessagePostRendererV1 struct {
+	Manifests *bytes.Buffer `json:"manifests"`
 }
