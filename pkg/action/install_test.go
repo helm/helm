@@ -30,6 +30,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -59,6 +60,8 @@ type nameTemplateTestCase struct {
 	expected         string
 	expectedErrorStr string
 }
+
+var goroutinesLock sync.Mutex
 
 func createDummyResourceList(owned bool) kube.ResourceList {
 	obj := &appsv1.Deployment{
@@ -541,6 +544,9 @@ func TestInstallRelease_Wait(t *testing.T) {
 	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
+	goroutinesLock.Lock()
+	defer goroutinesLock.Unlock()
+
 	goroutines := runtime.NumGoroutine()
 
 	res, err := instAction.Run(buildChart(), vals)
@@ -562,6 +568,9 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
+
+	goroutinesLock.Lock()
+	defer goroutinesLock.Unlock()
 
 	goroutines := runtime.NumGoroutine()
 
@@ -646,6 +655,9 @@ func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
+
+	goroutinesLock.Lock()
+	defer goroutinesLock.Unlock()
 
 	goroutines := runtime.NumGoroutine()
 
