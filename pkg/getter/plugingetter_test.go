@@ -106,7 +106,11 @@ func (t *TestPlugin) Dir() string {
 
 func (t *TestPlugin) Metadata() plugin.Metadata {
 	return plugin.Metadata{
-		Name:   "fake-plugin",
+		Name:       "fake-plugin",
+		Type:       "cli/v1",
+		APIVersion: "v1",
+		Runtime:    "subprocess",
+		// TODO: either change Config to plugin.ConfigCLI, or change APIVersion to getter/v1?
 		Config: &plugin.ConfigGetter{},
 		RuntimeConfig: &plugin.RuntimeConfigSubprocess{
 			PlatformCommands: []plugin.PlatformCommand{

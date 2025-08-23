@@ -29,6 +29,13 @@ func TestPeekAPIVersion(t *testing.T) {
 		data     []byte
 		expected string
 	}{
+		"v1": {
+			data: []byte(`---
+apiVersion: v1
+name: "test-plugin"
+`),
+			expected: "v1",
+		},
 		"legacy": { // No apiVersion field
 			data: []byte(`---
 name: "test-plugin"
@@ -97,6 +104,11 @@ func TestLoadDir(t *testing.T) {
 			apiVersion: "legacy",
 			expect:     makeMetadata("legacy"),
 		},
+		"v1": {
+			dirname:    "testdata/plugdir/good/hello-v1",
+			apiVersion: "v1",
+			expect:     makeMetadata("v1"),
+		},
 	}
 
 	for name, tc := range testCases {
@@ -113,6 +125,7 @@ func TestLoadDir(t *testing.T) {
 func TestLoadDirDuplicateEntries(t *testing.T) {
 	testCases := map[string]string{
 		"legacy": "testdata/plugdir/bad/duplicate-entries-legacy",
+		"v1":     "testdata/plugdir/bad/duplicate-entries-v1",
 	}
 	for name, dirname := range testCases {
 		t.Run(name, func(t *testing.T) {
@@ -120,6 +133,34 @@ func TestLoadDirDuplicateEntries(t *testing.T) {
 			assert.Error(t, err)
 		})
 	}
+}
+
+func TestLoadDirGetter(t *testing.T) {
+	dirname := "testdata/plugdir/good/getter"
+
+	expect := Metadata{
+		Name:       "getter",
+		Version:    "1.2.3",
+		Type:       "getter/v1",
+		APIVersion: "v1",
+		Runtime:    "subprocess",
+		Config: &ConfigGetter{
+			Protocols: []string{"myprotocol", "myprotocols"},
+		},
+		RuntimeConfig: &RuntimeConfigSubprocess{
+			ProtocolCommands: []SubprocessProtocolCommand{
+				{
+					Protocols: []string{"myprotocol", "myprotocols"},
+					Command:   "echo getter",
+				},
+			},
+		},
+	}
+
+	plug, err := LoadDir(dirname)
+	require.NoError(t, err)
+	assert.Equal(t, dirname, plug.Dir())
+	assert.Equal(t, expect, plug.Metadata())
 }
 
 func TestDetectDuplicates(t *testing.T) {
@@ -154,10 +195,13 @@ func TestLoadAll(t *testing.T) {
 		plugsMap[p.Metadata().Name] = p
 	}
 
-	assert.Len(t, plugsMap, 3)
+	assert.Len(t, plugsMap, 6)
 	assert.Contains(t, plugsMap, "downloader")
 	assert.Contains(t, plugsMap, "echo-legacy")
+	assert.Contains(t, plugsMap, "echo-v1")
+	assert.Contains(t, plugsMap, "getter")
 	assert.Contains(t, plugsMap, "hello-legacy")
+	assert.Contains(t, plugsMap, "hello-v1")
 }
 
 func TestFindPlugins(t *testing.T) {
@@ -184,7 +228,7 @@ func TestFindPlugins(t *testing.T) {
 		{
 			name:     "normal",
 			plugdirs: "./testdata/plugdir/good",
-			expected: 3,
+			expected: 6,
 		},
 	}
 	for _, c := range cases {

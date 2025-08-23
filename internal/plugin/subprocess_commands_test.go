@@ -86,8 +86,6 @@ func TestPrepareCommandExtraArgs(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			//expectedArgs := append(cmdArgs, extraArgs...)
-
 			// extra args are expected when ignoreFlags is unset or false
 			testExtraArgs := extraArgs
 			if tc.ignoreFlags {

@@ -55,7 +55,7 @@ Helm plugins are exposed to uses as the "Plugin" type, the basic interface that 
 Internally, plugins must be implemented by a "runtime" that is responsible for creating the plugin instance, and dispatching the plugin's invocation to the plugin's implementation.
 For example:
 - forming environment variables and command line args for subprocess execution
-- converting input to JSON and invoking a function in a future runtime (eg, Wasm)
+- converting input to JSON and invoking a function in a Wasm runtime
 
 Internally, the code structure is:
 Runtime.CreatePlugin()
@@ -78,7 +78,7 @@ Each plugin must have a `plugin.yaml`, that defines the plugin's metadata. The m
 
 For legacy plugins, the type is inferred by which fields are set on the plugin: a downloader plugin is inferred when metadata contains a "downloaders" yaml node, otherwise it is assumed to define a Helm CLI subcommand.
 
-For future plugin api versions, the metadata will include explicit apiVersion and type fields. It will also contain type and runtime specific Config and RuntimeConfig fields.
+For v1 plugins, the metadata includes explicit apiVersion and type fields. It will also contain type-specific Config, and RuntimeConfig fields.
 
 # Runtime and type cardinality
 From a cardinality perspective, this means there a "few" runtimes, and "many" plugins types. It is also expected that the subprocess runtime will not be extended to support extra plugin types, and deprecated in a future version of Helm.

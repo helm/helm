@@ -42,7 +42,7 @@ func mockSubprocessCLIPlugin(t *testing.T, pluginName string) *SubprocessPluginR
 			Name:       pluginName,
 			Version:    "v0.1.2",
 			Type:       "cli/v1",
-			APIVersion: "legacy",
+			APIVersion: "v1",
 			Runtime:    "subprocess",
 			Config: &ConfigCLI{
 				Usage:       "Mock plugin",

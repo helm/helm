@@ -1,0 +1,16 @@
+name: "duplicate-entries"
+version: "0.1.0"
+type: cli/v1
+apiVersion: v1
+runtime: subprocess
+config:
+  shortHelp: "test duplicate entries"
+  longHelp: |-
+    description
+  ignoreFlags: true
+runtimeConfig:
+  command: "echo hello"
+  hooks:
+    install: "echo installing..."
+  hooks:
+    install: "echo installing something different"
