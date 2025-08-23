@@ -101,7 +101,7 @@ func (o *pluginPackageOptions) run(out io.Writer) error {
 		// Load the signing key
 		signer, err = provenance.NewFromKeyring(o.keyring, o.key)
 		if err != nil {
-			return err
+			return fmt.Errorf("error reading from keyring: %w", err)
 		}
 
 		// Get passphrase
