@@ -127,6 +127,10 @@ func (s *Show) Run(chartpath string) (string, error) {
 	}
 
 	if s.OutputFormat == ShowCRDs || s.OutputFormat == ShowAll {
+		if err := chartutil.ProcessDependencies(s.chart, s.chart.Values); err != nil {
+			return "", errors.Wrap(err, "error processing chart dependencies")
+		}
+
 		crds := s.chart.CRDObjects()
 		if len(crds) > 0 {
 			for _, crd := range crds {
