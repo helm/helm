@@ -488,6 +488,22 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	if err != nil {
 		return rel, err
 	}
+	
+	if !i.Wait && !i.DisableHooks {
+		// Check if there are any post-* hooks
+		hasPostHooks := false
+		for _, hook := range release.Hooks {
+			if strings.HasPrefix(hook.Kind, "post-") {
+				hasPostHooks = true
+				break
+			}
+		}
+
+		// Enable wait flag if there are post-* hooks
+		if hasPostHooks {
+			i.Wait = true
+		}
+	}
 
 	waiter, err := i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
 	if err != nil {
@@ -508,6 +524,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 			return rel, fmt.Errorf("failed post-install: %s", err)
 		}
 	}
+
 
 	if len(i.Description) > 0 {
 		rel.SetStatus(release.StatusDeployed, i.Description)
