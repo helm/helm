@@ -249,6 +249,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_PLUGINS":           s.PluginsDirectory,
 		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
 		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
+		"HELM_CONTENT_CACHE":     s.ContentCache,
 		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
 		"HELM_NAMESPACE":         s.Namespace(),
 		"HELM_MAX_HISTORY":       strconv.Itoa(s.MaxHistory),
