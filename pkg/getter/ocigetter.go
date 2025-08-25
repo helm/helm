@@ -63,6 +63,10 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 	if version := g.opts.version; version != "" && !strings.Contains(path.Base(ref), ":") {
 		ref = fmt.Sprintf("%s:%s", ref, version)
 	}
+	// Check if this is a plugin request
+	if g.opts.artifactType == "plugin" {
+		return g.getPlugin(client, ref)
+	}
 
 	// Default to chart behavior for backward compatibility
 	var pullOpts []registry.PullOption
@@ -167,4 +171,29 @@ func (g *OCIGetter) newRegistryClient() (*registry.Client, error) {
 	}
 
 	return client, nil
+}
+
+// getPlugin handles plugin-specific OCI pulls
+func (g *OCIGetter) getPlugin(client *registry.Client, ref string) (*bytes.Buffer, error) {
+	// Extract plugin name from the reference
+	// e.g., "ghcr.io/user/plugin-name:v1.0.0" -> "plugin-name"
+	parts := strings.Split(ref, "/")
+	if len(parts) < 2 {
+		return nil, fmt.Errorf("invalid OCI reference: %s", ref)
+	}
+	lastPart := parts[len(parts)-1]
+	pluginName := lastPart
+	if idx := strings.LastIndex(lastPart, ":"); idx > 0 {
+		pluginName = lastPart[:idx]
+	}
+	if idx := strings.LastIndex(lastPart, "@"); idx > 0 {
+		pluginName = lastPart[:idx]
+	}
+
+	result, err := client.PullPlugin(ref, pluginName)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes.NewBuffer(result.PluginData), nil
 }
