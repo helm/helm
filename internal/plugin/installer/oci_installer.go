@@ -24,7 +24,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"helm.sh/helm/v4/internal/plugin/cache"
 	"helm.sh/helm/v4/internal/third_party/dep/fs"
@@ -45,21 +44,10 @@ type OCIInstaller struct {
 
 // NewOCIInstaller creates a new OCIInstaller with optional getter options
 func NewOCIInstaller(source string, options ...getter.Option) (*OCIInstaller, error) {
-	ref := strings.TrimPrefix(source, fmt.Sprintf("%s://", registry.OCIScheme))
-
-	// Extract plugin name from OCI reference
-	// e.g., "ghcr.io/user/plugin-name:v1.0.0" -> "plugin-name"
-	parts := strings.Split(ref, "/")
-	if len(parts) < 2 {
-		return nil, fmt.Errorf("invalid OCI reference: %s", source)
-	}
-	lastPart := parts[len(parts)-1]
-	pluginName := lastPart
-	if idx := strings.LastIndex(lastPart, ":"); idx > 0 {
-		pluginName = lastPart[:idx]
-	}
-	if idx := strings.LastIndex(lastPart, "@"); idx > 0 {
-		pluginName = lastPart[:idx]
+	// Extract plugin name from OCI reference using robust registry parsing
+	pluginName, err := registry.GetPluginName(source)
+	if err != nil {
+		return nil, err
 	}
 
 	key, err := cache.Key(source)
