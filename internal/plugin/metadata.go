@@ -18,6 +18,8 @@ package plugin
 import (
 	"errors"
 	"fmt"
+
+	"helm.sh/helm/v4/internal/plugin/schema"
 )
 
 // Metadata of a plugin, converted from the "on-disk" legacy or v1 plugin.yaml
@@ -183,6 +185,8 @@ func convertMetadataConfig(pluginType string, configRaw map[string]any) (Config,
 	var config Config
 
 	switch pluginType {
+	case "test/v1":
+		config, err = remarshalConfig[*schema.ConfigTestV1](configRaw)
 	case "cli/v1":
 		config, err = remarshalConfig[*ConfigCLI](configRaw)
 	case "getter/v1":
@@ -205,6 +209,8 @@ func convertMetdataRuntimeConfig(runtimeType string, runtimeConfigRaw map[string
 	switch runtimeType {
 	case "subprocess":
 		runtimeConfig, err = remarshalRuntimeConfig[*RuntimeConfigSubprocess](runtimeConfigRaw)
+	case "extism/v1":
+		runtimeConfig, err = remarshalRuntimeConfig[*RuntimeConfigExtismV1](runtimeConfigRaw)
 	default:
 		return nil, fmt.Errorf("unsupported plugin runtime type: %q", runtimeType)
 	}

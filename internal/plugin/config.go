@@ -23,7 +23,6 @@ import (
 
 // Config interface defines the methods that all plugin type configurations must implement
 type Config interface {
-	GetType() string
 	Validate() error
 }
 
