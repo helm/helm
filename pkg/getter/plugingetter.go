@@ -49,7 +49,7 @@ func collectGetterPlugins(settings *cli.EnvSettings) (Providers, error) {
 	}
 	results := make([]Provider, 0, len(plgs))
 	for _, plg := range plgs {
-		if c, ok := plg.Metadata().Config.(*plugin.ConfigGetter); ok {
+		if c, ok := plg.Metadata().Config.(*schema.ConfigGetterV1); ok {
 			results = append(results, Provider{
 				Schemes: c.Protocols,
 				New:     pluginConstructorBuilder(plg),

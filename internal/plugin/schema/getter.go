@@ -14,10 +14,11 @@
 package schema
 
 import (
+	"fmt"
 	"time"
 )
 
-// TODO: can we generate these plugin input/outputs?
+// TODO: can we generate these plugin input/output messages?
 
 type GetterOptionsV1 struct {
 	URL                   string
@@ -44,4 +45,22 @@ type InputMessageGetterV1 struct {
 
 type OutputMessageGetterV1 struct {
 	Data []byte `json:"data"`
+}
+
+// ConfigGetterV1 represents the configuration for download plugins
+type ConfigGetterV1 struct {
+	// Protocols are the list of URL schemes supported by this downloader
+	Protocols []string `yaml:"protocols"`
+}
+
+func (c *ConfigGetterV1) Validate() error {
+	if len(c.Protocols) == 0 {
+		return fmt.Errorf("getter has no protocols")
+	}
+	for i, protocol := range c.Protocols {
+		if protocol == "" {
+			return fmt.Errorf("getter has empty protocol at index %d", i)
+		}
+	}
+	return nil
 }

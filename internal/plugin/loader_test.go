@@ -22,6 +22,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"helm.sh/helm/v4/internal/plugin/schema"
 )
 
 func TestPeekAPIVersion(t *testing.T) {
@@ -73,7 +75,7 @@ func TestLoadDir(t *testing.T) {
 			Version:    "0.1.0",
 			Type:       "cli/v1",
 			Runtime:    "subprocess",
-			Config: &ConfigCLI{
+			Config: &schema.ConfigCLIV1{
 				Usage:       usage,
 				ShortHelp:   "echo hello message",
 				LongHelp:    "description",
@@ -145,7 +147,7 @@ func TestLoadDirGetter(t *testing.T) {
 		Type:       "getter/v1",
 		APIVersion: "v1",
 		Runtime:    "subprocess",
-		Config: &ConfigGetter{
+		Config: &schema.ConfigGetterV1{
 			Protocols: []string{"myprotocol", "myprotocols"},
 		},
 		RuntimeConfig: &RuntimeConfigSubprocess{
@@ -173,7 +175,7 @@ func TestPostRenderer(t *testing.T) {
 		Type:       "postrenderer/v1",
 		APIVersion: "v1",
 		Runtime:    "subprocess",
-		Config:     &ConfigPostrenderer{},
+		Config:     &schema.ConfigPostRendererV1{},
 		RuntimeConfig: &RuntimeConfigSubprocess{
 			PlatformCommand: []PlatformCommand{
 				{

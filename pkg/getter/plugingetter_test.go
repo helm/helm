@@ -110,7 +110,7 @@ func (t *testPlugin) Metadata() plugin.Metadata {
 		Type:       "cli/v1",
 		APIVersion: "v1",
 		Runtime:    "subprocess",
-		Config:     &plugin.ConfigCLI{},
+		Config:     &schema.ConfigCLIV1{},
 		RuntimeConfig: &plugin.RuntimeConfigSubprocess{
 			PlatformCommand: []plugin.PlatformCommand{
 				{
