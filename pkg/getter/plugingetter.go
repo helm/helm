@@ -34,7 +34,7 @@ func collectGetterPlugins(settings *cli.EnvSettings) (Providers, error) {
 	d := plugin.Descriptor{
 		Type: "getter/v1",
 	}
-	plgs, err := plugin.FindPlugins([]string{settings.PluginsDirectory}, d)
+	plgs, err := settings.PluginCatalog.FindPlugins(d)
 	if err != nil {
 		return nil, err
 	}

@@ -115,7 +115,7 @@ func (o *pluginInstallOptions) newInstallerForSource() (installer.Installer, err
 	}
 
 	// For non-OCI sources, use the original logic
-	return installer.NewForSource(o.source, o.version)
+	return installer.NewForSource(settings, o.source, o.version)
 }
 
 func (o *pluginInstallOptions) run(out io.Writer) error {
@@ -171,12 +171,22 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 	}
 
 	slog.Debug("loading plugin", "path", i.Path())
-	p, err := plugin.LoadDir(i.Path())
+	pluginRaw, err := plugin.LoadDirRaw(i.Path())
+
+	pmc, ok := settings.PluginCatalog.(*plugin.PluginManagerCatalog)
+	if !ok {
+		return fmt.Errorf("plugin is installed but unusable: %w", err)
+	}
+
+	pm := pmc.Manager
+	pm.Store.Store(pluginRaw)
+
+	p, err := pm.CreatePlugin(pluginRaw)
 	if err != nil {
 		return fmt.Errorf("plugin is installed but unusable: %w", err)
 	}
 
-	if err := runHook(p, plugin.Install); err != nil {
+	if err := runHook(pm, pluginRaw, plugin.Install); err != nil {
 		return err
 	}
 

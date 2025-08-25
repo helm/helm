@@ -33,6 +33,8 @@ import (
 func TestCollectPlugins(t *testing.T) {
 	env := cli.New()
 	env.PluginsDirectory = pluginDir
+	err := env.InitializeDefaultPluginManager()
+	require.Nil(t, err)
 
 	p, err := collectGetterPlugins(env)
 	if err != nil {

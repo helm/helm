@@ -28,6 +28,7 @@ import (
 	"strings"
 	"testing"
 
+	"helm.sh/helm/v4/internal/plugin"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
@@ -264,7 +265,7 @@ func TestDownloadIndexFile(t *testing.T) {
 		r, err := NewChartRepository(&Entry{
 			Name: testRepo,
 			URL:  srv.URL,
-		}, getter.All(&cli.EnvSettings{}))
+		}, getter.All(&cli.EnvSettings{PluginCatalog: plugin.NewEmptyCatalog()}))
 		if err != nil {
 			t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
 		}
@@ -317,7 +318,7 @@ func TestDownloadIndexFile(t *testing.T) {
 		r, err := NewChartRepository(&Entry{
 			Name: testRepo,
 			URL:  srv.URL + chartRepoURLPath,
-		}, getter.All(&cli.EnvSettings{}))
+		}, getter.All(&cli.EnvSettings{PluginCatalog: plugin.NewEmptyCatalog()}))
 		if err != nil {
 			t.Errorf("Problem creating chart repository from %s: %v", testRepo, err)
 		}

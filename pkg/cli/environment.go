@@ -25,15 +25,19 @@ package cli
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/pflag"
+	"github.com/tetratelabs/wazero"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 
+	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/internal/version"
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/kube"
@@ -93,6 +97,8 @@ type EnvSettings struct {
 	ColorMode string
 	// ContentCache is the location where cached charts are stored
 	ContentCache string
+	// PluginCatalog is the catalog of plugins available
+	PluginCatalog plugin.Catalog
 }
 
 func New() *EnvSettings {
@@ -115,6 +121,7 @@ func New() *EnvSettings {
 		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 		QPS:                       envFloat32Or("HELM_QPS", defaultQPS),
 		ColorMode:                 envColorMode(),
+		PluginCatalog:             plugin.NewEmptyCatalog(),
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -296,4 +303,36 @@ func (s *EnvSettings) RESTClientGetter() genericclioptions.RESTClientGetter {
 // ShouldDisableColor returns true if color output should be disabled
 func (s *EnvSettings) ShouldDisableColor() bool {
 	return s.ColorMode == "never"
+}
+
+func (s *EnvSettings) InitializeDefaultPluginManager() error {
+	// If HELM_NO_PLUGINS is set to 1, do not load plugins.
+	if os.Getenv("HELM_NO_PLUGINS") != "" {
+		slog.Debug("HELM_NO_PLUGINS set, skipping plugin initialization")
+		return nil
+	}
+
+	pm := plugin.NewManager()
+
+	// register subprocess runtime
+	pm.RegisterRuntime("subprocess", &plugin.RuntimeSubprocess{})
+
+	// configure and register extism/v1 runtime
+	wazeroCompilationCache, err := wazero.NewCompilationCacheWithDir(helmpath.CachePath("wazero-build"))
+	if err != nil {
+		return fmt.Errorf("failed to create wazero compilation cache: %w", err)
+	}
+
+	pm.RegisterRuntime("extism/v1", &plugin.RuntimeExtismV1{
+		CompilationCache: wazeroCompilationCache,
+	})
+
+	pluginsDirs := filepath.SplitList(s.PluginsDirectory)
+	if err := plugin.NewDirLoader(&pm.Store, plugin.GlobPluginDirs).Load(pluginsDirs); err != nil {
+		return fmt.Errorf("failed to load plugins: %w", err)
+	}
+
+	s.PluginCatalog = pm.Catalog()
+
+	return nil
 }

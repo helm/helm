@@ -29,6 +29,7 @@ import (
 
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 )
@@ -131,7 +132,9 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 	chartURL, err := FindChartInRepoURL(
 		srv.URL,
 		"nginx",
-		getter.All(&cli.EnvSettings{}),
+		getter.All(&cli.EnvSettings{
+			PluginCatalog: plugin.NewEmptyCatalog(),
+		}),
 		WithInsecureSkipTLSverify(true),
 	)
 	if err != nil {
@@ -142,7 +145,7 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 	}
 
 	// If the insecureSkipTLSVerify is false, it will return an error that contains "x509: certificate signed by unknown authority".
-	_, err = FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{}), WithChartVersion("0.1.0"))
+	_, err = FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{PluginCatalog: plugin.NewEmptyCatalog()}), WithChartVersion("0.1.0"))
 	// Go communicates with the platform and different platforms return different messages. Go itself tests darwin
 	// differently for its message. On newer versions of Darwin the message includes the "Acme Co" portion while older
 	// versions of Darwin do not. As there are people developing Helm using both old and new versions of Darwin we test
@@ -163,7 +166,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 	}
 	defer srv.Close()
 
-	chartURL, err := FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{}))
+	chartURL, err := FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{PluginCatalog: plugin.NewEmptyCatalog()}))
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -171,7 +174,7 @@ func TestFindChartInRepoURL(t *testing.T) {
 		t.Errorf("%s is not the valid URL", chartURL)
 	}
 
-	chartURL, err = FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{}), WithChartVersion("0.1.0"))
+	chartURL, err = FindChartInRepoURL(srv.URL, "nginx", getter.All(&cli.EnvSettings{PluginCatalog: plugin.NewEmptyCatalog()}), WithChartVersion("0.1.0"))
 	if err != nil {
 		t.Errorf("%s", err)
 	}
@@ -184,6 +187,7 @@ func TestErrorFindChartInRepoURL(t *testing.T) {
 
 	g := getter.All(&cli.EnvSettings{
 		RepositoryCache: t.TempDir(),
+		PluginCatalog:   plugin.NewEmptyCatalog(),
 	})
 
 	if _, err := FindChartInRepoURL("http://someserver/something", "nginx", g); err == nil {

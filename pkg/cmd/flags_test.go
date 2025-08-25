@@ -24,6 +24,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/cli"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
@@ -101,7 +102,11 @@ func outputFlagCompletionTest(t *testing.T, cmdName string) {
 func TestPostRendererFlagSetOnce(t *testing.T) {
 	cfg := action.Configuration{}
 	client := action.NewInstall(&cfg)
+	settings := cli.New()
 	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
+	err := settings.InitializeDefaultPluginManager()
+	require.Nil(t, err)
+
 	str := postRendererString{
 		options: &postRendererOptions{
 			renderer: &client.PostRenderer,
@@ -109,7 +114,7 @@ func TestPostRendererFlagSetOnce(t *testing.T) {
 		},
 	}
 	// Set the plugin name once
-	err := str.Set("postrenderer-v1")
+	err = str.Set("postrenderer-v1")
 	require.NoError(t, err)
 
 	// Set the plugin name again to the same value is not ok

@@ -25,6 +25,7 @@ import (
 	"github.com/Masterminds/vcs"
 
 	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 
@@ -52,6 +53,8 @@ func (r *testRepo) UpdateVersion(version string) error {
 func TestVCSInstaller(t *testing.T) {
 	ensure.HelmHome(t)
 
+	settings := cli.New()
+
 	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
 		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
 	}
@@ -63,7 +66,7 @@ func TestVCSInstaller(t *testing.T) {
 		tags:  []string{"0.1.0", "0.1.1"},
 	}
 
-	i, err := NewForSource(source, "~0.1.0")
+	i, err := NewForSource(settings, source, "~0.1.0")
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -106,10 +109,12 @@ func TestVCSInstaller(t *testing.T) {
 func TestVCSInstallerNonExistentVersion(t *testing.T) {
 	ensure.HelmHome(t)
 
+	settings := cli.New()
+
 	source := "https://github.com/adamreese/helm-env"
 	version := "0.2.0"
 
-	i, err := NewForSource(source, version)
+	i, err := NewForSource(settings, source, version)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -130,9 +135,11 @@ func TestVCSInstallerNonExistentVersion(t *testing.T) {
 func TestVCSInstallerUpdate(t *testing.T) {
 	ensure.HelmHome(t)
 
+	settings := cli.New()
+
 	source := "https://github.com/adamreese/helm-env"
 
-	i, err := NewForSource(source, "")
+	i, err := NewForSource(settings, source, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}

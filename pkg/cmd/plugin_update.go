@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -61,33 +60,33 @@ func (o *pluginUpdateOptions) complete(args []string) error {
 }
 
 func (o *pluginUpdateOptions) run(out io.Writer) error {
-	installer.Debug = settings.Debug
-	slog.Debug("loading installed plugins", "path", settings.PluginsDirectory)
-	plugins, err := plugin.LoadAll(settings.PluginsDirectory)
-	if err != nil {
-		return err
+	pmc, ok := settings.PluginCatalog.(*plugin.PluginManagerCatalog)
+	if !ok {
+		return nil
 	}
-	var errorPlugins []error
+	pm := pmc.Manager
 
+	var errs []error
 	for _, name := range o.names {
-		if found := findPlugin(plugins, name); found != nil {
-			if err := updatePlugin(found); err != nil {
-				errorPlugins = append(errorPlugins, fmt.Errorf("failed to update plugin %s, got error (%v)", name, err))
-			} else {
-				fmt.Fprintf(out, "Updated plugin: %s\n", name)
-			}
-		} else {
-			errorPlugins = append(errorPlugins, fmt.Errorf("plugin: %s not found", name))
+		pluginRaw := pm.Store.Load(name)
+		if pluginRaw == nil {
+			errs = append(errs, fmt.Errorf("plugin: %s not found", name))
+			continue
 		}
+
+		if err := updatePlugin(pm, pluginRaw); err != nil {
+			errs = append(errs, fmt.Errorf("failed to update plugin %s, got error (%v)", name, err))
+			continue
+		}
+
+		fmt.Fprintf(out, "Uninstalled plugin: %s\n", name)
 	}
-	if len(errorPlugins) > 0 {
-		return errors.Join(errorPlugins...)
-	}
-	return nil
+
+	return errors.Join(errs...)
 }
 
-func updatePlugin(p plugin.Plugin) error {
-	exactLocation, err := filepath.EvalSymlinks(p.Dir())
+func updatePlugin(pm *plugin.Manager, pluginRaw *plugin.PluginRaw) error {
+	exactLocation, err := filepath.EvalSymlinks(pluginRaw.Dir)
 	if err != nil {
 		return err
 	}
@@ -104,11 +103,7 @@ func updatePlugin(p plugin.Plugin) error {
 		return err
 	}
 
-	slog.Debug("loading plugin", "path", i.Path())
-	updatedPlugin, err := plugin.LoadDir(i.Path())
-	if err != nil {
-		return err
-	}
+	pm.Store.Store(pluginRaw)
 
-	return runHook(updatedPlugin, plugin.Update)
+	return runHook(pm, pluginRaw, plugin.Update)
 }

@@ -18,9 +18,8 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"log/slog"
-	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
@@ -37,12 +36,10 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 		Short:             "list installed Helm plugins",
 		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			slog.Debug("pluginDirs", "directory", settings.PluginsDirectory)
-			dirs := filepath.SplitList(settings.PluginsDirectory)
 			descriptor := plugin.Descriptor{
 				Type: pluginType,
 			}
-			plugins, err := plugin.FindPlugins(dirs, descriptor)
+			plugins, err := settings.PluginCatalog.FindPlugins(descriptor)
 			if err != nil {
 				return err
 			}
@@ -97,11 +94,15 @@ func filterPlugins(plugins []plugin.Plugin, ignoredPluginNames []string) []plugi
 // Provide dynamic auto-completion for plugin names
 func compListPlugins(_ string, ignoredPluginNames []string) []string {
 	var pNames []string
-	dirs := filepath.SplitList(settings.PluginsDirectory)
 	descriptor := plugin.Descriptor{
 		Type: "cli/v1",
 	}
-	plugins, err := plugin.FindPlugins(dirs, descriptor)
+	plugins, err := settings.PluginCatalog.FindPlugins(descriptor)
+
+	slices.SortFunc(plugins, func(i, j plugin.Plugin) int {
+		return strings.Compare(i.Metadata().Name, j.Metadata().Name)
+	})
+
 	if err == nil && len(plugins) > 0 {
 		filteredPlugins := filterPlugins(plugins, ignoredPluginNames)
 		for _, p := range filteredPlugins {

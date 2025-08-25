@@ -61,12 +61,12 @@ func validatePluginName(pluginRoot string, expectedName string) error {
 	}
 
 	// Load plugin.yaml to get the actual name
-	p, err := plugin.LoadDir(pluginRoot)
+	pr, err := plugin.LoadDirRaw(pluginRoot)
 	if err != nil {
 		return fmt.Errorf("failed to load plugin from %s: %w", pluginRoot, err)
 	}
 
-	m := p.Metadata()
+	m := pr.Metadata
 	actualName := m.Name
 
 	// For now, just log a warning if names don't match

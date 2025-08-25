@@ -28,7 +28,7 @@ An example of a plugin invocation:
 d := plugin.Descriptor{
 	Type: "example/v1", //
 }
-plgs, err := plugin.FindPlugins([]string{settings.PluginsDirectory}, d)
+plgs, err := settings.PluginCatalog.FindPlugins(d)
 
 for _, plg := range plgs {
 	input := &plugin.Input{

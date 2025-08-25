@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/cli"
 )
 
@@ -73,6 +75,8 @@ func TestProvidersWithTimeout(t *testing.T) {
 func TestAll(t *testing.T) {
 	env := cli.New()
 	env.PluginsDirectory = pluginDir
+	err := env.InitializeDefaultPluginManager()
+	require.Nil(t, err)
 
 	all := All(env)
 	if len(all) != 4 {
@@ -87,6 +91,8 @@ func TestAll(t *testing.T) {
 func TestByScheme(t *testing.T) {
 	env := cli.New()
 	env.PluginsDirectory = pluginDir
+	err := env.InitializeDefaultPluginManager()
+	require.Nil(t, err)
 
 	g := All(env)
 	if _, err := g.ByScheme("test"); err != nil {
