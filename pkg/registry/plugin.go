@@ -174,3 +174,28 @@ func PluginPullOptWithPluginName(name string) PluginPullOption {
 		operation.pluginName = name
 	}
 }
+
+// GetPluginName extracts the plugin name from an OCI reference using proper reference parsing
+func GetPluginName(source string) (string, error) {
+	ref, err := newReference(source)
+	if err != nil {
+		return "", fmt.Errorf("invalid OCI reference: %w", err)
+	}
+
+	// Extract plugin name from the repository path
+	// e.g., "ghcr.io/user/plugin-name:v1.0.0" -> Repository: "user/plugin-name"
+	repository := ref.Repository
+	if repository == "" {
+		return "", fmt.Errorf("invalid OCI reference: missing repository")
+	}
+
+	// Get the last part of the repository path as the plugin name
+	parts := strings.Split(repository, "/")
+	pluginName := parts[len(parts)-1]
+
+	if pluginName == "" {
+		return "", fmt.Errorf("invalid OCI reference: cannot determine plugin name from repository %s", repository)
+	}
+
+	return pluginName, nil
+}
