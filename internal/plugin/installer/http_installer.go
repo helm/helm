@@ -69,6 +69,9 @@ func mediaTypeToExtension(mt string) (string, bool) {
 	switch strings.ToLower(mt) {
 	case "application/gzip", "application/x-gzip", "application/x-tgz", "application/x-gtar":
 		return ".tgz", true
+	case "application/octet-stream":
+		// Generic binary type - we'll need to check the URL suffix
+		return "", false
 	default:
 		return "", false
 	}
@@ -138,11 +141,18 @@ func (i *HTTPInstaller) Install() error {
 		return fmt.Errorf("extracting files from archive: %w", err)
 	}
 
-	if !isPlugin(i.CacheDir) {
-		return ErrMissingMetadata
+	// Detect where the plugin.yaml actually is
+	pluginRoot, err := detectPluginRoot(i.CacheDir)
+	if err != nil {
+		return err
 	}
 
-	src, err := filepath.Abs(i.CacheDir)
+	// Validate plugin structure if needed
+	if err := validatePluginName(pluginRoot, i.PluginName); err != nil {
+		return err
+	}
+
+	src, err := filepath.Abs(pluginRoot)
 	if err != nil {
 		return err
 	}
@@ -248,10 +258,14 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.Mkdir(path, 0755); err != nil {
+			if err := os.MkdirAll(path, 0755); err != nil {
 				return err
 			}
 		case tar.TypeReg:
+			// Ensure parent directory exists
+			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+				return err
+			}
 			outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 			if err != nil {
 				return err

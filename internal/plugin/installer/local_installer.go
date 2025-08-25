@@ -16,11 +16,15 @@ limitations under the License.
 package installer // import "helm.sh/helm/v4/internal/plugin/installer"
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"helm.sh/helm/v4/internal/third_party/dep/fs"
 )
 
 // ErrPluginNotAFolder indicates that the plugin path is not a folder.
@@ -29,6 +33,8 @@ var ErrPluginNotAFolder = errors.New("expected plugin to be a folder")
 // LocalInstaller installs plugins from the filesystem.
 type LocalInstaller struct {
 	base
+	isArchive bool
+	extractor Extractor
 }
 
 // NewLocalInstaller creates a new LocalInstaller.
@@ -40,13 +46,42 @@ func NewLocalInstaller(source string) (*LocalInstaller, error) {
 	i := &LocalInstaller{
 		base: newBase(src),
 	}
+
+	// Check if source is an archive
+	if isLocalArchive(src) {
+		i.isArchive = true
+		extractor, err := NewExtractor(src)
+		if err != nil {
+			return nil, fmt.Errorf("unsupported archive format: %w", err)
+		}
+		i.extractor = extractor
+	}
+
 	return i, nil
+}
+
+// isLocalArchive checks if the file is a supported archive format
+func isLocalArchive(path string) bool {
+	for suffix := range Extractors {
+		if strings.HasSuffix(path, suffix) {
+			return true
+		}
+	}
+	return false
 }
 
 // Install creates a symlink to the plugin directory.
 //
 // Implements Installer.
 func (i *LocalInstaller) Install() error {
+	if i.isArchive {
+		return i.installFromArchive()
+	}
+	return i.installFromDirectory()
+}
+
+// installFromDirectory creates a symlink to the plugin directory
+func (i *LocalInstaller) installFromDirectory() error {
 	stat, err := os.Stat(i.Source)
 	if err != nil {
 		return err
@@ -60,6 +95,38 @@ func (i *LocalInstaller) Install() error {
 	}
 	slog.Debug("symlinking", "source", i.Source, "path", i.Path())
 	return os.Symlink(i.Source, i.Path())
+}
+
+// installFromArchive extracts and installs a plugin from a tarball
+func (i *LocalInstaller) installFromArchive() error {
+	// Read the archive file
+	data, err := os.ReadFile(i.Source)
+	if err != nil {
+		return fmt.Errorf("failed to read archive: %w", err)
+	}
+
+	// Create a temporary directory for extraction
+	tempDir, err := os.MkdirTemp("", "helm-plugin-extract-")
+	if err != nil {
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Extract the archive
+	buffer := bytes.NewBuffer(data)
+	if err := i.extractor.Extract(buffer, tempDir); err != nil {
+		return fmt.Errorf("failed to extract archive: %w", err)
+	}
+
+	// Detect where the plugin.yaml actually is
+	pluginRoot, err := detectPluginRoot(tempDir)
+	if err != nil {
+		return err
+	}
+
+	// Copy to the final destination
+	slog.Debug("copying", "source", pluginRoot, "path", i.Path())
+	return fs.CopyDir(pluginRoot, i.Path())
 }
 
 // Update updates a local repository
