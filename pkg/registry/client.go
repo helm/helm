@@ -30,6 +30,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/opencontainers/image-spec/specs-go"
@@ -809,6 +810,282 @@ func (c *Client) Tags(ref string) ([]string, error) {
 
 	return tags, nil
 
+}
+
+// SearchResult represents a single chart version from an OCI registry
+type SearchResult struct {
+	Name        string
+	Version     string
+	AppVersion  string
+	Description string
+	Digest      string // Manifest digest (sha256:...)
+}
+
+// tagResult is used internally for processing tags in parallel
+type tagResult struct {
+	tag          string
+	meta         *chart.Metadata
+	digestStr    string // manifest digest
+	configDigest string // config digest (for deduplication)
+}
+
+// selectBestSemverTag selects the best semantic version from a list of tags that point to the same config
+func selectBestSemverTag(results []tagResult) tagResult {
+	if len(results) == 1 {
+		return results[0]
+	}
+
+	// Find the best version
+	var best tagResult
+	var bestSemver *semver.Version
+
+	for _, result := range results {
+		version := strings.ReplaceAll(result.tag, "_", "+")
+		sv, err := semver.NewVersion(version)
+
+		// Skip if not valid semver
+		if err != nil {
+			// If we don't have any valid semver yet, use this as fallback
+			if bestSemver == nil && best.tag == "" {
+				best = result
+			}
+			continue
+		}
+
+		// First valid semver
+		if bestSemver == nil {
+			best = result
+			bestSemver = sv
+			continue
+		}
+
+		// Compare with current best
+		// 1. Prefer non-prerelease over prerelease
+		if bestSemver.Prerelease() != "" && sv.Prerelease() == "" {
+			best = result
+			bestSemver = sv
+			continue
+		}
+		if bestSemver.Prerelease() == "" && sv.Prerelease() != "" {
+			continue
+		}
+
+		// 2. Prefer more complete versions (count dots)
+		bestParts := strings.Count(bestSemver.Original(), ".")
+		currentParts := strings.Count(sv.Original(), ".")
+		if currentParts > bestParts {
+			best = result
+			bestSemver = sv
+			continue
+		}
+		if currentParts < bestParts {
+			continue
+		}
+
+		// 3. Prefer higher version when same completeness and release status
+		if sv.GreaterThan(bestSemver) {
+			best = result
+			bestSemver = sv
+		}
+	}
+
+	return best
+}
+
+// Search lists all versions of a chart in an OCI registry and returns metadata
+func (c *Client) Search(ref string, maxVersions int) ([]SearchResult, error) {
+	// Remove oci:// prefix
+	ref = strings.TrimPrefix(ref, OCIScheme+"://")
+
+	ctx := context.Background()
+	repository, err := remote.NewRepository(ref)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create repository for %s: %w", ref, err)
+	}
+	repository.PlainHTTP = c.plainHTTP
+	repository.Client = c.authorizer
+
+	var results []SearchResult
+	digestToMetadata := make(map[string]*chart.Metadata)
+	var digestMutex sync.Mutex
+
+	// Add timeout to prevent hanging on large repositories
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	// First, collect all valid semver tags
+	var validTags []string
+	err = repository.Tags(ctx, "", func(tags []string) error {
+		for _, tag := range tags {
+			// Skip digest tags (sha256-...)
+			if strings.HasPrefix(tag, "sha256-") {
+				continue
+			}
+
+			// Check if it's a valid semver (after converting _ to +)
+			version := strings.ReplaceAll(tag, "_", "+")
+			if _, err := semver.NewVersion(version); err == nil {
+				validTags = append(validTags, tag)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("error listing tags: %w", err)
+	}
+
+	if len(validTags) == 0 {
+		return results, nil
+	}
+
+	// Sort tags by semver (newest first) before processing
+	sort.Slice(validTags, func(i, j int) bool {
+		v1, _ := semver.NewVersion(strings.ReplaceAll(validTags[i], "_", "+"))
+		v2, _ := semver.NewVersion(strings.ReplaceAll(validTags[j], "_", "+"))
+		return v1.GreaterThan(v2)
+	})
+
+	// Process only the specified number of tags to avoid overwhelming large repositories
+	// Users can use --max-versions to increase the limit
+	if maxVersions > 0 && len(validTags) > maxVersions {
+		validTags = validTags[:maxVersions]
+	}
+
+	// Process tags in parallel to speed up fetching
+	resultChan := make(chan tagResult, len(validTags))
+	var wg sync.WaitGroup
+
+	// Limit concurrent requests to avoid overwhelming the registry
+	semaphore := make(chan struct{}, 3)
+
+	for _, tag := range validTags {
+		wg.Add(1)
+		go func(tag string) {
+			defer wg.Done()
+
+			// Acquire semaphore
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+
+			// Get the manifest for this tag
+			desc, err := repository.Resolve(ctx, tag)
+			if err != nil {
+				// Check if context was cancelled
+				if ctx.Err() != nil {
+					return
+				}
+				// Check for rate limit error
+				if strings.Contains(err.Error(), "429") || strings.Contains(err.Error(), "TOOMANYREQUESTS") {
+					resultChan <- tagResult{tag: tag, meta: nil, digestStr: "error:ratelimit", configDigest: ""}
+				}
+				return
+			}
+
+			// Keep the manifest digest for reference
+			digestStr := desc.Digest.String()
+
+			// Fetch the manifest
+			manifestData, err := content.FetchAll(ctx, repository, desc)
+			if err != nil {
+				// Check for rate limit error
+				if strings.Contains(err.Error(), "429") || strings.Contains(err.Error(), "TOOMANYREQUESTS") {
+					resultChan <- tagResult{tag: tag, meta: nil, digestStr: "error:ratelimit", configDigest: ""}
+				}
+				return
+			}
+
+			var manifest ocispec.Manifest
+			if err := json.Unmarshal(manifestData, &manifest); err != nil {
+				return
+			}
+
+			// Find the config descriptor
+			if manifest.Config.MediaType != ConfigMediaType {
+				return
+			}
+
+			// Fetch the config
+			configData, err := content.FetchAll(ctx, repository, manifest.Config)
+			if err != nil {
+				// Check for rate limit error
+				if strings.Contains(err.Error(), "429") || strings.Contains(err.Error(), "TOOMANYREQUESTS") {
+					resultChan <- tagResult{tag: tag, meta: nil, digestStr: "error:ratelimit", configDigest: ""}
+				}
+				return
+			}
+
+			var chartMeta chart.Metadata
+			if err := json.Unmarshal(configData, &chartMeta); err != nil {
+				return
+			}
+
+			// Use config digest for deduplication
+			configDigest := manifest.Config.Digest.String()
+			resultChan <- tagResult{tag: tag, meta: &chartMeta, digestStr: digestStr, configDigest: configDigest}
+		}(tag)
+	}
+
+	// Close result channel when all goroutines complete
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	// Collect results and group by config digest
+	configDigestToResults := make(map[string][]tagResult)
+	var rateLimitError bool
+	for result := range resultChan {
+		// Check for rate limit error
+		if result.digestStr == "error:ratelimit" {
+			rateLimitError = true
+			continue
+		}
+
+		// Cache the metadata for this manifest digest
+		digestMutex.Lock()
+		digestToMetadata[result.digestStr] = result.meta
+		digestMutex.Unlock()
+
+		// Group results by config digest
+		configDigestToResults[result.configDigest] = append(configDigestToResults[result.configDigest], result)
+	}
+
+	// For each unique config digest, select the best semantic version
+	for _, tagResults := range configDigestToResults {
+		if len(tagResults) == 0 {
+			continue
+		}
+		// Sort by semantic version quality (best first)
+		bestResult := selectBestSemverTag(tagResults)
+
+		// Convert tag back to semver format
+		version := strings.ReplaceAll(bestResult.tag, "_", "+")
+		results = append(results, SearchResult{
+			Name:        bestResult.meta.Name,
+			Version:     version,
+			AppVersion:  bestResult.meta.AppVersion,
+			Description: bestResult.meta.Description,
+			Digest:      bestResult.digestStr, // Include manifest digest
+		})
+	}
+
+	// If we hit rate limit and got no results, return an error
+	if rateLimitError && len(results) == 0 {
+		return nil, fmt.Errorf("rate limit exceeded, please try again later or authenticate with 'helm registry login'")
+	}
+
+	// Sort by version (newest first)
+	sort.Slice(results, func(i, j int) bool {
+		v1, err1 := semver.NewVersion(results[i].Version)
+		v2, err2 := semver.NewVersion(results[j].Version)
+		if err1 != nil || err2 != nil {
+			return results[i].Version > results[j].Version
+		}
+		return v1.GreaterThan(v2)
+	})
+
+	return results, nil
 }
 
 // Resolve a reference to a descriptor.
