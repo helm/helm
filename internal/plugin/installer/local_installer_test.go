@@ -16,6 +16,9 @@ limitations under the License.
 package installer // import "helm.sh/helm/v4/internal/plugin/installer"
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"os"
 	"path/filepath"
 	"testing"
@@ -63,5 +66,83 @@ func TestLocalInstallerNotAFolder(t *testing.T) {
 	}
 	if err != ErrPluginNotAFolder {
 		t.Fatalf("expected error to equal: %q", err)
+	}
+}
+
+func TestLocalInstallerTarball(t *testing.T) {
+	ensure.HelmHome(t)
+
+	// Create a test tarball
+	tempDir := t.TempDir()
+	tarballPath := filepath.Join(tempDir, "test-plugin-1.0.0.tar.gz")
+
+	// Create tarball content
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+
+	files := []struct {
+		Name string
+		Body string
+		Mode int64
+	}{
+		{"test-plugin/plugin.yaml", "name: test-plugin\nversion: 1.0.0\nusage: test\ndescription: test\ncommand: echo", 0644},
+		{"test-plugin/bin/test-plugin", "#!/bin/bash\necho test", 0755},
+	}
+
+	for _, file := range files {
+		hdr := &tar.Header{
+			Name: file.Name,
+			Mode: file.Mode,
+			Size: int64(len(file.Body)),
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write([]byte(file.Body)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write tarball to file
+	if err := os.WriteFile(tarballPath, buf.Bytes(), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test installation
+	i, err := NewForSource(tarballPath, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	// Verify it's detected as LocalInstaller
+	localInstaller, ok := i.(*LocalInstaller)
+	if !ok {
+		t.Fatal("expected LocalInstaller")
+	}
+
+	if !localInstaller.isArchive {
+		t.Fatal("expected isArchive to be true")
+	}
+
+	if err := Install(i); err != nil {
+		t.Fatal(err)
+	}
+
+	expectedPath := helmpath.DataPath("plugins", "test-plugin")
+	if i.Path() != expectedPath {
+		t.Fatalf("expected path %q, got %q", expectedPath, i.Path())
+	}
+
+	// Verify plugin was installed
+	if _, err := os.Stat(i.Path()); err != nil {
+		t.Fatalf("plugin not found at %s: %v", i.Path(), err)
 	}
 }

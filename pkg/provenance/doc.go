@@ -14,15 +14,15 @@ limitations under the License.
 */
 
 /*
-Package provenance provides tools for establishing the authenticity of a chart.
+Package provenance provides tools for establishing the authenticity of packages.
 
 In Helm, provenance is established via several factors. The primary factor is the
-cryptographic signature of a chart. Chart authors may sign charts, which in turn
-provide the necessary metadata to ensure the integrity of the chart file, the
-Chart.yaml, and the referenced Docker images.
+cryptographic signature of a package. Package authors may sign packages, which in turn
+provide the necessary metadata to ensure the integrity of the package file, the
+metadata, and the referenced Docker images.
 
 A provenance file is clear-signed. This provides cryptographic verification that
-a particular block of information (Chart.yaml, archive file, images) have not
+a particular block of information (metadata, archive file, images) have not
 been tampered with or altered. To learn more, read the GnuPG documentation on
 clear signatures:
 https://www.gnupg.org/gph/en/manual/x135.html
