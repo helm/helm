@@ -210,11 +210,9 @@ func TestExtract(t *testing.T) {
 
 	tempDir := t.TempDir()
 
-	// Set the umask to default open permissions so we can actually test
-	oldmask := syscall.Umask(0000)
-	defer func() {
-		syscall.Umask(oldmask)
-	}()
+	// Get current umask to predict expected permissions
+	currentUmask := syscall.Umask(0)
+	syscall.Umask(currentUmask)
 
 	// Write a tarball to a buffer for us to extract
 	var tarbuf bytes.Buffer
@@ -274,14 +272,19 @@ func TestExtract(t *testing.T) {
 		t.Fatalf("Did not expect error but got error: %v", err)
 	}
 
+	// Calculate expected permissions after umask is applied
+	expectedPluginYAMLPerm := os.FileMode(0600 &^ currentUmask)
+	expectedReadmePerm := os.FileMode(0777 &^ currentUmask)
+
 	pluginYAMLFullPath := filepath.Join(tempDir, "plugin.yaml")
 	if info, err := os.Stat(pluginYAMLFullPath); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			t.Fatalf("Expected %s to exist but doesn't", pluginYAMLFullPath)
 		}
 		t.Fatal(err)
-	} else if info.Mode().Perm() != 0600 {
-		t.Fatalf("Expected %s to have 0600 mode it but has %o", pluginYAMLFullPath, info.Mode().Perm())
+	} else if info.Mode().Perm() != expectedPluginYAMLPerm {
+		t.Fatalf("Expected %s to have %o mode but has %o (umask: %o)",
+			pluginYAMLFullPath, expectedPluginYAMLPerm, info.Mode().Perm(), currentUmask)
 	}
 
 	readmeFullPath := filepath.Join(tempDir, "README.md")
@@ -290,8 +293,9 @@ func TestExtract(t *testing.T) {
 			t.Fatalf("Expected %s to exist but doesn't", readmeFullPath)
 		}
 		t.Fatal(err)
-	} else if info.Mode().Perm() != 0777 {
-		t.Fatalf("Expected %s to have 0777 mode it but has %o", readmeFullPath, info.Mode().Perm())
+	} else if info.Mode().Perm() != expectedReadmePerm {
+		t.Fatalf("Expected %s to have %o mode but has %o (umask: %o)",
+			readmeFullPath, expectedReadmePerm, info.Mode().Perm(), currentUmask)
 	}
 
 }
@@ -352,12 +356,6 @@ func TestMediaTypeToExtension(t *testing.T) {
 func TestExtractWithNestedDirectories(t *testing.T) {
 	source := "https://repo.localdomain/plugins/nested-plugin-0.0.1.tar.gz"
 	tempDir := t.TempDir()
-
-	// Set the umask to default open permissions so we can actually test
-	oldmask := syscall.Umask(0000)
-	defer func() {
-		syscall.Umask(oldmask)
-	}()
 
 	// Write a tarball with nested directory structure
 	var tarbuf bytes.Buffer
