@@ -515,6 +515,7 @@ func TestExtractWithExistingDirectory(t *testing.T) {
 }
 
 func TestExtractPluginInSubdirectory(t *testing.T) {
+	ensure.HelmHome(t)
 	source := "https://repo.localdomain/plugins/subdir-plugin-1.0.0.tar.gz"
 	tempDir := t.TempDir()
 
