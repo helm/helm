@@ -1,0 +1,3 @@
+Error: chart-with-template-with-invalid-template-expr/templates/alpine-pod.yaml:7:38
+  executing "chart-with-template-with-invalid-template-expr/templates/alpine-pod.yaml" at <b64enc>:
+    invalid value; expected string
