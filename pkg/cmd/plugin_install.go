@@ -162,7 +162,7 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 	}
 
 	// If verification was successful, show the details
-	if shouldVerify && verifyResult != nil {
+	if verifyResult != nil {
 		for _, signer := range verifyResult.SignedBy {
 			fmt.Fprintf(out, "Signed by: %s\n", signer)
 		}
