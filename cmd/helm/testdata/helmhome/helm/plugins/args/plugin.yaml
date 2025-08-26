@@ -1,4 +1,0 @@
-name: args
-usage: "echo args"
-description: "This echos args"
-command: "$HELM_PLUGIN_DIR/args.sh"

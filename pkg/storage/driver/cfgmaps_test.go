@@ -16,12 +16,13 @@ package driver
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
 
-	rspb "helm.sh/helm/v3/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func TestConfigMapName(t *testing.T) {
@@ -128,6 +129,16 @@ func TestConfigMapList(t *testing.T) {
 	if len(ssd) != 2 {
 		t.Errorf("Expected 2 superseded, got %d", len(ssd))
 	}
+	// Check if release having both system and custom labels, this is needed to ensure that selector filtering would work.
+	rls := ssd[0]
+	_, ok := rls.Labels["name"]
+	if !ok {
+		t.Fatalf("Expected 'name' label in results, actual %v", rls.Labels)
+	}
+	_, ok = rls.Labels["key1"]
+	if !ok {
+		t.Fatalf("Expected 'key1' label in results, actual %v", rls.Labels)
+	}
 }
 
 func TestConfigMapQuery(t *testing.T) {
@@ -232,10 +243,8 @@ func TestConfigMapDelete(t *testing.T) {
 	if !reflect.DeepEqual(rel, rls) {
 		t.Errorf("Expected {%v}, got {%v}", rel, rls)
 	}
-
-	// fetch the deleted release
 	_, err = cfgmaps.Get(key)
-	if !reflect.DeepEqual(ErrReleaseNotFound, err) {
+	if !errors.Is(err, ErrReleaseNotFound) {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
 	}
 }

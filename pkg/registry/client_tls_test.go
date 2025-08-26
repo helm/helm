@@ -17,6 +17,8 @@ limitations under the License.
 package registry
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"os"
 	"testing"
 
@@ -52,6 +54,30 @@ func (suite *TLSRegistryClientTestSuite) Test_0_Login() {
 	suite.Nil(err, "no error logging into registry with good credentials")
 }
 
+func (suite *TLSRegistryClientTestSuite) Test_1_Login() {
+	err := suite.RegistryClient.Login(suite.DockerRegistryHost,
+		LoginOptBasicAuth("badverybad", "ohsobad"),
+		LoginOptTLSClientConfigFromConfig(&tls.Config{}))
+	suite.NotNil(err, "error logging into registry with bad credentials")
+
+	// Create a *tls.Config from tlsCert, tlsKey, and tlsCA.
+	cert, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
+	suite.Nil(err, "error loading x509 key pair")
+	rootCAs := x509.NewCertPool()
+	caCert, err := os.ReadFile(tlsCA)
+	suite.Nil(err, "error reading CA certificate")
+	rootCAs.AppendCertsFromPEM(caCert)
+	conf := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      rootCAs,
+	}
+
+	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
+		LoginOptBasicAuth(testUsername, testPassword),
+		LoginOptTLSClientConfigFromConfig(conf))
+	suite.Nil(err, "no error logging into registry with good credentials")
+}
+
 func (suite *TLSRegistryClientTestSuite) Test_1_Push() {
 	testPush(&suite.TestSuite)
 }
@@ -66,7 +92,10 @@ func (suite *TLSRegistryClientTestSuite) Test_3_Tags() {
 
 func (suite *TLSRegistryClientTestSuite) Test_4_Logout() {
 	err := suite.RegistryClient.Logout("this-host-aint-real:5000")
-	suite.NotNil(err, "error logging out of registry that has no entry")
+	if err != nil {
+		// credential backend for mac generates an error
+		suite.NotNil(err, "failed to delete the credential for this-host-aint-real:5000")
+	}
 
 	err = suite.RegistryClient.Logout(suite.DockerRegistryHost)
 	suite.Nil(err, "no error logging out of registry")

@@ -24,7 +24,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"helm.sh/helm/v3/internal/version"
+	"helm.sh/helm/v4/internal/version"
 )
 
 func TestSetNamespace(t *testing.T) {
@@ -38,7 +38,6 @@ func TestSetNamespace(t *testing.T) {
 	if settings.namespace != "testns" {
 		t.Errorf("Expected namespace testns, got %s", settings.namespace)
 	}
-
 }
 
 func TestEnvSettings(t *testing.T) {
@@ -59,20 +58,23 @@ func TestEnvSettings(t *testing.T) {
 		kubeInsecure  bool
 		kubeTLSServer string
 		burstLimit    int
+		qps           float32
 	}{
 		{
 			name:       "defaults",
 			ns:         "default",
 			maxhistory: defaultMaxHistory,
 			burstLimit: defaultBurstLimit,
+			qps:        defaultQPS,
 		},
 		{
 			name:          "with flags set",
-			args:          "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt --burst-limit 100 --kube-insecure-skip-tls-verify=true --kube-tls-server-name=example.org",
+			args:          "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/tmp/ca.crt --burst-limit 100  --qps 50.12 --kube-insecure-skip-tls-verify=true --kube-tls-server-name=example.org",
 			ns:            "myns",
 			debug:         true,
 			maxhistory:    defaultMaxHistory,
 			burstLimit:    100,
+			qps:           50.12,
 			kubeAsUser:    "poro",
 			kubeAsGroups:  []string{"admins", "teatime", "snackeaters"},
 			kubeCaFile:    "/tmp/ca.crt",
@@ -81,10 +83,11 @@ func TestEnvSettings(t *testing.T) {
 		},
 		{
 			name:          "with envvars set",
-			envvars:       map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "150", "HELM_KUBEINSECURE_SKIP_TLS_VERIFY": "true", "HELM_KUBETLS_SERVER_NAME": "example.org"},
+			envvars:       map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "150", "HELM_KUBEINSECURE_SKIP_TLS_VERIFY": "true", "HELM_KUBETLS_SERVER_NAME": "example.org", "HELM_QPS": "60.34"},
 			ns:            "yourns",
 			maxhistory:    5,
 			burstLimit:    150,
+			qps:           60.34,
 			debug:         true,
 			kubeAsUser:    "pikachu",
 			kubeAsGroups:  []string{"operators", "snackeaters", "partyanimals"},
@@ -94,17 +97,26 @@ func TestEnvSettings(t *testing.T) {
 		},
 		{
 			name:          "with flags and envvars set",
-			args:          "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/my/ca.crt --burst-limit 175 --kube-insecure-skip-tls-verify=true --kube-tls-server-name=example.org",
-			envvars:       map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "200", "HELM_KUBEINSECURE_SKIP_TLS_VERIFY": "true", "HELM_KUBETLS_SERVER_NAME": "example.org"},
+			args:          "--debug --namespace=myns --kube-as-user=poro --kube-as-group=admins --kube-as-group=teatime --kube-as-group=snackeaters --kube-ca-file=/my/ca.crt --burst-limit 175 --qps 70 --kube-insecure-skip-tls-verify=true --kube-tls-server-name=example.org",
+			envvars:       map[string]string{"HELM_DEBUG": "1", "HELM_NAMESPACE": "yourns", "HELM_KUBEASUSER": "pikachu", "HELM_KUBEASGROUPS": ",,,operators,snackeaters,partyanimals", "HELM_MAX_HISTORY": "5", "HELM_KUBECAFILE": "/tmp/ca.crt", "HELM_BURST_LIMIT": "200", "HELM_KUBEINSECURE_SKIP_TLS_VERIFY": "true", "HELM_KUBETLS_SERVER_NAME": "example.org", "HELM_QPS": "40"},
 			ns:            "myns",
 			debug:         true,
 			maxhistory:    5,
 			burstLimit:    175,
+			qps:           70,
 			kubeAsUser:    "poro",
 			kubeAsGroups:  []string{"admins", "teatime", "snackeaters"},
 			kubeCaFile:    "/my/ca.crt",
 			kubeTLSServer: "example.org",
 			kubeInsecure:  true,
+		},
+		{
+			name:       "invalid kubeconfig",
+			ns:         "testns",
+			args:       "--namespace=testns --kubeconfig=/path/to/fake/file",
+			maxhistory: defaultMaxHistory,
+			burstLimit: defaultBurstLimit,
+			qps:        defaultQPS,
 		},
 	}
 
@@ -113,7 +125,7 @@ func TestEnvSettings(t *testing.T) {
 			defer resetEnv()()
 
 			for k, v := range tt.envvars {
-				os.Setenv(k, v)
+				t.Setenv(k, v)
 			}
 
 			flags := pflag.NewFlagSet("testing", pflag.ContinueOnError)
@@ -220,10 +232,7 @@ func TestEnvOrBool(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.env != "" {
-				t.Cleanup(func() {
-					os.Unsetenv(tt.env)
-				})
-				os.Setenv(tt.env, tt.val)
+				t.Setenv(tt.env, tt.val)
 			}
 			actual := envBoolOr(tt.env, tt.def)
 			if actual != tt.expected {

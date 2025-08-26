@@ -19,12 +19,12 @@ package action
 import (
 	"testing"
 
-	"helm.sh/helm/v3/pkg/chart"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
 func TestShow(t *testing.T) {
 	config := actionConfigFixture(t)
-	client := NewShowWithConfig(ShowAll, config)
+	client := NewShow(ShowAll, config)
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*chart.File{
@@ -32,6 +32,7 @@ func TestShow(t *testing.T) {
 			{Name: "crds/ignoreme.txt", Data: []byte("error")},
 			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
 			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},
+			{Name: "crds/baz.yaml", Data: []byte("baz\n")},
 		},
 		Raw: []*chart.File{
 			{Name: "values.yaml", Data: []byte("VALUES\n")},
@@ -58,6 +59,9 @@ foo
 ---
 bar
 
+---
+baz
+
 `
 	if output != expect {
 		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
@@ -65,7 +69,8 @@ bar
 }
 
 func TestShowNoValues(t *testing.T) {
-	client := NewShow(ShowAll)
+	config := actionConfigFixture(t)
+	client := NewShow(ShowAll, config)
 	client.chart = new(chart.Chart)
 
 	// Regression tests for missing values. See issue #1024.
@@ -81,7 +86,8 @@ func TestShowNoValues(t *testing.T) {
 }
 
 func TestShowValuesByJsonPathFormat(t *testing.T) {
-	client := NewShow(ShowValues)
+	config := actionConfigFixture(t)
+	client := NewShow(ShowValues, config)
 	client.JSONPathTemplate = "{$.nestedKey.simpleKey}"
 	client.chart = buildChart(withSampleValues())
 	output, err := client.Run("")
@@ -95,13 +101,15 @@ func TestShowValuesByJsonPathFormat(t *testing.T) {
 }
 
 func TestShowCRDs(t *testing.T) {
-	client := NewShow(ShowCRDs)
+	config := actionConfigFixture(t)
+	client := NewShow(ShowCRDs, config)
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*chart.File{
 			{Name: "crds/ignoreme.txt", Data: []byte("error")},
 			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
 			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},
+			{Name: "crds/baz.yaml", Data: []byte("baz\n")},
 		},
 	}
 
@@ -116,6 +124,9 @@ foo
 ---
 bar
 
+---
+baz
+
 `
 	if output != expect {
 		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
@@ -123,7 +134,8 @@ bar
 }
 
 func TestShowNoReadme(t *testing.T) {
-	client := NewShow(ShowAll)
+	config := actionConfigFixture(t)
+	client := NewShow(ShowAll, config)
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*chart.File{

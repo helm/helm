@@ -17,12 +17,10 @@ limitations under the License.
 package support
 
 import (
+	"errors"
 	"testing"
-
-	"github.com/pkg/errors"
 )
 
-var linter = Linter{}
 var errLint = errors.New("lint failed")
 
 func TestRunLinterRule(t *testing.T) {
@@ -46,6 +44,7 @@ func TestRunLinterRule(t *testing.T) {
 		{-1, errLint, 4, false, ErrorSev},
 	}
 
+	linter := Linter{}
 	for _, test := range tests {
 		isValid := linter.RunLinterRule(test.Severity, "chart", test.LintError)
 		if len(linter.Messages) != test.ExpectedMessages {

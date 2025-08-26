@@ -17,9 +17,14 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -30,14 +35,23 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kuberuntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest/fake"
 
-	"helm.sh/helm/v3/internal/test"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chartutil"
-	kubefake "helm.sh/helm/v3/pkg/kube/fake"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/storage/driver"
-	helmtime "helm.sh/helm/v3/pkg/time"
+	"helm.sh/helm/v4/internal/test"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/kube"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage/driver"
+	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 type nameTemplateTestCase struct {
@@ -46,7 +60,64 @@ type nameTemplateTestCase struct {
 	expectedErrorStr string
 }
 
+func createDummyResourceList(owned bool) kube.ResourceList {
+	obj := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dummyName",
+			Namespace: "spaced",
+		},
+	}
+
+	if owned {
+		obj.Labels = map[string]string{
+			"app.kubernetes.io/managed-by": "Helm",
+		}
+		obj.Annotations = map[string]string{
+			"meta.helm.sh/release-name":      "test-install-release",
+			"meta.helm.sh/release-namespace": "spaced",
+		}
+	}
+
+	resInfo := resource.Info{
+		Name:      "dummyName",
+		Namespace: "spaced",
+		Mapping: &meta.RESTMapping{
+			Resource:         schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployment"},
+			GroupVersionKind: schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
+			Scope:            meta.RESTScopeNamespace,
+		},
+		Object: obj,
+	}
+	body := io.NopCloser(bytes.NewReader([]byte(kuberuntime.EncodeOrDie(appsv1Codec, obj))))
+
+	resInfo.Client = &fake.RESTClient{
+		GroupVersion:         schema.GroupVersion{Group: "apps", Version: "v1"},
+		NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
+		Client: fake.CreateHTTPClient(func(_ *http.Request) (*http.Response, error) {
+			header := http.Header{}
+			header.Set("Content-Type", kuberuntime.ContentTypeJSON)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     header,
+				Body:       body,
+			}, nil
+		}),
+	}
+	var resourceList kube.ResourceList
+	resourceList.Append(&resInfo)
+	return resourceList
+}
+
+func installActionWithConfig(config *Configuration) *Install {
+	instAction := NewInstall(config)
+	instAction.Namespace = "spaced"
+	instAction.ReleaseName = "test-install-release"
+
+	return instAction
+}
+
 func installAction(t *testing.T) *Install {
+	t.Helper()
 	config := actionConfigFixture(t)
 	instAction := NewInstall(config)
 	instAction.Namespace = "spaced"
@@ -61,7 +132,7 @@ func TestInstallRelease(t *testing.T) {
 
 	instAction := installAction(t)
 	vals := map[string]interface{}{}
-	ctx, done := context.WithCancel(context.Background())
+	ctx, done := context.WithCancel(t.Context())
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -89,6 +160,61 @@ func TestInstallRelease(t *testing.T) {
 	lastRelease, err := instAction.cfg.Releases.Last(rel.Name)
 	req.NoError(err)
 	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+}
+
+func TestInstallReleaseWithTakeOwnership_ResourceNotOwned(t *testing.T) {
+	// This test will test checking ownership of a resource
+	// returned by the fake client. If the resource is not
+	// owned by the chart, ownership is taken.
+	// To verify ownership has been taken, the fake client
+	// needs to store state which is a bigger rewrite.
+	// TODO: Ensure fake kube client stores state. Maybe using
+	// "k8s.io/client-go/kubernetes/fake" could be sufficient? i.e
+	// "Client{Namespace: namespace, kubeClient: k8sfake.NewClientset()}"
+
+	is := assert.New(t)
+
+	// Resource list from cluster is NOT owned by helm chart
+	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
+	instAction := installActionWithConfig(config)
+	instAction.TakeOwnership = true
+	res, err := instAction.Run(buildChart(), nil)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
+	is.NoError(err)
+
+	is.Equal(rel.Info.Description, "Install complete")
+}
+
+func TestInstallReleaseWithTakeOwnership_ResourceOwned(t *testing.T) {
+	is := assert.New(t)
+
+	// Resource list from cluster is owned by helm chart
+	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(true))
+	instAction := installActionWithConfig(config)
+	instAction.TakeOwnership = false
+	res, err := instAction.Run(buildChart(), nil)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
+	is.NoError(err)
+
+	is.Equal(rel.Info.Description, "Install complete")
+}
+
+func TestInstallReleaseWithTakeOwnership_ResourceOwnedNoFlag(t *testing.T) {
+	is := assert.New(t)
+
+	// Resource list from cluster is NOT owned by helm chart
+	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
+	instAction := installActionWithConfig(config)
+	_, err := instAction.Run(buildChart(), nil)
+	is.Error(err)
+	is.Contains(err.Error(), "unable to continue with install")
 }
 
 func TestInstallReleaseWithValues(t *testing.T) {
@@ -255,6 +381,46 @@ func TestInstallRelease_DryRun(t *testing.T) {
 	is.Equal(res.Info.Description, "Dry run complete")
 }
 
+func TestInstallRelease_DryRunHiddenSecret(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+
+	// First perform a normal dry-run with the secret and confirm its presence.
+	instAction.DryRun = true
+	vals := map[string]interface{}{}
+	res, err := instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+	is.Contains(res.Manifest, "---\n# Source: hello/templates/secret.yaml\napiVersion: v1\nkind: Secret")
+
+	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
+	is.Error(err)
+	is.Equal(res.Info.Description, "Dry run complete")
+
+	// Perform a dry-run where the secret should not be present
+	instAction.HideSecret = true
+	vals = map[string]interface{}{}
+	res2, err := instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	is.NotContains(res2.Manifest, "---\n# Source: hello/templates/secret.yaml\napiVersion: v1\nkind: Secret")
+
+	_, err = instAction.cfg.Releases.Get(res2.Name, res2.Version)
+	is.Error(err)
+	is.Equal(res2.Info.Description, "Dry run complete")
+
+	// Ensure there is an error when HideSecret True but not in a dry-run mode
+	instAction.DryRun = false
+	vals = map[string]interface{}{}
+	_, err = instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
+	if err == nil {
+		t.Fatalf("Did not get expected an error when dry-run false and hide secret is true")
+	}
+}
+
 // Regression test for #7955
 func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	is := assert.New(t)
@@ -282,7 +448,9 @@ func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
 	instAction.DryRun = true
 	vals := map[string]interface{}{}
 	_, err := instAction.Run(buildChart(withSampleIncludingIncorrectTemplates()), vals)
-	expectedErr := "\"hello/templates/incorrect\" at <.Values.bad.doh>: nil pointer evaluating interface {}.doh"
+	expectedErr := `hello/templates/incorrect:1:10
+  executing "hello/templates/incorrect" at <.Values.bad.doh>:
+    nil pointer evaluating interface {}.doh`
 	if err == nil {
 		t.Fatalf("Install should fail containing error: %s", expectedErr)
 	}
@@ -314,11 +482,14 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WatchUntilReadyError = fmt.Errorf("Failed watch")
 	instAction.cfg.KubeClient = failer
+	outBuffer := &bytes.Buffer{}
+	failer.PrintingKubeClient = kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
 	vals := map[string]interface{}{}
 	res, err := instAction.Run(buildChart(), vals)
 	is.Error(err)
 	is.Contains(res.Info.Description, "failed post-install")
+	is.Equal("", outBuffer.String())
 	is.Equal(release.StatusFailed, res.Info.Status)
 }
 
@@ -367,7 +538,7 @@ func TestInstallRelease_Wait(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	instAction.cfg.KubeClient = failer
-	instAction.Wait = true
+	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
 	goroutines := runtime.NumGoroutine()
@@ -386,19 +557,17 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 10 * time.Second
 	instAction.cfg.KubeClient = failer
-	instAction.Wait = true
+	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
 	goroutines := runtime.NumGoroutine()
 
-	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
+	_, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
-	is.Contains(res.Info.Description, "Release \"interrupted-release\" failed: context canceled")
-	is.Equal(res.Info.Status, release.StatusFailed)
+	is.Contains(err.Error(), "context canceled")
 
 	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
 	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
@@ -411,7 +580,7 @@ func TestInstallRelease_WaitForJobs(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	instAction.cfg.KubeClient = failer
-	instAction.Wait = true
+	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	instAction.WaitForJobs = true
 	vals := map[string]interface{}{}
 
@@ -421,37 +590,40 @@ func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
 
-func TestInstallRelease_Atomic(t *testing.T) {
+func TestInstallRelease_RollbackOnFailure(t *testing.T) {
 	is := assert.New(t)
 
-	t.Run("atomic uninstall succeeds", func(t *testing.T) {
+	t.Run("rollback-on-failure uninstall succeeds", func(t *testing.T) {
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away"
 		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 		failer.WaitError = fmt.Errorf("I timed out")
 		instAction.cfg.KubeClient = failer
-		instAction.Atomic = true
+		instAction.RollbackOnFailure = true
+		// disabling hooks to avoid an early fail when
+		// WaitForDelete is called on the pre-delete hook execution
+		instAction.DisableHooks = true
 		vals := map[string]interface{}{}
 
 		res, err := instAction.Run(buildChart(), vals)
 		is.Error(err)
 		is.Contains(err.Error(), "I timed out")
-		is.Contains(err.Error(), "atomic")
+		is.Contains(err.Error(), "rollback-on-failure")
 
-		// Now make sure it isn't in storage any more
+		// Now make sure it isn't in storage anymore
 		_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
 		is.Error(err)
 		is.Equal(err, driver.ErrReleaseNotFound)
 	})
 
-	t.Run("atomic uninstall fails", func(t *testing.T) {
+	t.Run("rollback-on-failure uninstall fails", func(t *testing.T) {
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away-with-me"
 		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 		failer.WaitError = fmt.Errorf("I timed out")
 		failer.DeleteError = fmt.Errorf("uninstall fail")
 		instAction.cfg.KubeClient = failer
-		instAction.Atomic = true
+		instAction.RollbackOnFailure = true
 		vals := map[string]interface{}{}
 
 		_, err := instAction.Run(buildChart(), vals)
@@ -461,7 +633,7 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		is.Contains(err.Error(), "an error occurred while uninstalling the release")
 	})
 }
-func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
+func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -469,23 +641,27 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 10 * time.Second
 	instAction.cfg.KubeClient = failer
-	instAction.Atomic = true
+	instAction.RollbackOnFailure = true
 	vals := map[string]interface{}{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
+
+	goroutines := runtime.NumGoroutine()
 
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
 	is.Contains(err.Error(), "context canceled")
-	is.Contains(err.Error(), "atomic")
+	is.Contains(err.Error(), "rollback-on-failure")
 	is.Contains(err.Error(), "uninstalled")
 
-	// Now make sure it isn't in storage any more
+	// Now make sure it isn't in storage anymore
 	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
 	is.Error(err)
 	is.Equal(err, driver.ErrReleaseNotFound)
+	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
+	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
+	is.Equal(goroutines, runtime.NumGoroutine())
 
 }
 func TestNameTemplate(t *testing.T) {
@@ -586,7 +762,7 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 	test.AssertGoldenFile(t, filepath.Join(dir, "hello/templates/rbac"), "rbac.txt")
 
 	_, err = os.Stat(filepath.Join(dir, "hello/templates/empty"))
-	is.True(os.IsNotExist(err))
+	is.True(errors.Is(err, fs.ErrNotExist))
 }
 
 func TestInstallOutputDirWithReleaseName(t *testing.T) {
@@ -622,7 +798,7 @@ func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	test.AssertGoldenFile(t, filepath.Join(newDir, "hello/templates/rbac"), "rbac.txt")
 
 	_, err = os.Stat(filepath.Join(newDir, "hello/templates/empty"))
-	is.True(os.IsNotExist(err))
+	is.True(errors.Is(err, fs.ErrNotExist))
 }
 
 func TestNameAndChart(t *testing.T) {
@@ -714,7 +890,6 @@ func TestNameAndChartGenerateName(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
@@ -756,5 +931,70 @@ func TestInstallWithSystemLabels(t *testing.T) {
 		t.Fatal("expected an error")
 	}
 
-	is.Equal(fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
+	is.Equal(fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
+}
+
+func TestUrlEqual(t *testing.T) {
+	is := assert.New(t)
+
+	tests := []struct {
+		name     string
+		url1     string
+		url2     string
+		expected bool
+	}{
+		{
+			name:     "identical URLs",
+			url1:     "https://example.com:443",
+			url2:     "https://example.com:443",
+			expected: true,
+		},
+		{
+			name:     "same host, scheme, default HTTPS port vs explicit",
+			url1:     "https://example.com",
+			url2:     "https://example.com:443",
+			expected: true,
+		},
+		{
+			name:     "same host, scheme, default HTTP port vs explicit",
+			url1:     "http://example.com",
+			url2:     "http://example.com:80",
+			expected: true,
+		},
+		{
+			name:     "different schemes",
+			url1:     "http://example.com",
+			url2:     "https://example.com",
+			expected: false,
+		},
+		{
+			name:     "different hosts",
+			url1:     "https://example.com",
+			url2:     "https://www.example.com",
+			expected: false,
+		},
+		{
+			name:     "different ports",
+			url1:     "https://example.com:8080",
+			url2:     "https://example.com:9090",
+			expected: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			u1, err := url.Parse(tc.url1)
+			if err != nil {
+				t.Fatalf("Failed to parse URL1 %s: %v", tc.url1, err)
+			}
+			u2, err := url.Parse(tc.url2)
+			if err != nil {
+				t.Fatalf("Failed to parse URL2 %s: %v", tc.url2, err)
+			}
+
+			is.Equal(tc.expected, urlEqual(u1, u2))
+		})
+	}
 }

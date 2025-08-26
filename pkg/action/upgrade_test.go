@@ -23,18 +23,20 @@ import (
 	"testing"
 	"time"
 
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/storage/driver"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/kube"
+	"helm.sh/helm/v4/pkg/storage/driver"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	kubefake "helm.sh/helm/v3/pkg/kube/fake"
-	"helm.sh/helm/v3/pkg/release"
-	helmtime "helm.sh/helm/v3/pkg/time"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	release "helm.sh/helm/v4/pkg/release/v1"
+	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func upgradeAction(t *testing.T) *Upgrade {
+	t.Helper()
 	config := actionConfigFixture(t)
 	upAction := NewUpgrade(config)
 	upAction.Namespace = "spaced"
@@ -52,10 +54,10 @@ func TestUpgradeRelease_Success(t *testing.T) {
 	rel.Info.Status = release.StatusDeployed
 	req.NoError(upAction.cfg.Releases.Create(rel))
 
-	upAction.Wait = true
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
-	ctx, done := context.WithCancel(context.Background())
+	ctx, done := context.WithCancel(t.Context())
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 	done()
 	req.NoError(err)
@@ -82,7 +84,7 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	upAction.cfg.KubeClient = failer
-	upAction.Wait = true
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
 	res, err := upAction.Run(rel.Name, buildChart(), vals)
@@ -104,7 +106,7 @@ func TestUpgradeRelease_WaitForJobs(t *testing.T) {
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
 	upAction.cfg.KubeClient = failer
-	upAction.Wait = true
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	upAction.WaitForJobs = true
 	vals := map[string]interface{}{}
 
@@ -128,7 +130,7 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	failer.WaitError = fmt.Errorf("I timed out")
 	failer.DeleteError = fmt.Errorf("I tried to delete nil")
 	upAction.cfg.KubeClient = failer
-	upAction.Wait = true
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	upAction.CleanupOnFail = true
 	vals := map[string]interface{}{}
 
@@ -139,11 +141,11 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
 
-func TestUpgradeRelease_Atomic(t *testing.T) {
+func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
 
-	t.Run("atomic rollback succeeds", func(t *testing.T) {
+	t.Run("rollback-on-failure rollback succeeds", func(t *testing.T) {
 		upAction := upgradeAction(t)
 
 		rel := releaseStub()
@@ -155,13 +157,13 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		// We can't make Update error because then the rollback won't work
 		failer.WatchUntilReadyError = fmt.Errorf("arming key removed")
 		upAction.cfg.KubeClient = failer
-		upAction.Atomic = true
+		upAction.RollbackOnFailure = true
 		vals := map[string]interface{}{}
 
 		res, err := upAction.Run(rel.Name, buildChart(), vals)
 		req.Error(err)
 		is.Contains(err.Error(), "arming key removed")
-		is.Contains(err.Error(), "atomic")
+		is.Contains(err.Error(), "rollback-on-failure")
 
 		// Now make sure it is actually upgraded
 		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
@@ -170,7 +172,7 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		is.Equal(updatedRes.Info.Status, release.StatusDeployed)
 	})
 
-	t.Run("atomic uninstall fails", func(t *testing.T) {
+	t.Run("rollback-on-failure uninstall fails", func(t *testing.T) {
 		upAction := upgradeAction(t)
 		rel := releaseStub()
 		rel.Name = "fallout"
@@ -180,7 +182,7 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 		failer.UpdateError = fmt.Errorf("update fail")
 		upAction.cfg.KubeClient = failer
-		upAction.Atomic = true
+		upAction.RollbackOnFailure = true
 		vals := map[string]interface{}{}
 
 		_, err := upAction.Run(rel.Name, buildChart(), vals)
@@ -308,6 +310,59 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 	})
 }
 
+func TestUpgradeRelease_ResetThenReuseValues(t *testing.T) {
+	is := assert.New(t)
+
+	t.Run("reset then reuse values should work with values", func(t *testing.T) {
+		upAction := upgradeAction(t)
+
+		existingValues := map[string]interface{}{
+			"name":        "value",
+			"maxHeapSize": "128m",
+			"replicas":    2,
+		}
+		newValues := map[string]interface{}{
+			"name":        "newValue",
+			"maxHeapSize": "512m",
+			"cpu":         "12m",
+		}
+		newChartValues := map[string]interface{}{
+			"memory": "256m",
+		}
+		expectedValues := map[string]interface{}{
+			"name":        "newValue",
+			"maxHeapSize": "512m",
+			"cpu":         "12m",
+			"replicas":    2,
+		}
+
+		rel := releaseStub()
+		rel.Name = "nuketown"
+		rel.Info.Status = release.StatusDeployed
+		rel.Config = existingValues
+
+		err := upAction.cfg.Releases.Create(rel)
+		is.NoError(err)
+
+		upAction.ResetThenReuseValues = true
+		// setting newValues and upgrading
+		res, err := upAction.Run(rel.Name, buildChart(withValues(newChartValues)), newValues)
+		is.NoError(err)
+
+		// Now make sure it is actually upgraded
+		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
+		is.NoError(err)
+
+		if updatedRes == nil {
+			is.Fail("Updated Release is nil")
+			return
+		}
+		is.Equal(release.StatusDeployed, updatedRes.Info.Status)
+		is.Equal(expectedValues, updatedRes.Config)
+		is.Equal(newChartValues, updatedRes.Chart.Values)
+	})
+}
+
 func TestUpgradeRelease_Pending(t *testing.T) {
 	req := require.New(t)
 
@@ -329,7 +384,6 @@ func TestUpgradeRelease_Pending(t *testing.T) {
 }
 
 func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
-
 	is := assert.New(t)
 	req := require.New(t)
 
@@ -342,11 +396,10 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 10 * time.Second
 	upAction.cfg.KubeClient = failer
-	upAction.Wait = true
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
@@ -354,10 +407,9 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	req.Error(err)
 	is.Contains(res.Info.Description, "Upgrade \"interrupted-release\" failed: context canceled")
 	is.Equal(res.Info.Status, release.StatusFailed)
-
 }
 
-func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
+func TestUpgradeRelease_Interrupted_RollbackOnFailure(t *testing.T) {
 
 	is := assert.New(t)
 	req := require.New(t)
@@ -371,17 +423,16 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 5 * time.Second
 	upAction.cfg.KubeClient = failer
-	upAction.Atomic = true
+	upAction.RollbackOnFailure = true
 	vals := map[string]interface{}{}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 
 	req.Error(err)
-	is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to atomic being set: context canceled")
+	is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to rollback-on-failure being set: context canceled")
 
 	// Now make sure it is actually upgraded
 	updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
@@ -391,7 +442,7 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 }
 
 func TestMergeCustomLabels(t *testing.T) {
-	var tests = [][3]map[string]string{
+	tests := [][3]map[string]string{
 		{nil, nil, map[string]string{}},
 		{map[string]string{}, map[string]string{}, map[string]string{}},
 		{map[string]string{"k1": "v1", "k2": "v2"}, nil, map[string]string{"k1": "v1", "k2": "v2"}},
@@ -480,5 +531,56 @@ func TestUpgradeRelease_SystemLabels(t *testing.T) {
 		t.Fatal("expected an error")
 	}
 
-	is.Equal(fmt.Errorf("user suplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
+	is.Equal(fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
+}
+
+func TestUpgradeRelease_DryRun(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "previous-release"
+	rel.Info.Status = release.StatusDeployed
+	req.NoError(upAction.cfg.Releases.Create(rel))
+
+	upAction.DryRun = true
+	vals := map[string]interface{}{}
+
+	ctx, done := context.WithCancel(t.Context())
+	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
+	done()
+	req.NoError(err)
+	is.Equal(release.StatusPendingUpgrade, res.Info.Status)
+	is.Contains(res.Manifest, "kind: Secret")
+
+	lastRelease, err := upAction.cfg.Releases.Last(rel.Name)
+	req.NoError(err)
+	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+	is.Equal(1, lastRelease.Version)
+
+	// Test the case for hiding the secret to ensure it is not displayed
+	upAction.HideSecret = true
+	vals = map[string]interface{}{}
+
+	ctx, done = context.WithCancel(t.Context())
+	res, err = upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
+	done()
+	req.NoError(err)
+	is.Equal(release.StatusPendingUpgrade, res.Info.Status)
+	is.NotContains(res.Manifest, "kind: Secret")
+
+	lastRelease, err = upAction.cfg.Releases.Last(rel.Name)
+	req.NoError(err)
+	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+	is.Equal(1, lastRelease.Version)
+
+	// Ensure in a dry run mode when using HideSecret
+	upAction.DryRun = false
+	vals = map[string]interface{}{}
+
+	ctx, done = context.WithCancel(t.Context())
+	_, err = upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
+	done()
+	req.Error(err)
 }

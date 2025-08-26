@@ -19,40 +19,49 @@ package rules
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
+	"slices"
 	"strings"
 
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/validation"
 	apipath "k8s.io/apimachinery/pkg/api/validation/path"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/engine"
-	"helm.sh/helm/v3/pkg/lint/support"
-)
-
-var (
-	crdHookSearch     = regexp.MustCompile(`"?helm\.sh/hook"?:\s+crd-install`)
-	releaseTimeSearch = regexp.MustCompile(`\.Release\.Time`)
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/engine"
+	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values map[string]interface{}, namespace string, strict bool) {
+func Templates(linter *support.Linter, values map[string]interface{}, namespace string, _ bool) {
+	TemplatesWithKubeVersion(linter, values, namespace, nil)
+}
+
+// TemplatesWithKubeVersion lints the templates in the Linter, allowing to specify the kubernetes version.
+func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) {
+	TemplatesWithSkipSchemaValidation(linter, values, namespace, kubeVersion, false)
+}
+
+// TemplatesWithSkipSchemaValidation lints the templates in the Linter, allowing to specify the kubernetes version and if schema validation is enabled or not.
+func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, skipSchemaValidation bool) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
-	templatesDirExist := linter.RunLinterRule(support.WarningSev, fpath, validateTemplatesDir(templatesPath))
-
 	// Templates directory is optional for now
-	if !templatesDirExist {
+	templatesDirExists := linter.RunLinterRule(support.WarningSev, fpath, templatesDirExists(templatesPath))
+	if !templatesDirExists {
+		return
+	}
+
+	validTemplatesDir := linter.RunLinterRule(support.ErrorSev, fpath, validateTemplatesDir(templatesPath))
+	if !validTemplatesDir {
 		return
 	}
 
@@ -70,9 +79,14 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 		Namespace: namespace,
 	}
 
+	caps := chartutil.DefaultCapabilities.Copy()
+	if kubeVersion != nil {
+		caps.KubeVersion = *kubeVersion
+	}
+
 	// lint ignores import-values
 	// See https://github.com/helm/helm/issues/9658
-	if err := chartutil.ProcessDependenciesWithMerge(chart, values); err != nil {
+	if err := chartutil.ProcessDependencies(chart, values); err != nil {
 		return
 	}
 
@@ -80,7 +94,8 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 	if err != nil {
 		return
 	}
-	valuesToRender, err := chartutil.ToRenderValues(chart, cvals, options, nil)
+
+	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, cvals, options, caps, skipSchemaValidation)
 	if err != nil {
 		linter.RunLinterRule(support.ErrorSev, fpath, err)
 		return
@@ -103,14 +118,10 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 	- Metadata.Namespace is not set
 	*/
 	for _, template := range chart.Templates {
-		fileName, data := template.Name, template.Data
+		fileName := template.Name
 		fpath = fileName
 
 		linter.RunLinterRule(support.ErrorSev, fpath, validateAllowedExtension(fileName))
-		// These are v3 specific checks to make sure and warn people if their
-		// chart is not compatible with v3
-		linter.RunLinterRule(support.WarningSev, fpath, validateNoCRDHooks(data))
-		linter.RunLinterRule(support.ErrorSev, fpath, validateNoReleaseTime(data))
 
 		// We only apply the following lint rules to yaml files
 		if filepath.Ext(fileName) != ".yaml" || filepath.Ext(fileName) == ".yml" {
@@ -132,9 +143,9 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 
 			// Lint all resources if the file contains multiple documents separated by ---
 			for {
-				// Even though K8sYamlStruct only defines a few fields, an error in any other
+				// Even though k8sYamlStruct only defines a few fields, an error in any other
 				// key will be raised as well
-				var yamlStruct *K8sYamlStruct
+				var yamlStruct *k8sYamlStruct
 
 				err := decoder.Decode(&yamlStruct)
 				if err == io.EOF {
@@ -150,7 +161,7 @@ func Templates(linter *support.Linter, values map[string]interface{}, namespace 
 					// NOTE: set to warnings to allow users to support out-of-date kubernetes
 					// Refs https://github.com/helm/helm/issues/8596
 					linter.RunLinterRule(support.WarningSev, fpath, validateMetadataName(yamlStruct))
-					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct))
+					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct, kubeVersion))
 
 					linter.RunLinterRule(support.ErrorSev, fpath, validateMatchSelector(yamlStruct, renderedContent))
 					linter.RunLinterRule(support.ErrorSev, fpath, validateListAnnotations(yamlStruct, renderedContent))
@@ -187,11 +198,21 @@ func validateTopIndentLevel(content string) error {
 }
 
 // Validation functions
+func templatesDirExists(templatesPath string) error {
+	_, err := os.Stat(templatesPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return errors.New("directory does not exist")
+	}
+	return nil
+}
+
 func validateTemplatesDir(templatesPath string) error {
-	if fi, err := os.Stat(templatesPath); err == nil {
-		if !fi.IsDir() {
-			return errors.New("not a directory")
-		}
+	fi, err := os.Stat(templatesPath)
+	if err != nil {
+		return err
+	}
+	if !fi.IsDir() {
+		return errors.New("not a directory")
 	}
 	return nil
 }
@@ -200,30 +221,31 @@ func validateAllowedExtension(fileName string) error {
 	ext := filepath.Ext(fileName)
 	validExtensions := []string{".yaml", ".yml", ".tpl", ".txt"}
 
-	for _, b := range validExtensions {
-		if b == ext {
-			return nil
-		}
+	if slices.Contains(validExtensions, ext) {
+		return nil
 	}
 
-	return errors.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .yml, .tpl, or .txt", ext)
+	return fmt.Errorf("file extension '%s' not valid. Valid extensions are .yaml, .yml, .tpl, or .txt", ext)
 }
 
 func validateYamlContent(err error) error {
-	return errors.Wrap(err, "unable to parse YAML")
+	if err != nil {
+		return fmt.Errorf("unable to parse YAML: %w", err)
+	}
+	return nil
 }
 
 // validateMetadataName uses the correct validation function for the object
 // Kind, or if not set, defaults to the standard definition of a subdomain in
 // DNS (RFC 1123), used by most resources.
-func validateMetadataName(obj *K8sYamlStruct) error {
+func validateMetadataName(obj *k8sYamlStruct) error {
 	fn := validateMetadataNameFunc(obj)
 	allErrs := field.ErrorList{}
 	for _, msg := range fn(obj.Metadata.Name, false) {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("metadata").Child("name"), obj.Metadata.Name, msg))
 	}
 	if len(allErrs) > 0 {
-		return errors.Wrapf(allErrs.ToAggregate(), "object name does not conform to Kubernetes naming requirements: %q", obj.Metadata.Name)
+		return fmt.Errorf("object name does not conform to Kubernetes naming requirements: %q: %w", obj.Metadata.Name, allErrs.ToAggregate())
 	}
 	return nil
 }
@@ -241,7 +263,7 @@ func validateMetadataName(obj *K8sYamlStruct) error {
 // If no mapping is defined, returns NameIsDNSSubdomain.  This is used by object
 // kinds that don't have special requirements, so is the most likely to work if
 // new kinds are added.
-func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
+func validateMetadataNameFunc(obj *k8sYamlStruct) validation.ValidateNameFunc {
 	switch strings.ToLower(obj.Kind) {
 	case "pod", "node", "secret", "endpoints", "resourcequota", // core
 		"controllerrevision", "daemonset", "deployment", "replicaset", "statefulset", // apps
@@ -264,10 +286,10 @@ func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
 	case "certificatesigningrequest":
 		// No validation.
 		// https://github.com/kubernetes/kubernetes/blob/v1.20.0/pkg/apis/certificates/validation/validation.go#L137-L140
-		return func(name string, prefix bool) []string { return nil }
+		return func(_ string, _ bool) []string { return nil }
 	case "role", "clusterrole", "rolebinding", "clusterrolebinding":
 		// https://github.com/kubernetes/kubernetes/blob/v1.20.0/pkg/apis/rbac/validation/validation.go#L32-L34
-		return func(name string, prefix bool) []string {
+		return func(name string, _ bool) []string {
 			return apipath.IsValidPathSegmentName(name)
 		}
 	default:
@@ -275,33 +297,20 @@ func validateMetadataNameFunc(obj *K8sYamlStruct) validation.ValidateNameFunc {
 	}
 }
 
-func validateNoCRDHooks(manifest []byte) error {
-	if crdHookSearch.Match(manifest) {
-		return errors.New("manifest is a crd-install hook. This hook is no longer supported in v3 and all CRDs should also exist the crds/ directory at the top level of the chart")
-	}
-	return nil
-}
-
-func validateNoReleaseTime(manifest []byte) error {
-	if releaseTimeSearch.Match(manifest) {
-		return errors.New(".Release.Time has been removed in v3, please replace with the `now` function in your templates")
-	}
-	return nil
-}
-
 // validateMatchSelector ensures that template specs have a selector declared.
 // See https://github.com/helm/helm/issues/1990
-func validateMatchSelector(yamlStruct *K8sYamlStruct, manifest string) error {
+func validateMatchSelector(yamlStruct *k8sYamlStruct, manifest string) error {
 	switch yamlStruct.Kind {
 	case "Deployment", "ReplicaSet", "DaemonSet", "StatefulSet":
 		// verify that matchLabels or matchExpressions is present
-		if !(strings.Contains(manifest, "matchLabels") || strings.Contains(manifest, "matchExpressions")) {
+		if !strings.Contains(manifest, "matchLabels") && !strings.Contains(manifest, "matchExpressions") {
 			return fmt.Errorf("a %s must contain matchLabels or matchExpressions, and %q does not", yamlStruct.Kind, yamlStruct.Metadata.Name)
 		}
 	}
 	return nil
 }
-func validateListAnnotations(yamlStruct *K8sYamlStruct, manifest string) error {
+
+func validateListAnnotations(yamlStruct *k8sYamlStruct, manifest string) error {
 	if yamlStruct.Kind == "List" {
 		m := struct {
 			Items []struct {
@@ -317,18 +326,15 @@ func validateListAnnotations(yamlStruct *K8sYamlStruct, manifest string) error {
 
 		for _, i := range m.Items {
 			if _, ok := i.Metadata.Annotations["helm.sh/resource-policy"]; ok {
-				return errors.New("Annotation 'helm.sh/resource-policy' within List objects are ignored")
+				return errors.New("annotation 'helm.sh/resource-policy' within List objects are ignored")
 			}
 		}
 	}
 	return nil
 }
 
-// K8sYamlStruct stubs a Kubernetes YAML file.
-//
-// DEPRECATED: In Helm 4, this will be made a private type, as it is for use only within
-// the rules package.
-type K8sYamlStruct struct {
+// k8sYamlStruct stubs a Kubernetes YAML file.
+type k8sYamlStruct struct {
 	APIVersion string `json:"apiVersion"`
 	Kind       string
 	Metadata   k8sYamlMetadata

@@ -17,21 +17,23 @@ package getter
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"time"
 
-	"helm.sh/helm/v3/internal/tlsutil"
-	"helm.sh/helm/v3/internal/urlutil"
-	"helm.sh/helm/v3/pkg/registry"
+	"helm.sh/helm/v4/internal/tlsutil"
+	"helm.sh/helm/v4/internal/urlutil"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 // OCIGetter is the default HTTP(/S) backend handler
 type OCIGetter struct {
-	opts      options
+	opts      getterOptions
 	transport *http.Transport
 	once      sync.Once
 }
@@ -58,6 +60,15 @@ func (g *OCIGetter) get(href string) (*bytes.Buffer, error) {
 
 	ref := strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme))
 
+	if version := g.opts.version; version != "" && !strings.Contains(path.Base(ref), ":") {
+		ref = fmt.Sprintf("%s:%s", ref, version)
+	}
+	// Check if this is a plugin request
+	if g.opts.artifactType == "plugin" {
+		return g.getPlugin(client, ref)
+	}
+
+	// Default to chart behavior for backward compatibility
 	var pullOpts []registry.PullOption
 	requestingProv := strings.HasSuffix(ref, ".prov")
 	if requestingProv {
@@ -119,11 +130,19 @@ func (g *OCIGetter) newRegistryClient() (*registry.Client, error) {
 			IdleConnTimeout:       90 * time.Second,
 			TLSHandshakeTimeout:   10 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,
+			Proxy:                 http.ProxyFromEnvironment,
+			// Being nil would cause the tls.Config default to be used
+			// "NewTLSConfig" modifies an empty TLS config, not the default one
+			TLSClientConfig: &tls.Config{},
 		}
 	})
 
 	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" || g.opts.insecureSkipVerifyTLS {
-		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile, g.opts.insecureSkipVerifyTLS)
+		tlsConf, err := tlsutil.NewTLSConfig(
+			tlsutil.WithInsecureSkipVerify(g.opts.insecureSkipVerifyTLS),
+			tlsutil.WithCertKeyPairFiles(g.opts.certFile, g.opts.keyFile),
+			tlsutil.WithCAFile(g.opts.caFile),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("can't create TLS config for client: %w", err)
 		}
@@ -152,4 +171,29 @@ func (g *OCIGetter) newRegistryClient() (*registry.Client, error) {
 	}
 
 	return client, nil
+}
+
+// getPlugin handles plugin-specific OCI pulls
+func (g *OCIGetter) getPlugin(client *registry.Client, ref string) (*bytes.Buffer, error) {
+	// Extract plugin name from the reference
+	// e.g., "ghcr.io/user/plugin-name:v1.0.0" -> "plugin-name"
+	parts := strings.Split(ref, "/")
+	if len(parts) < 2 {
+		return nil, fmt.Errorf("invalid OCI reference: %s", ref)
+	}
+	lastPart := parts[len(parts)-1]
+	pluginName := lastPart
+	if idx := strings.LastIndex(lastPart, ":"); idx > 0 {
+		pluginName = lastPart[:idx]
+	}
+	if idx := strings.LastIndex(lastPart, "@"); idx > 0 {
+		pluginName = lastPart[:idx]
+	}
+
+	result, err := client.PullPlugin(ref, pluginName)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes.NewBuffer(result.PluginData), nil
 }

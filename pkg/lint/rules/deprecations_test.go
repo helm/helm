@@ -14,16 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rules // import "helm.sh/helm/v3/pkg/lint/rules"
+package rules // import "helm.sh/helm/v4/pkg/lint/rules"
 
 import "testing"
 
 func TestValidateNoDeprecations(t *testing.T) {
-	deprecated := &K8sYamlStruct{
+	deprecated := &k8sYamlStruct{
 		APIVersion: "extensions/v1beta1",
 		Kind:       "Deployment",
 	}
-	err := validateNoDeprecations(deprecated)
+	err := validateNoDeprecations(deprecated, nil)
 	if err == nil {
 		t.Fatal("Expected deprecated extension to be flagged")
 	}
@@ -32,10 +32,10 @@ func TestValidateNoDeprecations(t *testing.T) {
 		t.Fatalf("Expected error message to be non-blank: %v", err)
 	}
 
-	if err := validateNoDeprecations(&K8sYamlStruct{
+	if err := validateNoDeprecations(&k8sYamlStruct{
 		APIVersion: "v1",
 		Kind:       "Pod",
-	}); err != nil {
+	}, nil); err != nil {
 		t.Errorf("Expected a v1 Pod to not be deprecated")
 	}
 }
