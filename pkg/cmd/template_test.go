@@ -134,6 +134,12 @@ func TestTemplateCmd(t *testing.T) {
 			golden:    "output/template-with-invalid-yaml-debug.txt",
 		},
 		{
+			name:      "chart with template with invalid template expression (--debug, --show-only)",
+			cmd:       fmt.Sprintf("template '%s' --debug --show-only %s", "testdata/testcharts/chart-with-template-with-invalid-template-expr", "templates/alpine-pod.yaml"),
+			wantError: true,
+			golden:    "output/template-with-invalid-template-expr-debug-show-only.txt",
+		},
+		{
 			name:   "template skip-tests",
 			cmd:    fmt.Sprintf(`template '%s' --skip-tests`, chartPath),
 			golden: "output/template-skip-tests.txt",
