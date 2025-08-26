@@ -129,6 +129,18 @@ func (i *LocalInstaller) installFromArchive() error {
 	return fs.CopyDir(pluginRoot, i.Path())
 }
 
+// Path returns the path where the plugin will be installed.
+// For archive sources, strips the version from the filename.
+func (i *LocalInstaller) Path() string {
+	if i.Source == "" {
+		return ""
+	}
+	if i.isArchive {
+		return filepath.Join(i.PluginsDirectory, stripPluginName(filepath.Base(i.Source)))
+	}
+	return filepath.Join(i.PluginsDirectory, filepath.Base(i.Source))
+}
+
 // Update updates a local repository
 func (i *LocalInstaller) Update() error {
 	slog.Debug("local repository is auto-updated")
