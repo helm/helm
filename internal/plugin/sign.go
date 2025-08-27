@@ -17,6 +17,7 @@ package plugin
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"errors"
 	"fmt"
@@ -29,14 +30,14 @@ import (
 	"helm.sh/helm/v4/pkg/provenance"
 )
 
-// SignPlugin signs a plugin using the SHA256 hash of the tarball.
+// SignPlugin signs a plugin using the SHA256 hash of the tarball data.
 //
-// This is used when packaging and signing a plugin from a tarball file.
+// This is used when packaging and signing a plugin from tarball data.
 // It creates a signature that includes the tarball hash and plugin metadata,
 // allowing verification of the original tarball later.
-func SignPlugin(tarballPath string, signer *provenance.Signatory) (string, error) {
-	// Extract plugin metadata from tarball
-	pluginMeta, err := extractPluginMetadata(tarballPath)
+func SignPlugin(tarballData []byte, filename string, signer *provenance.Signatory) (string, error) {
+	// Extract plugin metadata from tarball data
+	pluginMeta, err := ExtractTgzPluginMetadata(bytes.NewReader(tarballData))
 	if err != nil {
 		return "", fmt.Errorf("failed to extract plugin metadata: %w", err)
 	}
@@ -48,22 +49,11 @@ func SignPlugin(tarballPath string, signer *provenance.Signatory) (string, error
 	}
 
 	// Use the generic provenance signing function
-	return signer.ClearSign(tarballPath, metadataBytes)
+	return signer.ClearSign(tarballData, filename, metadataBytes)
 }
 
-// extractPluginMetadata extracts plugin metadata from a tarball
-func extractPluginMetadata(tarballPath string) (*Metadata, error) {
-	f, err := os.Open(tarballPath)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	return ExtractPluginMetadataFromReader(f)
-}
-
-// ExtractPluginMetadataFromReader extracts plugin metadata from a tarball reader
-func ExtractPluginMetadataFromReader(r io.Reader) (*Metadata, error) {
+// ExtractTgzPluginMetadata extracts plugin metadata from a gzipped tarball reader
+func ExtractTgzPluginMetadata(r io.Reader) (*Metadata, error) {
 	gzr, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, err

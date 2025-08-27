@@ -142,8 +142,15 @@ func (o *pluginPackageOptions) run(out io.Writer) error {
 
 	// If signing was requested, sign the tarball
 	if o.sign {
-		// Sign the plugin tarball (not the source directory)
-		sig, err := plugin.SignPlugin(tarballPath, signer)
+		// Read the tarball data
+		tarballData, err := os.ReadFile(tarballPath)
+		if err != nil {
+			os.Remove(tarballPath)
+			return fmt.Errorf("failed to read tarball for signing: %w", err)
+		}
+
+		// Sign the plugin tarball data
+		sig, err := plugin.SignPlugin(tarballData, filepath.Base(tarballPath), signer)
 		if err != nil {
 			os.Remove(tarballPath)
 			return fmt.Errorf("failed to sign plugin: %w", err)

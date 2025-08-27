@@ -69,8 +69,14 @@ runtimeConfig:
 		t.Fatal(err)
 	}
 
+	// Read the tarball data
+	tarballData, err := os.ReadFile(tarballPath)
+	if err != nil {
+		t.Fatalf("failed to read tarball: %v", err)
+	}
+
 	// Sign the plugin tarball
-	sig, err := SignPlugin(tarballPath, signer)
+	sig, err := SignPlugin(tarballData, filepath.Base(tarballPath), signer)
 	if err != nil {
 		t.Fatalf("failed to sign plugin: %v", err)
 	}

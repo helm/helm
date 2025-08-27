@@ -44,6 +44,9 @@ type OCIInstaller struct {
 	base
 	settings *cli.EnvSettings
 	getter   getter.Getter
+	// Cached data to avoid duplicate downloads
+	pluginData []byte
+	provData   []byte
 }
 
 // NewOCIInstaller creates a new OCIInstaller with optional getter options
@@ -83,18 +86,17 @@ func NewOCIInstaller(source string, options ...getter.Option) (*OCIInstaller, er
 func (i *OCIInstaller) Install() error {
 	slog.Debug("pulling OCI plugin", "source", i.Source)
 
-	// Use getter to download the plugin
-	pluginData, err := i.getter.Get(i.Source)
-	if err != nil {
-		return fmt.Errorf("failed to pull plugin from %s: %w", i.Source, err)
+	// Ensure plugin data is cached
+	if i.pluginData == nil {
+		pluginData, err := i.getter.Get(i.Source)
+		if err != nil {
+			return fmt.Errorf("failed to pull plugin from %s: %w", i.Source, err)
+		}
+		i.pluginData = pluginData.Bytes()
 	}
 
-	// Save the original tarball to plugins directory for verification
-	// For OCI plugins, extract version from plugin.yaml inside the tarball
-	pluginBytes := pluginData.Bytes()
-
 	// Extract metadata to get the actual plugin name and version
-	metadata, err := plugin.ExtractPluginMetadataFromReader(bytes.NewReader(pluginBytes))
+	metadata, err := plugin.ExtractTgzPluginMetadata(bytes.NewReader(i.pluginData))
 	if err != nil {
 		return fmt.Errorf("failed to extract plugin metadata from tarball: %w", err)
 	}
@@ -104,21 +106,29 @@ func (i *OCIInstaller) Install() error {
 	if err := os.MkdirAll(filepath.Dir(tarballPath), 0755); err != nil {
 		return fmt.Errorf("failed to create plugins directory: %w", err)
 	}
-	if err := os.WriteFile(tarballPath, pluginBytes, 0644); err != nil {
+	if err := os.WriteFile(tarballPath, i.pluginData, 0644); err != nil {
 		return fmt.Errorf("failed to save tarball: %w", err)
 	}
 
-	// Try to download and save .prov file alongside the tarball
-	provSource := i.Source + ".prov"
-	if provData, err := i.getter.Get(provSource); err == nil {
+	// Ensure prov data is cached if available
+	if i.provData == nil {
+		// Try to download .prov file if it exists
+		provSource := i.Source + ".prov"
+		if provData, err := i.getter.Get(provSource); err == nil {
+			i.provData = provData.Bytes()
+		}
+	}
+
+	// Save prov file if we have the data
+	if i.provData != nil {
 		provPath := tarballPath + ".prov"
-		if err := os.WriteFile(provPath, provData.Bytes(), 0644); err != nil {
+		if err := os.WriteFile(provPath, i.provData, 0644); err != nil {
 			slog.Debug("failed to save provenance file", "error", err)
 		}
 	}
 
 	// Check if this is a gzip compressed file
-	if len(pluginBytes) < 2 || pluginBytes[0] != 0x1f || pluginBytes[1] != 0x8b {
+	if len(i.pluginData) < 2 || i.pluginData[0] != 0x1f || i.pluginData[1] != 0x8b {
 		return fmt.Errorf("plugin data is not a gzip compressed archive")
 	}
 
@@ -128,7 +138,7 @@ func (i *OCIInstaller) Install() error {
 	}
 
 	// Extract as gzipped tar
-	if err := extractTarGz(bytes.NewReader(pluginBytes), i.CacheDir); err != nil {
+	if err := extractTarGz(bytes.NewReader(i.pluginData), i.CacheDir); err != nil {
 		return fmt.Errorf("failed to extract plugin: %w", err)
 	}
 
@@ -251,55 +261,41 @@ func (i *OCIInstaller) SupportsVerification() bool {
 	return true
 }
 
-// PrepareForVerification downloads the plugin tarball and provenance to a temporary directory
-func (i *OCIInstaller) PrepareForVerification() (pluginPath string, cleanup func(), err error) {
-	slog.Debug("preparing OCI plugin for verification", "source", i.Source)
+// GetVerificationData downloads and caches plugin and provenance data from OCI registry for verification
+func (i *OCIInstaller) GetVerificationData() (archiveData, provData []byte, filename string, err error) {
+	slog.Debug("getting verification data for OCI plugin", "source", i.Source)
 
-	// Create temporary directory for verification
-	tempDir, err := os.MkdirTemp("", "helm-oci-verify-")
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to create temp directory: %w", err)
+	// Download plugin data once and cache it
+	if i.pluginData == nil {
+		pluginDataBuffer, err := i.getter.Get(i.Source)
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("failed to pull plugin from %s: %w", i.Source, err)
+		}
+		i.pluginData = pluginDataBuffer.Bytes()
 	}
 
-	cleanup = func() {
-		os.RemoveAll(tempDir)
-	}
-
-	// Download the plugin tarball
-	pluginData, err := i.getter.Get(i.Source)
-	if err != nil {
-		cleanup()
-		return "", nil, fmt.Errorf("failed to pull plugin from %s: %w", i.Source, err)
-	}
-
-	// Extract metadata to get the actual plugin name and version
-	pluginBytes := pluginData.Bytes()
-	metadata, err := plugin.ExtractPluginMetadataFromReader(bytes.NewReader(pluginBytes))
-	if err != nil {
-		cleanup()
-		return "", nil, fmt.Errorf("failed to extract plugin metadata from tarball: %w", err)
-	}
-	filename := fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
-
-	// Save plugin tarball to temp directory
-	pluginTarball := filepath.Join(tempDir, filename)
-	if err := os.WriteFile(pluginTarball, pluginBytes, 0644); err != nil {
-		cleanup()
-		return "", nil, fmt.Errorf("failed to save plugin tarball: %w", err)
-	}
-
-	// Try to download the provenance file - don't fail if it doesn't exist
-	provSource := i.Source + ".prov"
-	if provData, err := i.getter.Get(provSource); err == nil {
-		// Save provenance to temp directory
-		provFile := filepath.Join(tempDir, filename+".prov")
-		if err := os.WriteFile(provFile, provData.Bytes(), 0644); err == nil {
-			slog.Debug("prepared plugin for verification", "plugin", pluginTarball, "provenance", provFile)
+	// Download prov data once and cache it if available
+	if i.provData == nil {
+		provSource := i.Source + ".prov"
+		// Calling getter.Get again is reasonable because: 1. The OCI registry client already optimizes the underlying network calls
+		// 2. Both calls use the same underlying manifest and memory store 3. The second .prov call is very fast since the data is already pulled
+		provDataBuffer, err := i.getter.Get(provSource)
+		if err != nil {
+			// If provenance file doesn't exist, set provData to nil
+			// The verification logic will handle this gracefully
+			i.provData = nil
+		} else {
+			i.provData = provDataBuffer.Bytes()
 		}
 	}
-	// Note: We don't fail if .prov file can't be downloaded - the verification logic
-	// in InstallWithOptions will handle missing .prov files appropriately
 
-	slog.Debug("prepared plugin for verification", "plugin", pluginTarball)
-	return pluginTarball, cleanup, nil
+	// Extract metadata to get the filename
+	metadata, err := plugin.ExtractTgzPluginMetadata(bytes.NewReader(i.pluginData))
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("failed to extract plugin metadata from tarball: %w", err)
+	}
+	filename = fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
+
+	slog.Debug("got verification data for OCI plugin", "filename", filename)
+	return i.pluginData, i.provData, filename, nil
 }
