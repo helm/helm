@@ -42,7 +42,16 @@ func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) err
 	slog.Debug("number of dependencies in the chart", "dependencies", len(chrt.Dependencies()))
 	// For each dependency, recursively call this function with the coalesced values
 	for _, subchart := range chrt.Dependencies() {
-		subchartValues := values[subchart.Name()].(map[string]interface{})
+		v, ok := values[subchart.Name()]
+		if !ok || v == nil {
+			// No values provided for this subchart, skip validation for it
+			continue
+		}
+		subchartValues, ok := v.(map[string]any)
+		if !ok {
+			sb.WriteString(fmt.Sprintf("%s: invalid or missing values for subchart. Skipping validation.\n", subchart.Name()))
+			continue
+		}
 		if err := ValidateAgainstSchema(subchart, subchartValues); err != nil {
 			sb.WriteString(err.Error())
 		}
