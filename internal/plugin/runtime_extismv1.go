@@ -143,7 +143,7 @@ func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Outp
 	var tmpDir string
 	if p.rc.FileSystem.CreateTempDir {
 		tmpDirInner, err := os.MkdirTemp(os.TempDir(), "helm-plugin-*")
-		slog.Debug("created plugin temp dir", slog.String("dir", tmpDir), slog.String("plugin", p.metadata.Name))
+		slog.Debug("created plugin temp dir", slog.String("dir", tmpDirInner), slog.String("plugin", p.metadata.Name))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create temp dir for extism compilation cache: %w", err)
 		}
