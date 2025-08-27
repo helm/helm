@@ -29,10 +29,7 @@ type InsecureTLSRegistryClientTestSuite struct {
 
 func (suite *InsecureTLSRegistryClientTestSuite) SetupSuite() {
 	// init test client
-	dockerRegistry := setup(&suite.TestSuite, true, true)
-
-	// Start Docker registry
-	go dockerRegistry.ListenAndServe()
+	setup(&suite.TestSuite, true, true)
 }
 
 func (suite *InsecureTLSRegistryClientTestSuite) TearDownSuite() {
