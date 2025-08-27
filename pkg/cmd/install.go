@@ -304,7 +304,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					return nil, fmt.Errorf("failed reloading chart after repo update: %w", err)
 				}
 			} else {
-				return nil, fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies: %w", err)
+				return nil, fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run 'helm dependency build' to fetch missing dependencies: %w", err)
 			}
 		}
 	}
