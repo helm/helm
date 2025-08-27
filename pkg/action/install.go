@@ -75,7 +75,13 @@ type Install struct {
 	// ForceReplace will, if set to `true`, ignore certain warnings and perform the install anyway.
 	//
 	// This should be used with caution.
-	ForceReplace    bool
+	ForceReplace bool
+	// ForceConflicts causes server-side apply to force conflicts ("Overwrite value, become sole manager")
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+	ForceConflicts bool
+	// ServerSideApply when true (default) will enable changes to be applied via Kubernetes server-side apply
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
+	ServerSideApply bool
 	CreateNamespace bool
 	DryRun          bool
 	DryRunOption    string
@@ -146,7 +152,8 @@ type ChartPathOptions struct {
 // NewInstall creates a new Install object with the given configuration.
 func NewInstall(cfg *Configuration) *Install {
 	in := &Install{
-		cfg: cfg,
+		cfg:             cfg,
+		ServerSideApply: true,
 	}
 	in.registryClient = cfg.RegistryClient
 
@@ -176,7 +183,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		// Send them to Kube
 		if _, err := i.cfg.KubeClient.Create(
 			res,
-			kube.ClientCreateOptionServerSideApply(false, false)); err != nil {
+			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts)); err != nil {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
 				crdName := res[0].Name
@@ -404,7 +411,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		}
 		if _, err := i.cfg.KubeClient.Create(
 			resourceList,
-			kube.ClientCreateOptionServerSideApply(false, false)); err != nil && !apierrors.IsAlreadyExists(err) {
+			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {
 			return nil, err
 		}
 	}
@@ -416,8 +423,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		}
 	}
 
-	// Store the release in history before continuing (new in Helm 3). We always know
-	// that this is a create operation.
+	// Store the release in history before continuing. We always know that this is a create operation
 	if err := i.cfg.Releases.Create(rel); err != nil {
 		// We could try to recover gracefully here, but since nothing has been installed
 		// yet, this is probably safer than trying to continue when we know storage is
@@ -464,7 +470,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
 			return rel, fmt.Errorf("failed pre-install: %s", err)
 		}
 	}
@@ -475,15 +481,16 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
 		_, err = i.cfg.KubeClient.Create(
 			resources,
-			kube.ClientCreateOptionServerSideApply(false, false))
+			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false))
 	} else if len(resources) > 0 {
-		updateThreeWayMergeForUnstructured := i.TakeOwnership
+		updateThreeWayMergeForUnstructured := i.TakeOwnership && !i.ServerSideApply // Use three-way merge when taking ownership (and not using server-side apply)
 		_, err = i.cfg.KubeClient.Update(
 			toBeAdopted,
 			resources,
-			kube.ClientUpdateOptionServerSideApply(false, false),
+			kube.ClientUpdateOptionForceReplace(i.ForceReplace),
+			kube.ClientUpdateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts),
 			kube.ClientUpdateOptionThreeWayMergeForUnstructured(updateThreeWayMergeForUnstructured),
-			kube.ClientUpdateOptionForceReplace(i.ForceReplace))
+			kube.ClientUpdateOptionUpgradeClientSideFieldManager(true))
 	}
 	if err != nil {
 		return rel, err
@@ -504,7 +511,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	}
 
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
 			return rel, fmt.Errorf("failed post-install: %s", err)
 		}
 	}
@@ -581,7 +588,8 @@ func (i *Install) availableName() error {
 // createRelease creates a new release object
 func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{}, labels map[string]string) *release.Release {
 	ts := i.cfg.Now()
-	return &release.Release{
+
+	r := &release.Release{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
 		Chart:     chrt,
@@ -591,9 +599,12 @@ func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{
 			LastDeployed:  ts,
 			Status:        release.StatusUnknown,
 		},
-		Version: 1,
-		Labels:  labels,
+		Version:     1,
+		Labels:      labels,
+		ApplyMethod: string(determineReleaseSSApplyMethod(i.ServerSideApply)),
 	}
+
+	return r
 }
 
 // recordRelease with an update operation in case reuse has been set.
