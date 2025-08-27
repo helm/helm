@@ -212,7 +212,7 @@ func (r *SubprocessPluginRuntime) runCLI(input *Input) (*Output, error) {
 	}
 
 	return &Output{
-		Message: &schema.OutputMessageCLIV1{},
+		Message: schema.OutputMessageCLIV1{},
 	}, nil
 }
 
