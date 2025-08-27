@@ -93,8 +93,8 @@ func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) err
 		subchartValues, ok := raw.(map[string]any)
 		if !ok {
 			sb.WriteString(fmt.Sprintf(
-				"%s:\ninvalid type for values: expected object (map), got %T for subchart %q\n",
-				subchart.Name(), raw, subchart.Name(),
+				"%s:\ninvalid type for values: expected object (map), got %T\n",
+				subchart.Name(), raw,
 			))
 			continue
 		}
