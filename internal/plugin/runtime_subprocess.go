@@ -73,7 +73,7 @@ type RuntimeSubprocess struct{}
 
 var _ Runtime = (*RuntimeSubprocess)(nil)
 
-// CreateRuntime implementation for RuntimeConfig
+// CreatePlugin implementation for RuntimeConfig
 func (r *RuntimeSubprocess) CreatePlugin(pluginDir string, metadata *Metadata) (Plugin, error) {
 	return &SubprocessPluginRuntime{
 		metadata:      *metadata,
