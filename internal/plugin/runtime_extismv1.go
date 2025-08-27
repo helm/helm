@@ -28,8 +28,9 @@ import (
 	"github.com/tetratelabs/wazero"
 )
 
-const ExtistmV1WasmBinaryFilename = "plugin.wasm"
+const ExtismV1WasmBinaryFilename = "plugin.wasm"
 
+// RuntimeConfigExtismV1Memory exposes the Wasm/Extism memory options for the plugin
 type RuntimeConfigExtismV1Memory struct {
 	// The max amount of pages the plugin can allocate
 	// One page is 64Kib. e.g. 16 pages would require 1MiB.
@@ -45,15 +46,13 @@ type RuntimeConfigExtismV1Memory struct {
 	MaxVarBytes int64 `yaml:"maxVarBytes,omitempty"`
 }
 
+// RuntimeConfigExtismV1FileSystem exposes filesystem options for the configuration
+// TODO: should Helm expose AllowedPaths?
 type RuntimeConfigExtismV1FileSystem struct {
 	// If specified, a temporary directory will be created and mapped to /tmp in the plugin's filesystem.
 	// Data written to the directory will be visible on the host filesystem.
 	// The directory will be removed when the plugin invocation completes.
 	CreateTempDir bool `yaml:"createTempDir,omitempty"`
-
-	// // An optional set of mappings between the host's filesystem and the paths a plugin can access.
-	// TODO: shuld Helm expose this?
-	//AllowedPaths map[string]string `yaml:"allowedPaths,omitempty"`
 }
 
 // RuntimeConfigExtismV1 defines the user-configurable options the plugin's Extism runtime
@@ -106,9 +105,7 @@ func (r *RuntimeExtismV1) CreatePlugin(pluginDir string, metadata *Metadata) (Pl
 		return nil, fmt.Errorf("invalid extism/v1 plugin runtime config type: %T", metadata.RuntimeConfig)
 	}
 
-	fmt.Printf("Creating extism/v1 plugin %q with config: %+v\n", metadata.Name, rc)
-
-	wasmFile := filepath.Join(pluginDir, ExtistmV1WasmBinaryFilename)
+	wasmFile := filepath.Join(pluginDir, ExtismV1WasmBinaryFilename)
 	if _, err := os.Stat(wasmFile); err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("wasm binary missing for extism/v1 plugin: %q", wasmFile)
@@ -145,7 +142,7 @@ func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Outp
 
 	var tmpDir string
 	if p.rc.FileSystem.CreateTempDir {
-		tmpDir, err := os.MkdirTemp(os.TempDir(), "helm-plugin-*")
+		tmpDirInner, err := os.MkdirTemp(os.TempDir(), "helm-plugin-*")
 		slog.Debug("created plugin temp dir", slog.String("dir", tmpDir), slog.String("plugin", p.metadata.Name))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create temp dir for extism compilation cache: %w", err)
@@ -155,6 +152,8 @@ func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Outp
 				slog.Warn("failed to remove plugin temp dir", slog.String("dir", tmpDir), slog.String("plugin", p.metadata.Name), slog.String("error", err.Error()))
 			}
 		}()
+
+		tmpDir = tmpDirInner
 	}
 
 	manifest, err := buildManifest(p.dir, tmpDir, p.rc)
@@ -162,10 +161,7 @@ func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Outp
 		return nil, err
 	}
 
-	config, err := buildPluginConfig(input, p.r)
-	if err != nil {
-		return nil, err
-	}
+	config := buildPluginConfig(input, p.r)
 
 	hostFunctions, err := buildHostFunctions(p.r.HostFunctions, p.rc)
 	if err != nil {
@@ -183,7 +179,7 @@ func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Outp
 
 	inputData, err := json.Marshal(input.Message)
 	if err != nil {
-		return nil, fmt.Errorf("failed to json marshel plugin input message: %T: %w", input.Message, err)
+		return nil, fmt.Errorf("failed to json marshal plugin input message: %T: %w", input.Message, err)
 	}
 
 	slog.Debug("plugin input", slog.String("plugin", p.metadata.Name), slog.String("inputData", string(inputData)))
@@ -208,7 +204,7 @@ func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Outp
 
 	outputMessage := reflect.New(pluginTypesIndex[p.metadata.Type].outputType)
 	if err := json.Unmarshal(outputData, outputMessage.Interface()); err != nil {
-		return nil, fmt.Errorf("failed to json marshel plugin output message: %T: %w", outputMessage, err)
+		return nil, fmt.Errorf("failed to json marshal plugin output message: %T: %w", outputMessage, err)
 	}
 
 	output := &Output{
@@ -219,7 +215,7 @@ func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Outp
 }
 
 func buildManifest(pluginDir string, tmpDir string, rc *RuntimeConfigExtismV1) (extism.Manifest, error) {
-	wasmFile := filepath.Join(pluginDir, ExtistmV1WasmBinaryFilename)
+	wasmFile := filepath.Join(pluginDir, ExtismV1WasmBinaryFilename)
 
 	allowedHosts := rc.AllowedHosts
 	if allowedHosts == nil {
@@ -250,8 +246,7 @@ func buildManifest(pluginDir string, tmpDir string, rc *RuntimeConfigExtismV1) (
 	}, nil
 }
 
-func buildPluginConfig(input *Input, r *RuntimeExtismV1) (extism.PluginConfig, error) {
-
+func buildPluginConfig(input *Input, r *RuntimeExtismV1) extism.PluginConfig {
 	mc := wazero.NewModuleConfig().
 		WithSysWalltime()
 	if input.Stdin != nil {
@@ -279,7 +274,7 @@ func buildPluginConfig(input *Input, r *RuntimeExtismV1) (extism.PluginConfig, e
 		EnableHttpResponseHeaders: true,
 	}
 
-	return config, nil
+	return config
 }
 
 func buildHostFunctions(hostFunctions map[string]extism.HostFunction, rc *RuntimeConfigExtismV1) ([]extism.HostFunction, error) {

@@ -3,6 +3,7 @@ package main
 import (
 	_ "embed"
 	"fmt"
+	"os"
 
 	pdk "github.com/extism/go-pdk"
 )
@@ -19,8 +20,14 @@ type ConfigTestV1 struct{}
 
 func runGetterPluginImpl(input InputMessageTestV1) (*OutputMessageTestV1, error) {
 	name := input.Name
+
+	greeting := fmt.Sprintf("Hello, %s! (%d)", name, len(name))
+	err := os.WriteFile("/tmp/greeting.txt", []byte(greeting), 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write temp file: %w", err)
+	}
 	return &OutputMessageTestV1{
-		Greeting: fmt.Sprintf("Hello, %s! (%d)", name, len(name)),
+		Greeting: greeting,
 	}, nil
 }
 
