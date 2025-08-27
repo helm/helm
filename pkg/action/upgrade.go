@@ -66,8 +66,6 @@ type Upgrade struct {
 	Timeout time.Duration
 	// WaitStrategy determines what type of waiting should be done
 	WaitStrategy kube.WaitStrategy
-	// WaitForJobs determines whether the wait operation for the Jobs should be performed after the upgrade is requested.
-	WaitForJobs bool
 	// DisableHooks disables hook processing if set to true.
 	DisableHooks bool
 	// DryRun controls whether the operation is prepared, but not executed.
@@ -443,18 +441,10 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
 		return
 	}
-	if u.WaitForJobs {
-		if err := waiter.WaitWithJobs(target, u.Timeout); err != nil {
-			u.cfg.recordRelease(originalRelease)
-			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-			return
-		}
-	} else {
-		if err := waiter.Wait(target, u.Timeout); err != nil {
-			u.cfg.recordRelease(originalRelease)
-			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-			return
-		}
+	if err := waiter.Wait(target, u.Timeout); err != nil {
+		u.cfg.recordRelease(originalRelease)
+		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+		return
 	}
 
 	// post-upgrade hooks
@@ -528,7 +518,6 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		if u.WaitStrategy == kube.HookOnlyStrategy {
 			rollin.WaitStrategy = kube.StatusWatcherStrategy
 		}
-		rollin.WaitForJobs = u.WaitForJobs
 		rollin.DisableHooks = u.DisableHooks
 		rollin.ForceReplace = u.ForceReplace
 		rollin.Timeout = u.Timeout

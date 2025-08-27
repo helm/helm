@@ -38,7 +38,6 @@ type Rollback struct {
 	Version      int
 	Timeout      time.Duration
 	WaitStrategy kube.WaitStrategy
-	WaitForJobs  bool
 	DisableHooks bool
 	DryRun       bool
 	// ForceReplace will, if set to `true`, ignore certain warnings and perform the rollback anyway.
@@ -221,20 +220,12 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	if err != nil {
 		return nil, fmt.Errorf("unable to set metadata visitor from target release: %w", err)
 	}
-	if r.WaitForJobs {
-		if err := waiter.WaitWithJobs(target, r.Timeout); err != nil {
-			targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
-			r.cfg.recordRelease(currentRelease)
-			r.cfg.recordRelease(targetRelease)
-			return targetRelease, fmt.Errorf("release %s failed: %w", targetRelease.Name, err)
-		}
-	} else {
-		if err := waiter.Wait(target, r.Timeout); err != nil {
-			targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
-			r.cfg.recordRelease(currentRelease)
-			r.cfg.recordRelease(targetRelease)
-			return targetRelease, fmt.Errorf("release %s failed: %w", targetRelease.Name, err)
-		}
+
+	if err := waiter.Wait(target, r.Timeout); err != nil {
+		targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
+		r.cfg.recordRelease(currentRelease)
+		r.cfg.recordRelease(targetRelease)
+		return targetRelease, fmt.Errorf("release %s failed: %w", targetRelease.Name, err)
 	}
 
 	// post-rollback hooks

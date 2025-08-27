@@ -84,14 +84,6 @@ func (f *FailingKubeWaiter) Wait(resources kube.ResourceList, d time.Duration) e
 	return f.PrintingKubeWaiter.Wait(resources, d)
 }
 
-// WaitWithJobs returns the configured error if set or prints
-func (f *FailingKubeWaiter) WaitWithJobs(resources kube.ResourceList, d time.Duration) error {
-	if f.waitError != nil {
-		return f.waitError
-	}
-	return f.PrintingKubeWaiter.WaitWithJobs(resources, d)
-}
-
 // WaitForDelete returns the configured error if set or prints
 func (f *FailingKubeWaiter) WaitForDelete(resources kube.ResourceList, d time.Duration) error {
 	if f.waitForDeleteError != nil {

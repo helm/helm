@@ -753,7 +753,7 @@ func TestWaitJob(t *testing.T) {
 		t.Errorf("expected 1 resource created, got %d", len(result.Created))
 	}
 
-	if err := c.WaitWithJobs(resources, time.Second*30); err != nil {
+	if err := c.Wait(resources, time.Second*30); err != nil {
 		t.Errorf("expected wait without error, got %s", err)
 	}
 

@@ -58,9 +58,6 @@ type Waiter interface {
 	// Wait waits up to the given timeout for the specified resources to be ready.
 	Wait(resources ResourceList, timeout time.Duration) error
 
-	// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
-	WaitWithJobs(resources ResourceList, timeout time.Duration) error
-
 	// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
 	WaitForDelete(resources ResourceList, timeout time.Duration) error
 

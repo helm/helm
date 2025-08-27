@@ -274,19 +274,11 @@ func TestStatusWait(t *testing.T) {
 		name         string
 		objManifests []string
 		expectErrs   []error
-		waitForJobs  bool
 	}{
 		{
 			name:         "Job is not complete",
 			objManifests: []string{jobNoStatusManifest},
 			expectErrs:   []error{errors.New("resource not ready, name: test, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
-			waitForJobs:  true,
-		},
-		{
-			name:         "Job is ready but not complete",
-			objManifests: []string{jobReadyManifest},
-			expectErrs:   nil,
-			waitForJobs:  false,
 		},
 		{
 			name:         "Pod is ready",
@@ -380,7 +372,7 @@ func TestWaitForJobComplete(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
-			err := statusWaiter.WaitWithJobs(resourceList, time.Second*3)
+			err := statusWaiter.Wait(resourceList, time.Second*3)
 			if tt.expectErrs != nil {
 				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
 				return

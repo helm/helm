@@ -78,14 +78,6 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 	defer cancel()
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
-	return w.wait(ctx, resourceList, sw)
-}
-
-func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
-	defer cancel()
-	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
-	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	customSR := statusreaders.NewStatusReader(w.restMapper, newCustomJobStatusReader)
 	sw.StatusReader = customSR
@@ -223,10 +215,6 @@ func (w *hookOnlyWaiter) WatchUntilReady(resourceList ResourceList, timeout time
 }
 
 func (w *hookOnlyWaiter) Wait(_ ResourceList, _ time.Duration) error {
-	return nil
-}
-
-func (w *hookOnlyWaiter) WaitWithJobs(_ ResourceList, _ time.Duration) error {
 	return nil
 }
 
