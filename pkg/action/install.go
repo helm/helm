@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"text/template"
 	"time"
 
@@ -126,7 +127,8 @@ type Install struct {
 	TakeOwnership bool
 	PostRenderer  postrender.PostRenderer
 	// Lock to control raceconditions when the process receives a SIGTERM
-	Lock sync.Mutex
+	Lock           sync.Mutex
+	goroutineCount atomic.Int32
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -446,8 +448,10 @@ func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, t
 	resultChan := make(chan Msg, 1)
 
 	go func() {
+		i.goroutineCount.Add(1)
 		rel, err := i.performInstall(rel, toBeAdopted, resources)
 		resultChan <- Msg{rel, err}
+		i.goroutineCount.Add(-1)
 	}()
 	select {
 	case <-ctx.Done():
@@ -456,6 +460,11 @@ func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, t
 	case msg := <-resultChan:
 		return msg.r, msg.e
 	}
+}
+
+// getGoroutineCount return the number of running routines
+func (i *Install) getGoroutineCount() int32 {
+	return i.goroutineCount.Load()
 }
 
 // isDryRun returns true if Upgrade is set to run as a DryRun
