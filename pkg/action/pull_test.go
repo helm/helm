@@ -61,13 +61,12 @@ entries:
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	// Isolate Helm env/cache to temp dirs for deterministic tests.
 	settings := cli.New()
 	settings.RepositoryCache = t.TempDir()
 	settings.RepositoryConfig = filepath.Join(t.TempDir(), "repositories.yaml")
 	settings.ContentCache = t.TempDir()
 
-	cfg := &Configuration{} // minimal config; no K8s or registry for HTTP path
+	cfg := &Configuration{}
 
 	p := NewPull(WithConfig(cfg))
 	p.Settings = settings

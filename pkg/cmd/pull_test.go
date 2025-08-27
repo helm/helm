@@ -44,7 +44,9 @@ func TestPullCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	helmTestKeyOut := "Signed by: Helm Testing (This key should only be used for testing. DO NOT TRUST.) <helm-testing@helm.sh>\n" +
+	helmTestKeyOut := "Pulled: signtest:0.1.0\n" +
+		"Digest: sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\n" +
+		"Signed by: Helm Testing (This key should only be used for testing. DO NOT TRUST.) <helm-testing@helm.sh>\n" +
 		"Using Key With Fingerprint: 5E615389B53CA37F0EE60BD3843BBF981FC18762\n" +
 		"Chart Hash Verified: "
 
