@@ -156,7 +156,11 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	}
 
 	destfile := filepath.Join(dest, name)
-	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
+
+	// Use LockedAtomicWriteFile to handle concurrent writes safely
+	// This prevents "Access Denied" errors on Windows when multiple processes
+	// try to write to the same file simultaneously
+	if _, err := fileutil.LockedAtomicWriteFile(destfile, data, 0644); err != nil {
 		return destfile, nil, err
 	}
 
@@ -186,7 +190,9 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			}
 		}
 		provfile := destfile + ".prov"
-		if err := fileutil.AtomicWriteFile(provfile, body, 0644); err != nil {
+
+		// Use LockedAtomicWriteFile for the provenance file as well
+		if _, err := fileutil.LockedAtomicWriteFile(provfile, body, 0644); err != nil {
 			return destfile, nil, err
 		}
 
