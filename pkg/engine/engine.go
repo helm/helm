@@ -34,18 +34,6 @@ import (
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
-// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
-// > "template: %s: executing %q at <%s>: %s"
-var execErrFmt = regexp.MustCompile(`^template: (?P<templateName>(?U).+): executing (?P<functionName>(?U).+) at (?P<location>(?U).+): (?P<errMsg>(?U).+)(?P<nextErr>( template:.*)?)$`)
-
-// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
-// > "template: %s: %s"
-var execErrFmtWithoutTemplate = regexp.MustCompile(`^template: (?P<templateName>(?U).+): (?P<errMsg>.*)(?P<nextErr>( template:.*)?)$`)
-
-// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=191
-// > "template: no template %q associated with template %q"
-var execErrNoTemplateAssociated = regexp.MustCompile(`^template: no template (?P<location>.*) associated with template (?P<functionName>(.*)?)$`)
-
 // Engine is an implementation of the Helm rendering implementation for templates.
 type Engine struct {
 	// If strict is enabled, template rendering will fail if a template references
@@ -338,7 +326,7 @@ func cleanupParseError(filename string, err error) error {
 	location := tokens[1]
 	// The remaining tokens make up a stacktrace-like chain, ending with the relevant error
 	errMsg := tokens[len(tokens)-1]
-	return fmt.Errorf("parse error at (%s): %s", string(location), errMsg)
+	return fmt.Errorf("parse error at (%s): %s", location, errMsg)
 }
 
 type TraceableError struct {
@@ -350,25 +338,97 @@ type TraceableError struct {
 func (t TraceableError) String() string {
 	var errorString strings.Builder
 	if t.location != "" {
-		fmt.Fprintf(&errorString, "%s\n  ", t.location)
+		_, _ = fmt.Fprintf(&errorString, "%s\n  ", t.location)
 	}
 	if t.executedFunction != "" {
-		fmt.Fprintf(&errorString, "%s\n    ", t.executedFunction)
+		_, _ = fmt.Fprintf(&errorString, "%s\n    ", t.executedFunction)
 	}
 	if t.message != "" {
-		fmt.Fprintf(&errorString, "%s\n", t.message)
+		_, _ = fmt.Fprintf(&errorString, "%s\n", t.message)
 	}
 	return errorString.String()
+}
+
+// parseTemplateExecErrorString parses a template execution error string from text/template
+// without using regular expressions. It returns a TraceableError and true if parsing succeeded.
+func parseTemplateExecErrorString(s string) (TraceableError, bool) {
+	const prefix = "template: "
+	if !strings.HasPrefix(s, prefix) {
+		return TraceableError{}, false
+	}
+	remainder := s[len(prefix):]
+
+	// Special case: "template: no template %q associated with template %q"
+	// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=191
+	if strings.HasPrefix(remainder, "no template ") {
+		return TraceableError{message: s}, true
+	}
+
+	// Executing form: "<templateName>: executing \"<funcName>\" at <<location>>: <errMsg>[ template:...]"
+	// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
+	if idx := strings.Index(remainder, ": executing "); idx != -1 {
+		templateName := remainder[:idx]
+		after := remainder[idx+len(": executing "):]
+		if len(after) == 0 || after[0] != '"' {
+			return TraceableError{}, false
+		}
+		// find closing quote for function name
+		endQuote := strings.IndexByte(after[1:], '"')
+		if endQuote == -1 {
+			return TraceableError{}, false
+		}
+		endQuote++ // account for offset we started at 1
+		functionName := after[1:endQuote]
+		afterFunc := after[endQuote+1:]
+
+		// expect: " at <" then location then ">: " then message
+		const atPrefix = " at <"
+		if !strings.HasPrefix(afterFunc, atPrefix) {
+			return TraceableError{}, false
+		}
+		afterAt := afterFunc[len(atPrefix):]
+		endLoc := strings.Index(afterAt, ">: ")
+		if endLoc == -1 {
+			return TraceableError{}, false
+		}
+		locationName := afterAt[:endLoc]
+		errMsg := afterAt[endLoc+len(">: "):]
+
+		// trim chained next error starting with space + "template:" if present
+		if cut := strings.Index(errMsg, " template:"); cut != -1 {
+			errMsg = errMsg[:cut]
+		}
+		return TraceableError{
+			location:         templateName,
+			message:          errMsg,
+			executedFunction: "executing \"" + functionName + "\" at <" + locationName + ">:",
+		}, true
+	}
+
+	// Simple form: "<templateName>: <errMsg>"
+	// Use LastIndex to avoid splitting colons within line:col info.
+	// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
+	if sep := strings.LastIndex(remainder, ": "); sep != -1 {
+		templateName := remainder[:sep]
+		errMsg := remainder[sep+2:]
+		if cut := strings.Index(errMsg, " template:"); cut != -1 {
+			errMsg = errMsg[:cut]
+		}
+		return TraceableError{location: templateName, message: errMsg}, true
+	}
+
+	return TraceableError{}, false
 }
 
 // reformatExecErrorMsg takes an error message for template rendering and formats it into a formatted
 // multi-line error string
 func reformatExecErrorMsg(filename string, err error) error {
-	// This function matches the error message against regex's for the text/template package.
-	// If the regex's can parse out details from that error message such as the line number, template it failed on,
+	// This function parses the error message produced by text/template package.
+	// If it can parse out details from that error message such as the line number, template it failed on,
 	// and error description, then it will construct a new error that displays these details in a structured way.
 	// If there are issues with parsing the error message, the err passed into the function should return instead.
-	if _, isExecError := err.(template.ExecError); !isExecError {
+	var execError template.ExecError
+	if !errors.As(err, &execError) {
 		return err
 	}
 
@@ -384,45 +444,24 @@ func reformatExecErrorMsg(filename string, err error) error {
 
 	parts := warnRegex.FindStringSubmatch(tokens[2])
 	if len(parts) >= 2 {
-		return fmt.Errorf("execution error at (%s): %s", string(location), parts[1])
+		return fmt.Errorf("execution error at (%s): %s", location, parts[1])
 	}
 	current := err
-	fileLocations := []TraceableError{}
+	var fileLocations []TraceableError
 	for current != nil {
-		var traceable TraceableError
-		if matches := execErrFmt.FindStringSubmatch(current.Error()); matches != nil {
-			templateName := matches[execErrFmt.SubexpIndex("templateName")]
-			functionName := matches[execErrFmt.SubexpIndex("functionName")]
-			locationName := matches[execErrFmt.SubexpIndex("location")]
-			errMsg := matches[execErrFmt.SubexpIndex("errMsg")]
-			traceable = TraceableError{
-				location:         templateName,
-				message:          errMsg,
-				executedFunction: "executing " + functionName + " at " + locationName + ":",
-			}
-		} else if matches := execErrFmtWithoutTemplate.FindStringSubmatch(current.Error()); matches != nil {
-			templateName := matches[execErrFmt.SubexpIndex("templateName")]
-			errMsg := matches[execErrFmt.SubexpIndex("errMsg")]
-			traceable = TraceableError{
-				location: templateName,
-				message:  errMsg,
-			}
-		} else if matches := execErrNoTemplateAssociated.FindStringSubmatch(current.Error()); matches != nil {
-			traceable = TraceableError{
-				message: current.Error(),
+		if tr, ok := parseTemplateExecErrorString(current.Error()); ok {
+			if len(fileLocations) == 0 || fileLocations[len(fileLocations)-1] != tr {
+				fileLocations = append(fileLocations, tr)
 			}
 		} else {
 			return err
-		}
-		if len(fileLocations) == 0 || fileLocations[len(fileLocations)-1] != traceable {
-			fileLocations = append(fileLocations, traceable)
 		}
 		current = errors.Unwrap(current)
 	}
 
 	var finalErrorString strings.Builder
 	for _, fileLocation := range fileLocations {
-		fmt.Fprintf(&finalErrorString, "%s", fileLocation.String())
+		_, _ = fmt.Fprintf(&finalErrorString, "%s", fileLocation.String())
 	}
 
 	return errors.New(strings.TrimSpace(finalErrorString.String()))
