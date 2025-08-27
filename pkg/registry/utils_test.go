@@ -29,7 +29,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/distribution/distribution/v3/configuration"
@@ -65,12 +64,13 @@ type TestSuite struct {
 	CompromisedRegistryHost string
 	WorkspaceDir            string
 	RegistryClient          *Client
+	dockerRegistry          *registry.Registry
 
 	// A mock DNS server needed for TLS connection testing.
 	srv *mockdns.Server
 }
 
-func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
+func setup(suite *TestSuite, tlsEnabled, insecure bool) {
 	suite.WorkspaceDir = testWorkspaceDir
 	os.RemoveAll(suite.WorkspaceDir)
 	os.Mkdir(suite.WorkspaceDir, 0700)
@@ -166,20 +166,20 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 			config.HTTP.TLS.ClientCAs = []string{tlsCA}
 		}
 	}
-	dockerRegistry, err := registry.NewRegistry(context.Background(), config)
+	suite.dockerRegistry, err = registry.NewRegistry(context.Background(), config)
 	suite.Nil(err, "no error creating test registry")
 
 	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()
-	return dockerRegistry
+	go func() {
+		_ = suite.dockerRegistry.ListenAndServe()
+		_ = suite.srv.Close()
+		mockdns.UnpatchNet(net.DefaultResolver)
+	}()
 }
 
 func teardown(suite *TestSuite) {
-	var lock sync.Mutex
-	lock.Lock()
-	defer lock.Unlock()
-	if suite.srv != nil {
-		mockdns.UnpatchNet(net.DefaultResolver)
-		suite.srv.Close()
+	if suite.dockerRegistry != nil {
+		_ = suite.dockerRegistry.Shutdown(context.Background())
 	}
 }
 
