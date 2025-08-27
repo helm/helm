@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"golang.org/x/crypto/openpgp"           //nolint
@@ -194,29 +193,20 @@ func (s *Signatory) DecryptKey(fn PassphraseFetcher) error {
 	return s.Entity.PrivateKey.Decrypt(p)
 }
 
-// ClearSign signs a package with the given key and pre-marshalled metadata.
+// ClearSign signs package data with the given key and pre-marshalled metadata.
 //
-// This takes the path to a package archive file, a key, and marshalled metadata bytes.
-// This allows both charts and plugins to use the same signing infrastructure.
-//
-// The Signatory must have a valid Entity.PrivateKey for this to work. If it does
-// not, an error will be returned.
-func (s *Signatory) ClearSign(packagePath string, metadataBytes []byte) (string, error) {
+// This is the core signing method that works with data in memory.
+// The Signatory must have a valid Entity.PrivateKey for this to work.
+func (s *Signatory) ClearSign(archiveData []byte, filename string, metadataBytes []byte) (string, error) {
 	if s.Entity == nil {
 		return "", errors.New("private key not found")
 	} else if s.Entity.PrivateKey == nil {
 		return "", errors.New("provided key is not a private key. Try providing a keyring with secret keys")
 	}
 
-	if fi, err := os.Stat(packagePath); err != nil {
-		return "", err
-	} else if fi.IsDir() {
-		return "", errors.New("cannot sign a directory")
-	}
-
 	out := bytes.NewBuffer(nil)
 
-	b, err := messageBlock(packagePath, metadataBytes)
+	b, err := messageBlock(archiveData, filename, metadataBytes)
 	if err != nil {
 		return "", err
 	}
@@ -246,67 +236,45 @@ func (s *Signatory) ClearSign(packagePath string, metadataBytes []byte) (string,
 	return out.String(), nil
 }
 
-// Verify checks a signature and verifies that it is legit for a package.
-func (s *Signatory) Verify(packagePath, sigpath string) (*Verification, error) {
+// Verify checks a signature and verifies that it is legit for package data.
+// This is the core verification method that works with data in memory.
+func (s *Signatory) Verify(archiveData, provData []byte, filename string) (*Verification, error) {
 	ver := &Verification{}
-	for _, fname := range []string{packagePath, sigpath} {
-		if fi, err := os.Stat(fname); err != nil {
-			return ver, err
-		} else if fi.IsDir() {
-			return ver, fmt.Errorf("%s cannot be a directory", fname)
-		}
-	}
 
 	// First verify the signature
-	sig, err := s.decodeSignature(sigpath)
-	if err != nil {
-		return ver, fmt.Errorf("failed to decode signature: %w", err)
+	block, _ := clearsign.Decode(provData)
+	if block == nil {
+		return ver, errors.New("signature block not found")
 	}
 
-	by, err := s.verifySignature(sig)
+	by, err := s.verifySignature(block)
 	if err != nil {
 		return ver, err
 	}
 	ver.SignedBy = by
 
-	// Second, verify the hash of the tarball.
-	sum, err := DigestFile(packagePath)
+	// Second, verify the hash of the data.
+	sum, err := Digest(bytes.NewBuffer(archiveData))
 	if err != nil {
 		return ver, err
 	}
-	sums, err := parseMessageBlock(sig.Plaintext)
+	sums, err := parseMessageBlock(block.Plaintext)
 	if err != nil {
 		return ver, err
 	}
 
 	sum = "sha256:" + sum
-	basename := filepath.Base(packagePath)
-	if sha, ok := sums.Files[basename]; !ok {
-		return ver, fmt.Errorf("provenance does not contain a SHA for a file named %q", basename)
+	if sha, ok := sums.Files[filename]; !ok {
+		return ver, fmt.Errorf("provenance does not contain a SHA for a file named %q", filename)
 	} else if sha != sum {
-		return ver, fmt.Errorf("sha256 sum does not match for %s: %q != %q", basename, sha, sum)
+		return ver, fmt.Errorf("sha256 sum does not match for %s: %q != %q", filename, sha, sum)
 	}
 	ver.FileHash = sum
-	ver.FileName = basename
+	ver.FileName = filename
 
 	// TODO: when image signing is added, verify that here.
 
 	return ver, nil
-}
-
-func (s *Signatory) decodeSignature(filename string) (*clearsign.Block, error) {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	block, _ := clearsign.Decode(data)
-	if block == nil {
-		// There was no sig in the file.
-		return nil, errors.New("signature block not found")
-	}
-
-	return block, nil
 }
 
 // verifySignature verifies that the given block is validly signed, and returns the signer.
@@ -318,18 +286,17 @@ func (s *Signatory) verifySignature(block *clearsign.Block) (*openpgp.Entity, er
 	)
 }
 
-// messageBlock creates a message block from a package path and pre-marshalled metadata
-func messageBlock(packagePath string, metadataBytes []byte) (*bytes.Buffer, error) {
-	// Checksum the archive
-	chash, err := DigestFile(packagePath)
+// messageBlock creates a message block from archive data and pre-marshalled metadata
+func messageBlock(archiveData []byte, filename string, metadataBytes []byte) (*bytes.Buffer, error) {
+	// Checksum the archive data
+	chash, err := Digest(bytes.NewBuffer(archiveData))
 	if err != nil {
 		return nil, err
 	}
 
-	base := filepath.Base(packagePath)
 	sums := &SumCollection{
 		Files: map[string]string{
-			base: "sha256:" + chash,
+			filename: "sha256:" + chash,
 		},
 	}
 

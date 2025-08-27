@@ -55,8 +55,8 @@ type Installer interface {
 type Verifier interface {
 	// SupportsVerification returns true if this installer can verify plugins
 	SupportsVerification() bool
-	// PrepareForVerification downloads necessary files for verification
-	PrepareForVerification() (pluginPath string, cleanup func(), err error)
+	// GetVerificationData returns plugin and provenance data for verification
+	GetVerificationData() (archiveData, provData []byte, filename string, err error)
 }
 
 // Install installs a plugin.
@@ -91,17 +91,14 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 			return nil, fmt.Errorf("--verify is only supported for plugin tarballs (.tgz files)")
 		}
 
-		// Prepare for verification (download files if needed)
-		pluginPath, cleanup, err := verifier.PrepareForVerification()
+		// Get verification data (works for both memory and file-based installers)
+		archiveData, provData, filename, err := verifier.GetVerificationData()
 		if err != nil {
-			return nil, fmt.Errorf("failed to prepare for verification: %w", err)
-		}
-		if cleanup != nil {
-			defer cleanup()
+			return nil, fmt.Errorf("failed to get verification data: %w", err)
 		}
 
-		// Verify the plugin
-		verification, err := plugin.VerifyPlugin(pluginPath, opts.Keyring)
+		// Verify using data directly
+		verification, err := plugin.VerifyPlugin(archiveData, provData, filename, opts.Keyring)
 		if err != nil {
 			return nil, fmt.Errorf("plugin verification failed: %w", err)
 		}

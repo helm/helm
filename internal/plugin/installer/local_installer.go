@@ -35,9 +35,10 @@ var ErrPluginNotAFolder = errors.New("expected plugin to be a folder")
 // LocalInstaller installs plugins from the filesystem.
 type LocalInstaller struct {
 	base
-	isArchive bool
-	extractor Extractor
-	provData  []byte // Provenance data to save after installation
+	isArchive  bool
+	extractor  Extractor
+	pluginData []byte // Cached plugin data
+	provData   []byte // Cached provenance data
 }
 
 // NewLocalInstaller creates a new LocalInstaller.
@@ -184,22 +185,28 @@ func (i *LocalInstaller) SupportsVerification() bool {
 	return i.isArchive
 }
 
-// PrepareForVerification returns the local path for verification
-func (i *LocalInstaller) PrepareForVerification() (string, func(), error) {
+// GetVerificationData loads plugin and provenance data from local files for verification
+func (i *LocalInstaller) GetVerificationData() (archiveData, provData []byte, filename string, err error) {
 	if !i.SupportsVerification() {
-		return "", nil, fmt.Errorf("verification not supported for directories")
+		return nil, nil, "", fmt.Errorf("verification not supported for directories")
 	}
 
-	// For local files, we just need to check that the .prov file exists
-	provFile := i.Source + ".prov"
-	provData, err := os.ReadFile(provFile)
-	if err != nil {
-		return "", nil, fmt.Errorf("signature file %s not found: %w", provFile, err)
+	// Read and cache the plugin archive file
+	if i.pluginData == nil {
+		i.pluginData, err = os.ReadFile(i.Source)
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("failed to read plugin file: %w", err)
+		}
 	}
 
-	// Store the provenance data so we can save it after installation
-	i.provData = provData
+	// Read and cache the provenance file
+	if i.provData == nil {
+		provFile := i.Source + ".prov"
+		i.provData, err = os.ReadFile(provFile)
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("signature file %s not found: %w", provFile, err)
+		}
+	}
 
-	// Return the source path directly, no cleanup needed
-	return i.Source, nil, nil
+	return i.pluginData, i.provData, filepath.Base(i.Source), nil
 }

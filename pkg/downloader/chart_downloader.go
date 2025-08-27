@@ -493,7 +493,18 @@ func VerifyChart(path, provfile, keyring string) (*provenance.Verification, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to load keyring: %w", err)
 	}
-	return sig.Verify(path, provfile)
+
+	// Read archive and provenance files
+	archiveData, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read chart archive: %w", err)
+	}
+	provData, err := os.ReadFile(provfile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read provenance file: %w", err)
+	}
+
+	return sig.Verify(archiveData, provData, filepath.Base(path))
 }
 
 // isTar tests whether the given file is a tar file.
