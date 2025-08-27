@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -136,6 +137,37 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	saved, v, err := c.DownloadTo(downloadSourceRef, p.Version, dest)
 	if err != nil {
 		return out.String(), err
+	}
+
+	// Print a pull summary for repo mode and non-OCI downloads.
+	// Some repos (e.g., Bitnami) resolve --repo pulls to oci:// refs, but that
+	// path does not go through the registry client's summary printer, so we emit
+	// a consistent summary here. We mirror the OCI output format:
+	//
+	//   Pulled: <chart>:<version>
+	//   Digest: sha256:<digest>
+	//
+	// For HTTP/repo pulls, the digest is the SHA-256 of the downloaded .tgz archive.
+	// For direct OCI pulls, the registry client already prints "Pulled:" and
+	// "Digest:" (manifest digest), so we do not print here to avoid duplicates.
+	if p.RepoURL != "" || !registry.IsOCI(downloadSourceRef) {
+		base := strings.TrimSuffix(filepath.Base(saved), ".tgz")
+		chart := base
+		ver := ""
+		if i := strings.LastIndex(base, "-"); i > 0 {
+			chart = base[:i]
+			ver = base[i+1:]
+		}
+		if ver != "" {
+			fmt.Fprintf(&out, "Pulled: %s:%s\n", chart, ver)
+		} else {
+			fmt.Fprintf(&out, "Pulled: %s\n", chart)
+		}
+
+		if f, err := os.ReadFile(saved); err == nil {
+			sum := sha256.Sum256(f)
+			fmt.Fprintf(&out, "Digest: sha256:%x\n", sum)
+		}
 	}
 
 	if p.Verify {
