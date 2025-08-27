@@ -573,22 +573,6 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
 	is.Equal(goroutines, runtime.NumGoroutine())
 }
-func TestInstallRelease_WaitForJobs(t *testing.T) {
-	is := assert.New(t)
-	instAction := installAction(t)
-	instAction.ReleaseName = "come-fail-away"
-	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("I timed out")
-	instAction.cfg.KubeClient = failer
-	instAction.WaitStrategy = kube.StatusWatcherStrategy
-	instAction.WaitForJobs = true
-	vals := map[string]interface{}{}
-
-	res, err := instAction.Run(buildChart(), vals)
-	is.Error(err)
-	is.Contains(res.Info.Description, "I timed out")
-	is.Equal(res.Info.Status, release.StatusFailed)
-}
 
 func TestInstallRelease_RollbackOnFailure(t *testing.T) {
 	is := assert.New(t)

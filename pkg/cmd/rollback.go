@@ -84,7 +84,6 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.ServerSideApply, "server-side", "auto", "must be \"true\", \"false\" or \"auto\". Object updates run in the server instead of the client (\"auto\" defaults the value from the previous chart release's method)")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during rollback")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&client.WaitForJobs, "wait-for-jobs", false, "if set and --wait enabled, will wait until all Jobs have been completed before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this rollback when rollback fails")
 	f.IntVar(&client.MaxHistory, "history-max", settings.MaxHistory, "limit the maximum number of revisions saved per release. Use 0 for no limit")
 	AddWaitFlag(cmd, &client.WaitStrategy)
