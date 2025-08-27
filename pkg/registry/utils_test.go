@@ -35,7 +35,6 @@ import (
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
-	"github.com/foxcpp/go-mockdns"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
@@ -65,9 +64,6 @@ type TestSuite struct {
 	WorkspaceDir            string
 	RegistryClient          *Client
 	dockerRegistry          *registry.Registry
-
-	// A mock DNS server needed for TLS connection testing.
-	srv *mockdns.Server
 }
 
 func setup(suite *TestSuite, tlsEnabled, insecure bool) {
@@ -135,13 +131,6 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) {
 	// host is localhost/127.0.0.1.
 	port := ln.Addr().(*net.TCPAddr).Port
 	suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
-	suite.srv, err = mockdns.NewServer(map[string]mockdns.Zone{
-		"helm-test-registry.": {
-			A: []string{"127.0.0.1"},
-		},
-	}, false)
-	suite.Nil(err, "no error creating mock DNS server")
-	suite.srv.PatchNet(net.DefaultResolver)
 
 	config.HTTP.Addr = ln.Addr().String()
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
@@ -172,8 +161,6 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) {
 	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()
 	go func() {
 		_ = suite.dockerRegistry.ListenAndServe()
-		_ = suite.srv.Close()
-		mockdns.UnpatchNet(net.DefaultResolver)
 	}()
 }
 
