@@ -18,6 +18,7 @@ package plugin
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"golang.org/x/crypto/openpgp/clearsign" //nolint
 
@@ -37,7 +38,8 @@ type SigningInfo struct {
 }
 
 // GetPluginSigningInfo returns signing information for an installed plugin
-func GetPluginSigningInfo(pluginName string) (*SigningInfo, error) {
+func GetPluginSigningInfo(metadata Metadata) (*SigningInfo, error) {
+	pluginName := metadata.Name
 	pluginDir := helmpath.DataPath("plugins", pluginName)
 
 	// Check if plugin directory exists
@@ -54,8 +56,17 @@ func GetPluginSigningInfo(pluginName string) (*SigningInfo, error) {
 		}, nil
 	}
 
+	// Find the exact tarball file for this plugin
+	pluginsDir := helmpath.DataPath("plugins")
+	tarballPath := filepath.Join(pluginsDir, fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version))
+	if _, err := os.Stat(tarballPath); err != nil {
+		return &SigningInfo{
+			Status:   "unsigned",
+			IsSigned: false,
+		}, nil
+	}
+
 	// Check for .prov file associated with the tarball
-	tarballPath := helmpath.DataPath("plugins", pluginName+".tgz")
 	provFile := tarballPath + ".prov"
 	provData, err := os.ReadFile(provFile)
 	if err != nil {
@@ -115,7 +126,7 @@ func GetSigningInfoForPlugins(plugins []Plugin) map[string]*SigningInfo {
 	for _, p := range plugins {
 		m := p.Metadata()
 
-		info, err := GetPluginSigningInfo(m.Name)
+		info, err := GetPluginSigningInfo(m)
 		if err != nil {
 			// If there's an error, treat as unsigned
 			result[m.Name] = &SigningInfo{
