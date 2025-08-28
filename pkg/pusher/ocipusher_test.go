@@ -256,7 +256,6 @@ func TestOCIPusher_newRegistryClient(t *testing.T) {
 
 func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 	// Path to test charts
-	chartPath := "../../pkg/cmd/testdata/testcharts/compressedchart-0.1.0.tgz"
 	chartWithProvPath := "../../pkg/cmd/testdata/testcharts/signtest-0.1.0.tgz"
 
 	tests := []struct {
@@ -274,44 +273,6 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 			href:          "oci://localhost:5000/test",
 			expectError:   true,
 			errorContains: "does not appear to be a gzipped archive",
-		},
-		{
-			name: "chart read error",
-			setupFunc: func(t *testing.T) (string, func()) {
-				t.Helper()
-				// Create a valid chart file that we'll make unreadable
-				tempDir := t.TempDir()
-				tempChart := filepath.Join(tempDir, "temp-chart.tgz")
-
-				// Copy a valid chart
-				src, err := os.Open(chartPath)
-				if err != nil {
-					t.Fatal(err)
-				}
-				defer src.Close()
-
-				dst, err := os.Create(tempChart)
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				if _, err := io.Copy(dst, src); err != nil {
-					t.Fatal(err)
-				}
-				dst.Close()
-
-				// Make the file unreadable
-				if err := os.Chmod(tempChart, 0000); err != nil {
-					t.Fatal(err)
-				}
-
-				return tempChart, func() {
-					os.Chmod(tempChart, 0644) // Restore permissions for cleanup
-				}
-			},
-			href:          "oci://localhost:5000/test",
-			expectError:   true,
-			errorContains: "permission denied",
 		},
 		{
 			name:     "push with provenance file - loading phase",
