@@ -16,9 +16,12 @@ limitations under the License.
 package plugin
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/crypto/openpgp/clearsign" //nolint
 
@@ -31,8 +34,8 @@ type SigningInfo struct {
 	// - "local dev": Plugin is a symlink (development mode)
 	// - "unsigned": No provenance file found
 	// - "invalid provenance": Provenance file is malformed
-	// - "mismatched provenance": Provenance file does not exactly match plugin
-	// - "signed": Valid signature exists for this exact plugin
+	// - "mismatched provenance": Provenance file does not match the installed tarball
+	// - "signed": Valid signature exists for the installed tarball
 	Status   string
 	IsSigned bool // True if plugin has a valid signature (even if not verified against keyring)
 }
@@ -88,9 +91,9 @@ func GetPluginSigningInfo(metadata Metadata) (*SigningInfo, error) {
 		}, nil
 	}
 
-	// Check if provenance is well-formed
+	// Check if provenance matches the actual tarball
 	blockContent := string(block.Plaintext)
-	if !validateProvenanceHash(blockContent) {
+	if !validateProvenanceHash(blockContent, tarballPath) {
 		return &SigningInfo{
 			Status:   "mismatched provenance",
 			IsSigned: false,
@@ -108,15 +111,48 @@ func GetPluginSigningInfo(metadata Metadata) (*SigningInfo, error) {
 	}, nil
 }
 
-func validateProvenanceHash(blockContent string) bool {
-	// Parse provenance to check if it's well-formed
-	// (No need to compare hashes since we can't recreate the original tarball)
+func validateProvenanceHash(blockContent string, tarballPath string) bool {
+	// Parse provenance to get the expected hash
 	_, sums, err := parsePluginMessageBlock([]byte(blockContent))
 	if err != nil {
 		return false
 	}
-	// Valid if provenance contains file checksums
-	return len(sums.Files) > 0
+
+	// Must have file checksums
+	if len(sums.Files) == 0 {
+		return false
+	}
+
+	// Calculate actual hash of the tarball
+	actualHash, err := calculateFileHash(tarballPath)
+	if err != nil {
+		return false
+	}
+
+	// Check if the actual hash matches the expected hash in the provenance
+	for filename, expectedHash := range sums.Files {
+		if strings.Contains(filename, filepath.Base(tarballPath)) && expectedHash == actualHash {
+			return true
+		}
+	}
+
+	return false
+}
+
+// calculateFileHash calculates the SHA256 hash of a file
+func calculateFileHash(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("sha256:%x", hasher.Sum(nil)), nil
 }
 
 // GetSigningInfoForPlugins returns signing info for multiple plugins
