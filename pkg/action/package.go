@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
 
 	"github.com/Masterminds/semver/v3"
@@ -156,8 +157,14 @@ func (p *Package) Clearsign(filename string) error {
 		return fmt.Errorf("failed to marshal chart metadata: %w", err)
 	}
 
+	// Read the chart archive file
+	archiveData, err := os.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to read chart archive: %w", err)
+	}
+
 	// Use the generic provenance signing function
-	sig, err := signer.ClearSign(filename, metadataBytes)
+	sig, err := signer.ClearSign(archiveData, filepath.Base(filename), metadataBytes)
 	if err != nil {
 		return err
 	}

@@ -47,8 +47,14 @@ func SignPlugin(tarballPath string, signer *provenance.Signatory) (string, error
 		return "", fmt.Errorf("failed to marshal plugin metadata: %w", err)
 	}
 
+	// Read the tarball file
+	archiveData, err := os.ReadFile(tarballPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read tarball: %w", err)
+	}
+
 	// Use the generic provenance signing function
-	return signer.ClearSign(tarballPath, metadataBytes)
+	return signer.ClearSign(archiveData, filepath.Base(tarballPath), metadataBytes)
 }
 
 // ExtractPluginMetadata extracts plugin metadata from a tarball
