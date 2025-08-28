@@ -57,11 +57,8 @@ var (
 	testHtpasswdFileBasename = "authtest.htpasswd"
 	testUsername             = "myuser"
 	testPassword             = "mypass"
-)
-
-var (
-	testIssuer  = "testissuer"
-	testService = "testservice"
+	testIssuer               = "testissuer"
+	testService              = "testservice"
 )
 
 type TestSuite struct {
