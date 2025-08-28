@@ -28,9 +28,6 @@ import (
 // ErrMissingMetadata indicates that plugin.yaml is missing.
 var ErrMissingMetadata = errors.New("plugin metadata (plugin.yaml) missing")
 
-// Debug enables verbose output.
-var Debug bool
-
 // Installer provides an interface for installing helm client plugins.
 type Installer interface {
 	// Install adds a plugin.
