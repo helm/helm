@@ -87,7 +87,7 @@ func TestLocalInstallerTarball(t *testing.T) {
 		Mode int64
 	}{
 		{"plugin.yaml", "name: test-plugin\nversion: 1.0.0\nusage: test\ndescription: test\ncommand: echo", 0644},
-		{"bin/test-plugin", "#!/bin/bash\necho test", 0755},
+		{"bin/test-plugin", "#!/usr/bin/env sh\necho test", 0755},
 	}
 
 	for _, file := range files {
@@ -168,7 +168,7 @@ func TestLocalInstallerTarballWithSubdirectory(t *testing.T) {
 		{"my-plugin/", "", 0755, true},
 		{"my-plugin/plugin.yaml", "name: my-plugin\nversion: 1.0.0\nusage: test\ndescription: test\ncommand: echo", 0644, false},
 		{"my-plugin/bin/", "", 0755, true},
-		{"my-plugin/bin/my-plugin", "#!/bin/bash\necho test", 0755, false},
+		{"my-plugin/bin/my-plugin", "#!/usr/bin/env sh\necho test", 0755, false},
 	}
 
 	for _, file := range files {
