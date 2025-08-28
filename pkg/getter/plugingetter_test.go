@@ -95,16 +95,16 @@ func TestConvertOptions(t *testing.T) {
 	assert.Equal(t, expected, opts)
 }
 
-type TestPlugin struct {
+type testPlugin struct {
 	t   *testing.T
 	dir string
 }
 
-func (t *TestPlugin) Dir() string {
+func (t *testPlugin) Dir() string {
 	return t.dir
 }
 
-func (t *TestPlugin) Metadata() plugin.Metadata {
+func (t *testPlugin) Metadata() plugin.Metadata {
 	return plugin.Metadata{
 		Name:       "fake-plugin",
 		Type:       "cli/v1",
@@ -121,22 +121,22 @@ func (t *TestPlugin) Metadata() plugin.Metadata {
 	}
 }
 
-func (t *TestPlugin) Invoke(_ context.Context, _ *plugin.Input) (*plugin.Output, error) {
+func (t *testPlugin) Invoke(_ context.Context, _ *plugin.Input) (*plugin.Output, error) {
 	// Simulate a plugin invocation
 	output := &plugin.Output{
-		Message: &schema.OutputMessageGetterV1{
+		Message: schema.OutputMessageGetterV1{
 			Data: []byte("fake-plugin output"),
 		},
 	}
 	return output, nil
 }
 
-var _ plugin.Plugin = (*TestPlugin)(nil)
+var _ plugin.Plugin = (*testPlugin)(nil)
 
 func TestGetterPlugin(t *testing.T) {
 	gp := getterPlugin{
 		options: []Option{},
-		plg:     &TestPlugin{t: t, dir: "fake/dir"},
+		plg:     &testPlugin{t: t, dir: "fake/dir"},
 	}
 
 	buf, err := gp.Get("test://example.com", WithTimeout(5*time.Second))
