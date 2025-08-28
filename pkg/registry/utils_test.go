@@ -35,8 +35,10 @@ import (
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
+	_ "github.com/distribution/distribution/v3/registry/auth/token"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
 	"github.com/foxcpp/go-mockdns"
+	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
@@ -56,12 +58,15 @@ var (
 	testHtpasswdFileBasename = "authtest.htpasswd"
 	testUsername             = "myuser"
 	testPassword             = "mypass"
+	testIssuer               = "testissuer"
+	testService              = "testservice"
 )
 
 type TestSuite struct {
 	suite.Suite
 	Out                     io.Writer
 	DockerRegistryHost      string
+	AuthServerHost          string
 	CompromisedRegistryHost string
 	WorkspaceDir            string
 	RegistryClient          *Client
@@ -70,7 +75,7 @@ type TestSuite struct {
 	srv *mockdns.Server
 }
 
-func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
+func setup(suite *TestSuite, tlsEnabled, insecure bool, auth string) *registry.Registry {
 	suite.WorkspaceDir = testWorkspaceDir
 	os.RemoveAll(suite.WorkspaceDir)
 	os.Mkdir(suite.WorkspaceDir, 0700)
@@ -147,11 +152,27 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
 
-	config.Auth = configuration.Auth{
-		"htpasswd": configuration.Parameters{
-			"realm": "localhost",
-			"path":  htpasswdPath,
-		},
+	if auth == "token" {
+		port, err := freeport.GetFreePort()
+		suite.Nil(err, "no error finding free port for test auth server")
+
+		suite.AuthServerHost = fmt.Sprintf("localhost:%d", port)
+
+		config.Auth = configuration.Auth{
+			"token": configuration.Parameters{
+				"realm":          "http://" + suite.AuthServerHost + "/auth",
+				"service":        testService,
+				"issuer":         testIssuer,
+				"rootcertbundle": tlsServerCert,
+			},
+		}
+	} else {
+		config.Auth = configuration.Auth{
+			"htpasswd": configuration.Parameters{
+				"realm": "localhost",
+				"path":  htpasswdPath,
+			},
+		}
 	}
 
 	// config tls

@@ -699,6 +699,8 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	repository.PlainHTTP = c.plainHTTP
 	repository.Client = c.authorizer
 
+	ctx = WithScopeHint(ctx, repository, auth.ActionPush, auth.ActionPull)
+
 	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
 	if err != nil {
 		return nil, err
@@ -908,4 +910,11 @@ func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 
 	return oras.TagBytes(ctx, memoryStore, ocispec.MediaTypeImageManifest,
 		manifestData, parsedRef.String())
+}
+
+func WithScopeHint(ctx context.Context, target any, actions ...string) context.Context {
+	if repo, ok := target.(*remote.Repository); ok {
+		return auth.AppendRepositoryScope(ctx, repo.Reference, actions...)
+	}
+	return ctx
 }
