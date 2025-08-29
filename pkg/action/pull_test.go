@@ -77,7 +77,7 @@ entries:
 	out, err := p.Run("testchart")
 	require.NoError(t, err, "Pull.Run() should succeed. Output:\n%s", out)
 
-	expectedURL := srv.URL + "/testchart-1.2.3.tgz"
+	expectedURL := srv.URL + "/testchart:1.2.3"
 	assert.Contains(t, out, "Pulled: "+expectedURL, "expected Pulled summary in output")
 	assert.Contains(t, out, "Digest: "+wantDigest, "expected archive digest in output")
 
@@ -95,7 +95,7 @@ func TestPull_PrintsSummary_ForDirectHTTPURL(t *testing.T) {
 	wantDigest := fmt.Sprintf("sha256:%x", sum)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/directchart-9.9.9.tgz", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/directchart-9.9.9.tar.gz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/gzip")
 		_, _ = w.Write(chartBytes)
 	})
@@ -114,17 +114,17 @@ func TestPull_PrintsSummary_ForDirectHTTPURL(t *testing.T) {
 	p.DestDir = t.TempDir()
 
 	// Direct HTTP URL (absolute URL). Version is ignored for absolute URLs.
-	chartURL := srv.URL + "/directchart-9.9.9.tgz"
+	chartURL := srv.URL + "/directchart-9.9.9.tar.gz"
 
 	out, err := p.Run(chartURL)
 	require.NoError(t, err, "Pull.Run() should succeed. Output:\n%s", out)
 
 	// Output should reflect name-version.tgz from the URL.
-	expectedURL := srv.URL + "/directchart-9.9.9.tgz"
+	expectedURL := srv.URL + "/directchart:9.9.9"
 	assert.Contains(t, out, "Pulled: "+expectedURL, "expected Pulled summary in output")
 	assert.Contains(t, out, "Digest: "+wantDigest, "expected archive digest in output")
 
 	// Ensure the chart file was saved.
-	_, statErr := os.Stat(filepath.Join(p.DestDir, "directchart-9.9.9.tgz"))
+	_, statErr := os.Stat(filepath.Join(p.DestDir, "directchart-9.9.9.tar.gz"))
 	require.NoError(t, statErr, "expected chart archive to be saved")
 }
