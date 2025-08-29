@@ -38,7 +38,6 @@ import (
 	_ "github.com/distribution/distribution/v3/registry/auth/token"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
 	"github.com/foxcpp/go-mockdns"
-	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
@@ -153,10 +152,12 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool, auth string) *registry.R
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
 
 	if auth == "token" {
-		port, err := freeport.GetFreePort()
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		suite.Nil(err, "no error finding free port for test auth server")
+		defer ln.Close()
 
-		suite.AuthServerHost = fmt.Sprintf("localhost:%d", port)
+		//set test auth server host
+		suite.AuthServerHost = ln.Addr().String()
 
 		config.Auth = configuration.Auth{
 			"token": configuration.Parameters{

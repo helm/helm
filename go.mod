@@ -26,7 +26,6 @@ require (
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/moby/term v0.5.2
 	github.com/opencontainers/image-spec v1.1.1
-	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/rubenv/sql-migrate v1.8.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/spf13/cobra v1.9.1
