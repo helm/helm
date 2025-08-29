@@ -151,6 +151,9 @@ func validateChartVersion(cf *chart.Metadata) error {
 
 func validateChartMaintainer(cf *chart.Metadata) error {
 	for _, maintainer := range cf.Maintainers {
+		if maintainer == nil {
+			return errors.New("a maintainer entry is empty")
+		}
 		if maintainer.Name == "" {
 			return errors.New("each maintainer requires a name")
 		} else if maintainer.Email != "" && !govalidator.IsEmail(maintainer.Email) {
