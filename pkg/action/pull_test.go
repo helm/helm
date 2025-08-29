@@ -77,7 +77,8 @@ entries:
 	out, err := p.Run("testchart")
 	require.NoError(t, err, "Pull.Run() should succeed. Output:\n%s", out)
 
-	assert.Contains(t, out, "Pulled: testchart:1.2.3", "expected Pulled summary in output")
+	expectedURL := srv.URL + "/testchart-1.2.3.tgz"
+	assert.Contains(t, out, "Pulled: "+expectedURL, "expected Pulled summary in output")
 	assert.Contains(t, out, "Digest: "+wantDigest, "expected archive digest in output")
 
 	// Ensure the chart file was saved.
@@ -119,7 +120,8 @@ func TestPull_PrintsSummary_ForDirectHTTPURL(t *testing.T) {
 	require.NoError(t, err, "Pull.Run() should succeed. Output:\n%s", out)
 
 	// Output should reflect name-version.tgz from the URL.
-	assert.Contains(t, out, "Pulled: directchart:9.9.9", "expected Pulled summary in output")
+	expectedURL := srv.URL + "/directchart-9.9.9.tgz"
+	assert.Contains(t, out, "Pulled: "+expectedURL, "expected Pulled summary in output")
 	assert.Contains(t, out, "Digest: "+wantDigest, "expected archive digest in output")
 
 	// Ensure the chart file was saved.

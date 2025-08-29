@@ -151,18 +151,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	// For direct OCI pulls, the registry client already prints "Pulled:" and
 	// "Digest:" (manifest digest), so we do not print here to avoid duplicates.
 	if p.RepoURL != "" || !registry.IsOCI(downloadSourceRef) {
-		base := strings.TrimSuffix(filepath.Base(saved), ".tgz")
-		chart := base
-		ver := ""
-		if i := strings.LastIndex(base, "-"); i > 0 {
-			chart = base[:i]
-			ver = base[i+1:]
-		}
-		if ver != "" {
-			fmt.Fprintf(&out, "Pulled: %s:%s\n", chart, ver)
-		} else {
-			fmt.Fprintf(&out, "Pulled: %s\n", chart)
-		}
+		fmt.Fprintf(&out, "Pulled: %s\n", downloadSourceRef)
 
 		if f, err := os.ReadFile(saved); err == nil {
 			sum := sha256.Sum256(f)
