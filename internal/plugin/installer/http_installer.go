@@ -184,20 +184,15 @@ func (i *HTTPInstaller) PrepareForVerification() (string, func(), error) {
 		return "", nil, fmt.Errorf("failed to write plugin file: %w", err)
 	}
 
-	// Download signature file
-	provData, err := g.Get(i.Source+".prov", getter.WithURL(i.Source+".prov"))
-	if err != nil {
-		cleanup()
-		return "", nil, fmt.Errorf("failed to download plugin signature: %w", err)
+	// Try to download signature file - don't fail if it doesn't exist
+	if provData, err := g.Get(i.Source+".prov", getter.WithURL(i.Source+".prov")); err == nil {
+		if err := os.WriteFile(pluginFile+".prov", provData.Bytes(), 0644); err == nil {
+			// Store the provenance data so we can save it after installation
+			i.provData = provData.Bytes()
+		}
 	}
-
-	if err := os.WriteFile(pluginFile+".prov", provData.Bytes(), 0644); err != nil {
-		cleanup()
-		return "", nil, fmt.Errorf("failed to write signature file: %w", err)
-	}
-
-	// Store the provenance data so we can save it after installation
-	i.provData = provData.Bytes()
+	// Note: We don't fail if .prov file can't be downloaded - the verification logic
+	// in InstallWithOptions will handle missing .prov files appropriately
 
 	return pluginFile, cleanup, nil
 }

@@ -190,15 +190,14 @@ func (i *LocalInstaller) PrepareForVerification() (string, func(), error) {
 		return "", nil, fmt.Errorf("verification not supported for directories")
 	}
 
-	// For local files, we just need to check that the .prov file exists
+	// For local files, try to read the .prov file if it exists
 	provFile := i.Source + ".prov"
-	provData, err := os.ReadFile(provFile)
-	if err != nil {
-		return "", nil, fmt.Errorf("signature file %s not found: %w", provFile, err)
+	if provData, err := os.ReadFile(provFile); err == nil {
+		// Store the provenance data so we can save it after installation
+		i.provData = provData
 	}
-
-	// Store the provenance data so we can save it after installation
-	i.provData = provData
+	// Note: We don't fail if .prov file doesn't exist - the verification logic
+	// in InstallWithOptions will handle missing .prov files appropriately
 
 	// Return the source path directly, no cleanup needed
 	return i.Source, nil, nil

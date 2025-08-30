@@ -100,20 +100,32 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 			defer cleanup()
 		}
 
-		// Verify the plugin
-		verification, err := plugin.VerifyPlugin(pluginPath, opts.Keyring)
-		if err != nil {
-			return nil, fmt.Errorf("plugin verification failed: %w", err)
-		}
+		// Check if provenance file exists
+		provFile := pluginPath + ".prov"
+		if _, err := os.Stat(provFile); err != nil {
+			if os.IsNotExist(err) {
+				// No .prov file found - emit warning but continue installation
+				fmt.Fprintf(os.Stderr, "WARNING: No provenance file found for plugin. Plugin is not signed and cannot be verified.\n")
+			} else {
+				// Other error accessing .prov file
+				return nil, fmt.Errorf("failed to access provenance file: %w", err)
+			}
+		} else {
+			// Provenance file exists - verify the plugin
+			verification, err := plugin.VerifyPlugin(pluginPath, opts.Keyring)
+			if err != nil {
+				return nil, fmt.Errorf("plugin verification failed: %w", err)
+			}
 
-		// Collect verification info
-		result = &VerificationResult{
-			SignedBy:    make([]string, 0),
-			Fingerprint: fmt.Sprintf("%X", verification.SignedBy.PrimaryKey.Fingerprint),
-			FileHash:    verification.FileHash,
-		}
-		for name := range verification.SignedBy.Identities {
-			result.SignedBy = append(result.SignedBy, name)
+			// Collect verification info
+			result = &VerificationResult{
+				SignedBy:    make([]string, 0),
+				Fingerprint: fmt.Sprintf("%X", verification.SignedBy.PrimaryKey.Fingerprint),
+				FileHash:    verification.FileHash,
+			}
+			for name := range verification.SignedBy.Identities {
+				result.SignedBy = append(result.SignedBy, name)
+			}
 		}
 	}
 

@@ -288,21 +288,18 @@ func (i *OCIInstaller) PrepareForVerification() (pluginPath string, cleanup func
 		return "", nil, fmt.Errorf("failed to save plugin tarball: %w", err)
 	}
 
-	// Download the provenance file
+	// Try to download the provenance file - don't fail if it doesn't exist
 	provSource := i.Source + ".prov"
-	provData, err := i.getter.Get(provSource)
-	if err != nil {
-		cleanup()
-		return "", nil, fmt.Errorf("failed to pull provenance from %s: %w", provSource, err)
+	if provData, err := i.getter.Get(provSource); err == nil {
+		// Save provenance to temp directory
+		provFile := filepath.Join(tempDir, filename+".prov")
+		if err := os.WriteFile(provFile, provData.Bytes(), 0644); err == nil {
+			slog.Debug("prepared plugin for verification", "plugin", pluginTarball, "provenance", provFile)
+		}
 	}
+	// Note: We don't fail if .prov file can't be downloaded - the verification logic
+	// in InstallWithOptions will handle missing .prov files appropriately
 
-	// Save provenance to temp directory
-	provFile := filepath.Join(tempDir, filename+".prov")
-	if err := os.WriteFile(provFile, provData.Bytes(), 0644); err != nil {
-		cleanup()
-		return "", nil, fmt.Errorf("failed to save provenance file: %w", err)
-	}
-
-	slog.Debug("prepared plugin for verification", "plugin", pluginTarball, "provenance", provFile)
+	slog.Debug("prepared plugin for verification", "plugin", pluginTarball)
 	return pluginTarball, cleanup, nil
 }
