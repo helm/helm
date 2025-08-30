@@ -28,7 +28,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -330,8 +329,8 @@ func TestInstallRelease_WithChartAndDependencyParentNotes(t *testing.T) {
 	}
 
 	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.Equal("with-notes", rel.Name)
 	is.NoError(err)
+	is.Equal("with-notes", rel.Name)
 	is.Equal("parent", rel.Info.Notes)
 	is.Equal(rel.Info.Description, "Install complete")
 }
@@ -349,8 +348,8 @@ func TestInstallRelease_WithChartAndDependencyAllNotes(t *testing.T) {
 	}
 
 	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.Equal("with-notes", rel.Name)
 	is.NoError(err)
+	is.Equal("with-notes", rel.Name)
 	// test run can return as either 'parent\nchild' or 'child\nparent'
 	if !strings.Contains(rel.Info.Notes, "parent") && !strings.Contains(rel.Info.Notes, "child") {
 		t.Fatalf("Expected 'parent\nchild' or 'child\nparent', got '%s'", rel.Info.Notes)
@@ -454,9 +453,7 @@ func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Install should fail containing error: %s", expectedErr)
 	}
-	if err != nil {
-		is.Contains(err.Error(), expectedErr)
-	}
+	is.Contains(err.Error(), expectedErr)
 }
 
 func TestInstallRelease_NoHooks(t *testing.T) {
@@ -541,14 +538,14 @@ func TestInstallRelease_Wait(t *testing.T) {
 	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
-	goroutines := runtime.NumGoroutine()
+	goroutines := instAction.getGoroutineCount()
 
 	res, err := instAction.Run(buildChart(), vals)
 	is.Error(err)
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, release.StatusFailed)
 
-	is.Equal(goroutines, runtime.NumGoroutine())
+	is.Equal(goroutines, instAction.getGoroutineCount())
 }
 func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	is := assert.New(t)
@@ -563,15 +560,15 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
-	goroutines := runtime.NumGoroutine()
+	goroutines := instAction.getGoroutineCount()
 
 	_, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
 	is.Contains(err.Error(), "context canceled")
 
-	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
-	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
-	is.Equal(goroutines, runtime.NumGoroutine())
+	is.Equal(goroutines+1, instAction.getGoroutineCount()) // installation goroutine still is in background
+	time.Sleep(10 * time.Second)                           // wait for goroutine to finish
+	is.Equal(goroutines, instAction.getGoroutineCount())
 }
 func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
@@ -647,7 +644,7 @@ func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
-	goroutines := runtime.NumGoroutine()
+	goroutines := instAction.getGoroutineCount()
 
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
@@ -659,9 +656,9 @@ func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
 	is.Error(err)
 	is.Equal(err, driver.ErrReleaseNotFound)
-	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
-	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
-	is.Equal(goroutines, runtime.NumGoroutine())
+	is.Equal(goroutines+1, instAction.getGoroutineCount()) // installation goroutine still is in background
+	time.Sleep(10 * time.Second)                           // wait for goroutine to finish
+	is.Equal(goroutines, instAction.getGoroutineCount())
 
 }
 func TestNameTemplate(t *testing.T) {
