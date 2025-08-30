@@ -36,7 +36,7 @@ import (
 // allowing verification of the original tarball later.
 func SignPlugin(tarballPath string, signer *provenance.Signatory) (string, error) {
 	// Extract plugin metadata from tarball
-	pluginMeta, err := ExtractPluginMetadata(tarballPath)
+	pluginMeta, err := extractPluginMetadata(tarballPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to extract plugin metadata: %w", err)
 	}
@@ -51,8 +51,8 @@ func SignPlugin(tarballPath string, signer *provenance.Signatory) (string, error
 	return signer.ClearSign(tarballPath, metadataBytes)
 }
 
-// ExtractPluginMetadata extracts plugin metadata from a tarball
-func ExtractPluginMetadata(tarballPath string) (*Metadata, error) {
+// extractPluginMetadata extracts plugin metadata from a tarball
+func extractPluginMetadata(tarballPath string) (*Metadata, error) {
 	f, err := os.Open(tarballPath)
 	if err != nil {
 		return nil, err
