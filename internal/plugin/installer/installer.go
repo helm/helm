@@ -17,12 +17,14 @@ package installer
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"helm.sh/helm/v4/internal/plugin"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.
@@ -30,6 +32,14 @@ var ErrMissingMetadata = errors.New("plugin metadata (plugin.yaml) missing")
 
 // Debug enables verbose output.
 var Debug bool
+
+// Options contains options for plugin installation.
+type Options struct {
+	// Verify enables signature verification before installation
+	Verify bool
+	// Keyring is the path to the keyring for verification
+	Keyring string
+}
 
 // Installer provides an interface for installing helm client plugins.
 type Installer interface {
@@ -41,15 +51,89 @@ type Installer interface {
 	Update() error
 }
 
+// Verifier provides an interface for installers that support verification.
+type Verifier interface {
+	// SupportsVerification returns true if this installer can verify plugins
+	SupportsVerification() bool
+	// PrepareForVerification downloads necessary files for verification
+	PrepareForVerification() (pluginPath string, cleanup func(), err error)
+}
+
 // Install installs a plugin.
 func Install(i Installer) error {
+	_, err := InstallWithOptions(i, Options{})
+	return err
+}
+
+// VerificationResult contains the result of plugin verification
+type VerificationResult struct {
+	SignedBy    []string
+	Fingerprint string
+	FileHash    string
+}
+
+// InstallWithOptions installs a plugin with options.
+func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) {
+
 	if err := os.MkdirAll(filepath.Dir(i.Path()), 0755); err != nil {
-		return err
+		return nil, err
 	}
 	if _, pathErr := os.Stat(i.Path()); !os.IsNotExist(pathErr) {
-		return errors.New("plugin already exists")
+		return nil, errors.New("plugin already exists")
 	}
-	return i.Install()
+
+	var result *VerificationResult
+
+	// If verification is requested, check if installer supports it
+	if opts.Verify {
+		verifier, ok := i.(Verifier)
+		if !ok || !verifier.SupportsVerification() {
+			return nil, fmt.Errorf("--verify is only supported for plugin tarballs (.tgz files)")
+		}
+
+		// Prepare for verification (download files if needed)
+		pluginPath, cleanup, err := verifier.PrepareForVerification()
+		if err != nil {
+			return nil, fmt.Errorf("failed to prepare for verification: %w", err)
+		}
+		if cleanup != nil {
+			defer cleanup()
+		}
+
+		// Check if provenance file exists
+		provFile := pluginPath + ".prov"
+		if _, err := os.Stat(provFile); err != nil {
+			if os.IsNotExist(err) {
+				// No .prov file found - emit warning but continue installation
+				fmt.Fprintf(os.Stderr, "WARNING: No provenance file found for plugin. Plugin is not signed and cannot be verified.\n")
+			} else {
+				// Other error accessing .prov file
+				return nil, fmt.Errorf("failed to access provenance file: %w", err)
+			}
+		} else {
+			// Provenance file exists - verify the plugin
+			verification, err := plugin.VerifyPlugin(pluginPath, opts.Keyring)
+			if err != nil {
+				return nil, fmt.Errorf("plugin verification failed: %w", err)
+			}
+
+			// Collect verification info
+			result = &VerificationResult{
+				SignedBy:    make([]string, 0),
+				Fingerprint: fmt.Sprintf("%X", verification.SignedBy.PrimaryKey.Fingerprint),
+				FileHash:    verification.FileHash,
+			}
+			for name := range verification.SignedBy.Identities {
+				result.SignedBy = append(result.SignedBy, name)
+			}
+		}
+	}
+
+	if err := i.Install(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // Update updates a plugin.
@@ -62,6 +146,10 @@ func Update(i Installer) error {
 
 // NewForSource determines the correct Installer for the given source.
 func NewForSource(source, version string) (Installer, error) {
+	// Check if source is an OCI registry reference
+	if strings.HasPrefix(source, fmt.Sprintf("%s://", registry.OCIScheme)) {
+		return NewOCIInstaller(source)
+	}
 	// Check if source is a local directory
 	if isLocalReference(source) {
 		return NewLocalInstaller(source)

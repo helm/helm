@@ -175,6 +175,12 @@ func (g *OCIGetter) newRegistryClient() (*registry.Client, error) {
 
 // getPlugin handles plugin-specific OCI pulls
 func (g *OCIGetter) getPlugin(client *registry.Client, ref string) (*bytes.Buffer, error) {
+	// Check if this is a provenance file request
+	requestingProv := strings.HasSuffix(ref, ".prov")
+	if requestingProv {
+		ref = strings.TrimSuffix(ref, ".prov")
+	}
+
 	// Extract plugin name from the reference
 	// e.g., "ghcr.io/user/plugin-name:v1.0.0" -> "plugin-name"
 	parts := strings.Split(ref, "/")
@@ -190,10 +196,18 @@ func (g *OCIGetter) getPlugin(client *registry.Client, ref string) (*bytes.Buffe
 		pluginName = lastPart[:idx]
 	}
 
-	result, err := client.PullPlugin(ref, pluginName)
+	var pullOpts []registry.PluginPullOption
+	if requestingProv {
+		pullOpts = append(pullOpts, registry.PullPluginOptWithProv(true))
+	}
+
+	result, err := client.PullPlugin(ref, pluginName, pullOpts...)
 	if err != nil {
 		return nil, err
 	}
 
+	if requestingProv {
+		return bytes.NewBuffer(result.Prov.Data), nil
+	}
 	return bytes.NewBuffer(result.PluginData), nil
 }

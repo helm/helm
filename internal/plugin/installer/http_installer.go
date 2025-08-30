@@ -16,22 +16,14 @@ limitations under the License.
 package installer // import "helm.sh/helm/v4/internal/plugin/installer"
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
-	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
-	"path"
 	"path/filepath"
-	"regexp"
-	"slices"
 	"strings"
 
-	securejoin "github.com/cyphar/filepath-securejoin"
-
+	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/internal/plugin/cache"
 	"helm.sh/helm/v4/internal/third_party/dep/fs"
 	"helm.sh/helm/v4/pkg/cli"
@@ -46,45 +38,8 @@ type HTTPInstaller struct {
 	base
 	extractor Extractor
 	getter    getter.Getter
-}
-
-// TarGzExtractor extracts gzip compressed tar archives
-type TarGzExtractor struct{}
-
-// Extractor provides an interface for extracting archives
-type Extractor interface {
-	Extract(buffer *bytes.Buffer, targetDir string) error
-}
-
-// Extractors contains a map of suffixes and matching implementations of extractor to return
-var Extractors = map[string]Extractor{
-	".tar.gz": &TarGzExtractor{},
-	".tgz":    &TarGzExtractor{},
-}
-
-// Convert a media type to an extractor extension.
-//
-// This should be refactored in Helm 4, combined with the extension-based mechanism.
-func mediaTypeToExtension(mt string) (string, bool) {
-	switch strings.ToLower(mt) {
-	case "application/gzip", "application/x-gzip", "application/x-tgz", "application/x-gtar":
-		return ".tgz", true
-	case "application/octet-stream":
-		// Generic binary type - we'll need to check the URL suffix
-		return "", false
-	default:
-		return "", false
-	}
-}
-
-// NewExtractor creates a new extractor matching the source file name
-func NewExtractor(source string) (Extractor, error) {
-	for suffix, extractor := range Extractors {
-		if strings.HasSuffix(source, suffix) {
-			return extractor, nil
-		}
-	}
-	return nil, fmt.Errorf("no extractor implemented yet for %s", source)
+	// Provenance data to save after installation
+	provData []byte
 }
 
 // NewHTTPInstaller creates a new HttpInstaller.
@@ -114,19 +69,6 @@ func NewHTTPInstaller(source string) (*HTTPInstaller, error) {
 	return i, nil
 }
 
-// helper that relies on some sort of convention for plugin name (plugin-name-<version>)
-func stripPluginName(name string) string {
-	var strippedName string
-	for suffix := range Extractors {
-		if strings.HasSuffix(name, suffix) {
-			strippedName = strings.TrimSuffix(name, suffix)
-			break
-		}
-	}
-	re := regexp.MustCompile(`(.*)-[0-9]+\..*`)
-	return re.ReplaceAllString(strippedName, `$1`)
-}
-
 // Install downloads and extracts the tarball into the cache directory
 // and installs into the plugin directory.
 //
@@ -135,6 +77,31 @@ func (i *HTTPInstaller) Install() error {
 	pluginData, err := i.getter.Get(i.Source)
 	if err != nil {
 		return err
+	}
+
+	// Save the original tarball to plugins directory for verification
+	// Extract metadata to get the actual plugin name and version
+	pluginBytes := pluginData.Bytes()
+	metadata, err := plugin.ExtractPluginMetadataFromReader(bytes.NewReader(pluginBytes))
+	if err != nil {
+		return fmt.Errorf("failed to extract plugin metadata from tarball: %w", err)
+	}
+	filename := fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
+	tarballPath := helmpath.DataPath("plugins", filename)
+	if err := os.MkdirAll(filepath.Dir(tarballPath), 0755); err != nil {
+		return fmt.Errorf("failed to create plugins directory: %w", err)
+	}
+	if err := os.WriteFile(tarballPath, pluginBytes, 0644); err != nil {
+		return fmt.Errorf("failed to save tarball: %w", err)
+	}
+
+	// Try to download .prov file if it exists
+	provURL := i.Source + ".prov"
+	if provData, err := i.getter.Get(provURL); err == nil {
+		provPath := tarballPath + ".prov"
+		if err := os.WriteFile(provPath, provData.Bytes(), 0644); err != nil {
+			slog.Debug("failed to save provenance file", "error", err)
+		}
 	}
 
 	if err := i.extractor.Extract(pluginData, i.CacheDir); err != nil {
@@ -175,111 +142,57 @@ func (i HTTPInstaller) Path() string {
 	return helmpath.DataPath("plugins", i.PluginName)
 }
 
-// cleanJoin resolves dest as a subpath of root.
-//
-// This function runs several security checks on the path, generating an error if
-// the supplied `dest` looks suspicious or would result in dubious behavior on the
-// filesystem.
-//
-// cleanJoin assumes that any attempt by `dest` to break out of the CWD is an attempt
-// to be malicious. (If you don't care about this, use the securejoin-filepath library.)
-// It will emit an error if it detects paths that _look_ malicious, operating on the
-// assumption that we don't actually want to do anything with files that already
-// appear to be nefarious.
-//
-//   - The character `:` is considered illegal because it is a separator on UNIX and a
-//     drive designator on Windows.
-//   - The path component `..` is considered suspicions, and therefore illegal
-//   - The character \ (backslash) is treated as a path separator and is converted to /.
-//   - Beginning a path with a path separator is illegal
-//   - Rudimentary symlink protects are offered by SecureJoin.
-func cleanJoin(root, dest string) (string, error) {
-
-	// On Windows, this is a drive separator. On UNIX-like, this is the path list separator.
-	// In neither case do we want to trust a TAR that contains these.
-	if strings.Contains(dest, ":") {
-		return "", errors.New("path contains ':', which is illegal")
-	}
-
-	// The Go tar library does not convert separators for us.
-	// We assume here, as we do elsewhere, that `\\` means a Windows path.
-	dest = strings.ReplaceAll(dest, "\\", "/")
-
-	// We want to alert the user that something bad was attempted. Cleaning it
-	// is not a good practice.
-	if slices.Contains(strings.Split(dest, "/"), "..") {
-		return "", errors.New("path contains '..', which is illegal")
-	}
-
-	// If a path is absolute, the creator of the TAR is doing something shady.
-	if path.IsAbs(dest) {
-		return "", errors.New("path is absolute, which is illegal")
-	}
-
-	// SecureJoin will do some cleaning, as well as some rudimentary checking of symlinks.
-	// The directory needs to be cleaned prior to passing to SecureJoin or the location may end up
-	// being wrong or returning an error. This was introduced in v0.4.0.
-	root = filepath.Clean(root)
-	newpath, err := securejoin.SecureJoin(root, dest)
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.ToSlash(newpath), nil
+// SupportsVerification returns true if the HTTP installer can verify plugins
+func (i *HTTPInstaller) SupportsVerification() bool {
+	// Only support verification for tarball URLs
+	return strings.HasSuffix(i.Source, ".tgz") || strings.HasSuffix(i.Source, ".tar.gz")
 }
 
-// Extract extracts compressed archives
-//
-// Implements Extractor.
-func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
-	uncompressedStream, err := gzip.NewReader(buffer)
+// PrepareForVerification downloads the plugin and signature files for verification
+func (i *HTTPInstaller) PrepareForVerification() (string, func(), error) {
+	if !i.SupportsVerification() {
+		return "", nil, fmt.Errorf("verification not supported for this source")
+	}
+
+	// Create temporary directory for downloads
+	tempDir, err := os.MkdirTemp("", "helm-plugin-verify-*")
 	if err != nil {
-		return err
+		return "", nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
 
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return err
+	cleanup := func() {
+		os.RemoveAll(tempDir)
 	}
 
-	tarReader := tar.NewReader(uncompressedStream)
-	for {
-		header, err := tarReader.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
+	// Download plugin tarball
+	pluginFile := filepath.Join(tempDir, filepath.Base(i.Source))
 
-		path, err := cleanJoin(targetDir, header.Name)
-		if err != nil {
-			return err
-		}
+	g, err := getter.All(new(cli.EnvSettings)).ByScheme("http")
+	if err != nil {
+		cleanup()
+		return "", nil, err
+	}
 
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(path, 0755); err != nil {
-				return err
-			}
-		case tar.TypeReg:
-			// Ensure parent directory exists
-			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-				return err
-			}
-			outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-			if err != nil {
-				return err
-			}
-			defer outFile.Close()
-			if _, err := io.Copy(outFile, tarReader); err != nil {
-				return err
-			}
-		// We don't want to process these extension header files.
-		case tar.TypeXGlobalHeader, tar.TypeXHeader:
-			continue
-		default:
-			return fmt.Errorf("unknown type: %b in %s", header.Typeflag, header.Name)
+	data, err := g.Get(i.Source, getter.WithURL(i.Source))
+	if err != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("failed to download plugin: %w", err)
+	}
+
+	if err := os.WriteFile(pluginFile, data.Bytes(), 0644); err != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("failed to write plugin file: %w", err)
+	}
+
+	// Try to download signature file - don't fail if it doesn't exist
+	if provData, err := g.Get(i.Source+".prov", getter.WithURL(i.Source+".prov")); err == nil {
+		if err := os.WriteFile(pluginFile+".prov", provData.Bytes(), 0644); err == nil {
+			// Store the provenance data so we can save it after installation
+			i.provData = provData.Bytes()
 		}
 	}
-	return nil
+	// Note: We don't fail if .prov file can't be downloaded - the verification logic
+	// in InstallWithOptions will handle missing .prov files appropriately
+
+	return pluginFile, cleanup, nil
 }
