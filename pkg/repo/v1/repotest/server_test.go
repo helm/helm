@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/internal/test/ensure"
-	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
 // Young'n, in these here parts, we test our tests.
@@ -113,7 +113,7 @@ func TestNewTempServer(t *testing.T) {
 		"tls": {
 			options: []ServerOption{
 				WithChartSourceGlob("testdata/examplechart-0.1.0.tgz"),
-				WithTLSConfig(MakeTestTLSConfig(t, "../../../testdata")),
+				WithTLSConfig(MakeTestTLSConfig(t, "../../../../testdata")),
 			},
 		},
 	}
@@ -212,7 +212,7 @@ func TestNewTempServer_TLS(t *testing.T) {
 	srv := NewTempServer(
 		t,
 		WithChartSourceGlob("testdata/examplechart-0.1.0.tgz"),
-		WithTLSConfig(MakeTestTLSConfig(t, "../../../testdata")),
+		WithTLSConfig(MakeTestTLSConfig(t, "../../../../testdata")),
 	)
 	defer srv.Stop()
 

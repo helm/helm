@@ -231,7 +231,7 @@ func testPush(suite *TestSuite) {
 	suite.NotNil(err, "error pushing non-chart bytes")
 
 	// Load a test chart
-	chartData, err := os.ReadFile("../repo/repotest/testdata/examplechart-0.1.0.tgz")
+	chartData, err := os.ReadFile("../repo/v1/repotest/testdata/examplechart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")
