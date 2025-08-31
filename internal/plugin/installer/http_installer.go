@@ -38,8 +38,9 @@ type HTTPInstaller struct {
 	base
 	extractor Extractor
 	getter    getter.Getter
-	// Provenance data to save after installation
-	provData []byte
+	// Cached data to avoid duplicate downloads
+	pluginData []byte
+	provData   []byte
 }
 
 // NewHTTPInstaller creates a new HttpInstaller.
@@ -74,15 +75,18 @@ func NewHTTPInstaller(source string) (*HTTPInstaller, error) {
 //
 // Implements Installer.
 func (i *HTTPInstaller) Install() error {
-	pluginData, err := i.getter.Get(i.Source)
-	if err != nil {
-		return err
+	// Ensure plugin data is cached
+	if i.pluginData == nil {
+		pluginData, err := i.getter.Get(i.Source)
+		if err != nil {
+			return err
+		}
+		i.pluginData = pluginData.Bytes()
 	}
 
 	// Save the original tarball to plugins directory for verification
 	// Extract metadata to get the actual plugin name and version
-	pluginBytes := pluginData.Bytes()
-	metadata, err := plugin.ExtractPluginMetadataFromReader(bytes.NewReader(pluginBytes))
+	metadata, err := plugin.ExtractTgzPluginMetadata(bytes.NewReader(i.pluginData))
 	if err != nil {
 		return fmt.Errorf("failed to extract plugin metadata from tarball: %w", err)
 	}
@@ -91,20 +95,28 @@ func (i *HTTPInstaller) Install() error {
 	if err := os.MkdirAll(filepath.Dir(tarballPath), 0755); err != nil {
 		return fmt.Errorf("failed to create plugins directory: %w", err)
 	}
-	if err := os.WriteFile(tarballPath, pluginBytes, 0644); err != nil {
+	if err := os.WriteFile(tarballPath, i.pluginData, 0644); err != nil {
 		return fmt.Errorf("failed to save tarball: %w", err)
 	}
 
-	// Try to download .prov file if it exists
-	provURL := i.Source + ".prov"
-	if provData, err := i.getter.Get(provURL); err == nil {
+	// Ensure prov data is cached if available
+	if i.provData == nil {
+		// Try to download .prov file if it exists
+		provURL := i.Source + ".prov"
+		if provData, err := i.getter.Get(provURL); err == nil {
+			i.provData = provData.Bytes()
+		}
+	}
+
+	// Save prov file if we have the data
+	if i.provData != nil {
 		provPath := tarballPath + ".prov"
-		if err := os.WriteFile(provPath, provData.Bytes(), 0644); err != nil {
+		if err := os.WriteFile(provPath, i.provData, 0644); err != nil {
 			slog.Debug("failed to save provenance file", "error", err)
 		}
 	}
 
-	if err := i.extractor.Extract(pluginData, i.CacheDir); err != nil {
+	if err := i.extractor.Extract(bytes.NewBuffer(i.pluginData), i.CacheDir); err != nil {
 		return fmt.Errorf("extracting files from archive: %w", err)
 	}
 
@@ -148,51 +160,32 @@ func (i *HTTPInstaller) SupportsVerification() bool {
 	return strings.HasSuffix(i.Source, ".tgz") || strings.HasSuffix(i.Source, ".tar.gz")
 }
 
-// PrepareForVerification downloads the plugin and signature files for verification
-func (i *HTTPInstaller) PrepareForVerification() (string, func(), error) {
+// GetVerificationData returns cached plugin and provenance data for verification
+func (i *HTTPInstaller) GetVerificationData() (archiveData, provData []byte, filename string, err error) {
 	if !i.SupportsVerification() {
-		return "", nil, fmt.Errorf("verification not supported for this source")
+		return nil, nil, "", fmt.Errorf("verification not supported for this source")
 	}
 
-	// Create temporary directory for downloads
-	tempDir, err := os.MkdirTemp("", "helm-plugin-verify-*")
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to create temp directory: %w", err)
+	// Download plugin data once and cache it
+	if i.pluginData == nil {
+		data, err := i.getter.Get(i.Source)
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("failed to download plugin: %w", err)
+		}
+		i.pluginData = data.Bytes()
 	}
 
-	cleanup := func() {
-		os.RemoveAll(tempDir)
-	}
-
-	// Download plugin tarball
-	pluginFile := filepath.Join(tempDir, filepath.Base(i.Source))
-
-	g, err := getter.All(new(cli.EnvSettings)).ByScheme("http")
-	if err != nil {
-		cleanup()
-		return "", nil, err
-	}
-
-	data, err := g.Get(i.Source, getter.WithURL(i.Source))
-	if err != nil {
-		cleanup()
-		return "", nil, fmt.Errorf("failed to download plugin: %w", err)
-	}
-
-	if err := os.WriteFile(pluginFile, data.Bytes(), 0644); err != nil {
-		cleanup()
-		return "", nil, fmt.Errorf("failed to write plugin file: %w", err)
-	}
-
-	// Try to download signature file - don't fail if it doesn't exist
-	if provData, err := g.Get(i.Source+".prov", getter.WithURL(i.Source+".prov")); err == nil {
-		if err := os.WriteFile(pluginFile+".prov", provData.Bytes(), 0644); err == nil {
-			// Store the provenance data so we can save it after installation
+	// Download prov data once and cache it if available
+	if i.provData == nil {
+		provData, err := i.getter.Get(i.Source + ".prov")
+		if err != nil {
+			// If provenance file doesn't exist, set provData to nil
+			// The verification logic will handle this gracefully
+			i.provData = nil
+		} else {
 			i.provData = provData.Bytes()
 		}
 	}
-	// Note: We don't fail if .prov file can't be downloaded - the verification logic
-	// in InstallWithOptions will handle missing .prov files appropriately
 
-	return pluginFile, cleanup, nil
+	return i.pluginData, i.provData, filepath.Base(i.Source), nil
 }

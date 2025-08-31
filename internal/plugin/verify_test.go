@@ -18,7 +18,6 @@ package plugin
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"helm.sh/helm/v4/pkg/provenance"
@@ -74,7 +73,13 @@ func TestVerifyPlugin(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sig, err := SignPlugin(tarballPath, signer)
+	// Read the tarball data
+	tarballData, err := os.ReadFile(tarballPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sig, err := SignPlugin(tarballData, filepath.Base(tarballPath), signer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,8 +90,19 @@ func TestVerifyPlugin(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Read the files for verification
+	archiveData, err := os.ReadFile(tarballPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	provData, err := os.ReadFile(provFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Now verify the plugin
-	verification, err := VerifyPlugin(tarballPath, testPubFile)
+	verification, err := VerifyPlugin(archiveData, provData, filepath.Base(tarballPath), testPubFile)
 	if err != nil {
 		t.Fatalf("Failed to verify plugin: %v", err)
 	}
@@ -146,8 +162,19 @@ InvalidSignatureData
 		t.Fatal(err)
 	}
 
+	// Read the files
+	archiveData, err := os.ReadFile(tarballPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	provData, err := os.ReadFile(provFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Try to verify - should fail
-	_, err = VerifyPlugin(tarballPath, testPubFile)
+	_, err = VerifyPlugin(archiveData, provData, filepath.Base(tarballPath), testPubFile)
 	if err == nil {
 		t.Error("Expected verification to fail with bad signature")
 	}
@@ -162,40 +189,26 @@ func TestVerifyPluginMissingProvenance(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Try to verify without .prov file
-	_, err := VerifyPlugin(tarballPath, testPubFile)
-	if err == nil {
-		t.Error("Expected verification to fail without provenance file")
-	}
-}
-
-func TestVerifyPluginDirectory(t *testing.T) {
-	// Create a test plugin directory
-	tempDir := t.TempDir()
-	pluginDir := filepath.Join(tempDir, "test-plugin")
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
+	// Read the tarball data
+	archiveData, err := os.ReadFile(tarballPath)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Create a plugin.yaml file
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Attempt to verify the directory - should fail
-	_, err := VerifyPlugin(pluginDir, testPubFile)
+	// Try to verify with empty provenance data
+	_, err = VerifyPlugin(archiveData, nil, filepath.Base(tarballPath), testPubFile)
 	if err == nil {
-		t.Error("Expected directory verification to fail, but it succeeded")
-	}
-
-	expectedError := "directory verification not supported"
-	if !containsString(err.Error(), expectedError) {
-		t.Errorf("Expected error to contain %q, got %q", expectedError, err.Error())
+		t.Error("Expected verification to fail with empty provenance data")
 	}
 }
 
-func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) &&
-		(s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
-			strings.Contains(s, substr)))
+func TestVerifyPluginMalformedData(t *testing.T) {
+	// Test with malformed tarball data - should fail
+	malformedData := []byte("not a tarball")
+	provData := []byte("fake provenance")
+
+	_, err := VerifyPlugin(malformedData, provData, "malformed.tar.gz", testPubFile)
+	if err == nil {
+		t.Error("Expected malformed data verification to fail, but it succeeded")
+	}
 }

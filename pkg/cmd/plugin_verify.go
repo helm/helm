@@ -18,6 +18,8 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -65,8 +67,41 @@ func newPluginVerifyCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *pluginVerifyOptions) run(out io.Writer) error {
-	// Verify the plugin
-	verification, err := plugin.VerifyPlugin(o.pluginPath, o.keyring)
+	// Verify the plugin path exists
+	fi, err := os.Stat(o.pluginPath)
+	if err != nil {
+		return err
+	}
+
+	// Only support tarball verification
+	if fi.IsDir() {
+		return fmt.Errorf("directory verification not supported - only plugin tarballs can be verified")
+	}
+
+	// Verify it's a tarball
+	if !plugin.IsTarball(o.pluginPath) {
+		return fmt.Errorf("plugin file must be a gzipped tarball (.tar.gz or .tgz)")
+	}
+
+	// Look for provenance file
+	provFile := o.pluginPath + ".prov"
+	if _, err := os.Stat(provFile); err != nil {
+		return fmt.Errorf("could not find provenance file %s: %w", provFile, err)
+	}
+
+	// Read the files
+	archiveData, err := os.ReadFile(o.pluginPath)
+	if err != nil {
+		return fmt.Errorf("failed to read plugin file: %w", err)
+	}
+
+	provData, err := os.ReadFile(provFile)
+	if err != nil {
+		return fmt.Errorf("failed to read provenance file: %w", err)
+	}
+
+	// Verify the plugin using data
+	verification, err := plugin.VerifyPlugin(archiveData, provData, filepath.Base(o.pluginPath), o.keyring)
 	if err != nil {
 		return err
 	}

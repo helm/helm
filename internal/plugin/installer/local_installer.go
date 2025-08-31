@@ -35,9 +35,10 @@ var ErrPluginNotAFolder = errors.New("expected plugin to be a folder")
 // LocalInstaller installs plugins from the filesystem.
 type LocalInstaller struct {
 	base
-	isArchive bool
-	extractor Extractor
-	provData  []byte // Provenance data to save after installation
+	isArchive  bool
+	extractor  Extractor
+	pluginData []byte // Cached plugin data
+	provData   []byte // Cached provenance data
 }
 
 // NewLocalInstaller creates a new LocalInstaller.
@@ -110,7 +111,7 @@ func (i *LocalInstaller) installFromArchive() error {
 
 	// Copy the original tarball to plugins directory for verification
 	// Extract metadata to get the actual plugin name and version
-	metadata, err := plugin.ExtractPluginMetadataFromReader(bytes.NewReader(data))
+	metadata, err := plugin.ExtractTgzPluginMetadata(bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("failed to extract plugin metadata from tarball: %w", err)
 	}
@@ -184,21 +185,35 @@ func (i *LocalInstaller) SupportsVerification() bool {
 	return i.isArchive
 }
 
-// PrepareForVerification returns the local path for verification
-func (i *LocalInstaller) PrepareForVerification() (string, func(), error) {
+// GetVerificationData loads plugin and provenance data from local files for verification
+func (i *LocalInstaller) GetVerificationData() (archiveData, provData []byte, filename string, err error) {
 	if !i.SupportsVerification() {
-		return "", nil, fmt.Errorf("verification not supported for directories")
+		return nil, nil, "", fmt.Errorf("verification not supported for directories")
 	}
 
-	// For local files, try to read the .prov file if it exists
-	provFile := i.Source + ".prov"
-	if provData, err := os.ReadFile(provFile); err == nil {
-		// Store the provenance data so we can save it after installation
-		i.provData = provData
+	// Read and cache the plugin archive file
+	if i.pluginData == nil {
+		i.pluginData, err = os.ReadFile(i.Source)
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("failed to read plugin file: %w", err)
+		}
 	}
-	// Note: We don't fail if .prov file doesn't exist - the verification logic
-	// in InstallWithOptions will handle missing .prov files appropriately
 
-	// Return the source path directly, no cleanup needed
-	return i.Source, nil, nil
+	// Read and cache the provenance file if it exists
+	if i.provData == nil {
+		provFile := i.Source + ".prov"
+		i.provData, err = os.ReadFile(provFile)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// If provenance file doesn't exist, set provData to nil
+				// The verification logic will handle this gracefully
+				i.provData = nil
+			} else {
+				// If file exists but can't be read (permissions, etc), return error
+				return nil, nil, "", fmt.Errorf("failed to access provenance file %s: %w", provFile, err)
+			}
+		}
+	}
+
+	return i.pluginData, i.provData, filepath.Base(i.Source), nil
 }
