@@ -18,11 +18,19 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-var chartPath = "testdata/testcharts/subchart"
+var (
+	emptyChart                          = "testdata/testcharts/empty"
+	chartPath                           = "testdata/testcharts/subchart"
+	chartWithNotes                      = "testdata/testcharts/chart-with-notes"
+	chartWithNotesAnd2LevelsOfSubCharts = "testdata/testcharts/chart-with-notes-and-2-levels-of-subcharts"
+)
 
 func TestTemplateCmd(t *testing.T) {
 	deletevalchart := "testdata/testcharts/issue-9027"
@@ -166,8 +174,133 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("template '%s' -f %s/extra_values.yaml", chartPath, chartPath),
 			golden: "output/template-subchart-cm-set-file.txt",
 		},
+		{
+			// Running `helm template` on a chart that doesn't have notes or subcharts should print the template
+			// command's output without notes.
+			name:   "helm template on chart without notes or subcharts",
+			cmd:    fmt.Sprintf("template luffy '%s' --namespace default", emptyChart),
+			golden: "output/template-without-notes-or-subcharts.txt",
+		},
+		{
+			// Running `helm template --notes` on a chart that doesn't have notes or subcharts should print template
+			// command's output without notes.
+			name:   "helm template --notes on chart without notes or subcharts",
+			cmd:    fmt.Sprintf("template luffy '%s' --namespace default --notes", emptyChart),
+			golden: "output/template-without-notes-or-subcharts.txt",
+		},
+		{
+			// Running `helm template --render-subchart-notes` on a chart that doesn't have notes or subcharts should
+			// print the template command's output without notes.
+			name:   "helm template --render-subchart-notes on chart without notes or subcharts",
+			cmd:    fmt.Sprintf("template luffy '%s' --namespace default --render-subchart-notes", emptyChart),
+			golden: "output/template-without-notes-or-subcharts.txt",
+		},
+		{
+			// Running `helm template --notes --render-subchart-notes` on a chart that doesn't have notes or subcharts
+			// should print the template command's output without notes.
+			name:   "helm template --notes --render-subchart-notes on chart without notes or subcharts",
+			cmd:    fmt.Sprintf("template luffy '%s' --namespace default --notes --render-subchart-notes", emptyChart),
+			golden: "output/template-without-notes-or-subcharts.txt",
+		},
+		{
+			// Running `helm template` on a chart that has notes but no subcharts should print the template command's
+			// output without notes, since --notes flag is not enabled.
+			name:   "helm template on chart with notes without subcharts",
+			cmd:    fmt.Sprintf("template luffy '%s' --namespace default", chartWithNotes),
+			golden: "output/template-with-notes.txt",
+		},
+		{
+			// Running `helm template --notes` on a chart that has notes but no subcharts should print the template
+			// command's output with (current chart's) notes.
+			name:   "helm template --notes on chart with notes without subcharts",
+			cmd:    fmt.Sprintf("template luffy '%s' --namespace default --notes", chartWithNotes),
+			golden: "output/template-with-notes-with-flag-notes-enabled.txt",
+		},
+		{
+			// Running `helm template --render-subchart-notes` on a chart that has notes but no subcharts should print
+			// the template command's output without notes, since --notes flag is not enabled.
+			name:   "helm template --render-subchart-notes on chart with notes without subcharts",
+			cmd:    fmt.Sprintf("template luffy '%s' --namespace default --render-subchart-notes", chartWithNotes),
+			golden: "output/template-with-notes.txt",
+		},
+		{
+			// Running `helm template --notes --render-subchart-notes` on a chart that has notes but no subcharts should
+			// print the template command's output (current chart's) notes, i.e., no subchart's notes as no subcharts.
+			name: "helm template --notes --render-subchart-notes on chart with notes without subcharts",
+			cmd: fmt.Sprintf("template luffy '%s' --namespace default --notes --render-subchart-notes",
+				chartWithNotes),
+			golden: "output/template-with-notes-with-flag-notes-enabled.txt",
+		},
+		{
+			// Running `helm template` on a chart that has notes and 2 levels of subcharts should print template
+			// command's output without notes, since --notes flag is not enabled.
+			name:   "helm template on chart with notes and subcharts",
+			cmd:    fmt.Sprintf("template luffy '%s' --namespace default", chartWithNotesAnd2LevelsOfSubCharts),
+			golden: "output/template-with-notes-and-subcharts.txt",
+		},
+		{
+			// Running `helm template --notes` on a chart that has notes and 2 levels of subcharts should print template
+			// command's output with just root chart's notes, i.e., no subchart's notes as no --render-subchart-notes.
+			name:   "helm template --notes on chart with notes and subcharts",
+			cmd:    fmt.Sprintf("template luffy '%s' --namespace default --notes", chartWithNotesAnd2LevelsOfSubCharts),
+			golden: "output/template-with-notes-and-subcharts-with-flag-notes-enabled.txt",
+		},
+		{
+			// Running `helm template --render-subchart-notes` on a chart that has notes and 2 levels of subcharts
+			// should print the template command's output without notes, since --notes flag is not enabled.
+			name: "helm template --render-subchart-notes on chart with notes and subcharts",
+			cmd: fmt.Sprintf("template luffy '%s' --namespace default --render-subchart-notes",
+				chartWithNotesAnd2LevelsOfSubCharts),
+			golden: "output/template-with-notes-and-subcharts.txt",
+		},
+		{
+			// Running `helm template --notes --render-subchart-notes` on a chart that has notes and 2 levels of
+			// subcharts should print the template command's output with both the root chart and the subchart's notes.
+			name: "helm template --notes --render-subchart-notes on chart with notes and subcharts",
+			cmd: fmt.Sprintf("template luffy '%s' --namespace default --notes --render-subchart-notes",
+				chartWithNotesAnd2LevelsOfSubCharts),
+			golden: "output/" +
+				"template-with-notes-and-subcharts-with-both-flags-notes-and-render-subchart-notes-enabled.txt",
+		},
 	}
 	runTestCmd(t, tests)
+}
+
+// TestTemplateHelpOutput tests the `helm template --help` command's output text. This is required because the
+// --render-subchart-notes flag's description is different for the template command from that of install/upgrade
+// commands.
+func TestTemplateHelpOutput(t *testing.T) {
+	const (
+		outputFilePath   = "testdata/output/template-help.txt"
+		testNamespace    = "test-namespace"
+		repositoryCache  = "test-repository-cache-dir"
+		repositoryConfig = "test-repository-config.yaml"
+		registryConfig   = "test-registry-config.json"
+		contentCache     = "test-content-cache"
+		gnupgHome        = "test-gpg"
+		commandText      = "template --help"
+	)
+
+	// Reset the envs and the configs at the end of this test so that the updates wouldn’t affect other tests.
+	defer resetEnv()()
+
+	// Read the expected output file.
+	expectedOutput, err := os.ReadFile(outputFilePath)
+	assert.NoError(t, err, "unexpected error while reading expected output's file %q", outputFilePath)
+
+	// Set the configs that might otherwise change based on the local environment if not explicitly set. Note: These
+	// configs are not related to the current test.
+	settings.RepositoryCache = repositoryCache
+	settings.RepositoryConfig = repositoryConfig
+	settings.RegistryConfig = registryConfig
+	settings.ContentCache = contentCache
+	settings.SetNamespace(testNamespace)
+	t.Setenv("GNUPGHOME", gnupgHome)
+
+	// Run the `helm template --help` command and compare the help text.
+	_, actualOutput, err := executeActionCommandC(storageFixture(), commandText)
+	assert.NoError(t, err, "unexpected error running command %q", commandText)
+	assert.Equal(t, string(expectedOutput), actualOutput, "mismatch of output")
 }
 
 func TestTemplateVersionCompletion(t *testing.T) {
