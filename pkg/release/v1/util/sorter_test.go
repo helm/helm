@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package util // import "helm.sh/helm/v4/pkg/release/util"
+package util // import "helm.sh/helm/v4/pkg/release/v1/util"
 
 import (
 	"testing"
