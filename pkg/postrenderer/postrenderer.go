@@ -73,7 +73,7 @@ func (r *postRendererPlugin) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer
 		return nil, fmt.Errorf("failed to invoke post-renderer plugin %q: %w", r.plugin.Metadata().Name, err)
 	}
 
-	outputMessage := output.Message.(*schema.OutputMessagePostRendererV1)
+	outputMessage := output.Message.(schema.OutputMessagePostRendererV1)
 
 	// If the binary returned almost nothing, it's likely that it didn't
 	// successfully render anything
