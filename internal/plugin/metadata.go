@@ -144,15 +144,32 @@ func buildLegacyRuntimeConfig(m MetadataLegacy) RuntimeConfig {
 		protocolCommands =
 			make([]SubprocessProtocolCommand, 0, len(m.Downloaders))
 		for _, d := range m.Downloaders {
-			protocolCommands = append(protocolCommands, SubprocessProtocolCommand(d))
+			protocolCommands = append(protocolCommands, SubprocessProtocolCommand{
+				Protocols:       d.Protocols,
+				PlatformCommand: []PlatformCommand{{Command: d.Command}},
+			})
+		}
+	}
+
+	platformCommand := m.PlatformCommand
+	if len(platformCommand) == 0 && len(m.Command) > 0 {
+		platformCommand = []PlatformCommand{{Command: m.Command}}
+	}
+
+	platformHooks := m.PlatformHooks
+	expandHookArgs := true
+	if len(platformHooks) == 0 && len(m.Hooks) > 0 {
+		platformHooks = make(PlatformHooks, len(m.Hooks))
+		for hookName, hookCommand := range m.Hooks {
+			platformHooks[hookName] = []PlatformCommand{{Command: "sh", Args: []string{"-c", hookCommand}}}
+			expandHookArgs = false
 		}
 	}
 	return &RuntimeConfigSubprocess{
-		PlatformCommands: m.PlatformCommands,
-		Command:          m.Command,
-		PlatformHooks:    m.PlatformHooks,
-		Hooks:            m.Hooks,
+		PlatformCommand:  platformCommand,
+		PlatformHooks:    platformHooks,
 		ProtocolCommands: protocolCommands,
+		expandHookArgs:   expandHookArgs,
 	}
 }
 

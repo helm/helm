@@ -1,8 +1,7 @@
 ---
 apiVersion: v1
-name: "postrenderer-v1"
-version: "1.2.3"
-type: postrenderer/v1
+name: testplugin
+type: cli/v1
 runtime: subprocess
 config:
   shortHelp: "echo test"
@@ -10,4 +9,4 @@ config:
   ignoreFlags: false
 runtimeConfig:
   platformCommand:
-  - command: "${HELM_PLUGIN_DIR}/sed-test.sh"
+  - command: "echo test"

@@ -5,4 +5,4 @@ apiVersion: v1
 runtime: subprocess
 runtimeConfig:
   platformCommand:
-    - command: "${HELM_PLUGIN_DIR}/sed-test.sh"
+  - command: "${HELM_PLUGIN_DIR}/sed-test.sh"
