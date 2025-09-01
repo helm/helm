@@ -26,6 +26,7 @@ import (
 
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 )
@@ -655,11 +656,11 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 
 	schart.Metadata = chartfile
 
-	var updatedTemplates []*chart.File
+	var updatedTemplates []*common.File
 
 	for _, template := range schart.Templates {
 		newData := transform(string(template.Data), schart.Name())
-		updatedTemplates = append(updatedTemplates, &chart.File{Name: template.Name, Data: newData})
+		updatedTemplates = append(updatedTemplates, &common.File{Name: template.Name, Data: newData})
 	}
 
 	schart.Templates = updatedTemplates

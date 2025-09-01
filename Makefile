@@ -63,10 +63,12 @@ K8S_MODULES_VER=$(subst ., ,$(subst v,,$(shell go list -f '{{.Version}}' -m k8s.
 K8S_MODULES_MAJOR_VER=$(shell echo $$(($(firstword $(K8S_MODULES_VER)) + 1)))
 K8S_MODULES_MINOR_VER=$(word 2,$(K8S_MODULES_VER))
 
-LDFLAGS += -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/util.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/util.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/lint/rules.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/lint/rules.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/internal/v3/lint/rules.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/internal/v3/lint/rules.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/chart/common/util.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/chart/common/util.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
 
 .PHONY: all
 all: build
@@ -112,7 +114,8 @@ test-unit:
 # based on older versions, this is run separately. When run without the ldflags in the unit test (above) or coverage
 # test, it still passes with a false-positive result as the resources shouldn’t be deprecated in the older Kubernetes
 # version if it only starts failing with the latest.
-	go test $(GOFLAGS) -run ^TestHelmCreateChart_CheckDeprecatedWarnings$$ ./pkg/lint/ $(TESTFLAGS) -ldflags '$(LDFLAGS)'
+	go test $(GOFLAGS) -run ^TestHelmCreateChart_CheckDeprecatedWarnings$$ ./pkg/chart/v2/lint/ $(TESTFLAGS) -ldflags '$(LDFLAGS)'
+	go test $(GOFLAGS) -run ^TestHelmCreateChart_CheckDeprecatedWarnings$$ ./internal/chart/v3/lint/ $(TESTFLAGS) -ldflags '$(LDFLAGS)'
 
 
 .PHONY: test-coverage

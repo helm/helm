@@ -35,7 +35,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/cmd/require"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
@@ -69,7 +69,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			if kubeVersion != "" {
-				parsedKubeVersion, err := chartutil.ParseKubeVersion(kubeVersion)
+				parsedKubeVersion, err := common.ParseKubeVersion(kubeVersion)
 				if err != nil {
 					return fmt.Errorf("invalid kube version '%s': %s", kubeVersion, err)
 				}
@@ -93,7 +93,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.ReleaseName = "release-name"
 			client.Replace = true // Skip the name check
 			client.ClientOnly = !validate
-			client.APIVersions = chartutil.VersionSet(extraAPIs)
+			client.APIVersions = common.VersionSet(extraAPIs)
 			client.IncludeCRDs = includeCrds
 			rel, err := runInstall(args, client, valueOpts, out)
 

@@ -45,8 +45,7 @@ import (
 	"k8s.io/client-go/rest/fake"
 
 	"helm.sh/helm/v4/internal/test"
-	chart "helm.sh/helm/v4/pkg/chart/v2"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -258,7 +257,7 @@ func TestInstallReleaseClientOnly(t *testing.T) {
 	instAction.ClientOnly = true
 	instAction.Run(buildChart(), nil) // disregard output
 
-	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)
+	is.Equal(instAction.cfg.Capabilities, common.DefaultCapabilities)
 	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: io.Discard})
 }
 
@@ -429,7 +428,7 @@ func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	vals := map[string]interface{}{}
 
 	mockChart := buildChart(withSampleTemplates())
-	mockChart.Templates = append(mockChart.Templates, &chart.File{
+	mockChart.Templates = append(mockChart.Templates, &common.File{
 		Name: "templates/lookup",
 		Data: []byte(`goodbye: {{ lookup "v1" "Namespace" "" "___" }}`),
 	})

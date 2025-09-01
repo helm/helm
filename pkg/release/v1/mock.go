@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math/rand"
 
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/time"
 )
@@ -98,7 +99,7 @@ func Mock(opts *MockReleaseOptions) *Release {
 					},
 				},
 			},
-			Templates: []*chart.File{
+			Templates: []*common.File{
 				{Name: "templates/foo.tpl", Data: []byte(MockManifest)},
 			},
 		}

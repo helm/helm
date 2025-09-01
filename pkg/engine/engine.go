@@ -30,8 +30,8 @@ import (
 
 	"k8s.io/client-go/rest"
 
-	chart "helm.sh/helm/v4/pkg/chart/v2"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	ci "helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/common"
 )
 
 // taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
@@ -88,21 +88,21 @@ func New(config *rest.Config) Engine {
 // that section of the values will be passed into the "foo" chart. And if that
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
-func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+func (e Engine) Render(chrt ci.Charter, values common.Values) (map[string]string, error) {
 	tmap := allTemplates(chrt, values)
 	return e.render(tmap)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options.
-func Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+func Render(chrt ci.Charter, values common.Values) (map[string]string, error) {
 	return new(Engine).Render(chrt, values)
 }
 
 // RenderWithClient takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
-func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config) (map[string]string, error) {
+func RenderWithClient(chrt ci.Charter, values common.Values, config *rest.Config) (map[string]string, error) {
 	var clientProvider ClientProvider = clientProviderFromConfig{config}
 	return Engine{
 		clientProvider: &clientProvider,
@@ -113,7 +113,7 @@ func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.C
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
 // This function differs from RenderWithClient in that it lets you customize the way a dynamic client is constructed.
-func RenderWithClientProvider(chrt *chart.Chart, values chartutil.Values, clientProvider ClientProvider) (map[string]string, error) {
+func RenderWithClientProvider(chrt ci.Charter, values common.Values, clientProvider ClientProvider) (map[string]string, error) {
 	return Engine{
 		clientProvider: &clientProvider,
 	}.Render(chrt, values)
@@ -124,7 +124,7 @@ type renderable struct {
 	// tpl is the current template.
 	tpl string
 	// vals are the values to be supplied to the template.
-	vals chartutil.Values
+	vals common.Values
 	// namespace prefix to the templates of the current chart
 	basePath string
 }
@@ -312,7 +312,7 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 		}
 		// At render time, add information about the template that is being rendered.
 		vals := tpls[filename].vals
-		vals["Template"] = chartutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
+		vals["Template"] = common.Values{"Name": filename, "BasePath": tpls[filename].basePath}
 		var buf strings.Builder
 		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
 			return map[string]string{}, reformatExecErrorMsg(filename, err)
@@ -455,7 +455,7 @@ func (p byPathLen) Less(i, j int) bool {
 // allTemplates returns all templates for a chart and its dependencies.
 //
 // As it goes, it also prepares the values in a scope-sensitive manner.
-func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
+func allTemplates(c ci.Charter, vals common.Values) map[string]renderable {
 	templates := make(map[string]renderable)
 	recAllTpls(c, templates, vals)
 	return templates
@@ -465,40 +465,46 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 //
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
-func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) map[string]interface{} {
+func recAllTpls(c ci.Charter, templates map[string]renderable, values common.Values) map[string]interface{} {
+	vals := values.AsMap()
 	subCharts := make(map[string]interface{})
-	chartMetaData := struct {
-		chart.Metadata
-		IsRoot bool
-	}{*c.Metadata, c.IsRoot()}
+	accessor, err := ci.NewAccessor(c)
+	if err != nil {
+		slog.Error("error accessing chart", "error", err)
+	}
+	chartMetaData := accessor.MetadataAsMap()
+	fmt.Printf("metadata: %v\n", chartMetaData)
+	chartMetaData["IsRoot"] = accessor.IsRoot()
 
 	next := map[string]interface{}{
 		"Chart":        chartMetaData,
-		"Files":        newFiles(c.Files),
+		"Files":        newFiles(accessor.Files()),
 		"Release":      vals["Release"],
 		"Capabilities": vals["Capabilities"],
-		"Values":       make(chartutil.Values),
+		"Values":       make(common.Values),
 		"Subcharts":    subCharts,
 	}
 
 	// If there is a {{.Values.ThisChart}} in the parent metadata,
 	// copy that into the {{.Values}} for this template.
-	if c.IsRoot() {
+	if accessor.IsRoot() {
 		next["Values"] = vals["Values"]
-	} else if vs, err := vals.Table("Values." + c.Name()); err == nil {
+	} else if vs, err := values.Table("Values." + accessor.Name()); err == nil {
 		next["Values"] = vs
 	}
 
-	for _, child := range c.Dependencies() {
-		subCharts[child.Name()] = recAllTpls(child, templates, next)
+	for _, child := range accessor.Dependencies() {
+		// TODO: Handle error
+		sub, _ := ci.NewAccessor(child)
+		subCharts[sub.Name()] = recAllTpls(child, templates, next)
 	}
 
-	newParentID := c.ChartFullPath()
-	for _, t := range c.Templates {
+	newParentID := accessor.ChartFullPath()
+	for _, t := range accessor.Templates() {
 		if t == nil {
 			continue
 		}
-		if !isTemplateValid(c, t.Name) {
+		if !isTemplateValid(accessor, t.Name) {
 			continue
 		}
 		templates[path.Join(newParentID, t.Name)] = renderable{
@@ -512,14 +518,9 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 }
 
 // isTemplateValid returns true if the template is valid for the chart type
-func isTemplateValid(ch *chart.Chart, templateName string) bool {
-	if isLibraryChart(ch) {
+func isTemplateValid(accessor ci.Accessor, templateName string) bool {
+	if accessor.IsLibraryChart() {
 		return strings.HasPrefix(filepath.Base(templateName), "_")
 	}
 	return true
-}
-
-// isLibraryChart returns true if the chart is a library chart
-func isLibraryChart(c *chart.Chart) bool {
-	return strings.EqualFold(c.Metadata.Type, "library")
 }
