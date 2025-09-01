@@ -137,8 +137,6 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		if client.enableCache {
 			authorizer.Cache = auth.NewCache()
 		}
-
-		authorizer.ForceAttemptOAuth2 = true
 		client.authorizer = &authorizer
 	}
 
@@ -251,6 +249,8 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 			return fmt.Errorf("authenticating to %q: %w", host, err)
 		}
 	}
+	// Always restore to false after probing, to avoid forcing POST to token endpoints like GHCR.
+	c.authorizer.ForceAttemptOAuth2 = false
 
 	key := credentials.ServerAddressFromRegistry(host)
 	key = credentials.ServerAddressFromHostname(key)
