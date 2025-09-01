@@ -214,7 +214,7 @@ func trimAnySuffix(s string, suffixes ...string) string {
 }
 
 func splitChartNameVersion(s string) (name, version string) {
-	if i := strings.LastIndex(s, "-"); i > 0 {
+	if i := strings.LastIndex(s, "-"); i >= 0 {
 		return s[:i], s[i+1:]
 	}
 	return s, ""
