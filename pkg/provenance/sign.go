@@ -23,16 +23,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"golang.org/x/crypto/openpgp"           //nolint
 	"golang.org/x/crypto/openpgp/clearsign" //nolint
 	"golang.org/x/crypto/openpgp/packet"    //nolint
 	"sigs.k8s.io/yaml"
-
-	hapi "helm.sh/helm/v4/pkg/chart/v2"
-	"helm.sh/helm/v4/pkg/chart/v2/loader"
 )
 
 var defaultPGPConfig = packet.Config{
@@ -58,7 +54,7 @@ type SumCollection struct {
 
 // Verification contains information about a verification operation.
 type Verification struct {
-	// SignedBy contains the entity that signed a chart.
+	// SignedBy contains the entity that signed a package.
 	SignedBy *openpgp.Entity
 	// FileHash is the hash, prepended with the scheme, for the file that was verified.
 	FileHash string
@@ -68,11 +64,11 @@ type Verification struct {
 
 // Signatory signs things.
 //
-// Signatories can be constructed from a PGP private key file using NewFromFiles
+// Signatories can be constructed from a PGP private key file using NewFromFiles,
 // or they can be constructed manually by setting the Entity to a valid
 // PGP entity.
 //
-// The same Signatory can be used to sign or validate multiple charts.
+// The same Signatory can be used to sign or validate multiple packages.
 type Signatory struct {
 	// The signatory for this instance of Helm. This is used for signing.
 	Entity *openpgp.Entity
@@ -197,28 +193,20 @@ func (s *Signatory) DecryptKey(fn PassphraseFetcher) error {
 	return s.Entity.PrivateKey.Decrypt(p)
 }
 
-// ClearSign signs a chart with the given key.
+// ClearSign signs package data with the given key and pre-marshalled metadata.
 //
-// This takes the path to a chart archive file and a key, and it returns a clear signature.
-//
-// The Signatory must have a valid Entity.PrivateKey for this to work. If it does
-// not, an error will be returned.
-func (s *Signatory) ClearSign(chartpath string) (string, error) {
+// This is the core signing method that works with data in memory.
+// The Signatory must have a valid Entity.PrivateKey for this to work.
+func (s *Signatory) ClearSign(archiveData []byte, filename string, metadataBytes []byte) (string, error) {
 	if s.Entity == nil {
 		return "", errors.New("private key not found")
 	} else if s.Entity.PrivateKey == nil {
 		return "", errors.New("provided key is not a private key. Try providing a keyring with secret keys")
 	}
 
-	if fi, err := os.Stat(chartpath); err != nil {
-		return "", err
-	} else if fi.IsDir() {
-		return "", errors.New("cannot sign a directory")
-	}
-
 	out := bytes.NewBuffer(nil)
 
-	b, err := messageBlock(chartpath)
+	b, err := messageBlock(archiveData, filename, metadataBytes)
 	if err != nil {
 		return "", err
 	}
@@ -248,67 +236,45 @@ func (s *Signatory) ClearSign(chartpath string) (string, error) {
 	return out.String(), nil
 }
 
-// Verify checks a signature and verifies that it is legit for a chart.
-func (s *Signatory) Verify(chartpath, sigpath string) (*Verification, error) {
+// Verify checks a signature and verifies that it is legit for package data.
+// This is the core verification method that works with data in memory.
+func (s *Signatory) Verify(archiveData, provData []byte, filename string) (*Verification, error) {
 	ver := &Verification{}
-	for _, fname := range []string{chartpath, sigpath} {
-		if fi, err := os.Stat(fname); err != nil {
-			return ver, err
-		} else if fi.IsDir() {
-			return ver, fmt.Errorf("%s cannot be a directory", fname)
-		}
-	}
 
 	// First verify the signature
-	sig, err := s.decodeSignature(sigpath)
-	if err != nil {
-		return ver, fmt.Errorf("failed to decode signature: %w", err)
+	block, _ := clearsign.Decode(provData)
+	if block == nil {
+		return ver, errors.New("signature block not found")
 	}
 
-	by, err := s.verifySignature(sig)
+	by, err := s.verifySignature(block)
 	if err != nil {
 		return ver, err
 	}
 	ver.SignedBy = by
 
-	// Second, verify the hash of the tarball.
-	sum, err := DigestFile(chartpath)
+	// Second, verify the hash of the data.
+	sum, err := Digest(bytes.NewBuffer(archiveData))
 	if err != nil {
 		return ver, err
 	}
-	_, sums, err := parseMessageBlock(sig.Plaintext)
+	sums, err := parseMessageBlock(block.Plaintext)
 	if err != nil {
 		return ver, err
 	}
 
 	sum = "sha256:" + sum
-	basename := filepath.Base(chartpath)
-	if sha, ok := sums.Files[basename]; !ok {
-		return ver, fmt.Errorf("provenance does not contain a SHA for a file named %q", basename)
+	if sha, ok := sums.Files[filename]; !ok {
+		return ver, fmt.Errorf("provenance does not contain a SHA for a file named %q", filename)
 	} else if sha != sum {
-		return ver, fmt.Errorf("sha256 sum does not match for %s: %q != %q", basename, sha, sum)
+		return ver, fmt.Errorf("sha256 sum does not match for %s: %q != %q", filename, sha, sum)
 	}
 	ver.FileHash = sum
-	ver.FileName = basename
+	ver.FileName = filename
 
 	// TODO: when image signing is added, verify that here.
 
 	return ver, nil
-}
-
-func (s *Signatory) decodeSignature(filename string) (*clearsign.Block, error) {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	block, _ := clearsign.Decode(data)
-	if block == nil {
-		// There was no sig in the file.
-		return nil, errors.New("signature block not found")
-	}
-
-	return block, nil
 }
 
 // verifySignature verifies that the given block is validly signed, and returns the signer.
@@ -320,64 +286,63 @@ func (s *Signatory) verifySignature(block *clearsign.Block) (*openpgp.Entity, er
 	)
 }
 
-func messageBlock(chartpath string) (*bytes.Buffer, error) {
-	var b *bytes.Buffer
-	// Checksum the archive
-	chash, err := DigestFile(chartpath)
+// messageBlock creates a message block from archive data and pre-marshalled metadata
+func messageBlock(archiveData []byte, filename string, metadataBytes []byte) (*bytes.Buffer, error) {
+	// Checksum the archive data
+	chash, err := Digest(bytes.NewBuffer(archiveData))
 	if err != nil {
-		return b, err
+		return nil, err
 	}
 
-	base := filepath.Base(chartpath)
 	sums := &SumCollection{
 		Files: map[string]string{
-			base: "sha256:" + chash,
+			filename: "sha256:" + chash,
 		},
 	}
 
-	// Load the archive into memory.
-	chart, err := loader.LoadFile(chartpath)
-	if err != nil {
-		return b, err
-	}
-
-	// Buffer a hash + checksums YAML file
-	data, err := yaml.Marshal(chart.Metadata)
-	if err != nil {
-		return b, err
-	}
-
+	// Buffer the metadata + checksums YAML file
 	// FIXME: YAML uses ---\n as a file start indicator, but this is not legal in a PGP
 	// clearsign block. So we use ...\n, which is the YAML document end marker.
 	// http://yaml.org/spec/1.2/spec.html#id2800168
-	b = bytes.NewBuffer(data)
+	b := bytes.NewBuffer(metadataBytes)
 	b.WriteString("\n...\n")
 
-	data, err = yaml.Marshal(sums)
+	data, err := yaml.Marshal(sums)
 	if err != nil {
-		return b, err
+		return nil, err
 	}
 	b.Write(data)
 
 	return b, nil
 }
 
-// parseMessageBlock
-func parseMessageBlock(data []byte) (*hapi.Metadata, *SumCollection, error) {
-	// This sucks.
-	parts := bytes.Split(data, []byte("\n...\n"))
-	if len(parts) < 2 {
-		return nil, nil, errors.New("message block must have at least two parts")
-	}
-
-	md := &hapi.Metadata{}
+// parseMessageBlock parses a message block and returns only checksums (metadata ignored like upstream)
+func parseMessageBlock(data []byte) (*SumCollection, error) {
 	sc := &SumCollection{}
 
-	if err := yaml.Unmarshal(parts[0], md); err != nil {
-		return md, sc, err
+	// We ignore metadata, just like upstream - only need checksums for verification
+	if err := ParseMessageBlock(data, nil, sc); err != nil {
+		return sc, err
 	}
-	err := yaml.Unmarshal(parts[1], sc)
-	return md, sc, err
+	return sc, nil
+}
+
+// ParseMessageBlock parses a message block containing metadata and checksums.
+//
+// This is the generic version that can work with any metadata type.
+// The metadata parameter should be a pointer to a struct that can be unmarshaled from YAML.
+func ParseMessageBlock(data []byte, metadata interface{}, sums *SumCollection) error {
+	parts := bytes.Split(data, []byte("\n...\n"))
+	if len(parts) < 2 {
+		return errors.New("message block must have at least two parts")
+	}
+
+	if metadata != nil {
+		if err := yaml.Unmarshal(parts[0], metadata); err != nil {
+			return err
+		}
+	}
+	return yaml.Unmarshal(parts[1], sums)
 }
 
 // loadKey loads a GPG key found at a particular path.
@@ -406,7 +371,7 @@ func loadKeyRing(ringpath string) (openpgp.EntityList, error) {
 // It takes the path to the archive file, and returns a string representation of
 // the SHA256 sum.
 //
-// The intended use of this function is to generate a sum of a chart TGZ file.
+// This function can be used to generate a sum of any package archive file.
 func DigestFile(filename string) (string, error) {
 	f, err := os.Open(filename)
 	if err != nil {

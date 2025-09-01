@@ -91,6 +91,8 @@ type EnvSettings struct {
 	QPS float32
 	// ColorMode controls colorized output (never, auto, always)
 	ColorMode string
+	// ContentCache is the location where cached charts are stored
+	ContentCache string
 }
 
 func New() *EnvSettings {
@@ -109,6 +111,7 @@ func New() *EnvSettings {
 		RegistryConfig:            envOr("HELM_REGISTRY_CONFIG", helmpath.ConfigPath("registry/config.json")),
 		RepositoryConfig:          envOr("HELM_REPOSITORY_CONFIG", helmpath.ConfigPath("repositories.yaml")),
 		RepositoryCache:           envOr("HELM_REPOSITORY_CACHE", helmpath.CachePath("repository")),
+		ContentCache:              envOr("HELM_CONTENT_CACHE", helmpath.CachePath("content")),
 		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 		QPS:                       envFloat32Or("HELM_QPS", defaultQPS),
 		ColorMode:                 envColorMode(),
@@ -161,6 +164,7 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.RegistryConfig, "registry-config", s.RegistryConfig, "path to the registry config file")
 	fs.StringVar(&s.RepositoryConfig, "repository-config", s.RepositoryConfig, "path to the file containing repository names and URLs")
 	fs.StringVar(&s.RepositoryCache, "repository-cache", s.RepositoryCache, "path to the directory containing cached repository indexes")
+	fs.StringVar(&s.ContentCache, "content-cache", s.ContentCache, "path to the directory containing cached content (e.g. charts)")
 	fs.IntVar(&s.BurstLimit, "burst-limit", s.BurstLimit, "client-side default throttling limit")
 	fs.Float32Var(&s.QPS, "qps", s.QPS, "queries per second used when communicating with the Kubernetes API, not including bursting")
 	fs.StringVar(&s.ColorMode, "color", s.ColorMode, "use colored output (never, auto, always)")
@@ -245,6 +249,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_PLUGINS":           s.PluginsDirectory,
 		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
 		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
+		"HELM_CONTENT_CACHE":     s.ContentCache,
 		"HELM_REPOSITORY_CONFIG": s.RepositoryConfig,
 		"HELM_NAMESPACE":         s.Namespace(),
 		"HELM_MAX_HISTORY":       strconv.Itoa(s.MaxHistory),

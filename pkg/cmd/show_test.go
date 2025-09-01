@@ -64,14 +64,17 @@ func TestShowPreReleaseChart(t *testing.T) {
 		},
 	}
 
+	contentTmp := t.TempDir()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			outdir := srv.Root()
-			cmd := fmt.Sprintf("show all '%s' %s --repository-config %s --repository-cache %s",
+			cmd := fmt.Sprintf("show all '%s' %s --repository-config %s --repository-cache %s --content-cache %s",
 				tt.args,
 				tt.flags,
 				filepath.Join(outdir, "repositories.yaml"),
 				outdir,
+				contentTmp,
 			)
 			//_, out, err := executeActionCommand(cmd)
 			_, _, err := executeActionCommand(cmd)

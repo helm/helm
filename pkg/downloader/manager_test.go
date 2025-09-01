@@ -488,12 +488,14 @@ func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Depe
 		Schemes: []string{"http", "https"},
 		New:     getter.NewHTTPGetter,
 	}}
+	contentCache := t.TempDir()
 	m := &Manager{
 		ChartPath:        dir(chartName),
 		Out:              b,
 		Getters:          g,
 		RepositoryConfig: dir("repositories.yaml"),
 		RepositoryCache:  dir(),
+		ContentCache:     contentCache,
 	}
 
 	// First build will update dependencies and create Chart.lock file.

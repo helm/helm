@@ -19,12 +19,13 @@ import (
 	"bytes"
 	"os"
 	"runtime"
-	"sort"
 	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -81,7 +82,7 @@ func TestManuallyProcessArgs(t *testing.T) {
 	}
 }
 
-func TestLoadPlugins(t *testing.T) {
+func TestLoadCLIPlugins(t *testing.T) {
 	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
 	settings.RepositoryConfig = "testdata/helmhome/helm/repositories.yaml"
 	settings.RepositoryCache = "testdata/helmhome/helm/repository"
@@ -90,7 +91,7 @@ func TestLoadPlugins(t *testing.T) {
 		out bytes.Buffer
 		cmd cobra.Command
 	)
-	loadPlugins(&cmd, &out)
+	loadCLIPlugins(&cmd, &out)
 
 	envs := strings.Join([]string{
 		"fullenv",
@@ -119,9 +120,7 @@ func TestLoadPlugins(t *testing.T) {
 
 	plugins := cmd.Commands()
 
-	if len(plugins) != len(tests) {
-		t.Fatalf("Expected %d plugins, got %d", len(tests), len(plugins))
-	}
+	require.Len(t, plugins, len(tests), "Expected %d plugins, got %d", len(tests), len(plugins))
 
 	for i := 0; i < len(plugins); i++ {
 		out.Reset()
@@ -153,9 +152,7 @@ func TestLoadPlugins(t *testing.T) {
 					t.Errorf("Error running %s: %+v", tt.use, err)
 				}
 			}
-			if out.String() != tt.expect {
-				t.Errorf("Expected %s to output:\n%s\ngot\n%s", tt.use, tt.expect, out.String())
-			}
+			assert.Equal(t, tt.expect, out.String(), "expected output for %s", tt.use)
 		}
 	}
 }
@@ -169,7 +166,7 @@ func TestLoadPluginsWithSpace(t *testing.T) {
 		out bytes.Buffer
 		cmd cobra.Command
 	)
-	loadPlugins(&cmd, &out)
+	loadCLIPlugins(&cmd, &out)
 
 	envs := strings.Join([]string{
 		"fullenv",
@@ -228,9 +225,7 @@ func TestLoadPluginsWithSpace(t *testing.T) {
 					t.Errorf("Error running %s: %+v", tt.use, err)
 				}
 			}
-			if out.String() != tt.expect {
-				t.Errorf("Expected %s to output:\n%s\ngot\n%s", tt.use, tt.expect, out.String())
-			}
+			assert.Equal(t, tt.expect, out.String(), "expected output for %s", tt.use)
 		}
 	}
 }
@@ -242,7 +237,7 @@ type staticCompletionDetails struct {
 	next      []staticCompletionDetails
 }
 
-func TestLoadPluginsForCompletion(t *testing.T) {
+func TestLoadCLIPluginsForCompletion(t *testing.T) {
 	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
 
 	var out bytes.Buffer
@@ -250,8 +245,7 @@ func TestLoadPluginsForCompletion(t *testing.T) {
 	cmd := &cobra.Command{
 		Use: "completion",
 	}
-
-	loadPlugins(cmd, &out)
+	loadCLIPlugins(cmd, &out)
 
 	tests := []staticCompletionDetails{
 		{"args", []string{}, []string{}, []staticCompletionDetails{}},
@@ -276,30 +270,17 @@ func TestLoadPluginsForCompletion(t *testing.T) {
 
 func checkCommand(t *testing.T, plugins []*cobra.Command, tests []staticCompletionDetails) {
 	t.Helper()
-	if len(plugins) != len(tests) {
-		t.Fatalf("Expected commands %v, got %v", tests, plugins)
-	}
+	require.Len(t, plugins, len(tests), "Expected commands %v, got %v", tests, plugins)
 
-	for i := 0; i < len(plugins); i++ {
+	is := assert.New(t)
+	for i := range plugins {
 		pp := plugins[i]
 		tt := tests[i]
-		if pp.Use != tt.use {
-			t.Errorf("%s: Expected Use=%q, got %q", pp.Name(), tt.use, pp.Use)
-		}
+		is.Equal(pp.Use, tt.use, "Expected Use=%q, got %q", tt.use, pp.Use)
 
 		targs := tt.validArgs
 		pargs := pp.ValidArgs
-		if len(targs) != len(pargs) {
-			t.Fatalf("%s: expected args %v, got %v", pp.Name(), targs, pargs)
-		}
-
-		sort.Strings(targs)
-		sort.Strings(pargs)
-		for j := range targs {
-			if targs[j] != pargs[j] {
-				t.Errorf("%s: expected validArg=%q, got %q", pp.Name(), targs[j], pargs[j])
-			}
-		}
+		is.ElementsMatch(targs, pargs)
 
 		tflags := tt.flags
 		var pflags []string
@@ -309,17 +290,8 @@ func checkCommand(t *testing.T, plugins []*cobra.Command, tests []staticCompleti
 				pflags = append(pflags, flag.Shorthand)
 			}
 		})
-		if len(tflags) != len(pflags) {
-			t.Fatalf("%s: expected flags %v, got %v", pp.Name(), tflags, pflags)
-		}
+		is.ElementsMatch(tflags, pflags)
 
-		sort.Strings(tflags)
-		sort.Strings(pflags)
-		for j := range tflags {
-			if tflags[j] != pflags[j] {
-				t.Errorf("%s: expected flag=%q, got %q", pp.Name(), tflags[j], pflags[j])
-			}
-		}
 		// Check the next level
 		checkCommand(t, pp.Commands(), tt.next)
 	}
@@ -358,7 +330,7 @@ func TestPluginDynamicCompletion(t *testing.T) {
 	}
 }
 
-func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
+func TestLoadCLIPlugins_HelmNoPlugins(t *testing.T) {
 	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
 	settings.RepositoryConfig = "testdata/helmhome/helm/repository"
 
@@ -366,7 +338,7 @@ func TestLoadPlugins_HelmNoPlugins(t *testing.T) {
 
 	out := bytes.NewBuffer(nil)
 	cmd := &cobra.Command{}
-	loadPlugins(cmd, out)
+	loadCLIPlugins(cmd, out)
 	plugins := cmd.Commands()
 
 	if len(plugins) != 0 {

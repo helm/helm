@@ -32,7 +32,7 @@ import (
 var (
 	// requestCount records the number of logged request-response pairs and will
 	// be used as the unique id for the next pair.
-	requestCount uint64
+	requestCount atomic.Uint64
 
 	// toScrub is a set of headers that should be scrubbed from the log.
 	toScrub = []string{
@@ -79,7 +79,7 @@ func NewTransport(debug bool) *retry.Transport {
 
 // RoundTrip calls base round trip while keeping track of the current request.
 func (t *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	id := atomic.AddUint64(&requestCount, 1) - 1
+	id := requestCount.Add(1) - 1
 
 	slog.Debug(req.Method, "id", id, "url", req.URL, "header", logHeader(req.Header))
 	resp, err = t.RoundTripper.RoundTrip(req)

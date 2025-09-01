@@ -18,15 +18,57 @@ package util
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
+	"time"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
+	"helm.sh/helm/v4/internal/version"
+
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
+
+// HTTPURLLoader implements a loader for HTTP/HTTPS URLs
+type HTTPURLLoader http.Client
+
+func (l *HTTPURLLoader) Load(urlStr string) (any, error) {
+	client := (*http.Client)(l)
+
+	req, err := http.NewRequest(http.MethodGet, urlStr, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create HTTP request for %s: %w", urlStr, err)
+	}
+	req.Header.Set("User-Agent", version.GetUserAgent())
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP request failed for %s: %w", urlStr, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP request to %s returned status %d (%s)", urlStr, resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
+
+	return jsonschema.UnmarshalJSON(resp.Body)
+}
+
+// newHTTPURLLoader creates a HTTP URL loader with proxy support.
+func newHTTPURLLoader() *HTTPURLLoader {
+	httpLoader := HTTPURLLoader(http.Client{
+		Timeout: 15 * time.Second,
+		Transport: &http.Transport{
+			Proxy:           http.ProxyFromEnvironment,
+			TLSClientConfig: &tls.Config{},
+		},
+	})
+	return &httpLoader
+}
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
 func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) error {
@@ -71,7 +113,15 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error
 	}
 	slog.Debug("unmarshalled JSON schema", "schema", schemaJSON)
 
+	// Configure compiler with loaders for different URL schemes
+	loader := jsonschema.SchemeURLLoader{
+		"file":  jsonschema.FileLoader{},
+		"http":  newHTTPURLLoader(),
+		"https": newHTTPURLLoader(),
+	}
+
 	compiler := jsonschema.NewCompiler()
+	compiler.UseLoader(loader)
 	err = compiler.AddResource("file:///values.schema.json", schema)
 	if err != nil {
 		return err
