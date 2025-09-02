@@ -48,7 +48,6 @@ func newPluginCmd(out io.Writer) *cobra.Command {
 func runHook(p plugin.Plugin, event string) error {
 	pluginHook, ok := p.(plugin.PluginHook)
 	if ok {
-		plugin.SetupPluginEnv(settings, p.Metadata().Name, p.Dir())
 		return pluginHook.InvokeHook(event)
 	}
 

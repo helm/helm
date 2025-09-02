@@ -460,3 +460,8 @@ func newRegistryClientWithTLS(
 	}
 	return registryClient, nil
 }
+
+type CommandError struct {
+	error
+	ExitCode int
+}

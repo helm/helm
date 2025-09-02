@@ -196,7 +196,7 @@ func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Outp
 
 	if exitCode != 0 {
 		return nil, &InvokeExecError{
-			Code: int(exitCode),
+			ExitCode: int(exitCode),
 		}
 	}
 

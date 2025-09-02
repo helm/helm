@@ -18,14 +18,12 @@ package postrenderer
 
 import (
 	"bytes"
-	"path/filepath"
 	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/pkg/cli"
 )
 
@@ -38,8 +36,6 @@ func TestNewPostRenderPluginRunWithNoOutput(t *testing.T) {
 	s := cli.New()
 	s.PluginsDirectory = "testdata/plugins"
 	name := "postrenderer-v1"
-	base := filepath.Join(s.PluginsDirectory, name)
-	plugin.SetupPluginEnv(s, name, base)
 
 	renderer, err := NewPostRendererPlugin(s, name, "")
 	require.NoError(t, err)
@@ -57,8 +53,6 @@ func TestNewPostRenderPluginWithOneArgsRun(t *testing.T) {
 	s := cli.New()
 	s.PluginsDirectory = "testdata/plugins"
 	name := "postrenderer-v1"
-	base := filepath.Join(s.PluginsDirectory, name)
-	plugin.SetupPluginEnv(s, name, base)
 
 	renderer, err := NewPostRendererPlugin(s, name, "ARG1")
 	require.NoError(t, err)
@@ -77,8 +71,6 @@ func TestNewPostRenderPluginWithTwoArgsRun(t *testing.T) {
 	s := cli.New()
 	s.PluginsDirectory = "testdata/plugins"
 	name := "postrenderer-v1"
-	base := filepath.Join(s.PluginsDirectory, name)
-	plugin.SetupPluginEnv(s, name, base)
 
 	renderer, err := NewPostRendererPlugin(s, name, "ARG1", "ARG2")
 	require.NoError(t, err)
