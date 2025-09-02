@@ -81,13 +81,19 @@ var pluginTypes = []pluginTypeMeta{
 		pluginType: "cli/v1",
 		inputType:  reflect.TypeOf(schema.InputMessageCLIV1{}),
 		outputType: reflect.TypeOf(schema.OutputMessageCLIV1{}),
-		configType: reflect.TypeOf(ConfigCLI{}),
+		configType: reflect.TypeOf(schema.ConfigCLIV1{}),
 	},
 	{
 		pluginType: "getter/v1",
 		inputType:  reflect.TypeOf(schema.InputMessageGetterV1{}),
 		outputType: reflect.TypeOf(schema.OutputMessageGetterV1{}),
-		configType: reflect.TypeOf(ConfigGetter{}),
+		configType: reflect.TypeOf(schema.ConfigGetterV1{}),
+	},
+	{
+		pluginType: "postrenderer/v1",
+		inputType:  reflect.TypeOf(schema.InputMessagePostRendererV1{}),
+		outputType: reflect.TypeOf(schema.OutputMessagePostRendererV1{}),
+		configType: reflect.TypeOf(schema.ConfigPostRendererV1{}),
 	},
 }
 

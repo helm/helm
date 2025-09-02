@@ -123,11 +123,11 @@ func buildLegacyConfig(m MetadataLegacy, pluginType string) Config {
 		for _, d := range m.Downloaders {
 			protocols = append(protocols, d.Protocols...)
 		}
-		return &ConfigGetter{
+		return &schema.ConfigGetterV1{
 			Protocols: protocols,
 		}
 	case "cli/v1":
-		return &ConfigCLI{
+		return &schema.ConfigCLIV1{
 			Usage:       "",            // Legacy plugins don't have Usage field for command syntax
 			ShortHelp:   m.Usage,       // Map legacy usage to shortHelp
 			LongHelp:    m.Description, // Map legacy description to longHelp
@@ -175,7 +175,7 @@ func buildLegacyRuntimeConfig(m MetadataLegacy) RuntimeConfig {
 
 func fromMetadataV1(mv1 MetadataV1) (*Metadata, error) {
 
-	config, err := convertMetadataConfig(mv1.Type, mv1.Config)
+	config, err := unmarshaConfig(mv1.Type, mv1.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -195,30 +195,6 @@ func fromMetadataV1(mv1 MetadataV1) (*Metadata, error) {
 		Config:        config,
 		RuntimeConfig: runtimeConfig,
 	}, nil
-}
-
-func convertMetadataConfig(pluginType string, configRaw map[string]any) (Config, error) {
-	var err error
-	var config Config
-
-	switch pluginType {
-	case "test/v1":
-		config, err = remarshalConfig[*schema.ConfigTestV1](configRaw)
-	case "cli/v1":
-		config, err = remarshalConfig[*ConfigCLI](configRaw)
-	case "getter/v1":
-		config, err = remarshalConfig[*ConfigGetter](configRaw)
-	case "postrenderer/v1":
-		config, err = remarshalConfig[*ConfigPostrenderer](configRaw)
-	default:
-		return nil, fmt.Errorf("unsupported plugin type: %s", pluginType)
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config for %s plugin type: %w", pluginType, err)
-	}
-
-	return config, nil
 }
 
 func convertMetdataRuntimeConfig(runtimeType string, runtimeConfigRaw map[string]any) (RuntimeConfig, error) {

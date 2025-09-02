@@ -27,3 +27,22 @@ type InputMessageCLIV1 struct {
 type OutputMessageCLIV1 struct {
 	Data *bytes.Buffer `json:"data"`
 }
+
+// ConfigCLIV1 represents the configuration for CLI plugins
+type ConfigCLIV1 struct {
+	// Usage is the single-line usage text shown in help
+	// For recommended syntax, see [spf13/cobra.command.Command] Use field comment:
+	// https://pkg.go.dev/github.com/spf13/cobra#Command
+	Usage string `yaml:"usage"`
+	// ShortHelp is the short description shown in the 'helm help' output
+	ShortHelp string `yaml:"shortHelp"`
+	// LongHelp is the long message shown in the 'helm help <this-command>' output
+	LongHelp string `yaml:"longHelp"`
+	// IgnoreFlags ignores any flags passed in from Helm
+	IgnoreFlags bool `yaml:"ignoreFlags"`
+}
+
+func (c *ConfigCLIV1) Validate() error {
+	// Config validation for CLI plugins
+	return nil
+}

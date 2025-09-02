@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/internal/plugin"
+	"helm.sh/helm/v4/internal/plugin/schema"
 )
 
 func newPluginListCmd(out io.Writer) *cobra.Command {
@@ -106,7 +107,7 @@ func compListPlugins(_ string, ignoredPluginNames []string) []string {
 		for _, p := range filteredPlugins {
 			m := p.Metadata()
 			var shortHelp string
-			if config, ok := m.Config.(*plugin.ConfigCLI); ok {
+			if config, ok := m.Config.(*schema.ConfigCLIV1); ok {
 				shortHelp = config.ShortHelp
 			}
 			pNames = append(pNames, fmt.Sprintf("%s\t%s", p.Metadata().Name, shortHelp))

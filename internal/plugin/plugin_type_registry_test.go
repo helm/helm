@@ -34,5 +34,5 @@ func TestMakeOutputMessage(t *testing.T) {
 func TestMakeConfig(t *testing.T) {
 	ptm := pluginTypesIndex["getter/v1"]
 	config := reflect.New(ptm.configType).Interface().(Config)
-	assert.IsType(t, &ConfigGetter{}, config)
+	assert.IsType(t, &schema.ConfigGetterV1{}, config)
 }

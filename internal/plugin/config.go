@@ -16,72 +16,39 @@ limitations under the License.
 package plugin
 
 import (
+	"bytes"
 	"fmt"
+	"reflect"
 
 	"go.yaml.in/yaml/v3"
 )
 
-// Config interface defines the methods that all plugin type configurations must implement
+// Config represents an plugin type specific configuration
+// It is expected to type assert (cast) the a Config to its expected underlying type (schema.ConfigCLIV1, schema.ConfigGetterV1, etc).
 type Config interface {
 	Validate() error
 }
 
-// ConfigCLI represents the configuration for CLI plugins
-type ConfigCLI struct {
-	// Usage is the single-line usage text shown in help
-	// For recommended syntax, see [spf13/cobra.command.Command] Use field comment:
-	// https://pkg.go.dev/github.com/spf13/cobra#Command
-	Usage string `yaml:"usage"`
-	// ShortHelp is the short description shown in the 'helm help' output
-	ShortHelp string `yaml:"shortHelp"`
-	// LongHelp is the long message shown in the 'helm help <this-command>' output
-	LongHelp string `yaml:"longHelp"`
-	// IgnoreFlags ignores any flags passed in from Helm
-	IgnoreFlags bool `yaml:"ignoreFlags"`
-}
+func unmarshaConfig(pluginType string, configData map[string]any) (Config, error) {
 
-// ConfigGetter represents the configuration for download plugins
-type ConfigGetter struct {
-	// Protocols are the list of URL schemes supported by this downloader
-	Protocols []string `yaml:"protocols"`
-}
-
-// ConfigPostrenderer represents the configuration for postrenderer plugins
-// there are no runtime-independent configurations for postrenderer/v1 plugin type
-type ConfigPostrenderer struct{}
-
-func (c *ConfigCLI) Validate() error {
-	// Config validation for CLI plugins
-	return nil
-}
-
-func (c *ConfigGetter) Validate() error {
-	if len(c.Protocols) == 0 {
-		return fmt.Errorf("getter has no protocols")
+	pluginTypeMeta, ok := pluginTypesIndex[pluginType]
+	if !ok {
+		return nil, fmt.Errorf("unknown plugin type %q", pluginType)
 	}
-	for i, protocol := range c.Protocols {
-		if protocol == "" {
-			return fmt.Errorf("getter has empty protocol at index %d", i)
-		}
-	}
-	return nil
-}
 
-func (c *ConfigPostrenderer) Validate() error {
-	// Config validation for postrenderer plugins
-	return nil
-}
+	// TODO: Avoid (yaml) serialization/deserialization for type conversion here
 
-func remarshalConfig[T Config](configData map[string]any) (Config, error) {
 	data, err := yaml.Marshal(configData)
 	if err != nil {
+		return nil, fmt.Errorf("failed to marshel config data (plugin type %s): %w", pluginType, err)
+	}
+
+	config := reflect.New(pluginTypeMeta.configType)
+	d := yaml.NewDecoder(bytes.NewReader(data))
+	d.KnownFields(true)
+	if err := d.Decode(config.Interface()); err != nil {
 		return nil, err
 	}
 
-	var config T
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, err
-	}
-
-	return config, nil
+	return config.Interface().(Config), nil
 }

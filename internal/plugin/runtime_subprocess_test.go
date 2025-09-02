@@ -45,7 +45,7 @@ func mockSubprocessCLIPluginErrorExit(t *testing.T, pluginName string, exitCode 
 		Type:       "cli/v1",
 		APIVersion: "v1",
 		Runtime:    "subprocess",
-		Config: &ConfigCLI{
+		Config: &schema.ConfigCLIV1{
 			Usage:       "Mock plugin",
 			ShortHelp:   "Mock plugin",
 			LongHelp:    "Mock plugin for testing",

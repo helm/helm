@@ -30,3 +30,9 @@ type InputMessagePostRendererV1 struct {
 type OutputMessagePostRendererV1 struct {
 	Manifests *bytes.Buffer `json:"manifests"`
 }
+
+type ConfigPostRendererV1 struct{}
+
+func (c *ConfigPostRendererV1) Validate() error {
+	return nil
+}

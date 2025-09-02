@@ -17,6 +17,8 @@ package plugin
 
 import (
 	"testing"
+
+	"helm.sh/helm/v4/internal/plugin/schema"
 )
 
 func mockSubprocessCLIPlugin(t *testing.T, pluginName string) *SubprocessPluginRuntime {
@@ -46,7 +48,7 @@ func mockSubprocessCLIPlugin(t *testing.T, pluginName string) *SubprocessPluginR
 			Type:       "cli/v1",
 			APIVersion: "v1",
 			Runtime:    "subprocess",
-			Config: &ConfigCLI{
+			Config: &schema.ConfigCLIV1{
 				Usage:       "Mock plugin",
 				ShortHelp:   "Mock plugin",
 				LongHelp:    "Mock plugin for testing",
