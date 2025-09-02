@@ -38,7 +38,7 @@ import (
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/cmd/require"
-	releaseutil "helm.sh/helm/v4/pkg/release/util"
+	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 )
 
 const templateDesc = `
