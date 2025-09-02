@@ -442,21 +442,71 @@ items:
 func TestIsListResource(t *testing.T) {
 	tests := []struct {
 		kind     string
+		manifest string
 		expected bool
 	}{
-		{"ConfigMap", false},
-		{"ConfigMapList", true},
-		{"Secret", false},
-		{"SecretList", true},
-		{"List", true},
-		{"", false},
-		{"SomethingListExtra", false},
+		{"ConfigMap", `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: value`, false},
+		{"ConfigMapList", `apiVersion: v1
+kind: ConfigMapList
+items:
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: test1
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: test2`, true},
+		{"Secret", `apiVersion: v1
+kind: Secret
+metadata:
+  name: test
+data:
+  key: value`, false},
+		{"SecretList", `apiVersion: v1
+kind: SecretList
+items:
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: test1
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: test2`, true},
+		{"List", `apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: test`, true},
+		{"", `apiVersion: v1
+kind: ""
+metadata:
+  name: test`, false},
+		{"SomethingListExtra", `apiVersion: v1
+kind: SomethingListExtra
+metadata:
+  name: test`, false},
+		// Test case for a custom resource ending in "List" but without items field (should be false)
+		{"AccessList", `apiVersion: example.com/v1
+kind: AccessList
+metadata:
+  name: test
+spec:
+  rules: []`, false},
 	}
 
 	for _, test := range tests {
 		t.Run(test.kind, func(t *testing.T) {
 			obj := &k8sYamlStruct{Kind: test.kind}
-			result := isListResource(obj)
+			result := isListResource(obj, test.manifest)
 			if result != test.expected {
 				t.Errorf("isListResource(%q) = %v, expected %v", test.kind, result, test.expected)
 			}

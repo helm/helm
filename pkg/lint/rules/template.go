@@ -162,7 +162,7 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 					// Refs https://github.com/helm/helm/issues/8596
 					// Skip metadata name validation for List resources as they don't require meaningful names
 					// Refs https://github.com/helm/helm/issues/13192
-					if !isListResource(yamlStruct) {
+					if !isListResource(yamlStruct, renderedContent) {
 						linter.RunLinterRule(support.WarningSev, fpath, validateMetadataName(yamlStruct))
 					}
 					linter.RunLinterRule(support.WarningSev, fpath, validateNoDeprecations(yamlStruct, kubeVersion))
@@ -240,9 +240,30 @@ func validateYamlContent(err error) error {
 }
 
 // isListResource returns true if the resource is a Kubernetes List type
-// (e.g. ConfigMapList, SecretList).
-func isListResource(obj *k8sYamlStruct) bool {
-	return strings.HasSuffix(obj.Kind, "List")
+// (e.g. ConfigMapList, SecretList). It checks both that the Kind ends with
+// "List" and that the resource has an "items" field that is an array.
+// This avoids incorrectly treating custom resources that happen to end with
+// "List" but aren't actually list containers.
+func isListResource(obj *k8sYamlStruct, manifest string) bool {
+	if !strings.HasSuffix(obj.Kind, "List") {
+		return false
+	}
+
+	// For the special case of Kind == "List", we can be sure it's a list
+	if obj.Kind == "List" {
+		return true
+	}
+
+	// For other kinds ending with "List", verify they have an items field
+	var listStruct struct {
+		Items []interface{} `json:"items"`
+	}
+	if err := yaml.Unmarshal([]byte(manifest), &listStruct); err != nil {
+		return false
+	}
+
+	// Check if the items field exists and is an array (even if empty)
+	return listStruct.Items != nil
 }
 
 // validateMetadataName uses the correct validation function for the object
