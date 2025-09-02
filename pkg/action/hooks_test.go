@@ -29,8 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/resource"
 
-	chart "helm.sh/helm/v4/pkg/chart/v2"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -178,7 +177,7 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 	outBuffer := &bytes.Buffer{}
 	instAction.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
-	templates := []*chart.File{
+	templates := []*common.File{
 		{Name: "templates/hello", Data: []byte("hello: world")},
 		{Name: "templates/hooks", Data: []byte(manifest)},
 	}
@@ -205,7 +204,7 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 	outBuffer := &bytes.Buffer{}
 	failingClient.PrintingKubeClient = kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
-	templates := []*chart.File{
+	templates := []*common.File{
 		{Name: "templates/hello", Data: []byte("hello: world")},
 		{Name: "templates/hooks", Data: []byte(manifest)},
 	}
@@ -382,7 +381,7 @@ data:
 			configuration := &Configuration{
 				Releases:     storage.Init(driver.NewMemory()),
 				KubeClient:   kubeClient,
-				Capabilities: chartutil.DefaultCapabilities,
+				Capabilities: common.DefaultCapabilities,
 			}
 
 			serverSideApply := true

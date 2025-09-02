@@ -19,6 +19,7 @@ package action
 import (
 	"testing"
 
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
@@ -27,14 +28,14 @@ func TestShow(t *testing.T) {
 	client := NewShow(ShowAll, config)
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
-		Files: []*chart.File{
+		Files: []*common.File{
 			{Name: "README.md", Data: []byte("README\n")},
 			{Name: "crds/ignoreme.txt", Data: []byte("error")},
 			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
 			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},
 			{Name: "crds/baz.yaml", Data: []byte("baz\n")},
 		},
-		Raw: []*chart.File{
+		Raw: []*common.File{
 			{Name: "values.yaml", Data: []byte("VALUES\n")},
 		},
 		Values: map[string]interface{}{},
@@ -105,7 +106,7 @@ func TestShowCRDs(t *testing.T) {
 	client := NewShow(ShowCRDs, config)
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
-		Files: []*chart.File{
+		Files: []*common.File{
 			{Name: "crds/ignoreme.txt", Data: []byte("error")},
 			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
 			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},
@@ -138,7 +139,7 @@ func TestShowNoReadme(t *testing.T) {
 	client := NewShow(ShowAll, config)
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
-		Files: []*chart.File{
+		Files: []*common.File{
 			{Name: "crds/ignoreme.txt", Data: []byte("error")},
 			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
 			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},

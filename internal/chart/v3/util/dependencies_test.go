@@ -23,6 +23,7 @@ import (
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	"helm.sh/helm/v4/internal/chart/v3/loader"
+	"helm.sh/helm/v4/pkg/chart/common"
 )
 
 func loadChart(t *testing.T, path string) *chart.Chart {
@@ -221,7 +222,7 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	if err := processDependencyImportValues(c, false); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
-	cc := Values(c.Values)
+	cc := common.Values(c.Values)
 	for kk, vv := range e {
 		pv, err := cc.PathValue(kk)
 		if err != nil {
@@ -251,7 +252,7 @@ func TestProcessDependencyImportValues(t *testing.T) {
 		t.Error("expect nil value not found but found it")
 	}
 	switch xerr := err.(type) {
-	case ErrNoValue:
+	case common.ErrNoValue:
 		// We found what we expected
 	default:
 		t.Errorf("expected an ErrNoValue but got %q instead", xerr)
@@ -261,7 +262,7 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	if err := processDependencyImportValues(c, true); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
-	cc = Values(c.Values)
+	cc = common.Values(c.Values)
 	val, err := cc.PathValue("ensurenull")
 	if err != nil {
 		t.Error("expect value but ensurenull was not found")
@@ -291,7 +292,7 @@ func TestProcessDependencyImportValuesFromSharedDependencyToAliases(t *testing.T
 	e["foo.grandchild.defaults.defaultValue"] = "42"
 	e["bar.grandchild.defaults.defaultValue"] = "42"
 
-	cValues := Values(c.Values)
+	cValues := common.Values(c.Values)
 	for kk, vv := range e {
 		pv, err := cValues.PathValue(kk)
 		if err != nil {
@@ -329,7 +330,7 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 	if err := processDependencyImportValues(c, true); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
-	cc := Values(c.Values)
+	cc := common.Values(c.Values)
 	for kk, vv := range e {
 		pv, err := cc.PathValue(kk)
 		if err != nil {

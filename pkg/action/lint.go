@@ -22,9 +22,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/v2/lint"
+	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
-	"helm.sh/helm/v4/pkg/lint"
-	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 // Lint is the action for checking that the semantics of a chart are well-formed.
@@ -36,7 +37,7 @@ type Lint struct {
 	WithSubcharts        bool
 	Quiet                bool
 	SkipSchemaValidation bool
-	KubeVersion          *chartutil.KubeVersion
+	KubeVersion          *common.KubeVersion
 }
 
 // LintResult is the result of Lint
@@ -86,7 +87,7 @@ func HasWarningsOrErrors(result *LintResult) bool {
 	return len(result.Errors) > 0
 }
 
-func lintChart(path string, vals map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, skipSchemaValidation bool) (support.Linter, error) {
+func lintChart(path string, vals map[string]interface{}, namespace string, kubeVersion *common.KubeVersion, skipSchemaValidation bool) (support.Linter, error) {
 	var chartPath string
 	linter := support.Linter{}
 

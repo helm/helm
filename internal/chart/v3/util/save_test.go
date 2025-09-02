@@ -31,6 +31,7 @@ import (
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	"helm.sh/helm/v4/internal/chart/v3/loader"
+	"helm.sh/helm/v4/pkg/chart/common"
 )
 
 func TestSave(t *testing.T) {
@@ -47,7 +48,7 @@ func TestSave(t *testing.T) {
 				Lock: &chart.Lock{
 					Digest: "testdigest",
 				},
-				Files: []*chart.File{
+				Files: []*common.File{
 					{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 				},
 				Schema: []byte("{\n  \"title\": \"Values\"\n}"),
@@ -113,7 +114,7 @@ func TestSave(t *testing.T) {
 		Lock: &chart.Lock{
 			Digest: "testdigest",
 		},
-		Files: []*chart.File{
+		Files: []*common.File{
 			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 		},
 	}
@@ -153,7 +154,7 @@ func TestSavePreservesTimestamps(t *testing.T) {
 			"imageName": "testimage",
 			"imageId":   42,
 		},
-		Files: []*chart.File{
+		Files: []*common.File{
 			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 		},
 		Schema: []byte("{\n  \"title\": \"Values\"\n}"),
@@ -219,10 +220,10 @@ func TestSaveDir(t *testing.T) {
 			Name:       "ahab",
 			Version:    "1.2.3",
 		},
-		Files: []*chart.File{
+		Files: []*common.File{
 			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
 		},
-		Templates: []*chart.File{
+		Templates: []*common.File{
 			{Name: path.Join(TemplatesDir, "nested", "dir", "thing.yaml"), Data: []byte("abc: {{ .Values.abc }}")},
 		},
 	}
