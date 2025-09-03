@@ -115,7 +115,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							continue
 						}
 						if client.OutputDir == "" {
-							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", filepath.ToSlash(m.Path), m.Manifest)
 						} else {
 							newDir := client.OutputDir
 							if client.UseReleaseName {
@@ -231,7 +231,7 @@ func writeToFile(outputDir string, name string, data string, appendData bool) er
 
 	defer f.Close()
 
-	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, data)
+	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", filepath.ToSlash(name), data)
 
 	if err != nil {
 		return err
