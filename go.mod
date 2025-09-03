@@ -30,8 +30,8 @@ require (
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/rubenv/sql-migrate v1.8.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
-	github.com/spf13/cobra v1.9.1
-	github.com/spf13/pflag v1.0.7
+	github.com/spf13/cobra v1.10.1
+	github.com/spf13/pflag v1.0.9
 	github.com/stretchr/testify v1.11.1
 	github.com/tetratelabs/wazero v1.9.0
 	go.yaml.in/yaml/v3 v3.0.4
