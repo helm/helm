@@ -26,7 +26,6 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -677,7 +676,7 @@ func createOrOpenFile(filename string, appendData bool) (*os.File, error) {
 
 // check if the directory exists to create file. creates if doesn't exist
 func ensureDirectoryForFile(file string) error {
-	baseDir := path.Dir(file)
+	baseDir := filepath.Dir(file)
 	_, err := os.Stat(baseDir)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
