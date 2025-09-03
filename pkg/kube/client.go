@@ -214,7 +214,7 @@ type clientCreateOptions struct {
 
 type ClientCreateOption func(*clientCreateOptions) error
 
-// ClientUpdateOptionServerSideApply enables performing object apply server-side
+// ClientCreateOptionServerSideApply enables performing object apply server-side
 // see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
 //
 // `forceConflicts` forces conflicts to be resolved (may be  when serverSideApply enabled only)
