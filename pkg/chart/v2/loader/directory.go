@@ -99,8 +99,9 @@ func LoadDir(dir string) (*chart.Chart, error) {
 			return fmt.Errorf("cannot load irregular file %s as it has file mode type bits set", name)
 		}
 
-		if fi.Size() > MaxDecompressedFileSize {
-			return fmt.Errorf("chart file %q is larger than the maximum file size %d", fi.Name(), MaxDecompressedFileSize)
+		maxChartFileSize := getMaxDecompressedFileSize()
+		if fi.Size() > maxChartFileSize {
+			return fmt.Errorf("chart file %q is larger than the maximum file size %d", fi.Name(), maxChartFileSize)
 		}
 
 		data, err := os.ReadFile(name)
