@@ -93,7 +93,6 @@ type Install struct {
 	DisableHooks     bool
 	Replace          bool
 	WaitStrategy     kube.WaitStrategy
-	WaitForJobs      bool
 	Devel            bool
 	DependencyUpdate bool
 	Timeout          time.Duration
@@ -503,11 +502,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		return rel, fmt.Errorf("failed to get waiter: %w", err)
 	}
 
-	if i.WaitForJobs {
-		err = waiter.WaitWithJobs(resources, i.Timeout)
-	} else {
-		err = waiter.Wait(resources, i.Timeout)
-	}
+	err = waiter.Wait(resources, i.Timeout)
 	if err != nil {
 		return rel, err
 	}
