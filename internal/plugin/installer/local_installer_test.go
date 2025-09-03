@@ -38,7 +38,7 @@ func TestLocalInstaller(t *testing.T) {
 	}
 
 	source := "../testdata/plugdir/good/echo-v1"
-	i, err := NewForSource(source, "")
+	i, err := FindSource(source)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -55,7 +55,7 @@ func TestLocalInstaller(t *testing.T) {
 
 func TestLocalInstallerNotAFolder(t *testing.T) {
 	source := "../testdata/plugdir/good/echo-v1/plugin.yaml"
-	i, err := NewForSource(source, "")
+	i, err := FindSource(source)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -117,7 +117,7 @@ func TestLocalInstallerTarball(t *testing.T) {
 	}
 
 	// Test installation
-	i, err := NewForSource(tarballPath, "")
+	i, err := FindSource(tarballPath)
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}

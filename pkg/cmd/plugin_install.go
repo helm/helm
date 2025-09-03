@@ -101,21 +101,32 @@ func (o *pluginInstallOptions) complete(args []string) error {
 }
 
 func (o *pluginInstallOptions) newInstallerForSource() (installer.Installer, error) {
-	// Check if source is an OCI registry reference
-	if strings.HasPrefix(o.source, fmt.Sprintf("%s://", registry.OCIScheme)) {
-		// Build getter options for OCI
-		options := []getter.Option{
-			getter.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
-			getter.WithInsecureSkipVerifyTLS(o.insecureSkipTLSverify),
-			getter.WithPlainHTTP(o.plainHTTP),
-			getter.WithBasicAuth(o.username, o.password),
-		}
-
-		return installer.NewOCIInstaller(o.source, options...)
+	// Use the unified ArtifactInstaller for all sources (OCI, HTTP, local, etc.)
+	artifactInstaller, err := installer.FindSource(o.source)
+	if err != nil {
+		return nil, err
 	}
 
-	// For non-OCI sources, use the original logic
-	return installer.NewForSource(o.source, o.version)
+	// Configure version and options for ArtifactInstaller
+	if ai, ok := artifactInstaller.(*installer.ArtifactInstaller); ok {
+		// Set version if specified
+		if o.version != "" {
+			ai.SetVersion(o.version)
+		}
+
+		// Configure OCI-specific options if this is an OCI source
+		if strings.HasPrefix(o.source, fmt.Sprintf("%s://", registry.OCIScheme)) {
+			options := []getter.Option{
+				getter.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
+				getter.WithInsecureSkipVerifyTLS(o.insecureSkipTLSverify),
+				getter.WithPlainHTTP(o.plainHTTP),
+				getter.WithBasicAuth(o.username, o.password),
+			}
+			ai.SetOptions(options)
+		}
+	}
+
+	return artifactInstaller, nil
 }
 
 func (o *pluginInstallOptions) run(out io.Writer) error {
