@@ -657,7 +657,8 @@ func writeToFile(outputDir string, name string, data string, appendData bool) er
 
 	defer f.Close()
 
-	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, data)
+	// Use consistent (POSIX) filepaths in comments, even if expanded on Windows.
+	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", filepath.ToSlash(name), data)
 
 	if err != nil {
 		return err
