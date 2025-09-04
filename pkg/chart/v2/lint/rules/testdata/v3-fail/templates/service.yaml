@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "v3-fail.fullname" . }}
+  annotations:
+    helm.sh/hook: crd-install
+  labels:
+    {{- include "v3-fail.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "v3-fail.selectorLabels" . | nindent 4 }}

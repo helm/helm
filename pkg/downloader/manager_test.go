@@ -32,8 +32,8 @@ import (
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/getter"
-	"helm.sh/helm/v4/pkg/repo"
-	"helm.sh/helm/v4/pkg/repo/repotest"
+	"helm.sh/helm/v4/pkg/repo/v1"
+	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
 
 func TestVersionEquals(t *testing.T) {
@@ -488,12 +488,14 @@ func checkBuildWithOptionalFields(t *testing.T, chartName string, dep chart.Depe
 		Schemes: []string{"http", "https"},
 		New:     getter.NewHTTPGetter,
 	}}
+	contentCache := t.TempDir()
 	m := &Manager{
 		ChartPath:        dir(chartName),
 		Out:              b,
 		Getters:          g,
 		RepositoryConfig: dir("repositories.yaml"),
 		RepositoryCache:  dir(),
+		ContentCache:     contentCache,
 	}
 
 	// First build will update dependencies and create Chart.lock file.

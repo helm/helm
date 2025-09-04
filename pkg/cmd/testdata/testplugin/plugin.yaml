@@ -1,4 +1,12 @@
+---
+apiVersion: v1
 name: testplugin
-usage: "echo test"
-description: "This echos test"
-command: "echo test"
+type: cli/v1
+runtime: subprocess
+config:
+  shortHelp: "echo test"
+  longHelp: "This echos test"
+  ignoreFlags: false
+runtimeConfig:
+  platformCommand:
+  - command: "echo test"

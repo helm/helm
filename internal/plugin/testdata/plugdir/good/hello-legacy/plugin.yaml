@@ -1,0 +1,22 @@
+---
+name: "hello-legacy"
+version: "0.1.0"
+usage: "echo hello message"
+description: |-
+  description
+platformCommand:
+  - os: linux
+    command: "sh"
+    args: ["-c", "${HELM_PLUGIN_DIR}/hello.sh"]
+  - os: windows
+    command: "pwsh"
+    args: ["-c", "${HELM_PLUGIN_DIR}/hello.ps1"]
+ignoreFlags: true
+platformHooks:
+  install:
+    - os: linux
+      command: "sh"
+      args: ["-c", 'echo "installing..."']
+    - os: windows
+      command: "pwsh"
+      args: ["-c", 'echo "installing..."']

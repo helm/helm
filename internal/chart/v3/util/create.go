@@ -28,6 +28,7 @@ import (
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	"helm.sh/helm/v4/internal/chart/v3/loader"
+	"helm.sh/helm/v4/pkg/chart/common"
 )
 
 // chartName is a regular expression for testing the supplied name of a chart.
@@ -655,11 +656,11 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 
 	schart.Metadata = chartfile
 
-	var updatedTemplates []*chart.File
+	var updatedTemplates []*common.File
 
 	for _, template := range schart.Templates {
 		newData := transform(string(template.Data), schart.Name())
-		updatedTemplates = append(updatedTemplates, &chart.File{Name: template.Name, Data: newData})
+		updatedTemplates = append(updatedTemplates, &common.File{Name: template.Name, Data: newData})
 	}
 
 	schart.Templates = updatedTemplates
@@ -733,12 +734,12 @@ func Create(name, dir string) (string, error) {
 		{
 			// Chart.yaml
 			path:    filepath.Join(cdir, ChartfileName),
-			content: []byte(fmt.Sprintf(defaultChartfile, name)),
+			content: fmt.Appendf(nil, defaultChartfile, name),
 		},
 		{
 			// values.yaml
 			path:    filepath.Join(cdir, ValuesfileName),
-			content: []byte(fmt.Sprintf(defaultValues, name)),
+			content: fmt.Appendf(nil, defaultValues, name),
 		},
 		{
 			// .helmignore

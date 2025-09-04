@@ -1,0 +1,2 @@
+metadata:
+  name: {{.name | default "foo" | title}}

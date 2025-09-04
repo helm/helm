@@ -42,7 +42,7 @@ func TestOCIGetter(t *testing.T) {
 	insecureSkipVerifyTLS := false
 	plainHTTP := false
 
-	// Test with options
+	// Test with getterOptions
 	g, err = NewOCIGetter(
 		WithBasicAuth("I", "Am"),
 		WithTLSClientConfig(pub, priv, ca),

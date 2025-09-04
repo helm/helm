@@ -16,9 +16,16 @@ limitations under the License.
 package getter
 
 import (
-	"runtime"
-	"strings"
+	"context"
+
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"helm.sh/helm/v4/internal/plugin"
+	"helm.sh/helm/v4/internal/plugin/schema"
 
 	"helm.sh/helm/v4/pkg/cli"
 )
@@ -27,7 +34,7 @@ func TestCollectPlugins(t *testing.T) {
 	env := cli.New()
 	env.PluginsDirectory = pluginDir
 
-	p, err := collectPlugins(env)
+	p, err := collectGetterPlugins(env)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,53 +56,91 @@ func TestCollectPlugins(t *testing.T) {
 	}
 }
 
-func TestPluginGetter(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO: refactor this test to work on windows")
-	}
+func TestConvertOptions(t *testing.T) {
+	opts := convertOptions(
+		[]Option{
+			WithURL("example://foo"),
+			WithAcceptHeader("Accept-Header"),
+			WithBasicAuth("username", "password"),
+			WithPassCredentialsAll(true),
+			WithUserAgent("User-agent"),
+			WithInsecureSkipVerifyTLS(true),
+			WithTLSClientConfig("certFile.pem", "keyFile.pem", "caFile.pem"),
+			WithPlainHTTP(true),
+			WithTimeout(10),
+			WithTagName("1.2.3"),
+			WithUntar(),
+		},
+		[]Option{
+			WithTimeout(20),
+		},
+	)
 
-	env := cli.New()
-	env.PluginsDirectory = pluginDir
-	pg := NewPluginGetter("echo", env, "test", ".")
-	g, err := pg()
-	if err != nil {
-		t.Fatal(err)
+	expected := schema.GetterOptionsV1{
+		URL:                   "example://foo",
+		CertFile:              "certFile.pem",
+		KeyFile:               "keyFile.pem",
+		CAFile:                "caFile.pem",
+		UNTar:                 true,
+		Timeout:               20,
+		InsecureSkipVerifyTLS: true,
+		PlainHTTP:             true,
+		AcceptHeader:          "Accept-Header",
+		Username:              "username",
+		Password:              "password",
+		PassCredentialsAll:    true,
+		UserAgent:             "User-agent",
+		Version:               "1.2.3",
 	}
+	assert.Equal(t, expected, opts)
+}
 
-	data, err := g.Get("test://foo/bar")
-	if err != nil {
-		t.Fatal(err)
-	}
+type testPlugin struct {
+	t   *testing.T
+	dir string
+}
 
-	expect := "test://foo/bar"
-	got := strings.TrimSpace(data.String())
-	if got != expect {
-		t.Errorf("Expected %q, got %q", expect, got)
+func (t *testPlugin) Dir() string {
+	return t.dir
+}
+
+func (t *testPlugin) Metadata() plugin.Metadata {
+	return plugin.Metadata{
+		Name:       "fake-plugin",
+		Type:       "cli/v1",
+		APIVersion: "v1",
+		Runtime:    "subprocess",
+		Config:     &schema.ConfigCLIV1{},
+		RuntimeConfig: &plugin.RuntimeConfigSubprocess{
+			PlatformCommand: []plugin.PlatformCommand{
+				{
+					Command: "echo fake-plugin",
+				},
+			},
+		},
 	}
 }
 
-func TestPluginSubCommands(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("TODO: refactor this test to work on windows")
+func (t *testPlugin) Invoke(_ context.Context, _ *plugin.Input) (*plugin.Output, error) {
+	// Simulate a plugin invocation
+	output := &plugin.Output{
+		Message: schema.OutputMessageGetterV1{
+			Data: []byte("fake-plugin output"),
+		},
+	}
+	return output, nil
+}
+
+var _ plugin.Plugin = (*testPlugin)(nil)
+
+func TestGetterPlugin(t *testing.T) {
+	gp := getterPlugin{
+		options: []Option{},
+		plg:     &testPlugin{t: t, dir: "fake/dir"},
 	}
 
-	env := cli.New()
-	env.PluginsDirectory = pluginDir
+	buf, err := gp.Get("test://example.com", WithTimeout(5*time.Second))
+	require.NoError(t, err)
 
-	pg := NewPluginGetter("echo -n", env, "test", ".")
-	g, err := pg()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	data, err := g.Get("test://foo/bar")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expect := "   test://foo/bar"
-	got := data.String()
-	if got != expect {
-		t.Errorf("Expected %q, got %q", expect, got)
-	}
+	assert.Equal(t, "fake-plugin output", buf.String())
 }

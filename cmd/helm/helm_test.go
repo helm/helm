@@ -22,11 +22,13 @@ import (
 	"os/exec"
 	"runtime"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestPluginExitCode(t *testing.T) {
+func TestCliPluginExitCode(t *testing.T) {
 	if os.Getenv("RUN_MAIN_FOR_TESTING") == "1" {
-		os.Args = []string{"helm", "exitwith", "2"}
+		os.Args = []string{"helm", "exitwith", "43"}
 
 		// We DO call helm's main() here. So this looks like a normal `helm` process.
 		main()
@@ -43,7 +45,7 @@ func TestPluginExitCode(t *testing.T) {
 		// So that the second run is able to run main() and this first run can verify the exit status returned by that.
 		//
 		// This technique originates from https://talks.golang.org/2014/testing.slide#23.
-		cmd := exec.Command(os.Args[0], "-test.run=TestPluginExitCode")
+		cmd := exec.Command(os.Args[0], "-test.run=TestCliPluginExitCode")
 		cmd.Env = append(
 			os.Environ(),
 			"RUN_MAIN_FOR_TESTING=1",
@@ -57,23 +59,21 @@ func TestPluginExitCode(t *testing.T) {
 		cmd.Stdout = stdout
 		cmd.Stderr = stderr
 		err := cmd.Run()
+
 		exiterr, ok := err.(*exec.ExitError)
-
 		if !ok {
-			t.Fatalf("Unexpected error returned by os.Exit: %T", err)
+			t.Fatalf("Unexpected error type returned by os.Exit: %T", err)
 		}
 
-		if stdout.String() != "" {
-			t.Errorf("Expected no write to stdout: Got %q", stdout.String())
-		}
+		assert.Empty(t, stdout.String())
 
 		expectedStderr := "Error: plugin \"exitwith\" exited with error\n"
 		if stderr.String() != expectedStderr {
 			t.Errorf("Expected %q written to stderr: Got %q", expectedStderr, stderr.String())
 		}
 
-		if exiterr.ExitCode() != 2 {
-			t.Errorf("Expected exit code 2: Got %d", exiterr.ExitCode())
+		if exiterr.ExitCode() != 43 {
+			t.Errorf("Expected exit code 43: Got %d", exiterr.ExitCode())
 		}
 	}
 }

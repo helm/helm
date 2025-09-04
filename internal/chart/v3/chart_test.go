@@ -20,11 +20,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"helm.sh/helm/v4/pkg/chart/common"
 )
 
 func TestCRDs(t *testing.T) {
 	chrt := Chart{
-		Files: []*File{
+		Files: []*common.File{
 			{
 				Name: "crds/foo.yaml",
 				Data: []byte("hello"),
@@ -57,7 +59,7 @@ func TestCRDs(t *testing.T) {
 
 func TestSaveChartNoRawData(t *testing.T) {
 	chrt := Chart{
-		Raw: []*File{
+		Raw: []*common.File{
 			{
 				Name: "fhqwhgads.yaml",
 				Data: []byte("Everybody to the Limit"),
@@ -76,7 +78,7 @@ func TestSaveChartNoRawData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	is.Equal([]*File(nil), res.Raw)
+	is.Equal([]*common.File(nil), res.Raw)
 }
 
 func TestMetadata(t *testing.T) {
@@ -162,7 +164,7 @@ func TestChartFullPath(t *testing.T) {
 
 func TestCRDObjects(t *testing.T) {
 	chrt := Chart{
-		Files: []*File{
+		Files: []*common.File{
 			{
 				Name: "crds/foo.yaml",
 				Data: []byte("hello"),
@@ -190,7 +192,7 @@ func TestCRDObjects(t *testing.T) {
 		{
 			Name:     "crds/foo.yaml",
 			Filename: "crds/foo.yaml",
-			File: &File{
+			File: &common.File{
 				Name: "crds/foo.yaml",
 				Data: []byte("hello"),
 			},
@@ -198,7 +200,7 @@ func TestCRDObjects(t *testing.T) {
 		{
 			Name:     "crds/foo/bar/baz.yaml",
 			Filename: "crds/foo/bar/baz.yaml",
-			File: &File{
+			File: &common.File{
 				Name: "crds/foo/bar/baz.yaml",
 				Data: []byte("hello"),
 			},

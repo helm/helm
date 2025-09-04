@@ -29,6 +29,7 @@ import (
 
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
@@ -76,7 +77,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 	}
 
 	// Save templates and files
-	for _, o := range [][]*chart.File{c.Templates, c.Files} {
+	for _, o := range [][]*common.File{c.Templates, c.Files} {
 		for _, f := range o {
 			n := filepath.Join(outdir, f.Name)
 			if err := writeFile(n, f.Data); err != nil {
@@ -258,7 +259,7 @@ func validateName(name string) error {
 	nname := filepath.Base(name)
 
 	if nname != name {
-		return ErrInvalidChartName{name}
+		return common.ErrInvalidChartName{Name: name}
 	}
 
 	return nil

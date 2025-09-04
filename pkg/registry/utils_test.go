@@ -121,7 +121,7 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
 	suite.Nil(err, "no error generating bcrypt password for test htpasswd file")
 	htpasswdPath := filepath.Join(suite.WorkspaceDir, testHtpasswdFileBasename)
-	err = os.WriteFile(htpasswdPath, []byte(fmt.Sprintf("%s:%s\n", testUsername, string(pwBytes))), 0644)
+	err = os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0644)
 	suite.Nil(err, "no error creating test htpasswd file")
 
 	// Registry config
@@ -231,7 +231,7 @@ func testPush(suite *TestSuite) {
 	suite.NotNil(err, "error pushing non-chart bytes")
 
 	// Load a test chart
-	chartData, err := os.ReadFile("../repo/repotest/testdata/examplechart-0.1.0.tgz")
+	chartData, err := os.ReadFile("../repo/v1/repotest/testdata/examplechart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
 	suite.Nil(err, "no error extracting chart meta")

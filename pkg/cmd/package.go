@@ -100,6 +100,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 						RegistryClient:   registryClient,
 						RepositoryConfig: settings.RepositoryConfig,
 						RepositoryCache:  settings.RepositoryCache,
+						ContentCache:     settings.ContentCache,
 					}
 
 					if err := downloadManager.Update(); err != nil {

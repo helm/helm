@@ -30,6 +30,7 @@ import (
 	"testing"
 	"time"
 
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
@@ -543,7 +544,7 @@ foo:
 	}
 }
 
-func TestMergeValues(t *testing.T) {
+func TestMergeValuesV2(t *testing.T) {
 	nestedMap := map[string]interface{}{
 		"foo": "bar",
 		"baz": map[string]string{
@@ -753,7 +754,7 @@ func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
 	}
 }
 
-func verifyBomStripped(t *testing.T, files []*chart.File) {
+func verifyBomStripped(t *testing.T, files []*common.File) {
 	t.Helper()
 	for _, file := range files {
 		if bytes.HasPrefix(file.Data, utf8bom) {

@@ -1,0 +1,17 @@
+---
+name: "getter"
+version: "1.2.3"
+type: getter/v1
+apiVersion: v1
+runtime: subprocess
+config:
+  protocols:
+    - "myprotocol"
+    - "myprotocols"
+runtimeConfig:
+  protocolCommands:
+    - platformCommand:
+      - command: "echo getter"
+      protocols:
+        - "myprotocol"
+        - "myprotocols"

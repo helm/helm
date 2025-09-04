@@ -30,7 +30,7 @@ import (
 
 // HTTPGetter is the default HTTP(/S) backend handler
 type HTTPGetter struct {
-	opts      options
+	opts      getterOptions
 	transport *http.Transport
 	once      sync.Once
 }

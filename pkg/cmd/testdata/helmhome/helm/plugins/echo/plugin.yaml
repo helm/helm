@@ -1,4 +1,11 @@
 name: echo
-usage: "echo stuff"
-description: "This echos stuff"
-command: "echo hello"
+type: cli/v1
+apiVersion: v1
+runtime: subprocess
+config:
+  shortHelp: "echo stuff"
+  longHelp: "This echos stuff"
+  ignoreFlags: false
+runtimeConfig:
+  platformCommand:
+  - command: "echo hello"

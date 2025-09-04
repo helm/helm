@@ -27,10 +27,11 @@ import (
 	"helm.sh/helm/v4/pkg/registry"
 )
 
-// options are generic parameters to be provided to the getter during instantiation.
+// getterOptions are generic parameters to be provided to the getter during instantiation.
 //
 // Getters may or may not ignore these parameters as they are passed in.
-type options struct {
+// TODO what is the difference between this and schema.GetterOptionsV1?
+type getterOptions struct {
 	url                   string
 	certFile              string
 	keyFile               string
@@ -47,58 +48,59 @@ type options struct {
 	registryClient        *registry.Client
 	timeout               time.Duration
 	transport             *http.Transport
+	artifactType          string
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
 // used when performing Get operations with the Getter.
-type Option func(*options)
+type Option func(*getterOptions)
 
 // WithURL informs the getter the server name that will be used when fetching objects. Used in conjunction with
 // WithTLSClientConfig to set the TLSClientConfig's server name.
 func WithURL(url string) Option {
-	return func(opts *options) {
+	return func(opts *getterOptions) {
 		opts.url = url
 	}
 }
 
 // WithAcceptHeader sets the request's Accept header as some REST APIs serve multiple content types
 func WithAcceptHeader(header string) Option {
-	return func(opts *options) {
+	return func(opts *getterOptions) {
 		opts.acceptHeader = header
 	}
 }
 
 // WithBasicAuth sets the request's Authorization header to use the provided credentials
 func WithBasicAuth(username, password string) Option {
-	return func(opts *options) {
+	return func(opts *getterOptions) {
 		opts.username = username
 		opts.password = password
 	}
 }
 
 func WithPassCredentialsAll(pass bool) Option {
-	return func(opts *options) {
+	return func(opts *getterOptions) {
 		opts.passCredentialsAll = pass
 	}
 }
 
 // WithUserAgent sets the request's User-Agent header to use the provided agent name.
 func WithUserAgent(userAgent string) Option {
-	return func(opts *options) {
+	return func(opts *getterOptions) {
 		opts.userAgent = userAgent
 	}
 }
 
 // WithInsecureSkipVerifyTLS determines if a TLS Certificate will be checked
 func WithInsecureSkipVerifyTLS(insecureSkipVerifyTLS bool) Option {
-	return func(opts *options) {
+	return func(opts *getterOptions) {
 		opts.insecureSkipVerifyTLS = insecureSkipVerifyTLS
 	}
 }
 
 // WithTLSClientConfig sets the client auth with the provided credentials.
 func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
-	return func(opts *options) {
+	return func(opts *getterOptions) {
 		opts.certFile = certFile
 		opts.keyFile = keyFile
 		opts.caFile = caFile
@@ -106,40 +108,47 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 }
 
 func WithPlainHTTP(plainHTTP bool) Option {
-	return func(opts *options) {
+	return func(opts *getterOptions) {
 		opts.plainHTTP = plainHTTP
 	}
 }
 
 // WithTimeout sets the timeout for requests
 func WithTimeout(timeout time.Duration) Option {
-	return func(opts *options) {
+	return func(opts *getterOptions) {
 		opts.timeout = timeout
 	}
 }
 
 func WithTagName(tagname string) Option {
-	return func(opts *options) {
+	return func(opts *getterOptions) {
 		opts.version = tagname
 	}
 }
 
 func WithRegistryClient(client *registry.Client) Option {
-	return func(opts *options) {
+	return func(opts *getterOptions) {
 		opts.registryClient = client
 	}
 }
 
 func WithUntar() Option {
-	return func(opts *options) {
+	return func(opts *getterOptions) {
 		opts.unTar = true
 	}
 }
 
 // WithTransport sets the http.Transport to allow overwriting the HTTPGetter default.
 func WithTransport(transport *http.Transport) Option {
-	return func(opts *options) {
+	return func(opts *getterOptions) {
 		opts.transport = transport
+	}
+}
+
+// WithArtifactType sets the type of OCI artifact ("chart" or "plugin")
+func WithArtifactType(artifactType string) Option {
+	return func(opts *getterOptions) {
+		opts.artifactType = artifactType
 	}
 }
 
@@ -217,7 +226,7 @@ func Getters(extraOpts ...Option) Providers {
 // notations are collected.
 func All(settings *cli.EnvSettings, opts ...Option) Providers {
 	result := Getters(opts...)
-	pluginDownloaders, _ := collectPlugins(settings)
+	pluginDownloaders, _ := collectGetterPlugins(settings)
 	result = append(result, pluginDownloaders...)
 	return result
 }

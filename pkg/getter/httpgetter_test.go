@@ -50,7 +50,7 @@ func TestHTTPGetter(t *testing.T) {
 	timeout := time.Second * 5
 	transport := &http.Transport{}
 
-	// Test with options
+	// Test with getterOptions
 	g, err = NewHTTPGetter(
 		WithBasicAuth("I", "Am"),
 		WithPassCredentialsAll(false),

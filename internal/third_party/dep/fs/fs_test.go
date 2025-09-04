@@ -326,7 +326,7 @@ func TestCopyFile(t *testing.T) {
 	srcf.Close()
 
 	destf := filepath.Join(dir, "destf")
-	if err := copyFile(srcf.Name(), destf); err != nil {
+	if err := CopyFile(srcf.Name(), destf); err != nil {
 		t.Fatal(err)
 	}
 
@@ -366,7 +366,7 @@ func TestCopyFileSymlink(t *testing.T) {
 	for symlink, dst := range testcases {
 		t.Run(symlink, func(t *testing.T) {
 			var err error
-			if err = copyFile(symlink, dst); err != nil {
+			if err = CopyFile(symlink, dst); err != nil {
 				t.Fatalf("failed to copy symlink: %s", err)
 			}
 
@@ -438,7 +438,7 @@ func TestCopyFileFail(t *testing.T) {
 	defer cleanup()
 
 	fn := filepath.Join(dstdir, "file")
-	if err := copyFile(srcf.Name(), fn); err == nil {
+	if err := CopyFile(srcf.Name(), fn); err == nil {
 		t.Fatalf("expected error for %s, got none", fn)
 	}
 }

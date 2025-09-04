@@ -45,8 +45,7 @@ import (
 	"k8s.io/client-go/rest/fake"
 
 	"helm.sh/helm/v4/internal/test"
-	chart "helm.sh/helm/v4/pkg/chart/v2"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -258,7 +257,7 @@ func TestInstallReleaseClientOnly(t *testing.T) {
 	instAction.ClientOnly = true
 	instAction.Run(buildChart(), nil) // disregard output
 
-	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)
+	is.Equal(instAction.cfg.Capabilities, common.DefaultCapabilities)
 	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: io.Discard})
 }
 
@@ -429,7 +428,7 @@ func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	vals := map[string]interface{}{}
 
 	mockChart := buildChart(withSampleTemplates())
-	mockChart.Templates = append(mockChart.Templates, &chart.File{
+	mockChart.Templates = append(mockChart.Templates, &common.File{
 		Name: "templates/lookup",
 		Data: []byte(`goodbye: {{ lookup "v1" "Namespace" "" "___" }}`),
 	})
@@ -590,16 +589,16 @@ func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
 
-func TestInstallRelease_Atomic(t *testing.T) {
+func TestInstallRelease_RollbackOnFailure(t *testing.T) {
 	is := assert.New(t)
 
-	t.Run("atomic uninstall succeeds", func(t *testing.T) {
+	t.Run("rollback-on-failure uninstall succeeds", func(t *testing.T) {
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away"
 		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 		failer.WaitError = fmt.Errorf("I timed out")
 		instAction.cfg.KubeClient = failer
-		instAction.Atomic = true
+		instAction.RollbackOnFailure = true
 		// disabling hooks to avoid an early fail when
 		// WaitForDelete is called on the pre-delete hook execution
 		instAction.DisableHooks = true
@@ -608,7 +607,7 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		res, err := instAction.Run(buildChart(), vals)
 		is.Error(err)
 		is.Contains(err.Error(), "I timed out")
-		is.Contains(err.Error(), "atomic")
+		is.Contains(err.Error(), "rollback-on-failure")
 
 		// Now make sure it isn't in storage anymore
 		_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
@@ -616,14 +615,14 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		is.Equal(err, driver.ErrReleaseNotFound)
 	})
 
-	t.Run("atomic uninstall fails", func(t *testing.T) {
+	t.Run("rollback-on-failure uninstall fails", func(t *testing.T) {
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away-with-me"
 		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 		failer.WaitError = fmt.Errorf("I timed out")
 		failer.DeleteError = fmt.Errorf("uninstall fail")
 		instAction.cfg.KubeClient = failer
-		instAction.Atomic = true
+		instAction.RollbackOnFailure = true
 		vals := map[string]interface{}{}
 
 		_, err := instAction.Run(buildChart(), vals)
@@ -633,7 +632,7 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		is.Contains(err.Error(), "an error occurred while uninstalling the release")
 	})
 }
-func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
+func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -641,7 +640,7 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 10 * time.Second
 	instAction.cfg.KubeClient = failer
-	instAction.Atomic = true
+	instAction.RollbackOnFailure = true
 	vals := map[string]interface{}{}
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -652,7 +651,7 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
 	is.Contains(err.Error(), "context canceled")
-	is.Contains(err.Error(), "atomic")
+	is.Contains(err.Error(), "rollback-on-failure")
 	is.Contains(err.Error(), "uninstalled")
 
 	// Now make sure it isn't in storage anymore

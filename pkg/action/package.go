@@ -21,10 +21,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
 
 	"github.com/Masterminds/semver/v3"
 	"golang.org/x/term"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
@@ -143,7 +145,26 @@ func (p *Package) Clearsign(filename string) error {
 		return err
 	}
 
-	sig, err := signer.ClearSign(filename)
+	// Load the chart archive to extract metadata
+	chart, err := loader.LoadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to load chart for signing: %w", err)
+	}
+
+	// Marshal chart metadata to YAML bytes
+	metadataBytes, err := yaml.Marshal(chart.Metadata)
+	if err != nil {
+		return fmt.Errorf("failed to marshal chart metadata: %w", err)
+	}
+
+	// Read the chart archive file
+	archiveData, err := os.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to read chart archive: %w", err)
+	}
+
+	// Use the generic provenance signing function
+	sig, err := signer.ClearSign(archiveData, filepath.Base(filename), metadataBytes)
 	if err != nil {
 		return err
 	}
