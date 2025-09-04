@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"helm.sh/helm/v4/pkg/lint/support"
+	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
 )
 
 var (

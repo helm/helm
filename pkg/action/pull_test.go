@@ -64,7 +64,7 @@ func TestPullRun_ChartNotFound(t *testing.T) {
 
 func startLocalServerForTests(handler http.Handler, t *testing.T) (*httptest.Server, error) {
 	if handler == nil {
-		fileBytes, err := os.ReadFile("../repo/testdata/local-index.yaml")
+		fileBytes, err := os.ReadFile("../repo/v1/testdata/local-index.yaml")
 		if err != nil {
 			return nil, err
 		}

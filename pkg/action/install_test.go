@@ -35,6 +35,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/registry"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -1029,7 +1030,7 @@ func TestInstalLCRDs(t *testing.T) {
 	config := actionConfigFixture(t)
 	instAction := NewInstall(config)
 
-	mockFile := chart.File{
+	mockFile := common.File{
 		Name: "crds/foo.yaml",
 		Data: []byte("hello"),
 	}
@@ -1049,7 +1050,7 @@ func TestInstalLCRDs_KubeClient_BuildError(t *testing.T) {
 	config.KubeClient = unreachableClient
 	instAction := NewInstall(config)
 
-	mockFile := chart.File{
+	mockFile := common.File{
 		Name: "crds/foo.yaml",
 		Data: []byte("hello"),
 	}
@@ -1067,7 +1068,7 @@ func TestInstalLCRDs_KubeClient_CreateError(t *testing.T) {
 	config.KubeClient = unreachableClient
 	instAction := NewInstall(config)
 
-	mockFile := chart.File{
+	mockFile := common.File{
 		Name: "crds/foo.yaml",
 		Data: []byte("hello"),
 	}
@@ -1089,7 +1090,7 @@ func TestInstalLCRDs_AlreadyExist(t *testing.T) {
 	config.KubeClient = unreachableClient
 	instAction := NewInstall(config)
 
-	mockFile := chart.File{
+	mockFile := common.File{
 		Name: "crds/foo.yaml",
 		Data: []byte("hello"),
 	}
@@ -1108,7 +1109,7 @@ func TestInstalLCRDs_WaiterError(t *testing.T) {
 	config.KubeClient = unreachableClient
 	instAction := NewInstall(config)
 
-	mockFile := chart.File{
+	mockFile := common.File{
 		Name: "crds/foo.yaml",
 		Data: []byte("hello"),
 	}
