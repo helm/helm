@@ -274,6 +274,12 @@ func TestInstall(t *testing.T) {
 			wantError: true,
 			golden:    "output/install-hide-secret.txt",
 		},
+		{
+			name:      "install with restricted max size",
+			cmd:       "install too-big testdata/testcharts/compressedchart-0.1.0.tgz --max-chart-size=42",
+			wantError: true,
+			golden:    "output/install-with-restricted-chart-size.txt",
+		},
 	}
 
 	runTestCmd(t, tests)
