@@ -142,6 +142,7 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 		"file":  jsonschema.FileLoader{},
 		"http":  newHTTPURLLoader(),
 		"https": newHTTPURLLoader(),
+		"urn":   urnLoader{},
 	}
 
 	compiler := jsonschema.NewCompiler()
@@ -162,6 +163,30 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 	}
 
 	return nil
+}
+
+// URNResolverFunc allows SDK to plug a URN resolver. It must return a
+// schema document compatible with the validator (e.g., result of
+// jsonschema.UnmarshalJSON).
+type URNResolverFunc func(urn string) (any, error)
+
+// URNResolver is the default resolver used by the URN loader. By default it
+// returns a clear error.
+var URNResolver URNResolverFunc = func(urn string) (any, error) {
+	return nil, fmt.Errorf("URN not resolved: %s", urn)
+}
+
+// urnLoader implements resolution for the urn: scheme by delegating to
+// URNResolver. If unresolved, it logs a warning and returns a permissive
+// boolean-true schema to avoid hard failures (back-compat behavior).
+type urnLoader struct{}
+
+func (l urnLoader) Load(urlStr string) (any, error) {
+	if doc, err := URNResolver(urlStr); err == nil && doc != nil {
+		return doc, nil
+	}
+	slog.Warn("unresolved URN reference ignored; using permissive schema", "urn", urlStr)
+	return jsonschema.UnmarshalJSON(strings.NewReader("true"))
 }
 
 // Note, JSONSchemaValidationError is used to wrap the error from the underlying
