@@ -192,7 +192,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts)); err != nil {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
-				crdName := res[0].Name
+				crdName := obj.Name
 				i.cfg.Logger().Debug("CRD is already present. Skipping", "crd", crdName)
 				continue
 			}
