@@ -24,6 +24,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -166,11 +167,16 @@ var URNResolver URNResolverFunc = func(urn string) (any, error) {
 // boolean-true schema to avoid hard failures (back-compat behavior).
 type urnLoader struct{}
 
+// warnedURNs ensures we log the unresolved-URN warning only once per URN.
+var warnedURNs sync.Map
+
 func (l urnLoader) Load(urlStr string) (any, error) {
 	if doc, err := URNResolver(urlStr); err == nil && doc != nil {
 		return doc, nil
 	}
-	slog.Warn("unresolved URN reference ignored; using permissive schema", "urn", urlStr)
+	if _, loaded := warnedURNs.LoadOrStore(urlStr, struct{}{}); !loaded {
+		slog.Warn("unresolved URN reference ignored; using permissive schema", "urn", urlStr)
+	}
 	return jsonschema.UnmarshalJSON(strings.NewReader("true"))
 }
 
