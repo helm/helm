@@ -77,7 +77,7 @@ func TestGetValues_Run_UserConfigOnly(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -125,7 +125,7 @@ func TestGetValues_Run_AllValues(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -159,7 +159,7 @@ func TestGetValues_Run_EmptyValues(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -168,15 +168,15 @@ func TestGetValues_Run_EmptyValues(t *testing.T) {
 
 func TestGetValues_Run_UnreachableKubeClient(t *testing.T) {
 	cfg := actionConfigFixture(t)
-	cfg.KubeClient = &unreachableKubeClient{
-		PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
-	}
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	unreachableClient := &kubefake.UnreachableKubeClient{FailingKubeClient: failingKubeClient}
+	cfg.KubeClient = unreachableClient
 
 	client := NewGetValues(cfg)
 
 	_, err := client.Run("test-release")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "connection refused")
+	assert.Contains(t, err.Error(), "Connection refused")
 }
 
 func TestGetValues_Run_ReleaseNotFound(t *testing.T) {
@@ -210,7 +210,7 @@ func TestGetValues_Run_NilConfig(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)

@@ -152,6 +152,15 @@ test-acceptance-completion: test-acceptance
 coverage:
 	@scripts/coverage.sh
 
+# @param DIR - Runs test coverage only for this directory
+# If no directory is specified, the entire repository will be tested
+# Example usage: make coverage-dir DIR=./pkg/action
+.PHONY: coverage-dir
+coverage-dir:
+	@echo
+	@echo "==> Running unit tests with coverage: $(DIR) <=="
+	@scripts/coverage.sh $(DIR)
+
 .PHONY: format
 format: $(GOIMPORTS)
 	go list -f '{{.Dir}}' ./... | xargs $(GOIMPORTS) -w -local helm.sh/helm

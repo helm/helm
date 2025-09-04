@@ -198,6 +198,12 @@ func withMetadataDependency(dependency chart.Dependency) chartOption {
 	}
 }
 
+func withFile(file chart.File) chartOption {
+	return func(opts *chartOptions) {
+		opts.Files = append(opts.Files, &file)
+	}
+}
+
 func withSampleTemplates() chartOption {
 	return func(opts *chartOptions) {
 		sampleTemplates := []*common.File{

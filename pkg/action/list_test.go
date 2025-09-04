@@ -17,9 +17,11 @@ limitations under the License.
 package action
 
 import (
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
@@ -366,4 +368,17 @@ func TestSelectorList(t *testing.T) {
 		expectedFilteredList := []*release.Release{r2, r3}
 		assert.ElementsMatch(t, expectedFilteredList, res)
 	})
+}
+
+func TestListRun_UnreachableKubeClient(t *testing.T) {
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	unreachableClient := &kubefake.UnreachableKubeClient{FailingKubeClient: failingKubeClient}
+	config.KubeClient = unreachableClient
+
+	lister := NewList(config)
+	result, err := lister.Run()
+
+	assert.Nil(t, result)
+	assert.Error(t, err)
 }

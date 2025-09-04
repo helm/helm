@@ -18,9 +18,10 @@ package action
 
 import (
 	"testing"
-
+	"github.com/stretchr/testify/assert"
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 func TestShow(t *testing.T) {
@@ -163,4 +164,13 @@ bar
 	if output != expect {
 		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
 	}
+}
+
+func TestShowSetRegistryClient(t *testing.T) {
+	config := actionConfigFixture(t)
+	client := NewShow(ShowAll, config)
+
+	registryClient := &registry.Client{}
+	client.SetRegistryClient(registryClient)
+	assert.Equal(t, registryClient, client.registryClient)
 }

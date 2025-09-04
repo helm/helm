@@ -18,6 +18,7 @@ package action
 
 import (
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -80,7 +81,7 @@ func TestUninstallRelease_deleteRelease(t *testing.T) {
 		  "password": "password"
 		}
 	}`
-	unAction.cfg.Releases.Create(rel)
+	require.NoError(t, unAction.cfg.Releases.Create(rel))
 	res, err := unAction.Run(rel.Name)
 	is.NoError(err)
 	expected := `These resources were kept due to the resource policy:
@@ -110,7 +111,7 @@ func TestUninstallRelease_Wait(t *testing.T) {
 		  "password": "password"
 		}
 	}`
-	unAction.cfg.Releases.Create(rel)
+	require.NoError(t, unAction.cfg.Releases.Create(rel))
 	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitForDeleteError = fmt.Errorf("U timed out")
 	unAction.cfg.KubeClient = failer
@@ -142,7 +143,7 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 		  "password": "password"
 		}
 	}`
-	unAction.cfg.Releases.Create(rel)
+	require.NoError(t, unAction.cfg.Releases.Create(rel))
 	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.DeleteWithPropagationError = fmt.Errorf("Uninstall with cascade failed")
 	failer.BuildDummy = true
@@ -150,4 +151,18 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	_, err := unAction.Run(rel.Name)
 	require.Error(t, err)
 	is.Contains(err.Error(), "failed to delete release: come-fail-away")
+}
+
+func TestUninstallRun_UnreachableKubeClient(t *testing.T) {
+	t.Helper()
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	unreachableClient := &kubefake.UnreachableKubeClient{FailingKubeClient: failingKubeClient}
+	config.KubeClient = unreachableClient
+
+	client := NewUninstall(config)
+	result, err := client.Run("")
+
+	assert.Nil(t, result)
+	assert.Error(t, err)
 }
