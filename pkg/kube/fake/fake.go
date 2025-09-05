@@ -18,6 +18,7 @@ limitations under the License.
 package fake
 
 import (
+	"errors"
 	"io"
 	"time"
 
@@ -47,6 +48,14 @@ type FailingKubeClient struct {
 	WaitForDeleteError         error
 	WatchUntilReadyError       error
 	WaitDuration               time.Duration
+}
+
+type UnreachableKubeClient struct {
+	FailingKubeClient
+}
+
+func (u *UnreachableKubeClient) IsReachable() error {
+	return errors.New("Connection refused")
 }
 
 // FailingKubeWaiter implements kube.Waiter for testing purposes.
@@ -142,6 +151,9 @@ func (f *FailingKubeClient) Build(r io.Reader, _ bool) (kube.ResourceList, error
 func (f *FailingKubeClient) BuildTable(r io.Reader, _ bool) (kube.ResourceList, error) {
 	if f.BuildTableError != nil {
 		return []*resource.Info{}, f.BuildTableError
+	}
+	if f.BuildDummy {
+		return createDummyResourceList(), nil
 	}
 	return f.PrintingKubeClient.BuildTable(r, false)
 }

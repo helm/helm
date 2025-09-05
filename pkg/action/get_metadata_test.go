@@ -17,7 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"errors"
 	"io"
 	"testing"
 	"time"
@@ -30,15 +29,6 @@ import (
 	release "helm.sh/helm/v4/pkg/release/v1"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
-
-// unreachableKubeClient is a test client that always returns an error for IsReachable
-type unreachableKubeClient struct {
-	kubefake.PrintingKubeClient
-}
-
-func (u *unreachableKubeClient) IsReachable() error {
-	return errors.New("connection refused")
-}
 
 func TestNewGetMetadata(t *testing.T) {
 	cfg := actionConfigFixture(t)
@@ -73,7 +63,7 @@ func TestGetMetadata_Run_BasicMetadata(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -128,7 +118,7 @@ func TestGetMetadata_Run_WithDependencies(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -182,7 +172,7 @@ func TestGetMetadata_Run_WithDependenciesAliases(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -248,7 +238,7 @@ func TestGetMetadata_Run_WithMixedDependencies(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -303,7 +293,7 @@ func TestGetMetadata_Run_WithAnnotations(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -358,8 +348,8 @@ func TestGetMetadata_Run_SpecificVersion(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel1)
-	cfg.Releases.Create(rel2)
+	require.NoError(t, cfg.Releases.Create(rel1))
+	require.NoError(t, cfg.Releases.Create(rel2))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -412,7 +402,7 @@ func TestGetMetadata_Run_DifferentStatuses(t *testing.T) {
 				Namespace: "default",
 			}
 
-			cfg.Releases.Create(rel)
+			require.NoError(t, cfg.Releases.Create(rel))
 
 			result, err := client.Run(releaseName)
 			require.NoError(t, err)
@@ -424,15 +414,15 @@ func TestGetMetadata_Run_DifferentStatuses(t *testing.T) {
 
 func TestGetMetadata_Run_UnreachableKubeClient(t *testing.T) {
 	cfg := actionConfigFixture(t)
-	cfg.KubeClient = &unreachableKubeClient{
-		PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
-	}
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	unreachableClient := &kubefake.UnreachableKubeClient{FailingKubeClient: failingKubeClient}
+	cfg.KubeClient = unreachableClient
 
 	client := NewGetMetadata(cfg)
 
 	_, err := client.Run("test-release")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "connection refused")
+	assert.Contains(t, err.Error(), "Connection refused")
 }
 
 func TestGetMetadata_Run_ReleaseNotFound(t *testing.T) {
@@ -468,7 +458,7 @@ func TestGetMetadata_Run_EmptyAppVersion(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
