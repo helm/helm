@@ -44,7 +44,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		}
 	}
 
-	// hooke are pre-ordered by kind, so keep order stable
+	// hooks are pre-ordered by kind, so keep order stable
 	sort.Stable(hookByWeight(executingHooks))
 
 	for i, h := range executingHooks {
@@ -58,6 +58,17 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
 		if err != nil {
 			return fmt.Errorf("unable to build kubernetes object for %s hook %s: %w", hook, h.Path, err)
+		}
+
+		// It is safe to use "force" here because these are resources currently rendered by the chart.
+		err = resources.Visit(setMetadataVisitor(rl.Name, rl.Namespace, true))
+		if err != nil {
+			return err
+		}
+
+		toBeUpdated, err := existingResourceConflict(resources, rl.Name, rl.Namespace)
+		if err != nil {
+			return fmt.Errorf("rendered hook manifests contain a resource that already exists. Unable to continue: %w", err)
 		}
 
 		// Record the time at which the hook was applied to the cluster
@@ -76,9 +87,16 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		if _, err := cfg.KubeClient.Create(
 			resources,
 			kube.ClientCreateOptionServerSideApply(serverSideApply, false)); err != nil {
-			h.LastRun.CompletedAt = helmtime.Now()
-			h.LastRun.Phase = release.HookPhaseFailed
-			return fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err)
+			// Create or update the hook resources
+			if _, err := cfg.KubeClient.Update(
+				toBeUpdated,
+				resources,
+				kube.ClientUpdateOptionServerSideApply(serverSideApply, false),
+			); err != nil {
+				h.LastRun.CompletedAt = helmtime.Now()
+				h.LastRun.Phase = release.HookPhaseFailed
+				return fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err)
+			}
 		}
 
 		waiter, err := cfg.KubeClient.GetWaiter(waitStrategy)
@@ -195,11 +213,11 @@ func (cfg *Configuration) hookHasDeletePolicy(h *release.Hook, policy release.Ho
 func (cfg *Configuration) hookSetDeletePolicy(h *release.Hook) {
 	cfg.mutex.Lock()
 	defer cfg.mutex.Unlock()
-	if len(h.DeletePolicies) == 0 {
-		// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
-		//                 resources. For all other resource types update in place if a
-		//                 resource with the same name already exists and is owned by the
-		//                 current release.
+	if len(h.DeletePolicies) > 0 {
+		return
+	}
+	// TODO(luisdavim): We should probably add the group/version to the hook resources to avoid conflicts with CRs
+	if h.Kind == "Job" || h.Kind == "Pod" {
 		h.DeletePolicies = []release.HookDeletePolicy{release.HookBeforeHookCreation}
 	}
 }
