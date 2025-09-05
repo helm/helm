@@ -18,6 +18,7 @@ package installer
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -79,6 +80,7 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 		return nil, err
 	}
 	if _, pathErr := os.Stat(i.Path()); !os.IsNotExist(pathErr) {
+		slog.Warn("plugin already exists", "path", i.Path(), slog.Any("error", pathErr))
 		return nil, errors.New("plugin already exists")
 	}
 
@@ -130,6 +132,7 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 // Update updates a plugin.
 func Update(i Installer) error {
 	if _, pathErr := os.Stat(i.Path()); os.IsNotExist(pathErr) {
+		slog.Warn("plugin does not exist", "path", i.Path(), slog.Any("error", pathErr))
 		return errors.New("plugin does not exist")
 	}
 	return i.Update()
@@ -154,6 +157,7 @@ func NewForSource(source, version string) (Installer, error) {
 func FindSource(location string) (Installer, error) {
 	installer, err := existingVCSRepo(location)
 	if err != nil && err.Error() == "Cannot detect VCS" {
+		slog.Warn("cannot get information about plugin source", "location", location, slog.Any("error", err))
 		return installer, errors.New("cannot get information about plugin source")
 	}
 	return installer, err
