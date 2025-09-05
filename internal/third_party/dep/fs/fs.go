@@ -36,6 +36,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -171,6 +172,13 @@ func CopyFile(src, dst string) (err error) {
 				return err
 			}
 		} else {
+			return nil
+		}
+	} else {
+		if fi, err := os.Lstat(src); err != nil {
+			return fmt.Errorf("stat failed: %w", err)
+		} else if !fi.Mode().IsRegular() {
+			slog.Debug("skipping non-regular file", "path", src, "mode", fi.Mode())
 			return nil
 		}
 	}
