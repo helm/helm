@@ -179,7 +179,7 @@ func CopyFile(src, dst string) (err error) {
 			return fmt.Errorf("stat failed: %w", err)
 		} else if !fi.Mode().IsRegular() {
 			fileType := fileTypeString(fi.Mode())
-			slog.Debug("skipping non-regular file", "path", src, "type", fileType, "mode", fi.Mode())
+			slog.Debug("skip copying non-regular file", "src", src, "dst", dst, "type", fileType, "mode", fi.Mode())
 			return nil
 		}
 	}
