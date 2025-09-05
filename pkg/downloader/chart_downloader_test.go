@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -484,4 +485,66 @@ func TestDownloadToCache(t *testing.T) {
 		c.Verify = VerifyNever
 		c.Keyring = ""
 	})
+}
+
+func TestParallelDownloadTo(t *testing.T) {
+	// Set up a simple test server with a chart
+	srv := repotest.NewTempServer(t, repotest.WithChartSourceGlob("testdata/*.tgz"))
+	defer srv.Stop()
+
+	if err := srv.CreateIndex(); err != nil {
+		t.Fatal(err)
+	}
+
+	dest := t.TempDir()
+
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
+	}
+
+	// Use a direct URL to bypass repository lookup
+	chartURL := srv.URL() + "/local-subchart-0.1.0.tgz"
+
+	// Number of parallel downloads to attempt
+	numDownloads := 10
+	var wg sync.WaitGroup
+	errors := make([]error, numDownloads)
+
+	// Launch multiple goroutines to download the same chart simultaneously
+	for i := 0; i < numDownloads; i++ {
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			_, _, err := c.DownloadTo(chartURL, "", dest)
+			errors[index] = err
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Check if any download failed
+	failedCount := 0
+	for i, err := range errors {
+		if err != nil {
+			t.Logf("Download %d failed: %v", i, err)
+			failedCount++
+		}
+	}
+
+	// With the file locking fix, all parallel downloads should succeed
+	if failedCount > 0 {
+		t.Errorf("Parallel downloads failed: %d out of %d downloads failed due to concurrent file access", failedCount, numDownloads)
+	}
+
+	// Verify the file exists and is valid
+	expectedFile := filepath.Join(dest, "local-subchart-0.1.0.tgz")
+	if _, err := os.Stat(expectedFile); err != nil {
+		t.Errorf("Expected file %s does not exist: %v", expectedFile, err)
+	}
 }
