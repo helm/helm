@@ -124,7 +124,7 @@ func TestValidateChartVersionStrictSemVerV2(t *testing.T) {
 		badChart.Version = test.Version
 		err := validateChartVersionStrictSemVerV2(badChart)
 		if err == nil || !strings.Contains(err.Error(), test.ErrorMsg) {
-			t.Errorf("validateChartVersion(%s) to return \"%s\", got no error", test.Version, test.ErrorMsg)
+			t.Errorf("validateChartVersionStrictSemVerV2(%s) to return \"%s\", got no error", test.Version, test.ErrorMsg)
 		}
 	}
 
@@ -132,7 +132,7 @@ func TestValidateChartVersionStrictSemVerV2(t *testing.T) {
 		badChart.Version = version
 		err := validateChartVersionStrictSemVerV2(badChart)
 		if err != nil {
-			t.Errorf("validateChartVersion(%s) to return no error, got a linter error", version)
+			t.Errorf("validateChartVersionStrictSemVerV2(%s) to return no error, got a linter error", version)
 		}
 	}
 }
