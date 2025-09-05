@@ -42,12 +42,12 @@ const invalidChartFileDir = "rules/testdata/invalidchartfile"
 
 func TestBadChart(t *testing.T) {
 	m := RunAll(badChartDir, values, namespace).Messages
-	if len(m) != 8 {
+	if len(m) != 9 {
 		t.Errorf("Number of errors %v", len(m))
 		t.Errorf("All didn't fail with expected errors, got %#v", m)
 	}
-	// There should be one INFO, one WARNING, and 2 ERROR messages, check for them
-	var i, w, e, e2, e3, e4, e5, e6 bool
+	// There should be one INFO, 2 WARNING and 2 ERROR messages, check for them
+	var i, w, w2, e, e2, e3, e4, e5, e6 bool
 	for _, msg := range m {
 		if msg.Severity == support.InfoSev {
 			if strings.Contains(msg.Err.Error(), "icon is recommended") {
@@ -83,8 +83,13 @@ func TestBadChart(t *testing.T) {
 				e6 = true
 			}
 		}
+		if msg.Severity == support.WarningSev {
+			if strings.Contains(msg.Err.Error(), "version '0.0.0.0' is not a valid SemVerV2") {
+				w2 = true
+			}
+		}
 	}
-	if !e || !e2 || !e3 || !e4 || !e5 || !i || !e6 || !w {
+	if !e || !e2 || !e3 || !e4 || !e5 || !i || !e6 || !w || !w2 {
 		t.Errorf("Didn't find all the expected errors, got %#v", m)
 	}
 }

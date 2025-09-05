@@ -108,6 +108,35 @@ func TestValidateChartVersion(t *testing.T) {
 	}
 }
 
+func TestValidateChartVersionStrictSemVerV2(t *testing.T) {
+	var failTest = []struct {
+		Version  string
+		ErrorMsg string
+	}{
+		{"", "version '' is not a valid SemVerV2"},
+		{"1", "version '1' is not a valid SemVerV2"},
+		{"1.1", "version '1.1' is not a valid SemVerV2"},
+	}
+
+	var successTest = []string{"1.1.1", "0.0.1+build", "0.0.1-beta"}
+
+	for _, test := range failTest {
+		badChart.Version = test.Version
+		err := validateChartVersionStrictSemVerV2(badChart)
+		if err == nil || !strings.Contains(err.Error(), test.ErrorMsg) {
+			t.Errorf("validateChartVersion(%s) to return \"%s\", got no error", test.Version, test.ErrorMsg)
+		}
+	}
+
+	for _, version := range successTest {
+		badChart.Version = version
+		err := validateChartVersionStrictSemVerV2(badChart)
+		if err != nil {
+			t.Errorf("validateChartVersion(%s) to return no error, got a linter error", version)
+		}
+	}
+}
+
 func TestValidateChartMaintainer(t *testing.T) {
 	var failTest = []struct {
 		Name     string
@@ -226,7 +255,7 @@ func TestChartfile(t *testing.T) {
 		linter := support.Linter{ChartDir: badChartDir}
 		Chartfile(&linter)
 		msgs := linter.Messages
-		expectedNumberOfErrorMessages := 6
+		expectedNumberOfErrorMessages := 7
 
 		if len(msgs) != expectedNumberOfErrorMessages {
 			t.Errorf("Expected %d errors, got %d", expectedNumberOfErrorMessages, len(msgs))
@@ -256,13 +285,16 @@ func TestChartfile(t *testing.T) {
 		if !strings.Contains(msgs[5].Err.Error(), "dependencies are not valid in the Chart file with apiVersion") {
 			t.Errorf("Unexpected message 5: %s", msgs[5].Err)
 		}
+		if !strings.Contains(msgs[6].Err.Error(), "version '0.0.0.0' is not a valid SemVerV2") {
+			t.Errorf("Unexpected message 6: %s", msgs[6].Err)
+		}
 	})
 
 	t.Run("Chart.yaml validity issues due to type mismatch", func(t *testing.T) {
 		linter := support.Linter{ChartDir: anotherBadChartDir}
 		Chartfile(&linter)
 		msgs := linter.Messages
-		expectedNumberOfErrorMessages := 3
+		expectedNumberOfErrorMessages := 4
 
 		if len(msgs) != expectedNumberOfErrorMessages {
 			t.Errorf("Expected %d errors, got %d", expectedNumberOfErrorMessages, len(msgs))
@@ -279,6 +311,9 @@ func TestChartfile(t *testing.T) {
 
 		if !strings.Contains(msgs[2].Err.Error(), "appVersion should be of type string") {
 			t.Errorf("Unexpected message 2: %s", msgs[2].Err)
+		}
+		if !strings.Contains(msgs[3].Err.Error(), "version '7.2445e+06' is not a valid SemVerV2") {
+			t.Errorf("Unexpected message 3: %s", msgs[3].Err)
 		}
 	})
 }

@@ -84,9 +84,11 @@ func TestValidateChartVersion(t *testing.T) {
 		ErrorMsg string
 	}{
 		{"", "version is required"},
-		{"1.2.3.4", "version '1.2.3.4' is not a valid SemVer"},
-		{"waps", "'waps' is not a valid SemVer"},
-		{"-3", "'-3' is not a valid SemVer"},
+		{"1.2.3.4", "version '1.2.3.4' is not a valid SemVerV2"},
+		{"waps", "'waps' is not a valid SemVerV2"},
+		{"-3", "'-3' is not a valid SemVerV2"},
+		{"1.1", "'1.1' is not a valid SemVerV2"},
+		{"1", "'1' is not a valid SemVerV2"},
 	}
 
 	var successTest = []string{"0.0.1", "0.0.1+build", "0.0.1-beta"}

@@ -60,7 +60,7 @@ func TestBadChartV3(t *testing.T) {
 			}
 		}
 		if msg.Severity == support.ErrorSev {
-			if strings.Contains(msg.Err.Error(), "version '0.0.0.0' is not a valid SemVer") {
+			if strings.Contains(msg.Err.Error(), "version '0.0.0.0' is not a valid SemVerV2") {
 				e = true
 			}
 			if strings.Contains(msg.Err.Error(), "name is required") {
