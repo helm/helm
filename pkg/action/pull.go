@@ -152,7 +152,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	// For direct OCI pulls, the registry client already prints "Pulled:" and
 	// "Digest:" (manifest digest), so we do not print here to avoid duplicates.
 	if p.RepoURL != "" || !registry.IsOCI(downloadSourceRef) {
-		base := trimAnySuffix(downloadSourceRef, ".tar.gz", ".tgz")
+		base := strings.TrimSuffix(downloadSourceRef, ".tgz")
 		chart, ver := splitChartNameVersion(base)
 
 		tag := chart
@@ -204,15 +204,6 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		return out.String(), chartutil.ExpandFile(ud, saved)
 	}
 	return out.String(), nil
-}
-
-func trimAnySuffix(s string, suffixes ...string) string {
-	for _, suf := range suffixes {
-		if strings.HasSuffix(s, suf) {
-			return strings.TrimSuffix(s, suf)
-		}
-	}
-	return s
 }
 
 func splitChartNameVersion(s string) (name, version string) {
