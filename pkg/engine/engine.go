@@ -360,12 +360,56 @@ func parseTemplateExecErrorString(s string) (TraceableError, bool) {
 
 	// Special case: "template: no template %q associated with template %q"
 	// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=191
-	if strings.HasPrefix(remainder, "no template ") {
-		return TraceableError{message: s}, true
+	traceableError, done := parseTemplateNoTemplateError(s, remainder)
+	if done {
+		return traceableError, done
 	}
 
 	// Executing form: "<templateName>: executing \"<funcName>\" at <<location>>: <errMsg>[ template:...]"
 	// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
+	traceableError, done = parseTemplateExecutingAtErrorType(remainder)
+	if done {
+		return traceableError, done
+	}
+
+	// Simple form: "<templateName>: <errMsg>"
+	// Use LastIndex to avoid splitting colons within line:col info.
+	// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
+	traceableError, done = parseTemplateSimpleErrorString(remainder)
+	if done {
+		return traceableError, done
+	}
+
+	return TraceableError{}, false
+}
+
+// Special case: "template: no template %q associated with template %q"
+// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=191
+func parseTemplateNoTemplateError(s string, remainder string) (TraceableError, bool) {
+	if strings.HasPrefix(remainder, "no template ") {
+		return TraceableError{message: s}, true
+	}
+	return TraceableError{}, false
+}
+
+// Simple form: "<templateName>: <errMsg>"
+// Use LastIndex to avoid splitting colons within line:col info.
+// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
+func parseTemplateSimpleErrorString(remainder string) (TraceableError, bool) {
+	if sep := strings.LastIndex(remainder, ": "); sep != -1 {
+		templateName := remainder[:sep]
+		errMsg := remainder[sep+2:]
+		if cut := strings.Index(errMsg, " template:"); cut != -1 {
+			errMsg = errMsg[:cut]
+		}
+		return TraceableError{location: templateName, message: errMsg}, true
+	}
+	return TraceableError{}, false
+}
+
+// Executing form: "<templateName>: executing \"<funcName>\" at <<location>>: <errMsg>[ template:...]"
+// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
+func parseTemplateExecutingAtErrorType(remainder string) (TraceableError, bool) {
 	if idx := strings.Index(remainder, ": executing "); idx != -1 {
 		templateName := remainder[:idx]
 		after := remainder[idx+len(": executing "):]
@@ -404,19 +448,6 @@ func parseTemplateExecErrorString(s string) (TraceableError, bool) {
 			executedFunction: "executing \"" + functionName + "\" at <" + locationName + ">:",
 		}, true
 	}
-
-	// Simple form: "<templateName>: <errMsg>"
-	// Use LastIndex to avoid splitting colons within line:col info.
-	// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
-	if sep := strings.LastIndex(remainder, ": "); sep != -1 {
-		templateName := remainder[:sep]
-		errMsg := remainder[sep+2:]
-		if cut := strings.Index(errMsg, " template:"); cut != -1 {
-			errMsg = errMsg[:cut]
-		}
-		return TraceableError{location: templateName, message: errMsg}, true
-	}
-
 	return TraceableError{}, false
 }
 
