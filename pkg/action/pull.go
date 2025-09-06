@@ -165,6 +165,8 @@ func (p *Pull) Run(chartRef string) (string, error) {
 
 		if sum, err := sha256File(saved); err == nil {
 			fmt.Fprintf(&out, "Digest: sha256:%x\n", sum)
+		} else {
+			fmt.Fprintf(&out, "Digest failed: %v\n", err)
 		}
 	}
 
