@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"helm.sh/helm/v4/internal/plugin"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/registry"
 )
 
@@ -136,7 +137,7 @@ func Update(i Installer) error {
 }
 
 // NewForSource determines the correct Installer for the given source.
-func NewForSource(source, version string) (Installer, error) {
+func NewForSource(settings *cli.EnvSettings, source, version string) (Installer, error) {
 	// Check if source is an OCI registry reference
 	if strings.HasPrefix(source, fmt.Sprintf("%s://", registry.OCIScheme)) {
 		return NewOCIInstaller(source)
@@ -145,7 +146,7 @@ func NewForSource(source, version string) (Installer, error) {
 	if isLocalReference(source) {
 		return NewLocalInstaller(source)
 	} else if isRemoteHTTPArchive(source) {
-		return NewHTTPInstaller(source)
+		return NewHTTPInstaller(settings, source)
 	}
 	return NewVCSInstaller(source, version)
 }

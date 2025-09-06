@@ -44,7 +44,7 @@ type HTTPInstaller struct {
 }
 
 // NewHTTPInstaller creates a new HttpInstaller.
-func NewHTTPInstaller(source string) (*HTTPInstaller, error) {
+func NewHTTPInstaller(settings *cli.EnvSettings, source string) (*HTTPInstaller, error) {
 	key, err := cache.Key(source)
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func NewHTTPInstaller(source string) (*HTTPInstaller, error) {
 		return nil, err
 	}
 
-	get, err := getter.All(new(cli.EnvSettings)).ByScheme("http")
+	get, err := getter.All(settings).ByScheme("http")
 	if err != nil {
 		return nil, err
 	}

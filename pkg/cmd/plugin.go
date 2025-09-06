@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -44,8 +45,21 @@ func newPluginCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-// runHook will execute a plugin hook.
-func runHook(p plugin.Plugin, event string) error {
+// runHook will execute a plugin hook
+// currently this function assumes/requires only subprocess plugins can have hooks
+func runHook(pm *plugin.Manager, pluginRaw *plugin.PluginRaw, event string) error {
+
+	if pluginRaw.Metadata.Runtime != "subprocess" {
+		return nil
+	}
+
+	pm.Store.Store(pluginRaw)
+
+	p, err := pm.CreatePlugin(pluginRaw)
+	if err != nil {
+		return fmt.Errorf("plugin is installed but unusable: %w", err)
+	}
+
 	pluginHook, ok := p.(plugin.PluginHook)
 	if ok {
 		return pluginHook.InvokeHook(event)

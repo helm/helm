@@ -24,6 +24,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
@@ -79,6 +80,7 @@ func TestResolveChartRef(t *testing.T) {
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
+			PluginCatalog:    plugin.NewEmptyCatalog(),
 		}),
 	}
 
@@ -119,6 +121,7 @@ func TestResolveChartOpts(t *testing.T) {
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
+			PluginCatalog:    plugin.NewEmptyCatalog(),
 		}),
 	}
 
@@ -215,6 +218,7 @@ func TestDownloadTo(t *testing.T) {
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
 			ContentCache:     contentCache,
+			PluginCatalog:    plugin.NewEmptyCatalog(),
 		}),
 		Options: []getter.Option{
 			getter.WithBasicAuth("username", "password"),
@@ -271,6 +275,7 @@ func TestDownloadTo_TLS(t *testing.T) {
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
 			ContentCache:     contentCache,
+			PluginCatalog:    plugin.NewEmptyCatalog(),
 		}),
 		Options: []getter.Option{
 			getter.WithTLSClientConfig(
@@ -327,6 +332,7 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
 			ContentCache:     contentCache,
+			PluginCatalog:    plugin.NewEmptyCatalog(),
 		}),
 	}
 	cname := "/signtest-0.1.0.tgz"
@@ -356,6 +362,7 @@ func TestScanReposForURL(t *testing.T) {
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
+			PluginCatalog:    plugin.NewEmptyCatalog(),
 		}),
 	}
 
