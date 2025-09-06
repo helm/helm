@@ -1428,3 +1428,50 @@ func TestRenderCustomTemplateFuncs(t *testing.T) {
 		t.Errorf("Expected %q, got %q", expected, rendered)
 	}
 }
+
+func TestTraceableError_SimpleForm(t *testing.T) {
+	testStrings := []string{
+		"function_not_found/templates/secret.yaml: error calling include",
+	}
+	for _, errString := range testStrings {
+		trace, done := parseTemplateSimpleErrorString(errString)
+		if !done {
+			t.Errorf("Expected parse to pass but did not")
+		}
+		if trace.message != "error calling include" {
+			t.Errorf("Expected %q, got %q", errString, trace.message)
+		}
+	}
+}
+func TestTraceableError_ExecutingForm(t *testing.T) {
+	testStrings := [][]string{
+		{"template: executing \"function_not_found/templates/secret.yaml\" at <include \"name\" .>: ", "function_not_found/templates/secret.yaml"},
+		{"template: executing \"name\" at <include \"common.names.get_name\" .>: ", "name"},
+	}
+	for _, errTuple := range testStrings {
+		errString := errTuple[0]
+		expectedLocation := errTuple[1]
+		trace, done := parseTemplateExecutingAtErrorType(errString)
+		if !done {
+			t.Errorf("Expected parse to pass but did not")
+		}
+		if trace.location != expectedLocation {
+			t.Errorf("Expected %q, got %q", expectedLocation, trace.location)
+		}
+	}
+}
+
+func TestTraceableError_NoTemplateForm(t *testing.T) {
+	testStrings := []string{
+		"no template \"common.names.get_name\" associated with template \"gotpl\"",
+	}
+	for _, errString := range testStrings {
+		trace, done := parseTemplateNoTemplateError(errString, "")
+		if !done {
+			t.Errorf("Expected parse to pass but did not")
+		}
+		if trace.message != errString {
+			t.Errorf("Expected %q, got %q", errString, trace.message)
+		}
+	}
+}
