@@ -1445,8 +1445,8 @@ func TestTraceableError_SimpleForm(t *testing.T) {
 }
 func TestTraceableError_ExecutingForm(t *testing.T) {
 	testStrings := [][]string{
-		{"template: executing \"function_not_found/templates/secret.yaml\" at <include \"name\" .>: ", "function_not_found/templates/secret.yaml"},
-		{"template: executing \"name\" at <include \"common.names.get_name\" .>: ", "name"},
+		{"function_not_found/templates/secret.yaml:6:11: executing \"function_not_found/templates/secret.yaml\" at <include \"name\" .>: ", "function_not_found/templates/secret.yaml:6:11"},
+		{"divide_by_zero/templates/secret.yaml:6:11: executing \"divide_by_zero/templates/secret.yaml\" at <include \"division\" .>: ", "divide_by_zero/templates/secret.yaml:6:11"},
 	}
 	for _, errTuple := range testStrings {
 		errString := errTuple[0]
@@ -1466,7 +1466,7 @@ func TestTraceableError_NoTemplateForm(t *testing.T) {
 		"no template \"common.names.get_name\" associated with template \"gotpl\"",
 	}
 	for _, errString := range testStrings {
-		trace, done := parseTemplateNoTemplateError(errString, "")
+		trace, done := parseTemplateNoTemplateError(errString, errString)
 		if !done {
 			t.Errorf("Expected parse to pass but did not")
 		}
