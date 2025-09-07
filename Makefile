@@ -118,11 +118,12 @@ test-unit:
 	go test $(GOFLAGS) -run ^TestHelmCreateChart_CheckDeprecatedWarnings$$ ./internal/chart/v3/lint/ $(TESTFLAGS) -ldflags '$(LDFLAGS)'
 
 
+# To run the coverage for a specific package use: make test-coverage PKG=./pkg/action
 .PHONY: test-coverage
 test-coverage:
 	@echo
-	@echo "==> Running unit tests with coverage <=="
-	@ ./scripts/coverage.sh
+	@echo "==> Running unit tests with coverage: $(PKG) <=="
+	@ ./scripts/coverage.sh $(PKG)
 
 .PHONY: test-style
 test-style:
@@ -147,10 +148,6 @@ test-acceptance: build build-cross
 .PHONY: test-acceptance-completion
 test-acceptance-completion: ACCEPTANCE_RUN_TESTS = shells.robot
 test-acceptance-completion: test-acceptance
-
-.PHONY: coverage
-coverage:
-	@scripts/coverage.sh
 
 .PHONY: format
 format: $(GOIMPORTS)
