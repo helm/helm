@@ -18,7 +18,9 @@ package action
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"testing"
 	"time"
@@ -689,4 +691,19 @@ func TestGetUpgradeServerSideValue(t *testing.T) {
 		})
 	}
 
+}
+
+func TestUpgradeRun_UnreachableKubeClient(t *testing.T) {
+	t.Helper()
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.ConnectionError = errors.New("connection refused")
+	config.KubeClient = &failingKubeClient
+
+	client := NewUpgrade(config)
+	vals := map[string]interface{}{}
+	result, err := client.Run("", buildChart(), vals)
+
+	assert.Nil(t, result)
+	assert.ErrorContains(t, err, "connection refused")
 }

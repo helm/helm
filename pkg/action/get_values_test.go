@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"errors"
 	"io"
 	"testing"
 
@@ -168,9 +169,9 @@ func TestGetValues_Run_EmptyValues(t *testing.T) {
 
 func TestGetValues_Run_UnreachableKubeClient(t *testing.T) {
 	cfg := actionConfigFixture(t)
-	cfg.KubeClient = &unreachableKubeClient{
-		PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
-	}
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.ConnectionError = errors.New("connection refused")
+	cfg.KubeClient = &failingKubeClient
 
 	client := NewGetValues(cfg)
 

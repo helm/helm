@@ -31,15 +31,6 @@ import (
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
-// unreachableKubeClient is a test client that always returns an error for IsReachable
-type unreachableKubeClient struct {
-	kubefake.PrintingKubeClient
-}
-
-func (u *unreachableKubeClient) IsReachable() error {
-	return errors.New("connection refused")
-}
-
 func TestNewGetMetadata(t *testing.T) {
 	cfg := actionConfigFixture(t)
 	client := NewGetMetadata(cfg)
@@ -424,9 +415,9 @@ func TestGetMetadata_Run_DifferentStatuses(t *testing.T) {
 
 func TestGetMetadata_Run_UnreachableKubeClient(t *testing.T) {
 	cfg := actionConfigFixture(t)
-	cfg.KubeClient = &unreachableKubeClient{
-		PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
-	}
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.ConnectionError = errors.New("connection refused")
+	cfg.KubeClient = &failingKubeClient
 
 	client := NewGetMetadata(cfg)
 
