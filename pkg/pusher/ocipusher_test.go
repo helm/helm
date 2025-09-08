@@ -355,6 +355,13 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Permission-related behavior can differ when running as root.
+			// The "chart read error" case relies on chmod 0000 causing a read failure,
+			// which root may bypass in some environments (e.g., Ubuntu containers).
+			if tt.name == "chart read error" && os.Geteuid() == 0 {
+				t.Skip("skipping permission test when running as root: chmod 0000 may not deny access for root")
+			}
+
 			chartRef := tt.chartRef
 			var cleanup func()
 
