@@ -70,11 +70,6 @@ func (p *PrintingKubeWaiter) Wait(resources kube.ResourceList, _ time.Duration) 
 	return err
 }
 
-func (p *PrintingKubeWaiter) WaitWithJobs(resources kube.ResourceList, _ time.Duration) error {
-	_, err := io.Copy(p.Out, bufferize(resources))
-	return err
-}
-
 func (p *PrintingKubeWaiter) WaitForDelete(resources kube.ResourceList, _ time.Duration) error {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	return err
