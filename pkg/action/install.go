@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"text/template"
 	"time"
 
@@ -41,6 +42,8 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/cli"
@@ -48,11 +51,11 @@ import (
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
-	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/registry"
-	releaseutil "helm.sh/helm/v4/pkg/release/util"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	"helm.sh/helm/v4/pkg/repo"
+	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
+	"helm.sh/helm/v4/pkg/repo/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
@@ -75,27 +78,34 @@ type Install struct {
 	// ForceReplace will, if set to `true`, ignore certain warnings and perform the install anyway.
 	//
 	// This should be used with caution.
-	ForceReplace    bool
+	ForceReplace bool
+	// ForceConflicts causes server-side apply to force conflicts ("Overwrite value, become sole manager")
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+	ForceConflicts bool
+	// ServerSideApply when true (default) will enable changes to be applied via Kubernetes server-side apply
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
+	ServerSideApply bool
 	CreateNamespace bool
 	DryRun          bool
 	DryRunOption    string
 	// HideSecret can be set to true when DryRun is enabled in order to hide
 	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
-	HideSecret               bool
-	DisableHooks             bool
-	Replace                  bool
-	WaitStrategy             kube.WaitStrategy
-	WaitForJobs              bool
-	Devel                    bool
-	DependencyUpdate         bool
-	Timeout                  time.Duration
-	Namespace                string
-	ReleaseName              string
-	GenerateName             bool
-	NameTemplate             string
-	Description              string
-	OutputDir                string
-	Atomic                   bool
+	HideSecret       bool
+	DisableHooks     bool
+	Replace          bool
+	WaitStrategy     kube.WaitStrategy
+	WaitForJobs      bool
+	Devel            bool
+	DependencyUpdate bool
+	Timeout          time.Duration
+	Namespace        string
+	ReleaseName      string
+	GenerateName     bool
+	NameTemplate     string
+	Description      string
+	OutputDir        string
+	// RollbackOnFailure enables rolling back (uninstalling) the release on failure if set
+	RollbackOnFailure        bool
 	SkipCRDs                 bool
 	SubNotes                 bool
 	HideNotes                bool
@@ -106,8 +116,8 @@ type Install struct {
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
-	KubeVersion *chartutil.KubeVersion
-	APIVersions chartutil.VersionSet
+	KubeVersion *common.KubeVersion
+	APIVersions common.VersionSet
 	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
 	IsUpgrade bool
 	// Enable DNS lookups when rendering templates
@@ -117,9 +127,10 @@ type Install struct {
 	UseReleaseName bool
 	// TakeOwnership will ignore the check for helm annotations and take ownership of the resources.
 	TakeOwnership bool
-	PostRenderer  postrender.PostRenderer
+	PostRenderer  postrenderer.PostRenderer
 	// Lock to control raceconditions when the process receives a SIGTERM
-	Lock sync.Mutex
+	Lock           sync.Mutex
+	goroutineCount atomic.Int32
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -145,7 +156,8 @@ type ChartPathOptions struct {
 // NewInstall creates a new Install object with the given configuration.
 func NewInstall(cfg *Configuration) *Install {
 	in := &Install{
-		cfg: cfg,
+		cfg:             cfg,
+		ServerSideApply: true,
 	}
 	in.registryClient = cfg.RegistryClient
 
@@ -173,7 +185,9 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		}
 
 		// Send them to Kube
-		if _, err := i.cfg.KubeClient.Create(res); err != nil {
+		if _, err := i.cfg.KubeClient.Create(
+			res,
+			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts)); err != nil {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
 				crdName := res[0].Name
@@ -234,7 +248,7 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 	return i.RunWithContext(ctx, chrt, vals)
 }
 
-// Run executes the installation with Context
+// RunWithContext executes the installation with Context
 //
 // When the task is cancelled through ctx, the function returns and the install
 // proceeds in the background.
@@ -282,7 +296,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	if i.ClientOnly {
 		// Add mock objects in here so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
-		i.cfg.Capabilities = chartutil.DefaultCapabilities.Copy()
+		i.cfg.Capabilities = common.DefaultCapabilities.Copy()
 		if i.KubeVersion != nil {
 			i.cfg.Capabilities.KubeVersion = *i.KubeVersion
 		}
@@ -296,9 +310,9 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		slog.Debug("API Version list given outside of client only mode, this list will be ignored")
 	}
 
-	// Make sure if Atomic is set, that wait is set as well. This makes it so
+	// Make sure if RollbackOnFailure is set, that wait is set as well. This makes it so
 	// the user doesn't have to specify both
-	if i.WaitStrategy == kube.HookOnlyStrategy && i.Atomic {
+	if i.WaitStrategy == kube.HookOnlyStrategy && i.RollbackOnFailure {
 		i.WaitStrategy = kube.StatusWatcherStrategy
 	}
 
@@ -309,14 +323,14 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 
 	// special case for helm template --is-upgrade
 	isUpgrade := i.IsUpgrade && i.isDryRun()
-	options := chartutil.ReleaseOptions{
+	options := common.ReleaseOptions{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
 		Revision:  1,
 		IsInstall: !isUpgrade,
 		IsUpgrade: isUpgrade,
 	}
-	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chrt, vals, options, caps, i.SkipSchemaValidation)
+	valuesToRender, err := util.ToRenderValuesWithSchemaValidation(chrt, vals, options, caps, i.SkipSchemaValidation)
 	if err != nil {
 		return nil, err
 	}
@@ -399,7 +413,9 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		if err != nil {
 			return nil, err
 		}
-		if _, err := i.cfg.KubeClient.Create(resourceList); err != nil && !apierrors.IsAlreadyExists(err) {
+		if _, err := i.cfg.KubeClient.Create(
+			resourceList,
+			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {
 			return nil, err
 		}
 	}
@@ -411,8 +427,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		}
 	}
 
-	// Store the release in history before continuing (new in Helm 3). We always know
-	// that this is a create operation.
+	// Store the release in history before continuing. We always know that this is a create operation
 	if err := i.cfg.Releases.Create(rel); err != nil {
 		// We could try to recover gracefully here, but since nothing has been installed
 		// yet, this is probably safer than trying to continue when we know storage is
@@ -435,8 +450,10 @@ func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, t
 	resultChan := make(chan Msg, 1)
 
 	go func() {
+		i.goroutineCount.Add(1)
 		rel, err := i.performInstall(rel, toBeAdopted, resources)
 		resultChan <- Msg{rel, err}
+		i.goroutineCount.Add(-1)
 	}()
 	select {
 	case <-ctx.Done():
@@ -445,6 +462,11 @@ func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, t
 	case msg := <-resultChan:
 		return msg.r, msg.e
 	}
+}
+
+// getGoroutineCount return the number of running routines
+func (i *Install) getGoroutineCount() int32 {
+	return i.goroutineCount.Load()
 }
 
 // isDryRun returns true if Upgrade is set to run as a DryRun
@@ -459,7 +481,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
 			return rel, fmt.Errorf("failed pre-install: %s", err)
 		}
 	}
@@ -468,13 +490,18 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	// do an update, but it's not clear whether we WANT to do an update if the reuse is set
 	// to true, since that is basically an upgrade operation.
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
-		_, err = i.cfg.KubeClient.Create(resources)
+		_, err = i.cfg.KubeClient.Create(
+			resources,
+			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false))
 	} else if len(resources) > 0 {
-		if i.TakeOwnership {
-			_, err = i.cfg.KubeClient.(kube.InterfaceThreeWayMerge).UpdateThreeWayMerge(toBeAdopted, resources, i.ForceReplace)
-		} else {
-			_, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.ForceReplace)
-		}
+		updateThreeWayMergeForUnstructured := i.TakeOwnership && !i.ServerSideApply // Use three-way merge when taking ownership (and not using server-side apply)
+		_, err = i.cfg.KubeClient.Update(
+			toBeAdopted,
+			resources,
+			kube.ClientUpdateOptionForceReplace(i.ForceReplace),
+			kube.ClientUpdateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts),
+			kube.ClientUpdateOptionThreeWayMergeForUnstructured(updateThreeWayMergeForUnstructured),
+			kube.ClientUpdateOptionUpgradeClientSideFieldManager(true))
 	}
 	if err != nil {
 		return rel, err
@@ -495,7 +522,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	}
 
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.Timeout); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
 			return rel, fmt.Errorf("failed post-install: %s", err)
 		}
 	}
@@ -522,8 +549,8 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
 	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
-	if i.Atomic {
-		slog.Debug("install failed, uninstalling release", "release", i.ReleaseName)
+	if i.RollbackOnFailure {
+		slog.Debug("install failed and rollback-on-failure is set, uninstalling release", "release", i.ReleaseName)
 		uninstall := NewUninstall(i.cfg)
 		uninstall.DisableHooks = i.DisableHooks
 		uninstall.KeepHistory = false
@@ -531,7 +558,7 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 		if _, uninstallErr := uninstall.Run(i.ReleaseName); uninstallErr != nil {
 			return rel, fmt.Errorf("an error occurred while uninstalling the release. original install error: %w: %w", err, uninstallErr)
 		}
-		return rel, fmt.Errorf("release %s failed, and has been uninstalled due to atomic being set: %w", i.ReleaseName, err)
+		return rel, fmt.Errorf("release %s failed, and has been uninstalled due to rollback-on-failure being set: %w", i.ReleaseName, err)
 	}
 	i.recordRelease(rel) // Ignore the error, since we have another error to deal with.
 	return rel, err
@@ -572,7 +599,8 @@ func (i *Install) availableName() error {
 // createRelease creates a new release object
 func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{}, labels map[string]string) *release.Release {
 	ts := i.cfg.Now()
-	return &release.Release{
+
+	r := &release.Release{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
 		Chart:     chrt,
@@ -582,9 +610,12 @@ func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{
 			LastDeployed:  ts,
 			Status:        release.StatusUnknown,
 		},
-		Version: 1,
-		Labels:  labels,
+		Version:     1,
+		Labels:      labels,
+		ApplyMethod: string(determineReleaseSSApplyMethod(i.ServerSideApply)),
 	}
+
+	return r
 }
 
 // recordRelease with an update operation in case reuse has been set.
@@ -792,7 +823,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 			return abs, err
 		}
 		if c.Verify {
-			if _, err := downloader.VerifyChart(abs, c.Keyring); err != nil {
+			if _, err := downloader.VerifyChart(abs, abs+".prov", c.Keyring); err != nil {
 				return "", err
 			}
 		}
@@ -815,6 +846,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		},
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
+		ContentCache:     settings.ContentCache,
 		RegistryClient:   c.registryClient,
 	}
 
@@ -868,7 +900,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		return "", err
 	}
 
-	filename, _, err := dl.DownloadTo(name, version, settings.RepositoryCache)
+	filename, _, err := dl.DownloadToCache(name, version)
 	if err != nil {
 		return "", err
 	}

@@ -32,10 +32,7 @@ type HTTPRegistryClientTestSuite struct {
 
 func (suite *HTTPRegistryClientTestSuite) SetupSuite() {
 	// init test client
-	dockerRegistry := setup(&suite.TestSuite, false, false, "htpasswd")
-
-	// Start Docker registry
-	go dockerRegistry.ListenAndServe()
+	setup(&suite.TestSuite, false, false, "htpasswd")
 }
 
 func (suite *HTTPRegistryClientTestSuite) TearDownSuite() {

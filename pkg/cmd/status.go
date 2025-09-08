@@ -30,7 +30,7 @@ import (
 
 	coloroutput "helm.sh/helm/v4/internal/cli/output"
 	"helm.sh/helm/v4/pkg/action"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/chart/common/util"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -197,7 +197,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		// Print an extra newline
 		_, _ = fmt.Fprintln(out)
 
-		cfg, err := chartutil.CoalesceValues(s.release.Chart, s.release.Config)
+		cfg, err := util.CoalesceValues(s.release.Chart, s.release.Config)
 		if err != nil {
 			return err
 		}

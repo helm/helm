@@ -33,9 +33,8 @@ type RegistryScopeTestSuite struct {
 
 func (suite *RegistryScopeTestSuite) SetupSuite() {
 	// set registry use token auth
-	dockerRegistry := setup(&suite.TestSuite, true, true, "token")
-	// Start Docker registry
-	go dockerRegistry.ListenAndServe()
+	setup(&suite.TestSuite, true, true, "token")
+
 }
 func (suite *RegistryScopeTestSuite) TearDownSuite() {
 	teardown(&suite.TestSuite)

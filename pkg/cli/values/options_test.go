@@ -294,7 +294,7 @@ func TestReadFileOriginal(t *testing.T) {
 	}
 }
 
-func TestMergeValues(t *testing.T) {
+func TestMergeValuesCLI(t *testing.T) {
 	tests := []struct {
 		name     string
 		opts     Options

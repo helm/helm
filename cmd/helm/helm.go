@@ -41,11 +41,9 @@ func main() {
 	}
 
 	if err := cmd.Execute(); err != nil {
-		switch e := err.(type) {
-		case helmcmd.PluginError:
-			os.Exit(e.Code)
-		default:
-			os.Exit(1)
+		if cerr, ok := err.(helmcmd.CommandError); ok {
+			os.Exit(cerr.ExitCode)
 		}
+		os.Exit(1)
 	}
 }

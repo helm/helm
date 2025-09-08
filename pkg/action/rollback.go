@@ -44,9 +44,17 @@ type Rollback struct {
 	// ForceReplace will, if set to `true`, ignore certain warnings and perform the rollback anyway.
 	//
 	// This should be used with caution.
-	ForceReplace  bool
-	CleanupOnFail bool
-	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
+	ForceReplace bool
+	// ForceConflicts causes server-side apply to force conflicts ("Overwrite value, become sole manager")
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+	ForceConflicts bool
+	// ServerSideApply enables changes to be applied via Kubernetes server-side apply
+	// Can be the string: "true", "false" or "auto"
+	// When "auto", sever-side usage will be based upon the releases previous usage
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
+	ServerSideApply string
+	CleanupOnFail   bool
+	MaxHistory      int // MaxHistory limits the maximum number of revisions saved per release
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -65,7 +73,7 @@ func (r *Rollback) Run(name string) error {
 	r.cfg.Releases.MaxHistory = r.MaxHistory
 
 	slog.Debug("preparing rollback", "name", name)
-	currentRelease, targetRelease, err := r.prepareRollback(name)
+	currentRelease, targetRelease, serverSideApply, err := r.prepareRollback(name)
 	if err != nil {
 		return err
 	}
@@ -78,7 +86,7 @@ func (r *Rollback) Run(name string) error {
 	}
 
 	slog.Debug("performing rollback", "name", name)
-	if _, err := r.performRollback(currentRelease, targetRelease); err != nil {
+	if _, err := r.performRollback(currentRelease, targetRelease, serverSideApply); err != nil {
 		return err
 	}
 
@@ -93,18 +101,18 @@ func (r *Rollback) Run(name string) error {
 
 // prepareRollback finds the previous release and prepares a new release object with
 // the previous release's configuration
-func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Release, error) {
+func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Release, bool, error) {
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, nil, fmt.Errorf("prepareRollback: Release name is invalid: %s", name)
+		return nil, nil, false, fmt.Errorf("prepareRollback: Release name is invalid: %s", name)
 	}
 
 	if r.Version < 0 {
-		return nil, nil, errInvalidRevision
+		return nil, nil, false, errInvalidRevision
 	}
 
 	currentRelease, err := r.cfg.Releases.Last(name)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	previousVersion := r.Version
@@ -114,7 +122,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 
 	historyReleases, err := r.cfg.Releases.History(name)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	// Check if the history version to be rolled back exists
@@ -127,14 +135,19 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		}
 	}
 	if !previousVersionExist {
-		return nil, nil, fmt.Errorf("release has no %d version", previousVersion)
+		return nil, nil, false, fmt.Errorf("release has no %d version", previousVersion)
 	}
 
 	slog.Debug("rolling back", "name", name, "currentVersion", currentRelease.Version, "targetVersion", previousVersion)
 
 	previousRelease, err := r.cfg.Releases.Get(name, previousVersion)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
+	}
+
+	serverSideApply, err := getUpgradeServerSideValue(r.ServerSideApply, previousRelease.ApplyMethod)
+	if err != nil {
+		return nil, nil, false, err
 	}
 
 	// Store a new release object with previous release's configuration
@@ -152,16 +165,17 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 			// message here, and only override it later if we experience failure.
 			Description: fmt.Sprintf("Rollback to %d", previousVersion),
 		},
-		Version:  currentRelease.Version + 1,
-		Labels:   previousRelease.Labels,
-		Manifest: previousRelease.Manifest,
-		Hooks:    previousRelease.Hooks,
+		Version:     currentRelease.Version + 1,
+		Labels:      previousRelease.Labels,
+		Manifest:    previousRelease.Manifest,
+		Hooks:       previousRelease.Hooks,
+		ApplyMethod: string(determineReleaseSSApplyMethod(serverSideApply)),
 	}
 
-	return currentRelease, targetRelease, nil
+	return currentRelease, targetRelease, serverSideApply, nil
 }
 
-func (r *Rollback) performRollback(currentRelease, targetRelease *release.Release) (*release.Release, error) {
+func (r *Rollback) performRollback(currentRelease, targetRelease *release.Release, serverSideApply bool) (*release.Release, error) {
 	if r.DryRun {
 		slog.Debug("dry run", "name", targetRelease.Name)
 		return targetRelease, nil
@@ -177,20 +191,27 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	}
 
 	// pre-rollback hooks
+
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.Timeout); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.Timeout, serverSideApply); err != nil {
 			return targetRelease, err
 		}
 	} else {
 		slog.Debug("rollback hooks disabled", "name", targetRelease.Name)
 	}
 
-	// It is safe to use "force" here because these are resources currently rendered by the chart.
+	// It is safe to use "forceOwnership" here because these are resources currently rendered by the chart.
 	err = target.Visit(setMetadataVisitor(targetRelease.Name, targetRelease.Namespace, true))
 	if err != nil {
 		return targetRelease, fmt.Errorf("unable to set metadata visitor from target release: %w", err)
 	}
-	results, err := r.cfg.KubeClient.Update(current, target, r.ForceReplace)
+	results, err := r.cfg.KubeClient.Update(
+		current,
+		target,
+		kube.ClientUpdateOptionForceReplace(r.ForceReplace),
+		kube.ClientUpdateOptionServerSideApply(serverSideApply, r.ForceConflicts),
+		kube.ClientUpdateOptionThreeWayMergeForUnstructured(false),
+		kube.ClientUpdateOptionUpgradeClientSideFieldManager(true))
 
 	if err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
@@ -235,7 +256,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.WaitStrategy, r.Timeout); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.WaitStrategy, r.Timeout, serverSideApply); err != nil {
 			return targetRelease, err
 		}
 	}

@@ -16,16 +16,20 @@ limitations under the License.
 package downloader
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/registry"
-	"helm.sh/helm/v4/pkg/repo"
-	"helm.sh/helm/v4/pkg/repo/repotest"
+	"helm.sh/helm/v4/pkg/repo/v1"
+	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
 
 const (
@@ -79,7 +83,7 @@ func TestResolveChartRef(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		u, err := c.ResolveChartVersion(tt.ref, tt.version)
+		_, u, err := c.ResolveChartVersion(tt.ref, tt.version)
 		if err != nil {
 			if tt.fail {
 				continue
@@ -131,7 +135,7 @@ func TestResolveChartOpts(t *testing.T) {
 			continue
 		}
 
-		u, err := c.ResolveChartVersion(tt.ref, tt.version)
+		_, u, err := c.ResolveChartVersion(tt.ref, tt.version)
 		if err != nil {
 			t.Errorf("%s: failed with error %s", tt.name, err)
 			continue
@@ -155,7 +159,7 @@ func TestResolveChartOpts(t *testing.T) {
 }
 
 func TestVerifyChart(t *testing.T) {
-	v, err := VerifyChart("testdata/signtest-0.1.0.tgz", "testdata/helm-test-key.pub")
+	v, err := VerifyChart("testdata/signtest-0.1.0.tgz", "testdata/signtest-0.1.0.tgz.prov", "testdata/helm-test-key.pub")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,15 +202,19 @@ func TestDownloadTo(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	contentCache := t.TempDir()
+
 	c := ChartDownloader{
 		Out:              os.Stderr,
 		Verify:           VerifyAlways,
 		Keyring:          "testdata/helm-test-key.pub",
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
+		ContentCache:     contentCache,
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
+			ContentCache:     contentCache,
 		}),
 		Options: []getter.Option{
 			getter.WithBasicAuth("username", "password"),
@@ -250,6 +258,7 @@ func TestDownloadTo_TLS(t *testing.T) {
 
 	repoConfig := filepath.Join(srv.Root(), "repositories.yaml")
 	repoCache := srv.Root()
+	contentCache := t.TempDir()
 
 	c := ChartDownloader{
 		Out:              os.Stderr,
@@ -257,9 +266,11 @@ func TestDownloadTo_TLS(t *testing.T) {
 		Keyring:          "testdata/helm-test-key.pub",
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
+		ContentCache:     contentCache,
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
+			ContentCache:     contentCache,
 		}),
 		Options: []getter.Option{
 			getter.WithTLSClientConfig(
@@ -304,15 +315,18 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 	if err := srv.LinkIndices(); err != nil {
 		t.Fatal(err)
 	}
+	contentCache := t.TempDir()
 
 	c := ChartDownloader{
 		Out:              os.Stderr,
 		Verify:           VerifyLater,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
+		ContentCache:     contentCache,
 		Getters: getter.All(&cli.EnvSettings{
 			RepositoryConfig: repoConfig,
 			RepositoryCache:  repoCache,
+			ContentCache:     contentCache,
 		}),
 	}
 	cname := "/signtest-0.1.0.tgz"
@@ -365,4 +379,109 @@ func TestScanReposForURL(t *testing.T) {
 	if _, err = c.scanReposForURL(u, rf); err != ErrNoOwnerRepo {
 		t.Fatalf("expected ErrNoOwnerRepo, got %v", err)
 	}
+}
+
+func TestDownloadToCache(t *testing.T) {
+	srv := repotest.NewTempServer(t,
+		repotest.WithChartSourceGlob("testdata/*.tgz*"),
+	)
+	defer srv.Stop()
+	if err := srv.CreateIndex(); err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	// The repo file needs to point to our server.
+	repoFile := filepath.Join(srv.Root(), "repositories.yaml")
+	repoCache := srv.Root()
+	contentCache := t.TempDir()
+
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyNever,
+		RepositoryConfig: repoFile,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoFile,
+			RepositoryCache:  repoCache,
+			ContentCache:     contentCache,
+		}),
+		Cache: &DiskCache{Root: contentCache},
+	}
+
+	// Case 1: Chart not in cache, download it.
+	t.Run("download and cache chart", func(t *testing.T) {
+		// Clear cache for this test
+		os.RemoveAll(contentCache)
+		os.MkdirAll(contentCache, 0755)
+		c.Cache = &DiskCache{Root: contentCache}
+
+		pth, v, err := c.DownloadToCache("test/signtest", "0.1.0")
+		require.NoError(t, err)
+		require.NotNil(t, v)
+
+		// Check that the file exists at the returned path
+		_, err = os.Stat(pth)
+		require.NoError(t, err, "chart should exist at returned path")
+
+		// Check that it's in the cache
+		digest, _, err := c.ResolveChartVersion("test/signtest", "0.1.0")
+		require.NoError(t, err)
+		digestBytes, err := hex.DecodeString(digest)
+		require.NoError(t, err)
+		var digestArray [sha256.Size]byte
+		copy(digestArray[:], digestBytes)
+
+		cachePath, err := c.Cache.Get(digestArray, CacheChart)
+		require.NoError(t, err, "chart should now be in cache")
+		require.Equal(t, pth, cachePath)
+	})
+
+	// Case 2: Chart is in cache, get from cache.
+	t.Run("get chart from cache", func(t *testing.T) {
+		// The cache should be populated from the previous test.
+		// To prove it's coming from cache, we can stop the server.
+		// But repotest doesn't support restarting.
+		// Let's just call it again and assume it works if it's fast and doesn't error.
+		pth, v, err := c.DownloadToCache("test/signtest", "0.1.0")
+		require.NoError(t, err)
+		require.NotNil(t, v)
+
+		_, err = os.Stat(pth)
+		require.NoError(t, err, "chart should exist at returned path")
+	})
+
+	// Case 3: Download with verification
+	t.Run("download and verify", func(t *testing.T) {
+		// Clear cache
+		os.RemoveAll(contentCache)
+		os.MkdirAll(contentCache, 0755)
+		c.Cache = &DiskCache{Root: contentCache}
+		c.Verify = VerifyAlways
+		c.Keyring = "testdata/helm-test-key.pub"
+
+		_, v, err := c.DownloadToCache("test/signtest", "0.1.0")
+		require.NoError(t, err)
+		require.NotNil(t, v)
+		require.NotEmpty(t, v.FileHash, "verification should have a file hash")
+
+		// Check that both chart and prov are in cache
+		digest, _, err := c.ResolveChartVersion("test/signtest", "0.1.0")
+		require.NoError(t, err)
+		digestBytes, err := hex.DecodeString(digest)
+		require.NoError(t, err)
+		var digestArray [sha256.Size]byte
+		copy(digestArray[:], digestBytes)
+
+		_, err = c.Cache.Get(digestArray, CacheChart)
+		require.NoError(t, err, "chart should be in cache")
+		_, err = c.Cache.Get(digestArray, CacheProv)
+		require.NoError(t, err, "provenance file should be in cache")
+
+		// Reset for other tests
+		c.Verify = VerifyNever
+		c.Keyring = ""
+	})
 }

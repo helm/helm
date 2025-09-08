@@ -29,10 +29,8 @@ type InsecureTLSRegistryClientTestSuite struct {
 
 func (suite *InsecureTLSRegistryClientTestSuite) SetupSuite() {
 	// init test client
-	dockerRegistry := setup(&suite.TestSuite, true, true, "htpasswd")
+	setup(&suite.TestSuite, true, true, "htpasswd")
 
-	// Start Docker registry
-	go dockerRegistry.ListenAndServe()
 }
 
 func (suite *InsecureTLSRegistryClientTestSuite) TearDownSuite() {

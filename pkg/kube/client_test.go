@@ -19,15 +19,19 @@ package kube
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -117,210 +121,209 @@ func newTestClient(t *testing.T) *Client {
 	t.Cleanup(testFactory.Cleanup)
 
 	return &Client{
-		Factory: testFactory.WithNamespace("default"),
+		Factory: testFactory.WithNamespace(v1.NamespaceDefault),
 	}
+}
+
+type RequestResponseAction struct {
+	Request  http.Request
+	Response http.Response
+	Error    error
+}
+
+type RoundTripperTestFunc func(previous []RequestResponseAction, req *http.Request) (*http.Response, error)
+
+func NewRequestResponseLogClient(t *testing.T, cb RoundTripperTestFunc) RequestResponseLogClient {
+	t.Helper()
+	return RequestResponseLogClient{
+		t:  t,
+		cb: cb,
+	}
+}
+
+// RequestResponseLogClient is a test client that logs requests and responses
+// Satifying http.RoundTripper interface, it can be used to mock HTTP requests in tests.
+// Forwarding requests to a callback function (cb) that can be used to simulate server responses.
+type RequestResponseLogClient struct {
+	t           *testing.T
+	cb          RoundTripperTestFunc
+	actionsLock sync.Mutex
+	Actions     []RequestResponseAction
+}
+
+func (r *RequestResponseLogClient) Do(req *http.Request) (*http.Response, error) {
+	t := r.t
+	t.Helper()
+
+	readBodyBytes := func(body io.ReadCloser) []byte {
+		if body == nil {
+			return []byte{}
+		}
+
+		defer body.Close()
+		bodyBytes, err := io.ReadAll(body)
+		require.NoError(t, err)
+
+		return bodyBytes
+	}
+
+	reqBytes := readBodyBytes(req.Body)
+
+	t.Logf("Request: %s %s %s", req.Method, req.URL.String(), reqBytes)
+	if req.Body != nil {
+		req.Body = io.NopCloser(bytes.NewReader(reqBytes))
+	}
+
+	resp, err := r.cb(r.Actions, req)
+
+	respBytes := readBodyBytes(resp.Body)
+	t.Logf("Response: %d %s", resp.StatusCode, string(respBytes))
+	if resp.Body != nil {
+		resp.Body = io.NopCloser(bytes.NewReader(respBytes))
+	}
+
+	r.actionsLock.Lock()
+	defer r.actionsLock.Unlock()
+	r.Actions = append(r.Actions, RequestResponseAction{
+		Request:  *req,
+		Response: *resp,
+		Error:    err,
+	})
+
+	return resp, err
 }
 
 func TestCreate(t *testing.T) {
-	// Note: c.Create with the fake client can currently only test creation of a single pod in the same list. When testing
+	// Note: c.Create with the fake client can currently only test creation of a single pod/object in the same list. When testing
 	// with more than one pod, c.Create will run into a data race as it calls perform->batchPerform which performs creation
-	// in batches. The first data race is on accessing var actions and can be fixed easily with a mutex lock in the Client
-	// function. The second data race though is something in the fake client itself in  func (c *RESTClient) do(...)
+	// in batches. The race is something in the fake client itself in `func (c *RESTClient) do(...)`
 	// when it stores the req: c.Req = req and cannot (?) be fixed easily.
-	listA := newPodList("starfish")
-	listB := newPodList("dolphin")
 
-	var actions []string
-	var iterationCounter int
-
-	c := newTestClient(t)
-	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
-		NegotiatedSerializer: unstructuredSerializer,
-		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
-			path, method := req.URL.Path, req.Method
-			bodyReader := new(strings.Builder)
-			_, _ = io.Copy(bodyReader, req.Body)
-			body := bodyReader.String()
-			actions = append(actions, path+":"+method)
-			t.Logf("got request %s %s", path, method)
-			switch {
-			case path == "/namespaces/default/pods" && method == http.MethodPost:
-				if strings.Contains(body, "starfish") {
-					if iterationCounter < 2 {
-						iterationCounter++
-						return newResponseJSON(http.StatusConflict, resourceQuotaConflict)
-					}
-					return newResponse(http.StatusOK, &listA.Items[0])
-				}
-				return newResponseJSON(http.StatusConflict, resourceQuotaConflict)
-			default:
-				t.Fatalf("unexpected request: %s %s", method, path)
-				return nil, nil
-			}
-		}),
+	type testCase struct {
+		Name                  string
+		Pods                  v1.PodList
+		Callback              func(t *testing.T, tc testCase, previous []RequestResponseAction, req *http.Request) (*http.Response, error)
+		ServerSideApply       bool
+		ExpectedActions       []string
+		ExpectedErrorContains string
 	}
 
-	t.Run("Create success", func(t *testing.T) {
-		list, err := c.Build(objBody(&listA), false)
-		if err != nil {
-			t.Fatal(err)
-		}
+	testCases := map[string]testCase{
+		"Create success (client-side apply)": {
+			Pods:            newPodList("starfish"),
+			ServerSideApply: false,
+			Callback: func(t *testing.T, tc testCase, previous []RequestResponseAction, _ *http.Request) (*http.Response, error) {
+				t.Helper()
 
-		result, err := c.Create(list)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if len(result.Created) != 1 {
-			t.Errorf("expected 1 resource created, got %d", len(result.Created))
-		}
-
-		expectedActions := []string{
-			"/namespaces/default/pods:POST",
-			"/namespaces/default/pods:POST",
-			"/namespaces/default/pods:POST",
-		}
-		if len(expectedActions) != len(actions) {
-			t.Fatalf("unexpected number of requests, expected %d, got %d", len(expectedActions), len(actions))
-		}
-		for k, v := range expectedActions {
-			if actions[k] != v {
-				t.Errorf("expected %s request got %s", v, actions[k])
-			}
-		}
-	})
-
-	t.Run("Create failure", func(t *testing.T) {
-		list, err := c.Build(objBody(&listB), false)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		_, err = c.Create(list)
-		if err == nil {
-			t.Errorf("expected error")
-		}
-
-		expectedString := "Operation cannot be fulfilled on resourcequotas \"quota\": the object has been modified; " +
-			"please apply your changes to the latest version and try again"
-		if !strings.Contains(err.Error(), expectedString) {
-			t.Errorf("Unexpected error message: %q", err)
-		}
-
-		expectedActions := []string{
-			"/namespaces/default/pods:POST",
-		}
-		for k, v := range actions {
-			if expectedActions[0] != v {
-				t.Errorf("expected %s request got %s", v, actions[k])
-			}
-		}
-	})
-}
-
-func testUpdate(t *testing.T, threeWayMerge bool) {
-	t.Helper()
-	listA := newPodList("starfish", "otter", "squid")
-	listB := newPodList("starfish", "otter", "dolphin")
-	listC := newPodList("starfish", "otter", "dolphin")
-	listB.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
-	listC.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
-
-	var actions []string
-	var iterationCounter int
-
-	c := newTestClient(t)
-	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
-		NegotiatedSerializer: unstructuredSerializer,
-		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
-			p, m := req.URL.Path, req.Method
-			actions = append(actions, p+":"+m)
-			t.Logf("got request %s %s", p, m)
-			switch {
-			case p == "/namespaces/default/pods/starfish" && m == http.MethodGet:
-				return newResponse(http.StatusOK, &listA.Items[0])
-			case p == "/namespaces/default/pods/otter" && m == http.MethodGet:
-				return newResponse(http.StatusOK, &listA.Items[1])
-			case p == "/namespaces/default/pods/otter" && m == http.MethodPatch:
-				data, err := io.ReadAll(req.Body)
-				if err != nil {
-					t.Fatalf("could not dump request: %s", err)
-				}
-				req.Body.Close()
-				expected := `{}`
-				if string(data) != expected {
-					t.Errorf("expected patch\n%s\ngot\n%s", expected, string(data))
-				}
-				return newResponse(http.StatusOK, &listB.Items[0])
-			case p == "/namespaces/default/pods/dolphin" && m == http.MethodGet:
-				return newResponse(http.StatusNotFound, notFoundBody())
-			case p == "/namespaces/default/pods/starfish" && m == http.MethodPatch:
-				data, err := io.ReadAll(req.Body)
-				if err != nil {
-					t.Fatalf("could not dump request: %s", err)
-				}
-				req.Body.Close()
-				expected := `{"spec":{"$setElementOrder/containers":[{"name":"app:v4"}],"containers":[{"$setElementOrder/ports":[{"containerPort":443}],"name":"app:v4","ports":[{"containerPort":443,"name":"https"},{"$patch":"delete","containerPort":80}]}]}}`
-				if string(data) != expected {
-					t.Errorf("expected patch\n%s\ngot\n%s", expected, string(data))
-				}
-				return newResponse(http.StatusOK, &listB.Items[0])
-			case p == "/namespaces/default/pods" && m == http.MethodPost:
-				if iterationCounter < 2 {
-					iterationCounter++
+				if len(previous) < 2 { // simulate a conflict
 					return newResponseJSON(http.StatusConflict, resourceQuotaConflict)
 				}
-				return newResponse(http.StatusOK, &listB.Items[1])
-			case p == "/namespaces/default/pods/squid" && m == http.MethodDelete:
-				return newResponse(http.StatusOK, &listB.Items[1])
-			case p == "/namespaces/default/pods/squid" && m == http.MethodGet:
-				return newResponse(http.StatusOK, &listB.Items[2])
-			default:
-				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
-				return nil, nil
+
+				return newResponse(http.StatusOK, &tc.Pods.Items[0])
+			},
+			ExpectedActions: []string{
+				"/namespaces/default/pods:POST",
+				"/namespaces/default/pods:POST",
+				"/namespaces/default/pods:POST",
+			},
+		},
+		"Create success (server-side apply)": {
+			Pods:            newPodList("whale"),
+			ServerSideApply: true,
+			Callback: func(t *testing.T, tc testCase, _ []RequestResponseAction, _ *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				return newResponse(http.StatusOK, &tc.Pods.Items[0])
+			},
+			ExpectedActions: []string{
+				"/namespaces/default/pods/whale:PATCH",
+			},
+		},
+		"Create fail: incompatible server (server-side apply)": {
+			Pods:            newPodList("lobster"),
+			ServerSideApply: true,
+			Callback: func(t *testing.T, _ testCase, _ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				return &http.Response{
+					StatusCode: http.StatusUnsupportedMediaType,
+					Request:    req,
+				}, nil
+			},
+			ExpectedErrorContains: "server-side apply not available on the server:",
+			ExpectedActions: []string{
+				"/namespaces/default/pods/lobster:PATCH",
+			},
+		},
+		"Create fail: quota (server-side apply)": {
+			Pods:            newPodList("dolphin"),
+			ServerSideApply: true,
+			Callback: func(t *testing.T, _ testCase, _ []RequestResponseAction, _ *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				return newResponseJSON(http.StatusConflict, resourceQuotaConflict)
+			},
+			ExpectedErrorContains: "Operation cannot be fulfilled on resourcequotas \"quota\": the object has been modified; " +
+				"please apply your changes to the latest version and try again",
+			ExpectedActions: []string{
+				"/namespaces/default/pods/dolphin:PATCH",
+			},
+		},
+	}
+
+	c := newTestClient(t)
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+
+			client := NewRequestResponseLogClient(t, func(previous []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				return tc.Callback(t, tc, previous, req)
+			})
+
+			c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+				NegotiatedSerializer: unstructuredSerializer,
+				Client:               fake.CreateHTTPClient(client.Do),
 			}
-		}),
+
+			list, err := c.Build(objBody(&tc.Pods), false)
+			require.NoError(t, err)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			result, err := c.Create(
+				list,
+				ClientCreateOptionServerSideApply(tc.ServerSideApply, false))
+			if tc.ExpectedErrorContains != "" {
+				require.ErrorContains(t, err, tc.ExpectedErrorContains)
+			} else {
+				require.NoError(t, err)
+
+				// See note above about limitations in supporting more than a single object
+				assert.Len(t, result.Created, 1, "expected 1 object created, got %d", len(result.Created))
+			}
+
+			actions := []string{}
+			for _, action := range client.Actions {
+				path, method := action.Request.URL.Path, action.Request.Method
+				actions = append(actions, path+":"+method)
+			}
+
+			assert.Equal(t, tc.ExpectedActions, actions)
+
+		})
 	}
-	first, err := c.Build(objBody(&listA), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, err := c.Build(objBody(&listB), false)
-	if err != nil {
-		t.Fatal(err)
+}
+
+func TestUpdate(t *testing.T) {
+	type testCase struct {
+		OriginalPods                 v1.PodList
+		TargetPods                   v1.PodList
+		ThreeWayMergeForUnstructured bool
+		ServerSideApply              bool
+		ExpectedActions              []string
 	}
 
-	var result *Result
-	if threeWayMerge {
-		result, err = c.UpdateThreeWayMerge(first, second, false)
-	} else {
-		result, err = c.Update(first, second, false)
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(result.Created) != 1 {
-		t.Errorf("expected 1 resource created, got %d", len(result.Created))
-	}
-	if len(result.Updated) != 2 {
-		t.Errorf("expected 2 resource updated, got %d", len(result.Updated))
-	}
-	if len(result.Deleted) != 1 {
-		t.Errorf("expected 1 resource deleted, got %d", len(result.Deleted))
-	}
-
-	// TODO: Find a way to test methods that use Client Set
-	// Test with a wait
-	// if err := c.Update("test", objBody(codec, &listB), objBody(codec, &listC), false, 300, true); err != nil {
-	// 	t.Fatal(err)
-	// }
-	// Test with a wait should fail
-	// TODO: A way to make this not based off of an extremely short timeout?
-	// if err := c.Update("test", objBody(codec, &listC), objBody(codec, &listA), false, 2, true); err != nil {
-	// 	t.Fatal(err)
-	// }
-	expectedActions := []string{
+	expectedActionsClientSideApply := []string{
 		"/namespaces/default/pods/starfish:GET",
 		"/namespaces/default/pods/starfish:GET",
 		"/namespaces/default/pods/starfish:PATCH",
@@ -334,22 +337,155 @@ func testUpdate(t *testing.T, threeWayMerge bool) {
 		"/namespaces/default/pods/squid:GET",
 		"/namespaces/default/pods/squid:DELETE",
 	}
-	if len(expectedActions) != len(actions) {
-		t.Fatalf("unexpected number of requests, expected %d, got %d", len(expectedActions), len(actions))
-	}
-	for k, v := range expectedActions {
-		if actions[k] != v {
-			t.Errorf("expected %s request got %s", v, actions[k])
-		}
-	}
-}
 
-func TestUpdate(t *testing.T) {
-	testUpdate(t, false)
-}
+	expectedActionsServerSideApply := []string{
+		"/namespaces/default/pods/starfish:GET",
+		"/namespaces/default/pods/starfish:GET",
+		"/namespaces/default/pods/starfish:PATCH",
+		"/namespaces/default/pods/otter:GET",
+		"/namespaces/default/pods/otter:GET",
+		"/namespaces/default/pods/otter:PATCH",
+		"/namespaces/default/pods/dolphin:GET",
+		"/namespaces/default/pods:POST", // create dolphin
+		"/namespaces/default/pods:POST", // retry due to 409
+		"/namespaces/default/pods:POST", // retry due to 409
+		"/namespaces/default/pods/squid:GET",
+		"/namespaces/default/pods/squid:DELETE",
+	}
 
-func TestUpdateThreeWayMerge(t *testing.T) {
-	testUpdate(t, true)
+	testCases := map[string]testCase{
+		"client-side apply": {
+			OriginalPods: newPodList("starfish", "otter", "squid"),
+			TargetPods: func() v1.PodList {
+				listTarget := newPodList("starfish", "otter", "dolphin")
+				listTarget.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+
+				return listTarget
+			}(),
+			ThreeWayMergeForUnstructured: false,
+			ServerSideApply:              false,
+			ExpectedActions:              expectedActionsClientSideApply,
+		},
+		"client-side apply (three-way merge for unstructured)": {
+			OriginalPods: newPodList("starfish", "otter", "squid"),
+			TargetPods: func() v1.PodList {
+				listTarget := newPodList("starfish", "otter", "dolphin")
+				listTarget.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+
+				return listTarget
+			}(),
+			ThreeWayMergeForUnstructured: true,
+			ServerSideApply:              false,
+			ExpectedActions:              expectedActionsClientSideApply,
+		},
+		"serverSideApply": {
+			OriginalPods: newPodList("starfish", "otter", "squid"),
+			TargetPods: func() v1.PodList {
+				listTarget := newPodList("starfish", "otter", "dolphin")
+				listTarget.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+
+				return listTarget
+			}(),
+			ThreeWayMergeForUnstructured: false,
+			ServerSideApply:              true,
+			ExpectedActions:              expectedActionsServerSideApply,
+		},
+	}
+
+	c := newTestClient(t)
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+
+			listOriginal := tc.OriginalPods
+			listTarget := tc.TargetPods
+
+			iterationCounter := 0
+			cb := func(_ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				p, m := req.URL.Path, req.Method
+
+				switch {
+				case p == "/namespaces/default/pods/starfish" && m == http.MethodGet:
+					return newResponse(http.StatusOK, &listOriginal.Items[0])
+				case p == "/namespaces/default/pods/otter" && m == http.MethodGet:
+					return newResponse(http.StatusOK, &listOriginal.Items[1])
+				case p == "/namespaces/default/pods/otter" && m == http.MethodPatch:
+					if !tc.ServerSideApply {
+						defer req.Body.Close()
+						data, err := io.ReadAll(req.Body)
+						require.NoError(t, err)
+
+						assert.Equal(t, `{}`, string(data))
+					}
+
+					return newResponse(http.StatusOK, &listTarget.Items[0])
+				case p == "/namespaces/default/pods/dolphin" && m == http.MethodGet:
+					return newResponse(http.StatusNotFound, notFoundBody())
+				case p == "/namespaces/default/pods/starfish" && m == http.MethodPatch:
+					if !tc.ServerSideApply {
+						// Ensure client-side apply specifies correct patch
+						defer req.Body.Close()
+						data, err := io.ReadAll(req.Body)
+						require.NoError(t, err)
+
+						expected := `{"spec":{"$setElementOrder/containers":[{"name":"app:v4"}],"containers":[{"$setElementOrder/ports":[{"containerPort":443}],"name":"app:v4","ports":[{"containerPort":443,"name":"https"},{"$patch":"delete","containerPort":80}]}]}}`
+						assert.Equal(t, expected, string(data))
+					}
+
+					return newResponse(http.StatusOK, &listTarget.Items[0])
+				case p == "/namespaces/default/pods" && m == http.MethodPost:
+					if iterationCounter < 2 {
+						iterationCounter++
+						return newResponseJSON(http.StatusConflict, resourceQuotaConflict)
+					}
+
+					return newResponse(http.StatusOK, &listTarget.Items[1])
+				case p == "/namespaces/default/pods/squid" && m == http.MethodDelete:
+					return newResponse(http.StatusOK, &listTarget.Items[1])
+				case p == "/namespaces/default/pods/squid" && m == http.MethodGet:
+					return newResponse(http.StatusOK, &listTarget.Items[2])
+				default:
+				}
+
+				t.Fail()
+				return nil, nil
+			}
+
+			client := NewRequestResponseLogClient(t, cb)
+
+			c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+				NegotiatedSerializer: unstructuredSerializer,
+				Client:               fake.CreateHTTPClient(client.Do),
+			}
+
+			first, err := c.Build(objBody(&listOriginal), false)
+			require.NoError(t, err)
+
+			second, err := c.Build(objBody(&listTarget), false)
+			require.NoError(t, err)
+
+			result, err := c.Update(
+				first,
+				second,
+				ClientUpdateOptionThreeWayMergeForUnstructured(tc.ThreeWayMergeForUnstructured),
+				ClientUpdateOptionForceReplace(false),
+				ClientUpdateOptionServerSideApply(tc.ServerSideApply, false),
+				ClientUpdateOptionUpgradeClientSideFieldManager(true))
+			require.NoError(t, err)
+
+			assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
+			assert.Len(t, result.Updated, 2, "expected 2 resource updated, got %d", len(result.Updated))
+			assert.Len(t, result.Deleted, 1, "expected 1 resource deleted, got %d", len(result.Deleted))
+
+			actions := []string{}
+			for _, action := range client.Actions {
+				path, method := action.Request.URL.Path, action.Request.Method
+				actions = append(actions, path+":"+method)
+			}
+
+			assert.Equal(t, tc.ExpectedActions, actions)
+		})
+	}
 }
 
 func TestBuild(t *testing.T) {
@@ -548,7 +684,11 @@ func TestWait(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := c.Create(resources)
+
+	result, err := c.Create(
+		resources,
+		ClientCreateOptionServerSideApply(false, false))
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -605,7 +745,10 @@ func TestWaitJob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := c.Create(resources)
+	result, err := c.Create(
+		resources,
+		ClientCreateOptionServerSideApply(false, false))
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -664,7 +807,9 @@ func TestWaitDelete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := c.Create(resources)
+	result, err := c.Create(
+		resources,
+		ClientCreateOptionServerSideApply(false, false))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -941,8 +1086,8 @@ type createPatchTestCase struct {
 
 	// The target state.
 	target *unstructured.Unstructured
-	// The current state as it exists in the release.
-	current *unstructured.Unstructured
+	// The state as it exists in the release.
+	original *unstructured.Unstructured
 	// The actual state as it exists in the cluster.
 	actual *unstructured.Unstructured
 
@@ -990,15 +1135,15 @@ func (c createPatchTestCase) run(t *testing.T) {
 		},
 	}
 
-	patch, patchType, err := createPatch(targetInfo, c.current, c.threeWayMergeForUnstructured)
+	patch, patchType, err := createPatch(c.original, targetInfo, c.threeWayMergeForUnstructured)
 	if err != nil {
 		t.Fatalf("Failed to create patch: %v", err)
 	}
 
 	if c.expectedPatch != string(patch) {
-		t.Errorf("Unexpected patch.\nTarget:\n%s\nCurrent:\n%s\nActual:\n%s\n\nExpected:\n%s\nGot:\n%s",
+		t.Errorf("Unexpected patch.\nTarget:\n%s\nOriginal:\n%s\nActual:\n%s\n\nExpected:\n%s\nGot:\n%s",
 			c.target,
-			c.current,
+			c.original,
 			c.actual,
 			c.expectedPatch,
 			string(patch),
@@ -1040,9 +1185,9 @@ func TestCreatePatchCustomResourceMetadata(t *testing.T) {
 		"objectset.rio.cattle.io/id":     "default-foo-simple",
 	}, nil)
 	testCase := createPatchTestCase{
-		name:    "take ownership of resource",
-		target:  target,
-		current: target,
+		name:     "take ownership of resource",
+		target:   target,
+		original: target,
 		actual: newTestCustomResourceData(nil, map[string]interface{}{
 			"color": "red",
 		}),
@@ -1064,9 +1209,9 @@ func TestCreatePatchCustomResourceSpec(t *testing.T) {
 		"size":  "large",
 	})
 	testCase := createPatchTestCase{
-		name:    "merge with spec of existing custom resource",
-		target:  target,
-		current: target,
+		name:     "merge with spec of existing custom resource",
+		target:   target,
+		original: target,
 		actual: newTestCustomResourceData(nil, map[string]interface{}{
 			"color":  "red",
 			"weight": "heavy",
@@ -1183,4 +1328,427 @@ func TestIsReachable(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIsIncompatibleServerError(t *testing.T) {
+	testCases := map[string]struct {
+		Err  error
+		Want bool
+	}{
+		"Unsupported media type": {
+			Err:  &apierrors.StatusError{ErrStatus: metav1.Status{Code: http.StatusUnsupportedMediaType}},
+			Want: true,
+		},
+		"Not found error": {
+			Err:  &apierrors.StatusError{ErrStatus: metav1.Status{Code: http.StatusNotFound}},
+			Want: false,
+		},
+		"Generic error": {
+			Err:  fmt.Errorf("some generic error"),
+			Want: false,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			if got := isIncompatibleServerError(tc.Err); got != tc.Want {
+				t.Errorf("isIncompatibleServerError() = %v, want %v", got, tc.Want)
+			}
+		})
+	}
+}
+
+func TestReplaceResource(t *testing.T) {
+	type testCase struct {
+		Pods                  v1.PodList
+		Callback              func(t *testing.T, tc testCase, previous []RequestResponseAction, req *http.Request) (*http.Response, error)
+		ExpectedErrorContains string
+	}
+
+	testCases := map[string]testCase{
+		"normal": {
+			Pods: newPodList("whale"),
+			Callback: func(t *testing.T, tc testCase, previous []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				assert.Equal(t, "/namespaces/default/pods/whale", req.URL.Path)
+				switch len(previous) {
+				case 0:
+					assert.Equal(t, "GET", req.Method)
+				case 1:
+					assert.Equal(t, "PUT", req.Method)
+				}
+
+				return newResponse(http.StatusOK, &tc.Pods.Items[0])
+			},
+		},
+		"conflict": {
+			Pods: newPodList("whale"),
+			Callback: func(t *testing.T, _ testCase, _ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				return &http.Response{
+					StatusCode: http.StatusConflict,
+					Request:    req,
+				}, nil
+			},
+			ExpectedErrorContains: "failed to replace object: the server reported a conflict",
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+
+			testFactory := cmdtesting.NewTestFactory()
+			t.Cleanup(testFactory.Cleanup)
+
+			client := NewRequestResponseLogClient(t, func(previous []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				return tc.Callback(t, tc, previous, req)
+			})
+
+			testFactory.UnstructuredClient = &fake.RESTClient{
+				NegotiatedSerializer: unstructuredSerializer,
+				Client:               fake.CreateHTTPClient(client.Do),
+			}
+
+			resourceList, err := buildResourceList(testFactory, v1.NamespaceDefault, FieldValidationDirectiveStrict, objBody(&tc.Pods), nil)
+			require.NoError(t, err)
+
+			require.Len(t, resourceList, 1)
+			info := resourceList[0]
+
+			err = replaceResource(info, FieldValidationDirectiveStrict)
+			if tc.ExpectedErrorContains != "" {
+				require.ErrorContains(t, err, tc.ExpectedErrorContains)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, info.Object)
+			}
+		})
+	}
+}
+
+func TestPatchResourceClientSide(t *testing.T) {
+	type testCase struct {
+		OriginalPods                 v1.PodList
+		TargetPods                   v1.PodList
+		ThreeWayMergeForUnstructured bool
+		Callback                     func(t *testing.T, tc testCase, previous []RequestResponseAction, req *http.Request) (*http.Response, error)
+		ExpectedErrorContains        string
+	}
+
+	testCases := map[string]testCase{
+		"normal": {
+			OriginalPods: newPodList("whale"),
+			TargetPods: func() v1.PodList {
+				pods := newPodList("whale")
+				pods.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+
+				return pods
+			}(),
+			ThreeWayMergeForUnstructured: false,
+			Callback: func(t *testing.T, tc testCase, previous []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				assert.Equal(t, "/namespaces/default/pods/whale", req.URL.Path)
+				switch len(previous) {
+				case 0:
+					assert.Equal(t, "GET", req.Method)
+					return newResponse(http.StatusOK, &tc.OriginalPods.Items[0])
+				case 1:
+					assert.Equal(t, "PATCH", req.Method)
+					assert.Equal(t, "application/strategic-merge-patch+json", req.Header.Get("Content-Type"))
+					return newResponse(http.StatusOK, &tc.TargetPods.Items[0])
+				}
+
+				t.Fail()
+				return nil, nil
+			},
+		},
+		"three way merge for unstructured": {
+			OriginalPods: newPodList("whale"),
+			TargetPods: func() v1.PodList {
+				pods := newPodList("whale")
+				pods.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+
+				return pods
+			}(),
+			ThreeWayMergeForUnstructured: true,
+			Callback: func(t *testing.T, tc testCase, previous []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				assert.Equal(t, "/namespaces/default/pods/whale", req.URL.Path)
+				switch len(previous) {
+				case 0:
+					assert.Equal(t, "GET", req.Method)
+					return newResponse(http.StatusOK, &tc.OriginalPods.Items[0])
+				case 1:
+					t.Logf("patcher: %+v", req.Header)
+					assert.Equal(t, "PATCH", req.Method)
+					assert.Equal(t, "application/strategic-merge-patch+json", req.Header.Get("Content-Type"))
+					return newResponse(http.StatusOK, &tc.TargetPods.Items[0])
+				}
+
+				t.Fail()
+				return nil, nil
+			},
+		},
+		"conflict": {
+			OriginalPods: newPodList("whale"),
+			TargetPods: func() v1.PodList {
+				pods := newPodList("whale")
+				pods.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+
+				return pods
+			}(),
+			Callback: func(t *testing.T, tc testCase, previous []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				assert.Equal(t, "/namespaces/default/pods/whale", req.URL.Path)
+				switch len(previous) {
+				case 0:
+					assert.Equal(t, "GET", req.Method)
+					return newResponse(http.StatusOK, &tc.OriginalPods.Items[0])
+				case 1:
+					assert.Equal(t, "PATCH", req.Method)
+					return &http.Response{
+						StatusCode: http.StatusConflict,
+						Request:    req,
+					}, nil
+				}
+
+				t.Fail()
+				return nil, nil
+
+			},
+			ExpectedErrorContains: "cannot patch \"whale\" with kind Pod: the server reported a conflict",
+		},
+		"no patch": {
+			OriginalPods: newPodList("whale"),
+			TargetPods:   newPodList("whale"),
+			Callback: func(t *testing.T, tc testCase, previous []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				assert.Equal(t, "/namespaces/default/pods/whale", req.URL.Path)
+				switch len(previous) {
+				case 0:
+					assert.Equal(t, "GET", req.Method)
+					return newResponse(http.StatusOK, &tc.OriginalPods.Items[0])
+				case 1:
+					assert.Equal(t, "GET", req.Method)
+					return newResponse(http.StatusOK, &tc.TargetPods.Items[0])
+				}
+
+				t.Fail()
+				return nil, nil // newResponse(http.StatusOK, &tc.TargetPods.Items[0])
+
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+
+			testFactory := cmdtesting.NewTestFactory()
+			t.Cleanup(testFactory.Cleanup)
+
+			client := NewRequestResponseLogClient(t, func(previous []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				return tc.Callback(t, tc, previous, req)
+			})
+
+			testFactory.UnstructuredClient = &fake.RESTClient{
+				NegotiatedSerializer: unstructuredSerializer,
+				Client:               fake.CreateHTTPClient(client.Do),
+			}
+
+			resourceListOriginal, err := buildResourceList(testFactory, v1.NamespaceDefault, FieldValidationDirectiveStrict, objBody(&tc.OriginalPods), nil)
+			require.NoError(t, err)
+			require.Len(t, resourceListOriginal, 1)
+
+			resourceListTarget, err := buildResourceList(testFactory, v1.NamespaceDefault, FieldValidationDirectiveStrict, objBody(&tc.TargetPods), nil)
+			require.NoError(t, err)
+			require.Len(t, resourceListTarget, 1)
+
+			original := resourceListOriginal[0]
+			target := resourceListTarget[0]
+
+			err = patchResourceClientSide(original.Object, target, tc.ThreeWayMergeForUnstructured)
+			if tc.ExpectedErrorContains != "" {
+				require.ErrorContains(t, err, tc.ExpectedErrorContains)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, target.Object)
+			}
+		})
+	}
+}
+
+func TestPatchResourceServerSide(t *testing.T) {
+	type testCase struct {
+		Pods                     v1.PodList
+		DryRun                   bool
+		ForceConflicts           bool
+		FieldValidationDirective FieldValidationDirective
+		Callback                 func(t *testing.T, tc testCase, previous []RequestResponseAction, req *http.Request) (*http.Response, error)
+		ExpectedErrorContains    string
+	}
+
+	testCases := map[string]testCase{
+		"normal": {
+			Pods:                     newPodList("whale"),
+			DryRun:                   false,
+			ForceConflicts:           false,
+			FieldValidationDirective: FieldValidationDirectiveStrict,
+			Callback: func(t *testing.T, tc testCase, _ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				assert.Equal(t, "PATCH", req.Method)
+				assert.Equal(t, "application/apply-patch+yaml", req.Header.Get("Content-Type"))
+				assert.Equal(t, "/namespaces/default/pods/whale", req.URL.Path)
+				assert.Equal(t, "false", req.URL.Query().Get("force"))
+				assert.Equal(t, "Strict", req.URL.Query().Get("fieldValidation"))
+
+				return newResponse(http.StatusOK, &tc.Pods.Items[0])
+			},
+		},
+		"dry run": {
+			Pods:                     newPodList("whale"),
+			DryRun:                   true,
+			ForceConflicts:           false,
+			FieldValidationDirective: FieldValidationDirectiveStrict,
+			Callback: func(t *testing.T, tc testCase, _ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				assert.Equal(t, "PATCH", req.Method)
+				assert.Equal(t, "application/apply-patch+yaml", req.Header.Get("Content-Type"))
+				assert.Equal(t, "/namespaces/default/pods/whale", req.URL.Path)
+				assert.Equal(t, "All", req.URL.Query().Get("dryRun"))
+				assert.Equal(t, "false", req.URL.Query().Get("force"))
+				assert.Equal(t, "Strict", req.URL.Query().Get("fieldValidation"))
+
+				return newResponse(http.StatusOK, &tc.Pods.Items[0])
+			},
+		},
+		"force conflicts": {
+			Pods:                     newPodList("whale"),
+			DryRun:                   false,
+			ForceConflicts:           true,
+			FieldValidationDirective: FieldValidationDirectiveStrict,
+			Callback: func(t *testing.T, tc testCase, _ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				assert.Equal(t, "PATCH", req.Method)
+				assert.Equal(t, "application/apply-patch+yaml", req.Header.Get("Content-Type"))
+				assert.Equal(t, "/namespaces/default/pods/whale", req.URL.Path)
+				assert.Equal(t, "true", req.URL.Query().Get("force"))
+				assert.Equal(t, "Strict", req.URL.Query().Get("fieldValidation"))
+
+				return newResponse(http.StatusOK, &tc.Pods.Items[0])
+			},
+		},
+		"dry run + force conflicts": {
+			Pods:                     newPodList("whale"),
+			DryRun:                   true,
+			ForceConflicts:           true,
+			FieldValidationDirective: FieldValidationDirectiveStrict,
+			Callback: func(t *testing.T, tc testCase, _ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				assert.Equal(t, "PATCH", req.Method)
+				assert.Equal(t, "application/apply-patch+yaml", req.Header.Get("Content-Type"))
+				assert.Equal(t, "/namespaces/default/pods/whale", req.URL.Path)
+				assert.Equal(t, "All", req.URL.Query().Get("dryRun"))
+				assert.Equal(t, "true", req.URL.Query().Get("force"))
+				assert.Equal(t, "Strict", req.URL.Query().Get("fieldValidation"))
+
+				return newResponse(http.StatusOK, &tc.Pods.Items[0])
+			},
+		},
+		"field validation ignore": {
+			Pods:                     newPodList("whale"),
+			DryRun:                   false,
+			ForceConflicts:           false,
+			FieldValidationDirective: FieldValidationDirectiveIgnore,
+			Callback: func(t *testing.T, tc testCase, _ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				assert.Equal(t, "PATCH", req.Method)
+				assert.Equal(t, "application/apply-patch+yaml", req.Header.Get("Content-Type"))
+				assert.Equal(t, "/namespaces/default/pods/whale", req.URL.Path)
+				assert.Equal(t, "false", req.URL.Query().Get("force"))
+				assert.Equal(t, "Ignore", req.URL.Query().Get("fieldValidation"))
+
+				return newResponse(http.StatusOK, &tc.Pods.Items[0])
+			},
+		},
+		"incompatible server": {
+			Pods:                     newPodList("whale"),
+			DryRun:                   false,
+			ForceConflicts:           false,
+			FieldValidationDirective: FieldValidationDirectiveStrict,
+			Callback: func(t *testing.T, _ testCase, _ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				return &http.Response{
+					StatusCode: http.StatusUnsupportedMediaType,
+					Request:    req,
+				}, nil
+			},
+			ExpectedErrorContains: "server-side apply not available on the server:",
+		},
+		"conflict": {
+			Pods:                     newPodList("whale"),
+			DryRun:                   false,
+			ForceConflicts:           false,
+			FieldValidationDirective: FieldValidationDirectiveStrict,
+			Callback: func(t *testing.T, _ testCase, _ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				return &http.Response{
+					StatusCode: http.StatusConflict,
+					Request:    req,
+				}, nil
+			},
+			ExpectedErrorContains: "the server reported a conflict",
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+
+			testFactory := cmdtesting.NewTestFactory()
+			t.Cleanup(testFactory.Cleanup)
+
+			client := NewRequestResponseLogClient(t, func(previous []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				return tc.Callback(t, tc, previous, req)
+			})
+
+			testFactory.UnstructuredClient = &fake.RESTClient{
+				NegotiatedSerializer: unstructuredSerializer,
+				Client:               fake.CreateHTTPClient(client.Do),
+			}
+
+			resourceList, err := buildResourceList(testFactory, v1.NamespaceDefault, tc.FieldValidationDirective, objBody(&tc.Pods), nil)
+			require.NoError(t, err)
+
+			require.Len(t, resourceList, 1)
+			info := resourceList[0]
+
+			err = patchResourceServerSide(info, tc.DryRun, tc.ForceConflicts, tc.FieldValidationDirective)
+			if tc.ExpectedErrorContains != "" {
+				require.ErrorContains(t, err, tc.ExpectedErrorContains)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, info.Object)
+			}
+		})
+	}
+}
+
+func TestDetermineFieldValidationDirective(t *testing.T) {
+
+	assert.Equal(t, FieldValidationDirectiveIgnore, determineFieldValidationDirective(false))
+	assert.Equal(t, FieldValidationDirectiveStrict, determineFieldValidationDirective(true))
 }

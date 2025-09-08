@@ -27,15 +27,17 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
 	"k8s.io/klog/v2"
 
 	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/kube"
-	"helm.sh/helm/v4/pkg/postrender"
-	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/postrenderer"
+	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
 const (
@@ -163,16 +165,18 @@ func (o *outputValue) Set(s string) error {
 	return nil
 }
 
-func bindPostRenderFlag(cmd *cobra.Command, varRef *postrender.PostRenderer) {
-	p := &postRendererOptions{varRef, "", []string{}}
-	cmd.Flags().Var(&postRendererString{p}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
+// TODO there is probably a better way to pass cobra settings than as a param
+func bindPostRenderFlag(cmd *cobra.Command, varRef *postrenderer.PostRenderer, settings *cli.EnvSettings) {
+	p := &postRendererOptions{varRef, "", []string{}, settings}
+	cmd.Flags().Var(&postRendererString{p}, postRenderFlag, "the name of a postrenderer type plugin to be used for post rendering. If it exists, the plugin will be used")
 	cmd.Flags().Var(&postRendererArgsSlice{p}, postRenderArgsFlag, "an argument to the post-renderer (can specify multiple)")
 }
 
 type postRendererOptions struct {
-	renderer   *postrender.PostRenderer
-	binaryPath string
+	renderer   *postrenderer.PostRenderer
+	pluginName string
 	args       []string
+	settings   *cli.EnvSettings
 }
 
 type postRendererString struct {
@@ -180,7 +184,7 @@ type postRendererString struct {
 }
 
 func (p *postRendererString) String() string {
-	return p.options.binaryPath
+	return p.options.pluginName
 }
 
 func (p *postRendererString) Type() string {
@@ -191,11 +195,11 @@ func (p *postRendererString) Set(val string) error {
 	if val == "" {
 		return nil
 	}
-	if p.options.binaryPath != "" {
+	if p.options.pluginName != "" {
 		return fmt.Errorf("cannot specify --post-renderer flag more than once")
 	}
-	p.options.binaryPath = val
-	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
+	p.options.pluginName = val
+	pr, err := postrenderer.NewPostRendererPlugin(p.options.settings, p.options.pluginName, p.options.args...)
 	if err != nil {
 		return err
 	}
@@ -220,11 +224,11 @@ func (p *postRendererArgsSlice) Set(val string) error {
 	// a post-renderer defined by a user may accept empty arguments
 	p.options.args = append(p.options.args, val)
 
-	if p.options.binaryPath == "" {
+	if p.options.pluginName == "" {
 		return nil
 	}
 	// overwrite if already create PostRenderer by `post-renderer` flags
-	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
+	pr, err := postrenderer.NewPostRendererPlugin(p.options.settings, p.options.pluginName, p.options.args...)
 	if err != nil {
 		return err
 	}

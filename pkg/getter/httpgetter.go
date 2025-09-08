@@ -30,7 +30,7 @@ import (
 
 // HTTPGetter is the default HTTP(/S) backend handler
 type HTTPGetter struct {
-	opts      options
+	opts      getterOptions
 	transport *http.Transport
 	once      sync.Once
 }
@@ -122,6 +122,9 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 		g.transport = &http.Transport{
 			DisableCompression: true,
 			Proxy:              http.ProxyFromEnvironment,
+			// Being nil would cause the tls.Config default to be used
+			// "NewTLSConfig" modifies an empty TLS config, not the default one
+			TLSClientConfig: &tls.Config{},
 		}
 	})
 

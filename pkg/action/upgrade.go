@@ -28,13 +28,15 @@ import (
 
 	"k8s.io/cli-runtime/pkg/resource"
 
+	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
-	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/registry"
-	releaseutil "helm.sh/helm/v4/pkg/release/util"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
@@ -81,6 +83,14 @@ type Upgrade struct {
 	//
 	// This should be used with caution.
 	ForceReplace bool
+	// ForceConflicts causes server-side apply to force conflicts ("Overwrite value, become sole manager")
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+	ForceConflicts bool
+	// ServerSideApply enables changes to be applied via Kubernetes server-side apply
+	// Can be the string: "true", "false" or "auto"
+	// When "auto", sever-side usage will be based upon the releases previous usage
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
+	ServerSideApply string
 	// ResetValues will reset the values to the chart's built-ins rather than merging with existing.
 	ResetValues bool
 	// ReuseValues will reuse the user's last supplied values.
@@ -89,8 +99,8 @@ type Upgrade struct {
 	ResetThenReuseValues bool
 	// MaxHistory limits the maximum number of revisions saved per release
 	MaxHistory int
-	// Atomic, if true, will roll back on failure.
-	Atomic bool
+	// RollbackOnFailure enables rolling back the upgraded release on failure
+	RollbackOnFailure bool
 	// CleanupOnFail will, if true, cause the upgrade to delete newly-created resources on a failed update.
 	CleanupOnFail bool
 	// SubNotes determines whether sub-notes are rendered in the chart.
@@ -106,7 +116,7 @@ type Upgrade struct {
 	//
 	// If this is non-nil, then after templates are rendered, they will be sent to the
 	// post renderer before sending to the Kubernetes API server.
-	PostRenderer postrender.PostRenderer
+	PostRenderer postrenderer.PostRenderer
 	// DisableOpenAPIValidation controls whether OpenAPI validation is enforced.
 	DisableOpenAPIValidation bool
 	// Get missing dependencies
@@ -127,7 +137,8 @@ type resultMessage struct {
 // NewUpgrade creates a new Upgrade object with the given configuration.
 func NewUpgrade(cfg *Configuration) *Upgrade {
 	up := &Upgrade{
-		cfg: cfg,
+		cfg:             cfg,
+		ServerSideApply: "auto",
 	}
 	up.registryClient = cfg.RegistryClient
 
@@ -151,9 +162,9 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 		return nil, err
 	}
 
-	// Make sure if Atomic is set, that wait is set as well. This makes it so
+	// Make sure wait is set if RollbackOnFailure. This makes it so
 	// the user doesn't have to specify both
-	if u.WaitStrategy == kube.HookOnlyStrategy && u.Atomic {
+	if u.WaitStrategy == kube.HookOnlyStrategy && u.RollbackOnFailure {
 		u.WaitStrategy = kube.StatusWatcherStrategy
 	}
 
@@ -162,7 +173,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	}
 
 	slog.Debug("preparing upgrade", "name", name)
-	currentRelease, upgradedRelease, err := u.prepareUpgrade(name, chart, vals)
+	currentRelease, upgradedRelease, serverSideApply, err := u.prepareUpgrade(name, chart, vals)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +181,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	u.cfg.Releases.MaxHistory = u.MaxHistory
 
 	slog.Debug("performing update", "name", name)
-	res, err := u.performUpgrade(ctx, currentRelease, upgradedRelease)
+	res, err := u.performUpgrade(ctx, currentRelease, upgradedRelease, serverSideApply)
 	if err != nil {
 		return res, err
 	}
@@ -195,14 +206,14 @@ func (u *Upgrade) isDryRun() bool {
 }
 
 // prepareUpgrade builds an upgraded release for an upgrade operation.
-func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, *release.Release, error) {
+func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, *release.Release, bool, error) {
 	if chart == nil {
-		return nil, nil, errMissingChart
+		return nil, nil, false, errMissingChart
 	}
 
 	// HideSecret must be used with dry run. Otherwise, return an error.
 	if !u.isDryRun() && u.HideSecret {
-		return nil, nil, errors.New("hiding Kubernetes secrets requires a dry-run mode")
+		return nil, nil, false, errors.New("hiding Kubernetes secrets requires a dry-run mode")
 	}
 
 	// finds the last non-deleted release with the given name
@@ -210,14 +221,14 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	if err != nil {
 		// to keep existing behavior of returning the "%q has no deployed releases" error when an existing release does not exist
 		if errors.Is(err, driver.ErrReleaseNotFound) {
-			return nil, nil, driver.NewErrNoDeployedReleases(name)
+			return nil, nil, false, driver.NewErrNoDeployedReleases(name)
 		}
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	// Concurrent `helm upgrade`s will either fail here with `errPending` or when creating the release with "already exists". This should act as a pessimistic lock.
 	if lastRelease.Info.Status.IsPending() {
-		return nil, nil, errPending
+		return nil, nil, false, errPending
 	}
 
 	var currentRelease *release.Release
@@ -232,7 +243,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 				(lastRelease.Info.Status == release.StatusFailed || lastRelease.Info.Status == release.StatusSuperseded) {
 				currentRelease = lastRelease
 			} else {
-				return nil, nil, err
+				return nil, nil, false, err
 			}
 		}
 	}
@@ -240,18 +251,18 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	// determine if values will be reused
 	vals, err = u.reuseValues(chart, currentRelease, vals)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	if err := chartutil.ProcessDependencies(chart, vals); err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	// Increment revision count. This is passed to templates, and also stored on
 	// the release object.
 	revision := lastRelease.Version + 1
 
-	options := chartutil.ReleaseOptions{
+	options := common.ReleaseOptions{
 		Name:      name,
 		Namespace: currentRelease.Namespace,
 		Revision:  revision,
@@ -260,11 +271,11 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 
 	caps, err := u.cfg.getCapabilities()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
-	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, vals, options, caps, u.SkipSchemaValidation)
+	valuesToRender, err := util.ToRenderValuesWithSchemaValidation(chart, vals, options, caps, u.SkipSchemaValidation)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	// Determine whether or not to interact with remote
@@ -275,12 +286,19 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 
 	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithRemote, u.EnableDNS, u.HideSecret)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	if driver.ContainsSystemLabels(u.Labels) {
-		return nil, nil, fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
+		return nil, nil, false, fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
 	}
+
+	serverSideApply, err := getUpgradeServerSideValue(u.ServerSideApply, lastRelease.ApplyMethod)
+	if err != nil {
+		return nil, nil, false, err
+	}
+
+	slog.Debug("determined release apply method", slog.Bool("server_side_apply", serverSideApply), slog.String("previous_release_apply_method", lastRelease.ApplyMethod))
 
 	// Store an upgraded release.
 	upgradedRelease := &release.Release{
@@ -294,20 +312,21 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 			Status:        release.StatusPendingUpgrade,
 			Description:   "Preparing upgrade", // This should be overwritten later.
 		},
-		Version:  revision,
-		Manifest: manifestDoc.String(),
-		Hooks:    hooks,
-		Labels:   mergeCustomLabels(lastRelease.Labels, u.Labels),
+		Version:     revision,
+		Manifest:    manifestDoc.String(),
+		Hooks:       hooks,
+		Labels:      mergeCustomLabels(lastRelease.Labels, u.Labels),
+		ApplyMethod: string(determineReleaseSSApplyMethod(serverSideApply)),
 	}
 
 	if len(notesTxt) > 0 {
 		upgradedRelease.Info.Notes = notesTxt
 	}
 	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
-	return currentRelease, upgradedRelease, err
+	return currentRelease, upgradedRelease, serverSideApply, err
 }
 
-func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedRelease *release.Release) (*release.Release, error) {
+func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedRelease *release.Release, serverSideApply bool) (*release.Release, error) {
 	current, err := u.cfg.KubeClient.Build(bytes.NewBufferString(originalRelease.Manifest), false)
 	if err != nil {
 		// Checking for removed Kubernetes API error so can provide a more informative error message to the user
@@ -380,8 +399,9 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	ctxChan := make(chan resultMessage)
 	doneChan := make(chan interface{})
 	defer close(doneChan)
-	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease)
+	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease, serverSideApply)
 	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
+
 	select {
 	case result := <-rChan:
 		return result.r, result.e
@@ -390,7 +410,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	}
 }
 
-// Function used to lock the Mutex, this is important for the case when the atomic flag is set.
+// Function used to lock the Mutex, this is important for the case when RollbackOnFailure is set.
 // In that case the upgrade will finish before the rollback is finished so it is necessary to wait for the rollback to finish.
 // The rollback will be trigger by the function failRelease
 func (u *Upgrade) reportToPerformUpgrade(c chan<- resultMessage, rel *release.Release, created kube.ResourceList, err error) {
@@ -408,17 +428,22 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 	case <-ctx.Done():
 		err := ctx.Err()
 
-		// when the atomic flag is set the ongoing release finish first and doesn't give time for the rollback happens.
+		// when RollbackOnFailure is set, the ongoing release finish first and doesn't give time for the rollback happens.
 		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, err)
 	case <-done:
 		return
 	}
 }
-func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
+
+func isReleaseApplyMethodClientSideApply(applyMethod string) bool {
+	return applyMethod == "" || applyMethod == string(release.ApplyMethodClientSideApply)
+}
+
+func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release, serverSideApply bool) {
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.WaitStrategy, u.Timeout); err != nil {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.WaitStrategy, u.Timeout, serverSideApply); err != nil {
 			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 			return
 		}
@@ -426,7 +451,13 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		slog.Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
 	}
 
-	results, err := u.cfg.KubeClient.Update(current, target, u.ForceReplace)
+	upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply // Update client-side field manager if transitioning from client-side to server-side apply
+	results, err := u.cfg.KubeClient.Update(
+		current,
+		target,
+		kube.ClientUpdateOptionForceReplace(u.ForceReplace),
+		kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
+		kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager))
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
@@ -455,7 +486,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.WaitStrategy, u.Timeout); err != nil {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.WaitStrategy, u.Timeout, serverSideApply); err != nil {
 			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
 			return
 		}
@@ -495,8 +526,9 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		}
 		slog.Debug("resource cleanup complete")
 	}
-	if u.Atomic {
-		slog.Debug("upgrade failed and atomic is set, rolling back to last successful release")
+
+	if u.RollbackOnFailure {
+		slog.Debug("Upgrade failed and rollback-on-failure is set, rolling back to previous successful release")
 
 		// As a protection, get the last successful release before rollback.
 		// If there are no successful releases, bail out
@@ -526,11 +558,13 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		rollin.WaitForJobs = u.WaitForJobs
 		rollin.DisableHooks = u.DisableHooks
 		rollin.ForceReplace = u.ForceReplace
+		rollin.ForceConflicts = u.ForceConflicts
+		rollin.ServerSideApply = u.ServerSideApply
 		rollin.Timeout = u.Timeout
 		if rollErr := rollin.Run(rel.Name); rollErr != nil {
 			return rel, fmt.Errorf("an error occurred while rolling back the release. original upgrade error: %w: %w", err, rollErr)
 		}
-		return rel, fmt.Errorf("release %s failed, and has been rolled back due to atomic being set: %w", rel.Name, err)
+		return rel, fmt.Errorf("release %s failed, and has been rolled back due to rollback-on-failure being set: %w", rel.Name, err)
 	}
 
 	return rel, err
@@ -556,12 +590,12 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 		slog.Debug("reusing the old release's values")
 
 		// We have to regenerate the old coalesced values:
-		oldVals, err := chartutil.CoalesceValues(current.Chart, current.Config)
+		oldVals, err := util.CoalesceValues(current.Chart, current.Config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to rebuild old values: %w", err)
 		}
 
-		newVals = chartutil.CoalesceTables(newVals, current.Config)
+		newVals = util.CoalesceTables(newVals, current.Config)
 
 		chart.Values = oldVals
 
@@ -572,7 +606,7 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 	if u.ResetThenReuseValues {
 		slog.Debug("merging values from old release to new values")
 
-		newVals = chartutil.CoalesceTables(newVals, current.Config)
+		newVals = util.CoalesceTables(newVals, current.Config)
 
 		return newVals, nil
 	}
@@ -602,4 +636,17 @@ func mergeCustomLabels(current, desired map[string]string) map[string]string {
 		}
 	}
 	return labels
+}
+
+func getUpgradeServerSideValue(serverSideOption string, releaseApplyMethod string) (bool, error) {
+	switch serverSideOption {
+	case "auto":
+		return releaseApplyMethod == "ssa", nil
+	case "false":
+		return false, nil
+	case "true":
+		return true, nil
+	default:
+		return false, fmt.Errorf("invalid/unknown release server-side apply method: %s", serverSideOption)
+	}
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -26,8 +27,9 @@ import (
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
-	releaseutil "helm.sh/helm/v4/pkg/release/util"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
+	"helm.sh/helm/v4/pkg/storage/driver"
 	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
@@ -66,9 +68,11 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if u.DryRun {
-		// In the dry run case, just see if the release exists
 		r, err := u.cfg.releaseContent(name, 0)
 		if err != nil {
+			if u.IgnoreNotFound && errors.Is(err, driver.ErrReleaseNotFound) {
+				return nil, nil
+			}
 			return &release.UninstallReleaseResponse{}, err
 		}
 		return &release.UninstallReleaseResponse{Release: r}, nil
@@ -111,7 +115,8 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	res := &release.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(rel, release.HookPreDelete, u.WaitStrategy, u.Timeout); err != nil {
+		serverSideApply := true
+		if err := u.cfg.execHook(rel, release.HookPreDelete, u.WaitStrategy, u.Timeout, serverSideApply); err != nil {
 			return res, err
 		}
 	} else {
@@ -140,7 +145,8 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(rel, release.HookPostDelete, u.WaitStrategy, u.Timeout); err != nil {
+		serverSideApply := true
+		if err := u.cfg.execHook(rel, release.HookPostDelete, u.WaitStrategy, u.Timeout, serverSideApply); err != nil {
 			errs = append(errs, err)
 		}
 	}

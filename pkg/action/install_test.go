@@ -28,7 +28,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -45,8 +44,7 @@ import (
 	"k8s.io/client-go/rest/fake"
 
 	"helm.sh/helm/v4/internal/test"
-	chart "helm.sh/helm/v4/pkg/chart/v2"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -258,7 +256,7 @@ func TestInstallReleaseClientOnly(t *testing.T) {
 	instAction.ClientOnly = true
 	instAction.Run(buildChart(), nil) // disregard output
 
-	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)
+	is.Equal(instAction.cfg.Capabilities, common.DefaultCapabilities)
 	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: io.Discard})
 }
 
@@ -330,8 +328,8 @@ func TestInstallRelease_WithChartAndDependencyParentNotes(t *testing.T) {
 	}
 
 	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.Equal("with-notes", rel.Name)
 	is.NoError(err)
+	is.Equal("with-notes", rel.Name)
 	is.Equal("parent", rel.Info.Notes)
 	is.Equal(rel.Info.Description, "Install complete")
 }
@@ -349,8 +347,8 @@ func TestInstallRelease_WithChartAndDependencyAllNotes(t *testing.T) {
 	}
 
 	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.Equal("with-notes", rel.Name)
 	is.NoError(err)
+	is.Equal("with-notes", rel.Name)
 	// test run can return as either 'parent\nchild' or 'child\nparent'
 	if !strings.Contains(rel.Info.Notes, "parent") && !strings.Contains(rel.Info.Notes, "child") {
 		t.Fatalf("Expected 'parent\nchild' or 'child\nparent', got '%s'", rel.Info.Notes)
@@ -429,7 +427,7 @@ func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	vals := map[string]interface{}{}
 
 	mockChart := buildChart(withSampleTemplates())
-	mockChart.Templates = append(mockChart.Templates, &chart.File{
+	mockChart.Templates = append(mockChart.Templates, &common.File{
 		Name: "templates/lookup",
 		Data: []byte(`goodbye: {{ lookup "v1" "Namespace" "" "___" }}`),
 	})
@@ -454,9 +452,7 @@ func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Install should fail containing error: %s", expectedErr)
 	}
-	if err != nil {
-		is.Contains(err.Error(), expectedErr)
-	}
+	is.Contains(err.Error(), expectedErr)
 }
 
 func TestInstallRelease_NoHooks(t *testing.T) {
@@ -541,14 +537,14 @@ func TestInstallRelease_Wait(t *testing.T) {
 	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
-	goroutines := runtime.NumGoroutine()
+	goroutines := instAction.getGoroutineCount()
 
 	res, err := instAction.Run(buildChart(), vals)
 	is.Error(err)
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, release.StatusFailed)
 
-	is.Equal(goroutines, runtime.NumGoroutine())
+	is.Equal(goroutines, instAction.getGoroutineCount())
 }
 func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	is := assert.New(t)
@@ -563,15 +559,15 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
-	goroutines := runtime.NumGoroutine()
+	goroutines := instAction.getGoroutineCount()
 
 	_, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
 	is.Contains(err.Error(), "context canceled")
 
-	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
-	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
-	is.Equal(goroutines, runtime.NumGoroutine())
+	is.Equal(goroutines+1, instAction.getGoroutineCount()) // installation goroutine still is in background
+	time.Sleep(10 * time.Second)                           // wait for goroutine to finish
+	is.Equal(goroutines, instAction.getGoroutineCount())
 }
 func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
@@ -590,16 +586,16 @@ func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
 
-func TestInstallRelease_Atomic(t *testing.T) {
+func TestInstallRelease_RollbackOnFailure(t *testing.T) {
 	is := assert.New(t)
 
-	t.Run("atomic uninstall succeeds", func(t *testing.T) {
+	t.Run("rollback-on-failure uninstall succeeds", func(t *testing.T) {
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away"
 		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 		failer.WaitError = fmt.Errorf("I timed out")
 		instAction.cfg.KubeClient = failer
-		instAction.Atomic = true
+		instAction.RollbackOnFailure = true
 		// disabling hooks to avoid an early fail when
 		// WaitForDelete is called on the pre-delete hook execution
 		instAction.DisableHooks = true
@@ -608,7 +604,7 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		res, err := instAction.Run(buildChart(), vals)
 		is.Error(err)
 		is.Contains(err.Error(), "I timed out")
-		is.Contains(err.Error(), "atomic")
+		is.Contains(err.Error(), "rollback-on-failure")
 
 		// Now make sure it isn't in storage anymore
 		_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
@@ -616,14 +612,14 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		is.Equal(err, driver.ErrReleaseNotFound)
 	})
 
-	t.Run("atomic uninstall fails", func(t *testing.T) {
+	t.Run("rollback-on-failure uninstall fails", func(t *testing.T) {
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away-with-me"
 		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 		failer.WaitError = fmt.Errorf("I timed out")
 		failer.DeleteError = fmt.Errorf("uninstall fail")
 		instAction.cfg.KubeClient = failer
-		instAction.Atomic = true
+		instAction.RollbackOnFailure = true
 		vals := map[string]interface{}{}
 
 		_, err := instAction.Run(buildChart(), vals)
@@ -633,7 +629,7 @@ func TestInstallRelease_Atomic(t *testing.T) {
 		is.Contains(err.Error(), "an error occurred while uninstalling the release")
 	})
 }
-func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
+func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -641,27 +637,27 @@ func TestInstallRelease_Atomic_Interrupted(t *testing.T) {
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 10 * time.Second
 	instAction.cfg.KubeClient = failer
-	instAction.Atomic = true
+	instAction.RollbackOnFailure = true
 	vals := map[string]interface{}{}
 
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
-	goroutines := runtime.NumGoroutine()
+	goroutines := instAction.getGoroutineCount()
 
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
 	is.Contains(err.Error(), "context canceled")
-	is.Contains(err.Error(), "atomic")
+	is.Contains(err.Error(), "rollback-on-failure")
 	is.Contains(err.Error(), "uninstalled")
 
 	// Now make sure it isn't in storage anymore
 	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
 	is.Error(err)
 	is.Equal(err, driver.ErrReleaseNotFound)
-	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
-	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
-	is.Equal(goroutines, runtime.NumGoroutine())
+	is.Equal(goroutines+1, instAction.getGoroutineCount()) // installation goroutine still is in background
+	time.Sleep(10 * time.Second)                           // wait for goroutine to finish
+	is.Equal(goroutines, instAction.getGoroutineCount())
 
 }
 func TestNameTemplate(t *testing.T) {
@@ -890,7 +886,6 @@ func TestNameAndChartGenerateName(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
