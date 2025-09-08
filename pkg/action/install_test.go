@@ -994,3 +994,19 @@ func TestUrlEqual(t *testing.T) {
 		})
 	}
 }
+
+func TestInstallRun_UnreachableKubeClient(t *testing.T) {
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.ConnectionError = errors.New("connection refused")
+	config.KubeClient = &failingKubeClient
+
+	instAction := NewInstall(config)
+	instAction.ClientOnly = false
+	ctx, done := context.WithCancel(t.Context())
+	res, err := instAction.RunWithContext(ctx, nil, nil)
+
+	done()
+	assert.Nil(t, res)
+	assert.ErrorContains(t, err, "connection refused")
+}
