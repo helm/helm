@@ -131,12 +131,12 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 
 	compiler := jsonschema.NewCompiler()
 	compiler.UseLoader(loader)
-	err = compiler.AddResource("file:///values.schema.json", schema)
+	err = compiler.AddResource("./values.schema.json", schema)
 	if err != nil {
 		return err
 	}
 
-	validator, err := compiler.Compile("file:///values.schema.json")
+	validator, err := compiler.Compile("./values.schema.json")
 	if err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func (e JSONSchemaValidationError) Error() string {
 
 	// This string prefixes all of our error details. Further up the stack of helm error message
 	// building more detail is provided to users. This is removed.
-	errStr = strings.TrimPrefix(errStr, "jsonschema validation failed with 'file:///values.schema.json#'\n")
+	errStr = strings.TrimPrefix(errStr, "jsonschema validation failed with './values.schema.json#'\n")
 
 	// The extra new line is needed for when there are sub-charts.
 	return errStr + "\n"
