@@ -246,14 +246,14 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 	if len(digest) == 0 || err != nil {
 		slog.Debug("attempting to download chart", "ref", ref, "version", version)
 		if err != nil && !os.IsNotExist(err) {
-			slog.Error("failed to access chart cache", "error", err, "ref", ref, "version", version)
+			slog.Debug("failed to access chart cache", "error", err, "ref", ref, "version", version)
 			return "", nil, err
 		}
 
 		// Get file not in the cache
 		data, gerr := g.Get(u.String(), c.Options...)
 		if gerr != nil {
-			slog.Error("failed to download chart from remote", "error", gerr, "url", u.String(), "ref", ref, "version", version)
+			slog.Debug("failed to download chart from remote", "error", gerr, "url", u.String(), "ref", ref, "version", version)
 			return "", nil, gerr
 		}
 
@@ -262,7 +262,7 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 			// Defensive: check data.Bytes() is not nil/empty
 			bytes := data.Bytes()
 			if len(bytes) == 0 {
-				slog.Error("downloaded chart data is empty", "url", u.String(), "ref", ref, "version", version)
+				slog.Debug("downloaded chart data is empty", "url", u.String(), "ref", ref, "version", version)
 				return "", nil, errors.New("downloaded chart data is empty")
 			}
 			digest32 = sha256.Sum256(bytes)
@@ -270,7 +270,7 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 
 		pth, err = c.Cache.Put(digest32, data, CacheChart)
 		if err != nil {
-			slog.Error("failed to put chart in cache", "error", err, "cache_id", hex.EncodeToString(digest32[:]))
+			slog.Debug("failed to put chart in cache", "error", err, "cache_id", hex.EncodeToString(digest32[:]))
 			return "", nil, err
 		}
 		slog.Debug("put downloaded chart in cache", "id", hex.EncodeToString(digest32[:]))
