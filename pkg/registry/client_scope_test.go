@@ -41,7 +41,7 @@ func (suite *RegistryScopeTestSuite) TearDownSuite() {
 	os.RemoveAll(suite.WorkspaceDir)
 }
 
-func (suite *RegistryScopeTestSuite) Test_1_Cehck_Push_Request_Scope() {
+func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 
 	//set simple auth server to check the auth request scope
 	server := &http.Server{
@@ -74,7 +74,7 @@ func (suite *RegistryScopeTestSuite) Test_1_Cehck_Push_Request_Scope() {
 
 }
 
-func (suite *RegistryScopeTestSuite) Test_2_Cehck_Pull_Request_Scope() {
+func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 
 	//set simple auth server to check the auth request scope
 	server := &http.Server{
