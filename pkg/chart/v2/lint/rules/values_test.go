@@ -67,7 +67,7 @@ func TestValidateValuesFileWellFormed(t *testing.T) {
 	`
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(badYaml))
 	valfile := filepath.Join(tmpdir, "values.yaml")
-	if err := validateValuesFile(valfile, map[string]interface{}{}); err == nil {
+	if err := validateValuesFile(valfile, map[string]interface{}{}, false); err == nil {
 		t.Fatal("expected values file to fail parsing")
 	}
 }
@@ -78,7 +78,7 @@ func TestValidateValuesFileSchema(t *testing.T) {
 	createTestingSchema(t, tmpdir)
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
-	if err := validateValuesFile(valfile, map[string]interface{}{}); err != nil {
+	if err := validateValuesFile(valfile, map[string]interface{}{}, false); err != nil {
 		t.Fatalf("Failed validation with %s", err)
 	}
 }
@@ -91,12 +91,26 @@ func TestValidateValuesFileSchemaFailure(t *testing.T) {
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
 
-	err := validateValuesFile(valfile, map[string]interface{}{})
+	err := validateValuesFile(valfile, map[string]interface{}{}, false)
 	if err == nil {
 		t.Fatal("expected values file to fail parsing")
 	}
 
 	assert.Contains(t, err.Error(), "- at '/username': got number, want string")
+}
+
+func TestValidateValuesFileSchemaFailureButWithSkipSchemaValidation(t *testing.T) {
+	// 1234 is an int, not a string. This should fail normally but pass with skipSchemaValidation.
+	yaml := "username: 1234\npassword: swordfish"
+	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
+	createTestingSchema(t, tmpdir)
+
+	valfile := filepath.Join(tmpdir, "values.yaml")
+
+	err := validateValuesFile(valfile, map[string]interface{}{}, true)
+	if err != nil {
+		t.Fatal("expected values file to pass parsing because of skipSchemaValidation")
+	}
 }
 
 func TestValidateValuesFileSchemaOverrides(t *testing.T) {
@@ -108,7 +122,7 @@ func TestValidateValuesFileSchemaOverrides(t *testing.T) {
 	createTestingSchema(t, tmpdir)
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
-	if err := validateValuesFile(valfile, overrides); err != nil {
+	if err := validateValuesFile(valfile, overrides, false); err != nil {
 		t.Fatalf("Failed validation with %s", err)
 	}
 }
@@ -145,7 +159,7 @@ func TestValidateValuesFile(t *testing.T) {
 
 			valfile := filepath.Join(tmpdir, "values.yaml")
 
-			err := validateValuesFile(valfile, tt.overrides)
+			err := validateValuesFile(valfile, tt.overrides, false)
 
 			switch {
 			case err != nil && tt.errorMessage == "":
