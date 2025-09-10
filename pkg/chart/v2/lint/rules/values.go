@@ -75,5 +75,6 @@ func validateValuesFile(valuesPath string, overrides map[string]interface{}) err
 	if err != nil {
 		return err
 	}
-	return util.ValidateAgainstSingleSchema(coalescedValues, schema)
+	baseDir := filepath.Dir(schemaPath)
+	return util.ValidateAgainstSingleSchema(coalescedValues, schema, baseDir)
 }
