@@ -81,6 +81,7 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 	}
 	var sb strings.Builder
 	if chrt.Schema() != nil {
+		slog.Debug("chart name", "chart-name", chrt.Name())
 		err := ValidateAgainstSingleSchema(values, chrt.Schema(), chrt.ChartFullPath())
 		if err != nil {
 			fmt.Fprintf(&sb, "%s:\n", chrt.Name())
