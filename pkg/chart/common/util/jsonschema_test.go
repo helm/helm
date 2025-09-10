@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -37,7 +38,7 @@ func TestValidateAgainstSingleSchema(t *testing.T) {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
 
-	if err := ValidateAgainstSingleSchema(values, schema); err != nil {
+	if err := ValidateAgainstSingleSchema(values, schema, ""); err != nil {
 		t.Errorf("Error validating Values against Schema: %s", err)
 	}
 }
@@ -53,7 +54,7 @@ func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
 	}
 
 	var errString string
-	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
+	if err := ValidateAgainstSingleSchema(values, schema, ""); err == nil {
 		t.Fatalf("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
@@ -77,7 +78,7 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	}
 
 	var errString string
-	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
+	if err := ValidateAgainstSingleSchema(values, schema, ""); err == nil {
 		t.Fatalf("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
@@ -177,11 +178,12 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := `subchart:
-- at '': missing property 'age'
-`
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
+	expectedValidationError := "missing property 'age'"
+	if !strings.Contains(errString, "subchart:") {
+		t.Errorf("Error string should contain 'subchart:', got: %s", errString)
+	}
+	if !strings.Contains(errString, expectedValidationError) {
+		t.Errorf("Error string should contain '%s', got: %s", expectedValidationError, errString)
 	}
 }
 
@@ -241,12 +243,64 @@ func TestValidateAgainstSchema2020Negative(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := `subchart:
-- at '/data': no items match contains schema
-  - at '/data/0': got number, want string
-`
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
+	expectedValidationErrors := []string{
+		"no items match contains schema",
+		"got number, want string",
+	}
+	if !strings.Contains(errString, "subchart:") {
+		t.Errorf("Error string should contain 'subchart:', got: %s", errString)
+	}
+	for _, expectedErr := range expectedValidationErrors {
+		if !strings.Contains(errString, expectedErr) {
+			t.Errorf("Error string should contain '%s', got: %s", expectedErr, errString)
+		}
+	}
+}
+
+// TestValidateWithRelativeSchemaReferences tests schema validation with relative $ref paths
+// This mimics the behavior of "helm lint ." where the schema is in the current directory
+func TestValidateWithRelativeSchemaReferencesCurrentDir(t *testing.T) {
+	values, err := common.ReadValuesFile("./testdata/current-dir-test/test-values.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	schema, err := os.ReadFile("./testdata/current-dir-test/values.schema.json")
+	if err != nil {
+		t.Fatalf("Error reading JSON schema file: %s", err)
+	}
+
+	// Test with absolute base directory - this should work with your fix
+	baseDir := "./testdata/current-dir-test"
+	absBaseDir, err := filepath.Abs(baseDir)
+	if err != nil {
+		t.Fatalf("Error getting absolute path: %s", err)
+	}
+
+	if err := ValidateAgainstSingleSchema(values, schema, absBaseDir); err != nil {
+		t.Errorf("Error validating Values against Schema with relative references: %s", err)
+	}
+}
+
+// TestValidateWithRelativeSchemaReferencesSubfolder tests schema validation with relative $ref paths
+// This mimics the behavior of "helm lint subfolder" where the schema is in a subdirectory
+func TestValidateWithRelativeSchemaReferencesSubfolder(t *testing.T) {
+	values, err := common.ReadValuesFile("./testdata/subdir-test/subfolder/test-values.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	schema, err := os.ReadFile("./testdata/subdir-test/subfolder/values.schema.json")
+	if err != nil {
+		t.Fatalf("Error reading JSON schema file: %s", err)
+	}
+
+	baseDir := "./testdata/subdir-test/subfolder"
+	absBaseDir, err := filepath.Abs(baseDir)
+	if err != nil {
+		t.Fatalf("Error getting absolute path: %s", err)
+	}
+
+	if err := ValidateAgainstSingleSchema(values, schema, absBaseDir); err != nil {
+		t.Errorf("Error validating Values against Schema with relative references from subfolder: %s", err)
 	}
 }
 

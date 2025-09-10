@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -80,8 +81,7 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 	}
 	var sb strings.Builder
 	if chrt.Schema() != nil {
-		slog.Debug("chart name", "chart-name", chrt.Name())
-		err := ValidateAgainstSingleSchema(values, chrt.Schema())
+		err := ValidateAgainstSingleSchema(values, chrt.Schema(), chrt.ChartFullPath())
 		if err != nil {
 			fmt.Fprintf(&sb, "%s:\n", chrt.Name())
 			sb.WriteString(err.Error())
@@ -121,7 +121,7 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 }
 
 // ValidateAgainstSingleSchema checks that values does not violate the structure laid out in this schema
-func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reterr error) {
+func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte, absBaseDir string) (reterr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to validate schema: %s", r)
@@ -146,12 +146,13 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 
 	compiler := jsonschema.NewCompiler()
 	compiler.UseLoader(loader)
-	err = compiler.AddResource("file:///values.schema.json", schema)
+	base := "file://" + filepath.ToSlash(absBaseDir) + "/values.schema.json"
+	err = compiler.AddResource(base, schema)
 	if err != nil {
 		return err
 	}
 
-	validator, err := compiler.Compile("file:///values.schema.json")
+	validator, err := compiler.Compile(base)
 	if err != nil {
 		return err
 	}
