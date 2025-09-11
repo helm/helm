@@ -334,7 +334,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		if registry.IsOCI(churl) {
 			churl, version, err = parseOCIRef(churl)
 			if err != nil {
-				return errors.Wrapf(err, "could not parse OCI reference")
+				return fmt.Errorf("could not parse OCI reference: %w", err)
 			}
 		}
 

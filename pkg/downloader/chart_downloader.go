@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"helm.sh/helm/v4/internal/fileutil"
 	ifs "helm.sh/helm/v4/internal/third_party/dep/fs"
 	"helm.sh/helm/v4/internal/urlutil"
@@ -297,11 +298,7 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 			// Note, this does make an assumption that the name/version is unique to a
 			// hash when a provenance file is used. If this isn't true, this section of code
 			// will need to be reworked.
-			name := filepath.Base(u.Path)
-			if u.Scheme == registry.OCIScheme {
-				idx := strings.LastIndexByte(name, ':')
-				name = fmt.Sprintf("%s-%s.tgz", name[:idx], name[idx+1:])
-			}
+			name := c.getChartName(u.String())
 
 			// Copy chart to a known location with the right name for verification and then
 			// clean it up.
@@ -583,7 +580,7 @@ func (c *ChartDownloader) getChartName(url string) string {
 func (c *ChartDownloader) parseChartURL(ref string, version string) (*url.URL, error) {
 	u, err := url.Parse(ref)
 	if err != nil {
-		return nil, errors.Errorf("invalid chart URL format: %s", ref)
+		return nil, fmt.Errorf("invalid chart URL format: %s", ref)
 	}
 
 	if registry.IsOCI(u.String()) {
@@ -613,7 +610,7 @@ func (c *ChartDownloader) getOciTag(ref, version string) (string, error) {
 			return "", err
 		}
 		if len(tags) == 0 {
-			return "", errors.Errorf("Unable to locate any tags in provided repository: %s", ref)
+			return "", fmt.Errorf("Unable to locate any tags in provided repository: %s", ref)
 		}
 
 		// Determine if version provided
