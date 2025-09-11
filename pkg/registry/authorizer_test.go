@@ -20,6 +20,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -78,7 +79,7 @@ func TestNewAuthorizer(t *testing.T) {
 
 			require.NotNil(t, authorizer)
 			assert.Equal(t, httpClient, authorizer.Client.Client)
-			assert.True(t, authorizer.AttemptBearerAuthentication)
+			assert.True(t, authorizer.getAttemptBearerAuthentication())
 			assert.NotNil(t, authorizer.Credential)
 
 			if tt.username != "" && tt.password != "" {
@@ -179,10 +180,10 @@ func TestAuthorizer_Do(t *testing.T) {
 
 			require.NoError(t, err)
 			require.NotNil(t, resp)
-			assert.Equal(t, tt.expectBearerAuthAfter, authorizer.AttemptBearerAuthentication)
+			assert.Equal(t, tt.expectBearerAuthAfter, authorizer.getAttemptBearerAuthentication())
 
 			if tt.authHeader == "" {
-				assert.Equal(t, tt.expectForceOAuth2, authorizer.ForceAttemptOAuth2)
+				assert.Equal(t, tt.expectForceOAuth2, authorizer.getForceAttemptOAuth2())
 			}
 
 			resp.Body.Close()
@@ -201,7 +202,7 @@ func TestAuthorizer_Do_WithBearerAttemptDisabled(t *testing.T) {
 	credStore := &mockCredentialsStore{}
 
 	authorizer := NewAuthorizer(httpClient, credStore, "", "")
-	authorizer.AttemptBearerAuthentication = false
+	authorizer.setAttemptBearerAuthentication(false)
 
 	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
 	require.NoError(t, err)
@@ -212,7 +213,7 @@ func TestAuthorizer_Do_WithBearerAttemptDisabled(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.False(t, authorizer.AttemptBearerAuthentication)
+	assert.False(t, authorizer.getAttemptBearerAuthentication())
 
 	resp.Body.Close()
 }
@@ -240,4 +241,57 @@ func TestAuthorizer_Do_NonRetryableError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
 	resp.Body.Close()
+}
+
+func TestAuthorizer_ConcurrentAccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("success"))
+	}))
+	defer server.Close()
+
+	httpClient := &http.Client{}
+	credStore := &mockCredentialsStore{}
+	authorizer := NewAuthorizer(httpClient, credStore, "", "")
+
+	const numGoroutines = 100
+	const numRequests = 10
+
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines * 2)
+
+	for i := 0; i < numGoroutines; i++ {
+		go func() {
+			defer wg.Done()
+			for j := 0; j < numRequests; j++ {
+				req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+				require.NoError(t, err)
+				req.Host = "registry.example.com"
+
+				resp, err := authorizer.Do(req)
+				if err == nil && resp != nil {
+					resp.Body.Close()
+				}
+			}
+		}()
+
+		go func() {
+			defer wg.Done()
+			for j := 0; j < numRequests; j++ {
+				authorizer.setAttemptBearerAuthentication(true)
+				val := authorizer.getAttemptBearerAuthentication()
+				if val != true {
+					t.Logf("Warning: Expected true but got %v", val)
+				}
+
+				authorizer.setAttemptBearerAuthentication(false)
+				val = authorizer.getAttemptBearerAuthentication()
+				if val != false {
+					t.Logf("Warning: Expected false but got %v", val)
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
 }

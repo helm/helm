@@ -20,6 +20,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"sync"
 
 	"helm.sh/helm/v4/internal/version"
 
@@ -29,7 +30,8 @@ import (
 
 type Authorizer struct {
 	auth.Client
-	AttemptBearerAuthentication bool
+	lock                        sync.RWMutex
+	attemptBearerAuthentication bool
 }
 
 func NewAuthorizer(httpClient *http.Client, credentialsStore credentials.Store, username, password string) *Authorizer {
@@ -48,7 +50,7 @@ func NewAuthorizer(httpClient *http.Client, credentialsStore credentials.Store, 
 		authorizer.Credential = credentials.Credential(credentialsStore)
 	}
 
-	authorizer.AttemptBearerAuthentication = true
+	authorizer.setAttemptBearerAuthentication(true)
 	return &authorizer
 }
 
@@ -56,19 +58,43 @@ func (a *Authorizer) EnableCache() {
 	a.Cache = auth.NewCache()
 }
 
+func (a *Authorizer) getAttemptBearerAuthentication() bool {
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+	return a.attemptBearerAuthentication
+}
+
+func (a *Authorizer) setAttemptBearerAuthentication(value bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	a.attemptBearerAuthentication = value
+}
+
+func (a *Authorizer) getForceAttemptOAuth2() bool {
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+	return a.ForceAttemptOAuth2
+}
+
+func (a *Authorizer) setForceAttemptOAuth2(value bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	a.ForceAttemptOAuth2 = value
+}
+
 // Do This method wraps auth.Client.Do in attempt to retry authentication
 func (a *Authorizer) Do(originalReq *http.Request) (*http.Response, error) {
-	if a.AttemptBearerAuthentication {
+	if a.getAttemptBearerAuthentication() {
 		needsAuthentication := originalReq.Header.Get("Authorization") == ""
 		if needsAuthentication {
-			a.ForceAttemptOAuth2 = true
+			a.setForceAttemptOAuth2(true)
 			if originalReq.Host == "ghcr.io" {
-				a.ForceAttemptOAuth2 = false
-				a.AttemptBearerAuthentication = false
+				a.setForceAttemptOAuth2(false)
+				a.setAttemptBearerAuthentication(false)
 			}
 			resp, err := a.Client.Do(originalReq)
 			if err == nil {
-				a.AttemptBearerAuthentication = false
+				a.setAttemptBearerAuthentication(false)
 				return resp, nil
 			}
 			if !strings.Contains(err.Error(), "response status code 40") {
