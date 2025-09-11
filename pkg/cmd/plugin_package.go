@@ -85,7 +85,7 @@ func (o *pluginPackageOptions) run(out io.Writer) error {
 	}
 
 	// Load and validate plugin metadata
-	pluginMeta, err := plugin.LoadDir(o.pluginPath)
+	pr, err := plugin.LoadDirRaw(o.pluginPath)
 	if err != nil {
 		return fmt.Errorf("invalid plugin directory: %w", err)
 	}
@@ -124,7 +124,7 @@ func (o *pluginPackageOptions) run(out io.Writer) error {
 
 	// Now create the tarball (only after signing prerequisites are met)
 	// Use plugin metadata for filename: PLUGIN_NAME-SEMVER.tgz
-	metadata := pluginMeta.Metadata()
+	metadata := pr.Metadata
 	filename := fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
 	tarballPath := filepath.Join(o.destination, filename)
 

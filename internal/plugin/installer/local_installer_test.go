@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 
@@ -31,14 +32,16 @@ var _ Installer = new(LocalInstaller)
 
 func TestLocalInstaller(t *testing.T) {
 	ensure.HelmHome(t)
-	// Make a temp dir
+
+	settings := cli.New()
+
 	tdir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tdir, "plugin.yaml"), []byte{}, 0644); err != nil {
 		t.Fatal(err)
 	}
 
 	source := "../testdata/plugdir/good/echo-v1"
-	i, err := NewForSource(source, "")
+	i, err := NewForSource(settings, source, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -54,8 +57,12 @@ func TestLocalInstaller(t *testing.T) {
 }
 
 func TestLocalInstallerNotAFolder(t *testing.T) {
+	ensure.HelmHome(t)
+
+	settings := cli.New()
+
 	source := "../testdata/plugdir/good/echo-v1/plugin.yaml"
-	i, err := NewForSource(source, "")
+	i, err := NewForSource(settings, source, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -116,8 +123,10 @@ func TestLocalInstallerTarball(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	settings := cli.New()
+
 	// Test installation
-	i, err := NewForSource(tarballPath, "")
+	i, err := NewForSource(settings, tarballPath, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
