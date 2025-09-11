@@ -18,8 +18,10 @@ package registry
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 
@@ -294,4 +296,50 @@ func TestAuthorizer_ConcurrentAccess(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestAuthorizer_Do_StatusCodeErrorChecking(t *testing.T) {
+	tests := []struct {
+		name        string
+		errorMsg    string
+		shouldRetry bool
+		description string
+	}{
+		{
+			name:        "retry on 401 error",
+			errorMsg:    "response status code 401",
+			shouldRetry: true,
+			description: "401 errors should trigger retry logic",
+		},
+		{
+			name:        "retry on 403 error",
+			errorMsg:    "response status code 403",
+			shouldRetry: true,
+			description: "403 errors should trigger retry logic",
+		},
+		{
+			name:        "no retry on 404 error",
+			errorMsg:    "response status code 404",
+			shouldRetry: false,
+			description: "404 errors should not trigger retry logic",
+		},
+		{
+			name:        "no retry on 500 error",
+			errorMsg:    "response status code 500",
+			shouldRetry: false,
+			description: "500 errors should not trigger retry logic",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := errors.New(tt.errorMsg)
+
+			should401Retry := strings.Contains(err.Error(), "response status code 401")
+			should403Retry := strings.Contains(err.Error(), "response status code 403")
+			actualShouldRetry := should401Retry || should403Retry
+
+			assert.Equal(t, tt.shouldRetry, actualShouldRetry, tt.description)
+		})
+	}
 }

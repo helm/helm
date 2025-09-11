@@ -97,7 +97,8 @@ func (a *Authorizer) Do(originalReq *http.Request) (*http.Response, error) {
 				a.setAttemptBearerAuthentication(false)
 				return resp, nil
 			}
-			if !strings.Contains(err.Error(), "response status code 40") {
+			if !strings.Contains(err.Error(), "response status code 401") &&
+				!strings.Contains(err.Error(), "response status code 403") {
 				return nil, err
 			}
 		}
