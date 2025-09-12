@@ -308,3 +308,59 @@ func TestGetLocalPath(t *testing.T) {
 		})
 	}
 }
+
+func TestDependencyKey(t *testing.T) {
+	tests := []struct {
+		name       string
+		depName    string
+		repository string
+		index      int
+		expect     string
+	}{
+		{
+			name:       "basic case",
+			depName:    "oedipus-rex",
+			repository: "http://example.com/test",
+			index:      0,
+			expect:     "oedipus-rex-0e52b63f-0",
+		},
+		{
+			name:       "different repo same name",
+			depName:    "oedipus-rex",
+			repository: "http://example.com",
+			index:      0,
+			expect:     "oedipus-rex-f0e6a6a9-0",
+		},
+		{
+			name:       "same repo different index",
+			depName:    "oedipus-rex",
+			repository: "http://example.com",
+			index:      1,
+			expect:     "oedipus-rex-f0e6a6a9-1",
+		},
+		{
+			name:       "local file path",
+			depName:    "local-dep",
+			repository: "file://./testdata/signtest",
+			index:      0,
+			expect:     "local-dep-93f23b0e-0",
+		},
+		{
+			name:       "empty repository",
+			depName:    "local-subchart",
+			repository: "",
+			index:      0,
+			expect:     "local-subchart--0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DependencyKey(tt.depName, tt.repository, tt.index)
+			if result != tt.expect {
+				t.Errorf("dependencyKey(%q, %q, %d) = %q, want %q",
+					tt.depName, tt.repository, tt.index, result, tt.expect)
+			}
+		})
+	}
+}
