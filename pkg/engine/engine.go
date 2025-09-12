@@ -362,7 +362,7 @@ func parseTemplateExecErrorString(s string) (TraceableError, bool) {
 	// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=191
 	traceableError, done := parseTemplateNoTemplateError(s, remainder)
 	if done {
-		return traceableError, done
+		return traceableError, true
 	}
 
 	// Executing form: "<templateName>: executing \"<funcName>\" at <<location>>: <errMsg>[ template:...]"
