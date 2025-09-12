@@ -350,7 +350,6 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 		return "", u, err
 	}
 
-
 	if registry.IsOCI(u.String()) {
 		if c.RegistryClient == nil {
 			return "", nil, fmt.Errorf("unable to lookup ref %s at version '%s', missing registry client", ref, version)
@@ -610,7 +609,7 @@ func (c *ChartDownloader) getOciTag(ref, version string) (string, error) {
 			return "", err
 		}
 		if len(tags) == 0 {
-			return "", fmt.Errorf("Unable to locate any tags in provided repository: %s", ref)
+			return "", fmt.Errorf("unable to locate any tags in provided repository: %s", ref)
 		}
 
 		// Determine if version provided
