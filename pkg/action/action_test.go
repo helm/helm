@@ -74,6 +74,7 @@ metadata:
   name: test-cm
   annotations:
     "helm.sh/hook": post-install,pre-delete,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
 data:
   name: value`
 
@@ -810,6 +811,7 @@ metadata:
   name: test-cm-postrendered
   annotations:
     "helm.sh/hook": post-install,pre-delete,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
 data:
   name: value`
 
