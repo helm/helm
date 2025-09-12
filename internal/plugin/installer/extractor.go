@@ -185,8 +185,8 @@ func (g *TarGzExtractor) Extract(buffer *bytes.Buffer, targetDir string) error {
 func stripPluginName(name string) string {
 	var strippedName string
 	for suffix := range Extractors {
-		if strings.HasSuffix(name, suffix) {
-			strippedName = strings.TrimSuffix(name, suffix)
+		if before, ok := strings.CutSuffix(name, suffix); ok {
+			strippedName = before
 			break
 		}
 	}
