@@ -473,7 +473,6 @@ func recAllTpls(c ci.Charter, templates map[string]renderable, values common.Val
 		slog.Error("error accessing chart", "error", err)
 	}
 	chartMetaData := accessor.MetadataAsMap()
-	fmt.Printf("metadata: %v\n", chartMetaData)
 	chartMetaData["IsRoot"] = accessor.IsRoot()
 
 	next := map[string]interface{}{
