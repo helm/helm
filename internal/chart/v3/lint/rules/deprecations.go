@@ -21,11 +21,11 @@ import (
 	"strconv"
 
 	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/kube"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/endpoints/deprecation"
-	kscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
 // deprecatedAPIError indicates than an API is deprecated in Kubernetes
@@ -81,11 +81,8 @@ func validateNoDeprecations(resource *k8sYamlStruct, kubeVersion *common.KubeVer
 }
 
 func resourceToRuntimeObject(resource *k8sYamlStruct) (runtime.Object, error) {
-	scheme := runtime.NewScheme()
-	kscheme.AddToScheme(scheme)
-
 	gvk := schema.FromAPIVersionAndKind(resource.APIVersion, resource.Kind)
-	out, err := scheme.New(gvk)
+	out, err := kube.NativeScheme.New(gvk)
 	if err != nil {
 		return nil, err
 	}
