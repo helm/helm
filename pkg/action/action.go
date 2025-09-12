@@ -281,7 +281,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 			if strings.TrimSpace(content) == "" {
 				continue
 			}
-			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
+			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", filepath.ToSlash(name), content)
 		}
 		return hs, b, "", err
 	}
@@ -292,7 +292,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 	if includeCrds {
 		for _, crd := range ch.CRDObjects() {
 			if outputDir == "" {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data[:]))
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", filepath.ToSlash(crd.Filename), string(crd.File.Data[:]))
 			} else {
 				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Filename])
 				if err != nil {
@@ -308,7 +308,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 			if hideSecret && m.Head.Kind == "Secret" && m.Head.Version == "v1" {
 				fmt.Fprintf(b, "---\n# Source: %s\n# HIDDEN: The Secret output has been suppressed\n", m.Name)
 			} else {
-				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", m.Name, m.Content)
+				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", filepath.ToSlash(m.Name), m.Content)
 			}
 		} else {
 			newDir := outputDir
