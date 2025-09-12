@@ -369,7 +369,7 @@ func parseTemplateExecErrorString(s string) (TraceableError, bool) {
 	// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
 	traceableError, done = parseTemplateExecutingAtErrorType(remainder)
 	if done {
-		return traceableError, done
+		return traceableError, true
 	}
 
 	// Simple form: "<templateName>: <errMsg>"
