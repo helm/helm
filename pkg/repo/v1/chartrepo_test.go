@@ -132,7 +132,7 @@ func TestConcurrenyDownloadIndex(t *testing.T) {
 			defer wg.Done()
 			idx, err := repo.DownloadIndexFile()
 			if err != nil {
-				t.Fatalf("Failed to download index file to %s: %v", idx, err)
+				t.Errorf("Failed to download index file to %s: %v", idx, err)
 			}
 		}()
 
@@ -141,7 +141,7 @@ func TestConcurrenyDownloadIndex(t *testing.T) {
 			defer wg.Done()
 			_, err := LoadIndexFile(indexFName)
 			if err != nil {
-				t.Fatalf("Failed to load index file: %v", err)
+				t.Errorf("Failed to load index file: %v", err)
 			}
 		}()
 	}
