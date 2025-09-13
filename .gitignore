@@ -14,3 +14,6 @@ vendor/
 cmd/helm/testdata/testcharts/issue-7233/charts/*
 pkg/cmd/testdata/testcharts/issue-7233/charts/*
 .pre-commit-config.yaml
+
+# Ignore exported mcp tools
+mcp-tools.json
