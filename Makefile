@@ -13,15 +13,15 @@ GOX           = $(GOBIN)/gox
 GOIMPORTS     = $(GOBIN)/goimports
 ARCH          = $(shell go env GOARCH)
 
-ACCEPTANCE_DIR:=../acceptance-testing
+ACCEPTANCE_DIR := ../acceptance-testing
 # To specify the subset of acceptance tests to run. '.' means all tests
-ACCEPTANCE_RUN_TESTS=.
+ACCEPTANCE_RUN_TESTS = .
 
 # go option
 PKG         := ./...
 TAGS        :=
 TESTS       := .
-TESTFLAGS   :=
+TESTFLAGS   := -shuffle=on -count=1
 LDFLAGS     := -w -s
 GOFLAGS     :=
 CGO_ENABLED ?= 0
@@ -63,10 +63,12 @@ K8S_MODULES_VER=$(subst ., ,$(subst v,,$(shell go list -f '{{.Version}}' -m k8s.
 K8S_MODULES_MAJOR_VER=$(shell echo $$(($(firstword $(K8S_MODULES_VER)) + 1)))
 K8S_MODULES_MINOR_VER=$(word 2,$(K8S_MODULES_VER))
 
-LDFLAGS += -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/lint/rules.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/util.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/util.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/lint/rules.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/lint/rules.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/internal/v3/lint/rules.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/internal/v3/lint/rules.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/chart/common/util.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/chart/common/util.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
 
 .PHONY: all
 all: build
@@ -75,7 +77,7 @@ all: build
 #  build
 
 .PHONY: build
-build: $(BINDIR)/$(BINNAME)
+build: $(BINDIR)/$(BINNAME) tidy
 
 $(BINDIR)/$(BINNAME): $(SRC)
 	CGO_ENABLED=$(CGO_ENABLED) go build $(GOFLAGS) -trimpath -tags '$(TAGS)' -ldflags '$(LDFLAGS)' -o '$(BINDIR)'/$(BINNAME) ./cmd/helm
@@ -112,14 +114,16 @@ test-unit:
 # based on older versions, this is run separately. When run without the ldflags in the unit test (above) or coverage
 # test, it still passes with a false-positive result as the resources shouldn’t be deprecated in the older Kubernetes
 # version if it only starts failing with the latest.
-	go test $(GOFLAGS) -run ^TestHelmCreateChart_CheckDeprecatedWarnings$$ ./pkg/lint/ $(TESTFLAGS) -ldflags '$(LDFLAGS)'
+	go test $(GOFLAGS) -run ^TestHelmCreateChart_CheckDeprecatedWarnings$$ ./pkg/chart/v2/lint/ $(TESTFLAGS) -ldflags '$(LDFLAGS)'
+	go test $(GOFLAGS) -run ^TestHelmCreateChart_CheckDeprecatedWarnings$$ ./internal/chart/v3/lint/ $(TESTFLAGS) -ldflags '$(LDFLAGS)'
 
 
+# To run the coverage for a specific package use: make test-coverage PKG=./pkg/action
 .PHONY: test-coverage
 test-coverage:
 	@echo
-	@echo "==> Running unit tests with coverage <=="
-	@ ./scripts/coverage.sh
+	@echo "==> Running unit tests with coverage: $(PKG) <=="
+	@ ./scripts/coverage.sh $(PKG)
 
 .PHONY: test-style
 test-style:
@@ -144,10 +148,6 @@ test-acceptance: build build-cross
 .PHONY: test-acceptance-completion
 test-acceptance-completion: ACCEPTANCE_RUN_TESTS = shells.robot
 test-acceptance-completion: test-acceptance
-
-.PHONY: coverage
-coverage:
-	@scripts/coverage.sh
 
 .PHONY: format
 format: $(GOIMPORTS)
@@ -227,22 +227,23 @@ clean:
 
 .PHONY: release-notes
 release-notes:
-		@if [ ! -d "./_dist" ]; then \
-			echo "please run 'make fetch-dist' first" && \
-			exit 1; \
-		fi
-		@if [ -z "${PREVIOUS_RELEASE}" ]; then \
-			echo "please set PREVIOUS_RELEASE environment variable" \
-			&& exit 1; \
-		fi
-
-		@./scripts/release-notes.sh ${PREVIOUS_RELEASE} ${VERSION}
-
-
+	@if [ ! -d "./_dist" ]; then \
+		echo "please run 'make fetch-dist' first" && \
+		exit 1; \
+	fi
+	@if [ -z "${PREVIOUS_RELEASE}" ]; then \
+		echo "please set PREVIOUS_RELEASE environment variable" && \
+		exit 1; \
+	fi
+	@./scripts/release-notes.sh ${PREVIOUS_RELEASE} ${VERSION}
 
 .PHONY: info
 info:
-	 @echo "Version:           ${VERSION}"
-	 @echo "Git Tag:           ${GIT_TAG}"
-	 @echo "Git Commit:        ${GIT_COMMIT}"
-	 @echo "Git Tree State:    ${GIT_DIRTY}"
+	@echo "Version:           ${VERSION}"
+	@echo "Git Tag:           ${GIT_TAG}"
+	@echo "Git Commit:        ${GIT_COMMIT}"
+	@echo "Git Tree State:    ${GIT_DIRTY}"
+
+.PHONY: tidy
+tidy:
+	go mod tidy

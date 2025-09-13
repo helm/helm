@@ -33,6 +33,7 @@ linters:
     - usetesting
 
   exclusions:
+  
     generated: lax
 
     presets:
@@ -41,7 +42,10 @@ linters:
       - legacy
       - std-error-handling
 
-    rules: []
+    rules:
+      - linters:
+          - revive
+        text: 'var-naming: avoid meaningless package names'
 
     warn-unused: true
 

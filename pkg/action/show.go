@@ -24,6 +24,7 @@ import (
 	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
@@ -129,10 +130,10 @@ func (s *Show) Run(chartpath string) (string, error) {
 	if s.OutputFormat == ShowCRDs || s.OutputFormat == ShowAll {
 		crds := s.chart.CRDObjects()
 		if len(crds) > 0 {
-			if s.OutputFormat == ShowAll && !bytes.HasPrefix(crds[0].File.Data, []byte("---")) {
-				fmt.Fprintln(&out, "---")
-			}
 			for _, crd := range crds {
+				if !bytes.HasPrefix(crd.File.Data, []byte("---")) {
+					fmt.Fprintln(&out, "---")
+				}
 				fmt.Fprintf(&out, "%s\n", string(crd.File.Data))
 			}
 		}
@@ -140,7 +141,7 @@ func (s *Show) Run(chartpath string) (string, error) {
 	return out.String(), nil
 }
 
-func findReadme(files []*chart.File) (file *chart.File) {
+func findReadme(files []*common.File) (file *common.File) {
 	for _, file := range files {
 		for _, n := range readmeFileNames {
 			if file == nil {

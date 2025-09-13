@@ -19,6 +19,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"helm.sh/helm/v4/pkg/chart/common"
 )
 
 // APIVersionV1 is the API version number for version 1.
@@ -37,20 +39,20 @@ type Chart struct {
 	//
 	// This should not be used except in special cases like `helm show values`,
 	// where we want to display the raw values, comments and all.
-	Raw []*File `json:"-"`
+	Raw []*common.File `json:"-"`
 	// Metadata is the contents of the Chartfile.
 	Metadata *Metadata `json:"metadata"`
 	// Lock is the contents of Chart.lock.
 	Lock *Lock `json:"lock"`
 	// Templates for this chart.
-	Templates []*File `json:"templates"`
+	Templates []*common.File `json:"templates"`
 	// Values are default config for this chart.
 	Values map[string]interface{} `json:"values"`
 	// Schema is an optional JSON schema for imposing structure on Values
 	Schema []byte `json:"schema"`
 	// Files are miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
-	Files []*File `json:"files"`
+	Files []*common.File `json:"files"`
 
 	parent       *Chart
 	dependencies []*Chart
@@ -62,7 +64,7 @@ type CRD struct {
 	// Filename is the File obj Name including (sub-)chart.ChartFullPath
 	Filename string
 	// File is the File obj for the crd
-	File *File
+	File *common.File
 }
 
 // SetDependencies replaces the chart dependencies.
@@ -137,8 +139,8 @@ func (ch *Chart) AppVersion() string {
 
 // CRDs returns a list of File objects in the 'crds/' directory of a Helm chart.
 // Deprecated: use CRDObjects()
-func (ch *Chart) CRDs() []*File {
-	files := []*File{}
+func (ch *Chart) CRDs() []*common.File {
+	files := []*common.File{}
 	// Find all resources in the crds/ directory
 	for _, f := range ch.Files {
 		if strings.HasPrefix(f.Name, "crds/") && hasManifestExtension(f.Name) {

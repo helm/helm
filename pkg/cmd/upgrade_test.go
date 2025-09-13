@@ -24,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
@@ -382,7 +383,7 @@ func prepareMockRelease(t *testing.T, releaseName string) (func(n string, v int,
 			Description: "A Helm chart for Kubernetes",
 			Version:     "0.1.0",
 		},
-		Templates: []*chart.File{{Name: "templates/configmap.yaml", Data: configmapData}},
+		Templates: []*common.File{{Name: "templates/configmap.yaml", Data: configmapData}},
 	}
 	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
 	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
@@ -490,7 +491,7 @@ func prepareMockReleaseWithSecret(t *testing.T, releaseName string) (func(n stri
 			Description: "A Helm chart for Kubernetes",
 			Version:     "0.1.0",
 		},
-		Templates: []*chart.File{{Name: "templates/configmap.yaml", Data: configmapData}, {Name: "templates/secret.yaml", Data: secretData}},
+		Templates: []*common.File{{Name: "templates/configmap.yaml", Data: configmapData}, {Name: "templates/secret.yaml", Data: secretData}},
 	}
 	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
 	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {

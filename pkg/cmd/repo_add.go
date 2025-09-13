@@ -34,7 +34,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/cmd/require"
 	"helm.sh/helm/v4/pkg/getter"
-	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
 // Repositories that have been permanently deleted and no longer work
@@ -52,6 +52,7 @@ type repoAddOptions struct {
 	passCredentialsAll   bool
 	forceUpdate          bool
 	allowDeprecatedRepos bool
+	timeout              time.Duration
 
 	certFile              string
 	keyFile               string
@@ -96,6 +97,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the repository")
 	f.BoolVar(&o.allowDeprecatedRepos, "allow-deprecated-repos", false, "by default, this command will not allow adding official repos that have been permanently deleted. This disables that behavior")
 	f.BoolVar(&o.passCredentialsAll, "pass-credentials", false, "pass credentials to all domains")
+	f.DurationVar(&o.timeout, "timeout", getter.DefaultHTTPTimeout*time.Second, "time to wait for the index file download to complete")
 
 	return cmd
 }
@@ -199,7 +201,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		return nil
 	}
 
-	r, err := repo.NewChartRepository(&c, getter.All(settings))
+	r, err := repo.NewChartRepository(&c, getter.All(settings, getter.WithTimeout(o.timeout)))
 	if err != nil {
 		return err
 	}

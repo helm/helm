@@ -18,7 +18,6 @@ package kube // import "helm.sh/helm/v4/pkg/kube"
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -117,7 +116,7 @@ func (hw *legacyWaiter) isRetryableHTTPStatusCode(httpStatusCode int32) bool {
 	return httpStatusCode == 0 || httpStatusCode == http.StatusTooManyRequests || (httpStatusCode >= 500 && httpStatusCode != http.StatusNotImplemented)
 }
 
-// waitForDeletedResources polls to check if all the resources are deleted or a timeout is reached
+// WaitForDelete polls to check if all the resources are deleted or a timeout is reached
 func (hw *legacyWaiter) WaitForDelete(deleted ResourceList, timeout time.Duration) error {
 	slog.Debug("beginning wait for resources to be deleted", "count", len(deleted), "timeout", timeout)
 
@@ -221,26 +220,6 @@ func (hw *legacyWaiter) WatchUntilReady(resources ResourceList, timeout time.Dur
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
 	return perform(resources, hw.watchTimeout(timeout))
-}
-
-func perform(infos ResourceList, fn func(*resource.Info) error) error {
-	var result error
-
-	if len(infos) == 0 {
-		return ErrNoObjectsVisited
-	}
-
-	errs := make(chan error)
-	go batchPerform(infos, fn, errs)
-
-	for range infos {
-		err := <-errs
-		if err != nil {
-			result = errors.Join(result, err)
-		}
-	}
-
-	return result
 }
 
 func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.Info) error {

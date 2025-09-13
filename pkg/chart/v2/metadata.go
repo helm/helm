@@ -52,7 +52,7 @@ type Metadata struct {
 	Home string `json:"home,omitempty"`
 	// Source is the URL to the source code of this chart
 	Sources []string `json:"sources,omitempty"`
-	// A SemVer 2 conformant version string of the chart. Required.
+	// A version string of the chart. Required.
 	Version string `json:"version,omitempty"`
 	// A one-sentence description of the chart
 	Description string `json:"description,omitempty"`

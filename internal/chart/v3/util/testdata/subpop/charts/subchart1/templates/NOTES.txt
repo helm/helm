@@ -1,0 +1,1 @@
+Sample notes for {{ .Chart.Name }}
