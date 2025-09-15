@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -112,15 +113,15 @@ spec:
 }
 
 func convertHooksToCommaSeparated(hookDefinitions []release.HookOutputLogPolicy) string {
-	var commaSeparated string
+	var commaSeparated strings.Builder
 	for i, policy := range hookDefinitions {
 		if i+1 == len(hookDefinitions) {
-			commaSeparated += policy.String()
+			commaSeparated.WriteString(policy.String())
 		} else {
-			commaSeparated += policy.String() + ","
+			commaSeparated.WriteString(policy.String() + ",")
 		}
 	}
-	return commaSeparated
+	return commaSeparated.String()
 }
 
 func TestInstallRelease_HookOutputLogsOnFailure(t *testing.T) {
