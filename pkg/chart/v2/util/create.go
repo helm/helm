@@ -24,9 +24,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 )
@@ -54,6 +54,8 @@ const (
 	IgnorefileName = ".helmignore"
 	// IngressFileName is the name of the example ingress file.
 	IngressFileName = TemplatesDir + sep + "ingress.yaml"
+	// HTTPRouteFileName is the name of the example HTTPRoute file.
+	HTTPRouteFileName = TemplatesDir + sep + "httproute.yaml"
 	// DeploymentName is the name of the example deployment file.
 	DeploymentName = TemplatesDir + sep + "deployment.yaml"
 	// ServiceName is the name of the example service file.
@@ -125,14 +127,14 @@ fullnameOverride: ""
 
 # This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
 serviceAccount:
-  # Specifies whether a service account should be created
+  # Specifies whether a service account should be created.
   create: true
   # Automatically mount a ServiceAccount's API credentials?
   automount: true
-  # Annotations to add to the service account
+  # Annotations to add to the service account.
   annotations: {}
   # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
+  # If not set and create is true, a name is generated using the fullname template.
   name: ""
 
 # This is for setting Kubernetes Annotations to a Pod.
@@ -173,9 +175,47 @@ ingress:
         - path: /
           pathType: ImplementationSpecific
   tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
+    # - secretName: chart-example-tls
+    #   hosts:
+    #     - chart-example.local
+
+# -- Expose the service via gateway-api HTTPRoute
+# Requires Gateway API resources and suitable controller installed within the cluster
+# (see: https://gateway-api.sigs.k8s.io/guides/)
+httpRoute:
+  # HTTPRoute enabled.
+  enabled: false
+  # HTTPRoute annotations.
+  annotations: {}
+  # Which Gateways this Route is attached to.
+  parentRefs:
+  - name: gateway
+    sectionName: http
+    # namespace: default
+  # Hostnames matching HTTP header.
+  hostnames:
+  - chart-example.local
+  # List of rules and filters applied.
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /headers
+  #   filters:
+  #   - type: RequestHeaderModifier
+  #     requestHeaderModifier:
+  #       set:
+  #       - name: My-Overwrite-Header
+  #         value: this-is-the-only-value
+  #       remove:
+  #       - User-Agent
+  # - matches:
+  #   - path:
+  #       type: PathPrefix
+  #       value: /echo
+  #     headers:
+  #     - name: version
+  #       value: v2
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -209,16 +249,16 @@ autoscaling:
 
 # Additional volumes on the output Deployment definition.
 volumes: []
-# - name: foo
-#   secret:
-#     secretName: mysecret
-#     optional: false
+  # - name: foo
+  #   secret:
+  #     secretName: mysecret
+  #     optional: false
 
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts: []
-# - name: foo
-#   mountPath: "/etc/foo"
-#   readOnly: true
+  # - name: foo
+  #   mountPath: "/etc/foo"
+  #   readOnly: true
 
 nodeSelector: {}
 
@@ -293,6 +333,46 @@ spec:
                 port:
                   number: {{ $.Values.service.port }}
           {{- end }}
+    {{- end }}
+{{- end }}
+`
+
+const defaultHTTPRoute = `{{- if .Values.httpRoute.enabled -}}
+{{- $fullName := include "<CHARTNAME>.fullname" . -}}
+{{- $svcPort := .Values.service.port -}}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
+  {{- with .Values.httpRoute.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+    {{- with .Values.httpRoute.parentRefs }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.httpRoute.hostnames }}
+  hostnames:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range .Values.httpRoute.rules }}
+    {{- with .matches }}
+    - matches:
+      {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .filters }}
+      filters:
+      {{- toYaml . | nindent 8 }}
+    {{- end }}
+      backendRefs:
+        - name: {{ $fullName }}
+          port: {{ $svcPort }}
+          weight: 1
     {{- end }}
 {{- end }}
 `
@@ -444,7 +524,20 @@ spec:
 `
 
 const defaultNotes = `1. Get the application URL by running these commands:
-{{- if .Values.ingress.enabled }}
+{{- if .Values.httpRoute.enabled }}
+{{- if .Values.httpRoute.hostnames }}
+    export APP_HOSTNAME={{ .Values.httpRoute.hostnames | first }}
+{{- else }}
+    export APP_HOSTNAME=$(kubectl get --namespace {{(first .Values.httpRoute.parentRefs).namespace | default .Release.Namespace }} gateway/{{ (first .Values.httpRoute.parentRefs).name }} -o jsonpath="{.spec.listeners[0].hostname}")
+  {{- end }}
+{{- if and .Values.httpRoute.rules (first .Values.httpRoute.rules).matches (first (first .Values.httpRoute.rules).matches).path.value }}
+    echo "Visit http://$APP_HOSTNAME{{ (first (first .Values.httpRoute.rules).matches).path.value }} to use your application"
+
+    NOTE: Your HTTPRoute depends on the listener configuration of your gateway and your HTTPRoute rules.
+    The rules can be set for path, method, header and query parameters.
+    You can check the gateway configuration with 'kubectl get --namespace {{(first .Values.httpRoute.parentRefs).namespace | default .Release.Namespace }} gateway/{{ (first .Values.httpRoute.parentRefs).name }} -o yaml'
+{{- end }}
+{{- else if .Values.ingress.enabled }}
 {{- range $host := .Values.ingress.hosts }}
   {{- range .paths }}
   http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
@@ -558,27 +651,27 @@ var Stderr io.Writer = os.Stderr
 func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 	schart, err := loader.Load(src)
 	if err != nil {
-		return errors.Wrapf(err, "could not load %s", src)
+		return fmt.Errorf("could not load %s: %w", src, err)
 	}
 
 	schart.Metadata = chartfile
 
-	var updatedTemplates []*chart.File
+	var updatedTemplates []*common.File
 
 	for _, template := range schart.Templates {
 		newData := transform(string(template.Data), schart.Name())
-		updatedTemplates = append(updatedTemplates, &chart.File{Name: template.Name, Data: newData})
+		updatedTemplates = append(updatedTemplates, &common.File{Name: template.Name, Data: newData})
 	}
 
 	schart.Templates = updatedTemplates
 	b, err := yaml.Marshal(schart.Values)
 	if err != nil {
-		return errors.Wrap(err, "reading values file")
+		return fmt.Errorf("reading values file: %w", err)
 	}
 
 	var m map[string]interface{}
 	if err := yaml.Unmarshal(transform(string(b), schart.Name()), &m); err != nil {
-		return errors.Wrap(err, "transforming values file")
+		return fmt.Errorf("transforming values file: %w", err)
 	}
 	schart.Values = m
 
@@ -622,12 +715,12 @@ func Create(name, dir string) (string, error) {
 	if fi, err := os.Stat(path); err != nil {
 		return path, err
 	} else if !fi.IsDir() {
-		return path, errors.Errorf("no such directory %s", path)
+		return path, fmt.Errorf("no such directory %s", path)
 	}
 
 	cdir := filepath.Join(path, name)
 	if fi, err := os.Stat(cdir); err == nil && !fi.IsDir() {
-		return cdir, errors.Errorf("file %s already exists and is not a directory", cdir)
+		return cdir, fmt.Errorf("file %s already exists and is not a directory", cdir)
 	}
 
 	// Note: If adding a new template below (i.e., to `helm create`) which is disabled by default (similar to hpa and
@@ -641,12 +734,12 @@ func Create(name, dir string) (string, error) {
 		{
 			// Chart.yaml
 			path:    filepath.Join(cdir, ChartfileName),
-			content: []byte(fmt.Sprintf(defaultChartfile, name)),
+			content: fmt.Appendf(nil, defaultChartfile, name),
 		},
 		{
 			// values.yaml
 			path:    filepath.Join(cdir, ValuesfileName),
-			content: []byte(fmt.Sprintf(defaultValues, name)),
+			content: fmt.Appendf(nil, defaultValues, name),
 		},
 		{
 			// .helmignore
@@ -657,6 +750,11 @@ func Create(name, dir string) (string, error) {
 			// ingress.yaml
 			path:    filepath.Join(cdir, IngressFileName),
 			content: transform(defaultIngress, name),
+		},
+		{
+			// httproute.yaml
+			path:    filepath.Join(cdir, HTTPRouteFileName),
+			content: transform(defaultHTTPRoute, name),
 		},
 		{
 			// deployment.yaml

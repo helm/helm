@@ -63,7 +63,7 @@ keyInElement0 = "valueInElement0"
 keyInElement1 = "valueInElement1"`,
 	}, {
 		tpl:    `{{ fromToml . }}`,
-		expect: "map[Error:toml: line 0: unexpected EOF; expected key separator '=']",
+		expect: "map[Error:toml: line 1: unexpected EOF; expected key separator '=']",
 		vars:   "one",
 	}, {
 		tpl:    `{{ toJson . }}`,
@@ -134,6 +134,43 @@ keyInElement1 = "valueInElement1"`,
 		err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars)
 		assert.NoError(t, err)
 		assert.Equal(t, tt.expect, b.String(), tt.tpl)
+	}
+
+	loopMap := map[string]interface{}{
+		"foo": "bar",
+	}
+	loopMap["loop"] = []interface{}{loopMap}
+
+	mustFuncsTests := []struct {
+		tpl    string
+		expect interface{}
+		vars   interface{}
+	}{{
+		tpl:  `{{ mustToYaml . }}`,
+		vars: loopMap,
+	}, {
+		tpl:  `{{ mustToJson . }}`,
+		vars: loopMap,
+	}, {
+		tpl:    `{{ toYaml . }}`,
+		expect: "", // should return empty string and swallow error
+		vars:   loopMap,
+	}, {
+		tpl:    `{{ toJson . }}`,
+		expect: "", // should return empty string and swallow error
+		vars:   loopMap,
+	},
+	}
+
+	for _, tt := range mustFuncsTests {
+		var b strings.Builder
+		err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars)
+		if tt.expect != nil {
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expect, b.String(), tt.tpl)
+		} else {
+			assert.Error(t, err)
+		}
 	}
 }
 

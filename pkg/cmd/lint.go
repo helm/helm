@@ -17,20 +17,20 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/getter"
-	"helm.sh/helm/v4/pkg/lint/support"
 )
 
 var longLintHelp = `
@@ -58,7 +58,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			}
 
 			if kubeVersion != "" {
-				parsedKubeVersion, err := chartutil.ParseKubeVersion(kubeVersion)
+				parsedKubeVersion, err := common.ParseKubeVersion(kubeVersion)
 				if err != nil {
 					return fmt.Errorf("invalid kube version '%s': %s", kubeVersion, err)
 				}

@@ -19,21 +19,22 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/gosuri/uitable"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/search"
 	"helm.sh/helm/v4/pkg/helmpath"
-	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
 const searchRepoDesc = `
@@ -130,17 +131,17 @@ func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 }
 
 func (o *searchRepoOptions) setupSearchedVersion() {
-	Debug("Original chart version: %q", o.version)
+	slog.Debug("original chart version", "version", o.version)
 
 	if o.version != "" {
 		return
 	}
 
 	if o.devel { // search for releases and prereleases (alpha, beta, and release candidate releases).
-		Debug("setting version to >0.0.0-0")
+		slog.Debug("setting version to >0.0.0-0")
 		o.version = ">0.0.0-0"
 	} else { // search only for stable releases, prerelease versions will be skipped
-		Debug("setting version to >0.0.0")
+		slog.Debug("setting version to >0.0.0")
 		o.version = ">0.0.0"
 	}
 }
@@ -152,7 +153,7 @@ func (o *searchRepoOptions) applyConstraint(res []*search.Result) ([]*search.Res
 
 	constraint, err := semver.NewConstraint(o.version)
 	if err != nil {
-		return res, errors.Wrap(err, "an invalid version/constraint format")
+		return res, fmt.Errorf("an invalid version/constraint format: %w", err)
 	}
 
 	data := res[:0]
@@ -189,8 +190,7 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 		f := filepath.Join(o.repoCacheDir, helmpath.CacheIndexFile(n))
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			Warning("Repo %q is corrupt or missing. Try 'helm repo update'.", n)
-			Warning("%s", err)
+			slog.Warn("repo is corrupt or missing", "repo", n, slog.Any("error", err))
 			continue
 		}
 

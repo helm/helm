@@ -17,8 +17,10 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,8 +31,8 @@ import (
 
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/helmpath/xdg"
-	"helm.sh/helm/v4/pkg/repo"
-	"helm.sh/helm/v4/pkg/repo/repotest"
+	"helm.sh/helm/v4/pkg/repo/v1"
+	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
 
 func TestRepoAddCmd(t *testing.T) {
@@ -48,7 +50,7 @@ func TestRepoAddCmd(t *testing.T) {
 	defer srv2.Stop()
 
 	tmpdir := filepath.Join(t.TempDir(), "path-component.yaml/data")
-	if err := os.MkdirAll(tmpdir, 0777); err != nil {
+	if err := os.MkdirAll(tmpdir, 0o777); err != nil {
 		t.Fatal(err)
 	}
 	repoFile := filepath.Join(tmpdir, "repositories.yaml")
@@ -97,7 +99,7 @@ func TestRepoAdd(t *testing.T) {
 		forceUpdate: false,
 		repoFile:    repoFile,
 	}
-	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
+	t.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
 	if err := o.run(io.Discard); err != nil {
 		t.Error(err)
@@ -113,11 +115,11 @@ func TestRepoAdd(t *testing.T) {
 	}
 
 	idx := filepath.Join(helmpath.CachePath("repository"), helmpath.CacheIndexFile(testRepoName))
-	if _, err := os.Stat(idx); os.IsNotExist(err) {
+	if _, err := os.Stat(idx); errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("Error cache index file was not created for repository %s", testRepoName)
 	}
 	idx = filepath.Join(helmpath.CachePath("repository"), helmpath.CacheChartsFile(testRepoName))
-	if _, err := os.Stat(idx); os.IsNotExist(err) {
+	if _, err := os.Stat(idx); errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("Error cache charts file was not created for repository %s", testRepoName)
 	}
 
@@ -151,7 +153,7 @@ func TestRepoAddCheckLegalName(t *testing.T) {
 		forceUpdate: false,
 		repoFile:    repoFile,
 	}
-	os.Setenv(xdg.CacheHomeEnvVar, rootDir)
+	t.Setenv(xdg.CacheHomeEnvVar, rootDir)
 
 	wantErrorMsg := fmt.Sprintf("repository name (%s) contains '/', please specify a different name without '/'", testRepoName)
 
@@ -189,6 +191,7 @@ func TestRepoAddConcurrentHiddenFile(t *testing.T) {
 }
 
 func repoAddConcurrent(t *testing.T, testName, repoFile string) {
+	t.Helper()
 	ts := repotest.NewTempServer(
 		t,
 		repotest.WithChartSourceGlob("testdata/testserver/*.*"),

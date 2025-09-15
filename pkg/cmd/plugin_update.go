@@ -16,16 +16,16 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"path/filepath"
-	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v4/pkg/plugin"
-	"helm.sh/helm/v4/pkg/plugin/installer"
+	"helm.sh/helm/v4/internal/plugin"
+	"helm.sh/helm/v4/internal/plugin/installer"
 )
 
 type pluginUpdateOptions struct {
@@ -62,32 +62,32 @@ func (o *pluginUpdateOptions) complete(args []string) error {
 
 func (o *pluginUpdateOptions) run(out io.Writer) error {
 	installer.Debug = settings.Debug
-	Debug("loading installed plugins from %s", settings.PluginsDirectory)
-	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
+	slog.Debug("loading installed plugins", "path", settings.PluginsDirectory)
+	plugins, err := plugin.LoadAll(settings.PluginsDirectory)
 	if err != nil {
 		return err
 	}
-	var errorPlugins []string
+	var errorPlugins []error
 
 	for _, name := range o.names {
 		if found := findPlugin(plugins, name); found != nil {
 			if err := updatePlugin(found); err != nil {
-				errorPlugins = append(errorPlugins, fmt.Sprintf("Failed to update plugin %s, got error (%v)", name, err))
+				errorPlugins = append(errorPlugins, fmt.Errorf("failed to update plugin %s, got error (%v)", name, err))
 			} else {
 				fmt.Fprintf(out, "Updated plugin: %s\n", name)
 			}
 		} else {
-			errorPlugins = append(errorPlugins, fmt.Sprintf("Plugin: %s not found", name))
+			errorPlugins = append(errorPlugins, fmt.Errorf("plugin: %s not found", name))
 		}
 	}
 	if len(errorPlugins) > 0 {
-		return errors.New(strings.Join(errorPlugins, "\n"))
+		return errors.Join(errorPlugins...)
 	}
 	return nil
 }
 
-func updatePlugin(p *plugin.Plugin) error {
-	exactLocation, err := filepath.EvalSymlinks(p.Dir)
+func updatePlugin(p plugin.Plugin) error {
+	exactLocation, err := filepath.EvalSymlinks(p.Dir())
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func updatePlugin(p *plugin.Plugin) error {
 		return err
 	}
 
-	Debug("loading plugin from %s", i.Path())
+	slog.Debug("loading plugin", "path", i.Path())
 	updatedPlugin, err := plugin.LoadDir(i.Path())
 	if err != nil {
 		return err

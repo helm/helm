@@ -16,16 +16,19 @@ limitations under the License.
 package util
 
 import (
-	"log"
+	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/mitchellh/copystructure"
 
+	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
 // ProcessDependencies checks through this chart's dependencies, processing accordingly.
-func ProcessDependencies(c *chart.Chart, v Values) error {
+func ProcessDependencies(c *chart.Chart, v common.Values) error {
 	if err := processDependencyEnabled(c, v, ""); err != nil {
 		return err
 	}
@@ -33,12 +36,12 @@ func ProcessDependencies(c *chart.Chart, v Values) error {
 }
 
 // processDependencyConditions disables charts based on condition path value in values
-func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath string) {
+func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, cpath string) {
 	if reqs == nil {
 		return
 	}
 	for _, r := range reqs {
-		for _, c := range strings.Split(strings.TrimSpace(r.Condition), ",") {
+		for c := range strings.SplitSeq(strings.TrimSpace(r.Condition), ",") {
 			if len(c) > 0 {
 				// retrieve value
 				vv, err := cvals.PathValue(cpath + c)
@@ -48,10 +51,10 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath s
 						r.Enabled = bv
 						break
 					}
-					log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value", c, r.Name)
-				} else if _, ok := err.(ErrNoValue); !ok {
+					slog.Warn("returned non-bool value", "path", c, "chart", r.Name)
+				} else if _, ok := err.(common.ErrNoValue); !ok {
 					// this is a real error
-					log.Printf("Warning: PathValue returned error %v", err)
+					slog.Warn("the method PathValue returned error", slog.Any("error", err))
 				}
 			}
 		}
@@ -59,7 +62,7 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals Values, cpath s
 }
 
 // processDependencyTags disables charts based on tags in values
-func processDependencyTags(reqs []*chart.Dependency, cvals Values) {
+func processDependencyTags(reqs []*chart.Dependency, cvals common.Values) {
 	if reqs == nil {
 		return
 	}
@@ -79,7 +82,7 @@ func processDependencyTags(reqs []*chart.Dependency, cvals Values) {
 						hasFalse = true
 					}
 				} else {
-					log.Printf("Warning: Tag '%s' for chart %s returned non-bool value", k, r.Name)
+					slog.Warn("returned non-bool value", "tag", k, "chart", r.Name)
 				}
 			}
 		}
@@ -91,6 +94,7 @@ func processDependencyTags(reqs []*chart.Dependency, cvals Values) {
 	}
 }
 
+// getAliasDependency finds the chart for an alias dependency and copies parts that will be modified
 func getAliasDependency(charts []*chart.Chart, dep *chart.Dependency) *chart.Chart {
 	for _, c := range charts {
 		if c == nil {
@@ -104,15 +108,36 @@ func getAliasDependency(charts []*chart.Chart, dep *chart.Dependency) *chart.Cha
 		}
 
 		out := *c
-		md := *c.Metadata
-		out.Metadata = &md
+		out.Metadata = copyMetadata(c.Metadata)
+
+		// empty dependencies and shallow copy all dependencies, otherwise parent info may be corrupted if
+		// there is more than one dependency aliasing this chart
+		out.SetDependencies()
+		for _, dependency := range c.Dependencies() {
+			cpy := *dependency
+			out.AddDependency(&cpy)
+		}
 
 		if dep.Alias != "" {
-			md.Name = dep.Alias
+			out.Metadata.Name = dep.Alias
 		}
 		return &out
 	}
 	return nil
+}
+
+func copyMetadata(metadata *chart.Metadata) *chart.Metadata {
+	md := *metadata
+
+	if md.Dependencies != nil {
+		dependencies := make([]*chart.Dependency, len(md.Dependencies))
+		for i := range md.Dependencies {
+			dependency := *md.Dependencies[i]
+			dependencies[i] = &dependency
+		}
+		md.Dependencies = dependencies
+	}
+	return &md
 }
 
 // processDependencyEnabled removes disabled charts from dependencies
@@ -154,7 +179,7 @@ Loop:
 	for _, lr := range c.Metadata.Dependencies {
 		lr.Enabled = true
 	}
-	cvals, err := CoalesceValues(c, v)
+	cvals, err := util.CoalesceValues(c, v)
 	if err != nil {
 		return err
 	}
@@ -209,6 +234,8 @@ func pathToMap(path string, data map[string]interface{}) map[string]interface{} 
 	return set(parsePath(path), data)
 }
 
+func parsePath(key string) []string { return strings.Split(key, ".") }
+
 func set(path []string, data map[string]interface{}) map[string]interface{} {
 	if len(path) == 0 {
 		return nil
@@ -226,12 +253,12 @@ func processImportValues(c *chart.Chart, merge bool) error {
 		return nil
 	}
 	// combine chart values and empty config to get Values
-	var cvals Values
+	var cvals common.Values
 	var err error
 	if merge {
-		cvals, err = MergeValues(c, nil)
+		cvals, err = util.MergeValues(c, nil)
 	} else {
-		cvals, err = CoalesceValues(c, nil)
+		cvals, err = util.CoalesceValues(c, nil)
 	}
 	if err != nil {
 		return err
@@ -243,8 +270,8 @@ func processImportValues(c *chart.Chart, merge bool) error {
 		for _, riv := range r.ImportValues {
 			switch iv := riv.(type) {
 			case map[string]interface{}:
-				child := iv["child"].(string)
-				parent := iv["parent"].(string)
+				child := fmt.Sprintf("%v", iv["child"])
+				parent := fmt.Sprintf("%v", iv["parent"])
 
 				outiv = append(outiv, map[string]string{
 					"child":  child,
@@ -254,14 +281,14 @@ func processImportValues(c *chart.Chart, merge bool) error {
 				// get child table
 				vv, err := cvals.Table(r.Name + "." + child)
 				if err != nil {
-					log.Printf("Warning: ImportValues missing table from chart %s: %v", r.Name, err)
+					slog.Warn("ImportValues missing table from chart", "chart", r.Name, slog.Any("error", err))
 					continue
 				}
 				// create value map from child to be merged into parent
 				if merge {
-					b = MergeTables(b, pathToMap(parent, vv.AsMap()))
+					b = util.MergeTables(b, pathToMap(parent, vv.AsMap()))
 				} else {
-					b = CoalesceTables(b, pathToMap(parent, vv.AsMap()))
+					b = util.CoalesceTables(b, pathToMap(parent, vv.AsMap()))
 				}
 			case string:
 				child := "exports." + iv
@@ -271,13 +298,13 @@ func processImportValues(c *chart.Chart, merge bool) error {
 				})
 				vm, err := cvals.Table(r.Name + "." + child)
 				if err != nil {
-					log.Printf("Warning: ImportValues missing table: %v", err)
+					slog.Warn("ImportValues missing table", slog.Any("error", err))
 					continue
 				}
 				if merge {
-					b = MergeTables(b, vm.AsMap())
+					b = util.MergeTables(b, vm.AsMap())
 				} else {
-					b = CoalesceTables(b, vm.AsMap())
+					b = util.CoalesceTables(b, vm.AsMap())
 				}
 			}
 		}
@@ -292,14 +319,14 @@ func processImportValues(c *chart.Chart, merge bool) error {
 		// deep copying the cvals as there are cases where pointers can end
 		// up in the cvals when they are copied onto b in ways that break things.
 		cvals = deepCopyMap(cvals)
-		c.Values = MergeTables(cvals, b)
+		c.Values = util.MergeTables(cvals, b)
 	} else {
 		// Trimming the nil values from cvals is needed for backwards compatibility.
 		// Previously, the b value had been populated with cvals along with some
 		// overrides. This caused the coalescing functionality to remove the
 		// nil/null values. This trimming is for backwards compat.
 		cvals = trimNilValues(cvals)
-		c.Values = CoalesceTables(cvals, b)
+		c.Values = util.CoalesceTables(cvals, b)
 	}
 
 	return nil
@@ -330,6 +357,12 @@ func trimNilValues(vals map[string]interface{}) map[string]interface{} {
 	}
 
 	return valsCopyMap
+}
+
+// istable is a special-purpose function to see if the present thing matches the definition of a YAML table.
+func istable(v interface{}) bool {
+	_, ok := v.(map[string]interface{})
+	return ok
 }
 
 // processDependencyImportValues imports specified chart values from child to parent.

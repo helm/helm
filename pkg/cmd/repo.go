@@ -17,10 +17,10 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"io"
-	"os"
+	"io/fs"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/cmd/require"
@@ -50,5 +50,5 @@ func newRepoCmd(out io.Writer) *cobra.Command {
 }
 
 func isNotExist(err error) bool {
-	return os.IsNotExist(errors.Cause(err))
+	return errors.Is(err, fs.ErrNotExist)
 }

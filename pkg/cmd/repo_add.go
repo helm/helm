@@ -18,22 +18,23 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/gofrs/flock"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/cmd/require"
 	"helm.sh/helm/v4/pkg/getter"
-	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
 // Repositories that have been permanently deleted and no longer work
@@ -51,6 +52,7 @@ type repoAddOptions struct {
 	passCredentialsAll   bool
 	forceUpdate          bool
 	allowDeprecatedRepos bool
+	timeout              time.Duration
 
 	certFile              string
 	keyFile               string
@@ -95,6 +97,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the repository")
 	f.BoolVar(&o.allowDeprecatedRepos, "allow-deprecated-repos", false, "by default, this command will not allow adding official repos that have been permanently deleted. This disables that behavior")
 	f.BoolVar(&o.passCredentialsAll, "pass-credentials", false, "pass credentials to all domains")
+	f.DurationVar(&o.timeout, "timeout", getter.DefaultHTTPTimeout*time.Second, "time to wait for the index file download to complete")
 
 	return cmd
 }
@@ -135,7 +138,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	}
 
 	b, err := os.ReadFile(o.repoFile)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 
@@ -179,7 +182,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 
 	// Check if the repo name is legal
 	if strings.Contains(o.name, "/") {
-		return errors.Errorf("repository name (%s) contains '/', please specify a different name without '/'", o.name)
+		return fmt.Errorf("repository name (%s) contains '/', please specify a different name without '/'", o.name)
 	}
 
 	// If the repo exists do one of two things:
@@ -188,10 +191,9 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	if !o.forceUpdate && f.Has(o.name) {
 		existing := f.Get(o.name)
 		if c != *existing {
-
 			// The input coming in for the name is different from what is already
 			// configured. Return an error.
-			return errors.Errorf("repository name (%s) already exists, please specify a different name", o.name)
+			return fmt.Errorf("repository name (%s) already exists, please specify a different name", o.name)
 		}
 
 		// The add is idempotent so do nothing
@@ -199,7 +201,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		return nil
 	}
 
-	r, err := repo.NewChartRepository(&c, getter.All(settings))
+	r, err := repo.NewChartRepository(&c, getter.All(settings, getter.WithTimeout(o.timeout)))
 	if err != nil {
 		return err
 	}
@@ -208,12 +210,12 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		r.CachePath = o.repoCache
 	}
 	if _, err := r.DownloadIndexFile(); err != nil {
-		return errors.Wrapf(err, "looks like %q is not a valid chart repository or cannot be reached", o.url)
+		return fmt.Errorf("looks like %q is not a valid chart repository or cannot be reached: %w", o.url, err)
 	}
 
 	f.Update(&c)
 
-	if err := f.WriteFile(o.repoFile, 0600); err != nil {
+	if err := f.WriteFile(o.repoFile, 0o600); err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "%q has been added to your repositories\n", o.name)

@@ -30,6 +30,7 @@ import (
 	"testing"
 	"time"
 
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
@@ -543,7 +544,7 @@ foo:
 	}
 }
 
-func TestMergeValues(t *testing.T) {
+func TestMergeValuesV2(t *testing.T) {
 	nestedMap := map[string]interface{}{
 		"foo": "bar",
 		"baz": map[string]string{
@@ -648,6 +649,7 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 }
 
 func verifyDependencies(t *testing.T, c *chart.Chart) {
+	t.Helper()
 	if len(c.Metadata.Dependencies) != 2 {
 		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
 	}
@@ -670,6 +672,7 @@ func verifyDependencies(t *testing.T, c *chart.Chart) {
 }
 
 func verifyDependenciesLock(t *testing.T, c *chart.Chart) {
+	t.Helper()
 	if len(c.Metadata.Dependencies) != 2 {
 		t.Errorf("Expected 2 dependencies, got %d", len(c.Metadata.Dependencies))
 	}
@@ -692,10 +695,12 @@ func verifyDependenciesLock(t *testing.T, c *chart.Chart) {
 }
 
 func verifyFrobnitz(t *testing.T, c *chart.Chart) {
+	t.Helper()
 	verifyChartFileAndTemplate(t, c, "frobnitz")
 }
 
 func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
+	t.Helper()
 	if c.Metadata == nil {
 		t.Fatal("Metadata is nil")
 	}
@@ -749,7 +754,8 @@ func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
 	}
 }
 
-func verifyBomStripped(t *testing.T, files []*chart.File) {
+func verifyBomStripped(t *testing.T, files []*common.File) {
+	t.Helper()
 	for _, file := range files {
 		if bytes.HasPrefix(file.Data, utf8bom) {
 			t.Errorf("Byte Order Mark still present in processed file %s", file.Name)

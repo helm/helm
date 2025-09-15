@@ -21,23 +21,26 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/internal/tlsutil"
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cli"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/registry"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
@@ -78,6 +81,8 @@ Environment variables:
 | $HELM_KUBETLS_SERVER_NAME          | set the server name used to validate the Kubernetes API server certificate                                 |
 | $HELM_BURST_LIMIT                  | set the default burst limit in the case the server contains many CRDs (default 100, -1 to disable)         |
 | $HELM_QPS                          | set the Queries Per Second in cases where a high number of calls exceed the option for higher burst values |
+| $HELM_COLOR                        | set color output mode. Allowed values: never, always, auto (default: never)                                |
+| $NO_COLOR                          | set to any non-empty value to disable all colored output (overrides $HELM_COLOR)                           |
 
 Helm stores cache, configuration, and data based on the following configuration order:
 
@@ -96,25 +101,15 @@ By default, the default directories depend on the Operating System. The defaults
 
 var settings = cli.New()
 
-func Debug(format string, v ...interface{}) {
-	if settings.Debug {
-		log.Output(2, fmt.Sprintf("[debug] "+format+"\n", v...))
-	}
-}
-
-func Warning(format string, v ...interface{}) {
-	fmt.Fprintf(os.Stderr, "WARNING: "+format+"\n", v...)
-}
-
-func NewRootCmd(out io.Writer, args []string) (*cobra.Command, error) {
+func NewRootCmd(out io.Writer, args []string, logSetup func(bool)) (*cobra.Command, error) {
 	actionConfig := new(action.Configuration)
-	cmd, err := newRootCmdWithConfig(actionConfig, out, args)
+	cmd, err := newRootCmdWithConfig(actionConfig, out, args, logSetup)
 	if err != nil {
 		return nil, err
 	}
 	cobra.OnInitialize(func() {
 		helmDriver := os.Getenv("HELM_DRIVER")
-		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, Debug); err != nil {
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver); err != nil {
 			log.Fatal(err)
 		}
 		if helmDriver == "memory" {
@@ -125,7 +120,33 @@ func NewRootCmd(out io.Writer, args []string) (*cobra.Command, error) {
 	return cmd, nil
 }
 
-func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, args []string) (*cobra.Command, error) {
+// SetupLogging sets up Helm logging used by the Helm client.
+// This function is passed to the NewRootCmd function to enable logging. Any other
+// application that uses the NewRootCmd function to setup all the Helm commands may
+// use this function to setup logging or their own. Using a custom logging setup function
+// enables applications using Helm commands to integrate with their existing logging
+// system.
+// The debug argument is the value if Helm is set for debugging (i.e. --debug flag)
+func SetupLogging(debug bool) {
+	logger := logging.NewLogger(func() bool { return debug })
+	slog.SetDefault(logger)
+}
+
+// configureColorOutput configures the color output based on the ColorMode setting
+func configureColorOutput(settings *cli.EnvSettings) {
+	switch settings.ColorMode {
+	case "never":
+		color.NoColor = true
+	case "always":
+		color.NoColor = false
+	case "auto":
+		// Let fatih/color handle automatic detection
+		// It will check if output is a terminal and NO_COLOR env var
+		// We don't need to do anything here
+	}
+}
+
+func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, args []string, logSetup func(bool)) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
@@ -147,6 +168,36 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 
 	settings.AddFlags(flags)
 	addKlogFlags(flags)
+
+	// We can safely ignore any errors that flags.Parse encounters since
+	// those errors will be caught later during the call to cmd.Execution.
+	// This call is required to gather configuration information prior to
+	// execution.
+	flags.ParseErrorsAllowlist.UnknownFlags = true
+	flags.Parse(args)
+
+	logSetup(settings.Debug)
+
+	// Validate color mode setting
+	switch settings.ColorMode {
+	case "never", "auto", "always":
+		// Valid color mode
+	default:
+		return nil, fmt.Errorf("invalid color mode %q: must be one of: never, auto, always", settings.ColorMode)
+	}
+
+	// Configure color output based on ColorMode setting
+	configureColorOutput(settings)
+
+	// Setup shell completion for the color flag
+	_ = cmd.RegisterFlagCompletionFunc("color", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"never", "auto", "always"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	// Setup shell completion for the colour flag
+	_ = cmd.RegisterFlagCompletionFunc("colour", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"never", "auto", "always"}, cobra.ShellCompDirectiveNoFileComp
+	})
 
 	// Setup shell completion for the namespace flag
 	err := cmd.RegisterFlagCompletionFunc("namespace", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
@@ -195,13 +246,6 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		log.Fatal(err)
 	}
 
-	// We can safely ignore any errors that flags.Parse encounters since
-	// those errors will be caught later during the call to cmd.Execution.
-	// This call is required to gather configuration information prior to
-	// execution.
-	flags.ParseErrorsWhitelist.UnknownFlags = true
-	flags.Parse(args)
-
 	registryClient, err := newDefaultRegistryClient(false, "", "")
 	if err != nil {
 		return nil, err
@@ -247,8 +291,8 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		newPushCmd(actionConfig, out),
 	)
 
-	// Find and add plugins
-	loadPlugins(cmd, out)
+	// Find and add CLI plugins
+	loadCLIPlugins(cmd, out)
 
 	// Check for expired repositories
 	checkForExpiredRepos(settings.RepositoryConfig)
@@ -415,4 +459,9 @@ func newRegistryClientWithTLS(
 		return nil, err
 	}
 	return registryClient, nil
+}
+
+type CommandError struct {
+	error
+	ExitCode int
 }

@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -33,6 +34,10 @@ import (
 
 const registryLoginDesc = `
 Authenticate to a remote registry.
+
+For example for Github Container Registry:
+
+    echo "$GITHUB_TOKEN" | helm registry login ghcr.io -u $GITHUB_USER --password-stdin
 `
 
 type registryLoginOptions struct {
@@ -122,7 +127,7 @@ func getUsernamePassword(usernameOpt string, passwordOpt string, passwordFromStd
 			}
 		}
 	} else {
-		Warning("Using --password via the CLI is insecure. Use --password-stdin.")
+		slog.Warn("using --password via the CLI is insecure. Use --password-stdin")
 	}
 
 	return username, password, nil

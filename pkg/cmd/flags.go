@@ -20,20 +20,24 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
 	"k8s.io/klog/v2"
 
 	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/helmpath"
-	"helm.sh/helm/v4/pkg/postrender"
-	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/kube"
+	"helm.sh/helm/v4/pkg/postrenderer"
+	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
 const (
@@ -49,6 +53,52 @@ func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 	f.StringArrayVar(&v.FileValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
 	f.StringArrayVar(&v.JSONValues, "set-json", []string{}, "set JSON values on the command line (can specify multiple or separate values with commas: key1=jsonval1,key2=jsonval2 or using json format: {\"key1\": jsonval1, \"key2\": \"jsonval2\"})")
 	f.StringArrayVar(&v.LiteralValues, "set-literal", []string{}, "set a literal STRING value on the command line")
+}
+
+func AddWaitFlag(cmd *cobra.Command, wait *kube.WaitStrategy) {
+	cmd.Flags().Var(
+		newWaitValue(kube.HookOnlyStrategy, wait),
+		"wait",
+		"if specified, will wait until all resources are in the expected state before marking the operation as successful. It will wait for as long as --timeout. Valid inputs are 'watcher' and 'legacy'",
+	)
+	// Sets the strategy to use the watcher strategy if `--wait` is used without an argument
+	cmd.Flags().Lookup("wait").NoOptDefVal = string(kube.StatusWatcherStrategy)
+}
+
+type waitValue kube.WaitStrategy
+
+func newWaitValue(defaultValue kube.WaitStrategy, ws *kube.WaitStrategy) *waitValue {
+	*ws = defaultValue
+	return (*waitValue)(ws)
+}
+
+func (ws *waitValue) String() string {
+	if ws == nil {
+		return ""
+	}
+	return string(*ws)
+}
+
+func (ws *waitValue) Set(s string) error {
+	switch s {
+	case string(kube.StatusWatcherStrategy), string(kube.LegacyStrategy):
+		*ws = waitValue(s)
+		return nil
+	case "true":
+		slog.Warn("--wait=true is deprecated (boolean value) and can be replaced with --wait=watcher")
+		*ws = waitValue(kube.StatusWatcherStrategy)
+		return nil
+	case "false":
+		slog.Warn("--wait=false is deprecated (boolean value) and can be replaced by omitting the --wait flag")
+		*ws = waitValue(kube.HookOnlyStrategy)
+		return nil
+	default:
+		return fmt.Errorf("invalid wait input %q. Valid inputs are %s, and %s", s, kube.StatusWatcherStrategy, kube.LegacyStrategy)
+	}
+}
+
+func (ws *waitValue) Type() string {
+	return "WaitStrategy"
 }
 
 func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
@@ -115,16 +165,18 @@ func (o *outputValue) Set(s string) error {
 	return nil
 }
 
-func bindPostRenderFlag(cmd *cobra.Command, varRef *postrender.PostRenderer) {
-	p := &postRendererOptions{varRef, "", []string{}}
-	cmd.Flags().Var(&postRendererString{p}, postRenderFlag, "the path to an executable to be used for post rendering. If it exists in $PATH, the binary will be used, otherwise it will try to look for the executable at the given path")
+// TODO there is probably a better way to pass cobra settings than as a param
+func bindPostRenderFlag(cmd *cobra.Command, varRef *postrenderer.PostRenderer, settings *cli.EnvSettings) {
+	p := &postRendererOptions{varRef, "", []string{}, settings}
+	cmd.Flags().Var(&postRendererString{p}, postRenderFlag, "the name of a postrenderer type plugin to be used for post rendering. If it exists, the plugin will be used")
 	cmd.Flags().Var(&postRendererArgsSlice{p}, postRenderArgsFlag, "an argument to the post-renderer (can specify multiple)")
 }
 
 type postRendererOptions struct {
-	renderer   *postrender.PostRenderer
-	binaryPath string
+	renderer   *postrenderer.PostRenderer
+	pluginName string
 	args       []string
+	settings   *cli.EnvSettings
 }
 
 type postRendererString struct {
@@ -132,7 +184,7 @@ type postRendererString struct {
 }
 
 func (p *postRendererString) String() string {
-	return p.options.binaryPath
+	return p.options.pluginName
 }
 
 func (p *postRendererString) Type() string {
@@ -143,11 +195,11 @@ func (p *postRendererString) Set(val string) error {
 	if val == "" {
 		return nil
 	}
-	if p.options.binaryPath != "" {
+	if p.options.pluginName != "" {
 		return fmt.Errorf("cannot specify --post-renderer flag more than once")
 	}
-	p.options.binaryPath = val
-	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
+	p.options.pluginName = val
+	pr, err := postrenderer.NewPostRendererPlugin(p.options.settings, p.options.pluginName, p.options.args...)
 	if err != nil {
 		return err
 	}
@@ -172,11 +224,11 @@ func (p *postRendererArgsSlice) Set(val string) error {
 	// a post-renderer defined by a user may accept empty arguments
 	p.options.args = append(p.options.args, val)
 
-	if p.options.binaryPath == "" {
+	if p.options.pluginName == "" {
 		return nil
 	}
 	// overwrite if already create PostRenderer by `post-renderer` flags
-	pr, err := postrender.NewExec(p.options.binaryPath, p.options.args...)
+	pr, err := postrenderer.NewPostRendererPlugin(p.options.settings, p.options.pluginName, p.options.args...)
 	if err != nil {
 		return err
 	}
@@ -212,7 +264,7 @@ func compVersionFlag(chartRef string, _ string) ([]string, cobra.ShellCompDirect
 	var versions []string
 	if indexFile, err := repo.LoadIndexFile(path); err == nil {
 		for _, details := range indexFile.Entries[chartName] {
-			appVersion := details.Metadata.AppVersion
+			appVersion := details.AppVersion
 			appVersionDesc := ""
 			if appVersion != "" {
 				appVersionDesc = fmt.Sprintf("App: %s, ", appVersion)
@@ -223,10 +275,10 @@ func compVersionFlag(chartRef string, _ string) ([]string, cobra.ShellCompDirect
 				createdDesc = fmt.Sprintf("Created: %s ", created)
 			}
 			deprecated := ""
-			if details.Metadata.Deprecated {
+			if details.Deprecated {
 				deprecated = "(deprecated)"
 			}
-			versions = append(versions, fmt.Sprintf("%s\t%s%s%s", details.Metadata.Version, appVersionDesc, createdDesc, deprecated))
+			versions = append(versions, fmt.Sprintf("%s\t%s%s%s", details.Version, appVersionDesc, createdDesc, deprecated))
 		}
 	}
 

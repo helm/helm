@@ -17,10 +17,13 @@ limitations under the License.
 package action
 
 import (
+	"errors"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
 )
@@ -64,13 +67,14 @@ func TestList_Empty(t *testing.T) {
 }
 
 func newListFixture(t *testing.T) *List {
+	t.Helper()
 	return NewList(actionConfigFixture(t))
 }
 
 func TestList_OneNamespace(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
-	makeMeSomeReleases(lister.cfg.Releases, t)
+	makeMeSomeReleases(t, lister.cfg.Releases)
 	list, err := lister.Run()
 	is.NoError(err)
 	is.Len(list, 3)
@@ -79,7 +83,7 @@ func TestList_OneNamespace(t *testing.T) {
 func TestList_AllNamespaces(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
-	makeMeSomeReleases(lister.cfg.Releases, t)
+	makeMeSomeReleases(t, lister.cfg.Releases)
 	lister.AllNamespaces = true
 	lister.SetStateMask()
 	list, err := lister.Run()
@@ -91,7 +95,7 @@ func TestList_Sort(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
 	lister.Sort = ByNameDesc // Other sorts are tested elsewhere
-	makeMeSomeReleases(lister.cfg.Releases, t)
+	makeMeSomeReleases(t, lister.cfg.Releases)
 	list, err := lister.Run()
 	is.NoError(err)
 	is.Len(list, 3)
@@ -104,7 +108,7 @@ func TestList_Limit(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
 	lister.Limit = 2
-	makeMeSomeReleases(lister.cfg.Releases, t)
+	makeMeSomeReleases(t, lister.cfg.Releases)
 	list, err := lister.Run()
 	is.NoError(err)
 	is.Len(list, 2)
@@ -117,7 +121,7 @@ func TestList_BigLimit(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
 	lister.Limit = 20
-	makeMeSomeReleases(lister.cfg.Releases, t)
+	makeMeSomeReleases(t, lister.cfg.Releases)
 	list, err := lister.Run()
 	is.NoError(err)
 	is.Len(list, 3)
@@ -133,7 +137,7 @@ func TestList_LimitOffset(t *testing.T) {
 	lister := newListFixture(t)
 	lister.Limit = 2
 	lister.Offset = 1
-	makeMeSomeReleases(lister.cfg.Releases, t)
+	makeMeSomeReleases(t, lister.cfg.Releases)
 	list, err := lister.Run()
 	is.NoError(err)
 	is.Len(list, 2)
@@ -148,7 +152,7 @@ func TestList_LimitOffsetOutOfBounds(t *testing.T) {
 	lister := newListFixture(t)
 	lister.Limit = 2
 	lister.Offset = 3 // Last item is index 2
-	makeMeSomeReleases(lister.cfg.Releases, t)
+	makeMeSomeReleases(t, lister.cfg.Releases)
 	list, err := lister.Run()
 	is.NoError(err)
 	is.Len(list, 0)
@@ -163,7 +167,7 @@ func TestList_LimitOffsetOutOfBounds(t *testing.T) {
 func TestList_StateMask(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
-	makeMeSomeReleases(lister.cfg.Releases, t)
+	makeMeSomeReleases(t, lister.cfg.Releases)
 	one, err := lister.cfg.Releases.Get("one", 1)
 	is.NoError(err)
 	one.SetStatus(release.StatusUninstalled, "uninstalled")
@@ -193,7 +197,7 @@ func TestList_StateMaskWithStaleRevisions(t *testing.T) {
 	lister := newListFixture(t)
 	lister.StateMask = ListFailed
 
-	makeMeSomeReleasesWithStaleFailure(lister.cfg.Releases, t)
+	makeMeSomeReleasesWithStaleFailure(t, lister.cfg.Releases)
 
 	res, err := lister.Run()
 
@@ -205,7 +209,7 @@ func TestList_StateMaskWithStaleRevisions(t *testing.T) {
 	is.Equal("failed", res[0].Name)
 }
 
-func makeMeSomeReleasesWithStaleFailure(store *storage.Storage, t *testing.T) {
+func makeMeSomeReleasesWithStaleFailure(t *testing.T, store *storage.Storage) {
 	t.Helper()
 	one := namedReleaseStub("clean", release.StatusDeployed)
 	one.Namespace = "default"
@@ -242,7 +246,7 @@ func TestList_Filter(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
 	lister.Filter = "th."
-	makeMeSomeReleases(lister.cfg.Releases, t)
+	makeMeSomeReleases(t, lister.cfg.Releases)
 
 	res, err := lister.Run()
 	is.NoError(err)
@@ -254,13 +258,13 @@ func TestList_FilterFailsCompile(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
 	lister.Filter = "t[h.{{{"
-	makeMeSomeReleases(lister.cfg.Releases, t)
+	makeMeSomeReleases(t, lister.cfg.Releases)
 
 	_, err := lister.Run()
 	is.Error(err)
 }
 
-func makeMeSomeReleases(store *storage.Storage, t *testing.T) {
+func makeMeSomeReleases(t *testing.T, store *storage.Storage) {
 	t.Helper()
 	one := releaseStub()
 	one.Name = "one"
@@ -365,4 +369,17 @@ func TestSelectorList(t *testing.T) {
 		expectedFilteredList := []*release.Release{r2, r3}
 		assert.ElementsMatch(t, expectedFilteredList, res)
 	})
+}
+
+func TestListRun_UnreachableKubeClient(t *testing.T) {
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.ConnectionError = errors.New("connection refused")
+	config.KubeClient = &failingKubeClient
+
+	lister := NewList(config)
+	result, err := lister.Run()
+
+	assert.Nil(t, result)
+	assert.ErrorContains(t, err, "connection refused")
 }

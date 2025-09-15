@@ -20,14 +20,16 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
@@ -45,7 +47,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 	}
 	outdir := filepath.Join(dest, c.Name())
 	if fi, err := os.Stat(outdir); err == nil && !fi.IsDir() {
-		return errors.Errorf("file %s already exists and is not a directory", outdir)
+		return fmt.Errorf("file %s already exists and is not a directory", outdir)
 	}
 	if err := os.MkdirAll(outdir, 0755); err != nil {
 		return err
@@ -75,7 +77,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 	}
 
 	// Save templates and files
-	for _, o := range [][]*chart.File{c.Templates, c.Files} {
+	for _, o := range [][]*common.File{c.Templates, c.Files} {
 		for _, f := range o {
 			n := filepath.Join(outdir, f.Name)
 			if err := writeFile(n, f.Data); err != nil {
@@ -89,7 +91,7 @@ func SaveDir(c *chart.Chart, dest string) error {
 	for _, dep := range c.Dependencies() {
 		// Here, we write each dependency as a tar file.
 		if _, err := Save(dep, base); err != nil {
-			return errors.Wrapf(err, "saving %s", dep.ChartFullPath())
+			return fmt.Errorf("saving %s: %w", dep.ChartFullPath(), err)
 		}
 	}
 	return nil
@@ -105,22 +107,22 @@ func SaveDir(c *chart.Chart, dest string) error {
 // This returns the absolute path to the chart archive file.
 func Save(c *chart.Chart, outDir string) (string, error) {
 	if err := c.Validate(); err != nil {
-		return "", errors.Wrap(err, "chart validation")
+		return "", fmt.Errorf("chart validation: %w", err)
 	}
 
 	filename := fmt.Sprintf("%s-%s.tgz", c.Name(), c.Metadata.Version)
 	filename = filepath.Join(outDir, filename)
 	dir := filepath.Dir(filename)
 	if stat, err := os.Stat(dir); err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			if err2 := os.MkdirAll(dir, 0755); err2 != nil {
 				return "", err2
 			}
 		} else {
-			return "", errors.Wrapf(err, "stat %s", dir)
+			return "", fmt.Errorf("stat %s: %w", dir, err)
 		}
 	} else if !stat.IsDir() {
-		return "", errors.Errorf("is not a directory: %s", dir)
+		return "", fmt.Errorf("is not a directory: %s", dir)
 	}
 
 	f, err := os.Create(filename)
@@ -130,8 +132,8 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 
 	// Wrap in gzip writer
 	zipper := gzip.NewWriter(f)
-	zipper.Header.Extra = headerBytes
-	zipper.Header.Comment = "Helm"
+	zipper.Extra = headerBytes
+	zipper.Comment = "Helm"
 
 	// Wrap in tar writer
 	twriter := tar.NewWriter(zipper)
@@ -203,7 +205,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	// Save values.schema.json if it exists
 	if c.Schema != nil {
 		if !json.Valid(c.Schema) {
-			return errors.New("Invalid JSON in " + SchemafileName)
+			return errors.New("invalid JSON in " + SchemafileName)
 		}
 		if err := writeToTar(out, filepath.Join(base, SchemafileName), c.Schema); err != nil {
 			return err
@@ -257,7 +259,7 @@ func validateName(name string) error {
 	nname := filepath.Base(name)
 
 	if nname != name {
-		return ErrInvalidChartName{name}
+		return common.ErrInvalidChartName{Name: name}
 	}
 
 	return nil

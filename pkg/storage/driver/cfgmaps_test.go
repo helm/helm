@@ -16,6 +16,7 @@ package driver
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -242,10 +243,8 @@ func TestConfigMapDelete(t *testing.T) {
 	if !reflect.DeepEqual(rel, rls) {
 		t.Errorf("Expected {%v}, got {%v}", rel, rls)
 	}
-
-	// fetch the deleted release
 	_, err = cfgmaps.Get(key)
-	if !reflect.DeepEqual(ErrReleaseNotFound, err) {
+	if !errors.Is(err, ErrReleaseNotFound) {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
 	}
 }

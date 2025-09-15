@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -58,8 +59,8 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 			client.Namespace = settings.Namespace()
 			notName := regexp.MustCompile(`^!\s?name=`)
 			for _, f := range filter {
-				if strings.HasPrefix(f, "name=") {
-					client.Filters[action.IncludeNameFilter] = append(client.Filters[action.IncludeNameFilter], strings.TrimPrefix(f, "name="))
+				if after, ok := strings.CutPrefix(f, "name="); ok {
+					client.Filters[action.IncludeNameFilter] = append(client.Filters[action.IncludeNameFilter], after)
 				} else if notName.MatchString(f) {
 					client.Filters[action.ExcludeNameFilter] = append(client.Filters[action.ExcludeNameFilter], notName.ReplaceAllLiteralString(f, ""))
 				}
@@ -77,6 +78,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 				debug:        settings.Debug,
 				showMetadata: false,
 				hideNotes:    client.HideNotes,
+				noColor:      settings.ShouldDisableColor(),
 			}); err != nil {
 				return err
 			}
@@ -85,7 +87,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 				// Print a newline to stdout to separate the output
 				fmt.Fprintln(out)
 				if err := client.GetPodLogs(out, rel); err != nil {
-					return err
+					return errors.Join(runErr, err)
 				}
 			}
 

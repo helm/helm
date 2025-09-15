@@ -16,16 +16,23 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
+	"helm.sh/helm/v4/internal/logging"
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/registry"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -34,10 +41,20 @@ import (
 	"helm.sh/helm/v4/pkg/time"
 )
 
-var verbose = flag.Bool("test.log", false, "enable test logging")
+var verbose = flag.Bool("test.log", false, "enable test logging (debug by default)")
 
 func actionConfigFixture(t *testing.T) *Configuration {
 	t.Helper()
+	return actionConfigFixtureWithDummyResources(t, nil)
+}
+
+func actionConfigFixtureWithDummyResources(t *testing.T, dummyResources kube.ResourceList) *Configuration {
+	t.Helper()
+
+	logger := logging.NewLogger(func() bool {
+		return *verbose
+	})
+	slog.SetDefault(logger)
 
 	registryClient, err := registry.NewClient()
 	if err != nil {
@@ -46,15 +63,9 @@ func actionConfigFixture(t *testing.T) *Configuration {
 
 	return &Configuration{
 		Releases:       storage.Init(driver.NewMemory()),
-		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}},
-		Capabilities:   chartutil.DefaultCapabilities,
+		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: dummyResources},
+		Capabilities:   common.DefaultCapabilities,
 		RegistryClient: registryClient,
-		Log: func(format string, v ...interface{}) {
-			t.Helper()
-			if *verbose {
-				t.Logf(format, v...)
-			}
-		},
 	}
 }
 
@@ -111,14 +122,14 @@ type chartOptions struct {
 type chartOption func(*chartOptions)
 
 func buildChart(opts ...chartOption) *chart.Chart {
-	defaultTemplates := []*chart.File{
+	defaultTemplates := []*common.File{
 		{Name: "templates/hello", Data: []byte("hello: world")},
 		{Name: "templates/hooks", Data: []byte(manifestWithHook)},
 	}
 	return buildChartWithTemplates(defaultTemplates, opts...)
 }
 
-func buildChartWithTemplates(templates []*chart.File, opts ...chartOption) *chart.Chart {
+func buildChartWithTemplates(templates []*common.File, opts ...chartOption) *chart.Chart {
 	c := &chartOptions{
 		Chart: &chart.Chart{
 			// TODO: This should be more complete.
@@ -168,7 +179,7 @@ func withValues(values map[string]interface{}) chartOption {
 
 func withNotes(notes string) chartOption {
 	return func(opts *chartOptions) {
-		opts.Templates = append(opts.Templates, &chart.File{
+		opts.Templates = append(opts.Templates, &common.File{
 			Name: "templates/NOTES.txt",
 			Data: []byte(notes),
 		})
@@ -189,7 +200,7 @@ func withMetadataDependency(dependency chart.Dependency) chartOption {
 
 func withSampleTemplates() chartOption {
 	return func(opts *chartOptions) {
-		sampleTemplates := []*chart.File{
+		sampleTemplates := []*common.File{
 			// This adds basic templates and partials.
 			{Name: "templates/goodbye", Data: []byte("goodbye: world")},
 			{Name: "templates/empty", Data: []byte("")},
@@ -202,14 +213,14 @@ func withSampleTemplates() chartOption {
 
 func withSampleSecret() chartOption {
 	return func(opts *chartOptions) {
-		sampleSecret := &chart.File{Name: "templates/secret.yaml", Data: []byte("apiVersion: v1\nkind: Secret\n")}
+		sampleSecret := &common.File{Name: "templates/secret.yaml", Data: []byte("apiVersion: v1\nkind: Secret\n")}
 		opts.Templates = append(opts.Templates, sampleSecret)
 	}
 }
 
 func withSampleIncludingIncorrectTemplates() chartOption {
 	return func(opts *chartOptions) {
-		sampleTemplates := []*chart.File{
+		sampleTemplates := []*common.File{
 			// This adds basic templates and partials.
 			{Name: "templates/goodbye", Data: []byte("goodbye: world")},
 			{Name: "templates/empty", Data: []byte("")},
@@ -223,7 +234,7 @@ func withSampleIncludingIncorrectTemplates() chartOption {
 
 func withMultipleManifestTemplate() chartOption {
 	return func(opts *chartOptions) {
-		sampleTemplates := []*chart.File{
+		sampleTemplates := []*common.File{
 			{Name: "templates/rbac", Data: []byte(rbacManifests)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
@@ -334,7 +345,7 @@ func TestConfiguration_Init(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &Configuration{}
 
-			actualErr := cfg.Init(nil, "default", tt.helmDriver, nil)
+			actualErr := cfg.Init(nil, "default", tt.helmDriver)
 			if tt.expectErr {
 				assert.Error(t, actualErr)
 				assert.Contains(t, actualErr.Error(), tt.errMsg)
@@ -347,7 +358,7 @@ func TestConfiguration_Init(t *testing.T) {
 }
 
 func TestGetVersionSet(t *testing.T) {
-	client := fakeclientset.NewSimpleClientset()
+	client := fakeclientset.NewClientset()
 
 	vs, err := GetVersionSet(client.Discovery())
 	if err != nil {
@@ -360,4 +371,583 @@ func TestGetVersionSet(t *testing.T) {
 	if vs.Has("nosuchversion/v1") {
 		t.Error("Non-existent version is reported found.")
 	}
+}
+
+// Mock PostRenderer for testing
+type mockPostRenderer struct {
+	shouldError bool
+	transform   func(string) string
+}
+
+func (m *mockPostRenderer) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {
+	if m.shouldError {
+		return nil, errors.New("mock post-renderer error")
+	}
+
+	content := renderedManifests.String()
+	if m.transform != nil {
+		content = m.transform(content)
+	}
+
+	return bytes.NewBufferString(content), nil
+}
+
+func TestAnnotateAndMerge(t *testing.T) {
+	tests := []struct {
+		name          string
+		files         map[string]string
+		expectedError string
+		expected      string
+	}{
+		{
+			name:     "no files",
+			files:    map[string]string{},
+			expected: "",
+		},
+		{
+			name: "single file with single manifest",
+			files: map[string]string{
+				"templates/configmap.yaml": `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+data:
+  key: value`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/configmap.yaml'
+data:
+  key: value
+`,
+		},
+		{
+			name: "multiple files with multiple manifests",
+			files: map[string]string{
+				"templates/configmap.yaml": `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+data:
+  key: value`,
+				"templates/secret.yaml": `apiVersion: v1
+kind: Secret
+metadata:
+  name: test-secret
+data:
+  password: dGVzdA==`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/configmap.yaml'
+data:
+  key: value
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-secret
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/secret.yaml'
+data:
+  password: dGVzdA==
+`,
+		},
+		{
+			name: "file with multiple manifests",
+			files: map[string]string{
+				"templates/multi.yaml": `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm1
+data:
+  key: value1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm2
+data:
+  key: value2`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm1
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/multi.yaml'
+data:
+  key: value1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/multi.yaml'
+data:
+  key: value2
+`,
+		},
+		{
+			name: "partials and empty files are removed",
+			files: map[string]string{
+				"templates/cm.yaml": `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm1
+`,
+				"templates/_partial.tpl": `
+{{-define name}}
+  {{- "abracadabra"}}
+{{- end -}}`,
+				"templates/empty.yaml": ``,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm1
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+`,
+		},
+		{
+			name: "empty file",
+			files: map[string]string{
+				"templates/empty.yaml": "",
+			},
+			expected: ``,
+		},
+		{
+			name: "invalid yaml",
+			files: map[string]string{
+				"templates/invalid.yaml": `invalid: yaml: content:
+  - malformed`,
+			},
+			expectedError: "parsing templates/invalid.yaml",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			merged, err := annotateAndMerge(tt.files)
+
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, merged)
+				assert.Equal(t, tt.expected, merged)
+			}
+		})
+	}
+}
+
+func TestSplitAndDeannotate(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		expectedFiles map[string]string
+		expectedError string
+	}{
+		{
+			name: "single annotated manifest",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    postrenderer.helm.sh/postrender-filename: templates/configmap.yaml
+data:
+  key: value`,
+			expectedFiles: map[string]string{
+				"templates/configmap.yaml": `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+data:
+  key: value
+`,
+			},
+		},
+		{
+			name: "multiple manifests with different filenames",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    postrenderer.helm.sh/postrender-filename: templates/configmap.yaml
+data:
+  key: value
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-secret
+  annotations:
+    postrenderer.helm.sh/postrender-filename: templates/secret.yaml
+data:
+  password: dGVzdA==`,
+			expectedFiles: map[string]string{
+				"templates/configmap.yaml": `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+data:
+  key: value
+`,
+				"templates/secret.yaml": `apiVersion: v1
+kind: Secret
+metadata:
+  name: test-secret
+data:
+  password: dGVzdA==
+`,
+			},
+		},
+		{
+			name: "multiple manifests with same filename",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm1
+  annotations:
+    postrenderer.helm.sh/postrender-filename: templates/multi.yaml
+data:
+  key: value1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: templates/multi.yaml
+data:
+  key: value2`,
+			expectedFiles: map[string]string{
+				"templates/multi.yaml": `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm1
+data:
+  key: value1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm2
+data:
+  key: value2
+`,
+			},
+		},
+		{
+			name: "manifest with other annotations",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    postrenderer.helm.sh/postrender-filename: templates/configmap.yaml
+    other-annotation: should-remain
+data:
+  key: value`,
+			expectedFiles: map[string]string{
+				"templates/configmap.yaml": `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    other-annotation: should-remain
+data:
+  key: value
+`,
+			},
+		},
+		{
+			name:          "invalid yaml input",
+			input:         "invalid: yaml: content:",
+			expectedError: "error parsing YAML: MalformedYAMLError",
+		},
+		{
+			name: "manifest without filename annotation",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+data:
+  key: value`,
+			expectedFiles: map[string]string{
+				"generated-by-postrender-0.yaml": `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+data:
+  key: value
+`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files, err := splitAndDeannotate(tt.input)
+
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, len(tt.expectedFiles), len(files))
+
+				for expectedFile, expectedContent := range tt.expectedFiles {
+					actualContent, exists := files[expectedFile]
+					assert.True(t, exists, "Expected file %s not found", expectedFile)
+					assert.Equal(t, expectedContent, actualContent)
+				}
+			}
+		})
+	}
+}
+
+func TestAnnotateAndMerge_SplitAndDeannotate_Roundtrip(t *testing.T) {
+	// Test that merge/split operations are symmetric
+	originalFiles := map[string]string{
+		"templates/configmap.yaml": `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+data:
+  key: value`,
+		"templates/secret.yaml": `apiVersion: v1
+kind: Secret
+metadata:
+  name: test-secret
+data:
+  password: dGVzdA==`,
+		"templates/multi.yaml": `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm1
+data:
+  key: value1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm2
+data:
+  key: value2`,
+	}
+
+	// Merge and annotate
+	merged, err := annotateAndMerge(originalFiles)
+	require.NoError(t, err)
+
+	// Split and deannotate
+	reconstructed, err := splitAndDeannotate(merged)
+	require.NoError(t, err)
+
+	// Compare the results
+	assert.Equal(t, len(originalFiles), len(reconstructed))
+	for filename, originalContent := range originalFiles {
+		reconstructedContent, exists := reconstructed[filename]
+		assert.True(t, exists, "File %s should exist in reconstructed files", filename)
+
+		// Normalize whitespace for comparison since YAML processing might affect formatting
+		normalizeContent := func(content string) string {
+			return strings.TrimSpace(strings.ReplaceAll(content, "\r\n", "\n"))
+		}
+
+		assert.Equal(t, normalizeContent(originalContent), normalizeContent(reconstructedContent))
+	}
+}
+
+func TestRenderResources_PostRenderer_Success(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	// Create a simple mock post-renderer
+	mockPR := &mockPostRenderer{
+		transform: func(content string) string {
+			content = strings.ReplaceAll(content, "hello", "yellow")
+			content = strings.ReplaceAll(content, "goodbye", "foodpie")
+			return strings.ReplaceAll(content, "test-cm", "test-cm-postrendered")
+		},
+	}
+
+	ch := buildChart(withSampleTemplates())
+	values := map[string]interface{}{}
+
+	hooks, buf, notes, err := cfg.renderResources(
+		ch, values, "test-release", "", false, false, false,
+		mockPR, false, false, false,
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, hooks)
+	assert.NotNil(t, buf)
+	assert.Equal(t, "", notes)
+	expectedBuf := `---
+# Source: yellow/templates/foodpie
+foodpie: world
+---
+# Source: yellow/templates/with-partials
+yellow: Earth
+---
+# Source: yellow/templates/yellow
+yellow: world
+`
+	expectedHook := `kind: ConfigMap
+metadata:
+  name: test-cm-postrendered
+  annotations:
+    "helm.sh/hook": post-install,pre-delete,post-upgrade
+data:
+  name: value`
+
+	assert.Equal(t, expectedBuf, buf.String())
+	assert.Len(t, hooks, 1)
+	assert.Equal(t, expectedHook, hooks[0].Manifest)
+}
+
+func TestRenderResources_PostRenderer_Error(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	// Create a post-renderer that returns an error
+	mockPR := &mockPostRenderer{
+		shouldError: true,
+	}
+
+	ch := buildChart(withSampleTemplates())
+	values := map[string]interface{}{}
+
+	_, _, _, err := cfg.renderResources(
+		ch, values, "test-release", "", false, false, false,
+		mockPR, false, false, false,
+	)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error while running post render on files")
+}
+
+func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	// Create a mock post-renderer
+	mockPR := &mockPostRenderer{}
+
+	// Create a chart with invalid YAML that would cause AnnotateAndMerge to fail
+	ch := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: "v1",
+			Name:       "test-chart",
+			Version:    "0.1.0",
+		},
+		Templates: []*common.File{
+			{Name: "templates/invalid", Data: []byte("invalid: yaml: content:")},
+		},
+	}
+	values := map[string]interface{}{}
+
+	_, _, _, err := cfg.renderResources(
+		ch, values, "test-release", "", false, false, false,
+		mockPR, false, false, false,
+	)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error merging manifests")
+}
+
+func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	// Create a post-renderer that returns invalid YAML
+	mockPR := &mockPostRenderer{
+		transform: func(_ string) string {
+			return "invalid: yaml: content:"
+		},
+	}
+
+	ch := buildChart(withSampleTemplates())
+	values := map[string]interface{}{}
+
+	_, _, _, err := cfg.renderResources(
+		ch, values, "test-release", "", false, false, false,
+		mockPR, false, false, false,
+	)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error while parsing post rendered output: error parsing YAML: MalformedYAMLError:")
+}
+
+func TestRenderResources_PostRenderer_Integration(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	mockPR := &mockPostRenderer{
+		transform: func(content string) string {
+			return strings.ReplaceAll(content, "metadata:", "color: blue\nmetadata:")
+		},
+	}
+
+	ch := buildChart(withSampleTemplates())
+	values := map[string]interface{}{}
+
+	hooks, buf, notes, err := cfg.renderResources(
+		ch, values, "test-release", "", false, false, false,
+		mockPR, false, false, false,
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, hooks)
+	assert.NotNil(t, buf)
+	assert.Equal(t, "", notes) // Notes should be empty for this test
+
+	// Verify that the post-renderer modifications are present in the output
+	output := buf.String()
+	expected := `---
+# Source: hello/templates/goodbye
+goodbye: world
+color: blue
+---
+# Source: hello/templates/hello
+hello: world
+color: blue
+---
+# Source: hello/templates/with-partials
+hello: Earth
+color: blue
+`
+	assert.Contains(t, output, "color: blue")
+	assert.Equal(t, 3, strings.Count(output, "color: blue"))
+	assert.Equal(t, expected, output)
+}
+
+func TestRenderResources_NoPostRenderer(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	ch := buildChart(withSampleTemplates())
+	values := map[string]interface{}{}
+
+	hooks, buf, notes, err := cfg.renderResources(
+		ch, values, "test-release", "", false, false, false,
+		nil, false, false, false,
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, hooks)
+	assert.NotNil(t, buf)
+	assert.Equal(t, "", notes)
+}
+
+func TestDetermineReleaseSSAApplyMethod(t *testing.T) {
+	assert.Equal(t, release.ApplyMethodClientSideApply, determineReleaseSSApplyMethod(false))
+	assert.Equal(t, release.ApplyMethodServerSideApply, determineReleaseSSApplyMethod(true))
 }

@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -28,10 +29,17 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
+
+// MaxDecompressedChartSize is the maximum size of a chart archive that will be
+// decompressed. This is the decompressed size of all the files.
+// The default value is 100 MiB.
+var MaxDecompressedChartSize int64 = 100 * 1024 * 1024 // Default 100 MiB
+
+// MaxDecompressedFileSize is the size of the largest file that Helm will attempt to load.
+// The size of the file is the decompressed version of it when it is stored in an archive.
+var MaxDecompressedFileSize int64 = 5 * 1024 * 1024 // Default 5 MiB
 
 var drivePathPattern = regexp.MustCompile(`^[a-zA-Z]:/`)
 
@@ -119,6 +127,7 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 
 	files := []*BufferedFile{}
 	tr := tar.NewReader(unzipped)
+	remainingSize := MaxDecompressedChartSize
 	for {
 		b := bytes.NewBuffer(nil)
 		hd, err := tr.Next()
@@ -160,7 +169,7 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 		n = path.Clean(n)
 		if n == "." {
 			// In this case, the original path was relative when it should have been absolute.
-			return nil, errors.Errorf("chart illegally contains content outside the base directory: %q", hd.Name)
+			return nil, fmt.Errorf("chart illegally contains content outside the base directory: %q", hd.Name)
 		}
 		if strings.HasPrefix(n, "..") {
 			return nil, errors.New("chart illegally references parent directory")
@@ -178,8 +187,28 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 			return nil, errors.New("chart yaml not in base directory")
 		}
 
-		if _, err := io.Copy(b, tr); err != nil {
+		if hd.Size > remainingSize {
+			return nil, fmt.Errorf("decompressed chart is larger than the maximum size %d", MaxDecompressedChartSize)
+		}
+
+		if hd.Size > MaxDecompressedFileSize {
+			return nil, fmt.Errorf("decompressed chart file %q is larger than the maximum file size %d", hd.Name, MaxDecompressedFileSize)
+		}
+
+		limitedReader := io.LimitReader(tr, remainingSize)
+
+		bytesWritten, err := io.Copy(b, limitedReader)
+		if err != nil {
 			return nil, err
+		}
+
+		remainingSize -= bytesWritten
+		// When the bytesWritten are less than the file size it means the limit reader ended
+		// copying early. Here we report that error. This is important if the last file extracted
+		// is the one that goes over the limit. It assumes the Size stored in the tar header
+		// is correct, something many applications do.
+		if bytesWritten < hd.Size || remainingSize <= 0 {
+			return nil, fmt.Errorf("decompressed chart is larger than the maximum size %d", MaxDecompressedChartSize)
 		}
 
 		data := bytes.TrimPrefix(b.Bytes(), utf8bom)

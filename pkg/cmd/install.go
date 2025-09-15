@@ -18,15 +18,17 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -158,7 +160,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
-				return errors.Wrap(err, "INSTALLATION FAILED")
+				return fmt.Errorf("INSTALLATION FAILED: %w", err)
 			}
 
 			return outfmt.Write(out, &statusPrinter{
@@ -166,6 +168,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				debug:        settings.Debug,
 				showMetadata: false,
 				hideNotes:    client.HideNotes,
+				noColor:      settings.ShouldDisableColor(),
 			})
 		},
 	}
@@ -176,7 +179,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
 	bindOutputFlag(cmd, &outfmt)
-	bindPostRenderFlag(cmd, &client.PostRenderer)
+	bindPostRenderFlag(cmd, &client.PostRenderer, settings)
 
 	return cmd
 }
@@ -190,11 +193,14 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	// The true/false part is meant to reflect some legacy behavior while none is equal to "".
 	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
 	f.Lookup("dry-run").NoOptDefVal = "client"
-	f.BoolVar(&client.Force, "force", false, "force resource updates through a replacement strategy")
+	f.BoolVar(&client.ForceReplace, "force-replace", false, "force resource updates by replacement")
+	f.BoolVar(&client.ForceReplace, "force", false, "deprecated")
+	f.MarkDeprecated("force", "use --force-replace instead")
+	f.BoolVar(&client.ForceConflicts, "force-conflicts", false, "if set server-side apply will force changes against conflicts")
+	f.BoolVar(&client.ServerSideApply, "server-side", true, "object updates run in the server instead of the client")
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during install")
 	f.BoolVar(&client.Replace, "replace", false, "reuse the given name, only if that name is a deleted release which remains in the history. This is unsafe in production")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
-	f.BoolVar(&client.Wait, "wait", false, "if set, will wait until all Pods, PVCs, Services, and minimum number of Pods of a Deployment, StatefulSet, or ReplicaSet are in a ready state before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&client.WaitForJobs, "wait-for-jobs", false, "if set and --wait enabled, will wait until all Jobs have been completed before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVarP(&client.GenerateName, "generate-name", "g", false, "generate the name (and omit the NAME parameter)")
 	f.StringVar(&client.NameTemplate, "name-template", "", "specify template used to name the release")
@@ -202,7 +208,8 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	f.BoolVar(&client.DisableOpenAPIValidation, "disable-openapi-validation", false, "if set, the installation process will not validate rendered templates against the Kubernetes OpenAPI Schema")
-	f.BoolVar(&client.Atomic, "atomic", false, "if set, the installation process deletes the installation on failure. The --wait flag will be set automatically if --atomic is used")
+	f.BoolVar(&client.RollbackOnFailure, "rollback-on-failure", false, "if set, Helm will rollback (uninstall) the installation upon failure. The --wait flag will be default to \"watcher\" if --rollback-on-failure is set")
+	f.MarkDeprecated("atomic", "use --rollback-on-failure instead")
 	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed. By default, CRDs are installed if not already present")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	f.BoolVar(&client.SkipSchemaValidation, "skip-schema-validation", false, "if set, disables JSON schema validation")
@@ -212,6 +219,9 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, install will ignore the check for helm annotations and take ownership of the existing resources")
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
+	AddWaitFlag(cmd, &client.WaitStrategy)
+	cmd.MarkFlagsMutuallyExclusive("force-replace", "force-conflicts")
+	cmd.MarkFlagsMutuallyExclusive("force", "force-conflicts")
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		requiredArgs := 2
@@ -229,24 +239,24 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 }
 
 func runInstall(args []string, client *action.Install, valueOpts *values.Options, out io.Writer) (*release.Release, error) {
-	Debug("Original chart version: %q", client.Version)
+	slog.Debug("Original chart version", "version", client.Version)
 	if client.Version == "" && client.Devel {
-		Debug("setting version to >0.0.0-0")
+		slog.Debug("setting version to >0.0.0-0")
 		client.Version = ">0.0.0-0"
 	}
 
-	name, chart, err := client.NameAndChart(args)
+	name, chartRef, err := client.NameAndChart(args)
 	if err != nil {
 		return nil, err
 	}
 	client.ReleaseName = name
 
-	cp, err := client.ChartPathOptions.LocateChart(chart, settings)
+	cp, err := client.LocateChart(chartRef, settings)
 	if err != nil {
 		return nil, err
 	}
 
-	Debug("CHART PATH: %s\n", cp)
+	slog.Debug("Chart path", "path", cp)
 
 	p := getter.All(settings)
 	vals, err := valueOpts.MergeValues(p)
@@ -265,7 +275,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 
 	if chartRequested.Metadata.Deprecated {
-		Warning("This chart is deprecated")
+		slog.Warn("this chart is deprecated")
 	}
 
 	if req := chartRequested.Metadata.Dependencies; req != nil {
@@ -273,16 +283,16 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/helm/helm/issues/2209
 		if err := action.CheckDependencies(chartRequested, req); err != nil {
-			err = errors.Wrap(err, "An error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies")
 			if client.DependencyUpdate {
 				man := &downloader.Manager{
 					Out:              out,
 					ChartPath:        cp,
-					Keyring:          client.ChartPathOptions.Keyring,
+					Keyring:          client.Keyring,
 					SkipUpdate:       false,
 					Getters:          p,
 					RepositoryConfig: settings.RepositoryConfig,
 					RepositoryCache:  settings.RepositoryCache,
+					ContentCache:     settings.ContentCache,
 					Debug:            settings.Debug,
 					RegistryClient:   client.GetRegistryClient(),
 				}
@@ -291,10 +301,10 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 				}
 				// Reload the chart with the updated Chart.lock file.
 				if chartRequested, err = loader.Load(cp); err != nil {
-					return nil, errors.Wrap(err, "failed reloading chart after repo update")
+					return nil, fmt.Errorf("failed reloading chart after repo update: %w", err)
 				}
 			} else {
-				return nil, err
+				return nil, fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies: %w", err)
 			}
 		}
 	}
@@ -332,7 +342,7 @@ func checkIfInstallable(ch *chart.Chart) error {
 	case "", "application":
 		return nil
 	}
-	return errors.Errorf("%s charts are not installable", ch.Metadata.Type)
+	return fmt.Errorf("%s charts are not installable", ch.Metadata.Type)
 }
 
 // Provide dynamic auto-completion for the install and template commands
@@ -350,15 +360,9 @@ func compInstall(args []string, toComplete string, client *action.Install) ([]st
 func validateDryRunOptionFlag(dryRunOptionFlagValue string) error {
 	// Validate dry-run flag value with a set of allowed value
 	allowedDryRunValues := []string{"false", "true", "none", "client", "server"}
-	isAllowed := false
-	for _, v := range allowedDryRunValues {
-		if dryRunOptionFlagValue == v {
-			isAllowed = true
-			break
-		}
-	}
+	isAllowed := slices.Contains(allowedDryRunValues, dryRunOptionFlagValue)
 	if !isAllowed {
-		return errors.New("Invalid dry-run flag. Flag must one of the following: false, true, none, client, server")
+		return errors.New("invalid dry-run flag. Flag must one of the following: false, true, none, client, server")
 	}
 	return nil
 }

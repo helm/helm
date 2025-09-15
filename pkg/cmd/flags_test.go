@@ -29,6 +29,7 @@ import (
 )
 
 func outputFlagCompletionTest(t *testing.T, cmdName string) {
+	t.Helper()
 	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []*release.Release {
 		info.LastDeployed = helmtime.Unix(1452902400, 0).UTC()
 		return []*release.Release{{
@@ -100,20 +101,22 @@ func outputFlagCompletionTest(t *testing.T, cmdName string) {
 func TestPostRendererFlagSetOnce(t *testing.T) {
 	cfg := action.Configuration{}
 	client := action.NewInstall(&cfg)
+	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
 	str := postRendererString{
 		options: &postRendererOptions{
 			renderer: &client.PostRenderer,
+			settings: settings,
 		},
 	}
-	// Set the binary once
-	err := str.Set("echo")
+	// Set the plugin name once
+	err := str.Set("postrenderer-v1")
 	require.NoError(t, err)
 
-	// Set the binary again to the same value is not ok
-	err = str.Set("echo")
+	// Set the plugin name again to the same value is not ok
+	err = str.Set("postrenderer-v1")
 	require.Error(t, err)
 
-	// Set the binary again to a different value is not ok
+	// Set the plugin name again to a different value is not ok
 	err = str.Set("cat")
 	require.Error(t, err)
 }

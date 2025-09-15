@@ -22,14 +22,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/registry"
-	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
 // Pull is the action for checking a given release's information.
@@ -90,6 +88,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		RegistryClient:   p.cfg.RegistryClient,
 		RepositoryConfig: p.Settings.RepositoryConfig,
 		RepositoryCache:  p.Settings.RepositoryCache,
+		ContentCache:     p.Settings.ContentCache,
 	}
 
 	if registry.IsOCI(chartRef) {
@@ -111,11 +110,12 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		var err error
 		dest, err = os.MkdirTemp("", "helm-")
 		if err != nil {
-			return out.String(), errors.Wrap(err, "failed to untar")
+			return out.String(), fmt.Errorf("failed to untar: %w", err)
 		}
 		defer os.RemoveAll(dest)
 	}
 
+	downloadSourceRef := chartRef
 	if p.RepoURL != "" {
 		chartURL, err := repo.FindChartInRepoURL(
 			p.RepoURL,
@@ -130,10 +130,10 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		if err != nil {
 			return out.String(), err
 		}
-		chartRef = chartURL
+		downloadSourceRef = chartURL
 	}
 
-	saved, v, err := c.DownloadTo(chartRef, p.Version, dest)
+	saved, v, err := c.DownloadTo(downloadSourceRef, p.Version, dest)
 	if err != nil {
 		return out.String(), err
 	}
@@ -163,11 +163,10 @@ func (p *Pull) Run(chartRef string) (string, error) {
 
 		if _, err := os.Stat(udCheck); err != nil {
 			if err := os.MkdirAll(udCheck, 0755); err != nil {
-				return out.String(), errors.Wrap(err, "failed to untar (mkdir)")
+				return out.String(), fmt.Errorf("failed to untar (mkdir): %w", err)
 			}
-
 		} else {
-			return out.String(), errors.Errorf("failed to untar: a file or directory with the name %s already exists", udCheck)
+			return out.String(), fmt.Errorf("failed to untar: a file or directory with the name %s already exists", udCheck)
 		}
 
 		return out.String(), chartutil.ExpandFile(ud, saved)

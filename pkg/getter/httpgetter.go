@@ -18,21 +18,19 @@ package getter
 import (
 	"bytes"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"sync"
 
-	"github.com/pkg/errors"
-
 	"helm.sh/helm/v4/internal/tlsutil"
-	"helm.sh/helm/v4/internal/urlutil"
 	"helm.sh/helm/v4/internal/version"
 )
 
 // HTTPGetter is the default HTTP(/S) backend handler
 type HTTPGetter struct {
-	opts      options
+	opts      getterOptions
 	transport *http.Transport
 	once      sync.Once
 }
@@ -66,11 +64,11 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	// with the basic auth is the one being fetched.
 	u1, err := url.Parse(g.opts.url)
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to parse getter URL")
+		return nil, fmt.Errorf("unable to parse getter URL: %w", err)
 	}
 	u2, err := url.Parse(href)
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to parse URL getting from")
+		return nil, fmt.Errorf("unable to parse URL getting from: %w", err)
 	}
 
 	// Host on URL (returned from url.Parse) contains the port if present.
@@ -93,7 +91,7 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("failed to fetch %s : %s", href, resp.Status)
+		return nil, fmt.Errorf("failed to fetch %s : %s", href, resp.Status)
 	}
 
 	buf := bytes.NewBuffer(nil)
@@ -124,6 +122,9 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 		g.transport = &http.Transport{
 			DisableCompression: true,
 			Proxy:              http.ProxyFromEnvironment,
+			// Being nil would cause the tls.Config default to be used
+			// "NewTLSConfig" modifies an empty TLS config, not the default one
+			TLSClientConfig: &tls.Config{},
 		}
 	})
 
@@ -134,14 +135,8 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 			tlsutil.WithCAFile(g.opts.caFile),
 		)
 		if err != nil {
-			return nil, errors.Wrap(err, "can't create TLS config for client")
+			return nil, fmt.Errorf("can't create TLS config for client: %w", err)
 		}
-
-		sni, err := urlutil.ExtractHostname(g.opts.url)
-		if err != nil {
-			return nil, err
-		}
-		tlsConf.ServerName = sni
 
 		g.transport.TLSClientConfig = tlsConf
 	}

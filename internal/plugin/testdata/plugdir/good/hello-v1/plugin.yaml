@@ -1,0 +1,32 @@
+---
+name: "hello-v1"
+version: "0.1.0"
+type: cli/v1
+apiVersion: v1
+runtime: subprocess
+config:
+  usage: hello [params]...
+  shortHelp: "echo hello message"
+  longHelp: |-
+    description
+  ignoreFlags: true
+runtimeConfig:
+  platformCommand:
+    - os: linux
+      arch:
+      command: "sh"
+      args: ["-c", "${HELM_PLUGIN_DIR}/hello.sh"]
+    - os: windows
+      arch:
+      command: "pwsh"
+      args: ["-c", "${HELM_PLUGIN_DIR}/hello.ps1"]
+  platformHooks:
+    install:
+      - os: linux
+        arch: ""
+        command: "sh"
+        args: ["-c", 'echo "installing..."']
+      - os: windows
+        arch: ""
+        command: "pwsh"
+        args: ["-c", 'echo "installing..."']

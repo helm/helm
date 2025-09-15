@@ -19,10 +19,9 @@ package test
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 )
 
 // UpdateGolden writes out the golden files with the latest values, rather than failing the test.
@@ -75,11 +74,11 @@ func compare(actual []byte, filename string) error {
 
 	expected, err := os.ReadFile(filename)
 	if err != nil {
-		return errors.Wrapf(err, "unable to read testdata %s", filename)
+		return fmt.Errorf("unable to read testdata %s: %w", filename, err)
 	}
 	expected = normalize(expected)
 	if !bytes.Equal(expected, actual) {
-		return errors.Errorf("does not match golden file %s\n\nWANT:\n'%s'\n\nGOT:\n'%s'", filename, expected, actual)
+		return fmt.Errorf("does not match golden file %s\n\nWANT:\n'%s'\n\nGOT:\n'%s'", filename, expected, actual)
 	}
 	return nil
 }
@@ -92,5 +91,5 @@ func update(filename string, in []byte) error {
 }
 
 func normalize(in []byte) []byte {
-	return bytes.Replace(in, []byte("\r\n"), []byte("\n"), -1)
+	return bytes.ReplaceAll(in, []byte("\r\n"), []byte("\n"))
 }

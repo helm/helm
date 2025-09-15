@@ -16,15 +16,16 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
-	"strings"
+	"path/filepath"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v4/pkg/plugin"
+	"helm.sh/helm/v4/internal/plugin"
 )
 
 type pluginUninstallOptions struct {
@@ -60,39 +61,70 @@ func (o *pluginUninstallOptions) complete(args []string) error {
 }
 
 func (o *pluginUninstallOptions) run(out io.Writer) error {
-	Debug("loading installed plugins from %s", settings.PluginsDirectory)
-	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
+	slog.Debug("loading installer plugins", "dir", settings.PluginsDirectory)
+	plugins, err := plugin.LoadAll(settings.PluginsDirectory)
 	if err != nil {
 		return err
 	}
-	var errorPlugins []string
+	var errorPlugins []error
 	for _, name := range o.names {
 		if found := findPlugin(plugins, name); found != nil {
 			if err := uninstallPlugin(found); err != nil {
-				errorPlugins = append(errorPlugins, fmt.Sprintf("Failed to uninstall plugin %s, got error (%v)", name, err))
+				errorPlugins = append(errorPlugins, fmt.Errorf("failed to uninstall plugin %s, got error (%v)", name, err))
 			} else {
 				fmt.Fprintf(out, "Uninstalled plugin: %s\n", name)
 			}
 		} else {
-			errorPlugins = append(errorPlugins, fmt.Sprintf("Plugin: %s not found", name))
+			errorPlugins = append(errorPlugins, fmt.Errorf("plugin: %s not found", name))
 		}
 	}
 	if len(errorPlugins) > 0 {
-		return errors.New(strings.Join(errorPlugins, "\n"))
+		return errors.Join(errorPlugins...)
 	}
 	return nil
 }
 
-func uninstallPlugin(p *plugin.Plugin) error {
-	if err := os.RemoveAll(p.Dir); err != nil {
+func uninstallPlugin(p plugin.Plugin) error {
+	if err := os.RemoveAll(p.Dir()); err != nil {
 		return err
 	}
+
+	// Clean up versioned tarball and provenance files from HELM_PLUGINS directory
+	// These files are saved with pattern: PLUGIN_NAME-VERSION.tgz and PLUGIN_NAME-VERSION.tgz.prov
+	pluginName := p.Metadata().Name
+	pluginVersion := p.Metadata().Version
+	pluginsDir := settings.PluginsDirectory
+
+	// Remove versioned files: plugin-name-version.tgz and plugin-name-version.tgz.prov
+	if pluginVersion != "" {
+		versionedBasename := fmt.Sprintf("%s-%s.tgz", pluginName, pluginVersion)
+
+		// Remove tarball file
+		tarballPath := filepath.Join(pluginsDir, versionedBasename)
+		if _, err := os.Stat(tarballPath); err == nil {
+			slog.Debug("removing versioned tarball", "path", tarballPath)
+			if err := os.Remove(tarballPath); err != nil {
+				slog.Debug("failed to remove tarball file", "path", tarballPath, "error", err)
+			}
+		}
+
+		// Remove provenance file
+		provPath := filepath.Join(pluginsDir, versionedBasename+".prov")
+		if _, err := os.Stat(provPath); err == nil {
+			slog.Debug("removing versioned provenance", "path", provPath)
+			if err := os.Remove(provPath); err != nil {
+				slog.Debug("failed to remove provenance file", "path", provPath, "error", err)
+			}
+		}
+	}
+
 	return runHook(p, plugin.Delete)
 }
 
-func findPlugin(plugins []*plugin.Plugin, name string) *plugin.Plugin {
+// TODO should this be in pkg/plugin/loader.go?
+func findPlugin(plugins []plugin.Plugin, name string) plugin.Plugin {
 	for _, p := range plugins {
-		if p.Metadata.Name == name {
+		if p.Metadata().Name == name {
 			return p
 		}
 	}

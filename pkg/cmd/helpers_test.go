@@ -28,7 +28,7 @@ import (
 
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/action"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/cli"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -91,11 +91,10 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	actionConfig := &action.Configuration{
 		Releases:     store,
 		KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
-		Capabilities: chartutil.DefaultCapabilities,
-		Log:          func(_ string, _ ...interface{}) {},
+		Capabilities: common.DefaultCapabilities,
 	}
 
-	root, err := newRootCmdWithConfig(actionConfig, buf, args)
+	root, err := newRootCmdWithConfig(actionConfig, buf, args, SetupLogging)
 	if err != nil {
 		return nil, "", err
 	}
@@ -105,6 +104,10 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	root.SetArgs(args)
 
 	oldStdin := os.Stdin
+	defer func() {
+		os.Stdin = oldStdin
+	}()
+
 	if in != nil {
 		root.SetIn(in)
 		os.Stdin = in
@@ -116,8 +119,6 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	c, err := root.ExecuteC()
 
 	result := buf.String()
-
-	os.Stdin = oldStdin
 
 	return c, result, err
 }
@@ -149,16 +150,4 @@ func resetEnv() func() {
 		}
 		settings = cli.New()
 	}
-}
-
-func testChdir(t *testing.T, dir string) func() {
-	t.Helper()
-	old, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
-	return func() { os.Chdir(old) }
 }

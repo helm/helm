@@ -17,8 +17,10 @@ limitations under the License.
 package engine
 
 import (
+	"errors"
 	"fmt"
-	"log"
+	"log/slog"
+	"maps"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -26,12 +28,23 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
 
-	chart "helm.sh/helm/v4/pkg/chart/v2"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	ci "helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/common"
 )
+
+// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
+// > "template: %s: executing %q at <%s>: %s"
+var execErrFmt = regexp.MustCompile(`^template: (?P<templateName>(?U).+): executing (?P<functionName>(?U).+) at (?P<location>(?U).+): (?P<errMsg>(?U).+)(?P<nextErr>( template:.*)?)$`)
+
+// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
+// > "template: %s: %s"
+var execErrFmtWithoutTemplate = regexp.MustCompile(`^template: (?P<templateName>(?U).+): (?P<errMsg>.*)(?P<nextErr>( template:.*)?)$`)
+
+// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=191
+// > "template: no template %q associated with template %q"
+var execErrNoTemplateAssociated = regexp.MustCompile(`^template: no template (?P<location>.*) associated with template (?P<functionName>(.*)?)$`)
 
 // Engine is an implementation of the Helm rendering implementation for templates.
 type Engine struct {
@@ -44,6 +57,8 @@ type Engine struct {
 	clientProvider *ClientProvider
 	// EnableDNS tells the engine to allow DNS lookups when rendering templates
 	EnableDNS bool
+	// CustomTemplateFuncs is defined by users to provide custom template funcs
+	CustomTemplateFuncs template.FuncMap
 }
 
 // New creates a new instance of Engine using the passed in rest config.
@@ -73,21 +88,21 @@ func New(config *rest.Config) Engine {
 // that section of the values will be passed into the "foo" chart. And if that
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
-func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+func (e Engine) Render(chrt ci.Charter, values common.Values) (map[string]string, error) {
 	tmap := allTemplates(chrt, values)
 	return e.render(tmap)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options.
-func Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+func Render(chrt ci.Charter, values common.Values) (map[string]string, error) {
 	return new(Engine).Render(chrt, values)
 }
 
 // RenderWithClient takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
-func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config) (map[string]string, error) {
+func RenderWithClient(chrt ci.Charter, values common.Values, config *rest.Config) (map[string]string, error) {
 	var clientProvider ClientProvider = clientProviderFromConfig{config}
 	return Engine{
 		clientProvider: &clientProvider,
@@ -98,7 +113,7 @@ func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.C
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
 // This function differs from RenderWithClient in that it lets you customize the way a dynamic client is constructed.
-func RenderWithClientProvider(chrt *chart.Chart, values chartutil.Values, clientProvider ClientProvider) (map[string]string, error) {
+func RenderWithClientProvider(chrt ci.Charter, values common.Values, clientProvider ClientProvider) (map[string]string, error) {
 	return Engine{
 		clientProvider: &clientProvider,
 	}.Render(chrt, values)
@@ -109,7 +124,7 @@ type renderable struct {
 	// tpl is the current template.
 	tpl string
 	// vals are the values to be supplied to the template.
-	vals chartutil.Values
+	vals common.Values
 	// namespace prefix to the templates of the current chart
 	basePath string
 }
@@ -131,7 +146,9 @@ func includeFun(t *template.Template, includedNames map[string]int) func(string,
 		var buf strings.Builder
 		if v, ok := includedNames[name]; ok {
 			if v > recursionMaxNums {
-				return "", errors.Wrapf(fmt.Errorf("unable to execute template"), "rendering template has a nested reference name: %s", name)
+				return "", fmt.Errorf(
+					"rendering template has a nested reference name: %s: %w",
+					name, errors.New("unable to execute template"))
 			}
 			includedNames[name]++
 		} else {
@@ -149,7 +166,7 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 	return func(tpl string, vals interface{}) (string, error) {
 		t, err := parent.Clone()
 		if err != nil {
-			return "", errors.Wrapf(err, "cannot clone template")
+			return "", fmt.Errorf("cannot clone template: %w", err)
 		}
 
 		// Re-inject the missingkey option, see text/template issue https://github.com/golang/go/issues/43022
@@ -176,12 +193,12 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 		// text string. (Maybe we could use a hash appended to the name?)
 		t, err = t.New(parent.Name()).Parse(tpl)
 		if err != nil {
-			return "", errors.Wrapf(err, "cannot parse template %q", tpl)
+			return "", fmt.Errorf("cannot parse template %q: %w", tpl, err)
 		}
 
 		var buf strings.Builder
 		if err := t.Execute(&buf, vals); err != nil {
-			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
+			return "", fmt.Errorf("error during tpl function execution for %q: %w", tpl, err)
 		}
 
 		// See comment in renderWithReferences explaining the <no value> hack.
@@ -203,7 +220,7 @@ func (e Engine) initFunMap(t *template.Template) {
 		if val == nil {
 			if e.LintMode {
 				// Don't fail on missing required values when linting
-				log.Printf("[INFO] Missing required value: %s", warn)
+				slog.Warn("missing required value", "message", warn)
 				return "", nil
 			}
 			return val, errors.New(warnWrap(warn))
@@ -211,7 +228,7 @@ func (e Engine) initFunMap(t *template.Template) {
 			if val == "" {
 				if e.LintMode {
 					// Don't fail on missing required values when linting
-					log.Printf("[INFO] Missing required value: %s", warn)
+					slog.Warn("missing required values", "message", warn)
 					return "", nil
 				}
 				return val, errors.New(warnWrap(warn))
@@ -224,7 +241,7 @@ func (e Engine) initFunMap(t *template.Template) {
 	funcMap["fail"] = func(msg string) (string, error) {
 		if e.LintMode {
 			// Don't fail when linting
-			log.Printf("[INFO] Fail: %s", msg)
+			slog.Info("funcMap fail", "message", msg)
 			return "", nil
 		}
 		return "", errors.New(warnWrap(msg))
@@ -244,6 +261,9 @@ func (e Engine) initFunMap(t *template.Template) {
 		}
 	}
 
+	// Set custom template funcs
+	maps.Copy(funcMap, e.CustomTemplateFuncs)
+
 	t.Funcs(funcMap)
 }
 
@@ -258,7 +278,7 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 	// template engine.
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.Errorf("rendering template failed: %v", r)
+			err = fmt.Errorf("rendering template failed: %v", r)
 		}
 	}()
 	t := template.New("gotpl")
@@ -292,10 +312,10 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 		}
 		// At render time, add information about the template that is being rendered.
 		vals := tpls[filename].vals
-		vals["Template"] = chartutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
+		vals["Template"] = common.Values{"Name": filename, "BasePath": tpls[filename].basePath}
 		var buf strings.Builder
 		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
-			return map[string]string{}, cleanupExecError(filename, err)
+			return map[string]string{}, reformatExecErrorMsg(filename, err)
 		}
 
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
@@ -321,7 +341,33 @@ func cleanupParseError(filename string, err error) error {
 	return fmt.Errorf("parse error at (%s): %s", string(location), errMsg)
 }
 
-func cleanupExecError(filename string, err error) error {
+type TraceableError struct {
+	location         string
+	message          string
+	executedFunction string
+}
+
+func (t TraceableError) String() string {
+	var errorString strings.Builder
+	if t.location != "" {
+		fmt.Fprintf(&errorString, "%s\n  ", t.location)
+	}
+	if t.executedFunction != "" {
+		fmt.Fprintf(&errorString, "%s\n    ", t.executedFunction)
+	}
+	if t.message != "" {
+		fmt.Fprintf(&errorString, "%s\n", t.message)
+	}
+	return errorString.String()
+}
+
+// reformatExecErrorMsg takes an error message for template rendering and formats it into a formatted
+// multi-line error string
+func reformatExecErrorMsg(filename string, err error) error {
+	// This function matches the error message against regex's for the text/template package.
+	// If the regex's can parse out details from that error message such as the line number, template it failed on,
+	// and error description, then it will construct a new error that displays these details in a structured way.
+	// If there are issues with parsing the error message, the err passed into the function should return instead.
 	if _, isExecError := err.(template.ExecError); !isExecError {
 		return err
 	}
@@ -340,8 +386,46 @@ func cleanupExecError(filename string, err error) error {
 	if len(parts) >= 2 {
 		return fmt.Errorf("execution error at (%s): %s", string(location), parts[1])
 	}
+	current := err
+	fileLocations := []TraceableError{}
+	for current != nil {
+		var traceable TraceableError
+		if matches := execErrFmt.FindStringSubmatch(current.Error()); matches != nil {
+			templateName := matches[execErrFmt.SubexpIndex("templateName")]
+			functionName := matches[execErrFmt.SubexpIndex("functionName")]
+			locationName := matches[execErrFmt.SubexpIndex("location")]
+			errMsg := matches[execErrFmt.SubexpIndex("errMsg")]
+			traceable = TraceableError{
+				location:         templateName,
+				message:          errMsg,
+				executedFunction: "executing " + functionName + " at " + locationName + ":",
+			}
+		} else if matches := execErrFmtWithoutTemplate.FindStringSubmatch(current.Error()); matches != nil {
+			templateName := matches[execErrFmt.SubexpIndex("templateName")]
+			errMsg := matches[execErrFmt.SubexpIndex("errMsg")]
+			traceable = TraceableError{
+				location: templateName,
+				message:  errMsg,
+			}
+		} else if matches := execErrNoTemplateAssociated.FindStringSubmatch(current.Error()); matches != nil {
+			traceable = TraceableError{
+				message: current.Error(),
+			}
+		} else {
+			return err
+		}
+		if len(fileLocations) == 0 || fileLocations[len(fileLocations)-1] != traceable {
+			fileLocations = append(fileLocations, traceable)
+		}
+		current = errors.Unwrap(current)
+	}
 
-	return err
+	var finalErrorString strings.Builder
+	for _, fileLocation := range fileLocations {
+		fmt.Fprintf(&finalErrorString, "%s", fileLocation.String())
+	}
+
+	return errors.New(strings.TrimSpace(finalErrorString.String()))
 }
 
 func sortTemplates(tpls map[string]renderable) []string {
@@ -371,7 +455,7 @@ func (p byPathLen) Less(i, j int) bool {
 // allTemplates returns all templates for a chart and its dependencies.
 //
 // As it goes, it also prepares the values in a scope-sensitive manner.
-func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
+func allTemplates(c ci.Charter, vals common.Values) map[string]renderable {
 	templates := make(map[string]renderable)
 	recAllTpls(c, templates, vals)
 	return templates
@@ -381,40 +465,45 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 //
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
-func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) map[string]interface{} {
+func recAllTpls(c ci.Charter, templates map[string]renderable, values common.Values) map[string]interface{} {
+	vals := values.AsMap()
 	subCharts := make(map[string]interface{})
-	chartMetaData := struct {
-		chart.Metadata
-		IsRoot bool
-	}{*c.Metadata, c.IsRoot()}
+	accessor, err := ci.NewAccessor(c)
+	if err != nil {
+		slog.Error("error accessing chart", "error", err)
+	}
+	chartMetaData := accessor.MetadataAsMap()
+	chartMetaData["IsRoot"] = accessor.IsRoot()
 
 	next := map[string]interface{}{
 		"Chart":        chartMetaData,
-		"Files":        newFiles(c.Files),
+		"Files":        newFiles(accessor.Files()),
 		"Release":      vals["Release"],
 		"Capabilities": vals["Capabilities"],
-		"Values":       make(chartutil.Values),
+		"Values":       make(common.Values),
 		"Subcharts":    subCharts,
 	}
 
 	// If there is a {{.Values.ThisChart}} in the parent metadata,
 	// copy that into the {{.Values}} for this template.
-	if c.IsRoot() {
+	if accessor.IsRoot() {
 		next["Values"] = vals["Values"]
-	} else if vs, err := vals.Table("Values." + c.Name()); err == nil {
+	} else if vs, err := values.Table("Values." + accessor.Name()); err == nil {
 		next["Values"] = vs
 	}
 
-	for _, child := range c.Dependencies() {
-		subCharts[child.Name()] = recAllTpls(child, templates, next)
+	for _, child := range accessor.Dependencies() {
+		// TODO: Handle error
+		sub, _ := ci.NewAccessor(child)
+		subCharts[sub.Name()] = recAllTpls(child, templates, next)
 	}
 
-	newParentID := c.ChartFullPath()
-	for _, t := range c.Templates {
+	newParentID := accessor.ChartFullPath()
+	for _, t := range accessor.Templates() {
 		if t == nil {
 			continue
 		}
-		if !isTemplateValid(c, t.Name) {
+		if !isTemplateValid(accessor, t.Name) {
 			continue
 		}
 		templates[path.Join(newParentID, t.Name)] = renderable{
@@ -428,14 +517,9 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 }
 
 // isTemplateValid returns true if the template is valid for the chart type
-func isTemplateValid(ch *chart.Chart, templateName string) bool {
-	if isLibraryChart(ch) {
+func isTemplateValid(accessor ci.Accessor, templateName string) bool {
+	if accessor.IsLibraryChart() {
 		return strings.HasPrefix(filepath.Base(templateName), "_")
 	}
 	return true
-}
-
-// isLibraryChart returns true if the chart is a library chart
-func isLibraryChart(c *chart.Chart) bool {
-	return strings.EqualFold(c.Metadata.Type, "library")
 }

@@ -15,13 +15,13 @@ limitations under the License.
 package util
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"testing"
 
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 )
@@ -134,7 +134,7 @@ func TestDependencyEnabled(t *testing.T) {
 	}
 }
 
-// extractCharts recursively searches chart dependencies returning all charts found
+// extractChartNames recursively searches chart dependencies returning all charts found
 func extractChartNames(c *chart.Chart) []string {
 	var out []string
 	var fn func(c *chart.Chart)
@@ -222,7 +222,7 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	if err := processDependencyImportValues(c, false); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
-	cc := Values(c.Values)
+	cc := common.Values(c.Values)
 	for kk, vv := range e {
 		pv, err := cc.PathValue(kk)
 		if err != nil {
@@ -238,20 +238,6 @@ func TestProcessDependencyImportValues(t *testing.T) {
 			if b := strconv.FormatBool(pv); b != vv {
 				t.Errorf("failed to match imported bool value %v with expected %v for key %q", b, vv, kk)
 			}
-		case json.Number:
-			if fv, err := pv.Float64(); err == nil {
-				if sfv := strconv.FormatFloat(fv, 'f', -1, 64); sfv != vv {
-					t.Errorf("failed to match imported float value %v with expected %v for key %q", sfv, vv, kk)
-				}
-			}
-			if iv, err := pv.Int64(); err == nil {
-				if siv := strconv.FormatInt(iv, 10); siv != vv {
-					t.Errorf("failed to match imported int value %v with expected %v for key %q", siv, vv, kk)
-				}
-			}
-			if pv.String() != vv {
-				t.Errorf("failed to match imported string value %q with expected %q for key %q", pv, vv, kk)
-			}
 		default:
 			if pv != vv {
 				t.Errorf("failed to match imported string value %q with expected %q for key %q", pv, vv, kk)
@@ -266,7 +252,7 @@ func TestProcessDependencyImportValues(t *testing.T) {
 		t.Error("expect nil value not found but found it")
 	}
 	switch xerr := err.(type) {
-	case ErrNoValue:
+	case common.ErrNoValue:
 		// We found what we expected
 	default:
 		t.Errorf("expected an ErrNoValue but got %q instead", xerr)
@@ -276,13 +262,45 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	if err := processDependencyImportValues(c, true); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
-	cc = Values(c.Values)
+	cc = common.Values(c.Values)
 	val, err := cc.PathValue("ensurenull")
 	if err != nil {
 		t.Error("expect value but ensurenull was not found")
 	}
 	if val != nil {
 		t.Errorf("expect nil value but got %q instead", val)
+	}
+}
+
+func TestProcessDependencyImportValuesFromSharedDependencyToAliases(t *testing.T) {
+	c := loadChart(t, "testdata/chart-with-import-from-aliased-dependencies")
+
+	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+		t.Fatalf("expected no errors but got %q", err)
+	}
+	if err := processDependencyImportValues(c, true); err != nil {
+		t.Fatalf("processing import values dependencies %v", err)
+	}
+	e := make(map[string]string)
+
+	e["foo-defaults.defaultValue"] = "42"
+	e["bar-defaults.defaultValue"] = "42"
+
+	e["foo.defaults.defaultValue"] = "42"
+	e["bar.defaults.defaultValue"] = "42"
+
+	e["foo.grandchild.defaults.defaultValue"] = "42"
+	e["bar.grandchild.defaults.defaultValue"] = "42"
+
+	cValues := common.Values(c.Values)
+	for kk, vv := range e {
+		pv, err := cValues.PathValue(kk)
+		if err != nil {
+			t.Fatalf("retrieving import values table %v %v", kk, err)
+		}
+		if pv != vv {
+			t.Errorf("failed to match imported value %v with expected %v", pv, vv)
+		}
 	}
 }
 
@@ -312,7 +330,7 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 	if err := processDependencyImportValues(c, true); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
-	cc := Values(c.Values)
+	cc := common.Values(c.Values)
 	for kk, vv := range e {
 		pv, err := cc.PathValue(kk)
 		if err != nil {
@@ -323,10 +341,6 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 		case float64:
 			if s := strconv.FormatFloat(pv, 'f', -1, 64); s != vv {
 				t.Errorf("failed to match imported float value %v with expected %v", s, vv)
-			}
-		case json.Number:
-			if pv.String() != vv {
-				t.Errorf("failed to match imported string value %q with expected %q", pv, vv)
 			}
 		default:
 			if pv != vv {
@@ -430,6 +444,9 @@ func TestDependentChartAliases(t *testing.T) {
 	if aliasChart == nil {
 		t.Fatalf("failed to get dependency chart for alias %s", req[2].Name)
 	}
+	if aliasChart.Parent() != c {
+		t.Fatalf("dependency chart has wrong parent, expected %s but got %s", c.Name(), aliasChart.Parent().Name())
+	}
 	if req[2].Alias != "" {
 		if aliasChart.Name() != req[2].Alias {
 			t.Fatalf("dependency chart name should be %s but got %s", req[2].Alias, aliasChart.Name())
@@ -520,4 +537,34 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
 	if len(c.Metadata.Dependencies) != 1 {
 		t.Fatalf("expected 1 dependency specified in Chart.yaml, got %d", len(c.Metadata.Dependencies))
 	}
+}
+
+func validateDependencyTree(t *testing.T, c *chart.Chart) {
+	t.Helper()
+	for _, dependency := range c.Dependencies() {
+		if dependency.Parent() != c {
+			if dependency.Parent() != c {
+				t.Fatalf("dependency chart %s has wrong parent, expected %s but got %s", dependency.Name(), c.Name(), dependency.Parent().Name())
+			}
+		}
+		// recurse entire tree
+		validateDependencyTree(t, dependency)
+	}
+}
+
+func TestChartWithDependencyAliasedTwiceAndDoublyReferencedSubDependency(t *testing.T) {
+	c := loadChart(t, "testdata/chart-with-dependency-aliased-twice")
+
+	if len(c.Dependencies()) != 1 {
+		t.Fatalf("expected one dependency for this chart, but got %d", len(c.Dependencies()))
+	}
+
+	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+		t.Fatalf("expected no errors but got %q", err)
+	}
+
+	if len(c.Dependencies()) != 2 {
+		t.Fatal("expected two dependencies after processing aliases")
+	}
+	validateDependencyTree(t, c)
 }

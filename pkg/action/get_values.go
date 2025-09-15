@@ -16,9 +16,7 @@ limitations under the License.
 
 package action
 
-import (
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
-)
+import "helm.sh/helm/v4/pkg/chart/common/util"
 
 // GetValues is the action for checking a given release's values.
 //
@@ -50,7 +48,7 @@ func (g *GetValues) Run(name string) (map[string]interface{}, error) {
 
 	// If the user wants all values, compute the values and return.
 	if g.AllValues {
-		cfg, err := chartutil.CoalesceValues(rel.Chart, rel.Config)
+		cfg, err := util.CoalesceValues(rel.Chart, rel.Config)
 		if err != nil {
 			return nil, err
 		}

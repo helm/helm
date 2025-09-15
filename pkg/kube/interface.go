@@ -30,16 +30,39 @@ import (
 // A KubernetesClient must be concurrency safe.
 type Interface interface {
 	// Create creates one or more resources.
-	Create(resources ResourceList) (*Result, error)
+	Create(resources ResourceList, options ...ClientCreateOption) (*Result, error)
 
+	// Delete destroys one or more resources.
+	Delete(resources ResourceList) (*Result, []error)
+
+	// Update updates one or more resources or creates the resource
+	// if it doesn't exist.
+	Update(original, target ResourceList, options ...ClientUpdateOption) (*Result, error)
+
+	// Build creates a resource list from a Reader.
+	//
+	// Reader must contain a YAML stream (one or more YAML documents separated
+	// by "\n---\n")
+	//
+	// Validates against OpenAPI schema if validate is true.
+	Build(reader io.Reader, validate bool) (ResourceList, error)
+	// IsReachable checks whether the client is able to connect to the cluster.
+	IsReachable() error
+
+	// Get Waiter gets the Kube.Waiter
+	GetWaiter(ws WaitStrategy) (Waiter, error)
+}
+
+// Waiter defines methods related to waiting for resource states.
+type Waiter interface {
 	// Wait waits up to the given timeout for the specified resources to be ready.
 	Wait(resources ResourceList, timeout time.Duration) error
 
 	// WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
 	WaitWithJobs(resources ResourceList, timeout time.Duration) error
 
-	// Delete destroys one or more resources.
-	Delete(resources ResourceList) (*Result, []error)
+	// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
+	WaitForDelete(resources ResourceList, timeout time.Duration) error
 
 	// WatchUntilReady watches the resources given and waits until it is ready.
 	//
@@ -51,29 +74,6 @@ type Interface interface {
 	// For all other kinds, it means the kind was created or modified without
 	// error.
 	WatchUntilReady(resources ResourceList, timeout time.Duration) error
-
-	// Update updates one or more resources or creates the resource
-	// if it doesn't exist.
-	Update(original, target ResourceList, force bool) (*Result, error)
-
-	// Build creates a resource list from a Reader.
-	//
-	// Reader must contain a YAML stream (one or more YAML documents separated
-	// by "\n---\n")
-	//
-	// Validates against OpenAPI schema if validate is true.
-	Build(reader io.Reader, validate bool) (ResourceList, error)
-
-	// IsReachable checks whether the client is able to connect to the cluster.
-	IsReachable() error
-}
-
-// InterfaceExt was introduced to avoid breaking backwards compatibility for Interface implementers.
-//
-// TODO Helm 4: Remove InterfaceExt and integrate its method(s) into the Interface.
-type InterfaceExt interface {
-	// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
-	WaitForDelete(resources ResourceList, timeout time.Duration) error
 }
 
 // InterfaceLogs was introduced to avoid breaking backwards compatibility for Interface implementers.
@@ -118,7 +118,6 @@ type InterfaceResources interface {
 }
 
 var _ Interface = (*Client)(nil)
-var _ InterfaceExt = (*Client)(nil)
 var _ InterfaceLogs = (*Client)(nil)
 var _ InterfaceDeletionPropagation = (*Client)(nil)
 var _ InterfaceResources = (*Client)(nil)

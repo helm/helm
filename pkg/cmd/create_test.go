@@ -30,10 +30,9 @@ import (
 )
 
 func TestCreateCmd(t *testing.T) {
+	t.Chdir(t.TempDir())
 	ensure.HelmHome(t)
 	cname := "testchart"
-	dir := t.TempDir()
-	defer testChdir(t, dir)()
 
 	// Run a create
 	if _, _, err := executeActionCommand("create " + cname); err != nil {
@@ -61,22 +60,20 @@ func TestCreateCmd(t *testing.T) {
 }
 
 func TestCreateStarterCmd(t *testing.T) {
+	t.Chdir(t.TempDir())
 	ensure.HelmHome(t)
 	cname := "testchart"
 	defer resetEnv()()
-	os.MkdirAll(helmpath.CachePath(), 0755)
-	defer testChdir(t, helmpath.CachePath())()
-
 	// Create a starter.
 	starterchart := helmpath.DataPath("starters")
-	os.MkdirAll(starterchart, 0755)
+	os.MkdirAll(starterchart, 0o755)
 	if dest, err := chartutil.Create("starterchart", starterchart); err != nil {
 		t.Fatalf("Could not create chart: %s", err)
 	} else {
 		t.Logf("Created %s", dest)
 	}
 	tplpath := filepath.Join(starterchart, "starterchart", "templates", "foo.tpl")
-	if err := os.WriteFile(tplpath, []byte("test"), 0644); err != nil {
+	if err := os.WriteFile(tplpath, []byte("test"), 0o644); err != nil {
 		t.Fatalf("Could not write template: %s", err)
 	}
 
@@ -105,7 +102,7 @@ func TestCreateStarterCmd(t *testing.T) {
 		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
 	}
 
-	expectedNumberOfTemplates := 9
+	expectedNumberOfTemplates := 10
 	if l := len(c.Templates); l != expectedNumberOfTemplates {
 		t.Errorf("Expected %d templates, got %d", expectedNumberOfTemplates, l)
 	}
@@ -122,29 +119,26 @@ func TestCreateStarterCmd(t *testing.T) {
 	if !found {
 		t.Error("Did not find foo.tpl")
 	}
-
 }
 
 func TestCreateStarterAbsoluteCmd(t *testing.T) {
+	t.Chdir(t.TempDir())
 	defer resetEnv()()
 	ensure.HelmHome(t)
 	cname := "testchart"
 
 	// Create a starter.
 	starterchart := helmpath.DataPath("starters")
-	os.MkdirAll(starterchart, 0755)
+	os.MkdirAll(starterchart, 0o755)
 	if dest, err := chartutil.Create("starterchart", starterchart); err != nil {
 		t.Fatalf("Could not create chart: %s", err)
 	} else {
 		t.Logf("Created %s", dest)
 	}
 	tplpath := filepath.Join(starterchart, "starterchart", "templates", "foo.tpl")
-	if err := os.WriteFile(tplpath, []byte("test"), 0644); err != nil {
+	if err := os.WriteFile(tplpath, []byte("test"), 0o644); err != nil {
 		t.Fatalf("Could not write template: %s", err)
 	}
-
-	os.MkdirAll(helmpath.CachePath(), 0755)
-	defer testChdir(t, helmpath.CachePath())()
 
 	starterChartPath := filepath.Join(starterchart, "starterchart")
 
@@ -173,7 +167,7 @@ func TestCreateStarterAbsoluteCmd(t *testing.T) {
 		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
 	}
 
-	expectedNumberOfTemplates := 9
+	expectedNumberOfTemplates := 10
 	if l := len(c.Templates); l != expectedNumberOfTemplates {
 		t.Errorf("Expected %d templates, got %d", expectedNumberOfTemplates, l)
 	}

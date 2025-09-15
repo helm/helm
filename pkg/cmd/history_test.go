@@ -75,6 +75,7 @@ func TestHistoryOutputCompletion(t *testing.T) {
 }
 
 func revisionFlagCompletionTest(t *testing.T, cmdName string) {
+	t.Helper()
 	mk := func(name string, vers int, status release.Status) *release.Release {
 		return release.Mock(&release.MockReleaseOptions{
 			Name:    name,

@@ -17,13 +17,10 @@ package cmd
 
 import (
 	"io"
-	"os"
-	"os/exec"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v4/pkg/plugin"
+	"helm.sh/helm/v4/internal/plugin"
 )
 
 const pluginHelp = `
@@ -41,40 +38,18 @@ func newPluginCmd(out io.Writer) *cobra.Command {
 		newPluginListCmd(out),
 		newPluginUninstallCmd(out),
 		newPluginUpdateCmd(out),
+		newPluginPackageCmd(out),
+		newPluginVerifyCmd(out),
 	)
 	return cmd
 }
 
 // runHook will execute a plugin hook.
-func runHook(p *plugin.Plugin, event string) error {
-	plugin.SetupPluginEnv(settings, p.Metadata.Name, p.Dir)
-
-	cmds := p.Metadata.PlatformHooks[event]
-	expandArgs := true
-	if len(cmds) == 0 && len(p.Metadata.Hooks) > 0 {
-		cmd := p.Metadata.Hooks[event]
-		if len(cmd) > 0 {
-			cmds = []plugin.PlatformCommand{{Command: "sh", Args: []string{"-c", cmd}}}
-			expandArgs = false
-		}
+func runHook(p plugin.Plugin, event string) error {
+	pluginHook, ok := p.(plugin.PluginHook)
+	if ok {
+		return pluginHook.InvokeHook(event)
 	}
 
-	main, argv, err := plugin.PrepareCommands(cmds, expandArgs, []string{})
-	if err != nil {
-		return nil
-	}
-
-	prog := exec.Command(main, argv...)
-
-	Debug("running %s hook: %s", event, prog)
-
-	prog.Stdout, prog.Stderr = os.Stdout, os.Stderr
-	if err := prog.Run(); err != nil {
-		if eerr, ok := err.(*exec.ExitError); ok {
-			os.Stderr.Write(eerr.Stderr)
-			return errors.Errorf("plugin %s hook for %q exited with error", event, p.Metadata.Name)
-		}
-		return err
-	}
 	return nil
 }
