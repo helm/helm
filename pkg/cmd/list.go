@@ -36,9 +36,12 @@ import (
 var listHelp = `
 This command lists all of the releases for a specified namespace (uses current namespace context if namespace not specified).
 
-By default, it lists only releases that are deployed or failed. Flags like
-'--uninstalled' and '--all' will alter this behavior. Such flags can be combined:
-'--uninstalled --failed'.
+By default, it lists all releases in any status including deployed, failed, 
+pending-upgrade, pending-install, pending-rollback, uninstalled, uninstalling, 
+superseded, and unknown. Individual status filters like '--deployed', '--failed',
+'--pending', '--uninstalled', '--superseded', and '--uninstalling' can be used 
+to show only releases in specific states. Such flags can be combined:
+'--deployed --failed'.
 
 By default, items are sorted alphabetically. Use the '-d' flag to sort by
 release date.
@@ -117,13 +120,12 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.TimeFormat, "time-format", "", `format time using golang time formatter. Example: --time-format "2006-01-02 15:04:05Z0700"`)
 	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
-	f.BoolVarP(&client.All, "all", "a", false, "show all releases without any filter applied")
-	f.BoolVar(&client.Uninstalled, "uninstalled", false, "show uninstalled releases (if 'helm uninstall --keep-history' was used)")
-	f.BoolVar(&client.Superseded, "superseded", false, "show superseded releases")
-	f.BoolVar(&client.Uninstalling, "uninstalling", false, "show releases that are currently being uninstalled")
-	f.BoolVar(&client.Deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
-	f.BoolVar(&client.Failed, "failed", false, "show failed releases")
-	f.BoolVar(&client.Pending, "pending", false, "show pending releases")
+	f.BoolVar(&client.Uninstalled, "uninstalled", false, "show only uninstalled releases (if 'helm uninstall --keep-history' was used)")
+	f.BoolVar(&client.Superseded, "superseded", false, "show only superseded releases")
+	f.BoolVar(&client.Uninstalling, "uninstalling", false, "show only releases that are currently being uninstalled")
+	f.BoolVar(&client.Deployed, "deployed", false, "show only deployed releases")
+	f.BoolVar(&client.Failed, "failed", false, "show only failed releases")
+	f.BoolVar(&client.Pending, "pending", false, "show only pending releases")
 	f.BoolVarP(&client.AllNamespaces, "all-namespaces", "A", false, "list releases across all namespaces")
 	f.IntVarP(&client.Limit, "max", "m", 256, "maximum number of releases to fetch")
 	f.IntVar(&client.Offset, "offset", 0, "next release index in the list, used to offset from start value")
