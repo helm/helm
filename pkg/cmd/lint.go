@@ -30,6 +30,7 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
 	"helm.sh/helm/v4/pkg/cli/values"
+	"helm.sh/helm/v4/pkg/cmd/require"
 	"helm.sh/helm/v4/pkg/getter"
 )
 
@@ -51,11 +52,9 @@ func newLintCmd(out io.Writer) *cobra.Command {
 		Use:   "lint PATH",
 		Short: "examine a chart for possible issues",
 		Long:  longLintHelp,
+		Args:  require.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			paths := []string{"."}
-			if len(args) > 0 {
-				paths = args
-			}
+			paths := args
 
 			if kubeVersion != "" {
 				parsedKubeVersion, err := common.ParseKubeVersion(kubeVersion)
