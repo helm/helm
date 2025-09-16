@@ -1024,15 +1024,15 @@ func TestRenderRecursionLimit(t *testing.T) {
 	times := 4000
 	phrase := "All work and no play makes Jack a dull boy"
 	printFunc := `{{define "overlook"}}{{printf "` + phrase + `\n"}}{{end}}`
-	var repeatedIncl string
+	var repeatedIncl strings.Builder
 	for i := 0; i < times; i++ {
-		repeatedIncl += `{{include "overlook" . }}`
+		repeatedIncl.WriteString(`{{include "overlook" . }}`)
 	}
 
 	d := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "overlook"},
 		Templates: []*common.File{
-			{Name: "templates/quote", Data: []byte(repeatedIncl)},
+			{Name: "templates/quote", Data: []byte(repeatedIncl.String())},
 			{Name: "templates/_function", Data: []byte(printFunc)},
 		},
 	}
