@@ -199,7 +199,7 @@ compdef _helm %[1]s
 	}
 
 	// Cobra doesn't source zsh completion file, explicitly doing it here
-	_, err = fmt.Fprintf(out, "compdef _helm helm")
+	_, _ = fmt.Fprintf(out, "compdef _helm helm")
 
 	return err
 }
