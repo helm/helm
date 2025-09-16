@@ -58,7 +58,10 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 				return err
 			}
 
-			fmt.Fprint(out, client.Out)
+			_, err = fmt.Fprint(out, client.Out)
+			if err != nil {
+				return err
+			}
 
 			return nil
 		},

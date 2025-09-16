@@ -350,13 +350,22 @@ type TraceableError struct {
 func (t TraceableError) String() string {
 	var errorString strings.Builder
 	if t.location != "" {
-		fmt.Fprintf(&errorString, "%s\n  ", t.location)
+		_, err := fmt.Fprintf(&errorString, "%s\n  ", t.location)
+		if err != nil {
+			return ""
+		}
 	}
 	if t.executedFunction != "" {
-		fmt.Fprintf(&errorString, "%s\n    ", t.executedFunction)
+		_, err := fmt.Fprintf(&errorString, "%s\n    ", t.executedFunction)
+		if err != nil {
+			return ""
+		}
 	}
 	if t.message != "" {
-		fmt.Fprintf(&errorString, "%s\n", t.message)
+		_, err := fmt.Fprintf(&errorString, "%s\n", t.message)
+		if err != nil {
+			return ""
+		}
 	}
 	return errorString.String()
 }
@@ -422,7 +431,10 @@ func reformatExecErrorMsg(filename string, err error) error {
 
 	var finalErrorString strings.Builder
 	for _, fileLocation := range fileLocations {
-		fmt.Fprintf(&finalErrorString, "%s", fileLocation.String())
+		_, err := fmt.Fprintf(&finalErrorString, "%s", fileLocation.String())
+		if err != nil {
+			return err
+		}
 	}
 
 	return errors.New(strings.TrimSpace(finalErrorString.String()))

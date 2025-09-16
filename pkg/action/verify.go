@@ -45,10 +45,19 @@ func (v *Verify) Run(chartfile string) error {
 	}
 
 	for name := range p.SignedBy.Identities {
-		fmt.Fprintf(&out, "Signed by: %v\n", name)
+		_, err := fmt.Fprintf(&out, "Signed by: %v\n", name)
+		if err != nil {
+			return err
+		}
 	}
-	fmt.Fprintf(&out, "Using Key With Fingerprint: %X\n", p.SignedBy.PrimaryKey.Fingerprint)
-	fmt.Fprintf(&out, "Chart Hash Verified: %s\n", p.FileHash)
+	_, err = fmt.Fprintf(&out, "Using Key With Fingerprint: %X\n", p.SignedBy.PrimaryKey.Fingerprint)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(&out, "Chart Hash Verified: %s\n", p.FileHash)
+	if err != nil {
+		return err
+	}
 
 	// TODO(mattfarina): The output is set as a property rather than returned
 	// to maintain the Go API. In Helm v4 this function should return the out

@@ -42,7 +42,10 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 			// repositories will be 0.
 			f, _ := repo.LoadFile(settings.RepositoryConfig)
 			if len(f.Repositories) == 0 && outfmt != output.JSON && outfmt != output.YAML {
-				fmt.Fprintln(cmd.ErrOrStderr(), "no repositories to show")
+				_, err := fmt.Fprintln(cmd.ErrOrStderr(), "no repositories to show")
+				if err != nil {
+					return err
+				}
 				return nil
 			}
 

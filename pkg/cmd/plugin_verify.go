@@ -108,15 +108,27 @@ func (o *pluginVerifyOptions) run(out io.Writer) error {
 
 	// Output verification details
 	for name := range verification.SignedBy.Identities {
-		fmt.Fprintf(out, "Signed by: %v\n", name)
+		_, err := fmt.Fprintf(out, "Signed by: %v\n", name)
+		if err != nil {
+			return err
+		}
 	}
-	fmt.Fprintf(out, "Using Key With Fingerprint: %X\n", verification.SignedBy.PrimaryKey.Fingerprint)
+	_, err = fmt.Fprintf(out, "Using Key With Fingerprint: %X\n", verification.SignedBy.PrimaryKey.Fingerprint)
+	if err != nil {
+		return err
+	}
 
 	// Only show hash for tarballs
 	if verification.FileHash != "" {
-		fmt.Fprintf(out, "Plugin Hash Verified: %s\n", verification.FileHash)
+		_, err := fmt.Fprintf(out, "Plugin Hash Verified: %s\n", verification.FileHash)
+		if err != nil {
+			return err
+		}
 	} else {
-		fmt.Fprintf(out, "Plugin Metadata Verified: %s\n", verification.FileName)
+		_, err := fmt.Fprintf(out, "Plugin Metadata Verified: %s\n", verification.FileName)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

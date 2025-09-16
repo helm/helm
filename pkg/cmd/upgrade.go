@@ -241,7 +241,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			signal.Notify(cSignal, os.Interrupt, syscall.SIGTERM)
 			go func() {
 				<-cSignal
-				fmt.Fprintf(out, "Release %s has been cancelled.\n", args[0])
+				_, _ = fmt.Fprintf(out, "Release %s has been cancelled.\n", args[0])
 				cancel()
 			}()
 
@@ -251,7 +251,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if outfmt == output.Table {
-				fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
+				_, err := fmt.Fprintf(out, "Release %q has been upgraded. Happy Helming!\n", args[0])
+				if err != nil {
+					return err
+				}
 			}
 
 			return outfmt.Write(out, &statusPrinter{

@@ -74,7 +74,10 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 			if err := updatePlugin(found); err != nil {
 				errorPlugins = append(errorPlugins, fmt.Errorf("failed to update plugin %s, got error (%v)", name, err))
 			} else {
-				fmt.Fprintf(out, "Updated plugin: %s\n", name)
+				_, err := fmt.Fprintf(out, "Updated plugin: %s\n", name)
+				if err != nil {
+					return err
+				}
 			}
 		} else {
 			errorPlugins = append(errorPlugins, fmt.Errorf("plugin: %s not found", name))

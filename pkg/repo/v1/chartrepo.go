@@ -104,7 +104,10 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	// Create the chart list file in the cache directory
 	var charts strings.Builder
 	for name := range indexFile.Entries {
-		fmt.Fprintln(&charts, name)
+		_, err := fmt.Fprintln(&charts, name)
+		if err != nil {
+			return "", err
+		}
 	}
 	chartsFile := filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(chartsFile), 0755)

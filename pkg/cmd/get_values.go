@@ -82,9 +82,9 @@ func newGetValuesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 func (v valuesWriter) WriteTable(out io.Writer) error {
 	if v.allValues {
-		fmt.Fprintln(out, "COMPUTED VALUES:")
+		_, _ = fmt.Fprintln(out, "COMPUTED VALUES:")
 	} else {
-		fmt.Fprintln(out, "USER-SUPPLIED VALUES:")
+		_, _ = fmt.Fprintln(out, "USER-SUPPLIED VALUES:")
 	}
 	return output.EncodeYAML(out, v.vals)
 }

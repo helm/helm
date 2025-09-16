@@ -85,7 +85,10 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 }
 
 func (o *createOptions) run(out io.Writer) error {
-	fmt.Fprintf(out, "Creating %s\n", o.name)
+	_, err := fmt.Fprintf(out, "Creating %s\n", o.name)
+	if err != nil {
+		return err
+	}
 
 	chartname := filepath.Base(o.name)
 	cfile := &chart.Metadata{
@@ -108,6 +111,6 @@ func (o *createOptions) run(out io.Writer) error {
 	}
 
 	chartutil.Stderr = out
-	_, err := chartutil.Create(chartname, filepath.Dir(o.name))
+	_, err = chartutil.Create(chartname, filepath.Dir(o.name))
 	return err
 }

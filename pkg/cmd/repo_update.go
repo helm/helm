@@ -114,7 +114,7 @@ func (o *repoUpdateOptions) run(out io.Writer) error {
 }
 
 func updateCharts(repos []*repo.ChartRepository, out io.Writer) error {
-	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
+	_, _ = fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup
 	failRepoURLChan := make(chan string, len(repos))
 
@@ -126,12 +126,12 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer) error {
 			if _, err := re.DownloadIndexFile(); err != nil {
 				writeMutex.Lock()
 				defer writeMutex.Unlock()
-				fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
+				_, _ = fmt.Fprintf(out, "...Unable to get an update from the %q chart repository (%s):\n\t%s\n", re.Config.Name, re.Config.URL, err)
 				failRepoURLChan <- re.Config.URL
 			} else {
 				writeMutex.Lock()
 				defer writeMutex.Unlock()
-				fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)
+				_, _ = fmt.Fprintf(out, "...Successfully got an update from the %q chart repository\n", re.Config.Name)
 			}
 		}(re)
 	}
@@ -151,7 +151,10 @@ func updateCharts(repos []*repo.ChartRepository, out io.Writer) error {
 			repoFailList)
 	}
 
-	fmt.Fprintln(out, "Update Complete. ⎈Happy Helming!⎈")
+	_, err := fmt.Fprintln(out, "Update Complete. ⎈Happy Helming!⎈")
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

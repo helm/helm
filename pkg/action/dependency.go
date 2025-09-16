@@ -62,12 +62,18 @@ func (d *Dependency) List(chartpath string, out io.Writer) error {
 	}
 
 	if c.Metadata.Dependencies == nil {
-		fmt.Fprintf(out, "WARNING: no dependencies at %s\n", filepath.Join(chartpath, "charts"))
+		_, err := fmt.Fprintf(out, "WARNING: no dependencies at %s\n", filepath.Join(chartpath, "charts"))
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 
 	d.printDependencies(chartpath, out, c)
-	fmt.Fprintln(out)
+	_, err = fmt.Fprintln(out)
+	if err != nil {
+		return err
+	}
 	d.printMissing(chartpath, out, c.Metadata.Dependencies)
 	return nil
 }
@@ -196,7 +202,7 @@ func (d *Dependency) printDependencies(chartpath string, out io.Writer, c *chart
 	for _, row := range c.Metadata.Dependencies {
 		table.AddRow(row.Name, row.Version, row.Repository, d.dependencyStatus(chartpath, row, c))
 	}
-	fmt.Fprintln(out, table)
+	_, _ = fmt.Fprintln(out, table)
 }
 
 // printMissing prints warnings about charts that are present on disk, but are
@@ -205,14 +211,14 @@ func (d *Dependency) printMissing(chartpath string, out io.Writer, reqs []*chart
 	folder := filepath.Join(chartpath, "charts/*")
 	files, err := filepath.Glob(folder)
 	if err != nil {
-		fmt.Fprintln(out, err)
+		_, _ = fmt.Fprintln(out, err)
 		return
 	}
 
 	for _, f := range files {
 		fi, err := os.Stat(f)
 		if err != nil {
-			fmt.Fprintf(out, "Warning: %s\n", err)
+			_, _ = fmt.Fprintf(out, "Warning: %s\n", err)
 		}
 		// Skip anything that is not a directory and not a tgz file.
 		if !fi.IsDir() && filepath.Ext(f) != ".tgz" {
@@ -220,7 +226,7 @@ func (d *Dependency) printMissing(chartpath string, out io.Writer, reqs []*chart
 		}
 		c, err := loader.Load(f)
 		if err != nil {
-			fmt.Fprintf(out, "WARNING: %q is not a chart.\n", f)
+			_, _ = fmt.Fprintf(out, "WARNING: %q is not a chart.\n", f)
 			continue
 		}
 		found := false
@@ -231,7 +237,7 @@ func (d *Dependency) printMissing(chartpath string, out io.Writer, reqs []*chart
 			}
 		}
 		if !found {
-			fmt.Fprintf(out, "WARNING: %q is not in Chart.yaml.\n", f)
+			_, _ = fmt.Fprintf(out, "WARNING: %q is not in Chart.yaml.\n", f)
 		}
 	}
 }

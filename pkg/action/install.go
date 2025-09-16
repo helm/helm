@@ -560,7 +560,7 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 		}
 		return rel, fmt.Errorf("release %s failed, and has been uninstalled due to rollback-on-failure being set: %w", i.ReleaseName, err)
 	}
-	i.recordRelease(rel) // Ignore the error, since we have another error to deal with.
+	_ = i.recordRelease(rel) // Ignore the error, since we have another error to deal with.
 	return rel, err
 }
 

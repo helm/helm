@@ -108,7 +108,10 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
 			if rel != nil {
 				var manifests bytes.Buffer
-				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+				_, err := fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+				if err != nil {
+					return err
+				}
 				if !client.DisableHooks {
 					fileWritten := make(map[string]bool)
 					for _, m := range rel.Hooks {
@@ -116,7 +119,10 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							continue
 						}
 						if client.OutputDir == "" {
-							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+							_, err := fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+							if err != nil {
+								return err
+							}
 						} else {
 							newDir := client.OutputDir
 							if client.UseReleaseName {
@@ -181,10 +187,16 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						}
 					}
 					for _, m := range manifestsToRender {
-						fmt.Fprintf(out, "---\n%s\n", m)
+						_, err := fmt.Fprintf(out, "---\n%s\n", m)
+						if err != nil {
+							return err
+						}
 					}
 				} else {
-					fmt.Fprintf(out, "%s", manifests.String())
+					_, err := fmt.Fprintf(out, "%s", manifests.String())
+					if err != nil {
+						return err
+					}
 				}
 			}
 

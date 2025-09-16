@@ -72,7 +72,10 @@ func (o *pluginUninstallOptions) run(out io.Writer) error {
 			if err := uninstallPlugin(found); err != nil {
 				errorPlugins = append(errorPlugins, fmt.Errorf("failed to uninstall plugin %s, got error (%v)", name, err))
 			} else {
-				fmt.Fprintf(out, "Uninstalled plugin: %s\n", name)
+				_, err := fmt.Fprintf(out, "Uninstalled plugin: %s\n", name)
+				if err != nil {
+					return err
+				}
 			}
 		} else {
 			errorPlugins = append(errorPlugins, fmt.Errorf("plugin: %s not found", name))

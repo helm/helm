@@ -119,7 +119,7 @@ func (o *pluginPackageOptions) run(out io.Writer) error {
 		}
 	} else {
 		// User explicitly disabled signing
-		fmt.Fprintf(out, "WARNING: Skipping plugin signing. This is not recommended for plugins intended for distribution.\n")
+		_, _ = fmt.Fprintf(out, "WARNING: Skipping plugin signing. This is not recommended for plugins intended for distribution.\n")
 	}
 
 	// Now create the tarball (only after signing prerequisites are met)
@@ -163,10 +163,16 @@ func (o *pluginPackageOptions) run(out io.Writer) error {
 			return err
 		}
 
-		fmt.Fprintf(out, "Successfully signed. Signature written to: %s\n", provFile)
+		_, err = fmt.Fprintf(out, "Successfully signed. Signature written to: %s\n", provFile)
+		if err != nil {
+			return err
+		}
 	}
 
-	fmt.Fprintf(out, "Successfully packaged plugin and saved it to: %s\n", tarballPath)
+	_, err = fmt.Fprintf(out, "Successfully packaged plugin and saved it to: %s\n", tarballPath)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

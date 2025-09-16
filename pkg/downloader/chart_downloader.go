@@ -181,7 +181,10 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 				if c.Verify == VerifyAlways {
 					return destfile, ver, fmt.Errorf("failed to fetch provenance %q", u.String()+".prov")
 				}
-				fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
+				_, err := fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
+				if err != nil {
+					return "", nil, err
+				}
 				return destfile, ver, nil
 			}
 		}
@@ -284,7 +287,10 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 				if c.Verify == VerifyAlways {
 					return pth, ver, fmt.Errorf("failed to fetch provenance %q", u.String()+".prov")
 				}
-				fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
+				_, err := fmt.Fprintf(c.Out, "WARNING: Verification not found for %s: %s\n", ref, err)
+				if err != nil {
+					return "", nil, err
+				}
 				return pth, ver, nil
 			}
 

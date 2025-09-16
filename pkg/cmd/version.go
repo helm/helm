@@ -87,7 +87,10 @@ func (o *versionOptions) run(out io.Writer) error {
 		}
 		return tt.Execute(out, version.Get())
 	}
-	fmt.Fprintln(out, formatVersion(o.short))
+	_, err := fmt.Fprintln(out, formatVersion(o.short))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

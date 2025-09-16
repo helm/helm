@@ -335,7 +335,10 @@ func (c *Client) Get(resources ResourceList, related bool) (map[string][]runtime
 		vk := gvk.Version + "/" + gvk.Kind
 		obj, err := getResource(info)
 		if err != nil {
-			fmt.Fprintf(buf, "Get resource %s failed, err:%v\n", info.Name, err)
+			_, err := fmt.Fprintf(buf, "Get resource %s failed, err:%v\n", info.Name, err)
+			if err != nil {
+				return err
+			}
 		} else {
 			objs[vk] = append(objs[vk], obj)
 

@@ -258,7 +258,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		return err
 	}
 
-	fmt.Fprintln(c.out, "Login Succeeded")
+	_, _ = fmt.Fprintln(c.out, "Login Succeeded")
 	return nil
 }
 
@@ -529,12 +529,24 @@ func (c *Client) processChartPull(genericResult *GenericPullResult, operation *p
 		result.Prov.Size = provDescriptor.Size
 	}
 
-	fmt.Fprintf(c.out, "Pulled: %s\n", result.Ref)
-	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	_, err = fmt.Fprintf(c.out, "Pulled: %s\n", result.Ref)
+	if err != nil {
+		return nil, err
+	}
+	_, err = fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	if err != nil {
+		return nil, err
+	}
 
 	if strings.Contains(result.Ref, "_") {
-		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
-		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
+		_, err := fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
+		if err != nil {
+			return nil, err
+		}
+		_, err = fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return result, nil
@@ -731,11 +743,23 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 			Size:   provDescriptor.Size,
 		}
 	}
-	fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
-	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	_, err = fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
+	if err != nil {
+		return nil, err
+	}
+	_, err = fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	if err != nil {
+		return nil, err
+	}
 	if strings.Contains(parsedRef.orasReference.Reference, "_") {
-		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
-		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
+		_, err := fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
+		if err != nil {
+			return nil, err
+		}
+		_, err = fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return result, err

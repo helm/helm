@@ -133,7 +133,10 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 	if localInst, ok := i.(*installer.LocalInstaller); ok && !localInst.SupportsVerification() {
 		// Local directory installations are allowed without verification
 		shouldVerify = false
-		fmt.Fprintf(out, "Installing plugin from local directory (development mode)\n")
+		_, err := fmt.Fprintf(out, "Installing plugin from local directory (development mode)\n")
+		if err != nil {
+			return err
+		}
 	} else if shouldVerify {
 		// For remote installations, check if verification is supported
 		if verifier, ok := i.(installer.Verifier); !ok || !verifier.SupportsVerification() {
@@ -141,7 +144,10 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 		}
 	} else {
 		// User explicitly disabled verification
-		fmt.Fprintf(out, "WARNING: Skipping plugin signature verification\n")
+		_, err := fmt.Fprintf(out, "WARNING: Skipping plugin signature verification\n")
+		if err != nil {
+			return err
+		}
 	}
 
 	// Set up installation options
@@ -152,7 +158,10 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 
 	// If verify is requested, show verification output
 	if shouldVerify {
-		fmt.Fprintf(out, "Verifying plugin signature...\n")
+		_, err := fmt.Fprintf(out, "Verifying plugin signature...\n")
+		if err != nil {
+			return err
+		}
 	}
 
 	// Install the plugin with options
@@ -164,10 +173,19 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 	// If verification was successful, show the details
 	if verifyResult != nil {
 		for _, signer := range verifyResult.SignedBy {
-			fmt.Fprintf(out, "Signed by: %s\n", signer)
+			_, err := fmt.Fprintf(out, "Signed by: %s\n", signer)
+			if err != nil {
+				return err
+			}
 		}
-		fmt.Fprintf(out, "Using Key With Fingerprint: %s\n", verifyResult.Fingerprint)
-		fmt.Fprintf(out, "Plugin Hash Verified: %s\n", verifyResult.FileHash)
+		_, err := fmt.Fprintf(out, "Using Key With Fingerprint: %s\n", verifyResult.Fingerprint)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(out, "Plugin Hash Verified: %s\n", verifyResult.FileHash)
+		if err != nil {
+			return err
+		}
 	}
 
 	slog.Debug("loading plugin", "path", i.Path())
@@ -180,6 +198,9 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 		return err
 	}
 
-	fmt.Fprintf(out, "Installed plugin: %s\n", p.Metadata().Name)
+	_, err = fmt.Fprintf(out, "Installed plugin: %s\n", p.Metadata().Name)
+	if err != nil {
+		return err
+	}
 	return nil
 }

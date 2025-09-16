@@ -158,9 +158,9 @@ func (o *repoAddOptions) run(out io.Writer) error {
 			o.password = password
 		} else {
 			fd := int(os.Stdin.Fd())
-			fmt.Fprint(out, "Password: ")
+			_, _ = fmt.Fprint(out, "Password: ")
 			password, err := term.ReadPassword(fd)
-			fmt.Fprintln(out)
+			_, _ = fmt.Fprintln(out)
 			if err != nil {
 				return err
 			}
@@ -197,7 +197,10 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		}
 
 		// The add is idempotent so do nothing
-		fmt.Fprintf(out, "%q already exists with the same configuration, skipping\n", o.name)
+		_, err := fmt.Fprintf(out, "%q already exists with the same configuration, skipping\n", o.name)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -218,6 +221,9 @@ func (o *repoAddOptions) run(out io.Writer) error {
 	if err := f.WriteFile(o.repoFile, 0o600); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "%q has been added to your repositories\n", o.name)
+	_, err = fmt.Fprintf(out, "%q has been added to your repositories\n", o.name)
+	if err != nil {
+		return err
+	}
 	return nil
 }

@@ -140,10 +140,16 @@ func (p *Pull) Run(chartRef string) (string, error) {
 
 	if p.Verify {
 		for name := range v.SignedBy.Identities {
-			fmt.Fprintf(&out, "Signed by: %v\n", name)
+			_, _ = fmt.Fprintf(&out, "Signed by: %v\n", name)
 		}
-		fmt.Fprintf(&out, "Using Key With Fingerprint: %X\n", v.SignedBy.PrimaryKey.Fingerprint)
-		fmt.Fprintf(&out, "Chart Hash Verified: %s\n", v.FileHash)
+		_, err := fmt.Fprintf(&out, "Using Key With Fingerprint: %X\n", v.SignedBy.PrimaryKey.Fingerprint)
+		if err != nil {
+			return "", err
+		}
+		_, err = fmt.Fprintf(&out, "Chart Hash Verified: %s\n", v.FileHash)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	// After verification, untar the chart into the requested directory.

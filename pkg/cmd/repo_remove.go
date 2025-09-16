@@ -75,7 +75,10 @@ func (o *repoRemoveOptions) run(out io.Writer) error {
 		if err := removeRepoCache(o.repoCache, name); err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "%q has been removed from your repositories\n", name)
+		_, err := fmt.Fprintf(out, "%q has been removed from your repositories\n", name)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

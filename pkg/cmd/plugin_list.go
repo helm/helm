@@ -65,7 +65,10 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 				}
 				table.AddRow(m.Name, m.Version, m.Type, m.APIVersion, signedStatus, sourceURL)
 			}
-			fmt.Fprintln(out, table)
+			_, err = fmt.Fprintln(out, table)
+			if err != nil {
+				return err
+			}
 			return nil
 		},
 	}

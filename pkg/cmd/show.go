@@ -92,7 +92,10 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(out, output)
+			_, err = fmt.Fprint(out, output)
+			if err != nil {
+				return err
+			}
 			return nil
 		},
 	}
@@ -113,7 +116,10 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(out, output)
+			_, err = fmt.Fprint(out, output)
+			if err != nil {
+				return err
+			}
 			return nil
 		},
 	}
@@ -134,7 +140,10 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(out, output)
+			_, err = fmt.Fprint(out, output)
+			if err != nil {
+				return err
+			}
 			return nil
 		},
 	}
@@ -155,7 +164,10 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(out, output)
+			_, err = fmt.Fprint(out, output)
+			if err != nil {
+				return err
+			}
 			return nil
 		},
 	}
@@ -176,7 +188,10 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(out, output)
+			_, err = fmt.Fprint(out, output)
+			if err != nil {
+				return err
+			}
 			return nil
 		},
 	}
