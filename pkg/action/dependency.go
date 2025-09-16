@@ -63,10 +63,7 @@ func (d *Dependency) List(chartpath string, out io.Writer) error {
 
 	if c.Metadata.Dependencies == nil {
 		_, err := fmt.Fprintf(out, "WARNING: no dependencies at %s\n", filepath.Join(chartpath, "charts"))
-		if err != nil {
-			return err
-		}
-		return nil
+		return err
 	}
 
 	d.printDependencies(chartpath, out, c)
