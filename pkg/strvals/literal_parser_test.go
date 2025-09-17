@@ -17,6 +17,7 @@ package strvals
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"sigs.k8s.io/yaml"
@@ -416,14 +417,14 @@ func TestParseLiteralInto(t *testing.T) {
 }
 
 func TestParseLiteralNestedLevels(t *testing.T) {
-	var keyMultipleNestedLevels string
+	var keyMultipleNestedLevels strings.Builder
 
 	for i := 1; i <= MaxNestedNameLevel+2; i++ {
 		tmpStr := fmt.Sprintf("name%d", i)
 		if i <= MaxNestedNameLevel+1 {
 			tmpStr = tmpStr + "."
 		}
-		keyMultipleNestedLevels += tmpStr
+		keyMultipleNestedLevels.WriteString(tmpStr)
 	}
 
 	tests := []struct {
@@ -439,7 +440,7 @@ func TestParseLiteralNestedLevels(t *testing.T) {
 			"",
 		},
 		{
-			str:    keyMultipleNestedLevels + "=value",
+			str:    keyMultipleNestedLevels.String() + "=value",
 			err:    true,
 			errStr: fmt.Sprintf("value name nested level is greater than maximum supported nested level of %d", MaxNestedNameLevel),
 		},

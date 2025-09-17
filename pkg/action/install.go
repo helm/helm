@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"text/template"
 	"time"
 
@@ -41,6 +42,8 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/cli"
@@ -48,11 +51,11 @@ import (
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
-	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/registry"
-	releaseutil "helm.sh/helm/v4/pkg/release/util"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	"helm.sh/helm/v4/pkg/repo"
+	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
+	"helm.sh/helm/v4/pkg/repo/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
@@ -113,8 +116,8 @@ type Install struct {
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
-	KubeVersion *chartutil.KubeVersion
-	APIVersions chartutil.VersionSet
+	KubeVersion *common.KubeVersion
+	APIVersions common.VersionSet
 	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
 	IsUpgrade bool
 	// Enable DNS lookups when rendering templates
@@ -124,9 +127,10 @@ type Install struct {
 	UseReleaseName bool
 	// TakeOwnership will ignore the check for helm annotations and take ownership of the resources.
 	TakeOwnership bool
-	PostRenderer  postrender.PostRenderer
+	PostRenderer  postrenderer.PostRenderer
 	// Lock to control raceconditions when the process receives a SIGTERM
-	Lock sync.Mutex
+	Lock           sync.Mutex
+	goroutineCount atomic.Int32
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -292,7 +296,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	if i.ClientOnly {
 		// Add mock objects in here so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
-		i.cfg.Capabilities = chartutil.DefaultCapabilities.Copy()
+		i.cfg.Capabilities = common.DefaultCapabilities.Copy()
 		if i.KubeVersion != nil {
 			i.cfg.Capabilities.KubeVersion = *i.KubeVersion
 		}
@@ -319,14 +323,14 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 
 	// special case for helm template --is-upgrade
 	isUpgrade := i.IsUpgrade && i.isDryRun()
-	options := chartutil.ReleaseOptions{
+	options := common.ReleaseOptions{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
 		Revision:  1,
 		IsInstall: !isUpgrade,
 		IsUpgrade: isUpgrade,
 	}
-	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chrt, vals, options, caps, i.SkipSchemaValidation)
+	valuesToRender, err := util.ToRenderValuesWithSchemaValidation(chrt, vals, options, caps, i.SkipSchemaValidation)
 	if err != nil {
 		return nil, err
 	}
@@ -446,8 +450,10 @@ func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, t
 	resultChan := make(chan Msg, 1)
 
 	go func() {
+		i.goroutineCount.Add(1)
 		rel, err := i.performInstall(rel, toBeAdopted, resources)
 		resultChan <- Msg{rel, err}
+		i.goroutineCount.Add(-1)
 	}()
 	select {
 	case <-ctx.Done():
@@ -456,6 +462,11 @@ func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, t
 	case msg := <-resultChan:
 		return msg.r, msg.e
 	}
+}
+
+// getGoroutineCount return the number of running routines
+func (i *Install) getGoroutineCount() int32 {
+	return i.goroutineCount.Load()
 }
 
 // isDryRun returns true if Upgrade is set to run as a DryRun

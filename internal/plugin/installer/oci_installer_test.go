@@ -34,6 +34,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
+	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
@@ -125,7 +126,7 @@ func mockOCIRegistryWithArtifactType(t *testing.T, pluginName string) (*httptest
 				Digest:    digest.Digest(layerDigest),
 				Size:      int64(len(pluginData)),
 				Annotations: map[string]string{
-					ocispec.AnnotationTitle: pluginName + ".tgz", // Layer named properly
+					ocispec.AnnotationTitle: pluginName + "-1.0.0.tgz", // Layer named with version
 				},
 			},
 		},
@@ -316,9 +317,8 @@ func TestOCIInstaller_Path(t *testing.T) {
 }
 
 func TestOCIInstaller_Install(t *testing.T) {
-	// Set up isolated test environment FIRST
-	testPluginsDir := t.TempDir()
-	t.Setenv("HELM_PLUGINS", testPluginsDir)
+	// Set up isolated test environment
+	ensure.HelmHome(t)
 
 	pluginName := "test-plugin-basic"
 	server, registryHost := mockOCIRegistryWithArtifactType(t, pluginName)
@@ -333,14 +333,9 @@ func TestOCIInstaller_Install(t *testing.T) {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
-	// The OCI installer uses helmpath.DataPath, which now points to our test directory
+	// The OCI installer uses helmpath.DataPath, which is isolated by ensure.HelmHome(t)
 	actualPath := installer.Path()
 	t.Logf("Installer will use path: %s", actualPath)
-
-	// Verify the path is actually in our test directory
-	if !strings.HasPrefix(actualPath, testPluginsDir) {
-		t.Fatalf("Expected path %s to be under test directory %s", actualPath, testPluginsDir)
-	}
 
 	// Install the plugin
 	if err := Install(installer); err != nil {
@@ -399,8 +394,7 @@ func TestOCIInstaller_Install_WithGetterOptions(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Set up isolated test environment for each subtest
-			testPluginsDir := t.TempDir()
-			t.Setenv("HELM_PLUGINS", testPluginsDir)
+			ensure.HelmHome(t)
 
 			server, registryHost := mockOCIRegistryWithArtifactType(t, tc.pluginName)
 			defer server.Close()
@@ -440,8 +434,7 @@ func TestOCIInstaller_Install_WithGetterOptions(t *testing.T) {
 
 func TestOCIInstaller_Install_AlreadyExists(t *testing.T) {
 	// Set up isolated test environment
-	testPluginsDir := t.TempDir()
-	t.Setenv("HELM_PLUGINS", testPluginsDir)
+	ensure.HelmHome(t)
 
 	pluginName := "test-plugin-exists"
 	server, registryHost := mockOCIRegistryWithArtifactType(t, pluginName)
@@ -474,8 +467,7 @@ func TestOCIInstaller_Install_AlreadyExists(t *testing.T) {
 
 func TestOCIInstaller_Update(t *testing.T) {
 	// Set up isolated test environment
-	testPluginsDir := t.TempDir()
-	t.Setenv("HELM_PLUGINS", testPluginsDir)
+	ensure.HelmHome(t)
 
 	pluginName := "test-plugin-update"
 	server, registryHost := mockOCIRegistryWithArtifactType(t, pluginName)

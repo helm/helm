@@ -24,7 +24,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/internal/third_party/dep/fs"
+	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 // ErrPluginNotAFolder indicates that the plugin path is not a folder.
@@ -33,8 +35,10 @@ var ErrPluginNotAFolder = errors.New("expected plugin to be a folder")
 // LocalInstaller installs plugins from the filesystem.
 type LocalInstaller struct {
 	base
-	isArchive bool
-	extractor Extractor
+	isArchive  bool
+	extractor  Extractor
+	pluginData []byte // Cached plugin data
+	provData   []byte // Cached provenance data
 }
 
 // NewLocalInstaller creates a new LocalInstaller.
@@ -105,6 +109,30 @@ func (i *LocalInstaller) installFromArchive() error {
 		return fmt.Errorf("failed to read archive: %w", err)
 	}
 
+	// Copy the original tarball to plugins directory for verification
+	// Extract metadata to get the actual plugin name and version
+	metadata, err := plugin.ExtractTgzPluginMetadata(bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("failed to extract plugin metadata from tarball: %w", err)
+	}
+	filename := fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
+	tarballPath := helmpath.DataPath("plugins", filename)
+	if err := os.MkdirAll(filepath.Dir(tarballPath), 0755); err != nil {
+		return fmt.Errorf("failed to create plugins directory: %w", err)
+	}
+	if err := os.WriteFile(tarballPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to save tarball: %w", err)
+	}
+
+	// Check for and copy .prov file if it exists
+	provSource := i.Source + ".prov"
+	if provData, err := os.ReadFile(provSource); err == nil {
+		provPath := tarballPath + ".prov"
+		if err := os.WriteFile(provPath, provData, 0644); err != nil {
+			slog.Debug("failed to save provenance file", "error", err)
+		}
+	}
+
 	// Create a temporary directory for extraction
 	tempDir, err := os.MkdirTemp("", "helm-plugin-extract-")
 	if err != nil {
@@ -118,31 +146,74 @@ func (i *LocalInstaller) installFromArchive() error {
 		return fmt.Errorf("failed to extract archive: %w", err)
 	}
 
-	// Detect where the plugin.yaml actually is
-	pluginRoot, err := detectPluginRoot(tempDir)
-	if err != nil {
-		return err
+	// Plugin directory should be named after the plugin at the archive root
+	pluginName := stripPluginName(filepath.Base(i.Source))
+	pluginDir := filepath.Join(tempDir, pluginName)
+	if _, err = os.Stat(filepath.Join(pluginDir, "plugin.yaml")); err != nil {
+		return fmt.Errorf("plugin.yaml not found in expected directory %s: %w", pluginDir, err)
 	}
 
 	// Copy to the final destination
-	slog.Debug("copying", "source", pluginRoot, "path", i.Path())
-	return fs.CopyDir(pluginRoot, i.Path())
-}
-
-// Path returns the path where the plugin will be installed.
-// For archive sources, strips the version from the filename.
-func (i *LocalInstaller) Path() string {
-	if i.Source == "" {
-		return ""
-	}
-	if i.isArchive {
-		return filepath.Join(i.PluginsDirectory, stripPluginName(filepath.Base(i.Source)))
-	}
-	return filepath.Join(i.PluginsDirectory, filepath.Base(i.Source))
+	slog.Debug("copying", "source", pluginDir, "path", i.Path())
+	return fs.CopyDir(pluginDir, i.Path())
 }
 
 // Update updates a local repository
 func (i *LocalInstaller) Update() error {
 	slog.Debug("local repository is auto-updated")
 	return nil
+}
+
+// Path is overridden to handle archive plugin names properly
+func (i *LocalInstaller) Path() string {
+	if i.Source == "" {
+		return ""
+	}
+
+	pluginName := filepath.Base(i.Source)
+	if i.isArchive {
+		// Strip archive extension to get plugin name
+		pluginName = stripPluginName(pluginName)
+	}
+
+	return helmpath.DataPath("plugins", pluginName)
+}
+
+// SupportsVerification returns true if the local installer can verify plugins
+func (i *LocalInstaller) SupportsVerification() bool {
+	// Only support verification for local tarball files
+	return i.isArchive
+}
+
+// GetVerificationData loads plugin and provenance data from local files for verification
+func (i *LocalInstaller) GetVerificationData() (archiveData, provData []byte, filename string, err error) {
+	if !i.SupportsVerification() {
+		return nil, nil, "", fmt.Errorf("verification not supported for directories")
+	}
+
+	// Read and cache the plugin archive file
+	if i.pluginData == nil {
+		i.pluginData, err = os.ReadFile(i.Source)
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("failed to read plugin file: %w", err)
+		}
+	}
+
+	// Read and cache the provenance file if it exists
+	if i.provData == nil {
+		provFile := i.Source + ".prov"
+		i.provData, err = os.ReadFile(provFile)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// If provenance file doesn't exist, set provData to nil
+				// The verification logic will handle this gracefully
+				i.provData = nil
+			} else {
+				// If file exists but can't be read (permissions, etc), return error
+				return nil, nil, "", fmt.Errorf("failed to access provenance file %s: %w", provFile, err)
+			}
+		}
+	}
+
+	return i.pluginData, i.provData, filepath.Base(i.Source), nil
 }

@@ -22,6 +22,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"helm.sh/helm/v4/internal/plugin/schema"
 )
 
 func TestPeekAPIVersion(t *testing.T) {
@@ -73,14 +75,14 @@ func TestLoadDir(t *testing.T) {
 			Version:    "0.1.0",
 			Type:       "cli/v1",
 			Runtime:    "subprocess",
-			Config: &ConfigCLI{
+			Config: &schema.ConfigCLIV1{
 				Usage:       usage,
 				ShortHelp:   "echo hello message",
 				LongHelp:    "description",
 				IgnoreFlags: true,
 			},
 			RuntimeConfig: &RuntimeConfigSubprocess{
-				PlatformCommands: []PlatformCommand{
+				PlatformCommand: []PlatformCommand{
 					{OperatingSystem: "linux", Architecture: "", Command: "sh", Args: []string{"-c", "${HELM_PLUGIN_DIR}/hello.sh"}},
 					{OperatingSystem: "windows", Architecture: "", Command: "pwsh", Args: []string{"-c", "${HELM_PLUGIN_DIR}/hello.ps1"}},
 				},
@@ -90,6 +92,7 @@ func TestLoadDir(t *testing.T) {
 						{OperatingSystem: "windows", Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"installing...\""}},
 					},
 				},
+				expandHookArgs: apiVersion == "legacy",
 			},
 		}
 	}
@@ -144,14 +147,39 @@ func TestLoadDirGetter(t *testing.T) {
 		Type:       "getter/v1",
 		APIVersion: "v1",
 		Runtime:    "subprocess",
-		Config: &ConfigGetter{
+		Config: &schema.ConfigGetterV1{
 			Protocols: []string{"myprotocol", "myprotocols"},
 		},
 		RuntimeConfig: &RuntimeConfigSubprocess{
 			ProtocolCommands: []SubprocessProtocolCommand{
 				{
-					Protocols: []string{"myprotocol", "myprotocols"},
-					Command:   "echo getter",
+					Protocols:       []string{"myprotocol", "myprotocols"},
+					PlatformCommand: []PlatformCommand{{Command: "echo getter"}},
+				},
+			},
+		},
+	}
+
+	plug, err := LoadDir(dirname)
+	require.NoError(t, err)
+	assert.Equal(t, dirname, plug.Dir())
+	assert.Equal(t, expect, plug.Metadata())
+}
+
+func TestPostRenderer(t *testing.T) {
+	dirname := "testdata/plugdir/good/postrenderer-v1"
+
+	expect := Metadata{
+		Name:       "postrenderer-v1",
+		Version:    "1.2.3",
+		Type:       "postrenderer/v1",
+		APIVersion: "v1",
+		Runtime:    "subprocess",
+		Config:     &schema.ConfigPostRendererV1{},
+		RuntimeConfig: &RuntimeConfigSubprocess{
+			PlatformCommand: []PlatformCommand{
+				{
+					Command: "${HELM_PLUGIN_DIR}/sed-test.sh",
 				},
 			},
 		},
@@ -195,13 +223,14 @@ func TestLoadAll(t *testing.T) {
 		plugsMap[p.Metadata().Name] = p
 	}
 
-	assert.Len(t, plugsMap, 6)
+	assert.Len(t, plugsMap, 7)
 	assert.Contains(t, plugsMap, "downloader")
 	assert.Contains(t, plugsMap, "echo-legacy")
 	assert.Contains(t, plugsMap, "echo-v1")
 	assert.Contains(t, plugsMap, "getter")
 	assert.Contains(t, plugsMap, "hello-legacy")
 	assert.Contains(t, plugsMap, "hello-v1")
+	assert.Contains(t, plugsMap, "postrenderer-v1")
 }
 
 func TestFindPlugins(t *testing.T) {
@@ -228,7 +257,7 @@ func TestFindPlugins(t *testing.T) {
 		{
 			name:     "normal",
 			plugdirs: "./testdata/plugdir/good",
-			expected: 6,
+			expected: 7,
 		},
 	}
 	for _, c := range cases {

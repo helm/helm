@@ -40,7 +40,7 @@ import (
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/registry"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
@@ -173,7 +173,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	// those errors will be caught later during the call to cmd.Execution.
 	// This call is required to gather configuration information prior to
 	// execution.
-	flags.ParseErrorsWhitelist.UnknownFlags = true
+	flags.ParseErrorsAllowlist.UnknownFlags = true
 	flags.Parse(args)
 
 	logSetup(settings.Debug)
@@ -459,4 +459,9 @@ func newRegistryClientWithTLS(
 		return nil, err
 	}
 	return registryClient, nil
+}
+
+type CommandError struct {
+	error
+	ExitCode int
 }

@@ -17,7 +17,9 @@ limitations under the License.
 package action
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -150,4 +152,18 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	_, err := unAction.Run(rel.Name)
 	require.Error(t, err)
 	is.Contains(err.Error(), "failed to delete release: come-fail-away")
+}
+
+func TestUninstallRun_UnreachableKubeClient(t *testing.T) {
+	t.Helper()
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.ConnectionError = errors.New("connection refused")
+	config.KubeClient = &failingKubeClient
+
+	client := NewUninstall(config)
+	result, err := client.Run("")
+
+	assert.Nil(t, result)
+	assert.ErrorContains(t, err, "connection refused")
 }

@@ -28,13 +28,15 @@ import (
 
 	"k8s.io/cli-runtime/pkg/resource"
 
+	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
-	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/registry"
-	releaseutil "helm.sh/helm/v4/pkg/release/util"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
@@ -114,7 +116,7 @@ type Upgrade struct {
 	//
 	// If this is non-nil, then after templates are rendered, they will be sent to the
 	// post renderer before sending to the Kubernetes API server.
-	PostRenderer postrender.PostRenderer
+	PostRenderer postrenderer.PostRenderer
 	// DisableOpenAPIValidation controls whether OpenAPI validation is enforced.
 	DisableOpenAPIValidation bool
 	// Get missing dependencies
@@ -260,7 +262,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	// the release object.
 	revision := lastRelease.Version + 1
 
-	options := chartutil.ReleaseOptions{
+	options := common.ReleaseOptions{
 		Name:      name,
 		Namespace: currentRelease.Namespace,
 		Revision:  revision,
@@ -271,7 +273,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	if err != nil {
 		return nil, nil, false, err
 	}
-	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, vals, options, caps, u.SkipSchemaValidation)
+	valuesToRender, err := util.ToRenderValuesWithSchemaValidation(chart, vals, options, caps, u.SkipSchemaValidation)
 	if err != nil {
 		return nil, nil, false, err
 	}
@@ -588,12 +590,12 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 		slog.Debug("reusing the old release's values")
 
 		// We have to regenerate the old coalesced values:
-		oldVals, err := chartutil.CoalesceValues(current.Chart, current.Config)
+		oldVals, err := util.CoalesceValues(current.Chart, current.Config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to rebuild old values: %w", err)
 		}
 
-		newVals = chartutil.CoalesceTables(newVals, current.Config)
+		newVals = util.CoalesceTables(newVals, current.Config)
 
 		chart.Values = oldVals
 
@@ -604,7 +606,7 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 	if u.ResetThenReuseValues {
 		slog.Debug("merging values from old release to new values")
 
-		newVals = chartutil.CoalesceTables(newVals, current.Config)
+		newVals = util.CoalesceTables(newVals, current.Config)
 
 		return newVals, nil
 	}

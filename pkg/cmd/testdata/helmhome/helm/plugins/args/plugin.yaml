@@ -7,4 +7,5 @@ config:
   longHelp: "This echos args"
   ignoreFlags: false
 runtimeConfig:
-  command: "$HELM_PLUGIN_DIR/args.sh"
+  platformCommand:
+  - command: "$HELM_PLUGIN_DIR/args.sh"

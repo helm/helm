@@ -26,7 +26,6 @@ import (
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 // Rollback is the action for rolling back to a given release.
@@ -158,7 +157,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		Config:    previousRelease.Config,
 		Info: &release.Info{
 			FirstDeployed: currentRelease.Info.FirstDeployed,
-			LastDeployed:  helmtime.Now(),
+			LastDeployed:  time.Now(),
 			Status:        release.StatusPendingRollback,
 			Notes:         previousRelease.Info.Notes,
 			// Because we lose the reference to previous version elsewhere, we set the

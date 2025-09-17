@@ -77,13 +77,15 @@ func getPlatformCommand(cmds []PlatformCommand) ([]string, []string) {
 // returns the main command and an args array.
 //
 // The result is suitable to pass to exec.Command.
-func PrepareCommands(cmds []PlatformCommand, expandArgs bool, extraArgs []string) (string, []string, error) {
+func PrepareCommands(cmds []PlatformCommand, expandArgs bool, extraArgs []string, env map[string]string) (string, []string, error) {
 	cmdParts, args := getPlatformCommand(cmds)
 	if len(cmdParts) == 0 || cmdParts[0] == "" {
 		return "", nil, fmt.Errorf("no plugin command is applicable")
 	}
 
-	main := os.ExpandEnv(cmdParts[0])
+	main := os.Expand(cmdParts[0], func(key string) string {
+		return env[key]
+	})
 	baseArgs := []string{}
 	if len(cmdParts) > 1 {
 		for _, cmdPart := range cmdParts[1:] {

@@ -28,7 +28,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -45,13 +44,11 @@ import (
 	"k8s.io/client-go/rest/fake"
 
 	"helm.sh/helm/v4/internal/test"
-	chart "helm.sh/helm/v4/pkg/chart/v2"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
-	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 type nameTemplateTestCase struct {
@@ -258,7 +255,7 @@ func TestInstallReleaseClientOnly(t *testing.T) {
 	instAction.ClientOnly = true
 	instAction.Run(buildChart(), nil) // disregard output
 
-	is.Equal(instAction.cfg.Capabilities, chartutil.DefaultCapabilities)
+	is.Equal(instAction.cfg.Capabilities, common.DefaultCapabilities)
 	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: io.Discard})
 }
 
@@ -330,8 +327,8 @@ func TestInstallRelease_WithChartAndDependencyParentNotes(t *testing.T) {
 	}
 
 	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.Equal("with-notes", rel.Name)
 	is.NoError(err)
+	is.Equal("with-notes", rel.Name)
 	is.Equal("parent", rel.Info.Notes)
 	is.Equal(rel.Info.Description, "Install complete")
 }
@@ -349,8 +346,8 @@ func TestInstallRelease_WithChartAndDependencyAllNotes(t *testing.T) {
 	}
 
 	rel, err := instAction.cfg.Releases.Get(res.Name, res.Version)
-	is.Equal("with-notes", rel.Name)
 	is.NoError(err)
+	is.Equal("with-notes", rel.Name)
 	// test run can return as either 'parent\nchild' or 'child\nparent'
 	if !strings.Contains(rel.Info.Notes, "parent") && !strings.Contains(rel.Info.Notes, "child") {
 		t.Fatalf("Expected 'parent\nchild' or 'child\nparent', got '%s'", rel.Info.Notes)
@@ -429,7 +426,7 @@ func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	vals := map[string]interface{}{}
 
 	mockChart := buildChart(withSampleTemplates())
-	mockChart.Templates = append(mockChart.Templates, &chart.File{
+	mockChart.Templates = append(mockChart.Templates, &common.File{
 		Name: "templates/lookup",
 		Data: []byte(`goodbye: {{ lookup "v1" "Namespace" "" "___" }}`),
 	})
@@ -454,9 +451,7 @@ func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Install should fail containing error: %s", expectedErr)
 	}
-	if err != nil {
-		is.Contains(err.Error(), expectedErr)
-	}
+	is.Contains(err.Error(), expectedErr)
 }
 
 func TestInstallRelease_NoHooks(t *testing.T) {
@@ -541,14 +536,14 @@ func TestInstallRelease_Wait(t *testing.T) {
 	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
-	goroutines := runtime.NumGoroutine()
+	goroutines := instAction.getGoroutineCount()
 
 	res, err := instAction.Run(buildChart(), vals)
 	is.Error(err)
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, release.StatusFailed)
 
-	is.Equal(goroutines, runtime.NumGoroutine())
+	is.Equal(goroutines, instAction.getGoroutineCount())
 }
 func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	is := assert.New(t)
@@ -563,15 +558,15 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
-	goroutines := runtime.NumGoroutine()
+	goroutines := instAction.getGoroutineCount()
 
 	_, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
 	is.Contains(err.Error(), "context canceled")
 
-	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
-	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
-	is.Equal(goroutines, runtime.NumGoroutine())
+	is.Equal(goroutines+1, instAction.getGoroutineCount()) // installation goroutine still is in background
+	time.Sleep(10 * time.Second)                           // wait for goroutine to finish
+	is.Equal(goroutines, instAction.getGoroutineCount())
 }
 func TestInstallRelease_WaitForJobs(t *testing.T) {
 	is := assert.New(t)
@@ -647,7 +642,7 @@ func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
-	goroutines := runtime.NumGoroutine()
+	goroutines := instAction.getGoroutineCount()
 
 	res, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	is.Error(err)
@@ -659,9 +654,9 @@ func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 	_, err = instAction.cfg.Releases.Get(res.Name, res.Version)
 	is.Error(err)
 	is.Equal(err, driver.ErrReleaseNotFound)
-	is.Equal(goroutines+1, runtime.NumGoroutine()) // installation goroutine still is in background
-	time.Sleep(10 * time.Second)                   // wait for goroutine to finish
-	is.Equal(goroutines, runtime.NumGoroutine())
+	is.Equal(goroutines+1, instAction.getGoroutineCount()) // installation goroutine still is in background
+	time.Sleep(10 * time.Second)                           // wait for goroutine to finish
+	is.Equal(goroutines, instAction.getGoroutineCount())
 
 }
 func TestNameTemplate(t *testing.T) {
@@ -860,32 +855,32 @@ func TestNameAndChartGenerateName(t *testing.T) {
 		{
 			"local filepath",
 			"./chart",
-			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
 		},
 		{
 			"dot filepath",
 			".",
-			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
 		},
 		{
 			"empty filepath",
 			"",
-			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
 		},
 		{
 			"packaged chart",
 			"chart.tgz",
-			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
 		},
 		{
 			"packaged chart with .tar.gz extension",
 			"chart.tar.gz",
-			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
 		},
 		{
 			"packaged chart with local extension",
 			"./chart.tgz",
-			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
+			fmt.Sprintf("chart-%d", time.Now().Unix()),
 		},
 	}
 
@@ -997,4 +992,20 @@ func TestUrlEqual(t *testing.T) {
 			is.Equal(tc.expected, urlEqual(u1, u2))
 		})
 	}
+}
+
+func TestInstallRun_UnreachableKubeClient(t *testing.T) {
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.ConnectionError = errors.New("connection refused")
+	config.KubeClient = &failingKubeClient
+
+	instAction := NewInstall(config)
+	instAction.ClientOnly = false
+	ctx, done := context.WithCancel(t.Context())
+	res, err := instAction.RunWithContext(ctx, nil, nil)
+
+	done()
+	assert.Nil(t, res)
+	assert.ErrorContains(t, err, "connection refused")
 }

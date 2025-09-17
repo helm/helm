@@ -22,7 +22,11 @@ import (
 	"os"
 	"path/filepath"
 
+	extism "github.com/extism/go-sdk"
+	"github.com/tetratelabs/wazero"
 	"go.yaml.in/yaml/v3"
+
+	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 func peekAPIVersion(r io.Reader) (string, error) {
@@ -101,12 +105,22 @@ type prototypePluginManager struct {
 	runtimes map[string]Runtime
 }
 
-func newPrototypePluginManager() *prototypePluginManager {
+func newPrototypePluginManager() (*prototypePluginManager, error) {
+
+	cc, err := wazero.NewCompilationCacheWithDir(helmpath.CachePath("wazero-build"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create wazero compilation cache: %w", err)
+	}
+
 	return &prototypePluginManager{
 		runtimes: map[string]Runtime{
 			"subprocess": &RuntimeSubprocess{},
+			"extism/v1": &RuntimeExtismV1{
+				HostFunctions:    map[string]extism.HostFunction{},
+				CompilationCache: cc,
+			},
 		},
-	}
+	}, nil
 }
 
 func (pm *prototypePluginManager) RegisterRuntime(runtimeName string, runtime Runtime) {
@@ -135,7 +149,10 @@ func LoadDir(dirname string) (Plugin, error) {
 		return nil, fmt.Errorf("failed to load plugin %q: %w", dirname, err)
 	}
 
-	pm := newPrototypePluginManager()
+	pm, err := newPrototypePluginManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create plugin manager: %w", err)
+	}
 	return pm.CreatePlugin(dirname, m)
 }
 
