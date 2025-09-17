@@ -25,15 +25,18 @@ import (
 	"testing"
 	"time"
 
-	chart "helm.sh/helm/v4/pkg/chart/v2"
-	"helm.sh/helm/v4/pkg/kube"
-	"helm.sh/helm/v4/pkg/storage/driver"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/cli-runtime/pkg/resource"
 
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/registry"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 func upgradeAction(t *testing.T) *Upgrade {
@@ -80,7 +83,7 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	rel := releaseStub()
 	rel.Name = "come-fail-away"
 	rel.Info.Status = release.StatusDeployed
-	upAction.cfg.Releases.Create(rel)
+	require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
@@ -102,7 +105,7 @@ func TestUpgradeRelease_WaitForJobs(t *testing.T) {
 	rel := releaseStub()
 	rel.Name = "come-fail-away"
 	rel.Info.Status = release.StatusDeployed
-	upAction.cfg.Releases.Create(rel)
+	require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
@@ -125,7 +128,7 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	rel := releaseStub()
 	rel.Name = "come-fail-away"
 	rel.Info.Status = release.StatusDeployed
-	upAction.cfg.Releases.Create(rel)
+	require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitError = fmt.Errorf("I timed out")
@@ -152,7 +155,7 @@ func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
 		rel := releaseStub()
 		rel.Name = "nuketown"
 		rel.Info.Status = release.StatusDeployed
-		upAction.cfg.Releases.Create(rel)
+		require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 		// We can't make Update error because then the rollback won't work
@@ -178,7 +181,7 @@ func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
 		rel := releaseStub()
 		rel.Name = "fallout"
 		rel.Info.Status = release.StatusDeployed
-		upAction.cfg.Releases.Create(rel)
+		require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 		failer.UpdateError = fmt.Errorf("update fail")
@@ -371,12 +374,12 @@ func TestUpgradeRelease_Pending(t *testing.T) {
 	rel := releaseStub()
 	rel.Name = "come-fail-away"
 	rel.Info.Status = release.StatusDeployed
-	upAction.cfg.Releases.Create(rel)
+	require.NoError(t, upAction.cfg.Releases.Create(rel))
 	rel2 := releaseStub()
 	rel2.Name = "come-fail-away"
 	rel2.Info.Status = release.StatusPendingUpgrade
 	rel2.Version = 2
-	upAction.cfg.Releases.Create(rel2)
+	require.NoError(t, upAction.cfg.Releases.Create(rel2))
 
 	vals := map[string]interface{}{}
 
@@ -392,7 +395,7 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	rel := releaseStub()
 	rel.Name = "interrupted-release"
 	rel.Info.Status = release.StatusDeployed
-	upAction.cfg.Releases.Create(rel)
+	require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 10 * time.Second
@@ -419,7 +422,7 @@ func TestUpgradeRelease_Interrupted_RollbackOnFailure(t *testing.T) {
 	rel := releaseStub()
 	rel.Name = "interrupted-release"
 	rel.Info.Status = release.StatusDeployed
-	upAction.cfg.Releases.Create(rel)
+	require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 5 * time.Second
@@ -705,4 +708,21 @@ func TestUpgradeRun_UnreachableKubeClient(t *testing.T) {
 
 	assert.Nil(t, result)
 	assert.ErrorContains(t, err, "connection refused")
+}
+
+func TestUpgradeSetRegistryClient(t *testing.T) {
+	config := actionConfigFixture(t)
+	client := NewUpgrade(config)
+
+	registryClient := &registry.Client{}
+	client.SetRegistryClient(registryClient)
+	assert.Equal(t, registryClient, client.registryClient)
+}
+
+func TestObjectKey(t *testing.T) {
+	obj := &appsv1.Deployment{}
+	obj.SetGroupVersionKind(schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"})
+	info := resource.Info{Name: "name", Namespace: "namespace", Object: obj}
+
+	assert.Equal(t, "apps/v1/Deployment/namespace/name", objectKey(&info))
 }
