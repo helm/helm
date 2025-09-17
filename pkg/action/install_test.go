@@ -1004,7 +1004,8 @@ func TestInstallRun_UnreachableKubeClient(t *testing.T) {
 	instAction := NewInstall(config)
 	instAction.ClientOnly = false
 	ctx, done := context.WithCancel(t.Context())
-	res, err := instAction.RunWithContext(ctx, nil, nil)
+	chrt := buildChart()
+	res, err := instAction.RunWithContext(ctx, chrt, nil)
 
 	done()
 	assert.Nil(t, res)
