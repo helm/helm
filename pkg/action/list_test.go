@@ -196,7 +196,6 @@ func TestList_StateMask(t *testing.T) {
 	err = lister.cfg.Releases.Update(one)
 	is.NoError(err)
 
-	// With the new default (ListAll), we should see all 3 releases by default
 	res, err := lister.Run()
 	is.NoError(err)
 	is.Len(res, 3)

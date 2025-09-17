@@ -325,7 +325,7 @@ func (l *List) SetStateMask() {
 		state |= ListSuperseded
 	}
 
-	// Apply a default - now defaults to ListAll instead of just deployed and failed
+	// Apply a default
 	if state == 0 {
 		state = ListAll
 	}
