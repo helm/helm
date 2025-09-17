@@ -20,9 +20,12 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
+// TestAtomicWriteFile tests the happy path of AtomicWriteFile function.
+// It verifies that the function correctly writes content to a file with the specified mode.
 func TestAtomicWriteFile(t *testing.T) {
 	dir := t.TempDir()
 
@@ -53,5 +56,66 @@ func TestAtomicWriteFile(t *testing.T) {
 	if mode != gotinfo.Mode() {
 		t.Fatalf("expected %s: to be the same mode as %s",
 			mode, gotinfo.Mode())
+	}
+}
+
+// TestAtomicWriteFile_CreateTempError tests the error path when os.CreateTemp fails
+func TestAtomicWriteFile_CreateTempError(t *testing.T) {
+	invalidPath := "/invalid/path/that/does/not/exist/testfile"
+
+	reader := bytes.NewReader([]byte("test content"))
+	mode := os.FileMode(0644)
+
+	err := AtomicWriteFile(invalidPath, reader, mode)
+	if err == nil {
+		t.Error("Expected error when CreateTemp fails, but got nil")
+	}
+}
+
+// TestAtomicWriteFile_EmptyContent tests with empty content
+func TestAtomicWriteFile_EmptyContent(t *testing.T) {
+	dir := t.TempDir()
+	testpath := filepath.Join(dir, "empty_helm")
+
+	reader := bytes.NewReader([]byte(""))
+	mode := os.FileMode(0644)
+
+	err := AtomicWriteFile(testpath, reader, mode)
+	if err != nil {
+		t.Errorf("AtomicWriteFile error with empty content: %s", err)
+	}
+
+	got, err := os.ReadFile(testpath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(got) != 0 {
+		t.Fatalf("expected empty content, got: %s", string(got))
+	}
+}
+
+// TestAtomicWriteFile_LargeContent tests with large content
+func TestAtomicWriteFile_LargeContent(t *testing.T) {
+	dir := t.TempDir()
+	testpath := filepath.Join(dir, "large_test")
+
+	// Create a large content string
+	largeContent := strings.Repeat("HELM", 1024*1024)
+	reader := bytes.NewReader([]byte(largeContent))
+	mode := os.FileMode(0644)
+
+	err := AtomicWriteFile(testpath, reader, mode)
+	if err != nil {
+		t.Errorf("AtomicWriteFile error with large content: %s", err)
+	}
+
+	got, err := os.ReadFile(testpath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if largeContent != string(got) {
+		t.Fatalf("expected large content to match, got different length: %d vs %d", len(largeContent), len(got))
 	}
 }
