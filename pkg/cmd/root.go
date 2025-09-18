@@ -30,6 +30,8 @@ import (
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 
+	"github.com/njayp/ophis"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -281,6 +283,20 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		newEnvCmd(out),
 		newPluginCmd(out),
 		newVersionCmd(out),
+
+		// mcp server commands
+		ophis.Command(&ophis.Config{
+			Filters: []ophis.Filter{
+				ophis.AllowFilter([]string{
+					"helm list",
+					"helm status",
+					"helm get",
+					"helm history",
+					"helm show",
+					"helm search",
+				}),
+			},
+		}),
 
 		// Hidden documentation generator command: 'helm docs'
 		newDocsCmd(out),
