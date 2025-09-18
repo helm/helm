@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/loader/archive"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
@@ -211,12 +212,12 @@ func TestLoadFile(t *testing.T) {
 func TestLoadFiles_BadCases(t *testing.T) {
 	for _, tt := range []struct {
 		name          string
-		bufferedFiles []*BufferedFile
+		bufferedFiles []*archive.BufferedFile
 		expectError   string
 	}{
 		{
 			name: "These files contain only requirements.lock",
-			bufferedFiles: []*BufferedFile{
+			bufferedFiles: []*archive.BufferedFile{
 				{
 					Name: "requirements.lock",
 					Data: []byte(""),
@@ -235,7 +236,7 @@ func TestLoadFiles_BadCases(t *testing.T) {
 }
 
 func TestLoadFiles(t *testing.T) {
-	goodFiles := []*BufferedFile{
+	goodFiles := []*archive.BufferedFile{
 		{
 			Name: "Chart.yaml",
 			Data: []byte(`apiVersion: v1
@@ -300,7 +301,7 @@ icon: https://example.com/64x64.png
 		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
 	}
 
-	if _, err = LoadFiles([]*BufferedFile{}); err == nil {
+	if _, err = LoadFiles([]*archive.BufferedFile{}); err == nil {
 		t.Fatal("Expected err to be non-nil")
 	}
 	if err.Error() != "Chart.yaml file is missing" {
@@ -311,7 +312,7 @@ icon: https://example.com/64x64.png
 // Test the order of file loading. The Chart.yaml file needs to come first for
 // later comparison checks. See https://github.com/helm/helm/pull/8948
 func TestLoadFilesOrder(t *testing.T) {
-	goodFiles := []*BufferedFile{
+	goodFiles := []*archive.BufferedFile{
 		{
 			Name: "requirements.yaml",
 			Data: []byte("dependencies:"),
