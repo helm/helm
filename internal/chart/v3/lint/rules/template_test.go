@@ -32,14 +32,14 @@ import (
 const templateTestBasedir = "./testdata/albatross"
 
 func TestValidateAllowedExtension(t *testing.T) {
-	var failTest = []string{"/foo", "/test.toml"}
+	var failTest = []string{"/foo", "/test.toml", "regular.json"}
 	for _, test := range failTest {
 		err := validateAllowedExtension(test)
 		if err == nil || !strings.Contains(err.Error(), "Valid extensions are .yaml, .yml, .tpl, or .txt") {
 			t.Errorf("validateAllowedExtension('%s') to return \"Valid extensions are .yaml, .yml, .tpl, or .txt\", got no error", test)
 		}
 	}
-	var successTest = []string{"/foo.yaml", "foo.yaml", "foo.tpl", "/foo/bar/baz.yaml", "NOTES.txt"}
+	var successTest = []string{"/foo.yaml", "foo.yaml", "foo.tpl", "/foo/bar/baz.yaml", "NOTES.txt", "_envoy.json"}
 	for _, test := range successTest {
 		err := validateAllowedExtension(test)
 		if err != nil {

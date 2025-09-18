@@ -220,6 +220,12 @@ func validateTemplatesDir(templatesPath string) error {
 }
 
 func validateAllowedExtension(fileName string) error {
+	baseName := filepath.Base(fileName)
+
+	if strings.HasPrefix(baseName, "_") {
+		return nil
+	}
+
 	ext := filepath.Ext(fileName)
 	validExtensions := []string{".yaml", ".yml", ".tpl", ".txt"}
 
