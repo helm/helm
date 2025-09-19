@@ -276,6 +276,33 @@ func TestMixedKeyringRSASigningAndVerification(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if len(signer.KeyRing) == 0 {
+		t.Fatal("expected signer keyring to be loaded")
+	}
+
+	hasEdDSA := false
+	for _, entity := range signer.KeyRing {
+		if entity.PrimaryKey != nil && entity.PrimaryKey.PubKeyAlgo == packet.PubKeyAlgoEdDSA {
+			hasEdDSA = true
+			break
+		}
+
+		for _, subkey := range entity.Subkeys {
+			if subkey.PublicKey != nil && subkey.PublicKey.PubKeyAlgo == packet.PubKeyAlgoEdDSA {
+				hasEdDSA = true
+				break
+			}
+		}
+
+		if hasEdDSA {
+			break
+		}
+	}
+
+	if !hasEdDSA {
+		t.Fatalf("expected %s to include an Ed25519 public key", testMixedKeyring)
+	}
+
 	if signer.Entity == nil {
 		t.Fatal("expected signer entity to be loaded")
 	}
