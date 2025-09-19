@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -214,7 +215,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	if strings.EqualFold(s.release.Info.Description, "Dry run complete") || s.debug {
 		_, _ = fmt.Fprintln(out, "HOOKS:")
 		for _, h := range s.release.Hooks {
-			_, _ = fmt.Fprintf(out, "---\n# Source: %s\n%s\n", h.Path, h.Manifest)
+			_, _ = fmt.Fprintf(out, "---\n# Source: %s\n%s\n", filepath.ToSlash(h.Path), h.Manifest)
 		}
 		_, _ = fmt.Fprintf(out, "MANIFEST:\n%s\n", s.release.Manifest)
 	}
