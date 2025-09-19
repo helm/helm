@@ -172,6 +172,7 @@ func (m *Manager) Update(recursive bool) error {
 }
 
 func (m *Manager) doUpdate(chartPath string) error {
+	slog.Debug("update chart dependencies", "chartPath", chartPath)
 	c, err := m.loadChartDir(chartPath)
 	if err != nil {
 		return err
