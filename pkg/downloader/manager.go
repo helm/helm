@@ -241,6 +241,7 @@ func (m *Manager) doUpdate(chartPath string) error {
 }
 
 func (m *Manager) loadChartDir(chartPath string) (*chart.Chart, error) {
+	slog.Debug("loading chart directory", "chartPath", chartPath)
 	if fi, err := os.Stat(chartPath); err != nil {
 		return nil, fmt.Errorf("could not find %s: %w", chartPath, err)
 	} else if !fi.IsDir() {
