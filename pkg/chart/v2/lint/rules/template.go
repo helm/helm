@@ -123,12 +123,9 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 		fileName := template.Name
 		fpath = fileName
 
-		// skip the linting rules if the file starts with _ and is not a yaml/yml file
-		if isHelperFile(fileName) {
-			continue
+		if !isHelperFile(fileName) {
+			linter.RunLinterRule(support.ErrorSev, fpath, validateAllowedExtension(fileName))
 		}
-
-		linter.RunLinterRule(support.ErrorSev, fpath, validateAllowedExtension(fileName))
 
 		// We only apply the following lint rules to yaml files
 		if filepath.Ext(fileName) != ".yaml" || filepath.Ext(fileName) == ".yml" {
