@@ -23,7 +23,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -250,7 +249,7 @@ func createOrOpenFile(filename string, appendData bool) (*os.File, error) {
 }
 
 func ensureDirectoryForFile(file string) error {
-	baseDir := path.Dir(file)
+	baseDir := filepath.Dir(file)
 	_, err := os.Stat(baseDir)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
