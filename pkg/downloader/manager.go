@@ -795,6 +795,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 // The returned list of Chart paths is ordered from "leaf to root" so we can issue updates in
 // the right order when iterating over this list.
 func (m *Manager) locateLocalDependencies(baseChartPath string, resursive bool) ([]string, error) {
+	slog.Debug("locating local dependencies", "baseChartPath", baseChartPath, "resursive", resursive)
 	reversedDeps := []string{}
 
 	baseChart, err := m.loadChartDir(baseChartPath)
