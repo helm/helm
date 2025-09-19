@@ -22,30 +22,35 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"text/template"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/kustomize/kyaml/kio"
+	kyaml "sigs.k8s.io/kustomize/kyaml/yaml"
 
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/engine"
 	"helm.sh/helm/v4/pkg/kube"
-	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/registry"
-	releaseutil "helm.sh/helm/v4/pkg/release/util"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
-	"helm.sh/helm/v4/pkg/time"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
@@ -80,7 +85,7 @@ type Configuration struct {
 	RegistryClient *registry.Client
 
 	// Capabilities describes the capabilities of the Kubernetes cluster.
-	Capabilities *chartutil.Capabilities
+	Capabilities *common.Capabilities
 
 	// CustomTemplateFuncs is defined by users to provide custom template funcs
 	CustomTemplateFuncs template.FuncMap
@@ -91,14 +96,89 @@ type Configuration struct {
 	mutex sync.Mutex
 }
 
+const (
+	// filenameAnnotation is the annotation key used to store the original filename
+	// information in manifest annotations for post-rendering reconstruction.
+	filenameAnnotation = "postrenderer.helm.sh/postrender-filename"
+)
+
+// annotateAndMerge combines multiple YAML files into a single stream of documents,
+// adding filename annotations to each document for later reconstruction.
+func annotateAndMerge(files map[string]string) (string, error) {
+	var combinedManifests []*kyaml.RNode
+
+	// Get sorted filenames to ensure result is deterministic
+	fnames := slices.Sorted(maps.Keys(files))
+
+	for _, fname := range fnames {
+		content := files[fname]
+		// Skip partials and empty files.
+		if strings.HasPrefix(path.Base(fname), "_") || strings.TrimSpace(content) == "" {
+			continue
+		}
+
+		manifests, err := kio.ParseAll(content)
+		if err != nil {
+			return "", fmt.Errorf("parsing %s: %w", fname, err)
+		}
+		for _, manifest := range manifests {
+			if err := manifest.PipeE(kyaml.SetAnnotation(filenameAnnotation, fname)); err != nil {
+				return "", fmt.Errorf("annotating %s: %w", fname, err)
+			}
+			combinedManifests = append(combinedManifests, manifest)
+		}
+	}
+
+	merged, err := kio.StringAll(combinedManifests)
+	if err != nil {
+		return "", fmt.Errorf("writing merged docs: %w", err)
+	}
+	return merged, nil
+}
+
+// splitAndDeannotate reconstructs individual files from a merged YAML stream,
+// removing filename annotations and grouping documents by their original filenames.
+func splitAndDeannotate(postrendered string) (map[string]string, error) {
+	manifests, err := kio.ParseAll(postrendered)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing YAML: %w", err)
+	}
+
+	manifestsByFilename := make(map[string][]*kyaml.RNode)
+	for i, manifest := range manifests {
+		meta, err := manifest.GetMeta()
+		if err != nil {
+			return nil, fmt.Errorf("getting metadata: %w", err)
+		}
+		fname := meta.Annotations[filenameAnnotation]
+		if fname == "" {
+			fname = fmt.Sprintf("generated-by-postrender-%d.yaml", i)
+		}
+		if err := manifest.PipeE(kyaml.ClearAnnotation(filenameAnnotation)); err != nil {
+			return nil, fmt.Errorf("clearing filename annotation: %w", err)
+		}
+		manifestsByFilename[fname] = append(manifestsByFilename[fname], manifest)
+	}
+
+	reconstructed := make(map[string]string, len(manifestsByFilename))
+	for fname, docs := range manifestsByFilename {
+		fileContents, err := kio.StringAll(docs)
+		if err != nil {
+			return nil, fmt.Errorf("re-writing %s: %w", fname, err)
+		}
+		reconstructed[fname] = fileContents
+	}
+	return reconstructed, nil
+}
+
 // renderResources renders the templates in a chart
 //
 // TODO: This function is badly in need of a refactor.
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //
 //	This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
-	hs := []*release.Hook{}
+func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+	var hs []*release.Hook
 	b := bytes.NewBuffer(nil)
 
 	caps, err := cfg.getCapabilities()
@@ -160,6 +240,33 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	}
 	notes := notesBuffer.String()
 
+	if pr != nil {
+		// We need to send files to the post-renderer before sorting and splitting
+		// hooks from manifests. The post-renderer interface expects a stream of
+		// manifests (similar to what tools like Kustomize and kubectl expect), whereas
+		// the sorter uses filenames.
+		// Here, we merge the documents into a stream, post-render them, and then split
+		// them back into a map of filename -> content.
+
+		// Merge files as stream of documents for sending to post renderer
+		merged, err := annotateAndMerge(files)
+		if err != nil {
+			return hs, b, notes, fmt.Errorf("error merging manifests: %w", err)
+		}
+
+		// Run the post renderer
+		postRendered, err := pr.Run(bytes.NewBufferString(merged))
+		if err != nil {
+			return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
+		}
+
+		// Use the file list and contents received from the post renderer
+		files, err = splitAndDeannotate(postRendered.String())
+		if err != nil {
+			return hs, b, notes, fmt.Errorf("error while parsing post rendered output: %w", err)
+		}
+	}
+
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
@@ -220,13 +327,6 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		}
 	}
 
-	if pr != nil {
-		b, err = pr.Run(b)
-		if err != nil {
-			return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
-		}
-	}
-
 	return hs, b, notes, nil
 }
 
@@ -238,7 +338,7 @@ type RESTClientGetter interface {
 }
 
 // capabilities builds a Capabilities from discovery information.
-func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
+func (cfg *Configuration) getCapabilities() (*common.Capabilities, error) {
 	if cfg.Capabilities != nil {
 		return cfg.Capabilities, nil
 	}
@@ -267,14 +367,14 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 		}
 	}
 
-	cfg.Capabilities = &chartutil.Capabilities{
+	cfg.Capabilities = &common.Capabilities{
 		APIVersions: apiVersions,
-		KubeVersion: chartutil.KubeVersion{
+		KubeVersion: common.KubeVersion{
 			Version: kubeVersion.GitVersion,
 			Major:   kubeVersion.Major,
 			Minor:   kubeVersion.Minor,
 		},
-		HelmVersion: chartutil.DefaultCapabilities.HelmVersion,
+		HelmVersion: common.DefaultCapabilities.HelmVersion,
 	}
 	return cfg.Capabilities, nil
 }
@@ -310,10 +410,10 @@ func (cfg *Configuration) releaseContent(name string, version int) (*release.Rel
 }
 
 // GetVersionSet retrieves a set of available k8s API versions
-func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.VersionSet, error) {
+func GetVersionSet(client discovery.ServerResourcesInterface) (common.VersionSet, error) {
 	groups, resources, err := client.ServerGroupsAndResources()
 	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
-		return chartutil.DefaultVersionSet, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
+		return common.DefaultVersionSet, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
 	}
 
 	// FIXME: The Kubernetes test fixture for cli appears to always return nil
@@ -321,7 +421,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 	// return the default API list. This is also a safe value to return in any
 	// other odd-ball case.
 	if len(groups) == 0 && len(resources) == 0 {
-		return chartutil.DefaultVersionSet, nil
+		return common.DefaultVersionSet, nil
 	}
 
 	versionMap := make(map[string]interface{})
@@ -354,7 +454,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 		versions = append(versions, k)
 	}
 
-	return chartutil.VersionSet(versions), nil
+	return common.VersionSet(versions), nil
 }
 
 // recordRelease with an update operation in case reuse has been set.
@@ -420,4 +520,11 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 // SetHookOutputFunc sets the HookOutputFunc on the Configuration.
 func (cfg *Configuration) SetHookOutputFunc(hookOutputFunc func(_, _, _ string) io.Writer) {
 	cfg.HookOutputFunc = hookOutputFunc
+}
+
+func determineReleaseSSApplyMethod(serverSideApply bool) release.ApplyMethod {
+	if serverSideApply {
+		return release.ApplyMethodServerSideApply
+	}
+	return release.ApplyMethodClientSideApply
 }

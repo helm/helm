@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"helm.sh/helm/v4/internal/sympath"
+	"helm.sh/helm/v4/pkg/chart/loader/archive"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/ignore"
 )
@@ -61,7 +62,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 	}
 	rules.AddDefaults()
 
-	files := []*BufferedFile{}
+	files := []*archive.BufferedFile{}
 	topdir += string(filepath.Separator)
 
 	walk := func(name string, fi os.FileInfo, err error) error {
@@ -99,8 +100,8 @@ func LoadDir(dir string) (*chart.Chart, error) {
 			return fmt.Errorf("cannot load irregular file %s as it has file mode type bits set", name)
 		}
 
-		if fi.Size() > MaxDecompressedFileSize {
-			return fmt.Errorf("chart file %q is larger than the maximum file size %d", fi.Name(), MaxDecompressedFileSize)
+		if fi.Size() > archive.MaxDecompressedFileSize {
+			return fmt.Errorf("chart file %q is larger than the maximum file size %d", fi.Name(), archive.MaxDecompressedFileSize)
 		}
 
 		data, err := os.ReadFile(name)
@@ -110,7 +111,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 
 		data = bytes.TrimPrefix(data, utf8bom)
 
-		files = append(files, &BufferedFile{Name: n, Data: data})
+		files = append(files, &archive.BufferedFile{Name: n, Data: data})
 		return nil
 	}
 	if err = sympath.Walk(topdir, walk); err != nil {

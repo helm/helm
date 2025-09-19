@@ -22,8 +22,8 @@ import (
 	"log/slog"
 	"strings"
 
-	relutil "helm.sh/helm/v4/pkg/release/util"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
+	relutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 

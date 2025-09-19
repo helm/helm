@@ -59,8 +59,8 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 			client.Namespace = settings.Namespace()
 			notName := regexp.MustCompile(`^!\s?name=`)
 			for _, f := range filter {
-				if strings.HasPrefix(f, "name=") {
-					client.Filters[action.IncludeNameFilter] = append(client.Filters[action.IncludeNameFilter], strings.TrimPrefix(f, "name="))
+				if after, ok := strings.CutPrefix(f, "name="); ok {
+					client.Filters[action.IncludeNameFilter] = append(client.Filters[action.IncludeNameFilter], after)
 				} else if notName.MatchString(f) {
 					client.Filters[action.ExcludeNameFilter] = append(client.Filters[action.ExcludeNameFilter], notName.ReplaceAllLiteralString(f, ""))
 				}
@@ -78,6 +78,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 				debug:        settings.Debug,
 				showMetadata: false,
 				hideNotes:    client.HideNotes,
+				noColor:      settings.ShouldDisableColor(),
 			}); err != nil {
 				return err
 			}

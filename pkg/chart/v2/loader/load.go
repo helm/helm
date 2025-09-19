@@ -31,6 +31,8 @@ import (
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/loader/archive"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
@@ -66,21 +68,15 @@ func Load(name string) (*chart.Chart, error) {
 	return l.Load()
 }
 
-// BufferedFile represents an archive file buffered for later processing.
-type BufferedFile struct {
-	Name string
-	Data []byte
-}
-
 // LoadFiles loads from in-memory files.
-func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
+func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 	c := new(chart.Chart)
-	subcharts := make(map[string][]*BufferedFile)
+	subcharts := make(map[string][]*archive.BufferedFile)
 
 	// do not rely on assumed ordering of files in the chart and crash
 	// if Chart.yaml was not coming early enough to initialize metadata
 	for _, f := range files {
-		c.Raw = append(c.Raw, &chart.File{Name: f.Name, Data: f.Data})
+		c.Raw = append(c.Raw, &common.File{Name: f.Name, Data: f.Data})
 		if f.Name == "Chart.yaml" {
 			if c.Metadata == nil {
 				c.Metadata = new(chart.Metadata)
@@ -128,7 +124,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				return c, fmt.Errorf("cannot load requirements.yaml: %w", err)
 			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
-				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
+				c.Files = append(c.Files, &common.File{Name: f.Name, Data: f.Data})
 			}
 		// Deprecated: requirements.lock is deprecated use Chart.lock.
 		case f.Name == "requirements.lock":
@@ -143,22 +139,22 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				log.Printf("Warning: Dependency locking is handled in Chart.lock since apiVersion \"v2\". We recommend migrating to Chart.lock.")
 			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
-				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
+				c.Files = append(c.Files, &common.File{Name: f.Name, Data: f.Data})
 			}
 
 		case strings.HasPrefix(f.Name, "templates/"):
-			c.Templates = append(c.Templates, &chart.File{Name: f.Name, Data: f.Data})
+			c.Templates = append(c.Templates, &common.File{Name: f.Name, Data: f.Data})
 		case strings.HasPrefix(f.Name, "charts/"):
 			if filepath.Ext(f.Name) == ".prov" {
-				c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
+				c.Files = append(c.Files, &common.File{Name: f.Name, Data: f.Data})
 				continue
 			}
 
 			fname := strings.TrimPrefix(f.Name, "charts/")
 			cname := strings.SplitN(fname, "/", 2)[0]
-			subcharts[cname] = append(subcharts[cname], &BufferedFile{Name: fname, Data: f.Data})
+			subcharts[cname] = append(subcharts[cname], &archive.BufferedFile{Name: fname, Data: f.Data})
 		default:
-			c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
+			c.Files = append(c.Files, &common.File{Name: f.Name, Data: f.Data})
 		}
 	}
 
@@ -186,7 +182,7 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		default:
 			// We have to trim the prefix off of every file, and ignore any file
 			// that is in charts/, but isn't actually a chart.
-			buff := make([]*BufferedFile, 0, len(files))
+			buff := make([]*archive.BufferedFile, 0, len(files))
 			for _, f := range files {
 				parts := strings.SplitN(f.Name, "/", 2)
 				if len(parts) < 2 {

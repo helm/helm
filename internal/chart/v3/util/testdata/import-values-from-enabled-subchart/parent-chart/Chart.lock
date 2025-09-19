@@ -1,0 +1,9 @@
+dependencies:
+- name: dev
+  repository: file://envs/dev
+  version: v0.1.0
+- name: prod
+  repository: file://envs/prod
+  version: v0.1.0
+digest: sha256:9403fc24f6cf9d6055820126cf7633b4bd1fed3c77e4880c674059f536346182
+generated: "2020-02-03T10:38:51.180474+01:00"

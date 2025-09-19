@@ -1,0 +1,14 @@
+app1:
+  enabled: true
+  service:
+    type: ClusterIP
+    port: 3456
+
+app2:
+  enabled: true
+
+app3:
+  enabled: true
+
+app4:
+  enabled: true

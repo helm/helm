@@ -21,12 +21,16 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
 
 	"github.com/Masterminds/semver/v3"
 	"golang.org/x/term"
+	"sigs.k8s.io/yaml"
 
-	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	ci "helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/provenance"
 )
@@ -68,7 +72,21 @@ func NewPackage() *Package {
 
 // Run executes 'helm package' against the given chart and returns the path to the packaged chart.
 func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
-	ch, err := loader.LoadDir(path)
+	chrt, err := loader.LoadDir(path)
+	if err != nil {
+		return "", err
+	}
+	var ch *chart.Chart
+	switch c := chrt.(type) {
+	case *chart.Chart:
+		ch = c
+	case chart.Chart:
+		ch = &c
+	default:
+		return "", errors.New("invalid chart apiVersion")
+	}
+
+	ac, err := ci.NewAccessor(ch)
 	if err != nil {
 		return "", err
 	}
@@ -86,7 +104,7 @@ func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
 		ch.Metadata.AppVersion = p.AppVersion
 	}
 
-	if reqs := ch.Metadata.Dependencies; reqs != nil {
+	if reqs := ac.MetaDependencies(); reqs != nil {
 		if err := CheckDependencies(ch, reqs); err != nil {
 			return "", err
 		}
@@ -144,7 +162,35 @@ func (p *Package) Clearsign(filename string) error {
 		return err
 	}
 
-	sig, err := signer.ClearSign(filename)
+	// Load the chart archive to extract metadata
+	chrt, err := loader.LoadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to load chart for signing: %w", err)
+	}
+	var ch *chart.Chart
+	switch c := chrt.(type) {
+	case *chart.Chart:
+		ch = c
+	case chart.Chart:
+		ch = &c
+	default:
+		return errors.New("invalid chart apiVersion")
+	}
+
+	// Marshal chart metadata to YAML bytes
+	metadataBytes, err := yaml.Marshal(ch.Metadata)
+	if err != nil {
+		return fmt.Errorf("failed to marshal chart metadata: %w", err)
+	}
+
+	// Read the chart archive file
+	archiveData, err := os.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to read chart archive: %w", err)
+	}
+
+	// Use the generic provenance signing function
+	sig, err := signer.ClearSign(archiveData, filepath.Base(filename), metadataBytes)
 	if err != nil {
 		return err
 	}

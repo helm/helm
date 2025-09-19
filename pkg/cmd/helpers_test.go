@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
@@ -37,7 +38,6 @@ import (
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
-	"helm.sh/helm/v4/pkg/time"
 )
 
 func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }
@@ -103,10 +103,10 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	actionConfig := &action.Configuration{
 		Releases:     store,
 		KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
-		Capabilities: chartutil.DefaultCapabilities,
+		Capabilities: common.DefaultCapabilities,
 	}
 
-	root, err := newRootCmdWithConfig(actionConfig, buf, args)
+	root, err := newRootCmdWithConfig(actionConfig, buf, args, SetupLogging)
 	if err != nil {
 		return nil, "", err
 	}
@@ -116,6 +116,10 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	root.SetArgs(args)
 
 	oldStdin := os.Stdin
+	defer func() {
+		os.Stdin = oldStdin
+	}()
+
 	if in != nil {
 		root.SetIn(in)
 		os.Stdin = in
@@ -127,8 +131,6 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	c, err := root.ExecuteC()
 
 	result := buf.String()
-
-	os.Stdin = oldStdin
 
 	return c, result, err
 }

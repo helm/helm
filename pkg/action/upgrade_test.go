@@ -18,7 +18,9 @@ package action
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"testing"
 	"time"
@@ -32,7 +34,6 @@ import (
 
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func upgradeAction(t *testing.T) *Upgrade {
@@ -141,11 +142,11 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
 
-func TestUpgradeRelease_Atomic(t *testing.T) {
+func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
 
-	t.Run("atomic rollback succeeds", func(t *testing.T) {
+	t.Run("rollback-on-failure rollback succeeds", func(t *testing.T) {
 		upAction := upgradeAction(t)
 
 		rel := releaseStub()
@@ -157,13 +158,13 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		// We can't make Update error because then the rollback won't work
 		failer.WatchUntilReadyError = fmt.Errorf("arming key removed")
 		upAction.cfg.KubeClient = failer
-		upAction.Atomic = true
+		upAction.RollbackOnFailure = true
 		vals := map[string]interface{}{}
 
 		res, err := upAction.Run(rel.Name, buildChart(), vals)
 		req.Error(err)
 		is.Contains(err.Error(), "arming key removed")
-		is.Contains(err.Error(), "atomic")
+		is.Contains(err.Error(), "rollback-on-failure")
 
 		// Now make sure it is actually upgraded
 		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
@@ -172,7 +173,7 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		is.Equal(updatedRes.Info.Status, release.StatusDeployed)
 	})
 
-	t.Run("atomic uninstall fails", func(t *testing.T) {
+	t.Run("rollback-on-failure uninstall fails", func(t *testing.T) {
 		upAction := upgradeAction(t)
 		rel := releaseStub()
 		rel.Name = "fallout"
@@ -182,7 +183,7 @@ func TestUpgradeRelease_Atomic(t *testing.T) {
 		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 		failer.UpdateError = fmt.Errorf("update fail")
 		upAction.cfg.KubeClient = failer
-		upAction.Atomic = true
+		upAction.RollbackOnFailure = true
 		vals := map[string]interface{}{}
 
 		_, err := upAction.Run(rel.Name, buildChart(), vals)
@@ -258,7 +259,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			withValues(chartDefaultValues),
 			withMetadataDependency(dependency),
 		)
-		now := helmtime.Now()
+		now := time.Now()
 		existingValues := map[string]interface{}{
 			"subchart": map[string]interface{}{
 				"enabled": false,
@@ -409,7 +410,8 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	is.Equal(res.Info.Status, release.StatusFailed)
 }
 
-func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
+func TestUpgradeRelease_Interrupted_RollbackOnFailure(t *testing.T) {
+
 	is := assert.New(t)
 	req := require.New(t)
 
@@ -422,7 +424,7 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitDuration = 5 * time.Second
 	upAction.cfg.KubeClient = failer
-	upAction.Atomic = true
+	upAction.RollbackOnFailure = true
 	vals := map[string]interface{}{}
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -431,7 +433,7 @@ func TestUpgradeRelease_Interrupted_Atomic(t *testing.T) {
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 
 	req.Error(err)
-	is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to atomic being set: context canceled")
+	is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to rollback-on-failure being set: context canceled")
 
 	// Now make sure it is actually upgraded
 	updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
@@ -582,4 +584,125 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	_, err = upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
 	done()
 	req.Error(err)
+}
+
+func TestGetUpgradeServerSideValue(t *testing.T) {
+	tests := []struct {
+		name                    string
+		actionServerSideOption  string
+		releaseApplyMethod      string
+		expectedServerSideApply bool
+	}{
+		{
+			name:                    "action ssa auto / release csa",
+			actionServerSideOption:  "auto",
+			releaseApplyMethod:      "csa",
+			expectedServerSideApply: false,
+		},
+		{
+			name:                    "action ssa auto / release ssa",
+			actionServerSideOption:  "auto",
+			releaseApplyMethod:      "ssa",
+			expectedServerSideApply: true,
+		},
+		{
+			name:                    "action ssa auto / release empty",
+			actionServerSideOption:  "auto",
+			releaseApplyMethod:      "",
+			expectedServerSideApply: false,
+		},
+		{
+			name:                    "action ssa true / release csa",
+			actionServerSideOption:  "true",
+			releaseApplyMethod:      "csa",
+			expectedServerSideApply: true,
+		},
+		{
+			name:                    "action ssa true / release ssa",
+			actionServerSideOption:  "true",
+			releaseApplyMethod:      "ssa",
+			expectedServerSideApply: true,
+		},
+		{
+			name:                    "action ssa true / release 'unknown'",
+			actionServerSideOption:  "true",
+			releaseApplyMethod:      "foo",
+			expectedServerSideApply: true,
+		},
+		{
+			name:                    "action ssa true / release empty",
+			actionServerSideOption:  "true",
+			releaseApplyMethod:      "",
+			expectedServerSideApply: true,
+		},
+		{
+			name:                    "action ssa false / release csa",
+			actionServerSideOption:  "false",
+			releaseApplyMethod:      "ssa",
+			expectedServerSideApply: false,
+		},
+		{
+			name:                    "action ssa false / release ssa",
+			actionServerSideOption:  "false",
+			releaseApplyMethod:      "ssa",
+			expectedServerSideApply: false,
+		},
+		{
+			name:                    "action ssa false / release 'unknown'",
+			actionServerSideOption:  "false",
+			releaseApplyMethod:      "foo",
+			expectedServerSideApply: false,
+		},
+		{
+			name:                    "action ssa false / release empty",
+			actionServerSideOption:  "false",
+			releaseApplyMethod:      "ssa",
+			expectedServerSideApply: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			serverSideApply, err := getUpgradeServerSideValue(tt.actionServerSideOption, tt.releaseApplyMethod)
+			assert.Nil(t, err)
+			assert.Equal(t, tt.expectedServerSideApply, serverSideApply)
+		})
+	}
+
+	testsError := []struct {
+		name                   string
+		actionServerSideOption string
+		releaseApplyMethod     string
+		expectedErrorMsg       string
+	}{
+		{
+			name:                   "action invalid option",
+			actionServerSideOption: "invalid",
+			releaseApplyMethod:     "ssa",
+			expectedErrorMsg:       "invalid/unknown release server-side apply method: invalid",
+		},
+	}
+
+	for _, tt := range testsError {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := getUpgradeServerSideValue(tt.actionServerSideOption, tt.releaseApplyMethod)
+			assert.ErrorContains(t, err, tt.expectedErrorMsg)
+		})
+	}
+
+}
+
+func TestUpgradeRun_UnreachableKubeClient(t *testing.T) {
+	t.Helper()
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.ConnectionError = errors.New("connection refused")
+	config.KubeClient = &failingKubeClient
+
+	client := NewUpgrade(config)
+	vals := map[string]interface{}{}
+	result, err := client.Run("", buildChart(), vals)
+
+	assert.Nil(t, result)
+	assert.ErrorContains(t, err, "connection refused")
 }

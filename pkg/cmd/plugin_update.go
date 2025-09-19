@@ -24,8 +24,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"helm.sh/helm/v4/pkg/plugin"
-	"helm.sh/helm/v4/pkg/plugin/installer"
+	"helm.sh/helm/v4/internal/plugin"
+	"helm.sh/helm/v4/internal/plugin/installer"
 )
 
 type pluginUpdateOptions struct {
@@ -63,7 +63,7 @@ func (o *pluginUpdateOptions) complete(args []string) error {
 func (o *pluginUpdateOptions) run(out io.Writer) error {
 	installer.Debug = settings.Debug
 	slog.Debug("loading installed plugins", "path", settings.PluginsDirectory)
-	plugins, err := plugin.FindPlugins(settings.PluginsDirectory)
+	plugins, err := plugin.LoadAll(settings.PluginsDirectory)
 	if err != nil {
 		return err
 	}
@@ -86,8 +86,8 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 	return nil
 }
 
-func updatePlugin(p *plugin.Plugin) error {
-	exactLocation, err := filepath.EvalSymlinks(p.Dir)
+func updatePlugin(p plugin.Plugin) error {
+	exactLocation, err := filepath.EvalSymlinks(p.Dir())
 	if err != nil {
 		return err
 	}

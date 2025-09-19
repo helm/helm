@@ -64,7 +64,7 @@ func (h *DebugCheckHandler) WithGroup(name string) slog.Handler {
 // NewLogger creates a new logger with dynamic debug checking
 func NewLogger(debugEnabled DebugEnabledFunc) *slog.Logger {
 	// Create base handler that removes timestamps
-	baseHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+	baseHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		// Always use LevelDebug here to allow all messages through
 		// Our custom handler will do the filtering
 		Level: slog.LevelDebug,

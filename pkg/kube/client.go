@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -46,12 +47,14 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/jsonmergepatch"
 	"k8s.io/apimachinery/pkg/util/mergepatch"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/util/csaupgrade"
 	"k8s.io/client-go/util/retry"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
@@ -89,6 +92,14 @@ const (
 	StatusWatcherStrategy WaitStrategy = "watcher"
 	LegacyStrategy        WaitStrategy = "legacy"
 	HookOnlyStrategy      WaitStrategy = "hookOnly"
+)
+
+type FieldValidationDirective string
+
+const (
+	FieldValidationDirectiveIgnore FieldValidationDirective = "Ignore"
+	FieldValidationDirectiveWarn   FieldValidationDirective = "Warn"
+	FieldValidationDirectiveStrict FieldValidationDirective = "Strict"
 )
 
 func init() {
@@ -194,10 +205,102 @@ func (c *Client) IsReachable() error {
 	return nil
 }
 
+type clientCreateOptions struct {
+	serverSideApply          bool
+	forceConflicts           bool
+	dryRun                   bool
+	fieldValidationDirective FieldValidationDirective
+}
+
+type ClientCreateOption func(*clientCreateOptions) error
+
+// ClientCreateOptionServerSideApply enables performing object apply server-side
+// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
+//
+// `forceConflicts` forces conflicts to be resolved (may be  when serverSideApply enabled only)
+// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+func ClientCreateOptionServerSideApply(serverSideApply, forceConflicts bool) ClientCreateOption {
+	return func(o *clientCreateOptions) error {
+		if !serverSideApply && forceConflicts {
+			return fmt.Errorf("forceConflicts enabled when serverSideApply disabled")
+		}
+
+		o.serverSideApply = serverSideApply
+		o.forceConflicts = forceConflicts
+
+		return nil
+	}
+}
+
+// ClientCreateOptionDryRun requests the server to perform non-mutating operations only
+func ClientCreateOptionDryRun(dryRun bool) ClientCreateOption {
+	return func(o *clientCreateOptions) error {
+		o.dryRun = dryRun
+
+		return nil
+	}
+}
+
+// ClientCreateOptionFieldValidationDirective specifies show API operations validate object's schema
+//   - For client-side apply: this is ignored
+//   - For server-side apply: the directive is sent to the server to perform the validation
+//
+// Defaults to `FieldValidationDirectiveStrict`
+func ClientCreateOptionFieldValidationDirective(fieldValidationDirective FieldValidationDirective) ClientCreateOption {
+	return func(o *clientCreateOptions) error {
+		o.fieldValidationDirective = fieldValidationDirective
+
+		return nil
+	}
+}
+
 // Create creates Kubernetes resources specified in the resource list.
-func (c *Client) Create(resources ResourceList) (*Result, error) {
+func (c *Client) Create(resources ResourceList, options ...ClientCreateOption) (*Result, error) {
 	slog.Debug("creating resource(s)", "resources", len(resources))
-	if err := perform(resources, createResource); err != nil {
+
+	createOptions := clientCreateOptions{
+		serverSideApply:          true, // Default to server-side apply
+		fieldValidationDirective: FieldValidationDirectiveStrict,
+	}
+
+	errs := make([]error, 0, len(options))
+	for _, o := range options {
+		errs = append(errs, o(&createOptions))
+	}
+	if err := errors.Join(errs...); err != nil {
+		return nil, fmt.Errorf("invalid client create option(s): %w", err)
+	}
+
+	if createOptions.forceConflicts && !createOptions.serverSideApply {
+		return nil, fmt.Errorf("invalid operation: force conflicts can only be used with server-side apply")
+	}
+
+	makeCreateApplyFunc := func() func(target *resource.Info) error {
+		if createOptions.serverSideApply {
+			slog.Debug("using server-side apply for resource creation", slog.Bool("forceConflicts", createOptions.forceConflicts), slog.Bool("dryRun", createOptions.dryRun), slog.String("fieldValidationDirective", string(createOptions.fieldValidationDirective)))
+			return func(target *resource.Info) error {
+				err := patchResourceServerSide(target, createOptions.dryRun, createOptions.forceConflicts, createOptions.fieldValidationDirective)
+
+				logger := slog.With(
+					slog.String("namespace", target.Namespace),
+					slog.String("name", target.Name),
+					slog.String("gvk", target.Mapping.GroupVersionKind.String()))
+				if err != nil {
+					logger.Debug("Error patching resource", slog.Any("error", err))
+					return err
+				}
+
+				logger.Debug("Patched resource")
+
+				return nil
+			}
+		}
+
+		slog.Debug("using client-side apply for resource creation")
+		return createResource
+	}
+
+	if err := perform(resources, makeCreateApplyFunc()); err != nil {
 		return nil, err
 	}
 	return &Result{Created: resources}, nil
@@ -348,96 +451,98 @@ func (c *Client) namespace() string {
 	return v1.NamespaceDefault
 }
 
-// newBuilder returns a new resource builder for structured api objects.
-func (c *Client) newBuilder() *resource.Builder {
-	return c.Factory.NewBuilder().
+func determineFieldValidationDirective(validate bool) FieldValidationDirective {
+	if validate {
+		return FieldValidationDirectiveStrict
+	}
+
+	return FieldValidationDirectiveIgnore
+}
+
+func buildResourceList(f Factory, namespace string, validationDirective FieldValidationDirective, reader io.Reader, transformRequest resource.RequestTransform) (ResourceList, error) {
+
+	schema, err := f.Validator(string(validationDirective))
+	if err != nil {
+		return nil, err
+	}
+
+	builder := f.NewBuilder().
 		ContinueOnError().
-		NamespaceParam(c.namespace()).
+		NamespaceParam(namespace).
 		DefaultNamespace().
-		Flatten()
+		Flatten().
+		Unstructured().
+		Schema(schema).
+		Stream(reader, "")
+	if transformRequest != nil {
+		builder.TransformRequests(transformRequest)
+	}
+	result, err := builder.Do().Infos()
+	return result, scrubValidationError(err)
 }
 
 // Build validates for Kubernetes objects and returns unstructured infos.
 func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
-	validationDirective := metav1.FieldValidationIgnore
-	if validate {
-		validationDirective = metav1.FieldValidationStrict
-	}
-
-	schema, err := c.Factory.Validator(validationDirective)
-	if err != nil {
-		return nil, err
-	}
-	result, err := c.newBuilder().
-		Unstructured().
-		Schema(schema).
-		Stream(reader, "").
-		Do().Infos()
-	return result, scrubValidationError(err)
+	return buildResourceList(
+		c.Factory,
+		c.namespace(),
+		determineFieldValidationDirective(validate),
+		reader,
+		nil)
 }
 
 // BuildTable validates for Kubernetes objects and returns unstructured infos.
 // The returned kind is a Table.
 func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, error) {
-	validationDirective := metav1.FieldValidationIgnore
-	if validate {
-		validationDirective = metav1.FieldValidationStrict
-	}
-
-	schema, err := c.Factory.Validator(validationDirective)
-	if err != nil {
-		return nil, err
-	}
-	result, err := c.newBuilder().
-		Unstructured().
-		Schema(schema).
-		Stream(reader, "").
-		TransformRequests(transformRequests).
-		Do().Infos()
-	return result, scrubValidationError(err)
+	return buildResourceList(
+		c.Factory,
+		c.namespace(),
+		determineFieldValidationDirective(validate),
+		reader,
+		transformRequests)
 }
 
-func (c *Client) update(original, target ResourceList, force, threeWayMerge bool) (*Result, error) {
+func (c *Client) update(originals, targets ResourceList, updateApplyFunc UpdateApplyFunc) (*Result, error) {
 	updateErrors := []error{}
 	res := &Result{}
 
-	slog.Debug("checking resources for changes", "resources", len(target))
-	err := target.Visit(func(info *resource.Info, err error) error {
+	slog.Debug("checking resources for changes", "resources", len(targets))
+	err := targets.Visit(func(target *resource.Info, err error) error {
 		if err != nil {
 			return err
 		}
 
-		helper := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager())
-		if _, err := helper.Get(info.Namespace, info.Name); err != nil {
+		helper := resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
+		if _, err := helper.Get(target.Namespace, target.Name); err != nil {
 			if !apierrors.IsNotFound(err) {
 				return fmt.Errorf("could not get information about the resource: %w", err)
 			}
 
 			// Append the created resource to the results, even if something fails
-			res.Created = append(res.Created, info)
+			res.Created = append(res.Created, target)
 
 			// Since the resource does not exist, create it.
-			if err := createResource(info); err != nil {
+			if err := createResource(target); err != nil {
 				return fmt.Errorf("failed to create resource: %w", err)
 			}
 
-			kind := info.Mapping.GroupVersionKind.Kind
-			slog.Debug("created a new resource", "namespace", info.Namespace, "name", info.Name, "kind", kind)
+			kind := target.Mapping.GroupVersionKind.Kind
+			slog.Debug("created a new resource", "namespace", target.Namespace, "name", target.Name, "kind", kind)
 			return nil
 		}
 
-		originalInfo := original.Get(info)
-		if originalInfo == nil {
-			kind := info.Mapping.GroupVersionKind.Kind
-			return fmt.Errorf("no %s with the name %q found", kind, info.Name)
+		original := originals.Get(target)
+		if original == nil {
+			kind := target.Mapping.GroupVersionKind.Kind
+			return fmt.Errorf("original object %s with the name %q not found", kind, target.Name)
 		}
 
-		if err := updateResource(c, info, originalInfo.Object, force, threeWayMerge); err != nil {
-			slog.Debug("error updating the resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+		if err := updateApplyFunc(original, target); err != nil {
 			updateErrors = append(updateErrors, err)
 		}
+
 		// Because we check for errors later, append the info regardless
-		res.Updated = append(res.Updated, info)
+		res.Updated = append(res.Updated, target)
 
 		return nil
 	})
@@ -449,7 +554,7 @@ func (c *Client) update(original, target ResourceList, force, threeWayMerge bool
 		return res, joinErrors(updateErrors, " && ")
 	}
 
-	for _, info := range original.Difference(target) {
+	for _, info := range originals.Difference(targets) {
 		slog.Debug("deleting resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 
 		if err := info.Get(); err != nil {
@@ -473,6 +578,99 @@ func (c *Client) update(original, target ResourceList, force, threeWayMerge bool
 	return res, nil
 }
 
+type clientUpdateOptions struct {
+	threeWayMergeForUnstructured  bool
+	serverSideApply               bool
+	forceReplace                  bool
+	forceConflicts                bool
+	dryRun                        bool
+	fieldValidationDirective      FieldValidationDirective
+	upgradeClientSideFieldManager bool
+}
+
+type ClientUpdateOption func(*clientUpdateOptions) error
+
+// ClientUpdateOptionThreeWayMergeForUnstructured enables performing three-way merge for unstructured objects
+// Must not be enabled when ClientUpdateOptionServerSideApply is enabled
+func ClientUpdateOptionThreeWayMergeForUnstructured(threeWayMergeForUnstructured bool) ClientUpdateOption {
+	return func(o *clientUpdateOptions) error {
+		o.threeWayMergeForUnstructured = threeWayMergeForUnstructured
+
+		return nil
+	}
+}
+
+// ClientUpdateOptionServerSideApply enables performing object apply server-side (default)
+// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
+// Must not be enabled when ClientUpdateOptionThreeWayMerge is enabled
+//
+// `forceConflicts` forces conflicts to be resolved (may be enabled when serverSideApply enabled only)
+// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+func ClientUpdateOptionServerSideApply(serverSideApply, forceConflicts bool) ClientUpdateOption {
+	return func(o *clientUpdateOptions) error {
+		if !serverSideApply && forceConflicts {
+			return fmt.Errorf("forceConflicts enabled when serverSideApply disabled")
+		}
+
+		o.serverSideApply = serverSideApply
+		o.forceConflicts = forceConflicts
+
+		return nil
+	}
+}
+
+// ClientUpdateOptionForceReplace forces objects to be replaced rather than updated via patch
+// Must not be enabled when ClientUpdateOptionForceConflicts is enabled
+func ClientUpdateOptionForceReplace(forceReplace bool) ClientUpdateOption {
+	return func(o *clientUpdateOptions) error {
+		o.forceReplace = forceReplace
+
+		return nil
+	}
+}
+
+// ClientUpdateOptionDryRun requests the server to perform non-mutating operations only
+func ClientUpdateOptionDryRun(dryRun bool) ClientUpdateOption {
+	return func(o *clientUpdateOptions) error {
+		o.dryRun = dryRun
+
+		return nil
+	}
+}
+
+// ClientUpdateOptionFieldValidationDirective specifies show API operations validate object's schema
+//   - For client-side apply: this is ignored
+//   - For server-side apply: the directive is sent to the server to perform the validation
+//
+// Defaults to `FieldValidationDirectiveStrict`
+func ClientUpdateOptionFieldValidationDirective(fieldValidationDirective FieldValidationDirective) ClientUpdateOption {
+	return func(o *clientUpdateOptions) error {
+		o.fieldValidationDirective = fieldValidationDirective
+
+		return nil
+	}
+}
+
+// ClientUpdateOptionUpgradeClientSideFieldManager specifies that resources client-side field manager should be upgraded to server-side apply
+// (before applying the object server-side)
+// This is required when upgrading a chart from client-side to server-side apply, otherwise the client-side field management remains. Conflicting with server-side applied updates.
+//
+// Note:
+// if this option is specified, but the object is not managed by client-side field manager, it will be a no-op. However, the cost of fetching the objects will be incurred.
+//
+// see:
+// - https://github.com/kubernetes/kubernetes/pull/112905
+// - `UpgradeManagedFields` / https://github.com/kubernetes/kubernetes/blob/f47e9696d7237f1011d23c9b55f6947e60526179/staging/src/k8s.io/client-go/util/csaupgrade/upgrade.go#L81
+func ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager bool) ClientUpdateOption {
+	return func(o *clientUpdateOptions) error {
+		o.upgradeClientSideFieldManager = upgradeClientSideFieldManager
+
+		return nil
+	}
+}
+
+type UpdateApplyFunc func(original, target *resource.Info) error
+
 // Update takes the current list of objects and target list of objects and
 // creates resources that don't already exist, updates resources that have been
 // modified in the target configuration, and deletes resources from the current
@@ -481,21 +679,94 @@ func (c *Client) update(original, target ResourceList, force, threeWayMerge bool
 // resource updates, creations, and deletions that were attempted. These can be
 // used for cleanup or other logging purposes.
 //
-// The difference to Update is that UpdateThreeWayMerge does a three-way-merge
-// for unstructured objects.
-func (c *Client) UpdateThreeWayMerge(original, target ResourceList, force bool) (*Result, error) {
-	return c.update(original, target, force, true)
-}
+// The default is to use server-side apply, equivalent to: `ClientUpdateOptionServerSideApply(true)`
+func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdateOption) (*Result, error) {
+	updateOptions := clientUpdateOptions{
+		serverSideApply:          true, // Default to server-side apply
+		fieldValidationDirective: FieldValidationDirectiveStrict,
+	}
 
-// Update takes the current list of objects and target list of objects and
-// creates resources that don't already exist, updates resources that have been
-// modified in the target configuration, and deletes resources from the current
-// configuration that are not present in the target configuration. If an error
-// occurs, a Result will still be returned with the error, containing all
-// resource updates, creations, and deletions that were attempted. These can be
-// used for cleanup or other logging purposes.
-func (c *Client) Update(original, target ResourceList, force bool) (*Result, error) {
-	return c.update(original, target, force, false)
+	errs := make([]error, 0, len(options))
+	for _, o := range options {
+		errs = append(errs, o(&updateOptions))
+	}
+	if err := errors.Join(errs...); err != nil {
+		return nil, fmt.Errorf("invalid client update option(s): %w", err)
+	}
+
+	if updateOptions.threeWayMergeForUnstructured && updateOptions.serverSideApply {
+		return nil, fmt.Errorf("invalid operation: cannot use three-way merge for unstructured and server-side apply together")
+	}
+
+	if updateOptions.forceConflicts && updateOptions.forceReplace {
+		return nil, fmt.Errorf("invalid operation: cannot use force conflicts and force replace together")
+	}
+
+	if updateOptions.serverSideApply && updateOptions.forceReplace {
+		return nil, fmt.Errorf("invalid operation: cannot use server-side apply and force replace together")
+	}
+
+	makeUpdateApplyFunc := func() UpdateApplyFunc {
+		if updateOptions.forceReplace {
+			slog.Debug(
+				"using resource replace update strategy",
+				slog.String("fieldValidationDirective", string(updateOptions.fieldValidationDirective)))
+			return func(original, target *resource.Info) error {
+				if err := replaceResource(target, updateOptions.fieldValidationDirective); err != nil {
+					slog.Debug("error replacing the resource", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+					return err
+				}
+
+				originalObject := original.Object
+				kind := target.Mapping.GroupVersionKind.Kind
+				slog.Debug("replace succeeded", "name", original.Name, "initialKind", originalObject.GetObjectKind().GroupVersionKind().Kind, "kind", kind)
+
+				return nil
+			}
+		} else if updateOptions.serverSideApply {
+			slog.Debug(
+				"using server-side apply for resource update",
+				slog.Bool("forceConflicts", updateOptions.forceConflicts),
+				slog.Bool("dryRun", updateOptions.dryRun),
+				slog.String("fieldValidationDirective", string(updateOptions.fieldValidationDirective)),
+				slog.Bool("upgradeClientSideFieldManager", updateOptions.upgradeClientSideFieldManager))
+			return func(original, target *resource.Info) error {
+
+				logger := slog.With(
+					slog.String("namespace", target.Namespace),
+					slog.String("name", target.Name),
+					slog.String("gvk", target.Mapping.GroupVersionKind.String()))
+
+				if updateOptions.upgradeClientSideFieldManager {
+					patched, err := upgradeClientSideFieldManager(original, updateOptions.dryRun, updateOptions.fieldValidationDirective)
+					if err != nil {
+						slog.Debug("Error patching resource to replace CSA field management", slog.Any("error", err))
+						return err
+					}
+
+					if patched {
+						logger.Debug("Upgraded object client-side field management with server-side apply field management")
+					}
+				}
+
+				if err := patchResourceServerSide(target, updateOptions.dryRun, updateOptions.forceConflicts, updateOptions.fieldValidationDirective); err != nil {
+					logger.Debug("Error patching resource", slog.Any("error", err))
+					return err
+				}
+
+				logger.Debug("Patched resource")
+
+				return nil
+			}
+		}
+
+		slog.Debug("using client-side apply for resource update", slog.Bool("threeWayMergeForUnstructured", updateOptions.threeWayMergeForUnstructured))
+		return func(original, target *resource.Info) error {
+			return patchResourceClientSide(original.Object, target, updateOptions.threeWayMergeForUnstructured)
+		}
+	}
+
+	return c.update(originals, targets, makeUpdateApplyFunc())
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
@@ -503,7 +774,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 // if one or more fail and collect any errors. All successfully deleted items
 // will be returned in the `Deleted` ResourceList that is part of the result.
 func (c *Client) Delete(resources ResourceList) (*Result, []error) {
-	return rdelete(c, resources, metav1.DeletePropagationBackground)
+	return deleteResources(resources, metav1.DeletePropagationBackground)
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
@@ -511,23 +782,23 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 // if one or more fail and collect any errors. All successfully deleted items
 // will be returned in the `Deleted` ResourceList that is part of the result.
 func (c *Client) DeleteWithPropagationPolicy(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error) {
-	return rdelete(c, resources, policy)
+	return deleteResources(resources, policy)
 }
 
-func rdelete(_ *Client, resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
+func deleteResources(resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
-	err := perform(resources, func(info *resource.Info) error {
-		slog.Debug("starting delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
-		err := deleteResource(info, propagation)
+	err := perform(resources, func(target *resource.Info) error {
+		slog.Debug("starting delete resource", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind)
+		err := deleteResource(target, propagation)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
-				slog.Debug("ignoring delete failure", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+				slog.Debug("ignoring delete failure", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
 			}
 			mtx.Lock()
 			defer mtx.Unlock()
-			res.Deleted = append(res.Deleted, info)
+			res.Deleted = append(res.Deleted, target)
 			return nil
 		}
 		mtx.Lock()
@@ -546,6 +817,17 @@ func rdelete(_ *Client, resources ResourceList, propagation metav1.DeletionPropa
 		return nil, errs
 	}
 	return res, nil
+}
+
+// https://github.com/kubernetes/kubectl/blob/197123726db24c61aa0f78d1f0ba6e91a2ec2f35/pkg/cmd/apply/apply.go#L439
+func isIncompatibleServerError(err error) bool {
+	// 415: Unsupported media type means we're talking to a server which doesn't
+	// support server-side apply.
+	if _, ok := err.(*apierrors.StatusError); !ok {
+		// Non-StatusError means the error isn't because the server is incompatible.
+		return false
+	}
+	return err.(*apierrors.StatusError).Status().Code == http.StatusUnsupportedMediaType
 }
 
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.
@@ -568,18 +850,41 @@ func getManagedFieldsManager() string {
 	return filepath.Base(os.Args[0])
 }
 
+func perform(infos ResourceList, fn func(*resource.Info) error) error {
+	var result error
+
+	if len(infos) == 0 {
+		return ErrNoObjectsVisited
+	}
+
+	errs := make(chan error)
+	go batchPerform(infos, fn, errs)
+
+	for range infos {
+		err := <-errs
+		if err != nil {
+			result = errors.Join(result, err)
+		}
+	}
+
+	return result
+}
+
 func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<- error) {
 	var kind string
 	var wg sync.WaitGroup
+	defer wg.Wait()
+
 	for _, info := range infos {
 		currentKind := info.Object.GetObjectKind().GroupVersionKind().Kind
 		if kind != currentKind {
 			wg.Wait()
 			kind = currentKind
 		}
+
 		wg.Add(1)
-		go func(i *resource.Info) {
-			errs <- fn(i)
+		go func(info *resource.Info) {
+			errs <- fn(info)
 			wg.Done()
 		}(info)
 	}
@@ -597,6 +902,7 @@ func createResource(info *resource.Info) error {
 			if err != nil {
 				return err
 			}
+
 			return info.Refresh(obj, true)
 		})
 }
@@ -611,8 +917,8 @@ func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) erro
 		})
 }
 
-func createPatch(target *resource.Info, current runtime.Object, threeWayMergeForUnstructured bool) ([]byte, types.PatchType, error) {
-	oldData, err := json.Marshal(current)
+func createPatch(original runtime.Object, target *resource.Info, threeWayMergeForUnstructured bool) ([]byte, types.PatchType, error) {
+	oldData, err := json.Marshal(original)
 	if err != nil {
 		return nil, types.StrategicMergePatchType, fmt.Errorf("serializing current configuration: %w", err)
 	}
@@ -674,46 +980,150 @@ func createPatch(target *resource.Info, current runtime.Object, threeWayMergeFor
 	return patch, types.StrategicMergePatchType, err
 }
 
-func updateResource(_ *Client, target *resource.Info, currentObj runtime.Object, force, threeWayMergeForUnstructured bool) error {
-	var (
-		obj    runtime.Object
-		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
-		kind   = target.Mapping.GroupVersionKind.Kind
-	)
+func replaceResource(target *resource.Info, fieldValidationDirective FieldValidationDirective) error {
 
-	// if --force is applied, attempt to replace the existing resource with the new object.
-	if force {
-		var err error
-		obj, err = helper.Replace(target.Namespace, target.Name, true, target.Object)
-		if err != nil {
-			return fmt.Errorf("failed to replace object: %w", err)
-		}
-		slog.Debug("replace succeeded", "name", target.Name, "initialKind", currentObj.GetObjectKind().GroupVersionKind().Kind, "kind", kind)
-	} else {
-		patch, patchType, err := createPatch(target, currentObj, threeWayMergeForUnstructured)
-		if err != nil {
-			return fmt.Errorf("failed to create patch: %w", err)
-		}
+	helper := resource.NewHelper(target.Client, target.Mapping).
+		WithFieldValidation(string(fieldValidationDirective)).
+		WithFieldManager(getManagedFieldsManager())
 
-		if patch == nil || string(patch) == "{}" {
-			slog.Debug("no changes detected", "kind", kind, "name", target.Name)
-			// This needs to happen to make sure that Helm has the latest info from the API
-			// Otherwise there will be no labels and other functions that use labels will panic
-			if err := target.Get(); err != nil {
-				return fmt.Errorf("failed to refresh resource information: %w", err)
-			}
-			return nil
+	obj, err := helper.Replace(target.Namespace, target.Name, true, target.Object)
+	if err != nil {
+		return fmt.Errorf("failed to replace object: %w", err)
+	}
+
+	if err := target.Refresh(obj, true); err != nil {
+		return fmt.Errorf("failed to refresh object after replace: %w", err)
+	}
+
+	return nil
+
+}
+
+func patchResourceClientSide(original runtime.Object, target *resource.Info, threeWayMergeForUnstructured bool) error {
+
+	patch, patchType, err := createPatch(original, target, threeWayMergeForUnstructured)
+	if err != nil {
+		return fmt.Errorf("failed to create patch: %w", err)
+	}
+
+	kind := target.Mapping.GroupVersionKind.Kind
+	if patch == nil || string(patch) == "{}" {
+		slog.Debug("no changes detected", "kind", kind, "name", target.Name)
+		// This needs to happen to make sure that Helm has the latest info from the API
+		// Otherwise there will be no labels and other functions that use labels will panic
+		if err := target.Get(); err != nil {
+			return fmt.Errorf("failed to refresh resource information: %w", err)
 		}
-		// send patch to server
-		slog.Debug("patching resource", "kind", kind, "name", target.Name, "namespace", target.Namespace)
-		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
-		if err != nil {
-			return fmt.Errorf("cannot patch %q with kind %s: %w", target.Name, kind, err)
-		}
+		return nil
+	}
+
+	// send patch to server
+	slog.Debug("patching resource", "kind", kind, "name", target.Name, "namespace", target.Namespace)
+	helper := resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
+	obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
+	if err != nil {
+		return fmt.Errorf("cannot patch %q with kind %s: %w", target.Name, kind, err)
 	}
 
 	target.Refresh(obj, true)
+
 	return nil
+}
+
+// upgradeClientSideFieldManager is simply a wrapper around csaupgrade.UpgradeManagedFields
+// that ugrade CSA managed fields to SSA apply
+// see: https://github.com/kubernetes/kubernetes/pull/112905
+func upgradeClientSideFieldManager(info *resource.Info, dryRun bool, fieldValidationDirective FieldValidationDirective) (bool, error) {
+
+	fieldManagerName := getManagedFieldsManager()
+
+	patched := false
+	err := retry.RetryOnConflict(
+		retry.DefaultRetry,
+		func() error {
+
+			if err := info.Get(); err != nil {
+				return fmt.Errorf("failed to get object %s/%s %s: %w", info.Namespace, info.Name, info.Mapping.GroupVersionKind.String(), err)
+			}
+
+			helper := resource.NewHelper(
+				info.Client,
+				info.Mapping).
+				DryRun(dryRun).
+				WithFieldManager(fieldManagerName).
+				WithFieldValidation(string(fieldValidationDirective))
+
+			patchData, err := csaupgrade.UpgradeManagedFieldsPatch(
+				info.Object,
+				sets.New(fieldManagerName),
+				fieldManagerName)
+			if err != nil {
+				return fmt.Errorf("failed to upgrade managed fields for object %s/%s %s: %w", info.Namespace, info.Name, info.Mapping.GroupVersionKind.String(), err)
+			}
+
+			if len(patchData) == 0 {
+				return nil
+			}
+
+			obj, err := helper.Patch(
+				info.Namespace,
+				info.Name,
+				types.JSONPatchType,
+				patchData,
+				nil)
+
+			if err == nil {
+				patched = true
+				return info.Refresh(obj, true)
+			}
+
+			if !apierrors.IsConflict(err) {
+				return fmt.Errorf("failed to patch object to upgrade CSA field manager %s/%s %s: %w", info.Namespace, info.Name, info.Mapping.GroupVersionKind.String(), err)
+			}
+
+			return err
+		})
+
+	return patched, err
+}
+
+// Patch reource using server-side apply
+func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts bool, fieldValidationDirective FieldValidationDirective) error {
+	helper := resource.NewHelper(
+		target.Client,
+		target.Mapping).
+		DryRun(dryRun).
+		WithFieldManager(getManagedFieldsManager()).
+		WithFieldValidation(string(fieldValidationDirective))
+
+	// Send the full object to be applied on the server side.
+	data, err := runtime.Encode(unstructured.UnstructuredJSONScheme, target.Object)
+	if err != nil {
+		return fmt.Errorf("failed to encode object %s/%s %s: %w", target.Namespace, target.Name, target.Mapping.GroupVersionKind.String(), err)
+	}
+	options := metav1.PatchOptions{
+		Force: &forceConflicts,
+	}
+	obj, err := helper.Patch(
+		target.Namespace,
+		target.Name,
+		types.ApplyPatchType,
+		data,
+		&options,
+	)
+	if err != nil {
+		if isIncompatibleServerError(err) {
+			return fmt.Errorf("server-side apply not available on the server: %v", err)
+		}
+
+		if apierrors.IsConflict(err) {
+			return fmt.Errorf("conflict occurred while applying object %s/%s %s: %w", target.Namespace, target.Name, target.Mapping.GroupVersionKind.String(), err)
+		}
+
+		return err
+	}
+
+	return target.Refresh(obj, true)
 }
 
 // GetPodList uses the kubernetes interface to get the list of pods filtered by listOptions
