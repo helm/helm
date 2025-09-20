@@ -28,7 +28,6 @@ import (
 	"helm.sh/helm/v4/internal/tlsutil"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
-	helmtime "helm.sh/helm/v4/pkg/time"
 
 	"github.com/Masterminds/semver/v3"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -157,7 +156,7 @@ func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationURL, meta.Home)
 
 	if len(creationTime) == 0 {
-		creationTime = helmtime.Now().UTC().Format(time.RFC3339)
+		creationTime = time.Now().UTC().Format(time.RFC3339)
 	}
 
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationCreated, creationTime)

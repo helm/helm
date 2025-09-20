@@ -93,12 +93,24 @@ func (r *v2Accessor) Dependencies() []Charter {
 	return deps
 }
 
+func (r *v2Accessor) MetaDependencies() []Dependency {
+	var deps = make([]Dependency, len(r.chrt.Metadata.Dependencies))
+	for i, c := range r.chrt.Metadata.Dependencies {
+		deps[i] = c
+	}
+	return deps
+}
+
 func (r *v2Accessor) Values() map[string]interface{} {
 	return r.chrt.Values
 }
 
 func (r *v2Accessor) Schema() []byte {
 	return r.chrt.Schema
+}
+
+func (r *v2Accessor) Deprecated() bool {
+	return r.chrt.Metadata.Deprecated
 }
 
 type v3Accessor struct {
@@ -150,12 +162,24 @@ func (r *v3Accessor) Dependencies() []Charter {
 	return deps
 }
 
+func (r *v3Accessor) MetaDependencies() []Dependency {
+	var deps = make([]Dependency, len(r.chrt.Dependencies()))
+	for i, c := range r.chrt.Metadata.Dependencies {
+		deps[i] = c
+	}
+	return deps
+}
+
 func (r *v3Accessor) Values() map[string]interface{} {
 	return r.chrt.Values
 }
 
 func (r *v3Accessor) Schema() []byte {
 	return r.chrt.Schema
+}
+
+func (r *v3Accessor) Deprecated() bool {
+	return r.chrt.Metadata.Deprecated
 }
 
 func structToMap(obj interface{}) (map[string]interface{}, error) {

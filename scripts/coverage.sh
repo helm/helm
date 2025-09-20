@@ -19,9 +19,10 @@ set -euo pipefail
 covermode=${COVERMODE:-atomic}
 coverdir=$(mktemp -d /tmp/coverage.XXXXXXXXXX)
 profile="${coverdir}/cover.out"
+target="${1:-./...}" # by default the whole repository is tested
 
 generate_cover_data() {
-  for d in $(go list ./...) ; do
+  for d in $(go list "$target"); do
     (
       local output="${coverdir}/${d//\//-}.cover"
       go test -coverprofile="${output}" -covermode="$covermode" "$d"

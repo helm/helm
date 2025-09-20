@@ -21,7 +21,6 @@ import (
 	"time"
 
 	rspb "helm.sh/helm/v4/pkg/release/v1"
-	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 // note: this test data is shared with filter_test.go.
@@ -34,7 +33,7 @@ var releases = []*rspb.Release{
 }
 
 func tsRelease(name string, vers int, dur time.Duration, status rspb.Status) *rspb.Release {
-	info := &rspb.Info{Status: status, LastDeployed: helmtime.Now().Add(dur)}
+	info := &rspb.Info{Status: status, LastDeployed: time.Now().Add(dur)}
 	return &rspb.Release{
 		Name:    name,
 		Version: vers,

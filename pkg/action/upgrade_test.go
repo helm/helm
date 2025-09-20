@@ -18,7 +18,9 @@ package action
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"reflect"
 	"testing"
 	"time"
@@ -32,7 +34,6 @@ import (
 
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func upgradeAction(t *testing.T) *Upgrade {
@@ -258,7 +259,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			withValues(chartDefaultValues),
 			withMetadataDependency(dependency),
 		)
-		now := helmtime.Now()
+		now := time.Now()
 		existingValues := map[string]interface{}{
 			"subchart": map[string]interface{}{
 				"enabled": false,
@@ -689,4 +690,19 @@ func TestGetUpgradeServerSideValue(t *testing.T) {
 		})
 	}
 
+}
+
+func TestUpgradeRun_UnreachableKubeClient(t *testing.T) {
+	t.Helper()
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.ConnectionError = errors.New("connection refused")
+	config.KubeClient = &failingKubeClient
+
+	client := NewUpgrade(config)
+	vals := map[string]interface{}{}
+	result, err := client.Run("", buildChart(), vals)
+
+	assert.Nil(t, result)
+	assert.ErrorContains(t, err, "connection refused")
 }

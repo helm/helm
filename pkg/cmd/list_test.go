@@ -18,10 +18,10 @@ package cmd
 
 import (
 	"testing"
+	"time"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	"helm.sh/helm/v4/pkg/time"
 )
 
 func TestListCmd(t *testing.T) {

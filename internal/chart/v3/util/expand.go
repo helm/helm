@@ -27,12 +27,12 @@ import (
 	"sigs.k8s.io/yaml"
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
-	"helm.sh/helm/v4/internal/chart/v3/loader"
+	"helm.sh/helm/v4/pkg/chart/loader/archive"
 )
 
 // Expand uncompresses and extracts a chart into the specified directory.
 func Expand(dir string, r io.Reader) error {
-	files, err := loader.LoadArchiveFiles(r)
+	files, err := archive.LoadArchiveFiles(r)
 	if err != nil {
 		return err
 	}

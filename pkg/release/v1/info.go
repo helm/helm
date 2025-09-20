@@ -16,19 +16,19 @@ limitations under the License.
 package v1
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
+	"time"
 
-	"helm.sh/helm/v4/pkg/time"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Info describes release information.
 type Info struct {
 	// FirstDeployed is when the release was first deployed.
-	FirstDeployed time.Time `json:"first_deployed,omitempty"`
+	FirstDeployed time.Time `json:"first_deployed,omitzero"`
 	// LastDeployed is when the release was last deployed.
-	LastDeployed time.Time `json:"last_deployed,omitempty"`
+	LastDeployed time.Time `json:"last_deployed,omitzero"`
 	// Deleted tracks when this object was deleted.
-	Deleted time.Time `json:"deleted"`
+	Deleted time.Time `json:"deleted,omitzero"`
 	// Description is human-friendly "log entry" about this release.
 	Description string `json:"description,omitempty"`
 	// Status is the current state of the release

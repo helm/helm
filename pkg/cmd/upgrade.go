@@ -30,7 +30,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
-	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	ci "helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/cmd/require"
@@ -198,7 +199,12 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if req := ch.Metadata.Dependencies; req != nil {
+
+			ac, err := ci.NewAccessor(ch)
+			if err != nil {
+				return err
+			}
+			if req := ac.MetaDependencies(); req != nil {
 				if err := action.CheckDependencies(ch, req); err != nil {
 					err = fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies: %w", err)
 					if client.DependencyUpdate {
@@ -226,7 +232,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 			}
 
-			if ch.Metadata.Deprecated {
+			if ac.Deprecated() {
 				slog.Warn("this chart is deprecated")
 			}
 

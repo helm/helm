@@ -33,8 +33,8 @@ import (
 	"github.com/spf13/pflag"
 
 	"helm.sh/helm/v4/pkg/action"
-	chart "helm.sh/helm/v4/pkg/chart/v2"
-	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/cmd/require"
@@ -270,15 +270,20 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
-	if err := checkIfInstallable(chartRequested); err != nil {
+	ac, err := chart.NewAccessor(chartRequested)
+	if err != nil {
 		return nil, err
 	}
 
-	if chartRequested.Metadata.Deprecated {
+	if err := checkIfInstallable(ac); err != nil {
+		return nil, err
+	}
+
+	if ac.Deprecated() {
 		slog.Warn("this chart is deprecated")
 	}
 
-	if req := chartRequested.Metadata.Dependencies; req != nil {
+	if req := ac.MetaDependencies(); req != nil {
 		// If CheckDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/helm/helm/issues/2209
@@ -337,12 +342,14 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 // checkIfInstallable validates if a chart can be installed
 //
 // Application chart type is only installable
-func checkIfInstallable(ch *chart.Chart) error {
-	switch ch.Metadata.Type {
+func checkIfInstallable(ch chart.Accessor) error {
+	meta := ch.MetadataAsMap()
+
+	switch meta["Type"] {
 	case "", "application":
 		return nil
 	}
-	return fmt.Errorf("%s charts are not installable", ch.Metadata.Type)
+	return fmt.Errorf("%s charts are not installable", meta["Type"])
 }
 
 // Provide dynamic auto-completion for the install and template commands

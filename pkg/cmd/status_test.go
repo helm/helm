@@ -22,12 +22,11 @@ import (
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func TestStatusCmd(t *testing.T) {
 	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []*release.Release {
-		info.LastDeployed = helmtime.Unix(1452902400, 0).UTC()
+		info.LastDeployed = time.Unix(1452902400, 0).UTC()
 		return []*release.Release{{
 			Name:      "flummoxed-chickadee",
 			Namespace: "default",
@@ -130,8 +129,8 @@ func TestStatusCmd(t *testing.T) {
 	runTestCmd(t, tests)
 }
 
-func mustParseTime(t string) helmtime.Time {
-	res, _ := helmtime.Parse(time.RFC3339, t)
+func mustParseTime(t string) time.Time {
+	res, _ := time.Parse(time.RFC3339, t)
 	return res
 }
 

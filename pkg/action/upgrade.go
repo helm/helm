@@ -28,9 +28,10 @@ import (
 
 	"k8s.io/cli-runtime/pkg/resource"
 
+	"helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/chart/common/util"
-	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartv2 "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/postrenderer"
@@ -151,15 +152,25 @@ func (u *Upgrade) SetRegistryClient(client *registry.Client) {
 }
 
 // Run executes the upgrade on the given release.
-func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+func (u *Upgrade) Run(name string, chart chart.Charter, vals map[string]interface{}) (*release.Release, error) {
 	ctx := context.Background()
 	return u.RunWithContext(ctx, name, chart, vals)
 }
 
 // RunWithContext executes the upgrade on the given release with context.
-func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Charter, vals map[string]interface{}) (*release.Release, error) {
 	if err := u.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
+	}
+
+	var chrt *chartv2.Chart
+	switch c := ch.(type) {
+	case *chartv2.Chart:
+		chrt = c
+	case chartv2.Chart:
+		chrt = &c
+	default:
+		return nil, errors.New("invalid chart apiVersion")
 	}
 
 	// Make sure wait is set if RollbackOnFailure. This makes it so
@@ -173,7 +184,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	}
 
 	slog.Debug("preparing upgrade", "name", name)
-	currentRelease, upgradedRelease, serverSideApply, err := u.prepareUpgrade(name, chart, vals)
+	currentRelease, upgradedRelease, serverSideApply, err := u.prepareUpgrade(name, chrt, vals)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +217,7 @@ func (u *Upgrade) isDryRun() bool {
 }
 
 // prepareUpgrade builds an upgraded release for an upgrade operation.
-func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, *release.Release, bool, error) {
+func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[string]interface{}) (*release.Release, *release.Release, bool, error) {
 	if chart == nil {
 		return nil, nil, false, errMissingChart
 	}
@@ -578,7 +589,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 //
 // This is skipped if the u.ResetValues flag is set, in which case the
 // request values are not altered.
-func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newVals map[string]interface{}) (map[string]interface{}, error) {
+func (u *Upgrade) reuseValues(chart *chartv2.Chart, current *release.Release, newVals map[string]interface{}) (map[string]interface{}, error) {
 	if u.ResetValues {
 		// If ResetValues is set, we completely ignore current.Config.
 		slog.Debug("resetting values to the chart's original version")

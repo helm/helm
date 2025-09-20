@@ -2,7 +2,7 @@
 *.swp
 .DS_Store
 .coverage/
-.idea/
+.idea
 .vimrc
 .vscode/
 .devcontainer/

@@ -42,6 +42,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
 
+	ci "helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -243,7 +244,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 //
 // If DryRun is set to true, this will prepare the release, but not install it
 
-func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+func (i *Install) Run(chrt ci.Charter, vals map[string]interface{}) (*release.Release, error) {
 	ctx := context.Background()
 	return i.RunWithContext(ctx, chrt, vals)
 }
@@ -252,7 +253,17 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 //
 // When the task is cancelled through ctx, the function returns and the install
 // proceeds in the background.
-func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[string]interface{}) (*release.Release, error) {
+	var chrt *chart.Chart
+	switch c := ch.(type) {
+	case *chart.Chart:
+		chrt = c
+	case chart.Chart:
+		chrt = &c
+	default:
+		return nil, errors.New("invalid chart apiVersion")
+	}
+
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
@@ -761,17 +772,30 @@ func TemplateName(nameTemplate string) (string, error) {
 }
 
 // CheckDependencies checks the dependencies for a chart.
-func CheckDependencies(ch *chart.Chart, reqs []*chart.Dependency) error {
+func CheckDependencies(ch ci.Charter, reqs []ci.Dependency) error {
+	ac, err := ci.NewAccessor(ch)
+	if err != nil {
+		return err
+	}
+
 	var missing []string
 
 OUTER:
 	for _, r := range reqs {
-		for _, d := range ch.Dependencies() {
-			if d.Name() == r.Name {
+		rac, err := ci.NewDependencyAccessor(r)
+		if err != nil {
+			return err
+		}
+		for _, d := range ac.Dependencies() {
+			dac, err := ci.NewAccessor(d)
+			if err != nil {
+				return err
+			}
+			if dac.Name() == rac.Name() {
 				continue OUTER
 			}
 		}
-		missing = append(missing, r.Name)
+		missing = append(missing, rac.Name())
 	}
 
 	if len(missing) > 0 {

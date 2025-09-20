@@ -19,19 +19,19 @@ package cmd
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func outputFlagCompletionTest(t *testing.T, cmdName string) {
 	t.Helper()
 	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []*release.Release {
-		info.LastDeployed = helmtime.Unix(1452902400, 0).UTC()
+		info.LastDeployed = time.Unix(1452902400, 0).UTC()
 		return []*release.Release{{
 			Name:      "athos",
 			Namespace: "default",

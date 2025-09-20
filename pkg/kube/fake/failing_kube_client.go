@@ -40,6 +40,7 @@ type FailingKubeClient struct {
 	UpdateError                error
 	BuildError                 error
 	BuildTableError            error
+	ConnectionError            error
 	BuildDummy                 bool
 	DummyResources             kube.ResourceList
 	BuildUnstructuredError     error
@@ -164,6 +165,13 @@ func (f *FailingKubeClient) GetWaiter(ws kube.WaitStrategy) (kube.Waiter, error)
 		watchUntilReadyError: f.WatchUntilReadyError,
 		waitDuration:         f.WaitDuration,
 	}, nil
+}
+
+func (f *FailingKubeClient) IsReachable() error {
+	if f.ConnectionError != nil {
+		return f.ConnectionError
+	}
+	return f.PrintingKubeClient.IsReachable()
 }
 
 func createDummyResourceList() kube.ResourceList {
