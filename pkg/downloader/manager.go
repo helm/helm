@@ -23,6 +23,7 @@ import (
 	"io"
 	stdfs "io/fs"
 	"log"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
