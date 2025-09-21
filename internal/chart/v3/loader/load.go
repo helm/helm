@@ -25,6 +25,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
@@ -71,11 +72,12 @@ func Load(name string) (*chart.Chart, error) {
 func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 	c := new(chart.Chart)
 	subcharts := make(map[string][]*archive.BufferedFile)
+	var subChartsKeys []string
 
 	// do not rely on assumed ordering of files in the chart and crash
 	// if Chart.yaml was not coming early enough to initialize metadata
 	for _, f := range files {
-		c.Raw = append(c.Raw, &common.File{Name: f.Name, Data: f.Data})
+		c.Raw = append(c.Raw, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
 		if f.Name == "Chart.yaml" {
 			if c.Metadata == nil {
 				c.Metadata = new(chart.Metadata)
@@ -89,6 +91,7 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 			if c.Metadata.APIVersion == "" {
 				c.Metadata.APIVersion = chart.APIVersionV3
 			}
+			c.ModTime = f.ModTime
 		}
 	}
 	for _, f := range files {
@@ -109,20 +112,24 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 			c.Values = values
 		case f.Name == "values.schema.json":
 			c.Schema = f.Data
+			c.SchemaModTime = f.ModTime
 
 		case strings.HasPrefix(f.Name, "templates/"):
-			c.Templates = append(c.Templates, &common.File{Name: f.Name, Data: f.Data})
+			c.Templates = append(c.Templates, &common.File{Name: f.Name, Data: f.Data, ModTime: f.ModTime})
 		case strings.HasPrefix(f.Name, "charts/"):
 			if filepath.Ext(f.Name) == ".prov" {
-				c.Files = append(c.Files, &common.File{Name: f.Name, Data: f.Data})
+				c.Files = append(c.Files, &common.File{Name: f.Name, Data: f.Data, ModTime: f.ModTime})
 				continue
 			}
 
 			fname := strings.TrimPrefix(f.Name, "charts/")
 			cname := strings.SplitN(fname, "/", 2)[0]
-			subcharts[cname] = append(subcharts[cname], &archive.BufferedFile{Name: fname, Data: f.Data})
+			if slices.Index(subChartsKeys, cname) == -1 {
+				subChartsKeys = append(subChartsKeys, cname)
+			}
+			subcharts[cname] = append(subcharts[cname], &archive.BufferedFile{Name: fname, ModTime: f.ModTime, Data: f.Data})
 		default:
-			c.Files = append(c.Files, &common.File{Name: f.Name, Data: f.Data})
+			c.Files = append(c.Files, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
 		}
 	}
 

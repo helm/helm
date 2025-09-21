@@ -427,8 +427,9 @@ func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 
 	mockChart := buildChart(withSampleTemplates())
 	mockChart.Templates = append(mockChart.Templates, &common.File{
-		Name: "templates/lookup",
-		Data: []byte(`goodbye: {{ lookup "v1" "Namespace" "" "___" }}`),
+		Name:    "templates/lookup",
+		ModTime: time.Now(),
+		Data:    []byte(`goodbye: {{ lookup "v1" "Namespace" "" "___" }}`),
 	})
 
 	res, err := instAction.Run(mockChart, vals)
