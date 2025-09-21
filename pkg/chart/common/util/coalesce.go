@@ -303,6 +303,9 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 	if dst == nil {
 		return src
 	}
+	if len(dst) == 0 && prefix != "" && !merge {
+		return dst
+	}
 	for key, val := range dst {
 		if val == nil {
 			src[key] = nil
