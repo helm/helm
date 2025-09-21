@@ -18,6 +18,7 @@ package util
 
 import (
 	"testing"
+	"time"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -46,7 +47,7 @@ func TestToRenderValues(t *testing.T) {
 		Templates: []*common.File{},
 		Values:    chartValues,
 		Files: []*common.File{
-			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
+			{Name: "scheherazade/shahryar.txt", ModTime: time.Now(), Data: []byte("1,001 Nights")},
 		},
 	}
 	c.AddDependency(&chart.Chart{
