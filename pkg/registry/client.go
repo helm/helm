@@ -835,10 +835,6 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *ur
 	if version == "" {
 		// Use OCI URI tag as default
 		version = registryReference.Tag
-	} else {
-		if registryReference.Tag != "" && registryReference.Tag != version {
-			return "", nil, fmt.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
-		}
 	}
 
 	if registryReference.Digest != "" {
