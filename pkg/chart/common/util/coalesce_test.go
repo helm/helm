@@ -241,6 +241,41 @@ func TestCoalesceValues(t *testing.T) {
 	is.Equal(valsCopy, vals)
 }
 
+func TestCoalesceValuesEmptyMapOverride(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "emptymap"},
+		Values: map[string]interface{}{
+			"config":   map[string]interface{}{"foo": "bar"},
+			"toDelete": map[string]interface{}{"baz": "qux"},
+		},
+	}
+
+	overrides := map[string]interface{}{
+		"config":   map[string]interface{}{},
+		"toDelete": nil,
+	}
+
+	result, err := CoalesceValues(c, overrides)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config, ok := result["config"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected config to remain a map, got %T", result["config"])
+	}
+	if len(config) != 0 {
+		t.Fatalf("expected config map to be empty, got %v", config)
+	}
+	if _, exists := config["foo"]; exists {
+		t.Fatalf("expected config override to drop default key, still found foo in %v", config)
+	}
+
+	if _, exists := result["toDelete"]; exists {
+		t.Fatalf("expected toDelete key to be removed when set to nil override")
+	}
+}
+
 func ttpl(tpl string, v map[string]interface{}) (string, error) {
 	var b bytes.Buffer
 	tt := template.Must(template.New("t").Parse(tpl))
