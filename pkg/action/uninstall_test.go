@@ -146,7 +146,7 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	}`
 	unAction.cfg.Releases.Create(rel)
 	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.DeleteWithPropagationError = fmt.Errorf("Uninstall with cascade failed")
+	failer.DeleteError = fmt.Errorf("Uninstall with cascade failed")
 	failer.BuildDummy = true
 	unAction.cfg.KubeClient = failer
 	_, err := unAction.Run(rel.Name)
