@@ -833,19 +833,19 @@ func (m *Manager) locateLocalDependencies(baseChartPath string, resursive bool) 
 				[]string{fullDepChartPath},
 				reversedDeps...,
 			)
-		}
 
-		if resursive {
-			subDeps, err := m.locateLocalDependencies(fullDepChartPath, resursive)
+			if resursive {
+				subDeps, err := m.locateLocalDependencies(fullDepChartPath, resursive)
 
-			if err != nil {
-				return nil, err
+				if err != nil {
+					return nil, err
+				}
+
+				reversedDeps = append(
+					subDeps,
+					reversedDeps...,
+				)
 			}
-
-			reversedDeps = append(
-				subDeps,
-				reversedDeps...,
-			)
 		}
 	}
 

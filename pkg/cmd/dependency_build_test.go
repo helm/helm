@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/provenance"
 	"helm.sh/helm/v4/pkg/repo/v1"
@@ -157,6 +158,67 @@ func TestDependencyBuildCmdWithHelmV2Hash(t *testing.T) {
 	_, out, err := executeActionCommand(cmd)
 
 	// Want to make sure the build can verify Helm v2 hash
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+}
+
+// createTestingChart creates a basic chart that depends on reqtest-0.1.0
+//
+// The baseURL can be used to point to a particular repository server.
+func createTestingChartWithRecursion(t *testing.T, dest, name, baseURL string) {
+	t.Helper()
+	cfile := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       name,
+			Version:    "1.2.3",
+			Dependencies: []*chart.Dependency{
+				{Name: "reqtest", Version: "0.1.0", Repository: baseURL},
+				{Name: "compressedchart", Version: "0.1.0", Repository: baseURL},
+				{Name: "root", Version: "0.1.0", Repository: baseURL},
+			},
+		},
+	}
+	if err := chartutil.SaveDir(cfile, dest); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDependencyBuildCmdRecursive(t *testing.T) {
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz"),
+	)
+	defer srv.Stop()
+	rootDir := srv.Root()
+
+	srv.LinkIndices()
+	ociSrv, err := repotest.NewOCIServer(t, rootDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{rootDir}, p...)...)
+	}
+
+	ociChartName := "oci-depending-chart"
+	c := createTestingMetadataForOCI(ociChartName, ociSrv.RegistryURL)
+	if _, err := chartutil.Save(c, ociSrv.Dir); err != nil {
+		t.Fatal(err)
+	}
+	ociSrv.Run(t, repotest.WithDependingChart(c))
+
+	chartname := "chart-with-multi-level-deps"
+	createTestingChartWithRecursion(t, dir(), chartname, srv.URL())
+	repoFile := filepath.Join(dir(), "repositories.yaml")
+
+	cmd := fmt.Sprintf("dependency build '%s' --repository-config %s --repository-cache %s --plain-http --recursive", filepath.Join(rootDir, chartname), repoFile, rootDir)
+	_, out, err := executeActionCommand(cmd)
+
+	// In the first pass, we basically want the same results as an update.
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
