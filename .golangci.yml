@@ -42,11 +42,6 @@ linters:
       - legacy
       - std-error-handling
 
-    rules:
-      - linters:
-          - revive
-        text: 'var-naming: avoid meaningless package names'
-
     warn-unused: true
 
   settings:
