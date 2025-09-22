@@ -595,8 +595,280 @@ func TestMergeValuesV2(t *testing.T) {
 	}
 	equal = reflect.DeepEqual(testMap, expectedMap)
 	if !equal {
-		t.Errorf("Expected a map with different keys to merge properly with another map. Expected: %v, got %v", expectedMap, testMap)
+		t.Errorf("Expected a map with different keys to merge properly with another map. Expected values: %v, got %v", expectedMap, testMap)
 	}
+}
+
+func TestMergeLists(t *testing.T) {
+	stringCommonMap := map[string]interface{}{
+		"foo": "bar",
+		"baz": []string{
+			"cool",
+		},
+	}
+	stringOverrideMap := map[string]interface{}{
+		"foo": "bar",
+		"\\*baz": []string{
+			"stuff",
+		},
+	}
+	stringComposedMap := map[string]interface{}{
+		"foo": "bar",
+		"baz": []string{
+			"cool",
+			"stuff",
+		},
+	}
+	testMap := MergeMaps(stringCommonMap, stringOverrideMap)
+	equal := reflect.DeepEqual(testMap, stringComposedMap)
+	if !equal {
+		t.Errorf("Expected lists of a bool type to compose when specified. Expected values: %v, got %v", stringComposedMap, testMap)
+	}
+
+	floatCommonMap := map[string]interface{}{
+		"foo": "bar",
+		"baz": []float64{
+			1,
+		},
+	}
+	floatOverrideMap := map[string]interface{}{
+		"foo": "bar",
+		"\\*baz": []float64{
+			2,
+		},
+	}
+	floatComposedMap := map[string]interface{}{
+		"foo": "bar",
+		"baz": []float64{
+			1,
+			2,
+		},
+	}
+	testMap = MergeMaps(floatCommonMap, floatOverrideMap)
+	equal = reflect.DeepEqual(testMap, floatComposedMap)
+	if !equal {
+		t.Errorf("Expected lists of a bool type to compose when specified. Expected values: %v, got %v", floatComposedMap, testMap)
+	}
+
+	boolCommonMap := map[string]interface{}{
+		"foo": "bar",
+		"baz": []bool{
+			true,
+		},
+	}
+	boolOverrideMap := map[string]interface{}{
+		"foo": "bar",
+		"\\*baz": []bool{
+			false,
+		},
+	}
+	boolComposedMap := map[string]interface{}{
+		"foo": "bar",
+		"baz": []bool{
+			true,
+			false,
+		},
+	}
+	testMap = MergeMaps(boolCommonMap, boolOverrideMap)
+	equal = reflect.DeepEqual(testMap, boolComposedMap)
+	if !equal {
+		t.Errorf("Expected lists of a bool type to compose when specified. Expected values: %v, got %v", boolComposedMap, testMap)
+	}
+
+	testMap = MergeMaps(stringCommonMap, floatOverrideMap)
+	equal =reflect.DeepEqual(testMap, stringCommonMap)
+	if !equal {
+		t.Errorf("Expected lists of non-matching types not to compose. Expected values: %v, got %v", stringCommonMap, testMap)
+	}
+
+	nilOverrideMap := map[string]interface{}{
+		"foo": "bar",
+		"\\*baz": nil,
+	}
+	nilComposedMap := map[string]interface{}{
+		"foo": "bar",
+	}
+	testMap = MergeMaps(stringCommonMap, nilOverrideMap)
+	equal = reflect.DeepEqual(testMap, nilComposedMap)
+	if !equal {
+		t.Errorf("Expected nil on maps of composed lists to override values. Expected values: %v, got %v", nilOverrideMap, testMap)
+	}
+
+	stringCommonMap = map[string]interface{}{
+		"foo": "bar",
+		"baz": []string{
+			"cool",
+		},
+		"\\*baz": []string{
+			"nifty",
+		},
+	}
+	stringComposedMap = map[string]interface{}{
+		"foo": "bar",
+		"baz": []string{
+			"nifty",
+			"stuff",
+		},
+	}
+	testMap = MergeMaps(stringCommonMap, stringOverrideMap)
+	equal = reflect.DeepEqual(testMap, stringComposedMap)
+	if !equal {
+		t.Errorf("Expected nil on maps of composed lists to override values. Expected values: %v, got %v", stringComposedMap, testMap)
+	}
+
+	stringOverrideMap = map[string]interface{}{
+		"foo": "bar",
+		"baz": []string{
+			"things",
+		},
+		"\\*baz": []string{
+			"stuff",
+		},
+	}
+	stringComposedMap = map[string]interface{}{
+		"foo": "bar",
+		"baz": []string{
+			"things",
+		},
+	}
+	testMap = MergeMaps(stringCommonMap, stringOverrideMap)
+	equal = reflect.DeepEqual(testMap, stringComposedMap)
+	if !equal {
+		t.Errorf("Expected composed lists to default to old behavior in case of conflict. Expected values: %v, got %v", stringComposedMap, testMap)
+	}
+
+	indexedCommonMap := map[string]interface{}{
+		"foo": []map[string]interface{}{
+			{
+				"name": "bar",
+				"qualities": []string{
+					"cool",
+				},
+			},
+			{
+				"name": "baz",
+				"qualities": []string{
+					"stuff",
+				},
+			},
+		},
+	}
+	indexedOverrideMap := map[string]interface{}{
+		"\\*foo": []map[string]interface{}{
+			{
+				"name": "bar",
+				"qualities": []string{
+					"nifty",
+				},
+			},
+			{
+				"name": "bash",
+				"qualities": []string{
+					"things",
+				},
+			},
+		},
+	}
+	normalOverrideMap := map[string]interface{}{
+		"foo": []map[string]interface{}{
+			{
+				"\\*name": "bar",
+				"qualities": []string{
+					"nifty",
+				},
+			},
+			{
+				"name": "bash",
+				"qualities": []string{
+					"things",
+				},
+			},
+		},
+	}
+	indexedMergedMap := map[string]interface{}{
+		"foo": []map[string]interface{}{
+			{
+				"name": "bar",
+				"qualities": []string{
+					"cool",
+				},
+			},
+			{
+				"name": "baz",
+				"qualities": []string{
+					"stuff",
+				},
+			},
+			{
+				"name": "bar",
+				"qualities": []string{
+					"nifty",
+				},
+			},
+			{
+				"name": "bash",
+				"qualities": []string{
+					"things",
+				},
+			},
+		},
+	}
+	testMap = MergeMaps(indexedCommonMap, indexedOverrideMap)
+	equal = reflect.DeepEqual(testMap, indexedMergedMap)
+	if !equal {
+		t.Errorf("Expected composed map with duplicate names. Expected values: %v, got %v", indexedMergedMap, testMap)
+	}
+
+	testMap = MergeMaps(indexedCommonMap, normalOverrideMap)
+	equal = reflect.DeepEqual(testMap, normalOverrideMap)
+	if !equal {
+		t.Errorf("Expected ordinary lists to be fully overriden. Expected values: %v, got %v", indexedOverrideMap, testMap)
+	}
+
+	indexedOverrideMap = map[string]interface{}{
+		"\\*foo": []map[string]interface{}{
+			{
+				"\\*name": "bar",
+				"qualities": []string{
+					"nifty",
+				},
+			},
+			{
+				"name": "bash",
+				"qualities": []string{
+					"things",
+				},
+			},
+		},
+	}
+	indexedMergedMap = map[string]interface{}{
+		"foo": []map[string]interface{}{
+			{
+				"name": "bar",
+				"qualities": []string{
+					"nifty",
+				},
+			},
+			{
+				"name": "baz",
+				"qualities": []string{
+					"stuff",
+				},
+			},
+			{
+				"name": "bash",
+				"qualities": []string{
+					"things",
+				},
+			},
+		},
+	}
+	testMap = MergeMaps(indexedCommonMap, indexedOverrideMap)
+	equal = reflect.DeepEqual(testMap, indexedMergedMap)
+	if !equal {
+		t.Errorf("Expected indexed 'bar' name to be overriden. Expected values: %v, got %v", indexedMergedMap, testMap)
+	}
+
 }
 
 func verifyChart(t *testing.T, c *chart.Chart) {

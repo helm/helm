@@ -249,40 +249,60 @@ func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 					continue
 				}
 			}
-		} else {
+		} else if strings.HasPrefix(k, mergePrefix) {
 			strippedKey := strings.TrimPrefix(k, mergePrefix)
 			if out[k] != nil {
 				out[strippedKey] = out[k]
 				delete(out, k)
 			}
-			if sourceList, ok := out[strippedKey].([]any); ok && strings.HasPrefix(k, mergePrefix) {
 
-				_, isMapSlice := sourceList[0].(map[string]any)
-				if isMapSlice {
-					val, ok := v.([]any)
-					if !ok {
-						// List is explicitly made null on a subsequent file
-						if v == nil {
-							delete(out, strippedKey)
-							continue
-						} else {
-							log.Printf("Property \"%s\" mismatch during merge", strippedKey)
-							continue
-						}
-					}
-
-					out[strippedKey] = MergeMapLists(sourceList, val)
-					continue
-				} else if sourceList, ok := out[strippedKey].([]any); ok {
-					if val, ok := v.([]any); ok {
-						out[strippedKey] = append(sourceList, val...)
-					} else {
-						out[strippedKey] = v
-					}
-					continue
-				}
+			// Prefer non-prefixed in case of conflict
+			if b[strippedKey] != nil {
+				out[strippedKey] = b[strippedKey]
+				continue
 			}
 
+			// List is explicitly made null on a subsequent file
+			if v == nil {
+				delete(out, strippedKey)
+				continue
+			}
+
+			if sourceList, ok := out[strippedKey].([]map[string]interface{}); ok {
+				if val, ok := v.([]map[string]interface{}); ok {
+					out[strippedKey] = MergeMapLists(sourceList, val)
+					continue
+				}
+
+				log.Printf("Property \"%s\" mismatch during merge", strippedKey)
+				continue
+			} else if sourceList, ok := out[strippedKey].([]float64); ok {
+				if val, ok := v.([]float64); ok {
+					out[strippedKey] = append(sourceList, val...)
+					continue
+				}
+
+				log.Printf("Property \"%s\" mismatch during merge", strippedKey)
+				continue
+			} else if sourceList, ok := out[strippedKey].([]bool); ok {
+				if val, ok := v.([]bool); ok {
+					out[strippedKey] = append(sourceList, val...)
+					continue
+				}
+
+				log.Printf("Property \"%s\" mismatch during merge", strippedKey)
+				continue
+			} else if sourceList, ok := out[strippedKey].([]string); ok {
+				if val, ok := v.([]string); ok {
+					out[strippedKey] = append(sourceList, val...)
+					continue
+				}
+
+				log.Printf("Property \"%s\" mismatch during merge", strippedKey)
+				continue
+			} else {
+				out[strippedKey] = v
+			}
 		}
 		out[k] = v
 	}
@@ -291,37 +311,23 @@ func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 
 // MergeMapLists merges two lists of maps. If a prefix of * is set on a map key,
 // that key will be used to de-duplicate/merge with the source map
-func MergeMapLists(a, b []any) []any {
+func MergeMapLists(a, b []map[string]interface{}) []map[string]interface{} {
 	out := a
 	for j, mapEntry := range b {
-		mapEntry, ok := mapEntry.(map[string]any)
-		if !ok {
-			continue
-		}
-
 		var uniqueKey string
 		var dedupValue interface{}
 		for k, v := range mapEntry {
 			if strings.HasPrefix(k, mergePrefix) {
 				uniqueKey = k
 				dedupValue = v
-				bj, ok := b[j].(map[string]any)
-				if !ok {
-					continue
-				}
-				bj[strings.TrimPrefix(uniqueKey, mergePrefix)] = v
-				delete(bj, uniqueKey)
-				break
+				b[j][strings.TrimPrefix(uniqueKey, mergePrefix)] = v
+				delete(b[j], uniqueKey)
 			}
 		}
 		if len(uniqueKey) > 0 {
 			strippedMergeKey := strings.TrimPrefix(uniqueKey, mergePrefix)
 
 			for i, sourceMapEntry := range out {
-				sourceMapEntry, ok := sourceMapEntry.(map[string]any)
-				if !ok {
-					continue
-				}
 				for k, v := range sourceMapEntry {
 					if (k == strippedMergeKey || k == uniqueKey) && v == dedupValue {
 						mergedMapEntry := MergeMaps(sourceMapEntry, mapEntry)
