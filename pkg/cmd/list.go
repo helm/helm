@@ -37,9 +37,7 @@ import (
 var listHelp = `
 This command lists all of the releases for a specified namespace (uses current namespace context if namespace not specified).
 
-By default, it lists all releases in any status including deployed, failed,
-pending-upgrade, pending-install, pending-rollback, uninstalled, uninstalling,
-superseded, and unknown. Individual status filters like '--deployed', '--failed',
+By default, it lists all releases in any status. Individual status filters like '--deployed', '--failed',
 '--pending', '--uninstalled', '--superseded', and '--uninstalling' can be used
 to show only releases in specific states. Such flags can be combined:
 '--deployed --failed'.
