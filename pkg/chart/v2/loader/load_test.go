@@ -871,6 +871,167 @@ func TestMergeLists(t *testing.T) {
 
 }
 
+func TestMergeListsDeep(t *testing.T) {
+	indexedCommonMap := map[string]interface{}{
+		"groups": []map[string]interface{}{
+			{
+				"name": "commonRules",
+				"id":    float64(1331),
+				"rules": []map[string]interface{}{
+					{
+						"name": "firstRule",
+						"expr": "commonFirstExpr",
+						"for":  "3m",
+					},
+				},
+			},
+		},
+	}
+	indexedOverrideMap := map[string]interface{}{
+		"\\*groups": []map[string]interface{}{
+			{
+				"\\*name": "commonRules",
+				"\\*rules": []map[string]interface{}{
+					{
+						"\\*name": "firstRule",
+						"for": "4m",
+					},
+					{
+						"name": "uncommonRule",
+						"expr": "secondExpr",
+					},
+				},
+			},
+			{
+				"name": "appRules",
+				"rules": []map[string]interface{}{
+					{
+						"name": "appRule",
+						"expr": "appExpr",
+						"for": "4m",
+					},
+				},
+			},
+		},
+	}
+	indexedMergedMap := map[string]interface{}{
+		"groups": []map[string]interface{}{
+			{
+				"name": "commonRules",
+				"id":   float64(1331),
+				"rules": []map[string]interface{}{
+					{
+						"name": "firstRule",
+						"expr": "commonFirstExpr",
+						"for":  "4m",
+					},
+					{
+						"name": "uncommonRule",
+						"expr": "secondExpr",
+					},
+				},
+			},
+			{
+				"name": "appRules",
+				"rules": []map[string]interface{}{
+					{
+						"name": "appRule",
+						"expr": "appExpr",
+						"for": "4m",
+					},
+				},
+			},
+		},
+	}
+	testMap := MergeMaps(indexedCommonMap, indexedOverrideMap)
+	equal := reflect.DeepEqual(testMap, indexedMergedMap)
+	if !equal {
+		t.Errorf("Expected two level deep merged list. Expected values: %v, got %v", indexedMergedMap, testMap)
+	}
+
+	indexedOverrideMap = map[string]interface{}{
+		"\\*groups": []map[string]interface{}{
+			{
+				"\\*id":    float64(1331),
+				"\\*rules": []map[string]interface{}{
+					{
+						"\\*name": "firstRule",
+						"for": "4m",
+					},
+					{
+						"name": "uncommonRule",
+						"expr": "secondExpr",
+					},
+				},
+			},
+		},
+	}
+	indexedMergedMap = map[string]interface{}{
+		"groups": []map[string]interface{}{
+			{
+				"name": "commonRules",
+				"id":   float64(1331),
+				"rules": []map[string]interface{}{
+					{
+						"name": "firstRule",
+						"expr": "commonFirstExpr",
+						"for":  "4m",
+					},
+					{
+						"name": "uncommonRule",
+						"expr": "secondExpr",
+					},
+				},
+			},
+		},
+	}
+	testMap = MergeMaps(indexedCommonMap, indexedOverrideMap)
+	equal = reflect.DeepEqual(testMap, indexedMergedMap)
+	if !equal {
+		t.Errorf("Expected deep merged list on float64 key. Expected values: %v, got %v", indexedMergedMap, testMap)
+	}
+
+	indexedOverrideMap = map[string]interface{}{
+		"\\*groups": []map[string]interface{}{
+			{
+				"\\*name": "commonRules",
+				"\\*rules": []map[string]interface{}{
+					{
+						"\\*name": "firstRule",
+						"\\*for": "3m",
+						"expr": "OverrideFirstExpr",
+					},
+				},
+			},
+		},
+	}
+	indexedMergedMap = map[string]interface{}{
+		"groups": []map[string]interface{}{
+			{
+				"name": "commonRules",
+				"id":   float64(1331),
+				"rules": []map[string]interface{}{
+					{
+						"name": "firstRule",
+						"expr": "commonFirstExpr",
+						"for":  "3m",
+					},
+					{
+						"\\*name": "firstRule",
+						"\\*for": "3m",
+						"expr": "OverrideFirstExpr",
+					},
+				},
+			},
+		},
+	}
+	testMap = MergeMaps(indexedCommonMap, indexedOverrideMap)
+	equal = reflect.DeepEqual(testMap, indexedMergedMap)
+	if !equal {
+		t.Errorf("Expected composed list where we used two erroneously indicies. Expected values: %v, got %v", indexedMergedMap, testMap)
+	}
+}
+
 func verifyChart(t *testing.T, c *chart.Chart) {
 	t.Helper()
 	if c.Name() == "" {
@@ -917,7 +1078,6 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 			t.Errorf("Expected %s version %s, got %s", dep.Name(), exp["version"], dep.Metadata.Version)
 		}
 	}
-
 }
 
 func verifyDependencies(t *testing.T, c *chart.Chart) {

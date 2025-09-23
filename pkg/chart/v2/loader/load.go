@@ -270,11 +270,11 @@ func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 
 			if sourceList, ok := out[strippedKey].([]map[string]interface{}); ok {
 				if val, ok := v.([]map[string]interface{}); ok {
-					out[strippedKey] = MergeMapLists(sourceList, val)
+					out[strippedKey] = mergeMapLists(sourceList, val)
 					continue
 				}
 
-				log.Printf("Property \"%s\" mismatch during merge", strippedKey)
+				log.Printf("Warning: Property \"%s\" mismatch during merge", strippedKey)
 				continue
 			} else if sourceList, ok := out[strippedKey].([]float64); ok {
 				if val, ok := v.([]float64); ok {
@@ -282,7 +282,7 @@ func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 					continue
 				}
 
-				log.Printf("Property \"%s\" mismatch during merge", strippedKey)
+				log.Printf("Warning: Property \"%s\" mismatch during merge", strippedKey)
 				continue
 			} else if sourceList, ok := out[strippedKey].([]bool); ok {
 				if val, ok := v.([]bool); ok {
@@ -290,7 +290,7 @@ func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 					continue
 				}
 
-				log.Printf("Property \"%s\" mismatch during merge", strippedKey)
+				log.Printf("Warning: Property \"%s\" mismatch during merge", strippedKey)
 				continue
 			} else if sourceList, ok := out[strippedKey].([]string); ok {
 				if val, ok := v.([]string); ok {
@@ -298,7 +298,7 @@ func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 					continue
 				}
 
-				log.Printf("Property \"%s\" mismatch during merge", strippedKey)
+				log.Printf("Warning: Property \"%s\" mismatch during merge", strippedKey)
 				continue
 			} else {
 				out[strippedKey] = v
@@ -309,27 +309,47 @@ func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 	return out
 }
 
-// MergeMapLists merges two lists of maps. If a prefix of * is set on a map key,
+// mergeMapLists merges two lists of maps. If a prefix of * is set on a map key,
 // that key will be used to de-duplicate/merge with the source map
-func MergeMapLists(a, b []map[string]interface{}) []map[string]interface{} {
-	out := a
+func mergeMapLists(a, b []map[string]interface{}) []map[string]interface{} {
+	out := make([]map[string]interface{}, len(a))
+	copy(out, a)
+OuterList:
 	for j, mapEntry := range b {
 		var uniqueKey string
 		var dedupValue interface{}
+		alreadyHasPrefix := false
 		for k, v := range mapEntry {
+			switch v.(type) {
+			case float64:
+				break
+			case string:
+				break
+			default:
+				continue
+			}
 			if strings.HasPrefix(k, mergePrefix) {
-				uniqueKey = k
+				if alreadyHasPrefix {
+					duplicateKey := "\\*" + uniqueKey
+					log.Printf("Warning: Can't index on multiple keys \"%s: %v\" and \"%s: %v\" during list merge", duplicateKey, dedupValue, k, v)
+					// undo prior step
+					b[j][duplicateKey] = dedupValue
+					delete(b[j], uniqueKey)
+					out = append(out, mapEntry)
+					continue OuterList
+				}
+
+				alreadyHasPrefix = true
+				uniqueKey = strings.TrimPrefix(k, mergePrefix)
 				dedupValue = v
-				b[j][strings.TrimPrefix(uniqueKey, mergePrefix)] = v
-				delete(b[j], uniqueKey)
+				b[j][uniqueKey] = v
+				delete(b[j], k)
 			}
 		}
 		if len(uniqueKey) > 0 {
-			strippedMergeKey := strings.TrimPrefix(uniqueKey, mergePrefix)
-
 			for i, sourceMapEntry := range out {
 				for k, v := range sourceMapEntry {
-					if (k == strippedMergeKey || k == uniqueKey) && v == dedupValue {
+					if k == uniqueKey && v == dedupValue {
 						mergedMapEntry := MergeMaps(sourceMapEntry, mapEntry)
 						out[i] = mergedMapEntry
 						break
