@@ -142,7 +142,7 @@ func NewRequestResponseLogClient(t *testing.T, cb RoundTripperTestFunc) RequestR
 }
 
 // RequestResponseLogClient is a test client that logs requests and responses
-// Satifying http.RoundTripper interface, it can be used to mock HTTP requests in tests.
+// Satisfying http.RoundTripper interface, it can be used to mock HTTP requests in tests.
 // Forwarding requests to a callback function (cb) that can be used to simulate server responses.
 type RequestResponseLogClient struct {
 	t           *testing.T

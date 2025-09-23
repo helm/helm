@@ -1031,7 +1031,7 @@ func patchResourceClientSide(original runtime.Object, target *resource.Info, thr
 }
 
 // upgradeClientSideFieldManager is simply a wrapper around csaupgrade.UpgradeManagedFields
-// that ugrade CSA managed fields to SSA apply
+// that upgrade CSA managed fields to SSA apply
 // see: https://github.com/kubernetes/kubernetes/pull/112905
 func upgradeClientSideFieldManager(info *resource.Info, dryRun bool, fieldValidationDirective FieldValidationDirective) (bool, error) {
 
