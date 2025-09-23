@@ -49,8 +49,11 @@ jobs:
           # Push the latest semver tag, excluding prerelease tags
           LATEST_VERSION="$(git tag | sort -r --version-sort | grep '^v[0-9]' | grep -v '-' | head -n1)"
           echo "LATEST_VERSION=${LATEST_VERSION}"
-          echo "${LATEST_VERSION}" > _dist_versions/helm-latest-version
-          echo "${LATEST_VERSION}" > _dist_versions/helm3-latest-version
+          if [[ "${LATEST_VERSION}" != v4.* ]]; then
+            echo "Error: Latest version ${LATEST_VERSION} is not a v4 release"
+            exit 1
+          fi
+          echo "${LATEST_VERSION}" > _dist_versions/helm4-latest-version
 
       - name: Upload Binaries
         uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
