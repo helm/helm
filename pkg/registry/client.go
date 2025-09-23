@@ -41,7 +41,6 @@ import (
 	"oras.land/oras-go/v2/registry/remote/credentials"
 	"oras.land/oras-go/v2/registry/remote/retry"
 
-	"helm.sh/helm/v4/internal/version"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
@@ -70,7 +69,7 @@ type (
 		username           string
 		password           string
 		out                io.Writer
-		authorizer         *auth.Client
+		authorizer         *Authorizer
 		registryAuthorizer RemoteClient
 		credentialsStore   credentials.Store
 		httpClient         *http.Client
@@ -121,23 +120,11 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 
 	if client.authorizer == nil {
-		authorizer := auth.Client{
-			Client: client.httpClient,
-		}
-		authorizer.SetUserAgent(version.GetUserAgent())
-
-		if client.username != "" && client.password != "" {
-			authorizer.Credential = func(_ context.Context, _ string) (auth.Credential, error) {
-				return auth.Credential{Username: client.username, Password: client.password}, nil
-			}
-		} else {
-			authorizer.Credential = credentials.Credential(client.credentialsStore)
-		}
-
+		authorizer := NewAuthorizer(client.httpClient, client.credentialsStore, client.username, client.password)
 		if client.enableCache {
-			authorizer.Cache = auth.NewCache()
+			authorizer.EnableCache()
 		}
-		client.authorizer = &authorizer
+		client.authorizer = authorizer
 	}
 
 	return client, nil
@@ -177,17 +164,17 @@ func ClientOptWriter(out io.Writer) ClientOption {
 	}
 }
 
-// ClientOptAuthorizer returns a function that sets the authorizer setting on a client options set. This
+// ClientOptAuthorizer returns a function that sets the Authorizer setting on a client options set. This
 // can be used to override the default authorization mechanism.
 //
 // Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
 func ClientOptAuthorizer(authorizer auth.Client) ClientOption {
 	return func(client *Client) {
-		client.authorizer = &authorizer
+		client.authorizer = &Authorizer{Client: authorizer}
 	}
 }
 
-// ClientOptRegistryAuthorizer returns a function that sets the registry authorizer setting on a client options set. This
+// ClientOptRegistryAuthorizer returns a function that sets the registry Authorizer setting on a client options set. This
 // can be used to override the default authorization mechanism.
 //
 // Depending on the use-case you may need to set both ClientOptAuthorizer and ClientOptRegistryAuthorizer.
@@ -239,18 +226,12 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 	}
 	reg.PlainHTTP = c.plainHTTP
 	cred := auth.Credential{Username: c.username, Password: c.password}
-	c.authorizer.ForceAttemptOAuth2 = true
 	reg.Client = c.authorizer
 
 	ctx := context.Background()
 	if err := reg.Ping(ctx); err != nil {
-		c.authorizer.ForceAttemptOAuth2 = false
-		if err := reg.Ping(ctx); err != nil {
-			return fmt.Errorf("authenticating to %q: %w", host, err)
-		}
+		return fmt.Errorf("authenticating to %q: %w", host, err)
 	}
-	// Always restore to false after probing, to avoid forcing POST to token endpoints like GHCR.
-	c.authorizer.ForceAttemptOAuth2 = false
 
 	key := credentials.ServerAddressFromRegistry(host)
 	key = credentials.ServerAddressFromHostname(key)
@@ -278,10 +259,10 @@ func LoginOptPlainText(isPlainText bool) LoginOption {
 	}
 }
 
-func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, error) {
+func ensureTLSConfig(client *Authorizer, setConfig *tls.Config) (*tls.Config, error) {
 	var transport *http.Transport
 
-	switch t := client.Client.Transport.(type) {
+	switch t := client.Client.Client.Transport.(type) {
 	case *http.Transport:
 		transport = t
 	case *retry.Transport:
@@ -299,7 +280,7 @@ func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, e
 	if transport == nil {
 		// we don't know how to access the http.Transport, most likely the
 		// auth.Client.Client was provided by API user
-		return nil, fmt.Errorf("unable to access TLS client configuration, the provided HTTP Transport is not supported, given: %T", client.Client.Transport)
+		return nil, fmt.Errorf("unable to access TLS client configuration, the provided HTTP Transport is not supported, given: %T", client.Client.Client.Transport)
 	}
 
 	switch {
