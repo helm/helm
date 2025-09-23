@@ -179,6 +179,7 @@ func TestList_StateMask(t *testing.T) {
 	is.Len(res, 3)
 	is.Equal("one", res[0].Name)
 	is.Equal("three", res[1].Name)
+	is.Equal("two", res[2].Name)
 
 	lister.StateMask = ListUninstalled
 	res, err = lister.Run()
