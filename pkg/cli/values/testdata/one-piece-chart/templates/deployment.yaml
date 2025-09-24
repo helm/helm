@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "one-piece-chart.fullname" . }}-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "one-piece-chart.fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "one-piece-chart.fullname" . }}
+    spec:
+      containers:
+        - name: onepiece-container
+          image: alpine:3.18
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Mounted bounty files at /bounties:"
+              for f in /bounties/*.yaml; do
+                [ -e "$f" ] || continue
+                echo "---"
+                echo "Member: $(basename "$f" .yaml)"
+                cat "$f"
+              done
+              sleep 3600
+          volumeMounts:
+            - name: crew-bounties
+              mountPath: /bounties
+              readOnly: true
+      volumes:
+        - name: crew-bounties
+          configMap:
+            name: {{ include "one-piece-chart.fullname" . }}-crew
