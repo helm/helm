@@ -44,7 +44,11 @@ func SortByDate(list []*rspb.Release) {
 	sort.Slice(list, func(i, j int) bool {
 		ti := list[i].Info.LastDeployed.Unix()
 		tj := list[j].Info.LastDeployed.Unix()
-		return ti < tj
+		if ti != tj {
+			return ti < tj
+		}
+		// Use name as tie-breaker for stable sorting
+		return list[i].Name < list[j].Name
 	})
 }
 
