@@ -29,7 +29,7 @@ import (
 	"helm.sh/helm/v4/internal/plugin/schema"
 )
 
-// SubprocessProtocolCommand maps a given protocol to the getter command used to retrieve artifacts for that protcol
+// SubprocessProtocolCommand maps a given protocol to the getter command used to retrieve artifacts for that protocol
 type SubprocessProtocolCommand struct {
 	// Protocols are the list of schemes from the charts URL.
 	Protocols []string `yaml:"protocols"`
