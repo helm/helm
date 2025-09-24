@@ -47,6 +47,10 @@ const (
 )
 
 func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
+	f.StringSliceVarP(&v.ValuesDirectories, "values-directory", "d", []string{},
+		"specify value's directory to scan recursively for \".yaml\" files. Files are loaded in lexical order. When "+
+			"keys overlap, values from the later file override those from earlier ones. Note: This flag can be "+
+			"specified multiple times.")
 	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{}, "specify values in a YAML file or a URL (can specify multiple)")
 	f.StringArrayVar(&v.Values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	f.StringArrayVar(&v.StringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
