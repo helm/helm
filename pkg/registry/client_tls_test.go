@@ -17,6 +17,8 @@ limitations under the License.
 package registry
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"os"
 	"testing"
 
@@ -49,6 +51,30 @@ func (suite *TLSRegistryClientTestSuite) Test_0_Login() {
 	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
 		LoginOptBasicAuth(testUsername, testPassword),
 		LoginOptTLSClientConfig(tlsCert, tlsKey, tlsCA))
+	suite.Nil(err, "no error logging into registry with good credentials")
+}
+
+func (suite *TLSRegistryClientTestSuite) Test_1_Login() {
+	err := suite.RegistryClient.Login(suite.DockerRegistryHost,
+		LoginOptBasicAuth("badverybad", "ohsobad"),
+		LoginOptTLSClientConfigFromConfig(&tls.Config{}))
+	suite.NotNil(err, "error logging into registry with bad credentials")
+
+	// Create a *tls.Config from tlsCert, tlsKey, and tlsCA.
+	cert, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
+	suite.Nil(err, "error loading x509 key pair")
+	rootCAs := x509.NewCertPool()
+	caCert, err := os.ReadFile(tlsCA)
+	suite.Nil(err, "error reading CA certificate")
+	rootCAs.AppendCertsFromPEM(caCert)
+	conf := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      rootCAs,
+	}
+
+	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
+		LoginOptBasicAuth(testUsername, testPassword),
+		LoginOptTLSClientConfigFromConfig(conf))
 	suite.Nil(err, "no error logging into registry with good credentials")
 }
 
