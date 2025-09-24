@@ -28,7 +28,6 @@ import (
 // It provides the implementation of 'helm verify'.
 type Verify struct {
 	Keyring string
-	Out     string
 }
 
 // NewVerify creates a new Verify object with the given configuration.
@@ -37,23 +36,18 @@ func NewVerify() *Verify {
 }
 
 // Run executes 'helm verify'.
-func (v *Verify) Run(chartfile string) error {
+func (v *Verify) Run(chartfile string) (string, error) {
 	var out strings.Builder
 	p, err := downloader.VerifyChart(chartfile, chartfile+".prov", v.Keyring)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	for name := range p.SignedBy.Identities {
-		fmt.Fprintf(&out, "Signed by: %v\n", name)
+		_, _ = fmt.Fprintf(&out, "Signed by: %v\n", name)
 	}
-	fmt.Fprintf(&out, "Using Key With Fingerprint: %X\n", p.SignedBy.PrimaryKey.Fingerprint)
-	fmt.Fprintf(&out, "Chart Hash Verified: %s\n", p.FileHash)
+	_, _ = fmt.Fprintf(&out, "Using Key With Fingerprint: %X\n", p.SignedBy.PrimaryKey.Fingerprint)
+	_, _ = fmt.Fprintf(&out, "Chart Hash Verified: %s\n", p.FileHash)
 
-	// TODO(mattfarina): The output is set as a property rather than returned
-	// to maintain the Go API. In Helm v4 this function should return the out
-	// and the property on the struct can be removed.
-	v.Out = out.String()
-
-	return nil
+	return out.String(), err
 }

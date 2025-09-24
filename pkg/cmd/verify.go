@@ -53,12 +53,12 @@ func newVerifyCmd(out io.Writer) *cobra.Command {
 			return noMoreArgsComp()
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
-			err := client.Run(args[0])
+			result, err := client.Run(args[0])
 			if err != nil {
 				return err
 			}
 
-			fmt.Fprint(out, client.Out)
+			fmt.Fprint(out, result)
 
 			return nil
 		},
