@@ -146,7 +146,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 	// a consistent summary here. We mirror the OCI output format:
 	//
 	//   Pulled: <chartUrl>:<version>
-	//   Digest: sha256:<digest>
+	//   Checksum: sha256:<digest>
 	//
 	// For HTTP/repo pulls, the digest is the SHA-256 of the downloaded .tgz archive.
 	// For direct OCI pulls, the registry client already prints "Pulled:" and
@@ -164,9 +164,9 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		fmt.Fprintf(&out, "Pulled: %s\n", tag)
 
 		if sum, err := sha256File(saved); err == nil {
-			fmt.Fprintf(&out, "Digest: sha256:%x\n", sum)
+			fmt.Fprintf(&out, "Checksum: sha256:%x\n", sum)
 		} else {
-			fmt.Fprintf(&out, "Digest failed: %v\n", err)
+			fmt.Fprintf(&out, "Checksum failed: %v\n", err)
 		}
 	}
 

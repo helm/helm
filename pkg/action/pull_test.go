@@ -79,7 +79,7 @@ entries:
 
 	expectedURL := srv.URL + "/testchart:1.2.3"
 	assert.Contains(t, out, "Pulled: "+expectedURL, "expected Pulled summary in output")
-	assert.Contains(t, out, "Digest: "+wantDigest, "expected archive digest in output")
+	assert.Contains(t, out, "Checksum: "+wantDigest, "expected archive checksum in output")
 
 	// Ensure the chart file was saved.
 	_, statErr := os.Stat(filepath.Join(p.DestDir, "testchart-1.2.3.tgz"))
@@ -122,7 +122,7 @@ func TestPull_PrintsSummary_ForDirectHTTPURL(t *testing.T) {
 	// Output should reflect name-version.tgz from the URL.
 	expectedURL := srv.URL + "/directchart:9.9.9"
 	assert.Contains(t, out, "Pulled: "+expectedURL, "expected Pulled summary in output")
-	assert.Contains(t, out, "Digest: "+wantDigest, "expected archive digest in output")
+	assert.Contains(t, out, "Checksum: "+wantDigest, "expected archive checksum in output")
 
 	// Ensure the chart file was saved.
 	_, statErr := os.Stat(filepath.Join(p.DestDir, "directchart-9.9.9.tar.gz"))
