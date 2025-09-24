@@ -1,0 +1,6 @@
+crew:
+  - name: "Monkey D. Luffy"
+    role: "Captain"
+    bounty: "30,000,000"
+    age: 19
+    devil_fruit: "Gomu Gomu no Mi"
