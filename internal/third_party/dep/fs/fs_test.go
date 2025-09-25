@@ -37,6 +37,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"syscall"
 	"testing"
 )
 
@@ -557,6 +558,48 @@ func TestIsDir(t *testing.T) {
 		if got != want.exists {
 			t.Fatalf("expected %t for %s, got %t", want.exists, f, got)
 		}
+	}
+}
+
+func TestCopyFileSkipIrregularFiles(t *testing.T) {
+	dir := t.TempDir()
+
+	// Create a regular file first
+	regularFile := filepath.Join(dir, "regular.txt")
+	if err := os.WriteFile(regularFile, []byte("regular file content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test copying a regular file - should succeed
+	dstRegular := filepath.Join(dir, "regular_copy.txt")
+	if err := copyFile(regularFile, dstRegular); err != nil {
+		t.Fatalf("expected CopyFile to succeed for regular file, got error: %v", err)
+	}
+
+	// Verify the regular file was copied
+	if _, err := os.Stat(dstRegular); err != nil {
+		t.Fatalf("expected regular file to be copied, but destination doesn't exist: %v", err)
+	}
+
+	// Create a named pipe (FIFO) - this is an irregular file
+	// Note: syscall.Mkfifo is not available on Windows, so we skip this test there
+	pipeFile := filepath.Join(dir, "pipe")
+	if err := syscall.Mkfifo(pipeFile, 0644); err != nil {
+		if runtime.GOOS == "windows" {
+			t.Skip("skipping on windows - syscall.Mkfifo not available")
+		}
+		t.Fatal(err)
+	}
+
+	// Test copying the named pipe - should skip without error
+	dstPipe := filepath.Join(dir, "pipe_copy")
+	if err := copyFile(pipeFile, dstPipe); err != nil {
+		t.Fatalf("expected CopyFile to skip irregular file without error, got error: %v", err)
+	}
+
+	// Verify the irregular file was NOT copied (destination should not exist)
+	if _, err := os.Stat(dstPipe); err == nil {
+		t.Fatalf("expected irregular file to be skipped, but destination exists")
 	}
 }
 
