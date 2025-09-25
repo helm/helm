@@ -47,10 +47,18 @@ func (r *v2DependencyAccessor) Name() string {
 	return r.dep.Name
 }
 
+func (r *v2DependencyAccessor) Alias() string {
+	return r.dep.Alias
+}
+
 type v3DependencyAccessor struct {
 	dep *v3chart.Dependency
 }
 
 func (r *v3DependencyAccessor) Name() string {
 	return r.dep.Name
+}
+
+func (r *v3DependencyAccessor) Alias() string {
+	return r.dep.Alias
 }

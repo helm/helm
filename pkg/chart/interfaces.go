@@ -40,4 +40,5 @@ type Accessor interface {
 
 type DependencyAccessor interface {
 	Name() string
+	Alias() string
 }
