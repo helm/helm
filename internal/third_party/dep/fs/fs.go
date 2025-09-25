@@ -36,6 +36,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -173,6 +174,14 @@ func CopyFile(src, dst string) (err error) {
 		} else {
 			return nil
 		}
+	} else {
+		if fi, err := os.Lstat(src); err != nil {
+			return fmt.Errorf("stat failed: %w", err)
+		} else if !fi.Mode().IsRegular() {
+			fileType := fileTypeString(fi.Mode())
+			slog.Debug("skip copying non-regular file", "src", src, "dst", dst, "type", fileType, "mode", fi.Mode())
+			return nil
+		}
 	}
 
 	in, err := os.Open(src)
@@ -244,6 +253,31 @@ func IsSymlink(path string) (bool, error) {
 	}
 
 	return l.Mode()&os.ModeSymlink == os.ModeSymlink, nil
+}
+
+// fileTypeString returns a human-readable description of the file type based on the mode.
+func fileTypeString(mode os.FileMode) string {
+	switch {
+	case mode&os.ModeDir != 0:
+		return "directory"
+	case mode&os.ModeSymlink != 0:
+		return "symlink"
+	case mode&os.ModeNamedPipe != 0:
+		return "named pipe (FIFO)"
+	case mode&os.ModeSocket != 0:
+		return "socket"
+	case mode&os.ModeDevice != 0:
+		if mode&os.ModeCharDevice != 0 {
+			return "character device"
+		}
+		return "block device"
+	case mode&os.ModeIrregular != 0:
+		return "irregular file"
+	case mode.IsRegular():
+		return "regular file"
+	default:
+		return "unknown file type"
+	}
 }
 
 // fixLongPath returns the extended-length (\\?\-prefixed) form of
