@@ -26,7 +26,6 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -678,7 +677,8 @@ func writeToFile(outputDir string, name string, data string, appendData bool) er
 
 	defer f.Close()
 
-	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", name, data)
+	// Use consistent (POSIX) filepaths in comments, even if expanded on Windows.
+	_, err = fmt.Fprintf(f, "---\n# Source: %s\n%s\n", filepath.ToSlash(name), data)
 
 	if err != nil {
 		return err
@@ -697,7 +697,7 @@ func createOrOpenFile(filename string, appendData bool) (*os.File, error) {
 
 // check if the directory exists to create file. creates if doesn't exist
 func ensureDirectoryForFile(file string) error {
-	baseDir := path.Dir(file)
+	baseDir := filepath.Dir(file)
 	_, err := os.Stat(baseDir)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err

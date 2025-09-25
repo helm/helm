@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -53,7 +54,7 @@ func newGetHooksCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 			for _, hook := range res.Hooks {
-				fmt.Fprintf(out, "---\n# Source: %s\n%s\n", hook.Path, hook.Manifest)
+				fmt.Fprintf(out, "---\n# Source: %s\n%s\n", filepath.ToSlash(hook.Path), hook.Manifest)
 			}
 			return nil
 		},
