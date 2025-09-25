@@ -22,8 +22,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -31,6 +33,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/helmpath"
 )
 
 type CustomGetter struct {
@@ -89,6 +92,60 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	if myCustomGetter.repoUrls[0] != expectedRepoIndexURL {
 		t.Fatalf("Custom Getter.Get should be called with %s", expectedRepoIndexURL)
 	}
+}
+
+func TestConcurrenyDownloadIndex(t *testing.T) {
+	srv, err := startLocalServerForTests(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Close()
+
+	repo, err := NewChartRepository(&Entry{
+		Name: "nginx",
+		URL:  srv.URL,
+	}, getter.All(&cli.EnvSettings{}))
+
+	if err != nil {
+		t.Fatalf("Problem loading chart repository from %s: %v", srv.URL, err)
+	}
+	repo.CachePath = t.TempDir()
+
+	// initial download index
+	idx, err := repo.DownloadIndexFile()
+	if err != nil {
+		t.Fatalf("Failed to download index file to %s: %v", idx, err)
+	}
+
+	indexFName := filepath.Join(repo.CachePath, helmpath.CacheIndexFile(repo.Config.Name))
+
+	var wg sync.WaitGroup
+
+	// Simultaneously start multiple goroutines that:
+	// 1) download index.yaml via DownloadIndexFile (write operation),
+	// 2) read index.yaml via LoadIndexFile (read operation).
+	// This checks for race conditions and ensures correct behavior under concurrent read/write access.
+	for range 150 {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+			idx, err := repo.DownloadIndexFile()
+			if err != nil {
+				t.Errorf("Failed to download index file to %s: %v", idx, err)
+			}
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := LoadIndexFile(indexFName)
+			if err != nil {
+				t.Errorf("Failed to load index file: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 // startLocalServerForTests Start the local helm server
