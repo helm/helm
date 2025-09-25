@@ -42,6 +42,14 @@ linters:
       - legacy
       - std-error-handling
 
+    rules:
+        # This rule is triggered for packages like 'util'. When changes to those packages
+        # occur it triggers this rule. This exclusion enables making changes to existing
+        # packages.
+        - linters:
+            - revive
+          text: 'var-naming: avoid meaningless package names'
+
     warn-unused: true
 
   settings:
