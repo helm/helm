@@ -19,7 +19,18 @@ set -euo pipefail
 covermode=${COVERMODE:-atomic}
 coverdir=$(mktemp -d /tmp/coverage.XXXXXXXXXX)
 profile="${coverdir}/cover.out"
-target="${1:-./...}" # by default the whole repository is tested
+html=false
+target="./..." # by default the whole repository is tested
+for arg in "$@"; do
+  case "${arg}" in
+    --html)
+      html=true
+      ;;
+    *)
+      target="${arg}"
+      ;;
+  esac
+done
 
 generate_cover_data() {
   for d in $(go list "$target"); do
@@ -36,9 +47,7 @@ generate_cover_data() {
 generate_cover_data
 go tool cover -func "${profile}"
 
-case "${1-}" in
-  --html)
+if [ "${html}" == "true" ] ; then
     go tool cover -html "${profile}"
-    ;;
-esac
+fi
 
