@@ -303,6 +303,11 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 	if dst == nil {
 		return src
 	}
+	// If dst is empty and we're operating on a sub-key (prefix != ""),
+	// bail out when not merging so that child charts don't inherit defaults
+	// for an explicitly empty table in the parent. We only do this for
+	// non-top-level coalescing (prefix != "") because top-level coalescing
+	// still needs to pull chart defaults across when dst is empty.
 	if len(dst) == 0 && prefix != "" && !merge {
 		return dst
 	}
