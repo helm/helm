@@ -25,6 +25,7 @@ import (
 	"text/template"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -256,24 +257,14 @@ func TestCoalesceValuesEmptyMapOverride(t *testing.T) {
 	}
 
 	result, err := CoalesceValues(c, overrides)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	config, ok := result["config"].(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected config to remain a map, got %T", result["config"])
-	}
-	if len(config) != 0 {
-		t.Fatalf("expected config map to be empty, got %v", config)
-	}
-	if _, exists := config["foo"]; exists {
-		t.Fatalf("expected config override to drop default key, still found foo in %v", config)
-	}
+	require.Truef(t, ok, "expected config to remain a map, got %T", result["config"])
+	assert.Empty(t, config, "expected config map to be empty")
+	assert.NotContains(t, config, "foo", "expected config override to drop default key")
 
-	if _, exists := result["toDelete"]; exists {
-		t.Fatalf("expected toDelete key to be removed when set to nil override")
-	}
+	assert.NotContains(t, result, "toDelete", "expected toDelete key to be removed when set to nil override")
 }
 
 func ttpl(tpl string, v map[string]interface{}) (string, error) {
@@ -452,18 +443,10 @@ func TestCoalesceTables(t *testing.T) {
 		CoalesceTables(dst, src)
 
 		config, ok := dst["config"].(map[string]interface{})
-		if !ok {
-			t.Fatalf("config should remain a map, got %T", dst["config"])
-		}
-		if len(config) != 0 {
-			t.Fatalf("expected empty config map, got %v", config)
-		}
-		if _, exists := config["enabled"]; exists {
-			t.Fatal("expected default \"enabled\" key to be absent")
-		}
-		if _, exists := config["port"]; exists {
-			t.Fatal("expected default \"port\" key to be absent")
-		}
+		require.Truef(t, ok, "config should remain a map, got %T", dst["config"])
+		assert.Empty(t, config, "expected empty config map")
+		assert.NotContains(t, config, "enabled", "expected default \"enabled\" key to be absent")
+		assert.NotContains(t, config, "port", "expected default \"port\" key to be absent")
 	})
 
 	dst := map[string]interface{}{
