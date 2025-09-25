@@ -436,6 +436,36 @@ func TestMergeValues(t *testing.T) {
 }
 
 func TestCoalesceTables(t *testing.T) {
+	t.Run("empty destination table overrides defaults", func(t *testing.T) {
+		t.Helper()
+
+		dst := map[string]interface{}{
+			"config": map[string]interface{}{},
+		}
+		src := map[string]interface{}{
+			"config": map[string]interface{}{
+				"enabled": true,
+				"port":    8080,
+			},
+		}
+
+		CoalesceTables(dst, src)
+
+		config, ok := dst["config"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("config should remain a map, got %T", dst["config"])
+		}
+		if len(config) != 0 {
+			t.Fatalf("expected empty config map, got %v", config)
+		}
+		if _, exists := config["enabled"]; exists {
+			t.Fatal("expected default \"enabled\" key to be absent")
+		}
+		if _, exists := config["port"]; exists {
+			t.Fatal("expected default \"port\" key to be absent")
+		}
+	})
+
 	dst := map[string]interface{}{
 		"name": "Ishmael",
 		"address": map[string]interface{}{
