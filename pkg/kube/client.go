@@ -271,10 +271,6 @@ func (c *Client) Create(resources ResourceList, options ...ClientCreateOption) (
 		return nil, fmt.Errorf("invalid client create option(s): %w", err)
 	}
 
-	if createOptions.forceConflicts && !createOptions.serverSideApply {
-		return nil, fmt.Errorf("invalid operation: force conflicts can only be used with server-side apply")
-	}
-
 	makeCreateApplyFunc := func() func(target *resource.Info) error {
 		if createOptions.serverSideApply {
 			slog.Debug("using server-side apply for resource creation", slog.Bool("forceConflicts", createOptions.forceConflicts), slog.Bool("dryRun", createOptions.dryRun), slog.String("fieldValidationDirective", string(createOptions.fieldValidationDirective)))
