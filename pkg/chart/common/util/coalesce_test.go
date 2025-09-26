@@ -25,6 +25,7 @@ import (
 	"text/template"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -241,6 +242,31 @@ func TestCoalesceValues(t *testing.T) {
 	is.Equal(valsCopy, vals)
 }
 
+func TestCoalesceValuesEmptyMapOverride(t *testing.T) {
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "emptymap"},
+		Values: map[string]interface{}{
+			"config":   map[string]interface{}{"foo": "bar"},
+			"toDelete": map[string]interface{}{"baz": "qux"},
+		},
+	}
+
+	overrides := map[string]interface{}{
+		"config":   map[string]interface{}{},
+		"toDelete": nil,
+	}
+
+	result, err := CoalesceValues(c, overrides)
+	require.NoError(t, err)
+
+	config, ok := result["config"].(map[string]interface{})
+	require.Truef(t, ok, "expected config to remain a map, got %T", result["config"])
+	assert.Empty(t, config, "expected config map to be empty")
+	assert.NotContains(t, config, "foo", "expected config override to drop default key")
+
+	assert.NotContains(t, result, "toDelete", "expected toDelete key to be removed when set to nil override")
+}
+
 func ttpl(tpl string, v map[string]interface{}) (string, error) {
 	var b bytes.Buffer
 	tt := template.Must(template.New("t").Parse(tpl))
@@ -401,6 +427,28 @@ func TestMergeValues(t *testing.T) {
 }
 
 func TestCoalesceTables(t *testing.T) {
+	t.Run("empty destination table overrides defaults", func(t *testing.T) {
+		t.Helper()
+
+		dst := map[string]interface{}{
+			"config": map[string]interface{}{},
+		}
+		src := map[string]interface{}{
+			"config": map[string]interface{}{
+				"enabled": true,
+				"port":    8080,
+			},
+		}
+
+		CoalesceTables(dst, src)
+
+		config, ok := dst["config"].(map[string]interface{})
+		require.Truef(t, ok, "config should remain a map, got %T", dst["config"])
+		assert.Empty(t, config, "expected empty config map")
+		assert.NotContains(t, config, "enabled", "expected default \"enabled\" key to be absent")
+		assert.NotContains(t, config, "port", "expected default \"port\" key to be absent")
+	})
+
 	dst := map[string]interface{}{
 		"name": "Ishmael",
 		"address": map[string]interface{}{
