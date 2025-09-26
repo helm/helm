@@ -44,6 +44,7 @@ body:
       label: Helm version
       value: |
         <details>
+        
         ```console
         $ helm version
         # paste output here
