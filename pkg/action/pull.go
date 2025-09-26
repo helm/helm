@@ -17,7 +17,9 @@ limitations under the License.
 package action
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -138,6 +140,36 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		return out.String(), err
 	}
 
+	// Print a pull summary for repo mode and non-OCI downloads.
+	// Some repos (e.g., Bitnami) resolve --repo pulls to oci:// refs, but that
+	// path does not go through the registry client's summary printer, so we emit
+	// a consistent summary here. We mirror the OCI output format:
+	//
+	//   Pulled: <chartUrl>:<version>
+	//   Checksum: sha256:<digest>
+	//
+	// For HTTP/repo pulls, the digest is the SHA-256 of the downloaded .tgz archive.
+	// For direct OCI pulls, the registry client already prints "Pulled:" and
+	// "Digest:" (manifest digest), so we do not print here to avoid duplicates.
+	if p.RepoURL != "" || !registry.IsOCI(downloadSourceRef) {
+		base := strings.TrimSuffix(downloadSourceRef, ".tgz")
+		chart, ver := splitChartNameVersion(base)
+
+		tag := chart
+		if ver != "" {
+			tag += ":" + ver
+		} else if p.Version != "" {
+			tag += ":" + p.Version
+		}
+		fmt.Fprintf(&out, "Pulled: %s\n", tag)
+
+		if sum, err := sha256File(saved); err == nil {
+			fmt.Fprintf(&out, "Checksum: sha256:%x\n", sum)
+		} else {
+			fmt.Fprintf(&out, "Checksum failed: %v\n", err)
+		}
+	}
+
 	if p.Verify {
 		for name := range v.SignedBy.Identities {
 			fmt.Fprintf(&out, "Signed by: %v\n", name)
@@ -172,4 +204,25 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		return out.String(), chartutil.ExpandFile(ud, saved)
 	}
 	return out.String(), nil
+}
+
+func splitChartNameVersion(s string) (name, version string) {
+	if i := strings.LastIndex(s, "-"); i >= 0 {
+		return s[:i], s[i+1:]
+	}
+	return s, ""
+}
+
+func sha256File(path string) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return nil, err
+	}
+	return h.Sum(nil), nil
 }
