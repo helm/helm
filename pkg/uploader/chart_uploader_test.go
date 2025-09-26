@@ -61,10 +61,7 @@ func TestChartUploader_UploadTo_Happy(t *testing.T) {
 	err := uploader.UploadTo("testdata/test-0.1.0.tgz", "oci://test")
 	mockedPusher.AssertCalled(t, "Push", "testdata/test-0.1.0.tgz", "oci://test")
 
-	if err != nil {
-		fmt.Println(err)
-		t.Errorf("Expected push to succeed but got error")
-	}
+	assert.NoError(err)
 }
 
 func TestChartUploader_UploadTo_InvalidChartUrlFormat(t *testing.T) {
