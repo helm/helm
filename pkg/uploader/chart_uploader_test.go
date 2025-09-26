@@ -17,10 +17,9 @@ limitations under the License.
 package uploader
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	"helm.sh/helm/v4/pkg/cli"
@@ -61,7 +60,7 @@ func TestChartUploader_UploadTo_Happy(t *testing.T) {
 	err := uploader.UploadTo("testdata/test-0.1.0.tgz", "oci://test")
 	mockedPusher.AssertCalled(t, "Push", "testdata/test-0.1.0.tgz", "oci://test")
 
-	assert.NoError(err)
+	assert.NoError(t, err)
 }
 
 func TestChartUploader_UploadTo_InvalidChartUrlFormat(t *testing.T) {
@@ -75,10 +74,7 @@ func TestChartUploader_UploadTo_InvalidChartUrlFormat(t *testing.T) {
 
 	err := uploader.UploadTo("main", "://invalid.com")
 	const expectedError = "invalid chart URL format"
-	fmt.Println(err.Error())
-	if !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("Expected error to contain '" + expectedError + "'")
-	}
+	assert.ErrorContains(t, err, expectedError)
 }
 
 func TestChartUploader_UploadTo_SchemePrefixMissingFromRemote(t *testing.T) {
@@ -93,10 +89,7 @@ func TestChartUploader_UploadTo_SchemePrefixMissingFromRemote(t *testing.T) {
 	err := uploader.UploadTo("main", "invalid.com")
 	const expectedError = "scheme prefix missing from remote"
 
-	fmt.Println(err.Error())
-	if !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("Expected error to contain '" + expectedError + "'")
-	}
+	assert.ErrorContains(t, err, expectedError)
 }
 
 func TestChartUploader_UploadTo_SchemeNotRegistered(t *testing.T) {
@@ -111,8 +104,5 @@ func TestChartUploader_UploadTo_SchemeNotRegistered(t *testing.T) {
 	err := uploader.UploadTo("main", "grpc://invalid.com")
 	const expectedError = "scheme \"grpc\" not supported"
 
-	fmt.Println(err.Error())
-	if !strings.Contains(err.Error(), expectedError) {
-		t.Errorf("Expected error to contain '" + expectedError + "'")
-	}
+	assert.ErrorContains(t, err, expectedError)
 }
