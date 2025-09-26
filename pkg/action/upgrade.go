@@ -73,10 +73,8 @@ type Upgrade struct {
 	WaitForJobs bool
 	// DisableHooks disables hook processing if set to true.
 	DisableHooks bool
-	// DryRun controls whether the operation is prepared, but not executed.
-	DryRun bool
-	// DryRunOption controls whether the operation is prepared, but not executed with options on whether or not to interact with the remote cluster.
-	DryRunOption string
+	// DryRunStrategy can be set to prepare, but not execute the operation and whether or not to interact with the remote cluster
+	DryRunStrategy DryRunStrategy
 	// HideSecret can be set to true when DryRun is enabled in order to hide
 	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
 	HideSecret bool
@@ -140,6 +138,7 @@ func NewUpgrade(cfg *Configuration) *Upgrade {
 	up := &Upgrade{
 		cfg:             cfg,
 		ServerSideApply: "auto",
+		DryRunStrategy:  DryRunNone,
 	}
 	up.registryClient = cfg.RegistryClient
 
@@ -198,7 +197,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 	}
 
 	// Do not update for dry runs
-	if !u.isDryRun() {
+	if !isDryRun(u.DryRunStrategy) {
 		slog.Debug("updating status for upgraded release", "name", name)
 		if err := u.cfg.Releases.Update(upgradedRelease); err != nil {
 			return res, err
@@ -208,14 +207,6 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 	return res, nil
 }
 
-// isDryRun returns true if Upgrade is set to run as a DryRun
-func (u *Upgrade) isDryRun() bool {
-	if u.DryRun || u.DryRunOption == "client" || u.DryRunOption == "server" || u.DryRunOption == "true" {
-		return true
-	}
-	return false
-}
-
 // prepareUpgrade builds an upgraded release for an upgrade operation.
 func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[string]interface{}) (*release.Release, *release.Release, bool, error) {
 	if chart == nil {
@@ -223,7 +214,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 	}
 
 	// HideSecret must be used with dry run. Otherwise, return an error.
-	if !u.isDryRun() && u.HideSecret {
+	if !isDryRun(u.DryRunStrategy) && u.HideSecret {
 		return nil, nil, false, errors.New("hiding Kubernetes secrets requires a dry-run mode")
 	}
 
@@ -289,13 +280,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 		return nil, nil, false, err
 	}
 
-	// Determine whether or not to interact with remote
-	var interactWithRemote bool
-	if !u.isDryRun() || u.DryRunOption == "server" || u.DryRunOption == "none" || u.DryRunOption == "false" {
-		interactWithRemote = true
-	}
-
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithRemote, u.EnableDNS, u.HideSecret)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret)
 	if err != nil {
 		return nil, nil, false, err
 	}
@@ -391,8 +376,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return nil
 	})
 
-	// Run if it is a dry run
-	if u.isDryRun() {
+	if isDryRun(u.DryRunStrategy) {
 		slog.Debug("dry run for release", "name", upgradedRelease.Name)
 		if len(u.Description) > 0 {
 			upgradedRelease.Info.Description = u.Description

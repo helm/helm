@@ -39,7 +39,8 @@ type Rollback struct {
 	WaitStrategy kube.WaitStrategy
 	WaitForJobs  bool
 	DisableHooks bool
-	DryRun       bool
+	// DryRunStrategy can be set to prepare, but not execute the operation and whether or not to interact with the remote cluster
+	DryRunStrategy DryRunStrategy
 	// ForceReplace will, if set to `true`, ignore certain warnings and perform the rollback anyway.
 	//
 	// This should be used with caution.
@@ -59,7 +60,8 @@ type Rollback struct {
 // NewRollback creates a new Rollback object with the given configuration.
 func NewRollback(cfg *Configuration) *Rollback {
 	return &Rollback{
-		cfg: cfg,
+		cfg:            cfg,
+		DryRunStrategy: DryRunNone,
 	}
 }
 
@@ -77,7 +79,7 @@ func (r *Rollback) Run(name string) error {
 		return err
 	}
 
-	if !r.DryRun {
+	if !isDryRun(r.DryRunStrategy) {
 		slog.Debug("creating rolled back release", "name", name)
 		if err := r.cfg.Releases.Create(targetRelease); err != nil {
 			return err
@@ -89,7 +91,7 @@ func (r *Rollback) Run(name string) error {
 		return err
 	}
 
-	if !r.DryRun {
+	if !isDryRun(r.DryRunStrategy) {
 		slog.Debug("updating status for rolled back release", "name", name)
 		if err := r.cfg.Releases.Update(targetRelease); err != nil {
 			return err
@@ -175,7 +177,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 }
 
 func (r *Rollback) performRollback(currentRelease, targetRelease *release.Release, serverSideApply bool) (*release.Release, error) {
-	if r.DryRun {
+	if isDryRun(r.DryRunStrategy) {
 		slog.Debug("dry run", "name", targetRelease.Name)
 		return targetRelease, nil
 	}
