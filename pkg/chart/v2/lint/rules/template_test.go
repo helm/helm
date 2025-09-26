@@ -439,3 +439,35 @@ items:
 		t.Fatalf("List objects keep annotations should pass. got: %s", err)
 	}
 }
+
+func TestIsHelperFile(t *testing.T) {
+	tests := []struct {
+		fileName string
+		expected bool
+	}{
+		// Should return true (helper files, non-yaml/yml)
+		{"_helpers.go", true},
+		{"_helpers.json", true},
+		{"subdir/_helpers.json", true},
+		{"subdir/_partial.tpl", true},
+		{"_config.txt", true},
+
+		// Should return false (yaml/yml files, even with _)
+		{"_helpers.yaml", false},
+		{"_config.yml", false},
+		{"subdir/_partial.yaml", false},
+
+		// Should return false (regular files without _)
+		{"helpers.go", false},
+		{"config.json", false},
+		{"deployment.yaml", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.fileName, func(t *testing.T) {
+			result := isHelperFile(tt.fileName)
+			if result != tt.expected {
+				t.Errorf("isHelperFile(%q) = %v, expected %v", tt.fileName, result, tt.expected)
+			}
+		})
+	}
+}
