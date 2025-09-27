@@ -473,6 +473,8 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 		clientFn:  kc.Factory.KubernetesClientSet,
 	}
 
+	// slog.SetDefault()
+
 	var store *storage.Storage
 	switch helmDriver {
 	case "secret", "secrets", "":

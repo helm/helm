@@ -488,6 +488,14 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+func TestUpdate(t *testing.T) {
+	testUpdate(t, false)
+}
+
+func TestUpdateThreeWayMerge(t *testing.T) {
+	testUpdate(t, true)
+}
+
 func TestBuild(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -622,6 +630,7 @@ func TestWait(t *testing.T) {
 	var created *time.Time
 
 	c := newTestClient(t)
+	c.Factory.(*cmdtesting.TestFactory).ClientConfigVal = cmdtesting.DefaultClientConfig()
 	c.Factory.(*cmdtesting.TestFactory).Client = &fake.RESTClient{
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
@@ -741,6 +750,8 @@ func TestWaitJob(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	c.waiter = w		
+	c.waiter = w
 	resources, err := c.Build(objBody(job), false)
 	if err != nil {
 		t.Fatal(err)
@@ -831,7 +842,7 @@ func TestWaitDelete(t *testing.T) {
 
 func TestReal(t *testing.T) {
 	t.Skip("This is a live test, comment this line to run")
-	c := New(nil)
+	c := New(nil, nil)
 	resources, err := c.Build(strings.NewReader(guestbookManifest), false)
 	if err != nil {
 		t.Fatal(err)
@@ -841,7 +852,7 @@ func TestReal(t *testing.T) {
 	}
 
 	testSvcEndpointManifest := testServiceManifest + "\n---\n" + testEndpointManifest
-	c = New(nil)
+	c = New(nil, nil)
 	resources, err = c.Build(strings.NewReader(testSvcEndpointManifest), false)
 	if err != nil {
 		t.Fatal(err)

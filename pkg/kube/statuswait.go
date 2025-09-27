@@ -73,6 +73,11 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 	return w.wait(ctx, resourceList, sw)
 }
 
+func (w *statusWaiter) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
+	panic("todo")
+	return nil
+}
+
 func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()

@@ -69,6 +69,7 @@ func newDependencyUpdateCmd(_ *action.Configuration, out io.Writer) *cobra.Comma
 				ChartPath:        chartpath,
 				Keyring:          client.Keyring,
 				SkipUpdate:       client.SkipRefresh,
+				Untar:            client.Untar,
 				Getters:          getter.All(settings),
 				RegistryClient:   registryClient,
 				RepositoryConfig: settings.RepositoryConfig,

@@ -26,8 +26,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	batch "k8s.io/api/batch/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,6 +61,19 @@ func (hw *legacyWaiter) Wait(resources ResourceList, timeout time.Duration) erro
 func (hw *legacyWaiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
 	hw.c = NewReadyChecker(hw.kubeClient, PausedAsReady(true), CheckJobs(true))
 	return hw.waitForResources(resources, timeout)
+}
+
+func (w *waiter) Wait(resources ResourceList, timeout time.Duration) error {
+	w.timeout = timeout
+	return w.waitForResources(resources)
+}
+
+func (w *waiter) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
+	// Implementation
+	// TODO this function doesn't make sense unless you pass a readyChecker to it 
+	// TODO pass context instead
+	w.timeout = timeout
+	return w.waitForResources(resources)
 }
 
 // waitForResources polls to get the current status of all pods, PVCs, Services and
@@ -136,7 +151,7 @@ func (hw *legacyWaiter) WaitForDelete(deleted ResourceList, timeout time.Duratio
 
 	elapsed := time.Since(startTime).Round(time.Second)
 	if err != nil {
-		slog.Debug("wait for resources failed", "elapsed", elapsed, slog.Any("error", err))
+		hw.log.Debug("wait for resources failed", "elapsed", elapsed, "error", err)
 	} else {
 		slog.Debug("wait for resources succeeded", "elapsed", elapsed)
 	}
@@ -180,7 +195,7 @@ func SelectorsForObject(object runtime.Object) (selector labels.Selector, err er
 	case *batchv1.Job:
 		selector, err = metav1.LabelSelectorAsSelector(t.Spec.Selector)
 	case *corev1.Service:
-		if len(t.Spec.Selector) == 0 {
+		if t.Spec.Selector == nil || len(t.Spec.Selector) == 0 {
 			return nil, fmt.Errorf("invalid service '%s': Service is defined without a selector", t.Name)
 		}
 		selector = labels.SelectorFromSet(t.Spec.Selector)
@@ -323,6 +338,156 @@ func (hw *legacyWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool
 		slog.Debug("pod pending", "pod", o.Name)
 	case corev1.PodRunning:
 		slog.Debug("pod running", "pod", o.Name)
+	}
+
+	return false, nil
+}
+
+func (hw *legacyWaiter) watchTimeout(t time.Duration) func(*resource.Info) error {
+	return func(info *resource.Info) error {
+		return hw.watchUntilReady(t, info)
+	}
+}
+
+// WatchUntilReady watches the resources given and waits until it is ready.
+//
+// This method is mainly for hook implementations. It watches for a resource to
+// hit a particular milestone. The milestone depends on the Kind.
+//
+// For most kinds, it checks to see if the resource is marked as Added or Modified
+// by the Kubernetes event stream. For some kinds, it does more:
+//
+//   - Jobs: A job is marked "Ready" when it has successfully completed. This is
+//     ascertained by watching the Status fields in a job's output.
+//   - Pods: A pod is marked "Ready" when it has successfully completed. This is
+//     ascertained by watching the status.phase field in a pod's output.
+//
+// Handling for other kinds will be added as necessary.
+func (hw *legacyWaiter) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
+	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
+	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
+	return perform(resources, hw.watchTimeout(timeout))
+}
+
+func perform(infos ResourceList, fn func(*resource.Info) error) error {
+	var result error
+
+	if len(infos) == 0 {
+		return ErrNoObjectsVisited
+	}
+
+	errs := make(chan error)
+	go batchPerform(infos, fn, errs)
+
+	for range infos {
+		err := <-errs
+		if err != nil {
+			result = multierror.Append(result, err)
+		}
+	}
+
+	return result
+}
+
+func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.Info) error {
+	kind := info.Mapping.GroupVersionKind.Kind
+	switch kind {
+	case "Job", "Pod":
+	default:
+		return nil
+	}
+
+	slog.Debug("watching for resource changes", "kind", kind, "resource", info.Name, "timeout", timeout)
+
+	// Use a selector on the name of the resource. This should be unique for the
+	// given version and kind
+	selector, err := fields.ParseSelector(fmt.Sprintf("metadata.name=%s", info.Name))
+	if err != nil {
+		return err
+	}
+	lw := cachetools.NewListWatchFromClient(info.Client, info.Mapping.Resource.Resource, info.Namespace, selector)
+
+	// What we watch for depends on the Kind.
+	// - For a Job, we watch for completion.
+	// - For all else, we watch until Ready.
+	// In the future, we might want to add some special logic for types
+	// like Ingress, Volume, etc.
+
+	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
+	defer cancel()
+	_, err = watchtools.UntilWithSync(ctx, lw, &unstructured.Unstructured{}, nil, func(e watch.Event) (bool, error) {
+		// Make sure the incoming object is versioned as we use unstructured
+		// objects when we build manifests
+		obj := convertWithMapper(e.Object, info.Mapping)
+		switch e.Type {
+		case watch.Added, watch.Modified:
+			// For things like a secret or a config map, this is the best indicator
+			// we get. We care mostly about jobs, where what we want to see is
+			// the status go into a good state. For other types, like ReplicaSet
+			// we don't really do anything to support these as hooks.
+			slog.Debug("add/modify event received", "resource", info.Name, "eventType", e.Type)
+
+			switch kind {
+			case "Job":
+				return hw.waitForJob(obj, info.Name)
+			case "Pod":
+				return hw.waitForPodSuccess(obj, info.Name)
+			}
+			return true, nil
+		case watch.Deleted:
+			slog.Debug("deleted event received", "resource", info.Name)
+			return true, nil
+		case watch.Error:
+			// Handle error and return with an error.
+			slog.Error("error event received", "resource", info.Name)
+			return true, errors.Errorf("failed to deploy %s", info.Name)
+		default:
+			return false, nil
+		}
+	})
+	return err
+}
+
+// waitForJob is a helper that waits for a job to complete.
+//
+// This operates on an event returned from a watcher.
+func (hw *HelmWaiter) waitForJob(obj runtime.Object, name string) (bool, error) {
+	o, ok := obj.(*batch.Job)
+	if !ok {
+		return true, errors.Errorf("expected %s to be a *batch.Job, got %T", name, obj)
+	}
+
+	for _, c := range o.Status.Conditions {
+		if c.Type == batch.JobComplete && c.Status == "True" {
+			return true, nil
+		} else if c.Type == batch.JobFailed && c.Status == "True" {
+			return true, errors.Errorf("job %s failed: %s", name, c.Reason)
+		}
+	}
+
+	slog.Debug("job status update", "job", name, "active", o.Status.Active, "failed", o.Status.Failed, "succeeded", o.Status.Succeeded)
+	return false, nil
+}
+
+// waitForPodSuccess is a helper that waits for a pod to complete.
+//
+// This operates on an event returned from a watcher.
+func (hw *HelmWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool, error) {
+	o, ok := obj.(*v1.Pod)
+	if !ok {
+		return true, errors.Errorf("expected %s to be a *v1.Pod, got %T", name, obj)
+	}
+
+	switch o.Status.Phase {
+	case v1.PodSucceeded:
+		hw.log("Pod %s succeeded", o.Name)
+		return true, nil
+	case v1.PodFailed:
+		return true, errors.Errorf("pod %s failed", o.Name)
+	case v1.PodPending:
+		hw.log("Pod %s pending", o.Name)
+	case v1.PodRunning:
+		hw.log("Pod %s running", o.Name)
 	}
 
 	return false, nil
