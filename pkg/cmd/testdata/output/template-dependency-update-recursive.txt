@@ -8,6 +8,8 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: dep1
+  annotations:
+    text: This is a message from dep2!!!
 ---
 # Source: root/templates/configmaproot.yaml
 apiVersion: v1

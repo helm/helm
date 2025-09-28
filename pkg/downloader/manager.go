@@ -165,7 +165,20 @@ func (m *Manager) Update(recursive bool) error {
 		}
 
 		for _, depChartPath := range depChartPaths {
-			if err := m.doUpdate(depChartPath); err != nil {
+			subManager := &Manager{
+				Out:              m.Out,
+				ChartPath:        depChartPath,
+				Verify:           m.Verify,
+				Debug:            m.Debug,
+				Keyring:          m.Keyring,
+				SkipUpdate:       m.SkipUpdate,
+				Getters:          m.Getters,
+				RegistryClient:   m.RegistryClient,
+				RepositoryConfig: m.RepositoryConfig,
+				RepositoryCache:  m.RepositoryCache,
+				ContentCache:     m.ContentCache,
+			}
+			if err := subManager.Update(recursive); err != nil {
 				return err
 			}
 		}
