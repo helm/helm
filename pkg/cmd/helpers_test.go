@@ -165,18 +165,6 @@ func resetEnv() func() {
 	}
 }
 
-func testChdir(t *testing.T, dir string) func() {
-	t.Helper()
-	old, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
-	return func() { os.Chdir(old) }
-}
-
 // resetChartDependencyState completely resets dependency state of a given chart
 // by deleting `Chart.lock` and `charts/`.
 //

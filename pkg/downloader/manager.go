@@ -825,14 +825,12 @@ func (m *Manager) locateLocalDependencies(baseChartPath string, resursive bool) 
 
 	for _, chartDependency := range baseChart.Metadata.Dependencies {
 
-		fullDepChartPath := chartDependency.Repository
-
 		if strings.HasPrefix(
 			chartDependency.Repository,
 			"file://",
 		) {
 
-			fullDepChartPath, err = filepath.Abs(
+			fullDepChartPath, err := filepath.Abs(
 				fmt.Sprintf(
 					"%s/%s",
 					baseChartPath, chartDependency.Repository[7:]), // removes "file://"
