@@ -22,8 +22,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path"
-	"strings"
 	"time"
 
 	"helm.sh/helm/v4/internal/tlsutil"
@@ -61,6 +59,11 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 		return err
 	}
 
+	ref, err := registry.BuildPushRef(href, meta.Metadata.Name, meta.Metadata.Version)
+	if err != nil {
+		return err
+	}
+
 	client := pusher.opts.registryClient
 	if client == nil {
 		c, err := pusher.newRegistryClient()
@@ -84,10 +87,6 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 		}
 		pushOpts = append(pushOpts, registry.PushOptProvData(provBytes))
 	}
-
-	ref := fmt.Sprintf("%s:%s",
-		path.Join(strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme)), meta.Metadata.Name),
-		meta.Metadata.Version)
 
 	// The time the chart was "created" is semantically the time the chart archive file was last written(modified)
 	chartArchiveFileCreatedTime := stat.ModTime()

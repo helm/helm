@@ -34,16 +34,9 @@ func BuildPushRef(href, chartName, chartVersion string) (string, error) {
 
 	// Normalize chart version for tag comparison/build (registry tags cannot contain '+')
 	normalizedVersion := strings.ReplaceAll(chartVersion, "+", "_")
-
-	// Determine final tag:
-	// - if href tag present, it must match normalized chart version
-	// - else use chart version
-	finalTag := normalizedVersion
-	if ref.Tag != "" {
-		if ref.Tag != normalizedVersion {
-			return "", fmt.Errorf("tag %q does not match provided chart version %q", ref.Tag, chartVersion)
-		}
-		finalTag = ref.Tag
+	// if href tag present, it must match normalized chart version
+	if ref.Tag != "" && ref.Tag != normalizedVersion {
+		return "", fmt.Errorf("tag %q does not match provided chart version %q", ref.Tag, chartVersion)
 	}
 
 	// Ensure repository ends with the chart name once (avoid duplication)
@@ -61,5 +54,5 @@ func BuildPushRef(href, chartName, chartVersion string) (string, error) {
 		}
 	}
 
-	return fmt.Sprintf("%s/%s:%s", ref.Registry, finalRepo, finalTag), nil
+	return fmt.Sprintf("%s/%s:%s", ref.Registry, finalRepo, chartVersion), nil
 }
