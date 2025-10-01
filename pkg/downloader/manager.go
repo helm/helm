@@ -172,14 +172,9 @@ func (m *Manager) Update() error {
 		return err
 	}
 
-	// For the repositories Helm is not configured to know about, ensure Helm
-	// has some information about them and, when possible, the index files
-	// locally.
-	// TODO(mattfarina): Repositories should be explicitly added by end users
-	// rather than automatic. In Helm v4 require users to add repositories. They
-	// should have to add them in order to make sure they are aware of the
-	// repositories and opt-in to any locations, for security.
-	repoNames, err = m.ensureMissingRepos(repoNames, req)
+	// Ensure every dependency's repository is already configured in Helm
+	// (no automatic repo add in v4).
+	repoNames, err = m.validateConfiguredRepos(repoNames, req)
 	if err != nil {
 		return err
 	}
@@ -496,14 +491,9 @@ Loop:
 	return nil
 }
 
-// ensureMissingRepos attempts to ensure the repository information for repos
-// not managed by Helm is present. This takes in the repoNames Helm is configured
-// to work with along with the chart dependencies. It will find the deps not
-// in a known repo and attempt to ensure the data is present for steps like
-// version resolution.
-func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.Dependency) (map[string]string, error) {
-
-	var ru []*repo.Entry
+// validateConfiguredRepos checks that every dependency uses a repository
+// already configured for security reasons.
+func (m *Manager) validateConfiguredRepos(repoNames map[string]string, deps []*chart.Dependency) (map[string]string, error) {
 
 	for _, dd := range deps {
 
@@ -518,41 +508,10 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 			continue
 		}
 
-		// The generated repository name, which will result in an index being
-		// locally cached, has a name pattern of "helm-manager-" followed by a
-		// sha256 of the repo name. This assumes end users will never create
-		// repositories with these names pointing to other repositories. Using
-		// this method of naming allows the existing repository pulling and
-		// resolution code to do most of the work.
-		rn, err := key(dd.Repository)
-		if err != nil {
-			return repoNames, err
-		}
-		rn = managerKeyPrefix + rn
-
-		repoNames[dd.Name] = rn
-
-		// Assuming the repository is generally available. For Helm managed
-		// access controls the repository needs to be added through the user
-		// managed system. This path will work for public charts, like those
-		// supplied by Bitnami, but not for protected charts, like corp ones
-		// behind a username and pass.
-		ri := &repo.Entry{
-			Name: rn,
-			URL:  dd.Repository,
-		}
-		ru = append(ru, ri)
-	}
-
-	// Calls to UpdateRepositories (a public function) will only update
-	// repositories configured by the user. Here we update repos found in
-	// the dependencies that are not known to the user if update skipping
-	// is not configured.
-	if !m.SkipUpdate && len(ru) > 0 {
-		fmt.Fprintln(m.Out, "Getting updates for unmanaged Helm repositories...")
-		if err := m.parallelRepoUpdate(ru); err != nil {
-			return repoNames, err
-		}
+		return nil, fmt.Errorf(
+			"repository %q is not configured.\nAdd it and retry:\n  helm repo add <REPO_NAME> %s",
+			dd.Repository, dd.Repository,
+		)
 	}
 
 	return repoNames, nil

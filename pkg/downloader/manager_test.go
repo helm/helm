@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -766,4 +767,45 @@ func TestWriteLock(t *testing.T) {
 		err = writeLock(filePath, lock, false)
 		assert.Error(t, err)
 	})
+}
+
+func TestValidateConfiguredRepos_UnconfiguredRepo(t *testing.T) {
+	m := &Manager{}
+	repoNames := map[string]string{}
+	deps := []*chart.Dependency{
+		{
+			Name:       "redis",
+			Version:    ">= 1.0.0",
+			Repository: "https://charts.example.com/",
+		},
+	}
+
+	_, err := m.validateConfiguredRepos(repoNames, deps)
+	if err == nil {
+		t.Fatalf("expected error for unconfigured repo, got nil")
+	}
+	// Error should include copy-pasteable guidance
+	if !strings.Contains(err.Error(), "helm repo add") {
+		t.Fatalf("expected actionable error with commands, got: %v", err)
+	}
+}
+
+func TestValidateConfiguredRepos_ConfiguredRepo(t *testing.T) {
+	m := &Manager{}
+	repoNames := map[string]string{"redis": "example"}
+	deps := []*chart.Dependency{
+		{
+			Name:       "redis",
+			Version:    ">= 1.0.0",
+			Repository: "https://charts.example.com/",
+		},
+	}
+
+	out, err := m.validateConfiguredRepos(repoNames, deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if out == nil {
+		t.Fatalf("expected repoNames to be returned, got nil")
+	}
 }
