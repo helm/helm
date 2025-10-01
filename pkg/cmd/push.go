@@ -32,14 +32,23 @@ Upload a chart to a registry.
 
 If the chart has an associated provenance file, it will also be uploaded.
 
-You can optionally specify --version or oci://...:version as a safety check. When provided,
-it must match the version from Chart.yaml; otherwise the command will fail.
+Remote target formats:
+- oci://REGISTRY/REPO
+- oci://REGISTRY/REPO/CHART
+- oci://REGISTRY/REPO/CHART:VERSION
+
+When CHART is omitted, the chart name is derived from the package. When VERSION is omitted,
+it comes from Chart.yaml. Use --version as an optional verification. If set, it must match
+Chart.yaml or the command fails.
+
+Note: OCI tags do not support "+". Helm replaces "+" with "_" in tags when pushing and restores
+"+" when pulling.
 
 Examples:
 
 	$ helm push mychart-0.1.0.tgz oci://my-registry.io/helm/charts
 	$ helm push mychart-0.1.0.tgz oci://my-registry.io/helm/charts --version 0.1.0
-	$ helm push mychart-0.1.0.tgz oci://my-registry.io/helm/charts:0.1.0
+	$ helm push mychart-0.1.0.tgz oci://my-registry.io/helm/charts/mychart:0.1.0
 `
 
 type registryPushOptions struct {
@@ -113,7 +122,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart upload")
 	f.StringVar(&o.username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&o.password, "password", "", "chart repository password where to locate the requested chart")
-	f.StringVar(&o.version, "version", "", "specify the exact chart version to push. If this is not specified, the version from Chart.yaml is used")
+	f.StringVar(&o.version, "version", "", "verify the chart version; must match Chart.yaml (optional check)")
 
 	return cmd
 }
