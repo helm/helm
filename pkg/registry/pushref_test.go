@@ -75,8 +75,15 @@ func TestBuildPushRef(t *testing.T) {
 			registry: "oci://my-registry.io/my-repo:1.0.0_abc",
 			chart:    "my-repo",
 			version:  "1.0.0+abc",
-			want:     "my-registry.io/my-repo:1.0.0_abc",
+			want:     "my-registry.io/my-repo:1.0.0+abc",
 			wantErr:  false,
+		},
+		{
+			name:     "repo already includes chart name",
+			registry: "oci://my-registry.io/namespace/my-repo:1.0.0",
+			chart:    "my-repo",
+			version:  "1.0.0",
+			want:     "my-registry.io/namespace/my-repo:1.0.0",
 		},
 	}
 
