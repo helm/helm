@@ -37,6 +37,8 @@ The formatting rules are as follows:
   - If a pattern contains no slashes, file basenames are tested (not paths)
   - The pattern sequence "**", while legal in a glob, will cause an error here
     (to indicate incompatibility with .gitignore).
+  - The last matching rule will determine whether a file is included or excluded.
+    It is recommended to write rules from most-general to most-specific to match this pattern.
 
 Example:
 
@@ -49,8 +51,9 @@ Example:
 	# Match only directories named mydir
 	mydir/
 
-	# Match only text files in the top-level directory
+	# Match text files in the top-level directory, except license.txt
 	/*.txt
+	!license.txt
 
 	# Match only the file foo.txt in the top-level directory
 	/foo.txt
@@ -64,18 +67,5 @@ Notable differences from .gitignore:
   - Trailing spaces are always ignored (there is no supported escape sequence)
   - The evaluation of escape sequences has not been tested for compatibility
   - There is no support for '\\!' as a special leading sequence for files that begin with `!`
-  - The first filename match will determine if it is included or excluded, subsequent lines are ignored
-  
-Example:
-
-	# This is valid .gitignore syntax to only include Chart.yaml and values.yaml, but invalid for .helmignore
-	*
-	!Chart.yaml
-	!values.yaml
-	
-	# Instead, this syntax will work as .helmignore takes the first match per file
-	!Chart.yaml
-	!values.yaml
-	*
 */
 package ignore // import "helm.sh/helm/v4/pkg/ignore"

@@ -85,8 +85,9 @@ func Parse(file io.Reader) (*Rules, error) {
 
 // Ignore evaluates the file at the given path, and returns true if it should be ignored.
 //
-// Ignore evaluates path against the rules in order. Evaluation stops when a match
-// is found. Matching a negative rule will stop evaluation.
+// Ignore evaluates path against the rules in order, with the last matching rule dictating
+// whether the file is ignored.  This follows the pattern of `.gitignore` -- note that
+// "true" means to ignore the file, and "false" means to _keep_ the file.
 func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 	// Don't match on empty dirs.
 	if path == "" {
@@ -99,10 +100,12 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 	if path == "." || path == "./" {
 		return false
 	}
+	ignore := false
 	for _, p := range r.patterns {
 		if p.match == nil {
+			// This is a logic error; p.match should always be set in parseRule.
 			slog.Info("this will be ignored no matcher supplied", "patterns", p.raw)
-			return false
+			continue
 		}
 
 		// If the rule is looking for directories, and this is not a directory,
@@ -111,15 +114,13 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 			continue
 		}
 
-		// For negative rules, we need to capture and return non-matches,
-		// and continue for matches.
+		// `.gitignore` semantics are last match wins, so we can't early-return on a match.
 		if p.match(path, fi) {
-			// if negate, then return false to "should I ignore"
-			return !p.negate
+			ignore = !p.negate
 		}
 
 	}
-	return false
+	return ignore
 }
 
 // parseRule parses a rule string and creates a pattern, which is then stored in the Rules object.
