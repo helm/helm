@@ -42,8 +42,8 @@ func BuildPushRef(href, chartName, chartVersion string) (string, error) {
 	// Ensure repository ends with the chart name once (avoid duplication)
 	finalRepo := ref.Repository
 	if chartName != "" {
-		last := chartName
 		// Extract last segment of current repository path
+		var last string
 		if idx := strings.LastIndex(finalRepo, "/"); idx >= 0 {
 			last = finalRepo[idx+1:]
 		} else {
