@@ -242,15 +242,14 @@ func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
 			dir("repositories.yaml"), dir(), contentCache),
 	)
 
-	if err != nil {
-		t.Logf("Output: %s", out)
-		t.Fatal(err)
+	// In Helm v4, using a repository that hasn't been explicitly configured should fail
+	if err == nil {
+		t.Fatalf("expected error for unconfigured repository, got nil. Output: %s", out)
 	}
 
-	// This is written directly to stdout, so we have to capture as is
-	if !strings.Contains(out, `Getting updates for unmanaged Helm repositories...`) {
-		t.Errorf("No ‘unmanaged’ Helm repo used in test chartdependency or it doesn’t cause the creation "+
-			"of an ‘ad hoc’ repo index cache file\n%s", out)
+	missingRepoURL := srvForUnmanagedRepo.URL()
+	if !strings.Contains(out, fmt.Sprintf("repository \"%s\" is not configured.", missingRepoURL)) {
+		t.Fatalf("expected error to mention unconfigured repo URL %s. Output:\n%s", missingRepoURL, out)
 	}
 }
 
