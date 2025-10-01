@@ -30,8 +30,16 @@ import (
 const pushDesc = `
 Upload a chart to a registry.
 
-If the chart has an associated provenance file,
-it will also be uploaded.
+If the chart has an associated provenance file, it will also be uploaded.
+
+You can optionally specify --version or oci://...:version as a safety check. When provided,
+it must match the version from Chart.yaml; otherwise the command will fail.
+
+Examples:
+
+	$ helm push mychart-0.1.0.tgz oci://my-registry.io/helm/charts
+	$ helm push mychart-0.1.0.tgz oci://my-registry.io/helm/charts --version 0.1.0
+	$ helm push mychart-0.1.0.tgz oci://my-registry.io/helm/charts:0.1.0
 `
 
 type registryPushOptions struct {
@@ -42,6 +50,7 @@ type registryPushOptions struct {
 	plainHTTP             bool
 	password              string
 	username              string
+	version               string
 }
 
 func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -84,6 +93,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				action.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
 				action.WithInsecureSkipTLSVerify(o.insecureSkipTLSverify),
 				action.WithPlainHTTP(o.plainHTTP),
+				action.WithExpectedVersion(o.version),
 				action.WithPushOptWriter(out))
 			client.Settings = settings
 			output, err := client.Run(chartRef, remote)
@@ -103,6 +113,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart upload")
 	f.StringVar(&o.username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&o.password, "password", "", "chart repository password where to locate the requested chart")
+	f.StringVar(&o.version, "version", "", "specify the exact chart version to push. If this is not specified, the version from Chart.yaml is used")
 
 	return cmd
 }
