@@ -36,7 +36,8 @@ func BuildPushRef(href, chartName, chartVersion string) (string, error) {
 	normalizedVersion := strings.ReplaceAll(chartVersion, "+", "_")
 	// if href tag present, it must match normalized chart version
 	if ref.Tag != "" && ref.Tag != normalizedVersion {
-		return "", fmt.Errorf("tag %q does not match provided chart version %q", ref.Tag, chartVersion)
+		normalizedTag := strings.ReplaceAll(ref.Tag, "_", "+")
+		return "", fmt.Errorf("tag %q does not match provided chart version %q", normalizedTag, chartVersion)
 	}
 
 	// Ensure repository ends with the chart name once (avoid duplication)
