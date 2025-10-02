@@ -48,6 +48,8 @@ func ContainsTag(tags []string, tag string) bool {
 	return slices.Contains(tags, tag)
 }
 
+// GetTagMatchingVersionOrConstraint gets the latest tag matching a given semver constraint.
+// Expects tags to be a sorted slice of semver tags (highest version first)
 func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (string, error) {
 	var constraint *semver.Constraints
 	if versionString == "" {
