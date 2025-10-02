@@ -168,6 +168,12 @@ func copyFile(src, dst string) (err error) {
 		} else {
 			return nil
 		}
+	} else {
+		if fi, err := os.Lstat(src); err != nil {
+			return errors.Wrap(err, "stat failed")
+		} else if !fi.Mode().IsRegular() {
+			return nil
+		}
 	}
 
 	in, err := os.Open(src)
