@@ -46,6 +46,20 @@ type MetadataLegacy struct {
 	Description string `yaml:"description"`
 
 	// PlatformCommand is the plugin command, with a platform selector and support for args.
+	//
+	// The command and args will be passed through environment expansion, so env vars can
+	// be present in this command. Unless IgnoreFlags is set, this will
+	// also merge the flags passed from Helm.
+	//
+	// Note that the command is not executed in a shell. To do so, we suggest
+	// pointing the command to a shell script.
+	//
+	// The following rules will apply to processing platform commands:
+	// - If PlatformCommand is present, it will be used
+	// - If both OS and Arch match the current platform, search will stop and the command will be executed
+	// - If OS matches and Arch is empty, the command will be executed
+	// - If no OS/Arch match is found, the default command will be executed
+	// - If no matches are found in platformCommand, Helm will exit with an error
 	PlatformCommand []PlatformCommand `yaml:"platformCommand"`
 
 	// Command is the plugin command, as a single string.

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -57,11 +58,10 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 		return
 	}
 
-	dirs := filepath.SplitList(settings.PluginsDirectory)
 	descriptor := plugin.Descriptor{
 		Type: "cli/v1",
 	}
-	found, err := plugin.FindPlugins(dirs, descriptor)
+	found, err := settings.PluginCatalog.FindPlugins(descriptor)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load plugins: %s\n", err)
 		return
@@ -133,6 +133,7 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 		}
 
 		// TODO: Make sure a command with this name does not already exist.
+		slog.Debug("adding plugin command", "name", c.Name(), "path", plug.Dir())
 		baseCmd.AddCommand(c)
 
 		// For completion, we try to load more details about the plugins so as to allow for command and

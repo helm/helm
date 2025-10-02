@@ -102,6 +102,8 @@ By default, the default directories depend on the Operating System. The defaults
 var settings = cli.New()
 
 func NewRootCmd(out io.Writer, args []string, logSetup func(bool)) (*cobra.Command, error) {
+	settings.InitializeDefaultPluginManager()
+
 	actionConfig := new(action.Configuration)
 	cmd, err := newRootCmdWithConfig(actionConfig, out, args, logSetup)
 	if err != nil {
@@ -109,6 +111,7 @@ func NewRootCmd(out io.Writer, args []string, logSetup func(bool)) (*cobra.Comma
 	}
 	cobra.OnInitialize(func() {
 		helmDriver := os.Getenv("HELM_DRIVER")
+
 		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver); err != nil {
 			log.Fatal(err)
 		}

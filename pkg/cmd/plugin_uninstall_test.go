@@ -70,20 +70,20 @@ command: $HELM_PLUGIN_DIR/test-plugin
 	}
 
 	// Load the plugin
-	p, err := plugin.LoadDir(pluginDir)
+	pr, err := plugin.LoadDirRaw(pluginDir)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Create a test uninstall function that uses our test settings
-	testUninstallPlugin := func(plugin plugin.Plugin) error {
-		if err := os.RemoveAll(plugin.Dir()); err != nil {
+	testUninstallPlugin := func(pluginRaw *plugin.PluginRaw) error {
+		if err := os.RemoveAll(pluginRaw.Dir); err != nil {
 			return err
 		}
 
 		// Clean up versioned tarball and provenance files from test HELM_PLUGINS directory
-		pluginName := plugin.Metadata().Name
-		pluginVersion := plugin.Metadata().Version
+		pluginName := pluginRaw.Metadata.Name
+		pluginVersion := pluginRaw.Metadata.Version
 		testPluginsDir := testSettings.PluginsDirectory
 
 		// Remove versioned files: plugin-name-version.tgz and plugin-name-version.tgz.prov
@@ -123,7 +123,7 @@ command: $HELM_PLUGIN_DIR/test-plugin
 	}
 
 	// Uninstall the plugin
-	if err := testUninstallPlugin(p); err != nil {
+	if err := testUninstallPlugin(pr); err != nil {
 		t.Fatal(err)
 	}
 
