@@ -153,6 +153,10 @@ func TestShowValuesFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "show values", true)
 }
 
+func TestShowSchemaFileCompletion(t *testing.T) {
+	checkFileCompletion(t, "show schema", true)
+}
+
 func TestShowCRDsFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "show crds", true)
 }
