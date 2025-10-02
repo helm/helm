@@ -113,7 +113,8 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 	}
 	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus))
+	everObserved := make(map[object.ObjMetadata]bool)
+	done := statusCollector.ListenWithObserver(eventCh, statusObserverForDelete(cancel, everObserved))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -128,10 +129,19 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 			if rs.Status == status.NotFoundStatus {
 				continue
 			}
+			// When waiting for deletion, UnknownStatus means the resource doesn't exist
+			// (was already deleted or never existed) ONLY if we never observed it with
+			// a non-Unknown status. If we did observe it, then Unknown means something went wrong.
+			if rs.Status == status.UnknownStatus && !everObserved[id] {
+				continue
+			}
 			errs = append(errs, fmt.Errorf("resource still exists, name: %s, kind: %s, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
 		}
-		errs = append(errs, ctx.Err())
-		return errors.Join(errs...)
+		// Only return an error if there are actual resources that still exist
+		if len(errs) > 0 {
+			errs = append(errs, ctx.Err())
+			return errors.Join(errs...)
+		}
 	}
 	return nil
 }
@@ -179,17 +189,46 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 	return nil
 }
 
+func statusObserverForDelete(cancel context.CancelFunc, everObserved map[object.ObjMetadata]bool) collector.ObserverFunc {
+	return func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
+		var rss []*event.ResourceStatus
+		var nonDesiredResources []*event.ResourceStatus
+		for id, rs := range statusCollector.ResourceStatuses {
+			if rs == nil {
+				continue
+			}
+			// Track resources that we've observed with a non-Unknown status
+			if rs.Status != status.UnknownStatus {
+				everObserved[id] = true
+			}
+			rss = append(rss, rs)
+			if rs.Status != status.NotFoundStatus {
+				nonDesiredResources = append(nonDesiredResources, rs)
+			}
+		}
+
+		if aggregator.AggregateStatus(rss, status.NotFoundStatus) == status.NotFoundStatus {
+			cancel()
+			return
+		}
+
+		if len(nonDesiredResources) > 0 {
+			// Log a single resource so the user knows what they're waiting for without an overwhelming amount of output
+			sort.Slice(nonDesiredResources, func(i, j int) bool {
+				return nonDesiredResources[i].Identifier.Name < nonDesiredResources[j].Identifier.Name
+			})
+			first := nonDesiredResources[0]
+			slog.Debug("waiting for resource", "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", status.NotFoundStatus, "actualStatus", first.Status)
+		}
+	}
+}
+
 func statusObserver(cancel context.CancelFunc, desired status.Status) collector.ObserverFunc {
 	return func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
 		var rss []*event.ResourceStatus
 		var nonDesiredResources []*event.ResourceStatus
 		for _, rs := range statusCollector.ResourceStatuses {
 			if rs == nil {
-				continue
-			}
-			// If a resource is already deleted before waiting has started, it will show as unknown
-			// this check ensures we don't wait forever for a resource that is already deleted
-			if rs.Status == status.UnknownStatus && desired == status.NotFoundStatus {
 				continue
 			}
 			rss = append(rss, rs)

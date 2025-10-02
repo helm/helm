@@ -163,7 +163,7 @@ func getGVR(t *testing.T, mapper meta.RESTMapper, obj *unstructured.Unstructured
 
 func getRuntimeObjFromManifests(t *testing.T, manifests []string) []runtime.Object {
 	t.Helper()
-	objects := []runtime.Object{}
+	var objects []runtime.Object
 	for _, manifest := range manifests {
 		m := make(map[string]interface{})
 		err := yaml.Unmarshal([]byte(manifest), &m)
