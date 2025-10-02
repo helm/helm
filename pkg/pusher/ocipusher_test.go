@@ -472,7 +472,7 @@ func TestOCIPusher_Push_ExpectedVersionMismatch(t *testing.T) {
 		t.Fatal("Expected error when --version does not match chart version")
 	}
 
-	if !strings.Contains(err.Error(), "specified --version") {
+	if !strings.Contains(err.Error(), "specified --ensure-version") {
 		t.Errorf("Expected error to mention version mismatch check, got %q", err.Error())
 	}
 }
