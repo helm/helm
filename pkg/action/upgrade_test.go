@@ -60,9 +60,9 @@ func TestUpgradeRelease_Success(t *testing.T) {
 
 	ctx, done := context.WithCancel(t.Context())
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
-	done()
 	req.NoError(err)
 	is.Equal(res.Info.Status, release.StatusDeployed)
+	done()
 
 	// Detecting previous bug where context termination after successful release
 	// caused release to fail.
