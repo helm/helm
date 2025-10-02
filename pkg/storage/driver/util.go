@@ -24,24 +24,29 @@ import (
 	"io"
 	"slices"
 
-	rspb "helm.sh/helm/v4/pkg/release/v1"
+	"github.com/klauspost/compress/zstd"
+
+	rspb "helm.sh/helm/v3/pkg/release"
 )
 
 var b64 = base64.StdEncoding
 
-var magicGzip = []byte{0x1f, 0x8b, 0x08}
+var (
+	magicGzip = []byte{0x1f, 0x8b, 0x08}
+	magicZstd = []byte{0x28, 0xb5, 0x2f, 0xfd}
+)
 
 var systemLabels = []string{"name", "owner", "status", "version", "createdAt", "modifiedAt"}
 
 // encodeRelease encodes a release returning a base64 encoded
-// gzipped string representation, or error.
+// zstded string representation, or error.
 func encodeRelease(rls *rspb.Release) (string, error) {
 	b, err := json.Marshal(rls)
 	if err != nil {
 		return "", err
 	}
 	var buf bytes.Buffer
-	w, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	w, err := zstd.NewWriter(&buf, zstd.WithEncoderLevel(zstd.SpeedBestCompression))
 	if err != nil {
 		return "", err
 	}
@@ -63,10 +68,21 @@ func decodeRelease(data string) (*rspb.Release, error) {
 		return nil, err
 	}
 
-	// For backwards compatibility with releases that were stored before
-	// compression was introduced we skip decompression if the
-	// gzip magic header is not found
-	if len(b) > 3 && bytes.Equal(b[0:3], magicGzip) {
+	switch {
+	case len(b) > 4 && bytes.Equal(b[0:4], magicZstd):
+		// Handle zstd compressed data
+		r, err := zstd.NewReader(bytes.NewReader(b))
+		if err != nil {
+			return nil, err
+		}
+		defer r.Close()
+		b2, err := io.ReadAll(r)
+		if err != nil {
+			return nil, err
+		}
+		b = b2
+	case len(b) > 3 && bytes.Equal(b[0:3], magicGzip):
+		// Handle gzip compressed data
 		r, err := gzip.NewReader(bytes.NewReader(b))
 		if err != nil {
 			return nil, err
@@ -77,6 +93,8 @@ func decodeRelease(data string) (*rspb.Release, error) {
 			return nil, err
 		}
 		b = b2
+	default:
+		// Handle uncompressed data for backwards compatibility
 	}
 
 	var rls rspb.Release
