@@ -61,7 +61,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 
 	// If an expected version is specified via --version, enforce it matches Chart.yaml
 	if pusher.opts.expectedVersion != "" && pusher.opts.expectedVersion != meta.Metadata.Version {
-		return fmt.Errorf("specified --version %q does not match chart version %q", pusher.opts.expectedVersion, meta.Metadata.Version)
+		return fmt.Errorf("specified --ensure-version %q does not match chart version %q", pusher.opts.expectedVersion, meta.Metadata.Version)
 	}
 
 	ref, err := registry.BuildPushRef(href, meta.Metadata.Name, meta.Metadata.Version)
