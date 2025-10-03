@@ -274,6 +274,11 @@ func TestInstall(t *testing.T) {
 			wantError: true,
 			golden:    "output/install-hide-secret.txt",
 		},
+		{
+			name:   "check kube version with dry-run",
+			cmd:    "install secrets testdata/testcharts/subchart --dry-run --kube-version 1.16.0",
+			golden: "output/install-dry-run-with-kube-version.txt",
+		},
 	}
 
 	runTestCmd(t, tests)
