@@ -9,7 +9,7 @@ GOBIN         = $(shell go env GOBIN)
 ifeq ($(GOBIN),)
 GOBIN         = $(shell go env GOPATH)/bin
 endif
-GOTOOLCHAIN   = $(shell awk '/^go / {print "go" $$2}' go.mod)
+GOTOOLCHAIN   = $(shell go list -m -f '{{.GoVersion}}')
 GORELEASER    = $(GOBIN)/goreleaser
 GOIMPORTS     = $(GOBIN)/goimports
 ARCH          = $(shell go env GOARCH)
