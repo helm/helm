@@ -96,6 +96,31 @@ type Configuration struct {
 	mutex sync.Mutex
 }
 
+// ConfigurationSnapshot represents a saved state of Configuration for restoration
+type ConfigurationSnapshot struct {
+	originalKubeClient   kube.Interface
+	originalCapabilities *common.Capabilities
+	originalReleases     *storage.Storage
+}
+
+// SaveState creates a snapshot of the current configuration state
+func (cfg *Configuration) SaveState() *ConfigurationSnapshot {
+	return &ConfigurationSnapshot{
+		originalKubeClient:   cfg.KubeClient,
+		originalCapabilities: cfg.Capabilities,
+		originalReleases:     cfg.Releases,
+	}
+}
+
+// RestoreState restores the configuration to a previously saved state
+func (cfg *Configuration) RestoreState(snapshot *ConfigurationSnapshot) {
+	if snapshot != nil {
+		cfg.KubeClient = snapshot.originalKubeClient
+		cfg.Capabilities = snapshot.originalCapabilities
+		cfg.Releases = snapshot.originalReleases
+	}
+}
+
 const (
 	// filenameAnnotation is the annotation key used to store the original filename
 	// information in manifest annotations for post-rendering reconstruction.

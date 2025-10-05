@@ -252,11 +252,17 @@ func TestInstallReleaseWithValues(t *testing.T) {
 func TestInstallReleaseClientOnly(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
+
+	// Save original configuration state
+	originalKubeClient := instAction.cfg.KubeClient
+	originalCapabilities := instAction.cfg.Capabilities
+
 	instAction.ClientOnly = true
 	instAction.Run(buildChart(), nil) // disregard output
 
-	is.Equal(instAction.cfg.Capabilities, common.DefaultCapabilities)
-	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: io.Discard})
+	// After running with ClientOnly, configuration should be restored to original state
+	is.Equal(originalKubeClient, instAction.cfg.KubeClient, "KubeClient should be restored after ClientOnly operation")
+	is.Equal(originalCapabilities, instAction.cfg.Capabilities, "Capabilities should be restored after ClientOnly operation")
 }
 
 func TestInstallRelease_NoName(t *testing.T) {
@@ -1009,4 +1015,85 @@ func TestInstallRun_UnreachableKubeClient(t *testing.T) {
 	done()
 	assert.Nil(t, res)
 	assert.ErrorContains(t, err, "connection refused")
+}
+
+func TestInstallClientOnlyStatePreservation(t *testing.T) {
+	is := assert.New(t)
+
+	// Create configuration with original kube client
+	config := actionConfigFixture(t)
+	originalKubeClient := config.KubeClient
+	originalCapabilities := config.Capabilities
+	originalReleases := config.Releases
+
+	// First install action with ClientOnly = true
+	client1 := NewInstall(config)
+	client1.ClientOnly = true
+	client1.DryRun = true
+	client1.ReleaseName = "test-client-only"
+	client1.Namespace = "test-namespace"
+
+	// Run first action
+	_, err := client1.Run(buildChart(), nil)
+	is.NoError(err)
+
+	// Verify that the configuration has been restored to original state
+	is.Equal(originalKubeClient, config.KubeClient, "KubeClient should be restored to original")
+	is.Equal(originalCapabilities, config.Capabilities, "Capabilities should be restored to original")
+	is.Equal(originalReleases, config.Releases, "Releases should be restored to original")
+
+	// Second install action with ClientOnly = false (should work now)
+	client2 := NewInstall(config)
+	client2.ClientOnly = false
+	client2.DryRun = true
+	client2.ReleaseName = "test-real-install"
+	client2.Namespace = "test-namespace"
+
+	// Run second action - this should not fail due to fake client
+	_, err = client2.Run(buildChart(), nil)
+	is.NoError(err)
+
+	// Verify configuration was not permanently modified
+	is.Equal(originalKubeClient, config.KubeClient, "KubeClient should still be original after second action")
+}
+
+func TestInstallClientOnlyMultipleActionsWithSameConfig(t *testing.T) {
+	is := assert.New(t)
+
+	// Create configuration
+	config := actionConfigFixture(t)
+	originalKubeClient := config.KubeClient
+
+	// First action: ClientOnly = true
+	client1 := NewInstall(config)
+	client1.ClientOnly = true
+	client1.DryRun = true
+	client1.ReleaseName = "test1"
+	client1.Namespace = "test-namespace"
+
+	_, err := client1.Run(buildChart(), nil)
+	is.NoError(err)
+
+	// Second action: ClientOnly = false (using same config)
+	client2 := NewInstall(config)
+	client2.ClientOnly = false
+	client2.DryRun = true
+	client2.ReleaseName = "test2"
+	client2.Namespace = "test-namespace"
+
+	_, err = client2.Run(buildChart(), nil)
+	is.NoError(err)
+
+	// Third action: ClientOnly = true again
+	client3 := NewInstall(config)
+	client3.ClientOnly = true
+	client3.DryRun = true
+	client3.ReleaseName = "test3"
+	client3.Namespace = "test-namespace"
+
+	_, err = client3.Run(buildChart(), nil)
+	is.NoError(err)
+
+	// Configuration should still be in original state
+	is.Equal(originalKubeClient, config.KubeClient, "KubeClient should be preserved across multiple actions")
 }

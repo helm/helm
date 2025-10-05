@@ -303,7 +303,11 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		}
 	}
 
+	// Save the original configuration state before modifying it for ClientOnly mode
+	var configSnapshot *ConfigurationSnapshot
 	if i.ClientOnly {
+		configSnapshot = i.cfg.SaveState()
+
 		// Add mock objects in here so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
 		i.cfg.Capabilities = common.DefaultCapabilities.Copy()
@@ -316,6 +320,11 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		mem := driver.NewMemory()
 		mem.SetNamespace(i.Namespace)
 		i.cfg.Releases = storage.Init(mem)
+
+		// Ensure configuration is restored when the function returns
+		defer func() {
+			i.cfg.RestoreState(configSnapshot)
+		}()
 	} else if !i.ClientOnly && len(i.APIVersions) > 0 {
 		slog.Debug("API Version list given outside of client only mode, this list will be ignored")
 	}
