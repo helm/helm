@@ -17,10 +17,13 @@ limitations under the License.
 package action
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
@@ -34,6 +37,17 @@ func uninstallAction(t *testing.T) *Uninstall {
 	return unAction
 }
 
+func TestUninstallRelease_dryRun_ignoreNotFound(t *testing.T) {
+	unAction := uninstallAction(t)
+	unAction.DryRun = true
+	unAction.IgnoreNotFound = true
+
+	is := assert.New(t)
+	res, err := unAction.Run("release-non-exist")
+	is.Nil(res)
+	is.NoError(err)
+}
+
 func TestUninstallRelease_ignoreNotFound(t *testing.T) {
 	unAction := uninstallAction(t)
 	unAction.DryRun = false
@@ -44,7 +58,6 @@ func TestUninstallRelease_ignoreNotFound(t *testing.T) {
 	is.Nil(res)
 	is.NoError(err)
 }
-
 func TestUninstallRelease_deleteRelease(t *testing.T) {
 	is := assert.New(t)
 
@@ -137,6 +150,20 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	failer.BuildDummy = true
 	unAction.cfg.KubeClient = failer
 	_, err := unAction.Run(rel.Name)
-	is.Error(err)
+	require.Error(t, err)
 	is.Contains(err.Error(), "failed to delete release: come-fail-away")
+}
+
+func TestUninstallRun_UnreachableKubeClient(t *testing.T) {
+	t.Helper()
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.ConnectionError = errors.New("connection refused")
+	config.KubeClient = &failingKubeClient
+
+	client := NewUninstall(config)
+	result, err := client.Run("")
+
+	assert.Nil(t, result)
+	assert.ErrorContains(t, err, "connection refused")
 }

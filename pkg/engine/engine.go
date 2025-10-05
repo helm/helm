@@ -30,21 +30,9 @@ import (
 
 	"k8s.io/client-go/rest"
 
-	chart "helm.sh/helm/v4/pkg/chart/v2"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	ci "helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/common"
 )
-
-// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
-// > "template: %s: executing %q at <%s>: %s"
-var execErrFmt = regexp.MustCompile(`^template: (?P<templateName>(?U).+): executing (?P<functionName>(?U).+) at (?P<location>(?U).+): (?P<errMsg>(?U).+)(?P<nextErr>( template:.*)?)$`)
-
-// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
-// > "template: %s: %s"
-var execErrFmtWithoutTemplate = regexp.MustCompile(`^template: (?P<templateName>(?U).+): (?P<errMsg>.*)(?P<nextErr>( template:.*)?)$`)
-
-// taken from https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=191
-// > "template: no template %q associated with template %q"
-var execErrNoTemplateAssociated = regexp.MustCompile(`^template: no template (?P<location>.*) associated with template (?P<functionName>(.*)?)$`)
 
 // Engine is an implementation of the Helm rendering implementation for templates.
 type Engine struct {
@@ -88,21 +76,21 @@ func New(config *rest.Config) Engine {
 // that section of the values will be passed into the "foo" chart. And if that
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
-func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+func (e Engine) Render(chrt ci.Charter, values common.Values) (map[string]string, error) {
 	tmap := allTemplates(chrt, values)
 	return e.render(tmap)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options.
-func Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+func Render(chrt ci.Charter, values common.Values) (map[string]string, error) {
 	return new(Engine).Render(chrt, values)
 }
 
 // RenderWithClient takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
-func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config) (map[string]string, error) {
+func RenderWithClient(chrt ci.Charter, values common.Values, config *rest.Config) (map[string]string, error) {
 	var clientProvider ClientProvider = clientProviderFromConfig{config}
 	return Engine{
 		clientProvider: &clientProvider,
@@ -113,7 +101,7 @@ func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.C
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
 // This function differs from RenderWithClient in that it lets you customize the way a dynamic client is constructed.
-func RenderWithClientProvider(chrt *chart.Chart, values chartutil.Values, clientProvider ClientProvider) (map[string]string, error) {
+func RenderWithClientProvider(chrt ci.Charter, values common.Values, clientProvider ClientProvider) (map[string]string, error) {
 	return Engine{
 		clientProvider: &clientProvider,
 	}.Render(chrt, values)
@@ -124,7 +112,7 @@ type renderable struct {
 	// tpl is the current template.
 	tpl string
 	// vals are the values to be supplied to the template.
-	vals chartutil.Values
+	vals common.Values
 	// namespace prefix to the templates of the current chart
 	basePath string
 }
@@ -312,7 +300,7 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 		}
 		// At render time, add information about the template that is being rendered.
 		vals := tpls[filename].vals
-		vals["Template"] = chartutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
+		vals["Template"] = common.Values{"Name": filename, "BasePath": tpls[filename].basePath}
 		var buf strings.Builder
 		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
 			return map[string]string{}, reformatExecErrorMsg(filename, err)
@@ -338,7 +326,7 @@ func cleanupParseError(filename string, err error) error {
 	location := tokens[1]
 	// The remaining tokens make up a stacktrace-like chain, ending with the relevant error
 	errMsg := tokens[len(tokens)-1]
-	return fmt.Errorf("parse error at (%s): %s", string(location), errMsg)
+	return fmt.Errorf("parse error at (%s): %s", location, errMsg)
 }
 
 type TraceableError struct {
@@ -350,25 +338,128 @@ type TraceableError struct {
 func (t TraceableError) String() string {
 	var errorString strings.Builder
 	if t.location != "" {
-		fmt.Fprintf(&errorString, "%s\n  ", t.location)
+		_, _ = fmt.Fprintf(&errorString, "%s\n  ", t.location)
 	}
 	if t.executedFunction != "" {
-		fmt.Fprintf(&errorString, "%s\n    ", t.executedFunction)
+		_, _ = fmt.Fprintf(&errorString, "%s\n    ", t.executedFunction)
 	}
 	if t.message != "" {
-		fmt.Fprintf(&errorString, "%s\n", t.message)
+		_, _ = fmt.Fprintf(&errorString, "%s\n", t.message)
 	}
 	return errorString.String()
+}
+
+// parseTemplateExecErrorString parses a template execution error string from text/template
+// without using regular expressions. It returns a TraceableError and true if parsing succeeded.
+func parseTemplateExecErrorString(s string) (TraceableError, bool) {
+	const prefix = "template: "
+	if !strings.HasPrefix(s, prefix) {
+		return TraceableError{}, false
+	}
+	remainder := s[len(prefix):]
+
+	// Special case: "template: no template %q associated with template %q"
+	// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=191
+	traceableError, done := parseTemplateNoTemplateError(s, remainder)
+	if done {
+		return traceableError, true
+	}
+
+	// Executing form: "<templateName>: executing \"<funcName>\" at <<location>>: <errMsg>[ template:...]"
+	// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
+	traceableError, done = parseTemplateExecutingAtErrorType(remainder)
+	if done {
+		return traceableError, true
+	}
+
+	// Simple form: "<templateName>: <errMsg>"
+	// Use LastIndex to avoid splitting colons within line:col info.
+	// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
+	traceableError, done = parseTemplateSimpleErrorString(remainder)
+	if done {
+		return traceableError, true
+	}
+
+	return TraceableError{}, false
+}
+
+// Special case: "template: no template %q associated with template %q"
+// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=191
+func parseTemplateNoTemplateError(s string, remainder string) (TraceableError, bool) {
+	if strings.HasPrefix(remainder, "no template ") {
+		return TraceableError{message: s}, true
+	}
+	return TraceableError{}, false
+}
+
+// Simple form: "<templateName>: <errMsg>"
+// Use LastIndex to avoid splitting colons within line:col info.
+// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=138
+func parseTemplateSimpleErrorString(remainder string) (TraceableError, bool) {
+	if sep := strings.LastIndex(remainder, ": "); sep != -1 {
+		templateName := remainder[:sep]
+		errMsg := remainder[sep+2:]
+		if cut := strings.Index(errMsg, " template:"); cut != -1 {
+			errMsg = errMsg[:cut]
+		}
+		return TraceableError{location: templateName, message: errMsg}, true
+	}
+	return TraceableError{}, false
+}
+
+// Executing form: "<templateName>: executing \"<funcName>\" at <<location>>: <errMsg>[ template:...]"
+// Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
+func parseTemplateExecutingAtErrorType(remainder string) (TraceableError, bool) {
+	if idx := strings.Index(remainder, ": executing "); idx != -1 {
+		templateName := remainder[:idx]
+		after := remainder[idx+len(": executing "):]
+		if len(after) == 0 || after[0] != '"' {
+			return TraceableError{}, false
+		}
+		// find closing quote for function name
+		endQuote := strings.IndexByte(after[1:], '"')
+		if endQuote == -1 {
+			return TraceableError{}, false
+		}
+		endQuote++ // account for offset we started at 1
+		functionName := after[1:endQuote]
+		afterFunc := after[endQuote+1:]
+
+		// expect: " at <" then location then ">: " then message
+		const atPrefix = " at <"
+		if !strings.HasPrefix(afterFunc, atPrefix) {
+			return TraceableError{}, false
+		}
+		afterAt := afterFunc[len(atPrefix):]
+		endLoc := strings.Index(afterAt, ">: ")
+		if endLoc == -1 {
+			return TraceableError{}, false
+		}
+		locationName := afterAt[:endLoc]
+		errMsg := afterAt[endLoc+len(">: "):]
+
+		// trim chained next error starting with space + "template:" if present
+		if cut := strings.Index(errMsg, " template:"); cut != -1 {
+			errMsg = errMsg[:cut]
+		}
+		return TraceableError{
+			location:         templateName,
+			message:          errMsg,
+			executedFunction: "executing \"" + functionName + "\" at <" + locationName + ">:",
+		}, true
+	}
+	return TraceableError{}, false
 }
 
 // reformatExecErrorMsg takes an error message for template rendering and formats it into a formatted
 // multi-line error string
 func reformatExecErrorMsg(filename string, err error) error {
-	// This function matches the error message against regex's for the text/template package.
-	// If the regex's can parse out details from that error message such as the line number, template it failed on,
+	// This function parses the error message produced by text/template package.
+	// If it can parse out details from that error message such as the line number, template it failed on,
 	// and error description, then it will construct a new error that displays these details in a structured way.
 	// If there are issues with parsing the error message, the err passed into the function should return instead.
-	if _, isExecError := err.(template.ExecError); !isExecError {
+	var execError template.ExecError
+	if !errors.As(err, &execError) {
 		return err
 	}
 
@@ -384,45 +475,24 @@ func reformatExecErrorMsg(filename string, err error) error {
 
 	parts := warnRegex.FindStringSubmatch(tokens[2])
 	if len(parts) >= 2 {
-		return fmt.Errorf("execution error at (%s): %s", string(location), parts[1])
+		return fmt.Errorf("execution error at (%s): %s", location, parts[1])
 	}
 	current := err
-	fileLocations := []TraceableError{}
+	var fileLocations []TraceableError
 	for current != nil {
-		var traceable TraceableError
-		if matches := execErrFmt.FindStringSubmatch(current.Error()); matches != nil {
-			templateName := matches[execErrFmt.SubexpIndex("templateName")]
-			functionName := matches[execErrFmt.SubexpIndex("functionName")]
-			locationName := matches[execErrFmt.SubexpIndex("location")]
-			errMsg := matches[execErrFmt.SubexpIndex("errMsg")]
-			traceable = TraceableError{
-				location:         templateName,
-				message:          errMsg,
-				executedFunction: "executing " + functionName + " at " + locationName + ":",
-			}
-		} else if matches := execErrFmtWithoutTemplate.FindStringSubmatch(current.Error()); matches != nil {
-			templateName := matches[execErrFmt.SubexpIndex("templateName")]
-			errMsg := matches[execErrFmt.SubexpIndex("errMsg")]
-			traceable = TraceableError{
-				location: templateName,
-				message:  errMsg,
-			}
-		} else if matches := execErrNoTemplateAssociated.FindStringSubmatch(current.Error()); matches != nil {
-			traceable = TraceableError{
-				message: current.Error(),
+		if tr, ok := parseTemplateExecErrorString(current.Error()); ok {
+			if len(fileLocations) == 0 || fileLocations[len(fileLocations)-1] != tr {
+				fileLocations = append(fileLocations, tr)
 			}
 		} else {
 			return err
-		}
-		if len(fileLocations) == 0 || fileLocations[len(fileLocations)-1] != traceable {
-			fileLocations = append(fileLocations, traceable)
 		}
 		current = errors.Unwrap(current)
 	}
 
 	var finalErrorString strings.Builder
 	for _, fileLocation := range fileLocations {
-		fmt.Fprintf(&finalErrorString, "%s", fileLocation.String())
+		_, _ = fmt.Fprintf(&finalErrorString, "%s", fileLocation.String())
 	}
 
 	return errors.New(strings.TrimSpace(finalErrorString.String()))
@@ -455,7 +525,7 @@ func (p byPathLen) Less(i, j int) bool {
 // allTemplates returns all templates for a chart and its dependencies.
 //
 // As it goes, it also prepares the values in a scope-sensitive manner.
-func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
+func allTemplates(c ci.Charter, vals common.Values) map[string]renderable {
 	templates := make(map[string]renderable)
 	recAllTpls(c, templates, vals)
 	return templates
@@ -465,40 +535,45 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 //
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
-func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) map[string]interface{} {
+func recAllTpls(c ci.Charter, templates map[string]renderable, values common.Values) map[string]interface{} {
+	vals := values.AsMap()
 	subCharts := make(map[string]interface{})
-	chartMetaData := struct {
-		chart.Metadata
-		IsRoot bool
-	}{*c.Metadata, c.IsRoot()}
+	accessor, err := ci.NewAccessor(c)
+	if err != nil {
+		slog.Error("error accessing chart", "error", err)
+	}
+	chartMetaData := accessor.MetadataAsMap()
+	chartMetaData["IsRoot"] = accessor.IsRoot()
 
 	next := map[string]interface{}{
 		"Chart":        chartMetaData,
-		"Files":        newFiles(c.Files),
+		"Files":        newFiles(accessor.Files()),
 		"Release":      vals["Release"],
 		"Capabilities": vals["Capabilities"],
-		"Values":       make(chartutil.Values),
+		"Values":       make(common.Values),
 		"Subcharts":    subCharts,
 	}
 
 	// If there is a {{.Values.ThisChart}} in the parent metadata,
 	// copy that into the {{.Values}} for this template.
-	if c.IsRoot() {
+	if accessor.IsRoot() {
 		next["Values"] = vals["Values"]
-	} else if vs, err := vals.Table("Values." + c.Name()); err == nil {
+	} else if vs, err := values.Table("Values." + accessor.Name()); err == nil {
 		next["Values"] = vs
 	}
 
-	for _, child := range c.Dependencies() {
-		subCharts[child.Name()] = recAllTpls(child, templates, next)
+	for _, child := range accessor.Dependencies() {
+		// TODO: Handle error
+		sub, _ := ci.NewAccessor(child)
+		subCharts[sub.Name()] = recAllTpls(child, templates, next)
 	}
 
-	newParentID := c.ChartFullPath()
-	for _, t := range c.Templates {
+	newParentID := accessor.ChartFullPath()
+	for _, t := range accessor.Templates() {
 		if t == nil {
 			continue
 		}
-		if !isTemplateValid(c, t.Name) {
+		if !isTemplateValid(accessor, t.Name) {
 			continue
 		}
 		templates[path.Join(newParentID, t.Name)] = renderable{
@@ -512,14 +587,9 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 }
 
 // isTemplateValid returns true if the template is valid for the chart type
-func isTemplateValid(ch *chart.Chart, templateName string) bool {
-	if isLibraryChart(ch) {
+func isTemplateValid(accessor ci.Accessor, templateName string) bool {
+	if accessor.IsLibraryChart() {
 		return strings.HasPrefix(filepath.Base(templateName), "_")
 	}
 	return true
-}
-
-// isLibraryChart returns true if the chart is a library chart
-func isLibraryChart(c *chart.Chart) bool {
-	return strings.EqualFold(c.Metadata.Type, "library")
 }

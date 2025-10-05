@@ -45,7 +45,6 @@ type ReleaseTesting struct {
 	// Used for fetching logs from test pods
 	Namespace string
 	Filters   map[string][]string
-	HideNotes bool
 }
 
 // NewReleaseTesting creates a new ReleaseTesting object with the given configuration.
@@ -96,7 +95,8 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 		rel.Hooks = executingHooks
 	}
 
-	if err := r.cfg.execHook(rel, release.HookTest, kube.StatusWatcherStrategy, r.Timeout); err != nil {
+	serverSideApply := rel.ApplyMethod == string(release.ApplyMethodServerSideApply)
+	if err := r.cfg.execHook(rel, release.HookTest, kube.StatusWatcherStrategy, r.Timeout, serverSideApply); err != nil {
 		rel.Hooks = append(skippedHooks, rel.Hooks...)
 		r.cfg.Releases.Update(rel)
 		return rel, err

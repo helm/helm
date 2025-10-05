@@ -14,6 +14,7 @@ limitations under the License.
 package driver
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -25,6 +26,33 @@ import (
 
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
+
+const recentTimestampTolerance = time.Second
+
+func recentUnixTimestamp() sqlmock.Argument {
+	return recentUnixTimestampArgument{}
+}
+
+type recentUnixTimestampArgument struct{}
+
+func (recentUnixTimestampArgument) Match(value driver.Value) bool {
+	var ts int64
+	switch v := value.(type) {
+	case int:
+		ts = int64(v)
+	case int64:
+		ts = v
+	default:
+		return false
+	}
+
+	diff := time.Since(time.Unix(ts, 0))
+	if diff < 0 {
+		diff = -diff
+	}
+
+	return diff <= recentTimestampTolerance
+}
 
 func TestSQLName(t *testing.T) {
 	sqlDriver, _ := newTestFixtureSQL(t)
@@ -197,7 +225,7 @@ func TestSqlCreate(t *testing.T) {
 	mock.ExpectBegin()
 	mock.
 		ExpectExec(regexp.QuoteMeta(query)).
-		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, int(time.Now().Unix())).
+		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp()).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	labelsQuery := fmt.Sprintf(
@@ -255,7 +283,7 @@ func TestSqlCreateAlreadyExists(t *testing.T) {
 	mock.ExpectBegin()
 	mock.
 		ExpectExec(regexp.QuoteMeta(insertQuery)).
-		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, int(time.Now().Unix())).
+		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp()).
 		WillReturnError(fmt.Errorf("dialect dependent SQL error"))
 
 	selectQuery := fmt.Sprintf(
@@ -313,7 +341,7 @@ func TestSqlUpdate(t *testing.T) {
 
 	mock.
 		ExpectExec(regexp.QuoteMeta(query)).
-		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, int(time.Now().Unix()), key, namespace).
+		WithArgs(body, rel.Name, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp(), key, namespace).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	if err := sqlDriver.Update(key, rel); err != nil {

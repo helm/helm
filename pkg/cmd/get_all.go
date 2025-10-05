@@ -63,6 +63,7 @@ func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				debug:        true,
 				showMetadata: true,
 				hideNotes:    false,
+				noColor:      settings.ShouldDisableColor(),
 			})
 		},
 	}

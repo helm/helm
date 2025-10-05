@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -58,8 +59,8 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 			client.Namespace = settings.Namespace()
 			notName := regexp.MustCompile(`^!\s?name=`)
 			for _, f := range filter {
-				if strings.HasPrefix(f, "name=") {
-					client.Filters[action.IncludeNameFilter] = append(client.Filters[action.IncludeNameFilter], strings.TrimPrefix(f, "name="))
+				if after, ok := strings.CutPrefix(f, "name="); ok {
+					client.Filters[action.IncludeNameFilter] = append(client.Filters[action.IncludeNameFilter], after)
 				} else if notName.MatchString(f) {
 					client.Filters[action.ExcludeNameFilter] = append(client.Filters[action.ExcludeNameFilter], notName.ReplaceAllLiteralString(f, ""))
 				}
@@ -76,7 +77,8 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 				release:      rel,
 				debug:        settings.Debug,
 				showMetadata: false,
-				hideNotes:    client.HideNotes,
+				hideNotes:    true,
+				noColor:      settings.ShouldDisableColor(),
 			}); err != nil {
 				return err
 			}
@@ -85,7 +87,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 				// Print a newline to stdout to separate the output
 				fmt.Fprintln(out)
 				if err := client.GetPodLogs(out, rel); err != nil {
-					return err
+					return errors.Join(runErr, err)
 				}
 			}
 
@@ -97,7 +99,6 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.BoolVar(&outputLogs, "logs", false, "dump the logs from test pods (this runs after all tests are complete, but before any cleanup)")
 	f.StringSliceVar(&filter, "filter", []string{}, "specify tests by attribute (currently \"name\") using attribute=value syntax or '!attribute=value' to exclude a test (can specify multiple or separate values with commas: name=test1,name=test2)")
-	f.BoolVar(&client.HideNotes, "hide-notes", false, "if set, do not show notes in test output. Does not affect presence in chart metadata")
 
 	return cmd
 }

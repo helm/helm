@@ -26,6 +26,7 @@ import (
 
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 )
@@ -126,14 +127,14 @@ fullnameOverride: ""
 
 # This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
 serviceAccount:
-  # Specifies whether a service account should be created
+  # Specifies whether a service account should be created.
   create: true
   # Automatically mount a ServiceAccount's API credentials?
   automount: true
-  # Annotations to add to the service account
+  # Annotations to add to the service account.
   annotations: {}
   # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
+  # If not set and create is true, a name is generated using the fullname template.
   name: ""
 
 # This is for setting Kubernetes Annotations to a Pod.
@@ -174,9 +175,9 @@ ingress:
         - path: /
           pathType: ImplementationSpecific
   tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
+    # - secretName: chart-example-tls
+    #   hosts:
+    #     - chart-example.local
 
 # -- Expose the service via gateway-api HTTPRoute
 # Requires Gateway API resources and suitable controller installed within the cluster
@@ -248,16 +249,16 @@ autoscaling:
 
 # Additional volumes on the output Deployment definition.
 volumes: []
-# - name: foo
-#   secret:
-#     secretName: mysecret
-#     optional: false
+  # - name: foo
+  #   secret:
+  #     secretName: mysecret
+  #     optional: false
 
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts: []
-# - name: foo
-#   mountPath: "/etc/foo"
-#   readOnly: true
+  # - name: foo
+  #   mountPath: "/etc/foo"
+  #   readOnly: true
 
 nodeSelector: {}
 
@@ -655,11 +656,11 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 
 	schart.Metadata = chartfile
 
-	var updatedTemplates []*chart.File
+	var updatedTemplates []*common.File
 
 	for _, template := range schart.Templates {
 		newData := transform(string(template.Data), schart.Name())
-		updatedTemplates = append(updatedTemplates, &chart.File{Name: template.Name, Data: newData})
+		updatedTemplates = append(updatedTemplates, &common.File{Name: template.Name, Data: newData})
 	}
 
 	schart.Templates = updatedTemplates
@@ -733,12 +734,12 @@ func Create(name, dir string) (string, error) {
 		{
 			// Chart.yaml
 			path:    filepath.Join(cdir, ChartfileName),
-			content: []byte(fmt.Sprintf(defaultChartfile, name)),
+			content: fmt.Appendf(nil, defaultChartfile, name),
 		},
 		{
 			// values.yaml
 			path:    filepath.Join(cdir, ValuesfileName),
-			content: []byte(fmt.Sprintf(defaultValues, name)),
+			content: fmt.Appendf(nil, defaultValues, name),
 		},
 		{
 			// .helmignore
