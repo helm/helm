@@ -304,7 +304,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	}
 
 	// Save the original configuration state before modifying it for ClientOnly mode
-	var configSnapshot *ConfigurationSnapshot
+	var configSnapshot ConfigurationState
 	if i.ClientOnly {
 		configSnapshot = i.cfg.SaveState()
 

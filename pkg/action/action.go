@@ -96,16 +96,32 @@ type Configuration struct {
 	mutex sync.Mutex
 }
 
-// ConfigurationSnapshot represents a saved state of Configuration for restoration
-type ConfigurationSnapshot struct {
+// ConfigurationState represents a saved state of Configuration that can be restored
+type ConfigurationState interface {
+	// unexported method to ensure only our implementation can satisfy this interface
+	restore(*Configuration)
+}
+
+// configurationSnapshot represents a saved state of Configuration for restoration
+type configurationSnapshot struct {
 	originalKubeClient   kube.Interface
 	originalCapabilities *common.Capabilities
 	originalReleases     *storage.Storage
 }
 
+// restore implements ConfigurationState interface
+func (cs *configurationSnapshot) restore(cfg *Configuration) {
+	cfg.KubeClient = cs.originalKubeClient
+	cfg.Capabilities = cs.originalCapabilities
+	cfg.Releases = cs.originalReleases
+}
+
 // SaveState creates a snapshot of the current configuration state
-func (cfg *Configuration) SaveState() *ConfigurationSnapshot {
-	return &ConfigurationSnapshot{
+func (cfg *Configuration) SaveState() ConfigurationState {
+	cfg.mutex.Lock()
+	defer cfg.mutex.Unlock()
+
+	return &configurationSnapshot{
 		originalKubeClient:   cfg.KubeClient,
 		originalCapabilities: cfg.Capabilities,
 		originalReleases:     cfg.Releases,
@@ -113,12 +129,15 @@ func (cfg *Configuration) SaveState() *ConfigurationSnapshot {
 }
 
 // RestoreState restores the configuration to a previously saved state
-func (cfg *Configuration) RestoreState(snapshot *ConfigurationSnapshot) {
-	if snapshot != nil {
-		cfg.KubeClient = snapshot.originalKubeClient
-		cfg.Capabilities = snapshot.originalCapabilities
-		cfg.Releases = snapshot.originalReleases
+func (cfg *Configuration) RestoreState(snapshot ConfigurationState) {
+	if snapshot == nil {
+		return
 	}
+
+	cfg.mutex.Lock()
+	defer cfg.mutex.Unlock()
+
+	snapshot.restore(cfg)
 }
 
 const (
