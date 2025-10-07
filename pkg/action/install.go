@@ -306,7 +306,9 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	// Save the original configuration state before modifying it for ClientOnly mode
 	var configSnapshot ConfigurationState
 	if i.ClientOnly {
-		configSnapshot = i.cfg.SaveState()
+		// Lock the configuration for the entire ClientOnly modification
+		i.cfg.mutex.Lock()
+		configSnapshot = i.cfg.saveStateUnsafe() // Internal method without locking
 
 		// Add mock objects in here so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
@@ -320,6 +322,9 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		mem := driver.NewMemory()
 		mem.SetNamespace(i.Namespace)
 		i.cfg.Releases = storage.Init(mem)
+
+		// Unlock after modifications are complete
+		i.cfg.mutex.Unlock()
 
 		// Ensure configuration is restored when the function returns
 		defer func() {

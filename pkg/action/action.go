@@ -121,6 +121,11 @@ func (cfg *Configuration) SaveState() ConfigurationState {
 	cfg.mutex.Lock()
 	defer cfg.mutex.Unlock()
 
+	return cfg.saveStateUnsafe()
+}
+
+// saveStateUnsafe creates a snapshot without locking (internal use only)
+func (cfg *Configuration) saveStateUnsafe() ConfigurationState {
 	return &configurationSnapshot{
 		originalKubeClient:   cfg.KubeClient,
 		originalCapabilities: cfg.Capabilities,
