@@ -1092,6 +1092,13 @@ func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts 
 		WithFieldManager(getManagedFieldsManager()).
 		WithFieldValidation(string(fieldValidationDirective))
 
+	// Zero-out managed fields, if any are present on our object, as patch does not allow these to be set
+	metaAccessor, err := meta.Accessor(target.Object)
+	if err != nil {
+		return fmt.Errorf("failed to get object metadata: %w", err)
+	}
+	metaAccessor.SetManagedFields(nil)
+
 	// Send the full object to be applied on the server side.
 	data, err := runtime.Encode(unstructured.UnstructuredJSONScheme, target.Object)
 	if err != nil {
