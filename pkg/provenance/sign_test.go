@@ -26,6 +26,8 @@ import (
 
 	pgperrors "github.com/ProtonMail/go-crypto/openpgp/errors" //nolint
 	"github.com/ProtonMail/go-crypto/openpgp/packet"           //nolint
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
@@ -272,13 +274,9 @@ func TestClearSign(t *testing.T) {
 
 func TestMixedKeyringRSASigningAndVerification(t *testing.T) {
 	signer, err := NewFromFiles(testKeyfile, testMixedKeyring)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if len(signer.KeyRing) == 0 {
-		t.Fatal("expected signer keyring to be loaded")
-	}
+	require.NotEmpty(t, signer.KeyRing, "expected signer keyring to be loaded")
 
 	hasEdDSA := false
 	for _, entity := range signer.KeyRing {
@@ -299,54 +297,29 @@ func TestMixedKeyringRSASigningAndVerification(t *testing.T) {
 		}
 	}
 
-	if !hasEdDSA {
-		t.Fatalf("expected %s to include an Ed25519 public key", testMixedKeyring)
-	}
+	assert.True(t, hasEdDSA, "expected %s to include an Ed25519 public key", testMixedKeyring)
 
-	if signer.Entity == nil {
-		t.Fatal("expected signer entity to be loaded")
-	}
-
-	if signer.Entity.PrivateKey == nil {
-		t.Fatal("expected signer private key to be loaded")
-	}
-
-	if signer.Entity.PrivateKey.PubKeyAlgo != packet.PubKeyAlgoRSA {
-		t.Fatalf("expected RSA key but got %v", signer.Entity.PrivateKey.PubKeyAlgo)
-	}
+	require.NotNil(t, signer.Entity, "expected signer entity to be loaded")
+	require.NotNil(t, signer.Entity.PrivateKey, "expected signer private key to be loaded")
+	assert.Equal(t, packet.PubKeyAlgoRSA, signer.Entity.PrivateKey.PubKeyAlgo, "expected RSA key")
 
 	metadataBytes := loadChartMetadataForSigning(t, testChartfile)
 
 	archiveData, err := os.ReadFile(testChartfile)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	sig, err := signer.ClearSign(archiveData, filepath.Base(testChartfile), metadataBytes)
-	if err != nil {
-		t.Fatalf("failed to sign chart: %v", err)
-	}
+	require.NoError(t, err, "failed to sign chart")
 
 	verification, err := signer.Verify(archiveData, []byte(sig), filepath.Base(testChartfile))
-	if err != nil {
-		t.Fatalf("failed to verify chart signature: %v", err)
-	}
+	require.NoError(t, err, "failed to verify chart signature")
 
-	if verification.SignedBy == nil {
-		t.Fatal("expected verification to include signer")
-	}
+	require.NotNil(t, verification.SignedBy, "expected verification to include signer")
+	require.NotNil(t, verification.SignedBy.PrimaryKey, "expected verification to include signer primary key")
+	assert.Equal(t, packet.PubKeyAlgoRSA, verification.SignedBy.PrimaryKey.PubKeyAlgo, "expected verification to report RSA key")
 
-	if verification.SignedBy.PrimaryKey == nil {
-		t.Fatal("expected verification to include signer primary key")
-	}
-
-	if verification.SignedBy.PrimaryKey.PubKeyAlgo != packet.PubKeyAlgoRSA {
-		t.Fatalf("expected verification to report RSA key but got %v", verification.SignedBy.PrimaryKey.PubKeyAlgo)
-	}
-
-	if _, ok := verification.SignedBy.Identities[testKeyName]; !ok {
-		t.Fatalf("expected verification to be signed by %q", testKeyName)
-	}
+	_, ok := verification.SignedBy.Identities[testKeyName]
+	assert.True(t, ok, "expected verification to be signed by %q", testKeyName)
 }
 
 // failSigner always fails to sign and returns an error
