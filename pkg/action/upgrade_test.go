@@ -34,6 +34,7 @@ import (
 
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func upgradeAction(t *testing.T) *Upgrade {
@@ -259,7 +260,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			withValues(chartDefaultValues),
 			withMetadataDependency(dependency),
 		)
-		now := time.Now()
+		now := helmtime.Now()
 		existingValues := map[string]interface{}{
 			"subchart": map[string]interface{}{
 				"enabled": false,

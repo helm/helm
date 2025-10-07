@@ -30,6 +30,7 @@ import (
 	release "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage/driver"
+	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 // Uninstall is the action for uninstalling releases.
@@ -109,7 +110,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 
 	slog.Debug("uninstall: deleting release", "name", name)
 	rel.Info.Status = release.StatusUninstalling
-	rel.Info.Deleted = time.Now()
+	rel.Info.Deleted = helmtime.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
 	res := &release.UninstallReleaseResponse{Release: rel}
 

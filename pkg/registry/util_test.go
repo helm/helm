@@ -24,11 +24,12 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func TestGenerateOCIChartAnnotations(t *testing.T) {
 
-	nowString := time.Now().Format(time.RFC3339)
+	nowString := helmtime.Now().Format(time.RFC3339)
 
 	tests := []struct {
 		name   string
@@ -159,7 +160,7 @@ func TestGenerateOCIChartAnnotations(t *testing.T) {
 
 func TestGenerateOCIAnnotations(t *testing.T) {
 
-	nowString := time.Now().Format(time.RFC3339)
+	nowString := helmtime.Now().Format(time.RFC3339)
 
 	tests := []struct {
 		name   string
@@ -233,7 +234,7 @@ func TestGenerateOCIAnnotations(t *testing.T) {
 
 func TestGenerateOCICreatedAnnotations(t *testing.T) {
 
-	nowTime := time.Now()
+	nowTime := helmtime.Now()
 	nowTimeString := nowTime.Format(time.RFC3339)
 
 	chart := &chart.Metadata{
@@ -249,7 +250,7 @@ func TestGenerateOCICreatedAnnotations(t *testing.T) {
 	}
 
 	// Verify value of created artifact in RFC3339 format
-	if _, err := time.Parse(time.RFC3339, result[ocispec.AnnotationCreated]); err != nil {
+	if _, err := helmtime.Parse(time.RFC3339, result[ocispec.AnnotationCreated]); err != nil {
 		t.Errorf("%s annotation with value '%s' not in RFC3339 format", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated])
 	}
 
@@ -261,7 +262,7 @@ func TestGenerateOCICreatedAnnotations(t *testing.T) {
 		t.Errorf("%s annotation not created", ocispec.AnnotationCreated)
 	}
 
-	if createdTimeAnnotation, err := time.Parse(time.RFC3339, result[ocispec.AnnotationCreated]); err != nil {
+	if createdTimeAnnotation, err := helmtime.Parse(time.RFC3339, result[ocispec.AnnotationCreated]); err != nil {
 		t.Errorf("%s annotation with value '%s' not in RFC3339 format", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated])
 
 		// Verify creation annotation after time test began

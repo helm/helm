@@ -17,7 +17,7 @@ limitations under the License.
 package v1
 
 import (
-	"time"
+	"helm.sh/helm/v4/pkg/time"
 )
 
 // HookEvent specifies the hook event
@@ -97,9 +97,9 @@ type Hook struct {
 // A HookExecution records the result for the last execution of a hook for a given release.
 type HookExecution struct {
 	// StartedAt indicates the date/time this hook was started
-	StartedAt time.Time `json:"started_at,omitzero"`
+	StartedAt time.Time `json:"started_at,omitempty"`
 	// CompletedAt indicates the date/time this hook was completed.
-	CompletedAt time.Time `json:"completed_at,omitzero"`
+	CompletedAt time.Time `json:"completed_at,omitempty"`
 	// Phase indicates whether the hook completed successfully
 	Phase HookPhase `json:"phase"`
 }

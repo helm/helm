@@ -49,6 +49,7 @@ import (
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
+	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 type nameTemplateTestCase struct {
@@ -855,32 +856,32 @@ func TestNameAndChartGenerateName(t *testing.T) {
 		{
 			"local filepath",
 			"./chart",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"dot filepath",
 			".",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"empty filepath",
 			"",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"packaged chart",
 			"chart.tgz",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"packaged chart with .tar.gz extension",
 			"chart.tar.gz",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 		{
 			"packaged chart with local extension",
 			"./chart.tgz",
-			fmt.Sprintf("chart-%d", time.Now().Unix()),
+			fmt.Sprintf("chart-%d", helmtime.Now().Unix()),
 		},
 	}
 

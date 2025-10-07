@@ -31,6 +31,7 @@ import (
 	"helm.sh/helm/v4/pkg/cmd/require"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
+	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 var historyHelp = `
@@ -83,12 +84,12 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type releaseInfo struct {
-	Revision    int       `json:"revision"`
-	Updated     time.Time `json:"updated,omitzero"`
-	Status      string    `json:"status"`
-	Chart       string    `json:"chart"`
-	AppVersion  string    `json:"app_version"`
-	Description string    `json:"description"`
+	Revision    int           `json:"revision"`
+	Updated     helmtime.Time `json:"updated"`
+	Status      string        `json:"status"`
+	Chart       string        `json:"chart"`
+	AppVersion  string        `json:"app_version"`
+	Description string        `json:"description"`
 }
 
 type releaseHistory []releaseInfo
