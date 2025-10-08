@@ -185,7 +185,9 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 	}
 	vals := map[string]interface{}{}
 
-	res, err := instAction.Run(buildChartWithTemplates(templates), vals)
+	resi, err := instAction.Run(buildChartWithTemplates(templates), vals)
+	is.NoError(err)
+	res, err := releaserToV1Release(resi)
 	is.NoError(err)
 	is.Equal(expectedOutput, outBuffer.String())
 	is.Equal(rcommon.StatusDeployed, res.Info.Status)
@@ -212,8 +214,10 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 	}
 	vals := map[string]interface{}{}
 
-	res, err := instAction.Run(buildChartWithTemplates(templates), vals)
+	resi, err := instAction.Run(buildChartWithTemplates(templates), vals)
 	is.Error(err)
+	res, err := releaserToV1Release(resi)
+	is.NoError(err)
 	is.Contains(res.Info.Description, "failed pre-install")
 	is.Equal(expectedOutput, outBuffer.String())
 	is.Equal(rcommon.StatusFailed, res.Info.Status)

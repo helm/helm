@@ -36,6 +36,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/registry"
+	ri "helm.sh/helm/v4/pkg/release"
 	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
@@ -152,13 +153,13 @@ func (u *Upgrade) SetRegistryClient(client *registry.Client) {
 }
 
 // Run executes the upgrade on the given release.
-func (u *Upgrade) Run(name string, chart chart.Charter, vals map[string]interface{}) (*release.Release, error) {
+func (u *Upgrade) Run(name string, chart chart.Charter, vals map[string]interface{}) (ri.Releaser, error) {
 	ctx := context.Background()
 	return u.RunWithContext(ctx, name, chart, vals)
 }
 
 // RunWithContext executes the upgrade on the given release with context.
-func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Charter, vals map[string]interface{}) (*release.Release, error) {
+func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Charter, vals map[string]interface{}) (ri.Releaser, error) {
 	if err := u.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
 	}

@@ -21,7 +21,7 @@ import (
 	"errors"
 
 	"helm.sh/helm/v4/pkg/kube"
-	release "helm.sh/helm/v4/pkg/release/v1"
+	ri "helm.sh/helm/v4/pkg/release"
 )
 
 // Status is the action for checking the deployment status of releases.
@@ -45,7 +45,7 @@ func NewStatus(cfg *Configuration) *Status {
 }
 
 // Run executes 'helm status' against the given release.
-func (s *Status) Run(name string) (*release.Release, error) {
+func (s *Status) Run(name string) (ri.Releaser, error) {
 	if err := s.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
 	}

@@ -60,8 +60,10 @@ func TestUpgradeRelease_Success(t *testing.T) {
 	vals := map[string]interface{}{}
 
 	ctx, done := context.WithCancel(t.Context())
-	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
+	resi, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 	req.NoError(err)
+	res, err := releaserToV1Release(resi)
+	is.NoError(err)
 	is.Equal(res.Info.Status, common.StatusDeployed)
 	done()
 
@@ -91,8 +93,10 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]interface{}{}
 
-	res, err := upAction.Run(rel.Name, buildChart(), vals)
+	resi, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Error(err)
+	res, err := releaserToV1Release(resi)
+	is.NoError(err)
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, common.StatusFailed)
 }
@@ -114,8 +118,10 @@ func TestUpgradeRelease_WaitForJobs(t *testing.T) {
 	upAction.WaitForJobs = true
 	vals := map[string]interface{}{}
 
-	res, err := upAction.Run(rel.Name, buildChart(), vals)
+	resi, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Error(err)
+	res, err := releaserToV1Release(resi)
+	is.NoError(err)
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, common.StatusFailed)
 }
@@ -138,9 +144,11 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	upAction.CleanupOnFail = true
 	vals := map[string]interface{}{}
 
-	res, err := upAction.Run(rel.Name, buildChart(), vals)
+	resi, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Error(err)
 	is.NotContains(err.Error(), "unable to cleanup resources")
+	res, err := releaserToV1Release(resi)
+	is.NoError(err)
 	is.Contains(res.Info.Description, "I timed out")
 	is.Equal(res.Info.Status, common.StatusFailed)
 }
@@ -164,10 +172,12 @@ func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
 		upAction.RollbackOnFailure = true
 		vals := map[string]interface{}{}
 
-		res, err := upAction.Run(rel.Name, buildChart(), vals)
+		resi, err := upAction.Run(rel.Name, buildChart(), vals)
 		req.Error(err)
 		is.Contains(err.Error(), "arming key removed")
 		is.Contains(err.Error(), "rollback-on-failure")
+		res, err := releaserToV1Release(resi)
+		is.NoError(err)
 
 		// Now make sure it is actually upgraded
 		updatedResi, err := upAction.cfg.Releases.Get(res.Name, 3)
@@ -231,7 +241,9 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 
 		upAction.ReuseValues = true
 		// setting newValues and upgrading
-		res, err := upAction.Run(rel.Name, buildChart(), newValues)
+		resi, err := upAction.Run(rel.Name, buildChart(), newValues)
+		is.NoError(err)
+		res, err := releaserToV1Release(resi)
 		is.NoError(err)
 
 		// Now make sure it is actually upgraded
@@ -296,7 +308,9 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			withMetadataDependency(dependency),
 		)
 		// reusing values and upgrading
-		res, err := upAction.Run(rel.Name, sampleChartWithSubChart, map[string]interface{}{})
+		resi, err := upAction.Run(rel.Name, sampleChartWithSubChart, map[string]interface{}{})
+		is.NoError(err)
+		res, err := releaserToV1Release(resi)
 		is.NoError(err)
 
 		// Now get the upgraded release
@@ -358,7 +372,9 @@ func TestUpgradeRelease_ResetThenReuseValues(t *testing.T) {
 
 		upAction.ResetThenReuseValues = true
 		// setting newValues and upgrading
-		res, err := upAction.Run(rel.Name, buildChart(withValues(newChartValues)), newValues)
+		resi, err := upAction.Run(rel.Name, buildChart(withValues(newChartValues)), newValues)
+		is.NoError(err)
+		res, err := releaserToV1Release(resi)
 		is.NoError(err)
 
 		// Now make sure it is actually upgraded
@@ -417,9 +433,11 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
-	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
+	resi, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 
 	req.Error(err)
+	res, err := releaserToV1Release(resi)
+	is.NoError(err)
 	is.Contains(res.Info.Description, "Upgrade \"interrupted-release\" failed: context canceled")
 	is.Equal(res.Info.Status, common.StatusFailed)
 }
@@ -444,11 +462,12 @@ func TestUpgradeRelease_Interrupted_RollbackOnFailure(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
 
-	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
+	resi, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 
 	req.Error(err)
 	is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to rollback-on-failure being set: context canceled")
-
+	res, err := releaserToV1Release(resi)
+	is.NoError(err)
 	// Now make sure it is actually upgraded
 	updatedResi, err := upAction.cfg.Releases.Get(res.Name, 3)
 	is.NoError(err)
@@ -495,7 +514,9 @@ func TestUpgradeRelease_Labels(t *testing.T) {
 		"key3": "val3",
 	}
 	// setting newValues and upgrading
-	res, err := upAction.Run(rel.Name, buildChart(), nil)
+	resi, err := upAction.Run(rel.Name, buildChart(), nil)
+	is.NoError(err)
+	res, err := releaserToV1Release(resi)
 	is.NoError(err)
 
 	// Now make sure it is actually upgraded and labels were merged
@@ -569,9 +590,11 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	vals := map[string]interface{}{}
 
 	ctx, done := context.WithCancel(t.Context())
-	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
+	resi, err := upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
 	done()
 	req.NoError(err)
+	res, err := releaserToV1Release(resi)
+	is.NoError(err)
 	is.Equal(common.StatusPendingUpgrade, res.Info.Status)
 	is.Contains(res.Manifest, "kind: Secret")
 
@@ -587,9 +610,11 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	vals = map[string]interface{}{}
 
 	ctx, done = context.WithCancel(t.Context())
-	res, err = upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
+	resi, err = upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
 	done()
 	req.NoError(err)
+	res, err = releaserToV1Release(resi)
+	is.NoError(err)
 	is.Equal(common.StatusPendingUpgrade, res.Info.Status)
 	is.NotContains(res.Manifest, "kind: Secret")
 

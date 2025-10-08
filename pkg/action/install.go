@@ -245,7 +245,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 //
 // If DryRun is set to true, this will prepare the release, but not install it
 
-func (i *Install) Run(chrt ci.Charter, vals map[string]interface{}) (*release.Release, error) {
+func (i *Install) Run(chrt ci.Charter, vals map[string]interface{}) (ri.Releaser, error) {
 	ctx := context.Background()
 	return i.RunWithContext(ctx, chrt, vals)
 }
@@ -254,7 +254,7 @@ func (i *Install) Run(chrt ci.Charter, vals map[string]interface{}) (*release.Re
 //
 // When the task is cancelled through ctx, the function returns and the install
 // proceeds in the background.
-func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[string]interface{}) (*release.Release, error) {
+func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[string]interface{}) (ri.Releaser, error) {
 	var chrt *chart.Chart
 	switch c := ch.(type) {
 	case *chart.Chart:

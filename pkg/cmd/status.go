@@ -73,7 +73,11 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if outfmt == output.Table {
 				client.ShowResourcesTable = true
 			}
-			rel, err := client.Run(args[0])
+			reli, err := client.Run(args[0])
+			if err != nil {
+				return err
+			}
+			rel, err := releaserToV1Release(reli)
 			if err != nil {
 				return err
 			}
