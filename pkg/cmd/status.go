@@ -145,7 +145,6 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		return nil
 	}
 	rel := s.getV1Release()
-	fmt.Printf("%+v", rel)
 	_, _ = fmt.Fprintf(out, "NAME: %s\n", rel.Name)
 	if !rel.Info.LastDeployed.IsZero() {
 		_, _ = fmt.Fprintf(out, "LAST DEPLOYED: %s\n", rel.Info.LastDeployed.Format(time.ANSIC))
