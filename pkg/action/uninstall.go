@@ -27,6 +27,7 @@ import (
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
+	releasei "helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
@@ -57,7 +58,7 @@ func NewUninstall(cfg *Configuration) *Uninstall {
 }
 
 // Run uninstalls the given release.
-func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) {
+func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error) {
 	if err := u.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
 	}
@@ -74,13 +75,13 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 			if u.IgnoreNotFound && errors.Is(err, driver.ErrReleaseNotFound) {
 				return nil, nil
 			}
-			return &release.UninstallReleaseResponse{}, err
+			return &releasei.UninstallReleaseResponse{}, err
 		}
 		r, err := releaserToV1Release(ri)
 		if err != nil {
 			return nil, err
 		}
-		return &release.UninstallReleaseResponse{Release: r}, nil
+		return &releasei.UninstallReleaseResponse{Release: r}, nil
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
@@ -113,7 +114,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 			if err := u.purgeReleases(rels...); err != nil {
 				return nil, fmt.Errorf("uninstall: Failed to purge the release: %w", err)
 			}
-			return &release.UninstallReleaseResponse{Release: rel}, nil
+			return &releasei.UninstallReleaseResponse{Release: rel}, nil
 		}
 		return nil, fmt.Errorf("the release named %q is already deleted", name)
 	}
@@ -122,7 +123,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	rel.Info.Status = common.StatusUninstalling
 	rel.Info.Deleted = time.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
-	res := &release.UninstallReleaseResponse{Release: rel}
+	res := &releasei.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
 		serverSideApply := true

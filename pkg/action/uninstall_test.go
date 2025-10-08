@@ -116,10 +116,12 @@ func TestUninstallRelease_Wait(t *testing.T) {
 	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitForDeleteError = fmt.Errorf("U timed out")
 	unAction.cfg.KubeClient = failer
-	res, err := unAction.Run(rel.Name)
+	resi, err := unAction.Run(rel.Name)
 	is.Error(err)
 	is.Contains(err.Error(), "U timed out")
-	is.Equal(res.Release.Info.Status, common.StatusUninstalled)
+	res, err := releaserToV1Release(resi.Release)
+	is.NoError(err)
+	is.Equal(res.Info.Status, common.StatusUninstalled)
 }
 
 func TestUninstallRelease_Cascade(t *testing.T) {

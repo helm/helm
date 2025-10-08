@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/release/common"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
@@ -384,6 +385,7 @@ func TestStorageRemoveLeastRecent(t *testing.T) {
 
 	// On inserting the 5th record, we expect two records to be pruned from history.
 	hist, err := storage.History(name)
+	assert.NoError(t, err)
 	rhist, err := releaseListToV1List(hist)
 	assert.NoError(t, err)
 	if err != nil {
