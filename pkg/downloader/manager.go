@@ -78,6 +78,10 @@ type Manager struct {
 
 	// ContentCache is a location where a cache of charts can be stored
 	ContentCache string
+
+	// Username and Password for authenticated repositories
+	Username string
+	Password string
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -538,8 +542,10 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 		// supplied by Bitnami, but not for protected charts, like corp ones
 		// behind a username and pass.
 		ri := &repo.Entry{
-			Name: rn,
-			URL:  dd.Repository,
+			Name:     rn,
+			URL:      dd.Repository,
+			Username: m.Username,
+			Password: m.Password,
 		}
 		ru = append(ru, ri)
 	}
@@ -763,12 +769,15 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			return
 		}
 	}
-	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
+	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters,
+		repo.WithChartVersion(version),
+		repo.WithClientTLS(certFile, keyFile, caFile),
+		repo.WithUsernamePassword(m.Username, m.Password))
 	if err == nil {
-		return url, username, password, false, false, "", "", "", err
+		return url, m.Username, m.Password, false, false, "", "", "", err
 	}
 	err = fmt.Errorf("chart %s not found in %s: %w", name, repoURL, err)
-	return url, username, password, false, false, "", "", "", err
+	return url, m.Username, m.Password, false, false, "", "", "", err
 }
 
 // findEntryByName finds an entry in the chart repository whose name matches the given name.
