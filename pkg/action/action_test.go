@@ -36,6 +36,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/registry"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -249,10 +250,10 @@ func withKube(version string) chartOption {
 
 // releaseStub creates a release stub, complete with the chartStub as its chart.
 func releaseStub() *release.Release {
-	return namedReleaseStub("angry-panda", release.StatusDeployed)
+	return namedReleaseStub("angry-panda", rcommon.StatusDeployed)
 }
 
-func namedReleaseStub(name string, status release.Status) *release.Release {
+func namedReleaseStub(name string, status rcommon.Status) *release.Release {
 	now := time.Now()
 	return &release.Release{
 		Name: name,

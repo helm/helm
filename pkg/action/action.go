@@ -47,6 +47,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/registry"
+	ri "helm.sh/helm/v4/pkg/release"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage"
@@ -412,7 +413,7 @@ func (cfg *Configuration) Now() time.Time {
 	return Timestamper()
 }
 
-func (cfg *Configuration) releaseContent(name string, version int) (*release.Release, error) {
+func (cfg *Configuration) releaseContent(name string, version int) (ri.Releaser, error) {
 	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, fmt.Errorf("releaseContent: Release name is invalid: %s", name)
 	}

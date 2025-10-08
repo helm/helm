@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
+	"helm.sh/helm/v4/pkg/release"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -60,7 +61,7 @@ func (secrets *Secrets) Name() string {
 
 // Get fetches the release named by key. The corresponding release is returned
 // or error if not found.
-func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
+func (secrets *Secrets) Get(key string) (release.Releaser, error) {
 	// fetch the secret holding the release named by key
 	obj, err := secrets.impl.Get(context.Background(), key, metav1.GetOptions{})
 	if err != nil {
@@ -81,7 +82,7 @@ func (secrets *Secrets) Get(key string) (*rspb.Release, error) {
 // List fetches all releases and returns the list releases such
 // that filter(release) == true. An error is returned if the
 // secret fails to retrieve the releases.
-func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
+func (secrets *Secrets) List(filter func(release.Releaser) bool) ([]release.Releaser, error) {
 	lsel := kblabels.Set{"owner": "helm"}.AsSelector()
 	opts := metav1.ListOptions{LabelSelector: lsel.String()}
 
@@ -90,7 +91,7 @@ func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, 
 		return nil, fmt.Errorf("list: failed to list: %w", err)
 	}
 
-	var results []*rspb.Release
+	var results []release.Releaser
 
 	// iterate over the secrets object list
 	// and decode each release
@@ -112,7 +113,7 @@ func (secrets *Secrets) List(filter func(*rspb.Release) bool) ([]*rspb.Release, 
 
 // Query fetches all releases that match the provided map of labels.
 // An error is returned if the secret fails to retrieve the releases.
-func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error) {
+func (secrets *Secrets) Query(labels map[string]string) ([]release.Releaser, error) {
 	ls := kblabels.Set{}
 	for k, v := range labels {
 		if errs := validation.IsValidLabelValue(v); len(errs) != 0 {
@@ -132,7 +133,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 		return nil, ErrReleaseNotFound
 	}
 
-	var results []*rspb.Release
+	var results []release.Releaser
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
@@ -147,9 +148,14 @@ func (secrets *Secrets) Query(labels map[string]string) ([]*rspb.Release, error)
 
 // Create creates a new Secret holding the release. If the
 // Secret already exists, ErrReleaseExists is returned.
-func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
+func (secrets *Secrets) Create(key string, rel release.Releaser) error {
 	// set labels for secrets object meta data
 	var lbs labels
+
+	rls, err := releaserToV1Release(rel)
+	if err != nil {
+		return err
+	}
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
@@ -173,9 +179,14 @@ func (secrets *Secrets) Create(key string, rls *rspb.Release) error {
 
 // Update updates the Secret holding the release. If not found
 // the Secret is created to hold the release.
-func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
+func (secrets *Secrets) Update(key string, rel release.Releaser) error {
 	// set labels for secrets object meta data
 	var lbs labels
+
+	rls, err := releaserToV1Release(rel)
+	if err != nil {
+		return err
+	}
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
@@ -195,7 +206,7 @@ func (secrets *Secrets) Update(key string, rls *rspb.Release) error {
 }
 
 // Delete deletes the Secret holding the release named by key.
-func (secrets *Secrets) Delete(key string) (rls *rspb.Release, err error) {
+func (secrets *Secrets) Delete(key string) (rls release.Releaser, err error) {
 	// fetch the release to check existence
 	if rls, err = secrets.Get(key); err != nil {
 		return nil, err

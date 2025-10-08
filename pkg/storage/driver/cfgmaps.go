@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
+	"helm.sh/helm/v4/pkg/release"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -60,7 +61,7 @@ func (cfgmaps *ConfigMaps) Name() string {
 
 // Get fetches the release named by key. The corresponding release is returned
 // or error if not found.
-func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
+func (cfgmaps *ConfigMaps) Get(key string) (release.Releaser, error) {
 	// fetch the configmap holding the release named by key
 	obj, err := cfgmaps.impl.Get(context.Background(), key, metav1.GetOptions{})
 	if err != nil {
@@ -85,7 +86,7 @@ func (cfgmaps *ConfigMaps) Get(key string) (*rspb.Release, error) {
 // List fetches all releases and returns the list releases such
 // that filter(release) == true. An error is returned if the
 // configmap fails to retrieve the releases.
-func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
+func (cfgmaps *ConfigMaps) List(filter func(release.Releaser) bool) ([]release.Releaser, error) {
 	lsel := kblabels.Set{"owner": "helm"}.AsSelector()
 	opts := metav1.ListOptions{LabelSelector: lsel.String()}
 
@@ -95,7 +96,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 		return nil, err
 	}
 
-	var results []*rspb.Release
+	var results []release.Releaser
 
 	// iterate over the configmaps object list
 	// and decode each release
@@ -117,7 +118,7 @@ func (cfgmaps *ConfigMaps) List(filter func(*rspb.Release) bool) ([]*rspb.Releas
 
 // Query fetches all releases that match the provided map of labels.
 // An error is returned if the configmap fails to retrieve the releases.
-func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, error) {
+func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]release.Releaser, error) {
 	ls := kblabels.Set{}
 	for k, v := range labels {
 		if errs := validation.IsValidLabelValue(v); len(errs) != 0 {
@@ -138,7 +139,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 		return nil, ErrReleaseNotFound
 	}
 
-	var results []*rspb.Release
+	var results []release.Releaser
 	for _, item := range list.Items {
 		rls, err := decodeRelease(item.Data["release"])
 		if err != nil {
@@ -153,18 +154,28 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]*rspb.Release, err
 
 // Create creates a new ConfigMap holding the release. If the
 // ConfigMap already exists, ErrReleaseExists is returned.
-func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
+func (cfgmaps *ConfigMaps) Create(key string, rls release.Releaser) error {
 	// set labels for configmaps object meta data
 	var lbs labels
 
+	rac, err := release.NewAccessor(rls)
+	if err != nil {
+		return err
+	}
+
 	lbs.init()
-	lbs.fromMap(rls.Labels)
+	lbs.fromMap(rac.Labels())
 	lbs.set("createdAt", fmt.Sprintf("%v", time.Now().Unix()))
 
-	// create a new configmap to hold the release
-	obj, err := newConfigMapsObject(key, rls, lbs)
+	rel, err := releaserToV1Release(rls)
 	if err != nil {
-		slog.Debug("failed to encode release", "name", rls.Name, slog.Any("error", err))
+		return err
+	}
+
+	// create a new configmap to hold the release
+	obj, err := newConfigMapsObject(key, rel, lbs)
+	if err != nil {
+		slog.Debug("failed to encode release", "name", rac.Name(), slog.Any("error", err))
 		return err
 	}
 	// push the configmap object out into the kubiverse
@@ -181,9 +192,14 @@ func (cfgmaps *ConfigMaps) Create(key string, rls *rspb.Release) error {
 
 // Update updates the ConfigMap holding the release. If not found
 // the ConfigMap is created to hold the release.
-func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
+func (cfgmaps *ConfigMaps) Update(key string, rel release.Releaser) error {
 	// set labels for configmaps object meta data
 	var lbs labels
+
+	rls, err := releaserToV1Release(rel)
+	if err != nil {
+		return err
+	}
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
@@ -205,7 +221,7 @@ func (cfgmaps *ConfigMaps) Update(key string, rls *rspb.Release) error {
 }
 
 // Delete deletes the ConfigMap holding the release named by key.
-func (cfgmaps *ConfigMaps) Delete(key string) (rls *rspb.Release, err error) {
+func (cfgmaps *ConfigMaps) Delete(key string) (rls release.Releaser, err error) {
 	// fetch the release to check existence
 	if rls, err = cfgmaps.Get(key); err != nil {
 		return nil, err

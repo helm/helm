@@ -33,6 +33,7 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -187,7 +188,7 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 	res, err := instAction.Run(buildChartWithTemplates(templates), vals)
 	is.NoError(err)
 	is.Equal(expectedOutput, outBuffer.String())
-	is.Equal(release.StatusDeployed, res.Info.Status)
+	is.Equal(rcommon.StatusDeployed, res.Info.Status)
 }
 
 func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace string, shouldOutput bool) {
@@ -215,7 +216,7 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 	is.Error(err)
 	is.Contains(res.Info.Description, "failed pre-install")
 	is.Equal(expectedOutput, outBuffer.String())
-	is.Equal(release.StatusFailed, res.Info.Status)
+	is.Equal(rcommon.StatusFailed, res.Info.Status)
 }
 
 type HookFailedError struct{}

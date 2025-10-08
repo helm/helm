@@ -65,12 +65,16 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 					client.Filters[action.ExcludeNameFilter] = append(client.Filters[action.ExcludeNameFilter], notName.ReplaceAllLiteralString(f, ""))
 				}
 			}
-			rel, runErr := client.Run(args[0])
+			reli, runErr := client.Run(args[0])
 			// We only return an error if we weren't even able to get the
 			// release, otherwise we keep going so we can print status and logs
 			// if requested
-			if runErr != nil && rel == nil {
+			if runErr != nil && reli == nil {
 				return runErr
+			}
+			rel, err := releaserToV1Release(reli)
+			if err != nil {
+				return err
 			}
 
 			if err := outfmt.Write(out, &statusPrinter{

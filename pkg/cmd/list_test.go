@@ -21,6 +21,7 @@ import (
 	"time"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -47,7 +48,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp1,
-				Status:       release.StatusSuperseded,
+				Status:       common.StatusSuperseded,
 			},
 			Chart: chartInfo,
 		},
@@ -57,7 +58,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp1,
-				Status:       release.StatusDeployed,
+				Status:       common.StatusDeployed,
 			},
 			Chart: chartInfo,
 		},
@@ -67,7 +68,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp1,
-				Status:       release.StatusUninstalled,
+				Status:       common.StatusUninstalled,
 			},
 			Chart: chartInfo,
 		},
@@ -77,7 +78,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp1,
-				Status:       release.StatusSuperseded,
+				Status:       common.StatusSuperseded,
 			},
 			Chart: chartInfo,
 		},
@@ -87,7 +88,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp2,
-				Status:       release.StatusFailed,
+				Status:       common.StatusFailed,
 			},
 			Chart: chartInfo,
 		},
@@ -97,7 +98,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp1,
-				Status:       release.StatusUninstalling,
+				Status:       common.StatusUninstalling,
 			},
 			Chart: chartInfo,
 		},
@@ -107,7 +108,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp1,
-				Status:       release.StatusPendingInstall,
+				Status:       common.StatusPendingInstall,
 			},
 			Chart: chartInfo,
 		},
@@ -117,7 +118,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp3,
-				Status:       release.StatusDeployed,
+				Status:       common.StatusDeployed,
 			},
 			Chart: chartInfo,
 		},
@@ -127,7 +128,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp4,
-				Status:       release.StatusDeployed,
+				Status:       common.StatusDeployed,
 			},
 			Chart: chartInfo,
 		},
@@ -137,7 +138,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: "milano",
 			Info: &release.Info{
 				LastDeployed: timestamp1,
-				Status:       release.StatusDeployed,
+				Status:       common.StatusDeployed,
 			},
 			Chart: chartInfo,
 		},

@@ -27,7 +27,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
-	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/release/common"
 )
 
 func uninstallAction(t *testing.T) *Uninstall {
@@ -119,7 +119,7 @@ func TestUninstallRelease_Wait(t *testing.T) {
 	res, err := unAction.Run(rel.Name)
 	is.Error(err)
 	is.Contains(err.Error(), "U timed out")
-	is.Equal(res.Release.Info.Status, release.StatusUninstalled)
+	is.Equal(res.Release.Info.Status, common.StatusUninstalled)
 }
 
 func TestUninstallRelease_Cascade(t *testing.T) {

@@ -20,11 +20,12 @@ import (
 	"fmt"
 	"testing"
 
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func TestHistoryCmd(t *testing.T) {
-	mk := func(name string, vers int, status release.Status) *release.Release {
+	mk := func(name string, vers int, status common.Status) *release.Release {
 		return release.Mock(&release.MockReleaseOptions{
 			Name:    name,
 			Version: vers,
@@ -36,34 +37,34 @@ func TestHistoryCmd(t *testing.T) {
 		name: "get history for release",
 		cmd:  "history angry-bird",
 		rels: []*release.Release{
-			mk("angry-bird", 4, release.StatusDeployed),
-			mk("angry-bird", 3, release.StatusSuperseded),
-			mk("angry-bird", 2, release.StatusSuperseded),
-			mk("angry-bird", 1, release.StatusSuperseded),
+			mk("angry-bird", 4, common.StatusDeployed),
+			mk("angry-bird", 3, common.StatusSuperseded),
+			mk("angry-bird", 2, common.StatusSuperseded),
+			mk("angry-bird", 1, common.StatusSuperseded),
 		},
 		golden: "output/history.txt",
 	}, {
 		name: "get history with max limit set",
 		cmd:  "history angry-bird --max 2",
 		rels: []*release.Release{
-			mk("angry-bird", 4, release.StatusDeployed),
-			mk("angry-bird", 3, release.StatusSuperseded),
+			mk("angry-bird", 4, common.StatusDeployed),
+			mk("angry-bird", 3, common.StatusSuperseded),
 		},
 		golden: "output/history-limit.txt",
 	}, {
 		name: "get history with yaml output format",
 		cmd:  "history angry-bird --output yaml",
 		rels: []*release.Release{
-			mk("angry-bird", 4, release.StatusDeployed),
-			mk("angry-bird", 3, release.StatusSuperseded),
+			mk("angry-bird", 4, common.StatusDeployed),
+			mk("angry-bird", 3, common.StatusSuperseded),
 		},
 		golden: "output/history.yaml",
 	}, {
 		name: "get history with json output format",
 		cmd:  "history angry-bird --output json",
 		rels: []*release.Release{
-			mk("angry-bird", 4, release.StatusDeployed),
-			mk("angry-bird", 3, release.StatusSuperseded),
+			mk("angry-bird", 4, common.StatusDeployed),
+			mk("angry-bird", 3, common.StatusSuperseded),
 		},
 		golden: "output/history.json",
 	}}
@@ -76,7 +77,7 @@ func TestHistoryOutputCompletion(t *testing.T) {
 
 func revisionFlagCompletionTest(t *testing.T, cmdName string) {
 	t.Helper()
-	mk := func(name string, vers int, status release.Status) *release.Release {
+	mk := func(name string, vers int, status common.Status) *release.Release {
 		return release.Mock(&release.MockReleaseOptions{
 			Name:    name,
 			Version: vers,
@@ -85,10 +86,10 @@ func revisionFlagCompletionTest(t *testing.T, cmdName string) {
 	}
 
 	releases := []*release.Release{
-		mk("musketeers", 11, release.StatusDeployed),
-		mk("musketeers", 10, release.StatusSuperseded),
-		mk("musketeers", 9, release.StatusSuperseded),
-		mk("musketeers", 8, release.StatusSuperseded),
+		mk("musketeers", 11, common.StatusDeployed),
+		mk("musketeers", 10, common.StatusSuperseded),
+		mk("musketeers", 9, common.StatusSuperseded),
+		mk("musketeers", 8, common.StatusSuperseded),
 	}
 
 	tests := []cmdTestCase{{

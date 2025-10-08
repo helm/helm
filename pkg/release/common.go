@@ -18,7 +18,10 @@ package release
 
 import (
 	"errors"
+	"fmt"
+	"time"
 
+	"helm.sh/helm/v4/pkg/chart"
 	v1release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -33,7 +36,7 @@ func NewDefaultAccessor(rel Releaser) (Accessor, error) {
 	case *v1release.Release:
 		return &v1Accessor{v}, nil
 	default:
-		return nil, errors.New("unsupported release type")
+		return nil, fmt.Errorf("unsupported release type: %T", rel)
 	}
 }
 
@@ -52,6 +55,18 @@ type v1Accessor struct {
 	rel *v1release.Release
 }
 
+func (a *v1Accessor) Name() string {
+	return a.rel.Name
+}
+
+func (a *v1Accessor) Namespace() string {
+	return a.rel.Namespace
+}
+
+func (a *v1Accessor) Version() int {
+	return a.rel.Version
+}
+
 func (a *v1Accessor) Hooks() []Hook {
 	var hooks = make([]Hook, len(a.rel.Hooks))
 	for i, h := range a.rel.Hooks {
@@ -66,6 +81,26 @@ func (a *v1Accessor) Manifest() string {
 
 func (a *v1Accessor) Notes() string {
 	return a.rel.Info.Notes
+}
+
+func (a *v1Accessor) Labels() map[string]string {
+	return a.rel.Labels
+}
+
+func (a *v1Accessor) Chart() chart.Charter {
+	return a.rel.Chart
+}
+
+func (a *v1Accessor) Status() string {
+	return a.rel.Info.Status.String()
+}
+
+func (a *v1Accessor) ApplyMethod() string {
+	return a.rel.ApplyMethod
+}
+
+func (a *v1Accessor) DeployedAt() time.Time {
+	return a.rel.Info.LastDeployed
 }
 
 type v1HookAccessor struct {

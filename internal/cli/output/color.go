@@ -19,24 +19,24 @@ package output
 import (
 	"github.com/fatih/color"
 
-	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/release/common"
 )
 
 // ColorizeStatus returns a colorized version of the status string based on the status value
-func ColorizeStatus(status release.Status, noColor bool) string {
+func ColorizeStatus(status common.Status, noColor bool) string {
 	// Disable color if requested
 	if noColor {
 		return status.String()
 	}
 
 	switch status {
-	case release.StatusDeployed:
+	case common.StatusDeployed:
 		return color.GreenString(status.String())
-	case release.StatusFailed:
+	case common.StatusFailed:
 		return color.RedString(status.String())
-	case release.StatusPendingInstall, release.StatusPendingUpgrade, release.StatusPendingRollback, release.StatusUninstalling:
+	case common.StatusPendingInstall, common.StatusPendingUpgrade, common.StatusPendingRollback, common.StatusUninstalling:
 		return color.YellowString(status.String())
-	case release.StatusUnknown:
+	case common.StatusUnknown:
 		return color.RedString(status.String())
 	default:
 		// For uninstalled, superseded, and any other status

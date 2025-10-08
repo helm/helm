@@ -50,7 +50,12 @@ func (s *Status) Run(name string) (*release.Release, error) {
 		return nil, err
 	}
 
-	rel, err := s.cfg.releaseContent(name, s.Version)
+	reli, err := s.cfg.releaseContent(name, s.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	rel, err := releaserToV1Release(reli)
 	if err != nil {
 		return nil, err
 	}

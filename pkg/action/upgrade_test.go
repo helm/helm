@@ -33,6 +33,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -52,7 +53,7 @@ func TestUpgradeRelease_Success(t *testing.T) {
 	upAction := upgradeAction(t)
 	rel := releaseStub()
 	rel.Name = "previous-release"
-	rel.Info.Status = release.StatusDeployed
+	rel.Info.Status = common.StatusDeployed
 	req.NoError(upAction.cfg.Releases.Create(rel))
 
 	upAction.WaitStrategy = kube.StatusWatcherStrategy
@@ -61,15 +62,17 @@ func TestUpgradeRelease_Success(t *testing.T) {
 	ctx, done := context.WithCancel(t.Context())
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 	req.NoError(err)
-	is.Equal(res.Info.Status, release.StatusDeployed)
+	is.Equal(res.Info.Status, common.StatusDeployed)
 	done()
 
 	// Detecting previous bug where context termination after successful release
 	// caused release to fail.
 	time.Sleep(time.Millisecond * 100)
-	lastRelease, err := upAction.cfg.Releases.Last(rel.Name)
+	lastReleasei, err := upAction.cfg.Releases.Last(rel.Name)
 	req.NoError(err)
-	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+	lastRelease, err := releaserToV1Release(lastReleasei)
+	req.NoError(err)
+	is.Equal(lastRelease.Info.Status, common.StatusDeployed)
 }
 
 func TestUpgradeRelease_Wait(t *testing.T) {
@@ -79,7 +82,7 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	upAction := upgradeAction(t)
 	rel := releaseStub()
 	rel.Name = "come-fail-away"
-	rel.Info.Status = release.StatusDeployed
+	rel.Info.Status = common.StatusDeployed
 	upAction.cfg.Releases.Create(rel)
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -91,7 +94,7 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	res, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Error(err)
 	is.Contains(res.Info.Description, "I timed out")
-	is.Equal(res.Info.Status, release.StatusFailed)
+	is.Equal(res.Info.Status, common.StatusFailed)
 }
 
 func TestUpgradeRelease_WaitForJobs(t *testing.T) {
@@ -101,7 +104,7 @@ func TestUpgradeRelease_WaitForJobs(t *testing.T) {
 	upAction := upgradeAction(t)
 	rel := releaseStub()
 	rel.Name = "come-fail-away"
-	rel.Info.Status = release.StatusDeployed
+	rel.Info.Status = common.StatusDeployed
 	upAction.cfg.Releases.Create(rel)
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -114,7 +117,7 @@ func TestUpgradeRelease_WaitForJobs(t *testing.T) {
 	res, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Error(err)
 	is.Contains(res.Info.Description, "I timed out")
-	is.Equal(res.Info.Status, release.StatusFailed)
+	is.Equal(res.Info.Status, common.StatusFailed)
 }
 
 func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
@@ -124,7 +127,7 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	upAction := upgradeAction(t)
 	rel := releaseStub()
 	rel.Name = "come-fail-away"
-	rel.Info.Status = release.StatusDeployed
+	rel.Info.Status = common.StatusDeployed
 	upAction.cfg.Releases.Create(rel)
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -139,7 +142,7 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	req.Error(err)
 	is.NotContains(err.Error(), "unable to cleanup resources")
 	is.Contains(res.Info.Description, "I timed out")
-	is.Equal(res.Info.Status, release.StatusFailed)
+	is.Equal(res.Info.Status, common.StatusFailed)
 }
 
 func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
@@ -151,7 +154,7 @@ func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
 
 		rel := releaseStub()
 		rel.Name = "nuketown"
-		rel.Info.Status = release.StatusDeployed
+		rel.Info.Status = common.StatusDeployed
 		upAction.cfg.Releases.Create(rel)
 
 		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -167,17 +170,19 @@ func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
 		is.Contains(err.Error(), "rollback-on-failure")
 
 		// Now make sure it is actually upgraded
-		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
+		updatedResi, err := upAction.cfg.Releases.Get(res.Name, 3)
+		is.NoError(err)
+		updatedRes, err := releaserToV1Release(updatedResi)
 		is.NoError(err)
 		// Should have rolled back to the previous
-		is.Equal(updatedRes.Info.Status, release.StatusDeployed)
+		is.Equal(updatedRes.Info.Status, common.StatusDeployed)
 	})
 
 	t.Run("rollback-on-failure uninstall fails", func(t *testing.T) {
 		upAction := upgradeAction(t)
 		rel := releaseStub()
 		rel.Name = "fallout"
-		rel.Info.Status = release.StatusDeployed
+		rel.Info.Status = common.StatusDeployed
 		upAction.cfg.Releases.Create(rel)
 
 		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -218,7 +223,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 
 		rel := releaseStub()
 		rel.Name = "nuketown"
-		rel.Info.Status = release.StatusDeployed
+		rel.Info.Status = common.StatusDeployed
 		rel.Config = existingValues
 
 		err := upAction.cfg.Releases.Create(rel)
@@ -230,14 +235,17 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		is.NoError(err)
 
 		// Now make sure it is actually upgraded
-		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
+		updatedResi, err := upAction.cfg.Releases.Get(res.Name, 2)
 		is.NoError(err)
 
-		if updatedRes == nil {
+		if updatedResi == nil {
 			is.Fail("Updated Release is nil")
 			return
 		}
-		is.Equal(release.StatusDeployed, updatedRes.Info.Status)
+		updatedRes, err := releaserToV1Release(updatedResi)
+		is.NoError(err)
+
+		is.Equal(common.StatusDeployed, updatedRes.Info.Status)
 		is.Equal(expectedValues, updatedRes.Config)
 	})
 
@@ -270,7 +278,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			Info: &release.Info{
 				FirstDeployed: now,
 				LastDeployed:  now,
-				Status:        release.StatusDeployed,
+				Status:        common.StatusDeployed,
 				Description:   "Named Release Stub",
 			},
 			Chart:   sampleChart,
@@ -292,14 +300,17 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		is.NoError(err)
 
 		// Now get the upgraded release
-		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
+		updatedResi, err := upAction.cfg.Releases.Get(res.Name, 2)
 		is.NoError(err)
 
-		if updatedRes == nil {
+		if updatedResi == nil {
 			is.Fail("Updated Release is nil")
 			return
 		}
-		is.Equal(release.StatusDeployed, updatedRes.Info.Status)
+		updatedRes, err := releaserToV1Release(updatedResi)
+		is.NoError(err)
+
+		is.Equal(common.StatusDeployed, updatedRes.Info.Status)
 		is.Equal(0, len(updatedRes.Chart.Dependencies()), "expected 0 dependencies")
 
 		expectedValues := map[string]interface{}{
@@ -339,7 +350,7 @@ func TestUpgradeRelease_ResetThenReuseValues(t *testing.T) {
 
 		rel := releaseStub()
 		rel.Name = "nuketown"
-		rel.Info.Status = release.StatusDeployed
+		rel.Info.Status = common.StatusDeployed
 		rel.Config = existingValues
 
 		err := upAction.cfg.Releases.Create(rel)
@@ -351,14 +362,17 @@ func TestUpgradeRelease_ResetThenReuseValues(t *testing.T) {
 		is.NoError(err)
 
 		// Now make sure it is actually upgraded
-		updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
+		updatedResi, err := upAction.cfg.Releases.Get(res.Name, 2)
 		is.NoError(err)
 
-		if updatedRes == nil {
+		if updatedResi == nil {
 			is.Fail("Updated Release is nil")
 			return
 		}
-		is.Equal(release.StatusDeployed, updatedRes.Info.Status)
+		updatedRes, err := releaserToV1Release(updatedResi)
+		is.NoError(err)
+
+		is.Equal(common.StatusDeployed, updatedRes.Info.Status)
 		is.Equal(expectedValues, updatedRes.Config)
 		is.Equal(newChartValues, updatedRes.Chart.Values)
 	})
@@ -370,11 +384,11 @@ func TestUpgradeRelease_Pending(t *testing.T) {
 	upAction := upgradeAction(t)
 	rel := releaseStub()
 	rel.Name = "come-fail-away"
-	rel.Info.Status = release.StatusDeployed
+	rel.Info.Status = common.StatusDeployed
 	upAction.cfg.Releases.Create(rel)
 	rel2 := releaseStub()
 	rel2.Name = "come-fail-away"
-	rel2.Info.Status = release.StatusPendingUpgrade
+	rel2.Info.Status = common.StatusPendingUpgrade
 	rel2.Version = 2
 	upAction.cfg.Releases.Create(rel2)
 
@@ -391,7 +405,7 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	upAction := upgradeAction(t)
 	rel := releaseStub()
 	rel.Name = "interrupted-release"
-	rel.Info.Status = release.StatusDeployed
+	rel.Info.Status = common.StatusDeployed
 	upAction.cfg.Releases.Create(rel)
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -407,7 +421,7 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 
 	req.Error(err)
 	is.Contains(res.Info.Description, "Upgrade \"interrupted-release\" failed: context canceled")
-	is.Equal(res.Info.Status, release.StatusFailed)
+	is.Equal(res.Info.Status, common.StatusFailed)
 }
 
 func TestUpgradeRelease_Interrupted_RollbackOnFailure(t *testing.T) {
@@ -418,7 +432,7 @@ func TestUpgradeRelease_Interrupted_RollbackOnFailure(t *testing.T) {
 	upAction := upgradeAction(t)
 	rel := releaseStub()
 	rel.Name = "interrupted-release"
-	rel.Info.Status = release.StatusDeployed
+	rel.Info.Status = common.StatusDeployed
 	upAction.cfg.Releases.Create(rel)
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
@@ -436,10 +450,12 @@ func TestUpgradeRelease_Interrupted_RollbackOnFailure(t *testing.T) {
 	is.Contains(err.Error(), "release interrupted-release failed, and has been rolled back due to rollback-on-failure being set: context canceled")
 
 	// Now make sure it is actually upgraded
-	updatedRes, err := upAction.cfg.Releases.Get(res.Name, 3)
+	updatedResi, err := upAction.cfg.Releases.Get(res.Name, 3)
+	is.NoError(err)
+	updatedRes, err := releaserToV1Release(updatedResi)
 	is.NoError(err)
 	// Should have rolled back to the previous
-	is.Equal(updatedRes.Info.Status, release.StatusDeployed)
+	is.Equal(updatedRes.Info.Status, common.StatusDeployed)
 }
 
 func TestMergeCustomLabels(t *testing.T) {
@@ -468,7 +484,7 @@ func TestUpgradeRelease_Labels(t *testing.T) {
 		"key1": "val1",
 		"key2": "val2.1",
 	}
-	rel.Info.Status = release.StatusDeployed
+	rel.Info.Status = common.StatusDeployed
 
 	err := upAction.cfg.Releases.Create(rel)
 	is.NoError(err)
@@ -483,25 +499,29 @@ func TestUpgradeRelease_Labels(t *testing.T) {
 	is.NoError(err)
 
 	// Now make sure it is actually upgraded and labels were merged
-	updatedRes, err := upAction.cfg.Releases.Get(res.Name, 2)
+	updatedResi, err := upAction.cfg.Releases.Get(res.Name, 2)
 	is.NoError(err)
 
-	if updatedRes == nil {
+	if updatedResi == nil {
 		is.Fail("Updated Release is nil")
 		return
 	}
-	is.Equal(release.StatusDeployed, updatedRes.Info.Status)
+	updatedRes, err := releaserToV1Release(updatedResi)
+	is.NoError(err)
+	is.Equal(common.StatusDeployed, updatedRes.Info.Status)
 	is.Equal(mergeCustomLabels(rel.Labels, upAction.Labels), updatedRes.Labels)
 
 	// Now make sure it is suppressed release still contains original labels
-	initialRes, err := upAction.cfg.Releases.Get(res.Name, 1)
+	initialResi, err := upAction.cfg.Releases.Get(res.Name, 1)
 	is.NoError(err)
 
-	if initialRes == nil {
+	if initialResi == nil {
 		is.Fail("Updated Release is nil")
 		return
 	}
-	is.Equal(initialRes.Info.Status, release.StatusSuperseded)
+	initialRes, err := releaserToV1Release(initialResi)
+	is.NoError(err)
+	is.Equal(initialRes.Info.Status, common.StatusSuperseded)
 	is.Equal(initialRes.Labels, rel.Labels)
 }
 
@@ -516,7 +536,7 @@ func TestUpgradeRelease_SystemLabels(t *testing.T) {
 		"key1": "val1",
 		"key2": "val2.1",
 	}
-	rel.Info.Status = release.StatusDeployed
+	rel.Info.Status = common.StatusDeployed
 
 	err := upAction.cfg.Releases.Create(rel)
 	is.NoError(err)
@@ -542,7 +562,7 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	upAction := upgradeAction(t)
 	rel := releaseStub()
 	rel.Name = "previous-release"
-	rel.Info.Status = release.StatusDeployed
+	rel.Info.Status = common.StatusDeployed
 	req.NoError(upAction.cfg.Releases.Create(rel))
 
 	upAction.DryRunStrategy = DryRunClient
@@ -552,12 +572,14 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	res, err := upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
 	done()
 	req.NoError(err)
-	is.Equal(release.StatusPendingUpgrade, res.Info.Status)
+	is.Equal(common.StatusPendingUpgrade, res.Info.Status)
 	is.Contains(res.Manifest, "kind: Secret")
 
-	lastRelease, err := upAction.cfg.Releases.Last(rel.Name)
+	lastReleasei, err := upAction.cfg.Releases.Last(rel.Name)
 	req.NoError(err)
-	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+	lastRelease, err := releaserToV1Release(lastReleasei)
+	req.NoError(err)
+	is.Equal(lastRelease.Info.Status, common.StatusDeployed)
 	is.Equal(1, lastRelease.Version)
 
 	// Test the case for hiding the secret to ensure it is not displayed
@@ -568,12 +590,14 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	res, err = upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
 	done()
 	req.NoError(err)
-	is.Equal(release.StatusPendingUpgrade, res.Info.Status)
+	is.Equal(common.StatusPendingUpgrade, res.Info.Status)
 	is.NotContains(res.Manifest, "kind: Secret")
 
-	lastRelease, err = upAction.cfg.Releases.Last(rel.Name)
+	lastReleasei, err = upAction.cfg.Releases.Last(rel.Name)
 	req.NoError(err)
-	is.Equal(lastRelease.Info.Status, release.StatusDeployed)
+	lastRelease, err = releaserToV1Release(lastReleasei)
+	req.NoError(err)
+	is.Equal(lastRelease.Info.Status, common.StatusDeployed)
 	is.Equal(1, lastRelease.Version)
 
 	// Ensure in a dry run mode when using HideSecret

@@ -16,14 +16,28 @@ limitations under the License.
 
 package release
 
+import (
+	"time"
+
+	"helm.sh/helm/v4/pkg/chart"
+)
+
 type Releaser interface{}
 
 type Hook interface{}
 
 type Accessor interface {
+	Name() string
+	Namespace() string
+	Version() int
 	Hooks() []Hook
 	Manifest() string
 	Notes() string
+	Labels() map[string]string
+	Chart() chart.Charter
+	Status() string
+	ApplyMethod() string
+	DeployedAt() time.Time
 }
 
 type HookAccessor interface {

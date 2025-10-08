@@ -25,6 +25,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -64,35 +65,35 @@ func outputFlagCompletionTest(t *testing.T, cmdName string) {
 		cmd:    fmt.Sprintf("__complete %s --output ''", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}, {
 		name:   "completion for output flag long and after arg",
 		cmd:    fmt.Sprintf("__complete %s aramis --output ''", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}, {
 		name:   "completion for output flag short and before arg",
 		cmd:    fmt.Sprintf("__complete %s -o ''", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}, {
 		name:   "completion for output flag short and after arg",
 		cmd:    fmt.Sprintf("__complete %s aramis -o ''", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}, {
 		name:   "completion for output flag, no filter",
 		cmd:    fmt.Sprintf("__complete %s --output jso", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}}
 	runTestCmd(t, tests)

@@ -36,6 +36,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/registry"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -219,12 +220,17 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 	}
 
 	// finds the last non-deleted release with the given name
-	lastRelease, err := u.cfg.Releases.Last(name)
+	lastReleasei, err := u.cfg.Releases.Last(name)
 	if err != nil {
 		// to keep existing behavior of returning the "%q has no deployed releases" error when an existing release does not exist
 		if errors.Is(err, driver.ErrReleaseNotFound) {
 			return nil, nil, false, driver.NewErrNoDeployedReleases(name)
 		}
+		return nil, nil, false, err
+	}
+
+	lastRelease, err := releaserToV1Release(lastReleasei)
+	if err != nil {
 		return nil, nil, false, err
 	}
 
@@ -234,20 +240,26 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 	}
 
 	var currentRelease *release.Release
-	if lastRelease.Info.Status == release.StatusDeployed {
+	if lastRelease.Info.Status == rcommon.StatusDeployed {
 		// no need to retrieve the last deployed release from storage as the last release is deployed
 		currentRelease = lastRelease
 	} else {
 		// finds the deployed release with the given name
-		currentRelease, err = u.cfg.Releases.Deployed(name)
+		currentReleasei, err := u.cfg.Releases.Deployed(name)
+		var cerr error
+		currentRelease, cerr = releaserToV1Release(currentReleasei)
+		if cerr != nil {
+			return nil, nil, false, err
+		}
 		if err != nil {
 			if errors.Is(err, driver.ErrNoDeployedReleases) &&
-				(lastRelease.Info.Status == release.StatusFailed || lastRelease.Info.Status == release.StatusSuperseded) {
+				(lastRelease.Info.Status == rcommon.StatusFailed || lastRelease.Info.Status == rcommon.StatusSuperseded) {
 				currentRelease = lastRelease
 			} else {
 				return nil, nil, false, err
 			}
 		}
+
 	}
 
 	// determine if values will be reused
@@ -305,7 +317,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 		Info: &release.Info{
 			FirstDeployed: currentRelease.Info.FirstDeployed,
 			LastDeployed:  Timestamper(),
-			Status:        release.StatusPendingUpgrade,
+			Status:        rcommon.StatusPendingUpgrade,
 			Description:   "Preparing upgrade", // This should be overwritten later.
 		},
 		Version:     revision,
@@ -487,10 +499,10 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		}
 	}
 
-	originalRelease.Info.Status = release.StatusSuperseded
+	originalRelease.Info.Status = rcommon.StatusSuperseded
 	u.cfg.recordRelease(originalRelease)
 
-	upgradedRelease.Info.Status = release.StatusDeployed
+	upgradedRelease.Info.Status = rcommon.StatusDeployed
 	if len(u.Description) > 0 {
 		upgradedRelease.Info.Description = u.Description
 	} else {
@@ -503,7 +515,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 	msg := fmt.Sprintf("Upgrade %q failed: %s", rel.Name, err)
 	slog.Warn("upgrade failed", "name", rel.Name, slog.Any("error", err))
 
-	rel.Info.Status = release.StatusFailed
+	rel.Info.Status = rcommon.StatusFailed
 	rel.Info.Description = msg
 	u.cfg.recordRelease(rel)
 	if u.CleanupOnFail && len(created) > 0 {
@@ -533,12 +545,16 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 			return rel, fmt.Errorf("an error occurred while finding last successful release. original upgrade error: %w: %w", err, herr)
 		}
 
+		fullHistoryV1, herr := releaseListToV1List(fullHistory)
+		if herr != nil {
+			return nil, herr
+		}
 		// There isn't a way to tell if a previous release was successful, but
 		// generally failed releases do not get superseded unless the next
 		// release is successful, so this should be relatively safe
 		filteredHistory := releaseutil.FilterFunc(func(r *release.Release) bool {
-			return r.Info.Status == release.StatusSuperseded || r.Info.Status == release.StatusDeployed
-		}).Filter(fullHistory)
+			return r.Info.Status == rcommon.StatusSuperseded || r.Info.Status == rcommon.StatusDeployed
+		}).Filter(fullHistoryV1)
 		if len(filteredHistory) == 0 {
 			return rel, fmt.Errorf("unable to find a previously successful release when attempting to rollback. original upgrade error: %w", err)
 		}

@@ -21,7 +21,7 @@ import (
 	"strings"
 	"sync"
 
-	rspb "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 var _ Driver = (*Memory)(nil)
@@ -61,7 +61,7 @@ func (mem *Memory) Name() string {
 }
 
 // Get returns the release named by key or returns ErrReleaseNotFound.
-func (mem *Memory) Get(key string) (*rspb.Release, error) {
+func (mem *Memory) Get(key string) (release.Releaser, error) {
 	defer unlock(mem.rlock())
 
 	keyWithoutPrefix := strings.TrimPrefix(key, "sh.helm.release.v1.")
@@ -83,10 +83,10 @@ func (mem *Memory) Get(key string) (*rspb.Release, error) {
 }
 
 // List returns the list of all releases such that filter(release) == true
-func (mem *Memory) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
+func (mem *Memory) List(filter func(release.Releaser) bool) ([]release.Releaser, error) {
 	defer unlock(mem.rlock())
 
-	var ls []*rspb.Release
+	var ls []release.Releaser
 	for namespace := range mem.cache {
 		if mem.namespace != "" {
 			// Should only list releases of this namespace
@@ -109,7 +109,7 @@ func (mem *Memory) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error
 }
 
 // Query returns the set of releases that match the provided set of labels
-func (mem *Memory) Query(keyvals map[string]string) ([]*rspb.Release, error) {
+func (mem *Memory) Query(keyvals map[string]string) ([]release.Releaser, error) {
 	defer unlock(mem.rlock())
 
 	var lbs labels
@@ -117,7 +117,7 @@ func (mem *Memory) Query(keyvals map[string]string) ([]*rspb.Release, error) {
 	lbs.init()
 	lbs.fromMap(keyvals)
 
-	var ls []*rspb.Release
+	var ls []release.Releaser
 	for namespace := range mem.cache {
 		if mem.namespace != "" {
 			// Should only query releases of this namespace
@@ -150,9 +150,13 @@ func (mem *Memory) Query(keyvals map[string]string) ([]*rspb.Release, error) {
 }
 
 // Create creates a new release or returns ErrReleaseExists.
-func (mem *Memory) Create(key string, rls *rspb.Release) error {
+func (mem *Memory) Create(key string, rel release.Releaser) error {
 	defer unlock(mem.wlock())
 
+	rls, err := releaserToV1Release(rel)
+	if err != nil {
+		return err
+	}
 	// For backwards compatibility, we protect against an unset namespace
 	namespace := rls.Namespace
 	if namespace == "" {
@@ -176,8 +180,13 @@ func (mem *Memory) Create(key string, rls *rspb.Release) error {
 }
 
 // Update updates a release or returns ErrReleaseNotFound.
-func (mem *Memory) Update(key string, rls *rspb.Release) error {
+func (mem *Memory) Update(key string, rel release.Releaser) error {
 	defer unlock(mem.wlock())
+
+	rls, err := releaserToV1Release(rel)
+	if err != nil {
+		return err
+	}
 
 	// For backwards compatibility, we protect against an unset namespace
 	namespace := rls.Namespace
@@ -196,7 +205,7 @@ func (mem *Memory) Update(key string, rls *rspb.Release) error {
 }
 
 // Delete deletes a release or returns ErrReleaseNotFound.
-func (mem *Memory) Delete(key string) (*rspb.Release, error) {
+func (mem *Memory) Delete(key string) (release.Releaser, error) {
 	defer unlock(mem.wlock())
 
 	keyWithoutPrefix := strings.TrimPrefix(key, "sh.helm.release.v1.")
