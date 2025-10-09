@@ -38,7 +38,8 @@ type Interface interface {
 	// Create creates one or more resources.
 	Create(resources ResourceList, options ...ClientCreateOption) (*Result, error)
 
-	// Delete destroys one or more resources.
+	// Delete destroys one or more resources using the specified deletion propagation policy.
+	// The 'policy' parameter determines how child resources are handled during deletion.
 	Delete(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error)
 
 	// Update updates one or more resources or creates the resource
