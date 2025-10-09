@@ -28,6 +28,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func TestNewGetMetadata(t *testing.T) {
@@ -44,7 +45,7 @@ func TestGetMetadata_Run_BasicMetadata(t *testing.T) {
 	client := NewGetMetadata(cfg)
 
 	releaseName := "test-release"
-	deployedTime := time.Now()
+	deployedTime := helmtime.Now()
 
 	rel := &release.Release{
 		Name: releaseName,
@@ -85,7 +86,7 @@ func TestGetMetadata_Run_WithDependencies(t *testing.T) {
 	client := NewGetMetadata(cfg)
 
 	releaseName := "test-release"
-	deployedTime := time.Now()
+	deployedTime := helmtime.Now()
 
 	dependencies := []*chart.Dependency{
 		{
@@ -137,7 +138,7 @@ func TestGetMetadata_Run_WithDependenciesAliases(t *testing.T) {
 	client := NewGetMetadata(cfg)
 
 	releaseName := "test-release"
-	deployedTime := time.Now()
+	deployedTime := helmtime.Now()
 
 	dependencies := []*chart.Dependency{
 		{
@@ -193,7 +194,7 @@ func TestGetMetadata_Run_WithMixedDependencies(t *testing.T) {
 	client := NewGetMetadata(cfg)
 
 	releaseName := "test-release"
-	deployedTime := time.Now()
+	deployedTime := helmtime.Now()
 
 	dependencies := []*chart.Dependency{
 		{
@@ -267,7 +268,7 @@ func TestGetMetadata_Run_WithAnnotations(t *testing.T) {
 	client := NewGetMetadata(cfg)
 
 	releaseName := "test-release"
-	deployedTime := time.Now()
+	deployedTime := helmtime.Now()
 
 	annotations := map[string]string{
 		"helm.sh/hook":        "pre-install",
@@ -312,13 +313,13 @@ func TestGetMetadata_Run_SpecificVersion(t *testing.T) {
 	client.Version = 2
 
 	releaseName := "test-release"
-	deployedTime := time.Now()
+	deployedTime := helmtime.Now()
 
 	rel1 := &release.Release{
 		Name: releaseName,
 		Info: &release.Info{
 			Status:       release.StatusSuperseded,
-			LastDeployed: deployedTime.Add(-time.Hour),
+			LastDeployed: helmtime.Time{Time: deployedTime.Time.Add(-time.Hour)},
 		},
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{
@@ -383,7 +384,7 @@ func TestGetMetadata_Run_DifferentStatuses(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			releaseName := "test-release-" + tc.name
-			deployedTime := time.Now()
+			deployedTime := helmtime.Now()
 
 			rel := &release.Release{
 				Name: releaseName,
@@ -439,7 +440,7 @@ func TestGetMetadata_Run_EmptyAppVersion(t *testing.T) {
 	client := NewGetMetadata(cfg)
 
 	releaseName := "test-release"
-	deployedTime := time.Now()
+	deployedTime := helmtime.Now()
 
 	rel := &release.Release{
 		Name: releaseName,

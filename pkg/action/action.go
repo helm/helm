@@ -30,7 +30,6 @@ import (
 	"strings"
 	"sync"
 	"text/template"
-	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -51,6 +50,7 @@ import (
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
+	"helm.sh/helm/v4/pkg/time"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.

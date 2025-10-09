@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	release "helm.sh/helm/v4/pkg/release/v1"
+	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 // execHook executes all of the hooks for the given hook event.
@@ -61,7 +62,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 
 		// Record the time at which the hook was applied to the cluster
 		h.LastRun = release.HookExecution{
-			StartedAt: time.Now(),
+			StartedAt: helmtime.Now(),
 			Phase:     release.HookPhaseRunning,
 		}
 		cfg.recordRelease(rl)
@@ -75,7 +76,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		if _, err := cfg.KubeClient.Create(
 			resources,
 			kube.ClientCreateOptionServerSideApply(serverSideApply, false)); err != nil {
-			h.LastRun.CompletedAt = time.Now()
+			h.LastRun.CompletedAt = helmtime.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
 			return fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err)
 		}
@@ -87,7 +88,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 		// Watch hook resources until they have completed
 		err = waiter.WatchUntilReady(resources, timeout)
 		// Note the time of success/failure
-		h.LastRun.CompletedAt = time.Now()
+		h.LastRun.CompletedAt = helmtime.Now()
 		// Mark hook as succeeded or failed
 		if err != nil {
 			h.LastRun.Phase = release.HookPhaseFailed
