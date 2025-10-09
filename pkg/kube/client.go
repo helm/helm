@@ -772,7 +772,7 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
-// background cascade deletion. It will attempt to delete all resources even
+// given deletion propagation policy. It will attempt to delete all resources even
 // if one or more fail and collect any errors. All successfully deleted items
 // will be returned in the `Deleted` ResourceList that is part of the result.
 func (c *Client) Delete(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error) {
