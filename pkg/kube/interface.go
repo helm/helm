@@ -59,10 +59,10 @@ type Interface interface {
 	// Get Waiter gets the Kube.Waiter
 	GetWaiter(ws WaitStrategy) (Waiter, error)
 
-	// GetPodList list all pods that match the specified listOptions
+	// GetPodList lists all pods that match the specified listOptions
 	GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error)
 
-	// OutputContainerLogsForPodList output the logs for a pod list
+	// OutputContainerLogsForPodList outputs the logs for a pod list
 	OutputContainerLogsForPodList(podList *v1.PodList, namespace string, writerFunc func(namespace, pod, container string) io.Writer) error
 
 	// BuildTable creates a resource list from a Reader. This differs from
