@@ -74,7 +74,6 @@ type Install struct {
 
 	ChartPathOptions
 
-	ClientOnly bool
 	// ForceReplace will, if set to `true`, ignore certain warnings and perform the install anyway.
 	//
 	// This should be used with caution.
@@ -86,8 +85,8 @@ type Install struct {
 	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
 	ServerSideApply bool
 	CreateNamespace bool
-	DryRun          bool
-	DryRunOption    string
+	// DryRunStrategy can be set to prepare, but not execute the operation and whether or not to interact with the remote cluster
+	DryRunStrategy DryRunStrategy
 	// HideSecret can be set to true when DryRun is enabled in order to hide
 	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
 	HideSecret       bool
@@ -158,6 +157,7 @@ func NewInstall(cfg *Configuration) *Install {
 	in := &Install{
 		cfg:             cfg,
 		ServerSideApply: true,
+		DryRunStrategy:  DryRunNone,
 	}
 	in.registryClient = cfg.RegistryClient
 
@@ -263,8 +263,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		return nil, errors.New("invalid chart apiVersion")
 	}
 
-	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
-	if !i.ClientOnly {
+	if interactWithServer(i.DryRunStrategy) {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
 			slog.Error(fmt.Sprintf("cluster reachability check failed: %v", err))
 			return nil, fmt.Errorf("cluster reachability check failed: %w", err)
@@ -272,7 +271,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	}
 
 	// HideSecret must be used with dry run. Otherwise, return an error.
-	if !i.isDryRun() && i.HideSecret {
+	if !isDryRun(i.DryRunStrategy) && i.HideSecret {
 		slog.Error("hiding Kubernetes secrets requires a dry-run mode")
 		return nil, errors.New("hiding Kubernetes secrets requires a dry-run mode")
 	}
@@ -287,23 +286,18 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		return nil, fmt.Errorf("chart dependencies processing failed: %w", err)
 	}
 
-	var interactWithRemote bool
-	if !i.isDryRun() || i.DryRunOption == "server" || i.DryRunOption == "none" || i.DryRunOption == "false" {
-		interactWithRemote = true
-	}
-
 	// Pre-install anything in the crd/ directory. We do this before Helm
 	// contacts the upstream server and builds the capabilities object.
-	if crds := chrt.CRDObjects(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
+	if crds := chrt.CRDObjects(); interactWithServer(i.DryRunStrategy) && !i.SkipCRDs && len(crds) > 0 {
 		// On dry run, bail here
-		if i.isDryRun() {
+		if isDryRun(i.DryRunStrategy) {
 			slog.Warn("This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
 		} else if err := i.installCRDs(crds); err != nil {
 			return nil, err
 		}
 	}
 
-	if i.ClientOnly {
+	if !interactWithServer(i.DryRunStrategy) {
 		// Add mock objects in here so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
 		i.cfg.Capabilities = common.DefaultCapabilities.Copy()
@@ -316,7 +310,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		mem := driver.NewMemory()
 		mem.SetNamespace(i.Namespace)
 		i.cfg.Releases = storage.Init(mem)
-	} else if !i.ClientOnly && len(i.APIVersions) > 0 {
+	} else if interactWithServer(i.DryRunStrategy) && len(i.APIVersions) > 0 {
 		slog.Debug("API Version list given outside of client only mode, this list will be ignored")
 	}
 
@@ -332,7 +326,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	}
 
 	// special case for helm template --is-upgrade
-	isUpgrade := i.IsUpgrade && i.isDryRun()
+	isUpgrade := i.IsUpgrade && isDryRun(i.DryRunStrategy)
 	options := common.ReleaseOptions{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
@@ -352,7 +346,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	rel := i.createRelease(chrt, vals, i.Labels)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithRemote, i.EnableDNS, i.HideSecret)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -385,7 +379,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	// we'll end up in a state where we will delete those resources upon
 	// deleting the release because the manifest will be pointing at that
 	// resource
-	if !i.ClientOnly && !isUpgrade && len(resources) > 0 {
+	if interactWithServer(i.DryRunStrategy) && !isUpgrade && len(resources) > 0 {
 		if i.TakeOwnership {
 			toBeAdopted, err = requireAdoption(resources)
 		} else {
@@ -397,7 +391,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	}
 
 	// Bail out here if it is a dry run
-	if i.isDryRun() {
+	if isDryRun(i.DryRunStrategy) {
 		rel.Info.Description = "Dry run complete"
 		return rel, nil
 	}
@@ -477,14 +471,6 @@ func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, t
 // getGoroutineCount return the number of running routines
 func (i *Install) getGoroutineCount() int32 {
 	return i.goroutineCount.Load()
-}
-
-// isDryRun returns true if Upgrade is set to run as a DryRun
-func (i *Install) isDryRun() bool {
-	if i.DryRun || i.DryRunOption == "client" || i.DryRunOption == "server" || i.DryRunOption == "true" {
-		return true
-	}
-	return false
 }
 
 func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {
@@ -589,7 +575,7 @@ func (i *Install) availableName() error {
 		return fmt.Errorf("release name %q: %w", start, err)
 	}
 	// On dry run, bail here
-	if i.isDryRun() {
+	if isDryRun(i.DryRunStrategy) {
 		return nil
 	}
 
