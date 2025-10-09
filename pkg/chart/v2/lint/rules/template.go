@@ -126,7 +126,7 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 		linter.RunLinterRule(support.ErrorSev, fpath, validateAllowedExtension(fileName))
 
 		// We only apply the following lint rules to yaml files
-		if filepath.Ext(fileName) != ".yaml" || filepath.Ext(fileName) == ".yml" {
+		if !isYamlFileExtension(fileName) {
 			continue
 		}
 
@@ -333,6 +333,11 @@ func validateListAnnotations(yamlStruct *k8sYamlStruct, manifest string) error {
 		}
 	}
 	return nil
+}
+
+func isYamlFileExtension(fileName string) bool {
+	ext := strings.ToLower(filepath.Ext(fileName))
+	return ext == ".yaml" || ext == ".yml"
 }
 
 // k8sYamlStruct stubs a Kubernetes YAML file.
