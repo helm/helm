@@ -25,11 +25,11 @@ import (
 	v1release "helm.sh/helm/v4/pkg/release/v1"
 )
 
-var NewAccessor func(rel Releaser) (Accessor, error) = NewDefaultAccessor //nolint:revive
+var NewAccessor func(rel Releaser) (Accessor, error) = newDefaultAccessor //nolint:revive
 
-var NewHookAccessor func(rel Hook) (HookAccessor, error) = NewDefaultHookAccessor //nolint:revive
+var NewHookAccessor func(rel Hook) (HookAccessor, error) = newDefaultHookAccessor //nolint:revive
 
-func NewDefaultAccessor(rel Releaser) (Accessor, error) {
+func newDefaultAccessor(rel Releaser) (Accessor, error) {
 	switch v := rel.(type) {
 	case v1release.Release:
 		return &v1Accessor{&v}, nil
@@ -40,7 +40,7 @@ func NewDefaultAccessor(rel Releaser) (Accessor, error) {
 	}
 }
 
-func NewDefaultHookAccessor(hook Hook) (HookAccessor, error) {
+func newDefaultHookAccessor(hook Hook) (HookAccessor, error) {
 	switch h := hook.(type) {
 	case v1release.Hook:
 		return &v1HookAccessor{&h}, nil

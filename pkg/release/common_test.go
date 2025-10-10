@@ -44,7 +44,7 @@ func TestNewDefaultAccessor(t *testing.T) {
 		ApplyMethod: "csa",
 	}
 
-	// NewDefaultAccessor should not be called directly Instead, NewAccessor should be
+	// newDefaultAccessor should not be called directly Instead, NewAccessor should be
 	// called and it will call NewDefaultAccessor. NewAccessor can be changed to a
 	// non-default accessor by a user so the test calls the default implementation.
 	// The accessor provides a means to access data on resources that are different types
@@ -53,7 +53,7 @@ func TestNewDefaultAccessor(t *testing.T) {
 	// and unmarshalling data (e.g. coming and going from JSON or YAML). But, structs
 	// can't be used with interfaces. The accessors enable access to the underlying data
 	// in a manner that works with Go interfaces.
-	accessor, err := NewDefaultAccessor(rel)
+	accessor, err := newDefaultAccessor(rel)
 	is.NoError(err)
 
 	// Verify information
