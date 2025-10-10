@@ -233,6 +233,7 @@ func writeToTar(out *tar.Writer, name string, body []byte) error {
 		Mode:    0644,
 		Size:    int64(len(body)),
 		ModTime: time.Now(),
+		Format:  tar.FormatPAX,
 	}
 	if err := out.WriteHeader(h); err != nil {
 		return err

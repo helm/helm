@@ -140,10 +140,7 @@ func Indent(n int, text string) string {
 }
 
 func TestSavePreservesTimestamps(t *testing.T) {
-	// Test executes so quickly that if we don't subtract a second, the
-	// check will fail because `initialCreateTime` will be identical to the
-	// written timestamp for the files.
-	initialCreateTime := time.Now().Add(-1 * time.Second)
+	initialCreateTime := time.Now()
 
 	tmp := t.TempDir()
 
