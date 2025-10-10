@@ -267,6 +267,64 @@ func TestCoalesceValuesEmptyMapOverride(t *testing.T) {
 	assert.NotContains(t, result, "toDelete", "expected toDelete key to be removed when set to nil override")
 }
 
+func TestCoalesceValuesEmptySliceOverrideForMap(t *testing.T) {
+	newChart := func() *chart.Chart {
+		return &chart.Chart{
+			Metadata: &chart.Metadata{Name: "emptymap"},
+			Values: map[string]interface{}{
+				"config": map[string]interface{}{
+					"foo":    "bar",
+					"nested": map[string]interface{}{"baz": "qux"},
+				},
+			},
+		}
+	}
+
+	t.Run("empty interface slice", func(t *testing.T) {
+		overrides := map[string]interface{}{
+			"config": []interface{}{},
+		}
+
+		result, err := CoalesceValues(newChart(), overrides)
+		require.NoError(t, err)
+
+		config, ok := result["config"].(map[string]interface{})
+		require.Truef(t, ok, "expected config to remain a map, got %T", result["config"])
+		assert.Empty(t, config, "expected config map to be empty")
+	})
+
+	t.Run("legacy single empty element slice", func(t *testing.T) {
+		overrides := map[string]interface{}{
+			"config": []interface{}{""},
+		}
+
+		result, err := CoalesceValues(newChart(), overrides)
+		require.NoError(t, err)
+
+		config, ok := result["config"].(map[string]interface{})
+		require.Truef(t, ok, "expected config to remain a map, got %T", result["config"])
+		assert.Empty(t, config, "expected config map to be empty")
+	})
+
+	t.Run("nested empty slice", func(t *testing.T) {
+		overrides := map[string]interface{}{
+			"config": map[string]interface{}{
+				"nested": []interface{}{},
+			},
+		}
+
+		result, err := CoalesceValues(newChart(), overrides)
+		require.NoError(t, err)
+
+		config, ok := result["config"].(map[string]interface{})
+		require.Truef(t, ok, "expected config to remain a map, got %T", result["config"])
+
+		nested, ok := config["nested"].(map[string]interface{})
+		require.Truef(t, ok, "expected nested override to remain a map, got %T", config["nested"])
+		assert.Empty(t, nested, "expected nested map to be empty")
+	})
+}
+
 func ttpl(tpl string, v map[string]interface{}) (string, error) {
 	var b bytes.Buffer
 	tt := template.Must(template.New("t").Parse(tpl))

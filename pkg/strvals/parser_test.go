@@ -266,6 +266,11 @@ func TestParseSet(t *testing.T) {
 			false,
 		},
 		{
+			"emptylist={}",
+			map[string]interface{}{"emptylist": []interface{}{}},
+			false,
+		},
+		{
 			"name1={value1,value2},name2={value1,value2}",
 			map[string]interface{}{
 				"name1": []string{"value1", "value2"},
