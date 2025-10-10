@@ -267,7 +267,7 @@ func TestParseSet(t *testing.T) {
 		},
 		{
 			"emptylist={}",
-			map[string]interface{}{"emptylist": []interface{}{}},
+			map[string]interface{}{"emptylist": []interface{}{map[string]interface{}{}}},
 			false,
 		},
 		{
