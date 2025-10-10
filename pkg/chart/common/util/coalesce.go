@@ -382,10 +382,33 @@ func istable(v interface{}) bool {
 
 func isExplicitEmptyOverride(v interface{}) bool {
 	switch vv := v.(type) {
+	case map[string]interface{}:
+		return len(vv) == 0
+	case map[interface{}]interface{}:
+		return len(vv) == 0
 	case []interface{}:
-		return len(vv) == 0 || (len(vv) == 1 && vv[0] == "")
+		switch len(vv) {
+		case 0:
+			return true
+		case 1:
+			switch item := vv[0].(type) {
+			case string:
+				return item == ""
+			default:
+				return isExplicitEmptyOverride(item)
+			}
+		default:
+			return false
+		}
 	case []string:
-		return len(vv) == 0 || (len(vv) == 1 && vv[0] == "")
+		switch len(vv) {
+		case 0:
+			return true
+		case 1:
+			return vv[0] == ""
+		default:
+			return false
+		}
 	default:
 		return false
 	}

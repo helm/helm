@@ -26,6 +26,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"helm.sh/helm/v4/pkg/chart/common/util"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/getter"
 )
 
@@ -244,6 +249,58 @@ func TestReadFile(t *testing.T) {
 					t.Errorf("readFile() = %v, want %v", got, tt.expectedData)
 				}
 			}
+		})
+	}
+}
+
+func TestMergeValuesExplicitEmptyOverrides(t *testing.T) {
+	newChart := func() *chart.Chart {
+		return &chart.Chart{
+			Metadata: &chart.Metadata{Name: "emptymap"},
+			Values: map[string]interface{}{
+				"key": map[string]interface{}{"default": true},
+			},
+		}
+	}
+
+	tests := []struct {
+		name  string
+		setup func(t *testing.T) *Options
+	}{
+		{
+			name: "empty map from values file",
+			setup: func(t *testing.T) *Options {
+				dir := t.TempDir()
+				file := filepath.Join(dir, "values.yaml")
+				require.NoError(t, os.WriteFile(file, []byte("key: {}\n"), 0o600))
+				return &Options{ValueFiles: []string{file}}
+			},
+		},
+		{
+			name: "empty map from set flag",
+			setup: func(_ *testing.T) *Options {
+				return &Options{Values: []string{"key={}"}}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			opts := tt.setup(t)
+
+			overrides, err := opts.MergeValues(getter.Providers{})
+			require.NoError(t, err)
+
+			result, err := util.CoalesceValues(newChart(), overrides)
+			require.NoError(t, err)
+
+			raw, ok := result["key"]
+			require.True(t, ok, "expected key to be present")
+
+			actual, ok := raw.(map[string]interface{})
+			require.True(t, ok, "expected key to be a map but got %T", raw)
+			assert.Empty(t, actual)
 		})
 	}
 }

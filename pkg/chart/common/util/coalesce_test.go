@@ -306,6 +306,19 @@ func TestCoalesceValuesEmptySliceOverrideForMap(t *testing.T) {
 		assert.Empty(t, config, "expected config map to be empty")
 	})
 
+	t.Run("explicit empty map placeholder", func(t *testing.T) {
+		overrides := map[string]interface{}{
+			"config": []interface{}{map[string]interface{}{}},
+		}
+
+		result, err := CoalesceValues(newChart(), overrides)
+		require.NoError(t, err)
+
+		config, ok := result["config"].(map[string]interface{})
+		require.Truef(t, ok, "expected config to remain a map, got %T", result["config"])
+		assert.Empty(t, config, "expected config map to be empty")
+	})
+
 	t.Run("nested empty slice", func(t *testing.T) {
 		overrides := map[string]interface{}{
 			"config": map[string]interface{}{
