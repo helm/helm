@@ -123,7 +123,9 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 		fileName := template.Name
 		fpath = fileName
 
-		linter.RunLinterRule(support.ErrorSev, fpath, validateAllowedExtension(fileName))
+		if !isHelperFile(fileName) {
+			linter.RunLinterRule(support.ErrorSev, fpath, validateAllowedExtension(fileName))
+		}
 
 		// We only apply the following lint rules to yaml files
 		if filepath.Ext(fileName) != ".yaml" || filepath.Ext(fileName) == ".yml" {
@@ -217,6 +219,18 @@ func validateTemplatesDir(templatesPath string) error {
 		return errors.New("not a directory")
 	}
 	return nil
+}
+
+// checks if the file starts with '_'.
+func isHelperFile(fileName string) bool {
+	baseName := filepath.Base(fileName)
+	ext := filepath.Ext(fileName)
+
+	if strings.HasPrefix(baseName, "_") && ext != ".yaml" && ext != ".yml" {
+		return true
+	}
+
+	return false
 }
 
 func validateAllowedExtension(fileName string) error {
