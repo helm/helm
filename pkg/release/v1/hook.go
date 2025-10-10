@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -120,3 +121,69 @@ const (
 
 // String converts a hook phase to a printable string
 func (x HookPhase) String() string { return string(x) }
+
+// hookExecutionJSON is used for custom JSON marshaling/unmarshaling
+type hookExecutionJSON struct {
+	StartedAt   *time.Time `json:"started_at,omitempty"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+	Phase       HookPhase  `json:"phase"`
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+// It handles empty string time fields by treating them as zero values.
+func (h *HookExecution) UnmarshalJSON(data []byte) error {
+	// First try to unmarshal into a map to handle empty string time fields
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	// Replace empty string time fields with nil
+	for _, field := range []string{"started_at", "completed_at"} {
+		if val, ok := raw[field]; ok {
+			if str, ok := val.(string); ok && str == "" {
+				raw[field] = nil
+			}
+		}
+	}
+
+	// Re-marshal with cleaned data
+	cleaned, err := json.Marshal(raw)
+	if err != nil {
+		return err
+	}
+
+	// Unmarshal into temporary struct with pointer time fields
+	var tmp hookExecutionJSON
+	if err := json.Unmarshal(cleaned, &tmp); err != nil {
+		return err
+	}
+
+	// Copy values to HookExecution struct
+	if tmp.StartedAt != nil {
+		h.StartedAt = *tmp.StartedAt
+	}
+	if tmp.CompletedAt != nil {
+		h.CompletedAt = *tmp.CompletedAt
+	}
+	h.Phase = tmp.Phase
+
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+// It omits zero-value time fields from the JSON output.
+func (h HookExecution) MarshalJSON() ([]byte, error) {
+	tmp := hookExecutionJSON{
+		Phase: h.Phase,
+	}
+
+	if !h.StartedAt.IsZero() {
+		tmp.StartedAt = &h.StartedAt
+	}
+	if !h.CompletedAt.IsZero() {
+		tmp.CompletedAt = &h.CompletedAt
+	}
+
+	return json.Marshal(tmp)
+}
