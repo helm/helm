@@ -47,12 +47,14 @@ This command installs a chart archive.
 The install argument must be a chart reference, a path to a packaged chart,
 a path to an unpacked chart directory or a URL.
 
-To override values in a chart, use either the '--values' flag and pass in a file
-or use the '--set' flag and pass configuration from the command line, to force
-a string value use '--set-string'. You can use '--set-file' to set individual
-values from a file when the value itself is too long for the command line
-or is dynamically generated. You can also use '--set-json' to set json values
-(scalars/objects/arrays) from the command line. Additionally, you can use '--set-json' and passing json object as a string.
+To override values in a chart, use the '-f'/'--values' flag to provide a file or
+the '--set' flag to pass configuration directly from the command line. To force
+a string value, use '--set-string'. Use '--set-file' when a value is too long
+for the command line or dynamically generated. You can also use '--set-json' to
+provide JSON values (scalars, objects, or arrays) from the command line, either
+as a direct argument or by passing a JSON object as a string. Alternatively, use
+the '-d'/'--values-directory' flag to specify a directory containing YAML files
+when you have many values or shared configurations split across files.
 
     $ helm install -f myvalues.yaml myredis ./redis
 
@@ -76,6 +78,9 @@ or
 
     $ helm install --set-json '{"master":{"sidecars":[{"name":"sidecar","image":"myImage","imagePullPolicy":"Always","ports":[{"name":"portname","containerPort":1234}]}]}}' myredis ./redis
 
+or
+    $ helm install -d values.d/ myredis ./redis
+
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
 contained a key called 'Test', the value set in override.yaml would take precedence:
@@ -95,6 +100,33 @@ Similarly, in the following example 'foo' is set to '["four"]':
 And in the following example, 'foo' is set to '{"key1":"value1","key2":"bar"}':
 
     $ helm install --set-json='foo={"key1":"value1","key2":"value2"}' --set-json='foo.key2="bar"' myredis ./redis
+
+Key details about flag '-d'/'--values-directory':
+- **Purpose:**
+  - Specify a directory containing values YAML files.
+- **Behavior:**
+  - All YAML files in the directory and its nested subdirectories are loaded
+    recursively. Non-YAML files are skipped.
+  - Files within a single directory are processed in **lexicographical order**,
+    with later files overriding earlier ones when keys overlap.
+- **Precedence:**
+  - This flag has the **lower precedence** than other value flags
+    ('-f'/'--values', '--set', '--set-string', '--set-file', '--set-json',
+    '--set-literal'). Values from these other flags override values from files
+    in the specified directory.
+  - Exception: The chart's default 'values.yaml' has a **lower precedence** than
+    the '-d'/'--values-directory' flag, i.e., the values from files in the
+    directory can override it. To let default values override directory files,
+    include 'values.yaml' explicitly via '-f'/'--values'.
+- **Multiple Directories:**
+  - The flag can be specified **multiple times**.
+  - When multiple directories are provided, files in directories specified later
+    override values from earlier directories.
+  - **Lexicographical ordering** applies within each directory (and its nested
+    subdirectories) and not between directories specified with multiple
+    '-d'/'--values-directory' flags.
+
+    $ helm install -d default-values/ -d prod-overrides/ myredis ./redis
 
 To check the generated manifests of a release without installing the chart,
 the --debug and --dry-run flags can be combined.
