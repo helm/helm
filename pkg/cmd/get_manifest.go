@@ -25,6 +25,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cmd/require"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 var getManifestHelp = `
@@ -54,7 +55,11 @@ func newGetManifestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(out, res.Manifest)
+			rac, err := release.NewAccessor(res)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintln(out, rac.Manifest())
 			return nil
 		},
 	}

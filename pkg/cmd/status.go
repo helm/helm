@@ -33,7 +33,8 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common/util"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
-	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/release"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 )
 
 // NOTE: Keep the list of statuses up-to-date with pkg/release/status.go.
@@ -72,7 +73,11 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if outfmt == output.Table {
 				client.ShowResourcesTable = true
 			}
-			rel, err := client.Run(args[0])
+			reli, err := client.Run(args[0])
+			if err != nil {
+				return err
+			}
+			rel, err := releaserToV1Release(reli)
 			if err != nil {
 				return err
 			}
@@ -110,54 +115,65 @@ func newStatusCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type statusPrinter struct {
-	release      *release.Release
+	release      release.Releaser
 	debug        bool
 	showMetadata bool
 	hideNotes    bool
 	noColor      bool
 }
 
+func (s statusPrinter) getV1Release() *releasev1.Release {
+	switch rel := s.release.(type) {
+	case releasev1.Release:
+		return &rel
+	case *releasev1.Release:
+		return rel
+	}
+	return &releasev1.Release{}
+}
+
 func (s statusPrinter) WriteJSON(out io.Writer) error {
-	return output.EncodeJSON(out, s.release)
+	return output.EncodeJSON(out, s.getV1Release())
 }
 
 func (s statusPrinter) WriteYAML(out io.Writer) error {
-	return output.EncodeYAML(out, s.release)
+	return output.EncodeYAML(out, s.getV1Release())
 }
 
 func (s statusPrinter) WriteTable(out io.Writer) error {
 	if s.release == nil {
 		return nil
 	}
-	_, _ = fmt.Fprintf(out, "NAME: %s\n", s.release.Name)
-	if !s.release.Info.LastDeployed.IsZero() {
-		_, _ = fmt.Fprintf(out, "LAST DEPLOYED: %s\n", s.release.Info.LastDeployed.Format(time.ANSIC))
+	rel := s.getV1Release()
+	_, _ = fmt.Fprintf(out, "NAME: %s\n", rel.Name)
+	if !rel.Info.LastDeployed.IsZero() {
+		_, _ = fmt.Fprintf(out, "LAST DEPLOYED: %s\n", rel.Info.LastDeployed.Format(time.ANSIC))
 	}
-	_, _ = fmt.Fprintf(out, "NAMESPACE: %s\n", coloroutput.ColorizeNamespace(s.release.Namespace, s.noColor))
-	_, _ = fmt.Fprintf(out, "STATUS: %s\n", coloroutput.ColorizeStatus(s.release.Info.Status, s.noColor))
-	_, _ = fmt.Fprintf(out, "REVISION: %d\n", s.release.Version)
+	_, _ = fmt.Fprintf(out, "NAMESPACE: %s\n", coloroutput.ColorizeNamespace(rel.Namespace, s.noColor))
+	_, _ = fmt.Fprintf(out, "STATUS: %s\n", coloroutput.ColorizeStatus(rel.Info.Status, s.noColor))
+	_, _ = fmt.Fprintf(out, "REVISION: %d\n", rel.Version)
 	if s.showMetadata {
-		_, _ = fmt.Fprintf(out, "CHART: %s\n", s.release.Chart.Metadata.Name)
-		_, _ = fmt.Fprintf(out, "VERSION: %s\n", s.release.Chart.Metadata.Version)
-		_, _ = fmt.Fprintf(out, "APP_VERSION: %s\n", s.release.Chart.Metadata.AppVersion)
+		_, _ = fmt.Fprintf(out, "CHART: %s\n", rel.Chart.Metadata.Name)
+		_, _ = fmt.Fprintf(out, "VERSION: %s\n", rel.Chart.Metadata.Version)
+		_, _ = fmt.Fprintf(out, "APP_VERSION: %s\n", rel.Chart.Metadata.AppVersion)
 	}
-	_, _ = fmt.Fprintf(out, "DESCRIPTION: %s\n", s.release.Info.Description)
+	_, _ = fmt.Fprintf(out, "DESCRIPTION: %s\n", rel.Info.Description)
 
-	if len(s.release.Info.Resources) > 0 {
+	if len(rel.Info.Resources) > 0 {
 		buf := new(bytes.Buffer)
 		printFlags := get.NewHumanPrintFlags()
 		typePrinter, _ := printFlags.ToPrinter("")
 		printer := &get.TablePrinter{Delegate: typePrinter}
 
 		var keys []string
-		for key := range s.release.Info.Resources {
+		for key := range rel.Info.Resources {
 			keys = append(keys, key)
 		}
 
 		for _, t := range keys {
 			_, _ = fmt.Fprintf(buf, "==> %s\n", t)
 
-			vk := s.release.Info.Resources[t]
+			vk := rel.Info.Resources[t]
 			for _, resource := range vk {
 				if err := printer.PrintObj(resource, buf); err != nil {
 					_, _ = fmt.Fprintf(buf, "failed to print object type %s: %v\n", t, err)
@@ -170,8 +186,8 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		_, _ = fmt.Fprintf(out, "RESOURCES:\n%s\n", buf.String())
 	}
 
-	executions := executionsByHookEvent(s.release)
-	if tests, ok := executions[release.HookTest]; !ok || len(tests) == 0 {
+	executions := executionsByHookEvent(rel)
+	if tests, ok := executions[releasev1.HookTest]; !ok || len(tests) == 0 {
 		_, _ = fmt.Fprintln(out, "TEST SUITE: None")
 	} else {
 		for _, h := range tests {
@@ -190,14 +206,14 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 
 	if s.debug {
 		_, _ = fmt.Fprintln(out, "USER-SUPPLIED VALUES:")
-		err := output.EncodeYAML(out, s.release.Config)
+		err := output.EncodeYAML(out, rel.Config)
 		if err != nil {
 			return err
 		}
 		// Print an extra newline
 		_, _ = fmt.Fprintln(out)
 
-		cfg, err := util.CoalesceValues(s.release.Chart, s.release.Config)
+		cfg, err := util.CoalesceValues(rel.Chart, rel.Config)
 		if err != nil {
 			return err
 		}
@@ -211,28 +227,28 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 		_, _ = fmt.Fprintln(out)
 	}
 
-	if strings.EqualFold(s.release.Info.Description, "Dry run complete") || s.debug {
+	if strings.EqualFold(rel.Info.Description, "Dry run complete") || s.debug {
 		_, _ = fmt.Fprintln(out, "HOOKS:")
-		for _, h := range s.release.Hooks {
+		for _, h := range rel.Hooks {
 			_, _ = fmt.Fprintf(out, "---\n# Source: %s\n%s\n", h.Path, h.Manifest)
 		}
-		_, _ = fmt.Fprintf(out, "MANIFEST:\n%s\n", s.release.Manifest)
+		_, _ = fmt.Fprintf(out, "MANIFEST:\n%s\n", rel.Manifest)
 	}
 
 	// Hide notes from output - option in install and upgrades
-	if !s.hideNotes && len(s.release.Info.Notes) > 0 {
-		_, _ = fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(s.release.Info.Notes))
+	if !s.hideNotes && len(rel.Info.Notes) > 0 {
+		_, _ = fmt.Fprintf(out, "NOTES:\n%s\n", strings.TrimSpace(rel.Info.Notes))
 	}
 	return nil
 }
 
-func executionsByHookEvent(rel *release.Release) map[release.HookEvent][]*release.Hook {
-	result := make(map[release.HookEvent][]*release.Hook)
+func executionsByHookEvent(rel *releasev1.Release) map[releasev1.HookEvent][]*releasev1.Hook {
+	result := make(map[releasev1.HookEvent][]*releasev1.Hook)
 	for _, h := range rel.Hooks {
 		for _, e := range h.Events {
 			executions, ok := result[e]
 			if !ok {
-				executions = []*release.Hook{}
+				executions = []*releasev1.Hook{}
 			}
 			result[e] = append(executions, h)
 		}

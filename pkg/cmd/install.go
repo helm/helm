@@ -323,7 +323,12 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		cancel()
 	}()
 
-	return client.RunWithContext(ctx, chartRequested, vals)
+	ri, err := client.RunWithContext(ctx, chartRequested, vals)
+	rel, rerr := releaserToV1Release(ri)
+	if rerr != nil {
+		return nil, rerr
+	}
+	return rel, err
 }
 
 // checkIfInstallable validates if a chart can be installed

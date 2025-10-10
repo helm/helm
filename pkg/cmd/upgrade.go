@@ -37,7 +37,8 @@ import (
 	"helm.sh/helm/v4/pkg/cmd/require"
 	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
-	release "helm.sh/helm/v4/pkg/release/v1"
+	ri "helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/release/common"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
@@ -318,6 +319,11 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func isReleaseUninstalled(versions []*release.Release) bool {
-	return len(versions) > 0 && versions[len(versions)-1].Info.Status == release.StatusUninstalled
+func isReleaseUninstalled(versionsi []ri.Releaser) bool {
+	versions, err := releaseListToV1List(versionsi)
+	if err != nil {
+		slog.Error("cannot convert release list to v1 release list", "error", err)
+		return false
+	}
+	return len(versions) > 0 && versions[len(versions)-1].Info.Status == common.StatusUninstalled
 }

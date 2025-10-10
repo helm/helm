@@ -20,13 +20,13 @@ import (
 	"reflect"
 	"testing"
 
-	rspb "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/release/common"
 )
 
 func TestRecordsAdd(t *testing.T) {
 	rs := records([]*record{
-		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
-		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", common.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", common.StatusDeployed)),
 	})
 
 	var tests = []struct {
@@ -39,13 +39,13 @@ func TestRecordsAdd(t *testing.T) {
 			"add valid key",
 			"rls-a.v3",
 			false,
-			newRecord("rls-a.v3", releaseStub("rls-a", 3, "default", rspb.StatusSuperseded)),
+			newRecord("rls-a.v3", releaseStub("rls-a", 3, "default", common.StatusSuperseded)),
 		},
 		{
 			"add already existing key",
 			"rls-a.v1",
 			true,
-			newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusDeployed)),
+			newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", common.StatusDeployed)),
 		},
 	}
 
@@ -70,8 +70,8 @@ func TestRecordsRemove(t *testing.T) {
 	}
 
 	rs := records([]*record{
-		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
-		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", common.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", common.StatusDeployed)),
 	})
 
 	startLen := rs.Len()
@@ -98,8 +98,8 @@ func TestRecordsRemove(t *testing.T) {
 
 func TestRecordsRemoveAt(t *testing.T) {
 	rs := records([]*record{
-		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
-		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", common.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", common.StatusDeployed)),
 	})
 
 	if len(rs) != 2 {
@@ -114,8 +114,8 @@ func TestRecordsRemoveAt(t *testing.T) {
 
 func TestRecordsGet(t *testing.T) {
 	rs := records([]*record{
-		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
-		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", common.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", common.StatusDeployed)),
 	})
 
 	var tests = []struct {
@@ -126,7 +126,7 @@ func TestRecordsGet(t *testing.T) {
 		{
 			"get valid key",
 			"rls-a.v1",
-			newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
+			newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", common.StatusSuperseded)),
 		},
 		{
 			"get invalid key",
@@ -145,8 +145,8 @@ func TestRecordsGet(t *testing.T) {
 
 func TestRecordsIndex(t *testing.T) {
 	rs := records([]*record{
-		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
-		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", common.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", common.StatusDeployed)),
 	})
 
 	var tests = []struct {
@@ -176,8 +176,8 @@ func TestRecordsIndex(t *testing.T) {
 
 func TestRecordsExists(t *testing.T) {
 	rs := records([]*record{
-		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
-		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", common.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", common.StatusDeployed)),
 	})
 
 	var tests = []struct {
@@ -207,8 +207,8 @@ func TestRecordsExists(t *testing.T) {
 
 func TestRecordsReplace(t *testing.T) {
 	rs := records([]*record{
-		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", rspb.StatusSuperseded)),
-		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+		newRecord("rls-a.v1", releaseStub("rls-a", 1, "default", common.StatusSuperseded)),
+		newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", common.StatusDeployed)),
 	})
 
 	var tests = []struct {
@@ -220,13 +220,13 @@ func TestRecordsReplace(t *testing.T) {
 		{
 			"replace with existing key",
 			"rls-a.v2",
-			newRecord("rls-a.v3", releaseStub("rls-a", 3, "default", rspb.StatusSuperseded)),
-			newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", rspb.StatusDeployed)),
+			newRecord("rls-a.v3", releaseStub("rls-a", 3, "default", common.StatusSuperseded)),
+			newRecord("rls-a.v2", releaseStub("rls-a", 2, "default", common.StatusDeployed)),
 		},
 		{
 			"replace with non existing key",
 			"rls-a.v4",
-			newRecord("rls-a.v4", releaseStub("rls-a", 4, "default", rspb.StatusDeployed)),
+			newRecord("rls-a.v4", releaseStub("rls-a", 4, "default", common.StatusDeployed)),
 			nil,
 		},
 	}

@@ -30,6 +30,7 @@ import (
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -79,7 +80,11 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.SetStateMask()
 
-			results, err := client.Run()
+			resultsi, err := client.Run()
+			if err != nil {
+				return err
+			}
+			results, err := releaseListToV1List(resultsi)
 			if err != nil {
 				return err
 			}
@@ -193,28 +198,28 @@ func (w *releaseListWriter) WriteTable(out io.Writer) error {
 	}
 	for _, r := range w.releases {
 		// Parse the status string back to a release.Status to use color
-		var status release.Status
+		var status common.Status
 		switch r.Status {
 		case "deployed":
-			status = release.StatusDeployed
+			status = common.StatusDeployed
 		case "failed":
-			status = release.StatusFailed
+			status = common.StatusFailed
 		case "pending-install":
-			status = release.StatusPendingInstall
+			status = common.StatusPendingInstall
 		case "pending-upgrade":
-			status = release.StatusPendingUpgrade
+			status = common.StatusPendingUpgrade
 		case "pending-rollback":
-			status = release.StatusPendingRollback
+			status = common.StatusPendingRollback
 		case "uninstalling":
-			status = release.StatusUninstalling
+			status = common.StatusUninstalling
 		case "uninstalled":
-			status = release.StatusUninstalled
+			status = common.StatusUninstalled
 		case "superseded":
-			status = release.StatusSuperseded
+			status = common.StatusSuperseded
 		case "unknown":
-			status = release.StatusUnknown
+			status = common.StatusUnknown
 		default:
-			status = release.Status(r.Status)
+			status = common.Status(r.Status)
 		}
 		table.AddRow(r.Name, coloroutput.ColorizeNamespace(r.Namespace, w.noColor), r.Revision, r.Updated, coloroutput.ColorizeStatus(status, w.noColor), r.Chart, r.AppVersion)
 	}
@@ -264,7 +269,11 @@ func compListReleases(toComplete string, ignoredReleaseNames []string, cfg *acti
 	// client.Filter = fmt.Sprintf("^%s", toComplete)
 
 	client.SetStateMask()
-	releases, err := client.Run()
+	releasesi, err := client.Run()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+	releases, err := releaseListToV1List(releasesi)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}

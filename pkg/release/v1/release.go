@@ -17,6 +17,7 @@ package v1
 
 import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/release/common"
 )
 
 type ApplyMethod string
@@ -53,7 +54,7 @@ type Release struct {
 }
 
 // SetStatus is a helper for setting the status on a release.
-func (r *Release) SetStatus(status Status, msg string) {
+func (r *Release) SetStatus(status common.Status, msg string) {
 	r.Info.Status = status
 	r.Info.Description = msg
 }

@@ -53,6 +53,8 @@ import (
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/registry"
+	ri "helm.sh/helm/v4/pkg/release"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/repo/v1"
@@ -243,7 +245,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 //
 // If DryRun is set to true, this will prepare the release, but not install it
 
-func (i *Install) Run(chrt ci.Charter, vals map[string]interface{}) (*release.Release, error) {
+func (i *Install) Run(chrt ci.Charter, vals map[string]interface{}) (ri.Releaser, error) {
 	ctx := context.Background()
 	return i.RunWithContext(ctx, chrt, vals)
 }
@@ -252,7 +254,7 @@ func (i *Install) Run(chrt ci.Charter, vals map[string]interface{}) (*release.Re
 //
 // When the task is cancelled through ctx, the function returns and the install
 // proceeds in the background.
-func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[string]interface{}) (*release.Release, error) {
+func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[string]interface{}) (ri.Releaser, error) {
 	var chrt *chart.Chart
 	switch c := ch.(type) {
 	case *chart.Chart:
@@ -353,13 +355,13 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	}
 	// Check error from render
 	if err != nil {
-		rel.SetStatus(release.StatusFailed, fmt.Sprintf("failed to render resource: %s", err.Error()))
+		rel.SetStatus(rcommon.StatusFailed, fmt.Sprintf("failed to render resource: %s", err.Error()))
 		// Return a release with partial data so that the client can show debugging information.
 		return rel, err
 	}
 
 	// Mark this release as in-progress
-	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
+	rel.SetStatus(rcommon.StatusPendingInstall, "Initial install underway")
 
 	var toBeAdopted kube.ResourceList
 	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
@@ -524,9 +526,9 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	}
 
 	if len(i.Description) > 0 {
-		rel.SetStatus(release.StatusDeployed, i.Description)
+		rel.SetStatus(rcommon.StatusDeployed, i.Description)
 	} else {
-		rel.SetStatus(release.StatusDeployed, "Install complete")
+		rel.SetStatus(rcommon.StatusDeployed, "Install complete")
 	}
 
 	// This is a tricky case. The release has been created, but the result
@@ -544,7 +546,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 }
 
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
-	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
+	rel.SetStatus(rcommon.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
 	if i.RollbackOnFailure {
 		slog.Debug("install failed and rollback-on-failure is set, uninstalling release", "release", i.ReleaseName)
 		uninstall := NewUninstall(i.cfg)
@@ -583,13 +585,41 @@ func (i *Install) availableName() error {
 	if err != nil || len(h) < 1 {
 		return nil
 	}
-	releaseutil.Reverse(h, releaseutil.SortByRevision)
-	rel := h[0]
 
-	if st := rel.Info.Status; i.Replace && (st == release.StatusUninstalled || st == release.StatusFailed) {
+	hl, err := releaseListToV1List(h)
+	if err != nil {
+		return err
+	}
+
+	releaseutil.Reverse(hl, releaseutil.SortByRevision)
+	rel := hl[0]
+
+	if st := rel.Info.Status; i.Replace && (st == rcommon.StatusUninstalled || st == rcommon.StatusFailed) {
 		return nil
 	}
 	return errors.New("cannot reuse a name that is still in use")
+}
+
+func releaseListToV1List(ls []ri.Releaser) ([]*release.Release, error) {
+	rls := make([]*release.Release, 0, len(ls))
+	for _, val := range ls {
+		rel, err := releaserToV1Release(val)
+		if err != nil {
+			return nil, err
+		}
+		rls = append(rls, rel)
+	}
+
+	return rls, nil
+}
+
+func releaseV1ListToReleaserList(ls []*release.Release) ([]ri.Releaser, error) {
+	rls := make([]ri.Releaser, 0, len(ls))
+	for _, val := range ls {
+		rls = append(rls, val)
+	}
+
+	return rls, nil
 }
 
 // createRelease creates a new release object
@@ -604,7 +634,7 @@ func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{
 		Info: &release.Info{
 			FirstDeployed: ts,
 			LastDeployed:  ts,
-			Status:        release.StatusUnknown,
+			Status:        rcommon.StatusUnknown,
 		},
 		Version:     1,
 		Labels:      labels,
@@ -630,20 +660,24 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 		// No releases exist for this name, so we can return early
 		return nil
 	}
+	hl, err := releaseListToV1List(hist)
+	if err != nil {
+		return err
+	}
 
-	releaseutil.Reverse(hist, releaseutil.SortByRevision)
-	last := hist[0]
+	releaseutil.Reverse(hl, releaseutil.SortByRevision)
+	last := hl[0]
 
 	// Update version to the next available
 	rel.Version = last.Version + 1
 
 	// Do not change the status of a failed release.
-	if last.Info.Status == release.StatusFailed {
+	if last.Info.Status == rcommon.StatusFailed {
 		return nil
 	}
 
 	// For any other status, mark it as superseded and store the old record
-	last.SetStatus(release.StatusSuperseded, "superseded by new release")
+	last.SetStatus(rcommon.StatusSuperseded, "superseded by new release")
 	return i.recordRelease(last)
 }
 

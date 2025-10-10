@@ -18,6 +18,8 @@ package v1
 import (
 	"time"
 
+	"helm.sh/helm/v4/pkg/release/common"
+
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -32,7 +34,7 @@ type Info struct {
 	// Description is human-friendly "log entry" about this release.
 	Description string `json:"description,omitempty"`
 	// Status is the current state of the release
-	Status Status `json:"status,omitempty"`
+	Status common.Status `json:"status,omitempty"`
 	// Contains the rendered templates/NOTES.txt if available
 	Notes string `json:"notes,omitempty"`
 	// Contains the deployed resources information

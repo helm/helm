@@ -22,6 +22,8 @@ import (
 	"log/slog"
 	"strings"
 
+	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/release/common"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 	relutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -47,7 +49,7 @@ type Storage struct {
 // Get retrieves the release from storage. An error is returned
 // if the storage driver failed to fetch the release, or the
 // release identified by the key, version pair does not exist.
-func (s *Storage) Get(name string, version int) (*rspb.Release, error) {
+func (s *Storage) Get(name string, version int) (release.Releaser, error) {
 	slog.Debug("getting release", "key", makeKey(name, version))
 	return s.Driver.Get(makeKey(name, version))
 }
@@ -55,62 +57,99 @@ func (s *Storage) Get(name string, version int) (*rspb.Release, error) {
 // Create creates a new storage entry holding the release. An
 // error is returned if the storage driver fails to store the
 // release, or a release with an identical key already exists.
-func (s *Storage) Create(rls *rspb.Release) error {
-	slog.Debug("creating release", "key", makeKey(rls.Name, rls.Version))
+func (s *Storage) Create(rls release.Releaser) error {
+	rac, err := release.NewAccessor(rls)
+	if err != nil {
+		return err
+	}
+	slog.Debug("creating release", "key", makeKey(rac.Name(), rac.Version()))
 	if s.MaxHistory > 0 {
 		// Want to make space for one more release.
-		if err := s.removeLeastRecent(rls.Name, s.MaxHistory-1); err != nil &&
+		if err := s.removeLeastRecent(rac.Name(), s.MaxHistory-1); err != nil &&
 			!errors.Is(err, driver.ErrReleaseNotFound) {
 			return err
 		}
 	}
-	return s.Driver.Create(makeKey(rls.Name, rls.Version), rls)
+	return s.Driver.Create(makeKey(rac.Name(), rac.Version()), rls)
 }
 
 // Update updates the release in storage. An error is returned if the
 // storage backend fails to update the release or if the release
 // does not exist.
-func (s *Storage) Update(rls *rspb.Release) error {
-	slog.Debug("updating release", "key", makeKey(rls.Name, rls.Version))
-	return s.Driver.Update(makeKey(rls.Name, rls.Version), rls)
+func (s *Storage) Update(rls release.Releaser) error {
+	rac, err := release.NewAccessor(rls)
+	if err != nil {
+		return err
+	}
+	slog.Debug("updating release", "key", makeKey(rac.Name(), rac.Version()))
+	return s.Driver.Update(makeKey(rac.Name(), rac.Version()), rls)
 }
 
 // Delete deletes the release from storage. An error is returned if
 // the storage backend fails to delete the release or if the release
 // does not exist.
-func (s *Storage) Delete(name string, version int) (*rspb.Release, error) {
+func (s *Storage) Delete(name string, version int) (release.Releaser, error) {
 	slog.Debug("deleting release", "key", makeKey(name, version))
 	return s.Driver.Delete(makeKey(name, version))
 }
 
 // ListReleases returns all releases from storage. An error is returned if the
 // storage backend fails to retrieve the releases.
-func (s *Storage) ListReleases() ([]*rspb.Release, error) {
+func (s *Storage) ListReleases() ([]release.Releaser, error) {
 	slog.Debug("listing all releases in storage")
-	return s.List(func(_ *rspb.Release) bool { return true })
+	return s.List(func(_ release.Releaser) bool { return true })
+}
+
+// releaserToV1Release is a helper function to convert a v1 release passed by interface
+// into the type object.
+func releaserToV1Release(rel release.Releaser) (*rspb.Release, error) {
+	switch r := rel.(type) {
+	case rspb.Release:
+		return &r, nil
+	case *rspb.Release:
+		return r, nil
+	case nil:
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unsupported release type: %T", rel)
+	}
 }
 
 // ListUninstalled returns all releases with Status == UNINSTALLED. An error is returned
 // if the storage backend fails to retrieve the releases.
-func (s *Storage) ListUninstalled() ([]*rspb.Release, error) {
+func (s *Storage) ListUninstalled() ([]release.Releaser, error) {
 	slog.Debug("listing uninstalled releases in storage")
-	return s.List(func(rls *rspb.Release) bool {
-		return relutil.StatusFilter(rspb.StatusUninstalled).Check(rls)
+	return s.List(func(rls release.Releaser) bool {
+		rel, err := releaserToV1Release(rls)
+		if err != nil {
+			// This will only happen if calling code does not pass the proper types. This is
+			// a problem with the application and not user data.
+			slog.Error("unable to convert release to typed release", slog.Any("error", err))
+			panic(fmt.Sprintf("unable to convert release to typed release: %s", err))
+		}
+		return relutil.StatusFilter(common.StatusUninstalled).Check(rel)
 	})
 }
 
 // ListDeployed returns all releases with Status == DEPLOYED. An error is returned
 // if the storage backend fails to retrieve the releases.
-func (s *Storage) ListDeployed() ([]*rspb.Release, error) {
+func (s *Storage) ListDeployed() ([]release.Releaser, error) {
 	slog.Debug("listing all deployed releases in storage")
-	return s.List(func(rls *rspb.Release) bool {
-		return relutil.StatusFilter(rspb.StatusDeployed).Check(rls)
+	return s.List(func(rls release.Releaser) bool {
+		rel, err := releaserToV1Release(rls)
+		if err != nil {
+			// This will only happen if calling code does not pass the proper types. This is
+			// a problem with the application and not user data.
+			slog.Error("unable to convert release to typed release", slog.Any("error", err))
+			panic(fmt.Sprintf("unable to convert release to typed release: %s", err))
+		}
+		return relutil.StatusFilter(common.StatusDeployed).Check(rel)
 	})
 }
 
 // Deployed returns the last deployed release with the provided release name, or
 // returns driver.NewErrNoDeployedReleases if not found.
-func (s *Storage) Deployed(name string) (*rspb.Release, error) {
+func (s *Storage) Deployed(name string) (release.Releaser, error) {
 	ls, err := s.DeployedAll(name)
 	if err != nil {
 		return nil, err
@@ -120,16 +159,34 @@ func (s *Storage) Deployed(name string) (*rspb.Release, error) {
 		return nil, driver.NewErrNoDeployedReleases(name)
 	}
 
+	rls, err := releaseListToV1List(ls)
+	if err != nil {
+		return nil, err
+	}
+
 	// If executed concurrently, Helm's database gets corrupted
 	// and multiple releases are DEPLOYED. Take the latest.
-	relutil.Reverse(ls, relutil.SortByRevision)
+	relutil.Reverse(rls, relutil.SortByRevision)
 
-	return ls[0], nil
+	return rls[0], nil
+}
+
+func releaseListToV1List(ls []release.Releaser) ([]*rspb.Release, error) {
+	rls := make([]*rspb.Release, 0, len(ls))
+	for _, val := range ls {
+		rel, err := releaserToV1Release(val)
+		if err != nil {
+			return nil, err
+		}
+		rls = append(rls, rel)
+	}
+
+	return rls, nil
 }
 
 // DeployedAll returns all deployed releases with the provided name, or
 // returns driver.NewErrNoDeployedReleases if not found.
-func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
+func (s *Storage) DeployedAll(name string) ([]release.Releaser, error) {
 	slog.Debug("getting deployed releases", "name", name)
 
 	ls, err := s.Query(map[string]string{
@@ -148,7 +205,7 @@ func (s *Storage) DeployedAll(name string) ([]*rspb.Release, error) {
 
 // History returns the revision history for the release with the provided name, or
 // returns driver.ErrReleaseNotFound if no such release name exists.
-func (s *Storage) History(name string) ([]*rspb.Release, error) {
+func (s *Storage) History(name string) ([]release.Releaser, error) {
 	slog.Debug("getting release history", "name", name)
 
 	return s.Query(map[string]string{"name": name, "owner": "helm"})
@@ -170,23 +227,31 @@ func (s *Storage) removeLeastRecent(name string, maximum int) error {
 	if len(h) <= maximum {
 		return nil
 	}
+	rls, err := releaseListToV1List(h)
+	if err != nil {
+		return err
+	}
 
 	// We want oldest to newest
-	relutil.SortByRevision(h)
+	relutil.SortByRevision(rls)
 
 	lastDeployed, err := s.Deployed(name)
 	if err != nil && !errors.Is(err, driver.ErrNoDeployedReleases) {
 		return err
 	}
 
-	var toDelete []*rspb.Release
-	for _, rel := range h {
+	var toDelete []release.Releaser
+	for _, rel := range rls {
 		// once we have enough releases to delete to reach the maximum, stop
-		if len(h)-len(toDelete) == maximum {
+		if len(rls)-len(toDelete) == maximum {
 			break
 		}
 		if lastDeployed != nil {
-			if rel.Version != lastDeployed.Version {
+			ldac, err := release.NewAccessor(lastDeployed)
+			if err != nil {
+				return err
+			}
+			if rel.Version != ldac.Version() {
 				toDelete = append(toDelete, rel)
 			}
 		} else {
@@ -198,7 +263,12 @@ func (s *Storage) removeLeastRecent(name string, maximum int) error {
 	// multiple invocations of this function will eventually delete them all.
 	errs := []error{}
 	for _, rel := range toDelete {
-		err = s.deleteReleaseVersion(name, rel.Version)
+		rac, err := release.NewAccessor(rel)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		err = s.deleteReleaseVersion(name, rac.Version())
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -226,7 +296,7 @@ func (s *Storage) deleteReleaseVersion(name string, version int) error {
 }
 
 // Last fetches the last revision of the named release.
-func (s *Storage) Last(name string) (*rspb.Release, error) {
+func (s *Storage) Last(name string) (release.Releaser, error) {
 	slog.Debug("getting last revision", "name", name)
 	h, err := s.History(name)
 	if err != nil {
@@ -235,9 +305,13 @@ func (s *Storage) Last(name string) (*rspb.Release, error) {
 	if len(h) == 0 {
 		return nil, fmt.Errorf("no revision for release %q", name)
 	}
+	rls, err := releaseListToV1List(h)
+	if err != nil {
+		return nil, err
+	}
 
-	relutil.Reverse(h, relutil.SortByRevision)
-	return h[0], nil
+	relutil.Reverse(rls, relutil.SortByRevision)
+	return rls[0], nil
 }
 
 // makeKey concatenates the Kubernetes storage object type, a release name and version

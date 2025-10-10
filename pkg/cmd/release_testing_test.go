@@ -26,6 +26,7 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -46,7 +47,7 @@ func TestReleaseTestNotesHandling(t *testing.T) {
 		Name:      "test-release",
 		Namespace: "default",
 		Info: &release.Info{
-			Status: release.StatusDeployed,
+			Status: rcommon.StatusDeployed,
 			Notes:  "Some important notes that should be hidden by default",
 		},
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Name: "test", Version: "1.0.0"}},
