@@ -87,6 +87,7 @@ Download Helm ${RELEASE}. The common platform binaries are here:
 - [Linux arm](https://get.helm.sh/helm-${RELEASE}-linux-arm.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-arm.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-arm.tar.gz.sha256))
 - [Linux arm64](https://get.helm.sh/helm-${RELEASE}-linux-arm64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-arm64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-arm64.tar.gz.sha256))
 - [Linux i386](https://get.helm.sh/helm-${RELEASE}-linux-386.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-386.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-386.tar.gz.sha256))
+- [Linux loong64](https://get.helm.sh/helm-${RELEASE}-linux-loong64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-loong64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-loong64.tar.gz.sha256))
 - [Linux ppc64le](https://get.helm.sh/helm-${RELEASE}-linux-ppc64le.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-ppc64le.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-ppc64le.tar.gz.sha256))
 - [Linux s390x](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-s390x.tar.gz.sha256))
 - [Linux riscv64](https://get.helm.sh/helm-${RELEASE}-linux-riscv64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-riscv64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-riscv64.tar.gz.sha256))
