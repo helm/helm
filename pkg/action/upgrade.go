@@ -26,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/v4/pkg/chart"
@@ -521,7 +522,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 	u.cfg.recordRelease(rel)
 	if u.CleanupOnFail && len(created) > 0 {
 		slog.Debug("cleanup on fail set", "cleaning_resources", len(created))
-		_, errs := u.cfg.KubeClient.Delete(created)
+		_, errs := u.cfg.KubeClient.Delete(created, metav1.DeletePropagationBackground)
 		if errs != nil {
 			return rel, fmt.Errorf(
 				"an error occurred while cleaning up resources. original upgrade error: %w: %w",

@@ -86,6 +86,8 @@ type Client struct {
 	kubeClient kubernetes.Interface
 }
 
+var _ Interface = (*Client)(nil)
+
 type WaitStrategy string
 
 const (
@@ -766,28 +768,16 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
-// background cascade deletion. It will attempt to delete all resources even
-// if one or more fail and collect any errors. All successfully deleted items
-// will be returned in the `Deleted` ResourceList that is part of the result.
-func (c *Client) Delete(resources ResourceList) (*Result, []error) {
-	return deleteResources(resources, metav1.DeletePropagationBackground)
-}
-
-// Delete deletes Kubernetes resources specified in the resources list with
 // given deletion propagation policy. It will attempt to delete all resources even
 // if one or more fail and collect any errors. All successfully deleted items
 // will be returned in the `Deleted` ResourceList that is part of the result.
-func (c *Client) DeleteWithPropagationPolicy(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error) {
-	return deleteResources(resources, policy)
-}
-
-func deleteResources(resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
+func (c *Client) Delete(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
 	err := perform(resources, func(target *resource.Info) error {
 		slog.Debug("starting delete resource", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind)
-		err := deleteResource(target, propagation)
+		err := deleteResource(target, policy)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
 				slog.Debug("ignoring delete failure", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind, slog.Any("error", err))

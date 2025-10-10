@@ -816,7 +816,7 @@ func TestWaitDelete(t *testing.T) {
 	if len(result.Created) != 1 {
 		t.Errorf("expected 1 resource created, got %d", len(result.Created))
 	}
-	if _, err := c.Delete(resources); err != nil {
+	if _, err := c.Delete(resources, metav1.DeletePropagationBackground); err != nil {
 		t.Fatal(err)
 	}
 
@@ -855,7 +855,7 @@ func TestReal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, errs := c.Delete(resources); errs != nil {
+	if _, errs := c.Delete(resources, metav1.DeletePropagationBackground); errs != nil {
 		t.Fatal(errs)
 	}
 
@@ -864,7 +864,7 @@ func TestReal(t *testing.T) {
 		t.Fatal(err)
 	}
 	// ensures that delete does not fail if a resource is not found
-	if _, errs := c.Delete(resources); errs != nil {
+	if _, errs := c.Delete(resources, metav1.DeletePropagationBackground); errs != nil {
 		t.Fatal(errs)
 	}
 }

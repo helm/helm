@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/release/common"
@@ -238,7 +240,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		r.cfg.recordRelease(targetRelease)
 		if r.CleanupOnFail {
 			slog.Debug("cleanup on fail set, cleaning up resources", "count", len(results.Created))
-			_, errs := r.cfg.KubeClient.Delete(results.Created)
+			_, errs := r.cfg.KubeClient.Delete(results.Created, metav1.DeletePropagationBackground)
 			if errs != nil {
 				return targetRelease, fmt.Errorf(
 					"an error occurred while cleaning up resources. original rollback error: %w",
