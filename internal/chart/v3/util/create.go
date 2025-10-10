@@ -218,9 +218,10 @@ httpRoute:
   #       value: v2
 
 resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # For publicly distributed charts, we recommend leaving 'resources' commented out.
+  # This makes resource allocation a conscious choice for the user and increases the chances
+  # charts run on a wide range of environments from low-resource clusters like Minikube to those
+  # with strict resource policies. If you do want to specify resources, uncomment the following
   # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
   # limits:
   #   cpu: 100m
