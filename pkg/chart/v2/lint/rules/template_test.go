@@ -462,3 +462,23 @@ items:
 		t.Fatalf("List objects keep annotations should pass. got: %s", err)
 	}
 }
+
+func TestIsYamlFileExtension(t *testing.T) {
+	tests := []struct {
+		filename string
+		expected bool
+	}{
+		{"test.yaml", true},
+		{"test.yml", true},
+		{"test.txt", false},
+		{"test", false},
+	}
+
+	for _, test := range tests {
+		result := isYamlFileExtension(test.filename)
+		if result != test.expected {
+			t.Errorf("isYamlFileExtension(%s) = %v; want %v", test.filename, result, test.expected)
+		}
+	}
+
+}
