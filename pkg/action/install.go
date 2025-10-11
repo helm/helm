@@ -553,6 +553,7 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 		uninstall.DisableHooks = i.DisableHooks
 		uninstall.KeepHistory = false
 		uninstall.Timeout = i.Timeout
+		uninstall.WaitStrategy = i.WaitStrategy
 		if _, uninstallErr := uninstall.Run(i.ReleaseName); uninstallErr != nil {
 			return rel, fmt.Errorf("an error occurred while uninstalling the release. original install error: %w: %w", err, uninstallErr)
 		}
