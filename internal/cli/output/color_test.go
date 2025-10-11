@@ -20,63 +20,63 @@ import (
 	"strings"
 	"testing"
 
-	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/release/common"
 )
 
 func TestColorizeStatus(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		status     release.Status
+		status     common.Status
 		noColor    bool
 		envNoColor string
 		wantColor  bool // whether we expect color codes in output
 	}{
 		{
 			name:       "deployed status with color",
-			status:     release.StatusDeployed,
+			status:     common.StatusDeployed,
 			noColor:    false,
 			envNoColor: "",
 			wantColor:  true,
 		},
 		{
 			name:       "deployed status without color flag",
-			status:     release.StatusDeployed,
+			status:     common.StatusDeployed,
 			noColor:    true,
 			envNoColor: "",
 			wantColor:  false,
 		},
 		{
 			name:       "deployed status with NO_COLOR env",
-			status:     release.StatusDeployed,
+			status:     common.StatusDeployed,
 			noColor:    false,
 			envNoColor: "1",
 			wantColor:  false,
 		},
 		{
 			name:       "failed status with color",
-			status:     release.StatusFailed,
+			status:     common.StatusFailed,
 			noColor:    false,
 			envNoColor: "",
 			wantColor:  true,
 		},
 		{
 			name:       "pending install status with color",
-			status:     release.StatusPendingInstall,
+			status:     common.StatusPendingInstall,
 			noColor:    false,
 			envNoColor: "",
 			wantColor:  true,
 		},
 		{
 			name:       "unknown status with color",
-			status:     release.StatusUnknown,
+			status:     common.StatusUnknown,
 			noColor:    false,
 			envNoColor: "",
 			wantColor:  true,
 		},
 		{
 			name:       "superseded status with color",
-			status:     release.StatusSuperseded,
+			status:     common.StatusSuperseded,
 			noColor:    false,
 			envNoColor: "",
 			wantColor:  false, // superseded doesn't get colored

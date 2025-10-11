@@ -25,8 +25,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	ci "helm.sh/helm/v4/pkg/chart"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -49,7 +51,7 @@ func TestGetMetadata_Run_BasicMetadata(t *testing.T) {
 	rel := &release.Release{
 		Name: releaseName,
 		Info: &release.Info{
-			Status:       release.StatusDeployed,
+			Status:       common.StatusDeployed,
 			LastDeployed: deployedTime,
 		},
 		Chart: &chart.Chart{
@@ -63,7 +65,8 @@ func TestGetMetadata_Run_BasicMetadata(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	err := cfg.Releases.Create(rel)
+	require.NoError(t, err)
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -103,7 +106,7 @@ func TestGetMetadata_Run_WithDependencies(t *testing.T) {
 	rel := &release.Release{
 		Name: releaseName,
 		Info: &release.Info{
-			Status:       release.StatusDeployed,
+			Status:       common.StatusDeployed,
 			LastDeployed: deployedTime,
 		},
 		Chart: &chart.Chart{
@@ -123,13 +126,18 @@ func TestGetMetadata_Run_WithDependencies(t *testing.T) {
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
 
+	dep0, err := ci.NewDependencyAccessor(result.Dependencies[0])
+	require.NoError(t, err)
+	dep1, err := ci.NewDependencyAccessor(result.Dependencies[1])
+	require.NoError(t, err)
+
 	assert.Equal(t, releaseName, result.Name)
 	assert.Equal(t, "test-chart", result.Chart)
 	assert.Equal(t, "1.0.0", result.Version)
-	assert.Equal(t, dependencies, result.Dependencies)
+	assert.Equal(t, convertDeps(dependencies), result.Dependencies)
 	assert.Len(t, result.Dependencies, 2)
-	assert.Equal(t, "mysql", result.Dependencies[0].Name)
-	assert.Equal(t, "redis", result.Dependencies[1].Name)
+	assert.Equal(t, "mysql", dep0.Name())
+	assert.Equal(t, "redis", dep1.Name())
 }
 
 func TestGetMetadata_Run_WithDependenciesAliases(t *testing.T) {
@@ -157,7 +165,7 @@ func TestGetMetadata_Run_WithDependenciesAliases(t *testing.T) {
 	rel := &release.Release{
 		Name: releaseName,
 		Info: &release.Info{
-			Status:       release.StatusDeployed,
+			Status:       common.StatusDeployed,
 			LastDeployed: deployedTime,
 		},
 		Chart: &chart.Chart{
@@ -177,15 +185,20 @@ func TestGetMetadata_Run_WithDependenciesAliases(t *testing.T) {
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
 
+	dep0, err := ci.NewDependencyAccessor(result.Dependencies[0])
+	require.NoError(t, err)
+	dep1, err := ci.NewDependencyAccessor(result.Dependencies[1])
+	require.NoError(t, err)
+
 	assert.Equal(t, releaseName, result.Name)
 	assert.Equal(t, "test-chart", result.Chart)
 	assert.Equal(t, "1.0.0", result.Version)
-	assert.Equal(t, dependencies, result.Dependencies)
+	assert.Equal(t, convertDeps(dependencies), result.Dependencies)
 	assert.Len(t, result.Dependencies, 2)
-	assert.Equal(t, "mysql", result.Dependencies[0].Name)
-	assert.Equal(t, "database", result.Dependencies[0].Alias)
-	assert.Equal(t, "redis", result.Dependencies[1].Name)
-	assert.Equal(t, "cache", result.Dependencies[1].Alias)
+	assert.Equal(t, "mysql", dep0.Name())
+	assert.Equal(t, "database", dep0.Alias())
+	assert.Equal(t, "redis", dep1.Name())
+	assert.Equal(t, "cache", dep1.Alias())
 }
 
 func TestGetMetadata_Run_WithMixedDependencies(t *testing.T) {
@@ -223,7 +236,7 @@ func TestGetMetadata_Run_WithMixedDependencies(t *testing.T) {
 	rel := &release.Release{
 		Name: releaseName,
 		Info: &release.Info{
-			Status:       release.StatusDeployed,
+			Status:       common.StatusDeployed,
 			LastDeployed: deployedTime,
 		},
 		Chart: &chart.Chart{
@@ -243,23 +256,32 @@ func TestGetMetadata_Run_WithMixedDependencies(t *testing.T) {
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
 
+	dep0, err := ci.NewDependencyAccessor(result.Dependencies[0])
+	require.NoError(t, err)
+	dep1, err := ci.NewDependencyAccessor(result.Dependencies[1])
+	require.NoError(t, err)
+	dep2, err := ci.NewDependencyAccessor(result.Dependencies[2])
+	require.NoError(t, err)
+	dep3, err := ci.NewDependencyAccessor(result.Dependencies[3])
+	require.NoError(t, err)
+
 	assert.Equal(t, releaseName, result.Name)
 	assert.Equal(t, "test-chart", result.Chart)
 	assert.Equal(t, "1.0.0", result.Version)
-	assert.Equal(t, dependencies, result.Dependencies)
+	assert.Equal(t, convertDeps(dependencies), result.Dependencies)
 	assert.Len(t, result.Dependencies, 4)
 
 	// Verify dependencies with aliases
-	assert.Equal(t, "mysql", result.Dependencies[0].Name)
-	assert.Equal(t, "database", result.Dependencies[0].Alias)
-	assert.Equal(t, "redis", result.Dependencies[2].Name)
-	assert.Equal(t, "cache", result.Dependencies[2].Alias)
+	assert.Equal(t, "mysql", dep0.Name())
+	assert.Equal(t, "database", dep0.Alias())
+	assert.Equal(t, "redis", dep2.Name())
+	assert.Equal(t, "cache", dep2.Alias())
 
 	// Verify dependencies without aliases
-	assert.Equal(t, "nginx", result.Dependencies[1].Name)
-	assert.Equal(t, "", result.Dependencies[1].Alias)
-	assert.Equal(t, "postgresql", result.Dependencies[3].Name)
-	assert.Equal(t, "", result.Dependencies[3].Alias)
+	assert.Equal(t, "nginx", dep1.Name())
+	assert.Equal(t, "", dep1.Alias())
+	assert.Equal(t, "postgresql", dep3.Name())
+	assert.Equal(t, "", dep3.Alias())
 }
 
 func TestGetMetadata_Run_WithAnnotations(t *testing.T) {
@@ -278,7 +300,7 @@ func TestGetMetadata_Run_WithAnnotations(t *testing.T) {
 	rel := &release.Release{
 		Name: releaseName,
 		Info: &release.Info{
-			Status:       release.StatusDeployed,
+			Status:       common.StatusDeployed,
 			LastDeployed: deployedTime,
 		},
 		Chart: &chart.Chart{
@@ -317,7 +339,7 @@ func TestGetMetadata_Run_SpecificVersion(t *testing.T) {
 	rel1 := &release.Release{
 		Name: releaseName,
 		Info: &release.Info{
-			Status:       release.StatusSuperseded,
+			Status:       common.StatusSuperseded,
 			LastDeployed: deployedTime.Add(-time.Hour),
 		},
 		Chart: &chart.Chart{
@@ -334,7 +356,7 @@ func TestGetMetadata_Run_SpecificVersion(t *testing.T) {
 	rel2 := &release.Release{
 		Name: releaseName,
 		Info: &release.Info{
-			Status:       release.StatusDeployed,
+			Status:       common.StatusDeployed,
 			LastDeployed: deployedTime,
 		},
 		Chart: &chart.Chart{
@@ -368,16 +390,16 @@ func TestGetMetadata_Run_DifferentStatuses(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		status   release.Status
+		status   common.Status
 		expected string
 	}{
-		{"deployed", release.StatusDeployed, "deployed"},
-		{"failed", release.StatusFailed, "failed"},
-		{"uninstalled", release.StatusUninstalled, "uninstalled"},
-		{"pending-install", release.StatusPendingInstall, "pending-install"},
-		{"pending-upgrade", release.StatusPendingUpgrade, "pending-upgrade"},
-		{"pending-rollback", release.StatusPendingRollback, "pending-rollback"},
-		{"superseded", release.StatusSuperseded, "superseded"},
+		{"deployed", common.StatusDeployed, "deployed"},
+		{"failed", common.StatusFailed, "failed"},
+		{"uninstalled", common.StatusUninstalled, "uninstalled"},
+		{"pending-install", common.StatusPendingInstall, "pending-install"},
+		{"pending-upgrade", common.StatusPendingUpgrade, "pending-upgrade"},
+		{"pending-rollback", common.StatusPendingRollback, "pending-rollback"},
+		{"superseded", common.StatusSuperseded, "superseded"},
 	}
 
 	for _, tc := range testCases {
@@ -444,7 +466,7 @@ func TestGetMetadata_Run_EmptyAppVersion(t *testing.T) {
 	rel := &release.Release{
 		Name: releaseName,
 		Info: &release.Info{
-			Status:       release.StatusDeployed,
+			Status:       common.StatusDeployed,
 			LastDeployed: deployedTime,
 		},
 		Chart: &chart.Chart{
@@ -515,14 +537,23 @@ func TestMetadata_FormattedDepNames(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			deps := convertDeps(tc.dependencies)
 			metadata := &Metadata{
-				Dependencies: tc.dependencies,
+				Dependencies: deps,
 			}
 
 			result := metadata.FormattedDepNames()
 			assert.Equal(t, tc.expected, result)
 		})
 	}
+}
+
+func convertDeps(deps []*chart.Dependency) []ci.Dependency {
+	var newDeps = make([]ci.Dependency, len(deps))
+	for i, c := range deps {
+		newDeps[i] = c
+	}
+	return newDeps
 }
 
 func TestMetadata_FormattedDepNames_WithComplexDependencies(t *testing.T) {
@@ -546,8 +577,9 @@ func TestMetadata_FormattedDepNames_WithComplexDependencies(t *testing.T) {
 		},
 	}
 
+	deps := convertDeps(dependencies)
 	metadata := &Metadata{
-		Dependencies: dependencies,
+		Dependencies: deps,
 	}
 
 	result := metadata.FormattedDepNames()
@@ -597,8 +629,9 @@ func TestMetadata_FormattedDepNames_WithAliases(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			deps := convertDeps(tc.dependencies)
 			metadata := &Metadata{
-				Dependencies: tc.dependencies,
+				Dependencies: deps,
 			}
 
 			result := metadata.FormattedDepNames()
@@ -609,7 +642,7 @@ func TestMetadata_FormattedDepNames_WithAliases(t *testing.T) {
 
 func TestGetMetadata_Labels(t *testing.T) {
 	rel := releaseStub()
-	rel.Info.Status = release.StatusDeployed
+	rel.Info.Status = common.StatusDeployed
 	customLabels := map[string]string{"key1": "value1", "key2": "value2"}
 	rel.Labels = customLabels
 

@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
-	release "helm.sh/helm/v4/pkg/release/v1"
+	release "helm.sh/helm/v4/pkg/release"
 )
 
 // History is the action for checking the release's ledger.
@@ -46,7 +46,7 @@ func NewHistory(cfg *Configuration) *History {
 }
 
 // Run executes 'helm history' against the given release.
-func (h *History) Run(name string) ([]*release.Release, error) {
+func (h *History) Run(name string) ([]release.Releaser, error) {
 	if err := h.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
 	}

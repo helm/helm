@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 
+	"helm.sh/helm/v4/pkg/release"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -58,7 +59,7 @@ func NewErrNoDeployedReleases(releaseName string) error {
 // Create stores the release or returns ErrReleaseExists
 // if an identical release already exists.
 type Creator interface {
-	Create(key string, rls *rspb.Release) error
+	Create(key string, rls release.Releaser) error
 }
 
 // Updator is the interface that wraps the Update method.
@@ -66,7 +67,7 @@ type Creator interface {
 // Update updates an existing release or returns
 // ErrReleaseNotFound if the release does not exist.
 type Updator interface {
-	Update(key string, rls *rspb.Release) error
+	Update(key string, rls release.Releaser) error
 }
 
 // Deletor is the interface that wraps the Delete method.
@@ -74,7 +75,7 @@ type Updator interface {
 // Delete deletes the release named by key or returns
 // ErrReleaseNotFound if the release does not exist.
 type Deletor interface {
-	Delete(key string) (*rspb.Release, error)
+	Delete(key string) (release.Releaser, error)
 }
 
 // Queryor is the interface that wraps the Get and List methods.
@@ -86,9 +87,9 @@ type Deletor interface {
 //
 // Query returns the set of all releases that match the provided label set.
 type Queryor interface {
-	Get(key string) (*rspb.Release, error)
-	List(filter func(*rspb.Release) bool) ([]*rspb.Release, error)
-	Query(labels map[string]string) ([]*rspb.Release, error)
+	Get(key string) (release.Releaser, error)
+	List(filter func(release.Releaser) bool) ([]release.Releaser, error)
+	Query(labels map[string]string) ([]release.Releaser, error)
 }
 
 // Driver is the interface composed of Creator, Updator, Deletor, and Queryor
@@ -101,4 +102,19 @@ type Driver interface {
 	Deletor
 	Queryor
 	Name() string
+}
+
+// releaserToV1Release is a helper function to convert a v1 release passed by interface
+// into the type object.
+func releaserToV1Release(rel release.Releaser) (*rspb.Release, error) {
+	switch r := rel.(type) {
+	case rspb.Release:
+		return &r, nil
+	case *rspb.Release:
+		return r, nil
+	case nil:
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unsupported release type: %T", rel)
+	}
 }

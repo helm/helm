@@ -17,11 +17,15 @@ limitations under the License.
 package action
 
 import (
+	"errors"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
 
+	ci "helm.sh/helm/v4/pkg/chart"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 // GetMetadata is the action for checking a given release's metadata.
@@ -41,13 +45,13 @@ type Metadata struct {
 	// Annotations are fetched from the Chart.yaml file
 	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	// Labels of the release which are stored in driver metadata fields storage
-	Labels       map[string]string   `json:"labels,omitempty" yaml:"labels,omitempty"`
-	Dependencies []*chart.Dependency `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
-	Namespace    string              `json:"namespace" yaml:"namespace"`
-	Revision     int                 `json:"revision" yaml:"revision"`
-	Status       string              `json:"status" yaml:"status"`
-	DeployedAt   string              `json:"deployedAt" yaml:"deployedAt"`
-	ApplyMethod  string              `json:"applyMethod,omitempty" yaml:"applyMethod,omitempty"`
+	Labels       map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
+	Dependencies []ci.Dependency   `json:"dependencies,omitempty" yaml:"dependencies,omitempty"`
+	Namespace    string            `json:"namespace" yaml:"namespace"`
+	Revision     int               `json:"revision" yaml:"revision"`
+	Status       string            `json:"status" yaml:"status"`
+	DeployedAt   string            `json:"deployedAt" yaml:"deployedAt"`
+	ApplyMethod  string            `json:"applyMethod,omitempty" yaml:"applyMethod,omitempty"`
 }
 
 // NewGetMetadata creates a new GetMetadata object with the given configuration.
@@ -68,19 +72,40 @@ func (g *GetMetadata) Run(name string) (*Metadata, error) {
 		return nil, err
 	}
 
+	rac, err := release.NewAccessor(rel)
+	if err != nil {
+		return nil, err
+	}
+	ac, err := ci.NewAccessor(rac.Chart())
+	if err != nil {
+		return nil, err
+	}
+
+	charti := rac.Chart()
+
+	var chrt *chart.Chart
+	switch c := charti.(type) {
+	case *chart.Chart:
+		chrt = c
+	case chart.Chart:
+		chrt = &c
+	default:
+		return nil, errors.New("invalid chart apiVersion")
+	}
+
 	return &Metadata{
-		Name:         rel.Name,
-		Chart:        rel.Chart.Metadata.Name,
-		Version:      rel.Chart.Metadata.Version,
-		AppVersion:   rel.Chart.Metadata.AppVersion,
-		Dependencies: rel.Chart.Metadata.Dependencies,
-		Annotations:  rel.Chart.Metadata.Annotations,
-		Labels:       rel.Labels,
-		Namespace:    rel.Namespace,
-		Revision:     rel.Version,
-		Status:       rel.Info.Status.String(),
-		DeployedAt:   rel.Info.LastDeployed.Format(time.RFC3339),
-		ApplyMethod:  rel.ApplyMethod,
+		Name:         rac.Name(),
+		Chart:        chrt.Metadata.Name,
+		Version:      chrt.Metadata.Version,
+		AppVersion:   chrt.Metadata.AppVersion,
+		Dependencies: ac.MetaDependencies(),
+		Annotations:  chrt.Metadata.Annotations,
+		Labels:       rac.Labels(),
+		Namespace:    rac.Namespace(),
+		Revision:     rac.Version(),
+		Status:       rac.Status(),
+		DeployedAt:   rac.DeployedAt().Format(time.RFC3339),
+		ApplyMethod:  rac.ApplyMethod(),
 	}, nil
 }
 
@@ -88,7 +113,13 @@ func (g *GetMetadata) Run(name string) (*Metadata, error) {
 func (m *Metadata) FormattedDepNames() string {
 	depsNames := make([]string, 0, len(m.Dependencies))
 	for _, dep := range m.Dependencies {
-		depsNames = append(depsNames, dep.Name)
+		ac, err := ci.NewDependencyAccessor(dep)
+		if err != nil {
+			slog.Error("unable to access dependency metadata", "error", err)
+			continue
+		}
+		depsNames = append(depsNames, ac.Name())
+
 	}
 	sort.StringSlice(depsNames).Sort()
 

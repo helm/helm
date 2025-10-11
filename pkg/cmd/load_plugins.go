@@ -113,7 +113,6 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 				input := &plugin.Input{
 					Message: schema.InputMessageCLIV1{
 						ExtraArgs: extraArgs,
-						Settings:  settings,
 					},
 					Env:    env,
 					Stdin:  os.Stdin,

@@ -27,12 +27,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/resource"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -184,10 +186,12 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 	}
 	vals := map[string]interface{}{}
 
-	res, err := instAction.Run(buildChartWithTemplates(templates), vals)
+	resi, err := instAction.Run(buildChartWithTemplates(templates), vals)
+	is.NoError(err)
+	res, err := releaserToV1Release(resi)
 	is.NoError(err)
 	is.Equal(expectedOutput, outBuffer.String())
-	is.Equal(release.StatusDeployed, res.Info.Status)
+	is.Equal(rcommon.StatusDeployed, res.Info.Status)
 }
 
 func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace string, shouldOutput bool) {
@@ -211,11 +215,13 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 	}
 	vals := map[string]interface{}{}
 
-	res, err := instAction.Run(buildChartWithTemplates(templates), vals)
+	resi, err := instAction.Run(buildChartWithTemplates(templates), vals)
 	is.Error(err)
+	res, err := releaserToV1Release(resi)
+	is.NoError(err)
 	is.Contains(res.Info.Description, "failed pre-install")
 	is.Equal(expectedOutput, outBuffer.String())
-	is.Equal(release.StatusFailed, res.Info.Status)
+	is.Equal(rcommon.StatusFailed, res.Info.Status)
 }
 
 type HookFailedError struct{}
@@ -259,7 +265,7 @@ func (h *HookFailingKubeWaiter) WatchUntilReady(resources kube.ResourceList, _ t
 	return nil
 }
 
-func (h *HookFailingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, []error) {
+func (h *HookFailingKubeClient) Delete(resources kube.ResourceList, deletionPropagation metav1.DeletionPropagation) (*kube.Result, []error) {
 	for _, res := range resources {
 		h.deleteRecord = append(h.deleteRecord, resource.Info{
 			Name:      res.Name,
@@ -267,7 +273,7 @@ func (h *HookFailingKubeClient) Delete(resources kube.ResourceList) (*kube.Resul
 		})
 	}
 
-	return h.PrintingKubeClient.Delete(resources)
+	return h.PrintingKubeClient.Delete(resources, deletionPropagation)
 }
 
 func (h *HookFailingKubeClient) GetWaiter(strategy kube.WaitStrategy) (kube.Waiter, error) {

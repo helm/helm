@@ -86,6 +86,8 @@ type Client struct {
 	kubeClient kubernetes.Interface
 }
 
+var _ Interface = (*Client)(nil)
+
 type WaitStrategy string
 
 const (
@@ -269,10 +271,6 @@ func (c *Client) Create(resources ResourceList, options ...ClientCreateOption) (
 	}
 	if err := errors.Join(errs...); err != nil {
 		return nil, fmt.Errorf("invalid client create option(s): %w", err)
-	}
-
-	if createOptions.forceConflicts && !createOptions.serverSideApply {
-		return nil, fmt.Errorf("invalid operation: force conflicts can only be used with server-side apply")
 	}
 
 	makeCreateApplyFunc := func() func(target *resource.Info) error {
@@ -770,28 +768,16 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
-// background cascade deletion. It will attempt to delete all resources even
-// if one or more fail and collect any errors. All successfully deleted items
-// will be returned in the `Deleted` ResourceList that is part of the result.
-func (c *Client) Delete(resources ResourceList) (*Result, []error) {
-	return deleteResources(resources, metav1.DeletePropagationBackground)
-}
-
-// Delete deletes Kubernetes resources specified in the resources list with
 // given deletion propagation policy. It will attempt to delete all resources even
 // if one or more fail and collect any errors. All successfully deleted items
 // will be returned in the `Deleted` ResourceList that is part of the result.
-func (c *Client) DeleteWithPropagationPolicy(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error) {
-	return deleteResources(resources, policy)
-}
-
-func deleteResources(resources ResourceList, propagation metav1.DeletionPropagation) (*Result, []error) {
+func (c *Client) Delete(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
 	err := perform(resources, func(target *resource.Info) error {
 		slog.Debug("starting delete resource", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind)
-		err := deleteResource(target, propagation)
+		err := deleteResource(target, policy)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
 				slog.Debug("ignoring delete failure", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
@@ -1031,7 +1017,7 @@ func patchResourceClientSide(original runtime.Object, target *resource.Info, thr
 }
 
 // upgradeClientSideFieldManager is simply a wrapper around csaupgrade.UpgradeManagedFields
-// that ugrade CSA managed fields to SSA apply
+// that upgrade CSA managed fields to SSA apply
 // see: https://github.com/kubernetes/kubernetes/pull/112905
 func upgradeClientSideFieldManager(info *resource.Info, dryRun bool, fieldValidationDirective FieldValidationDirective) (bool, error) {
 

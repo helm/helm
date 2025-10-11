@@ -111,7 +111,11 @@ func (r releaseHistory) WriteTable(out io.Writer) error {
 }
 
 func getHistory(client *action.History, name string) (releaseHistory, error) {
-	hist, err := client.Run(name)
+	histi, err := client.Run(name)
+	if err != nil {
+		return nil, err
+	}
+	hist, err := releaseListToV1List(histi)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +184,11 @@ func compListRevisions(_ string, cfg *action.Configuration, releaseName string) 
 	client := action.NewHistory(cfg)
 
 	var revisions []string
-	if hist, err := client.Run(releaseName); err == nil {
+	if histi, err := client.Run(releaseName); err == nil {
+		hist, err := releaseListToV1List(histi)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
 		for _, version := range hist {
 			appVersion := fmt.Sprintf("App: %s", version.Chart.Metadata.AppVersion)
 			chartDesc := fmt.Sprintf("Chart: %s-%s", version.Chart.Metadata.Name, version.Chart.Metadata.Version)
