@@ -151,7 +151,19 @@ func TestDependencyBuildCmd(t *testing.T) {
 }
 
 func TestDependencyBuildCmdWithHelmV2Hash(t *testing.T) {
+	defer resetEnv()()
+
+	// Set up test repository
+	helmHome := "testdata/helmhome/helm"
+	os.Setenv("HELM_HOME", helmHome)
+
 	chartName := "testdata/testcharts/issue-7233"
+
+	// Create test environment
+	repoFile := filepath.Join(helmHome, "repository/repositories.yaml")
+	if err := os.MkdirAll(filepath.Dir(repoFile), 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	cmd := fmt.Sprintf("dependency build '%s'", chartName)
 	_, out, err := executeActionCommand(cmd)
