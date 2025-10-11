@@ -18,6 +18,7 @@ set -euo pipefail
 
 covermode=${COVERMODE:-atomic}
 coverdir=$(mktemp -d /tmp/coverage.XXXXXXXXXX)
+trap 'rm -rf "${coverdir}"' EXIT
 profile="${coverdir}/cover.out"
 html=false
 target="./..." # by default the whole repository is tested
@@ -47,7 +48,7 @@ generate_cover_data() {
 generate_cover_data
 go tool cover -func "${profile}"
 
-if [ "${html}" == "true" ] ; then
+if [ "${html}" = "true" ] ; then
     go tool cover -html "${profile}"
 fi
 
