@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -89,6 +90,75 @@ type releaseInfo struct {
 	Chart       string    `json:"chart"`
 	AppVersion  string    `json:"app_version"`
 	Description string    `json:"description"`
+}
+
+// releaseInfoJSON is used for custom JSON marshaling/unmarshaling
+type releaseInfoJSON struct {
+	Revision    int        `json:"revision"`
+	Updated     *time.Time `json:"updated,omitempty"`
+	Status      string     `json:"status"`
+	Chart       string     `json:"chart"`
+	AppVersion  string     `json:"app_version"`
+	Description string     `json:"description"`
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+// It handles empty string time fields by treating them as zero values.
+func (r *releaseInfo) UnmarshalJSON(data []byte) error {
+	// First try to unmarshal into a map to handle empty string time fields
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	// Replace empty string time fields with nil
+	if val, ok := raw["updated"]; ok {
+		if str, ok := val.(string); ok && str == "" {
+			raw["updated"] = nil
+		}
+	}
+
+	// Re-marshal with cleaned data
+	cleaned, err := json.Marshal(raw)
+	if err != nil {
+		return err
+	}
+
+	// Unmarshal into temporary struct with pointer time field
+	var tmp releaseInfoJSON
+	if err := json.Unmarshal(cleaned, &tmp); err != nil {
+		return err
+	}
+
+	// Copy values to releaseInfo struct
+	r.Revision = tmp.Revision
+	if tmp.Updated != nil {
+		r.Updated = *tmp.Updated
+	}
+	r.Status = tmp.Status
+	r.Chart = tmp.Chart
+	r.AppVersion = tmp.AppVersion
+	r.Description = tmp.Description
+
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+// It omits zero-value time fields from the JSON output.
+func (r releaseInfo) MarshalJSON() ([]byte, error) {
+	tmp := releaseInfoJSON{
+		Revision:    r.Revision,
+		Status:      r.Status,
+		Chart:       r.Chart,
+		AppVersion:  r.AppVersion,
+		Description: r.Description,
+	}
+
+	if !r.Updated.IsZero() {
+		tmp.Updated = &r.Updated
+	}
+
+	return json.Marshal(tmp)
 }
 
 type releaseHistory []releaseInfo
