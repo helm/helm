@@ -736,7 +736,10 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 					slog.String("gvk", target.Mapping.GroupVersionKind.String()))
 
 				if updateOptions.upgradeClientSideFieldManager {
-					patched, err := upgradeClientSideFieldManager(original, updateOptions.dryRun, updateOptions.fieldValidationDirective)
+					// target and original shares same Object, deep copy original to avoid changing target
+					copiedOriginal := *original
+					copiedOriginal.Object = original.Object.DeepCopyObject()
+					patched, err := upgradeClientSideFieldManager(&copiedOriginal, updateOptions.dryRun, updateOptions.fieldValidationDirective)
 					if err != nil {
 						slog.Debug("Error patching resource to replace CSA field management", slog.Any("error", err))
 						return err
