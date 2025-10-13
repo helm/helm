@@ -34,7 +34,7 @@ func (suite *InsecureTLSRegistryClientTestSuite) SetupSuite() {
 
 func (suite *InsecureTLSRegistryClientTestSuite) TearDownSuite() {
 	teardown(&suite.TestRegistry)
-	os.RemoveAll(suite.WorkspaceDir)
+	_ = os.RemoveAll(suite.WorkspaceDir)
 }
 
 func (suite *InsecureTLSRegistryClientTestSuite) Test_0_Login() {
