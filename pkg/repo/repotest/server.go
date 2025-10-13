@@ -18,6 +18,7 @@ package repotest
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,7 +30,6 @@ import (
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"           // used for docker test registry
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory" // used for docker test registry
-	"github.com/phayes/freeport"
 	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/yaml"
 
@@ -108,12 +108,14 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 
 	// Registry config
 	config := &configuration.Configuration{}
-	port, err := freeport.GetFreePort()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("error finding free port for test registry")
 	}
+	defer ln.Close()
 
-	config.HTTP.Addr = fmt.Sprintf(":%d", port)
+	port := ln.Addr().(*net.TCPAddr).Port
+	config.HTTP.Addr = ln.Addr().String()
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
 	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
 	config.Auth = configuration.Auth{
