@@ -37,9 +37,10 @@ import (
 var listHelp = `
 This command lists all of the releases for a specified namespace (uses current namespace context if namespace not specified).
 
-By default, it lists only releases that are deployed or failed. Flags like
-'--uninstalled' and '--all' will alter this behavior. Such flags can be combined:
-'--uninstalled --failed'.
+By default, it lists all releases in any status. Individual status filters like '--deployed', '--failed',
+'--pending', '--uninstalled', '--superseded', and '--uninstalling' can be used
+to show only releases in specific states. Such flags can be combined:
+'--deployed --failed'.
 
 By default, items are sorted alphabetically. Use the '-d' flag to sort by
 release date.
@@ -122,11 +123,10 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.TimeFormat, "time-format", "", `format time using golang time formatter. Example: --time-format "2006-01-02 15:04:05Z0700"`)
 	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
-	f.BoolVarP(&client.All, "all", "a", false, "show all releases without any filter applied")
 	f.BoolVar(&client.Uninstalled, "uninstalled", false, "show uninstalled releases (if 'helm uninstall --keep-history' was used)")
 	f.BoolVar(&client.Superseded, "superseded", false, "show superseded releases")
 	f.BoolVar(&client.Uninstalling, "uninstalling", false, "show releases that are currently being uninstalled")
-	f.BoolVar(&client.Deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
+	f.BoolVar(&client.Deployed, "deployed", false, "show deployed releases")
 	f.BoolVar(&client.Failed, "failed", false, "show failed releases")
 	f.BoolVar(&client.Pending, "pending", false, "show pending releases")
 	f.BoolVarP(&client.AllNamespaces, "all-namespaces", "A", false, "list releases across all namespaces")

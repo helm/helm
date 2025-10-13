@@ -140,7 +140,7 @@ type List struct {
 // NewList constructs a new *List
 func NewList(cfg *Configuration) *List {
 	return &List{
-		StateMask: ListDeployed | ListFailed,
+		StateMask: ListAll,
 		cfg:       cfg,
 	}
 }
@@ -327,7 +327,7 @@ func (l *List) SetStateMask() {
 
 	// Apply a default
 	if state == 0 {
-		state = ListDeployed | ListFailed
+		state = ListAll
 	}
 
 	l.StateMask = state

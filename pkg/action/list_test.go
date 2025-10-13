@@ -198,15 +198,18 @@ func TestList_StateMask(t *testing.T) {
 
 	res, err := lister.Run()
 	is.NoError(err)
-	is.Len(res, 2)
+	is.Len(res, 3)
 
 	ac0, err := ri.NewAccessor(res[0])
 	is.NoError(err)
 	ac1, err := ri.NewAccessor(res[1])
 	is.NoError(err)
+	ac2, err := ri.NewAccessor(res[2])
+	is.NoError(err)
 
-	is.Equal("three", ac0.Name())
-	is.Equal("two", ac1.Name())
+	is.Equal("one", ac0.Name())
+	is.Equal("three", ac1.Name())
+	is.Equal("two", ac2.Name())
 
 	lister.StateMask = ListUninstalled
 	res, err = lister.Run()
