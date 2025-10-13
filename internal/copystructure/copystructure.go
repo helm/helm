@@ -21,17 +21,17 @@ import (
 	"reflect"
 )
 
-// Copy performs a deep copy of the given interface{}.
+// Copy performs a deep copy of the given src.
 // This implementation handles the specific use cases needed by Helm.
-func Copy(src interface{}) (interface{}, error) {
+func Copy(src any) (any, error) {
 	if src == nil {
-		return make(map[string]interface{}), nil
+		return make(map[string]any), nil
 	}
 	return copyValue(reflect.ValueOf(src))
 }
 
 // copyValue handles copying using reflection for non-map types
-func copyValue(original reflect.Value) (interface{}, error) {
+func copyValue(original reflect.Value) (any, error) {
 	switch original.Kind() {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
 		reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
@@ -52,7 +52,7 @@ func copyValue(original reflect.Value) (interface{}, error) {
 		copied := reflect.MakeMap(original.Type())
 
 		var err error
-		var child interface{}
+		var child any
 		iter := original.MapRange()
 		for iter.Next() {
 			key := iter.Key()

@@ -26,13 +26,13 @@ import (
 func TestCopy_Nil(t *testing.T) {
 	result, err := Copy(nil)
 	require.NoError(t, err)
-	assert.Equal(t, map[string]interface{}{}, result)
+	assert.Equal(t, map[string]any{}, result)
 }
 
 func TestCopy_PrimitiveTypes(t *testing.T) {
 	tests := []struct {
 		name  string
-		input interface{}
+		input any
 	}{
 		{"bool", true},
 		{"int", 42},
@@ -98,14 +98,14 @@ func TestCopy_Slice(t *testing.T) {
 	})
 
 	t.Run("slice of maps", func(t *testing.T) {
-		input := []map[string]interface{}{
+		input := []map[string]any{
 			{"key1": "value1"},
 			{"key2": "value2"},
 		}
 		result, err := Copy(input)
 		require.NoError(t, err)
 
-		resultSlice, ok := result.([]map[string]interface{})
+		resultSlice, ok := result.([]map[string]any)
 		require.True(t, ok)
 		assert.Equal(t, input, resultSlice)
 
@@ -116,12 +116,12 @@ func TestCopy_Slice(t *testing.T) {
 }
 
 func TestCopy_Map(t *testing.T) {
-	t.Run("map[string]interface{}", func(t *testing.T) {
-		input := map[string]interface{}{
+	t.Run("map[string]any", func(t *testing.T) {
+		input := map[string]any{
 			"string": "value",
 			"int":    42,
 			"bool":   true,
-			"nested": map[string]interface{}{
+			"nested": map[string]any{
 				"inner": "value",
 			},
 		}
@@ -129,7 +129,7 @@ func TestCopy_Map(t *testing.T) {
 		result, err := Copy(input)
 		require.NoError(t, err)
 
-		resultMap, ok := result.(map[string]interface{})
+		resultMap, ok := result.(map[string]any)
 		require.True(t, ok)
 		assert.Equal(t, input, resultMap)
 
@@ -137,8 +137,8 @@ func TestCopy_Map(t *testing.T) {
 		input["string"] = "modified"
 		assert.Equal(t, "value", resultMap["string"])
 
-		nestedInput := input["nested"].(map[string]interface{})
-		nestedResult := resultMap["nested"].(map[string]interface{})
+		nestedInput := input["nested"].(map[string]any)
+		nestedResult := resultMap["nested"].(map[string]any)
 		nestedInput["inner"] = "modified"
 		assert.Equal(t, "value", nestedResult["inner"])
 	})
@@ -155,14 +155,14 @@ func TestCopy_Map(t *testing.T) {
 	})
 
 	t.Run("nil map", func(t *testing.T) {
-		var input map[string]interface{}
+		var input map[string]any
 		result, err := Copy(input)
 		require.NoError(t, err)
 		assert.Nil(t, result)
 	})
 
 	t.Run("map with nil values", func(t *testing.T) {
-		input := map[string]interface{}{
+		input := map[string]any{
 			"key1": "value1",
 			"key2": nil,
 		}
@@ -170,7 +170,7 @@ func TestCopy_Map(t *testing.T) {
 		result, err := Copy(input)
 		require.NoError(t, err)
 
-		resultMap, ok := result.(map[string]interface{})
+		resultMap, ok := result.(map[string]any)
 		require.True(t, ok)
 		assert.Equal(t, input, resultMap)
 		assert.Nil(t, resultMap["key2"])
@@ -183,7 +183,7 @@ func TestCopy_Struct(t *testing.T) {
 		Age      int
 		Active   bool
 		Scores   []int
-		Metadata map[string]interface{}
+		Metadata map[string]any
 	}
 
 	input := TestStruct{
@@ -191,7 +191,7 @@ func TestCopy_Struct(t *testing.T) {
 		Age:    30,
 		Active: true,
 		Scores: []int{95, 87, 92},
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"level": "advanced",
 			"tags":  []string{"go", "programming"},
 		},
@@ -257,25 +257,25 @@ func TestCopy_Pointer(t *testing.T) {
 }
 
 func TestCopy_Interface(t *testing.T) {
-	t.Run("interface{} with value", func(t *testing.T) {
-		var input interface{} = "hello"
+	t.Run("any with value", func(t *testing.T) {
+		var input any = "hello"
 		result, err := Copy(input)
 		require.NoError(t, err)
 		assert.Equal(t, input, result)
 	})
 
-	t.Run("nil interface{}", func(t *testing.T) {
-		var input interface{}
+	t.Run("nil any", func(t *testing.T) {
+		var input any
 		result, err := Copy(input)
 		require.NoError(t, err)
 		// Copy(nil) returns an empty map according to the implementation
-		assert.Equal(t, map[string]interface{}{}, result)
+		assert.Equal(t, map[string]any{}, result)
 	})
 
-	t.Run("interface{} with complex value", func(t *testing.T) {
-		var input interface{} = map[string]interface{}{
+	t.Run("any with complex value", func(t *testing.T) {
+		var input any = map[string]any{
 			"key": "value",
-			"nested": map[string]interface{}{
+			"nested": map[string]any{
 				"inner": 42,
 			},
 		}
@@ -287,12 +287,12 @@ func TestCopy_Interface(t *testing.T) {
 }
 
 func TestCopy_ComplexNested(t *testing.T) {
-	input := map[string]interface{}{
-		"users": []map[string]interface{}{
+	input := map[string]any{
+		"users": []map[string]any{
 			{
 				"name": "Alice",
 				"age":  30,
-				"addresses": []map[string]interface{}{
+				"addresses": []map[string]any{
 					{"type": "home", "city": "NYC"},
 					{"type": "work", "city": "SF"},
 				},
@@ -300,12 +300,12 @@ func TestCopy_ComplexNested(t *testing.T) {
 			{
 				"name": "Bob",
 				"age":  25,
-				"addresses": []map[string]interface{}{
+				"addresses": []map[string]any{
 					{"type": "home", "city": "LA"},
 				},
 			},
 		},
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"version": "1.0",
 			"flags":   []bool{true, false, true},
 		},
@@ -314,17 +314,17 @@ func TestCopy_ComplexNested(t *testing.T) {
 	result, err := Copy(input)
 	require.NoError(t, err)
 
-	resultMap, ok := result.(map[string]interface{})
+	resultMap, ok := result.(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, input, resultMap)
 
 	// Verify deep copy by modifying nested values
-	users := input["users"].([]map[string]interface{})
-	addresses := users[0]["addresses"].([]map[string]interface{})
+	users := input["users"].([]map[string]any)
+	addresses := users[0]["addresses"].([]map[string]any)
 	addresses[0]["city"] = "Modified"
 
-	resultUsers := resultMap["users"].([]map[string]interface{})
-	resultAddresses := resultUsers[0]["addresses"].([]map[string]interface{})
+	resultUsers := resultMap["users"].([]map[string]any)
+	resultAddresses := resultUsers[0]["addresses"].([]map[string]any)
 	assert.Equal(t, "NYC", resultAddresses[0]["city"])
 }
 
