@@ -17,6 +17,7 @@ limitations under the License.
 package repo // import "helm.sh/helm/v4/pkg/repo/v1"
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -28,6 +29,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"helm.sh/helm/v4/internal/fileutil"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
@@ -108,12 +110,13 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 	}
 	chartsFile := filepath.Join(r.CachePath, helmpath.CacheChartsFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(chartsFile), 0755)
-	os.WriteFile(chartsFile, []byte(charts.String()), 0644)
+
+	fileutil.AtomicWriteFile(chartsFile, bytes.NewReader([]byte(charts.String())), 0644)
 
 	// Create the index file in the cache directory
 	fname := filepath.Join(r.CachePath, helmpath.CacheIndexFile(r.Config.Name))
 	os.MkdirAll(filepath.Dir(fname), 0755)
-	return fname, os.WriteFile(fname, index, 0644)
+	return fname, fileutil.AtomicWriteFile(fname, bytes.NewReader(index), 0644)
 }
 
 type findChartInRepoURLOptions struct {
