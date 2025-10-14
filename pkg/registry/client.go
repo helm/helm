@@ -713,10 +713,27 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	repository.PlainHTTP = c.plainHTTP
 	repository.Client = c.authorizer
 
-	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
-	if err != nil {
+	_, _ = fmt.Printf("============== parsedRef.String()=%s\n", parsedRef.String())
+	_, _ = fmt.Printf("============== repository.Reference.Registry=%s\n", repository.Reference.Registry)
+	_, _ = fmt.Printf("============== repository.Reference.Repository=%s\n", repository.Reference.Repository)
+	_, _ = fmt.Printf("============== repository.Reference.Reference=%s\n", repository.Reference.Reference)
+	_, _ = fmt.Printf("============== repository.Reference.String=%s\n", repository.Reference.String())
+	_, _ = fmt.Printf("============== manifestDescriptor.Digest=%s\n", manifestDescriptor.Digest)
+
+	if err := oras.ExtendedCopyGraph(ctx, memoryStore, repository, manifestDescriptor, oras.DefaultExtendedCopyGraphOptions); err != nil {
 		return nil, err
 	}
+
+	//err = repository.Manifests().Tag(ctx, manifestDescriptor, parsedRef.String())
+	//if err != nil {
+	//	return nil, err
+	//}
+	
+	// (ctx context.Context, target Target, mediaType string, contentBytes []byte, reference string) (ocispec.Descriptor, error) {
+	//manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	chartSummary := &descriptorPushSummaryWithMeta{
 		Meta: meta,
