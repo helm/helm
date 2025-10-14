@@ -336,6 +336,8 @@ func TestUpdate(t *testing.T) {
 		"/namespaces/default/pods:POST", // retry due to 409
 		"/namespaces/default/pods/squid:GET",
 		"/namespaces/default/pods/squid:DELETE",
+		"/namespaces/default/pods/notfound:GET",
+		"/namespaces/default/pods/notfound:DELETE",
 	}
 
 	expectedActionsServerSideApply := []string{
@@ -351,11 +353,13 @@ func TestUpdate(t *testing.T) {
 		"/namespaces/default/pods:POST", // retry due to 409
 		"/namespaces/default/pods/squid:GET",
 		"/namespaces/default/pods/squid:DELETE",
+		"/namespaces/default/pods/notfound:GET",
+		"/namespaces/default/pods/notfound:DELETE",
 	}
 
 	testCases := map[string]testCase{
 		"client-side apply": {
-			OriginalPods: newPodList("starfish", "otter", "squid"),
+			OriginalPods: newPodList("starfish", "otter", "squid", "notfound"),
 			TargetPods: func() v1.PodList {
 				listTarget := newPodList("starfish", "otter", "dolphin")
 				listTarget.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
@@ -367,7 +371,7 @@ func TestUpdate(t *testing.T) {
 			ExpectedActions:              expectedActionsClientSideApply,
 		},
 		"client-side apply (three-way merge for unstructured)": {
-			OriginalPods: newPodList("starfish", "otter", "squid"),
+			OriginalPods: newPodList("starfish", "otter", "squid", "notfound"),
 			TargetPods: func() v1.PodList {
 				listTarget := newPodList("starfish", "otter", "dolphin")
 				listTarget.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
@@ -379,7 +383,7 @@ func TestUpdate(t *testing.T) {
 			ExpectedActions:              expectedActionsClientSideApply,
 		},
 		"serverSideApply": {
-			OriginalPods: newPodList("starfish", "otter", "squid"),
+			OriginalPods: newPodList("starfish", "otter", "squid", "notfound"),
 			TargetPods: func() v1.PodList {
 				listTarget := newPodList("starfish", "otter", "dolphin")
 				listTarget.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
@@ -444,6 +448,12 @@ func TestUpdate(t *testing.T) {
 					return newResponse(http.StatusOK, &listTarget.Items[1])
 				case p == "/namespaces/default/pods/squid" && m == http.MethodGet:
 					return newResponse(http.StatusOK, &listTarget.Items[2])
+				case p == "/namespaces/default/pods/notfound" && m == http.MethodGet:
+					// Resource exists in original but will simulate not found on delete
+					return newResponse(http.StatusOK, &listOriginal.Items[3])
+				case p == "/namespaces/default/pods/notfound" && m == http.MethodDelete:
+					// Simulate a not found during deletion; should not cause update to fail
+					return newResponse(http.StatusNotFound, notFoundBody())
 				default:
 				}
 
