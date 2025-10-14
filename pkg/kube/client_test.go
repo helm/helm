@@ -321,6 +321,7 @@ func TestUpdate(t *testing.T) {
 		ThreeWayMergeForUnstructured bool
 		ServerSideApply              bool
 		ExpectedActions              []string
+		ExpectedError                string
 	}
 
 	expectedActionsClientSideApply := []string{
@@ -369,6 +370,7 @@ func TestUpdate(t *testing.T) {
 			ThreeWayMergeForUnstructured: false,
 			ServerSideApply:              false,
 			ExpectedActions:              expectedActionsClientSideApply,
+			ExpectedError:                "",
 		},
 		"client-side apply (three-way merge for unstructured)": {
 			OriginalPods: newPodList("starfish", "otter", "squid", "notfound"),
@@ -381,6 +383,7 @@ func TestUpdate(t *testing.T) {
 			ThreeWayMergeForUnstructured: true,
 			ServerSideApply:              false,
 			ExpectedActions:              expectedActionsClientSideApply,
+			ExpectedError:                "",
 		},
 		"serverSideApply": {
 			OriginalPods: newPodList("starfish", "otter", "squid", "notfound"),
@@ -393,6 +396,23 @@ func TestUpdate(t *testing.T) {
 			ThreeWayMergeForUnstructured: false,
 			ServerSideApply:              true,
 			ExpectedActions:              expectedActionsServerSideApply,
+			ExpectedError:                "",
+		},
+		"serverSideApply with forbidden deletion": {
+			OriginalPods: newPodList("starfish", "otter", "squid", "notfound", "forbidden"),
+			TargetPods: func() v1.PodList {
+				listTarget := newPodList("starfish", "otter", "dolphin")
+				listTarget.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{{Name: "https", ContainerPort: 443}}
+
+				return listTarget
+			}(),
+			ThreeWayMergeForUnstructured: false,
+			ServerSideApply:              true,
+			ExpectedActions: append(expectedActionsServerSideApply,
+				"/namespaces/default/pods/forbidden:GET",
+				"/namespaces/default/pods/forbidden:DELETE",
+			),
+			ExpectedError: "failed to delete resource forbidden:",
 		},
 	}
 
@@ -454,6 +474,16 @@ func TestUpdate(t *testing.T) {
 				case p == "/namespaces/default/pods/notfound" && m == http.MethodDelete:
 					// Simulate a not found during deletion; should not cause update to fail
 					return newResponse(http.StatusNotFound, notFoundBody())
+				case p == "/namespaces/default/pods/forbidden" && m == http.MethodGet:
+					return newResponse(http.StatusOK, &listOriginal.Items[4])
+				case p == "/namespaces/default/pods/forbidden" && m == http.MethodDelete:
+					// Simulate RBAC forbidden that should cause update to fail
+					return newResponse(http.StatusForbidden, &metav1.Status{
+						Status:  metav1.StatusFailure,
+						Message: "pods \"forbidden\" is forbidden: User \"test-user\" cannot delete resource \"pods\" in API group \"\" in the namespace \"default\"",
+						Reason:  metav1.StatusReasonForbidden,
+						Code:    http.StatusForbidden,
+					})
 				default:
 				}
 
@@ -481,7 +511,13 @@ func TestUpdate(t *testing.T) {
 				ClientUpdateOptionForceReplace(false),
 				ClientUpdateOptionServerSideApply(tc.ServerSideApply, false),
 				ClientUpdateOptionUpgradeClientSideFieldManager(true))
-			require.NoError(t, err)
+
+			if tc.ExpectedError != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.ExpectedError)
+			} else {
+				require.NoError(t, err)
+			}
 
 			assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
 			assert.Len(t, result.Updated, 2, "expected 2 resource updated, got %d", len(result.Updated))
