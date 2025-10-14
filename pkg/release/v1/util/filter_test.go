@@ -19,20 +19,21 @@ package util // import "helm.sh/helm/v4/pkg/release/v1/util"
 import (
 	"testing"
 
+	"helm.sh/helm/v4/pkg/release/common"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func TestFilterAny(t *testing.T) {
-	ls := Any(StatusFilter(rspb.StatusUninstalled)).Filter(releases)
+	ls := Any(StatusFilter(common.StatusUninstalled)).Filter(releases)
 	if len(ls) != 2 {
 		t.Fatalf("expected 2 results, got '%d'", len(ls))
 	}
 
 	r0, r1 := ls[0], ls[1]
 	switch {
-	case r0.Info.Status != rspb.StatusUninstalled:
+	case r0.Info.Status != common.StatusUninstalled:
 		t.Fatalf("expected UNINSTALLED result, got '%s'", r1.Info.Status.String())
-	case r1.Info.Status != rspb.StatusUninstalled:
+	case r1.Info.Status != common.StatusUninstalled:
 		t.Fatalf("expected UNINSTALLED result, got '%s'", r1.Info.Status.String())
 	}
 }
@@ -40,7 +41,7 @@ func TestFilterAny(t *testing.T) {
 func TestFilterAll(t *testing.T) {
 	fn := FilterFunc(func(rls *rspb.Release) bool {
 		// true if not uninstalled and version < 4
-		v0 := !StatusFilter(rspb.StatusUninstalled).Check(rls)
+		v0 := !StatusFilter(common.StatusUninstalled).Check(rls)
 		v1 := rls.Version < 4
 		return v0 && v1
 	})
@@ -53,7 +54,7 @@ func TestFilterAll(t *testing.T) {
 	switch r0 := ls[0]; {
 	case r0.Version == 4:
 		t.Fatal("got release with status revision 4")
-	case r0.Info.Status == rspb.StatusUninstalled:
+	case r0.Info.Status == common.StatusUninstalled:
 		t.Fatal("got release with status UNINSTALLED")
 	}
 }
