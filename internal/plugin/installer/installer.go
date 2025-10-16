@@ -19,13 +19,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"helm.sh/helm/v4/internal/plugin"
-	"helm.sh/helm/v4/pkg/registry"
 )
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.
@@ -138,75 +135,22 @@ func Update(i Installer) error {
 	return i.Update()
 }
 
-// NewForSource determines the correct Installer for the given source.
-func NewForSource(source, version string) (Installer, error) {
-	// Check if source is an OCI registry reference
-	if strings.HasPrefix(source, fmt.Sprintf("%s://", registry.OCIScheme)) {
-		return NewOCIInstaller(source)
-	}
+// FindSource determines the correct Installer for the given source.
+func FindSource(source string) (Installer, error) {
 	// Check if source is a local directory
 	if isLocalReference(source) {
 		return NewLocalInstaller(source)
-	} else if isRemoteHTTPArchive(source) {
-		return NewHTTPInstaller(source)
 	}
-	return NewVCSInstaller(source, version)
-}
 
-// FindSource determines the correct Installer for the given source.
-func FindSource(location string) (Installer, error) {
-	installer, err := existingVCSRepo(location)
-	if err != nil && err.Error() == "Cannot detect VCS" {
-		slog.Warn("cannot get information about plugin source", "location", location, slog.Any("error", err))
-		return installer, errors.New("cannot get information about plugin source")
-	}
-	return installer, err
+	// For all remote sources (HTTP, HTTPS, OCI, etc.), use the unified artifact installer
+	// This enables support for any transport that charts support, including getter/v1 plugins
+	return NewArtifactInstaller(source)
 }
 
 // isLocalReference checks if the source exists on the filesystem.
 func isLocalReference(source string) bool {
 	_, err := os.Stat(source)
 	return err == nil
-}
-
-// isRemoteHTTPArchive checks if the source is a http/https url and is an archive
-//
-// It works by checking whether the source looks like a URL and, if it does, running a
-// HEAD operation to see if the remote resource is a file that we understand.
-func isRemoteHTTPArchive(source string) bool {
-	if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
-		// First, check if the URL ends with a known archive suffix
-		// This is more reliable than content-type detection
-		for suffix := range Extractors {
-			if strings.HasSuffix(source, suffix) {
-				return true
-			}
-		}
-
-		// If no suffix match, try HEAD request to check content type
-		res, err := http.Head(source)
-		if err != nil {
-			// If we get an error at the network layer, we can't install it. So
-			// we return false.
-			return false
-		}
-
-		// Next, we look for the content type or content disposition headers to see
-		// if they have matching extractors.
-		contentType := res.Header.Get("content-type")
-		foundSuffix, ok := mediaTypeToExtension(contentType)
-		if !ok {
-			// Media type not recognized
-			return false
-		}
-
-		for suffix := range Extractors {
-			if strings.HasSuffix(foundSuffix, suffix) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // isPlugin checks if the directory contains a plugin.yaml file.

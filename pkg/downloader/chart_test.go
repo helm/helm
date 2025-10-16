@@ -28,7 +28,6 @@ import (
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/registry"
-	"helm.sh/helm/v4/pkg/repo/v1"
 	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
 
@@ -122,12 +121,9 @@ func TestResolveChartOpts(t *testing.T) {
 		}),
 	}
 
-	// snapshot options
-	snapshotOpts := c.Options
-
 	for _, tt := range tests {
-		// reset chart downloader options for each test case
-		c.Options = snapshotOpts
+		// reset internal downloader for each test case
+		c.downloader = nil
 
 		expect, err := getter.NewHTTPGetter(tt.expect...)
 		if err != nil {
@@ -141,9 +137,15 @@ func TestResolveChartOpts(t *testing.T) {
 			continue
 		}
 
+		// Check that internal downloader has the expected options
+		if c.downloader == nil {
+			t.Errorf("%s: internal downloader should be initialized", tt.name)
+			continue
+		}
+
 		got, err := getter.NewHTTPGetter(
 			append(
-				c.Options,
+				c.downloader.Options,
 				getter.WithURL(u.String()),
 			)...,
 		)
@@ -350,7 +352,7 @@ func TestDownloadTo_VerifyLater(t *testing.T) {
 func TestScanReposForURL(t *testing.T) {
 	c := ChartDownloader{
 		Out:              os.Stderr,
-		Verify:           VerifyLater,
+		Verify:           VerifyNever,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
 		Getters: getter.All(&cli.EnvSettings{
@@ -359,26 +361,167 @@ func TestScanReposForURL(t *testing.T) {
 		}),
 	}
 
-	u := "http://example.com/alpine-0.2.0.tgz"
-	rf, err := repo.LoadFile(repoConfig)
+	// Initialize the internal downloader to access scanReposForURL
+	if c.downloader == nil {
+		c.downloader = &Downloader{
+			Getters: c.Getters,
+			Options: make([]getter.Option, 0),
+		}
+		c.downloader.SetRepositoryConfig(c.RepositoryConfig, c.RepositoryCache)
+	}
+
+	// Load test repository configuration
+	rf, err := loadRepoConfig(repoConfig)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal("Failed to load test repo config:", err)
 	}
 
-	entry, err := c.scanReposForURL(u, rf)
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		name        string
+		url         string
+		expectRepo  string
+		expectError bool
+	}{
+		{
+			name:       "URL matches testing repo (first match)",
+			url:        "http://example.com/foo-1.0.0.tgz",
+			expectRepo: "testing", // First repo with http://example.com
+		},
+		{
+			name:       "URL matches testing repo (even for charts path)",
+			url:        "http://example.com/charts/bar-1.0.0.tgz",
+			expectRepo: "testing", // testing comes before kubernetes-charts in the list
+		},
+		{
+			name:       "URL matches testing repo (even for helm path)",
+			url:        "http://example.com/helm/baz-1.0.0.tgz",
+			expectRepo: "testing", // testing comes before testing-relative
+		},
+		{
+			name:       "URL matches testing repo (even for querystring)",
+			url:        "http://example.com?key=value&chart=test.tgz",
+			expectRepo: "testing", // testing comes before testing-querystring
+		},
+		{
+			name:       "URL matches testing repo (even for encoded path)",
+			url:        "http://example.com/with%2Fslash/chart.tgz",
+			expectRepo: "testing", // testing comes before encoded-url
+		},
+		{
+			name:       "URL matches https repo",
+			url:        "https://example.com/secure-chart.tgz",
+			expectRepo: "testing-https", // Different protocol, won't match testing
+		},
+		{
+			name:       "URL matches basicauth repo",
+			url:        "http://username:password@example.com/auth-chart.tgz",
+			expectRepo: "testing-basicauth", // Different authority, won't match testing
+		},
+		{
+			name:       "URL matches malformed repo",
+			url:        "http://dl.example.com/chart.tgz",
+			expectRepo: "malformed", // Different domain
+		},
+		{
+			name:        "URL doesn't match any repo",
+			url:         "http://unknown.com/chart.tgz",
+			expectError: true,
+		},
+		{
+			name:        "Empty URL",
+			url:         "",
+			expectError: true,
+		},
 	}
 
-	if entry.Name != "testing" {
-		t.Errorf("Unexpected repo %q for URL %q", entry.Name, u)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, err := c.downloader.scanReposForURL(tt.url, rf)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Expected error for URL %q, but got none", tt.url)
+				}
+				if err != ErrNoOwnerRepo && tt.url != "" {
+					t.Errorf("Expected ErrNoOwnerRepo, got: %v", err)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error for URL %q: %v", tt.url, err)
+				return
+			}
+
+			if repo == nil {
+				t.Errorf("Expected repo entry for URL %q, got nil", tt.url)
+				return
+			}
+
+			if repo.Name != tt.expectRepo {
+				t.Errorf("Expected repo %q for URL %q, got %q", tt.expectRepo, tt.url, repo.Name)
+			}
+		})
+	}
+}
+
+func TestScanReposForURL_Integration(t *testing.T) {
+	// Test that scanReposForURL integration with ResolveChartVersion
+	// properly applies repository configuration
+	c := ChartDownloader{
+		Out:              os.Stderr,
+		Verify:           VerifyNever,
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		Getters: getter.All(&cli.EnvSettings{
+			RepositoryConfig: repoConfig,
+			RepositoryCache:  repoCache,
+		}),
 	}
 
-	// A lookup failure should produce an ErrNoOwnerRepo
-	u = "https://no.such.repo/foo/bar-1.23.4.tgz"
-	if _, err = c.scanReposForURL(u, rf); err != ErrNoOwnerRepo {
-		t.Fatalf("expected ErrNoOwnerRepo, got %v", err)
-	}
+	// Test that a URL matching a repository with TLS config gets the options applied
+	t.Run("TLS repository config applied", func(t *testing.T) {
+		// Reset downloader for clean test
+		c.downloader = nil
+
+		// Since both testing-https and testing-ca-file have the same URL,
+		// and testing-https comes first, we need to trigger the repository resolution
+		// through a repository-based reference that forces scanning.
+		// Let's use a repository-based reference to force the repo config lookup
+		_, _, err := c.ResolveChartVersion("testing-ca-file/chart", "1.0.0")
+
+		// This will fail because the chart doesn't exist in the index, but that's OK
+		// We're testing that the repository configuration was applied
+		if err == nil {
+			t.Error("Expected error for non-existent chart, but got none")
+		}
+
+		// Even though resolution failed, the repository config should have been applied
+		if c.downloader == nil {
+			t.Error("Expected downloader to be initialized")
+			return
+		}
+
+		// Check that TLS transport options were added during repo config
+		if len(c.downloader.Options) == 0 {
+			t.Error("Expected transport options to be configured from repository")
+		}
+
+		// The getter options sync only happens when resolution succeeds
+		// For this test, we just care that the transport options were configured
+		// The sync behavior is tested separately in the successful resolution tests
+	})
+
+	t.Run("Unknown URL no special config", func(t *testing.T) {
+		// Reset downloader for clean test
+		c.downloader = nil
+
+		// URL that doesn't match any repository should work without special config
+		_, _, err := c.ResolveChartVersion("http://unknown.example.com/chart.tgz", "")
+		if err != nil {
+			t.Errorf("Expected unknown URL to be handled, got: %v", err)
+		}
+	})
 }
 
 func TestDownloadToCache(t *testing.T) {

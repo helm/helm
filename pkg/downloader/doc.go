@@ -13,12 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/*
-Package downloader provides a library for downloading charts.
-
-This package contains various tools for downloading charts from repository
-servers, and then storing them in Helm-specific directory structures. This
-library contains many functions that depend on a specific
-filesystem layout.
-*/
+// Package artifact provides unified downloading and verification for Helm artifacts.
+//
+// This package implements a generic artifact downloader that works with charts,
+// plugins, and future artifact types. It uses the transport package for
+// protocol abstraction and provides unified verification via provenance files.
+//
+// The core Downloader type handles:
+// - Repository resolution (reponame/artifact → URL)
+// - Protocol abstraction via transports
+// - Content-addressable caching
+// - Provenance file verification
+// - Artifact naming conventions
+//
+// Type-specific convenience wrappers (ChartDownloader, PluginDownloader) provide
+// backward-compatible APIs while using the unified implementation.
 package downloader

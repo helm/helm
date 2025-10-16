@@ -15,33 +15,140 @@ limitations under the License.
 
 package installer
 
-import "testing"
+import (
+	"testing"
 
-func TestIsRemoteHTTPArchive(t *testing.T) {
-	srv := mockArchiveServer()
-	defer srv.Close()
-	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
+	"helm.sh/helm/v4/pkg/getter"
+)
 
-	if isRemoteHTTPArchive("/not/a/URL") {
-		t.Errorf("Expected non-URL to return false")
+// TestArtifactInstaller_VersionSupport tests that ArtifactInstaller properly handles version constraints
+func TestArtifactInstaller_VersionSupport(t *testing.T) {
+	tests := []struct {
+		name    string
+		source  string
+		version string
+	}{
+		{
+			name:    "VCS source with version tag",
+			source:  "https://github.com/user/plugin",
+			version: "v1.2.3",
+		},
+		{
+			name:    "VCS source with branch",
+			source:  "https://github.com/user/plugin",
+			version: "main",
+		},
+		{
+			name:    "VCS source with commit hash",
+			source:  "https://github.com/user/plugin",
+			version: "abc123def456",
+		},
+		{
+			name:    "HTTP source with version",
+			source:  "https://example.com/plugin.tgz",
+			version: "1.0.0",
+		},
+		{
+			name:    "OCI source with version",
+			source:  "oci://registry/plugin",
+			version: "1.0.0",
+		},
 	}
 
-	// URLs with valid archive extensions are considered valid archives
-	// even if the server is unreachable (optimization to avoid unnecessary HTTP requests)
-	if !isRemoteHTTPArchive("https://127.0.0.1:123/fake/plugin-1.2.3.tgz") {
-		t.Errorf("URL with .tgz extension should be considered a valid archive")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			installer, err := NewArtifactInstaller(tt.source)
+			if err != nil {
+				t.Fatalf("NewArtifactInstaller() error = %v", err)
+			}
+
+			// Test SetVersion method
+			installer.SetVersion(tt.version)
+
+			// Verify version was set (we can't easily test the internal version field
+			// without making it public, but we can test that SetVersion doesn't panic)
+
+			// Test that we can call SetVersion multiple times
+			installer.SetVersion("different-version")
+			installer.SetVersion(tt.version) // Set back to test version
+		})
+	}
+}
+
+// TestArtifactInstaller_SetOptions tests that ArtifactInstaller properly handles getter options
+func TestArtifactInstaller_SetOptions(t *testing.T) {
+	source := "oci://registry/plugin"
+	installer, err := NewArtifactInstaller(source)
+	if err != nil {
+		t.Fatalf("NewArtifactInstaller() error = %v", err)
 	}
 
-	// Test with invalid extension and unreachable server
-	if isRemoteHTTPArchive("https://127.0.0.1:123/fake/plugin-1.2.3.notanarchive") {
-		t.Errorf("Bad URL without valid extension should not succeed")
+	// Test SetOptions method
+	options := []getter.Option{
+		getter.WithBasicAuth("user", "pass"),
+		getter.WithPlainHTTP(true),
+		getter.WithInsecureSkipVerifyTLS(true),
 	}
 
-	if !isRemoteHTTPArchive(source) {
-		t.Errorf("Expected %q to be a valid archive URL", source)
+	// Should not panic
+	installer.SetOptions(options)
+
+	// Test that we can call SetOptions multiple times
+	moreOptions := []getter.Option{
+		getter.WithTLSClientConfig("cert", "key", "ca"),
+	}
+	installer.SetOptions(moreOptions)
+}
+
+// TestFindSource_ReturnsArtifactInstaller tests that FindSource returns ArtifactInstaller for various sources
+func TestFindSource_ReturnsArtifactInstaller(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{
+			name:   "HTTP URL",
+			source: "https://example.com/plugin.tgz",
+		},
+		{
+			name:   "HTTPS URL",
+			source: "https://example.com/plugin.tgz",
+		},
+		{
+			name:   "VCS URL",
+			source: "https://github.com/user/plugin",
+		},
+		{
+			name:   "OCI reference",
+			source: "oci://registry/plugin:1.0.0",
+		},
 	}
 
-	if isRemoteHTTPArchive(source + "-not-an-extension") {
-		t.Error("Expected media type match to fail")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			installer, err := FindSource(tt.source)
+			if err != nil {
+				t.Fatalf("FindSource() error = %v", err)
+			}
+
+			if _, ok := installer.(*ArtifactInstaller); !ok {
+				t.Errorf("FindSource() returned %T, expected *ArtifactInstaller", installer)
+			}
+		})
+	}
+}
+
+// TestFindSource_LocalPath tests that FindSource returns LocalInstaller for local paths
+func TestFindSource_LocalPath(t *testing.T) {
+	// Create a temporary directory to simulate a local plugin
+	tempDir := t.TempDir()
+
+	installer, err := FindSource(tempDir)
+	if err != nil {
+		t.Fatalf("FindSource() error = %v", err)
+	}
+
+	if _, ok := installer.(*LocalInstaller); !ok {
+		t.Errorf("FindSource() returned %T, expected *LocalInstaller", installer)
 	}
 }

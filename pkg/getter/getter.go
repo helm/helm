@@ -158,6 +158,13 @@ type Getter interface {
 	Get(url string, options ...Option) (*bytes.Buffer, error)
 }
 
+// Restricted is an optional interface that getters can implement
+// to restrict which artifact types they support. If not implemented, the
+// getter supports all artifact types.
+type Restricted interface {
+	RestrictToArtifactTypes() []string
+}
+
 // Constructor is the function for every getter which creates a specific instance
 // according to the configuration
 type Constructor func(options ...Option) (Getter, error)
@@ -216,6 +223,14 @@ func Getters(extraOpts ...Option) Providers {
 				options = append(options, defaultOptions...)
 				options = append(options, extraOpts...)
 				return NewOCIGetter(options...)
+			},
+		},
+		Provider{
+			Schemes: []string{"git", "git+http", "git+https", "git+ssh"},
+			New: func(options ...Option) (Getter, error) {
+				options = append(options, defaultOptions...)
+				options = append(options, extraOpts...)
+				return NewVCSGetter(options...)
 			},
 		},
 	}
