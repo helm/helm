@@ -18,10 +18,11 @@ package cmd
 
 import (
 	"testing"
+	"time"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	"helm.sh/helm/v4/pkg/time"
 )
 
 func TestListCmd(t *testing.T) {
@@ -47,7 +48,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp1,
-				Status:       release.StatusSuperseded,
+				Status:       common.StatusSuperseded,
 			},
 			Chart: chartInfo,
 		},
@@ -57,7 +58,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp1,
-				Status:       release.StatusDeployed,
+				Status:       common.StatusDeployed,
 			},
 			Chart: chartInfo,
 		},
@@ -67,7 +68,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp1,
-				Status:       release.StatusUninstalled,
+				Status:       common.StatusUninstalled,
 			},
 			Chart: chartInfo,
 		},
@@ -77,7 +78,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp1,
-				Status:       release.StatusSuperseded,
+				Status:       common.StatusSuperseded,
 			},
 			Chart: chartInfo,
 		},
@@ -87,7 +88,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp2,
-				Status:       release.StatusFailed,
+				Status:       common.StatusFailed,
 			},
 			Chart: chartInfo,
 		},
@@ -97,7 +98,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp1,
-				Status:       release.StatusUninstalling,
+				Status:       common.StatusUninstalling,
 			},
 			Chart: chartInfo,
 		},
@@ -107,7 +108,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp1,
-				Status:       release.StatusPendingInstall,
+				Status:       common.StatusPendingInstall,
 			},
 			Chart: chartInfo,
 		},
@@ -117,7 +118,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp3,
-				Status:       release.StatusDeployed,
+				Status:       common.StatusDeployed,
 			},
 			Chart: chartInfo,
 		},
@@ -127,7 +128,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: defaultNamespace,
 			Info: &release.Info{
 				LastDeployed: timestamp4,
-				Status:       release.StatusDeployed,
+				Status:       common.StatusDeployed,
 			},
 			Chart: chartInfo,
 		},
@@ -137,7 +138,7 @@ func TestListCmd(t *testing.T) {
 			Namespace: "milano",
 			Info: &release.Info{
 				LastDeployed: timestamp1,
-				Status:       release.StatusDeployed,
+				Status:       common.StatusDeployed,
 			},
 			Chart: chartInfo,
 		},
@@ -146,22 +147,17 @@ func TestListCmd(t *testing.T) {
 	tests := []cmdTestCase{{
 		name:   "list releases",
 		cmd:    "list",
-		golden: "output/list.txt",
+		golden: "output/list-all.txt",
 		rels:   releaseFixture,
 	}, {
 		name:   "list without headers",
 		cmd:    "list --no-headers",
-		golden: "output/list-no-headers.txt",
-		rels:   releaseFixture,
-	}, {
-		name:   "list all releases",
-		cmd:    "list --all",
-		golden: "output/list-all.txt",
+		golden: "output/list-all-no-headers.txt",
 		rels:   releaseFixture,
 	}, {
 		name:   "list releases sorted by release date",
 		cmd:    "list --date",
-		golden: "output/list-date.txt",
+		golden: "output/list-all-date.txt",
 		rels:   releaseFixture,
 	}, {
 		name:   "list failed releases",
@@ -171,17 +167,17 @@ func TestListCmd(t *testing.T) {
 	}, {
 		name:   "list filtered releases",
 		cmd:    "list --filter='.*'",
-		golden: "output/list-filter.txt",
+		golden: "output/list-all.txt",
 		rels:   releaseFixture,
 	}, {
 		name:   "list releases, limited to one release",
 		cmd:    "list --max 1",
-		golden: "output/list-max.txt",
+		golden: "output/list-all-max.txt",
 		rels:   releaseFixture,
 	}, {
 		name:   "list releases, offset by one",
 		cmd:    "list --offset 1",
-		golden: "output/list-offset.txt",
+		golden: "output/list-all-offset.txt",
 		rels:   releaseFixture,
 	}, {
 		name:   "list pending releases",
@@ -191,27 +187,32 @@ func TestListCmd(t *testing.T) {
 	}, {
 		name:   "list releases in reverse order",
 		cmd:    "list --reverse",
-		golden: "output/list-reverse.txt",
+		golden: "output/list-all-reverse.txt",
 		rels:   releaseFixture,
 	}, {
 		name:   "list releases sorted by reversed release date",
 		cmd:    "list --date --reverse",
-		golden: "output/list-date-reversed.txt",
+		golden: "output/list-all-date-reversed.txt",
 		rels:   releaseFixture,
 	}, {
 		name:   "list releases in short output format",
 		cmd:    "list --short",
-		golden: "output/list-short.txt",
+		golden: "output/list-all-short.txt",
 		rels:   releaseFixture,
 	}, {
 		name:   "list releases in short output format",
 		cmd:    "list --short --output yaml",
-		golden: "output/list-short-yaml.txt",
+		golden: "output/list-all-short-yaml.txt",
 		rels:   releaseFixture,
 	}, {
 		name:   "list releases in short output format",
 		cmd:    "list --short --output json",
-		golden: "output/list-short-json.txt",
+		golden: "output/list-all-short-json.txt",
+		rels:   releaseFixture,
+	}, {
+		name:   "list deployed and failed releases only",
+		cmd:    "list --deployed --failed",
+		golden: "output/list.txt",
 		rels:   releaseFixture,
 	}, {
 		name:   "list superseded releases",

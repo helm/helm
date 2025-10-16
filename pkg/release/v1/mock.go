@@ -19,10 +19,11 @@ package v1
 import (
 	"fmt"
 	"math/rand"
+	"time"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
-	"helm.sh/helm/v4/pkg/time"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 )
 
 // MockHookTemplate is the hook template used for all mock release objects.
@@ -45,7 +46,7 @@ type MockReleaseOptions struct {
 	Name      string
 	Version   int
 	Chart     *chart.Chart
-	Status    Status
+	Status    rcommon.Status
 	Namespace string
 	Labels    map[string]string
 }
@@ -105,7 +106,7 @@ func Mock(opts *MockReleaseOptions) *Release {
 		}
 	}
 
-	scode := StatusDeployed
+	scode := rcommon.StatusDeployed
 	if len(opts.Status) > 0 {
 		scode = opts.Status
 	}

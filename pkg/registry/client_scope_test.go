@@ -28,16 +28,16 @@ import (
 )
 
 type RegistryScopeTestSuite struct {
-	TestSuite
+	TestRegistry
 }
 
 func (suite *RegistryScopeTestSuite) SetupSuite() {
 	// set registry use token auth
-	setup(&suite.TestSuite, true, true, "token")
+	setup(&suite.TestRegistry, true, true, "token")
 
 }
 func (suite *RegistryScopeTestSuite) TearDownSuite() {
-	teardown(&suite.TestSuite)
+	teardown(&suite.TestRegistry)
 	os.RemoveAll(suite.WorkspaceDir)
 }
 

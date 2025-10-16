@@ -27,8 +27,6 @@ import (
 	chartutil "helm.sh/helm/v4/internal/chart/v3/util"
 )
 
-var values map[string]interface{}
-
 const namespace = "testNamespace"
 
 const badChartDir = "rules/testdata/badchartfile"
@@ -41,6 +39,7 @@ const malformedTemplate = "rules/testdata/malformed-template"
 const invalidChartFileDir = "rules/testdata/invalidchartfile"
 
 func TestBadChartV3(t *testing.T) {
+	var values map[string]any
 	m := RunAll(badChartDir, values, namespace).Messages
 	if len(m) != 8 {
 		t.Errorf("Number of errors %v", len(m))
@@ -90,6 +89,7 @@ func TestBadChartV3(t *testing.T) {
 }
 
 func TestInvalidYaml(t *testing.T) {
+	var values map[string]any
 	m := RunAll(badYamlFileDir, values, namespace).Messages
 	if len(m) != 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
@@ -100,6 +100,7 @@ func TestInvalidYaml(t *testing.T) {
 }
 
 func TestInvalidChartYamlV3(t *testing.T) {
+	var values map[string]any
 	m := RunAll(invalidChartFileDir, values, namespace).Messages
 	t.Log(m)
 	if len(m) != 3 {
@@ -111,6 +112,7 @@ func TestInvalidChartYamlV3(t *testing.T) {
 }
 
 func TestBadValuesV3(t *testing.T) {
+	var values map[string]any
 	m := RunAll(badValuesFileDir, values, namespace).Messages
 	if len(m) < 1 {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
@@ -121,6 +123,7 @@ func TestBadValuesV3(t *testing.T) {
 }
 
 func TestBadCrdFileV3(t *testing.T) {
+	var values map[string]any
 	m := RunAll(badCrdFileDir, values, namespace).Messages
 	assert.Lenf(t, m, 2, "All didn't fail with expected errors, got %#v", m)
 	assert.ErrorContains(t, m[0].Err, "apiVersion is not in 'apiextensions.k8s.io'")
@@ -128,6 +131,7 @@ func TestBadCrdFileV3(t *testing.T) {
 }
 
 func TestGoodChart(t *testing.T) {
+	var values map[string]any
 	m := RunAll(goodChartDir, values, namespace).Messages
 	if len(m) != 0 {
 		t.Error("All returned linter messages when it shouldn't have")
@@ -141,6 +145,7 @@ func TestGoodChart(t *testing.T) {
 //
 // See https://github.com/helm/helm/issues/7923
 func TestHelmCreateChart(t *testing.T) {
+	var values map[string]any
 	dir := t.TempDir()
 
 	createdChart, err := chartutil.Create("testhelmcreatepasseslint", dir)
@@ -190,11 +195,11 @@ func TestHelmCreateChart_CheckDeprecatedWarnings(t *testing.T) {
 	// Add values to enable hpa, and ingress which are disabled by default.
 	// This is the equivalent of:
 	//   helm lint checkdeprecatedwarnings --set 'autoscaling.enabled=true,ingress.enabled=true'
-	updatedValues := map[string]interface{}{
-		"autoscaling": map[string]interface{}{
+	updatedValues := map[string]any{
+		"autoscaling": map[string]any{
 			"enabled": true,
 		},
-		"ingress": map[string]interface{}{
+		"ingress": map[string]any{
 			"enabled": true,
 		},
 	}
@@ -213,6 +218,7 @@ func TestHelmCreateChart_CheckDeprecatedWarnings(t *testing.T) {
 // lint ignores import-values
 // See https://github.com/helm/helm/issues/9658
 func TestSubChartValuesChart(t *testing.T) {
+	var values map[string]any
 	m := RunAll(subChartValuesDir, values, namespace).Messages
 	if len(m) != 0 {
 		t.Error("All returned linter messages when it shouldn't have")
@@ -225,6 +231,7 @@ func TestSubChartValuesChart(t *testing.T) {
 // lint stuck with malformed template object
 // See https://github.com/helm/helm/issues/11391
 func TestMalformedTemplate(t *testing.T) {
+	var values map[string]any
 	c := time.After(3 * time.Second)
 	ch := make(chan int, 1)
 	var m []support.Message

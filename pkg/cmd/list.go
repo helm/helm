@@ -30,15 +30,17 @@ import (
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 var listHelp = `
 This command lists all of the releases for a specified namespace (uses current namespace context if namespace not specified).
 
-By default, it lists only releases that are deployed or failed. Flags like
-'--uninstalled' and '--all' will alter this behavior. Such flags can be combined:
-'--uninstalled --failed'.
+By default, it lists all releases in any status. Individual status filters like '--deployed', '--failed',
+'--pending', '--uninstalled', '--superseded', and '--uninstalling' can be used
+to show only releases in specific states. Such flags can be combined:
+'--deployed --failed'.
 
 By default, items are sorted alphabetically. Use the '-d' flag to sort by
 release date.
@@ -79,7 +81,11 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.SetStateMask()
 
-			results, err := client.Run()
+			resultsi, err := client.Run()
+			if err != nil {
+				return err
+			}
+			results, err := releaseListToV1List(resultsi)
 			if err != nil {
 				return err
 			}
@@ -117,11 +123,10 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.TimeFormat, "time-format", "", `format time using golang time formatter. Example: --time-format "2006-01-02 15:04:05Z0700"`)
 	f.BoolVarP(&client.ByDate, "date", "d", false, "sort by release date")
 	f.BoolVarP(&client.SortReverse, "reverse", "r", false, "reverse the sort order")
-	f.BoolVarP(&client.All, "all", "a", false, "show all releases without any filter applied")
 	f.BoolVar(&client.Uninstalled, "uninstalled", false, "show uninstalled releases (if 'helm uninstall --keep-history' was used)")
 	f.BoolVar(&client.Superseded, "superseded", false, "show superseded releases")
 	f.BoolVar(&client.Uninstalling, "uninstalling", false, "show releases that are currently being uninstalled")
-	f.BoolVar(&client.Deployed, "deployed", false, "show deployed releases. If no other is specified, this will be automatically enabled")
+	f.BoolVar(&client.Deployed, "deployed", false, "show deployed releases")
 	f.BoolVar(&client.Failed, "failed", false, "show failed releases")
 	f.BoolVar(&client.Pending, "pending", false, "show pending releases")
 	f.BoolVarP(&client.AllNamespaces, "all-namespaces", "A", false, "list releases across all namespaces")
@@ -193,28 +198,28 @@ func (w *releaseListWriter) WriteTable(out io.Writer) error {
 	}
 	for _, r := range w.releases {
 		// Parse the status string back to a release.Status to use color
-		var status release.Status
+		var status common.Status
 		switch r.Status {
 		case "deployed":
-			status = release.StatusDeployed
+			status = common.StatusDeployed
 		case "failed":
-			status = release.StatusFailed
+			status = common.StatusFailed
 		case "pending-install":
-			status = release.StatusPendingInstall
+			status = common.StatusPendingInstall
 		case "pending-upgrade":
-			status = release.StatusPendingUpgrade
+			status = common.StatusPendingUpgrade
 		case "pending-rollback":
-			status = release.StatusPendingRollback
+			status = common.StatusPendingRollback
 		case "uninstalling":
-			status = release.StatusUninstalling
+			status = common.StatusUninstalling
 		case "uninstalled":
-			status = release.StatusUninstalled
+			status = common.StatusUninstalled
 		case "superseded":
-			status = release.StatusSuperseded
+			status = common.StatusSuperseded
 		case "unknown":
-			status = release.StatusUnknown
+			status = common.StatusUnknown
 		default:
-			status = release.Status(r.Status)
+			status = common.Status(r.Status)
 		}
 		table.AddRow(r.Name, coloroutput.ColorizeNamespace(r.Namespace, w.noColor), r.Revision, r.Updated, coloroutput.ColorizeStatus(status, w.noColor), r.Chart, r.AppVersion)
 	}
@@ -264,7 +269,11 @@ func compListReleases(toComplete string, ignoredReleaseNames []string, cfg *acti
 	// client.Filter = fmt.Sprintf("^%s", toComplete)
 
 	client.SetStateMask()
-	releases, err := client.Run()
+	releasesi, err := client.Run()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+	releases, err := releaseListToV1List(releasesi)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}

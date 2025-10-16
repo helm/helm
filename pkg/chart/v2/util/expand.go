@@ -26,13 +26,13 @@ import (
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"sigs.k8s.io/yaml"
 
+	"helm.sh/helm/v4/pkg/chart/loader/archive"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
-	"helm.sh/helm/v4/pkg/chart/v2/loader"
 )
 
 // Expand uncompresses and extracts a chart into the specified directory.
 func Expand(dir string, r io.Reader) error {
-	files, err := loader.LoadArchiveFiles(r)
+	files, err := archive.LoadArchiveFiles(r)
 	if err != nil {
 		return err
 	}

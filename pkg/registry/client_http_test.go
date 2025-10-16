@@ -27,16 +27,16 @@ import (
 )
 
 type HTTPRegistryClientTestSuite struct {
-	TestSuite
+	TestRegistry
 }
 
 func (suite *HTTPRegistryClientTestSuite) SetupSuite() {
 	// init test client
-	setup(&suite.TestSuite, false, false, "htpasswd")
+	setup(&suite.TestRegistry, false, false, "htpasswd")
 }
 
 func (suite *HTTPRegistryClientTestSuite) TearDownSuite() {
-	teardown(&suite.TestSuite)
+	teardown(&suite.TestRegistry)
 	os.RemoveAll(suite.WorkspaceDir)
 }
 
@@ -53,15 +53,15 @@ func (suite *HTTPRegistryClientTestSuite) Test_0_Login() {
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_1_Push() {
-	testPush(&suite.TestSuite)
+	testPush(&suite.TestRegistry)
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_2_Pull() {
-	testPull(&suite.TestSuite)
+	testPull(&suite.TestRegistry)
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_3_Tags() {
-	testTags(&suite.TestSuite)
+	testTags(&suite.TestRegistry)
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_4_ManInTheMiddle() {

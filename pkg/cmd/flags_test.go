@@ -19,19 +19,20 @@ package cmd
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func outputFlagCompletionTest(t *testing.T, cmdName string) {
 	t.Helper()
 	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []*release.Release {
-		info.LastDeployed = helmtime.Unix(1452902400, 0).UTC()
+		info.LastDeployed = time.Unix(1452902400, 0).UTC()
 		return []*release.Release{{
 			Name:      "athos",
 			Namespace: "default",
@@ -64,35 +65,35 @@ func outputFlagCompletionTest(t *testing.T, cmdName string) {
 		cmd:    fmt.Sprintf("__complete %s --output ''", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}, {
 		name:   "completion for output flag long and after arg",
 		cmd:    fmt.Sprintf("__complete %s aramis --output ''", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}, {
 		name:   "completion for output flag short and before arg",
 		cmd:    fmt.Sprintf("__complete %s -o ''", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}, {
 		name:   "completion for output flag short and after arg",
 		cmd:    fmt.Sprintf("__complete %s aramis -o ''", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}, {
 		name:   "completion for output flag, no filter",
 		cmd:    fmt.Sprintf("__complete %s --output jso", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}}
 	runTestCmd(t, tests)

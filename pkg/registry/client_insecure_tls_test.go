@@ -24,17 +24,17 @@ import (
 )
 
 type InsecureTLSRegistryClientTestSuite struct {
-	TestSuite
+	TestRegistry
 }
 
 func (suite *InsecureTLSRegistryClientTestSuite) SetupSuite() {
 	// init test client
-	setup(&suite.TestSuite, true, true, "htpasswd")
+	setup(&suite.TestRegistry, true, true, "htpasswd")
 
 }
 
 func (suite *InsecureTLSRegistryClientTestSuite) TearDownSuite() {
-	teardown(&suite.TestSuite)
+	teardown(&suite.TestRegistry)
 	os.RemoveAll(suite.WorkspaceDir)
 }
 
@@ -51,15 +51,15 @@ func (suite *InsecureTLSRegistryClientTestSuite) Test_0_Login() {
 }
 
 func (suite *InsecureTLSRegistryClientTestSuite) Test_1_Push() {
-	testPush(&suite.TestSuite)
+	testPush(&suite.TestRegistry)
 }
 
 func (suite *InsecureTLSRegistryClientTestSuite) Test_2_Pull() {
-	testPull(&suite.TestSuite)
+	testPull(&suite.TestRegistry)
 }
 
 func (suite *InsecureTLSRegistryClientTestSuite) Test_3_Tags() {
-	testTags(&suite.TestSuite)
+	testTags(&suite.TestRegistry)
 }
 
 func (suite *InsecureTLSRegistryClientTestSuite) Test_4_Logout() {

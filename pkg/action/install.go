@@ -26,7 +26,6 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -42,6 +41,7 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
 
+	ci "helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -53,6 +53,8 @@ import (
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/registry"
+	ri "helm.sh/helm/v4/pkg/release"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/repo/v1"
@@ -74,7 +76,6 @@ type Install struct {
 
 	ChartPathOptions
 
-	ClientOnly bool
 	// ForceReplace will, if set to `true`, ignore certain warnings and perform the install anyway.
 	//
 	// This should be used with caution.
@@ -86,8 +87,8 @@ type Install struct {
 	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
 	ServerSideApply bool
 	CreateNamespace bool
-	DryRun          bool
-	DryRunOption    string
+	// DryRunStrategy can be set to prepare, but not execute the operation and whether or not to interact with the remote cluster
+	DryRunStrategy DryRunStrategy
 	// HideSecret can be set to true when DryRun is enabled in order to hide
 	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
 	HideSecret       bool
@@ -158,6 +159,7 @@ func NewInstall(cfg *Configuration) *Install {
 	in := &Install{
 		cfg:             cfg,
 		ServerSideApply: true,
+		DryRunStrategy:  DryRunNone,
 	}
 	in.registryClient = cfg.RegistryClient
 
@@ -243,7 +245,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 //
 // If DryRun is set to true, this will prepare the release, but not install it
 
-func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+func (i *Install) Run(chrt ci.Charter, vals map[string]interface{}) (ri.Releaser, error) {
 	ctx := context.Background()
 	return i.RunWithContext(ctx, chrt, vals)
 }
@@ -252,9 +254,18 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 //
 // When the task is cancelled through ctx, the function returns and the install
 // proceeds in the background.
-func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
-	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
-	if !i.ClientOnly {
+func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[string]interface{}) (ri.Releaser, error) {
+	var chrt *chart.Chart
+	switch c := ch.(type) {
+	case *chart.Chart:
+		chrt = c
+	case chart.Chart:
+		chrt = &c
+	default:
+		return nil, errors.New("invalid chart apiVersion")
+	}
+
+	if interactWithServer(i.DryRunStrategy) {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
 			slog.Error(fmt.Sprintf("cluster reachability check failed: %v", err))
 			return nil, fmt.Errorf("cluster reachability check failed: %w", err)
@@ -262,7 +273,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	// HideSecret must be used with dry run. Otherwise, return an error.
-	if !i.isDryRun() && i.HideSecret {
+	if !isDryRun(i.DryRunStrategy) && i.HideSecret {
 		slog.Error("hiding Kubernetes secrets requires a dry-run mode")
 		return nil, errors.New("hiding Kubernetes secrets requires a dry-run mode")
 	}
@@ -277,23 +288,18 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, fmt.Errorf("chart dependencies processing failed: %w", err)
 	}
 
-	var interactWithRemote bool
-	if !i.isDryRun() || i.DryRunOption == "server" || i.DryRunOption == "none" || i.DryRunOption == "false" {
-		interactWithRemote = true
-	}
-
 	// Pre-install anything in the crd/ directory. We do this before Helm
 	// contacts the upstream server and builds the capabilities object.
-	if crds := chrt.CRDObjects(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
+	if crds := chrt.CRDObjects(); interactWithServer(i.DryRunStrategy) && !i.SkipCRDs && len(crds) > 0 {
 		// On dry run, bail here
-		if i.isDryRun() {
+		if isDryRun(i.DryRunStrategy) {
 			slog.Warn("This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
 		} else if err := i.installCRDs(crds); err != nil {
 			return nil, err
 		}
 	}
 
-	if i.ClientOnly {
+	if !interactWithServer(i.DryRunStrategy) {
 		// Add mock objects in here so it doesn't use Kube API server
 		// NOTE(bacongobbler): used for `helm template`
 		i.cfg.Capabilities = common.DefaultCapabilities.Copy()
@@ -306,7 +312,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		mem := driver.NewMemory()
 		mem.SetNamespace(i.Namespace)
 		i.cfg.Releases = storage.Init(mem)
-	} else if !i.ClientOnly && len(i.APIVersions) > 0 {
+	} else if interactWithServer(i.DryRunStrategy) && len(i.APIVersions) > 0 {
 		slog.Debug("API Version list given outside of client only mode, this list will be ignored")
 	}
 
@@ -322,7 +328,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	// special case for helm template --is-upgrade
-	isUpgrade := i.IsUpgrade && i.isDryRun()
+	isUpgrade := i.IsUpgrade && isDryRun(i.DryRunStrategy)
 	options := common.ReleaseOptions{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
@@ -342,20 +348,20 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	rel := i.createRelease(chrt, vals, i.Labels)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithRemote, i.EnableDNS, i.HideSecret)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
 	}
 	// Check error from render
 	if err != nil {
-		rel.SetStatus(release.StatusFailed, fmt.Sprintf("failed to render resource: %s", err.Error()))
+		rel.SetStatus(rcommon.StatusFailed, fmt.Sprintf("failed to render resource: %s", err.Error()))
 		// Return a release with partial data so that the client can show debugging information.
 		return rel, err
 	}
 
 	// Mark this release as in-progress
-	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
+	rel.SetStatus(rcommon.StatusPendingInstall, "Initial install underway")
 
 	var toBeAdopted kube.ResourceList
 	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
@@ -375,7 +381,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// we'll end up in a state where we will delete those resources upon
 	// deleting the release because the manifest will be pointing at that
 	// resource
-	if !i.ClientOnly && !isUpgrade && len(resources) > 0 {
+	if interactWithServer(i.DryRunStrategy) && !isUpgrade && len(resources) > 0 {
 		if i.TakeOwnership {
 			toBeAdopted, err = requireAdoption(resources)
 		} else {
@@ -387,7 +393,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	// Bail out here if it is a dry run
-	if i.isDryRun() {
+	if isDryRun(i.DryRunStrategy) {
 		rel.Info.Description = "Dry run complete"
 		return rel, nil
 	}
@@ -469,14 +475,6 @@ func (i *Install) getGoroutineCount() int32 {
 	return i.goroutineCount.Load()
 }
 
-// isDryRun returns true if Upgrade is set to run as a DryRun
-func (i *Install) isDryRun() bool {
-	if i.DryRun || i.DryRunOption == "client" || i.DryRunOption == "server" || i.DryRunOption == "true" {
-		return true
-	}
-	return false
-}
-
 func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {
 	var err error
 	// pre-install hooks
@@ -528,9 +526,9 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	}
 
 	if len(i.Description) > 0 {
-		rel.SetStatus(release.StatusDeployed, i.Description)
+		rel.SetStatus(rcommon.StatusDeployed, i.Description)
 	} else {
-		rel.SetStatus(release.StatusDeployed, "Install complete")
+		rel.SetStatus(rcommon.StatusDeployed, "Install complete")
 	}
 
 	// This is a tricky case. The release has been created, but the result
@@ -548,7 +546,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 }
 
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
-	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
+	rel.SetStatus(rcommon.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
 	if i.RollbackOnFailure {
 		slog.Debug("install failed and rollback-on-failure is set, uninstalling release", "release", i.ReleaseName)
 		uninstall := NewUninstall(i.cfg)
@@ -579,7 +577,7 @@ func (i *Install) availableName() error {
 		return fmt.Errorf("release name %q: %w", start, err)
 	}
 	// On dry run, bail here
-	if i.isDryRun() {
+	if isDryRun(i.DryRunStrategy) {
 		return nil
 	}
 
@@ -587,13 +585,41 @@ func (i *Install) availableName() error {
 	if err != nil || len(h) < 1 {
 		return nil
 	}
-	releaseutil.Reverse(h, releaseutil.SortByRevision)
-	rel := h[0]
 
-	if st := rel.Info.Status; i.Replace && (st == release.StatusUninstalled || st == release.StatusFailed) {
+	hl, err := releaseListToV1List(h)
+	if err != nil {
+		return err
+	}
+
+	releaseutil.Reverse(hl, releaseutil.SortByRevision)
+	rel := hl[0]
+
+	if st := rel.Info.Status; i.Replace && (st == rcommon.StatusUninstalled || st == rcommon.StatusFailed) {
 		return nil
 	}
 	return errors.New("cannot reuse a name that is still in use")
+}
+
+func releaseListToV1List(ls []ri.Releaser) ([]*release.Release, error) {
+	rls := make([]*release.Release, 0, len(ls))
+	for _, val := range ls {
+		rel, err := releaserToV1Release(val)
+		if err != nil {
+			return nil, err
+		}
+		rls = append(rls, rel)
+	}
+
+	return rls, nil
+}
+
+func releaseV1ListToReleaserList(ls []*release.Release) ([]ri.Releaser, error) {
+	rls := make([]ri.Releaser, 0, len(ls))
+	for _, val := range ls {
+		rls = append(rls, val)
+	}
+
+	return rls, nil
 }
 
 // createRelease creates a new release object
@@ -608,7 +634,7 @@ func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{
 		Info: &release.Info{
 			FirstDeployed: ts,
 			LastDeployed:  ts,
-			Status:        release.StatusUnknown,
+			Status:        rcommon.StatusUnknown,
 		},
 		Version:     1,
 		Labels:      labels,
@@ -634,20 +660,24 @@ func (i *Install) replaceRelease(rel *release.Release) error {
 		// No releases exist for this name, so we can return early
 		return nil
 	}
+	hl, err := releaseListToV1List(hist)
+	if err != nil {
+		return err
+	}
 
-	releaseutil.Reverse(hist, releaseutil.SortByRevision)
-	last := hist[0]
+	releaseutil.Reverse(hl, releaseutil.SortByRevision)
+	last := hl[0]
 
 	// Update version to the next available
 	rel.Version = last.Version + 1
 
 	// Do not change the status of a failed release.
-	if last.Info.Status == release.StatusFailed {
+	if last.Info.Status == rcommon.StatusFailed {
 		return nil
 	}
 
 	// For any other status, mark it as superseded and store the old record
-	last.SetStatus(release.StatusSuperseded, "superseded by new release")
+	last.SetStatus(rcommon.StatusSuperseded, "superseded by new release")
 	return i.recordRelease(last)
 }
 
@@ -686,7 +716,7 @@ func createOrOpenFile(filename string, appendData bool) (*os.File, error) {
 
 // check if the directory exists to create file. creates if doesn't exist
 func ensureDirectoryForFile(file string) error {
-	baseDir := path.Dir(file)
+	baseDir := filepath.Dir(file)
 	_, err := os.Stat(baseDir)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
@@ -761,17 +791,30 @@ func TemplateName(nameTemplate string) (string, error) {
 }
 
 // CheckDependencies checks the dependencies for a chart.
-func CheckDependencies(ch *chart.Chart, reqs []*chart.Dependency) error {
+func CheckDependencies(ch ci.Charter, reqs []ci.Dependency) error {
+	ac, err := ci.NewAccessor(ch)
+	if err != nil {
+		return err
+	}
+
 	var missing []string
 
 OUTER:
 	for _, r := range reqs {
-		for _, d := range ch.Dependencies() {
-			if d.Name() == r.Name {
+		rac, err := ci.NewDependencyAccessor(r)
+		if err != nil {
+			return err
+		}
+		for _, d := range ac.Dependencies() {
+			dac, err := ci.NewAccessor(d)
+			if err != nil {
+				return err
+			}
+			if dac.Name() == rac.Name() {
 				continue OUTER
 			}
 		}
-		missing = append(missing, r.Name)
+		missing = append(missing, rac.Name())
 	}
 
 	if len(missing) > 0 {
@@ -804,7 +847,7 @@ func urlEqual(u1, u2 *url.URL) bool {
 // This does not ensure that the chart is well-formed; only that the requested filename exists.
 //
 // Order of resolution:
-// - relative to current working directory
+// - relative to current working directory when --repo flag is not presented
 // - if path is absolute or begins with '.', error out here
 // - URL
 //
@@ -817,20 +860,22 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
 
-	if _, err := os.Stat(name); err == nil {
-		abs, err := filepath.Abs(name)
-		if err != nil {
-			return abs, err
-		}
-		if c.Verify {
-			if _, err := downloader.VerifyChart(abs, abs+".prov", c.Keyring); err != nil {
-				return "", err
+	if c.RepoURL == "" {
+		if _, err := os.Stat(name); err == nil {
+			abs, err := filepath.Abs(name)
+			if err != nil {
+				return abs, err
 			}
+			if c.Verify {
+				if _, err := downloader.VerifyChart(abs, abs+".prov", c.Keyring); err != nil {
+					return "", err
+				}
+			}
+			return abs, nil
 		}
-		return abs, nil
-	}
-	if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
-		return name, fmt.Errorf("path %q not found", name)
+		if filepath.IsAbs(name) || strings.HasPrefix(name, ".") {
+			return name, fmt.Errorf("path %q not found", name)
+		}
 	}
 
 	dl := downloader.ChartDownloader{

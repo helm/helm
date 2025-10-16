@@ -25,9 +25,9 @@ import (
 	"os"
 	"strings"
 
-	"golang.org/x/crypto/openpgp"           //nolint
-	"golang.org/x/crypto/openpgp/clearsign" //nolint
-	"golang.org/x/crypto/openpgp/packet"    //nolint
+	"github.com/ProtonMail/go-crypto/openpgp"           //nolint
+	"github.com/ProtonMail/go-crypto/openpgp/clearsign" //nolint
+	"github.com/ProtonMail/go-crypto/openpgp/packet"    //nolint
 	"sigs.k8s.io/yaml"
 )
 
@@ -281,8 +281,9 @@ func (s *Signatory) Verify(archiveData, provData []byte, filename string) (*Veri
 func (s *Signatory) verifySignature(block *clearsign.Block) (*openpgp.Entity, error) {
 	return openpgp.CheckDetachedSignature(
 		s.KeyRing,
-		bytes.NewBuffer(block.Bytes),
+		bytes.NewReader(block.Bytes),
 		block.ArmoredSignature.Body,
+		&defaultPGPConfig,
 	)
 }
 

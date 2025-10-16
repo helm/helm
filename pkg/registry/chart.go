@@ -18,71 +18,18 @@ package registry // import "helm.sh/helm/v4/pkg/registry"
 
 import (
 	"bytes"
-	"fmt"
-	"io"
-	"net/http"
-	"slices"
 	"strings"
 	"time"
 
-	"helm.sh/helm/v4/internal/tlsutil"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
-	helmtime "helm.sh/helm/v4/pkg/time"
 
-	"github.com/Masterminds/semver/v3"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 var immutableOciAnnotations = []string{
 	ocispec.AnnotationVersion,
 	ocispec.AnnotationTitle,
-}
-
-// IsOCI determines whether a URL is to be treated as an OCI URL
-func IsOCI(url string) bool {
-	return strings.HasPrefix(url, fmt.Sprintf("%s://", OCIScheme))
-}
-
-// ContainsTag determines whether a tag is found in a provided list of tags
-func ContainsTag(tags []string, tag string) bool {
-	return slices.Contains(tags, tag)
-}
-
-func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (string, error) {
-	var constraint *semver.Constraints
-	if versionString == "" {
-		// If string is empty, set wildcard constraint
-		constraint, _ = semver.NewConstraint("*")
-	} else {
-		// when customer inputs specific version, check whether there's an exact match first
-		for _, v := range tags {
-			if versionString == v {
-				return v, nil
-			}
-		}
-
-		// Otherwise set constraint to the string given
-		var err error
-		constraint, err = semver.NewConstraint(versionString)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	// Otherwise try to find the first available version matching the string,
-	// in case it is a constraint
-	for _, v := range tags {
-		test, err := semver.NewVersion(v)
-		if err != nil {
-			continue
-		}
-		if constraint.Check(test) {
-			return v, nil
-		}
-	}
-
-	return "", fmt.Errorf("could not locate a version matching provided version string %s", versionString)
 }
 
 // extractChartMeta is used to extract a chart metadata from a byte array
@@ -92,35 +39,6 @@ func extractChartMeta(chartData []byte) (*chart.Metadata, error) {
 		return nil, err
 	}
 	return ch.Metadata, nil
-}
-
-// NewRegistryClientWithTLS is a helper function to create a new registry client with TLS enabled.
-func NewRegistryClientWithTLS(out io.Writer, certFile, keyFile, caFile string, insecureSkipTLSverify bool, registryConfig string, debug bool) (*Client, error) {
-	tlsConf, err := tlsutil.NewTLSConfig(
-		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
-		tlsutil.WithCertKeyPairFiles(certFile, keyFile),
-		tlsutil.WithCAFile(caFile),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("can't create TLS config for client: %s", err)
-	}
-	// Create a new registry client
-	registryClient, err := NewClient(
-		ClientOptDebug(debug),
-		ClientOptEnableCache(true),
-		ClientOptWriter(out),
-		ClientOptCredentialsFile(registryConfig),
-		ClientOptHTTPClient(&http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: tlsConf,
-				Proxy:           http.ProxyFromEnvironment,
-			},
-		}),
-	)
-	if err != nil {
-		return nil, err
-	}
-	return registryClient, nil
 }
 
 // generateOCIAnnotations will generate OCI annotations to include within the OCI manifest
@@ -157,7 +75,7 @@ func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationURL, meta.Home)
 
 	if len(creationTime) == 0 {
-		creationTime = helmtime.Now().UTC().Format(time.RFC3339)
+		creationTime = time.Now().UTC().Format(time.RFC3339)
 	}
 
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationCreated, creationTime)
@@ -203,5 +121,4 @@ func addToMap(inputMap map[string]string, newKey string, newValue string) map[st
 	}
 
 	return inputMap
-
 }

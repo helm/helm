@@ -28,6 +28,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -82,7 +83,7 @@ func TestUpgradeCmd(t *testing.T) {
 	badDepsPath := "testdata/testcharts/chart-bad-requirements"
 	presentDepsPath := "testdata/testcharts/chart-with-subchart-update"
 
-	relWithStatusMock := func(n string, v int, ch *chart.Chart, status release.Status) *release.Release {
+	relWithStatusMock := func(n string, v int, ch *chart.Chart, status rcommon.Status) *release.Release {
 		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch, Status: status})
 	}
 
@@ -173,20 +174,20 @@ func TestUpgradeCmd(t *testing.T) {
 			name:   "upgrade a failed release",
 			cmd:    fmt.Sprintf("upgrade funny-bunny '%s'", chartPath),
 			golden: "output/upgrade.txt",
-			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusFailed)},
+			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, rcommon.StatusFailed)},
 		},
 		{
 			name:      "upgrade a pending install release",
 			cmd:       fmt.Sprintf("upgrade funny-bunny '%s'", chartPath),
 			golden:    "output/upgrade-with-pending-install.txt",
 			wantError: true,
-			rels:      []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusPendingInstall)},
+			rels:      []*release.Release{relWithStatusMock("funny-bunny", 2, ch, rcommon.StatusPendingInstall)},
 		},
 		{
 			name:   "install a previously uninstalled release with '--keep-history' using 'upgrade --install'",
 			cmd:    fmt.Sprintf("upgrade funny-bunny -i '%s'", chartPath),
 			golden: "output/upgrade-uninstalled-with-keep-history.txt",
-			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, release.StatusUninstalled)},
+			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, rcommon.StatusUninstalled)},
 		},
 	}
 	runTestCmd(t, tests)
@@ -208,7 +209,11 @@ func TestUpgradeWithValue(t *testing.T) {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
 
-	updatedRel, err := store.Get(releaseName, 4)
+	updatedReli, err := store.Get(releaseName, 4)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+	updatedRel, err := releaserToV1Release(updatedReli)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -235,7 +240,11 @@ func TestUpgradeWithStringValue(t *testing.T) {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
 
-	updatedRel, err := store.Get(releaseName, 4)
+	updatedReli, err := store.Get(releaseName, 4)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+	updatedRel, err := releaserToV1Release(updatedReli)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -263,7 +272,11 @@ func TestUpgradeInstallWithSubchartNotes(t *testing.T) {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
 
-	upgradedRel, err := store.Get(releaseName, 2)
+	upgradedReli, err := store.Get(releaseName, 2)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+	upgradedRel, err := releaserToV1Release(upgradedReli)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -295,7 +308,11 @@ func TestUpgradeWithValuesFile(t *testing.T) {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
 
-	updatedRel, err := store.Get(releaseName, 4)
+	updatedReli, err := store.Get(releaseName, 4)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+	updatedRel, err := releaserToV1Release(updatedReli)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -328,7 +345,11 @@ func TestUpgradeWithValuesFromStdin(t *testing.T) {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
 
-	updatedRel, err := store.Get(releaseName, 4)
+	updatedReli, err := store.Get(releaseName, 4)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+	updatedRel, err := releaserToV1Release(updatedReli)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -358,7 +379,11 @@ func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
 
-	updatedRel, err := store.Get(releaseName, 1)
+	updatedReli, err := store.Get(releaseName, 1)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+	updatedRel, err := releaserToV1Release(updatedReli)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
@@ -463,7 +488,11 @@ func TestUpgradeInstallWithLabels(t *testing.T) {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
 
-	updatedRel, err := store.Get(releaseName, 1)
+	updatedReli, err := store.Get(releaseName, 1)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+	updatedRel, err := releaserToV1Release(updatedReli)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}

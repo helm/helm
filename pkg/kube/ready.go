@@ -455,5 +455,8 @@ func getPods(ctx context.Context, client kubernetes.Interface, namespace, select
 	list, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: selector,
 	})
-	return list.Items, err
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pods: %w", err)
+	}
+	return list.Items, nil
 }

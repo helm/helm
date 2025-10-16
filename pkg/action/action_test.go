@@ -24,6 +24,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,10 +36,10 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/registry"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
-	"helm.sh/helm/v4/pkg/time"
 )
 
 var verbose = flag.Bool("test.log", false, "enable test logging (debug by default)")
@@ -249,10 +250,10 @@ func withKube(version string) chartOption {
 
 // releaseStub creates a release stub, complete with the chartStub as its chart.
 func releaseStub() *release.Release {
-	return namedReleaseStub("angry-panda", release.StatusDeployed)
+	return namedReleaseStub("angry-panda", rcommon.StatusDeployed)
 }
 
-func namedReleaseStub(name string, status release.Status) *release.Release {
+func namedReleaseStub(name string, status rcommon.Status) *release.Release {
 	now := time.Now()
 	return &release.Release{
 		Name: name,
@@ -950,4 +951,16 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 func TestDetermineReleaseSSAApplyMethod(t *testing.T) {
 	assert.Equal(t, release.ApplyMethodClientSideApply, determineReleaseSSApplyMethod(false))
 	assert.Equal(t, release.ApplyMethodServerSideApply, determineReleaseSSApplyMethod(true))
+}
+
+func TestIsDryRun(t *testing.T) {
+	assert.False(t, isDryRun(DryRunNone))
+	assert.True(t, isDryRun(DryRunClient))
+	assert.True(t, isDryRun(DryRunServer))
+}
+
+func TestInteractWithServer(t *testing.T) {
+	assert.True(t, interactWithServer(DryRunNone))
+	assert.False(t, interactWithServer(DryRunClient))
+	assert.True(t, interactWithServer(DryRunServer))
 }

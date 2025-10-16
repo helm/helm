@@ -59,7 +59,7 @@ var (
 	testService              = "testservice"
 )
 
-type TestSuite struct {
+type TestRegistry struct {
 	suite.Suite
 	Out                     io.Writer
 	DockerRegistryHost      string
@@ -70,7 +70,7 @@ type TestSuite struct {
 	dockerRegistry          *registry.Registry
 }
 
-func setup(suite *TestSuite, tlsEnabled, insecure bool, auth string) {
+func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 	suite.WorkspaceDir = testWorkspaceDir
 	os.RemoveAll(suite.WorkspaceDir)
 	os.Mkdir(suite.WorkspaceDir, 0700)
@@ -186,7 +186,7 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool, auth string) {
 	}()
 }
 
-func teardown(suite *TestSuite) {
+func teardown(suite *TestRegistry) {
 	if suite.dockerRegistry != nil {
 		_ = suite.dockerRegistry.Shutdown(context.Background())
 	}
@@ -230,7 +230,7 @@ func initCompromisedRegistryTestServer() string {
 	return fmt.Sprintf("localhost:%s", u.Port())
 }
 
-func testPush(suite *TestSuite) {
+func testPush(suite *TestRegistry) {
 
 	testingChartCreationTime := "1977-09-02T22:04:05Z"
 
@@ -317,7 +317,7 @@ func testPush(suite *TestSuite) {
 		result.Prov.Digest)
 }
 
-func testPull(suite *TestSuite) {
+func testPull(suite *TestRegistry) {
 	// bad/missing ref
 	ref := fmt.Sprintf("%s/testrepo/no-existy:1.2.3", suite.DockerRegistryHost)
 	_, err := suite.RegistryClient.Pull(ref)
@@ -396,7 +396,7 @@ func testPull(suite *TestSuite) {
 	suite.Equal(provData, result.Prov.Data)
 }
 
-func testTags(suite *TestSuite) {
+func testTags(suite *TestRegistry) {
 	// Load test chart (to build ref pushed in previous test)
 	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")

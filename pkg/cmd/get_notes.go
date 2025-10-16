@@ -25,6 +25,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cmd/require"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 var getNotesHelp = `
@@ -50,8 +51,12 @@ func newGetNotesCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if len(res.Info.Notes) > 0 {
-				fmt.Fprintf(out, "NOTES:\n%s\n", res.Info.Notes)
+			rac, err := release.NewAccessor(res)
+			if err != nil {
+				return err
+			}
+			if len(rac.Notes()) > 0 {
+				fmt.Fprintf(out, "NOTES:\n%s\n", rac.Notes())
 			}
 			return nil
 		},

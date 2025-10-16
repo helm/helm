@@ -30,6 +30,7 @@ import (
 	"strings"
 	"sync"
 	"text/template"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -46,11 +47,11 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/registry"
+	ri "helm.sh/helm/v4/pkg/release"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
-	"helm.sh/helm/v4/pkg/time"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
@@ -68,6 +69,21 @@ var (
 	errInvalidRevision = errors.New("invalid release revision")
 	// errPending indicates that another instance of Helm is already applying an operation on a release.
 	errPending = errors.New("another operation (install/upgrade/rollback) is in progress")
+)
+
+type DryRunStrategy string
+
+const (
+	// DryRunNone indicates the client will make all mutating calls
+	DryRunNone DryRunStrategy = "none"
+
+	// DryRunClient, or client-side dry-run, indicates the client will avoid
+	// making calls to the server
+	DryRunClient DryRunStrategy = "client"
+
+	// DryRunServer, or server-side dry-run, indicates the client will send
+	// calls to the APIServer with the dry-run parameter to prevent persisting changes
+	DryRunServer DryRunStrategy = "server"
 )
 
 // Configuration injects the dependencies that all actions share.
@@ -397,7 +413,7 @@ func (cfg *Configuration) Now() time.Time {
 	return Timestamper()
 }
 
-func (cfg *Configuration) releaseContent(name string, version int) (*release.Release, error) {
+func (cfg *Configuration) releaseContent(name string, version int) (ri.Releaser, error) {
 	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, fmt.Errorf("releaseContent: Release name is invalid: %s", name)
 	}
@@ -527,4 +543,14 @@ func determineReleaseSSApplyMethod(serverSideApply bool) release.ApplyMethod {
 		return release.ApplyMethodServerSideApply
 	}
 	return release.ApplyMethodClientSideApply
+}
+
+// isDryRun returns true if the strategy is set to run as a DryRun
+func isDryRun(strategy DryRunStrategy) bool {
+	return strategy == DryRunClient || strategy == DryRunServer
+}
+
+// interactWithServer determine whether or not to interact with a remote Kubernetes server
+func interactWithServer(strategy DryRunStrategy) bool {
+	return strategy == DryRunNone || strategy == DryRunServer
 }
