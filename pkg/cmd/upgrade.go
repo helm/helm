@@ -50,12 +50,14 @@ argument can be either: a chart reference('example/mariadb'), a path to a chart 
 a packaged chart, or a fully qualified URL. For chart references, the latest
 version will be specified unless the '--version' flag is set.
 
-To override values in a chart, use either the '--values' flag and pass in a file
-or use the '--set' flag and pass configuration from the command line, to force string
-values, use '--set-string'. You can use '--set-file' to set individual
-values from a file when the value itself is too long for the command line
-or is dynamically generated. You can also use '--set-json' to set json values
-(scalars/objects/arrays) from the command line. Additionally, you can use '--set-json' and passing json object as a string.
+To override values in a chart, use the '-f'/'--values' flag to provide a file or
+the '--set' flag to pass configuration directly from the command line. To force
+a string value, use '--set-string'. Use '--set-file' when a value is too long
+for the command line or dynamically generated. You can also use '--set-json' to
+provide JSON values (scalars, objects, or arrays) from the command line, either
+as a direct argument or by passing a JSON object as a string. Alternatively, use
+the '-d'/'--values-directory' flag to specify a directory containing YAML files
+when you have many values or shared configurations split across files.
 
 You can specify the '--values'/'-f' flag multiple times. The priority will be given to the
 last (right-most) file specified. For example, if both myvalues.yaml and override.yaml
@@ -75,6 +77,33 @@ parameters, and existing values will be merged with any values set via '--values
 or '--set' flags. Priority is given to new values.
 
     $ helm upgrade --reuse-values --set foo=bar --set foo=newbar redis ./redis
+
+Key details about flag '-d'/'--values-directory':
+- **Purpose:**
+  - Specify a directory containing values YAML files.
+- **Behavior:**
+  - All YAML files in the directory and its nested subdirectories are loaded
+    recursively. Non-YAML files are skipped.
+  - Files within a single directory are processed in **lexicographical order**,
+    with later files overriding earlier ones when keys overlap.
+- **Precedence:**
+  - This flag has the **lower precedence** than other value flags
+    ('-f'/'--values', '--set', '--set-string', '--set-file', '--set-json',
+    '--set-literal'). Values from these other flags override values from files
+    in the specified directory.
+  - Exception: The chart's default 'values.yaml' has a **lower precedence** than
+    the '-d'/'--values-directory' flag, i.e., the values from files in the
+    directory can override it. To let default values override directory files,
+    include 'values.yaml' explicitly via '-f'/'--values'.
+- **Multiple Directories:**
+  - The flag can be specified **multiple times**.
+  - When multiple directories are provided, files in directories specified later
+    override values from earlier directories.
+  - **Lexicographical ordering** applies within each directory (and its nested
+    subdirectories) and not between directories specified with multiple
+    '-d'/'--values-directory' flags.
+
+    $ helm upgrade -d default-values/ -d prod-overrides/ myredis ./redis
 
 The --dry-run flag will output all generated chart manifests, including Secrets
 which can contain sensitive values. To hide Kubernetes Secrets use the
