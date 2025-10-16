@@ -73,27 +73,27 @@ type pluginTypeMeta struct {
 var pluginTypes = []pluginTypeMeta{
 	{
 		pluginType: "test/v1",
-		inputType:  reflect.TypeOf(schema.InputMessageTestV1{}),
-		outputType: reflect.TypeOf(schema.OutputMessageTestV1{}),
-		configType: reflect.TypeOf(schema.ConfigTestV1{}),
+		inputType:  reflect.TypeFor[schema.InputMessageTestV1](),
+		outputType: reflect.TypeFor[schema.OutputMessageTestV1](),
+		configType: reflect.TypeFor[schema.ConfigTestV1](),
 	},
 	{
 		pluginType: "cli/v1",
-		inputType:  reflect.TypeOf(schema.InputMessageCLIV1{}),
-		outputType: reflect.TypeOf(schema.OutputMessageCLIV1{}),
-		configType: reflect.TypeOf(schema.ConfigCLIV1{}),
+		inputType:  reflect.TypeFor[schema.InputMessageCLIV1](),
+		outputType: reflect.TypeFor[schema.OutputMessageCLIV1](),
+		configType: reflect.TypeFor[schema.ConfigCLIV1](),
 	},
 	{
 		pluginType: "getter/v1",
-		inputType:  reflect.TypeOf(schema.InputMessageGetterV1{}),
-		outputType: reflect.TypeOf(schema.OutputMessageGetterV1{}),
-		configType: reflect.TypeOf(schema.ConfigGetterV1{}),
+		inputType:  reflect.TypeFor[schema.InputMessageGetterV1](),
+		outputType: reflect.TypeFor[schema.OutputMessageGetterV1](),
+		configType: reflect.TypeFor[schema.ConfigGetterV1](),
 	},
 	{
 		pluginType: "postrenderer/v1",
-		inputType:  reflect.TypeOf(schema.InputMessagePostRendererV1{}),
-		outputType: reflect.TypeOf(schema.OutputMessagePostRendererV1{}),
-		configType: reflect.TypeOf(schema.ConfigPostRendererV1{}),
+		inputType:  reflect.TypeFor[schema.InputMessagePostRendererV1](),
+		outputType: reflect.TypeFor[schema.OutputMessagePostRendererV1](),
+		configType: reflect.TypeFor[schema.ConfigPostRendererV1](),
 	},
 }
 
