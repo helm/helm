@@ -1,0 +1,1 @@
+[{"name":"test-release","namespace":"default","revision":"1","updated":"2016-01-16 00:00:00 +0000 UTC","status":"deployed","chart":"test-chart-1.0.0","app_version":"0.0.1"}]
