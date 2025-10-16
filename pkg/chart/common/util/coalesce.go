@@ -21,8 +21,7 @@ import (
 	"log"
 	"maps"
 
-	"github.com/mitchellh/copystructure"
-
+	"helm.sh/helm/v4/internal/copystructure"
 	chart "helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/chart/common"
 )
