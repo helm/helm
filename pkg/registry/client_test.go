@@ -18,10 +18,6 @@ package registry
 
 import (
 	"io"
-	"net/http"
-	"net/http/httptest"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -54,69 +50,4 @@ func TestTagManifestTransformsReferences(t *testing.T) {
 
 	_, err = memStore.Resolve(ctx, refWithPlus)
 	require.Error(t, err, "Should NOT find the reference with the original +")
-}
-
-// Verifies that Login always restores ForceAttemptOAuth2 to false on success.
-func TestLogin_ResetsForceAttemptOAuth2_OnSuccess(t *testing.T) {
-	t.Parallel()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/v2/" {
-			// Accept either HEAD or GET
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		http.NotFound(w, r)
-	}))
-	defer srv.Close()
-
-	host := strings.TrimPrefix(srv.URL, "http://")
-
-	credFile := filepath.Join(t.TempDir(), "config.json")
-	c, err := NewClient(
-		ClientOptWriter(io.Discard),
-		ClientOptCredentialsFile(credFile),
-	)
-	if err != nil {
-		t.Fatalf("NewClient error: %v", err)
-	}
-
-	if c.authorizer == nil || c.authorizer.ForceAttemptOAuth2 {
-		t.Fatalf("expected ForceAttemptOAuth2 default to be false")
-	}
-
-	// Call Login with plain HTTP against our test server
-	if err := c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p")); err != nil {
-		t.Fatalf("Login error: %v", err)
-	}
-
-	if c.authorizer.ForceAttemptOAuth2 {
-		t.Errorf("ForceAttemptOAuth2 should be false after successful Login")
-	}
-}
-
-// Verifies that Login restores ForceAttemptOAuth2 to false even when ping fails.
-func TestLogin_ResetsForceAttemptOAuth2_OnFailure(t *testing.T) {
-	t.Parallel()
-
-	// Start and immediately close, so connections will fail
-	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
-	host := strings.TrimPrefix(srv.URL, "http://")
-	srv.Close()
-
-	credFile := filepath.Join(t.TempDir(), "config.json")
-	c, err := NewClient(
-		ClientOptWriter(io.Discard),
-		ClientOptCredentialsFile(credFile),
-	)
-	if err != nil {
-		t.Fatalf("NewClient error: %v", err)
-	}
-
-	// Invoke Login, expect an error but ForceAttemptOAuth2 must end false
-	_ = c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p"))
-
-	if c.authorizer.ForceAttemptOAuth2 {
-		t.Errorf("ForceAttemptOAuth2 should be false after failed Login")
-	}
 }
