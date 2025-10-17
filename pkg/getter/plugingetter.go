@@ -109,7 +109,7 @@ func (g *getterPlugin) Get(href string, options ...Option) (*bytes.Buffer, error
 			Protocol: u.Scheme,
 		},
 		// TODO should we pass Stdin, Stdout, and Stderr through Input here to getter plugins?
-		//Stdout: os.Stdout,
+		// Stdout: os.Stdout,
 	}
 	output, err := g.plg.Invoke(context.Background(), input)
 	if err != nil {

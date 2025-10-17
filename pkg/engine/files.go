@@ -64,7 +64,7 @@ func (f files) Get(name string) string {
 }
 
 // Glob takes a glob pattern and returns another files object only containing
-// matched  files.
+// matched files.
 //
 // This is designed to be called from a template.
 //

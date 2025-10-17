@@ -237,7 +237,7 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 				_, err = t.emptyVal()
 				return err
 			}
-			//End of key. Consume =, Get value.
+			// End of key. Consume =, Get value.
 			// FIXME: Get value list first
 			vl, e := t.valList()
 			switch e {

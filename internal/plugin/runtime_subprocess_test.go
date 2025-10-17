@@ -71,7 +71,7 @@ func TestSubprocessPluginRuntime(t *testing.T) {
 	output, err := p.Invoke(t.Context(), &Input{
 		Message: schema.InputMessageCLIV1{
 			ExtraArgs: []string{"arg1", "arg2"},
-			//Env:       []string{"FOO=bar"},
+			// Env:       []string{"FOO=bar"},
 		},
 	})
 
