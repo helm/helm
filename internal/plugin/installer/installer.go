@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"helm.sh/helm/v4/internal/plugin"
@@ -142,15 +144,82 @@ func Update(i Installer) error {
 func NewForSource(source, version string) (Installer, error) {
 	// Check if source is an OCI registry reference
 	if strings.HasPrefix(source, fmt.Sprintf("%s://", registry.OCIScheme)) {
+		slog.Debug("use OCI installer", "source", source, "version", version)
 		return NewOCIInstaller(source)
 	}
 	// Check if source is a local directory
 	if isLocalReference(source) {
+		slog.Debug("use LocalPath installer", "source", source)
 		return NewLocalInstaller(source)
 	} else if isRemoteHTTPArchive(source) {
+		slog.Debug("use HTTP installer", "source", source)
 		return NewHTTPInstaller(source)
 	}
+	slog.Debug("use default VCS installer", "source", source)
+	if _, checkErr := checkVCSReference(source); checkErr != nil {
+		return nil, checkErr
+	}
 	return NewVCSInstaller(source, version)
+}
+
+// check VCS reference, only support git, bzr, svn, hg.
+func checkVCSReference(vcsURL string) (string, error) {
+
+	var u *url.URL
+	var err error
+	// Try to parse the URL. If it fails, assume it's a SCP-like syntax.
+	var scpSyntaxRe = regexp.MustCompile(`^([a-zA-Z0-9_]+)@([a-zA-Z0-9._-]+):(.*)$`)
+
+	if m := scpSyntaxRe.FindStringSubmatch(vcsURL); m != nil {
+		// Match SCP-like syntax and convert it to a URL.
+		// Eg, "git@github.com:user/repo" becomes
+		// "ssh://git@github.com/user/repo".
+		u = &url.URL{
+			Scheme: "ssh",
+			User:   url.User(m[1]),
+			Host:   m[2],
+			Path:   "/" + m[3],
+		}
+	} else {
+		u, err = url.Parse(vcsURL)
+		if err != nil {
+			return "", fmt.Errorf("parse plugin VCS url error: %s", err.Error())
+		}
+	}
+
+	// Detect file schemes
+	if u.Scheme == "file" {
+		return "file", nil
+	}
+
+	if u.Host == "" {
+		return "", errors.New("invalid plugin VCS url, can't get correct host")
+	}
+
+	// Attempt to ascertain from the username passed in.
+	if u.User != nil {
+		un := u.User.Username()
+		if un == "git" {
+			return "git", nil
+		} else if un == "hg" {
+			return "hg", nil
+		}
+	}
+
+	// Try to detect from the scheme
+	switch u.Scheme {
+	case "git+ssh":
+		return "git", nil
+	case "git":
+		return "git", nil
+	case "bzr+ssh":
+		return "bzr", nil
+	case "svn+ssh":
+		return "svn", nil
+	default:
+		return "", errors.New("invalid plugin VCS url with unknown scheme")
+	}
+
 }
 
 // FindSource determines the correct Installer for the given source.
