@@ -45,3 +45,95 @@ func TestIsRemoteHTTPArchive(t *testing.T) {
 		t.Error("Expected media type match to fail")
 	}
 }
+
+func TestCheckVCSReference(t *testing.T) {
+	testCases := []struct {
+		name        string
+		vcsURL      string
+		expectedVCS string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "Git SCP-like syntax",
+			vcsURL:      "git@github.com:user/repo",
+			expectedVCS: "git",
+			expectError: false,
+		},
+		{
+			name:        "Git URL with git username",
+			vcsURL:      "https://git@github.com/user/repo.git",
+			expectedVCS: "git",
+			expectError: false,
+		},
+		{
+			name:        "Mercurial URL with hg username",
+			vcsURL:      "https://hg@bitbucket.org/user/repo",
+			expectedVCS: "hg",
+			expectError: false,
+		},
+		{
+			name:        "Git URL with git scheme",
+			vcsURL:      "git://github.com/user/repo.git",
+			expectedVCS: "git",
+			expectError: false,
+		},
+		{
+			name:        "Git SSH URL",
+			vcsURL:      "git+ssh://git@github.com/user/repo.git",
+			expectedVCS: "git",
+			expectError: false,
+		},
+		{
+			name:        "Bazaar SSH URL",
+			vcsURL:      "bzr+ssh://user@example.com/repo",
+			expectedVCS: "bzr",
+			expectError: false,
+		},
+		{
+			name:        "SVN SSH URL",
+			vcsURL:      "svn+ssh://user@example.com/repo",
+			expectedVCS: "svn",
+			expectError: false,
+		},
+		{
+			name:        "Local file URL",
+			vcsURL:      "file:///path/to/repo",
+			expectedVCS: "file",
+			expectError: false,
+		},
+		{
+			name:        "Invalid URL",
+			vcsURL:      "://invalid-url",
+			expectError: true,
+			errorMsg:    "parse plugin VCS url error",
+		},
+		{
+			name:        "Empty host",
+			vcsURL:      "http:///path/to/repo",
+			expectError: true,
+			errorMsg:    "invalid plugin VCS url, can't get correct host",
+		},
+		{
+			name:        "Unknown scheme",
+			vcsURL:      "unknown://github.com/user/repo",
+			expectError: true,
+			errorMsg:    "invalid plugin VCS url with unknown scheme",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			vcsType, err := checkVCSReference(tc.vcsURL)
+			if tc.expectError && err == nil {
+				t.Error("expected error, but got nil")
+			}
+			if !tc.expectError && err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if !tc.expectError && vcsType != tc.expectedVCS {
+				t.Errorf("checkVCSReference() testCase is %v. but now vcsType = %s, error = %v", tc, vcsType, err)
+			}
+		})
+	}
+}
