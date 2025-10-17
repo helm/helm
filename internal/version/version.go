@@ -18,6 +18,7 @@ package version // import "helm.sh/helm/v4/internal/version"
 
 import (
 	"flag"
+	"fmt"
 	"runtime"
 	"strings"
 )
@@ -37,6 +38,11 @@ var (
 	gitCommit = ""
 	// gitTreeState is the state of the git tree
 	gitTreeState = ""
+
+	// The Kubernetes version can be set by LDFLAGS. In order to do that the value
+	// must be a string.
+	kubeClientVersionMajor = ""
+	kubeClientVersionMinor = ""
 )
 
 // BuildInfo describes the compile time information.
@@ -49,6 +55,8 @@ type BuildInfo struct {
 	GitTreeState string `json:"git_tree_state,omitempty"`
 	// GoVersion is the version of the Go compiler used.
 	GoVersion string `json:"go_version,omitempty"`
+	// KubeClientVersion is the version of client-go Helm was build with
+	KubeClientVersion string `json:"kube_client_version"`
 }
 
 // GetVersion returns the semver string of the version
@@ -67,10 +75,11 @@ func GetUserAgent() string {
 // Get returns build info
 func Get() BuildInfo {
 	v := BuildInfo{
-		Version:      GetVersion(),
-		GitCommit:    gitCommit,
-		GitTreeState: gitTreeState,
-		GoVersion:    runtime.Version(),
+		Version:           GetVersion(),
+		GitCommit:         gitCommit,
+		GitTreeState:      gitTreeState,
+		GoVersion:         runtime.Version(),
+		KubeClientVersion: fmt.Sprintf("v%s.%s", kubeClientVersionMajor, kubeClientVersionMinor),
 	}
 
 	// HACK(bacongobbler): strip out GoVersion during a test run for consistent test output
