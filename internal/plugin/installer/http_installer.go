@@ -146,6 +146,11 @@ func (i *HTTPInstaller) Update() error {
 	return fmt.Errorf("method Update() not implemented for HttpInstaller")
 }
 
+// GetLatestVersion fetches the latest version of the plugin.Add a comment on lines R158 to R160Add diff commentMarkdown input:  edit mode selected.WritePreviewAdd a suggestionHeadingBoldItalicQuoteCodeLinkUnordered listNumbered listTask listMentionReferenceSaved repliesAdd FilesPaste, drop, or click to add filesCancelCommentStart a reviewReturn to code
+func (i *HTTPInstaller) GetLatestVersion() (string, error) {
+	return "", fmt.Errorf("not supported")
+}
+
 // Path is overridden because we want to join on the plugin name not the file name
 func (i HTTPInstaller) Path() string {
 	if i.Source == "" {
