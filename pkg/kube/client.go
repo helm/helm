@@ -689,19 +689,19 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 		errs = append(errs, o(&updateOptions))
 	}
 	if err := errors.Join(errs...); err != nil {
-		return nil, fmt.Errorf("invalid client update option(s): %w", err)
+		return &Result{}, fmt.Errorf("invalid client update option(s): %w", err)
 	}
 
 	if updateOptions.threeWayMergeForUnstructured && updateOptions.serverSideApply {
-		return nil, fmt.Errorf("invalid operation: cannot use three-way merge for unstructured and server-side apply together")
+		return &Result{}, fmt.Errorf("invalid operation: cannot use three-way merge for unstructured and server-side apply together")
 	}
 
 	if updateOptions.forceConflicts && updateOptions.forceReplace {
-		return nil, fmt.Errorf("invalid operation: cannot use force conflicts and force replace together")
+		return &Result{}, fmt.Errorf("invalid operation: cannot use force conflicts and force replace together")
 	}
 
 	if updateOptions.serverSideApply && updateOptions.forceReplace {
-		return nil, fmt.Errorf("invalid operation: cannot use server-side apply and force replace together")
+		return &Result{}, fmt.Errorf("invalid operation: cannot use server-side apply and force replace together")
 	}
 
 	makeUpdateApplyFunc := func() UpdateApplyFunc {
