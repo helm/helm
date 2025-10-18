@@ -196,7 +196,12 @@ func isRemoteHTTPArchive(source string) bool {
 		contentType := res.Header.Get("content-type")
 		foundSuffix, ok := mediaTypeToExtension(contentType)
 		if !ok {
-			// Media type not recognized
+			if contentType == "application/octet-stream" && isGzipArchiveFromURL(source) {
+				// For generic binary content, try to detect the actual file type
+				// by reading the first few bytes (magic bytes)
+				return true
+			}
+
 			return false
 		}
 
