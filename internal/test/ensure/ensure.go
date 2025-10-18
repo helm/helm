@@ -29,7 +29,7 @@ import (
 func HelmHome(t *testing.T) {
 	t.Helper()
 	base := t.TempDir()
-	t.Setenv(xdg.CacheHomeEnvVar, base)
+	t.Setenv(xdg.CacheHomeEnvVar, filepath.Join(base, "cache"))
 	t.Setenv(xdg.ConfigHomeEnvVar, base)
 	t.Setenv(xdg.DataHomeEnvVar, base)
 	t.Setenv(helmpath.CacheHomeEnvVar, "")
