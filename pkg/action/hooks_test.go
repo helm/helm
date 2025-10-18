@@ -180,9 +180,10 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 	outBuffer := &bytes.Buffer{}
 	instAction.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
+	modTime := time.Now()
 	templates := []*common.File{
-		{Name: "templates/hello", Data: []byte("hello: world")},
-		{Name: "templates/hooks", Data: []byte(manifest)},
+		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
+		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifest)},
 	}
 	vals := map[string]interface{}{}
 
@@ -209,9 +210,10 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 	outBuffer := &bytes.Buffer{}
 	failingClient.PrintingKubeClient = kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
+	modTime := time.Now()
 	templates := []*common.File{
-		{Name: "templates/hello", Data: []byte("hello: world")},
-		{Name: "templates/hooks", Data: []byte(manifest)},
+		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
+		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifest)},
 	}
 	vals := map[string]interface{}{}
 

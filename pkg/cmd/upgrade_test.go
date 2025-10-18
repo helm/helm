@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -408,7 +409,7 @@ func prepareMockRelease(t *testing.T, releaseName string) (func(n string, v int,
 			Description: "A Helm chart for Kubernetes",
 			Version:     "0.1.0",
 		},
-		Templates: []*common.File{{Name: "templates/configmap.yaml", Data: configmapData}},
+		Templates: []*common.File{{Name: "templates/configmap.yaml", ModTime: time.Now(), Data: configmapData}},
 	}
 	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
 	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
@@ -513,6 +514,7 @@ func prepareMockReleaseWithSecret(t *testing.T, releaseName string) (func(n stri
 	if err != nil {
 		t.Fatalf("Error loading template yaml %v", err)
 	}
+	modTime := time.Now()
 	cfile := &chart.Chart{
 		Metadata: &chart.Metadata{
 			APIVersion:  chart.APIVersionV1,
@@ -520,7 +522,7 @@ func prepareMockReleaseWithSecret(t *testing.T, releaseName string) (func(n stri
 			Description: "A Helm chart for Kubernetes",
 			Version:     "0.1.0",
 		},
-		Templates: []*common.File{{Name: "templates/configmap.yaml", Data: configmapData}, {Name: "templates/secret.yaml", Data: secretData}},
+		Templates: []*common.File{{Name: "templates/configmap.yaml", ModTime: modTime, Data: configmapData}, {Name: "templates/secret.yaml", ModTime: modTime, Data: secretData}},
 	}
 	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
 	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {

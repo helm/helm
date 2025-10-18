@@ -101,7 +101,7 @@ func Mock(opts *MockReleaseOptions) *Release {
 				},
 			},
 			Templates: []*common.File{
-				{Name: "templates/foo.tpl", Data: []byte(MockManifest)},
+				{Name: "templates/foo.tpl", ModTime: time.Now(), Data: []byte(MockManifest)},
 			},
 		}
 	}
