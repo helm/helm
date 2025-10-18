@@ -97,6 +97,20 @@ func (i *LocalInstaller) installFromDirectory() error {
 	if !isPlugin(i.Source) {
 		return ErrMissingMetadata
 	}
+
+	// Load plugin to get metadata and check for existing plugin with same name
+	p, err := plugin.LoadDir(i.Source)
+	if err != nil {
+		return fmt.Errorf("failed to load plugin: %w", err)
+	}
+	metadata := p.Metadata()
+
+	pluginsPath := helmpath.DataPath("plugins")
+	foundPlugins, _ := plugin.FindPlugins([]string{pluginsPath}, plugin.Descriptor{Name: metadata.Name})
+	if len(foundPlugins) > 0 {
+		return fmt.Errorf("plugin %q already exists at %q", metadata.Name, foundPlugins[0].Dir())
+	}
+
 	slog.Debug("symlinking", "source", i.Source, "path", i.Path())
 	return os.Symlink(i.Source, i.Path())
 }
@@ -116,7 +130,12 @@ func (i *LocalInstaller) installFromArchive() error {
 		return fmt.Errorf("failed to extract plugin metadata from tarball: %w", err)
 	}
 	filename := fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
-	tarballPath := helmpath.DataPath("plugins", filename)
+	pluginsPath := helmpath.DataPath("plugins")
+	foundPlugins, _ := plugin.FindPlugins([]string{pluginsPath}, plugin.Descriptor{Name: metadata.Name})
+	if len(foundPlugins) > 0 {
+		return fmt.Errorf("plugin %q already exists at %q", metadata.Name, foundPlugins[0].Dir())
+	}
+	tarballPath := filepath.Join(pluginsPath, filename)
 	if err := os.MkdirAll(filepath.Dir(tarballPath), 0755); err != nil {
 		return fmt.Errorf("failed to create plugins directory: %w", err)
 	}

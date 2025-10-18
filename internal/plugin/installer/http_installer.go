@@ -91,7 +91,12 @@ func (i *HTTPInstaller) Install() error {
 		return fmt.Errorf("failed to extract plugin metadata from tarball: %w", err)
 	}
 	filename := fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
-	tarballPath := helmpath.DataPath("plugins", filename)
+	pluginsPath := helmpath.DataPath("plugins")
+	foundPlugins, _ := plugin.FindPlugins([]string{pluginsPath}, plugin.Descriptor{Name: metadata.Name})
+	if len(foundPlugins) > 0 {
+		return fmt.Errorf("plugin %q already exists at %q", metadata.Name, foundPlugins[0].Dir())
+	}
+	tarballPath := filepath.Join(pluginsPath, filename)
 	if err := os.MkdirAll(filepath.Dir(tarballPath), 0755); err != nil {
 		return fmt.Errorf("failed to create plugins directory: %w", err)
 	}
