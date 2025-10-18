@@ -26,6 +26,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/Masterminds/vcs"
 
+	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/internal/plugin/cache"
 	"helm.sh/helm/v4/internal/third_party/dep/fs"
 	"helm.sh/helm/v4/pkg/helmpath"
@@ -89,6 +90,19 @@ func (i *VCSInstaller) Install() error {
 
 	if !isPlugin(i.Repo.LocalPath()) {
 		return ErrMissingMetadata
+	}
+
+	// Load plugin to get metadata and check for existing plugin with same name
+	p, err := plugin.LoadDir(i.Repo.LocalPath())
+	if err != nil {
+		return fmt.Errorf("failed to load plugin: %w", err)
+	}
+	metadata := p.Metadata()
+
+	// Check if a plugin with the same name already exists
+	foundPlugins, _ := plugin.FindPlugins([]string{i.PluginsDirectory}, plugin.Descriptor{Name: metadata.Name})
+	if len(foundPlugins) > 0 {
+		return fmt.Errorf("plugin %q already exists at %q", metadata.Name, foundPlugins[0].Dir())
 	}
 
 	slog.Debug("copying files", "source", i.Repo.LocalPath(), "destination", i.Path())
