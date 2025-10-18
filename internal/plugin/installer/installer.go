@@ -50,6 +50,8 @@ type Installer interface {
 	Path() string
 	// Update updates a plugin.
 	Update() error
+	// GetLatestVersion fetches the latest version of the plugin.
+	GetLatestVersion() (string, error)
 }
 
 // Verifier provides an interface for installers that support verification.

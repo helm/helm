@@ -24,12 +24,19 @@ import (
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v4/internal/plugin/installer"
 
 	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/internal/plugin/schema"
 )
 
+type pluginListOptions struct {
+	showOutdated bool
+}
+
 func newPluginListCmd(out io.Writer) *cobra.Command {
+	o := &pluginListOptions{}
+
 	var pluginType string
 	cmd := &cobra.Command{
 		Use:               "list",
@@ -51,7 +58,7 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 			signingInfo := plugin.GetSigningInfoForPlugins(plugins)
 
 			table := uitable.New()
-			table.AddRow("NAME", "VERSION", "TYPE", "APIVERSION", "PROVENANCE", "SOURCE")
+			table.AddRow("NAME", "VERSION", "LATEST", "TYPE", "APIVERSION", "PROVENANCE", "SOURCE")
 			for _, p := range plugins {
 				m := p.Metadata()
 				sourceURL := m.SourceURL
@@ -63,7 +70,15 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 				if info, ok := signingInfo[m.Name]; ok {
 					signedStatus = info.Status
 				}
-				table.AddRow(m.Name, m.Version, m.Type, m.APIVersion, signedStatus, sourceURL)
+
+				latest, err := getLatestVersion(p)
+				if err != nil {
+					latest = "unknown"
+				}
+
+				if !o.showOutdated || (latest != "unknown" && latest != m.Version) {
+					table.AddRow(m.Name, m.Version, latest, m.Type, m.APIVersion, signedStatus, sourceURL)
+				}
 			}
 			fmt.Fprintln(out, table)
 			return nil
@@ -72,6 +87,7 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.StringVar(&pluginType, "type", "", "Plugin type")
+	f.BoolVar(&o.showOutdated, "outdated", false, "show only outdated plugins")
 
 	return cmd
 }
@@ -114,4 +130,23 @@ func compListPlugins(_ string, ignoredPluginNames []string) []string {
 		}
 	}
 	return pNames
+}
+
+// getLatestVersion returns the latest version of a plugin
+func getLatestVersion(p plugin.Plugin) (string, error) {
+	exactLocation, err := filepath.EvalSymlinks(p.Dir())
+	if err != nil {
+		return "", err
+	}
+	absExactLocation, err := filepath.Abs(exactLocation)
+	if err != nil {
+		return "", err
+	}
+
+	i, err := installer.FindSource(absExactLocation)
+	if err != nil {
+		return "", err
+	}
+
+	return i.GetLatestVersion()
 }
