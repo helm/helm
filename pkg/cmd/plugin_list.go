@@ -24,9 +24,9 @@ import (
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
-	"helm.sh/helm/v4/internal/plugin/installer"
 
 	"helm.sh/helm/v4/internal/plugin"
+	"helm.sh/helm/v4/internal/plugin/installer"
 	"helm.sh/helm/v4/internal/plugin/schema"
 )
 
