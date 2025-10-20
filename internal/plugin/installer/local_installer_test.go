@@ -64,7 +64,7 @@ func TestLocalInstallerNotAFolder(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if err != ErrPluginNotAFolder {
+	if err != ErrPluginNotADirectory {
 		t.Fatalf("expected error to equal: %q", err)
 	}
 }
