@@ -72,7 +72,7 @@ func TestReleaseTestingGetPodLogs_FilterEvents(t *testing.T) {
 	out := &bytes.Buffer{}
 	require.NoError(t, client.GetPodLogs(out, &release.Release{Hooks: hooks}))
 
-	assert.Contains(t, "", out.String())
+	assert.Empty(t, out.String())
 }
 
 func TestReleaseTestingGetPodLogs_PodRetrievalError(t *testing.T) {

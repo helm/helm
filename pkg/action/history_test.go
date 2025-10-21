@@ -26,6 +26,8 @@ import (
 
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
+
+	"helm.sh/helm/v4/pkg/release/common"
 )
 
 func TestNewHistory(t *testing.T) {
@@ -38,8 +40,8 @@ func TestNewHistory(t *testing.T) {
 
 func TestHistoryRun(t *testing.T) {
 	releaseName := "test-release"
-	simpleRelease := namedReleaseStub(releaseName, release.StatusPendingUpgrade)
-	updatedRelease := namedReleaseStub(releaseName, release.StatusDeployed)
+	simpleRelease := namedReleaseStub(releaseName, common.StatusPendingUpgrade)
+	updatedRelease := namedReleaseStub(releaseName, common.StatusDeployed)
 	updatedRelease.Chart.Metadata.Version = "0.1.1"
 	updatedRelease.Version = 2
 
@@ -57,14 +59,19 @@ func TestHistoryRun(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, releases, 2, "expected 2 Releases in Config")
 
-	result, err := client.Run(releaseName)
+	releasers, err := client.Run(releaseName)
 	require.NoError(t, err)
+	assert.Len(t, releasers, 2, "expected 2 Releases in History result")
 
-	assert.Len(t, result, 2, "expected 2 Releases in History result")
-	assert.Equal(t, simpleRelease.Name, result[0].Name)
-	assert.Equal(t, simpleRelease.Version, result[0].Version)
-	assert.Equal(t, updatedRelease.Name, result[1].Name)
-	assert.Equal(t, updatedRelease.Version, result[1].Version)
+	release1, err := releaserToV1Release(releasers[0])
+	require.NoError(t, err)
+	assert.Equal(t, simpleRelease.Name, release1.Name)
+	assert.Equal(t, simpleRelease.Version, release1.Version)
+
+	release2, err := releaserToV1Release(releasers[1])
+	require.NoError(t, err)
+	assert.Equal(t, updatedRelease.Name, release2.Name)
+	assert.Equal(t, updatedRelease.Version, release2.Version)
 }
 
 func TestHistoryRun_UnreachableKubeClient(t *testing.T) {
