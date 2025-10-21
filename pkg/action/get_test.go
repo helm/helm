@@ -25,7 +25,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
-	release "helm.sh/helm/v4/pkg/release/v1"
+
+	"helm.sh/helm/v4/pkg/release/common"
 )
 
 func TestNewGet(t *testing.T) {
@@ -40,11 +41,13 @@ func TestNewGet(t *testing.T) {
 func TestGetRun(t *testing.T) {
 	config := actionConfigFixture(t)
 	client := NewGet(config)
-	simpleRelease := namedReleaseStub("test-release", release.StatusPendingUpgrade)
+	simpleRelease := namedReleaseStub("test-release", common.StatusPendingUpgrade)
 	require.NoError(t, config.Releases.Create(simpleRelease))
 
-	result, err := client.Run(simpleRelease.Name)
+	releaser, err := client.Run(simpleRelease.Name)
+	require.NoError(t, err)
 
+	result, err := releaserToV1Release(releaser)
 	require.NoError(t, err)
 	assert.Equal(t, simpleRelease.Name, result.Name)
 	assert.Equal(t, simpleRelease.Version, result.Version)
@@ -57,7 +60,7 @@ func TestGetRun_UnreachableKubeClient(t *testing.T) {
 	config.KubeClient = &failingKubeClient
 
 	client := NewGet(config)
-	simpleRelease := namedReleaseStub("test-release", release.StatusPendingUpgrade)
+	simpleRelease := namedReleaseStub("test-release", common.StatusPendingUpgrade)
 	require.NoError(t, config.Releases.Create(simpleRelease))
 
 	result, err := client.Run(simpleRelease.Name)

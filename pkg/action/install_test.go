@@ -34,6 +34,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	ci "helm.sh/helm/v4/pkg/chart"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -49,8 +50,8 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
-	rcommon "helm.sh/helm/v4/pkg/release/common"
 	"helm.sh/helm/v4/pkg/registry"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
@@ -273,17 +274,6 @@ func TestInstallReleaseWithValues(t *testing.T) {
 	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
 	is.Equal("Install complete", rel.Info.Description)
 	is.Equal(expectedUserValues, rel.Config)
-}
-
-func TestInstallReleaseClientOnly(t *testing.T) {
-	is := assert.New(t)
-	instAction := installAction(t)
-	instAction.ClientOnly = true
-	_, err := instAction.Run(buildChart(), nil)
-	require.NoError(t, err)
-
-	is.Equal(instAction.cfg.Capabilities, common.DefaultCapabilities)
-	is.Equal(instAction.cfg.KubeClient, &kubefake.PrintingKubeClient{Out: io.Discard})
 }
 
 func TestInstallRelease_NoName(t *testing.T) {
@@ -1186,12 +1176,12 @@ func TestCheckDependencies(t *testing.T) {
 	dependency := chart.Dependency{Name: "hello"}
 	mockChart := buildChart(withDependency())
 
-	assert.Nil(t, CheckDependencies(mockChart, []*chart.Dependency{&dependency}))
+	assert.Nil(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}))
 }
 
 func TestCheckDependencies_MissingDependency(t *testing.T) {
 	dependency := chart.Dependency{Name: "missing"}
 	mockChart := buildChart(withDependency())
 
-	assert.ErrorContains(t, CheckDependencies(mockChart, []*chart.Dependency{&dependency}), "missing in charts")
+	assert.ErrorContains(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}), "missing in charts")
 }

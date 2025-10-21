@@ -33,10 +33,16 @@ func TestVerifyRun(t *testing.T) {
 	client := NewVerify()
 
 	client.Keyring = "../downloader/testdata/helm-test-key.pub"
-	require.NoError(t, client.Run("../downloader/testdata/signtest-0.1.0.tgz"))
+	output, err := client.Run("../downloader/testdata/signtest-0.1.0.tgz")
+	assert.Contains(t, output, "Signed by:")
+	assert.Contains(t, output, "Using Key With Fingerprint:")
+	assert.Contains(t, output, "Chart Hash Verified:")
+	require.NoError(t, err)
 }
 
 func TestVerifyRun_DownloadError(t *testing.T) {
 	client := NewVerify()
-	require.Error(t, client.Run("invalid-chart-path"))
+	output, err := client.Run("invalid-chart-path")
+	require.Error(t, err)
+	assert.Empty(t, output)
 }
