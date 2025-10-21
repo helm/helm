@@ -573,9 +573,16 @@ func (c *Client) update(originals, targets ResourceList, updateApplyFunc UpdateA
 		}
 		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
 			c.Logger().Debug("failed to delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+			if !apierrors.IsNotFound(err) {
+				updateErrors = append(updateErrors, fmt.Errorf("failed to delete resource %s: %w", info.Name, err))
+			}
 			continue
 		}
 		res.Deleted = append(res.Deleted, info)
+	}
+
+	if len(updateErrors) != 0 {
+		return res, joinErrors(updateErrors, " && ")
 	}
 	return res, nil
 }
@@ -693,19 +700,19 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 		errs = append(errs, o(&updateOptions))
 	}
 	if err := errors.Join(errs...); err != nil {
-		return nil, fmt.Errorf("invalid client update option(s): %w", err)
+		return &Result{}, fmt.Errorf("invalid client update option(s): %w", err)
 	}
 
 	if updateOptions.threeWayMergeForUnstructured && updateOptions.serverSideApply {
-		return nil, fmt.Errorf("invalid operation: cannot use three-way merge for unstructured and server-side apply together")
+		return &Result{}, fmt.Errorf("invalid operation: cannot use three-way merge for unstructured and server-side apply together")
 	}
 
 	if updateOptions.forceConflicts && updateOptions.forceReplace {
-		return nil, fmt.Errorf("invalid operation: cannot use force conflicts and force replace together")
+		return &Result{}, fmt.Errorf("invalid operation: cannot use force conflicts and force replace together")
 	}
 
 	if updateOptions.serverSideApply && updateOptions.forceReplace {
-		return nil, fmt.Errorf("invalid operation: cannot use server-side apply and force replace together")
+		return &Result{}, fmt.Errorf("invalid operation: cannot use server-side apply and force replace together")
 	}
 
 	makeUpdateApplyFunc := func() UpdateApplyFunc {

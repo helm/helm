@@ -85,10 +85,10 @@ func NewExtractor(source string) (Extractor, error) {
 //
 //   - The character `:` is considered illegal because it is a separator on UNIX and a
 //     drive designator on Windows.
-//   - The path component `..` is considered suspicions, and therefore illegal
+//   - The path component `..` is considered suspicious, and therefore illegal
 //   - The character \ (backslash) is treated as a path separator and is converted to /.
 //   - Beginning a path with a path separator is illegal
-//   - Rudimentary symlink protects are offered by SecureJoin.
+//   - Rudimentary symlink protections are offered by SecureJoin.
 func cleanJoin(root, dest string) (string, error) {
 
 	// On Windows, this is a drive separator. On UNIX-like, this is the path list separator.

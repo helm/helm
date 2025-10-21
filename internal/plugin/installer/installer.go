@@ -139,18 +139,24 @@ func Update(i Installer) error {
 }
 
 // NewForSource determines the correct Installer for the given source.
-func NewForSource(source, version string) (Installer, error) {
-	// Check if source is an OCI registry reference
+func NewForSource(source, version string) (installer Installer, err error) {
 	if strings.HasPrefix(source, fmt.Sprintf("%s://", registry.OCIScheme)) {
-		return NewOCIInstaller(source)
-	}
-	// Check if source is a local directory
-	if isLocalReference(source) {
-		return NewLocalInstaller(source)
+		// Source is an OCI registry reference
+		installer, err = NewOCIInstaller(source)
+	} else if isLocalReference(source) {
+		// Source is a local directory
+		installer, err = NewLocalInstaller(source)
 	} else if isRemoteHTTPArchive(source) {
-		return NewHTTPInstaller(source)
+		installer, err = NewHTTPInstaller(source)
+	} else {
+		installer, err = NewVCSInstaller(source, version)
 	}
-	return NewVCSInstaller(source, version)
+
+	if err != nil {
+		return installer, fmt.Errorf("cannot get information about plugin source %q (if it's a local directory, does it exist?), last error was: %w", source, err)
+	}
+
+	return
 }
 
 // FindSource determines the correct Installer for the given source.
