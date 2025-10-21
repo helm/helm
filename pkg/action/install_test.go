@@ -34,7 +34,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	ci "helm.sh/helm/v4/pkg/chart"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -44,6 +43,8 @@ import (
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
+
+	ci "helm.sh/helm/v4/pkg/chart"
 
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/chart/common"
