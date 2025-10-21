@@ -17,9 +17,11 @@ limitations under the License.
 package driver
 
 import (
+	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"helm.sh/helm/v4/pkg/release"
 )
@@ -42,11 +44,15 @@ type Memory struct {
 	namespace string
 	// A map of namespaces to releases
 	cache map[string]memReleases
+	// logger is an slog.Logger pointer to use the driver
+	logger atomic.Pointer[slog.Logger]
 }
 
 // NewMemory initializes a new memory driver.
 func NewMemory() *Memory {
-	return &Memory{cache: map[string]memReleases{}, namespace: "default"}
+	m := &Memory{cache: map[string]memReleases{}, namespace: "default"}
+	m.SetLogger(slog.Default())
+	return m
 }
 
 // SetNamespace sets a specific namespace in which releases will be accessed.
@@ -247,3 +253,19 @@ func (mem *Memory) rlock() func() {
 // ```defer unlock(mem.rlock())```, locks mem for reading at the
 // call point of defer and unlocks upon exiting the block.
 func unlock(fn func()) { fn() }
+
+func (mem *Memory) Logger() *slog.Logger {
+	if lg := mem.logger.Load(); lg != nil {
+		return lg
+	}
+	return slog.Default() // We rarely get here, just be defensive
+}
+
+func (mem *Memory) SetLogger(newLogger *slog.Logger) {
+	// Only set logger if it's currently nil
+	if newLogger == nil {
+		mem.logger.Store(slog.Default()) // We never want to set the logger to nil
+		return
+	}
+	mem.logger.Store(newLogger)
+}

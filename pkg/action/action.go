@@ -29,6 +29,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"text/template"
 	"time"
 
@@ -109,7 +110,17 @@ type Configuration struct {
 	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
 	HookOutputFunc func(namespace, pod, container string) io.Writer
 
+	// logger is an slog.Logger pointer to use with the Configuration instance
+	logger atomic.Pointer[slog.Logger]
+
+	// Mutex is an exclusive lock for concurrent access to the action
 	mutex sync.Mutex
+}
+
+func NewConfiguration() *Configuration {
+	c := &Configuration{}
+	c.SetLogger(slog.Default())
+	return c
 }
 
 const (
@@ -376,8 +387,8 @@ func (cfg *Configuration) getCapabilities() (*common.Capabilities, error) {
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
 		if discovery.IsGroupDiscoveryFailedError(err) {
-			slog.Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
-			slog.Warn("to fix this, kubectl delete apiservice <service-name>")
+			cfg.Logger().Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
+			cfg.Logger().Warn("to fix this, kubectl delete apiservice <service-name>")
 		} else {
 			return nil, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
 		}
@@ -476,13 +487,14 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (common.VersionSet
 // recordRelease with an update operation in case reuse has been set.
 func (cfg *Configuration) recordRelease(r *release.Release) {
 	if err := cfg.Releases.Update(r); err != nil {
-		slog.Warn("failed to update release", "name", r.Name, "revision", r.Version, slog.Any("error", err))
+		cfg.Logger().Warn("failed to update release", "name", r.Name, "revision", r.Version, slog.Any("error", err))
 	}
 }
 
 // Init initializes the action configuration
 func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string) error {
 	kc := kube.New(getter)
+	kc.SetLogger(cfg.Logger())
 
 	lazyClient := &lazyClient{
 		namespace: namespace,
@@ -493,9 +505,11 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	switch helmDriver {
 	case "secret", "secrets", "":
 		d := driver.NewSecrets(newSecretClient(lazyClient))
+		d.SetLogger(cfg.Logger())
 		store = storage.Init(d)
 	case "configmap", "configmaps":
 		d := driver.NewConfigMaps(newConfigMapClient(lazyClient))
+		d.SetLogger(cfg.Logger())
 		store = storage.Init(d)
 	case "memory":
 		var d *driver.Memory
@@ -510,11 +524,13 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 		if d == nil {
 			d = driver.NewMemory()
 		}
+		d.SetLogger(cfg.Logger())
 		d.SetNamespace(namespace)
 		store = storage.Init(d)
 	case "sql":
 		d, err := driver.NewSQL(
 			os.Getenv("HELM_DRIVER_SQL_CONNECTION_STRING"),
+			cfg.Logger(),
 			namespace,
 		)
 		if err != nil {
@@ -528,6 +544,7 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	cfg.RESTClientGetter = getter
 	cfg.KubeClient = kc
 	cfg.Releases = store
+	cfg.Releases.SetLogger(cfg.Logger())
 	cfg.HookOutputFunc = func(_, _, _ string) io.Writer { return io.Discard }
 
 	return nil
@@ -536,6 +553,24 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 // SetHookOutputFunc sets the HookOutputFunc on the Configuration.
 func (cfg *Configuration) SetHookOutputFunc(hookOutputFunc func(_, _, _ string) io.Writer) {
 	cfg.HookOutputFunc = hookOutputFunc
+}
+
+// Logger returns the logger for the Configuration. If nil, returns slog.Default().
+func (cfg *Configuration) Logger() *slog.Logger {
+	if lg := cfg.logger.Load(); lg != nil {
+		return lg
+	}
+	return slog.Default() // We rarely get here, just be defensive
+}
+
+// SetLogger sets the logger for the Configuration. If nil, sets the default logger.
+func (cfg *Configuration) SetLogger(newLogger *slog.Logger) {
+	// Only set logger if it's currently nil
+	if newLogger == nil {
+		cfg.logger.Store(slog.Default()) // We never want to set the logger to nil
+		return
+	}
+	cfg.logger.Store(newLogger)
 }
 
 func determineReleaseSSApplyMethod(serverSideApply bool) release.ApplyMethod {

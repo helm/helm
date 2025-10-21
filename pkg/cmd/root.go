@@ -103,7 +103,7 @@ By default, the default directories depend on the Operating System. The defaults
 var settings = cli.New()
 
 func NewRootCmd(out io.Writer, args []string, logSetup func(bool)) (*cobra.Command, error) {
-	actionConfig := new(action.Configuration)
+	actionConfig := action.NewConfiguration()
 	cmd, err := newRootCmdWithConfig(actionConfig, out, args, logSetup)
 	if err != nil {
 		return nil, err

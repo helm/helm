@@ -193,7 +193,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
 				crdName := res[0].Name
-				slog.Debug("CRD is already present. Skipping", "crd", crdName)
+				i.cfg.Logger().Debug("CRD is already present. Skipping", "crd", crdName)
 				continue
 			}
 			return fmt.Errorf("failed to install CRD %s: %w", obj.Name, err)
@@ -221,7 +221,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 				return err
 			}
 
-			slog.Debug("clearing discovery cache")
+			i.cfg.Logger().Debug("clearing discovery cache")
 			discoveryClient.Invalidate()
 
 			_, _ = discoveryClient.ServerGroups()
@@ -234,7 +234,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 			return err
 		}
 		if resettable, ok := restMapper.(meta.ResettableRESTMapper); ok {
-			slog.Debug("clearing REST mapper cache")
+			i.cfg.Logger().Debug("clearing REST mapper cache")
 			resettable.Reset()
 		}
 	}
@@ -267,24 +267,24 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 
 	if interactWithServer(i.DryRunStrategy) {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
-			slog.Error(fmt.Sprintf("cluster reachability check failed: %v", err))
+			i.cfg.Logger().Error(fmt.Sprintf("cluster reachability check failed: %v", err))
 			return nil, fmt.Errorf("cluster reachability check failed: %w", err)
 		}
 	}
 
 	// HideSecret must be used with dry run. Otherwise, return an error.
 	if !isDryRun(i.DryRunStrategy) && i.HideSecret {
-		slog.Error("hiding Kubernetes secrets requires a dry-run mode")
+		i.cfg.Logger().Error("hiding Kubernetes secrets requires a dry-run mode")
 		return nil, errors.New("hiding Kubernetes secrets requires a dry-run mode")
 	}
 
 	if err := i.availableName(); err != nil {
-		slog.Error("release name check failed", slog.Any("error", err))
+		i.cfg.Logger().Error("release name check failed", slog.Any("error", err))
 		return nil, fmt.Errorf("release name check failed: %w", err)
 	}
 
 	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
-		slog.Error("chart dependencies processing failed", slog.Any("error", err))
+		i.cfg.Logger().Error("chart dependencies processing failed", slog.Any("error", err))
 		return nil, fmt.Errorf("chart dependencies processing failed: %w", err)
 	}
 
@@ -293,7 +293,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	if crds := chrt.CRDObjects(); interactWithServer(i.DryRunStrategy) && !i.SkipCRDs && len(crds) > 0 {
 		// On dry run, bail here
 		if isDryRun(i.DryRunStrategy) {
-			slog.Warn("This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
+			i.cfg.Logger().Warn("This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
 		} else if err := i.installCRDs(crds); err != nil {
 			return nil, err
 		}
@@ -313,7 +313,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		mem.SetNamespace(i.Namespace)
 		i.cfg.Releases = storage.Init(mem)
 	} else if interactWithServer(i.DryRunStrategy) && len(i.APIVersions) > 0 {
-		slog.Debug("API Version list given outside of client only mode, this list will be ignored")
+		i.cfg.Logger().Debug("API Version list given outside of client only mode, this list will be ignored")
 	}
 
 	// Make sure if RollbackOnFailure is set, that wait is set as well. This makes it so
@@ -539,7 +539,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	// One possible strategy would be to do a timed retry to see if we can get
 	// this stored in the future.
 	if err := i.recordRelease(rel); err != nil {
-		slog.Error("failed to record the release", slog.Any("error", err))
+		i.cfg.Logger().Error("failed to record the release", slog.Any("error", err))
 	}
 
 	return rel, nil
@@ -548,7 +548,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
 	rel.SetStatus(rcommon.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
 	if i.RollbackOnFailure {
-		slog.Debug("install failed and rollback-on-failure is set, uninstalling release", "release", i.ReleaseName)
+		i.cfg.Logger().Debug("install failed and rollback-on-failure is set, uninstalling release", "release", i.ReleaseName)
 		uninstall := NewUninstall(i.cfg)
 		uninstall.DisableHooks = i.DisableHooks
 		uninstall.KeepHistory = false

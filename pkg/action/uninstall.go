@@ -119,7 +119,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		return nil, fmt.Errorf("the release named %q is already deleted", name)
 	}
 
-	slog.Debug("uninstall: deleting release", "name", name)
+	u.cfg.Logger().Debug("uninstall: deleting release", "name", name)
 	rel.Info.Status = common.StatusUninstalling
 	rel.Info.Deleted = time.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
@@ -131,18 +131,18 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 			return res, err
 		}
 	} else {
-		slog.Debug("delete hooks disabled", "release", name)
+		u.cfg.Logger().Debug("delete hooks disabled", "release", name)
 	}
 
 	// From here on out, the release is currently considered to be in StatusUninstalling
 	// state.
 	if err := u.cfg.Releases.Update(rel); err != nil {
-		slog.Debug("uninstall: Failed to store updated release", slog.Any("error", err))
+		u.cfg.Logger().Debug("uninstall: Failed to store updated release", slog.Any("error", err))
 	}
 
 	deletedResources, kept, errs := u.deleteRelease(rel)
 	if errs != nil {
-		slog.Debug("uninstall: Failed to delete release", slog.Any("error", errs))
+		u.cfg.Logger().Debug("uninstall: Failed to delete release", slog.Any("error", errs))
 		return nil, fmt.Errorf("failed to delete release: %s", name)
 	}
 
@@ -170,7 +170,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 	}
 
 	if !u.KeepHistory {
-		slog.Debug("purge requested", "release", name)
+		u.cfg.Logger().Debug("purge requested", "release", name)
 		err := u.purgeReleases(rels...)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("uninstall: Failed to purge the release: %w", err))
@@ -185,7 +185,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 	}
 
 	if err := u.cfg.Releases.Update(rel); err != nil {
-		slog.Debug("uninstall: Failed to store updated release", slog.Any("error", err))
+		u.cfg.Logger().Debug("uninstall: Failed to store updated release", slog.Any("error", err))
 	}
 
 	if len(errs) > 0 {

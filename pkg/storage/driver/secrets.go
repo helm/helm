@@ -22,6 +22,7 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -44,14 +45,18 @@ const SecretsDriverName = "Secret"
 // SecretsInterface.
 type Secrets struct {
 	impl corev1.SecretInterface
+	// logger is an slog.Logger pointer to use the driver
+	logger atomic.Pointer[slog.Logger]
 }
 
 // NewSecrets initializes a new Secrets wrapping an implementation of
 // the kubernetes SecretsInterface.
 func NewSecrets(impl corev1.SecretInterface) *Secrets {
-	return &Secrets{
+	s := &Secrets{
 		impl: impl,
 	}
+	s.SetLogger(slog.Default())
+	return s
 }
 
 // Name returns the name of the driver.
@@ -98,7 +103,7 @@ func (secrets *Secrets) List(filter func(release.Releaser) bool) ([]release.Rele
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
-			slog.Debug("list failed to decode release", "key", item.Name, slog.Any("error", err))
+			secrets.Logger().Debug("list failed to decode release", "key", item.Name, slog.Any("error", err))
 			continue
 		}
 
@@ -137,7 +142,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]release.Releaser, err
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
-			slog.Debug("failed to decode release", "key", item.Name, slog.Any("error", err))
+			secrets.Logger().Debug("failed to decode release", "key", item.Name, slog.Any("error", err))
 			continue
 		}
 		rls.Labels = item.Labels
@@ -272,4 +277,21 @@ func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, er
 		Type: "helm.sh/release.v1",
 		Data: map[string][]byte{"release": []byte(s)},
 	}, nil
+}
+
+// logger returns the logger for the Secrets driver. If nil, returns slog.Default().
+func (secrets *Secrets) Logger() *slog.Logger {
+	if lg := secrets.logger.Load(); lg != nil {
+		return lg
+	}
+	return slog.Default() // We rarely get here, just be defensive
+}
+
+func (secrets *Secrets) SetLogger(newLogger *slog.Logger) {
+	// Only set logger if it's currently nil
+	if newLogger == nil {
+		secrets.logger.Store(slog.Default()) // We never want to set the logger to nil
+		return
+	}
+	secrets.logger.Store(newLogger)
 }
