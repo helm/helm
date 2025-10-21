@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -43,12 +44,14 @@ func TestStatusRun(t *testing.T) {
 	failingKubeClient.BuildDummy = true
 	config.KubeClient = &failingKubeClient
 	client := NewStatus(config)
+	client.ShowResourcesTable = true
 
 	releaseName := "test-release"
 	require.NoError(t, configureReleaseContent(config, releaseName))
-	result, err := client.Run(releaseName)
-	client.ShowResourcesTable = true
+	releaser, err := client.Run(releaseName)
+	require.NoError(t, err)
 
+	result, err := releaserToV1Release(releaser)
 	require.NoError(t, err)
 	assert.Equal(t, releaseName, result.Name)
 	assert.Equal(t, 1, result.Version)
@@ -121,7 +124,7 @@ func configureReleaseContent(cfg *Configuration, releaseName string) error {
 	rel := &release.Release{
 		Name: releaseName,
 		Info: &release.Info{
-			Status: release.StatusDeployed,
+			Status: rcommon.StatusDeployed,
 		},
 		Manifest:  testManifest,
 		Version:   1,
