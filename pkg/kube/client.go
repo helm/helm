@@ -569,9 +569,16 @@ func (c *Client) update(originals, targets ResourceList, updateApplyFunc UpdateA
 		}
 		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
 			slog.Debug("failed to delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+			if !apierrors.IsNotFound(err) {
+				updateErrors = append(updateErrors, fmt.Errorf("failed to delete resource %s: %w", info.Name, err))
+			}
 			continue
 		}
 		res.Deleted = append(res.Deleted, info)
+	}
+
+	if len(updateErrors) != 0 {
+		return res, joinErrors(updateErrors, " && ")
 	}
 	return res, nil
 }
