@@ -287,7 +287,7 @@ func compListChartsOfRepo(repoName string, prefix string) []string {
 	if isNotExist(err) {
 		// If there is no cached charts file, fallback to the full index file.
 		// This is much slower but can happen after the caching feature is first
-		// installed but before the user  does a 'helm repo update' to generate the
+		// installed but before the user does a 'helm repo update' to generate the
 		// first cached charts file.
 		path = filepath.Join(settings.RepositoryCache, helmpath.CacheIndexFile(repoName))
 		if indexFile, err := repo.LoadIndexFile(path); err == nil {
