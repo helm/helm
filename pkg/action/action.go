@@ -564,9 +564,8 @@ func (cfg *Configuration) Logger() *slog.Logger {
 
 // SetLogger sets the logger for the Configuration. If nil, sets the default logger.
 func (cfg *Configuration) SetLogger(newLogger *slog.Logger) {
-	// Only set logger if it's currently nil
 	if newLogger == nil {
-		cfg.logger.Store(slog.Default()) // We never want to set the logger to nil
+		cfg.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
 		return
 	}
 	cfg.logger.Store(newLogger)

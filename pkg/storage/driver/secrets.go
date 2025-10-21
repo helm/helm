@@ -288,9 +288,8 @@ func (secrets *Secrets) Logger() *slog.Logger {
 }
 
 func (secrets *Secrets) SetLogger(newLogger *slog.Logger) {
-	// Only set logger if it's currently nil
 	if newLogger == nil {
-		secrets.logger.Store(slog.Default()) // We never want to set the logger to nil
+		secrets.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
 		return
 	}
 	secrets.logger.Store(newLogger)

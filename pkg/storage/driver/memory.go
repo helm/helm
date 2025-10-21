@@ -262,9 +262,8 @@ func (mem *Memory) Logger() *slog.Logger {
 }
 
 func (mem *Memory) SetLogger(newLogger *slog.Logger) {
-	// Only set logger if it's currently nil
 	if newLogger == nil {
-		mem.logger.Store(slog.Default()) // We never want to set the logger to nil
+		mem.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
 		return
 	}
 	mem.logger.Store(newLogger)

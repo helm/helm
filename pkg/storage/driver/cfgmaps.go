@@ -291,9 +291,8 @@ func (cfgmaps *ConfigMaps) Logger() *slog.Logger {
 }
 
 func (cfgmaps *ConfigMaps) SetLogger(newLogger *slog.Logger) {
-	// Only set logger if it's currently nil
 	if newLogger == nil {
-		cfgmaps.logger.Store(slog.Default()) // We never want to set the logger to nil
+		cfgmaps.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
 		return
 	}
 	cfgmaps.logger.Store(newLogger)

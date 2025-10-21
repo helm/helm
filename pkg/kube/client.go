@@ -1208,9 +1208,8 @@ func (c *Client) Logger() *slog.Logger {
 }
 
 func (c *Client) SetLogger(newLogger *slog.Logger) {
-	// Only set logger if it's currently nil
 	if newLogger == nil {
-		c.logger.Store(slog.Default()) // We never want to set the logger to nil
+		c.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
 		return
 	}
 	c.logger.Store(newLogger)

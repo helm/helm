@@ -716,9 +716,8 @@ func (s *SQL) Logger() *slog.Logger {
 }
 
 func (s *SQL) SetLogger(newLogger *slog.Logger) {
-	// Only set logger if it's currently nil
 	if newLogger == nil {
-		s.logger.Store(slog.Default()) // We never want to set the logger to nil
+		s.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
 		return
 	}
 	s.logger.Store(newLogger)
