@@ -284,7 +284,7 @@ func (secrets *Secrets) Logger() *slog.Logger {
 	if lg := secrets.logger.Load(); lg != nil {
 		return lg
 	}
-	return slog.Default() // We rarely get here, just be defensive
+	return slog.Default() // We rarely get here, just being defensive
 }
 
 func (secrets *Secrets) SetLogger(newLogger *slog.Logger) {

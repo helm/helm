@@ -280,7 +280,7 @@ type SQLReleaseCustomLabelWrapper struct {
 }
 
 // NewSQL initializes a new sql driver.
-func NewSQL(connectionString string, logger *slog.Logger, namespace string) (*SQL, error) {
+func NewSQL(connectionString string, namespace string) (*SQL, error) {
 	db, err := sqlx.Connect(postgreSQLDialect, connectionString)
 	if err != nil {
 		return nil, err
@@ -296,7 +296,7 @@ func NewSQL(connectionString string, logger *slog.Logger, namespace string) (*SQ
 	}
 
 	driver.namespace = namespace
-	driver.SetLogger(logger)
+	driver.SetLogger(slog.Default())
 
 	return driver, nil
 }
@@ -712,7 +712,7 @@ func (s *SQL) Logger() *slog.Logger {
 	if lg := s.logger.Load(); lg != nil {
 		return lg
 	}
-	return slog.Default() // We rarely get here, just be defensive
+	return slog.Default() // We rarely get here, just being defensive
 }
 
 func (s *SQL) SetLogger(newLogger *slog.Logger) {

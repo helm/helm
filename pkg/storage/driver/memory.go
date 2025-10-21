@@ -258,7 +258,7 @@ func (mem *Memory) Logger() *slog.Logger {
 	if lg := mem.logger.Load(); lg != nil {
 		return lg
 	}
-	return slog.Default() // We rarely get here, just be defensive
+	return slog.Default() // We rarely get here, just being defensive
 }
 
 func (mem *Memory) SetLogger(newLogger *slog.Logger) {

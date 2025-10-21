@@ -530,7 +530,6 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	case "sql":
 		d, err := driver.NewSQL(
 			os.Getenv("HELM_DRIVER_SQL_CONNECTION_STRING"),
-			cfg.Logger(),
 			namespace,
 		)
 		if err != nil {

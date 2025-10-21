@@ -1204,7 +1204,7 @@ func (c *Client) Logger() *slog.Logger {
 	if lg := c.logger.Load(); lg != nil {
 		return lg
 	}
-	return slog.Default() // We rarely get here, just be defensive
+	return slog.Default() // We rarely get here, just being defensive
 }
 
 func (c *Client) SetLogger(newLogger *slog.Logger) {

@@ -347,7 +347,7 @@ func (s *Storage) Logger() *slog.Logger {
 	if lg := s.logger.Load(); lg != nil {
 		return lg
 	}
-	return slog.Default() // We rarely get here, just be defensive
+	return slog.Default() // We rarely get here, just being defensive
 }
 
 func (s *Storage) SetLogger(newLogger *slog.Logger) {
