@@ -182,7 +182,7 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 	c := &Client{
 		Factory: factory,
 	}
-	c.SetLogger(slog.Default())
+	c.SetLogger(slog.Default().Handler())
 	return c
 }
 

@@ -55,7 +55,7 @@ func NewSecrets(impl corev1.SecretInterface) *Secrets {
 	s := &Secrets{
 		impl: impl,
 	}
-	s.SetLogger(slog.Default())
+	s.SetLogger(slog.Default().Handler())
 	return s
 }
 

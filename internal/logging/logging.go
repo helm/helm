@@ -89,14 +89,14 @@ func NewLogger(debugEnabled DebugEnabledFunc) *slog.Logger {
 
 // LoggerSetterGetter is an interface that can set and get a logger
 type LoggerSetterGetter interface {
-	// SetLogger sets the logger for the object
-	SetLogger(logger *slog.Logger)
-	// Logger returns the logger for the object
+	// SetLogger sets a new slog.Handler
+	SetLogger(newLogger slog.Handler)
+	// Logger returns the slog.Logger created from the slog.Handler
 	Logger() *slog.Logger
 }
 
 type LogHolder struct {
-	// logger is an slog.Logger pointer to use the driver
+	// logger is an atomic.Pointer[slog.Logger] to store the slog.Logger
 	logger atomic.Pointer[slog.Logger]
 }
 
@@ -109,12 +109,12 @@ func (l *LogHolder) Logger() *slog.Logger {
 }
 
 // SetLogger sets the logger for the LogHolder. If nil, sets the default logger.
-func (l *LogHolder) SetLogger(newLogger *slog.Logger) {
+func (l *LogHolder) SetLogger(newLogger slog.Handler) {
 	if newLogger == nil {
 		l.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
 		return
 	}
-	l.logger.Store(newLogger)
+	l.logger.Store(slog.New(newLogger))
 }
 
 // Ensure LogHolder implements LoggerSetterGetter

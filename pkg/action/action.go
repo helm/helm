@@ -119,7 +119,7 @@ type Configuration struct {
 
 func NewConfiguration() *Configuration {
 	c := &Configuration{}
-	c.SetLogger(slog.Default())
+	c.SetLogger(slog.Default().Handler())
 	return c
 }
 
@@ -494,7 +494,7 @@ func (cfg *Configuration) recordRelease(r *release.Release) {
 // Init initializes the action configuration
 func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string) error {
 	kc := kube.New(getter)
-	kc.SetLogger(cfg.Logger())
+	kc.SetLogger(cfg.Logger().Handler())
 
 	lazyClient := &lazyClient{
 		namespace: namespace,
@@ -505,11 +505,11 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	switch helmDriver {
 	case "secret", "secrets", "":
 		d := driver.NewSecrets(newSecretClient(lazyClient))
-		d.SetLogger(cfg.Logger())
+		d.SetLogger(cfg.Logger().Handler())
 		store = storage.Init(d)
 	case "configmap", "configmaps":
 		d := driver.NewConfigMaps(newConfigMapClient(lazyClient))
-		d.SetLogger(cfg.Logger())
+		d.SetLogger(cfg.Logger().Handler())
 		store = storage.Init(d)
 	case "memory":
 		var d *driver.Memory
@@ -524,7 +524,7 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 		if d == nil {
 			d = driver.NewMemory()
 		}
-		d.SetLogger(cfg.Logger())
+		d.SetLogger(cfg.Logger().Handler())
 		d.SetNamespace(namespace)
 		store = storage.Init(d)
 	case "sql":
@@ -535,7 +535,7 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 		if err != nil {
 			return fmt.Errorf("unable to instantiate SQL driver: %w", err)
 		}
-		d.SetLogger(cfg.Logger())
+		d.SetLogger(cfg.Logger().Handler())
 		store = storage.Init(d)
 	default:
 		return fmt.Errorf("unknown driver %q", helmDriver)

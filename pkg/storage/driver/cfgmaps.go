@@ -56,7 +56,7 @@ func NewConfigMaps(impl corev1.ConfigMapInterface) *ConfigMaps {
 	c := &ConfigMaps{
 		impl: impl,
 	}
-	c.SetLogger(slog.Default())
+	c.SetLogger(slog.Default().Handler())
 	return c
 }
 

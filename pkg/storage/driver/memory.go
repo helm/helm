@@ -51,7 +51,7 @@ type Memory struct {
 // NewMemory initializes a new memory driver.
 func NewMemory() *Memory {
 	m := &Memory{cache: map[string]memReleases{}, namespace: "default"}
-	m.SetLogger(slog.Default())
+	m.SetLogger(slog.Default().Handler())
 	return m
 }
 

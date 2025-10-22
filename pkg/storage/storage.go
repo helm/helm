@@ -341,10 +341,10 @@ func Init(d driver.Driver) *Storage {
 
 	// Get logger from driver if it implements the LoggerSetterGetter interface
 	if ls, ok := d.(logging.LoggerSetterGetter); ok {
-		ls.SetLogger(s.Logger())
+		ls.SetLogger(s.Logger().Handler())
 	} else {
 		// If the driver does not implement the LoggerSetterGetter interface, set the default logger
-		s.SetLogger(slog.Default())
+		s.SetLogger(slog.Default().Handler())
 	}
 	return s
 }
