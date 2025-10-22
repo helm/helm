@@ -97,6 +97,7 @@ type LoggerSetterGetter interface {
 
 type LogHolder struct {
 	// logger is an atomic.Pointer[slog.Logger] to store the slog.Logger
+	// We use atomic.Pointer for thread safety
 	logger atomic.Pointer[slog.Logger]
 }
 
