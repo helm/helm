@@ -21,6 +21,7 @@ import (
 	"compress/gzip"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"helm.sh/helm/v4/internal/test/ensure"
@@ -144,5 +145,118 @@ func TestLocalInstallerTarball(t *testing.T) {
 	// Verify plugin was installed
 	if _, err := os.Stat(i.Path()); err != nil {
 		t.Fatalf("plugin not found at %s: %v", i.Path(), err)
+	}
+}
+
+func TestLocalInstallerDirectoryAlreadyExists(t *testing.T) {
+	ensure.HelmHome(t)
+
+	source := "../testdata/plugdir/good/echo-v1"
+	i, err := NewForSource(source, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	// First install should succeed
+	if err := Install(i); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create another installer for the same plugin directory
+	i2, err := NewForSource(source, "")
+	if err != nil {
+		t.Fatalf("unexpected error creating second installer: %s", err)
+	}
+
+	localInstaller, ok := i2.(*LocalInstaller)
+	if !ok {
+		t.Fatal("expected LocalInstaller")
+	}
+
+	// Second install should fail with plugin already exists error
+	err = localInstaller.installFromDirectory()
+	if err == nil {
+		t.Fatal("expected error for plugin already exists")
+	}
+	if !strings.Contains(err.Error(), "plugin \"echo-v1\" already exists at") {
+		t.Fatalf("expected 'plugin already exists' error message, got: %v", err)
+	}
+}
+
+func TestLocalInstallerTarballAlreadyExists(t *testing.T) {
+	ensure.HelmHome(t)
+
+	// Create a test tarball
+	tempDir := t.TempDir()
+	tarballPath := filepath.Join(tempDir, "duplicate-plugin-1.0.0.tar.gz")
+
+	// Create tarball content
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+
+	files := []struct {
+		Name string
+		Body string
+		Mode int64
+	}{
+		{"duplicate-plugin/plugin.yaml", "name: duplicate-plugin\napiVersion: v1\ntype: cli/v1\nruntime: subprocess\nversion: 1.0.0\nconfig:\n  shortHelp: test\n  longHelp: test\nruntimeConfig:\n  platformCommand:\n  - command: echo", 0644},
+		{"duplicate-plugin/bin/duplicate-plugin", "#!/bin/bash\necho test", 0755},
+	}
+
+	for _, file := range files {
+		hdr := &tar.Header{
+			Name: file.Name,
+			Mode: file.Mode,
+			Size: int64(len(file.Body)),
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write([]byte(file.Body)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write tarball to file
+	if err := os.WriteFile(tarballPath, buf.Bytes(), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// First install
+	i, err := NewForSource(tarballPath, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	if err := Install(i); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create second installer for same tarball
+	i2, err := NewForSource(tarballPath, "")
+	if err != nil {
+		t.Fatalf("unexpected error creating second installer: %s", err)
+	}
+
+	localInstaller, ok := i2.(*LocalInstaller)
+	if !ok {
+		t.Fatal("expected LocalInstaller")
+	}
+
+	// Second install should fail
+	err = localInstaller.installFromArchive()
+	if err == nil {
+		t.Fatal("expected error for plugin already exists")
+	}
+	if !strings.Contains(err.Error(), "plugin \"duplicate-plugin\" already exists at") {
+		t.Fatalf("expected 'plugin already exists' error message, got: %v", err)
 	}
 }
