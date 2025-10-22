@@ -29,7 +29,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"text/template"
 	"time"
 
@@ -41,6 +40,7 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/kio"
 	kyaml "sigs.k8s.io/kustomize/kyaml/yaml"
 
+	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
@@ -110,11 +110,11 @@ type Configuration struct {
 	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
 	HookOutputFunc func(namespace, pod, container string) io.Writer
 
-	// logger is an slog.Logger pointer to use with the Configuration instance
-	logger atomic.Pointer[slog.Logger]
-
 	// Mutex is an exclusive lock for concurrent access to the action
 	mutex sync.Mutex
+
+	// Embed a LogHolder to provide logger functionality
+	logging.LogHolder
 }
 
 func NewConfiguration() *Configuration {
@@ -552,23 +552,6 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 // SetHookOutputFunc sets the HookOutputFunc on the Configuration.
 func (cfg *Configuration) SetHookOutputFunc(hookOutputFunc func(_, _, _ string) io.Writer) {
 	cfg.HookOutputFunc = hookOutputFunc
-}
-
-// Logger returns the logger for the Configuration. If nil, returns slog.Default().
-func (cfg *Configuration) Logger() *slog.Logger {
-	if lg := cfg.logger.Load(); lg != nil {
-		return lg
-	}
-	return slog.Default() // We rarely get here, just be defensive
-}
-
-// SetLogger sets the logger for the Configuration. If nil, sets the default logger.
-func (cfg *Configuration) SetLogger(newLogger *slog.Logger) {
-	if newLogger == nil {
-		cfg.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
-		return
-	}
-	cfg.logger.Store(newLogger)
 }
 
 func determineReleaseSSApplyMethod(serverSideApply bool) release.ApplyMethod {

@@ -22,7 +22,6 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -32,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
+	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/pkg/release"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -45,8 +45,9 @@ const ConfigMapsDriverName = "ConfigMap"
 // ConfigMapsInterface.
 type ConfigMaps struct {
 	impl corev1.ConfigMapInterface
-	// logger is an slog.Logger pointer to use the driver
-	logger atomic.Pointer[slog.Logger]
+
+	// Embed a LogHolder to provide logger functionality
+	logging.LogHolder
 }
 
 // NewConfigMaps initializes a new ConfigMaps wrapping an implementation of
@@ -280,20 +281,4 @@ func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigM
 		},
 		Data: map[string]string{"release": s},
 	}, nil
-}
-
-// logger returns the logger for the ConfigMaps driver. If nil, returns slog.Default().
-func (cfgmaps *ConfigMaps) Logger() *slog.Logger {
-	if lg := cfgmaps.logger.Load(); lg != nil {
-		return lg
-	}
-	return slog.Default() // We rarely get here, just being defensive
-}
-
-func (cfgmaps *ConfigMaps) SetLogger(newLogger *slog.Logger) {
-	if newLogger == nil {
-		cfgmaps.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
-		return
-	}
-	cfgmaps.logger.Store(newLogger)
 }

@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"sync/atomic"
 
 	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/pkg/release"
@@ -47,8 +46,8 @@ type Storage struct {
 	// ignored (meaning no limits are imposed).
 	MaxHistory int
 
-	// logger is an slog.Logger pointer to use the storage engine
-	logger atomic.Pointer[slog.Logger]
+	// Embed a LogHolder to provide logger functionality
+	logging.LogHolder
 }
 
 // Get retrieves the release from storage. An error is returned
@@ -348,20 +347,4 @@ func Init(d driver.Driver) *Storage {
 		s.SetLogger(slog.Default())
 	}
 	return s
-}
-
-// logger returns the logger for the Storage. If nil, returns slog.Default().
-func (s *Storage) Logger() *slog.Logger {
-	if lg := s.logger.Load(); lg != nil {
-		return lg
-	}
-	return slog.Default() // We rarely get here, just being defensive
-}
-
-func (s *Storage) SetLogger(newLogger *slog.Logger) {
-	if newLogger == nil {
-		s.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
-		return
-	}
-	s.logger.Store(newLogger)
 }

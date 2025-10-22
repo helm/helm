@@ -30,7 +30,6 @@ import (
 	"reflect"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	v1 "k8s.io/api/core/v1"
@@ -39,6 +38,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+
+	"helm.sh/helm/v4/internal/logging"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -82,11 +83,12 @@ type Client struct {
 	Factory Factory
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
-	// logger is an slog.Logger pointer to use with the kube client
-	logger atomic.Pointer[slog.Logger]
 
 	Waiter
 	kubeClient kubernetes.Interface
+
+	// Embed a LogHolder to provide logger functionality
+	logging.LogHolder
 }
 
 var _ Interface = (*Client)(nil)
@@ -1197,20 +1199,4 @@ func (e *joinedErrors) Error() string {
 
 func (e *joinedErrors) Unwrap() []error {
 	return e.errs
-}
-
-// logger returns the logger for the Client. If nil, returns slog.Default().
-func (c *Client) Logger() *slog.Logger {
-	if lg := c.logger.Load(); lg != nil {
-		return lg
-	}
-	return slog.Default() // We rarely get here, just being defensive
-}
-
-func (c *Client) SetLogger(newLogger *slog.Logger) {
-	if newLogger == nil {
-		c.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
-		return
-	}
-	c.logger.Store(newLogger)
 }

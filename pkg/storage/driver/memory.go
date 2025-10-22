@@ -21,8 +21,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 
+	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/pkg/release"
 )
 
@@ -44,8 +44,8 @@ type Memory struct {
 	namespace string
 	// A map of namespaces to releases
 	cache map[string]memReleases
-	// logger is an slog.Logger pointer to use the driver
-	logger atomic.Pointer[slog.Logger]
+	// Embed a LogHolder to provide logger functionality
+	logging.LogHolder
 }
 
 // NewMemory initializes a new memory driver.
@@ -253,18 +253,3 @@ func (mem *Memory) rlock() func() {
 // ```defer unlock(mem.rlock())```, locks mem for reading at the
 // call point of defer and unlocks upon exiting the block.
 func unlock(fn func()) { fn() }
-
-func (mem *Memory) Logger() *slog.Logger {
-	if lg := mem.logger.Load(); lg != nil {
-		return lg
-	}
-	return slog.Default() // We rarely get here, just being defensive
-}
-
-func (mem *Memory) SetLogger(newLogger *slog.Logger) {
-	if newLogger == nil {
-		mem.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
-		return
-	}
-	mem.logger.Store(newLogger)
-}

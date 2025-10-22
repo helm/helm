@@ -22,7 +22,6 @@ import (
 	"maps"
 	"sort"
 	"strconv"
-	"sync/atomic"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -33,6 +32,7 @@ import (
 	// Import pq for postgres dialect
 	_ "github.com/lib/pq"
 
+	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/pkg/release"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -90,8 +90,8 @@ type SQL struct {
 	db               *sqlx.DB
 	namespace        string
 	statementBuilder sq.StatementBuilderType
-	// logger is an slog.Logger pointer to use the driver
-	logger atomic.Pointer[slog.Logger]
+	// Embed a LogHolder to provide logger functionality
+	logging.LogHolder
 }
 
 // Name returns the name of the driver.
@@ -705,20 +705,4 @@ func getReleaseSystemLabels(rls *rspb.Release) map[string]string {
 		"status":  rls.Info.Status.String(),
 		"version": strconv.Itoa(rls.Version),
 	}
-}
-
-// logger returns the logger for the SQL driver. If nil, returns slog.Default().
-func (s *SQL) Logger() *slog.Logger {
-	if lg := s.logger.Load(); lg != nil {
-		return lg
-	}
-	return slog.Default() // We rarely get here, just being defensive
-}
-
-func (s *SQL) SetLogger(newLogger *slog.Logger) {
-	if newLogger == nil {
-		s.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
-		return
-	}
-	s.logger.Store(newLogger)
 }

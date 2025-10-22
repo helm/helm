@@ -22,7 +22,6 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -32,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
+	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/pkg/release"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -45,8 +45,8 @@ const SecretsDriverName = "Secret"
 // SecretsInterface.
 type Secrets struct {
 	impl corev1.SecretInterface
-	// logger is an slog.Logger pointer to use the driver
-	logger atomic.Pointer[slog.Logger]
+	// Embed a LogHolder to provide logger functionality
+	logging.LogHolder
 }
 
 // NewSecrets initializes a new Secrets wrapping an implementation of
@@ -277,20 +277,4 @@ func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, er
 		Type: "helm.sh/release.v1",
 		Data: map[string][]byte{"release": []byte(s)},
 	}, nil
-}
-
-// logger returns the logger for the Secrets driver. If nil, returns slog.Default().
-func (secrets *Secrets) Logger() *slog.Logger {
-	if lg := secrets.logger.Load(); lg != nil {
-		return lg
-	}
-	return slog.Default() // We rarely get here, just being defensive
-}
-
-func (secrets *Secrets) SetLogger(newLogger *slog.Logger) {
-	if newLogger == nil {
-		secrets.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
-		return
-	}
-	secrets.logger.Store(newLogger)
 }
