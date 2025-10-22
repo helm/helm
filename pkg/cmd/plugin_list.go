@@ -78,7 +78,7 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 				if o.showOutdated {
 					latest, err := getLatestVersion(p)
 					if err != nil {
-						slog.Debug("getLatestVersion", err.Error())
+						slog.Debug("getLatestVersion", slog.Any("error", err))
 						latest = "unknown"
 					}
 
