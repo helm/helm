@@ -32,11 +32,11 @@ type reference struct {
 }
 
 // newReference will parse and validate the reference, and clean tags when
-// applicable tags are only cleaned when plus (+) signs are present, and are
+// applicable tags are only cleaned when plus (+) signs are present and are
 // converted to underscores (_) before pushing
 // See https://github.com/helm/helm/issues/10166
 func newReference(raw string) (result reference, err error) {
-	// Remove oci:// prefix if it is there
+	// Remove the oci:// prefix if it is there
 	raw = strings.TrimPrefix(raw, OCIScheme+"://")
 
 	// The sole possible reference modification is replacing plus (+) signs

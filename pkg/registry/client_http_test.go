@@ -37,7 +37,7 @@ func (suite *HTTPRegistryClientTestSuite) SetupSuite() {
 
 func (suite *HTTPRegistryClientTestSuite) TearDownSuite() {
 	teardown(&suite.TestRegistry)
-	os.RemoveAll(suite.WorkspaceDir)
+	_ = os.RemoveAll(suite.WorkspaceDir)
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_0_Login() {

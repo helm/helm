@@ -97,7 +97,7 @@ func (t *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 // logHeader prints out the provided header keys and values, with auth header scrubbed.
 func logHeader(header http.Header) string {
 	if len(header) > 0 {
-		headers := []string{}
+		var headers []string
 		for k, v := range header {
 			for _, h := range toScrub {
 				if strings.EqualFold(k, h) {
