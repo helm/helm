@@ -106,14 +106,23 @@ type Install struct {
 	Description      string
 	OutputDir        string
 	// RollbackOnFailure enables rolling back (uninstalling) the release on failure if set
-	RollbackOnFailure        bool
+	RollbackOnFailure bool
+	// SkipCRDs opts the chart installation out of installing or upgrading CRDs.
+	//  - If set to false, CRDs are installed (or upgraded) during a chart installation and
+	//    AlreadyExists errors are ignored.
+	//  - If set to true, no operations on CRDs are performed on the cluster during installation.
 	SkipCRDs                 bool
 	SubNotes                 bool
 	HideNotes                bool
 	SkipSchemaValidation     bool
 	DisableOpenAPIValidation bool
-	IncludeCRDs              bool
-	Labels                   map[string]string
+	// IncludeCRDs configures template rendering to include rendered CRD manifests in the overall list
+	// of manifests for the chart. This is useful for operations over helm templates, but should be
+	// used with great care during installs against live clusters - including the CRD content in the
+	// release's manifests during install will cause the CRDs to be deleted during upgrade, as future
+	// releases will not include CRDs in release manifest lists.
+	IncludeCRDs bool
+	Labels      map[string]string
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
