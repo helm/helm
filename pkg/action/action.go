@@ -117,9 +117,26 @@ type Configuration struct {
 	logging.LogHolder
 }
 
-func NewConfiguration() *Configuration {
+type ConfigurationOption func(c *Configuration)
+
+// Override the default logging handler
+// If unspecified, the default logger will be used
+func ConfigurationSetLogger(h slog.Handler) ConfigurationOption {
+	return func(c *Configuration) {
+		c.SetLogger(h)
+	}
+}
+
+func NewConfiguration(options ...ConfigurationOption) *Configuration {
 	c := &Configuration{}
-	c.SetLogger(slog.Default().Handler())
+	for _, o := range options {
+		o(c)
+	}
+
+	if c.Logger() == nil {
+		c.SetLogger(slog.Default().Handler())
+	}
+
 	return c
 }
 
