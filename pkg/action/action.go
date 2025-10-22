@@ -535,6 +535,7 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 		if err != nil {
 			return fmt.Errorf("unable to instantiate SQL driver: %w", err)
 		}
+		d.SetLogger(cfg.Logger())
 		store = storage.Init(d)
 	default:
 		return fmt.Errorf("unknown driver %q", helmDriver)
@@ -543,7 +544,6 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	cfg.RESTClientGetter = getter
 	cfg.KubeClient = kc
 	cfg.Releases = store
-	cfg.Releases.SetLogger(cfg.Logger())
 	cfg.HookOutputFunc = func(_, _, _ string) io.Writer { return io.Discard }
 
 	return nil

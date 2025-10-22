@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/release/common"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
@@ -338,7 +339,14 @@ func Init(d driver.Driver) *Storage {
 	s := &Storage{
 		Driver: d,
 	}
-	s.SetLogger(slog.Default())
+
+	// Get logger from driver if it implements the LoggerSetterGetter interface
+	if ls, ok := d.(logging.LoggerSetterGetter); ok {
+		ls.SetLogger(s.Logger())
+	} else {
+		// If the driver does not implement the LoggerSetterGetter interface, set the default logger
+		s.SetLogger(slog.Default())
+	}
 	return s
 }
 

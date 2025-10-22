@@ -85,3 +85,11 @@ func NewLogger(debugEnabled DebugEnabledFunc) *slog.Logger {
 
 	return slog.New(dynamicHandler)
 }
+
+// LoggerSetterGetter is an interface that can set and get a logger
+type LoggerSetterGetter interface {
+	// SetLogger sets the logger for the object
+	SetLogger(logger *slog.Logger)
+	// Logger returns the logger for the object
+	Logger() *slog.Logger
+}
