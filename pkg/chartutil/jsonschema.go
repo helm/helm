@@ -82,7 +82,20 @@ func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) err
 	}
 
 	for _, subchart := range chrt.Dependencies() {
-		subchartValues := values[subchart.Name()].(map[string]interface{})
+		raw, exists := values[subchart.Name()]
+		if !exists || raw == nil {
+			// No values provided for this subchart; nothing to validate
+			continue
+		}
+
+		subchartValues, ok := raw.(map[string]any)
+		if !ok {
+			sb.WriteString(fmt.Sprintf(
+				"%s:\ninvalid type for values: expected object (map), got %T\n",
+				subchart.Name(), raw,
+			))
+			continue
+		}
 		if err := ValidateAgainstSchema(subchart, subchartValues); err != nil {
 			sb.WriteString(err.Error())
 		}

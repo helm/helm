@@ -286,3 +286,93 @@ func TestHTTPURLLoader_Load(t *testing.T) {
 		}
 	})
 }
+
+// Non-regression tests for https://github.com/helm/helm/issues/31202
+// Ensure ValidateAgainstSchema does not panic when:
+// - subchart key is missing
+// - subchart value is nil
+// - subchart value has an invalid type
+
+func TestValidateAgainstSchema_MissingSubchartValues_NoPanic(t *testing.T) {
+	subchartJSON := []byte(subchartSchema)
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "subchart"},
+		Schema:   subchartJSON,
+	}
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "chrt"},
+	}
+	chrt.AddDependency(subchart)
+
+	// No "subchart" key present in values
+	vals := map[string]any{
+		"name": "John",
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("ValidateAgainstSchema panicked (missing subchart values): %v", r)
+		}
+	}()
+
+	if err := ValidateAgainstSchema(chrt, vals); err != nil {
+		t.Fatalf("expected no error when subchart values are missing, got: %v", err)
+	}
+}
+
+func TestValidateAgainstSchema_SubchartNil_NoPanic(t *testing.T) {
+	subchartJSON := []byte(subchartSchema)
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "subchart"},
+		Schema:   subchartJSON,
+	}
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "chrt"},
+	}
+	chrt.AddDependency(subchart)
+
+	// "subchart" key present but nil
+	vals := map[string]any{
+		"name":     "John",
+		"subchart": nil,
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("ValidateAgainstSchema panicked (nil subchart values): %v", r)
+		}
+	}()
+
+	if err := ValidateAgainstSchema(chrt, vals); err != nil {
+		t.Fatalf("expected no error when subchart values are nil, got: %v", err)
+	}
+}
+
+func TestValidateAgainstSchema_InvalidSubchartValuesType_NoPanic(t *testing.T) {
+	subchartJSON := []byte(subchartSchema)
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "subchart"},
+		Schema:   subchartJSON,
+	}
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "chrt"},
+	}
+	chrt.AddDependency(subchart)
+
+	// "subchart" is the wrong type (string instead of map)
+	vals := map[string]any{
+		"name":     "John",
+		"subchart": "oops",
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("ValidateAgainstSchema panicked (invalid subchart values type): %v", r)
+		}
+	}()
+
+	// We expect a non-nil error (invalid type), but crucially no panic.
+	if err := ValidateAgainstSchema(chrt, vals); err == nil {
+		t.Fatalf("expected an error when subchart values have invalid type, got nil")
+	}
+}
