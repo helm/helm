@@ -15,7 +15,13 @@ limitations under the License.
 
 package installer
 
-import "net/http"
+import (
+	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"time"
+)
 
 // isGzipArchive checks if data represents a gzip archive by checking the magic bytes
 func isGzipArchive(data []byte) bool {
@@ -23,11 +29,15 @@ func isGzipArchive(data []byte) bool {
 }
 
 // isGzipArchiveFromURL checks if a URL points to a gzip archive by reading the magic bytes
-func isGzipArchiveFromURL(url string) bool {
+func isGzipArchiveFromURL(url string) (bool, error) {
+	// Use a short timeout context to avoid hanging on slow servers
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	// Make a GET request to read the first few bytes
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	// Request only the first 512 bytes to check magic bytes
@@ -35,16 +45,22 @@ func isGzipArchiveFromURL(url string) bool {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return false
+		return false, err
 	}
 	defer resp.Body.Close()
 
-	// Read the first few bytes
-	buf := make([]byte, 2)
-	n, err := resp.Body.Read(buf)
-	if err != nil || n < 2 {
-		return false
+	// Check for valid status codes early
+	// 206 = Partial Content (range supported)
+	// 200 = OK (range not supported, full content returned)
+	if resp.StatusCode != http.StatusPartialContent && resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("unexpected status code %d when checking gzip archive at %s", resp.StatusCode, url)
 	}
 
-	return isGzipArchive(buf)
+	// Read exactly 2 bytes for gzip magic number check
+	buf := make([]byte, 2)
+	if _, err := io.ReadAtLeast(resp.Body, buf, len(buf)); err != nil {
+		return false, fmt.Errorf("failed to read magic bytes from %s: %w", url, err)
+	}
+
+	return isGzipArchive(buf), nil
 }
