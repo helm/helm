@@ -58,7 +58,11 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 			signingInfo := plugin.GetSigningInfoForPlugins(plugins)
 
 			table := uitable.New()
-			table.AddRow("NAME", "VERSION", "LATEST", "TYPE", "APIVERSION", "PROVENANCE", "SOURCE")
+			if o.showOutdated {
+				table.AddRow("NAME", "VERSION", "LATEST", "TYPE", "APIVERSION", "PROVENANCE", "SOURCE")
+			} else {
+				table.AddRow("NAME", "VERSION", "TYPE", "APIVERSION", "PROVENANCE", "SOURCE")
+			}
 			for _, p := range plugins {
 				m := p.Metadata()
 				sourceURL := m.SourceURL
@@ -71,13 +75,16 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 					signedStatus = info.Status
 				}
 
-				latest, err := getLatestVersion(p)
-				if err != nil {
-					latest = "unknown"
-				}
+				if o.showOutdated {
+					latest, err := getLatestVersion(p)
+					if err != nil {
+						slog.Debug("getLatestVersion", err.Error())
+						latest = "unknown"
+					}
 
-				if !o.showOutdated || (latest != "unknown" && latest != m.Version) {
 					table.AddRow(m.Name, m.Version, latest, m.Type, m.APIVersion, signedStatus, sourceURL)
+				} else {
+					table.AddRow(m.Name, m.Version, m.Type, m.APIVersion, signedStatus, sourceURL)
 				}
 			}
 			fmt.Fprintln(out, table)
