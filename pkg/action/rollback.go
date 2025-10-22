@@ -253,7 +253,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	waiter, err := r.cfg.KubeClient.GetWaiter(r.WaitStrategy)
 	if err != nil {
-		return nil, fmt.Errorf("unable to set metadata visitor from target release: %w", err)
+		return nil, fmt.Errorf("unable to get waiter: %w", err)
 	}
 	if r.WaitForJobs {
 		if err := waiter.WaitWithJobs(target, r.Timeout); err != nil {

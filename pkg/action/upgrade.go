@@ -565,9 +565,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 
 		rollin := NewRollback(u.cfg)
 		rollin.Version = filteredHistory[0].Version
-		if u.WaitStrategy == kube.HookOnlyStrategy {
-			rollin.WaitStrategy = kube.StatusWatcherStrategy
-		}
+		rollin.WaitStrategy = u.WaitStrategy
 		rollin.WaitForJobs = u.WaitForJobs
 		rollin.DisableHooks = u.DisableHooks
 		rollin.ForceReplace = u.ForceReplace
