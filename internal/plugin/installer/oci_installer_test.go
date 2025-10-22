@@ -792,7 +792,7 @@ func TestOCIInstaller_Install_ValidationErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test the gzip validation logic that's used in the Install method
-			if len(tt.layerData) < 2 || tt.layerData[0] != 0x1f || tt.layerData[1] != 0x8b {
+			if !isGzipArchive(tt.layerData) {
 				// This matches the validation in the Install method
 				if !tt.expectError {
 					t.Error("expected valid gzip data")
