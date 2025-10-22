@@ -106,7 +106,7 @@ func (l *LogHolder) Logger() *slog.Logger {
 	if lg := l.logger.Load(); lg != nil {
 		return lg
 	}
-	return slog.Default() // We rarely get here, just being defensive
+	return slog.New(slog.DiscardHandler) // Should never be reached
 }
 
 // SetLogger sets the logger for the LogHolder. If nil, sets the default logger.
