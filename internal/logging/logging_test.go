@@ -127,7 +127,7 @@ func TestDebugCheckHandler_Enabled(t *testing.T) {
 			debugEnabled: debugEnabled,
 		}
 
-		assert.True(t, handler.Enabled(context.Background(), slog.LevelDebug))
+		assert.True(t, handler.Enabled(t.Context(), slog.LevelDebug))
 	})
 
 	t.Run("returns false for debug level when debug disabled", func(t *testing.T) {
@@ -140,7 +140,7 @@ func TestDebugCheckHandler_Enabled(t *testing.T) {
 			debugEnabled: debugEnabled,
 		}
 
-		assert.False(t, handler.Enabled(context.Background(), slog.LevelDebug))
+		assert.False(t, handler.Enabled(t.Context(), slog.LevelDebug))
 	})
 
 	t.Run("always returns true for non-debug levels", func(t *testing.T) {
@@ -153,9 +153,9 @@ func TestDebugCheckHandler_Enabled(t *testing.T) {
 		}
 
 		// Even with debug disabled, other levels should always be enabled
-		assert.True(t, handler.Enabled(context.Background(), slog.LevelInfo))
-		assert.True(t, handler.Enabled(context.Background(), slog.LevelWarn))
-		assert.True(t, handler.Enabled(context.Background(), slog.LevelError))
+		assert.True(t, handler.Enabled(t.Context(), slog.LevelInfo))
+		assert.True(t, handler.Enabled(t.Context(), slog.LevelWarn))
+		assert.True(t, handler.Enabled(t.Context(), slog.LevelError))
 	})
 
 	t.Run("calls debugEnabled function dynamically", func(t *testing.T) {
@@ -173,15 +173,15 @@ func TestDebugCheckHandler_Enabled(t *testing.T) {
 		}
 
 		// First call should return true
-		assert.True(t, handler.Enabled(context.Background(), slog.LevelDebug))
+		assert.True(t, handler.Enabled(t.Context(), slog.LevelDebug))
 		assert.Equal(t, 1, callCount)
 
 		// Second call should return false
-		assert.False(t, handler.Enabled(context.Background(), slog.LevelDebug))
+		assert.False(t, handler.Enabled(t.Context(), slog.LevelDebug))
 		assert.Equal(t, 2, callCount)
 
 		// Third call should return true again
-		assert.True(t, handler.Enabled(context.Background(), slog.LevelDebug))
+		assert.True(t, handler.Enabled(t.Context(), slog.LevelDebug))
 		assert.Equal(t, 3, callCount)
 	})
 }
