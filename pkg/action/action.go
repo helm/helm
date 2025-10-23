@@ -133,10 +133,6 @@ func NewConfiguration(options ...ConfigurationOption) *Configuration {
 		o(c)
 	}
 
-	if c.Logger() == nil {
-		c.SetLogger(slog.Default().Handler())
-	}
-
 	return c
 }
 
