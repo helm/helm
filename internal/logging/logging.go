@@ -36,6 +36,9 @@ type DebugCheckHandler struct {
 // Enabled implements slog.Handler.Enabled
 func (h *DebugCheckHandler) Enabled(_ context.Context, level slog.Level) bool {
 	if level == slog.LevelDebug {
+		if h.debugEnabled == nil {
+			return false
+		}
 		return h.debugEnabled()
 	}
 	return true // Always log other levels
