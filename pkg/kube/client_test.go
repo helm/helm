@@ -412,7 +412,7 @@ func TestUpdate(t *testing.T) {
 				"/namespaces/default/pods/forbidden:GET",
 				"/namespaces/default/pods/forbidden:DELETE",
 			),
-			ExpectedError: "failed to delete resource forbidden:",
+			ExpectedError: "failed to delete resource namespace=default, name=forbidden, kind=Pod:",
 		},
 	}
 
