@@ -17,8 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"log/slog"
-
 	"fmt"
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
@@ -55,6 +53,6 @@ func (h *History) Run(name string) ([]release.Releaser, error) {
 		return nil, fmt.Errorf("release name is invalid: %s", name)
 	}
 
-	slog.Debug("getting history for release", "release", name)
+	h.cfg.Logger().Debug("getting history for release", "release", name)
 	return h.cfg.Releases.History(name)
 }
