@@ -44,7 +44,7 @@ func TestLogHolder_Logger(t *testing.T) {
 		holder := &LogHolder{}
 		logger := holder.Logger()
 
-		assert.Equal(t, slog.Default().Handler(), logger.Handler())
+		assert.Equal(t, slog.Handler(slog.DiscardHandler), logger.Handler())
 	})
 }
 
