@@ -27,6 +27,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"text/template"
@@ -193,7 +194,9 @@ func splitAndDeannotate(postrendered string) (map[string]string, error) {
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //
 //	This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values, releaseName, outputDir string,
+	renderSubchartNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS,
+	hideSecret, includeNotesSource bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	var hs []*release.Hook
 	b := bytes.NewBuffer(nil)
 
@@ -241,20 +244,71 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 	// text file. We have to spin through this map because the file contains path information, so we
 	// look for terminating NOTES.txt. We also remove it from the files so that we don't have to skip
 	// it in the sortHooks.
-	var notesBuffer bytes.Buffer
-	for k, v := range files {
-		if strings.HasSuffix(k, notesFileSuffix) {
-			if subNotes || (k == path.Join(ch.Name(), "templates", notesFileSuffix)) {
-				// If buffer contains data, add newline before adding more
-				if notesBuffer.Len() > 0 {
-					notesBuffer.WriteString("\n")
-				}
-				notesBuffer.WriteString(v)
+	//
+	// If --render-subchart-notes flag is enabled, the NOTES.txt files from the subcharts are also included by rendering
+	// engine.
+	notesFileMap := make(map[string]string)
+	notesFilePaths := make([]string, 0)
+	for filePath, fileContent := range files {
+		// Filter the notes filepath(s), i.e., filepaths that end with "NOTES.txt", from all files. Note: Depending on
+		// the --render-subchart-notes flag, there may be more than one notes file.
+		if strings.HasSuffix(filePath, notesFileSuffix) {
+			// If --render-subchart-notes flag is enabled, add all the notes files, i.e., notes from the root chart, and
+			// subcharts, if any.
+			//
+			// If not enabled, select just the root chart's notes file, which will be in the format:
+			// <chart-name>/templates/NOTES.txt
+			if renderSubchartNotes || (filePath == path.Join(ch.Name(), "templates", notesFileSuffix)) {
+				// Store the notes file's (path -> content) pairs. In a dry run, the notes file names will be useful as
+				// the source details in the output.
+				//
+				// Since the filepaths are of already existing files, they will be unique. No checks needed.
+				notesFileMap[filePath] = fileContent
+
+				// Store the list of notes filepaths. The list will be used for ordering and will be sorted in the next
+				// steps.
+				notesFilePaths = append(notesFilePaths, filePath)
 			}
-			delete(files, k)
+
+			// Remove the notes files from the manifest files list. Rendered notes will be returned separately.
+			delete(files, filePath)
 		}
 	}
-	notes := notesBuffer.String()
+
+	// Sort the notes filepaths based on depth first, and then in alphabetical order. Since the notes file's names are
+	// the same for all charts, the ordering is based on the chart names and notes filepaths.
+	//
+	// For example, for a chart and its subcharts in the hierarchy as follows:
+	//
+	//		foo
+	//		└── charts
+	//		   ├── bar
+	//		   │  └── charts
+	//		   │     └── qux
+	//		   └── baz
+	//
+	// The notes files must be sorted as follows:
+	//	1. foo/templates/NOTES.txt
+	//	2. foo/charts/bar/templates/NOTES.txt
+	//	3. foo/charts/baz/templates/NOTES.txt
+	//	4. foo/charts/bar/charts/qux/templates/NOTES.txt
+	sort.Slice(notesFilePaths, func(notesI, notesJ int) bool {
+		// Count the number of occurrences of the string "/charts/" for depth.
+		depth := func(s string) int {
+			return strings.Count(s, "/charts/")
+		}
+
+		// When the depth of both charts is not the same, the smaller depth one goes first. In the above example, foo
+		// goes before bar and baz, and bar goes before qux.
+		depthI := depth(notesFilePaths[notesI])
+		depthJ := depth(notesFilePaths[notesJ])
+		if depthI != depthJ {
+			return depthI < depthJ
+		}
+
+		// When both charts have the same depth, like bar and baz in the above example, use alphabetical order.
+		return notesFilePaths[notesI] < notesFilePaths[notesJ]
+	})
 
 	if pr != nil {
 		// We need to send files to the post-renderer before sorting and splitting
@@ -267,19 +321,19 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 		// Merge files as stream of documents for sending to post renderer
 		merged, err := annotateAndMerge(files)
 		if err != nil {
-			return hs, b, notes, fmt.Errorf("error merging manifests: %w", err)
+			return hs, b, "", fmt.Errorf("error merging manifests: %w", err)
 		}
 
 		// Run the post renderer
 		postRendered, err := pr.Run(bytes.NewBufferString(merged))
 		if err != nil {
-			return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
+			return hs, b, "", fmt.Errorf("error while running post render on files: %w", err)
 		}
 
 		// Use the file list and contents received from the post renderer
 		files, err = splitAndDeannotate(postRendered.String())
 		if err != nil {
-			return hs, b, notes, fmt.Errorf("error while parsing post rendered output: %w", err)
+			return hs, b, "", fmt.Errorf("error while parsing post rendered output: %w", err)
 		}
 	}
 
@@ -343,7 +397,62 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 		}
 	}
 
-	return hs, b, notes, nil
+	// The rendered notes are returned as a string, which can be used in the output of the calling command. If
+	// --render-subchart-notes is enabled, the notes from the subcharts are also included in the output in an ordered
+	// manner, separated by empty lines.
+	//
+	//		foo NOTES HERE
+	//
+	//		bar NOTES HERE
+	//
+	//		baz NOTES HERE
+	//
+	//		qux NOTES HERE
+	//
+	// In a dry run, the notes are prefixed with the source file name and separator instead of an empty line as follows.
+	// For helm install/upgrade commands, dry run can be enabled by using the `--dry-run` flag. The helm template
+	// command is considered a dry run by default. However, to include notes in the helm template, the `--notes` flag
+	// must be enabled.
+	//
+	// 		---
+	// 		# Source: foo/templates/NOTES.txt
+	// 		foo NOTES HERE
+	//
+	// If --render-subchart-notes is enabled on dry run with any of those commands, the notes from the subcharts are
+	// also included in the output.
+	//
+	// 		---
+	// 		# Source: foo/templates/NOTES.txt
+	// 		foo NOTES HERE
+	// 		---
+	// 		# Source: foo/charts/bar/templates/NOTES.txt
+	// 		bar NOTES HERE
+	// 		---
+	// 		# Source: foo/charts/baz/templates/NOTES.txt
+	// 		baz NOTES HERE
+	// 		---
+	// 		# Source: foo/charts/bar/charts/qux/templates/NOTES.txt
+	// 		qux NOTES HERE
+	//
+	//  Note: The order of the notes files above is based on depth first, and then in alphabetical order.
+	var renderedNotes bytes.Buffer
+	for _, notesFilePath := range notesFilePaths {
+		// If includeNotesSource is enabled, add the separator and notes file name to the notes and write to the buffer.
+		if includeNotesSource {
+			fmt.Fprintf(&renderedNotes, "---\n# Source: %s\n%s", notesFilePath, notesFileMap[notesFilePath])
+
+			continue
+		}
+
+		// When dry run is disabled, write rendered notes to the buffer. If the buffer contains data, add a newline to
+		// separate from the next note.
+		if renderedNotes.Len() > 0 {
+			renderedNotes.WriteString("\n")
+		}
+		renderedNotes.WriteString(notesFileMap[notesFilePath])
+	}
+
+	return hs, b, renderedNotes.String(), nil
 }
 
 // RESTClientGetter gets the rest client
