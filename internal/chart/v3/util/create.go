@@ -661,7 +661,7 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 
 	for _, template := range schart.Templates {
 		newData := transform(string(template.Data), schart.Name())
-		updatedTemplates = append(updatedTemplates, &common.File{Name: template.Name, Data: newData})
+		updatedTemplates = append(updatedTemplates, &common.File{Name: template.Name, ModTime: template.ModTime, Data: newData})
 	}
 
 	schart.Templates = updatedTemplates
