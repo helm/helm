@@ -98,12 +98,23 @@ type Client struct {
 
 var _ Interface = (*Client)(nil)
 
+// WaitStrategy represents the algorithm used to wait for Kubernetes
+// resources to reach their desired state.
 type WaitStrategy string
 
 const (
+	// StatusWatcherStrategy: event-driven waits using kstatus (watches + aggregated readers).
+	// Default for --wait. More accurate and responsive; waits CRs and full reconciliation.
+	// Requires: reachable API server, list+watch RBAC on deployed resources, and a non-zero timeout.
 	StatusWatcherStrategy WaitStrategy = "watcher"
-	LegacyStrategy        WaitStrategy = "legacy"
-	HookOnlyStrategy      WaitStrategy = "hookOnly"
+
+	// LegacyStrategy: Helm 3-style periodic polling until ready or timeout.
+	// Use when watches aren’t available/reliable, or for compatibility/simple CI.
+	// Requires only list RBAC for polled resources.
+	LegacyStrategy WaitStrategy = "legacy"
+
+	// HookOnlyStrategy: wait only for hook Pods/Jobs to complete; does not wait for general chart resources.
+	HookOnlyStrategy WaitStrategy = "hookOnly"
 )
 
 type FieldValidationDirective string
