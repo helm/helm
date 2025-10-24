@@ -57,7 +57,7 @@ type Package struct {
 	CertFile              string
 	KeyFile               string
 	CaFile                string
-	InsecureSkipTLSverify bool
+	InsecureSkipTLSVerify bool
 }
 
 const (
