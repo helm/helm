@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -80,7 +81,7 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]interface{}) erro
 	var sb strings.Builder
 	if chrt.Schema() != nil {
 		slog.Debug("chart name", "chart-name", chrt.Name())
-		err := ValidateAgainstSingleSchema(values, chrt.Schema())
+		err := ValidateAgainstSingleSchema(values, chrt.Schema(), chrt.ChartFullPath())
 		if err != nil {
 			sb.WriteString(fmt.Sprintf("%s:\n", chrt.Name()))
 			sb.WriteString(err.Error())
@@ -122,7 +123,7 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]interface{}) erro
 }
 
 // ValidateAgainstSingleSchema checks that values does not violate the structure laid out in this schema
-func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reterr error) {
+func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte, absBaseDir string) (reterr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to validate schema: %s", r)
@@ -146,12 +147,13 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 
 	compiler := jsonschema.NewCompiler()
 	compiler.UseLoader(loader)
-	err = compiler.AddResource("file:///values.schema.json", schema)
+	base := "file://" + filepath.ToSlash(absBaseDir) + "/values.schema.json"
+	err = compiler.AddResource(base, schema)
 	if err != nil {
 		return err
 	}
 
-	validator, err := compiler.Compile("file:///values.schema.json")
+	validator, err := compiler.Compile(base)
 	if err != nil {
 		return err
 	}
@@ -180,7 +182,11 @@ func (e JSONSchemaValidationError) Error() string {
 
 	// This string prefixes all of our error details. Further up the stack of helm error message
 	// building more detail is provided to users. This is removed.
-	errStr = strings.TrimPrefix(errStr, "jsonschema validation failed with 'file:///values.schema.json#'\n")
+	if strings.HasPrefix(errStr, "jsonschema validation failed with ") {
+		if idx := strings.Index(errStr, "#'\n"); idx != -1 {
+			errStr = errStr[idx+3:]
+		}
+	}
 
 	// The extra new line is needed for when there are sub-charts.
 	return errStr + "\n"
