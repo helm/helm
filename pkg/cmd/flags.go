@@ -89,7 +89,7 @@ func (ws *waitValue) Set(s string) error {
 		*ws = waitValue(kube.StatusWatcherStrategy)
 		return nil
 	case "false":
-		slog.Warn("--wait=false is deprecated (boolean value) and can be replaced by omitting the --wait flag")
+		slog.Warn("--wait=false is deprecated (boolean value) and can be replaced with --wait=hookOnly")
 		*ws = waitValue(kube.HookOnlyStrategy)
 		return nil
 	default:
