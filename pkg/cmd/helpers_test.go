@@ -18,23 +18,27 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/action"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/cli"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
-	"helm.sh/helm/v4/pkg/time"
 )
 
 func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }
@@ -91,7 +95,7 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	actionConfig := &action.Configuration{
 		Releases:     store,
 		KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
-		Capabilities: chartutil.DefaultCapabilities,
+		Capabilities: common.DefaultCapabilities,
 	}
 
 	root, err := newRootCmdWithConfig(actionConfig, buf, args, SetupLogging)
@@ -104,6 +108,10 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	root.SetArgs(args)
 
 	oldStdin := os.Stdin
+	defer func() {
+		os.Stdin = oldStdin
+	}()
+
 	if in != nil {
 		root.SetIn(in)
 		os.Stdin = in
@@ -115,8 +123,6 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	c, err := root.ExecuteC()
 
 	result := buf.String()
-
-	os.Stdin = oldStdin
 
 	return c, result, err
 }
@@ -147,5 +153,157 @@ func resetEnv() func() {
 			os.Setenv(kv[0], kv[1])
 		}
 		settings = cli.New()
+	}
+}
+
+func TestCmdGetDryRunFlagStrategy(t *testing.T) {
+
+	type testCaseExpectedLog struct {
+		Level string
+		Msg   string
+	}
+	testCases := map[string]struct {
+		DryRunFlagArg    string
+		IsTemplate       bool
+		ExpectedStrategy action.DryRunStrategy
+		ExpectedError    bool
+		ExpectedLog      *testCaseExpectedLog
+	}{
+		"unset_value": {
+			DryRunFlagArg:    "--dry-run",
+			ExpectedStrategy: action.DryRunClient,
+			ExpectedLog: &testCaseExpectedLog{
+				Level: "WARN",
+				Msg:   `--dry-run is deprecated and should be replaced with '--dry-run=client'`,
+			},
+		},
+		"unset_special": {
+			DryRunFlagArg:    "--dry-run=unset", // Special value that matches cmd.Flags("dry-run").NoOptDefVal
+			ExpectedStrategy: action.DryRunClient,
+			ExpectedLog: &testCaseExpectedLog{
+				Level: "WARN",
+				Msg:   `--dry-run is deprecated and should be replaced with '--dry-run=client'`,
+			},
+		},
+		"none": {
+			DryRunFlagArg:    "--dry-run=none",
+			ExpectedStrategy: action.DryRunNone,
+		},
+		"client": {
+			DryRunFlagArg:    "--dry-run=client",
+			ExpectedStrategy: action.DryRunClient,
+		},
+		"server": {
+			DryRunFlagArg:    "--dry-run=server",
+			ExpectedStrategy: action.DryRunServer,
+		},
+		"bool_false": {
+			DryRunFlagArg:    "--dry-run=false",
+			ExpectedStrategy: action.DryRunNone,
+			ExpectedLog: &testCaseExpectedLog{
+				Level: "WARN",
+				Msg:   `boolean '--dry-run=false' flag is deprecated and must be replaced with '--dry-run=none'`,
+			},
+		},
+		"bool_true": {
+			DryRunFlagArg:    "--dry-run=true",
+			ExpectedStrategy: action.DryRunClient,
+			ExpectedLog: &testCaseExpectedLog{
+				Level: "WARN",
+				Msg:   `boolean '--dry-run=true' flag is deprecated and must be replaced with '--dry-run=client'`,
+			},
+		},
+		"bool_0": {
+			DryRunFlagArg:    "--dry-run=0",
+			ExpectedStrategy: action.DryRunNone,
+			ExpectedLog: &testCaseExpectedLog{
+				Level: "WARN",
+				Msg:   `boolean '--dry-run=0' flag is deprecated and must be replaced with '--dry-run=none'`,
+			},
+		},
+		"bool_1": {
+			DryRunFlagArg:    "--dry-run=1",
+			ExpectedStrategy: action.DryRunClient,
+			ExpectedLog: &testCaseExpectedLog{
+				Level: "WARN",
+				Msg:   `boolean '--dry-run=1' flag is deprecated and must be replaced with '--dry-run=client'`,
+			},
+		},
+		"invalid": {
+			DryRunFlagArg: "--dry-run=invalid",
+			ExpectedError: true,
+		},
+		"template_unset_value": {
+			DryRunFlagArg:    "--dry-run",
+			IsTemplate:       true,
+			ExpectedStrategy: action.DryRunClient,
+			ExpectedLog: &testCaseExpectedLog{
+				Level: "WARN",
+				Msg:   `--dry-run is deprecated and should be replaced with '--dry-run=client'`,
+			},
+		},
+		"template_bool_false": {
+			DryRunFlagArg: "--dry-run=false",
+			IsTemplate:    true,
+			ExpectedError: true,
+		},
+		"template_bool_template_true": {
+			DryRunFlagArg:    "--dry-run=true",
+			IsTemplate:       true,
+			ExpectedStrategy: action.DryRunClient,
+			ExpectedLog: &testCaseExpectedLog{
+				Level: "WARN",
+				Msg:   `boolean '--dry-run=true' flag is deprecated and must be replaced with '--dry-run=client'`,
+			},
+		},
+		"template_none": {
+			DryRunFlagArg: "--dry-run=none",
+			IsTemplate:    true,
+			ExpectedError: true,
+		},
+		"template_client": {
+			DryRunFlagArg:    "--dry-run=client",
+			IsTemplate:       true,
+			ExpectedStrategy: action.DryRunClient,
+		},
+		"template_server": {
+			DryRunFlagArg:    "--dry-run=server",
+			IsTemplate:       true,
+			ExpectedStrategy: action.DryRunServer,
+		},
+	}
+
+	for name, tc := range testCases {
+
+		logBuf := new(bytes.Buffer)
+		logger := slog.New(slog.NewJSONHandler(logBuf, nil))
+		slog.SetDefault(logger)
+
+		cmd := &cobra.Command{
+			Use: "helm",
+		}
+		addDryRunFlag(cmd)
+		cmd.Flags().Parse([]string{"helm", tc.DryRunFlagArg})
+
+		t.Run(name, func(t *testing.T) {
+			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, tc.IsTemplate)
+			if tc.ExpectedError {
+				assert.Error(t, err)
+			} else {
+				assert.Nil(t, err)
+				assert.Equal(t, tc.ExpectedStrategy, dryRunStrategy)
+			}
+
+			if tc.ExpectedLog != nil {
+				logResult := map[string]string{}
+				err = json.Unmarshal(logBuf.Bytes(), &logResult)
+				require.Nil(t, err)
+
+				assert.Equal(t, tc.ExpectedLog.Level, logResult["level"])
+				assert.Equal(t, tc.ExpectedLog.Msg, logResult["msg"])
+			} else {
+				assert.Equal(t, 0, logBuf.Len())
+			}
+		})
 	}
 }

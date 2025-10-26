@@ -73,7 +73,7 @@ func renameByCopy(src, dst string) error {
 			cerr = fmt.Errorf("copying directory failed: %w", cerr)
 		}
 	} else {
-		cerr = copyFile(src, dst)
+		cerr = CopyFile(src, dst)
 		if cerr != nil {
 			cerr = fmt.Errorf("copying file failed: %w", cerr)
 		}
@@ -139,7 +139,7 @@ func CopyDir(src, dst string) error {
 		} else {
 			// This will include symlinks, which is what we want when
 			// copying things.
-			if err = copyFile(srcPath, dstPath); err != nil {
+			if err = CopyFile(srcPath, dstPath); err != nil {
 				return fmt.Errorf("copying file failed: %w", err)
 			}
 		}
@@ -148,11 +148,11 @@ func CopyDir(src, dst string) error {
 	return nil
 }
 
-// copyFile copies the contents of the file named src to the file named
+// CopyFile copies the contents of the file named src to the file named
 // by dst. The file will be created if it does not already exist. If the
 // destination file exists, all its contents will be replaced by the contents
 // of the source file. The file mode will be copied from the source.
-func copyFile(src, dst string) (err error) {
+func CopyFile(src, dst string) (err error) {
 	if sym, err := IsSymlink(src); err != nil {
 		return fmt.Errorf("symlink check failed: %w", err)
 	} else if sym {

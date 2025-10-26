@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -26,9 +27,11 @@ import (
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
-	releaseutil "helm.sh/helm/v4/pkg/release/util"
+	releasei "helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	helmtime "helm.sh/helm/v4/pkg/time"
+	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 // Uninstall is the action for uninstalling releases.
@@ -55,7 +58,7 @@ func NewUninstall(cfg *Configuration) *Uninstall {
 }
 
 // Run uninstalls the given release.
-func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) {
+func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error) {
 	if err := u.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
 	}
@@ -66,27 +69,39 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if u.DryRun {
-		// In the dry run case, just see if the release exists
-		r, err := u.cfg.releaseContent(name, 0)
+		ri, err := u.cfg.releaseContent(name, 0)
+
 		if err != nil {
-			return &release.UninstallReleaseResponse{}, err
+			if u.IgnoreNotFound && errors.Is(err, driver.ErrReleaseNotFound) {
+				return nil, nil
+			}
+			return &releasei.UninstallReleaseResponse{}, err
 		}
-		return &release.UninstallReleaseResponse{Release: r}, nil
+		r, err := releaserToV1Release(ri)
+		if err != nil {
+			return nil, err
+		}
+		return &releasei.UninstallReleaseResponse{Release: r}, nil
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, fmt.Errorf("uninstall: Release name is invalid: %s", name)
 	}
 
-	rels, err := u.cfg.Releases.History(name)
+	relsi, err := u.cfg.Releases.History(name)
 	if err != nil {
 		if u.IgnoreNotFound {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("uninstall: Release not loaded: %s: %w", name, err)
 	}
-	if len(rels) < 1 {
+	if len(relsi) < 1 {
 		return nil, errMissingRelease
+	}
+
+	rels, err := releaseListToV1List(relsi)
+	if err != nil {
+		return nil, err
 	}
 
 	releaseutil.SortByRevision(rels)
@@ -94,24 +109,25 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 
 	// TODO: Are there any cases where we want to force a delete even if it's
 	// already marked deleted?
-	if rel.Info.Status == release.StatusUninstalled {
+	if rel.Info.Status == common.StatusUninstalled {
 		if !u.KeepHistory {
 			if err := u.purgeReleases(rels...); err != nil {
 				return nil, fmt.Errorf("uninstall: Failed to purge the release: %w", err)
 			}
-			return &release.UninstallReleaseResponse{Release: rel}, nil
+			return &releasei.UninstallReleaseResponse{Release: rel}, nil
 		}
 		return nil, fmt.Errorf("the release named %q is already deleted", name)
 	}
 
 	slog.Debug("uninstall: deleting release", "name", name)
-	rel.Info.Status = release.StatusUninstalling
-	rel.Info.Deleted = helmtime.Now()
+	rel.Info.Status = common.StatusUninstalling
+	rel.Info.Deleted = time.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
-	res := &release.UninstallReleaseResponse{Release: rel}
+	res := &releasei.UninstallReleaseResponse{Release: rel}
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(rel, release.HookPreDelete, u.WaitStrategy, u.Timeout); err != nil {
+		serverSideApply := true
+		if err := u.cfg.execHook(rel, release.HookPreDelete, u.WaitStrategy, u.Timeout, serverSideApply); err != nil {
 			return res, err
 		}
 	} else {
@@ -140,12 +156,13 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(rel, release.HookPostDelete, u.WaitStrategy, u.Timeout); err != nil {
+		serverSideApply := true
+		if err := u.cfg.execHook(rel, release.HookPostDelete, u.WaitStrategy, u.Timeout, serverSideApply); err != nil {
 			errs = append(errs, err)
 		}
 	}
 
-	rel.Info.Status = release.StatusUninstalled
+	rel.Info.Status = common.StatusUninstalled
 	if len(u.Description) > 0 {
 		rel.Info.Description = u.Description
 	} else {
@@ -240,11 +257,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		return nil, "", []error{fmt.Errorf("unable to build kubernetes objects for delete: %w", err)}
 	}
 	if len(resources) > 0 {
-		if kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceDeletionPropagation); ok {
-			_, errs = kubeClient.DeleteWithPropagationPolicy(resources, parseCascadingFlag(u.DeletionPropagation))
-			return resources, kept, errs
-		}
-		_, errs = u.cfg.KubeClient.Delete(resources)
+		_, errs = u.cfg.KubeClient.Delete(resources, parseCascadingFlag(u.DeletionPropagation))
 	}
 	return resources, kept, errs
 }

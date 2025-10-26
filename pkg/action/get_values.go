@@ -17,7 +17,11 @@ limitations under the License.
 package action
 
 import (
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"fmt"
+
+	"helm.sh/helm/v4/pkg/chart/common/util"
+	release "helm.sh/helm/v4/pkg/release"
+	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
 // GetValues is the action for checking a given release's values.
@@ -43,18 +47,38 @@ func (g *GetValues) Run(name string) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	rel, err := g.cfg.releaseContent(name, g.Version)
+	reli, err := g.cfg.releaseContent(name, g.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	rel, err := releaserToV1Release(reli)
 	if err != nil {
 		return nil, err
 	}
 
 	// If the user wants all values, compute the values and return.
 	if g.AllValues {
-		cfg, err := chartutil.CoalesceValues(rel.Chart, rel.Config)
+		cfg, err := util.CoalesceValues(rel.Chart, rel.Config)
 		if err != nil {
 			return nil, err
 		}
 		return cfg, nil
 	}
 	return rel.Config, nil
+}
+
+// releaserToV1Release is a helper function to convert a v1 release passed by interface
+// into the type object.
+func releaserToV1Release(rel release.Releaser) (*rspb.Release, error) {
+	switch r := rel.(type) {
+	case rspb.Release:
+		return &r, nil
+	case *rspb.Release:
+		return r, nil
+	case nil:
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unsupported release type: %T", rel)
+	}
 }

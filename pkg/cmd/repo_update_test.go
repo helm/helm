@@ -26,8 +26,8 @@ import (
 
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/getter"
-	"helm.sh/helm/v4/pkg/repo"
-	"helm.sh/helm/v4/pkg/repo/repotest"
+	"helm.sh/helm/v4/pkg/repo/v1"
+	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
 
 func TestUpdateCmd(t *testing.T) {

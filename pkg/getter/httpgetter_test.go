@@ -50,7 +50,7 @@ func TestHTTPGetter(t *testing.T) {
 	timeout := time.Second * 5
 	transport := &http.Transport{}
 
-	// Test with options
+	// Test with getterOptions
 	g, err = NewHTTPGetter(
 		WithBasicAuth("I", "Am"),
 		WithPassCredentialsAll(false),
@@ -520,11 +520,11 @@ func TestHTTPGetterTarDownload(t *testing.T) {
 
 		b := make([]byte, 512)
 		f.Read(b)
-		//Get the file size
+		// Get the file size
 		FileStat, _ := f.Stat()
 		FileSize := strconv.FormatInt(FileStat.Size(), 10)
 
-		//Simulating improper header values from bitbucket
+		// Simulating improper header values from bitbucket
 		w.Header().Set("Content-Type", "application/x-tar")
 		w.Header().Set("Content-Encoding", "gzip")
 		w.Header().Set("Content-Length", FileSize)

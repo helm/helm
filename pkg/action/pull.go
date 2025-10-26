@@ -27,7 +27,7 @@ import (
 	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/registry"
-	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
 // Pull is the action for checking a given release's information.
@@ -88,6 +88,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		RegistryClient:   p.cfg.RegistryClient,
 		RepositoryConfig: p.Settings.RepositoryConfig,
 		RepositoryCache:  p.Settings.RepositoryCache,
+		ContentCache:     p.Settings.ContentCache,
 	}
 
 	if registry.IsOCI(chartRef) {
@@ -114,6 +115,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		defer os.RemoveAll(dest)
 	}
 
+	downloadSourceRef := chartRef
 	if p.RepoURL != "" {
 		chartURL, err := repo.FindChartInRepoURL(
 			p.RepoURL,
@@ -128,10 +130,10 @@ func (p *Pull) Run(chartRef string) (string, error) {
 		if err != nil {
 			return out.String(), err
 		}
-		chartRef = chartURL
+		downloadSourceRef = chartURL
 	}
 
-	saved, v, err := c.DownloadTo(chartRef, p.Version, dest)
+	saved, v, err := c.DownloadTo(downloadSourceRef, p.Version, dest)
 	if err != nil {
 		return out.String(), err
 	}

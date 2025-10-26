@@ -43,13 +43,15 @@ type PrintingKubeWaiter struct {
 	LogOutput io.Writer
 }
 
+var _ kube.Interface = &PrintingKubeClient{}
+
 // IsReachable checks if the cluster is reachable
 func (p *PrintingKubeClient) IsReachable() error {
 	return nil
 }
 
 // Create prints the values of what would be created with a real KubeClient.
-func (p *PrintingKubeClient) Create(resources kube.ResourceList) (*kube.Result, error) {
+func (p *PrintingKubeClient) Create(resources kube.ResourceList, _ ...kube.ClientCreateOption) (*kube.Result, error) {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	if err != nil {
 		return nil, err
@@ -89,7 +91,7 @@ func (p *PrintingKubeWaiter) WatchUntilReady(resources kube.ResourceList, _ time
 // Delete implements KubeClient delete.
 //
 // It only prints out the content to be deleted.
-func (p *PrintingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, []error) {
+func (p *PrintingKubeClient) Delete(resources kube.ResourceList, _ metav1.DeletionPropagation) (*kube.Result, []error) {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	if err != nil {
 		return nil, []error{err}
@@ -98,7 +100,7 @@ func (p *PrintingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, 
 }
 
 // Update implements KubeClient Update.
-func (p *PrintingKubeClient) Update(_, modified kube.ResourceList, _ bool) (*kube.Result, error) {
+func (p *PrintingKubeClient) Update(_, modified kube.ResourceList, _ ...kube.ClientUpdateOption) (*kube.Result, error) {
 	_, err := io.Copy(p.Out, bufferize(modified))
 	if err != nil {
 		return nil, err

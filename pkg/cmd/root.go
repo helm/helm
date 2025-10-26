@@ -26,6 +26,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 
@@ -38,8 +39,9 @@ import (
 	"helm.sh/helm/v4/pkg/cli"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/registry"
+	ri "helm.sh/helm/v4/pkg/release"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
@@ -80,6 +82,8 @@ Environment variables:
 | $HELM_KUBETLS_SERVER_NAME          | set the server name used to validate the Kubernetes API server certificate                                 |
 | $HELM_BURST_LIMIT                  | set the default burst limit in the case the server contains many CRDs (default 100, -1 to disable)         |
 | $HELM_QPS                          | set the Queries Per Second in cases where a high number of calls exceed the option for higher burst values |
+| $HELM_COLOR                        | set color output mode. Allowed values: never, always, auto (default: never)                                |
+| $NO_COLOR                          | set to any non-empty value to disable all colored output (overrides $HELM_COLOR)                           |
 
 Helm stores cache, configuration, and data based on the following configuration order:
 
@@ -129,6 +133,20 @@ func SetupLogging(debug bool) {
 	slog.SetDefault(logger)
 }
 
+// configureColorOutput configures the color output based on the ColorMode setting
+func configureColorOutput(settings *cli.EnvSettings) {
+	switch settings.ColorMode {
+	case "never":
+		color.NoColor = true
+	case "always":
+		color.NoColor = false
+	case "auto":
+		// Let fatih/color handle automatic detection
+		// It will check if output is a terminal and NO_COLOR env var
+		// We don't need to do anything here
+	}
+}
+
 func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, args []string, logSetup func(bool)) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:          "helm",
@@ -156,10 +174,31 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	// those errors will be caught later during the call to cmd.Execution.
 	// This call is required to gather configuration information prior to
 	// execution.
-	flags.ParseErrorsWhitelist.UnknownFlags = true
+	flags.ParseErrorsAllowlist.UnknownFlags = true
 	flags.Parse(args)
 
 	logSetup(settings.Debug)
+
+	// Validate color mode setting
+	switch settings.ColorMode {
+	case "never", "auto", "always":
+		// Valid color mode
+	default:
+		return nil, fmt.Errorf("invalid color mode %q: must be one of: never, auto, always", settings.ColorMode)
+	}
+
+	// Configure color output based on ColorMode setting
+	configureColorOutput(settings)
+
+	// Setup shell completion for the color flag
+	_ = cmd.RegisterFlagCompletionFunc("color", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"never", "auto", "always"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	// Setup shell completion for the colour flag
+	_ = cmd.RegisterFlagCompletionFunc("colour", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"never", "auto", "always"}, cobra.ShellCompDirectiveNoFileComp
+	})
 
 	// Setup shell completion for the namespace flag
 	err := cmd.RegisterFlagCompletionFunc("namespace", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
@@ -253,8 +292,8 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		newPushCmd(actionConfig, out),
 	)
 
-	// Find and add plugins
-	loadPlugins(cmd, out)
+	// Find and add CLI plugins
+	loadCLIPlugins(cmd, out)
 
 	// Check for expired repositories
 	checkForExpiredRepos(settings.RepositoryConfig)
@@ -421,4 +460,37 @@ func newRegistryClientWithTLS(
 		return nil, err
 	}
 	return registryClient, nil
+}
+
+type CommandError struct {
+	error
+	ExitCode int
+}
+
+// releaserToV1Release is a helper function to convert a v1 release passed by interface
+// into the type object.
+func releaserToV1Release(rel ri.Releaser) (*release.Release, error) {
+	switch r := rel.(type) {
+	case release.Release:
+		return &r, nil
+	case *release.Release:
+		return r, nil
+	case nil:
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unsupported release type: %T", rel)
+	}
+}
+
+func releaseListToV1List(ls []ri.Releaser) ([]*release.Release, error) {
+	rls := make([]*release.Release, 0, len(ls))
+	for _, val := range ls {
+		rel, err := releaserToV1Release(val)
+		if err != nil {
+			return nil, err
+		}
+		rls = append(rls, rel)
+	}
+
+	return rls, nil
 }

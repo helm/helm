@@ -32,6 +32,7 @@ import (
 	// Import pq for postgres dialect
 	_ "github.com/lib/pq"
 
+	"helm.sh/helm/v4/pkg/release"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -297,7 +298,7 @@ func NewSQL(connectionString string, namespace string) (*SQL, error) {
 }
 
 // Get returns the release named by key.
-func (s *SQL) Get(key string) (*rspb.Release, error) {
+func (s *SQL) Get(key string) (release.Releaser, error) {
 	var record SQLReleaseWrapper
 
 	qb := s.statementBuilder.
@@ -333,7 +334,7 @@ func (s *SQL) Get(key string) (*rspb.Release, error) {
 }
 
 // List returns the list of all releases such that filter(release) == true
-func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
+func (s *SQL) List(filter func(release.Releaser) bool) ([]release.Releaser, error) {
 	sb := s.statementBuilder.
 		Select(sqlReleaseTableKeyColumn, sqlReleaseTableNamespaceColumn, sqlReleaseTableBodyColumn).
 		From(sqlReleaseTableName).
@@ -356,7 +357,7 @@ func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 		return nil, err
 	}
 
-	var releases []*rspb.Release
+	var releases []release.Releaser
 	for _, record := range records {
 		release, err := decodeRelease(record.Body)
 		if err != nil {
@@ -379,7 +380,7 @@ func (s *SQL) List(filter func(*rspb.Release) bool) ([]*rspb.Release, error) {
 }
 
 // Query returns the set of releases that match the provided set of labels.
-func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
+func (s *SQL) Query(labels map[string]string) ([]release.Releaser, error) {
 	sb := s.statementBuilder.
 		Select(sqlReleaseTableKeyColumn, sqlReleaseTableNamespaceColumn, sqlReleaseTableBodyColumn).
 		From(sqlReleaseTableName)
@@ -420,7 +421,7 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 		return nil, ErrReleaseNotFound
 	}
 
-	var releases []*rspb.Release
+	var releases []release.Releaser
 	for _, record := range records {
 		release, err := decodeRelease(record.Body)
 		if err != nil {
@@ -444,7 +445,12 @@ func (s *SQL) Query(labels map[string]string) ([]*rspb.Release, error) {
 }
 
 // Create creates a new release.
-func (s *SQL) Create(key string, rls *rspb.Release) error {
+func (s *SQL) Create(key string, rel release.Releaser) error {
+	rls, err := releaserToV1Release(rel)
+	if err != nil {
+		return err
+	}
+
 	namespace := rls.Namespace
 	if namespace == "" {
 		namespace = defaultNamespace
@@ -551,7 +557,11 @@ func (s *SQL) Create(key string, rls *rspb.Release) error {
 }
 
 // Update updates a release.
-func (s *SQL) Update(key string, rls *rspb.Release) error {
+func (s *SQL) Update(key string, rel release.Releaser) error {
+	rls, err := releaserToV1Release(rel)
+	if err != nil {
+		return err
+	}
 	namespace := rls.Namespace
 	if namespace == "" {
 		namespace = defaultNamespace
@@ -590,7 +600,7 @@ func (s *SQL) Update(key string, rls *rspb.Release) error {
 }
 
 // Delete deletes a release or returns ErrReleaseNotFound.
-func (s *SQL) Delete(key string) (*rspb.Release, error) {
+func (s *SQL) Delete(key string) (release.Releaser, error) {
 	transaction, err := s.db.Beginx()
 	if err != nil {
 		slog.Debug("failed to start SQL transaction", slog.Any("error", err))

@@ -29,13 +29,11 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
@@ -77,11 +75,11 @@ type (
 		credentialsStore   credentials.Store
 		httpClient         *http.Client
 		plainHTTP          bool
-		err                error // pass any errors from the ClientOption functions
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
 	// used when creating a new default client
+	// TODO(TerryHowe): ClientOption should return error in v5
 	ClientOption func(*Client)
 )
 
@@ -92,9 +90,6 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	for _, option := range options {
 		option(client)
-		if client.err != nil {
-			return nil, client.err
-		}
 	}
 	if client.credentialsFile == "" {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
@@ -128,16 +123,26 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		}
 		authorizer.SetUserAgent(version.GetUserAgent())
 
-		authorizer.Credential = credentials.Credential(client.credentialsStore)
+		if client.username != "" && client.password != "" {
+			authorizer.Credential = func(_ context.Context, _ string) (auth.Credential, error) {
+				return auth.Credential{Username: client.username, Password: client.password}, nil
+			}
+		} else {
+			authorizer.Credential = credentials.Credential(client.credentialsStore)
+		}
 
 		if client.enableCache {
 			authorizer.Cache = auth.NewCache()
 		}
-
 		client.authorizer = &authorizer
 	}
 
 	return client, nil
+}
+
+// Generic returns a GenericClient for low-level OCI operations
+func (c *Client) Generic() *GenericClient {
+	return NewGenericClient(c)
 }
 
 // ClientOptDebug returns a function that sets the debug setting on client options set
@@ -241,6 +246,8 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 			return fmt.Errorf("authenticating to %q: %w", host, err)
 		}
 	}
+	// Always restore to false after probing, to avoid forcing POST to token endpoints like GHCR.
+	c.authorizer.ForceAttemptOAuth2 = false
 
 	key := credentials.ServerAddressFromRegistry(host)
 	key = credentials.ServerAddressFromHostname(key)
@@ -268,7 +275,7 @@ func LoginOptPlainText(isPlainText bool) LoginOption {
 	}
 }
 
-func ensureTLSConfig(client *auth.Client) (*tls.Config, error) {
+func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, error) {
 	var transport *http.Transport
 
 	switch t := client.Client.Transport.(type) {
@@ -292,7 +299,10 @@ func ensureTLSConfig(client *auth.Client) (*tls.Config, error) {
 		return nil, fmt.Errorf("unable to access TLS client configuration, the provided HTTP Transport is not supported, given: %T", client.Client.Transport)
 	}
 
-	if transport.TLSClientConfig == nil {
+	switch {
+	case setConfig != nil:
+		transport.TLSClientConfig = setConfig
+	case transport.TLSClientConfig == nil:
 		transport.TLSClientConfig = &tls.Config{}
 	}
 
@@ -302,7 +312,7 @@ func ensureTLSConfig(client *auth.Client) (*tls.Config, error) {
 // LoginOptInsecure returns a function that sets the insecure setting on login
 func LoginOptInsecure(insecure bool) LoginOption {
 	return func(o *loginOperation) {
-		tlsConfig, err := ensureTLSConfig(o.client.authorizer)
+		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
 
 		if err != nil {
 			panic(err)
@@ -318,7 +328,7 @@ func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
 		if (certFile == "" || keyFile == "") && caFile == "" {
 			return
 		}
-		tlsConfig, err := ensureTLSConfig(o.client.authorizer)
+		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
 		if err != nil {
 			panic(err)
 		}
@@ -341,6 +351,17 @@ func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
 				panic(fmt.Errorf("unable to parse CA file: %q", caFile))
 			}
 			tlsConfig.RootCAs = certPool
+		}
+	}
+}
+
+// LoginOptTLSClientConfigFromConfig returns a function that sets the TLS settings on login
+// receiving the configuration in memory rather than from files.
+func LoginOptTLSClientConfigFromConfig(conf *tls.Config) LoginOption {
+	return func(o *loginOperation) {
+		_, err := ensureTLSConfig(o.client.authorizer, conf)
+		if err != nil {
+			panic(err)
 		}
 	}
 }
@@ -397,84 +418,31 @@ type (
 	}
 )
 
-// Pull downloads a chart from a registry
-func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
-	parsedRef, err := newReference(ref)
-	if err != nil {
-		return nil, err
-	}
+// processChartPull handles chart-specific processing of a generic pull result
+func (c *Client) processChartPull(genericResult *GenericPullResult, operation *pullOperation) (*PullResult, error) {
+	var err error
 
-	operation := &pullOperation{
-		withChart: true, // By default, always download the chart layer
-	}
-	for _, option := range options {
-		option(operation)
-	}
-	if !operation.withChart && !operation.withProv {
-		return nil, errors.New(
-			"must specify at least one layer to pull (chart/prov)")
-	}
-	memoryStore := memory.New()
-	allowedMediaTypes := []string{
-		ocispec.MediaTypeImageManifest,
-		ConfigMediaType,
-	}
+	// Chart-specific validation
 	minNumDescriptors := 1 // 1 for the config
 	if operation.withChart {
 		minNumDescriptors++
-		allowedMediaTypes = append(allowedMediaTypes, ChartLayerMediaType, LegacyChartLayerMediaType)
 	}
-	if operation.withProv {
-		if !operation.ignoreMissingProv {
-			minNumDescriptors++
-		}
-		allowedMediaTypes = append(allowedMediaTypes, ProvLayerMediaType)
+	if operation.withProv && !operation.ignoreMissingProv {
+		minNumDescriptors++
 	}
 
-	var descriptors, layers []ocispec.Descriptor
-
-	repository, err := remote.NewRepository(parsedRef.String())
-	if err != nil {
-		return nil, err
-	}
-	repository.PlainHTTP = c.plainHTTP
-	repository.Client = c.authorizer
-
-	ctx := context.Background()
-
-	sort.Strings(allowedMediaTypes)
-
-	var mu sync.Mutex
-	manifest, err := oras.Copy(ctx, repository, parsedRef.String(), memoryStore, "", oras.CopyOptions{
-		CopyGraphOptions: oras.CopyGraphOptions{
-			PreCopy: func(_ context.Context, desc ocispec.Descriptor) error {
-				mediaType := desc.MediaType
-				if i := sort.SearchStrings(allowedMediaTypes, mediaType); i >= len(allowedMediaTypes) || allowedMediaTypes[i] != mediaType {
-					return oras.SkipNode
-				}
-
-				mu.Lock()
-				layers = append(layers, desc)
-				mu.Unlock()
-				return nil
-			},
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	descriptors = append(descriptors, layers...)
-
-	numDescriptors := len(descriptors)
+	numDescriptors := len(genericResult.Descriptors)
 	if numDescriptors < minNumDescriptors {
 		return nil, fmt.Errorf("manifest does not contain minimum number of descriptors (%d), descriptors found: %d",
 			minNumDescriptors, numDescriptors)
 	}
+
+	// Find chart-specific descriptors
 	var configDescriptor *ocispec.Descriptor
 	var chartDescriptor *ocispec.Descriptor
 	var provDescriptor *ocispec.Descriptor
-	for _, descriptor := range descriptors {
+
+	for _, descriptor := range genericResult.Descriptors {
 		d := descriptor
 		switch d.MediaType {
 		case ConfigMediaType:
@@ -488,6 +456,8 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 			fmt.Fprintf(c.out, "Warning: chart media type %s is deprecated\n", LegacyChartLayerMediaType)
 		}
 	}
+
+	// Chart-specific validation
 	if configDescriptor == nil {
 		return nil, fmt.Errorf("could not load config with mediatype %s", ConfigMediaType)
 	}
@@ -495,6 +465,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		return nil, fmt.Errorf("manifest does not contain a layer with mediatype %s",
 			ChartLayerMediaType)
 	}
+
 	var provMissing bool
 	if operation.withProv && provDescriptor == nil {
 		if operation.ignoreMissingProv {
@@ -504,10 +475,12 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 				ProvLayerMediaType)
 		}
 	}
+
+	// Build chart-specific result
 	result := &PullResult{
 		Manifest: &DescriptorPullSummary{
-			Digest: manifest.Digest.String(),
-			Size:   manifest.Size,
+			Digest: genericResult.Manifest.Digest.String(),
+			Size:   genericResult.Manifest.Size,
 		},
 		Config: &DescriptorPullSummary{
 			Digest: configDescriptor.Digest.String(),
@@ -515,15 +488,18 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		},
 		Chart: &DescriptorPullSummaryWithMeta{},
 		Prov:  &DescriptorPullSummary{},
-		Ref:   parsedRef.String(),
+		Ref:   genericResult.Ref,
 	}
 
-	result.Manifest.Data, err = content.FetchAll(ctx, memoryStore, manifest)
+	// Fetch data using generic client
+	genericClient := c.Generic()
+
+	result.Manifest.Data, err = genericClient.GetDescriptorData(genericResult.MemoryStore, genericResult.Manifest)
 	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve blob with digest %s: %w", manifest.Digest, err)
+		return nil, fmt.Errorf("unable to retrieve blob with digest %s: %w", genericResult.Manifest.Digest, err)
 	}
 
-	result.Config.Data, err = content.FetchAll(ctx, memoryStore, *configDescriptor)
+	result.Config.Data, err = genericClient.GetDescriptorData(genericResult.MemoryStore, *configDescriptor)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve blob with digest %s: %w", configDescriptor.Digest, err)
 	}
@@ -533,7 +509,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 
 	if operation.withChart {
-		result.Chart.Data, err = content.FetchAll(ctx, memoryStore, *chartDescriptor)
+		result.Chart.Data, err = genericClient.GetDescriptorData(genericResult.MemoryStore, *chartDescriptor)
 		if err != nil {
 			return nil, fmt.Errorf("unable to retrieve blob with digest %s: %w", chartDescriptor.Digest, err)
 		}
@@ -542,7 +518,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 
 	if operation.withProv && !provMissing {
-		result.Prov.Data, err = content.FetchAll(ctx, memoryStore, *provDescriptor)
+		result.Prov.Data, err = genericClient.GetDescriptorData(genericResult.MemoryStore, *provDescriptor)
 		if err != nil {
 			return nil, fmt.Errorf("unable to retrieve blob with digest %s: %w", provDescriptor.Digest, err)
 		}
@@ -559,6 +535,44 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 
 	return result, nil
+}
+
+// Pull downloads a chart from a registry
+func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
+	operation := &pullOperation{
+		withChart: true, // By default, always download the chart layer
+	}
+	for _, option := range options {
+		option(operation)
+	}
+	if !operation.withChart && !operation.withProv {
+		return nil, errors.New(
+			"must specify at least one layer to pull (chart/prov)")
+	}
+
+	// Build allowed media types for chart pull
+	allowedMediaTypes := []string{
+		ocispec.MediaTypeImageManifest,
+		ConfigMediaType,
+	}
+	if operation.withChart {
+		allowedMediaTypes = append(allowedMediaTypes, ChartLayerMediaType, LegacyChartLayerMediaType)
+	}
+	if operation.withProv {
+		allowedMediaTypes = append(allowedMediaTypes, ProvLayerMediaType)
+	}
+
+	// Use generic client for the pull operation
+	genericClient := c.Generic()
+	genericResult, err := genericClient.PullGeneric(ref, GenericPullOptions{
+		AllowedMediaTypes: allowedMediaTypes,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Process the result with chart-specific logic
+	return c.processChartPull(genericResult, operation)
 }
 
 // PullOptWithChart returns a function that sets the withChart setting on pull
@@ -797,6 +811,7 @@ func (c *Client) Resolve(ref string) (desc ocispec.Descriptor, err error) {
 		return desc, err
 	}
 	remoteRepository.PlainHTTP = c.plainHTTP
+	remoteRepository.Client = c.authorizer
 
 	parsedReference, err := newReference(ref)
 	if err != nil {
@@ -809,12 +824,12 @@ func (c *Client) Resolve(ref string) (desc ocispec.Descriptor, err error) {
 }
 
 // ValidateReference for path and version
-func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, error) {
+func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *url.URL, error) {
 	var tag string
 
 	registryReference, err := newReference(u.Host + u.Path)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	if version == "" {
@@ -822,14 +837,14 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 		version = registryReference.Tag
 	} else {
 		if registryReference.Tag != "" && registryReference.Tag != version {
-			return nil, fmt.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
+			return "", nil, fmt.Errorf("chart reference and version mismatch: %s is not %s", version, registryReference.Tag)
 		}
 	}
 
 	if registryReference.Digest != "" {
 		if version == "" {
 			// Install by digest only
-			return u, nil
+			return "", u, nil
 		}
 		u.Path = fmt.Sprintf("%s@%s", registryReference.Repository, registryReference.Digest)
 
@@ -838,12 +853,12 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 		desc, err := c.Resolve(path)
 		if err != nil {
 			// The resource does not have to be tagged when digest is specified
-			return u, nil
+			return "", u, nil
 		}
 		if desc.Digest.String() != registryReference.Digest {
-			return nil, fmt.Errorf("chart reference digest mismatch: %s is not %s", desc.Digest.String(), registryReference.Digest)
+			return "", nil, fmt.Errorf("chart reference digest mismatch: %s is not %s", desc.Digest.String(), registryReference.Digest)
 		}
-		return u, nil
+		return registryReference.Digest, u, nil
 	}
 
 	// Evaluate whether an explicit version has been provided. Otherwise, determine version to use
@@ -854,10 +869,10 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 		// Retrieve list of repository tags
 		tags, err := c.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", OCIScheme)))
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		if len(tags) == 0 {
-			return nil, fmt.Errorf("unable to locate any tags in provided repository: %s", ref)
+			return "", nil, fmt.Errorf("unable to locate any tags in provided repository: %s", ref)
 		}
 
 		// Determine if version provided
@@ -866,13 +881,14 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (*url.URL, e
 		// If semver constraint string, try to find a match
 		tag, err = GetTagMatchingVersionOrConstraint(tags, version)
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 	}
 
 	u.Path = fmt.Sprintf("%s:%s", registryReference.Repository, tag)
+	// desc, err := c.Resolve(u.Path)
 
-	return u, err
+	return "", u, err
 }
 
 // tagManifest prepares and tags a manifest in memory storage

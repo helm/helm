@@ -19,19 +19,20 @@ package cmd
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func outputFlagCompletionTest(t *testing.T, cmdName string) {
 	t.Helper()
 	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []*release.Release {
-		info.LastDeployed = helmtime.Unix(1452902400, 0).UTC()
+		info.LastDeployed = time.Unix(1452902400, 0).UTC()
 		return []*release.Release{{
 			Name:      "athos",
 			Namespace: "default",
@@ -64,35 +65,35 @@ func outputFlagCompletionTest(t *testing.T, cmdName string) {
 		cmd:    fmt.Sprintf("__complete %s --output ''", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}, {
 		name:   "completion for output flag long and after arg",
 		cmd:    fmt.Sprintf("__complete %s aramis --output ''", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}, {
 		name:   "completion for output flag short and before arg",
 		cmd:    fmt.Sprintf("__complete %s -o ''", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}, {
 		name:   "completion for output flag short and after arg",
 		cmd:    fmt.Sprintf("__complete %s aramis -o ''", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}, {
 		name:   "completion for output flag, no filter",
 		cmd:    fmt.Sprintf("__complete %s --output jso", cmdName),
 		golden: "output/output-comp.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}}
 	runTestCmd(t, tests)
@@ -101,20 +102,22 @@ func outputFlagCompletionTest(t *testing.T, cmdName string) {
 func TestPostRendererFlagSetOnce(t *testing.T) {
 	cfg := action.Configuration{}
 	client := action.NewInstall(&cfg)
+	settings.PluginsDirectory = "testdata/helmhome/helm/plugins"
 	str := postRendererString{
 		options: &postRendererOptions{
 			renderer: &client.PostRenderer,
+			settings: settings,
 		},
 	}
-	// Set the binary once
-	err := str.Set("echo")
+	// Set the plugin name once
+	err := str.Set("postrenderer-v1")
 	require.NoError(t, err)
 
-	// Set the binary again to the same value is not ok
-	err = str.Set("echo")
+	// Set the plugin name again to the same value is not ok
+	err = str.Set("postrenderer-v1")
 	require.Error(t, err)
 
-	// Set the binary again to a different value is not ok
+	// Set the plugin name again to a different value is not ok
 	err = str.Set("cat")
 	require.Error(t, err)
 }

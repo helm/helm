@@ -29,8 +29,8 @@ import (
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/provenance"
-	"helm.sh/helm/v4/pkg/repo"
-	"helm.sh/helm/v4/pkg/repo/repotest"
+	"helm.sh/helm/v4/pkg/repo/v1"
+	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
 
 func TestDependencyUpdateCmd(t *testing.T) {
@@ -45,6 +45,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	contentCache := t.TempDir()
 
 	ociChartName := "oci-depending-chart"
 	c := createTestingMetadataForOCI(ociChartName, ociSrv.RegistryURL)
@@ -69,7 +70,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	}
 
 	_, out, err := executeActionCommand(
-		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --plain-http", dir(chartname), dir("repositories.yaml"), dir()),
+		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --content-cache %s --plain-http", dir(chartname), dir("repositories.yaml"), dir(), contentCache),
 	)
 	if err != nil {
 		t.Logf("Output: %s", out)
@@ -112,7 +113,7 @@ func TestDependencyUpdateCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, out, err = executeActionCommand(fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --plain-http", dir(chartname), dir("repositories.yaml"), dir()))
+	_, out, err = executeActionCommand(fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --content-cache %s --plain-http", dir(chartname), dir("repositories.yaml"), dir(), contentCache))
 	if err != nil {
 		t.Logf("Output: %s", out)
 		t.Fatal(err)
@@ -133,11 +134,12 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	if err := chartutil.SaveDir(c, dir()); err != nil {
 		t.Fatal(err)
 	}
-	cmd := fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --registry-config %s/config.json --plain-http",
+	cmd := fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --registry-config %s/config.json --content-cache %s --plain-http",
 		dir(ociChartName),
 		dir("repositories.yaml"),
 		dir(),
-		dir())
+		dir(),
+		contentCache)
 	_, out, err = executeActionCommand(cmd)
 	if err != nil {
 		t.Logf("Output: %s", out)
@@ -179,8 +181,9 @@ func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 
 	// Chart repo is down
 	srv.Stop()
+	contentCache := t.TempDir()
 
-	_, output, err = executeActionCommand(fmt.Sprintf("dependency update %s --repository-config %s --repository-cache %s --plain-http", dir(chartname), dir("repositories.yaml"), dir()))
+	_, output, err = executeActionCommand(fmt.Sprintf("dependency update %s --repository-config %s --repository-cache %s --content-cache %s --plain-http", dir(chartname), dir("repositories.yaml"), dir(), contentCache))
 	if err == nil {
 		t.Logf("Output: %s", output)
 		t.Fatal("Expected error, got nil")
@@ -232,9 +235,11 @@ func TestDependencyUpdateCmd_WithRepoThatWasNotAdded(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	contentCache := t.TempDir()
+
 	_, out, err := executeActionCommand(
-		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s", dir(chartname),
-			dir("repositories.yaml"), dir()),
+		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --content-cache %s", dir(chartname),
+			dir("repositories.yaml"), dir(), contentCache),
 	)
 
 	if err != nil {

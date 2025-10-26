@@ -35,7 +35,7 @@ type lookupFunc = func(apiversion string, resource string, namespace string, nam
 // NewLookupFunction returns a function for looking up objects in the cluster.
 //
 // If the resource does not exist, no error is raised.
-func NewLookupFunction(config *rest.Config) lookupFunc {
+func NewLookupFunction(config *rest.Config) lookupFunc { //nolint:revive
 	return newLookupFunction(clientProviderFromConfig{config: config})
 }
 
