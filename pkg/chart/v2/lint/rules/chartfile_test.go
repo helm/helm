@@ -299,7 +299,7 @@ func TestChartfile(t *testing.T) {
 			return
 		}
 
-		if !strings.Contains(msgs[0].Err.Error(), "name is required") {
+		if !strings.Contains(msgs[0].Err.Error(), "chart name must be between 1 and 250 characters") {
 			t.Errorf("Unexpected message 0: %s", msgs[0].Err)
 		}
 

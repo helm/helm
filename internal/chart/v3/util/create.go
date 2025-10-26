@@ -35,7 +35,7 @@ import (
 // This regular expression is probably stricter than it needs to be. We can relax it
 // somewhat. Newline characters, as well as $, quotes, +, parens, and % are known to be
 // problematic.
-var chartName = regexp.MustCompile("^[a-zA-Z0-9._-]+$")
+var chartName = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
 const (
 	// ChartfileName is the default Chart file name.
@@ -828,7 +828,7 @@ func validateChartName(name string) error {
 		return fmt.Errorf("chart name must be between 1 and %d characters", maxChartNameLength)
 	}
 	if !chartName.MatchString(name) {
-		return fmt.Errorf("chart name must match the regular expression %q", chartName.String())
+		return fmt.Errorf("chart name must use only lowercase letters or digits optionally with dash separators")
 	}
 	return nil
 }
