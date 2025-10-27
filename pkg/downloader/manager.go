@@ -359,8 +359,12 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 		}
 
 		if m.SkipDownloadIfExists {
-			u, err := dl.parseChartURL(churl, version)
+			u, err := url.Parse(churl)
+			if err != nil {
+				return err
+			}
 
+			u, err = dl.appendTagToUrlIfNeeded(u, version)
 			if err != nil {
 				return err
 			}

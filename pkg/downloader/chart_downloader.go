@@ -346,9 +346,14 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 //
 // TODO: support OCI hash
 func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url.URL, error) {
-	u, err := c.parseChartURL(ref, version)
+	u, err := url.Parse(ref)
 	if err != nil {
-		return "", u, err
+		return "", nil, err
+	}
+
+	u, err = c.appendTagToUrlIfNeeded(u, version)
+	if err != nil {
+		return "", nil, err
 	}
 
 	if registry.IsOCI(u.String()) {
@@ -577,27 +582,24 @@ func (c *ChartDownloader) getChartName(url string) string {
 	return name
 }
 
-func (c *ChartDownloader) parseChartURL(ref string, version string) (*url.URL, error) {
-	u, err := url.Parse(ref)
+func (c *ChartDownloader) appendTagToUrlIfNeeded(chartUrl *url.URL, version string) (*url.URL, error) {
+	if !registry.IsOCI(chartUrl.String()) {
+		return chartUrl, nil
+	}
+
+	refAlreadyHasTagOrDigest := strings.Contains(chartUrl.Path, ":") || strings.Contains(chartUrl.Path, "@")
+	if refAlreadyHasTagOrDigest {
+		return chartUrl, nil
+	}
+
+	tag, err := c.getOciTag(chartUrl.String(), version)
 	if err != nil {
-		return nil, fmt.Errorf("invalid chart URL format: %s", ref)
+		return nil, err
 	}
 
-	if registry.IsOCI(u.String()) {
-		refAlreadyHasTagOrDigest := strings.Contains(u.Path, ":") || strings.Contains(u.Path, "@")
-		if refAlreadyHasTagOrDigest {
-			return u, nil
-		}
+	chartUrl.Path = fmt.Sprintf("%s:%s", chartUrl.Path, tag)
 
-		tag, err := c.getOciTag(ref, version)
-		if err != nil {
-			return nil, err
-		}
-
-		u.Path = fmt.Sprintf("%s:%s", u.Path, tag)
-	}
-
-	return u, nil
+	return chartUrl, nil
 }
 
 func (c *ChartDownloader) getOciTag(ref, version string) (string, error) {
