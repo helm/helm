@@ -93,7 +93,7 @@ func (ws *waitValue) Set(s string) error {
 		*ws = waitValue(kube.HookOnlyStrategy)
 		return nil
 	default:
-		return fmt.Errorf("invalid wait input %q. Valid inputs are %s, %s, and %s", s, kube.StatusWatcherStrategy, kube.LegacyStrategy, kube.HookOnlyStrategy)
+		return fmt.Errorf("invalid wait input %q. Valid inputs are %s, %s, and %s", s, kube.StatusWatcherStrategy, kube.HookOnlyStrategy, kube.LegacyStrategy)
 	}
 }
 
