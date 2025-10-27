@@ -176,8 +176,10 @@ func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
 			return nil, err
 		}
 		return &hookOnlyWaiter{sw: sw}, nil
+	case "":
+		return nil, errors.New("wait strategy not set. Choose one of: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy))
 	default:
-		return nil, errors.New("unknown wait strategy")
+		return nil, errors.New("unknown wait strategy (s" + string(strategy) + "). Valid values are: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy))
 	}
 }
 
