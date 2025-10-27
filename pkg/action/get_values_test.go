@@ -79,7 +79,7 @@ func TestGetValues_Run_UserConfigOnly(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -127,7 +127,7 @@ func TestGetValues_Run_AllValues(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -161,7 +161,7 @@ func TestGetValues_Run_EmptyValues(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -212,7 +212,7 @@ func TestGetValues_Run_NilConfig(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)

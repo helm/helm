@@ -116,7 +116,6 @@ type Install struct {
 	Labels                   map[string]string
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
-	// (for things like templating). These are ignored if ClientOnly is false
 	KubeVersion *common.KubeVersion
 	APIVersions common.VersionSet
 	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
@@ -192,7 +191,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts)); err != nil {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
-				crdName := res[0].Name
+				crdName := obj.Name
 				slog.Debug("CRD is already present. Skipping", "crd", crdName)
 				continue
 			}
