@@ -57,9 +57,9 @@ func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 
 func AddWaitFlag(cmd *cobra.Command, wait *kube.WaitStrategy) {
 	cmd.Flags().Var(
-		newWaitValue(kube.StatusWatcherStrategy, wait),
+		newWaitValue(kube.HookOnlyStrategy, wait),
 		"wait",
-		"wait until resources are ready (up to --timeout). Values: 'watcher' (default), 'hookOnly', and 'legacy'",
+		"wait until resources are ready (up to --timeout). Values: 'watcher', 'hookOnly' (default), and 'legacy'",
 	)
 	// Sets the strategy to use the watcher strategy if `--wait` is used without an argument
 	cmd.Flags().Lookup("wait").NoOptDefVal = string(kube.StatusWatcherStrategy)
