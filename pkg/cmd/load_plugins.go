@@ -132,7 +132,13 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 			DisableFlagParsing: true,
 		}
 
-		// TODO: Make sure a command with this name does not already exist.
+		for _, cmd := range baseCmd.Commands() {
+			if cmd.Name() == c.Name() {
+				fmt.Fprintf(os.Stderr, "failed to load plugins: name conflicts %s\n", c.Name())
+				return
+			}
+		}
+
 		baseCmd.AddCommand(c)
 
 		// For completion, we try to load more details about the plugins so as to allow for command and
