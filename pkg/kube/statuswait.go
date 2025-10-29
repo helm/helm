@@ -65,7 +65,7 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := w.contextWithTimeout(timeout)
 	defer cancel()
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
@@ -86,16 +86,10 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 }
 
 func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
-<<<<<<< HEAD
-	ctx, cancel := w.contextWithTimeout(timeout)
-||||||| parent of 86f98f870 (Prevent surprising failure with SDK when timeout is not set)
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
-=======
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
 	}
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
->>>>>>> 86f98f870 (Prevent surprising failure with SDK when timeout is not set)
+	ctx, cancel := w.contextWithTimeout(timeout)
 	defer cancel()
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
@@ -103,16 +97,10 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 }
 
 func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
-<<<<<<< HEAD
-	ctx, cancel := w.contextWithTimeout(timeout)
-||||||| parent of 86f98f870 (Prevent surprising failure with SDK when timeout is not set)
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
-=======
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
 	}
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
->>>>>>> 86f98f870 (Prevent surprising failure with SDK when timeout is not set)
+	ctx, cancel := w.contextWithTimeout(timeout)
 	defer cancel()
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
@@ -123,16 +111,10 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 }
 
 func (w *statusWaiter) WaitForDelete(resourceList ResourceList, timeout time.Duration) error {
-<<<<<<< HEAD
-	ctx, cancel := w.contextWithTimeout(timeout)
-||||||| parent of 86f98f870 (Prevent surprising failure with SDK when timeout is not set)
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
-=======
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
 	}
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
->>>>>>> 86f98f870 (Prevent surprising failure with SDK when timeout is not set)
+	ctx, cancel := w.contextWithTimeout(timeout)
 	defer cancel()
 	slog.Debug("waiting for resources to be deleted", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
