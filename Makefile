@@ -186,13 +186,7 @@ build-cross: $(GORELEASER)
 
 .PHONY: dist
 dist:
-	( \
-		cd _dist && \
-		$(DIST_DIRS) cp ../LICENSE {} \; && \
-		$(DIST_DIRS) cp ../README.md {} \; && \
-		$(DIST_DIRS) tar -zcf helm-${VERSION}-{}.tar.gz {} \; && \
-		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
-	)
+	LDFLAGS='$(LDFLAGS)' $(GORELEASER) release --snapshot --clean
 
 .PHONY: fetch-dist
 fetch-dist:
