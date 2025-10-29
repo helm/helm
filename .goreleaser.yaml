@@ -63,11 +63,15 @@ archives:
   - id: default
     # this name template makes the OS and Arch compatible with the results of uname.
     name_template: >-
-      {{- title .Os }}-
+      {{- .ProjectName }}-
+      {{- .Version }}-
+      {{- .Os }}-
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    formats:
+      - tar.gz
+      - zip
     files:
       - LICENSE
       - README.md
