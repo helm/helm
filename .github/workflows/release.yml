@@ -100,7 +100,6 @@ jobs:
 
       - name: Build Helm Binaries
         run: |
-          make build-cross
           make dist checksum VERSION="canary"
 
       - name: Upload Binaries
