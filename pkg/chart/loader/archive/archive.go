@@ -29,6 +29,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // MaxDecompressedChartSize is the maximum size of a chart archive that will be
@@ -46,8 +47,9 @@ var utf8bom = []byte{0xEF, 0xBB, 0xBF}
 
 // BufferedFile represents an archive file buffered for later processing.
 type BufferedFile struct {
-	Name string
-	Data []byte
+	Name    string
+	ModTime time.Time
+	Data    []byte
 }
 
 // LoadArchiveFiles reads in files out of an archive into memory. This function
@@ -148,7 +150,7 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 
 		data := bytes.TrimPrefix(b.Bytes(), utf8bom)
 
-		files = append(files, &BufferedFile{Name: n, Data: data})
+		files = append(files, &BufferedFile{Name: n, ModTime: hd.ModTime, Data: data})
 		b.Reset()
 	}
 
