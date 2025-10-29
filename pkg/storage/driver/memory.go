@@ -17,10 +17,12 @@ limitations under the License.
 package driver
 
 import (
+	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
 
+	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/pkg/release"
 )
 
@@ -42,11 +44,15 @@ type Memory struct {
 	namespace string
 	// A map of namespaces to releases
 	cache map[string]memReleases
+	// Embed a LogHolder to provide logger functionality
+	logging.LogHolder
 }
 
 // NewMemory initializes a new memory driver.
 func NewMemory() *Memory {
-	return &Memory{cache: map[string]memReleases{}, namespace: "default"}
+	m := &Memory{cache: map[string]memReleases{}, namespace: "default"}
+	m.SetLogger(slog.Default().Handler())
+	return m
 }
 
 // SetNamespace sets a specific namespace in which releases will be accessed.
