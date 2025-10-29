@@ -170,7 +170,8 @@ gen-test-golden: test-unit
 # without a go.mod file when downloading the following dependencies
 
 $(GORELEASER):
-	(cd /; go install github.com/goreleaser/goreleaser@latest)
+	echo go install github.com/goreleaser/goreleaser/v2@latest
+	(cd /; go install github.com/goreleaser/goreleaser/v2@latest)
 
 $(GOIMPORTS):
 	(cd /; go install golang.org/x/tools/cmd/goimports@latest)
