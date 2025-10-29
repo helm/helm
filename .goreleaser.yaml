@@ -36,6 +36,8 @@ builds:
       - goos: darwin
         goarch: riscv64
       - goos: windows
+        goarch: "386"
+      - goos: windows
         goarch: arm
       - goos: windows
         goarch: ppc64le
@@ -44,7 +46,8 @@ builds:
       - goos: windows
         goarch: riscv64
     main: ./cmd/helm
-    binary: helm
+    no_unique_dist_dir: true
+    binary: "{{ .Os }}-{{ .Arch }}/helm"
     ldflags:
       - "{{ .Env.LDFLAGS }}"
     flags:
@@ -55,7 +58,6 @@ archives:
   - id: default
     # this name template makes the OS and Arch compatible with the results of uname.
     name_template: >-
-      {{ .ProjectName }}-
       {{- title .Os }}-
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
