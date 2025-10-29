@@ -76,6 +76,43 @@ func TestValidateChartName(t *testing.T) {
 	if err == nil {
 		t.Error("expected validateChartName to return a linter error for an invalid name, got no error")
 	}
+
+	failTests := []*chart.Metadata{
+		{Name: ""},                       // empty
+		{Name: "ChartName"},              // uppercase
+		{Name: "chart_name"},             // underscore
+		{Name: "chart.name"},             // dot
+		{Name: "chart--name"},            // double dash
+		{Name: "-chartname"},             // starts with dash
+		{Name: "chartname-"},             // ends with dash
+		{Name: "chart$name"},             // special character
+		{Name: "chart/name"},             // forward slash
+		{Name: "chart\\name"},            // backslash
+		{Name: "chart name"},             // space
+		{Name: strings.Repeat("a", 251)}, // 251 chars — too long
+	}
+
+	successTests := []*chart.Metadata{
+		{Name: "chartname"},
+		{Name: "chart-name"},
+		{Name: "chart-name-success"},
+		{Name: "chartname123"},
+		{Name: strings.Repeat("a", 250)},
+	}
+
+	for _, chart := range failTests {
+		err := validateChartName(chart)
+		if err == nil {
+			t.Errorf("validateChartName(%q) expected error, got nil", chart.Name)
+		}
+	}
+
+	for _, chart := range successTests {
+		err := validateChartName(chart)
+		if err != nil {
+			t.Errorf("validateChartName(%q) expected no error, got: %s", chart.Name, err)
+		}
+	}
 }
 
 func TestValidateChartVersion(t *testing.T) {
@@ -262,7 +299,7 @@ func TestChartfile(t *testing.T) {
 			return
 		}
 
-		if !strings.Contains(msgs[0].Err.Error(), "name is required") {
+		if !strings.Contains(msgs[0].Err.Error(), "chart name must be between 1 and 250 characters") {
 			t.Errorf("Unexpected message 0: %s", msgs[0].Err)
 		}
 
