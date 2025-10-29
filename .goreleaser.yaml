@@ -22,6 +22,7 @@ builds:
       - ppc64le
       - s390x
       - riscv64
+      - loong64
     goarm:
       - "7"
     ignore:
@@ -35,6 +36,8 @@ builds:
         goarch: s390x
       - goos: darwin
         goarch: riscv64
+      - goos: darwin
+        goarch: loong64
       - goos: windows
         goarch: "386"
       - goos: windows
@@ -45,6 +48,8 @@ builds:
         goarch: s390x
       - goos: windows
         goarch: riscv64
+      - goos: windows
+        goarch: loong64
     main: ./cmd/helm
     no_unique_dist_dir: true
     binary: "{{ .Os }}-{{ .Arch }}/helm"
