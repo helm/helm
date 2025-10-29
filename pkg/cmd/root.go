@@ -168,7 +168,6 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	flags := cmd.PersistentFlags()
 
 	settings.AddFlags(flags)
-	addKlogFlags(flags)
 
 	// We can safely ignore any errors that flags.Parse encounters since
 	// those errors will be caught later during the call to cmd.Execution.
