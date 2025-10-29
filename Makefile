@@ -9,7 +9,6 @@ GOBIN         = $(shell go env GOBIN)
 ifeq ($(GOBIN),)
 GOBIN         = $(shell go env GOPATH)/bin
 endif
-GOTOOLCHAIN   = $(shell awk '/^go / {print "go" $$2}' go.mod)
 GORELEASER    = $(GOBIN)/goreleaser
 GOIMPORTS     = $(GOBIN)/goimports
 ARCH          = $(shell go env GOARCH)
@@ -171,7 +170,7 @@ gen-test-golden: test-unit
 # without a go.mod file when downloading the following dependencies
 
 $(GORELEASER):
-	(cd /; GOTOOLCHAIN=$(GOTOOLCHAIN) go install github.com/goreleaser/goreleaser@latest)
+	(cd /; go install github.com/goreleaser/goreleaser@latest)
 
 $(GOIMPORTS):
 	(cd /; go install golang.org/x/tools/cmd/goimports@latest)
