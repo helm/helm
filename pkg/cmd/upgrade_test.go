@@ -30,6 +30,8 @@ import (
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUpgradeCmd(t *testing.T) {
@@ -189,8 +191,150 @@ func TestUpgradeCmd(t *testing.T) {
 			golden: "output/upgrade-uninstalled-with-keep-history.txt",
 			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, rcommon.StatusUninstalled)},
 		},
+		{
+			// Running `helm upgrade` on a chart that doesn't have notes or subcharts should print the upgrade command's
+			// output without notes.
+			name:   "helm upgrade on chart without notes or subcharts",
+			cmd:    fmt.Sprintf("upgrade luffy '%s' --namespace default", emptyChart),
+			golden: "output/upgrade-without-notes-or-subcharts.txt",
+			rels:   []*release.Release{relMock("luffy", 1, ch)},
+		},
+		{
+			// Running `helm upgrade --dry-run` on a chart that doesn't have notes or subcharts should print upgrade
+			// command's dry-run output without notes.
+			name:   "helm upgrade --dry-run on chart without notes or subcharts",
+			cmd:    fmt.Sprintf("upgrade luffy '%s' --namespace default --dry-run", emptyChart),
+			golden: "output/upgrade-without-notes-or-subcharts-with-flag-dry-run-enabled.txt",
+			rels:   []*release.Release{relMock("luffy", 1, ch)},
+		},
+		{
+			// Running `helm upgrade --render-subchart-notes` on a chart that doesn't have notes or subcharts should
+			// print the upgrade command's output without any notes.
+			name:   "helm upgrade --render-subchart-notes on chart without notes or subcharts",
+			cmd:    fmt.Sprintf("upgrade luffy '%s' --namespace default --render-subchart-notes", emptyChart),
+			golden: "output/upgrade-without-notes-or-subcharts.txt",
+			rels:   []*release.Release{relMock("luffy", 1, ch)},
+		},
+		{
+			// Running `helm upgrade --dry-run --render-subchart-notes` on a chart that doesn't have notes or subcharts
+			// should print the upgrade command's dry-run output without any notes.
+			name:   "helm upgrade --dry-run --render-subchart-notes on chart without notes or subcharts",
+			cmd:    fmt.Sprintf("upgrade luffy '%s' --namespace default --dry-run --render-subchart-notes", emptyChart),
+			golden: "output/upgrade-without-notes-or-subcharts-with-flag-dry-run-enabled.txt",
+			rels:   []*release.Release{relMock("luffy", 1, ch)},
+		},
+		{
+			// Running `helm upgrade` on a chart that has notes but no subcharts should print the upgrade command's
+			// output with (current chart's) notes.
+			name:   "helm upgrade on chart with notes without subcharts",
+			cmd:    fmt.Sprintf("upgrade luffy '%s' --namespace default", chartWithNotes),
+			golden: "output/upgrade-with-notes.txt",
+			rels:   []*release.Release{relMock("luffy", 1, ch)},
+		},
+		{
+			// Running `helm upgrade --dry-run` on a chart that has notes but no subcharts should print the upgrade
+			// command's dry-run output with (current chart's) notes. Note: The notes in dry-run output include the
+			// source filename and separator "---".
+			name:   "helm upgrade --dry-run on chart with notes without subcharts",
+			cmd:    fmt.Sprintf("upgrade luffy '%s' --namespace default --dry-run", chartWithNotes),
+			golden: "output/upgrade-with-notes-with-flag-dry-run-enabled.txt",
+			rels:   []*release.Release{relMock("luffy", 1, ch)},
+		},
+		{
+			// Running `helm upgrade --render-subchart-notes` on a chart that has notes but no subcharts should print
+			// the upgrade command's output with (current chart's) notes, i.e., no subchart's notes as no subchart.
+			name:   "helm upgrade --render-subchart-notes on chart with notes without subcharts",
+			cmd:    fmt.Sprintf("upgrade luffy '%s' --namespace default --render-subchart-notes", chartWithNotes),
+			golden: "output/upgrade-with-notes.txt",
+			rels:   []*release.Release{relMock("luffy", 1, ch)},
+		},
+		{
+			// Running `helm upgrade --dry-run --render-subchart-notes` on a chart that has notes but no subcharts
+			// should print the upgrade command's dry-run output (current chart's) notes, i.e., no subchart's notes as
+			// no subchart. Note: The notes in dry-run output include the source filename and separator "---".
+			name: "helm upgrade --dry-run --render-subchart-notes on chart with notes without subcharts",
+			cmd: fmt.Sprintf("upgrade luffy '%s' --namespace default --dry-run --render-subchart-notes",
+				chartWithNotes),
+			golden: "output/upgrade-with-notes-with-flag-dry-run-enabled.txt",
+			rels:   []*release.Release{relMock("luffy", 1, ch)},
+		},
+		{
+			// Running `helm upgrade` on a chart that has notes and 2 levels of subcharts should print upgrade command's
+			// output with just root chart's notes, i.e., without subchart's notes.
+			name:   "helm upgrade on chart with notes and subcharts",
+			cmd:    fmt.Sprintf("upgrade luffy '%s' --namespace default", chartWithNotesAnd2LevelsOfSubCharts),
+			golden: "output/upgrade-with-notes-and-subcharts.txt",
+			rels:   []*release.Release{relMock("luffy", 1, ch)},
+		},
+		{
+			// Running `helm upgrade --dry-run` on a chart that has notes and 2 levels of subcharts should print the
+			// upgrade command's dry-run output with just the root chart's notes, i.e., without subcharts' notes. Note:
+			// The notes in dry-run output include the source filename and separator "---".
+			name: "helm upgrade --dry-run on chart with notes and subcharts",
+			cmd: fmt.Sprintf("upgrade luffy '%s' --namespace default --dry-run",
+				chartWithNotesAnd2LevelsOfSubCharts),
+			golden: "output/upgrade-with-notes-and-subcharts-with-flag-dry-run-enabled.txt",
+			rels:   []*release.Release{relMock("luffy", 1, ch)},
+		},
+		{
+			// Running `helm upgrade --render-subchart-notes` on a chart that has notes and 2 levels of subcharts should
+			// print the upgrade command's output with both the root chart and the subcharts' notes.
+			name: "helm upgrade --render-subchart-notes on chart with notes and subcharts",
+			cmd: fmt.Sprintf("upgrade luffy '%s' --namespace default --render-subchart-notes",
+				chartWithNotesAnd2LevelsOfSubCharts),
+			golden: "output/upgrade-with-notes-and-subcharts-with-flag-render-subchart-notes-enabled.txt",
+			rels:   []*release.Release{relMock("luffy", 1, ch)},
+		},
+		{
+			// Running `helm upgrade --dry-run --render-subchart-notes` on a chart that has notes and 2 levels of
+			// subcharts should print the upgrade command's dry-run output with both the root chart and the subcharts'
+			// notes. Note: The notes in dry-run output include the source filename and separator "---".
+			name: "helm upgrade --dry-run --render-subchart-notes on chart with notes and subcharts",
+			cmd: fmt.Sprintf("upgrade luffy '%s' --namespace default --dry-run --render-subchart-notes",
+				chartWithNotesAnd2LevelsOfSubCharts),
+			golden: "output/" +
+				"upgrade-with-notes-and-subcharts-with-both-flags-dry-run-and-render-subchart-notes-enabled.txt",
+			rels: []*release.Release{relMock("luffy", 1, ch)},
+		},
 	}
 	runTestCmd(t, tests)
+}
+
+// TestUpgradeHelpOutput tests the `helm upgrade --help` command's output text. This is required because the
+// --render-subchart-notes flag's description is different for the template command from that of install/upgrade
+// commands.
+func TestUpgradeHelpOutput(t *testing.T) {
+	const (
+		outputFilePath   = "testdata/output/upgrade-help.txt"
+		testNamespace    = "test-namespace"
+		repositoryCache  = "test-repository-cache-dir"
+		repositoryConfig = "test-repository-config.yaml"
+		registryConfig   = "test-registry-config.json"
+		contentCache     = "test-content-cache"
+		gnupgHome        = "test-gpg"
+		commandText      = "upgrade --help"
+	)
+
+	// Reset the envs and the configs at the end of this test so that the updates wouldn’t affect other tests.
+	defer resetEnv()()
+
+	// Read the expected output file.
+	expectedOutput, err := os.ReadFile(outputFilePath)
+	assert.NoError(t, err, "unexpected error while reading expected output's file %q", outputFilePath)
+
+	// Set the configs that might otherwise change based on the local environment if not explicitly set. Note: These
+	// configs are not related to the current test.
+	settings.RepositoryCache = repositoryCache
+	settings.RepositoryConfig = repositoryConfig
+	settings.RegistryConfig = registryConfig
+	settings.ContentCache = contentCache
+	settings.SetNamespace(testNamespace)
+	t.Setenv("GNUPGHOME", gnupgHome)
+
+	// Run the `helm upgrade --help` command and compare the help text.
+	_, actualOutput, err := executeActionCommandC(storageFixture(), commandText)
+	assert.NoError(t, err, "unexpected error running command %q", commandText)
+	assert.Equal(t, string(expectedOutput), actualOutput, "mismatch of output")
 }
 
 func TestUpgradeWithValue(t *testing.T) {
