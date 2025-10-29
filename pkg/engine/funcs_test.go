@@ -25,7 +25,6 @@ import (
 )
 
 func TestFuncs(t *testing.T) {
-	//TODO write tests for failure cases
 	tests := []struct {
 		tpl, expect string
 		vars        interface{}
@@ -136,10 +135,9 @@ keyInElement1 = "valueInElement1"`,
 		assert.Equal(t, tt.expect, b.String(), tt.tpl)
 	}
 
-	loopMap := map[string]interface{}{
-		"foo": "bar",
+	nonSerializable := map[string]interface{}{
+		"foo": struct{ Fn func() }{},
 	}
-	loopMap["loop"] = []interface{}{loopMap}
 
 	mustFuncsTests := []struct {
 		tpl    string
@@ -147,18 +145,25 @@ keyInElement1 = "valueInElement1"`,
 		vars   interface{}
 	}{{
 		tpl:  `{{ mustToYaml . }}`,
-		vars: loopMap,
+		vars: nonSerializable,
 	}, {
 		tpl:  `{{ mustToJson . }}`,
-		vars: loopMap,
+		vars: nonSerializable,
+	}, {
+		tpl:  `{{ mustToToml . }}`,
+		vars: nonSerializable,
 	}, {
 		tpl:    `{{ toYaml . }}`,
 		expect: "", // should return empty string and swallow error
-		vars:   loopMap,
+		vars:   nonSerializable,
 	}, {
 		tpl:    `{{ toJson . }}`,
 		expect: "", // should return empty string and swallow error
-		vars:   loopMap,
+		vars:   nonSerializable,
+	}, {
+		tpl:    `{{ toToml . }}`,
+		expect: "", // should return empty string and swallow error
+		vars:   nonSerializable,
 	},
 	}
 
