@@ -234,6 +234,9 @@ func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time) er
 		Size:    int64(len(body)),
 		ModTime: modTime,
 	}
+	if h.ModTime.IsZero() {
+		h.ModTime = time.Now()
+	}
 	if err := out.WriteHeader(h); err != nil {
 		return err
 	}

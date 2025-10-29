@@ -283,13 +283,14 @@ func TestRepeatableSave(t *testing.T) {
 			name: "Package 1 file",
 			chart: &chart.Chart{
 				Metadata: &chart.Metadata{
-					APIVersion: chart.APIVersionV1,
+					APIVersion: chart.APIVersionV2,
 					Name:       "ahab",
 					Version:    "1.2.3",
 				},
 				ModTime: modTime,
 				Lock: &chart.Lock{
-					Digest: "testdigest",
+					Digest:    "testdigest",
+					Generated: modTime,
 				},
 				Files: []*common.File{
 					{Name: "scheherazade/shahryar.txt", ModTime: modTime, Data: []byte("1,001 Nights")},
@@ -297,19 +298,20 @@ func TestRepeatableSave(t *testing.T) {
 				Schema:        []byte("{\n  \"title\": \"Values\"\n}"),
 				SchemaModTime: modTime,
 			},
-			want: "5e14a06037e5d4cb277c7b21770639d4e1a337be9ae391460e50653bac5a80ed",
+			want: "fea2662522317b65c2788ff9e5fc446a9264830038dac618d4449493d99b3257",
 		},
 		{
 			name: "Package 2 files",
 			chart: &chart.Chart{
 				Metadata: &chart.Metadata{
-					APIVersion: chart.APIVersionV1,
+					APIVersion: chart.APIVersionV2,
 					Name:       "ahab",
 					Version:    "1.2.3",
 				},
 				ModTime: modTime,
 				Lock: &chart.Lock{
-					Digest: "testdigest",
+					Digest:    "testdigest",
+					Generated: modTime,
 				},
 				Files: []*common.File{
 					{Name: "scheherazade/shahryar.txt", ModTime: modTime, Data: []byte("1,001 Nights")},
@@ -318,7 +320,7 @@ func TestRepeatableSave(t *testing.T) {
 				Schema:        []byte("{\n  \"title\": \"Values\"\n}"),
 				SchemaModTime: modTime,
 			},
-			want: "6967787da46fbfcc563cad31240e564e14f2602e6f66302129a59a9669622a36",
+			want: "7ae92b2f274bb51ea3f1969e4187d78cc52b5f6f663b44b8fb3b40bcb8ee46f3",
 		},
 	}
 	for _, test := range tests {

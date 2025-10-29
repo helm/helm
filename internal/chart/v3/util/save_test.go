@@ -285,7 +285,8 @@ func TestRepeatableSave(t *testing.T) {
 				},
 				ModTime: modTime,
 				Lock: &chart.Lock{
-					Digest: "testdigest",
+					Digest:    "testdigest",
+					Generated: modTime,
 				},
 				Files: []*common.File{
 					{Name: "scheherazade/shahryar.txt", ModTime: modTime, Data: []byte("1,001 Nights")},
@@ -293,7 +294,7 @@ func TestRepeatableSave(t *testing.T) {
 				Schema:        []byte("{\n  \"title\": \"Values\"\n}"),
 				SchemaModTime: modTime,
 			},
-			want: "bcb52ba7b7c2801be84cdc96d395f00749896a4679a7c9deacdfe934d0c49c1b",
+			want: "5bfea18cc3c8cbc265744bc32bffa9489a4dbe87d6b51b90f4255e4839d35e03",
 		},
 		{
 			name: "Package 2 files",
@@ -305,7 +306,8 @@ func TestRepeatableSave(t *testing.T) {
 				},
 				ModTime: modTime,
 				Lock: &chart.Lock{
-					Digest: "testdigest",
+					Digest:    "testdigest",
+					Generated: modTime,
 				},
 				Files: []*common.File{
 					{Name: "scheherazade/shahryar.txt", ModTime: modTime, Data: []byte("1,001 Nights")},
@@ -314,7 +316,7 @@ func TestRepeatableSave(t *testing.T) {
 				Schema:        []byte("{\n  \"title\": \"Values\"\n}"),
 				SchemaModTime: modTime,
 			},
-			want: "566bb87d0a044828e1e3acc4e9849b2c378eb9156a8662ceb618ea41b279bb10",
+			want: "a240365c21e0a2f4a57873132a9b686566a612d08bcb3f20c9446bfff005ccce",
 		},
 	}
 	for _, test := range tests {
