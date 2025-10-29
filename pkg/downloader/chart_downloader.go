@@ -582,24 +582,24 @@ func (c *ChartDownloader) getChartName(url string) string {
 	return name
 }
 
-func (c *ChartDownloader) appendTagToURLIfNeeded(chartUrl *url.URL, version string) (*url.URL, error) {
-	if !registry.IsOCI(chartUrl.String()) {
-		return chartUrl, nil
+func (c *ChartDownloader) appendTagToURLIfNeeded(chartURL *url.URL, version string) (*url.URL, error) {
+	if !registry.IsOCI(chartURL.String()) {
+		return chartURL, nil
 	}
 
-	refAlreadyHasTagOrDigest := strings.Contains(chartUrl.Path, ":") || strings.Contains(chartUrl.Path, "@")
+	refAlreadyHasTagOrDigest := strings.Contains(chartURL.Path, ":") || strings.Contains(chartURL.Path, "@")
 	if refAlreadyHasTagOrDigest {
-		return chartUrl, nil
+		return chartURL, nil
 	}
 
-	tag, err := c.getOciTag(chartUrl.String(), version)
+	tag, err := c.getOciTag(chartURL.String(), version)
 	if err != nil {
 		return nil, err
 	}
 
-	chartUrl.Path = fmt.Sprintf("%s:%s", chartUrl.Path, tag)
+	chartURL.Path = fmt.Sprintf("%s:%s", chartURL.Path, tag)
 
-	return chartUrl, nil
+	return chartURL, nil
 }
 
 func (c *ChartDownloader) getOciTag(ref, version string) (string, error) {
