@@ -351,7 +351,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 		return "", nil, err
 	}
 
-	u, err = c.appendTagToUrlIfNeeded(u, version)
+	u, err = c.appendTagToURLIfNeeded(u, version)
 	if err != nil {
 		return "", nil, err
 	}
@@ -582,7 +582,7 @@ func (c *ChartDownloader) getChartName(url string) string {
 	return name
 }
 
-func (c *ChartDownloader) appendTagToUrlIfNeeded(chartUrl *url.URL, version string) (*url.URL, error) {
+func (c *ChartDownloader) appendTagToURLIfNeeded(chartUrl *url.URL, version string) (*url.URL, error) {
 	if !registry.IsOCI(chartUrl.String()) {
 		return chartUrl, nil
 	}

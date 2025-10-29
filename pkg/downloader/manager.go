@@ -364,7 +364,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				return err
 			}
 
-			u, err = dl.appendTagToUrlIfNeeded(u, version)
+			u, err = dl.appendTagToURLIfNeeded(u, version)
 			if err != nil {
 				return err
 			}
