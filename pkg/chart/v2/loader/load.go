@@ -36,6 +36,8 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
+const mergePrefix = "\\*"
+
 // ChartLoader loads a chart.
 type ChartLoader interface {
 	Load() (*chart.Chart, error)
@@ -224,6 +226,7 @@ func LoadValues(data io.Reader) (map[string]interface{}, error) {
 		if err := yaml.Unmarshal(raw, &currentMap); err != nil {
 			return nil, fmt.Errorf("cannot unmarshal yaml document: %w", err)
 		}
+
 		values = MergeMaps(values, currentMap)
 	}
 	return values, nil
@@ -231,19 +234,129 @@ func LoadValues(data io.Reader) (map[string]interface{}, error) {
 
 // MergeMaps merges two maps. If a key exists in both maps, the value from b will be used.
 // If the value is a map, the maps will be merged recursively.
+// If the value is a list, the lists will be merged
 func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 	out := make(map[string]interface{}, len(a))
 	maps.Copy(out, a)
 	for k, v := range b {
-		if v, ok := v.(map[string]interface{}); ok {
+		if val, ok := v.(map[string]interface{}); ok {
 			if bv, ok := out[k]; ok {
 				if bv, ok := bv.(map[string]interface{}); ok {
-					out[k] = MergeMaps(bv, v)
+					out[k] = MergeMaps(bv, val)
 					continue
 				}
+			}
+		} else if strings.HasPrefix(k, mergePrefix) {
+			strippedKey := strings.TrimPrefix(k, mergePrefix)
+			if out[k] != nil {
+				out[strippedKey] = out[k]
+				delete(out, k)
+			}
+
+			// Prefer non-prefixed in case of conflict
+			if b[strippedKey] != nil {
+				out[strippedKey] = b[strippedKey]
+				continue
+			}
+
+			// List is explicitly made null on a subsequent file
+			if v == nil {
+				delete(out, strippedKey)
+				continue
+			}
+
+			if sourceList, ok := out[strippedKey].([]map[string]interface{}); ok {
+				if val, ok := v.([]map[string]interface{}); ok {
+					out[strippedKey] = mergeMapLists(sourceList, val)
+					continue
+				}
+
+				log.Printf("Warning: Property \"%s\" mismatch during merge", strippedKey)
+				continue
+			} else if sourceList, ok := out[strippedKey].([]float64); ok {
+				if val, ok := v.([]float64); ok {
+					out[strippedKey] = append(sourceList, val...)
+					continue
+				}
+
+				log.Printf("Warning: Property \"%s\" mismatch during merge", strippedKey)
+				continue
+			} else if sourceList, ok := out[strippedKey].([]bool); ok {
+				if val, ok := v.([]bool); ok {
+					out[strippedKey] = append(sourceList, val...)
+					continue
+				}
+
+				log.Printf("Warning: Property \"%s\" mismatch during merge", strippedKey)
+				continue
+			} else if sourceList, ok := out[strippedKey].([]string); ok {
+				if val, ok := v.([]string); ok {
+					out[strippedKey] = append(sourceList, val...)
+					continue
+				}
+
+				log.Printf("Warning: Property \"%s\" mismatch during merge", strippedKey)
+				continue
+			} else {
+				out[strippedKey] = v
 			}
 		}
 		out[k] = v
 	}
 	return out
+}
+
+// mergeMapLists merges two lists of maps. If a prefix of * is set on a map key,
+// that key will be used to de-duplicate/merge with the source map
+func mergeMapLists(a, b []map[string]interface{}) []map[string]interface{} {
+	out := make([]map[string]interface{}, len(a))
+	copy(out, a)
+OuterList:
+	for j, mapEntry := range b {
+		var uniqueKey string
+		var dedupValue interface{}
+		alreadyHasPrefix := false
+		for k, v := range mapEntry {
+			switch v.(type) {
+			case float64:
+				break
+			case string:
+				break
+			default:
+				continue
+			}
+			if strings.HasPrefix(k, mergePrefix) {
+				if alreadyHasPrefix {
+					duplicateKey := "\\*" + uniqueKey
+					log.Printf("Warning: Can't index on multiple keys \"%s: %v\" and \"%s: %v\" during list merge", duplicateKey, dedupValue, k, v)
+					// undo prior step
+					b[j][duplicateKey] = dedupValue
+					delete(b[j], uniqueKey)
+					out = append(out, mapEntry)
+					continue OuterList
+				}
+
+				alreadyHasPrefix = true
+				uniqueKey = strings.TrimPrefix(k, mergePrefix)
+				dedupValue = v
+				b[j][uniqueKey] = v
+				delete(b[j], k)
+			}
+		}
+		if len(uniqueKey) > 0 {
+			for i, sourceMapEntry := range out {
+				for k, v := range sourceMapEntry {
+					if k == uniqueKey && v == dedupValue {
+						mergedMapEntry := MergeMaps(sourceMapEntry, mapEntry)
+						out[i] = mergedMapEntry
+						break
+					}
+				}
+			}
+		} else {
+			out = append(out, mapEntry)
+		}
+	}
+	return out
+
 }
