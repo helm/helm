@@ -287,6 +287,19 @@ func TestHTTPURLLoader_Load(t *testing.T) {
 	})
 }
 
+// Test that an unresolved URN $ref is soft-ignored and validation succeeds.
+// it mimics the behavior of Helm 3.18.4
+func TestValidateAgainstSingleSchema_UnresolvedURN_Ignored(t *testing.T) {
+	schema := []byte(`{
+        "$schema": "https://json-schema.org/draft-07/schema#",
+        "$ref": "urn:example:helm:schemas:v1:helm-schema-validation-conditions:v1/helmSchemaValidation-true"
+    }`)
+	vals := map[string]interface{}{"any": "value"}
+	if err := ValidateAgainstSingleSchema(vals, schema); err != nil {
+		t.Fatalf("expected no error when URN unresolved is ignored, got: %v", err)
+	}
+}
+
 // Non-regression tests for https://github.com/helm/helm/issues/31202
 // Ensure ValidateAgainstSchema does not panic when:
 // - subchart key is missing
