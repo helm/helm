@@ -75,11 +75,11 @@ type (
 		credentialsStore   credentials.Store
 		httpClient         *http.Client
 		plainHTTP          bool
-		err                error // pass any errors from the ClientOption functions
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
 	// used when creating a new default client
+	// TODO(TerryHowe): ClientOption should return error in v5
 	ClientOption func(*Client)
 )
 
@@ -90,9 +90,6 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	for _, option := range options {
 		option(client)
-		if client.err != nil {
-			return nil, client.err
-		}
 	}
 	if client.credentialsFile == "" {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)

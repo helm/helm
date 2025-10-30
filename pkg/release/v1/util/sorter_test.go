@@ -20,21 +20,21 @@ import (
 	"testing"
 	"time"
 
+	"helm.sh/helm/v4/pkg/release/common"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
-	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 // note: this test data is shared with filter_test.go.
 
 var releases = []*rspb.Release{
-	tsRelease("quiet-bear", 2, 2000, rspb.StatusSuperseded),
-	tsRelease("angry-bird", 4, 3000, rspb.StatusDeployed),
-	tsRelease("happy-cats", 1, 4000, rspb.StatusUninstalled),
-	tsRelease("vocal-dogs", 3, 6000, rspb.StatusUninstalled),
+	tsRelease("quiet-bear", 2, 2000, common.StatusSuperseded),
+	tsRelease("angry-bird", 4, 3000, common.StatusDeployed),
+	tsRelease("happy-cats", 1, 4000, common.StatusUninstalled),
+	tsRelease("vocal-dogs", 3, 6000, common.StatusUninstalled),
 }
 
-func tsRelease(name string, vers int, dur time.Duration, status rspb.Status) *rspb.Release {
-	info := &rspb.Info{Status: status, LastDeployed: helmtime.Now().Add(dur)}
+func tsRelease(name string, vers int, dur time.Duration, status common.Status) *rspb.Release {
+	info := &rspb.Info{Status: status, LastDeployed: time.Now().Add(dur)}
 	return &rspb.Release{
 		Name:    name,
 		Version: vers,

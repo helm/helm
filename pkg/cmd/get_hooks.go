@@ -25,6 +25,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cmd/require"
+	"helm.sh/helm/v4/pkg/release"
 )
 
 const getHooksHelp = `
@@ -52,8 +53,16 @@ func newGetHooksCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			for _, hook := range res.Hooks {
-				fmt.Fprintf(out, "---\n# Source: %s\n%s\n", hook.Path, hook.Manifest)
+			rac, err := release.NewAccessor(res)
+			if err != nil {
+				return err
+			}
+			for _, hook := range rac.Hooks() {
+				hac, err := release.NewHookAccessor(hook)
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(out, "---\n# Source: %s\n%s\n", hac.Path(), hac.Manifest())
 			}
 			return nil
 		},

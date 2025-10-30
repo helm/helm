@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -31,7 +32,6 @@ import (
 	"helm.sh/helm/v4/pkg/cmd/require"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
-	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 var historyHelp = `
@@ -84,12 +84,81 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type releaseInfo struct {
-	Revision    int           `json:"revision"`
-	Updated     helmtime.Time `json:"updated"`
-	Status      string        `json:"status"`
-	Chart       string        `json:"chart"`
-	AppVersion  string        `json:"app_version"`
-	Description string        `json:"description"`
+	Revision    int       `json:"revision"`
+	Updated     time.Time `json:"updated,omitzero"`
+	Status      string    `json:"status"`
+	Chart       string    `json:"chart"`
+	AppVersion  string    `json:"app_version"`
+	Description string    `json:"description"`
+}
+
+// releaseInfoJSON is used for custom JSON marshaling/unmarshaling
+type releaseInfoJSON struct {
+	Revision    int        `json:"revision"`
+	Updated     *time.Time `json:"updated,omitempty"`
+	Status      string     `json:"status"`
+	Chart       string     `json:"chart"`
+	AppVersion  string     `json:"app_version"`
+	Description string     `json:"description"`
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+// It handles empty string time fields by treating them as zero values.
+func (r *releaseInfo) UnmarshalJSON(data []byte) error {
+	// First try to unmarshal into a map to handle empty string time fields
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	// Replace empty string time fields with nil
+	if val, ok := raw["updated"]; ok {
+		if str, ok := val.(string); ok && str == "" {
+			raw["updated"] = nil
+		}
+	}
+
+	// Re-marshal with cleaned data
+	cleaned, err := json.Marshal(raw)
+	if err != nil {
+		return err
+	}
+
+	// Unmarshal into temporary struct with pointer time field
+	var tmp releaseInfoJSON
+	if err := json.Unmarshal(cleaned, &tmp); err != nil {
+		return err
+	}
+
+	// Copy values to releaseInfo struct
+	r.Revision = tmp.Revision
+	if tmp.Updated != nil {
+		r.Updated = *tmp.Updated
+	}
+	r.Status = tmp.Status
+	r.Chart = tmp.Chart
+	r.AppVersion = tmp.AppVersion
+	r.Description = tmp.Description
+
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+// It omits zero-value time fields from the JSON output.
+func (r releaseInfo) MarshalJSON() ([]byte, error) {
+	tmp := releaseInfoJSON{
+		Revision:    r.Revision,
+		Status:      r.Status,
+		Chart:       r.Chart,
+		AppVersion:  r.AppVersion,
+		Description: r.Description,
+	}
+
+	if !r.Updated.IsZero() {
+		tmp.Updated = &r.Updated
+	}
+
+	return json.Marshal(tmp)
 }
 
 type releaseHistory []releaseInfo
@@ -112,7 +181,11 @@ func (r releaseHistory) WriteTable(out io.Writer) error {
 }
 
 func getHistory(client *action.History, name string) (releaseHistory, error) {
-	hist, err := client.Run(name)
+	histi, err := client.Run(name)
+	if err != nil {
+		return nil, err
+	}
+	hist, err := releaseListToV1List(histi)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +254,11 @@ func compListRevisions(_ string, cfg *action.Configuration, releaseName string) 
 	client := action.NewHistory(cfg)
 
 	var revisions []string
-	if hist, err := client.Run(releaseName); err == nil {
+	if histi, err := client.Run(releaseName); err == nil {
+		hist, err := releaseListToV1List(histi)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
 		for _, version := range hist {
 			appVersion := fmt.Sprintf("App: %s", version.Chart.Metadata.AppVersion)
 			chartDesc := fmt.Sprintf("Chart: %s-%s", version.Chart.Metadata.Name, version.Chart.Metadata.Version)

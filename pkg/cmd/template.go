@@ -23,7 +23,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -67,7 +66,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstall(args, toComplete, client)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if kubeVersion != "" {
 				parsedKubeVersion, err := common.ParseKubeVersion(kubeVersion)
 				if err != nil {
@@ -83,16 +82,17 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.SetRegistryClient(registryClient)
 
-			// This is for the case where "" is specifically passed in as a
-			// value. When there is no value passed in NoOptDefVal will be used
-			// and it is set to client. See addInstallFlags.
-			if client.DryRunOption == "" {
-				client.DryRunOption = "true"
+			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, true)
+			if err != nil {
+				return err
 			}
-			client.DryRun = true
+			if validate {
+				// Mimic deprecated --validate flag behavior by enabling server dry run
+				dryRunStrategy = action.DryRunServer
+			}
+			client.DryRunStrategy = dryRunStrategy
 			client.ReleaseName = "release-name"
 			client.Replace = true // Skip the name check
-			client.ClientOnly = !validate
 			client.APIVersions = common.VersionSet(extraAPIs)
 			client.IncludeCRDs = includeCrds
 			rel, err := runInstall(args, client, valueOpts, out)
@@ -196,14 +196,21 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addInstallFlags(cmd, f, client, valueOpts)
 	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
-	f.BoolVar(&validate, "validate", false, "validate your manifests against the Kubernetes cluster you are currently pointing at. This is the same validation performed on an install")
+	f.BoolVar(&validate, "validate", false, "deprecated")
+	f.MarkDeprecated("validate", "use '--dry-run=server' instead")
 	f.BoolVar(&includeCrds, "include-crds", false, "include CRDs in the templated output")
 	f.BoolVar(&skipTests, "skip-tests", false, "skip tests from templated output")
 	f.BoolVar(&client.IsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
 	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for Capabilities.KubeVersion")
 	f.StringSliceVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions (multiple can be specified)")
 	f.BoolVar(&client.UseReleaseName, "release-name", false, "use release name in the output-dir path.")
+	f.String(
+		"dry-run",
+		"client",
+		`simulates the operation either client-side or server-side. Must be either: "client", or "server". '--dry-run=client simulates the operation client-side only and avoids cluster connections. '--dry-run=server' simulates/validates the operation on the server, requiring cluster connectivity.`)
+	f.Lookup("dry-run").NoOptDefVal = "unset"
 	bindPostRenderFlag(cmd, &client.PostRenderer, settings)
+	cmd.MarkFlagsMutuallyExclusive("validate", "dry-run")
 
 	return cmd
 }
@@ -250,7 +257,7 @@ func createOrOpenFile(filename string, appendData bool) (*os.File, error) {
 }
 
 func ensureDirectoryForFile(file string) error {
-	baseDir := path.Dir(file)
+	baseDir := filepath.Dir(file)
 	_, err := os.Stat(baseDir)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err

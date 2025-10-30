@@ -29,14 +29,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/distribution/distribution/v3/configuration"
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
-	"github.com/foxcpp/go-mockdns"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
@@ -58,19 +56,17 @@ var (
 	testPassword             = "mypass"
 )
 
-type TestSuite struct {
+type TestRegistry struct {
 	suite.Suite
 	Out                     io.Writer
 	DockerRegistryHost      string
 	CompromisedRegistryHost string
 	WorkspaceDir            string
 	RegistryClient          *Client
-
-	// A mock DNS server needed for TLS connection testing.
-	srv *mockdns.Server
+	dockerRegistry          *registry.Registry
 }
 
-func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
+func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
 	suite.WorkspaceDir = testWorkspaceDir
 	os.RemoveAll(suite.WorkspaceDir)
 	os.Mkdir(suite.WorkspaceDir, 0700)
@@ -135,13 +131,6 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 	// host is localhost/127.0.0.1.
 	port := ln.Addr().(*net.TCPAddr).Port
 	suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
-	suite.srv, err = mockdns.NewServer(map[string]mockdns.Zone{
-		"helm-test-registry.": {
-			A: []string{"127.0.0.1"},
-		},
-	}, false)
-	suite.Nil(err, "no error creating mock DNS server")
-	suite.srv.PatchNet(net.DefaultResolver)
 
 	config.HTTP.Addr = ln.Addr().String()
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
@@ -166,20 +155,18 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) *registry.Registry {
 			config.HTTP.TLS.ClientCAs = []string{tlsCA}
 		}
 	}
-	dockerRegistry, err := registry.NewRegistry(context.Background(), config)
+	suite.dockerRegistry, err = registry.NewRegistry(context.Background(), config)
 	suite.Nil(err, "no error creating test registry")
 
 	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()
-	return dockerRegistry
+	go func() {
+		_ = suite.dockerRegistry.ListenAndServe()
+	}()
 }
 
-func teardown(suite *TestSuite) {
-	var lock sync.Mutex
-	lock.Lock()
-	defer lock.Unlock()
-	if suite.srv != nil {
-		mockdns.UnpatchNet(net.DefaultResolver)
-		suite.srv.Close()
+func teardown(suite *TestRegistry) {
+	if suite.dockerRegistry != nil {
+		_ = suite.dockerRegistry.Shutdown(context.Background())
 	}
 }
 
@@ -221,7 +208,7 @@ func initCompromisedRegistryTestServer() string {
 	return fmt.Sprintf("localhost:%s", u.Port())
 }
 
-func testPush(suite *TestSuite) {
+func testPush(suite *TestRegistry) {
 
 	testingChartCreationTime := "1977-09-02T22:04:05Z"
 
@@ -308,7 +295,7 @@ func testPush(suite *TestSuite) {
 		result.Prov.Digest)
 }
 
-func testPull(suite *TestSuite) {
+func testPull(suite *TestRegistry) {
 	// bad/missing ref
 	ref := fmt.Sprintf("%s/testrepo/no-existy:1.2.3", suite.DockerRegistryHost)
 	_, err := suite.RegistryClient.Pull(ref)
@@ -387,7 +374,7 @@ func testPull(suite *TestSuite) {
 	suite.Equal(provData, result.Prov.Data)
 }
 
-func testTags(suite *TestSuite) {
+func testTags(suite *TestRegistry) {
 	// Load test chart (to build ref pushed in previous test)
 	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")

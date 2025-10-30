@@ -18,14 +18,12 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"log/slog"
 	"os"
 	"os/signal"
-	"slices"
 	"syscall"
 	"time"
 
@@ -33,8 +31,8 @@ import (
 	"github.com/spf13/pflag"
 
 	"helm.sh/helm/v4/pkg/action"
-	chart "helm.sh/helm/v4/pkg/chart/v2"
-	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/cmd/require"
@@ -144,7 +142,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstall(args, toComplete, client)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
@@ -152,12 +150,12 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.SetRegistryClient(registryClient)
 
-			// This is for the case where "" is specifically passed in as a
-			// value. When there is no value passed in NoOptDefVal will be used
-			// and it is set to client. See addInstallFlags.
-			if client.DryRunOption == "" {
-				client.DryRunOption = "none"
+			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, false)
+			if err != nil {
+				return err
 			}
+			client.DryRunStrategy = dryRunStrategy
+
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
 				return fmt.Errorf("INSTALLATION FAILED: %w", err)
@@ -173,11 +171,12 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 	}
 
-	addInstallFlags(cmd, cmd.Flags(), client, valueOpts)
+	f := cmd.Flags()
+	addInstallFlags(cmd, f, client, valueOpts)
 	// hide-secret is not available in all places the install flags are used so
 	// it is added separately
-	f := cmd.Flags()
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
+	addDryRunFlag(cmd)
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer, settings)
 
@@ -186,13 +185,6 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
 	f.BoolVar(&client.CreateNamespace, "create-namespace", false, "create the release namespace if not present")
-	// --dry-run options with expected outcome:
-	// - Not set means no dry run and server is contacted.
-	// - Set with no value, a value of client, or a value of true and the server is not contacted
-	// - Set with a value of false, none, or false and the server is contacted
-	// The true/false part is meant to reflect some legacy behavior while none is equal to "".
-	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
-	f.Lookup("dry-run").NoOptDefVal = "client"
 	f.BoolVar(&client.ForceReplace, "force-replace", false, "force resource updates by replacement")
 	f.BoolVar(&client.ForceReplace, "force", false, "deprecated")
 	f.MarkDeprecated("force", "use --force-replace instead")
@@ -270,15 +262,20 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
-	if err := checkIfInstallable(chartRequested); err != nil {
+	ac, err := chart.NewAccessor(chartRequested)
+	if err != nil {
 		return nil, err
 	}
 
-	if chartRequested.Metadata.Deprecated {
+	if err := checkIfInstallable(ac); err != nil {
+		return nil, err
+	}
+
+	if ac.Deprecated() {
 		slog.Warn("this chart is deprecated")
 	}
 
-	if req := chartRequested.Metadata.Dependencies; req != nil {
+	if req := ac.MetaDependencies(); req != nil {
 		// If CheckDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/helm/helm/issues/2209
@@ -311,11 +308,6 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 
 	client.Namespace = settings.Namespace()
 
-	// Validate DryRunOption member is one of the allowed values
-	if err := validateDryRunOptionFlag(client.DryRunOption); err != nil {
-		return nil, err
-	}
-
 	// Create context and prepare the handle of SIGTERM
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -331,18 +323,25 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		cancel()
 	}()
 
-	return client.RunWithContext(ctx, chartRequested, vals)
+	ri, err := client.RunWithContext(ctx, chartRequested, vals)
+	rel, rerr := releaserToV1Release(ri)
+	if rerr != nil {
+		return nil, rerr
+	}
+	return rel, err
 }
 
 // checkIfInstallable validates if a chart can be installed
 //
 // Application chart type is only installable
-func checkIfInstallable(ch *chart.Chart) error {
-	switch ch.Metadata.Type {
+func checkIfInstallable(ch chart.Accessor) error {
+	meta := ch.MetadataAsMap()
+
+	switch meta["Type"] {
 	case "", "application":
 		return nil
 	}
-	return fmt.Errorf("%s charts are not installable", ch.Metadata.Type)
+	return fmt.Errorf("%s charts are not installable", meta["Type"])
 }
 
 // Provide dynamic auto-completion for the install and template commands
@@ -355,14 +354,4 @@ func compInstall(args []string, toComplete string, client *action.Install) ([]st
 		return compListCharts(toComplete, true)
 	}
 	return nil, cobra.ShellCompDirectiveNoFileComp
-}
-
-func validateDryRunOptionFlag(dryRunOptionFlagValue string) error {
-	// Validate dry-run flag value with a set of allowed value
-	allowedDryRunValues := []string{"false", "true", "none", "client", "server"}
-	isAllowed := slices.Contains(allowedDryRunValues, dryRunOptionFlagValue)
-	if !isAllowed {
-		return errors.New("invalid dry-run flag. Flag must one of the following: false, true, none, client, server")
-	}
-	return nil
 }

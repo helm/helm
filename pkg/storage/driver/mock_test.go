@@ -31,10 +31,11 @@ import (
 	kblabels "k8s.io/apimachinery/pkg/labels"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
+	"helm.sh/helm/v4/pkg/release/common"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
-func releaseStub(name string, vers int, namespace string, status rspb.Status) *rspb.Release {
+func releaseStub(name string, vers int, namespace string, status common.Status) *rspb.Release {
 	return &rspb.Release{
 		Name:      name,
 		Version:   vers,
@@ -55,20 +56,20 @@ func tsFixtureMemory(t *testing.T) *Memory {
 	t.Helper()
 	hs := []*rspb.Release{
 		// rls-a
-		releaseStub("rls-a", 4, "default", rspb.StatusDeployed),
-		releaseStub("rls-a", 1, "default", rspb.StatusSuperseded),
-		releaseStub("rls-a", 3, "default", rspb.StatusSuperseded),
-		releaseStub("rls-a", 2, "default", rspb.StatusSuperseded),
+		releaseStub("rls-a", 4, "default", common.StatusDeployed),
+		releaseStub("rls-a", 1, "default", common.StatusSuperseded),
+		releaseStub("rls-a", 3, "default", common.StatusSuperseded),
+		releaseStub("rls-a", 2, "default", common.StatusSuperseded),
 		// rls-b
-		releaseStub("rls-b", 4, "default", rspb.StatusDeployed),
-		releaseStub("rls-b", 1, "default", rspb.StatusSuperseded),
-		releaseStub("rls-b", 3, "default", rspb.StatusSuperseded),
-		releaseStub("rls-b", 2, "default", rspb.StatusSuperseded),
+		releaseStub("rls-b", 4, "default", common.StatusDeployed),
+		releaseStub("rls-b", 1, "default", common.StatusSuperseded),
+		releaseStub("rls-b", 3, "default", common.StatusSuperseded),
+		releaseStub("rls-b", 2, "default", common.StatusSuperseded),
 		// rls-c in other namespace
-		releaseStub("rls-c", 4, "mynamespace", rspb.StatusDeployed),
-		releaseStub("rls-c", 1, "mynamespace", rspb.StatusSuperseded),
-		releaseStub("rls-c", 3, "mynamespace", rspb.StatusSuperseded),
-		releaseStub("rls-c", 2, "mynamespace", rspb.StatusSuperseded),
+		releaseStub("rls-c", 4, "mynamespace", common.StatusDeployed),
+		releaseStub("rls-c", 1, "mynamespace", common.StatusSuperseded),
+		releaseStub("rls-c", 3, "mynamespace", common.StatusSuperseded),
+		releaseStub("rls-c", 2, "mynamespace", common.StatusSuperseded),
 	}
 
 	mem := NewMemory()

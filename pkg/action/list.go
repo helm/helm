@@ -22,6 +22,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
+	ri "helm.sh/helm/v4/pkg/release"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 )
@@ -139,13 +140,13 @@ type List struct {
 // NewList constructs a new *List
 func NewList(cfg *Configuration) *List {
 	return &List{
-		StateMask: ListDeployed | ListFailed,
+		StateMask: ListAll,
 		cfg:       cfg,
 	}
 }
 
 // Run executes the list command, returning a set of matches.
-func (l *List) Run() ([]*release.Release, error) {
+func (l *List) Run() ([]ri.Releaser, error) {
 	if err := l.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
 	}
@@ -159,9 +160,13 @@ func (l *List) Run() ([]*release.Release, error) {
 		}
 	}
 
-	results, err := l.cfg.Releases.List(func(rel *release.Release) bool {
+	results, err := l.cfg.Releases.List(func(rel ri.Releaser) bool {
+		r, err := releaserToV1Release(rel)
+		if err != nil {
+			return false
+		}
 		// Skip anything that doesn't match the filter.
-		if filter != nil && !filter.MatchString(rel.Name) {
+		if filter != nil && !filter.MatchString(r.Name) {
 			return false
 		}
 
@@ -176,30 +181,35 @@ func (l *List) Run() ([]*release.Release, error) {
 		return results, nil
 	}
 
+	rresults, err := releaseListToV1List(results)
+	if err != nil {
+		return nil, err
+	}
+
 	// by definition, superseded releases are never shown if
 	// only the latest releases are returned. so if requested statemask
 	// is _only_ ListSuperseded, skip the latest release filter
 	if l.StateMask != ListSuperseded {
-		results = filterLatestReleases(results)
+		rresults = filterLatestReleases(rresults)
 	}
 
 	// State mask application must occur after filtering to
 	// latest releases, otherwise outdated entries can be returned
-	results = l.filterStateMask(results)
+	rresults = l.filterStateMask(rresults)
 
 	// Skip anything that doesn't match the selector
 	selectorObj, err := labels.Parse(l.Selector)
 	if err != nil {
 		return nil, err
 	}
-	results = l.filterSelector(results, selectorObj)
+	rresults = l.filterSelector(rresults, selectorObj)
 
 	// Unfortunately, we have to sort before truncating, which can incur substantial overhead
-	l.sort(results)
+	l.sort(rresults)
 
 	// Guard on offset
-	if l.Offset >= len(results) {
-		return []*release.Release{}, nil
+	if l.Offset >= len(rresults) {
+		return releaseV1ListToReleaserList([]*release.Release{})
 	}
 
 	// Calculate the limit and offset, and then truncate results if necessary.
@@ -208,12 +218,12 @@ func (l *List) Run() ([]*release.Release, error) {
 		limit = l.Limit
 	}
 	last := l.Offset + limit
-	if l := len(results); l < last {
+	if l := len(rresults); l < last {
 		last = l
 	}
-	results = results[l.Offset:last]
+	rresults = rresults[l.Offset:last]
 
-	return results, err
+	return releaseV1ListToReleaserList(rresults)
 }
 
 // sort is an in-place sort where order is based on the value of a.Sort
@@ -317,7 +327,7 @@ func (l *List) SetStateMask() {
 
 	// Apply a default
 	if state == 0 {
-		state = ListDeployed | ListFailed
+		state = ListAll
 	}
 
 	l.StateMask = state

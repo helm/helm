@@ -91,6 +91,15 @@ func TestLintCmdWithKubeVersionFlag(t *testing.T) {
 	runTestCmd(t, tests)
 }
 
+func TestLintCmdRequiresArgs(t *testing.T) {
+	tests := []cmdTestCase{{
+		name:      "lint without arguments should fail",
+		cmd:       "lint",
+		wantError: true,
+	}}
+	runTestCmd(t, tests)
+}
+
 func TestLintFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "lint", true)
 	checkFileCompletion(t, "lint mypath", true) // Multiple paths can be given

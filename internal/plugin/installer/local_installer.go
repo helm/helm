@@ -29,8 +29,8 @@ import (
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 
-// ErrPluginNotAFolder indicates that the plugin path is not a folder.
-var ErrPluginNotAFolder = errors.New("expected plugin to be a folder")
+// ErrPluginNotADirectory indicates that the plugin path is not a directory.
+var ErrPluginNotADirectory = errors.New("expected plugin to be a directory (containing a file 'plugin.yaml')")
 
 // LocalInstaller installs plugins from the filesystem.
 type LocalInstaller struct {
@@ -91,7 +91,7 @@ func (i *LocalInstaller) installFromDirectory() error {
 		return err
 	}
 	if !stat.IsDir() {
-		return ErrPluginNotAFolder
+		return ErrPluginNotADirectory
 	}
 
 	if !isPlugin(i.Source) {

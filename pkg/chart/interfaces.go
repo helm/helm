@@ -21,6 +21,8 @@ import (
 
 type Charter interface{}
 
+type Dependency interface{}
+
 type Accessor interface {
 	Name() string
 	IsRoot() bool
@@ -30,6 +32,13 @@ type Accessor interface {
 	ChartFullPath() string
 	IsLibraryChart() bool
 	Dependencies() []Charter
+	MetaDependencies() []Dependency
 	Values() map[string]interface{}
 	Schema() []byte
+	Deprecated() bool
+}
+
+type DependencyAccessor interface {
+	Name() string
+	Alias() string
 }

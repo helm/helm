@@ -16,7 +16,10 @@ limitations under the License.
 
 package util // import "helm.sh/helm/v4/pkg/release/v1/util"
 
-import rspb "helm.sh/helm/v4/pkg/release/v1"
+import (
+	"helm.sh/helm/v4/pkg/release/common"
+	rspb "helm.sh/helm/v4/pkg/release/v1"
+)
 
 // FilterFunc returns true if the release object satisfies
 // the predicate of the underlying filter func.
@@ -68,7 +71,7 @@ func All(filters ...FilterFunc) FilterFunc {
 }
 
 // StatusFilter filters a set of releases by status code.
-func StatusFilter(status rspb.Status) FilterFunc {
+func StatusFilter(status common.Status) FilterFunc {
 	return FilterFunc(func(rls *rspb.Release) bool {
 		if rls == nil {
 			return true

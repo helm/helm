@@ -18,6 +18,7 @@ package installer
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -79,6 +80,7 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 		return nil, err
 	}
 	if _, pathErr := os.Stat(i.Path()); !os.IsNotExist(pathErr) {
+		slog.Warn("plugin already exists", "path", i.Path(), slog.Any("error", pathErr))
 		return nil, errors.New("plugin already exists")
 	}
 
@@ -130,30 +132,38 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 // Update updates a plugin.
 func Update(i Installer) error {
 	if _, pathErr := os.Stat(i.Path()); os.IsNotExist(pathErr) {
+		slog.Warn("plugin does not exist", "path", i.Path(), slog.Any("error", pathErr))
 		return errors.New("plugin does not exist")
 	}
 	return i.Update()
 }
 
 // NewForSource determines the correct Installer for the given source.
-func NewForSource(source, version string) (Installer, error) {
-	// Check if source is an OCI registry reference
+func NewForSource(source, version string) (installer Installer, err error) {
 	if strings.HasPrefix(source, fmt.Sprintf("%s://", registry.OCIScheme)) {
-		return NewOCIInstaller(source)
-	}
-	// Check if source is a local directory
-	if isLocalReference(source) {
-		return NewLocalInstaller(source)
+		// Source is an OCI registry reference
+		installer, err = NewOCIInstaller(source)
+	} else if isLocalReference(source) {
+		// Source is a local directory
+		installer, err = NewLocalInstaller(source)
 	} else if isRemoteHTTPArchive(source) {
-		return NewHTTPInstaller(source)
+		installer, err = NewHTTPInstaller(source)
+	} else {
+		installer, err = NewVCSInstaller(source, version)
 	}
-	return NewVCSInstaller(source, version)
+
+	if err != nil {
+		return installer, fmt.Errorf("cannot get information about plugin source %q (if it's a local directory, does it exist?), last error was: %w", source, err)
+	}
+
+	return
 }
 
 // FindSource determines the correct Installer for the given source.
 func FindSource(location string) (Installer, error) {
 	installer, err := existingVCSRepo(location)
 	if err != nil && err.Error() == "Cannot detect VCS" {
+		slog.Warn("cannot get information about plugin source", "location", location, slog.Any("error", err))
 		return installer, errors.New("cannot get information about plugin source")
 	}
 	return installer, err

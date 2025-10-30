@@ -9,6 +9,7 @@
 [ERROR] Chart.yaml: apiVersion is required. The value must be either "v1" or "v2"
 [ERROR] Chart.yaml: version is required
 [INFO] Chart.yaml: icon is recommended
+[WARNING] Chart.yaml: version '' is not a valid SemVerV2
 [WARNING] templates/: directory does not exist
 [ERROR] : unable to load chart
 	validation: chart.metadata.name is required

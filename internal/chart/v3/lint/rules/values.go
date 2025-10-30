@@ -32,7 +32,7 @@ import (
 // they are only tested for well-formedness.
 //
 // If additional values are supplied, they are coalesced into the values in values.yaml.
-func ValuesWithOverrides(linter *support.Linter, valueOverrides map[string]interface{}) {
+func ValuesWithOverrides(linter *support.Linter, valueOverrides map[string]interface{}, skipSchemaValidation bool) {
 	file := "values.yaml"
 	vf := filepath.Join(linter.ChartDir, file)
 	fileExists := linter.RunLinterRule(support.InfoSev, file, validateValuesFileExistence(vf))
@@ -41,7 +41,7 @@ func ValuesWithOverrides(linter *support.Linter, valueOverrides map[string]inter
 		return
 	}
 
-	linter.RunLinterRule(support.ErrorSev, file, validateValuesFile(vf, valueOverrides))
+	linter.RunLinterRule(support.ErrorSev, file, validateValuesFile(vf, valueOverrides, skipSchemaValidation))
 }
 
 func validateValuesFileExistence(valuesPath string) error {
@@ -52,7 +52,7 @@ func validateValuesFileExistence(valuesPath string) error {
 	return nil
 }
 
-func validateValuesFile(valuesPath string, overrides map[string]interface{}) error {
+func validateValuesFile(valuesPath string, overrides map[string]interface{}, skipSchemaValidation bool) error {
 	values, err := common.ReadValuesFile(valuesPath)
 	if err != nil {
 		return fmt.Errorf("unable to parse YAML: %w", err)
@@ -75,5 +75,10 @@ func validateValuesFile(valuesPath string, overrides map[string]interface{}) err
 	if err != nil {
 		return err
 	}
-	return util.ValidateAgainstSingleSchema(coalescedValues, schema)
+
+	if !skipSchemaValidation {
+		return util.ValidateAgainstSingleSchema(coalescedValues, schema)
+	}
+
+	return nil
 }

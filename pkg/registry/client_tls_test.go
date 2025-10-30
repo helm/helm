@@ -26,19 +26,16 @@ import (
 )
 
 type TLSRegistryClientTestSuite struct {
-	TestSuite
+	TestRegistry
 }
 
 func (suite *TLSRegistryClientTestSuite) SetupSuite() {
 	// init test client
-	dockerRegistry := setup(&suite.TestSuite, true, false)
-
-	// Start Docker registry
-	go dockerRegistry.ListenAndServe()
+	setup(&suite.TestRegistry, true, false)
 }
 
 func (suite *TLSRegistryClientTestSuite) TearDownSuite() {
-	teardown(&suite.TestSuite)
+	teardown(&suite.TestRegistry)
 	os.RemoveAll(suite.WorkspaceDir)
 }
 
@@ -79,15 +76,15 @@ func (suite *TLSRegistryClientTestSuite) Test_1_Login() {
 }
 
 func (suite *TLSRegistryClientTestSuite) Test_1_Push() {
-	testPush(&suite.TestSuite)
+	testPush(&suite.TestRegistry)
 }
 
 func (suite *TLSRegistryClientTestSuite) Test_2_Pull() {
-	testPull(&suite.TestSuite)
+	testPull(&suite.TestRegistry)
 }
 
 func (suite *TLSRegistryClientTestSuite) Test_3_Tags() {
-	testTags(&suite.TestSuite)
+	testTags(&suite.TestRegistry)
 }
 
 func (suite *TLSRegistryClientTestSuite) Test_4_Logout() {

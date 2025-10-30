@@ -28,6 +28,7 @@ import (
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
+	ri "helm.sh/helm/v4/pkg/release"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -45,7 +46,6 @@ type ReleaseTesting struct {
 	// Used for fetching logs from test pods
 	Namespace string
 	Filters   map[string][]string
-	HideNotes bool
 }
 
 // NewReleaseTesting creates a new ReleaseTesting object with the given configuration.
@@ -57,7 +57,7 @@ func NewReleaseTesting(cfg *Configuration) *ReleaseTesting {
 }
 
 // Run executes 'helm test' against the given release.
-func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
+func (r *ReleaseTesting) Run(name string) (ri.Releaser, error) {
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
 	}
@@ -67,7 +67,12 @@ func (r *ReleaseTesting) Run(name string) (*release.Release, error) {
 	}
 
 	// finds the non-deleted release with the given name
-	rel, err := r.cfg.Releases.Last(name)
+	reli, err := r.cfg.Releases.Last(name)
+	if err != nil {
+		return reli, err
+	}
+
+	rel, err := releaserToV1Release(reli)
 	if err != nil {
 		return rel, err
 	}

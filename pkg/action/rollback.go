@@ -19,14 +19,15 @@ package action
 import (
 	"bytes"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 // Rollback is the action for rolling back to a given release.
@@ -40,7 +41,8 @@ type Rollback struct {
 	WaitStrategy kube.WaitStrategy
 	WaitForJobs  bool
 	DisableHooks bool
-	DryRun       bool
+	// DryRunStrategy can be set to prepare, but not execute the operation and whether or not to interact with the remote cluster
+	DryRunStrategy DryRunStrategy
 	// ForceReplace will, if set to `true`, ignore certain warnings and perform the rollback anyway.
 	//
 	// This should be used with caution.
@@ -60,7 +62,8 @@ type Rollback struct {
 // NewRollback creates a new Rollback object with the given configuration.
 func NewRollback(cfg *Configuration) *Rollback {
 	return &Rollback{
-		cfg: cfg,
+		cfg:            cfg,
+		DryRunStrategy: DryRunNone,
 	}
 }
 
@@ -72,26 +75,26 @@ func (r *Rollback) Run(name string) error {
 
 	r.cfg.Releases.MaxHistory = r.MaxHistory
 
-	slog.Debug("preparing rollback", "name", name)
+	r.cfg.Logger().Debug("preparing rollback", "name", name)
 	currentRelease, targetRelease, serverSideApply, err := r.prepareRollback(name)
 	if err != nil {
 		return err
 	}
 
-	if !r.DryRun {
-		slog.Debug("creating rolled back release", "name", name)
+	if !isDryRun(r.DryRunStrategy) {
+		r.cfg.Logger().Debug("creating rolled back release", "name", name)
 		if err := r.cfg.Releases.Create(targetRelease); err != nil {
 			return err
 		}
 	}
 
-	slog.Debug("performing rollback", "name", name)
+	r.cfg.Logger().Debug("performing rollback", "name", name)
 	if _, err := r.performRollback(currentRelease, targetRelease, serverSideApply); err != nil {
 		return err
 	}
 
-	if !r.DryRun {
-		slog.Debug("updating status for rolled back release", "name", name)
+	if !isDryRun(r.DryRunStrategy) {
+		r.cfg.Logger().Debug("updating status for rolled back release", "name", name)
 		if err := r.cfg.Releases.Update(targetRelease); err != nil {
 			return err
 		}
@@ -110,7 +113,12 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		return nil, nil, false, errInvalidRevision
 	}
 
-	currentRelease, err := r.cfg.Releases.Last(name)
+	currentReleasei, err := r.cfg.Releases.Last(name)
+	if err != nil {
+		return nil, nil, false, err
+	}
+
+	currentRelease, err := releaserToV1Release(currentReleasei)
 	if err != nil {
 		return nil, nil, false, err
 	}
@@ -127,7 +135,11 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 
 	// Check if the history version to be rolled back exists
 	previousVersionExist := false
-	for _, historyRelease := range historyReleases {
+	for _, historyReleasei := range historyReleases {
+		historyRelease, err := releaserToV1Release(historyReleasei)
+		if err != nil {
+			return nil, nil, false, err
+		}
 		version := historyRelease.Version
 		if previousVersion == version {
 			previousVersionExist = true
@@ -138,9 +150,13 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		return nil, nil, false, fmt.Errorf("release has no %d version", previousVersion)
 	}
 
-	slog.Debug("rolling back", "name", name, "currentVersion", currentRelease.Version, "targetVersion", previousVersion)
+	r.cfg.Logger().Debug("rolling back", "name", name, "currentVersion", currentRelease.Version, "targetVersion", previousVersion)
 
-	previousRelease, err := r.cfg.Releases.Get(name, previousVersion)
+	previousReleasei, err := r.cfg.Releases.Get(name, previousVersion)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	previousRelease, err := releaserToV1Release(previousReleasei)
 	if err != nil {
 		return nil, nil, false, err
 	}
@@ -158,8 +174,8 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		Config:    previousRelease.Config,
 		Info: &release.Info{
 			FirstDeployed: currentRelease.Info.FirstDeployed,
-			LastDeployed:  helmtime.Now(),
-			Status:        release.StatusPendingRollback,
+			LastDeployed:  time.Now(),
+			Status:        common.StatusPendingRollback,
 			Notes:         previousRelease.Info.Notes,
 			// Because we lose the reference to previous version elsewhere, we set the
 			// message here, and only override it later if we experience failure.
@@ -176,8 +192,8 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 }
 
 func (r *Rollback) performRollback(currentRelease, targetRelease *release.Release, serverSideApply bool) (*release.Release, error) {
-	if r.DryRun {
-		slog.Debug("dry run", "name", targetRelease.Name)
+	if isDryRun(r.DryRunStrategy) {
+		r.cfg.Logger().Debug("dry run", "name", targetRelease.Name)
 		return targetRelease, nil
 	}
 
@@ -197,7 +213,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 			return targetRelease, err
 		}
 	} else {
-		slog.Debug("rollback hooks disabled", "name", targetRelease.Name)
+		r.cfg.Logger().Debug("rollback hooks disabled", "name", targetRelease.Name)
 	}
 
 	// It is safe to use "forceOwnership" here because these are resources currently rendered by the chart.
@@ -215,39 +231,39 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	if err != nil {
 		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
-		slog.Warn(msg)
-		currentRelease.Info.Status = release.StatusSuperseded
-		targetRelease.Info.Status = release.StatusFailed
+		r.cfg.Logger().Warn(msg)
+		currentRelease.Info.Status = common.StatusSuperseded
+		targetRelease.Info.Status = common.StatusFailed
 		targetRelease.Info.Description = msg
 		r.cfg.recordRelease(currentRelease)
 		r.cfg.recordRelease(targetRelease)
 		if r.CleanupOnFail {
-			slog.Debug("cleanup on fail set, cleaning up resources", "count", len(results.Created))
-			_, errs := r.cfg.KubeClient.Delete(results.Created)
+			r.cfg.Logger().Debug("cleanup on fail set, cleaning up resources", "count", len(results.Created))
+			_, errs := r.cfg.KubeClient.Delete(results.Created, metav1.DeletePropagationBackground)
 			if errs != nil {
 				return targetRelease, fmt.Errorf(
 					"an error occurred while cleaning up resources. original rollback error: %w",
 					fmt.Errorf("unable to cleanup resources: %w", joinErrors(errs, ", ")))
 			}
-			slog.Debug("resource cleanup complete")
+			r.cfg.Logger().Debug("resource cleanup complete")
 		}
 		return targetRelease, err
 	}
 
 	waiter, err := r.cfg.KubeClient.GetWaiter(r.WaitStrategy)
 	if err != nil {
-		return nil, fmt.Errorf("unable to set metadata visitor from target release: %w", err)
+		return nil, fmt.Errorf("unable to get waiter: %w", err)
 	}
 	if r.WaitForJobs {
 		if err := waiter.WaitWithJobs(target, r.Timeout); err != nil {
-			targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
+			targetRelease.SetStatus(common.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
 			r.cfg.recordRelease(currentRelease)
 			r.cfg.recordRelease(targetRelease)
 			return targetRelease, fmt.Errorf("release %s failed: %w", targetRelease.Name, err)
 		}
 	} else {
 		if err := waiter.Wait(target, r.Timeout); err != nil {
-			targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
+			targetRelease.SetStatus(common.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
 			r.cfg.recordRelease(currentRelease)
 			r.cfg.recordRelease(targetRelease)
 			return targetRelease, fmt.Errorf("release %s failed: %w", targetRelease.Name, err)
@@ -266,13 +282,17 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		return nil, err
 	}
 	// Supersede all previous deployments, see issue #2941.
-	for _, rel := range deployed {
-		slog.Debug("superseding previous deployment", "version", rel.Version)
-		rel.Info.Status = release.StatusSuperseded
+	for _, reli := range deployed {
+		rel, err := releaserToV1Release(reli)
+		if err != nil {
+			return nil, err
+		}
+		r.cfg.Logger().Debug("superseding previous deployment", "version", rel.Version)
+		rel.Info.Status = common.StatusSuperseded
 		r.cfg.recordRelease(rel)
 	}
 
-	targetRelease.Info.Status = release.StatusDeployed
+	targetRelease.Info.Status = common.StatusDeployed
 
 	return targetRelease, nil
 }

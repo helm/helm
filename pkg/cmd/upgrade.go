@@ -30,13 +30,15 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
-	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	ci "helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/cmd/require"
 	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
-	release "helm.sh/helm/v4/pkg/release/v1"
+	ri "helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/release/common"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
@@ -99,7 +101,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			return noMoreArgsComp()
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			client.Namespace = settings.Namespace()
 
 			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
@@ -109,12 +111,12 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.SetRegistryClient(registryClient)
 
-			// This is for the case where "" is specifically passed in as a
-			// value. When there is no value passed in NoOptDefVal will be used
-			// and it is set to client. See addInstallFlags.
-			if client.DryRunOption == "" {
-				client.DryRunOption = "none"
+			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, false)
+			if err != nil {
+				return err
 			}
+			client.DryRunStrategy = dryRunStrategy
+
 			// Fixes #7002 - Support reading values from STDIN for `upgrade` command
 			// Must load values AFTER determining if we have to call install so that values loaded from stdin are not read twice
 			if client.Install {
@@ -131,8 +133,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.CreateNamespace = createNamespace
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.ForceReplace = client.ForceReplace
-					instClient.DryRun = client.DryRun
-					instClient.DryRunOption = client.DryRunOption
+					instClient.DryRunStrategy = client.DryRunStrategy
 					instClient.DisableHooks = client.DisableHooks
 					instClient.SkipCRDs = client.SkipCRDs
 					instClient.Timeout = client.Timeout
@@ -182,10 +183,6 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// Validate dry-run flag value is one of the allowed values
-			if err := validateDryRunOptionFlag(client.DryRunOption); err != nil {
-				return err
-			}
 
 			p := getter.All(settings)
 			vals, err := valueOpts.MergeValues(p)
@@ -198,7 +195,12 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if req := ch.Metadata.Dependencies; req != nil {
+
+			ac, err := ci.NewAccessor(ch)
+			if err != nil {
+				return err
+			}
+			if req := ac.MetaDependencies(); req != nil {
 				if err := action.CheckDependencies(ch, req); err != nil {
 					err = fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies: %w", err)
 					if client.DependencyUpdate {
@@ -226,7 +228,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 			}
 
-			if ch.Metadata.Deprecated {
+			if ac.Deprecated() {
 				slog.Warn("this chart is deprecated")
 			}
 
@@ -268,9 +270,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&createNamespace, "create-namespace", false, "if --install is set, create the release namespace if not present")
 	f.BoolVarP(&client.Install, "install", "i", false, "if a release by this name doesn't already exist, run an install")
 	f.BoolVar(&client.Devel, "devel", false, "use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored")
-	f.StringVar(&client.DryRunOption, "dry-run", "", "simulate an install. If --dry-run is set with no option being specified or as '--dry-run=client', it will not attempt cluster connections. Setting '--dry-run=server' allows attempting cluster connections.")
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
-	f.Lookup("dry-run").NoOptDefVal = "client"
 	f.BoolVar(&client.ForceReplace, "force-replace", false, "force resource updates by replacement")
 	f.BoolVar(&client.ForceReplace, "force", false, "deprecated")
 	f.MarkDeprecated("force", "use --force-replace instead")
@@ -297,6 +297,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
 	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, upgrade will ignore the check for helm annotations and take ownership of the existing resources")
+	addDryRunFlag(cmd)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
@@ -318,6 +319,11 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func isReleaseUninstalled(versions []*release.Release) bool {
-	return len(versions) > 0 && versions[len(versions)-1].Info.Status == release.StatusUninstalled
+func isReleaseUninstalled(versionsi []ri.Releaser) bool {
+	versions, err := releaseListToV1List(versionsi)
+	if err != nil {
+		slog.Error("cannot convert release list to v1 release list", "error", err)
+		return false
+	}
+	return len(versions) > 0 && versions[len(versions)-1].Info.Status == common.StatusUninstalled
 }

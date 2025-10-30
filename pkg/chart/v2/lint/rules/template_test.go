@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -51,11 +52,14 @@ func TestValidateAllowedExtension(t *testing.T) {
 var values = map[string]interface{}{"nameOverride": "", "httpPort": 80}
 
 const namespace = "testNamespace"
-const strict = false
 
 func TestTemplateParsing(t *testing.T) {
 	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter, values, namespace, strict)
+	Templates(
+		&linter,
+		namespace,
+		values,
+		TemplateLinterSkipSchemaValidation(false))
 	res := linter.Messages
 
 	if len(res) != 1 {
@@ -78,7 +82,11 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 	defer os.Rename(ignoredTemplatePath, wrongTemplatePath)
 
 	linter := support.Linter{ChartDir: templateTestBasedir}
-	Templates(&linter, values, namespace, strict)
+	Templates(
+		&linter,
+		namespace,
+		values,
+		TemplateLinterSkipSchemaValidation(false))
 	res := linter.Messages
 
 	if len(res) != 0 {
@@ -88,7 +96,11 @@ func TestTemplateIntegrationHappyPath(t *testing.T) {
 
 func TestMultiTemplateFail(t *testing.T) {
 	linter := support.Linter{ChartDir: "./testdata/multi-template-fail"}
-	Templates(&linter, values, namespace, strict)
+	Templates(
+		&linter,
+		namespace,
+		values,
+		TemplateLinterSkipSchemaValidation(false))
 	res := linter.Messages
 
 	if len(res) != 1 {
@@ -183,6 +195,7 @@ func TestValidateMetadataName(t *testing.T) {
 }
 
 func TestDeprecatedAPIFails(t *testing.T) {
+	modTime := time.Now()
 	mychart := chart.Chart{
 		Metadata: &chart.Metadata{
 			APIVersion: "v2",
@@ -192,12 +205,14 @@ func TestDeprecatedAPIFails(t *testing.T) {
 		},
 		Templates: []*common.File{
 			{
-				Name: "templates/baddeployment.yaml",
-				Data: []byte("apiVersion: apps/v1beta1\nkind: Deployment\nmetadata:\n  name: baddep\nspec: {selector: {matchLabels: {foo: bar}}}"),
+				Name:    "templates/baddeployment.yaml",
+				ModTime: modTime,
+				Data:    []byte("apiVersion: apps/v1beta1\nkind: Deployment\nmetadata:\n  name: baddep\nspec: {selector: {matchLabels: {foo: bar}}}"),
 			},
 			{
-				Name: "templates/goodsecret.yaml",
-				Data: []byte("apiVersion: v1\nkind: Secret\nmetadata:\n  name: goodsecret"),
+				Name:    "templates/goodsecret.yaml",
+				ModTime: modTime,
+				Data:    []byte("apiVersion: v1\nkind: Secret\nmetadata:\n  name: goodsecret"),
 			},
 		},
 	}
@@ -208,7 +223,11 @@ func TestDeprecatedAPIFails(t *testing.T) {
 	}
 
 	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
-	Templates(&linter, values, namespace, strict)
+	Templates(
+		&linter,
+		namespace,
+		values,
+		TemplateLinterSkipSchemaValidation(false))
 	if l := len(linter.Messages); l != 1 {
 		for i, msg := range linter.Messages {
 			t.Logf("Message %d: %s", i, msg)
@@ -252,8 +271,9 @@ func TestStrictTemplateParsingMapError(t *testing.T) {
 		},
 		Templates: []*common.File{
 			{
-				Name: "templates/configmap.yaml",
-				Data: []byte(manifest),
+				Name:    "templates/configmap.yaml",
+				ModTime: time.Now(),
+				Data:    []byte(manifest),
 			},
 		},
 	}
@@ -264,7 +284,11 @@ func TestStrictTemplateParsingMapError(t *testing.T) {
 	linter := &support.Linter{
 		ChartDir: filepath.Join(dir, ch.Metadata.Name),
 	}
-	Templates(linter, ch.Values, namespace, strict)
+	Templates(
+		linter,
+		namespace,
+		ch.Values,
+		TemplateLinterSkipSchemaValidation(false))
 	if len(linter.Messages) != 0 {
 		t.Errorf("expected zero messages, got %d", len(linter.Messages))
 		for i, msg := range linter.Messages {
@@ -381,8 +405,9 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 		},
 		Templates: []*common.File{
 			{
-				Name: "templates/empty-with-comments.yaml",
-				Data: []byte("#@formatter:off\n"),
+				Name:    "templates/empty-with-comments.yaml",
+				ModTime: time.Now(),
+				Data:    []byte("#@formatter:off\n"),
 			},
 		},
 	}
@@ -393,7 +418,11 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 	}
 
 	linter := support.Linter{ChartDir: filepath.Join(tmpdir, mychart.Name())}
-	Templates(&linter, values, namespace, strict)
+	Templates(
+		&linter,
+		namespace,
+		values,
+		TemplateLinterSkipSchemaValidation(false))
 	if l := len(linter.Messages); l > 0 {
 		for i, msg := range linter.Messages {
 			t.Logf("Message %d: %s", i, msg)
@@ -438,4 +467,24 @@ items:
 	if err := validateListAnnotations(md, manifest); err != nil {
 		t.Fatalf("List objects keep annotations should pass. got: %s", err)
 	}
+}
+
+func TestIsYamlFileExtension(t *testing.T) {
+	tests := []struct {
+		filename string
+		expected bool
+	}{
+		{"test.yaml", true},
+		{"test.yml", true},
+		{"test.txt", false},
+		{"test", false},
+	}
+
+	for _, test := range tests {
+		result := isYamlFileExtension(test.filename)
+		if result != test.expected {
+			t.Errorf("isYamlFileExtension(%s) = %v; want %v", test.filename, result, test.expected)
+		}
+	}
+
 }
