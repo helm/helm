@@ -36,7 +36,7 @@ func (suite *TLSRegistryClientTestSuite) SetupSuite() {
 
 func (suite *TLSRegistryClientTestSuite) TearDownSuite() {
 	teardown(&suite.TestRegistry)
-	os.RemoveAll(suite.WorkspaceDir)
+	_ = os.RemoveAll(suite.WorkspaceDir)
 }
 
 func (suite *TLSRegistryClientTestSuite) Test_0_Login() {
