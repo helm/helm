@@ -33,7 +33,6 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	v1 "k8s.io/api/core/v1"
-	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -54,7 +53,6 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/csaupgrade"
 	"k8s.io/client-go/util/retry"
@@ -108,17 +106,6 @@ const (
 	FieldValidationDirectiveWarn   FieldValidationDirective = "Warn"
 	FieldValidationDirectiveStrict FieldValidationDirective = "Strict"
 )
-
-func init() {
-	// Add CRDs to the scheme. They are missing by default.
-	if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
-		// This should never happen.
-		panic(err)
-	}
-	if err := apiextv1beta1.AddToScheme(scheme.Scheme); err != nil {
-		panic(err)
-	}
-}
 
 func (c *Client) newStatusWatcher() (*statusWaiter, error) {
 	cfg, err := c.Factory.ToRESTConfig()
