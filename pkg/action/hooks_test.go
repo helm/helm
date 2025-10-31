@@ -410,3 +410,35 @@ data:
 		})
 	}
 }
+
+func TestConfiguration_hookSetDeletePolicy(t *testing.T) {
+	tests := map[string]struct {
+		policies []release.HookDeletePolicy
+		expected []release.HookDeletePolicy
+	}{
+		"no polices specified result in the default policy": {
+			policies: nil,
+			expected: []release.HookDeletePolicy{
+				release.HookBeforeHookCreation,
+			},
+		},
+		"unknown policy is untouched": {
+			policies: []release.HookDeletePolicy{
+				release.HookDeletePolicy("never"),
+			},
+			expected: []release.HookDeletePolicy{
+				release.HookDeletePolicy("never"),
+			},
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			cfg := &Configuration{}
+			h := &release.Hook{
+				DeletePolicies: tt.policies,
+			}
+			cfg.hookSetDeletePolicy(h)
+			assert.Equal(t, tt.expected, h.DeletePolicies)
+		})
+	}
+}
