@@ -24,6 +24,8 @@ import (
 	"maps"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"slices"
 
 	"helm.sh/helm/v4/internal/plugin/schema"
@@ -41,7 +43,6 @@ type SubprocessProtocolCommand struct {
 // RuntimeConfigSubprocess implements RuntimeConfig for RuntimeSubprocess
 type RuntimeConfigSubprocess struct {
 	// PlatformCommand is a list containing a plugin command, with a platform selector and support for args.
-	PlatformCommand []PlatformCommand `yaml:"platformCommand"`
 	// PlatformHooks are commands that will run on plugin events, with a platform selector and support for args.
 	PlatformHooks PlatformHooks `yaml:"platformHooks"`
 	// ProtocolCommands allows the plugin to specify protocol specific commands
@@ -52,7 +53,6 @@ type RuntimeConfigSubprocess struct {
 	ProtocolCommands []SubprocessProtocolCommand `yaml:"protocolCommands,omitempty"`
 
 	expandHookArgs bool
-}
 
 var _ RuntimeConfig = (*RuntimeConfigSubprocess)(nil)
 
@@ -60,11 +60,9 @@ func (r *RuntimeConfigSubprocess) GetType() string { return "subprocess" }
 
 func (r *RuntimeConfigSubprocess) Validate() error {
 	return nil
-}
 
 type RuntimeSubprocess struct {
 	EnvVars map[string]string
-}
 
 var _ Runtime = (*RuntimeSubprocess)(nil)
 
@@ -76,7 +74,6 @@ func (r *RuntimeSubprocess) CreatePlugin(pluginDir string, metadata *Metadata) (
 		RuntimeConfig: *(metadata.RuntimeConfig.(*RuntimeConfigSubprocess)),
 		EnvVars:       maps.Clone(r.EnvVars),
 	}, nil
-}
 
 // SubprocessPluginRuntime implements the Plugin interface for subprocess execution
 type SubprocessPluginRuntime struct {
@@ -84,17 +81,14 @@ type SubprocessPluginRuntime struct {
 	pluginDir     string
 	RuntimeConfig RuntimeConfigSubprocess
 	EnvVars       map[string]string
-}
 
 var _ Plugin = (*SubprocessPluginRuntime)(nil)
 
 func (r *SubprocessPluginRuntime) Dir() string {
 	return r.pluginDir
-}
 
 func (r *SubprocessPluginRuntime) Metadata() Metadata {
 	return r.metadata
-}
 
 func (r *SubprocessPluginRuntime) Invoke(_ context.Context, input *Input) (*Output, error) {
 	switch input.Message.(type) {
@@ -107,7 +101,6 @@ func (r *SubprocessPluginRuntime) Invoke(_ context.Context, input *Input) (*Outp
 	default:
 		return nil, fmt.Errorf("unsupported subprocess plugin type %q", r.metadata.Type)
 	}
-}
 
 // InvokeWithEnv executes a plugin command with custom environment and I/O streams
 // This method allows execution with different command/args than the plugin's default
@@ -127,17 +120,13 @@ func (r *SubprocessPluginRuntime) InvokeWithEnv(main string, argv []string, env 
 
 	if err := executeCmd(cmd, r.metadata.Name); err != nil {
 		return err
-	}
 
-	return nil
-}
 
 func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 	cmds := r.RuntimeConfig.PlatformHooks[event]
 
 	if len(cmds) == 0 {
 		return nil
-	}
 
 	env := parseEnv(os.Environ())
 	maps.Insert(env, maps.All(r.EnvVars))
@@ -146,8 +135,6 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 
 	main, argv, err := PrepareCommands(cmds, r.RuntimeConfig.expandHookArgs, []string{}, env)
 	if err != nil {
-		return err
-	}
 
 	cmd := exec.Command(main, argv...)
 	cmd.Env = formatEnv(env)
@@ -160,17 +147,12 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 			os.Stderr.Write(eerr.Stderr)
 			return fmt.Errorf("plugin %s hook for %q exited with error", event, r.metadata.Name)
 		}
-		return err
-	}
-	return nil
-}
 
 // TODO decide the best way to handle this code
 // right now we implement status and error return in 3 slightly different ways in this file
 // then replace the other three with a call to this func
 func executeCmd(prog *exec.Cmd, pluginName string) error {
 	if err := prog.Run(); err != nil {
-		if eerr, ok := err.(*exec.ExitError); ok {
 			slog.Debug(
 				"plugin execution failed",
 				slog.String("pluginName", pluginName),
@@ -181,77 +163,47 @@ func executeCmd(prog *exec.Cmd, pluginName string) error {
 				Err:      fmt.Errorf("plugin %q exited with error", pluginName),
 				ExitCode: eerr.ExitCode(),
 			}
-		}
 
-		return err
-	}
 
-	return nil
-}
 
 func (r *SubprocessPluginRuntime) runCLI(input *Input) (*Output, error) {
 	if _, ok := input.Message.(schema.InputMessageCLIV1); !ok {
 		return nil, fmt.Errorf("plugin %q input message does not implement InputMessageCLIV1", r.metadata.Name)
-	}
 
 	extraArgs := input.Message.(schema.InputMessageCLIV1).ExtraArgs
 
 	cmds := r.RuntimeConfig.PlatformCommand
 
-	env := parseEnv(os.Environ())
-	maps.Insert(env, maps.All(r.EnvVars))
 	maps.Insert(env, maps.All(parseEnv(input.Env)))
-	env["HELM_PLUGIN_NAME"] = r.metadata.Name
-	env["HELM_PLUGIN_DIR"] = r.pluginDir
 
 	command, args, err := PrepareCommands(cmds, true, extraArgs, env)
-	if err != nil {
 		return nil, fmt.Errorf("failed to prepare plugin command: %w", err)
-	}
 
 	cmd := exec.Command(command, args...)
-	cmd.Env = formatEnv(env)
 
 	cmd.Stdin = input.Stdin
 	cmd.Stdout = input.Stdout
 	cmd.Stderr = input.Stderr
 
 	slog.Debug("executing plugin command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
-	if err := executeCmd(cmd, r.metadata.Name); err != nil {
 		return nil, err
-	}
 
 	return &Output{
 		Message: schema.OutputMessageCLIV1{},
-	}, nil
-}
 
 func (r *SubprocessPluginRuntime) runPostrenderer(input *Input) (*Output, error) {
 	if _, ok := input.Message.(schema.InputMessagePostRendererV1); !ok {
 		return nil, fmt.Errorf("plugin %q input message does not implement InputMessagePostRendererV1", r.metadata.Name)
-	}
 
-	env := parseEnv(os.Environ())
-	maps.Insert(env, maps.All(r.EnvVars))
-	maps.Insert(env, maps.All(parseEnv(input.Env)))
-	env["HELM_PLUGIN_NAME"] = r.metadata.Name
-	env["HELM_PLUGIN_DIR"] = r.pluginDir
 
 	msg := input.Message.(schema.InputMessagePostRendererV1)
-	cmds := r.RuntimeConfig.PlatformCommand
 	command, args, err := PrepareCommands(cmds, true, msg.ExtraArgs, env)
-	if err != nil {
-		return nil, fmt.Errorf("failed to prepare plugin command: %w", err)
-	}
 
 	cmd := exec.Command(
 		command,
 		args...)
 
 	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, err
-	}
 
 	go func() {
 		defer stdin.Close()
@@ -261,18 +213,9 @@ func (r *SubprocessPluginRuntime) runPostrenderer(input *Input) (*Output, error)
 	postRendered := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
-	cmd.Env = formatEnv(env)
 	cmd.Stdout = postRendered
-	cmd.Stderr = stderr
 
-	slog.Debug("executing plugin command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
-	if err := executeCmd(cmd, r.metadata.Name); err != nil {
-		return nil, err
-	}
 
-	return &Output{
 		Message: schema.OutputMessagePostRendererV1{
 			Manifests: postRendered,
 		},
-	}, nil
-}
