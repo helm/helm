@@ -18,6 +18,7 @@ package kube
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -1797,4 +1798,388 @@ func TestDetermineFieldValidationDirective(t *testing.T) {
 
 	assert.Equal(t, FieldValidationDirectiveIgnore, determineFieldValidationDirective(false))
 	assert.Equal(t, FieldValidationDirectiveStrict, determineFieldValidationDirective(true))
+}
+
+func TestClientWaitContextCancellationLegacy(t *testing.T) {
+	podList := newPodList("starfish", "otter")
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	c := newTestClient(t)
+	c.WaitContext = ctx
+
+	requestCount := 0
+	c.Factory.(*cmdtesting.TestFactory).Client = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			requestCount++
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+
+			if requestCount == 2 {
+				cancel()
+			}
+
+			switch {
+			case p == "/api/v1/namespaces/default/pods/starfish" && m == http.MethodGet:
+				pod := &podList.Items[0]
+				pod.Status.Conditions = []v1.PodCondition{
+					{
+						Type:   v1.PodReady,
+						Status: v1.ConditionFalse,
+					},
+				}
+				return newResponse(http.StatusOK, pod)
+			case p == "/api/v1/namespaces/default/pods/otter" && m == http.MethodGet:
+				pod := &podList.Items[1]
+				pod.Status.Conditions = []v1.PodCondition{
+					{
+						Type:   v1.PodReady,
+						Status: v1.ConditionFalse,
+					},
+				}
+				return newResponse(http.StatusOK, pod)
+			case p == "/namespaces/default/pods" && m == http.MethodPost:
+				resources, err := c.Build(req.Body, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return newResponse(http.StatusOK, resources[0].Object)
+			default:
+				t.Logf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return newResponse(http.StatusNotFound, notFoundBody())
+			}
+		}),
+	}
+
+	var err error
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	require.NoError(t, err)
+
+	resources, err := c.Build(objBody(&podList), false)
+	require.NoError(t, err)
+
+	result, err := c.Create(
+		resources,
+		ClientCreateOptionServerSideApply(false, false))
+	require.NoError(t, err)
+	assert.Len(t, result.Created, 2, "expected 2 resources created, got %d", len(result.Created))
+
+	err = c.Wait(resources, time.Second*30)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+}
+
+func TestClientWaitWithJobsContextCancellationLegacy(t *testing.T) {
+	job := newJob("starfish", 0, intToInt32(1), 0, 0)
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	c := newTestClient(t)
+	c.WaitContext = ctx
+
+	requestCount := 0
+	c.Factory.(*cmdtesting.TestFactory).Client = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			requestCount++
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+
+			if requestCount == 2 {
+				cancel()
+			}
+
+			switch {
+			case p == "/apis/batch/v1/namespaces/default/jobs/starfish" && m == http.MethodGet:
+				job.Status.Succeeded = 0
+				return newResponse(http.StatusOK, job)
+			case p == "/namespaces/default/jobs" && m == http.MethodPost:
+				resources, err := c.Build(req.Body, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return newResponse(http.StatusOK, resources[0].Object)
+			default:
+				t.Logf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return newResponse(http.StatusNotFound, notFoundBody())
+			}
+		}),
+	}
+
+	var err error
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	require.NoError(t, err)
+
+	resources, err := c.Build(objBody(job), false)
+	require.NoError(t, err)
+
+	result, err := c.Create(
+		resources,
+		ClientCreateOptionServerSideApply(false, false))
+	require.NoError(t, err)
+	assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
+
+	err = c.WaitWithJobs(resources, time.Second*30)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+}
+
+func TestClientWaitForDeleteContextCancellationLegacy(t *testing.T) {
+	pod := newPod("starfish")
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	c := newTestClient(t)
+	c.WaitContext = ctx
+
+	deleted := false
+	requestCount := 0
+	c.Factory.(*cmdtesting.TestFactory).Client = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			requestCount++
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+
+			if requestCount == 3 {
+				cancel()
+			}
+
+			switch {
+			case p == "/namespaces/default/pods/starfish" && m == http.MethodGet:
+				if deleted {
+					return newResponse(http.StatusOK, &pod)
+				}
+				return newResponse(http.StatusOK, &pod)
+			case p == "/namespaces/default/pods/starfish" && m == http.MethodDelete:
+				deleted = true
+				return newResponse(http.StatusOK, &pod)
+			case p == "/namespaces/default/pods" && m == http.MethodPost:
+				resources, err := c.Build(req.Body, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return newResponse(http.StatusOK, resources[0].Object)
+			default:
+				t.Logf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return newResponse(http.StatusNotFound, notFoundBody())
+			}
+		}),
+	}
+
+	var err error
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	require.NoError(t, err)
+
+	resources, err := c.Build(objBody(&pod), false)
+	require.NoError(t, err)
+
+	result, err := c.Create(
+		resources,
+		ClientCreateOptionServerSideApply(false, false))
+	require.NoError(t, err)
+	assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
+
+	if _, err := c.Delete(resources, metav1.DeletePropagationBackground); err != nil {
+		t.Fatal(err)
+	}
+
+	err = c.WaitForDelete(resources, time.Second*30)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+}
+
+func TestClientWaitContextNilDoesNotPanic(t *testing.T) {
+	podList := newPodList("starfish")
+
+	var created *time.Time
+
+	c := newTestClient(t)
+	c.WaitContext = nil
+
+	c.Factory.(*cmdtesting.TestFactory).Client = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/api/v1/namespaces/default/pods/starfish" && m == http.MethodGet:
+				pod := &podList.Items[0]
+				if created != nil && time.Since(*created) >= time.Second*2 {
+					pod.Status.Conditions = []v1.PodCondition{
+						{
+							Type:   v1.PodReady,
+							Status: v1.ConditionTrue,
+						},
+					}
+				}
+				return newResponse(http.StatusOK, pod)
+			case p == "/namespaces/default/pods" && m == http.MethodPost:
+				resources, err := c.Build(req.Body, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				now := time.Now()
+				created = &now
+				return newResponse(http.StatusOK, resources[0].Object)
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+
+	var err error
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	require.NoError(t, err)
+
+	resources, err := c.Build(objBody(&podList), false)
+	require.NoError(t, err)
+
+	result, err := c.Create(
+		resources,
+		ClientCreateOptionServerSideApply(false, false))
+	require.NoError(t, err)
+	assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
+
+	err = c.Wait(resources, time.Second*30)
+	require.NoError(t, err)
+
+	assert.GreaterOrEqual(t, time.Since(*created), time.Second*2, "expected to wait at least 2 seconds")
+}
+
+func TestClientWaitContextPreCancelledLegacy(t *testing.T) {
+	podList := newPodList("starfish")
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	c := newTestClient(t)
+	c.WaitContext = ctx
+
+	c.Factory.(*cmdtesting.TestFactory).Client = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/api/v1/namespaces/default/pods/starfish" && m == http.MethodGet:
+				pod := &podList.Items[0]
+				return newResponse(http.StatusOK, pod)
+			case p == "/namespaces/default/pods" && m == http.MethodPost:
+				resources, err := c.Build(req.Body, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return newResponse(http.StatusOK, resources[0].Object)
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+
+	var err error
+	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	require.NoError(t, err)
+
+	resources, err := c.Build(objBody(&podList), false)
+	require.NoError(t, err)
+
+	result, err := c.Create(
+		resources,
+		ClientCreateOptionServerSideApply(false, false))
+	require.NoError(t, err)
+	assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
+
+	err = c.Wait(resources, time.Second*30)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+}
+
+func TestClientWaitContextCancellationStatusWatcher(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+
+	c := newTestClient(t)
+	c.WaitContext = ctx
+
+	podManifest := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  namespace: default
+`
+	var err error
+	c.Waiter, err = c.GetWaiter(StatusWatcherStrategy)
+	require.NoError(t, err)
+
+	resources, err := c.Build(strings.NewReader(podManifest), false)
+	require.NoError(t, err)
+
+	cancel()
+
+	err = c.Wait(resources, time.Second*30)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+}
+
+func TestClientWaitWithJobsContextCancellationStatusWatcher(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+
+	c := newTestClient(t)
+	c.WaitContext = ctx
+
+	jobManifest := `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-job
+  namespace: default
+`
+	var err error
+	c.Waiter, err = c.GetWaiter(StatusWatcherStrategy)
+	require.NoError(t, err)
+
+	resources, err := c.Build(strings.NewReader(jobManifest), false)
+	require.NoError(t, err)
+
+	cancel()
+
+	err = c.WaitWithJobs(resources, time.Second*30)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+}
+
+func TestClientWaitForDeleteContextCancellationStatusWatcher(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+
+	c := newTestClient(t)
+	c.WaitContext = ctx
+
+	podManifest := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  namespace: default
+status:
+  conditions:
+  - type: Ready
+    status: "True"
+  phase: Running
+`
+	var err error
+	c.Waiter, err = c.GetWaiter(StatusWatcherStrategy)
+	require.NoError(t, err)
+
+	resources, err := c.Build(strings.NewReader(podManifest), false)
+	require.NoError(t, err)
+
+	cancel()
+
+	err = c.WaitForDelete(resources, time.Second*30)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
 }

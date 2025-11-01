@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
+	watchtools "k8s.io/client-go/tools/watch"
 
 	helmStatusReaders "helm.sh/helm/v4/internal/statusreaders"
 )
@@ -43,6 +44,7 @@ import (
 type statusWaiter struct {
 	client     dynamic.Interface
 	restMapper meta.RESTMapper
+	ctx        context.Context
 }
 
 func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
@@ -53,7 +55,7 @@ func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
 }
 
 func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := w.contextWithTimeout(timeout)
 	defer cancel()
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
@@ -74,7 +76,7 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 }
 
 func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	ctx, cancel := w.contextWithTimeout(timeout)
 	defer cancel()
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
@@ -82,7 +84,7 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 }
 
 func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	ctx, cancel := w.contextWithTimeout(timeout)
 	defer cancel()
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
@@ -93,7 +95,7 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 }
 
 func (w *statusWaiter) WaitForDelete(resourceList ResourceList, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	ctx, cancel := w.contextWithTimeout(timeout)
 	defer cancel()
 	slog.Debug("waiting for resources to be deleted", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
@@ -177,6 +179,17 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 		return errors.Join(errs...)
 	}
 	return nil
+}
+
+func (w *statusWaiter) contextWithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return contextWithTimeout(w.ctx, timeout)
+}
+
+func contextWithTimeout(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return watchtools.ContextWithOptionalTimeout(ctx, timeout)
 }
 
 func statusObserver(cancel context.CancelFunc, desired status.Status) collector.ObserverFunc {
