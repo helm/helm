@@ -25,10 +25,10 @@ import (
 func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (string, error) {
 	var constraint *semver.Constraints
 	if versionString == "" {
-		// If string is empty, set wildcard constraint
+		// If the string is empty, set a wildcard constraint
 		constraint, _ = semver.NewConstraint("*")
 	} else {
-		// when customer inputs specific version, check whether there's an exact match first
+		// when customer inputs a specific version, check whether there's an exact match first
 		for _, v := range tags {
 			if versionString == v {
 				return v, nil

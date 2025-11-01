@@ -147,15 +147,15 @@ func (c *Client) processPluginPull(genericResult *GenericPullResult, pluginName 
 		}
 	}
 
-	fmt.Fprintf(c.out, "Pulled plugin: %s\n", result.Ref)
-	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	_, _ = fmt.Fprintf(c.out, "Pulled plugin: %s\n", result.Ref)
+	_, _ = fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
 	if result.Prov.Data != nil {
-		fmt.Fprintf(c.out, "Provenance: %s\n", foundProvenanceName)
+		_, _ = fmt.Fprintf(c.out, "Provenance: %s\n", foundProvenanceName)
 	}
 
 	if strings.Contains(result.Ref, "_") {
-		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
-		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
+		_, _ = fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
+		_, _ = fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
 	}
 
 	return result, nil
