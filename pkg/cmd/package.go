@@ -90,7 +90,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 					return err
 				}
 
-				if client.DependencyUpdate {
+				if client.DependencyUpdate || client.DependencyUpdateRecursive {
 					downloadManager := &downloader.Manager{
 						Out:              io.Discard,
 						ChartPath:        path,
