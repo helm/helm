@@ -81,12 +81,47 @@ type Manager struct {
 	ContentCache string
 }
 
+func (m *Manager) clone() *Manager {
+	return &Manager{
+		Out:              m.Out,
+		ChartPath:        m.ChartPath,
+		Verify:           m.Verify,
+		Debug:            m.Debug,
+		Keyring:          m.Keyring,
+		SkipUpdate:       m.SkipUpdate,
+		Getters:          m.Getters,
+		RegistryClient:   m.RegistryClient,
+		RepositoryConfig: m.RepositoryConfig,
+		RepositoryCache:  m.RepositoryCache,
+		ContentCache:     m.ContentCache,
+	}
+}
+
 // Build rebuilds a local charts directory from a lockfile.
 //
 // If the lockfile is not present, this will run a Manager.Update()
 //
 // If SkipUpdate is set, this will not update the repository.
 func (m *Manager) Build(recursive bool) error {
+	if recursive {
+		depChartPaths, err := m.locateLocalDependencies(m.ChartPath, false)
+
+		if err != nil {
+			return err
+		}
+
+		for _, depChartPath := range depChartPaths {
+			subManager := m.clone()
+			subManager.ChartPath = depChartPath
+			if err := subManager.Build(recursive); err != nil {
+				return err
+			}
+		}
+	}
+	return m.doBuild(recursive)
+}
+
+func (m *Manager) doBuild(recursive bool) error {
 	c, err := m.loadChartDir(m.ChartPath)
 	if err != nil {
 		return err
@@ -165,19 +200,8 @@ func (m *Manager) Update(recursive bool) error {
 		}
 
 		for _, depChartPath := range depChartPaths {
-			subManager := &Manager{
-				Out:              m.Out,
-				ChartPath:        depChartPath,
-				Verify:           m.Verify,
-				Debug:            m.Debug,
-				Keyring:          m.Keyring,
-				SkipUpdate:       m.SkipUpdate,
-				Getters:          m.Getters,
-				RegistryClient:   m.RegistryClient,
-				RepositoryConfig: m.RepositoryConfig,
-				RepositoryCache:  m.RepositoryCache,
-				ContentCache:     m.ContentCache,
-			}
+			subManager := m.clone()
+			subManager.ChartPath = depChartPath
 			if err := subManager.Update(recursive); err != nil {
 				return err
 			}
