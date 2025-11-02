@@ -158,7 +158,7 @@ func (m *Manager) Build(recursive bool) error {
 // recursively and perform the update.
 func (m *Manager) Update(recursive bool) error {
 	if recursive {
-		depChartPaths, err := m.locateLocalDependencies(m.ChartPath, recursive)
+		depChartPaths, err := m.locateLocalDependencies(m.ChartPath, false)
 
 		if err != nil {
 			return err
