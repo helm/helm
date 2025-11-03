@@ -84,6 +84,11 @@ type Client struct {
 	// Namespace allows to bypass the kubeconfig file for the choice of the namespace
 	Namespace string
 
+	// WaitContext is an optional context to use for wait operations.
+	// If not set, a context will be created internally using the
+	// timeout provided to the wait functions.
+	WaitContext context.Context
+
 	Waiter
 	kubeClient kubernetes.Interface
 
@@ -140,6 +145,7 @@ func (c *Client) newStatusWatcher() (*statusWaiter, error) {
 	return &statusWaiter{
 		restMapper: restMapper,
 		client:     dynamicClient,
+		ctx:        c.WaitContext,
 	}, nil
 }
 
@@ -150,7 +156,7 @@ func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &legacyWaiter{kubeClient: kc}, nil
+		return &legacyWaiter{kubeClient: kc, ctx: c.WaitContext}, nil
 	case StatusWatcherStrategy:
 		return c.newStatusWatcher()
 	case HookOnlyStrategy:

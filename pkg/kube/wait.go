@@ -49,6 +49,7 @@ import (
 type legacyWaiter struct {
 	c          ReadyChecker
 	kubeClient *kubernetes.Clientset
+	ctx        context.Context
 }
 
 func (hw *legacyWaiter) Wait(resources ResourceList, timeout time.Duration) error {
@@ -66,7 +67,7 @@ func (hw *legacyWaiter) WaitWithJobs(resources ResourceList, timeout time.Durati
 func (hw *legacyWaiter) waitForResources(created ResourceList, timeout time.Duration) error {
 	slog.Debug("beginning wait for resources", "count", len(created), "timeout", timeout)
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := hw.contextWithTimeout(timeout)
 	defer cancel()
 
 	numberOfErrors := make([]int, len(created))
@@ -121,7 +122,7 @@ func (hw *legacyWaiter) WaitForDelete(deleted ResourceList, timeout time.Duratio
 	slog.Debug("beginning wait for resources to be deleted", "count", len(deleted), "timeout", timeout)
 
 	startTime := time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := hw.contextWithTimeout(timeout)
 	defer cancel()
 
 	err := wait.PollUntilContextCancel(ctx, 2*time.Second, true, func(_ context.Context) (bool, error) {
@@ -246,7 +247,7 @@ func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.In
 	// In the future, we might want to add some special logic for types
 	// like Ingress, Volume, etc.
 
-	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
+	ctx, cancel := hw.contextWithTimeout(timeout)
 	defer cancel()
 	_, err = watchtools.UntilWithSync(ctx, lw, &unstructured.Unstructured{}, nil, func(e watch.Event) (bool, error) {
 		// Make sure the incoming object is versioned as we use unstructured
@@ -326,4 +327,8 @@ func (hw *legacyWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool
 	}
 
 	return false, nil
+}
+
+func (hw *legacyWaiter) contextWithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return contextWithTimeout(hw.ctx, timeout)
 }
