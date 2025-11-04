@@ -139,7 +139,7 @@ type ChartPathOptions struct {
 	CaFile                string // --ca-file
 	CertFile              string // --cert-file
 	KeyFile               string // --key-file
-	InsecureSkipTLSverify bool   // --insecure-skip-verify
+	InsecureSkipTLSVerify bool   // --insecure-skip-verify
 	PlainHTTP             bool   // --plain-http
 	Keyring               string // --keyring
 	Password              string // --password
@@ -886,7 +886,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		Options: []getter.Option{
 			getter.WithPassCredentialsAll(c.PassCredentialsAll),
 			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
-			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
+			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSVerify),
 			getter.WithPlainHTTP(c.PlainHTTP),
 			getter.WithBasicAuth(c.Username, c.Password),
 		},
@@ -911,7 +911,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 			repo.WithChartVersion(version),
 			repo.WithClientTLS(c.CertFile, c.KeyFile, c.CaFile),
 			repo.WithUsernamePassword(c.Username, c.Password),
-			repo.WithInsecureSkipTLSverify(c.InsecureSkipTLSverify),
+			repo.WithInsecureSkipTLSVerify(c.InsecureSkipTLSVerify),
 			repo.WithPassCredentialsAll(c.PassCredentialsAll),
 		)
 		if err != nil {

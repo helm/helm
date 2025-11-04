@@ -109,9 +109,9 @@ func NewOCIPusher(ops ...Option) (Pusher, error) {
 }
 
 func (pusher *OCIPusher) newRegistryClient() (*registry.Client, error) {
-	if (pusher.opts.certFile != "" && pusher.opts.keyFile != "") || pusher.opts.caFile != "" || pusher.opts.insecureSkipTLSverify {
+	if (pusher.opts.certFile != "" && pusher.opts.keyFile != "") || pusher.opts.caFile != "" || pusher.opts.insecureSkipTLSVerify {
 		tlsConf, err := tlsutil.NewTLSConfig(
-			tlsutil.WithInsecureSkipVerify(pusher.opts.insecureSkipTLSverify),
+			tlsutil.WithInsecureSkipVerify(pusher.opts.insecureSkipTLSVerify),
 			tlsutil.WithCertKeyPairFiles(pusher.opts.certFile, pusher.opts.keyFile),
 			tlsutil.WithCAFile(pusher.opts.caFile),
 		)

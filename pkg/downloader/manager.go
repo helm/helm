@@ -755,7 +755,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			username = cr.Config.Username
 			password = cr.Config.Password
 			passcredentialsall = cr.Config.PassCredentialsAll
-			insecureskiptlsverify = cr.Config.InsecureSkipTLSverify
+			insecureskiptlsverify = cr.Config.InsecureSkipTLSVerify
 			caFile = cr.Config.CAFile
 			certFile = cr.Config.CertFile
 			keyFile = cr.Config.KeyFile

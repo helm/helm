@@ -41,7 +41,7 @@ type Entry struct {
 	CertFile              string `json:"certFile"`
 	KeyFile               string `json:"keyFile"`
 	CAFile                string `json:"caFile"`
-	InsecureSkipTLSverify bool   `json:"insecure_skip_tls_verify"`
+	InsecureSkipTLSVerify bool   `json:"insecure_skip_tls_verify"`
 	PassCredentialsAll    bool   `json:"pass_credentials_all"`
 }
 
@@ -82,7 +82,7 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 
 	resp, err := r.Client.Get(indexURL,
 		getter.WithURL(r.Config.URL),
-		getter.WithInsecureSkipVerifyTLS(r.Config.InsecureSkipTLSverify),
+		getter.WithInsecureSkipVerifyTLS(r.Config.InsecureSkipTLSVerify),
 		getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile),
 		getter.WithBasicAuth(r.Config.Username, r.Config.Password),
 		getter.WithPassCredentialsAll(r.Config.PassCredentialsAll),
@@ -120,7 +120,7 @@ type findChartInRepoURLOptions struct {
 	Username              string
 	Password              string
 	PassCredentialsAll    bool
-	InsecureSkipTLSverify bool
+	InsecureSkipTLSVerify bool
 	CertFile              string
 	KeyFile               string
 	CAFile                string
@@ -160,10 +160,10 @@ func WithClientTLS(certFile, keyFile, caFile string) FindChartInRepoURLOption {
 	}
 }
 
-// WithInsecureSkipTLSverify skips TLS verification for repository communication
-func WithInsecureSkipTLSverify(insecureSkipTLSverify bool) FindChartInRepoURLOption {
+// WithInsecureSkipTLSVerify skips TLS verification for repository communication
+func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) FindChartInRepoURLOption {
 	return func(options *findChartInRepoURLOptions) {
-		options.InsecureSkipTLSverify = insecureSkipTLSverify
+		options.InsecureSkipTLSVerify = insecureSkipTLSVerify
 	}
 }
 
@@ -190,7 +190,7 @@ func FindChartInRepoURL(repoURL string, chartName string, getters getter.Provide
 		KeyFile:               opts.KeyFile,
 		CAFile:                opts.CAFile,
 		Name:                  name,
-		InsecureSkipTLSverify: opts.InsecureSkipTLSverify,
+		InsecureSkipTLSVerify: opts.InsecureSkipTLSVerify,
 	}
 	r, err := NewChartRepository(&c, getters)
 	if err != nil {

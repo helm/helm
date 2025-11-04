@@ -132,7 +132,7 @@ func TestFindChartInAuthAndTLSAndPassRepoURL(t *testing.T) {
 		srv.URL,
 		"nginx",
 		getter.All(&cli.EnvSettings{}),
-		WithInsecureSkipTLSverify(true),
+		WithInsecureSkipTLSVerify(true),
 	)
 	if err != nil {
 		t.Fatalf("%v", err)
