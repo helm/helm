@@ -106,7 +106,10 @@ func (i *LocalInstaller) installFromDirectory() error {
 	metadata := p.Metadata()
 
 	pluginsPath := helmpath.DataPath("plugins")
-	foundPlugins, _ := plugin.FindPlugins([]string{pluginsPath}, plugin.Descriptor{Name: metadata.Name})
+	foundPlugins, err := plugin.FindPlugins([]string{pluginsPath}, plugin.Descriptor{Name: metadata.Name})
+	if err != nil {
+		return fmt.Errorf("failed to search for existing plugins: %w", err)
+	}
 	if len(foundPlugins) > 0 {
 		return fmt.Errorf("plugin %q already exists at %q", metadata.Name, foundPlugins[0].Dir())
 	}
@@ -131,7 +134,10 @@ func (i *LocalInstaller) installFromArchive() error {
 	}
 	filename := fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
 	pluginsPath := helmpath.DataPath("plugins")
-	foundPlugins, _ := plugin.FindPlugins([]string{pluginsPath}, plugin.Descriptor{Name: metadata.Name})
+	foundPlugins, err := plugin.FindPlugins([]string{pluginsPath}, plugin.Descriptor{Name: metadata.Name})
+	if err != nil {
+		return fmt.Errorf("failed to search for existing plugins: %w", err)
+	}
 	if len(foundPlugins) > 0 {
 		return fmt.Errorf("plugin %q already exists at %q", metadata.Name, foundPlugins[0].Dir())
 	}
