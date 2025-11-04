@@ -91,7 +91,7 @@ func (i *HTTPInstaller) Install() error {
 		return fmt.Errorf("failed to extract plugin metadata from tarball: %w", err)
 	}
 	filename := fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
-	pluginsPath := helmpath.DataPath("plugins")
+	pluginsPath := filepath.Dir(i.Path())
 	foundPlugins, err := plugin.FindPlugins([]string{pluginsPath}, plugin.Descriptor{Name: metadata.Name})
 	if err != nil {
 		return fmt.Errorf("failed to search for existing plugins: %w", err)

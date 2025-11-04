@@ -21,6 +21,7 @@ import (
 	stdfs "io/fs"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/Masterminds/semver/v3"
@@ -100,7 +101,11 @@ func (i *VCSInstaller) Install() error {
 	metadata := p.Metadata()
 
 	// Check if a plugin with the same name already exists
-	foundPlugins, _ := plugin.FindPlugins([]string{i.PluginsDirectory}, plugin.Descriptor{Name: metadata.Name})
+	pluginsPath := filepath.Dir(i.Path())
+	foundPlugins, err := plugin.FindPlugins([]string{pluginsPath}, plugin.Descriptor{Name: metadata.Name})
+	if err != nil {
+		return fmt.Errorf("failed to search for existing plugins: %w", err)
+	}
 	if len(foundPlugins) > 0 {
 		return fmt.Errorf("plugin %q already exists at %q", metadata.Name, foundPlugins[0].Dir())
 	}
