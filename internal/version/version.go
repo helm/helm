@@ -14,13 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package version // import "helm.sh/helm/v4/internal/version"
+package version
 
 import (
 	"flag"
 	"fmt"
+	"log/slog"
 	"runtime"
 	"strings"
+	"testing"
+
+	"github.com/Masterminds/semver/v3"
 )
 
 var (
@@ -38,11 +42,10 @@ var (
 	gitCommit = ""
 	// gitTreeState is the state of the git tree
 	gitTreeState = ""
+)
 
-	// The Kubernetes version can be set by LDFLAGS. In order to do that the value
-	// must be a string.
-	kubeClientVersionMajor = ""
-	kubeClientVersionMinor = ""
+const (
+	kubeClientGoVersionTesting = "v1.20"
 )
 
 // BuildInfo describes the compile time information.
@@ -74,12 +77,39 @@ func GetUserAgent() string {
 
 // Get returns build info
 func Get() BuildInfo {
+
+	makeKubeClientVersionString := func() string {
+		// Test builds don't include debug info / module info
+		// (And even if they did, we probably want a stable version during tests anyway)
+		// Return a default value for test builds
+		if testing.Testing() {
+			return kubeClientGoVersionTesting
+		}
+
+		vstr, err := K8sIOClientGoModVersion()
+		if err != nil {
+			slog.Error("failed to retrieve k8s.io/client-go version", slog.Any("error", err))
+			return ""
+		}
+
+		v, err := semver.NewVersion(vstr)
+		if err != nil {
+			slog.Error("unable to parse k8s.io/client-go version", slog.String("version", vstr), slog.Any("error", err))
+			return ""
+		}
+
+		kubeClientVersionMajor := v.Major() + 1
+		kubeClientVersionMinor := v.Minor()
+
+		return fmt.Sprintf("v%d.%d", kubeClientVersionMajor, kubeClientVersionMinor)
+	}
+
 	v := BuildInfo{
 		Version:           GetVersion(),
 		GitCommit:         gitCommit,
 		GitTreeState:      gitTreeState,
 		GoVersion:         runtime.Version(),
-		KubeClientVersion: fmt.Sprintf("v%s.%s", kubeClientVersionMajor, kubeClientVersionMinor),
+		KubeClientVersion: makeKubeClientVersionString(),
 	}
 
 	// HACK(bacongobbler): strip out GoVersion during a test run for consistent test output

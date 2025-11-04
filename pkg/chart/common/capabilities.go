@@ -133,12 +133,12 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 
 	vstr, err := helmversion.K8sIOClientGoModVersion()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get k8s.io/client-go version: %w", err)
+		return nil, fmt.Errorf("failed to retrieve k8s.io/client-go version: %w", err)
 	}
 
 	v, err := semver.NewVersion(vstr)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse client-go version %q: %v", vstr, err)
+		return nil, fmt.Errorf("unable to parse k8s.io/client-go version %q: %v", vstr, err)
 	}
 
 	kubeVersionMajor := v.Major() + 1
