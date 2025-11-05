@@ -357,7 +357,7 @@ func LoginOptPlainText(isPlainText bool) LoginOption {
 	}
 }
 
-func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, error) {
+func ensureTLSConfig(client *auth.Client) (*tls.Config, error) {
 	var transport *http.Transport
 
 	switch t := client.Client.Transport.(type) {
@@ -386,10 +386,7 @@ func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, e
 		return nil, fmt.Errorf("unable to access TLS client configuration, the provided HTTP Transport is not supported, given: %T", client.Client.Transport)
 	}
 
-	switch {
-	case setConfig != nil:
-		transport.TLSClientConfig = setConfig
-	case transport.TLSClientConfig == nil:
+	if transport.TLSClientConfig == nil {
 		transport.TLSClientConfig = &tls.Config{}
 	}
 
@@ -399,7 +396,7 @@ func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, e
 // LoginOptInsecure returns a function that sets the insecure setting on login
 func LoginOptInsecure(insecure bool) LoginOption {
 	return func(o *loginOperation) {
-		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
+		tlsConfig, err := ensureTLSConfig(o.client.authorizer)
 
 		if err != nil {
 			panic(err)
@@ -415,7 +412,7 @@ func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
 		if (certFile == "" || keyFile == "") && caFile == "" {
 			return
 		}
-		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
+		tlsConfig, err := ensureTLSConfig(o.client.authorizer)
 		if err != nil {
 			panic(err)
 		}
@@ -438,17 +435,6 @@ func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
 				panic(fmt.Errorf("unable to parse CA file: %q", caFile))
 			}
 			tlsConfig.RootCAs = certPool
-		}
-	}
-}
-
-// LoginOptTLSClientConfigFromConfig returns a function that sets the TLS settings on login
-// receiving the configuration in memory rather than from files.
-func LoginOptTLSClientConfigFromConfig(conf *tls.Config) LoginOption {
-	return func(o *loginOperation) {
-		_, err := ensureTLSConfig(o.client.authorizer, conf)
-		if err != nil {
-			panic(err)
 		}
 	}
 }
