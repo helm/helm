@@ -25,12 +25,14 @@ package cli
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 
@@ -119,8 +121,8 @@ func New() *EnvSettings {
 		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 		QPS:                       envFloat32Or("HELM_QPS", defaultQPS),
 		ColorMode:                 envColorMode(),
-		MaxChartSize:              envInt64Or("HELM_MAX_CHART_SIZE", 100*1024*1024), // 100 MiB
-		MaxChartFileSize:          envInt64Or("HELM_MAX_FILE_SIZE", 5*1024*1024),    // 5 MiB
+		MaxChartSize:              envInt64OrQuantityBytes("HELM_MAX_CHART_SIZE", 100*1024*1024), // 100 MiB
+		MaxChartFileSize:          envInt64OrQuantityBytes("HELM_MAX_FILE_SIZE", 5*1024*1024),    // 5 MiB
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -220,18 +222,36 @@ func envFloat32Or(name string, def float32) float32 {
 	return float32(ret)
 }
 
-// We want to handle int64 like returned by https://pkg.go.dev/io/fs#FileInfo
-func envInt64Or(name string, def int64) int64 {
+// Tries to parse as a k8s Quantity first, falls back to plain int64 parsing.
+func envInt64OrQuantityBytes(name string, def int64) int64 {
 	if name == "" {
 		return def
 	}
-	envVal := envOr(name, strconv.FormatInt(def, 10))
-	ret, err := strconv.ParseInt(envVal, 10, 64)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Environment variable %s has invalid value %q (expected an integer): %v\n", name, envVal, err)
+	envVal := os.Getenv(name)
+	if envVal == "" {
 		return def
 	}
-	return ret
+
+	envVal = strings.TrimSpace(envVal)
+
+	if q, err := resource.ParseQuantity(envVal); err == nil {
+		if v, ok := q.AsInt64(); ok {
+			return v
+		}
+		f := q.AsApproximateFloat64()
+		if f > 0 && f < float64(^uint64(0)>>1) {
+			return int64(f)
+		}
+		slog.Warn("Environment variable %s is too large to fit in int64: %q", name, envVal)
+		return def
+	}
+
+	if v, err := strconv.ParseInt(envVal, 10, 64); err == nil {
+		return v
+	}
+
+	slog.Warn("Environment variable %s has invalid value %q (expected int or k8s Quantity like 512Mi): using default %d", name, envVal, def)
+	return def
 }
 
 func envCSV(name string) (ls []string) {

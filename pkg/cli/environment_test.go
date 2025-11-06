@@ -242,7 +242,7 @@ func TestEnvOrBool(t *testing.T) {
 	}
 }
 
-func TestEnvInt64Or(t *testing.T) {
+func TestEnvInt64OrQuantityBytes(t *testing.T) {
 	envName := "TEST_ENV_INT64"
 
 	tests := []struct {
@@ -253,9 +253,9 @@ func TestEnvInt64Or(t *testing.T) {
 		expected int64
 	}{
 		{
-			name:     "empty env with default",
+			name:     "empty env name uses default",
 			env:      "",
-			val:      "",
+			val:      "999",
 			def:      100,
 			expected: 100,
 		},
@@ -280,16 +280,78 @@ func TestEnvInt64Or(t *testing.T) {
 			def:      200,
 			expected: 200,
 		},
+
+		// Quantity cases (bytes)
+		{
+			name:     "quantity Mi",
+			env:      envName,
+			val:      "512Mi",
+			def:      100,
+			expected: 512 * 1024 * 1024,
+		},
+		{
+			name:     "quantity Gi",
+			env:      envName,
+			val:      "2Gi",
+			def:      100,
+			expected: 2 * 1024 * 1024 * 1024,
+		},
+		{
+			name:     "quantity Ki",
+			env:      envName,
+			val:      "4096Ki",
+			def:      100,
+			expected: 4096 * 1024,
+		},
+		{
+			name: "decimal SI 1G (base10)",
+			env:  envName,
+			val:  "1G",
+			def:  100,
+			// 1G in decimal SI is 1,000,000,000 bytes
+			expected: 1_000_000_000,
+		},
+		{
+			name:     "decimal SI 500M (base10)",
+			env:      envName,
+			val:      "500M",
+			def:      100,
+			expected: 500_000_000,
+		},
+		{
+			name:     "lowercase suffix returns default with error message",
+			env:      envName,
+			val:      "1gi",
+			def:      100,
+			expected: 100, // Returns default but prints error about uppercase requirement
+		},
+		{
+			name:     "whitespace trimmed",
+			env:      envName,
+			val:      " 256Mi ",
+			def:      100,
+			expected: 256 * 1024 * 1024,
+		},
+		{
+			name: "too large to fit in int64 returns default",
+			env:  envName,
+			// ~9.22e18 is max int64; use larger than that to trigger overflow handling.
+			val:      "10000000000Gi", // 10,000,000,000 * 1024^3 bytes ≈ 1.07e22
+			def:      1234,
+			expected: 1234,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Clear previous value to avoid bleed between tests
+			t.Setenv(envName, "")
 			if tt.env != "" {
 				t.Setenv(tt.env, tt.val)
 			}
-			actual := envInt64Or(tt.env, tt.def)
+			actual := envInt64OrQuantityBytes(tt.env, tt.def)
 			if actual != tt.expected {
-				t.Errorf("expected result %d, got %d", tt.expected, actual)
+				t.Errorf("expected result %d, got %d (env=%q val=%q def=%d)", tt.expected, actual, tt.env, tt.val, tt.def)
 			}
 		})
 	}
