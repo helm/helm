@@ -29,6 +29,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/cli"
 	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -199,6 +200,56 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 	}
 	runTestCmd(t, tests)
+}
+
+func TestUpgradeWithEnvVars(t *testing.T) {
+	tests := []struct {
+		name      string
+		cmd       string
+		envVars   map[string]string
+		wantError bool
+		golden    string
+	}{
+		{
+			name: "upgrade with HELM_MAX_CHART_SIZE env var with bytes",
+			cmd:  "upgrade too-big testdata/testcharts/compressedchart-0.1.0.tgz",
+			envVars: map[string]string{
+				"HELM_MAX_CHART_SIZE": "10",
+			},
+			wantError: true,
+			golden:    "output/upgrade-with-restricted-chart-size-env.txt",
+		},
+		{
+			name: "upgrade with HELM_MAX_FILE_SIZE env var with Quantity suffix",
+			cmd:  "upgrade test-max-file testdata/testcharts/bigchart-0.1.0.tgz",
+			envVars: map[string]string{
+				"HELM_MAX_FILE_SIZE": "2Ki",
+			},
+			wantError: true,
+			golden:    "output/upgrade-with-restricted-file-size-env.txt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer resetEnv()()
+
+			for k, v := range tt.envVars {
+				t.Setenv(k, v)
+			}
+			// Reset settings to pick up env vars
+			settings = cli.New()
+
+			test := cmdTestCase{
+				name:      tt.name,
+				cmd:       tt.cmd,
+				golden:    tt.golden,
+				wantError: tt.wantError,
+			}
+
+			runTestCmd(t, []cmdTestCase{test})
+		})
+	}
 }
 
 func TestUpgradeWithValue(t *testing.T) {

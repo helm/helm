@@ -1,0 +1,1 @@
+Error: INSTALLATION FAILED: unable to load chart archive: decompressed chart file "bigchart/Chart.yaml" is larger than the maximum file size 1Ki

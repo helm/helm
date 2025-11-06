@@ -373,6 +373,8 @@ func TestUserAgentHeaderInK8sRESTClientConfig(t *testing.T) {
 }
 
 func TestQuantityBytesValue(t *testing.T) {
+	// This test only verifies that the pflag.Value wrapper correctly propagates
+	// values and errors. Comprehensive parsing logic is tested in TestEnvInt64OrQuantityBytes.
 	tests := []struct {
 		name        string
 		input       string
@@ -380,33 +382,13 @@ func TestQuantityBytesValue(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name:     "plain int64",
-			input:    "12345",
-			expected: 12345,
-		},
-		{
-			name:     "quantity Mi",
+			name:     "valid quantity sets value",
 			input:    "256Mi",
 			expected: 256 * 1024 * 1024,
 		},
 		{
-			name:     "quantity Gi",
-			input:    "1Gi",
-			expected: 1 * 1024 * 1024 * 1024,
-		},
-		{
-			name:     "quantity with whitespace",
-			input:    " 512Mi ",
-			expected: 512 * 1024 * 1024,
-		},
-		{
-			name:        "invalid value",
+			name:        "invalid value propagates error",
 			input:       "not-a-number",
-			expectError: true,
-		},
-		{
-			name:        "lowercase suffix rejected",
-			input:       "1gi",
 			expectError: true,
 		},
 	}
