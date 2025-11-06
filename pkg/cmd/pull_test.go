@@ -106,16 +106,16 @@ func TestPullCmd(t *testing.T) {
 		{
 			name:         "Fetch untar when file with same name existed",
 			args:         "test/test1 --untar --untardir test1",
-			existFile:    "test1",
+			existFile:    "test1/test1",
 			wantError:    true,
-			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "test1")),
+			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "test1", "test1")),
 		},
 		{
 			name:         "Fetch untar when dir with same name existed",
-			args:         "test/test2 --untar --untardir test2",
-			existDir:     "test2",
+			args:         "test/test --untar --untardir test2",
+			existDir:     "test2/test",
 			wantError:    true,
-			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "test2")),
+			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "test2", "test")),
 		},
 		{
 			name:         "Fetch, verify, untar",
@@ -178,9 +178,10 @@ func TestPullCmd(t *testing.T) {
 		},
 		{
 			name:         "OCI Fetch untar when dir with same name existed",
-			args:         fmt.Sprintf("oci-test-chart oci://%s/u/ocitestuser/oci-dependent-chart --version 0.1.0 --untar --untardir ocitest2 --untar --untardir ocitest2", ociSrv.RegistryURL),
+			args:         fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart --version 0.1.0 --untar --untardir ocitest2", ociSrv.RegistryURL),
+			existDir:     "ocitest2/oci-dependent-chart",
 			wantError:    true,
-			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "ocitest2")),
+			wantErrorMsg: fmt.Sprintf("failed to untar: a file or directory with the name %s already exists", filepath.Join(srv.Root(), "ocitest2", "oci-dependent-chart")),
 		},
 		{
 			name:       "Fail fetching non-existent OCI chart",
@@ -189,10 +190,9 @@ func TestPullCmd(t *testing.T) {
 			wantError:  true,
 		},
 		{
-			name:         "Fail fetching OCI chart without version specified",
-			args:         fmt.Sprintf("oci://%s/u/ocitestuser/nosuchthing", ociSrv.RegistryURL),
-			wantErrorMsg: "Error: --version flag is explicitly required for OCI registries",
-			wantError:    true,
+			name:      "Fail fetching OCI chart without version specified",
+			args:      fmt.Sprintf("oci://%s/u/ocitestuser/nosuchthing", ociSrv.RegistryURL),
+			wantError: true,
 		},
 		{
 			name:       "Fetching OCI chart without version option specified",
@@ -205,10 +205,11 @@ func TestPullCmd(t *testing.T) {
 			expectFile: "./oci-dependent-chart-0.1.0.tgz",
 		},
 		{
-			name:       "Fail fetching OCI chart with version mismatch",
-			args:       fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.2.0 --version 0.1.0", ociSrv.RegistryURL),
-			wantError:  true,
-			failExpect: "chart reference and version mismatch",
+			name:         "Fail fetching OCI chart with version mismatch",
+			args:         fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.2.0 --version 0.1.0", ociSrv.RegistryURL),
+			wantError:    true,
+			wantErrorMsg: "chart reference and version mismatch: 0.1.0 is not 0.2.0",
+			failExpect:   "chart reference and version mismatch",
 		},
 		{
 			name:         "Fail because of small max chart size",
@@ -234,6 +235,9 @@ func TestPullCmd(t *testing.T) {
 			// Create file or Dir before helm pull --untar, see: https://github.com/helm/helm/issues/7182
 			if tt.existFile != "" {
 				file := filepath.Join(outdir, tt.existFile)
+				if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
+					t.Fatal(err)
+				}
 				_, err := os.Create(file)
 				if err != nil {
 					t.Fatal(err)
@@ -241,7 +245,7 @@ func TestPullCmd(t *testing.T) {
 			}
 			if tt.existDir != "" {
 				file := filepath.Join(outdir, tt.existDir)
-				err := os.Mkdir(file, 0755)
+				err := os.MkdirAll(file, 0755)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -309,16 +313,19 @@ func runPullTests(t *testing.T, tests []struct {
 			}
 			if tt.existDir != "" {
 				file := filepath.Join(outdir, tt.existDir)
-				err := os.Mkdir(file, 0755)
+				err := os.MkdirAll(file, 0755)
 				if err != nil {
 					t.Fatal(err)
 				}
 			}
 			_, _, err := executeActionCommand(cmd)
+			if tt.wantError && err == nil {
+				t.Fatalf("%q: expected error but got none", tt.name)
+			}
 			if err != nil {
 				if tt.wantError {
-					if tt.wantErrorMsg != "" && tt.wantErrorMsg == err.Error() {
-						t.Fatalf("Actual error %s, not equal to expected error %s", err, tt.wantErrorMsg)
+					if tt.wantErrorMsg != "" && tt.wantErrorMsg != err.Error() {
+						t.Fatalf("Actual error '%s', not equal to expected error '%s'", err, tt.wantErrorMsg)
 					}
 					return
 				}
@@ -493,10 +500,9 @@ func TestPullWithCredentialsCmdOCIRegistry(t *testing.T) {
 			wantError: true,
 		},
 		{
-			name:         "Fail fetching OCI chart without version specified",
-			args:         buildOCIURL(ociSrv.RegistryURL, "nosuchthing", "", ociSrv.TestUsername, ociSrv.TestPassword),
-			wantErrorMsg: "Error: --version flag is explicitly required for OCI registries",
-			wantError:    true,
+			name:      "Fail fetching OCI chart without version specified",
+			args:      buildOCIURL(ociSrv.RegistryURL, "nosuchthing", "", ociSrv.TestUsername, ociSrv.TestPassword),
+			wantError: true,
 		},
 	}
 
