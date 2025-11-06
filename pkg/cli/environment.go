@@ -222,6 +222,31 @@ func envFloat32Or(name string, def float32) float32 {
 	return float32(ret)
 }
 
+// parseQuantityOrInt64 parses a string as either a Kubernetes Quantity or plain int64.
+// Returns the parsed value and an error if parsing fails.
+func parseQuantityOrInt64(s string) (int64, error) {
+	s = strings.TrimSpace(s)
+
+	// Try parsing as Kubernetes Quantity first
+	if q, err := resource.ParseQuantity(s); err == nil {
+		if v, ok := q.AsInt64(); ok {
+			return v, nil
+		}
+		f := q.AsApproximateFloat64()
+		if f > 0 && f < float64(^uint64(0)>>1) {
+			return int64(f), nil
+		}
+		return 0, fmt.Errorf("quantity %q is too large to fit in int64", s)
+	}
+
+	// Fallback to plain int64
+	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid value %q (expected int or k8s Quantity like 512Mi)", s)
+	}
+	return v, nil
+}
+
 // Tries to parse as a k8s Quantity first, falls back to plain int64 parsing.
 func envInt64OrQuantityBytes(name string, def int64) int64 {
 	if name == "" {
@@ -232,26 +257,46 @@ func envInt64OrQuantityBytes(name string, def int64) int64 {
 		return def
 	}
 
-	envVal = strings.TrimSpace(envVal)
-
-	if q, err := resource.ParseQuantity(envVal); err == nil {
-		if v, ok := q.AsInt64(); ok {
-			return v
-		}
-		f := q.AsApproximateFloat64()
-		if f > 0 && f < float64(^uint64(0)>>1) {
-			return int64(f)
-		}
-		slog.Warn("Environment variable %s is too large to fit in int64: %q", name, envVal)
+	v, err := parseQuantityOrInt64(envVal)
+	if err != nil {
+		defQuantity := resource.NewQuantity(def, resource.BinarySI)
+		slog.Warn(err.Error() + fmt.Sprintf(": using default %s", defQuantity.String()))
 		return def
 	}
+	return v
+}
 
-	if v, err := strconv.ParseInt(envVal, 10, 64); err == nil {
-		return v
+// QuantityBytesValue is a custom flag type that accepts both plain int64 and k8s Quantity formats
+type QuantityBytesValue struct {
+	value *int64
+}
+
+// NewQuantityBytesValue creates a new QuantityBytesValue flag with a pointer to an int64
+func NewQuantityBytesValue(p *int64) *QuantityBytesValue {
+	return &QuantityBytesValue{value: p}
+}
+
+// Set parses the input string as either a Kubernetes Quantity or plain int64
+func (q *QuantityBytesValue) Set(s string) error {
+	v, err := parseQuantityOrInt64(s)
+	if err != nil {
+		return err
 	}
+	*q.value = v
+	return nil
+}
 
-	slog.Warn("Environment variable %s has invalid value %q (expected int or k8s Quantity like 512Mi): using default %d", name, envVal, def)
-	return def
+// String returns the string representation of the value
+func (q *QuantityBytesValue) String() string {
+	if q.value == nil {
+		return "0"
+	}
+	return strconv.FormatInt(*q.value, 10)
+}
+
+// Type returns the type name for help messages
+func (q *QuantityBytesValue) Type() string {
+	return "quantity"
 }
 
 func envCSV(name string) (ls []string) {

@@ -33,6 +33,7 @@ import (
 	ci "helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/chart/loader/archive"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/cmd/require"
@@ -84,6 +85,9 @@ which can contain sensitive values. To hide Kubernetes Secrets use the
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewUpgrade(cfg)
+	// Initialize from environment settings so they serve as defaults for the flags
+	client.MaxChartSize = settings.MaxChartSize
+	client.MaxChartFileSize = settings.MaxChartFileSize
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 	var createNamespace bool
@@ -306,8 +310,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
 	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, upgrade will ignore the check for helm annotations and take ownership of the existing resources")
-	f.Int64Var(&client.MaxChartSize, "max-chart-size", settings.MaxChartSize, "maximum size in bytes for a decompressed chart (default is 100mb)")
-	f.Int64Var(&client.MaxChartFileSize, "max-file-size", settings.MaxChartFileSize, "maximum size in bytes for a single file in a chart (default is 5mb)")
+	f.Var(cli.NewQuantityBytesValue(&client.MaxChartSize), "max-chart-size", "maximum size for a decompressed chart (e.g., 100Mi, 1Gi; default is 100Mi)")
+	f.Var(cli.NewQuantityBytesValue(&client.MaxChartFileSize), "max-file-size", "maximum size for a single file in a chart (e.g., 5Mi, 10Mi; default is 5Mi)")
 	addDryRunFlag(cmd)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)

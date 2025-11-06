@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"helm.sh/helm/v4/internal/sympath"
 	"helm.sh/helm/v4/pkg/chart/loader/archive"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -106,7 +108,8 @@ func LoadDirWithOptions(dir string, opts archive.Options) (*chart.Chart, error) 
 		}
 
 		if fi.Size() > opts.MaxDecompressedFileSize {
-			return fmt.Errorf("chart file %q is larger than the maximum file size %d", fi.Name(), opts.MaxDecompressedFileSize)
+			maxSize := resource.NewQuantity(opts.MaxDecompressedFileSize, resource.BinarySI)
+			return fmt.Errorf("chart file %q is larger than the maximum file size %s", fi.Name(), maxSize.String())
 		}
 
 		data, err := os.ReadFile(name)

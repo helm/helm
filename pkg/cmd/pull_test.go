@@ -207,14 +207,15 @@ func TestPullCmd(t *testing.T) {
 		{
 			name:         "Fail fetching OCI chart with version mismatch",
 			args:         fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.2.0 --version 0.1.0", ociSrv.RegistryURL),
-			wantErrorMsg: "chart reference and version mismatch: 0.1.0 is not 0.2.0",
 			wantError:    true,
+			wantErrorMsg: "chart reference and version mismatch: 0.1.0 is not 0.2.0",
+			failExpect:   "chart reference and version mismatch",
 		},
 		{
 			name:         "Fail because of small max chart size",
-			args:         "test/test1 --max-chart-size=90",
+			args:         "test/signtest --untar --max-chart-size=1Ki",
 			wantError:    true,
-			wantErrorMsg: "decompressed chart is larger than the maximum size 90 bytes",
+			wantErrorMsg: "decompressed chart is larger than the maximum size 1Ki",
 		},
 	}
 
