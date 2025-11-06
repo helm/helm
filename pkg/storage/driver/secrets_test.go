@@ -96,6 +96,20 @@ func TestSecretList(t *testing.T) {
 		releaseStub("key-6", 1, "default", common.StatusSuperseded),
 	}...)
 
+	// list releases with pagination
+	err := secrets.ListPages(func(page []release.Releaser, lastPage bool) (end bool) {
+		// check
+		if len(page) != 6 {
+			t.Errorf("Expected 6 secrets, got %d:\n%v\n", len(page), page)
+		}
+
+		return !lastPage
+	}, func(rel release.Releaser) bool { return true })
+	// check
+	if err != nil {
+		t.Errorf("Failed to list deleted: %s", err)
+	}
+
 	// list all deleted releases
 	del, err := secrets.List(func(rel release.Releaser) bool {
 		rls := convertReleaserToV1(t, rel)
@@ -167,6 +181,18 @@ func TestSecretQuery(t *testing.T) {
 	_, err = secrets.Query(map[string]string{"name": "notExist"})
 	if err != ErrReleaseNotFound {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
+	}
+
+	// query releases with pagination
+	err = secrets.QueryPages(func(page []release.Releaser, lastPage bool) (err bool) {
+		if len(page) != 2 {
+			t.Fatalf("Expected 2 results, actual %d", len(page))
+		}
+
+		return !lastPage
+	}, map[string]string{"status": "deployed"})
+	if err != nil {
+		t.Fatalf("Failed to query: %s", err)
 	}
 }
 
