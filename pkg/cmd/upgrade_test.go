@@ -83,6 +83,7 @@ func TestUpgradeCmd(t *testing.T) {
 	missingDepsPath := "testdata/testcharts/chart-missing-deps"
 	badDepsPath := "testdata/testcharts/chart-bad-requirements"
 	presentDepsPath := "testdata/testcharts/chart-with-subchart-update"
+	compressedPath := "testdata/testcharts/compressedchart-0.1.0.tgz"
 
 	relWithStatusMock := func(n string, v int, ch *chart.Chart, status rcommon.Status) *release.Release {
 		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch, Status: status})
@@ -189,6 +190,12 @@ func TestUpgradeCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("upgrade funny-bunny -i '%s'", chartPath),
 			golden: "output/upgrade-uninstalled-with-keep-history.txt",
 			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, rcommon.StatusUninstalled)},
+		},
+		{
+			name:      "upgrade with restricted max size",
+			cmd:       fmt.Sprintf("upgrade too-big '%s' --max-chart-size=52", compressedPath),
+			wantError: true,
+			golden:    "output/upgrade-failed-max-chart-size.txt",
 		},
 	}
 	runTestCmd(t, tests)

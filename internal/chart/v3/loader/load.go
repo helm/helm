@@ -41,6 +41,18 @@ type ChartLoader interface {
 	Load() (*chart.Chart, error)
 }
 
+// LoadWithOptions takes a string name, resolves it to a file or directory, and loads it with custom options.
+func LoadWithOptions(name string, opts archive.Options) (*chart.Chart, error) {
+	fi, err := os.Stat(name)
+	if err != nil {
+		return nil, err
+	}
+	if fi.IsDir() {
+		return LoadDirWithOptions(name, opts)
+	}
+	return LoadFileWithOptions(name, opts)
+}
+
 // Loader returns a new ChartLoader appropriate for the given chart name
 func Loader(name string) (ChartLoader, error) {
 	fi, err := os.Stat(name)
@@ -48,9 +60,9 @@ func Loader(name string) (ChartLoader, error) {
 		return nil, err
 	}
 	if fi.IsDir() {
-		return DirLoader(name), nil
+		return NewDefaultDirLoader(name), nil
 	}
-	return FileLoader(name), nil
+	return NewDefaultFileLoader(name), nil
 }
 
 // Load takes a string name, tries to resolve it to a file or directory, and then loads it.

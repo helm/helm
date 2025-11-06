@@ -242,6 +242,59 @@ func TestEnvOrBool(t *testing.T) {
 	}
 }
 
+func TestEnvInt64Or(t *testing.T) {
+	envName := "TEST_ENV_INT64"
+
+	tests := []struct {
+		name     string
+		env      string
+		val      string
+		def      int64
+		expected int64
+	}{
+		{
+			name:     "empty env with default",
+			env:      "",
+			val:      "",
+			def:      100,
+			expected: 100,
+		},
+		{
+			name:     "env set with valid int64",
+			env:      envName,
+			val:      "12345",
+			def:      100,
+			expected: 12345,
+		},
+		{
+			name:     "env fails parsing with default",
+			env:      envName,
+			val:      "NOT_A_NUMBER",
+			def:      100,
+			expected: 100,
+		},
+		{
+			name:     "env empty string with default",
+			env:      envName,
+			val:      "",
+			def:      200,
+			expected: 200,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.env != "" {
+				t.Setenv(tt.env, tt.val)
+			}
+			actual := envInt64Or(tt.env, tt.def)
+			if actual != tt.expected {
+				t.Errorf("expected result %d, got %d", tt.expected, actual)
+			}
+		})
+	}
+}
+
 func TestUserAgentHeaderInK8sRESTClientConfig(t *testing.T) {
 	defer resetEnv()()
 

@@ -61,11 +61,19 @@ func Loader(name string) (ChartLoader, error) {
 // If a .helmignore file is present, the directory loader will skip loading any files
 // matching it. But .helmignore is not evaluated when reading out of an archive.
 func Load(name string) (*chart.Chart, error) {
-	l, err := Loader(name)
+	return LoadWithOptions(name, archive.DefaultOptions)
+}
+
+// LoadWithOptions takes a string name, resolves it to a file or directory, and loads it with custom options.
+func LoadWithOptions(name string, opts archive.Options) (*chart.Chart, error) {
+	fi, err := os.Stat(name)
 	if err != nil {
 		return nil, err
 	}
-	return l.Load()
+	if fi.IsDir() {
+		return LoadDirWithOptions(name, opts)
+	}
+	return LoadFileWithOptions(name, opts)
 }
 
 // LoadFiles loads from in-memory files.

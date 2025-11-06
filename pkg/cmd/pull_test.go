@@ -210,6 +210,12 @@ func TestPullCmd(t *testing.T) {
 			wantErrorMsg: "chart reference and version mismatch: 0.1.0 is not 0.2.0",
 			wantError:    true,
 		},
+		{
+			name:         "Fail because of small max chart size",
+			args:         "test/test1 --max-chart-size=90",
+			wantError:    true,
+			wantErrorMsg: "decompressed chart is larger than the maximum size 90 bytes",
+		},
 	}
 
 	contentCache := t.TempDir()
