@@ -232,7 +232,7 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 
 // resolve takes a list of dependencies and translates them into an exact version to download.
 //
-// This returns a lock file, which has all of the dependencies normalized to a specific version.
+// This returns a lock file, which has all of the dependencies normalized to a specific version
 func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) (*chart.Lock, error) {
 	res := resolver.New(m.ChartPath, m.RepositoryCache, m.RegistryClient)
 	return res.Resolve(req, repoNames)
@@ -315,7 +315,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
-		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep, repos)
 		if err != nil {
 			saveError = fmt.Errorf("could not find %s: %w", churl, err)
 			break
@@ -505,6 +505,7 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 
 	var ru []*repo.Entry
 
+Outer:
 	for _, dd := range deps {
 
 		// If the chart is in the local charts directory no repository needs
@@ -531,6 +532,14 @@ func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.
 		rn = managerKeyPrefix + rn
 
 		repoNames[dd.Name] = rn
+
+		// If repository is already present don't add to array. This will skip
+		// unnecessary index file downloading improving performance.
+		for _, item := range ru {
+			if item.URL == dd.Repository {
+				continue Outer
+			}
+		}
 
 		// Assuming the repository is generally available. For Helm managed
 		// access controls the repository needs to be added through the user
@@ -717,23 +726,21 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 	return nil
 }
 
-// findChartURL searches the cache of repo data for a chart that has the name and the repoURL specified.
+// findChartURL searches the cache of repo data for the specified dependency.
 //
-// 'name' is the name of the chart. Version is an exact semver, or an empty string. If empty, the
+// The version in the given dependency is an exact semver, or an empty string. If empty, the
 // newest version will be returned.
 //
-// repoURL is the repository to search
-//
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, insecureskiptlsverify, passcredentialsall bool, caFile, certFile, keyFile string, err error) {
-	if registry.IsOCI(repoURL) {
-		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", false, false, "", "", "", nil
+func (m *Manager) findChartURL(dep *chart.Dependency, repos map[string]*repo.ChartRepository) (url, username, password string, insecureskiptlsverify, passcredentialsall bool, caFile, certFile, keyFile string, err error) {
+	if registry.IsOCI(dep.Repository) {
+		return fmt.Sprintf("%s/%s:%s", dep.Repository, dep.Name, dep.Version), "", "", false, false, "", "", "", nil
 	}
 
 	for _, cr := range repos {
-		if urlutil.Equal(repoURL, cr.Config.URL) {
+		if urlutil.Equal(dep.Repository, cr.Config.URL) {
 			var entry repo.ChartVersions
-			entry, err = findEntryByName(name, cr)
+			entry, err = findEntryByName(dep.Name, cr)
 			if err != nil {
 				// TODO: Where linting is skipped in this function we should
 				// refactor to remove naked returns while ensuring the same
@@ -742,12 +749,12 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 				return
 			}
 			var ve *repo.ChartVersion
-			ve, err = findVersionedEntry(version, entry)
+			ve, err = findVersionedEntry(dep.Version, entry)
 			if err != nil {
 				//nolint:nakedret
 				return
 			}
-			url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
+			url, err = repo.ResolveReferenceURL(dep.Repository, ve.URLs[0])
 			if err != nil {
 				//nolint:nakedret
 				return
@@ -763,11 +770,17 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			return
 		}
 	}
-	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
+
+	if dep.ChartURL != "" {
+		url = dep.ChartURL
+	} else {
+		url, err = repo.FindChartInRepoURL(dep.Repository, dep.Name, m.Getters, repo.WithChartVersion(dep.Version), repo.WithClientTLS(certFile, keyFile, caFile))
+	}
+
 	if err == nil {
 		return url, username, password, false, false, "", "", "", err
 	}
-	err = fmt.Errorf("chart %s not found in %s: %w", name, repoURL, err)
+	err = fmt.Errorf("chart %s not found in %s: %w", dep.Name, dep.Repository, err)
 	return url, username, password, false, false, "", "", "", err
 }
 
