@@ -164,9 +164,9 @@ func (secrets *Secrets) List(filter func(release.Releaser) bool) ([]release.Rele
 }
 
 // ListPages same as List, but with pagination
-func (secrets *Secrets) ListPages(f func(page []release.Releaser, lastPage bool) (end bool), filter func(release.Releaser) bool) error {
+func (secrets *Secrets) ListPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, filter func(release.Releaser) bool) error {
 	lsel := kblabels.Set{"owner": owner}.AsSelector()
-	opts := metav1.ListOptions{LabelSelector: lsel.String()}
+	opts := metav1.ListOptions{Limit: limit, LabelSelector: lsel.String()}
 
 	return secrets.listPages(f, opts, filter)
 }
