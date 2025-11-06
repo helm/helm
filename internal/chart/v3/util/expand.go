@@ -30,9 +30,14 @@ import (
 	"helm.sh/helm/v4/pkg/chart/loader/archive"
 )
 
-// Expand uncompresses and extracts a chart into the specified directory.
+// Expand uncompresses and extracts a chart into the specified directory using default options.
 func Expand(dir string, r io.Reader) error {
-	files, err := archive.LoadArchiveFiles(r)
+	return ExpandWithOptions(dir, r, archive.DefaultOptions)
+}
+
+// ExpandWithOptions uncompresses and extracts a chart into the specified directory using the provided options.
+func ExpandWithOptions(dir string, r io.Reader, opts archive.Options) error {
+	files, err := archive.LoadArchiveFilesWithOptions(r, opts)
 	if err != nil {
 		return err
 	}
@@ -83,12 +88,17 @@ func Expand(dir string, r io.Reader) error {
 	return nil
 }
 
-// ExpandFile expands the src file into the dest directory.
+// ExpandFile expands the src file into the dest directory using default options.
 func ExpandFile(dest, src string) error {
+	return ExpandFileWithOptions(dest, src, archive.DefaultOptions)
+}
+
+// ExpandFileWithOptions expands the src file into the dest directory using the provided options.
+func ExpandFileWithOptions(dest, src string, opts archive.Options) error {
 	h, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer h.Close()
-	return Expand(dest, h)
+	return ExpandWithOptions(dest, h, opts)
 }

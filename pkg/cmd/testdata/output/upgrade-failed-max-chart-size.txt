@@ -1,0 +1,1 @@
+Error: unable to load chart archive: decompressed chart is larger than the maximum size 52 bytes

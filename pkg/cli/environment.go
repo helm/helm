@@ -93,6 +93,10 @@ type EnvSettings struct {
 	ColorMode string
 	// ContentCache is the location where cached charts are stored
 	ContentCache string
+	// MaxChartSize is the maximum size of a decompressed chart in bytes
+	MaxChartSize int64
+	// MaxChartFileSize is the maximum size of a single file in a chart in bytes
+	MaxChartFileSize int64
 }
 
 func New() *EnvSettings {
@@ -115,6 +119,8 @@ func New() *EnvSettings {
 		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 		QPS:                       envFloat32Or("HELM_QPS", defaultQPS),
 		ColorMode:                 envColorMode(),
+		MaxChartSize:              envInt64Or("HELM_MAX_CHART_SIZE", 100*1024*1024), // 100 MiB
+		MaxChartFileSize:          envInt64Or("HELM_MAX_FILE_SIZE", 5*1024*1024),    // 5 MiB
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -214,6 +220,20 @@ func envFloat32Or(name string, def float32) float32 {
 	return float32(ret)
 }
 
+// We want to handle int64 like returned by https://pkg.go.dev/io/fs#FileInfo
+func envInt64Or(name string, def int64) int64 {
+	if name == "" {
+		return def
+	}
+	envVal := envOr(name, strconv.FormatInt(def, 10))
+	ret, err := strconv.ParseInt(envVal, 10, 64)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Environment variable %s has invalid value %q (expected an integer): %v\n", name, envVal, err)
+		return def
+	}
+	return ret
+}
+
 func envCSV(name string) (ls []string) {
 	trimmed := strings.Trim(os.Getenv(name), ", ")
 	if trimmed != "" {
@@ -255,6 +275,8 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_MAX_HISTORY":       strconv.Itoa(s.MaxHistory),
 		"HELM_BURST_LIMIT":       strconv.Itoa(s.BurstLimit),
 		"HELM_QPS":               strconv.FormatFloat(float64(s.QPS), 'f', 2, 32),
+		"HELM_MAX_CHART_SIZE":    strconv.FormatInt(s.MaxChartSize, 10),
+		"HELM_MAX_FILE_SIZE":     strconv.FormatInt(s.MaxChartFileSize, 10),
 
 		// broken, these are populated from helm flags and not kubeconfig.
 		"HELM_KUBECONTEXT":                  s.KubeContext,
