@@ -213,9 +213,9 @@ func TestPullCmd(t *testing.T) {
 		},
 		{
 			name:         "Fail because of small max chart size",
-			args:         "test/signtest --untar --max-chart-size=1Ki",
+			args:         "test/bigchart --untar --max-chart-size=3Ki",
 			wantError:    true,
-			wantErrorMsg: "decompressed chart is larger than the maximum size 1Ki",
+			wantErrorMsg: "decompressed chart is larger than the maximum size 3Ki",
 		},
 	}
 
