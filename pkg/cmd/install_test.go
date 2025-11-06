@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/repo/v1/repotest"
 )
 
@@ -283,6 +284,56 @@ func TestInstall(t *testing.T) {
 	}
 
 	runTestCmd(t, tests)
+}
+
+func TestInstallWithEnvVars(t *testing.T) {
+	tests := []struct {
+		name      string
+		cmd       string
+		envVars   map[string]string
+		wantError bool
+		golden    string
+	}{
+		{
+			name: "install with HELM_MAX_CHART_SIZE env var with bytes",
+			cmd:  "install too-big testdata/testcharts/compressedchart-0.1.0.tgz",
+			envVars: map[string]string{
+				"HELM_MAX_CHART_SIZE": "42",
+			},
+			wantError: true,
+			golden:    "output/install-with-restricted-chart-size.txt",
+		},
+		{
+			name: "install with HELM_MAX_FILE_SIZE env var with Quantity suffix",
+			cmd:  "install test-max-file testdata/testcharts/bigchart-0.1.0.tgz",
+			envVars: map[string]string{
+				"HELM_MAX_FILE_SIZE": "1Ki",
+			},
+			wantError: true,
+			golden:    "output/install-with-restricted-file-size.txt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer resetEnv()()
+
+			for k, v := range tt.envVars {
+				t.Setenv(k, v)
+			}
+			// Reset settings to pick up env vars
+			settings = cli.New()
+
+			test := cmdTestCase{
+				name:      tt.name,
+				cmd:       tt.cmd,
+				golden:    tt.golden,
+				wantError: tt.wantError,
+			}
+
+			runTestCmd(t, []cmdTestCase{test})
+		})
+	}
 }
 
 func TestInstallOutputCompletion(t *testing.T) {
