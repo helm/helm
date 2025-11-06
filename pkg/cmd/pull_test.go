@@ -205,16 +205,16 @@ func TestPullCmd(t *testing.T) {
 			expectFile: "./oci-dependent-chart-0.1.0.tgz",
 		},
 		{
-			name:         "Fail fetching OCI chart with version mismatch",
-			args:         fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.2.0 --version 0.1.0", ociSrv.RegistryURL),
-			wantErrorMsg: "Error: chart reference and version mismatch: 0.2.0 is not 0.1.0",
-			wantError:    true,
+			name:       "Fail fetching OCI chart with version mismatch",
+			args:       fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.2.0 --version 0.1.0", ociSrv.RegistryURL),
+			wantError:  true,
+			failExpect: "chart reference and version mismatch",
 		},
 		{
 			name:         "Fail because of small max chart size",
-			args:         "test/test1 --max-chart-size=90",
+			args:         "test/signtest --untar --max-chart-size=1Ki",
 			wantError:    true,
-			wantErrorMsg: "decompressed chart is larger than the maximum size 90 bytes",
+			wantErrorMsg: "decompressed chart is larger than the maximum size 1Ki",
 		},
 	}
 
@@ -249,8 +249,8 @@ func TestPullCmd(t *testing.T) {
 			_, out, err := executeActionCommand(cmd)
 			if err != nil {
 				if tt.wantError {
-					if tt.wantErrorMsg != "" && tt.wantErrorMsg == err.Error() {
-						t.Fatalf("Actual error %s, not equal to expected error %s", err, tt.wantErrorMsg)
+					if tt.wantErrorMsg != "" && tt.wantErrorMsg != err.Error() {
+						t.Fatalf("Actual error '%s', not equal to expected error '%s'", err, tt.wantErrorMsg)
 					}
 					return
 				}

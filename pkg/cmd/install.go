@@ -34,6 +34,7 @@ import (
 	"helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/chart/loader/archive"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/cmd/require"
@@ -132,6 +133,8 @@ charts in a repository, use 'helm search'.
 
 func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewInstall(cfg)
+	client.MaxChartSize = settings.MaxChartSize
+	client.MaxChartFileSize = settings.MaxChartFileSize
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 
@@ -180,8 +183,8 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addDryRunFlag(cmd)
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer, settings)
-	f.Int64Var(&client.MaxChartSize, "max-chart-size", settings.MaxChartSize, "maximum size in bytes for a decompressed chart (default is 100mb)")
-	f.Int64Var(&client.MaxChartFileSize, "max-file-size", settings.MaxChartFileSize, "maximum size in bytes for a single file in a chart (default is 5mb)")
+	f.Var(cli.NewQuantityBytesValue(&client.MaxChartSize), "max-chart-size", "maximum size for a decompressed chart (e.g., 500Ki, 5Mi)")
+	f.Var(cli.NewQuantityBytesValue(&client.MaxChartFileSize), "max-file-size", "maximum size for a single file in a chart (e.g., 5Mi, 10Mi)")
 
 	return cmd
 }

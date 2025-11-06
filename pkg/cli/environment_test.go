@@ -372,6 +372,68 @@ func TestUserAgentHeaderInK8sRESTClientConfig(t *testing.T) {
 	}
 }
 
+func TestQuantityBytesValue(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		expected    int64
+		expectError bool
+	}{
+		{
+			name:     "plain int64",
+			input:    "12345",
+			expected: 12345,
+		},
+		{
+			name:     "quantity Mi",
+			input:    "256Mi",
+			expected: 256 * 1024 * 1024,
+		},
+		{
+			name:     "quantity Gi",
+			input:    "1Gi",
+			expected: 1 * 1024 * 1024 * 1024,
+		},
+		{
+			name:     "quantity with whitespace",
+			input:    " 512Mi ",
+			expected: 512 * 1024 * 1024,
+		},
+		{
+			name:        "invalid value",
+			input:       "not-a-number",
+			expectError: true,
+		},
+		{
+			name:        "lowercase suffix rejected",
+			input:       "1gi",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var val int64
+			qv := NewQuantityBytesValue(&val)
+
+			err := qv.Set(tt.input)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("expected error but got none")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+				if val != tt.expected {
+					t.Errorf("expected %d, got %d", tt.expected, val)
+				}
+			}
+		})
+	}
+}
+
 func resetEnv() func() {
 	origEnv := os.Environ()
 

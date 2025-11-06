@@ -30,6 +30,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 var drivePathPattern = regexp.MustCompile(`^[a-zA-Z]:/`)
@@ -139,11 +141,13 @@ func LoadArchiveFilesWithOptions(in io.Reader, opts Options) ([]*BufferedFile, e
 		}
 
 		if hd.Size > remainingSize {
-			return nil, fmt.Errorf("decompressed chart is larger than the maximum size %d bytes", opts.MaxDecompressedChartSize)
+			maxSize := resource.NewQuantity(opts.MaxDecompressedChartSize, resource.BinarySI)
+			return nil, fmt.Errorf("decompressed chart is larger than the maximum size %s", maxSize.String())
 		}
 
 		if hd.Size > opts.MaxDecompressedFileSize {
-			return nil, fmt.Errorf("decompressed chart file %q is larger than the maximum file size %d bytes", hd.Name, opts.MaxDecompressedFileSize)
+			maxSize := resource.NewQuantity(opts.MaxDecompressedFileSize, resource.BinarySI)
+			return nil, fmt.Errorf("decompressed chart file %q is larger than the maximum file size %s", hd.Name, maxSize.String())
 		}
 
 		limitedReader := io.LimitReader(tr, remainingSize)
@@ -159,7 +163,8 @@ func LoadArchiveFilesWithOptions(in io.Reader, opts Options) ([]*BufferedFile, e
 		// is the one that goes over the limit. It assumes the Size stored in the tar header
 		// is correct, something many applications do.
 		if bytesWritten < hd.Size || remainingSize <= 0 {
-			return nil, fmt.Errorf("decompressed chart is larger than the maximum size %d bytes", opts.MaxDecompressedChartSize)
+			maxSize := resource.NewQuantity(opts.MaxDecompressedChartSize, resource.BinarySI)
+			return nil, fmt.Errorf("decompressed chart is larger than the maximum size %s", maxSize.String())
 		}
 
 		data := bytes.TrimPrefix(b.Bytes(), utf8bom)

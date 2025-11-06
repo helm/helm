@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/cmd/require"
 )
 
@@ -45,6 +46,9 @@ result in an error, and the chart will not be saved locally.
 
 func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewPull(action.WithConfig(cfg))
+	// Initialize from environment settings so they serve as defaults for the flags
+	client.MaxChartSize = settings.MaxChartSize
+	client.MaxChartFileSize = settings.MaxChartFileSize
 
 	cmd := &cobra.Command{
 		Use:     "pull [chart URL | repo/chartname] [...]",
@@ -89,8 +93,8 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.VerifyLater, "prov", false, "fetch the provenance file, but don't perform verification")
 	f.StringVar(&client.UntarDir, "untardir", ".", "if untar is specified, this flag specifies the name of the directory into which the chart is expanded")
 	f.StringVarP(&client.DestDir, "destination", "d", ".", "location to write the chart. If this and untardir are specified, untardir is appended to this")
-	f.Int64Var(&client.MaxChartSize, "max-chart-size", settings.MaxChartSize, "maximum size in bytes for a decompressed chart (default is 100mb)")
-	f.Int64Var(&client.MaxChartFileSize, "max-file-size", settings.MaxChartFileSize, "maximum size in bytes for a single file in a chart (default is 5mb)")
+	f.Var(cli.NewQuantityBytesValue(&client.MaxChartSize), "max-chart-size", "maximum size for a decompressed chart (e.g., 100Mi, 1Gi; default is 100Mi)")
+	f.Var(cli.NewQuantityBytesValue(&client.MaxChartFileSize), "max-file-size", "maximum size for a single file in a chart (e.g., 5Mi, 10Mi; default is 5Mi)")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 
 	err := cmd.RegisterFlagCompletionFunc("version", func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
