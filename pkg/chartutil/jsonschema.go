@@ -21,7 +21,9 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -128,6 +130,7 @@ func ValidateAgainstSingleSchema(values Values, schemaJSON []byte) (reterr error
 		"file":  jsonschema.FileLoader{},
 		"http":  newHTTPURLLoader(),
 		"https": newHTTPURLLoader(),
+		"urn":   urnLoader{},
 	}
 
 	compiler := jsonschema.NewCompiler()
@@ -160,4 +163,33 @@ func (e JSONSchemaValidationError) Error() string {
 	errStr = strings.TrimPrefix(errStr, "jsonschema validation failed with 'file:///values.schema.json#'\n")
 
 	return errStr + "\n"
+}
+
+// URNResolverFunc allows SDK to plug a URN resolver. It must return a
+// schema document compatible with the validator (e.g., result of
+// jsonschema.UnmarshalJSON).
+type URNResolverFunc func(urn string) (any, error)
+
+// URNResolver is the default resolver used by the URN loader. By default it
+// returns a clear error.
+var URNResolver URNResolverFunc = func(urn string) (any, error) {
+	return nil, fmt.Errorf("URN not resolved: %s", urn)
+}
+
+// urnLoader implements resolution for the urn: scheme by delegating to
+// URNResolver. If unresolved, it logs a warning and returns a permissive
+// boolean-true schema to avoid hard failures (back-compat behavior).
+type urnLoader struct{}
+
+// warnedURNs ensures we log the unresolved-URN warning only once per URN.
+var warnedURNs sync.Map
+
+func (l urnLoader) Load(urlStr string) (any, error) {
+	if doc, err := URNResolver(urlStr); err == nil && doc != nil {
+		return doc, nil
+	}
+	if _, loaded := warnedURNs.LoadOrStore(urlStr, struct{}{}); !loaded {
+		log.Printf("WARNING: unresolved URN reference ignored; using permissive schema: %s", urlStr)
+	}
+	return jsonschema.UnmarshalJSON(strings.NewReader("true"))
 }
