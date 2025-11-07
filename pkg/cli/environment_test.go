@@ -326,6 +326,27 @@ func TestEnvInt64OrQuantityBytes(t *testing.T) {
 			expected: 100, // Returns default but prints error about uppercase requirement
 		},
 		{
+			name:     "suffix Mb rejected",
+			env:      envName,
+			val:      "1000Mb",
+			def:      100,
+			expected: 100, // Returns default but prints error about 'Mb' being invalid
+		},
+		{
+			name:     "suffix mo rejected",
+			env:      envName,
+			val:      "1000mo",
+			def:      100,
+			expected: 100, // Returns default but prints error about 'mo' being invalid
+		},
+		{
+			name:     "suffix m rejected (milli)",
+			env:      envName,
+			val:      "10m",
+			def:      100,
+			expected: 100, // Returns default but prints error about 'm' being invalid
+		},
+		{
 			name:     "whitespace trimmed",
 			env:      envName,
 			val:      " 256Mi ",
@@ -389,6 +410,16 @@ func TestQuantityBytesValue(t *testing.T) {
 		{
 			name:        "invalid value propagates error",
 			input:       "not-a-number",
+			expectError: true,
+		},
+		{
+			name:        "Mb suffix rejected",
+			input:       "1Mb",
+			expectError: true,
+		},
+		{
+			name:        "m suffix rejected",
+			input:       "1m",
 			expectError: true,
 		},
 	}
