@@ -222,9 +222,9 @@ func envFloat32Or(name string, def float32) float32 {
 	return float32(ret)
 }
 
-// parseQuantityOrInt64 parses a string as either a Kubernetes Quantity or plain int64.
-// Returns the parsed value and an error if parsing fails.
-func parseQuantityOrInt64(s string) (int64, error) {
+// parseByteSizeOrInt64 parses a string as either a Kubernetes Quantity or plain int64,
+// specifically for byte sizes. Returns the parsed value in bytes
+func parseByteSizeOrInt64(s string) (int64, error) {
 	s = strings.TrimSpace(s)
 
 	// Try parsing as Kubernetes Quantity first
@@ -233,10 +233,19 @@ func parseQuantityOrInt64(s string) (int64, error) {
 			return v, nil
 		}
 		f := q.AsApproximateFloat64()
-		if f > 0 && f < float64(^uint64(0)>>1) {
-			return int64(f), nil
+		// Reject quantities that evaluate to less than 1 byte (e.g. "1m" -> 0.001)
+		// because file sizes must be whole bytes. Treat those as parsing errors.
+		if f < 1 {
+			// Provide a helpful message if the user tried to use "m" (milli) suffix
+			if strings.HasSuffix(strings.ToLower(s), "m") && !strings.HasSuffix(s, "M") {
+				return 0, fmt.Errorf("quantity %q uses 'm' (milli) suffix which represents 0.001; please use IEC values like Ki, Mi, Gi", s)
+			}
+			return 0, fmt.Errorf("quantity %q is too small (less than 1 byte)", s)
 		}
-		return 0, fmt.Errorf("quantity %q is too large to fit in int64", s)
+		if f >= float64(^uint64(0)>>1) {
+			return 0, fmt.Errorf("quantity %q is too large to fit in int64", s)
+		}
+		return int64(f), nil
 	}
 
 	// Fallback to plain int64
@@ -257,7 +266,7 @@ func envInt64OrQuantityBytes(name string, def int64) int64 {
 		return def
 	}
 
-	v, err := parseQuantityOrInt64(envVal)
+	v, err := parseByteSizeOrInt64(envVal)
 	if err != nil {
 		defQuantity := resource.NewQuantity(def, resource.BinarySI)
 		slog.Warn(err.Error() + fmt.Sprintf(": using default %s", defQuantity.String()))
@@ -278,7 +287,7 @@ func NewQuantityBytesValue(p *int64) *QuantityBytesValue {
 
 // Set parses the input string as either a Kubernetes Quantity or plain int64
 func (q *QuantityBytesValue) Set(s string) error {
-	v, err := parseQuantityOrInt64(s)
+	v, err := parseByteSizeOrInt64(s)
 	if err != nil {
 		return err
 	}
