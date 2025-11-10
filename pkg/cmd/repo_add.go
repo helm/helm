@@ -57,7 +57,7 @@ type repoAddOptions struct {
 	certFile              string
 	keyFile               string
 	caFile                string
-	insecureSkipTLSverify bool
+	insecureSkipTLSVerify bool
 
 	repoFile  string
 	repoCache string
@@ -94,7 +94,7 @@ func newRepoAddCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.certFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&o.keyFile, "key-file", "", "identify HTTPS client using this SSL key file")
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
-	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the repository")
+	f.BoolVar(&o.insecureSkipTLSVerify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the repository")
 	f.BoolVar(&o.allowDeprecatedRepos, "allow-deprecated-repos", false, "by default, this command will not allow adding official repos that have been permanently deleted. This disables that behavior")
 	f.BoolVar(&o.passCredentialsAll, "pass-credentials", false, "pass credentials to all domains")
 	f.DurationVar(&o.timeout, "timeout", getter.DefaultHTTPTimeout*time.Second, "time to wait for the index file download to complete")
@@ -177,7 +177,7 @@ func (o *repoAddOptions) run(out io.Writer) error {
 		CertFile:              o.certFile,
 		KeyFile:               o.keyFile,
 		CAFile:                o.caFile,
-		InsecureSkipTLSverify: o.insecureSkipTLSverify,
+		InsecureSkipTLSVerify: o.insecureSkipTLSVerify,
 	}
 
 	// Check if the repo name is legal

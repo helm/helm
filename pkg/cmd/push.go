@@ -38,7 +38,7 @@ type registryPushOptions struct {
 	certFile              string
 	keyFile               string
 	caFile                string
-	insecureSkipTLSverify bool
+	insecureSkipTLSVerify bool
 	plainHTTP             bool
 	password              string
 	username              string
@@ -71,7 +71,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			registryClient, err := newRegistryClient(
-				o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSverify, o.plainHTTP, o.username, o.password,
+				o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSVerify, o.plainHTTP, o.username, o.password,
 			)
 
 			if err != nil {
@@ -82,7 +82,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			remote := args[1]
 			client := action.NewPushWithOpts(action.WithPushConfig(cfg),
 				action.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
-				action.WithInsecureSkipTLSVerify(o.insecureSkipTLSverify),
+				action.WithInsecureSkipTLSVerify(o.insecureSkipTLSVerify),
 				action.WithPlainHTTP(o.plainHTTP),
 				action.WithPushOptWriter(out))
 			client.Settings = settings
@@ -99,7 +99,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&o.certFile, "cert-file", "", "identify registry client using this SSL certificate file")
 	f.StringVar(&o.keyFile, "key-file", "", "identify registry client using this SSL key file")
 	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
-	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart upload")
+	f.BoolVar(&o.insecureSkipTLSVerify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart upload")
 	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart upload")
 	f.StringVar(&o.username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&o.password, "password", "", "chart repository password where to locate the requested chart")

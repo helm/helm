@@ -40,7 +40,7 @@ type pluginInstallOptions struct {
 	certFile              string
 	keyFile               string
 	caFile                string
-	insecureSkipTLSverify bool
+	insecureSkipTLSVerify bool
 	plainHTTP             bool
 	password              string
 	username              string
@@ -88,7 +88,7 @@ func newPluginInstallCmd(out io.Writer) *cobra.Command {
 	cmd.Flags().StringVar(&o.certFile, "cert-file", "", "identify registry client using this SSL certificate file")
 	cmd.Flags().StringVar(&o.keyFile, "key-file", "", "identify registry client using this SSL key file")
 	cmd.Flags().StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
-	cmd.Flags().BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the plugin download")
+	cmd.Flags().BoolVar(&o.insecureSkipTLSVerify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the plugin download")
 	cmd.Flags().BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the plugin download")
 	cmd.Flags().StringVar(&o.username, "username", "", "registry username")
 	cmd.Flags().StringVar(&o.password, "password", "", "registry password")
@@ -106,7 +106,7 @@ func (o *pluginInstallOptions) newInstallerForSource() (installer.Installer, err
 		// Build getter options for OCI
 		options := []getter.Option{
 			getter.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
-			getter.WithInsecureSkipVerifyTLS(o.insecureSkipTLSverify),
+			getter.WithInsecureSkipVerifyTLS(o.insecureSkipTLSVerify),
 			getter.WithPlainHTTP(o.plainHTTP),
 			getter.WithBasicAuth(o.username, o.password),
 		}
