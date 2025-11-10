@@ -74,6 +74,7 @@ type searchRepoOptions struct {
 	repoCacheDir   string
 	outputFormat   output.Format
 	failOnNoResult bool
+	withTimeStamps bool
 }
 
 func newSearchRepoCmd(out io.Writer) *cobra.Command {
@@ -97,6 +98,7 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.version, "version", "", "search using semantic versioning constraints on repositories you have added")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
 	f.BoolVar(&o.failOnNoResult, "fail-on-no-result", false, "search fails if no results are found")
+	f.BoolVar(&o.withTimeStamps, "with-timestamps", false, "print created timestamps on output table")
 
 	bindOutputFlag(cmd, &o.outputFormat)
 
@@ -128,7 +130,7 @@ func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 		return err
 	}
 
-	return o.outputFormat.Write(out, &repoSearchWriter{data, o.maxColWidth, o.failOnNoResult})
+	return o.outputFormat.Write(out, &repoSearchWriter{data, o.maxColWidth, o.failOnNoResult, o.withTimeStamps})
 }
 
 func (o *searchRepoOptions) setupSearchedVersion() {
@@ -205,12 +207,14 @@ type repoChartElement struct {
 	Version     string `json:"version"`
 	AppVersion  string `json:"app_version"`
 	Description string `json:"description"`
+	Created     string `json:"created"`
 }
 
 type repoSearchWriter struct {
 	results        []*search.Result
 	columnWidth    uint
 	failOnNoResult bool
+	withTimestamps bool
 }
 
 func (r *repoSearchWriter) WriteTable(out io.Writer) error {
@@ -228,9 +232,17 @@ func (r *repoSearchWriter) WriteTable(out io.Writer) error {
 	}
 	table := uitable.New()
 	table.MaxColWidth = r.columnWidth
-	table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION", "CREATED")
-	for _, r := range r.results {
-		table.AddRow(r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description, r.Chart.Created.Format(time.RFC3339))
+	if r.withTimestamps {
+		table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION", "CREATED")
+	} else {
+		table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION")
+	}
+	for _, ret := range r.results {
+		if r.withTimestamps {
+			table.AddRow(ret.Name, ret.Chart.Version, ret.Chart.AppVersion, ret.Chart.Description, ret.Chart.Created.Format(time.RFC3339))
+		} else {
+			table.AddRow(ret.Name, ret.Chart.Version, ret.Chart.AppVersion, ret.Chart.Description)
+		}
 	}
 	return output.EncodeTable(out, table)
 }
@@ -253,7 +265,7 @@ func (r *repoSearchWriter) encodeByFormat(out io.Writer, format output.Format) e
 	chartList := make([]repoChartElement, 0, len(r.results))
 
 	for _, r := range r.results {
-		chartList = append(chartList, repoChartElement{r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description})
+		chartList = append(chartList, repoChartElement{r.Name, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description, r.Chart.Created.Format(time.RFC3339)})
 	}
 
 	switch format {
