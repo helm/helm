@@ -92,7 +92,6 @@ func (secrets *Secrets) Get(key string) (release.Releaser, error) {
 
 // listPages common methods to list release pagination
 func (secrets *Secrets) listPages(f func(page []release.Releaser, lastPage bool) (end bool), opts metav1.ListOptions, filter func(release.Releaser) bool) (err error) {
-	token := ""
 	if opts.Limit == 0 {
 		opts.Limit = DefaultPaginationLimit
 	}
@@ -103,7 +102,7 @@ Loop:
 		if nil != err {
 			return err
 		}
-		token = list.Continue
+		opts.Continue = list.Continue
 
 		var results []release.Releaser
 
@@ -123,7 +122,7 @@ Loop:
 			}
 		}
 
-		if f(results, token != "") {
+		if f(results, list.Continue != "") {
 			break Loop
 		}
 	}
