@@ -111,6 +111,20 @@ func TestConfigMapList(t *testing.T) {
 		releaseStub("key-6", 1, "default", common.StatusSuperseded),
 	}...)
 
+	// list releases with pagination
+	err := cfgmaps.ListPages(func(page []release.Releaser, lastPage bool) (end bool) {
+		// check
+		if len(page) != 2 {
+			t.Errorf("Expected 2 cfgmaps, got %d:\n%v\n", len(page), page)
+		}
+
+		return !lastPage
+	}, 2, func(rel release.Releaser) bool { return true })
+	// check
+	if err != nil {
+		t.Errorf("Failed to list cfgmaps: %s", err)
+	}
+
 	// list all deleted releases
 	del, err := cfgmaps.List(func(rel release.Releaser) bool {
 		rls := convertReleaserToV1(t, rel)
@@ -182,6 +196,18 @@ func TestConfigMapQuery(t *testing.T) {
 	_, err = cfgmaps.Query(map[string]string{"name": "notExist"})
 	if err != ErrReleaseNotFound {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
+	}
+
+	// query cfgmaps with pagination
+	err = cfgmaps.QueryPages(func(page []release.Releaser, lastPage bool) (err bool) {
+		if len(page) != 2 {
+			t.Fatalf("Expected 2 results, actual %d", len(page))
+		}
+
+		return !lastPage
+	}, 2, map[string]string{"status": "deployed"})
+	if err != nil {
+		t.Fatalf("Failed to query: %s", err)
 	}
 }
 

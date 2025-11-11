@@ -89,11 +89,51 @@ func (cfgmaps *ConfigMaps) Get(key string) (release.Releaser, error) {
 	return r, nil
 }
 
+// listPages is a common method to list release with pagination
+func (cfgmaps *ConfigMaps) listPages(f func(page []release.Releaser, lastPage bool) (end bool), opts metav1.ListOptions, filter func(release.Releaser) bool) (err error) {
+	if opts.Limit == 0 {
+		opts.Limit = DefaultPaginationLimit
+	}
+
+Loop:
+	for {
+		list, err := cfgmaps.impl.List(context.Background(), opts)
+		if nil != err {
+			return err
+		}
+		opts.Continue = list.Continue
+
+		var results []release.Releaser
+
+		// iterate over the configmaps object list
+		// and decode each release
+		for _, item := range list.Items {
+			rls, err := decodeRelease(string(item.Data["release"]))
+			if err != nil {
+				cfgmaps.Logger().Debug("failed to decode release", "item", item, slog.Any("error", err))
+				continue
+			}
+
+			rls.Labels = item.Labels
+
+			if filter(rls) {
+				results = append(results, rls)
+			}
+		}
+
+		if f(results, list.Continue != "") {
+			break Loop
+		}
+	}
+
+	return nil
+}
+
 // List fetches all releases and returns the list releases such
 // that filter(release) == true. An error is returned if the
 // configmap fails to retrieve the releases.
 func (cfgmaps *ConfigMaps) List(filter func(release.Releaser) bool) ([]release.Releaser, error) {
-	lsel := kblabels.Set{"owner": "helm"}.AsSelector()
+	lsel := kblabels.Set{"owner": owner}.AsSelector()
 	opts := metav1.ListOptions{LabelSelector: lsel.String()}
 
 	list, err := cfgmaps.impl.List(context.Background(), opts)
@@ -120,6 +160,14 @@ func (cfgmaps *ConfigMaps) List(filter func(release.Releaser) bool) ([]release.R
 		}
 	}
 	return results, nil
+}
+
+// ListPages same as List, but with pagination
+func (cfgmaps *ConfigMaps) ListPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, filter func(release.Releaser) bool) error {
+	lsel := kblabels.Set{"owner": owner}.AsSelector()
+	opts := metav1.ListOptions{Limit: limit, LabelSelector: lsel.String()}
+
+	return cfgmaps.listPages(f, opts, filter)
 }
 
 // Query fetches all releases that match the provided map of labels.
@@ -156,6 +204,21 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]release.Releaser, 
 		results = append(results, rls)
 	}
 	return results, nil
+}
+
+// QueryPages same as Query, but with pagination
+func (cfgmaps *ConfigMaps) QueryPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, labels map[string]string) error {
+	ls := kblabels.Set{}
+	for k, v := range labels {
+		if errs := validation.IsValidLabelValue(v); len(errs) != 0 {
+			return fmt.Errorf("invalid label value: %q: %s", v, strings.Join(errs, "; "))
+		}
+		ls[k] = v
+	}
+
+	opts := metav1.ListOptions{Limit: limit, LabelSelector: ls.AsSelector().String()}
+
+	return cfgmaps.listPages(f, opts, func(release.Releaser) bool { return true })
 }
 
 // Create creates a new ConfigMap holding the release. If the
@@ -252,8 +315,6 @@ func (cfgmaps *ConfigMaps) Delete(key string) (rls release.Releaser, err error) 
 //	"owner"          - owner of the configmap, currently "helm".
 //	"name"           - name of the release.
 func newConfigMapsObject(key string, rls *rspb.Release, lbs labels) (*v1.ConfigMap, error) {
-	const owner = "helm"
-
 	// encode the release
 	s, err := encodeRelease(rls)
 	if err != nil {

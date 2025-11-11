@@ -99,15 +99,15 @@ func TestSecretList(t *testing.T) {
 	// list releases with pagination
 	err := secrets.ListPages(func(page []release.Releaser, lastPage bool) (end bool) {
 		// check
-		if len(page) != 6 {
-			t.Errorf("Expected 6 secrets, got %d:\n%v\n", len(page), page)
+		if len(page) != 2 {
+			t.Errorf("Expected 2 secrets, got %d:\n%v\n", len(page), page)
 		}
 
 		return !lastPage
-	}, func(rel release.Releaser) bool { return true })
+	}, 2, func(rel release.Releaser) bool { return true })
 	// check
 	if err != nil {
-		t.Errorf("Failed to list deleted: %s", err)
+		t.Errorf("Failed to list secrets: %s", err)
 	}
 
 	// list all deleted releases
@@ -190,7 +190,7 @@ func TestSecretQuery(t *testing.T) {
 		}
 
 		return !lastPage
-	}, map[string]string{"status": "deployed"})
+	}, 2, map[string]string{"status": "deployed"})
 	if err != nil {
 		t.Fatalf("Failed to query: %s", err)
 	}

@@ -314,8 +314,14 @@ func (d *MaxHistoryMockDriver) Get(key string) (release.Releaser, error) {
 func (d *MaxHistoryMockDriver) List(filter func(release.Releaser) bool) ([]release.Releaser, error) {
 	return d.Driver.List(filter)
 }
+func (d *MaxHistoryMockDriver) ListPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, filter func(release.Releaser) bool) error {
+	return d.Driver.ListPages(f, limit, filter)
+}
 func (d *MaxHistoryMockDriver) Query(labels map[string]string) ([]release.Releaser, error) {
 	return d.Driver.Query(labels)
+}
+func (d *MaxHistoryMockDriver) QueryPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, labels map[string]string) error {
+	return d.Driver.QueryPages(f, limit, labels)
 }
 func (d *MaxHistoryMockDriver) Name() string {
 	return d.Driver.Name()

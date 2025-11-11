@@ -24,6 +24,13 @@ import (
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
+const (
+	// owner is owner of the secret
+	owner = "helm"
+	// DefaultPaginationLimit .
+	DefaultPaginationLimit = 50
+)
+
 var (
 	// ErrReleaseNotFound indicates that a release is not found.
 	ErrReleaseNotFound = errors.New("release: not found")
@@ -89,7 +96,9 @@ type Deletor interface {
 type Queryor interface {
 	Get(key string) (release.Releaser, error)
 	List(filter func(release.Releaser) bool) ([]release.Releaser, error)
+	ListPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, filter func(release.Releaser) bool) error
 	Query(labels map[string]string) ([]release.Releaser, error)
+	QueryPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, labels map[string]string) error
 }
 
 // Driver is the interface composed of Creator, Updator, Deletor, and Queryor
