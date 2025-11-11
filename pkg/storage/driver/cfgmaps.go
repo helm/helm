@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
+	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/pkg/release"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -44,14 +45,19 @@ const ConfigMapsDriverName = "ConfigMap"
 // ConfigMapsInterface.
 type ConfigMaps struct {
 	impl corev1.ConfigMapInterface
+
+	// Embed a LogHolder to provide logger functionality
+	logging.LogHolder
 }
 
 // NewConfigMaps initializes a new ConfigMaps wrapping an implementation of
 // the kubernetes ConfigMapsInterface.
 func NewConfigMaps(impl corev1.ConfigMapInterface) *ConfigMaps {
-	return &ConfigMaps{
+	c := &ConfigMaps{
 		impl: impl,
 	}
+	c.SetLogger(slog.Default().Handler())
+	return c
 }
 
 // Name returns the name of the driver.
@@ -69,13 +75,13 @@ func (cfgmaps *ConfigMaps) Get(key string) (release.Releaser, error) {
 			return nil, ErrReleaseNotFound
 		}
 
-		slog.Debug("failed to get release", "key", key, slog.Any("error", err))
+		cfgmaps.Logger().Debug("failed to get release", "key", key, slog.Any("error", err))
 		return nil, err
 	}
 	// found the configmap, decode the base64 data string
 	r, err := decodeRelease(obj.Data["release"])
 	if err != nil {
-		slog.Debug("failed to decode data", "key", key, slog.Any("error", err))
+		cfgmaps.Logger().Debug("failed to decode data", "key", key, slog.Any("error", err))
 		return nil, err
 	}
 	r.Labels = filterSystemLabels(obj.Labels)
@@ -92,7 +98,7 @@ func (cfgmaps *ConfigMaps) List(filter func(release.Releaser) bool) ([]release.R
 
 	list, err := cfgmaps.impl.List(context.Background(), opts)
 	if err != nil {
-		slog.Debug("failed to list releases", slog.Any("error", err))
+		cfgmaps.Logger().Debug("failed to list releases", slog.Any("error", err))
 		return nil, err
 	}
 
@@ -103,7 +109,7 @@ func (cfgmaps *ConfigMaps) List(filter func(release.Releaser) bool) ([]release.R
 	for _, item := range list.Items {
 		rls, err := decodeRelease(item.Data["release"])
 		if err != nil {
-			slog.Debug("failed to decode release", "item", item, slog.Any("error", err))
+			cfgmaps.Logger().Debug("failed to decode release", "item", item, slog.Any("error", err))
 			continue
 		}
 
@@ -131,7 +137,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]release.Releaser, 
 
 	list, err := cfgmaps.impl.List(context.Background(), opts)
 	if err != nil {
-		slog.Debug("failed to query with labels", slog.Any("error", err))
+		cfgmaps.Logger().Debug("failed to query with labels", slog.Any("error", err))
 		return nil, err
 	}
 
@@ -143,7 +149,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]release.Releaser, 
 	for _, item := range list.Items {
 		rls, err := decodeRelease(item.Data["release"])
 		if err != nil {
-			slog.Debug("failed to decode release", slog.Any("error", err))
+			cfgmaps.Logger().Debug("failed to decode release", slog.Any("error", err))
 			continue
 		}
 		rls.Labels = item.Labels
@@ -175,7 +181,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls release.Releaser) error {
 	// create a new configmap to hold the release
 	obj, err := newConfigMapsObject(key, rel, lbs)
 	if err != nil {
-		slog.Debug("failed to encode release", "name", rac.Name(), slog.Any("error", err))
+		cfgmaps.Logger().Debug("failed to encode release", "name", rac.Name(), slog.Any("error", err))
 		return err
 	}
 	// push the configmap object out into the kubiverse
@@ -184,7 +190,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls release.Releaser) error {
 			return ErrReleaseExists
 		}
 
-		slog.Debug("failed to create release", slog.Any("error", err))
+		cfgmaps.Logger().Debug("failed to create release", slog.Any("error", err))
 		return err
 	}
 	return nil
@@ -208,13 +214,13 @@ func (cfgmaps *ConfigMaps) Update(key string, rel release.Releaser) error {
 	// create a new configmap object to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)
 	if err != nil {
-		slog.Debug("failed to encode release", "name", rls.Name, slog.Any("error", err))
+		cfgmaps.Logger().Debug("failed to encode release", "name", rls.Name, slog.Any("error", err))
 		return err
 	}
 	// push the configmap object out into the kubiverse
 	_, err = cfgmaps.impl.Update(context.Background(), obj, metav1.UpdateOptions{})
 	if err != nil {
-		slog.Debug("failed to update release", slog.Any("error", err))
+		cfgmaps.Logger().Debug("failed to update release", slog.Any("error", err))
 		return err
 	}
 	return nil

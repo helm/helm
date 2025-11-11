@@ -26,16 +26,16 @@ import (
 )
 
 type TLSConfigOptions struct {
-	insecureSkipTLSverify     bool
+	insecureSkipTLSVerify     bool
 	certPEMBlock, keyPEMBlock []byte
 	caPEMBlock                []byte
 }
 
 type TLSConfigOption func(options *TLSConfigOptions) error
 
-func WithInsecureSkipVerify(insecureSkipTLSverify bool) TLSConfigOption {
+func WithInsecureSkipVerify(insecureSkipTLSVerify bool) TLSConfigOption {
 	return func(options *TLSConfigOptions) error {
-		options.insecureSkipTLSverify = insecureSkipTLSverify
+		options.insecureSkipTLSVerify = insecureSkipTLSVerify
 
 		return nil
 	}
@@ -97,7 +97,7 @@ func NewTLSConfig(options ...TLSConfigOption) (*tls.Config, error) {
 	}
 
 	config := tls.Config{
-		InsecureSkipVerify: to.insecureSkipTLSverify,
+		InsecureSkipVerify: to.insecureSkipTLSVerify,
 	}
 
 	if len(to.certPEMBlock) > 0 && len(to.keyPEMBlock) > 0 {

@@ -20,6 +20,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"sync/atomic"
 )
 
 // DebugEnabledFunc is a function type that determines if debug logging is enabled
@@ -85,3 +86,37 @@ func NewLogger(debugEnabled DebugEnabledFunc) *slog.Logger {
 
 	return slog.New(dynamicHandler)
 }
+
+// LoggerSetterGetter is an interface that can set and get a logger
+type LoggerSetterGetter interface {
+	// SetLogger sets a new slog.Handler
+	SetLogger(newHandler slog.Handler)
+	// Logger returns the slog.Logger created from the slog.Handler
+	Logger() *slog.Logger
+}
+
+type LogHolder struct {
+	// logger is an atomic.Pointer[slog.Logger] to store the slog.Logger
+	// We use atomic.Pointer for thread safety
+	logger atomic.Pointer[slog.Logger]
+}
+
+// Logger returns the logger for the LogHolder. If nil, returns slog.Default().
+func (l *LogHolder) Logger() *slog.Logger {
+	if lg := l.logger.Load(); lg != nil {
+		return lg
+	}
+	return slog.New(slog.DiscardHandler) // Should never be reached
+}
+
+// SetLogger sets the logger for the LogHolder. If nil, sets the default logger.
+func (l *LogHolder) SetLogger(newHandler slog.Handler) {
+	if newHandler == nil {
+		l.logger.Store(slog.New(slog.DiscardHandler)) // Assume nil as discarding logs
+		return
+	}
+	l.logger.Store(slog.New(newHandler))
+}
+
+// Ensure LogHolder implements LoggerSetterGetter
+var _ LoggerSetterGetter = &LogHolder{}

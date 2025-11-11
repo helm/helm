@@ -35,6 +35,7 @@ import (
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
 
@@ -56,7 +57,7 @@ var (
 	testPassword             = "mypass"
 )
 
-type TestSuite struct {
+type TestRegistry struct {
 	suite.Suite
 	Out                     io.Writer
 	DockerRegistryHost      string
@@ -66,15 +67,15 @@ type TestSuite struct {
 	dockerRegistry          *registry.Registry
 }
 
-func setup(suite *TestSuite, tlsEnabled, insecure bool) {
+func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
 	suite.WorkspaceDir = testWorkspaceDir
-	os.RemoveAll(suite.WorkspaceDir)
-	os.Mkdir(suite.WorkspaceDir, 0700)
+	err := os.RemoveAll(suite.WorkspaceDir)
+	require.NoError(suite.T(), err, "no error removing test workspace dir")
+	err = os.Mkdir(suite.WorkspaceDir, 0700)
+	require.NoError(suite.T(), err, "no error creating test workspace dir")
 
-	var (
-		out bytes.Buffer
-		err error
-	)
+	var out bytes.Buffer
+
 	suite.Out = &out
 	credentialsFile := filepath.Join(suite.WorkspaceDir, CredentialsFileBasename)
 
@@ -124,7 +125,7 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) {
 	config := &configuration.Configuration{}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	suite.Nil(err, "no error finding free port for test registry")
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	// Change the registry host to another host which is not localhost.
 	// This is required because Docker enforces HTTP if the registry
@@ -164,7 +165,7 @@ func setup(suite *TestSuite, tlsEnabled, insecure bool) {
 	}()
 }
 
-func teardown(suite *TestSuite) {
+func teardown(suite *TestRegistry) {
 	if suite.dockerRegistry != nil {
 		_ = suite.dockerRegistry.Shutdown(context.Background())
 	}
@@ -176,7 +177,7 @@ func initCompromisedRegistryTestServer() string {
 			w.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
 			w.WriteHeader(http.StatusOK)
 
-			fmt.Fprintf(w, `{ "schemaVersion": 2, "config": {
+			_, _ = fmt.Fprintf(w, `{ "schemaVersion": 2, "config": {
     "mediaType": "%s",
     "digest": "sha256:a705ee2789ab50a5ba20930f246dbd5cc01ff9712825bb98f57ee8414377f133",
     "size": 181
@@ -192,13 +193,13 @@ func initCompromisedRegistryTestServer() string {
 		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:a705ee2789ab50a5ba20930f246dbd5cc01ff9712825bb98f57ee8414377f133" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("{\"name\":\"mychart\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\\n" +
+			_, _ = w.Write([]byte("{\"name\":\"mychart\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\\n" +
 				"an 'application' or a 'library' chart.\",\"apiVersion\":\"v2\",\"appVersion\":\"1.16.0\",\"type\":" +
 				"\"application\"}"))
 		} else if r.URL.Path == "/v2/testrepo/supposedlysafechart/blobs/sha256:ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb" {
 			w.Header().Set("Content-Type", ChartLayerMediaType)
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("b"))
+			_, _ = w.Write([]byte("b"))
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -208,7 +209,7 @@ func initCompromisedRegistryTestServer() string {
 	return fmt.Sprintf("localhost:%s", u.Port())
 }
 
-func testPush(suite *TestSuite) {
+func testPush(suite *TestRegistry) {
 
 	testingChartCreationTime := "1977-09-02T22:04:05Z"
 
@@ -295,7 +296,7 @@ func testPush(suite *TestSuite) {
 		result.Prov.Digest)
 }
 
-func testPull(suite *TestSuite) {
+func testPull(suite *TestRegistry) {
 	// bad/missing ref
 	ref := fmt.Sprintf("%s/testrepo/no-existy:1.2.3", suite.DockerRegistryHost)
 	_, err := suite.RegistryClient.Pull(ref)
@@ -374,7 +375,7 @@ func testPull(suite *TestSuite) {
 	suite.Equal(provData, result.Prov.Data)
 }
 
-func testTags(suite *TestSuite) {
+func testTags(suite *TestRegistry) {
 	// Load test chart (to build ref pushed in previous test)
 	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
 	suite.Nil(err, "no error loading test chart")

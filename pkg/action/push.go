@@ -35,7 +35,7 @@ type Push struct {
 	certFile              string
 	keyFile               string
 	caFile                string
-	insecureSkipTLSverify bool
+	insecureSkipTLSVerify bool
 	plainHTTP             bool
 	out                   io.Writer
 }
@@ -62,7 +62,7 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) PushOpt {
 // WithInsecureSkipTLSVerify determines if a TLS Certificate will be checked
 func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) PushOpt {
 	return func(p *Push) {
-		p.insecureSkipTLSverify = insecureSkipTLSVerify
+		p.insecureSkipTLSVerify = insecureSkipTLSVerify
 	}
 }
 
@@ -98,7 +98,7 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 		Pushers: pusher.All(p.Settings),
 		Options: []pusher.Option{
 			pusher.WithTLSClientConfig(p.certFile, p.keyFile, p.caFile),
-			pusher.WithInsecureSkipTLSVerify(p.insecureSkipTLSverify),
+			pusher.WithInsecureSkipTLSVerify(p.insecureSkipTLSVerify),
 			pusher.WithPlainHTTP(p.plainHTTP),
 		},
 	}

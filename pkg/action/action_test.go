@@ -123,9 +123,10 @@ type chartOptions struct {
 type chartOption func(*chartOptions)
 
 func buildChart(opts ...chartOption) *chart.Chart {
+	modTime := time.Now()
 	defaultTemplates := []*common.File{
-		{Name: "templates/hello", Data: []byte("hello: world")},
-		{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
+		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifestWithHook)},
 	}
 	return buildChartWithTemplates(defaultTemplates, opts...)
 }
@@ -181,8 +182,9 @@ func withValues(values map[string]interface{}) chartOption {
 func withNotes(notes string) chartOption {
 	return func(opts *chartOptions) {
 		opts.Templates = append(opts.Templates, &common.File{
-			Name: "templates/NOTES.txt",
-			Data: []byte(notes),
+			Name:    "templates/NOTES.txt",
+			ModTime: time.Now(),
+			Data:    []byte(notes),
 		})
 	}
 }
@@ -201,12 +203,13 @@ func withMetadataDependency(dependency chart.Dependency) chartOption {
 
 func withSampleTemplates() chartOption {
 	return func(opts *chartOptions) {
+		modTime := time.Now()
 		sampleTemplates := []*common.File{
 			// This adds basic templates and partials.
-			{Name: "templates/goodbye", Data: []byte("goodbye: world")},
-			{Name: "templates/empty", Data: []byte("")},
-			{Name: "templates/with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
-			{Name: "templates/partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
+			{Name: "templates/goodbye", ModTime: modTime, Data: []byte("goodbye: world")},
+			{Name: "templates/empty", ModTime: modTime, Data: []byte("")},
+			{Name: "templates/with-partials", ModTime: modTime, Data: []byte(`hello: {{ template "_planet" . }}`)},
+			{Name: "templates/partials/_planet", ModTime: modTime, Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
 	}
@@ -214,20 +217,21 @@ func withSampleTemplates() chartOption {
 
 func withSampleSecret() chartOption {
 	return func(opts *chartOptions) {
-		sampleSecret := &common.File{Name: "templates/secret.yaml", Data: []byte("apiVersion: v1\nkind: Secret\n")}
+		sampleSecret := &common.File{Name: "templates/secret.yaml", ModTime: time.Now(), Data: []byte("apiVersion: v1\nkind: Secret\n")}
 		opts.Templates = append(opts.Templates, sampleSecret)
 	}
 }
 
 func withSampleIncludingIncorrectTemplates() chartOption {
 	return func(opts *chartOptions) {
+		modTime := time.Now()
 		sampleTemplates := []*common.File{
 			// This adds basic templates and partials.
-			{Name: "templates/goodbye", Data: []byte("goodbye: world")},
-			{Name: "templates/empty", Data: []byte("")},
-			{Name: "templates/incorrect", Data: []byte("{{ .Values.bad.doh }}")},
-			{Name: "templates/with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
-			{Name: "templates/partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
+			{Name: "templates/goodbye", ModTime: modTime, Data: []byte("goodbye: world")},
+			{Name: "templates/empty", ModTime: modTime, Data: []byte("")},
+			{Name: "templates/incorrect", ModTime: modTime, Data: []byte("{{ .Values.bad.doh }}")},
+			{Name: "templates/with-partials", ModTime: modTime, Data: []byte(`hello: {{ template "_planet" . }}`)},
+			{Name: "templates/partials/_planet", ModTime: modTime, Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
 	}
@@ -236,7 +240,7 @@ func withSampleIncludingIncorrectTemplates() chartOption {
 func withMultipleManifestTemplate() chartOption {
 	return func(opts *chartOptions) {
 		sampleTemplates := []*common.File{
-			{Name: "templates/rbac", Data: []byte(rbacManifests)},
+			{Name: "templates/rbac", ModTime: time.Now(), Data: []byte(rbacManifests)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
 	}
@@ -344,7 +348,7 @@ func TestConfiguration_Init(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := &Configuration{}
+			cfg := NewConfiguration()
 
 			actualErr := cfg.Init(nil, "default", tt.helmDriver)
 			if tt.expectErr {
@@ -853,7 +857,7 @@ func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
 			Version:    "0.1.0",
 		},
 		Templates: []*common.File{
-			{Name: "templates/invalid", Data: []byte("invalid: yaml: content:")},
+			{Name: "templates/invalid", ModTime: time.Now(), Data: []byte("invalid: yaml: content:")},
 		},
 	}
 	values := map[string]interface{}{}

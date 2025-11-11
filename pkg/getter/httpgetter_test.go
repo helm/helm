@@ -306,11 +306,11 @@ func TestDownload(t *testing.T) {
 func TestDownloadTLS(t *testing.T) {
 	cd := "../../testdata"
 	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
-	insecureSkipTLSverify := false
+	insecureSkipTLSVerify := false
 
 	tlsSrv := httptest.NewUnstartedServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 	tlsConf, err := tlsutil.NewTLSConfig(
-		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSVerify),
 		tlsutil.WithCertKeyPairFiles(pub, priv),
 		tlsutil.WithCAFile(ca),
 	)
@@ -359,14 +359,14 @@ func TestDownloadTLS(t *testing.T) {
 func TestDownloadTLSWithRedirect(t *testing.T) {
 	cd := "../../testdata"
 	srv2Resp := "hello"
-	insecureSkipTLSverify := false
+	insecureSkipTLSVerify := false
 
 	// Server 2 that will actually fulfil the request.
 	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "localhost-crt.pem"), filepath.Join(cd, "key.pem")
 	tlsConf, err := tlsutil.NewTLSConfig(
 		tlsutil.WithCAFile(ca),
 		tlsutil.WithCertKeyPairFiles(pub, priv),
-		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSVerify),
 	)
 
 	if err != nil {
@@ -387,7 +387,7 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 	tlsConf, err = tlsutil.NewTLSConfig(
 		tlsutil.WithCAFile(ca),
 		tlsutil.WithCertKeyPairFiles(pub, priv),
-		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSVerify),
 	)
 
 	if err != nil {
@@ -520,11 +520,11 @@ func TestHTTPGetterTarDownload(t *testing.T) {
 
 		b := make([]byte, 512)
 		f.Read(b)
-		//Get the file size
+		// Get the file size
 		FileStat, _ := f.Stat()
 		FileSize := strconv.FormatInt(FileStat.Size(), 10)
 
-		//Simulating improper header values from bitbucket
+		// Simulating improper header values from bitbucket
 		w.Header().Set("Content-Type", "application/x-tar")
 		w.Header().Set("Content-Encoding", "gzip")
 		w.Header().Set("Content-Length", FileSize)

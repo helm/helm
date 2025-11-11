@@ -187,7 +187,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 		return nil, fmt.Errorf("release name is invalid: %s", name)
 	}
 
-	slog.Debug("preparing upgrade", "name", name)
+	u.cfg.Logger().Debug("preparing upgrade", "name", name)
 	currentRelease, upgradedRelease, serverSideApply, err := u.prepareUpgrade(name, chrt, vals)
 	if err != nil {
 		return nil, err
@@ -195,7 +195,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 
 	u.cfg.Releases.MaxHistory = u.MaxHistory
 
-	slog.Debug("performing update", "name", name)
+	u.cfg.Logger().Debug("performing update", "name", name)
 	res, err := u.performUpgrade(ctx, currentRelease, upgradedRelease, serverSideApply)
 	if err != nil {
 		return res, err
@@ -203,7 +203,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 
 	// Do not update for dry runs
 	if !isDryRun(u.DryRunStrategy) {
-		slog.Debug("updating status for upgraded release", "name", name)
+		u.cfg.Logger().Debug("updating status for upgraded release", "name", name)
 		if err := u.cfg.Releases.Update(upgradedRelease); err != nil {
 			return res, err
 		}
@@ -310,7 +310,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 		return nil, nil, false, err
 	}
 
-	slog.Debug("determined release apply method", slog.Bool("server_side_apply", serverSideApply), slog.String("previous_release_apply_method", lastRelease.ApplyMethod))
+	u.cfg.Logger().Debug("determined release apply method", slog.Bool("server_side_apply", serverSideApply), slog.String("previous_release_apply_method", lastRelease.ApplyMethod))
 
 	// Store an upgraded release.
 	upgradedRelease := &release.Release{
@@ -393,7 +393,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	})
 
 	if isDryRun(u.DryRunStrategy) {
-		slog.Debug("dry run for release", "name", upgradedRelease.Name)
+		u.cfg.Logger().Debug("dry run for release", "name", upgradedRelease.Name)
 		if len(u.Description) > 0 {
 			upgradedRelease.Info.Description = u.Description
 		} else {
@@ -402,7 +402,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return upgradedRelease, nil
 	}
 
-	slog.Debug("creating upgraded release", "name", upgradedRelease.Name)
+	u.cfg.Logger().Debug("creating upgraded release", "name", upgradedRelease.Name)
 	if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
 		return nil, err
 	}
@@ -459,7 +459,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 			return
 		}
 	} else {
-		slog.Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
+		u.cfg.Logger().Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
 	}
 
 	upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply // Update client-side field manager if transitioning from client-side to server-side apply
@@ -517,13 +517,13 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 
 func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, err error) (*release.Release, error) {
 	msg := fmt.Sprintf("Upgrade %q failed: %s", rel.Name, err)
-	slog.Warn("upgrade failed", "name", rel.Name, slog.Any("error", err))
+	u.cfg.Logger().Warn("upgrade failed", "name", rel.Name, slog.Any("error", err))
 
 	rel.Info.Status = rcommon.StatusFailed
 	rel.Info.Description = msg
 	u.cfg.recordRelease(rel)
 	if u.CleanupOnFail && len(created) > 0 {
-		slog.Debug("cleanup on fail set", "cleaning_resources", len(created))
+		u.cfg.Logger().Debug("cleanup on fail set", "cleaning_resources", len(created))
 		_, errs := u.cfg.KubeClient.Delete(created, metav1.DeletePropagationBackground)
 		if errs != nil {
 			return rel, fmt.Errorf(
@@ -535,11 +535,11 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 				),
 			)
 		}
-		slog.Debug("resource cleanup complete")
+		u.cfg.Logger().Debug("resource cleanup complete")
 	}
 
 	if u.RollbackOnFailure {
-		slog.Debug("Upgrade failed and rollback-on-failure is set, rolling back to previous successful release")
+		u.cfg.Logger().Debug("Upgrade failed and rollback-on-failure is set, rolling back to previous successful release")
 
 		// As a protection, get the last successful release before rollback.
 		// If there are no successful releases, bail out
@@ -567,9 +567,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 
 		rollin := NewRollback(u.cfg)
 		rollin.Version = filteredHistory[0].Version
-		if u.WaitStrategy == kube.HookOnlyStrategy {
-			rollin.WaitStrategy = kube.StatusWatcherStrategy
-		}
+		rollin.WaitStrategy = u.WaitStrategy
 		rollin.WaitForJobs = u.WaitForJobs
 		rollin.DisableHooks = u.DisableHooks
 		rollin.ForceReplace = u.ForceReplace
@@ -596,13 +594,13 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 func (u *Upgrade) reuseValues(chart *chartv2.Chart, current *release.Release, newVals map[string]interface{}) (map[string]interface{}, error) {
 	if u.ResetValues {
 		// If ResetValues is set, we completely ignore current.Config.
-		slog.Debug("resetting values to the chart's original version")
+		u.cfg.Logger().Debug("resetting values to the chart's original version")
 		return newVals, nil
 	}
 
 	// If the ReuseValues flag is set, we always copy the old values over the new config's values.
 	if u.ReuseValues {
-		slog.Debug("reusing the old release's values")
+		u.cfg.Logger().Debug("reusing the old release's values")
 
 		// We have to regenerate the old coalesced values:
 		oldVals, err := util.CoalesceValues(current.Chart, current.Config)
@@ -619,7 +617,7 @@ func (u *Upgrade) reuseValues(chart *chartv2.Chart, current *release.Release, ne
 
 	// If the ResetThenReuseValues flag is set, we use the new chart's values, but we copy the old config's values over the new config's values.
 	if u.ResetThenReuseValues {
-		slog.Debug("merging values from old release to new values")
+		u.cfg.Logger().Debug("merging values from old release to new values")
 
 		newVals = util.CoalesceTables(newVals, current.Config)
 
@@ -627,7 +625,7 @@ func (u *Upgrade) reuseValues(chart *chartv2.Chart, current *release.Release, ne
 	}
 
 	if len(newVals) == 0 && len(current.Config) > 0 {
-		slog.Debug("copying values from old release", "name", current.Name, "version", current.Version)
+		u.cfg.Logger().Debug("copying values from old release", "name", current.Name, "version", current.Version)
 		newVals = current.Config
 	}
 	return newVals, nil

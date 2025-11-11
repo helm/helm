@@ -103,7 +103,7 @@ By default, the default directories depend on the Operating System. The defaults
 var settings = cli.New()
 
 func NewRootCmd(out io.Writer, args []string, logSetup func(bool)) (*cobra.Command, error) {
-	actionConfig := new(action.Configuration)
+	actionConfig := action.NewConfiguration()
 	cmd, err := newRootCmdWithConfig(actionConfig, out, args, logSetup)
 	if err != nil {
 		return nil, err
@@ -393,10 +393,10 @@ func checkForExpiredRepos(repofile string) {
 }
 
 func newRegistryClient(
-	certFile, keyFile, caFile string, insecureSkipTLSverify, plainHTTP bool, username, password string,
+	certFile, keyFile, caFile string, insecureSkipTLSVerify, plainHTTP bool, username, password string,
 ) (*registry.Client, error) {
-	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSverify {
-		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSverify, username, password)
+	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSVerify {
+		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSVerify, username, password)
 		if err != nil {
 			return nil, err
 		}
@@ -430,10 +430,10 @@ func newDefaultRegistryClient(plainHTTP bool, username, password string) (*regis
 }
 
 func newRegistryClientWithTLS(
-	certFile, keyFile, caFile string, insecureSkipTLSverify bool, username, password string,
+	certFile, keyFile, caFile string, insecureSkipTLSVerify bool, username, password string,
 ) (*registry.Client, error) {
 	tlsConf, err := tlsutil.NewTLSConfig(
-		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSVerify),
 		tlsutil.WithCertKeyPairFiles(certFile, keyFile),
 		tlsutil.WithCAFile(caFile),
 	)

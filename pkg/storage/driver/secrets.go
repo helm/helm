@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
+	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/pkg/release"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -44,14 +45,18 @@ const SecretsDriverName = "Secret"
 // SecretsInterface.
 type Secrets struct {
 	impl corev1.SecretInterface
+	// Embed a LogHolder to provide logger functionality
+	logging.LogHolder
 }
 
 // NewSecrets initializes a new Secrets wrapping an implementation of
 // the kubernetes SecretsInterface.
 func NewSecrets(impl corev1.SecretInterface) *Secrets {
-	return &Secrets{
+	s := &Secrets{
 		impl: impl,
 	}
+	s.SetLogger(slog.Default().Handler())
+	return s
 }
 
 // Name returns the name of the driver.
@@ -98,7 +103,7 @@ func (secrets *Secrets) List(filter func(release.Releaser) bool) ([]release.Rele
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
-			slog.Debug("list failed to decode release", "key", item.Name, slog.Any("error", err))
+			secrets.Logger().Debug("list failed to decode release", "key", item.Name, slog.Any("error", err))
 			continue
 		}
 
@@ -137,7 +142,7 @@ func (secrets *Secrets) Query(labels map[string]string) ([]release.Releaser, err
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
-			slog.Debug("failed to decode release", "key", item.Name, slog.Any("error", err))
+			secrets.Logger().Debug("failed to decode release", "key", item.Name, slog.Any("error", err))
 			continue
 		}
 		rls.Labels = item.Labels

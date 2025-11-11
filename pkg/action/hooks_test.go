@@ -180,9 +180,10 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 	outBuffer := &bytes.Buffer{}
 	instAction.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
+	modTime := time.Now()
 	templates := []*common.File{
-		{Name: "templates/hello", Data: []byte("hello: world")},
-		{Name: "templates/hooks", Data: []byte(manifest)},
+		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
+		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifest)},
 	}
 	vals := map[string]interface{}{}
 
@@ -209,9 +210,10 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 	outBuffer := &bytes.Buffer{}
 	failingClient.PrintingKubeClient = kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
+	modTime := time.Now()
 	templates := []*common.File{
-		{Name: "templates/hello", Data: []byte("hello: world")},
-		{Name: "templates/hooks", Data: []byte(manifest)},
+		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
+		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifest)},
 	}
 	vals := map[string]interface{}{}
 
@@ -405,6 +407,38 @@ data:
 			if err == nil && tc.expectError {
 				t.Fatalf("Expected and error but did not get it.")
 			}
+		})
+	}
+}
+
+func TestConfiguration_hookSetDeletePolicy(t *testing.T) {
+	tests := map[string]struct {
+		policies []release.HookDeletePolicy
+		expected []release.HookDeletePolicy
+	}{
+		"no polices specified result in the default policy": {
+			policies: nil,
+			expected: []release.HookDeletePolicy{
+				release.HookBeforeHookCreation,
+			},
+		},
+		"unknown policy is untouched": {
+			policies: []release.HookDeletePolicy{
+				release.HookDeletePolicy("never"),
+			},
+			expected: []release.HookDeletePolicy{
+				release.HookDeletePolicy("never"),
+			},
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			cfg := &Configuration{}
+			h := &release.Hook{
+				DeletePolicies: tt.policies,
+			}
+			cfg.hookSetDeletePolicy(h)
+			assert.Equal(t, tt.expected, h.DeletePolicies)
 		})
 	}
 }

@@ -26,17 +26,17 @@ import (
 )
 
 type TLSRegistryClientTestSuite struct {
-	TestSuite
+	TestRegistry
 }
 
 func (suite *TLSRegistryClientTestSuite) SetupSuite() {
 	// init test client
-	setup(&suite.TestSuite, true, false)
+	setup(&suite.TestRegistry, true, false)
 }
 
 func (suite *TLSRegistryClientTestSuite) TearDownSuite() {
-	teardown(&suite.TestSuite)
-	os.RemoveAll(suite.WorkspaceDir)
+	teardown(&suite.TestRegistry)
+	_ = os.RemoveAll(suite.WorkspaceDir)
 }
 
 func (suite *TLSRegistryClientTestSuite) Test_0_Login() {
@@ -76,15 +76,15 @@ func (suite *TLSRegistryClientTestSuite) Test_1_Login() {
 }
 
 func (suite *TLSRegistryClientTestSuite) Test_1_Push() {
-	testPush(&suite.TestSuite)
+	testPush(&suite.TestRegistry)
 }
 
 func (suite *TLSRegistryClientTestSuite) Test_2_Pull() {
-	testPull(&suite.TestSuite)
+	testPull(&suite.TestRegistry)
 }
 
 func (suite *TLSRegistryClientTestSuite) Test_3_Tags() {
-	testTags(&suite.TestSuite)
+	testTags(&suite.TestRegistry)
 }
 
 func (suite *TLSRegistryClientTestSuite) Test_4_Logout() {
