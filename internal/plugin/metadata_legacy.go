@@ -69,7 +69,10 @@ type MetadataLegacy struct {
 
 func (m *MetadataLegacy) Validate() error {
 	if !validPluginName.MatchString(m.Name) {
-		return fmt.Errorf("invalid plugin name")
+		if m.Name == "" {
+			return fmt.Errorf("plugin name is empty or missing: ensure plugin.yaml contains 'name:' field (lowercase)")
+		}
+		return fmt.Errorf("invalid plugin name %q: plugin names can only contain ASCII characters a-z, A-Z, 0-9, _ and -", m.Name)
 	}
 	m.Usage = sanitizeString(m.Usage)
 
