@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -217,9 +217,7 @@ func loadCompletionForPlugin(pluginCmd *cobra.Command, plug plugin.Plugin) {
 
 	if err != nil {
 		// The file could be missing or invalid.  No static completion for this plugin.
-		if settings.Debug {
-			log.Output(2, fmt.Sprintf("[info] %s\n", err.Error()))
-		}
+		slog.Debug("plugin completion file loading", "error", err.Error())
 		// Continue to setup dynamic completion.
 		cmds = &pluginCommand{}
 	}
@@ -239,9 +237,7 @@ func addPluginCommands(plug plugin.Plugin, baseCmd *cobra.Command, cmds *pluginC
 
 	if len(cmds.Name) == 0 {
 		// Missing name for a command
-		if settings.Debug {
-			log.Output(2, fmt.Sprintf("[info] sub-command name field missing for %s", baseCmd.CommandPath()))
-		}
+		slog.Debug("sub-command name field missing", "commandPath", baseCmd.CommandPath())
 		return
 	}
 
