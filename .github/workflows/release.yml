@@ -55,7 +55,6 @@ jobs:
             echo "Error: Latest version ${LATEST_VERSION} is not a v3 release"
             exit 1
           fi
-          echo "${LATEST_VERSION}" > _dist_versions/helm-latest-version
           echo "${LATEST_VERSION}" > _dist_versions/helm3-latest-version
 
       - name: Upload Binaries
