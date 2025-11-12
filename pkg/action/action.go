@@ -228,10 +228,8 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 		return hs, b, "", err
 	}
 
-	if ch.Metadata.KubeVersion != "" {
-		if !chartutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
-			return hs, b, "", fmt.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
-		}
+	if err := ensureKubeCompatibility(ch, caps); err != nil {
+		return hs, b, "", err
 	}
 
 	var files map[string]string
@@ -370,6 +368,29 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 	}
 
 	return hs, b, notes, nil
+}
+
+// ensureKubeCompatibility verifies the chart's kubeVersion requirement.
+func ensureKubeCompatibility(ch *chart.Chart, caps *common.Capabilities) error {
+	if ch == nil || caps == nil {
+		return nil
+	}
+	meta := ch.Metadata
+	if meta == nil {
+		return nil
+	}
+	kubeReq := meta.KubeVersion
+	if kubeReq == "" {
+		return nil
+	}
+
+	kubeVer := caps.KubeVersion.String()
+
+	if chartutil.IsCompatibleRange(kubeReq, kubeVer) {
+		return nil
+	}
+
+	return fmt.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", kubeReq, kubeVer)
 }
 
 // RESTClientGetter gets the rest client
