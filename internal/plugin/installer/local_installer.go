@@ -84,7 +84,7 @@ func (i *LocalInstaller) Install() error {
 	return i.installFromDirectory()
 }
 
-// installFromDirectory creates a symlink to the plugin directory
+// installFromDirectory copies the plugin directory
 func (i *LocalInstaller) installFromDirectory() error {
 	stat, err := os.Stat(i.Source)
 	if err != nil {
@@ -97,8 +97,8 @@ func (i *LocalInstaller) installFromDirectory() error {
 	if !isPlugin(i.Source) {
 		return ErrMissingMetadata
 	}
-	slog.Debug("symlinking", "source", i.Source, "path", i.Path())
-	return os.Symlink(i.Source, i.Path())
+	slog.Debug("copying", "source", i.Source, "path", i.Path())
+	return fs.CopyDir(i.Source, i.Path(), copyDirOptions)
 }
 
 // installFromArchive extracts and installs a plugin from a tarball

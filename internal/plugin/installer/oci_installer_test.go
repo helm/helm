@@ -888,6 +888,9 @@ func TestOCIInstaller_IgnoresGitDir(t *testing.T) {
 				MediaType: "application/vnd.oci.image.layer.v1.tar",
 				Digest:    digest.Digest(layerDigest),
 				Size:      int64(len(pluginData)),
+				Annotations: map[string]string{
+					ocispec.AnnotationTitle: pluginName + "-1.0.0.tgz",
+				},
 			},
 		},
 	}
@@ -928,7 +931,7 @@ func TestOCIInstaller_IgnoresGitDir(t *testing.T) {
 	}
 
 	source := fmt.Sprintf("oci://%s/%s:1.0.0", registryURL.Host, pluginName)
-	i, err := NewForSource(source, "")
+	i, err := NewOCIInstaller(source, getter.WithPlainHTTP(true))
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}

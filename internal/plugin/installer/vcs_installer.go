@@ -92,7 +92,8 @@ func (i *VCSInstaller) Install() error {
 	}
 
 	slog.Debug("copying files", "source", i.Repo.LocalPath(), "destination", i.Path())
-	return fs.CopyDir(i.Repo.LocalPath(), i.Path(), copyDirOptions)
+	// VCS plugins need .git for updates, so don't filter it out
+	return fs.CopyDir(i.Repo.LocalPath(), i.Path(), fs.CopyDirOptions{})
 }
 
 // Update updates a remote repository
