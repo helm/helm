@@ -204,7 +204,11 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 
 	if ch.Metadata.KubeVersion != "" {
 		if !chartutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
-			return hs, b, "", fmt.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
+			errMsg := fmt.Sprintf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
+			if caps.IsDefaultKubeVersion {
+				errMsg += " (no cluster connected, using default version; specify target version with --kube-version)"
+			}
+			return hs, b, "", fmt.Errorf("%s", errMsg)
 		}
 	}
 
@@ -383,15 +387,14 @@ func (cfg *Configuration) getCapabilities() (*common.Capabilities, error) {
 		}
 	}
 
-	cfg.Capabilities = &common.Capabilities{
-		APIVersions: apiVersions,
-		KubeVersion: common.KubeVersion{
+	cfg.Capabilities = common.NewCapabilitiesFromCluster(
+		common.KubeVersion{
 			Version: kubeVersion.GitVersion,
 			Major:   kubeVersion.Major,
 			Minor:   kubeVersion.Minor,
 		},
-		HelmVersion: common.DefaultCapabilities.HelmVersion,
-	}
+		apiVersions,
+	)
 	return cfg.Capabilities, nil
 }
 

@@ -45,8 +45,9 @@ var (
 			Major:   k8sVersionMajor,
 			Minor:   k8sVersionMinor,
 		},
-		APIVersions: DefaultVersionSet,
-		HelmVersion: helmversion.Get(),
+		APIVersions:          DefaultVersionSet,
+		HelmVersion:          helmversion.Get(),
+		IsDefaultKubeVersion: true,
 	}
 )
 
@@ -58,13 +59,37 @@ type Capabilities struct {
 	APIVersions VersionSet
 	// HelmVersion is the build information for this helm version
 	HelmVersion helmversion.BuildInfo
+	// IsDefaultKubeVersion indicates if KubeVersion is a default fallback value
+	// (not from a real cluster or user-provided --kube-version flag)
+	IsDefaultKubeVersion bool
 }
 
 func (capabilities *Capabilities) Copy() *Capabilities {
 	return &Capabilities{
-		KubeVersion: capabilities.KubeVersion,
-		APIVersions: capabilities.APIVersions,
-		HelmVersion: capabilities.HelmVersion,
+		KubeVersion:          capabilities.KubeVersion,
+		APIVersions:          capabilities.APIVersions,
+		HelmVersion:          capabilities.HelmVersion,
+		IsDefaultKubeVersion: capabilities.IsDefaultKubeVersion,
+	}
+}
+
+// WithKubeVersion returns a copy of Capabilities with a custom KubeVersion.
+// Sets IsDefaultKubeVersion to false since this is an explicit override.
+func (capabilities *Capabilities) WithKubeVersion(kv KubeVersion) *Capabilities {
+	c := capabilities.Copy()
+	c.KubeVersion = kv
+	c.IsDefaultKubeVersion = false
+	return c
+}
+
+// NewCapabilitiesFromCluster creates a Capabilities from cluster discovery information.
+// IsDefaultKubeVersion is set to false since this comes from a real cluster.
+func NewCapabilitiesFromCluster(kubeVersion KubeVersion, apiVersions VersionSet) *Capabilities {
+	return &Capabilities{
+		KubeVersion:          kubeVersion,
+		APIVersions:          apiVersions,
+		HelmVersion:          DefaultCapabilities.HelmVersion,
+		IsDefaultKubeVersion: false,
 	}
 }
 

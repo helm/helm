@@ -304,7 +304,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		// NOTE(bacongobbler): used for `helm template`
 		i.cfg.Capabilities = common.DefaultCapabilities.Copy()
 		if i.KubeVersion != nil {
-			i.cfg.Capabilities.KubeVersion = *i.KubeVersion
+			i.cfg.Capabilities = i.cfg.Capabilities.WithKubeVersion(*i.KubeVersion)
 		}
 		i.cfg.Capabilities.APIVersions = append(i.cfg.Capabilities.APIVersions, i.APIVersions...)
 		i.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard}
