@@ -155,7 +155,7 @@ func (i *LocalInstaller) installFromArchive() error {
 
 	// Copy to the final destination
 	slog.Debug("copying", "source", pluginDir, "path", i.Path())
-	return fs.CopyDir(pluginDir, i.Path())
+	return fs.CopyDir(pluginDir, i.Path(), copyDirOptions)
 }
 
 // Update updates a local repository

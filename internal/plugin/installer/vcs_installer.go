@@ -92,7 +92,7 @@ func (i *VCSInstaller) Install() error {
 	}
 
 	slog.Debug("copying files", "source", i.Repo.LocalPath(), "destination", i.Path())
-	return fs.CopyDir(i.Repo.LocalPath(), i.Path())
+	return fs.CopyDir(i.Repo.LocalPath(), i.Path(), copyDirOptions)
 }
 
 // Update updates a remote repository

@@ -16,12 +16,11 @@ limitations under the License.
 package installer // import "helm.sh/helm/v4/internal/plugin/installer"
 
 import (
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/helmpath"
@@ -76,11 +75,6 @@ func TestLocalInstallerTarball(t *testing.T) {
 	tempDir := t.TempDir()
 	tarballPath := filepath.Join(tempDir, "test-plugin-1.0.0.tar.gz")
 
-	// Create tarball content
-	var buf bytes.Buffer
-	gw := gzip.NewWriter(&buf)
-	tw := tar.NewWriter(gw)
-
 	files := []struct {
 		Name string
 		Body string
@@ -90,29 +84,8 @@ func TestLocalInstallerTarball(t *testing.T) {
 		{"test-plugin/bin/test-plugin", "#!/bin/bash\necho test", 0755},
 	}
 
-	for _, file := range files {
-		hdr := &tar.Header{
-			Name: file.Name,
-			Mode: file.Mode,
-			Size: int64(len(file.Body)),
-		}
-		if err := tw.WriteHeader(hdr); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := tw.Write([]byte(file.Body)); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err := tw.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if err := gw.Close(); err != nil {
-		t.Fatal(err)
-	}
-
 	// Write tarball to file
-	if err := os.WriteFile(tarballPath, buf.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(tarballPath, createTestTarball(t, files), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -144,5 +117,41 @@ func TestLocalInstallerTarball(t *testing.T) {
 	// Verify plugin was installed
 	if _, err := os.Stat(i.Path()); err != nil {
 		t.Fatalf("plugin not found at %s: %v", i.Path(), err)
+	}
+}
+
+func TestLocalInstaller_IgnoresGitDir(t *testing.T) {
+	ensure.HelmHome(t)
+
+	// Create a plugin directory with .git
+	pluginDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte("name: test-plugin\nversion: 1.0.0"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	gitDir := filepath.Join(pluginDir, ".git")
+	if err := os.MkdirAll(gitDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(gitDir, "config"), []byte("git config"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	i, err := NewForSource(pluginDir, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	if err := Install(i); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify .git was not copied
+	installedGitDir := filepath.Join(i.Path(), ".git")
+	_, err = os.Stat(installedGitDir)
+	assert.True(t, os.IsNotExist(err), "expected .git directory to not exist, got %v", err)
+
+	// Verify plugin.yaml was copied
+	if _, err := os.Stat(filepath.Join(i.Path(), "plugin.yaml")); err != nil {
+		t.Fatal("plugin.yaml should have been copied")
 	}
 }

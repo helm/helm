@@ -137,7 +137,7 @@ func (i *HTTPInstaller) Install() error {
 	}
 
 	slog.Debug("copying", "source", src, "path", i.Path())
-	return fs.CopyDir(src, i.Path())
+	return fs.CopyDir(src, i.Path(), copyDirOptions)
 }
 
 // Update updates a local repository

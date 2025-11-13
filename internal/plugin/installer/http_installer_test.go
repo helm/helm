@@ -31,6 +31,8 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
@@ -42,6 +44,43 @@ var _ Installer = new(HTTPInstaller)
 type TestHTTPGetter struct {
 	MockResponse *bytes.Buffer
 	MockError    error
+}
+
+// createTestTarball creates a gzipped tarball from a list of files
+func createTestTarball(t *testing.T, files []struct {
+	Name string
+	Body string
+	Mode int64
+}) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+
+	for _, file := range files {
+		hdr := &tar.Header{
+			Name:     file.Name,
+			Mode:     file.Mode,
+			Size:     int64(len(file.Body)),
+			Typeflag: tar.TypeReg,
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write([]byte(file.Body)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	return buf.Bytes()
 }
 
 func (t *TestHTTPGetter) Get(_ string, _ ...getter.Option) (*bytes.Buffer, error) {
@@ -125,6 +164,57 @@ func TestHTTPInstaller(t *testing.T) {
 		t.Fatalf("expected error for plugin exists, got (%v)", err)
 	}
 
+}
+
+func TestHTTPInstaller_IgnoresGitDir(t *testing.T) {
+	ensure.HelmHome(t)
+
+	// Create a tarball with .git directory
+	files := []struct {
+		Name string
+		Body string
+		Mode int64
+	}{
+		{"test-plugin/plugin.yaml", "name: test-plugin\nversion: 1.0.0", 0644},
+		{"test-plugin/.git/config", "git config", 0644},
+	}
+	tarballData := createTestTarball(t, files)
+
+	srv := mockArchiveServer()
+	defer srv.Close()
+	source := srv.URL + "/plugins/test-plugin-1.0.0.tar.gz"
+
+	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
+	}
+
+	i, err := NewForSource(source, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	httpInstaller, ok := i.(*HTTPInstaller)
+	if !ok {
+		t.Fatal("expected a HTTPInstaller")
+	}
+
+	httpInstaller.getter = &TestHTTPGetter{
+		MockResponse: bytes.NewBuffer(tarballData),
+	}
+
+	if err := Install(i); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify .git was not copied
+	installedGitDir := filepath.Join(i.Path(), ".git")
+	_, err = os.Stat(installedGitDir)
+	assert.True(t, os.IsNotExist(err), "expected .git directory to not exist, got %v", err)
+
+	// Verify plugin.yaml was copied
+	if _, err := os.Stat(filepath.Join(i.Path(), "plugin.yaml")); err != nil {
+		t.Fatal("plugin.yaml should have been copied")
+	}
 }
 
 func TestHTTPInstallerNonExistentVersion(t *testing.T) {

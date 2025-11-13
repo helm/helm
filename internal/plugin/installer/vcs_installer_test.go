@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/vcs"
+	"github.com/stretchr/testify/assert"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/helmpath"
@@ -186,4 +187,57 @@ func TestVCSInstallerUpdate(t *testing.T) {
 		t.Fatalf("expected error for plugin modified, got (%v)", err)
 	}
 
+}
+
+func TestVCSInstaller_IgnoresGitDir(t *testing.T) {
+	ensure.HelmHome(t)
+
+	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
+	}
+
+	// Create a test plugin directory with .git
+	testRepoPath := t.TempDir()
+	if err := os.WriteFile(filepath.Join(testRepoPath, "plugin.yaml"), []byte("name: test-plugin\nversion: 1.0.0"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	gitDir := filepath.Join(testRepoPath, ".git")
+	if err := os.MkdirAll(gitDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(gitDir, "config"), []byte("git config"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	source := "https://github.com/test/test-plugin"
+	repo := &testRepo{
+		local: testRepoPath,
+		tags:  []string{"1.0.0"},
+	}
+
+	i, err := NewForSource(source, "1.0.0")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	vcsInstaller, ok := i.(*VCSInstaller)
+	if !ok {
+		t.Fatal("expected a VCSInstaller")
+	}
+
+	vcsInstaller.Repo = repo
+
+	if err := Install(i); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify .git was not copied
+	installedGitDir := filepath.Join(i.Path(), ".git")
+	_, err = os.Stat(installedGitDir)
+	assert.True(t, os.IsNotExist(err), "expected .git directory to not exist, got %v", err)
+
+	// Verify plugin.yaml was copied
+	if _, err := os.Stat(filepath.Join(i.Path(), "plugin.yaml")); err != nil {
+		t.Fatal("plugin.yaml should have been copied")
+	}
 }

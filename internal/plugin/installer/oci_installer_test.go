@@ -33,6 +33,7 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/stretchr/testify/assert"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 	"helm.sh/helm/v4/pkg/cli"
@@ -91,6 +92,64 @@ command: "$HELM_PLUGIN_DIR/bin/%s"
 		t.Fatal(err)
 	}
 	if _, err := tarWriter.Write([]byte(execContent)); err != nil {
+		t.Fatal(err)
+	}
+
+	tarWriter.Close()
+	gzWriter.Close()
+
+	return buf.Bytes()
+}
+
+// createTestPluginTarGzWithGit creates a test plugin tar.gz with plugin.yaml and .git directory
+func createTestPluginTarGzWithGit(t *testing.T, pluginName string) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+	gzWriter := gzip.NewWriter(&buf)
+	tarWriter := tar.NewWriter(gzWriter)
+
+	// Add plugin.yaml
+	pluginYAML := fmt.Sprintf(`name: %s
+version: "1.0.0"
+description: "Test plugin for OCI installer"
+command: "$HELM_PLUGIN_DIR/bin/%s"
+`, pluginName, pluginName)
+	header := &tar.Header{
+		Name:     "plugin.yaml",
+		Mode:     0644,
+		Size:     int64(len(pluginYAML)),
+		Typeflag: tar.TypeReg,
+	}
+	if err := tarWriter.WriteHeader(header); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tarWriter.Write([]byte(pluginYAML)); err != nil {
+		t.Fatal(err)
+	}
+
+	// Add .git directory
+	gitDirHeader := &tar.Header{
+		Name:     ".git/",
+		Mode:     0755,
+		Typeflag: tar.TypeDir,
+	}
+	if err := tarWriter.WriteHeader(gitDirHeader); err != nil {
+		t.Fatal(err)
+	}
+
+	// Add .git/config
+	gitConfig := "git config content"
+	gitConfigHeader := &tar.Header{
+		Name:     ".git/config",
+		Mode:     0644,
+		Size:     int64(len(gitConfig)),
+		Typeflag: tar.TypeReg,
+	}
+	if err := tarWriter.WriteHeader(gitConfigHeader); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tarWriter.Write([]byte(gitConfig)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -802,5 +861,89 @@ func TestOCIInstaller_Install_ValidationErrors(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestOCIInstaller_IgnoresGitDir(t *testing.T) {
+	ensure.HelmHome(t)
+
+	pluginName := "test-plugin"
+	pluginData := createTestPluginTarGzWithGit(t, pluginName)
+
+	// Create a mock OCI registry server
+	layerDigest := fmt.Sprintf("sha256:%x", sha256Sum(pluginData))
+	configData := []byte("{}")
+	configDigest := fmt.Sprintf("sha256:%x", sha256Sum(configData))
+
+	manifest := ocispec.Manifest{
+		MediaType:    ocispec.MediaTypeImageManifest,
+		ArtifactType: "application/vnd.helm.plugin.v1+json",
+		Config: ocispec.Descriptor{
+			MediaType: "application/vnd.oci.empty.v1+json",
+			Digest:    digest.Digest(configDigest),
+			Size:      int64(len(configData)),
+		},
+		Layers: []ocispec.Descriptor{
+			{
+				MediaType: "application/vnd.oci.image.layer.v1.tar",
+				Digest:    digest.Digest(layerDigest),
+				Size:      int64(len(pluginData)),
+			},
+		},
+	}
+
+	manifestData, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestDigest := fmt.Sprintf("sha256:%x", sha256Sum(manifestData))
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/v2/") && !strings.Contains(r.URL.Path, "/manifests/") && !strings.Contains(r.URL.Path, "/blobs/"):
+			w.Header().Set("Docker-Distribution-API-Version", "registry/2.0")
+			w.WriteHeader(http.StatusOK)
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/manifests/"):
+			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
+			w.Header().Set("Docker-Content-Digest", manifestDigest)
+			w.WriteHeader(http.StatusOK)
+			w.Write(manifestData)
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/blobs/"+layerDigest):
+			w.Header().Set("Content-Type", "application/vnd.oci.image.layer.v1.tar")
+			w.WriteHeader(http.StatusOK)
+			w.Write(pluginData)
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/blobs/"+configDigest):
+			w.Header().Set("Content-Type", "application/vnd.oci.empty.v1+json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(configData)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	registryURL, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatalf("Failed to parse server URL: %v", err)
+	}
+
+	source := fmt.Sprintf("oci://%s/%s:1.0.0", registryURL.Host, pluginName)
+	i, err := NewForSource(source, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	if err := Install(i); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify .git was not copied
+	installedGitDir := filepath.Join(i.Path(), ".git")
+	_, err = os.Stat(installedGitDir)
+	assert.True(t, os.IsNotExist(err), "expected .git directory to not exist, got %v", err)
+
+	// Verify plugin.yaml was copied
+	if _, err := os.Stat(filepath.Join(i.Path(), "plugin.yaml")); err != nil {
+		t.Fatal("plugin.yaml should have been copied")
 	}
 }
