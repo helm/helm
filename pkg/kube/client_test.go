@@ -2244,10 +2244,9 @@ func TestPatchResourceServerSide_ClearsManagedFields(t *testing.T) {
 		Client: fakeClient,
 	}
 
-	// Call patchResourceServerSide
 	err := patchResourceServerSide(target, false, false, FieldValidationDirectiveStrict)
 	require.NoError(t, err)
 
-	// Verify the patched data doesn't contain managedFields
-	assert.NotContains(t, string(patchedData), "managedFields", "patched data should not contain managedFields")
+	// Verify the data that the fake client received did not container managedFields
+	assert.NotContains(t, string(patchedData), "managedFields")
 }
