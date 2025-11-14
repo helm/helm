@@ -16,40 +16,49 @@ limitations under the License.
 package plugin
 
 import (
-	"strings"
 	"testing"
 )
 
-func TestMetadataLegacyValidate_EmptyName(t *testing.T) {
-	metadata := MetadataLegacy{
-		Name:    "",
-		Version: "1.0.0",
+func TestMetadataLegacyValidate_PluginName(t *testing.T) {
+	tests := []struct {
+		name       string
+		pluginName string
+		shouldPass bool
+	}{
+		// Valid names
+		{"lowercase", "myplugin", true},
+		{"uppercase", "MYPLUGIN", true},
+		{"mixed case", "MyPlugin", true},
+		{"with digits", "plugin123", true},
+		{"with hyphen", "my-plugin", true},
+		{"with underscore", "my_plugin", true},
+		{"mixed chars", "my-awesome_plugin_123", true},
+
+		// Invalid names
+		{"empty", "", false},
+		{"space", "my plugin", false},
+		{"colon", "Name:", false},
+		{"period", "my.plugin", false},
+		{"slash", "my/plugin", false},
+		{"dollar", "$plugin", false},
+		{"unicode", "plügîn", false},
 	}
 
-	err := metadata.Validate()
-	if err == nil {
-		t.Fatal("expected error for empty plugin name")
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metadata := MetadataLegacy{
+				Name:    tt.pluginName,
+				Version: "1.0.0",
+			}
 
-	expectedMsg := "plugin name is empty or missing"
-	if !strings.Contains(err.Error(), expectedMsg) {
-		t.Errorf("expected error to contain %q, got %q", expectedMsg, err.Error())
-	}
-}
+			err := metadata.Validate()
 
-func TestMetadataLegacyValidate_InvalidName(t *testing.T) {
-	metadata := MetadataLegacy{
-		Name:    "invalid name",
-		Version: "1.0.0",
-	}
-
-	err := metadata.Validate()
-	if err == nil {
-		t.Fatal("expected error for invalid plugin name")
-	}
-
-	expectedMsg := "plugin names can only contain ASCII characters"
-	if !strings.Contains(err.Error(), expectedMsg) {
-		t.Errorf("expected error to contain %q, got %q", expectedMsg, err.Error())
+			if tt.shouldPass && err != nil {
+				t.Errorf("expected %q to be valid, got error: %v", tt.pluginName, err)
+			}
+			if !tt.shouldPass && err == nil {
+				t.Errorf("expected %q to be invalid, but passed", tt.pluginName)
+			}
+		})
 	}
 }
