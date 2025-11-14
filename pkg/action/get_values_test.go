@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"errors"
 	"io"
 	"testing"
 
@@ -25,6 +26,7 @@ import (
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -57,7 +59,7 @@ func TestGetValues_Run_UserConfigOnly(t *testing.T) {
 	rel := &release.Release{
 		Name: releaseName,
 		Info: &release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		},
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{
@@ -111,7 +113,7 @@ func TestGetValues_Run_AllValues(t *testing.T) {
 	rel := &release.Release{
 		Name: releaseName,
 		Info: &release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		},
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{
@@ -146,7 +148,7 @@ func TestGetValues_Run_EmptyValues(t *testing.T) {
 	rel := &release.Release{
 		Name: releaseName,
 		Info: &release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		},
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{
@@ -168,9 +170,9 @@ func TestGetValues_Run_EmptyValues(t *testing.T) {
 
 func TestGetValues_Run_UnreachableKubeClient(t *testing.T) {
 	cfg := actionConfigFixture(t)
-	cfg.KubeClient = &unreachableKubeClient{
-		PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
-	}
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.ConnectionError = errors.New("connection refused")
+	cfg.KubeClient = &failingKubeClient
 
 	client := NewGetValues(cfg)
 
@@ -197,7 +199,7 @@ func TestGetValues_Run_NilConfig(t *testing.T) {
 	rel := &release.Release{
 		Name: releaseName,
 		Info: &release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		},
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{

@@ -17,18 +17,22 @@ package plugin
 
 import (
 	"testing"
+
+	"helm.sh/helm/v4/internal/plugin/schema"
 )
 
 func mockSubprocessCLIPlugin(t *testing.T, pluginName string) *SubprocessPluginRuntime {
 	t.Helper()
 
 	rc := RuntimeConfigSubprocess{
-		PlatformCommands: []PlatformCommand{
+		PlatformCommand: []PlatformCommand{
+			{OperatingSystem: "darwin", Architecture: "", Command: "sh", Args: []string{"-c", "echo \"mock plugin\""}},
 			{OperatingSystem: "linux", Architecture: "", Command: "sh", Args: []string{"-c", "echo \"mock plugin\""}},
 			{OperatingSystem: "windows", Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"mock plugin\""}},
 		},
 		PlatformHooks: map[string][]PlatformCommand{
 			Install: {
+				{OperatingSystem: "darwin", Architecture: "", Command: "sh", Args: []string{"-c", "echo \"installing...\""}},
 				{OperatingSystem: "linux", Architecture: "", Command: "sh", Args: []string{"-c", "echo \"installing...\""}},
 				{OperatingSystem: "windows", Architecture: "", Command: "pwsh", Args: []string{"-c", "echo \"installing...\""}},
 			},
@@ -44,7 +48,7 @@ func mockSubprocessCLIPlugin(t *testing.T, pluginName string) *SubprocessPluginR
 			Type:       "cli/v1",
 			APIVersion: "v1",
 			Runtime:    "subprocess",
-			Config: &ConfigCLI{
+			Config: &schema.ConfigCLIV1{
 				Usage:       "Mock plugin",
 				ShortHelp:   "Mock plugin",
 				LongHelp:    "Mock plugin for testing",

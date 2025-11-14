@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -46,11 +46,6 @@ const (
 	pluginDynamicCompletionExecutable = "plugin.complete"
 )
 
-type PluginError struct {
-	error
-	Code int
-}
-
 // loadCLIPlugins loads CLI plugins into the command list.
 //
 // This follows a different pattern than the other commands because it has
@@ -68,7 +63,7 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 	}
 	found, err := plugin.FindPlugins(dirs, descriptor)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to load plugins: %s\n", err)
+		slog.Error("failed to load plugins", slog.String("error", err.Error()))
 		return
 	}
 
@@ -76,7 +71,7 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 	for _, plug := range found {
 		var use, short, long string
 		var ignoreFlags bool
-		if cliConfig, ok := plug.Metadata().Config.(*plugin.ConfigCLI); ok {
+		if cliConfig, ok := plug.Metadata().Config.(*schema.ConfigCLIV1); ok {
 			use = cliConfig.Usage
 			short = cliConfig.ShortHelp
 			long = cliConfig.LongHelp
@@ -101,8 +96,6 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 				if err != nil {
 					return err
 				}
-				// Setup plugin environment
-				plugin.SetupPluginEnv(settings, plug.Metadata().Name, plug.Dir())
 
 				// For CLI plugin types runtime, set extra args and settings
 				extraArgs := []string{}
@@ -120,7 +113,6 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 				input := &plugin.Input{
 					Message: schema.InputMessageCLIV1{
 						ExtraArgs: extraArgs,
-						Settings:  settings,
 					},
 					Env:    env,
 					Stdin:  os.Stdin,
@@ -128,12 +120,10 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 					Stderr: os.Stderr,
 				}
 				_, err = plug.Invoke(context.Background(), input)
-				// TODO do we want to keep execErr here?
 				if execErr, ok := err.(*plugin.InvokeExecError); ok {
-					// TODO can we replace cmd.PluginError with plugin.Error?
-					return PluginError{
-						error: execErr.Err,
-						Code:  execErr.Code,
+					return CommandError{
+						error:    execErr.Err,
+						ExitCode: execErr.ExitCode,
 					}
 				}
 				return err
@@ -227,9 +217,7 @@ func loadCompletionForPlugin(pluginCmd *cobra.Command, plug plugin.Plugin) {
 
 	if err != nil {
 		// The file could be missing or invalid.  No static completion for this plugin.
-		if settings.Debug {
-			log.Output(2, fmt.Sprintf("[info] %s\n", err.Error()))
-		}
+		slog.Debug("plugin completion file loading", slog.String("error", err.Error()))
 		// Continue to setup dynamic completion.
 		cmds = &pluginCommand{}
 	}
@@ -248,10 +236,7 @@ func addPluginCommands(plug plugin.Plugin, baseCmd *cobra.Command, cmds *pluginC
 	}
 
 	if len(cmds.Name) == 0 {
-		// Missing name for a command
-		if settings.Debug {
-			log.Output(2, fmt.Sprintf("[info] sub-command name field missing for %s", baseCmd.CommandPath()))
-		}
+		slog.Debug("sub-command name field missing", slog.String("commandPath", baseCmd.CommandPath()))
 		return
 	}
 
@@ -349,7 +334,7 @@ func pluginDynamicComp(plug plugin.Plugin, cmd *cobra.Command, args []string, to
 	}
 
 	var ignoreFlags bool
-	if cliConfig, ok := subprocessPlug.Metadata().Config.(*plugin.ConfigCLI); ok {
+	if cliConfig, ok := subprocessPlug.Metadata().Config.(*schema.ConfigCLIV1); ok {
 		ignoreFlags = cliConfig.IgnoreFlags
 	}
 
@@ -369,7 +354,6 @@ func pluginDynamicComp(plug plugin.Plugin, cmd *cobra.Command, args []string, to
 		argv = append(argv, u...)
 		argv = append(argv, toComplete)
 	}
-	plugin.SetupPluginEnv(settings, plug.Metadata().Name, plug.Dir())
 
 	cobra.CompDebugln(fmt.Sprintf("calling %s with args %v", main, argv), settings.Debug)
 	buf := new(bytes.Buffer)

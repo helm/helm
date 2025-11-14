@@ -38,11 +38,13 @@ type PluginPullOptions struct {
 
 // PluginPullResult contains the result of a plugin pull operation
 type PluginPullResult struct {
-	Manifest       ocispec.Descriptor
-	PluginData     []byte
-	ProvenanceData []byte // Optional provenance data
-	Ref            string
-	PluginName     string
+	Manifest   ocispec.Descriptor
+	PluginData []byte
+	Prov       struct {
+		Data []byte
+	}
+	Ref        string
+	PluginName string
 }
 
 // PullPlugin downloads a plugin from an OCI registry using artifact type
@@ -96,30 +98,31 @@ func (c *Client) processPluginPull(genericResult *GenericPullResult, pluginName 
 		return nil, fmt.Errorf("expected config media type %s for legacy compatibility, got %s", PluginArtifactType, manifest.Config.MediaType)
 	}
 
-	// Find the required plugin tarball and optional provenance
-	expectedTarball := pluginName + ".tgz"
-	expectedProvenance := pluginName + ".tgz.prov"
-
+	// Find the plugin tarball and optional provenance using NAME-VERSION.tgz format
 	var pluginDescriptor *ocispec.Descriptor
 	var provenanceDescriptor *ocispec.Descriptor
+	var foundProvenanceName string
 
 	// Look for layers with the expected titles/annotations
 	for _, layer := range manifest.Layers {
 		d := layer
-		// Check for title annotation (preferred method)
+		// Check for title annotation
 		if title, exists := d.Annotations[ocispec.AnnotationTitle]; exists {
-			switch title {
-			case expectedTarball:
+			// Check if this looks like a plugin tarball: {pluginName}-{version}.tgz
+			if pluginDescriptor == nil && strings.HasPrefix(title, pluginName+"-") && strings.HasSuffix(title, ".tgz") {
 				pluginDescriptor = &d
-			case expectedProvenance:
+			}
+			// Check if this looks like a plugin provenance: {pluginName}-{version}.tgz.prov
+			if provenanceDescriptor == nil && strings.HasPrefix(title, pluginName+"-") && strings.HasSuffix(title, ".tgz.prov") {
 				provenanceDescriptor = &d
+				foundProvenanceName = title
 			}
 		}
 	}
 
 	// Plugin tarball is required
 	if pluginDescriptor == nil {
-		return nil, fmt.Errorf("required layer %s not found in manifest", expectedTarball)
+		return nil, fmt.Errorf("required layer matching pattern %s-VERSION.tgz not found in manifest", pluginName)
 	}
 
 	// Build plugin-specific result
@@ -138,21 +141,21 @@ func (c *Client) processPluginPull(genericResult *GenericPullResult, pluginName 
 
 	// Fetch provenance data if available
 	if provenanceDescriptor != nil {
-		result.ProvenanceData, err = genericClient.GetDescriptorData(genericResult.MemoryStore, *provenanceDescriptor)
+		result.Prov.Data, err = genericClient.GetDescriptorData(genericResult.MemoryStore, *provenanceDescriptor)
 		if err != nil {
 			return nil, fmt.Errorf("unable to retrieve provenance data with digest %s: %w", provenanceDescriptor.Digest, err)
 		}
 	}
 
-	fmt.Fprintf(c.out, "Pulled plugin: %s\n", result.Ref)
-	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
-	if result.ProvenanceData != nil {
-		fmt.Fprintf(c.out, "Provenance: %s\n", expectedProvenance)
+	_, _ = fmt.Fprintf(c.out, "Pulled plugin: %s\n", result.Ref)
+	_, _ = fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	if result.Prov.Data != nil {
+		_, _ = fmt.Fprintf(c.out, "Provenance: %s\n", foundProvenanceName)
 	}
 
 	if strings.Contains(result.Ref, "_") {
-		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
-		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
+		_, _ = fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
+		_, _ = fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
 	}
 
 	return result, nil
@@ -162,6 +165,7 @@ func (c *Client) processPluginPull(genericResult *GenericPullResult, pluginName 
 type (
 	pluginPullOperation struct {
 		pluginName string
+		withProv   bool
 	}
 
 	// PluginPullOption allows customizing plugin pull operations
@@ -198,4 +202,11 @@ func GetPluginName(source string) (string, error) {
 	}
 
 	return pluginName, nil
+}
+
+// PullPluginOptWithProv configures the pull to fetch provenance data
+func PullPluginOptWithProv(withProv bool) PluginPullOption {
+	return func(operation *pluginPullOperation) {
+		operation.withProv = withProv
+	}
 }

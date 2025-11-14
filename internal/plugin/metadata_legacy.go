@@ -45,8 +45,8 @@ type MetadataLegacy struct {
 	// Description is a long description shown in places like `helm help`
 	Description string `yaml:"description"`
 
-	// PlatformCommands is the plugin command, with a platform selector and support for args.
-	PlatformCommands []PlatformCommand `yaml:"platformCommand"`
+	// PlatformCommand is the plugin command, with a platform selector and support for args.
+	PlatformCommand []PlatformCommand `yaml:"platformCommand"`
 
 	// Command is the plugin command, as a single string.
 	// DEPRECATED: Use PlatformCommand instead. Removed in subprocess/v1 plugins.
@@ -73,7 +73,7 @@ func (m *MetadataLegacy) Validate() error {
 	}
 	m.Usage = sanitizeString(m.Usage)
 
-	if len(m.PlatformCommands) > 0 && len(m.Command) > 0 {
+	if len(m.PlatformCommand) > 0 && len(m.Command) > 0 {
 		return fmt.Errorf("both platformCommand and command are set")
 	}
 

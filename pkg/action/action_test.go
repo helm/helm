@@ -24,21 +24,22 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v4/internal/logging"
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/registry"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
-	"helm.sh/helm/v4/pkg/time"
 )
 
 var verbose = flag.Bool("test.log", false, "enable test logging (debug by default)")
@@ -64,7 +65,7 @@ func actionConfigFixtureWithDummyResources(t *testing.T, dummyResources kube.Res
 	return &Configuration{
 		Releases:       storage.Init(driver.NewMemory()),
 		KubeClient:     &kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: dummyResources},
-		Capabilities:   chartutil.DefaultCapabilities,
+		Capabilities:   common.DefaultCapabilities,
 		RegistryClient: registryClient,
 	}
 }
@@ -122,14 +123,15 @@ type chartOptions struct {
 type chartOption func(*chartOptions)
 
 func buildChart(opts ...chartOption) *chart.Chart {
-	defaultTemplates := []*chart.File{
-		{Name: "templates/hello", Data: []byte("hello: world")},
-		{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+	modTime := time.Now()
+	defaultTemplates := []*common.File{
+		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
+		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifestWithHook)},
 	}
 	return buildChartWithTemplates(defaultTemplates, opts...)
 }
 
-func buildChartWithTemplates(templates []*chart.File, opts ...chartOption) *chart.Chart {
+func buildChartWithTemplates(templates []*common.File, opts ...chartOption) *chart.Chart {
 	c := &chartOptions{
 		Chart: &chart.Chart{
 			// TODO: This should be more complete.
@@ -179,9 +181,10 @@ func withValues(values map[string]interface{}) chartOption {
 
 func withNotes(notes string) chartOption {
 	return func(opts *chartOptions) {
-		opts.Templates = append(opts.Templates, &chart.File{
-			Name: "templates/NOTES.txt",
-			Data: []byte(notes),
+		opts.Templates = append(opts.Templates, &common.File{
+			Name:    "templates/NOTES.txt",
+			ModTime: time.Now(),
+			Data:    []byte(notes),
 		})
 	}
 }
@@ -200,12 +203,13 @@ func withMetadataDependency(dependency chart.Dependency) chartOption {
 
 func withSampleTemplates() chartOption {
 	return func(opts *chartOptions) {
-		sampleTemplates := []*chart.File{
+		modTime := time.Now()
+		sampleTemplates := []*common.File{
 			// This adds basic templates and partials.
-			{Name: "templates/goodbye", Data: []byte("goodbye: world")},
-			{Name: "templates/empty", Data: []byte("")},
-			{Name: "templates/with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
-			{Name: "templates/partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
+			{Name: "templates/goodbye", ModTime: modTime, Data: []byte("goodbye: world")},
+			{Name: "templates/empty", ModTime: modTime, Data: []byte("")},
+			{Name: "templates/with-partials", ModTime: modTime, Data: []byte(`hello: {{ template "_planet" . }}`)},
+			{Name: "templates/partials/_planet", ModTime: modTime, Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
 	}
@@ -213,20 +217,21 @@ func withSampleTemplates() chartOption {
 
 func withSampleSecret() chartOption {
 	return func(opts *chartOptions) {
-		sampleSecret := &chart.File{Name: "templates/secret.yaml", Data: []byte("apiVersion: v1\nkind: Secret\n")}
+		sampleSecret := &common.File{Name: "templates/secret.yaml", ModTime: time.Now(), Data: []byte("apiVersion: v1\nkind: Secret\n")}
 		opts.Templates = append(opts.Templates, sampleSecret)
 	}
 }
 
 func withSampleIncludingIncorrectTemplates() chartOption {
 	return func(opts *chartOptions) {
-		sampleTemplates := []*chart.File{
+		modTime := time.Now()
+		sampleTemplates := []*common.File{
 			// This adds basic templates and partials.
-			{Name: "templates/goodbye", Data: []byte("goodbye: world")},
-			{Name: "templates/empty", Data: []byte("")},
-			{Name: "templates/incorrect", Data: []byte("{{ .Values.bad.doh }}")},
-			{Name: "templates/with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
-			{Name: "templates/partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
+			{Name: "templates/goodbye", ModTime: modTime, Data: []byte("goodbye: world")},
+			{Name: "templates/empty", ModTime: modTime, Data: []byte("")},
+			{Name: "templates/incorrect", ModTime: modTime, Data: []byte("{{ .Values.bad.doh }}")},
+			{Name: "templates/with-partials", ModTime: modTime, Data: []byte(`hello: {{ template "_planet" . }}`)},
+			{Name: "templates/partials/_planet", ModTime: modTime, Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
 	}
@@ -234,8 +239,8 @@ func withSampleIncludingIncorrectTemplates() chartOption {
 
 func withMultipleManifestTemplate() chartOption {
 	return func(opts *chartOptions) {
-		sampleTemplates := []*chart.File{
-			{Name: "templates/rbac", Data: []byte(rbacManifests)},
+		sampleTemplates := []*common.File{
+			{Name: "templates/rbac", ModTime: time.Now(), Data: []byte(rbacManifests)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
 	}
@@ -249,10 +254,10 @@ func withKube(version string) chartOption {
 
 // releaseStub creates a release stub, complete with the chartStub as its chart.
 func releaseStub() *release.Release {
-	return namedReleaseStub("angry-panda", release.StatusDeployed)
+	return namedReleaseStub("angry-panda", rcommon.StatusDeployed)
 }
 
-func namedReleaseStub(name string, status release.Status) *release.Release {
+func namedReleaseStub(name string, status rcommon.Status) *release.Release {
 	now := time.Now()
 	return &release.Release{
 		Name: name,
@@ -343,7 +348,7 @@ func TestConfiguration_Init(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := &Configuration{}
+			cfg := NewConfiguration()
 
 			actualErr := cfg.Init(nil, "default", tt.helmDriver)
 			if tt.expectErr {
@@ -851,8 +856,8 @@ func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
 			Name:       "test-chart",
 			Version:    "0.1.0",
 		},
-		Templates: []*chart.File{
-			{Name: "templates/invalid", Data: []byte("invalid: yaml: content:")},
+		Templates: []*common.File{
+			{Name: "templates/invalid", ModTime: time.Now(), Data: []byte("invalid: yaml: content:")},
 		},
 	}
 	values := map[string]interface{}{}
@@ -945,4 +950,21 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 	assert.NotNil(t, hooks)
 	assert.NotNil(t, buf)
 	assert.Equal(t, "", notes)
+}
+
+func TestDetermineReleaseSSAApplyMethod(t *testing.T) {
+	assert.Equal(t, release.ApplyMethodClientSideApply, determineReleaseSSApplyMethod(false))
+	assert.Equal(t, release.ApplyMethodServerSideApply, determineReleaseSSApplyMethod(true))
+}
+
+func TestIsDryRun(t *testing.T) {
+	assert.False(t, isDryRun(DryRunNone))
+	assert.True(t, isDryRun(DryRunClient))
+	assert.True(t, isDryRun(DryRunServer))
+}
+
+func TestInteractWithServer(t *testing.T) {
+	assert.True(t, interactWithServer(DryRunNone))
+	assert.False(t, interactWithServer(DryRunClient))
+	assert.True(t, interactWithServer(DryRunServer))
 }

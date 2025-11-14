@@ -17,6 +17,7 @@ limitations under the License.
 package registry
 
 import (
+	"fmt"
 	"strings"
 
 	"oras.land/oras-go/v2/registry"
@@ -31,11 +32,11 @@ type reference struct {
 }
 
 // newReference will parse and validate the reference, and clean tags when
-// applicable tags are only cleaned when plus (+) signs are present, and are
+// applicable tags are only cleaned when plus (+) signs are present and are
 // converted to underscores (_) before pushing
 // See https://github.com/helm/helm/issues/10166
 func newReference(raw string) (result reference, err error) {
-	// Remove oci:// prefix if it is there
+	// Remove the oci:// prefix if it is there
 	raw = strings.TrimPrefix(raw, OCIScheme+"://")
 
 	// The sole possible reference modification is replacing plus (+) signs
@@ -75,4 +76,9 @@ func (r *reference) String() string {
 		return r.orasReference.String() + "@" + r.Digest
 	}
 	return r.orasReference.String()
+}
+
+// IsOCI determines whether a URL is to be treated as an OCI URL
+func IsOCI(url string) bool {
+	return strings.HasPrefix(url, fmt.Sprintf("%s://", OCIScheme))
 }

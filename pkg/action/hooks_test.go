@@ -21,18 +21,20 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/resource"
 
-	chart "helm.sh/helm/v4/pkg/chart/v2"
-	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -113,15 +115,15 @@ spec:
 }
 
 func convertHooksToCommaSeparated(hookDefinitions []release.HookOutputLogPolicy) string {
-	var commaSeparated string
+	var commaSeparated strings.Builder
 	for i, policy := range hookDefinitions {
 		if i+1 == len(hookDefinitions) {
-			commaSeparated += policy.String()
+			commaSeparated.WriteString(policy.String())
 		} else {
-			commaSeparated += policy.String() + ","
+			commaSeparated.WriteString(policy.String() + ",")
 		}
 	}
-	return commaSeparated
+	return commaSeparated.String()
 }
 
 func TestInstallRelease_HookOutputLogsOnFailure(t *testing.T) {
@@ -178,16 +180,19 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 	outBuffer := &bytes.Buffer{}
 	instAction.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
-	templates := []*chart.File{
-		{Name: "templates/hello", Data: []byte("hello: world")},
-		{Name: "templates/hooks", Data: []byte(manifest)},
+	modTime := time.Now()
+	templates := []*common.File{
+		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
+		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifest)},
 	}
 	vals := map[string]interface{}{}
 
-	res, err := instAction.Run(buildChartWithTemplates(templates), vals)
+	resi, err := instAction.Run(buildChartWithTemplates(templates), vals)
+	is.NoError(err)
+	res, err := releaserToV1Release(resi)
 	is.NoError(err)
 	is.Equal(expectedOutput, outBuffer.String())
-	is.Equal(release.StatusDeployed, res.Info.Status)
+	is.Equal(rcommon.StatusDeployed, res.Info.Status)
 }
 
 func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace string, shouldOutput bool) {
@@ -205,17 +210,20 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 	outBuffer := &bytes.Buffer{}
 	failingClient.PrintingKubeClient = kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
-	templates := []*chart.File{
-		{Name: "templates/hello", Data: []byte("hello: world")},
-		{Name: "templates/hooks", Data: []byte(manifest)},
+	modTime := time.Now()
+	templates := []*common.File{
+		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
+		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifest)},
 	}
 	vals := map[string]interface{}{}
 
-	res, err := instAction.Run(buildChartWithTemplates(templates), vals)
+	resi, err := instAction.Run(buildChartWithTemplates(templates), vals)
 	is.Error(err)
+	res, err := releaserToV1Release(resi)
+	is.NoError(err)
 	is.Contains(res.Info.Description, "failed pre-install")
 	is.Equal(expectedOutput, outBuffer.String())
-	is.Equal(release.StatusFailed, res.Info.Status)
+	is.Equal(rcommon.StatusFailed, res.Info.Status)
 }
 
 type HookFailedError struct{}
@@ -259,7 +267,7 @@ func (h *HookFailingKubeWaiter) WatchUntilReady(resources kube.ResourceList, _ t
 	return nil
 }
 
-func (h *HookFailingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, []error) {
+func (h *HookFailingKubeClient) Delete(resources kube.ResourceList, deletionPropagation metav1.DeletionPropagation) (*kube.Result, []error) {
 	for _, res := range resources {
 		h.deleteRecord = append(h.deleteRecord, resource.Info{
 			Name:      res.Name,
@@ -267,7 +275,7 @@ func (h *HookFailingKubeClient) Delete(resources kube.ResourceList) (*kube.Resul
 		})
 	}
 
-	return h.PrintingKubeClient.Delete(resources)
+	return h.PrintingKubeClient.Delete(resources, deletionPropagation)
 }
 
 func (h *HookFailingKubeClient) GetWaiter(strategy kube.WaitStrategy) (kube.Waiter, error) {
@@ -382,10 +390,11 @@ data:
 			configuration := &Configuration{
 				Releases:     storage.Init(driver.NewMemory()),
 				KubeClient:   kubeClient,
-				Capabilities: chartutil.DefaultCapabilities,
+				Capabilities: common.DefaultCapabilities,
 			}
 
-			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, 600)
+			serverSideApply := true
+			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, 600, serverSideApply)
 
 			if !reflect.DeepEqual(kubeClient.deleteRecord, tc.expectedDeleteRecord) {
 				t.Fatalf("Got unexpected delete record, expected: %#v, but got: %#v", kubeClient.deleteRecord, tc.expectedDeleteRecord)
@@ -398,6 +407,38 @@ data:
 			if err == nil && tc.expectError {
 				t.Fatalf("Expected and error but did not get it.")
 			}
+		})
+	}
+}
+
+func TestConfiguration_hookSetDeletePolicy(t *testing.T) {
+	tests := map[string]struct {
+		policies []release.HookDeletePolicy
+		expected []release.HookDeletePolicy
+	}{
+		"no polices specified result in the default policy": {
+			policies: nil,
+			expected: []release.HookDeletePolicy{
+				release.HookBeforeHookCreation,
+			},
+		},
+		"unknown policy is untouched": {
+			policies: []release.HookDeletePolicy{
+				release.HookDeletePolicy("never"),
+			},
+			expected: []release.HookDeletePolicy{
+				release.HookDeletePolicy("never"),
+			},
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			cfg := &Configuration{}
+			h := &release.Hook{
+				DeletePolicies: tt.policies,
+			}
+			cfg.hookSetDeletePolicy(h)
+			assert.Equal(t, tt.expected, h.DeletePolicies)
 		})
 	}
 }

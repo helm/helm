@@ -29,11 +29,18 @@ import (
 //
 // A KubernetesClient must be concurrency safe.
 type Interface interface {
+	// Get details of deployed resources.
+	// The first argument is a list of resources to get. The second argument
+	// specifies if related pods should be fetched. For example, the pods being
+	// managed by a deployment.
+	Get(resources ResourceList, related bool) (map[string][]runtime.Object, error)
+
 	// Create creates one or more resources.
 	Create(resources ResourceList, options ...ClientCreateOption) (*Result, error)
 
-	// Delete destroys one or more resources.
-	Delete(resources ResourceList) (*Result, []error)
+	// Delete destroys one or more resources using the specified deletion propagation policy.
+	// The 'policy' parameter determines how child resources are handled during deletion.
+	Delete(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error)
 
 	// Update updates one or more resources or creates the resource
 	// if it doesn't exist.
@@ -51,6 +58,23 @@ type Interface interface {
 
 	// Get Waiter gets the Kube.Waiter
 	GetWaiter(ws WaitStrategy) (Waiter, error)
+
+	// GetPodList lists all pods that match the specified listOptions
+	GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error)
+
+	// OutputContainerLogsForPodList outputs the logs for a pod list
+	OutputContainerLogsForPodList(podList *v1.PodList, namespace string, writerFunc func(namespace, pod, container string) io.Writer) error
+
+	// BuildTable creates a resource list from a Reader. This differs from
+	// Interface.Build() in that a table kind is returned. A table is useful
+	// if you want to use a printer to display the information.
+	//
+	// Reader must contain a YAML stream (one or more YAML documents separated
+	// by "\n---\n")
+	//
+	// Validates against OpenAPI schema if validate is true.
+	// TODO Helm 4: Integrate into Build with an argument
+	BuildTable(reader io.Reader, validate bool) (ResourceList, error)
 }
 
 // Waiter defines methods related to waiting for resource states.
@@ -75,49 +99,3 @@ type Waiter interface {
 	// error.
 	WatchUntilReady(resources ResourceList, timeout time.Duration) error
 }
-
-// InterfaceLogs was introduced to avoid breaking backwards compatibility for Interface implementers.
-//
-// TODO Helm 4: Remove InterfaceLogs and integrate its method(s) into the Interface.
-type InterfaceLogs interface {
-	// GetPodList list all pods that match the specified listOptions
-	GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error)
-
-	// OutputContainerLogsForPodList output the logs for a pod list
-	OutputContainerLogsForPodList(podList *v1.PodList, namespace string, writerFunc func(namespace, pod, container string) io.Writer) error
-}
-
-// InterfaceDeletionPropagation is introduced to avoid breaking backwards compatibility for Interface implementers.
-//
-// TODO Helm 4: Remove InterfaceDeletionPropagation and integrate its method(s) into the Interface.
-type InterfaceDeletionPropagation interface {
-	// DeleteWithPropagationPolicy destroys one or more resources. The deletion propagation is handled as per the given deletion propagation value.
-	DeleteWithPropagationPolicy(resources ResourceList, policy metav1.DeletionPropagation) (*Result, []error)
-}
-
-// InterfaceResources is introduced to avoid breaking backwards compatibility for Interface implementers.
-//
-// TODO Helm 4: Remove InterfaceResources and integrate its method(s) into the Interface.
-type InterfaceResources interface {
-	// Get details of deployed resources.
-	// The first argument is a list of resources to get. The second argument
-	// specifies if related pods should be fetched. For example, the pods being
-	// managed by a deployment.
-	Get(resources ResourceList, related bool) (map[string][]runtime.Object, error)
-
-	// BuildTable creates a resource list from a Reader. This differs from
-	// Interface.Build() in that a table kind is returned. A table is useful
-	// if you want to use a printer to display the information.
-	//
-	// Reader must contain a YAML stream (one or more YAML documents separated
-	// by "\n---\n")
-	//
-	// Validates against OpenAPI schema if validate is true.
-	// TODO Helm 4: Integrate into Build with an argument
-	BuildTable(reader io.Reader, validate bool) (ResourceList, error)
-}
-
-var _ Interface = (*Client)(nil)
-var _ InterfaceLogs = (*Client)(nil)
-var _ InterfaceDeletionPropagation = (*Client)(nil)
-var _ InterfaceResources = (*Client)(nil)

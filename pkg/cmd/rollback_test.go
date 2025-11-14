@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -29,13 +30,13 @@ func TestRollbackCmd(t *testing.T) {
 	rels := []*release.Release{
 		{
 			Name:    "funny-honey",
-			Info:    &release.Info{Status: release.StatusSuperseded},
+			Info:    &release.Info{Status: common.StatusSuperseded},
 			Chart:   &chart.Chart{},
 			Version: 1,
 		},
 		{
 			Name:    "funny-honey",
-			Info:    &release.Info{Status: release.StatusDeployed},
+			Info:    &release.Info{Status: common.StatusDeployed},
 			Chart:   &chart.Chart{},
 			Version: 2,
 		},
@@ -83,7 +84,7 @@ func TestRollbackCmd(t *testing.T) {
 }
 
 func TestRollbackRevisionCompletion(t *testing.T) {
-	mk := func(name string, vers int, status release.Status) *release.Release {
+	mk := func(name string, vers int, status common.Status) *release.Release {
 		return release.Mock(&release.MockReleaseOptions{
 			Name:    name,
 			Version: vers,
@@ -92,11 +93,11 @@ func TestRollbackRevisionCompletion(t *testing.T) {
 	}
 
 	releases := []*release.Release{
-		mk("musketeers", 11, release.StatusDeployed),
-		mk("musketeers", 10, release.StatusSuperseded),
-		mk("musketeers", 9, release.StatusSuperseded),
-		mk("musketeers", 8, release.StatusSuperseded),
-		mk("carabins", 1, release.StatusSuperseded),
+		mk("musketeers", 11, common.StatusDeployed),
+		mk("musketeers", 10, common.StatusSuperseded),
+		mk("musketeers", 9, common.StatusSuperseded),
+		mk("musketeers", 8, common.StatusSuperseded),
+		mk("carabins", 1, common.StatusSuperseded),
 	}
 
 	tests := []cmdTestCase{{
@@ -132,14 +133,14 @@ func TestRollbackWithLabels(t *testing.T) {
 	rels := []*release.Release{
 		{
 			Name:    releaseName,
-			Info:    &release.Info{Status: release.StatusSuperseded},
+			Info:    &release.Info{Status: common.StatusSuperseded},
 			Chart:   &chart.Chart{},
 			Version: 1,
 			Labels:  labels1,
 		},
 		{
 			Name:    releaseName,
-			Info:    &release.Info{Status: release.StatusDeployed},
+			Info:    &release.Info{Status: common.StatusDeployed},
 			Chart:   &chart.Chart{},
 			Version: 2,
 			Labels:  labels2,
@@ -155,7 +156,11 @@ func TestRollbackWithLabels(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}
-	updatedRel, err := storage.Get(releaseName, 3)
+	updatedReli, err := storage.Get(releaseName, 3)
+	if err != nil {
+		t.Errorf("unexpected error, got '%v'", err)
+	}
+	updatedRel, err := releaserToV1Release(updatedReli)
 	if err != nil {
 		t.Errorf("unexpected error, got '%v'", err)
 	}

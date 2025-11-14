@@ -18,32 +18,41 @@ package v3
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"helm.sh/helm/v4/pkg/chart/common"
 )
 
 func TestCRDs(t *testing.T) {
+	modTime := time.Now()
 	chrt := Chart{
-		Files: []*File{
+		Files: []*common.File{
 			{
-				Name: "crds/foo.yaml",
-				Data: []byte("hello"),
+				Name:    "crds/foo.yaml",
+				ModTime: modTime,
+				Data:    []byte("hello"),
 			},
 			{
-				Name: "bar.yaml",
-				Data: []byte("hello"),
+				Name:    "bar.yaml",
+				ModTime: modTime,
+				Data:    []byte("hello"),
 			},
 			{
-				Name: "crds/foo/bar/baz.yaml",
-				Data: []byte("hello"),
+				Name:    "crds/foo/bar/baz.yaml",
+				ModTime: modTime,
+				Data:    []byte("hello"),
 			},
 			{
-				Name: "crdsfoo/bar/baz.yaml",
-				Data: []byte("hello"),
+				Name:    "crdsfoo/bar/baz.yaml",
+				ModTime: modTime,
+				Data:    []byte("hello"),
 			},
 			{
-				Name: "crds/README.md",
-				Data: []byte("# hello"),
+				Name:    "crds/README.md",
+				ModTime: modTime,
+				Data:    []byte("# hello"),
 			},
 		},
 	}
@@ -57,10 +66,11 @@ func TestCRDs(t *testing.T) {
 
 func TestSaveChartNoRawData(t *testing.T) {
 	chrt := Chart{
-		Raw: []*File{
+		Raw: []*common.File{
 			{
-				Name: "fhqwhgads.yaml",
-				Data: []byte("Everybody to the Limit"),
+				Name:    "fhqwhgads.yaml",
+				ModTime: time.Now(),
+				Data:    []byte("Everybody to the Limit"),
 			},
 		},
 	}
@@ -76,7 +86,7 @@ func TestSaveChartNoRawData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	is.Equal([]*File(nil), res.Raw)
+	is.Equal([]*common.File(nil), res.Raw)
 }
 
 func TestMetadata(t *testing.T) {
@@ -161,27 +171,33 @@ func TestChartFullPath(t *testing.T) {
 }
 
 func TestCRDObjects(t *testing.T) {
+	modTime := time.Now()
 	chrt := Chart{
-		Files: []*File{
+		Files: []*common.File{
 			{
-				Name: "crds/foo.yaml",
-				Data: []byte("hello"),
+				Name:    "crds/foo.yaml",
+				ModTime: modTime,
+				Data:    []byte("hello"),
 			},
 			{
-				Name: "bar.yaml",
-				Data: []byte("hello"),
+				Name:    "bar.yaml",
+				ModTime: modTime,
+				Data:    []byte("hello"),
 			},
 			{
-				Name: "crds/foo/bar/baz.yaml",
-				Data: []byte("hello"),
+				Name:    "crds/foo/bar/baz.yaml",
+				ModTime: modTime,
+				Data:    []byte("hello"),
 			},
 			{
-				Name: "crdsfoo/bar/baz.yaml",
-				Data: []byte("hello"),
+				Name:    "crdsfoo/bar/baz.yaml",
+				ModTime: modTime,
+				Data:    []byte("hello"),
 			},
 			{
-				Name: "crds/README.md",
-				Data: []byte("# hello"),
+				Name:    "crds/README.md",
+				ModTime: modTime,
+				Data:    []byte("# hello"),
 			},
 		},
 	}
@@ -190,17 +206,19 @@ func TestCRDObjects(t *testing.T) {
 		{
 			Name:     "crds/foo.yaml",
 			Filename: "crds/foo.yaml",
-			File: &File{
-				Name: "crds/foo.yaml",
-				Data: []byte("hello"),
+			File: &common.File{
+				Name:    "crds/foo.yaml",
+				ModTime: modTime,
+				Data:    []byte("hello"),
 			},
 		},
 		{
 			Name:     "crds/foo/bar/baz.yaml",
 			Filename: "crds/foo/bar/baz.yaml",
-			File: &File{
-				Name: "crds/foo/bar/baz.yaml",
-				Data: []byte("hello"),
+			File: &common.File{
+				Name:    "crds/foo/bar/baz.yaml",
+				ModTime: modTime,
+				Data:    []byte("hello"),
 			},
 		},
 	}

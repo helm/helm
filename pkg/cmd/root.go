@@ -39,8 +39,9 @@ import (
 	"helm.sh/helm/v4/pkg/cli"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/registry"
+	ri "helm.sh/helm/v4/pkg/release"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	"helm.sh/helm/v4/pkg/repo"
+	"helm.sh/helm/v4/pkg/repo/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
@@ -102,7 +103,7 @@ By default, the default directories depend on the Operating System. The defaults
 var settings = cli.New()
 
 func NewRootCmd(out io.Writer, args []string, logSetup func(bool)) (*cobra.Command, error) {
-	actionConfig := new(action.Configuration)
+	actionConfig := action.NewConfiguration()
 	cmd, err := newRootCmdWithConfig(actionConfig, out, args, logSetup)
 	if err != nil {
 		return nil, err
@@ -173,7 +174,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	// those errors will be caught later during the call to cmd.Execution.
 	// This call is required to gather configuration information prior to
 	// execution.
-	flags.ParseErrorsWhitelist.UnknownFlags = true
+	flags.ParseErrorsAllowlist.UnknownFlags = true
 	flags.Parse(args)
 
 	logSetup(settings.Debug)
@@ -392,10 +393,10 @@ func checkForExpiredRepos(repofile string) {
 }
 
 func newRegistryClient(
-	certFile, keyFile, caFile string, insecureSkipTLSverify, plainHTTP bool, username, password string,
+	certFile, keyFile, caFile string, insecureSkipTLSVerify, plainHTTP bool, username, password string,
 ) (*registry.Client, error) {
-	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSverify {
-		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSverify, username, password)
+	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSVerify {
+		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSVerify, username, password)
 		if err != nil {
 			return nil, err
 		}
@@ -429,10 +430,10 @@ func newDefaultRegistryClient(plainHTTP bool, username, password string) (*regis
 }
 
 func newRegistryClientWithTLS(
-	certFile, keyFile, caFile string, insecureSkipTLSverify bool, username, password string,
+	certFile, keyFile, caFile string, insecureSkipTLSVerify bool, username, password string,
 ) (*registry.Client, error) {
 	tlsConf, err := tlsutil.NewTLSConfig(
-		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSVerify),
 		tlsutil.WithCertKeyPairFiles(certFile, keyFile),
 		tlsutil.WithCAFile(caFile),
 	)
@@ -459,4 +460,37 @@ func newRegistryClientWithTLS(
 		return nil, err
 	}
 	return registryClient, nil
+}
+
+type CommandError struct {
+	error
+	ExitCode int
+}
+
+// releaserToV1Release is a helper function to convert a v1 release passed by interface
+// into the type object.
+func releaserToV1Release(rel ri.Releaser) (*release.Release, error) {
+	switch r := rel.(type) {
+	case release.Release:
+		return &r, nil
+	case *release.Release:
+		return r, nil
+	case nil:
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unsupported release type: %T", rel)
+	}
+}
+
+func releaseListToV1List(ls []ri.Releaser) ([]*release.Release, error) {
+	rls := make([]*release.Release, 0, len(ls))
+	for _, val := range ls {
+		rel, err := releaserToV1Release(val)
+		if err != nil {
+			return nil, err
+		}
+		rls = append(rls, rel)
+	}
+
+	return rls, nil
 }

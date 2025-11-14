@@ -18,24 +18,27 @@ package action
 
 import (
 	"testing"
+	"time"
 
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
 func TestShow(t *testing.T) {
 	config := actionConfigFixture(t)
 	client := NewShow(ShowAll, config)
+	modTime := time.Now()
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
-		Files: []*chart.File{
-			{Name: "README.md", Data: []byte("README\n")},
-			{Name: "crds/ignoreme.txt", Data: []byte("error")},
-			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
-			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},
-			{Name: "crds/baz.yaml", Data: []byte("baz\n")},
+		Files: []*common.File{
+			{Name: "README.md", ModTime: modTime, Data: []byte("README\n")},
+			{Name: "crds/ignoreme.txt", ModTime: modTime, Data: []byte("error")},
+			{Name: "crds/foo.yaml", ModTime: modTime, Data: []byte("---\nfoo\n")},
+			{Name: "crds/bar.json", ModTime: modTime, Data: []byte("---\nbar\n")},
+			{Name: "crds/baz.yaml", ModTime: modTime, Data: []byte("baz\n")},
 		},
-		Raw: []*chart.File{
-			{Name: "values.yaml", Data: []byte("VALUES\n")},
+		Raw: []*common.File{
+			{Name: "values.yaml", ModTime: modTime, Data: []byte("VALUES\n")},
 		},
 		Values: map[string]interface{}{},
 	}
@@ -103,13 +106,14 @@ func TestShowValuesByJsonPathFormat(t *testing.T) {
 func TestShowCRDs(t *testing.T) {
 	config := actionConfigFixture(t)
 	client := NewShow(ShowCRDs, config)
+	modTime := time.Now()
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
-		Files: []*chart.File{
-			{Name: "crds/ignoreme.txt", Data: []byte("error")},
-			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
-			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},
-			{Name: "crds/baz.yaml", Data: []byte("baz\n")},
+		Files: []*common.File{
+			{Name: "crds/ignoreme.txt", ModTime: modTime, Data: []byte("error")},
+			{Name: "crds/foo.yaml", ModTime: modTime, Data: []byte("---\nfoo\n")},
+			{Name: "crds/bar.json", ModTime: modTime, Data: []byte("---\nbar\n")},
+			{Name: "crds/baz.yaml", ModTime: modTime, Data: []byte("baz\n")},
 		},
 	}
 
@@ -136,12 +140,13 @@ baz
 func TestShowNoReadme(t *testing.T) {
 	config := actionConfigFixture(t)
 	client := NewShow(ShowAll, config)
+	modTime := time.Now()
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
-		Files: []*chart.File{
-			{Name: "crds/ignoreme.txt", Data: []byte("error")},
-			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
-			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},
+		Files: []*common.File{
+			{Name: "crds/ignoreme.txt", ModTime: modTime, Data: []byte("error")},
+			{Name: "crds/foo.yaml", ModTime: modTime, Data: []byte("---\nfoo\n")},
+			{Name: "crds/bar.json", ModTime: modTime, Data: []byte("---\nbar\n")},
 		},
 	}
 

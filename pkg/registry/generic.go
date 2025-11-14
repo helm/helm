@@ -92,7 +92,7 @@ func (c *GenericClient) PullGeneric(ref string, options GenericPullOptions) (*Ge
 	memoryStore := memory.New()
 	var descriptors []ocispec.Descriptor
 
-	// Set up repository with authentication and configuration
+	// Set up a repository with authentication and configuration
 	repository, err := remote.NewRepository(parsedRef.String())
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (c *GenericClient) PullGeneric(ref string, options GenericPullOptions) (*Ge
 	manifest, err := oras.Copy(ctx, repository, parsedRef.String(), memoryStore, "", oras.CopyOptions{
 		CopyGraphOptions: oras.CopyGraphOptions{
 			PreCopy: func(ctx context.Context, desc ocispec.Descriptor) error {
-				// Apply custom PreCopy function if provided
+				// Apply a custom PreCopy function if provided
 				if options.PreCopy != nil {
 					if err := options.PreCopy(ctx, desc); err != nil {
 						return err

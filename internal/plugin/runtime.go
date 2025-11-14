@@ -15,7 +15,12 @@ limitations under the License.
 
 package plugin
 
-import "go.yaml.in/yaml/v3"
+import (
+	"fmt"
+	"strings"
+
+	"go.yaml.in/yaml/v3"
+)
 
 // Runtime represents a plugin runtime (subprocess, extism, etc) ie. how a plugin should be executed
 // Runtime is responsible for instantiating plugins that implement the runtime
@@ -46,4 +51,34 @@ func remarshalRuntimeConfig[T RuntimeConfig](runtimeData map[string]any) (Runtim
 	}
 
 	return config, nil
+}
+
+// parseEnv takes a list of "KEY=value" environment variable strings
+// and transforms the result into a map[KEY]=value
+//
+// - empty input strings are ignored
+// - input strings with no value are stored as empty strings
+// - duplicate keys overwrite earlier values
+func parseEnv(env []string) map[string]string {
+	result := make(map[string]string, len(env))
+	for _, envVar := range env {
+		parts := strings.SplitN(envVar, "=", 2)
+		if len(parts) > 0 && parts[0] != "" {
+			key := parts[0]
+			var value string
+			if len(parts) > 1 {
+				value = parts[1]
+			}
+			result[key] = value
+		}
+	}
+	return result
+}
+
+func formatEnv(env map[string]string) []string {
+	result := make([]string, 0, len(env))
+	for key, value := range env {
+		result = append(result, fmt.Sprintf("%s=%s", key, value))
+	}
+	return result
 }

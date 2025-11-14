@@ -26,15 +26,21 @@ import (
 	"sync"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 
-	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/common/util"
+	chartv2 "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
-	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/registry"
-	releaseutil "helm.sh/helm/v4/pkg/release/util"
+	ri "helm.sh/helm/v4/pkg/release"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
@@ -70,10 +76,8 @@ type Upgrade struct {
 	WaitForJobs bool
 	// DisableHooks disables hook processing if set to true.
 	DisableHooks bool
-	// DryRun controls whether the operation is prepared, but not executed.
-	DryRun bool
-	// DryRunOption controls whether the operation is prepared, but not executed with options on whether or not to interact with the remote cluster.
-	DryRunOption string
+	// DryRunStrategy can be set to prepare, but not execute the operation and whether or not to interact with the remote cluster
+	DryRunStrategy DryRunStrategy
 	// HideSecret can be set to true when DryRun is enabled in order to hide
 	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
 	HideSecret bool
@@ -81,6 +85,14 @@ type Upgrade struct {
 	//
 	// This should be used with caution.
 	ForceReplace bool
+	// ForceConflicts causes server-side apply to force conflicts ("Overwrite value, become sole manager")
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
+	ForceConflicts bool
+	// ServerSideApply enables changes to be applied via Kubernetes server-side apply
+	// Can be the string: "true", "false" or "auto"
+	// When "auto", sever-side usage will be based upon the releases previous usage
+	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
+	ServerSideApply string
 	// ResetValues will reset the values to the chart's built-ins rather than merging with existing.
 	ResetValues bool
 	// ReuseValues will reuse the user's last supplied values.
@@ -106,7 +118,7 @@ type Upgrade struct {
 	//
 	// If this is non-nil, then after templates are rendered, they will be sent to the
 	// post renderer before sending to the Kubernetes API server.
-	PostRenderer postrender.PostRenderer
+	PostRenderer postrenderer.PostRenderer
 	// DisableOpenAPIValidation controls whether OpenAPI validation is enforced.
 	DisableOpenAPIValidation bool
 	// Get missing dependencies
@@ -127,7 +139,9 @@ type resultMessage struct {
 // NewUpgrade creates a new Upgrade object with the given configuration.
 func NewUpgrade(cfg *Configuration) *Upgrade {
 	up := &Upgrade{
-		cfg: cfg,
+		cfg:             cfg,
+		ServerSideApply: "auto",
+		DryRunStrategy:  DryRunNone,
 	}
 	up.registryClient = cfg.RegistryClient
 
@@ -140,15 +154,25 @@ func (u *Upgrade) SetRegistryClient(client *registry.Client) {
 }
 
 // Run executes the upgrade on the given release.
-func (u *Upgrade) Run(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+func (u *Upgrade) Run(name string, chart chart.Charter, vals map[string]interface{}) (ri.Releaser, error) {
 	ctx := context.Background()
 	return u.RunWithContext(ctx, name, chart, vals)
 }
 
 // RunWithContext executes the upgrade on the given release with context.
-func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Charter, vals map[string]interface{}) (ri.Releaser, error) {
 	if err := u.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, err
+	}
+
+	var chrt *chartv2.Chart
+	switch c := ch.(type) {
+	case *chartv2.Chart:
+		chrt = c
+	case chartv2.Chart:
+		chrt = &c
+	default:
+		return nil, errors.New("invalid chart apiVersion")
 	}
 
 	// Make sure wait is set if RollbackOnFailure. This makes it so
@@ -161,23 +185,23 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 		return nil, fmt.Errorf("release name is invalid: %s", name)
 	}
 
-	slog.Debug("preparing upgrade", "name", name)
-	currentRelease, upgradedRelease, err := u.prepareUpgrade(name, chart, vals)
+	u.cfg.Logger().Debug("preparing upgrade", "name", name)
+	currentRelease, upgradedRelease, serverSideApply, err := u.prepareUpgrade(name, chrt, vals)
 	if err != nil {
 		return nil, err
 	}
 
 	u.cfg.Releases.MaxHistory = u.MaxHistory
 
-	slog.Debug("performing update", "name", name)
-	res, err := u.performUpgrade(ctx, currentRelease, upgradedRelease)
+	u.cfg.Logger().Debug("performing update", "name", name)
+	res, err := u.performUpgrade(ctx, currentRelease, upgradedRelease, serverSideApply)
 	if err != nil {
 		return res, err
 	}
 
 	// Do not update for dry runs
-	if !u.isDryRun() {
-		slog.Debug("updating status for upgraded release", "name", name)
+	if !isDryRun(u.DryRunStrategy) {
+		u.cfg.Logger().Debug("updating status for upgraded release", "name", name)
 		if err := u.cfg.Releases.Update(upgradedRelease); err != nil {
 			return res, err
 		}
@@ -186,72 +210,75 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	return res, nil
 }
 
-// isDryRun returns true if Upgrade is set to run as a DryRun
-func (u *Upgrade) isDryRun() bool {
-	if u.DryRun || u.DryRunOption == "client" || u.DryRunOption == "server" || u.DryRunOption == "true" {
-		return true
-	}
-	return false
-}
-
 // prepareUpgrade builds an upgraded release for an upgrade operation.
-func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[string]interface{}) (*release.Release, *release.Release, error) {
+func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[string]interface{}) (*release.Release, *release.Release, bool, error) {
 	if chart == nil {
-		return nil, nil, errMissingChart
+		return nil, nil, false, errMissingChart
 	}
 
 	// HideSecret must be used with dry run. Otherwise, return an error.
-	if !u.isDryRun() && u.HideSecret {
-		return nil, nil, errors.New("hiding Kubernetes secrets requires a dry-run mode")
+	if !isDryRun(u.DryRunStrategy) && u.HideSecret {
+		return nil, nil, false, errors.New("hiding Kubernetes secrets requires a dry-run mode")
 	}
 
 	// finds the last non-deleted release with the given name
-	lastRelease, err := u.cfg.Releases.Last(name)
+	lastReleasei, err := u.cfg.Releases.Last(name)
 	if err != nil {
 		// to keep existing behavior of returning the "%q has no deployed releases" error when an existing release does not exist
 		if errors.Is(err, driver.ErrReleaseNotFound) {
-			return nil, nil, driver.NewErrNoDeployedReleases(name)
+			return nil, nil, false, driver.NewErrNoDeployedReleases(name)
 		}
-		return nil, nil, err
+		return nil, nil, false, err
+	}
+
+	lastRelease, err := releaserToV1Release(lastReleasei)
+	if err != nil {
+		return nil, nil, false, err
 	}
 
 	// Concurrent `helm upgrade`s will either fail here with `errPending` or when creating the release with "already exists". This should act as a pessimistic lock.
 	if lastRelease.Info.Status.IsPending() {
-		return nil, nil, errPending
+		return nil, nil, false, errPending
 	}
 
 	var currentRelease *release.Release
-	if lastRelease.Info.Status == release.StatusDeployed {
+	if lastRelease.Info.Status == rcommon.StatusDeployed {
 		// no need to retrieve the last deployed release from storage as the last release is deployed
 		currentRelease = lastRelease
 	} else {
 		// finds the deployed release with the given name
-		currentRelease, err = u.cfg.Releases.Deployed(name)
+		currentReleasei, err := u.cfg.Releases.Deployed(name)
+		var cerr error
+		currentRelease, cerr = releaserToV1Release(currentReleasei)
+		if cerr != nil {
+			return nil, nil, false, err
+		}
 		if err != nil {
 			if errors.Is(err, driver.ErrNoDeployedReleases) &&
-				(lastRelease.Info.Status == release.StatusFailed || lastRelease.Info.Status == release.StatusSuperseded) {
+				(lastRelease.Info.Status == rcommon.StatusFailed || lastRelease.Info.Status == rcommon.StatusSuperseded) {
 				currentRelease = lastRelease
 			} else {
-				return nil, nil, err
+				return nil, nil, false, err
 			}
 		}
+
 	}
 
 	// determine if values will be reused
 	vals, err = u.reuseValues(chart, currentRelease, vals)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	if err := chartutil.ProcessDependencies(chart, vals); err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	// Increment revision count. This is passed to templates, and also stored on
 	// the release object.
 	revision := lastRelease.Version + 1
 
-	options := chartutil.ReleaseOptions{
+	options := common.ReleaseOptions{
 		Name:      name,
 		Namespace: currentRelease.Namespace,
 		Revision:  revision,
@@ -260,27 +287,28 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 
 	caps, err := u.cfg.getCapabilities()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
-	valuesToRender, err := chartutil.ToRenderValuesWithSchemaValidation(chart, vals, options, caps, u.SkipSchemaValidation)
+	valuesToRender, err := util.ToRenderValuesWithSchemaValidation(chart, vals, options, caps, u.SkipSchemaValidation)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
-	// Determine whether or not to interact with remote
-	var interactWithRemote bool
-	if !u.isDryRun() || u.DryRunOption == "server" || u.DryRunOption == "none" || u.DryRunOption == "false" {
-		interactWithRemote = true
-	}
-
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithRemote, u.EnableDNS, u.HideSecret)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	if driver.ContainsSystemLabels(u.Labels) {
-		return nil, nil, fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
+		return nil, nil, false, fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
 	}
+
+	serverSideApply, err := getUpgradeServerSideValue(u.ServerSideApply, lastRelease.ApplyMethod)
+	if err != nil {
+		return nil, nil, false, err
+	}
+
+	u.cfg.Logger().Debug("determined release apply method", slog.Bool("server_side_apply", serverSideApply), slog.String("previous_release_apply_method", lastRelease.ApplyMethod))
 
 	// Store an upgraded release.
 	upgradedRelease := &release.Release{
@@ -291,23 +319,24 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		Info: &release.Info{
 			FirstDeployed: currentRelease.Info.FirstDeployed,
 			LastDeployed:  Timestamper(),
-			Status:        release.StatusPendingUpgrade,
+			Status:        rcommon.StatusPendingUpgrade,
 			Description:   "Preparing upgrade", // This should be overwritten later.
 		},
-		Version:  revision,
-		Manifest: manifestDoc.String(),
-		Hooks:    hooks,
-		Labels:   mergeCustomLabels(lastRelease.Labels, u.Labels),
+		Version:     revision,
+		Manifest:    manifestDoc.String(),
+		Hooks:       hooks,
+		Labels:      mergeCustomLabels(lastRelease.Labels, u.Labels),
+		ApplyMethod: string(determineReleaseSSApplyMethod(serverSideApply)),
 	}
 
 	if len(notesTxt) > 0 {
 		upgradedRelease.Info.Notes = notesTxt
 	}
 	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
-	return currentRelease, upgradedRelease, err
+	return currentRelease, upgradedRelease, serverSideApply, err
 }
 
-func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedRelease *release.Release) (*release.Release, error) {
+func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedRelease *release.Release, serverSideApply bool) (*release.Release, error) {
 	current, err := u.cfg.KubeClient.Build(bytes.NewBufferString(originalRelease.Manifest), false)
 	if err != nil {
 		// Checking for removed Kubernetes API error so can provide a more informative error message to the user
@@ -361,9 +390,8 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return nil
 	})
 
-	// Run if it is a dry run
-	if u.isDryRun() {
-		slog.Debug("dry run for release", "name", upgradedRelease.Name)
+	if isDryRun(u.DryRunStrategy) {
+		u.cfg.Logger().Debug("dry run for release", "name", upgradedRelease.Name)
 		if len(u.Description) > 0 {
 			upgradedRelease.Info.Description = u.Description
 		} else {
@@ -372,7 +400,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return upgradedRelease, nil
 	}
 
-	slog.Debug("creating upgraded release", "name", upgradedRelease.Name)
+	u.cfg.Logger().Debug("creating upgraded release", "name", upgradedRelease.Name)
 	if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
 		return nil, err
 	}
@@ -380,8 +408,9 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	ctxChan := make(chan resultMessage)
 	doneChan := make(chan interface{})
 	defer close(doneChan)
-	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease)
+	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease, serverSideApply)
 	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
+
 	select {
 	case result := <-rChan:
 		return result.r, result.e
@@ -414,23 +443,30 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 		return
 	}
 }
-func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
+
+func isReleaseApplyMethodClientSideApply(applyMethod string) bool {
+	return applyMethod == "" || applyMethod == string(release.ApplyMethodClientSideApply)
+}
+
+func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release, serverSideApply bool) {
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.WaitStrategy, u.Timeout); err != nil {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.WaitStrategy, u.Timeout, serverSideApply); err != nil {
 			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 			return
 		}
 	} else {
-		slog.Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
+		u.cfg.Logger().Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
 	}
 
+	upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply // Update client-side field manager if transitioning from client-side to server-side apply
 	results, err := u.cfg.KubeClient.Update(
 		current,
 		target,
-		kube.ClientUpdateOptionServerSideApply(false, false),
-		kube.ClientUpdateOptionForceReplace(u.ForceReplace))
+		kube.ClientUpdateOptionForceReplace(u.ForceReplace),
+		kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
+		kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager))
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
@@ -459,16 +495,16 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
-		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.WaitStrategy, u.Timeout); err != nil {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.WaitStrategy, u.Timeout, serverSideApply); err != nil {
 			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
 			return
 		}
 	}
 
-	originalRelease.Info.Status = release.StatusSuperseded
+	originalRelease.Info.Status = rcommon.StatusSuperseded
 	u.cfg.recordRelease(originalRelease)
 
-	upgradedRelease.Info.Status = release.StatusDeployed
+	upgradedRelease.Info.Status = rcommon.StatusDeployed
 	if len(u.Description) > 0 {
 		upgradedRelease.Info.Description = u.Description
 	} else {
@@ -479,14 +515,14 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 
 func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, err error) (*release.Release, error) {
 	msg := fmt.Sprintf("Upgrade %q failed: %s", rel.Name, err)
-	slog.Warn("upgrade failed", "name", rel.Name, slog.Any("error", err))
+	u.cfg.Logger().Warn("upgrade failed", "name", rel.Name, slog.Any("error", err))
 
-	rel.Info.Status = release.StatusFailed
+	rel.Info.Status = rcommon.StatusFailed
 	rel.Info.Description = msg
 	u.cfg.recordRelease(rel)
 	if u.CleanupOnFail && len(created) > 0 {
-		slog.Debug("cleanup on fail set", "cleaning_resources", len(created))
-		_, errs := u.cfg.KubeClient.Delete(created)
+		u.cfg.Logger().Debug("cleanup on fail set", "cleaning_resources", len(created))
+		_, errs := u.cfg.KubeClient.Delete(created, metav1.DeletePropagationBackground)
 		if errs != nil {
 			return rel, fmt.Errorf(
 				"an error occurred while cleaning up resources. original upgrade error: %w: %w",
@@ -497,11 +533,11 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 				),
 			)
 		}
-		slog.Debug("resource cleanup complete")
+		u.cfg.Logger().Debug("resource cleanup complete")
 	}
 
 	if u.RollbackOnFailure {
-		slog.Debug("Upgrade failed and rollback-on-failure is set, rolling back to previous successful release")
+		u.cfg.Logger().Debug("Upgrade failed and rollback-on-failure is set, rolling back to previous successful release")
 
 		// As a protection, get the last successful release before rollback.
 		// If there are no successful releases, bail out
@@ -511,12 +547,16 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 			return rel, fmt.Errorf("an error occurred while finding last successful release. original upgrade error: %w: %w", err, herr)
 		}
 
+		fullHistoryV1, herr := releaseListToV1List(fullHistory)
+		if herr != nil {
+			return nil, herr
+		}
 		// There isn't a way to tell if a previous release was successful, but
 		// generally failed releases do not get superseded unless the next
 		// release is successful, so this should be relatively safe
 		filteredHistory := releaseutil.FilterFunc(func(r *release.Release) bool {
-			return r.Info.Status == release.StatusSuperseded || r.Info.Status == release.StatusDeployed
-		}).Filter(fullHistory)
+			return r.Info.Status == rcommon.StatusSuperseded || r.Info.Status == rcommon.StatusDeployed
+		}).Filter(fullHistoryV1)
 		if len(filteredHistory) == 0 {
 			return rel, fmt.Errorf("unable to find a previously successful release when attempting to rollback. original upgrade error: %w", err)
 		}
@@ -525,12 +565,12 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 
 		rollin := NewRollback(u.cfg)
 		rollin.Version = filteredHistory[0].Version
-		if u.WaitStrategy == kube.HookOnlyStrategy {
-			rollin.WaitStrategy = kube.StatusWatcherStrategy
-		}
+		rollin.WaitStrategy = u.WaitStrategy
 		rollin.WaitForJobs = u.WaitForJobs
 		rollin.DisableHooks = u.DisableHooks
 		rollin.ForceReplace = u.ForceReplace
+		rollin.ForceConflicts = u.ForceConflicts
+		rollin.ServerSideApply = u.ServerSideApply
 		rollin.Timeout = u.Timeout
 		if rollErr := rollin.Run(rel.Name); rollErr != nil {
 			return rel, fmt.Errorf("an error occurred while rolling back the release. original upgrade error: %w: %w", err, rollErr)
@@ -549,24 +589,24 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 //
 // This is skipped if the u.ResetValues flag is set, in which case the
 // request values are not altered.
-func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newVals map[string]interface{}) (map[string]interface{}, error) {
+func (u *Upgrade) reuseValues(chart *chartv2.Chart, current *release.Release, newVals map[string]interface{}) (map[string]interface{}, error) {
 	if u.ResetValues {
 		// If ResetValues is set, we completely ignore current.Config.
-		slog.Debug("resetting values to the chart's original version")
+		u.cfg.Logger().Debug("resetting values to the chart's original version")
 		return newVals, nil
 	}
 
 	// If the ReuseValues flag is set, we always copy the old values over the new config's values.
 	if u.ReuseValues {
-		slog.Debug("reusing the old release's values")
+		u.cfg.Logger().Debug("reusing the old release's values")
 
 		// We have to regenerate the old coalesced values:
-		oldVals, err := chartutil.CoalesceValues(current.Chart, current.Config)
+		oldVals, err := util.CoalesceValues(current.Chart, current.Config)
 		if err != nil {
 			return nil, fmt.Errorf("failed to rebuild old values: %w", err)
 		}
 
-		newVals = chartutil.CoalesceTables(newVals, current.Config)
+		newVals = util.CoalesceTables(newVals, current.Config)
 
 		chart.Values = oldVals
 
@@ -575,15 +615,15 @@ func (u *Upgrade) reuseValues(chart *chart.Chart, current *release.Release, newV
 
 	// If the ResetThenReuseValues flag is set, we use the new chart's values, but we copy the old config's values over the new config's values.
 	if u.ResetThenReuseValues {
-		slog.Debug("merging values from old release to new values")
+		u.cfg.Logger().Debug("merging values from old release to new values")
 
-		newVals = chartutil.CoalesceTables(newVals, current.Config)
+		newVals = util.CoalesceTables(newVals, current.Config)
 
 		return newVals, nil
 	}
 
 	if len(newVals) == 0 && len(current.Config) > 0 {
-		slog.Debug("copying values from old release", "name", current.Name, "version", current.Version)
+		u.cfg.Logger().Debug("copying values from old release", "name", current.Name, "version", current.Version)
 		newVals = current.Config
 	}
 	return newVals, nil
@@ -607,4 +647,17 @@ func mergeCustomLabels(current, desired map[string]string) map[string]string {
 		}
 	}
 	return labels
+}
+
+func getUpgradeServerSideValue(serverSideOption string, releaseApplyMethod string) (bool, error) {
+	switch serverSideOption {
+	case "auto":
+		return releaseApplyMethod == "ssa", nil
+	case "false":
+		return false, nil
+	case "true":
+		return true, nil
+	default:
+		return false, fmt.Errorf("invalid/unknown release server-side apply method: %s", serverSideOption)
+	}
 }

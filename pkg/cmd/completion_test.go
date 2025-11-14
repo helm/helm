@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -31,7 +32,7 @@ func checkFileCompletion(t *testing.T, cmdName string, shouldBePerformed bool) {
 	storage := storageFixture()
 	storage.Create(&release.Release{
 		Name: "myrelease",
-		Info: &release.Info{Status: release.StatusDeployed},
+		Info: &release.Info{Status: common.StatusDeployed},
 		Chart: &chart.Chart{
 			Metadata: &chart.Metadata{
 				Name:    "Myrelease-Chart",

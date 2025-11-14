@@ -49,7 +49,7 @@ func collectGetterPlugins(settings *cli.EnvSettings) (Providers, error) {
 	}
 	results := make([]Provider, 0, len(plgs))
 	for _, plg := range plgs {
-		if c, ok := plg.Metadata().Config.(*plugin.ConfigGetter); ok {
+		if c, ok := plg.Metadata().Config.(*schema.ConfigGetterV1); ok {
 			results = append(results, Provider{
 				Schemes: c.Protocols,
 				New:     pluginConstructorBuilder(plg),
@@ -109,14 +109,14 @@ func (g *getterPlugin) Get(href string, options ...Option) (*bytes.Buffer, error
 			Protocol: u.Scheme,
 		},
 		// TODO should we pass Stdin, Stdout, and Stderr through Input here to getter plugins?
-		//Stdout: os.Stdout,
+		// Stdout: os.Stdout,
 	}
 	output, err := g.plg.Invoke(context.Background(), input)
 	if err != nil {
 		return nil, fmt.Errorf("plugin %q failed to invoke: %w", g.plg, err)
 	}
 
-	outputMessage, ok := output.Message.(*schema.OutputMessageGetterV1)
+	outputMessage, ok := output.Message.(schema.OutputMessageGetterV1)
 	if !ok {
 		return nil, fmt.Errorf("invalid output message type from plugin %q", g.plg.Metadata().Name)
 	}

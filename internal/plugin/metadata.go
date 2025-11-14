@@ -18,6 +18,8 @@ package plugin
 import (
 	"errors"
 	"fmt"
+
+	"helm.sh/helm/v4/internal/plugin/schema"
 )
 
 // Metadata of a plugin, converted from the "on-disk" legacy or v1 plugin.yaml
@@ -29,7 +31,7 @@ type Metadata struct {
 	// Name is the name of the plugin
 	Name string
 
-	// Type of plugin (eg, cli/v1, getter/v1)
+	// Type of plugin (eg, cli/v1, getter/v1, postrenderer/v1)
 	Type string
 
 	// Runtime specifies the runtime type (subprocess, wasm)
@@ -121,11 +123,11 @@ func buildLegacyConfig(m MetadataLegacy, pluginType string) Config {
 		for _, d := range m.Downloaders {
 			protocols = append(protocols, d.Protocols...)
 		}
-		return &ConfigGetter{
+		return &schema.ConfigGetterV1{
 			Protocols: protocols,
 		}
 	case "cli/v1":
-		return &ConfigCLI{
+		return &schema.ConfigCLIV1{
 			Usage:       "",            // Legacy plugins don't have Usage field for command syntax
 			ShortHelp:   m.Usage,       // Map legacy usage to shortHelp
 			LongHelp:    m.Description, // Map legacy description to longHelp
@@ -142,21 +144,38 @@ func buildLegacyRuntimeConfig(m MetadataLegacy) RuntimeConfig {
 		protocolCommands =
 			make([]SubprocessProtocolCommand, 0, len(m.Downloaders))
 		for _, d := range m.Downloaders {
-			protocolCommands = append(protocolCommands, SubprocessProtocolCommand(d))
+			protocolCommands = append(protocolCommands, SubprocessProtocolCommand{
+				Protocols:       d.Protocols,
+				PlatformCommand: []PlatformCommand{{Command: d.Command}},
+			})
+		}
+	}
+
+	platformCommand := m.PlatformCommand
+	if len(platformCommand) == 0 && len(m.Command) > 0 {
+		platformCommand = []PlatformCommand{{Command: m.Command}}
+	}
+
+	platformHooks := m.PlatformHooks
+	expandHookArgs := true
+	if len(platformHooks) == 0 && len(m.Hooks) > 0 {
+		platformHooks = make(PlatformHooks, len(m.Hooks))
+		for hookName, hookCommand := range m.Hooks {
+			platformHooks[hookName] = []PlatformCommand{{Command: "sh", Args: []string{"-c", hookCommand}}}
+			expandHookArgs = false
 		}
 	}
 	return &RuntimeConfigSubprocess{
-		PlatformCommands: m.PlatformCommands,
-		Command:          m.Command,
-		PlatformHooks:    m.PlatformHooks,
-		Hooks:            m.Hooks,
+		PlatformCommand:  platformCommand,
+		PlatformHooks:    platformHooks,
 		ProtocolCommands: protocolCommands,
+		expandHookArgs:   expandHookArgs,
 	}
 }
 
 func fromMetadataV1(mv1 MetadataV1) (*Metadata, error) {
 
-	config, err := convertMetadataConfig(mv1.Type, mv1.Config)
+	config, err := unmarshaConfig(mv1.Type, mv1.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -178,26 +197,6 @@ func fromMetadataV1(mv1 MetadataV1) (*Metadata, error) {
 	}, nil
 }
 
-func convertMetadataConfig(pluginType string, configRaw map[string]any) (Config, error) {
-	var err error
-	var config Config
-
-	switch pluginType {
-	case "cli/v1":
-		config, err = remarshalConfig[*ConfigCLI](configRaw)
-	case "getter/v1":
-		config, err = remarshalConfig[*ConfigGetter](configRaw)
-	default:
-		return nil, fmt.Errorf("unsupported plugin type: %s", pluginType)
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config for %s plugin type: %w", pluginType, err)
-	}
-
-	return config, nil
-}
-
 func convertMetdataRuntimeConfig(runtimeType string, runtimeConfigRaw map[string]any) (RuntimeConfig, error) {
 	var runtimeConfig RuntimeConfig
 	var err error
@@ -205,6 +204,8 @@ func convertMetdataRuntimeConfig(runtimeType string, runtimeConfigRaw map[string
 	switch runtimeType {
 	case "subprocess":
 		runtimeConfig, err = remarshalRuntimeConfig[*RuntimeConfigSubprocess](runtimeConfigRaw)
+	case "extism/v1":
+		runtimeConfig, err = remarshalRuntimeConfig[*RuntimeConfigExtismV1](runtimeConfigRaw)
 	default:
 		return nil, fmt.Errorf("unsupported plugin runtime type: %q", runtimeType)
 	}

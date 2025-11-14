@@ -28,6 +28,7 @@ import (
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	"helm.sh/helm/v4/internal/chart/v3/loader"
+	"helm.sh/helm/v4/pkg/chart/common"
 )
 
 // chartName is a regular expression for testing the supplied name of a chart.
@@ -217,9 +218,10 @@ httpRoute:
   #       value: v2
 
 resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # For publicly distributed charts, we recommend leaving 'resources' commented out.
+  # This makes resource allocation a conscious choice for the user and increases the chances
+  # charts run on a wide range of environments from low-resource clusters like Minikube to those
+  # with strict resource policies. If you do want to specify resources, uncomment the following
   # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
   # limits:
   #   cpu: 100m
@@ -655,11 +657,11 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 
 	schart.Metadata = chartfile
 
-	var updatedTemplates []*chart.File
+	var updatedTemplates []*common.File
 
 	for _, template := range schart.Templates {
 		newData := transform(string(template.Data), schart.Name())
-		updatedTemplates = append(updatedTemplates, &chart.File{Name: template.Name, Data: newData})
+		updatedTemplates = append(updatedTemplates, &common.File{Name: template.Name, ModTime: template.ModTime, Data: newData})
 	}
 
 	schart.Templates = updatedTemplates

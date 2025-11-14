@@ -17,14 +17,17 @@ limitations under the License.
 package action
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
-	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/release/common"
 )
 
 func uninstallAction(t *testing.T) *Uninstall {
@@ -113,10 +116,12 @@ func TestUninstallRelease_Wait(t *testing.T) {
 	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitForDeleteError = fmt.Errorf("U timed out")
 	unAction.cfg.KubeClient = failer
-	res, err := unAction.Run(rel.Name)
+	resi, err := unAction.Run(rel.Name)
 	is.Error(err)
 	is.Contains(err.Error(), "U timed out")
-	is.Equal(res.Release.Info.Status, release.StatusUninstalled)
+	res, err := releaserToV1Release(resi.Release)
+	is.NoError(err)
+	is.Equal(res.Info.Status, common.StatusUninstalled)
 }
 
 func TestUninstallRelease_Cascade(t *testing.T) {
@@ -143,10 +148,24 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	}`
 	unAction.cfg.Releases.Create(rel)
 	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.DeleteWithPropagationError = fmt.Errorf("Uninstall with cascade failed")
+	failer.DeleteError = fmt.Errorf("Uninstall with cascade failed")
 	failer.BuildDummy = true
 	unAction.cfg.KubeClient = failer
 	_, err := unAction.Run(rel.Name)
-	is.Error(err)
+	require.Error(t, err)
 	is.Contains(err.Error(), "failed to delete release: come-fail-away")
+}
+
+func TestUninstallRun_UnreachableKubeClient(t *testing.T) {
+	t.Helper()
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.ConnectionError = errors.New("connection refused")
+	config.KubeClient = &failingKubeClient
+
+	client := NewUninstall(config)
+	result, err := client.Run("")
+
+	assert.Nil(t, result)
+	assert.ErrorContains(t, err, "connection refused")
 }

@@ -21,6 +21,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
+	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/release/common"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -38,22 +42,22 @@ func TestMemoryCreate(t *testing.T) {
 	}{
 		{
 			"create should succeed",
-			releaseStub("rls-c", 1, "default", rspb.StatusDeployed),
+			releaseStub("rls-c", 1, "default", common.StatusDeployed),
 			false,
 		},
 		{
 			"create should fail (release already exists)",
-			releaseStub("rls-a", 1, "default", rspb.StatusDeployed),
+			releaseStub("rls-a", 1, "default", common.StatusDeployed),
 			true,
 		},
 		{
 			"create in namespace should succeed",
-			releaseStub("rls-a", 1, "mynamespace", rspb.StatusDeployed),
+			releaseStub("rls-a", 1, "mynamespace", common.StatusDeployed),
 			false,
 		},
 		{
 			"create in other namespace should fail (release already exists)",
-			releaseStub("rls-c", 1, "mynamespace", rspb.StatusDeployed),
+			releaseStub("rls-c", 1, "mynamespace", common.StatusDeployed),
 			true,
 		},
 	}
@@ -104,8 +108,9 @@ func TestMemoryList(t *testing.T) {
 	ts.SetNamespace("default")
 
 	// list all deployed releases
-	dpl, err := ts.List(func(rel *rspb.Release) bool {
-		return rel.Info.Status == rspb.StatusDeployed
+	dpl, err := ts.List(func(rel release.Releaser) bool {
+		rls := convertReleaserToV1(t, rel)
+		return rls.Info.Status == common.StatusDeployed
 	})
 	// check
 	if err != nil {
@@ -116,8 +121,9 @@ func TestMemoryList(t *testing.T) {
 	}
 
 	// list all superseded releases
-	ssd, err := ts.List(func(rel *rspb.Release) bool {
-		return rel.Info.Status == rspb.StatusSuperseded
+	ssd, err := ts.List(func(rel release.Releaser) bool {
+		rls := convertReleaserToV1(t, rel)
+		return rls.Info.Status == common.StatusSuperseded
 	})
 	// check
 	if err != nil {
@@ -128,8 +134,9 @@ func TestMemoryList(t *testing.T) {
 	}
 
 	// list all deleted releases
-	del, err := ts.List(func(rel *rspb.Release) bool {
-		return rel.Info.Status == rspb.StatusUninstalled
+	del, err := ts.List(func(rel release.Releaser) bool {
+		rls := convertReleaserToV1(t, rel)
+		return rls.Info.Status == common.StatusUninstalled
 	})
 	// check
 	if err != nil {
@@ -185,25 +192,25 @@ func TestMemoryUpdate(t *testing.T) {
 		{
 			"update release status",
 			"rls-a.v4",
-			releaseStub("rls-a", 4, "default", rspb.StatusSuperseded),
+			releaseStub("rls-a", 4, "default", common.StatusSuperseded),
 			false,
 		},
 		{
 			"update release does not exist",
 			"rls-c.v1",
-			releaseStub("rls-c", 1, "default", rspb.StatusUninstalled),
+			releaseStub("rls-c", 1, "default", common.StatusUninstalled),
 			true,
 		},
 		{
 			"update release status in namespace",
 			"rls-c.v4",
-			releaseStub("rls-c", 4, "mynamespace", rspb.StatusSuperseded),
+			releaseStub("rls-c", 4, "mynamespace", common.StatusSuperseded),
 			false,
 		},
 		{
 			"update release in namespace does not exist",
 			"rls-a.v1",
-			releaseStub("rls-a", 1, "mynamespace", rspb.StatusUninstalled),
+			releaseStub("rls-a", 1, "mynamespace", common.StatusUninstalled),
 			true,
 		},
 	}
@@ -255,17 +262,23 @@ func TestMemoryDelete(t *testing.T) {
 	startLen := len(start)
 	for _, tt := range tests {
 		ts.SetNamespace(tt.namespace)
-		if rel, err := ts.Delete(tt.key); err != nil {
+
+		rel, err := ts.Delete(tt.key)
+		var rls *rspb.Release
+		if err == nil {
+			rls = convertReleaserToV1(t, rel)
+		}
+		if err != nil {
 			if !tt.err {
 				t.Fatalf("Failed %q to get '%s': %q\n", tt.desc, tt.key, err)
 			}
 			continue
 		} else if tt.err {
 			t.Fatalf("Did not get expected error for %q '%s'\n", tt.desc, tt.key)
-		} else if fmt.Sprintf("%s.v%d", rel.Name, rel.Version) != tt.key {
-			t.Fatalf("Asked for delete on %s, but deleted %d", tt.key, rel.Version)
+		} else if fmt.Sprintf("%s.v%d", rls.Name, rls.Version) != tt.key {
+			t.Fatalf("Asked for delete on %s, but deleted %d", tt.key, rls.Version)
 		}
-		_, err := ts.Get(tt.key)
+		_, err = ts.Get(tt.key)
 		if err == nil {
 			t.Errorf("Expected an error when asking for a deleted key")
 		}
@@ -282,7 +295,9 @@ func TestMemoryDelete(t *testing.T) {
 	if startLen-2 != endLen {
 		t.Errorf("expected end to be %d instead of %d", startLen-2, endLen)
 		for _, ee := range end {
-			t.Logf("Name: %s, Version: %d", ee.Name, ee.Version)
+			rac, err := release.NewAccessor(ee)
+			assert.NoError(t, err, "unable to get release accessor")
+			t.Logf("Name: %s, Version: %d", rac.Name(), rac.Version())
 		}
 	}
 

@@ -30,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/loader/archive"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
@@ -210,15 +212,16 @@ func TestLoadFile(t *testing.T) {
 func TestLoadFiles_BadCases(t *testing.T) {
 	for _, tt := range []struct {
 		name          string
-		bufferedFiles []*BufferedFile
+		bufferedFiles []*archive.BufferedFile
 		expectError   string
 	}{
 		{
 			name: "These files contain only requirements.lock",
-			bufferedFiles: []*BufferedFile{
+			bufferedFiles: []*archive.BufferedFile{
 				{
-					Name: "requirements.lock",
-					Data: []byte(""),
+					Name:    "requirements.lock",
+					ModTime: time.Now(),
+					Data:    []byte(""),
 				},
 			},
 			expectError: "validation: chart.metadata.apiVersion is required"},
@@ -234,9 +237,11 @@ func TestLoadFiles_BadCases(t *testing.T) {
 }
 
 func TestLoadFiles(t *testing.T) {
-	goodFiles := []*BufferedFile{
+	modTime := time.Now()
+	goodFiles := []*archive.BufferedFile{
 		{
-			Name: "Chart.yaml",
+			Name:    "Chart.yaml",
+			ModTime: modTime,
 			Data: []byte(`apiVersion: v1
 name: frobnitz
 description: This is a frobnitz.
@@ -257,20 +262,24 @@ icon: https://example.com/64x64.png
 `),
 		},
 		{
-			Name: "values.yaml",
-			Data: []byte("var: some values"),
+			Name:    "values.yaml",
+			ModTime: modTime,
+			Data:    []byte("var: some values"),
 		},
 		{
-			Name: "values.schema.json",
-			Data: []byte("type: Values"),
+			Name:    "values.schema.json",
+			ModTime: modTime,
+			Data:    []byte("type: Values"),
 		},
 		{
-			Name: "templates/deployment.yaml",
-			Data: []byte("some deployment"),
+			Name:    "templates/deployment.yaml",
+			ModTime: modTime,
+			Data:    []byte("some deployment"),
 		},
 		{
-			Name: "templates/service.yaml",
-			Data: []byte("some service"),
+			Name:    "templates/service.yaml",
+			ModTime: modTime,
+			Data:    []byte("some service"),
 		},
 	}
 
@@ -299,7 +308,7 @@ icon: https://example.com/64x64.png
 		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
 	}
 
-	if _, err = LoadFiles([]*BufferedFile{}); err == nil {
+	if _, err = LoadFiles([]*archive.BufferedFile{}); err == nil {
 		t.Fatal("Expected err to be non-nil")
 	}
 	if err.Error() != "Chart.yaml file is missing" {
@@ -310,26 +319,32 @@ icon: https://example.com/64x64.png
 // Test the order of file loading. The Chart.yaml file needs to come first for
 // later comparison checks. See https://github.com/helm/helm/pull/8948
 func TestLoadFilesOrder(t *testing.T) {
-	goodFiles := []*BufferedFile{
+	modTime := time.Now()
+	goodFiles := []*archive.BufferedFile{
 		{
-			Name: "requirements.yaml",
-			Data: []byte("dependencies:"),
+			Name:    "requirements.yaml",
+			ModTime: modTime,
+			Data:    []byte("dependencies:"),
 		},
 		{
-			Name: "values.yaml",
-			Data: []byte("var: some values"),
+			Name:    "values.yaml",
+			ModTime: modTime,
+			Data:    []byte("var: some values"),
 		},
 
 		{
-			Name: "templates/deployment.yaml",
-			Data: []byte("some deployment"),
+			Name:    "templates/deployment.yaml",
+			ModTime: modTime,
+			Data:    []byte("some deployment"),
 		},
 		{
-			Name: "templates/service.yaml",
-			Data: []byte("some service"),
+			Name:    "templates/service.yaml",
+			ModTime: modTime,
+			Data:    []byte("some service"),
 		},
 		{
-			Name: "Chart.yaml",
+			Name:    "Chart.yaml",
+			ModTime: modTime,
 			Data: []byte(`apiVersion: v1
 name: frobnitz
 description: This is a frobnitz.
@@ -543,7 +558,7 @@ foo:
 	}
 }
 
-func TestMergeValues(t *testing.T) {
+func TestMergeValuesV2(t *testing.T) {
 	nestedMap := map[string]interface{}{
 		"foo": "bar",
 		"baz": map[string]string{
@@ -753,7 +768,7 @@ func verifyChartFileAndTemplate(t *testing.T, c *chart.Chart, name string) {
 	}
 }
 
-func verifyBomStripped(t *testing.T, files []*chart.File) {
+func verifyBomStripped(t *testing.T, files []*common.File) {
 	t.Helper()
 	for _, file := range files {
 		if bytes.HasPrefix(file.Data, utf8bom) {

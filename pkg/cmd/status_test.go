@@ -21,13 +21,13 @@ import (
 	"time"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	helmtime "helm.sh/helm/v4/pkg/time"
 )
 
 func TestStatusCmd(t *testing.T) {
 	releasesMockWithStatus := func(info *release.Info, hooks ...*release.Hook) []*release.Release {
-		info.LastDeployed = helmtime.Unix(1452902400, 0).UTC()
+		info.LastDeployed = time.Unix(1452902400, 0).UTC()
 		return []*release.Release{{
 			Name:      "flummoxed-chickadee",
 			Namespace: "default",
@@ -42,14 +42,14 @@ func TestStatusCmd(t *testing.T) {
 		cmd:    "status flummoxed-chickadee",
 		golden: "output/status.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 		}),
 	}, {
 		name:   "get status of a deployed release, with desc",
 		cmd:    "status flummoxed-chickadee",
 		golden: "output/status-with-desc.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status:      release.StatusDeployed,
+			Status:      common.StatusDeployed,
 			Description: "Mock description",
 		}),
 	}, {
@@ -57,7 +57,7 @@ func TestStatusCmd(t *testing.T) {
 		cmd:    "status flummoxed-chickadee",
 		golden: "output/status-with-notes.txt",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 			Notes:  "release notes",
 		}),
 	}, {
@@ -65,7 +65,7 @@ func TestStatusCmd(t *testing.T) {
 		cmd:    "status flummoxed-chickadee -o json",
 		golden: "output/status.json",
 		rels: releasesMockWithStatus(&release.Info{
-			Status: release.StatusDeployed,
+			Status: common.StatusDeployed,
 			Notes:  "release notes",
 		}),
 	}, {
@@ -74,7 +74,7 @@ func TestStatusCmd(t *testing.T) {
 		golden: "output/status-with-resources.txt",
 		rels: releasesMockWithStatus(
 			&release.Info{
-				Status: release.StatusDeployed,
+				Status: common.StatusDeployed,
 			},
 		),
 	}, {
@@ -83,7 +83,7 @@ func TestStatusCmd(t *testing.T) {
 		golden: "output/status-with-resources.json",
 		rels: releasesMockWithStatus(
 			&release.Info{
-				Status: release.StatusDeployed,
+				Status: common.StatusDeployed,
 			},
 		),
 	}, {
@@ -92,7 +92,7 @@ func TestStatusCmd(t *testing.T) {
 		golden: "output/status-with-test-suite.txt",
 		rels: releasesMockWithStatus(
 			&release.Info{
-				Status: release.StatusDeployed,
+				Status: common.StatusDeployed,
 			},
 			&release.Hook{
 				Name:   "never-run-test",
@@ -130,8 +130,8 @@ func TestStatusCmd(t *testing.T) {
 	runTestCmd(t, tests)
 }
 
-func mustParseTime(t string) helmtime.Time {
-	res, _ := helmtime.Parse(time.RFC3339, t)
+func mustParseTime(t string) time.Time {
+	res, _ := time.Parse(time.RFC3339, t)
 	return res
 }
 
@@ -141,7 +141,7 @@ func TestStatusCompletion(t *testing.T) {
 			Name:      "athos",
 			Namespace: "default",
 			Info: &release.Info{
-				Status: release.StatusDeployed,
+				Status: common.StatusDeployed,
 			},
 			Chart: &chart.Chart{
 				Metadata: &chart.Metadata{
@@ -153,7 +153,7 @@ func TestStatusCompletion(t *testing.T) {
 			Name:      "porthos",
 			Namespace: "default",
 			Info: &release.Info{
-				Status: release.StatusFailed,
+				Status: common.StatusFailed,
 			},
 			Chart: &chart.Chart{
 				Metadata: &chart.Metadata{
@@ -165,7 +165,7 @@ func TestStatusCompletion(t *testing.T) {
 			Name:      "aramis",
 			Namespace: "default",
 			Info: &release.Info{
-				Status: release.StatusUninstalled,
+				Status: common.StatusUninstalled,
 			},
 			Chart: &chart.Chart{
 				Metadata: &chart.Metadata{
@@ -177,7 +177,7 @@ func TestStatusCompletion(t *testing.T) {
 			Name:      "dartagnan",
 			Namespace: "gascony",
 			Info: &release.Info{
-				Status: release.StatusUnknown,
+				Status: common.StatusUnknown,
 			},
 			Chart: &chart.Chart{
 				Metadata: &chart.Metadata{

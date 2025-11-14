@@ -30,6 +30,7 @@ import (
 	"strings"
 	"sync"
 	"text/template"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -39,17 +40,19 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/kio"
 	kyaml "sigs.k8s.io/kustomize/kyaml/yaml"
 
+	"helm.sh/helm/v4/internal/logging"
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/engine"
 	"helm.sh/helm/v4/pkg/kube"
-	"helm.sh/helm/v4/pkg/postrender"
+	"helm.sh/helm/v4/pkg/postrenderer"
 	"helm.sh/helm/v4/pkg/registry"
-	releaseutil "helm.sh/helm/v4/pkg/release/util"
+	ri "helm.sh/helm/v4/pkg/release"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
-	"helm.sh/helm/v4/pkg/time"
 )
 
 // Timestamper is a function capable of producing a timestamp.Timestamper.
@@ -69,6 +72,21 @@ var (
 	errPending = errors.New("another operation (install/upgrade/rollback) is in progress")
 )
 
+type DryRunStrategy string
+
+const (
+	// DryRunNone indicates the client will make all mutating calls
+	DryRunNone DryRunStrategy = "none"
+
+	// DryRunClient, or client-side dry-run, indicates the client will avoid
+	// making calls to the server
+	DryRunClient DryRunStrategy = "client"
+
+	// DryRunServer, or server-side dry-run, indicates the client will send
+	// calls to the APIServer with the dry-run parameter to prevent persisting changes
+	DryRunServer DryRunStrategy = "server"
+)
+
 // Configuration injects the dependencies that all actions share.
 type Configuration struct {
 	// RESTClientGetter is an interface that loads Kubernetes clients.
@@ -84,7 +102,7 @@ type Configuration struct {
 	RegistryClient *registry.Client
 
 	// Capabilities describes the capabilities of the Kubernetes cluster.
-	Capabilities *chartutil.Capabilities
+	Capabilities *common.Capabilities
 
 	// CustomTemplateFuncs is defined by users to provide custom template funcs
 	CustomTemplateFuncs template.FuncMap
@@ -92,7 +110,32 @@ type Configuration struct {
 	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
 	HookOutputFunc func(namespace, pod, container string) io.Writer
 
+	// Mutex is an exclusive lock for concurrent access to the action
 	mutex sync.Mutex
+
+	// Embed a LogHolder to provide logger functionality
+	logging.LogHolder
+}
+
+type ConfigurationOption func(c *Configuration)
+
+// Override the default logging handler
+// If unspecified, the default logger will be used
+func ConfigurationSetLogger(h slog.Handler) ConfigurationOption {
+	return func(c *Configuration) {
+		c.SetLogger(h)
+	}
+}
+
+func NewConfiguration(options ...ConfigurationOption) *Configuration {
+	c := &Configuration{}
+	c.SetLogger(slog.Default().Handler())
+
+	for _, o := range options {
+		o(c)
+	}
+
+	return c
 }
 
 const (
@@ -176,7 +219,7 @@ func splitAndDeannotate(postrendered string) (map[string]string, error) {
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //
 //	This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	var hs []*release.Hook
 	b := bytes.NewBuffer(nil)
 
@@ -337,7 +380,7 @@ type RESTClientGetter interface {
 }
 
 // capabilities builds a Capabilities from discovery information.
-func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
+func (cfg *Configuration) getCapabilities() (*common.Capabilities, error) {
 	if cfg.Capabilities != nil {
 		return cfg.Capabilities, nil
 	}
@@ -359,21 +402,21 @@ func (cfg *Configuration) getCapabilities() (*chartutil.Capabilities, error) {
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
 		if discovery.IsGroupDiscoveryFailedError(err) {
-			slog.Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
-			slog.Warn("to fix this, kubectl delete apiservice <service-name>")
+			cfg.Logger().Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
+			cfg.Logger().Warn("to fix this, kubectl delete apiservice <service-name>")
 		} else {
 			return nil, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
 		}
 	}
 
-	cfg.Capabilities = &chartutil.Capabilities{
+	cfg.Capabilities = &common.Capabilities{
 		APIVersions: apiVersions,
-		KubeVersion: chartutil.KubeVersion{
+		KubeVersion: common.KubeVersion{
 			Version: kubeVersion.GitVersion,
 			Major:   kubeVersion.Major,
 			Minor:   kubeVersion.Minor,
 		},
-		HelmVersion: chartutil.DefaultCapabilities.HelmVersion,
+		HelmVersion: common.DefaultCapabilities.HelmVersion,
 	}
 	return cfg.Capabilities, nil
 }
@@ -396,7 +439,7 @@ func (cfg *Configuration) Now() time.Time {
 	return Timestamper()
 }
 
-func (cfg *Configuration) releaseContent(name string, version int) (*release.Release, error) {
+func (cfg *Configuration) releaseContent(name string, version int) (ri.Releaser, error) {
 	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, fmt.Errorf("releaseContent: Release name is invalid: %s", name)
 	}
@@ -409,10 +452,10 @@ func (cfg *Configuration) releaseContent(name string, version int) (*release.Rel
 }
 
 // GetVersionSet retrieves a set of available k8s API versions
-func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.VersionSet, error) {
+func GetVersionSet(client discovery.ServerResourcesInterface) (common.VersionSet, error) {
 	groups, resources, err := client.ServerGroupsAndResources()
 	if err != nil && !discovery.IsGroupDiscoveryFailedError(err) {
-		return chartutil.DefaultVersionSet, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
+		return common.DefaultVersionSet, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
 	}
 
 	// FIXME: The Kubernetes test fixture for cli appears to always return nil
@@ -420,7 +463,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 	// return the default API list. This is also a safe value to return in any
 	// other odd-ball case.
 	if len(groups) == 0 && len(resources) == 0 {
-		return chartutil.DefaultVersionSet, nil
+		return common.DefaultVersionSet, nil
 	}
 
 	versionMap := make(map[string]interface{})
@@ -453,19 +496,20 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (chartutil.Version
 		versions = append(versions, k)
 	}
 
-	return chartutil.VersionSet(versions), nil
+	return common.VersionSet(versions), nil
 }
 
 // recordRelease with an update operation in case reuse has been set.
 func (cfg *Configuration) recordRelease(r *release.Release) {
 	if err := cfg.Releases.Update(r); err != nil {
-		slog.Warn("failed to update release", "name", r.Name, "revision", r.Version, slog.Any("error", err))
+		cfg.Logger().Warn("failed to update release", "name", r.Name, "revision", r.Version, slog.Any("error", err))
 	}
 }
 
 // Init initializes the action configuration
 func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string) error {
 	kc := kube.New(getter)
+	kc.SetLogger(cfg.Logger().Handler())
 
 	lazyClient := &lazyClient{
 		namespace: namespace,
@@ -476,9 +520,11 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	switch helmDriver {
 	case "secret", "secrets", "":
 		d := driver.NewSecrets(newSecretClient(lazyClient))
+		d.SetLogger(cfg.Logger().Handler())
 		store = storage.Init(d)
 	case "configmap", "configmaps":
 		d := driver.NewConfigMaps(newConfigMapClient(lazyClient))
+		d.SetLogger(cfg.Logger().Handler())
 		store = storage.Init(d)
 	case "memory":
 		var d *driver.Memory
@@ -493,6 +539,7 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 		if d == nil {
 			d = driver.NewMemory()
 		}
+		d.SetLogger(cfg.Logger().Handler())
 		d.SetNamespace(namespace)
 		store = storage.Init(d)
 	case "sql":
@@ -503,6 +550,7 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 		if err != nil {
 			return fmt.Errorf("unable to instantiate SQL driver: %w", err)
 		}
+		d.SetLogger(cfg.Logger().Handler())
 		store = storage.Init(d)
 	default:
 		return fmt.Errorf("unknown driver %q", helmDriver)
@@ -519,4 +567,21 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 // SetHookOutputFunc sets the HookOutputFunc on the Configuration.
 func (cfg *Configuration) SetHookOutputFunc(hookOutputFunc func(_, _, _ string) io.Writer) {
 	cfg.HookOutputFunc = hookOutputFunc
+}
+
+func determineReleaseSSApplyMethod(serverSideApply bool) release.ApplyMethod {
+	if serverSideApply {
+		return release.ApplyMethodServerSideApply
+	}
+	return release.ApplyMethodClientSideApply
+}
+
+// isDryRun returns true if the strategy is set to run as a DryRun
+func isDryRun(strategy DryRunStrategy) bool {
+	return strategy == DryRunClient || strategy == DryRunServer
+}
+
+// interactWithServer determine whether or not to interact with a remote Kubernetes server
+func interactWithServer(strategy DryRunStrategy) bool {
+	return strategy == DryRunNone || strategy == DryRunServer
 }
