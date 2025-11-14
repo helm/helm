@@ -76,7 +76,7 @@ func TestLintCmdWithKubeVersionFlag(t *testing.T) {
 		golden:    "output/lint-chart-with-deprecated-api-strict.txt",
 		wantError: true,
 	}, {
-		// the test builds will use the default k8sVersionMinor const in deprecations.go and capabilities.go
+		// the test builds will use the kubeVersionMinorTesting const in capabilities.go
 		// which is "20"
 		name:      "lint chart with deprecated api version without kube version",
 		cmd:       fmt.Sprintf("lint %s", testChart),
