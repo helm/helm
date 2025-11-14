@@ -1101,6 +1101,13 @@ func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts 
 		WithFieldManager(getManagedFieldsManager()).
 		WithFieldValidation(string(fieldValidationDirective))
 
+	// Kubernetes looks at the server side state when evaluating conflicts in field manager rather than the field manager field in the request
+	// therefore when using the Apply operation you cannot define managedFields in the body of the request that you submit
+	// This is according to https://kubernetes.io/docs/reference/using-api/server-side-apply/#apply-and-update
+	if u, ok := target.Object.(*unstructured.Unstructured); ok {
+		u.SetManagedFields(nil)
+	}
+
 	// Send the full object to be applied on the server side.
 	data, err := runtime.Encode(unstructured.UnstructuredJSONScheme, target.Object)
 	if err != nil {

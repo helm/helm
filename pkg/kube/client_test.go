@@ -2183,3 +2183,71 @@ status:
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
 }
+
+func TestPatchResourceServerSide_ClearsManagedFields(t *testing.T) {
+	// Test that managedFields are cleared before sending SSA request
+	podWithManagedFields := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "Pod",
+			"metadata": map[string]interface{}{
+				"name":      "test-pod",
+				"namespace": "default",
+				"managedFields": []interface{}{
+					map[string]interface{}{
+						"manager":    "kubectl",
+						"operation":  "Apply",
+						"apiVersion": "v1",
+					},
+				},
+			},
+			"spec": map[string]interface{}{
+				"containers": []interface{}{
+					map[string]interface{}{
+						"name":  "test",
+						"image": "nginx",
+					},
+				},
+			},
+		},
+	}
+
+	// Create a fake REST client that will receive the patch request
+	var patchedData []byte
+	fakeClient := &fake.RESTClient{
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
+		NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			body, err := io.ReadAll(req.Body)
+			require.NoError(t, err)
+			patchedData = body
+
+			header := http.Header{}
+			header.Set("Content-Type", runtime.ContentTypeJSON)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     header,
+				Body:       io.NopCloser(bytes.NewReader(body)),
+			}, nil
+		}),
+	}
+
+	target := &resource.Info{
+		Name:      "test-pod",
+		Namespace: "default",
+		Object:    podWithManagedFields,
+		Mapping: &meta.RESTMapping{
+			Resource:         schema.GroupVersionResource{Version: "v1", Resource: "pods"},
+			GroupVersionKind: schema.GroupVersionKind{Version: "v1", Kind: "Pod"},
+			Scope:            meta.RESTScopeNamespace,
+		},
+		Client: fakeClient,
+	}
+
+	// Call patchResourceServerSide
+	err := patchResourceServerSide(target, false, false, FieldValidationDirectiveStrict)
+	require.NoError(t, err)
+
+	// Verify the patched data doesn't contain managedFields
+	assert.NotContains(t, string(patchedData), "managedFields", "patched data should not contain managedFields")
+}
