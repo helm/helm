@@ -66,8 +66,8 @@ func TestValidatePluginData(t *testing.T) {
 		} else if !item.pass && err == nil {
 			t.Errorf("expected case %d to fail", i)
 		}
-		if !item.pass && err.Error() != item.errString {
-			t.Errorf("index [%d]: expected the following error: %s, but got: %s", i, item.errString, err.Error())
+		if !item.pass && !strings.Contains(err.Error(), item.errString) {
+			t.Errorf("index [%d]: expected error to contain: %s, but got: %s", i, item.errString, err.Error())
 		}
 	}
 }

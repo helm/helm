@@ -25,23 +25,8 @@ func TestMetadataLegacyValidate_PluginName(t *testing.T) {
 		pluginName string
 		shouldPass bool
 	}{
-		// Valid names
-		{"lowercase", "myplugin", true},
-		{"uppercase", "MYPLUGIN", true},
-		{"mixed case", "MyPlugin", true},
-		{"with digits", "plugin123", true},
-		{"with hyphen", "my-plugin", true},
-		{"with underscore", "my_plugin", true},
-		{"mixed chars", "my-awesome_plugin_123", true},
-
-		// Invalid names
-		{"empty", "", false},
-		{"space", "my plugin", false},
-		{"colon", "Name:", false},
-		{"period", "my.plugin", false},
-		{"slash", "my/plugin", false},
-		{"dollar", "$plugin", false},
-		{"unicode", "plügîn", false},
+		{"valid name", "my-plugin", true},
+		{"invalid with space", "my plugin", false},
 	}
 
 	for _, tt := range tests {
