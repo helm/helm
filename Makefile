@@ -67,8 +67,8 @@ LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/lint/rules.k8sVersionMajor=$(K8S_MODU
 LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/lint/rules.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
 LDFLAGS += -X helm.sh/helm/v4/pkg/internal/v3/lint/rules.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
 LDFLAGS += -X helm.sh/helm/v4/pkg/internal/v3/lint/rules.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/chart/common/util.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/chart/common/util.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/chart/common.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
+LDFLAGS += -X helm.sh/helm/v4/pkg/chart/common.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
 LDFLAGS += -X helm.sh/helm/v4/internal/version.kubeClientVersionMajor=$(K8S_MODULES_MAJOR_VER)
 LDFLAGS += -X helm.sh/helm/v4/internal/version.kubeClientVersionMinor=$(K8S_MODULES_MINOR_VER)
 
