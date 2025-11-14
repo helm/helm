@@ -20,9 +20,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/mitchellh/copystructure"
-
 	chart "helm.sh/helm/v4/internal/chart/v3"
+	"helm.sh/helm/v4/internal/copystructure"
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/chart/common/util"
 )
