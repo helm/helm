@@ -18,8 +18,8 @@ package action
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 // Rollback is the action for rolling back to a given release.
@@ -278,7 +279,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	}
 
 	deployed, err := r.cfg.Releases.DeployedAll(currentRelease.Name)
-	if err != nil && !strings.Contains(err.Error(), "has no deployed releases") {
+	if err != nil && !errors.Is(err, driver.ErrNoDeployedReleases) {
 		return nil, err
 	}
 	// Supersede all previous deployments, see issue #2941.
