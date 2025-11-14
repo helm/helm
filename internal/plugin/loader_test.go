@@ -268,3 +268,61 @@ func TestFindPlugins(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadMetadataLegacy_CapitalNameField(t *testing.T) {
+	yamlWithCapitalName := `Name: my-plugin
+version: 1.0.0
+usage: test plugin
+description: test description
+command: echo test`
+
+	_, err := loadMetadataLegacy([]byte(yamlWithCapitalName))
+
+	// Legacy plugins: No strict unmarshalling (backwards compatibility)
+	// YAML decoder silently ignores "Name:", then validation catches empty name
+	require.Error(t, err, "expected error for capital 'Name:' field")
+	assert.Contains(t, err.Error(), "invalid plugin name \"\": must contain only a-z, A-Z, 0-9, _ and -")
+
+	t.Logf("Legacy error (validation catches empty name): %v", err)
+	t.Log("NOTE: V1 plugins use strict unmarshalling and would get: yaml: field Name not found")
+}
+
+func TestLoadMetadataLegacy_CorrectField(t *testing.T) {
+	yamlWithCorrectName := `name: my-plugin
+version: 1.0.0
+usage: test plugin
+description: test description
+command: echo test`
+
+	m, err := loadMetadataLegacy([]byte(yamlWithCorrectName))
+
+	require.NoError(t, err, "expected success for correct 'name:' field")
+	assert.Equal(t, "my-plugin", m.Name)
+}
+
+func TestLoadMetadataV1_CapitalNameField(t *testing.T) {
+	yamlWithCapitalName := `apiVersion: v1
+Name: my-plugin
+type: cli/v1
+runtime: subprocess
+`
+
+	_, err := loadMetadataV1([]byte(yamlWithCapitalName))
+
+	require.Error(t, err, "expected error for capital 'Name:' field")
+	assert.Contains(t, err.Error(), "field Name not found in type plugin.MetadataV1")
+
+	t.Logf("V1 error (strict unmarshalling): %v", err)
+}
+
+func TestLoadMetadataV1_CorrectField(t *testing.T) {
+	yamlWithCorrectName := `apiVersion: v1
+name: my-plugin
+type: cli/v1
+runtime: subprocess
+`
+	m, err := loadMetadataV1([]byte(yamlWithCorrectName))
+
+	require.NoError(t, err, "expected success for correct 'name:' field")
+	assert.Equal(t, "my-plugin", m.Name)
+}

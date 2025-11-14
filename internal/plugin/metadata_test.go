@@ -53,10 +53,10 @@ func TestValidatePluginData(t *testing.T) {
 	}{
 		{true, mockSubprocessCLIPlugin(t, "abcdefghijklmnopqrstuvwxyz0123456789_-ABC"), ""},
 		{true, mockSubprocessCLIPlugin(t, "foo-bar-FOO-BAR_1234"), ""},
-		{false, mockSubprocessCLIPlugin(t, "foo -bar"), "invalid name"},
-		{false, mockSubprocessCLIPlugin(t, "$foo -bar"), "invalid name"}, // Test leading chars
-		{false, mockSubprocessCLIPlugin(t, "foo -bar "), "invalid name"}, // Test trailing chars
-		{false, mockSubprocessCLIPlugin(t, "foo\nbar"), "invalid name"},  // Test newline
+		{false, mockSubprocessCLIPlugin(t, "foo -bar"), "invalid plugin name"},
+		{false, mockSubprocessCLIPlugin(t, "$foo -bar"), "invalid plugin name"}, // Test leading chars
+		{false, mockSubprocessCLIPlugin(t, "foo -bar "), "invalid plugin name"}, // Test trailing chars
+		{false, mockSubprocessCLIPlugin(t, "foo\nbar"), "invalid plugin name"},  // Test newline
 		{true, mockNoCommand, ""},     // Test no command metadata works
 		{true, mockLegacyCommand, ""}, // Test legacy command metadata works
 	} {
@@ -92,7 +92,7 @@ func TestMetadataValidateMultipleErrors(t *testing.T) {
 
 	// Check that all expected errors are present in the joined error
 	expectedErrors := []string{
-		"invalid name",
+		"invalid plugin name",
 		"empty APIVersion",
 		"empty type field",
 		"empty runtime field",
