@@ -55,7 +55,8 @@ func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
 			return fmt.Errorf("could not get information about the resource %s: %w", resourceString(info), err)
 		}
 
-		requireUpdate.Append(info)
+		infoCopy := *info
+		requireUpdate.Append(&infoCopy)
 		return nil
 	})
 
@@ -84,7 +85,8 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 			return fmt.Errorf("%s exists and cannot be imported into the current release: %s", resourceString(info), err)
 		}
 
-		requireUpdate.Append(info)
+		infoCopy := *info
+		requireUpdate.Append(&infoCopy)
 		return nil
 	})
 
