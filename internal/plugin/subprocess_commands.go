@@ -82,15 +82,16 @@ func PrepareCommands(cmds []PlatformCommand, expandArgs bool, extraArgs []string
 	if len(cmdParts) == 0 || cmdParts[0] == "" {
 		return "", nil, fmt.Errorf("no plugin command is applicable")
 	}
-
-	main := os.Expand(cmdParts[0], func(key string) string {
+	envMappingFunc := func(key string) string {
 		return env[key]
-	})
+	}
+
+	main := os.Expand(cmdParts[0], envMappingFunc)
 	baseArgs := []string{}
 	if len(cmdParts) > 1 {
 		for _, cmdPart := range cmdParts[1:] {
 			if expandArgs {
-				baseArgs = append(baseArgs, os.ExpandEnv(cmdPart))
+				baseArgs = append(baseArgs, os.Expand(cmdPart, envMappingFunc))
 			} else {
 				baseArgs = append(baseArgs, cmdPart)
 			}
@@ -99,7 +100,7 @@ func PrepareCommands(cmds []PlatformCommand, expandArgs bool, extraArgs []string
 
 	for _, arg := range args {
 		if expandArgs {
-			baseArgs = append(baseArgs, os.ExpandEnv(arg))
+			baseArgs = append(baseArgs, os.Expand(arg, envMappingFunc))
 		} else {
 			baseArgs = append(baseArgs, arg)
 		}

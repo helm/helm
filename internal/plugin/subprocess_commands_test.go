@@ -16,6 +16,7 @@ limitations under the License.
 package plugin
 
 import (
+	"os"
 	"reflect"
 	"runtime"
 	"testing"
@@ -224,16 +225,18 @@ func TestPrepareCommandsNoCommands(t *testing.T) {
 }
 
 func TestPrepareCommandsExpand(t *testing.T) {
-	t.Setenv("TEST", "test")
+	t.Setenv("TESTX", "testx")
 	cmdMain := "sh"
-	cmdArgs := []string{"-c", "echo \"${TEST}\""}
+	cmdArgs := []string{"-c", "echo \"${TESTX}${TESTY}\""}
 	cmds := []PlatformCommand{
 		{OperatingSystem: "", Architecture: "", Command: cmdMain, Args: cmdArgs},
 	}
 
-	expectedArgs := []string{"-c", "echo \"test\""}
+	expectedArgs := []string{"-c", "echo \"testxtesty\""}
 
-	env := map[string]string{}
+	env := parseEnv(os.Environ())
+	env["TESTY"] = "testy"
+
 	cmd, args, err := PrepareCommands(cmds, true, []string{}, env)
 	if err != nil {
 		t.Fatal(err)
@@ -253,8 +256,8 @@ func TestPrepareCommandsNoExpand(t *testing.T) {
 	cmds := []PlatformCommand{
 		{OperatingSystem: "", Architecture: "", Command: cmdMain, Args: cmdArgs},
 	}
+	env := parseEnv(os.Environ())
 
-	env := map[string]string{}
 	cmd, args, err := PrepareCommands(cmds, false, []string{}, env)
 	if err != nil {
 		t.Fatal(err)
