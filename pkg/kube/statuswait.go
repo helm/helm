@@ -47,6 +47,13 @@ type statusWaiter struct {
 	ctx        context.Context
 }
 
+// DefaultStatusWatcherTimeout is the timeout used by the status waiter when a
+// zero timeout is provided. This prevents callers from accidentally passing a
+// zero value (which would immediately cancel the context) and getting
+// "context deadline exceeded" errors. SDK callers can rely on this default
+// when they don't set a timeout.
+var DefaultStatusWatcherTimeout = 30 * time.Second
+
 func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
 	return &status.Result{
 		Status:  status.CurrentStatus,
@@ -55,6 +62,9 @@ func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
 }
 
 func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.Duration) error {
+	if timeout == 0 {
+		timeout = DefaultStatusWatcherTimeout
+	}
 	ctx, cancel := w.contextWithTimeout(timeout)
 	defer cancel()
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
@@ -76,6 +86,9 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 }
 
 func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) error {
+	if timeout == 0 {
+		timeout = DefaultStatusWatcherTimeout
+	}
 	ctx, cancel := w.contextWithTimeout(timeout)
 	defer cancel()
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
@@ -84,6 +97,9 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 }
 
 func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Duration) error {
+	if timeout == 0 {
+		timeout = DefaultStatusWatcherTimeout
+	}
 	ctx, cancel := w.contextWithTimeout(timeout)
 	defer cancel()
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
@@ -95,6 +111,9 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 }
 
 func (w *statusWaiter) WaitForDelete(resourceList ResourceList, timeout time.Duration) error {
+	if timeout == 0 {
+		timeout = DefaultStatusWatcherTimeout
+	}
 	ctx, cancel := w.contextWithTimeout(timeout)
 	defer cancel()
 	slog.Debug("waiting for resources to be deleted", "count", len(resourceList), "timeout", timeout)
