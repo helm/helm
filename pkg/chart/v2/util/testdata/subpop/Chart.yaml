@@ -25,6 +25,8 @@ dependencies:
         parent: .
       - SCBexported2
       - SC1exported1
+      - child: .
+        parent: all
 
   - name: subchart2
     repository: http://localhost:10191
