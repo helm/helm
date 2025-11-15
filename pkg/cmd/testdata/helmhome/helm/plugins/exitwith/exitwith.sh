@@ -1,2 +1,2 @@
-#!/bin/bash
-exit $*
+#!/usr/bin/env sh
+exit "$1"
