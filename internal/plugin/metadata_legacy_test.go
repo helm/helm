@@ -17,33 +17,110 @@ package plugin
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestMetadataLegacyValidate_PluginName(t *testing.T) {
-	tests := []struct {
-		name       string
-		pluginName string
-		shouldPass bool
-	}{
-		{"valid name", "my-plugin", true},
-		{"invalid with space", "my plugin", false},
+func TestMetadataLegacyValidate(t *testing.T) {
+	testsValid := map[string]MetadataLegacy{
+		"valid metadata": {
+			Name: "myplugin",
+		},
+		"valid with command": {
+			Name:    "myplugin",
+			Command: "echo hello",
+		},
+		"valid with platformCommand": {
+			Name: "myplugin",
+			PlatformCommand: []PlatformCommand{
+				{OperatingSystem: "linux", Architecture: "amd64", Command: "echo hello"},
+			},
+		},
+		"valid with hooks": {
+			Name: "myplugin",
+			Hooks: Hooks{
+				"install": "echo install",
+			},
+		},
+		"valid with platformHooks": {
+			Name: "myplugin",
+			PlatformHooks: PlatformHooks{
+				"install": []PlatformCommand{
+					{OperatingSystem: "linux", Architecture: "amd64", Command: "echo install"},
+				},
+			},
+		},
+		"valid with downloaders": {
+			Name: "myplugin",
+			Downloaders: []Downloaders{
+				{
+					Protocols: []string{"myproto"},
+					Command:   "echo download",
+				},
+			},
+		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			metadata := MetadataLegacy{
-				Name:    tt.pluginName,
-				Version: "1.0.0",
-			}
+	for testName, metadata := range testsValid {
+		t.Run(testName, func(t *testing.T) {
+			assert.NoError(t, metadata.Validate())
+		})
+	}
 
-			err := metadata.Validate()
+	testsInvalid := map[string]MetadataLegacy{
+		"invalid name": {
+			Name: "my plugin", // further tested in TestValidPluginName
+		},
+		"both command and platformCommand": {
+			Name:    "myplugin",
+			Command: "echo hello",
+			PlatformCommand: []PlatformCommand{
+				{OperatingSystem: "linux", Architecture: "amd64", Command: "echo hello"},
+			},
+		},
+		"both hooks and platformHooks": {
+			Name: "myplugin",
+			Hooks: Hooks{
+				"install": "echo install",
+			},
+			PlatformHooks: PlatformHooks{
+				"install": []PlatformCommand{
+					{OperatingSystem: "linux", Architecture: "amd64", Command: "echo install"},
+				},
+			},
+		},
+		"downloader with empty command": {
+			Name: "myplugin",
+			Downloaders: []Downloaders{
+				{
+					Protocols: []string{"myproto"},
+					Command:   "",
+				},
+			},
+		},
+		"downloader with no protocols": {
+			Name: "myplugin",
+			Downloaders: []Downloaders{
+				{
+					Protocols: []string{},
+					Command:   "echo download",
+				},
+			},
+		},
+		"downloader with empty protocol": {
+			Name: "myplugin",
+			Downloaders: []Downloaders{
+				{
+					Protocols: []string{""},
+					Command:   "echo download",
+				},
+			},
+		},
+	}
 
-			if tt.shouldPass && err != nil {
-				t.Errorf("expected %q to be valid, got error: %v", tt.pluginName, err)
-			}
-			if !tt.shouldPass && err == nil {
-				t.Errorf("expected %q to be invalid, but passed", tt.pluginName)
-			}
+	for testName, metadata := range testsInvalid {
+		t.Run(testName, func(t *testing.T) {
+			assert.Error(t, metadata.Validate())
 		})
 	}
 }
