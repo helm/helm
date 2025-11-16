@@ -840,7 +840,7 @@ OUTER:
 			if err != nil {
 				return err
 			}
-			if dac.Name() == rac.Name() {
+			if dac.Name() == rac.Name() && dac.Version() == rac.Version() {
 				continue OUTER
 			}
 		}
