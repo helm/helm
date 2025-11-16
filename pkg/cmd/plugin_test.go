@@ -114,9 +114,9 @@ func TestLoadCLIPlugins(t *testing.T) {
 	}{
 		{"args", "echo args", "This echos args", "-a -b -c\n", []string{"-a", "-b", "-c"}, 0},
 		{"echo", "echo stuff", "This echos stuff", "hello\n", []string{}, 0},
-		{"env", "env stuff", "show the env", "HELM_PLUGIN_NAME=env\n", []string{}, 0},
 		{"exitwith", "exitwith code", "This exits with the specified exit code", "", []string{"2"}, 2},
 		{"fullenv", "show env vars", "show all env vars", fullEnvOutput, []string{}, 0},
+		{"shortenv", "env stuff", "show the env", "HELM_PLUGIN_NAME=shortenv\n", []string{}, 0},
 	}
 
 	pluginCmds := cmd.Commands()
@@ -254,10 +254,6 @@ func TestLoadCLIPluginsForCompletion(t *testing.T) {
 	tests := []staticCompletionDetails{
 		{"args", []string{}, []string{}, []staticCompletionDetails{}},
 		{"echo", []string{}, []string{}, []staticCompletionDetails{}},
-		{"env", []string{}, []string{"global"}, []staticCompletionDetails{
-			{"list", []string{}, []string{"a", "all", "log"}, []staticCompletionDetails{}},
-			{"remove", []string{"all", "one"}, []string{}, []staticCompletionDetails{}},
-		}},
 		{"exitwith", []string{}, []string{}, []staticCompletionDetails{
 			{"code", []string{}, []string{"a", "b"}, []staticCompletionDetails{}},
 		}},
@@ -267,6 +263,10 @@ func TestLoadCLIPluginsForCompletion(t *testing.T) {
 				{"less", []string{}, []string{"a", "all"}, []staticCompletionDetails{}},
 				{"more", []string{"one", "two"}, []string{"b", "ball"}, []staticCompletionDetails{}},
 			}},
+		}},
+		{"shortenv", []string{}, []string{"global"}, []staticCompletionDetails{
+			{"list", []string{}, []string{"a", "all", "log"}, []staticCompletionDetails{}},
+			{"remove", []string{"all", "one"}, []string{}, []staticCompletionDetails{}},
 		}},
 	}
 	checkCommand(t, cmd.Commands(), tests)
