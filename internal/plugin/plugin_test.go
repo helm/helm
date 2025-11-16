@@ -23,13 +23,13 @@ import (
 
 func TestValidPluginName(t *testing.T) {
 	validNames := map[string]string{
-		"lowercase":      "myplugin",
-		"uppercase":      "MYPLUGIN",
-		"mixed case":     "MyPlugin",
-		"with digits":    "plugin123",
-		"with hyphen":    "my-plugin",
+		"lowercase":       "myplugin",
+		"uppercase":       "MYPLUGIN",
+		"mixed case":      "MyPlugin",
+		"with digits":     "plugin123",
+		"with hyphen":     "my-plugin",
 		"with underscore": "my_plugin",
-		"mixed chars":    "my-awesome_plugin_123",
+		"mixed chars":     "my-awesome_plugin_123",
 	}
 
 	for name, pluginName := range validNames {
