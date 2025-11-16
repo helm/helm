@@ -1,0 +1,12 @@
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "test" chart repository
+Update Complete. ⎈Happy Helming!⎈
+Saving 1 charts
+Downloading oci-dependent-chart from repo {{ .repoUrl }}
+Deleting outdated charts
+NAME: updeps
+LAST DEPLOYED: Fri Sep  2 22:04:05 1977
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete

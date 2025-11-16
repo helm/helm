@@ -153,6 +153,15 @@ func TestInstall(t *testing.T) {
 			cmd:    "install --dependency-update updeps testdata/testcharts/chart-with-subchart-update",
 			golden: "output/chart-with-subchart-update.txt",
 		},
+		// Install chart with update-dependency
+		{
+			name:   "install chart with outdated dependencies",
+			cmd:    fmt.Sprintf("install --dependency-update --repository-cache %s --repository-config %s updeps testdata/testcharts/chart-with-outdated-dependency --username username --password password", srv.Root(), repoFile),
+			golden: "output/install-with-outdated-deps.txt",
+			goldenArgs: map[string]string{
+				"repoUrl": srv.URL(),
+			},
+		},
 		// Install, chart with bad dependencies in Chart.yaml in /charts
 		{
 			name:      "install chart with bad dependencies in Chart.yaml",

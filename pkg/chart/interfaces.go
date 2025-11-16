@@ -25,6 +25,7 @@ type Dependency interface{}
 
 type Accessor interface {
 	Name() string
+	Version() string
 	IsRoot() bool
 	MetadataAsMap() map[string]interface{}
 	Files() []*common.File
@@ -40,5 +41,6 @@ type Accessor interface {
 
 type DependencyAccessor interface {
 	Name() string
+	Version() string
 	Alias() string
 }
