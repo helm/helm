@@ -114,6 +114,9 @@ const (
 	FieldValidationDirectiveStrict FieldValidationDirective = "Strict"
 )
 
+type CreateApplyFunc func(target *resource.Info) error
+type UpdateApplyFunc func(original, target *resource.Info) error
+
 func init() {
 	// Add CRDs to the scheme. They are missing by default.
 	if err := apiextv1.AddToScheme(scheme.Scheme); err != nil {
@@ -268,6 +271,36 @@ func ClientCreateOptionFieldValidationDirective(fieldValidationDirective FieldVa
 	}
 }
 
+func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun bool, fieldValidationDirective FieldValidationDirective) CreateApplyFunc {
+	if serverSideApply {
+		c.Logger().Debug(
+			"using server-side apply for resource creation",
+			slog.Bool("forceConflicts", forceConflicts),
+			slog.Bool("dryRun", dryRun),
+			slog.String("fieldValidationDirective", string(fieldValidationDirective)))
+
+		return func(target *resource.Info) error {
+			err := patchResourceServerSide(target, dryRun, forceConflicts, fieldValidationDirective)
+
+			logger := c.Logger().With(
+				slog.String("namespace", target.Namespace),
+				slog.String("name", target.Name),
+				slog.String("gvk", target.Mapping.GroupVersionKind.String()))
+			if err != nil {
+				logger.Debug("Error patching resource", slog.Any("error", err))
+				return err
+			}
+
+			logger.Debug("Patched resource")
+
+			return nil
+		}
+	}
+
+	c.Logger().Debug("using client-side apply for resource creation")
+	return createResource
+}
+
 // Create creates Kubernetes resources specified in the resource list.
 func (c *Client) Create(resources ResourceList, options ...ClientCreateOption) (*Result, error) {
 	c.Logger().Debug("creating resource(s)", "resources", len(resources))
@@ -285,32 +318,12 @@ func (c *Client) Create(resources ResourceList, options ...ClientCreateOption) (
 		return nil, fmt.Errorf("invalid client create option(s): %w", err)
 	}
 
-	makeCreateApplyFunc := func() func(target *resource.Info) error {
-		if createOptions.serverSideApply {
-			c.Logger().Debug("using server-side apply for resource creation", slog.Bool("forceConflicts", createOptions.forceConflicts), slog.Bool("dryRun", createOptions.dryRun), slog.String("fieldValidationDirective", string(createOptions.fieldValidationDirective)))
-			return func(target *resource.Info) error {
-				err := patchResourceServerSide(target, createOptions.dryRun, createOptions.forceConflicts, createOptions.fieldValidationDirective)
-
-				logger := c.Logger().With(
-					slog.String("namespace", target.Namespace),
-					slog.String("name", target.Name),
-					slog.String("gvk", target.Mapping.GroupVersionKind.String()))
-				if err != nil {
-					logger.Debug("Error patching resource", slog.Any("error", err))
-					return err
-				}
-
-				logger.Debug("Patched resource")
-
-				return nil
-			}
-		}
-
-		c.Logger().Debug("using client-side apply for resource creation")
-		return createResource
-	}
-
-	if err := perform(resources, makeCreateApplyFunc()); err != nil {
+	createApplyFunc := c.makeCreateApplyFunc(
+		createOptions.serverSideApply,
+		createOptions.forceConflicts,
+		createOptions.dryRun,
+		createOptions.fieldValidationDirective)
+	if err := perform(resources, createApplyFunc); err != nil {
 		return nil, err
 	}
 	return &Result{Created: resources}, nil
@@ -512,7 +525,7 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 		transformRequests)
 }
 
-func (c *Client) update(originals, targets ResourceList, updateApplyFunc UpdateApplyFunc) (*Result, error) {
+func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateApplyFunc, updateApplyFunc UpdateApplyFunc) (*Result, error) {
 	updateErrors := []error{}
 	res := &Result{}
 
@@ -686,8 +699,6 @@ func ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManag
 	}
 }
 
-type UpdateApplyFunc func(original, target *resource.Info) error
-
 // Update takes the current list of objects and target list of objects and
 // creates resources that don't already exist, updates resources that have been
 // modified in the target configuration, and deletes resources from the current
@@ -722,6 +733,12 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 	if updateOptions.serverSideApply && updateOptions.forceReplace {
 		return &Result{}, fmt.Errorf("invalid operation: cannot use server-side apply and force replace together")
 	}
+
+	createApplyFunc := c.makeCreateApplyFunc(
+		updateOptions.serverSideApply,
+		updateOptions.forceConflicts,
+		updateOptions.dryRun,
+		updateOptions.fieldValidationDirective)
 
 	makeUpdateApplyFunc := func() UpdateApplyFunc {
 		if updateOptions.forceReplace {
@@ -783,7 +800,7 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 		}
 	}
 
-	return c.update(originals, targets, makeUpdateApplyFunc())
+	return c.update(originals, targets, createApplyFunc, makeUpdateApplyFunc())
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
