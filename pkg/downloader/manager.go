@@ -198,13 +198,13 @@ func (m *Manager) Update() error {
 		if !isLocalDependency(dep.Repository) {
 			continue
 		}
-		man := *m
-		// no need to update repositories, it is already done in main chart
-		man.SkipUpdate = true
-		chartpath, err := resolver.GetLocalPath(dep.Repository, man.ChartPath)
+		chartpath, err := resolver.GetLocalPath(dep.Repository, m.ChartPath)
 		if err != nil {
 			return err
 		}
+		man := *m
+		// no need to update repositories, it is already done in main chart
+		man.SkipUpdate = true
 		man.ChartPath = chartpath
 		err = man.Update()
 		if err != nil {
