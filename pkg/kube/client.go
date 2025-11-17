@@ -545,7 +545,7 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 			res.Created = append(res.Created, target)
 
 			// Since the resource does not exist, create it.
-			if err := createResource(target); err != nil {
+			if err := createApplyFunc(target); err != nil {
 				return fmt.Errorf("failed to create resource: %w", err)
 			}
 
