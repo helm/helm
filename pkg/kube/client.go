@@ -287,11 +287,11 @@ func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun boo
 				slog.String("name", target.Name),
 				slog.String("gvk", target.Mapping.GroupVersionKind.String()))
 			if err != nil {
-				logger.Debug("Error patching resource", slog.Any("error", err))
+				logger.Debug("Error creating resource via patch", slog.Any("error", err))
 				return err
 			}
 
-			logger.Debug("Patched resource")
+			logger.Debug("Created resource via patch")
 
 			return nil
 		}
