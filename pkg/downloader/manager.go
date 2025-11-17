@@ -192,6 +192,26 @@ func (m *Manager) Update() error {
 		}
 	}
 
+	// do resolution for each local dependency first
+	// it is required when local dependencies may have their own dependencies which must be resolved
+	for _, dep := range req {
+		if !isLocalDependency(dep.Repository) {
+			continue
+		}
+		man := *m
+		// no need to update repositories, it is already done in main chart
+		man.SkipUpdate = true
+		chartpath, err := resolver.GetLocalPath(dep.Repository, man.ChartPath)
+		if err != nil {
+			return err
+		}
+		man.ChartPath = chartpath
+		err = man.Update()
+		if err != nil {
+			return err
+		}
+	}
+
 	// Now we need to find out which version of a chart best satisfies the
 	// dependencies in the Chart.yaml
 	lock, err := m.resolve(req, repoNames)
@@ -300,7 +320,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			}
 			continue
 		}
-		if strings.HasPrefix(dep.Repository, "file://") {
+		if isLocalDependency(dep.Repository) {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
 			}
@@ -919,4 +939,8 @@ func key(name string) (string, error) {
 		return "", nil
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func isLocalDependency(repositoryPath string) bool {
+	return strings.HasPrefix(repositoryPath, "file://")
 }
