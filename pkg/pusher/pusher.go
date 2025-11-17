@@ -34,6 +34,7 @@ type options struct {
 	caFile                string
 	insecureSkipTLSVerify bool
 	plainHTTP             bool
+	expectedVersion       string
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -66,6 +67,14 @@ func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) Option {
 func WithPlainHTTP(plainHTTP bool) Option {
 	return func(opts *options) {
 		opts.plainHTTP = plainHTTP
+	}
+}
+
+// WithExpectedVersion sets a specific chart version to check against the chart metadata.
+// If the chart's version differs, the push will fail.
+func WithExpectedVersion(version string) Option {
+	return func(opts *options) {
+		opts.expectedVersion = version
 	}
 }
 
