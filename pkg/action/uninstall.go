@@ -188,6 +188,25 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		u.cfg.Logger().Debug("uninstall: Failed to store updated release", slog.Any("error", err))
 	}
 
+	// Supersede all previous deployments, see issue #12556 (which is a
+	// variation on #2941).
+	deployed, err := u.cfg.Releases.DeployedAll(name)
+	if err != nil && !errors.Is(err, driver.ErrNoDeployedReleases) {
+		return nil, err
+	}
+	for _, reli := range deployed {
+		rel, err := releaserToV1Release(reli)
+		if err != nil {
+			return nil, err
+		}
+
+		u.cfg.Logger().Debug("superseding previous deployment", "version", rel.Version)
+		rel.Info.Status = common.StatusSuperseded
+		if err := u.cfg.Releases.Update(rel); err != nil {
+			u.cfg.Logger().Debug("uninstall: Failed to store updated release", slog.Any("error", err))
+		}
+	}
+
 	if len(errs) > 0 {
 		return res, fmt.Errorf("uninstallation completed with %d error(s): %w", len(errs), joinErrors(errs, "; "))
 	}
