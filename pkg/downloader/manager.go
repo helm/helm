@@ -195,7 +195,7 @@ func (m *Manager) Update() error {
 	// do resolution for each local dependency first
 	// it is required when local dependencies may have their own dependencies which must be resolved
 	for _, dep := range req {
-		if !isLocalDependency(dep.Repository) {
+		if !resolver.IsLocalDependency(dep.Repository) {
 			continue
 		}
 		chartpath, err := resolver.GetLocalPath(dep.Repository, m.ChartPath)
@@ -320,7 +320,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			}
 			continue
 		}
-		if isLocalDependency(dep.Repository) {
+		if resolver.IsLocalDependency(dep.Repository) {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
 			}
@@ -496,7 +496,7 @@ func (m *Manager) hasAllRepos(deps []*chart.Dependency) error {
 Loop:
 	for _, dd := range deps {
 		// If repo is from local path or OCI, continue
-		if strings.HasPrefix(dd.Repository, "file://") || registry.IsOCI(dd.Repository) {
+		if resolver.IsLocalDependency(dd.Repository) || registry.IsOCI(dd.Repository) {
 			continue
 		}
 
@@ -601,7 +601,7 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			continue
 		}
 		// if dep chart is from local path, verify the path is valid
-		if strings.HasPrefix(dd.Repository, "file://") {
+		if resolver.IsLocalDependency(dd.Repository) {
 			if _, err := resolver.GetLocalPath(dd.Repository, m.ChartPath); err != nil {
 				return nil, err
 			}
@@ -894,7 +894,7 @@ func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 
 // archive a dep chart from local directory and save it into destPath
 func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, error) {
-	if !strings.HasPrefix(repo, "file://") {
+	if !resolver.IsLocalDependency(repo) {
 		return "", fmt.Errorf("wrong format: chart %s repository %s", name, repo)
 	}
 
@@ -939,8 +939,4 @@ func key(name string) (string, error) {
 		return "", nil
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
-}
-
-func isLocalDependency(repositoryPath string) bool {
-	return strings.HasPrefix(repositoryPath, "file://")
 }
