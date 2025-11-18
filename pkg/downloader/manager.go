@@ -192,8 +192,8 @@ func (m *Manager) Update() error {
 		}
 	}
 
-	// do resolution for each local dependency first
-	// it is required when local dependencies may have their own dependencies which must be resolved
+	// Do resolution for each local dependency first. Local dependencies may
+	// have their own dependencies which must be resolved.
 	for _, dep := range req {
 		if !resolver.IsLocalDependency(dep.Repository) {
 			continue
