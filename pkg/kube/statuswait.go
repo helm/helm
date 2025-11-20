@@ -231,6 +231,7 @@ func statusObserver(cancel context.CancelFunc, desired status.Status) collector.
 		}
 
 		if aggregator.AggregateStatus(rss, desired) == desired {
+			slog.Debug("all resources achieved desired status", "desiredStatus", desired, "resourceCount", len(rss))
 			cancel()
 			return
 		}
@@ -241,7 +242,7 @@ func statusObserver(cancel context.CancelFunc, desired status.Status) collector.
 				return nonDesiredResources[i].Identifier.Name < nonDesiredResources[j].Identifier.Name
 			})
 			first := nonDesiredResources[0]
-			slog.Debug("waiting for resource", "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", desired, "actualStatus", first.Status)
+			slog.Debug("waiting for resource", "namespace", first.Identifier.Namespace, "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", desired, "actualStatus", first.Status)
 		}
 	}
 }
