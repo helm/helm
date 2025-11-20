@@ -32,6 +32,7 @@ import (
 	"helm.sh/helm/v4/internal/fileutil"
 	ifs "helm.sh/helm/v4/internal/third_party/dep/fs"
 	"helm.sh/helm/v4/internal/urlutil"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/provenance"
@@ -153,6 +154,16 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	if u.Scheme == registry.OCIScheme {
 		idx := strings.LastIndexByte(name, ':')
 		name = fmt.Sprintf("%s-%s.tgz", name[:idx], name[idx+1:])
+	} else if isGitURL(u.Scheme) {
+		// For Git URLs, extract the chart name and version from the tarball
+		// to generate the proper filename
+		chartName, chartVersion, err := extractChartMetadata(data.Bytes())
+		if err == nil && chartName != "" && chartVersion != "" {
+			name = fmt.Sprintf("%s-%s.tgz", chartName, chartVersion)
+		} else {
+			// Fallback: use .tgz extension if extraction fails
+			name = filepath.Base(u.Path) + ".tgz"
+		}
 	}
 
 	destfile := filepath.Join(dest, name)
@@ -227,13 +238,10 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 	// Check the cache for the file
 	digest, err := hex.DecodeString(digestString)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("unable to decode digest: %w", err)
 	}
 	var digest32 [32]byte
 	copy(digest32[:], digest)
-	if err != nil {
-		return "", nil, fmt.Errorf("unable to decode digest: %w", err)
-	}
 
 	var pth string
 	// only fetch from the cache if we have a digest
@@ -365,6 +373,17 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 
 		digest, OCIref, err := c.RegistryClient.ValidateReference(ref, version, u)
 		return digest, OCIref, err
+	}
+
+	// Handle Git repositories
+	if isGitURL(u.Scheme) {
+		// Git URLs are handled directly by the Git getter
+		// Pass the version to the getter so it can use it as the Git ref
+		c.Options = append(c.Options, getter.WithURL(ref))
+		if version != "" {
+			c.Options = append(c.Options, getter.WithTagName(version))
+		}
+		return "", u, nil
 	}
 
 	rf, err := loadRepoConfig(c.RepositoryConfig)
@@ -580,4 +599,24 @@ func loadRepoConfig(file string) (*repo.File, error) {
 		return nil, err
 	}
 	return r, nil
+}
+
+// isGitURL checks if the scheme is a Git URL scheme
+func isGitURL(scheme string) bool {
+	return scheme == "git" || scheme == "git+https" || scheme == "git+http" || scheme == "git+ssh"
+}
+
+// extractChartMetadata extracts the chart name and version from a tarball
+func extractChartMetadata(data []byte) (string, string, error) {
+	// Load the chart from the tarball data
+	ch, err := loader.LoadArchive(bytes.NewReader(data))
+	if err != nil {
+		return "", "", err
+	}
+
+	if ch.Metadata == nil {
+		return "", "", fmt.Errorf("chart metadata is nil")
+	}
+
+	return ch.Metadata.Name, ch.Metadata.Version, nil
 }

@@ -313,6 +313,30 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			continue
 		}
 
+		// Handle Git repositories
+		if isGitRepository(dep.Repository) {
+			if m.Debug {
+				fmt.Fprintf(m.Out, "Downloading %s from git repo %s\n", dep.Name, dep.Repository)
+			}
+
+			dl := ChartDownloader{
+				Out:              m.Out,
+				Verify:           m.Verify,
+				Keyring:          m.Keyring,
+				RepositoryConfig: m.RepositoryConfig,
+				RepositoryCache:  m.RepositoryCache,
+				ContentCache:     m.ContentCache,
+				RegistryClient:   m.RegistryClient,
+				Getters:          m.Getters,
+			}
+
+			if _, _, err = dl.DownloadTo(dep.Repository, dep.Version, tmpPath); err != nil {
+				saveError = fmt.Errorf("could not download %s from git: %w", dep.Repository, err)
+				break
+			}
+			continue
+		}
+
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
 		churl, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
@@ -475,8 +499,8 @@ func (m *Manager) hasAllRepos(deps []*chart.Dependency) error {
 	missing := []string{}
 Loop:
 	for _, dd := range deps {
-		// If repo is from local path or OCI, continue
-		if strings.HasPrefix(dd.Repository, "file://") || registry.IsOCI(dd.Repository) {
+		// If repo is from local path, OCI, or Git, continue
+		if strings.HasPrefix(dd.Repository, "file://") || registry.IsOCI(dd.Repository) || isGitRepository(dd.Repository) {
 			continue
 		}
 
@@ -594,6 +618,15 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 		}
 
 		if registry.IsOCI(dd.Repository) {
+			reposMap[dd.Name] = dd.Repository
+			continue
+		}
+
+		// if dep chart is from git repository
+		if isGitRepository(dd.Repository) {
+			if m.Debug {
+				fmt.Fprintf(m.Out, "Repository from git: %s\n", dd.Repository)
+			}
 			reposMap[dd.Name] = dd.Repository
 			continue
 		}
@@ -919,4 +952,12 @@ func key(name string) (string, error) {
 		return "", nil
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+// isGitRepository checks if a repository URL is a Git repository
+func isGitRepository(repo string) bool {
+	return strings.HasPrefix(repo, "git://") ||
+		strings.HasPrefix(repo, "git+https://") ||
+		strings.HasPrefix(repo, "git+http://") ||
+		strings.HasPrefix(repo, "git+ssh://")
 }
