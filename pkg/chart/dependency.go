@@ -47,6 +47,10 @@ func (r *v2DependencyAccessor) Name() string {
 	return r.dep.Name
 }
 
+func (r *v2DependencyAccessor) Version() string {
+	return r.dep.Version
+}
+
 func (r *v2DependencyAccessor) Alias() string {
 	return r.dep.Alias
 }
@@ -57,6 +61,10 @@ type v3DependencyAccessor struct {
 
 func (r *v3DependencyAccessor) Name() string {
 	return r.dep.Name
+}
+
+func (r *v3DependencyAccessor) Version() string {
+	return r.dep.Version
 }
 
 func (r *v3DependencyAccessor) Alias() string {
