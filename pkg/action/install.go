@@ -419,6 +419,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		if err != nil {
 			return nil, err
 		}
+
 		if _, err := i.cfg.KubeClient.Create(
 			resourceList,
 			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {
