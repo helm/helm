@@ -218,6 +218,14 @@ func Getters(extraOpts ...Option) Providers {
 				return NewOCIGetter(options...)
 			},
 		},
+		Provider{
+			Schemes: []string{"git", "git+https", "git+http", "git+ssh"},
+			New: func(options ...Option) (Getter, error) {
+				options = append(options, defaultOptions...)
+				options = append(options, extraOpts...)
+				return NewGitGetter(options...)
+			},
+		},
 	}
 }
 
