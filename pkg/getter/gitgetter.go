@@ -18,6 +18,7 @@ package getter
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -27,6 +28,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // GitGetter handles fetching charts from Git repositories
@@ -68,8 +70,12 @@ func (g *GitGetter) get(href string) (*bytes.Buffer, error) {
 
 	slog.Debug("cloning git repository", "url", repoURL, "ref", ref, "path", chartPath)
 
+	// Create context with timeout
+	ctx, cancel := g.createContext()
+	defer cancel()
+
 	// Clone the repository
-	if err := g.cloneRepo(repoURL, ref, tmpDir); err != nil {
+	if err := g.cloneRepo(ctx, repoURL, ref, tmpDir); err != nil {
 		return nil, fmt.Errorf("failed to clone repository: %w", err)
 	}
 
@@ -85,7 +91,7 @@ func (g *GitGetter) get(href string) (*bytes.Buffer, error) {
 	}
 
 	// Package the chart into a tarball
-	tarData, err := g.packageChart(chartDir)
+	tarData, err := g.packageChart(ctx, chartDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to package chart: %w", err)
 	}
@@ -93,8 +99,17 @@ func (g *GitGetter) get(href string) (*bytes.Buffer, error) {
 	return tarData, nil
 }
 
+// createContext creates a context with timeout from getter options
+func (g *GitGetter) createContext() (context.Context, context.CancelFunc) {
+	if g.opts.timeout > 0 {
+		return context.WithTimeout(context.Background(), g.opts.timeout)
+	}
+	// Default timeout of 5 minutes for Git operations
+	return context.WithTimeout(context.Background(), 5*time.Minute)
+}
+
 // cloneRepo clones a Git repository to the specified directory
-func (g *GitGetter) cloneRepo(repoURL, ref, destDir string) error {
+func (g *GitGetter) cloneRepo(ctx context.Context, repoURL, ref, destDir string) error {
 	// Use shallow clone for better performance
 	args := []string{"clone", "--depth", "1"}
 
@@ -105,24 +120,32 @@ func (g *GitGetter) cloneRepo(repoURL, ref, destDir string) error {
 
 	args = append(args, repoURL, destDir)
 
-	cmd := exec.Command("git", args...)
+	cmd := exec.CommandContext(ctx, "git", args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
+		// Check if it was a timeout
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("git clone timed out")
+		}
+
 		// If shallow clone with branch failed, try full clone and checkout
 		if ref != "" && ref != "HEAD" && ref != "master" && ref != "main" {
 			slog.Debug("shallow clone failed, trying full clone", "error", stderr.String())
-			return g.fullCloneAndCheckout(repoURL, ref, destDir)
+			return g.fullCloneAndCheckout(ctx, repoURL, ref, destDir)
 		}
 		return fmt.Errorf("git clone failed: %s", stderr.String())
 	}
 
 	// If ref is specified but wasn't used in clone (HEAD, master, main), checkout now
 	if ref != "" && (ref == "HEAD" || ref == "master" || ref == "main") {
-		cmd := exec.Command("git", "-C", destDir, "checkout", ref)
+		cmd := exec.CommandContext(ctx, "git", "-C", destDir, "checkout", ref)
 		cmd.Stderr = &stderr
 		if err := cmd.Run(); err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				return fmt.Errorf("git checkout timed out")
+			}
 			return fmt.Errorf("git checkout failed: %s", stderr.String())
 		}
 	}
@@ -131,24 +154,30 @@ func (g *GitGetter) cloneRepo(repoURL, ref, destDir string) error {
 }
 
 // fullCloneAndCheckout performs a full clone and checks out a specific ref (commit SHA, tag, or branch)
-func (g *GitGetter) fullCloneAndCheckout(repoURL, ref, destDir string) error {
+func (g *GitGetter) fullCloneAndCheckout(ctx context.Context, repoURL, ref, destDir string) error {
 	var stderr bytes.Buffer
 
 	// Remove the directory if it exists from failed shallow clone
 	os.RemoveAll(destDir)
 
 	// Full clone
-	cmd := exec.Command("git", "clone", repoURL, destDir)
+	cmd := exec.CommandContext(ctx, "git", "clone", repoURL, destDir)
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("git clone timed out")
+		}
 		return fmt.Errorf("git clone failed: %s", stderr.String())
 	}
 
 	// Checkout the specific ref
-	cmd = exec.Command("git", "-C", destDir, "checkout", ref)
+	cmd = exec.CommandContext(ctx, "git", "-C", destDir, "checkout", ref)
 	stderr.Reset()
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("git checkout timed out")
+		}
 		return fmt.Errorf("git checkout failed for ref %q: %s", ref, stderr.String())
 	}
 
@@ -156,7 +185,7 @@ func (g *GitGetter) fullCloneAndCheckout(repoURL, ref, destDir string) error {
 }
 
 // packageChart packages a chart directory into a tarball
-func (g *GitGetter) packageChart(chartDir string) (*bytes.Buffer, error) {
+func (g *GitGetter) packageChart(ctx context.Context, chartDir string) (*bytes.Buffer, error) {
 	// Use helm package command to create the tarball
 	tmpDir, err := os.MkdirTemp("", "helm-git-package-")
 	if err != nil {
@@ -166,11 +195,14 @@ func (g *GitGetter) packageChart(chartDir string) (*bytes.Buffer, error) {
 
 	// Use --dependency-update to automatically fetch any dependencies the chart needs
 	// This handles charts that have their own dependencies
-	cmd := exec.Command("helm", "package", chartDir, "-d", tmpDir, "--dependency-update")
+	cmd := exec.CommandContext(ctx, "helm", "package", chartDir, "-d", tmpDir, "--dependency-update")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("helm package timed out")
+		}
 		return nil, fmt.Errorf("helm package failed: %s", stderr.String())
 	}
 
