@@ -1,6 +1,6 @@
 module helm.sh/helm/v4
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24
@@ -17,7 +17,7 @@ require (
 	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/extism/go-sdk v1.7.1
 	github.com/fatih/color v1.18.0
-	github.com/fluxcd/cli-utils v0.36.0-flux.14
+	github.com/fluxcd/cli-utils v0.36.0-flux.15
 	github.com/foxcpp/go-mockdns v1.1.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gofrs/flock v0.13.0
@@ -120,7 +120,7 @@ require (
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
-	github.com/onsi/gomega v1.37.0 // indirect
+	github.com/onsi/gomega v1.38.2 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
@@ -172,7 +172,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250303144028-a0af3efb3deb // indirect
 	google.golang.org/grpc v1.72.1 // indirect
-	google.golang.org/protobuf v1.36.6 // indirect
+	google.golang.org/protobuf v1.36.7 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
