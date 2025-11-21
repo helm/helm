@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -29,6 +30,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"helm.sh/helm/v4/pkg/chart/loader"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
 
 // GitGetter handles fetching charts from Git repositories
@@ -186,42 +191,41 @@ func (g *GitGetter) fullCloneAndCheckout(ctx context.Context, repoURL, ref, dest
 
 // packageChart packages a chart directory into a tarball
 func (g *GitGetter) packageChart(ctx context.Context, chartDir string) (*bytes.Buffer, error) {
-	// Use helm package command to create the tarball
+	// Load the chart from the directory
+	chrt, err := loader.LoadDir(chartDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load chart: %w", err)
+	}
+
+	// Type assert to get the v2 chart
+	var ch *chart.Chart
+	switch c := chrt.(type) {
+	case *chart.Chart:
+		ch = c
+	case chart.Chart:
+		ch = &c
+	default:
+		return nil, errors.New("invalid chart apiVersion")
+	}
+
+	// Create a temporary directory for the packaged chart
 	tmpDir, err := os.MkdirTemp("", "helm-git-package-")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp directory for packaging: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Use --dependency-update to automatically fetch any dependencies the chart needs
-	// This handles charts that have their own dependencies
-	cmd := exec.CommandContext(ctx, "helm", "package", chartDir, "-d", tmpDir, "--dependency-update")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
-			return nil, fmt.Errorf("helm package timed out")
-		}
-		return nil, fmt.Errorf("helm package failed: %s", stderr.String())
-	}
-
-	// Find the created tarball
-	entries, err := os.ReadDir(tmpDir)
+	packagePath, err := chartutil.Save(ch, tmpDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read package directory: %w", err)
+		return nil, fmt.Errorf("failed to package chart: %w", err)
 	}
 
-	if len(entries) == 0 {
-		return nil, fmt.Errorf("no package file created")
-	}
-
-	// Read the tarball
-	tarPath := filepath.Join(tmpDir, entries[0].Name())
-	tarData, err := os.ReadFile(tarPath)
+	tarData, err := os.ReadFile(packagePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read package file: %w", err)
 	}
+
+	slog.Debug("Packaged chart hash", "hash", computeHash(tarData))
 
 	return bytes.NewBuffer(tarData), nil
 }
@@ -298,11 +302,6 @@ func NewGitGetter(options ...Option) (Getter, error) {
 	// Check if git is available
 	if _, err := exec.LookPath("git"); err != nil {
 		return nil, fmt.Errorf("git command not found in PATH: %w", err)
-	}
-
-	// Check if helm is available (for packaging)
-	if _, err := exec.LookPath("helm"); err != nil {
-		return nil, fmt.Errorf("helm command not found in PATH: %w", err)
 	}
 
 	return &client, nil
