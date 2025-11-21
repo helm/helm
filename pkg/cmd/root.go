@@ -277,6 +277,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		newTemplateCmd(actionConfig, out),
 		newUninstallCmd(actionConfig, out),
 		newUpgradeCmd(actionConfig, out),
+		newValuesCmd(actionConfig, out),
 
 		newCompletionCmd(out),
 		newEnvCmd(out),
