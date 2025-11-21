@@ -17,11 +17,14 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"helm.sh/helm/v4/internal/test/ensure"
+	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/helmpath/xdg"
 )
@@ -129,3 +132,20 @@ func TestUnknownSubCmd(t *testing.T) {
 // func TestRootFileCompletion(t *testing.T) {
 // 	checkFileCompletion(t, "", false)
 // }
+
+func TestRootCmdLogger(t *testing.T) {
+	args := []string{}
+	buf := new(bytes.Buffer)
+	actionConfig := action.NewConfiguration()
+	_, err := newRootCmdWithConfig(actionConfig, buf, args, SetupLogging)
+	if err != nil {
+		t.Errorf("expected no error, got: '%v'", err)
+	}
+
+	l1 := actionConfig.Logger()
+	l2 := slog.Default()
+
+	if l1.Handler() != l2.Handler() {
+		t.Error("expected actionConfig logger to be the slog default logger")
+	}
+}
