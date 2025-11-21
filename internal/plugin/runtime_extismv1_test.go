@@ -16,9 +16,6 @@ limitations under the License.
 package plugin
 
 import (
-	"os"
-	"os/exec"
-	"path/filepath"
 	"testing"
 
 	extism "github.com/extism/go-sdk"
@@ -29,34 +26,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type pluginRaw struct {
-	Metadata Metadata
-	Dir      string
-}
-
-func buildLoadExtismPlugin(t *testing.T, dir string) pluginRaw {
-	t.Helper()
-
-	pluginFile := filepath.Join(dir, PluginFileName)
-
-	metadataData, err := os.ReadFile(pluginFile)
-	require.NoError(t, err)
-
-	m, err := loadMetadata(metadataData)
-	require.NoError(t, err)
-	require.Equal(t, "extism/v1", m.Runtime, "expected plugin runtime to be extism/v1")
-
-	cmd := exec.Command("make", "-C", dir)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	require.NoError(t, cmd.Run(), "failed to build plugin in %q", dir)
-
-	return pluginRaw{
-		Metadata: *m,
-		Dir:      dir,
-	}
-}
-
 func TestRuntimeConfigExtismV1Validate(t *testing.T) {
 	rc := RuntimeConfigExtismV1{}
 	err := rc.Validate()
@@ -66,7 +35,7 @@ func TestRuntimeConfigExtismV1Validate(t *testing.T) {
 func TestRuntimeExtismV1InvokePlugin(t *testing.T) {
 	r := RuntimeExtismV1{}
 
-	pr := buildLoadExtismPlugin(t, "testdata/src/extismv1-test")
+	pr := BuildLoadExtismPlugin(t, "testdata/src/extismv1-test")
 	require.Equal(t, "test/v1", pr.Metadata.Type)
 
 	p, err := r.CreatePlugin(pr.Dir, &pr.Metadata)

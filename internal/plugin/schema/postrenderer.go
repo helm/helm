@@ -16,19 +16,15 @@ limitations under the License.
 
 package schema
 
-import (
-	"bytes"
-)
-
 // InputMessagePostRendererV1 implements Input.Message
 type InputMessagePostRendererV1 struct {
-	Manifests *bytes.Buffer `json:"manifests"`
+	Manifests string `json:"manifests"`
 	// from CLI --post-renderer-args
 	ExtraArgs []string `json:"extraArgs"`
 }
 
 type OutputMessagePostRendererV1 struct {
-	Manifests *bytes.Buffer `json:"manifests"`
+	Manifests string `json:"manifests"`
 }
 
 type ConfigPostRendererV1 struct{}
