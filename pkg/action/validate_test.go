@@ -132,6 +132,7 @@ func TestRequireAdoption(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, found, 1)
 	assert.Equal(t, found[0], existing)
+	assert.NotSame(t, found[0], existing)
 }
 
 func TestExistingResourceConflict(t *testing.T) {
@@ -156,6 +157,7 @@ func TestExistingResourceConflict(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, found, 1)
 	assert.Equal(t, found[0], existing)
+	assert.NotSame(t, found[0], existing)
 
 	// Verify that an existing resource that lacks labels/annotations results in an error
 	resources = append(resources, conflict)
