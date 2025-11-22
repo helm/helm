@@ -22,6 +22,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"maps"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -40,9 +41,7 @@ func createChartArchive(t *testing.T, chartName, apiVersion string, extraFiles m
 	tw := tar.NewWriter(gw)
 
 	files := make(map[string][]byte)
-	for k, v := range extraFiles {
-		files[k] = v
-	}
+	maps.Copy(files, extraFiles)
 
 	if createChartYaml {
 		chartYAMLContent := fmt.Sprintf(`apiVersion: %s
