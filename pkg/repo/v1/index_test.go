@@ -708,9 +708,7 @@ func TestLoadIndex_DuplicateChartDeps(t *testing.T) {
 			}
 			cvs := idx.Entries["nginx"]
 			if cvs == nil {
-				if err != nil {
-					t.Error("expected one chart version not to be filtered out")
-				}
+				t.Error("expected one chart version not to be filtered out")
 			}
 			for _, v := range cvs {
 				if v.Name == "alpine" {
