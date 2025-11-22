@@ -47,6 +47,7 @@ func loadMetadataLegacy(metadataData []byte) (*Metadata, error) {
 
 	var ml MetadataLegacy
 	d := yaml.NewDecoder(bytes.NewReader(metadataData))
+	// NOTE: No strict unmarshalling for legacy plugins - maintain backwards compatibility
 	if err := d.Decode(&ml); err != nil {
 		return nil, err
 	}
@@ -66,6 +67,7 @@ func loadMetadataV1(metadataData []byte) (*Metadata, error) {
 
 	var mv1 MetadataV1
 	d := yaml.NewDecoder(bytes.NewReader(metadataData))
+	d.KnownFields(true)
 	if err := d.Decode(&mv1); err != nil {
 		return nil, err
 	}
