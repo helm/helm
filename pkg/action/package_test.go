@@ -93,7 +93,7 @@ func TestPassphraseFileFetcher_WithStdinAndMultipleFetches(t *testing.T) {
 		w.Write([]byte(passphrase + "\n"))
 	}()
 
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		fetcher, err := testPkg.passphraseFileFetcher("-", stdin)
 		if err != nil {
 			t.Errorf("Expected passphraseFileFetcher to not return an error, but got %v", err)

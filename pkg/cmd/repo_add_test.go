@@ -200,7 +200,7 @@ func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 
 	var wg sync.WaitGroup
 	wg.Add(3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		go func(name string) {
 			defer wg.Done()
 			o := &repoAddOptions{
@@ -227,7 +227,7 @@ func repoAddConcurrent(t *testing.T, testName, repoFile string) {
 	}
 
 	var name string
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		name = fmt.Sprintf("%s-%d", testName, i)
 		if !f.Has(name) {
 			t.Errorf("%s was not successfully inserted into %s: %s", name, repoFile, f.Repositories[0])
