@@ -197,6 +197,10 @@ func (i OCIInstaller) Path() string {
 	return filepath.Join(i.settings.PluginsDirectory, i.PluginName)
 }
 
+func (i *OCIInstaller) GetLatestVersion() (string, error) {
+	return "", fmt.Errorf("not supported")
+}
+
 // extractTarGz extracts a gzipped tar archive to a directory
 func extractTarGz(r io.Reader, targetDir string) error {
 	gzr, err := gzip.NewReader(r)
