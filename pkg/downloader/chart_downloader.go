@@ -227,13 +227,10 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 	// Check the cache for the file
 	digest, err := hex.DecodeString(digestString)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("unable to decode digest: %w", err)
 	}
 	var digest32 [32]byte
 	copy(digest32[:], digest)
-	if err != nil {
-		return "", nil, fmt.Errorf("unable to decode digest: %w", err)
-	}
 
 	var pth string
 	// only fetch from the cache if we have a digest
