@@ -29,6 +29,9 @@ func (r *ResourceList) Append(val *resource.Info) {
 // Visit implements resource.Visitor. The visitor stops if fn returns an error.
 func (r ResourceList) Visit(fn resource.VisitorFunc) error {
 	for _, i := range r {
+		if i.Name == "" {
+			continue
+		}
 		if err := fn(i, nil); err != nil {
 			return err
 		}
