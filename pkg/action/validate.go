@@ -45,7 +45,10 @@ func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
 		if err != nil {
 			return err
 		}
-
+		// Using generatedName
+		if info.Name == "" {
+			return nil
+		}
 		helper := resource.NewHelper(info.Client, info.Mapping)
 		_, err = helper.Get(info.Namespace, info.Name)
 		if err != nil {
@@ -70,7 +73,10 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 		if err != nil {
 			return err
 		}
-
+		// Using generatedName
+		if info.Name == "" {
+			return nil
+		}
 		helper := resource.NewHelper(info.Client, info.Mapping)
 		existing, err := helper.Get(info.Namespace, info.Name)
 		if err != nil {
