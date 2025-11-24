@@ -186,7 +186,11 @@ build-cross: $(GORELEASER)
 
 .PHONY: dist
 dist:
+ifeq ($(VERSION),canary)
+	GORELEASER_CURRENT_TAG=canary LDFLAGS='$(LDFLAGS)' $(GORELEASER) release --snapshot --clean
+else
 	LDFLAGS='$(LDFLAGS)' $(GORELEASER) release --snapshot --clean
+endif
 
 .PHONY: fetch-dist
 fetch-dist:

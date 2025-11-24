@@ -78,7 +78,7 @@ checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  version_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ if .Env.GORELEASER_CURRENT_TAG }}{{ .Env.GORELEASER_CURRENT_TAG }}{{ else }}{{ incpatch .Version }}-next{{ end }}"
 
 changelog:
   sort: asc
