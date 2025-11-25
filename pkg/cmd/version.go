@@ -97,5 +97,5 @@ func formatVersion(short bool) string {
 		}
 		return version.GetVersion()
 	}
-	return fmt.Sprintf("%#v", v)
+	return fmt.Sprint(v)
 }
