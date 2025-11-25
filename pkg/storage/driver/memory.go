@@ -17,6 +17,7 @@ limitations under the License.
 package driver
 
 import (
+	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -114,6 +115,72 @@ func (mem *Memory) List(filter func(release.Releaser) bool) ([]release.Releaser,
 	return ls, nil
 }
 
+// ListPages is a common method to list release with pagination
+func (mem *Memory) ListPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, filter func(release.Releaser) bool) (err error) {
+	defer unlock(mem.rlock())
+
+	if limit == 0 {
+		limit = DefaultPaginationLimit
+	}
+
+	ls := make([]release.Releaser, 0, int(limit))
+	if mem.namespace != "" {
+		for _, recs := range mem.cache[mem.namespace] {
+			recs.Iter(func(i int, rec *record) bool {
+				if filter(rec.rls) {
+					ls = append(ls, rec.rls)
+				}
+
+				if int64(len(ls)) >= limit {
+					end := f(ls, i == len(recs))
+					ls = make([]release.Releaser, 0, int(limit))
+
+					return !end
+				}
+
+				return true
+			})
+
+			if len(ls) > 0 {
+				_ = f(ls, true)
+			}
+		}
+
+		return nil
+	}
+
+	var total int
+	for _, releases := range mem.cache {
+		total += len(releases)
+	}
+
+	var index int
+	for namespace := range mem.cache {
+		for _, recs := range mem.cache[namespace] {
+			recs.Iter(func(_ int, rec *record) bool {
+				index++
+				if filter(rec.rls) {
+					ls = append(ls, rec.rls)
+				}
+
+				if int64(len(ls)) >= limit {
+					end := f(ls, index == total)
+					ls = make([]release.Releaser, 0, int(limit))
+
+					return !end
+				}
+
+				return true
+			})
+
+		}
+	}
+
+	_ = f(ls, true)
+
+	return nil
+}
+
 // Query returns the set of releases that match the provided set of labels
 func (mem *Memory) Query(keyvals map[string]string) ([]release.Releaser, error) {
 	defer unlock(mem.rlock())
@@ -153,6 +220,83 @@ func (mem *Memory) Query(keyvals map[string]string) ([]release.Releaser, error) 
 	}
 
 	return ls, nil
+}
+
+// QueryPages same as Query, but with pagination
+func (mem *Memory) QueryPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, keyvals map[string]string) error {
+	defer unlock(mem.rlock())
+
+	if limit == 0 {
+		limit = DefaultPaginationLimit
+	}
+
+	var lbs labels
+
+	lbs.init()
+	lbs.fromMap(keyvals)
+
+	fmt.Printf("namespace: %s\n", mem.namespace)
+
+	ls := make([]release.Releaser, 0, int(limit))
+	if mem.namespace != "" {
+		for _, recs := range mem.cache[mem.namespace] {
+			recs.Iter(func(i int, rec *record) bool {
+				if rec.lbs.match(lbs) {
+					ls = append(ls, rec.rls)
+				}
+
+				if int64(len(ls)) >= limit {
+					end := f(ls, i == len(recs))
+					ls = make([]release.Releaser, 0, int(limit))
+
+					return !end
+				}
+
+				return true
+			})
+
+			if len(ls) > 0 {
+				_ = f(ls, true)
+			}
+		}
+
+		return nil
+	}
+
+	var total int
+	for _, releases := range mem.cache {
+		for _, recs := range releases {
+			total += len(recs)
+		}
+	}
+
+	var index int
+	for _, releases := range mem.cache {
+		for _, recs := range releases {
+			recs.Iter(func(_ int, rec *record) bool {
+				index++
+				if rec.lbs.match(lbs) {
+					ls = append(ls, rec.rls)
+				}
+
+				if int64(len(ls)) >= limit {
+					end := f(ls, index == total)
+					ls = make([]release.Releaser, 0, int(limit))
+
+					return !end
+				}
+
+				return true
+			})
+
+		}
+	}
+
+	if len(ls) > 0 {
+		_ = f(ls, true)
+	}
+
+	return nil
 }
 
 // Create creates a new release or returns ErrReleaseExists.

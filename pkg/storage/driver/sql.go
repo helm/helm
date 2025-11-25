@@ -383,6 +383,62 @@ func (s *SQL) List(filter func(release.Releaser) bool) ([]release.Releaser, erro
 	return releases, nil
 }
 
+// ListPages is a common method to list release with pagination
+func (s *SQL) ListPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, filter func(release.Releaser) bool) (err error) {
+	if limit == 0 {
+		limit = DefaultPaginationLimit
+	}
+
+	sb := s.statementBuilder.
+		Select(sqlReleaseTableKeyColumn, sqlReleaseTableNamespaceColumn, sqlReleaseTableBodyColumn).
+		From(sqlReleaseTableName).
+		Where(sq.Eq{sqlReleaseTableOwnerColumn: sqlReleaseDefaultOwner})
+
+	// If a namespace was specified, we only list releases from that namespace
+	if s.namespace != "" {
+		sb = sb.Where(sq.Eq{sqlReleaseTableNamespaceColumn: s.namespace})
+	}
+
+	for {
+		query, args, err := sb.Limit(uint64(limit)).ToSql()
+		if err != nil {
+			s.Logger().Debug("failed to build query", slog.Any("error", err))
+			return err
+		}
+
+		var records = []SQLReleaseWrapper{}
+		if err := s.db.Select(&records, query, args...); err != nil {
+			s.Logger().Debug("failed to list", slog.Any("error", err))
+			return err
+		}
+
+		var releases []release.Releaser
+		for _, record := range records {
+			release, err := decodeRelease(record.Body)
+			if err != nil {
+				s.Logger().Debug("failed to decode release", "record", record, slog.Any("error", err))
+				continue
+			}
+
+			if release.Labels, err = s.getReleaseCustomLabels(record.Key, record.Namespace); err != nil {
+				s.Logger().Debug("failed to get release custom labels", "namespace", record.Namespace, "key", record.Key, slog.Any("error", err))
+				return err
+			}
+			maps.Copy(release.Labels, getReleaseSystemLabels(release))
+
+			if filter(release) {
+				releases = append(releases, release)
+			}
+		}
+
+		if f(releases, int64(len(records)) < limit) {
+			break
+		}
+	}
+
+	return nil
+}
+
 // Query returns the set of releases that match the provided set of labels.
 func (s *SQL) Query(labels map[string]string) ([]release.Releaser, error) {
 	sb := s.statementBuilder.
@@ -446,6 +502,73 @@ func (s *SQL) Query(labels map[string]string) ([]release.Releaser, error) {
 	}
 
 	return releases, nil
+}
+
+// QueryPages same as Query, but with pagination
+func (s *SQL) QueryPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, labels map[string]string) error {
+	sb := s.statementBuilder.
+		Select(sqlReleaseTableKeyColumn, sqlReleaseTableNamespaceColumn, sqlReleaseTableBodyColumn).
+		From(sqlReleaseTableName)
+
+	keys := make([]string, 0, len(labels))
+	for key := range labels {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if _, ok := labelMap[key]; ok {
+			sb = sb.Where(sq.Eq{key: labels[key]})
+		} else {
+			s.Logger().Debug("unknown label", "key", key)
+			return fmt.Errorf("unknown label %s", key)
+		}
+	}
+
+	// If a namespace was specified, we only list releases from that namespace
+	if s.namespace != "" {
+		sb = sb.Where(sq.Eq{sqlReleaseTableNamespaceColumn: s.namespace})
+	}
+
+	for {
+		// Build our query
+		query, args, err := sb.Limit(uint64(limit)).ToSql()
+		if err != nil {
+			s.Logger().Debug("failed to build query", slog.Any("error", err))
+			return err
+		}
+
+		var records = []SQLReleaseWrapper{}
+		if err := s.db.Select(&records, query, args...); err != nil {
+			s.Logger().Debug("failed to query with labels", slog.Any("error", err))
+			return err
+		}
+
+		if len(records) == 0 {
+			return ErrReleaseNotFound
+		}
+
+		var releases []release.Releaser
+		for _, record := range records {
+			release, err := decodeRelease(record.Body)
+			if err != nil {
+				s.Logger().Debug("failed to decode release", "record", record, slog.Any("error", err))
+				continue
+			}
+
+			if release.Labels, err = s.getReleaseCustomLabels(record.Key, record.Namespace); err != nil {
+				s.Logger().Debug("failed to get release custom labels", "namespace", record.Namespace, "key", record.Key, slog.Any("error", err))
+				return err
+			}
+
+			releases = append(releases, release)
+		}
+
+		if f(releases, int64(len(records)) < limit) {
+			break
+		}
+	}
+
+	return nil
 }
 
 // Create creates a new release.
