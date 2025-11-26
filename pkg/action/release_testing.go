@@ -57,24 +57,24 @@ func NewReleaseTesting(cfg *Configuration) *ReleaseTesting {
 }
 
 // Run executes 'helm test' against the given release.
-func (r *ReleaseTesting) Run(name string) (ri.Releaser, ExecuteShutdownHooks, error) {
+func (r *ReleaseTesting) Run(name string) (ri.Releaser, executeShutdownFunc, error) {
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
-		return nil, ShutdownNoOp, err
+		return nil, shutdownNoOp, err
 	}
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
-		return nil, ShutdownNoOp, fmt.Errorf("releaseTest: Release name is invalid: %s", name)
+		return nil, shutdownNoOp, fmt.Errorf("releaseTest: Release name is invalid: %s", name)
 	}
 
 	// finds the non-deleted release with the given name
 	reli, err := r.cfg.Releases.Last(name)
 	if err != nil {
-		return reli, ShutdownNoOp, err
+		return reli, shutdownNoOp, err
 	}
 
 	rel, err := releaserToV1Release(reli)
 	if err != nil {
-		return reli, ShutdownNoOp, err
+		return reli, shutdownNoOp, err
 	}
 
 	skippedHooks := []*release.Hook{}
