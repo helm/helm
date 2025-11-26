@@ -80,8 +80,10 @@ func Crds(linter *support.Linter) {
 				return
 			}
 
-			linter.RunLinterRule(support.ErrorSev, fpath, validateCrdAPIVersion(yamlStruct))
-			linter.RunLinterRule(support.ErrorSev, fpath, validateCrdKind(yamlStruct))
+			if yamlStruct != nil {
+				linter.RunLinterRule(support.ErrorSev, fpath, validateCrdAPIVersion(yamlStruct))
+				linter.RunLinterRule(support.ErrorSev, fpath, validateCrdKind(yamlStruct))
+			}
 		}
 	}
 }
