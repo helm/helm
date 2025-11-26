@@ -19,6 +19,7 @@ package cmd
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -79,6 +80,11 @@ func TestRollbackCmd(t *testing.T) {
 		golden:    "output/rollback-no-args.txt",
 		rels:      rels,
 		wantError: true,
+	}, {
+		name:   "rollback a release with description",
+		cmd:    "rollback funny-honey 1 --description 'Reverting due to bug in version 2'",
+		golden: "output/rollback-with-description.txt",
+		rels:   rels,
 	}}
 	runTestCmd(t, tests)
 }
@@ -123,6 +129,84 @@ func TestRollbackFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "rollback", false)
 	checkFileCompletion(t, "rollback myrelease", false)
 	checkFileCompletion(t, "rollback myrelease 1", false)
+}
+
+func TestRollbackWithDescription(t *testing.T) {
+	releaseName := "funny-bunny-desc"
+	rels := []*release.Release{
+		{
+			Name:    releaseName,
+			Info:    &release.Info{Status: common.StatusSuperseded},
+			Chart:   &chart.Chart{},
+			Version: 1,
+		},
+		{
+			Name:    releaseName,
+			Info:    &release.Info{Status: common.StatusDeployed},
+			Chart:   &chart.Chart{},
+			Version: 2,
+		},
+	}
+	storage := storageFixture()
+	for _, rel := range rels {
+		if err := storage.Create(rel); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	customDescription := "Rollback due to critical bug in version 2"
+	_, _, err := executeActionCommandC(storage, fmt.Sprintf("rollback %s 1 --description '%s'", releaseName, customDescription))
+	if err != nil {
+		t.Fatalf("unexpected error, got '%v'", err)
+	}
+
+	// Verify the description was stored correctly
+	updatedReli, err := storage.Get(releaseName, 3)
+	if err != nil {
+		t.Fatalf("unexpected error getting release, got '%v'", err)
+	}
+	updatedRel, err := releaserToV1Release(updatedReli)
+	if err != nil {
+		t.Fatalf("unexpected error converting release, got '%v'", err)
+	}
+
+	if updatedRel.Info.Description != customDescription {
+		t.Errorf("Expected description '%s', got '%s'", customDescription, updatedRel.Info.Description)
+	}
+}
+
+func TestRollbackDescriptionTooLong(t *testing.T) {
+	releaseName := "funny-bunny-long-desc"
+	rels := []*release.Release{
+		{
+			Name:    releaseName,
+			Info:    &release.Info{Status: common.StatusSuperseded},
+			Chart:   &chart.Chart{},
+			Version: 1,
+		},
+		{
+			Name:    releaseName,
+			Info:    &release.Info{Status: common.StatusDeployed},
+			Chart:   &chart.Chart{},
+			Version: 2,
+		},
+	}
+	storage := storageFixture()
+	for _, rel := range rels {
+		if err := storage.Create(rel); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Create a description that exceeds the 512 character limit
+	longDescription := strings.Repeat("a", 513)
+	_, _, err := executeActionCommandC(storage, fmt.Sprintf("rollback %s 1 --description '%s'", releaseName, longDescription))
+	if err == nil {
+		t.Error("expected error for description exceeding max length, got success")
+	}
+	if err != nil && !strings.Contains(err.Error(), "description must be 512 characters or less") {
+		t.Errorf("expected error about description length, got: %v", err)
+	}
 }
 
 func TestRollbackWithLabels(t *testing.T) {
