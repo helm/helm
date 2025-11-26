@@ -35,7 +35,7 @@ import (
 func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, waitStrategy kube.WaitStrategy, timeout time.Duration, serverSideApply bool) error {
 	shutdown, err := cfg.execHookWithDelayedShutdown(rl, hook, waitStrategy, timeout, serverSideApply)
 	if shutdown == nil {
-		return nil
+		return err
 	}
 	if err != nil {
 		if err := shutdown(); err != nil {
@@ -46,14 +46,14 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	return shutdown()
 }
 
-type ExecuteShutdownHooks = func() error
+type executeShutdownFunc = func() error
 
-func ShutdownNoOp() error {
+func shutdownNoOp() error {
 	return nil
 }
 
 // execHookWithDelayedShutdown executes all of the hooks for the given hook event and returns a shutdownHook function to trigger deletions after doing other things like e.g. retrieving logs.
-func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook release.HookEvent, waitStrategy kube.WaitStrategy, timeout time.Duration, serverSideApply bool) (ExecuteShutdownHooks, error) {
+func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook release.HookEvent, waitStrategy kube.WaitStrategy, timeout time.Duration, serverSideApply bool) (executeShutdownFunc, error) {
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
@@ -72,12 +72,12 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 		cfg.hookSetDeletePolicy(h)
 
 		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation, waitStrategy, timeout); err != nil {
-			return ShutdownNoOp, err
+			return shutdownNoOp, err
 		}
 
 		resources, err := cfg.KubeClient.Build(bytes.NewBufferString(h.Manifest), true)
 		if err != nil {
-			return ShutdownNoOp, fmt.Errorf("unable to build kubernetes object for %s hook %s: %w", hook, h.Path, err)
+			return shutdownNoOp, fmt.Errorf("unable to build kubernetes object for %s hook %s: %w", hook, h.Path, err)
 		}
 
 		// Record the time at which the hook was applied to the cluster
@@ -98,12 +98,12 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 			kube.ClientCreateOptionServerSideApply(serverSideApply, false)); err != nil {
 			h.LastRun.CompletedAt = time.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
-			return ShutdownNoOp, fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err)
+			return shutdownNoOp, fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err)
 		}
 
 		waiter, err := cfg.KubeClient.GetWaiter(waitStrategy)
 		if err != nil {
-			return ShutdownNoOp, fmt.Errorf("unable to get waiter: %w", err)
+			return shutdownNoOp, fmt.Errorf("unable to get waiter: %w", err)
 		}
 		// Watch hook resources until they have completed
 		err = waiter.WatchUntilReady(resources, timeout)
