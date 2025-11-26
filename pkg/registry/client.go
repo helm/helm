@@ -577,9 +577,11 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 
 	// Use generic client for the pull operation
+	// Pass ChartArtifactType to enable selection from OCI Image Index
 	genericClient := c.Generic()
 	genericResult, err := genericClient.PullGeneric(ref, GenericPullOptions{
 		AllowedMediaTypes: allowedMediaTypes,
+		ArtifactType:      ChartArtifactType,
 	})
 	if err != nil {
 		return nil, err
