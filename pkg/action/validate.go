@@ -45,9 +45,11 @@ func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
 		if err != nil {
 			return err
 		}
-
-		if info.Name == "" {
+		accessor, _ := meta.Accessor(info.Object)
+		if info.Name == "" && accessor.GetGenerateName() != "" {
 			return nil
+		} else if info.Name != "" && accessor.GetGenerateName() != "" {
+			return fmt.Errorf("metadata.name and metadata.generateName cannot both be set")
 		}
 
 		helper := resource.NewHelper(info.Client, info.Mapping)
@@ -74,8 +76,11 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 			return err
 		}
 
-		if info.Name == "" {
+		accessor, _ := meta.Accessor(info.Object)
+		if info.Name == "" && accessor.GetGenerateName() != "" {
 			return nil
+		} else if info.Name != "" && accessor.GetGenerateName() != "" {
+			return fmt.Errorf("metadata.name and metadata.generateName cannot both be set")
 		}
 
 		helper := resource.NewHelper(info.Client, info.Mapping)
