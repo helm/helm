@@ -27,14 +27,26 @@ import (
 
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/release/common"
 )
 
-func TestNewRollback(t *testing.T) {
+func rollbackAction(t *testing.T) *Rollback {
+	t.Helper()
 	config := actionConfigFixture(t)
-	client := NewRollback(config)
+	rollAction := NewRollback(config)
+	return rollAction
+}
 
-	assert.NotNil(t, client)
-	assert.Equal(t, config, client.cfg)
+func TestNewRollback(t *testing.T) {
+	is := assert.New(t)
+	config := actionConfigFixture(t)
+
+	rollback := NewRollback(config)
+
+	is.NotNil(rollback)
+	is.Equal(config, rollback.cfg)
+	is.Equal(DryRunNone, rollback.DryRunStrategy)
+	is.Empty(rollback.Description)
 }
 
 func TestRollbackRun_UnreachableKubeClient(t *testing.T) {
@@ -82,4 +94,121 @@ func TestRollback_WaitOptionsPassedDownstream(t *testing.T) {
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
+}
+
+func TestRollback_WithDescription(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	rollAction := rollbackAction(t)
+
+	// Create two releases - version 1 (superseded) and version 2 (deployed)
+	rel1 := releaseStub()
+	rel1.Name = "test-release"
+	rel1.Version = 1
+	rel1.Info.Status = common.StatusSuperseded
+	rel1.ApplyMethod = "csa" // client-side apply
+	req.NoError(rollAction.cfg.Releases.Create(rel1))
+
+	rel2 := releaseStub()
+	rel2.Name = "test-release"
+	rel2.Version = 2
+	rel2.Info.Status = common.StatusDeployed
+	rel2.ApplyMethod = "csa" // client-side apply
+	req.NoError(rollAction.cfg.Releases.Create(rel2))
+
+	// Set custom description
+	customDescription := "Rollback due to critical bug in version 2"
+	rollAction.Description = customDescription
+	rollAction.Version = 1
+	rollAction.ServerSideApply = "false" // Disable server-side apply for testing
+
+	err := rollAction.Run("test-release")
+	req.NoError(err)
+
+	// Get the new release (version 3)
+	newReleasei, err := rollAction.cfg.Releases.Get("test-release", 3)
+	req.NoError(err)
+	newRelease, err := releaserToV1Release(newReleasei)
+	req.NoError(err)
+
+	// Verify the custom description was set
+	is.Equal(customDescription, newRelease.Info.Description)
+}
+
+func TestRollback_DefaultDescription(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	rollAction := rollbackAction(t)
+
+	// Create two releases - version 1 (superseded) and version 2 (deployed)
+	rel1 := releaseStub()
+	rel1.Name = "test-release-default"
+	rel1.Version = 1
+	rel1.Info.Status = common.StatusSuperseded
+	rel1.ApplyMethod = "csa" // client-side apply
+	req.NoError(rollAction.cfg.Releases.Create(rel1))
+
+	rel2 := releaseStub()
+	rel2.Name = "test-release-default"
+	rel2.Version = 2
+	rel2.Info.Status = common.StatusDeployed
+	rel2.ApplyMethod = "csa" // client-side apply
+	req.NoError(rollAction.cfg.Releases.Create(rel2))
+
+	// Don't set a description, rely on default
+	rollAction.Version = 1
+	rollAction.ServerSideApply = "false" // Disable server-side apply for testing
+
+	err := rollAction.Run("test-release-default")
+	req.NoError(err)
+
+	// Get the new release (version 3)
+	newReleasei, err := rollAction.cfg.Releases.Get("test-release-default", 3)
+	req.NoError(err)
+	newRelease, err := releaserToV1Release(newReleasei)
+	req.NoError(err)
+
+	// Verify the default description was set
+	is.Equal("Rollback to 1", newRelease.Info.Description)
+}
+
+func TestRollback_EmptyDescription(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	rollAction := rollbackAction(t)
+
+	// Create two releases - version 1 (superseded) and version 2 (deployed)
+	rel1 := releaseStub()
+	rel1.Name = "test-release-empty"
+	rel1.Version = 1
+	rel1.Info.Status = common.StatusSuperseded
+	rel1.ApplyMethod = "csa" // client-side apply
+	req.NoError(rollAction.cfg.Releases.Create(rel1))
+
+	rel2 := releaseStub()
+	rel2.Name = "test-release-empty"
+	rel2.Version = 2
+	rel2.Info.Status = common.StatusDeployed
+	rel2.ApplyMethod = "csa" // client-side apply
+	req.NoError(rollAction.cfg.Releases.Create(rel2))
+
+	// Set empty description (should use default)
+	rollAction.Description = ""
+	rollAction.Version = 1
+	rollAction.ServerSideApply = "false" // Disable server-side apply for testing
+
+	err := rollAction.Run("test-release-empty")
+	req.NoError(err)
+
+	// Get the new release (version 3)
+	newReleasei, err := rollAction.cfg.Releases.Get("test-release-empty", 3)
+	req.NoError(err)
+	newRelease, err := releaserToV1Release(newReleasei)
+	req.NoError(err)
+
+	// Verify the default description was used for empty string
+	is.Equal("Rollback to 1", newRelease.Info.Description)
 }
