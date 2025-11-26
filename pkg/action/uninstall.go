@@ -95,16 +95,30 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 
 			resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
 			if err == nil && len(resources) > 0 {
-				_, unownedResources, err := verifyOwnershipBeforeDelete(resources, r.Name, r.Namespace)
-				if err == nil && len(unownedResources) > 0 {
-					u.cfg.Logger().Warn("dry-run: resources would be skipped because they are not owned by this release",
-						"release", r.Name,
-						"count", len(unownedResources))
-					for _, info := range unownedResources {
-						u.cfg.Logger().Warn("dry-run: would skip resource",
-							"kind", info.Mapping.GroupVersionKind.Kind,
-							"name", info.Name,
-							"namespace", info.Namespace)
+				ownedResources, unownedResources, err := verifyOwnershipBeforeDelete(resources, r.Name, r.Namespace)
+				if err == nil {
+					if len(unownedResources) > 0 {
+						u.cfg.Logger().Warn("dry-run: resources would be skipped because they are not owned by this release",
+							"release", r.Name,
+							"count", len(unownedResources))
+						for _, info := range unownedResources {
+							u.cfg.Logger().Warn("dry-run: would skip resource",
+								"kind", info.Mapping.GroupVersionKind.Kind,
+								"name", info.Name,
+								"namespace", info.Namespace)
+						}
+					}
+
+					if len(ownedResources) > 0 {
+						u.cfg.Logger().Debug("dry-run: resources would be deleted",
+							"release", r.Name,
+							"count", len(ownedResources))
+						for _, info := range ownedResources {
+							u.cfg.Logger().Debug("dry-run: would delete resource",
+								"kind", info.Mapping.GroupVersionKind.Kind,
+								"name", info.Name,
+								"namespace", info.Namespace)
+						}
 					}
 				}
 			}
