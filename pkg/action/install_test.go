@@ -1208,3 +1208,42 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }
+
+func TestInstallCRDs_CheckNilErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []chart.CRD
+	}{
+		{
+			name: "only one crd with file nil",
+			input: []chart.CRD{
+				{Name: "one", File: nil},
+			},
+		},
+		{
+			name: "only one crd with its file data nil",
+			input: []chart.CRD{
+				{Name: "one", File: &common.File{Name: "crds/foo.yaml", Data: nil}},
+			},
+		},
+		{
+			name: "at least a crd with its file data nil",
+			input: []chart.CRD{
+				{Name: "one", File: &common.File{Name: "crds/foo.yaml", Data: []byte("data")}},
+				{Name: "two", File: &common.File{Name: "crds/foo.yaml", Data: nil}},
+				{Name: "three", File: &common.File{Name: "crds/foo.yaml", Data: []byte("data")}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			instAction := installAction(t)
+
+			err := instAction.installCRDs(tt.input)
+			if err == nil {
+				t.Errorf("got error expected nil")
+			}
+		})
+	}
+}
