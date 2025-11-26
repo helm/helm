@@ -34,4 +34,7 @@ const (
 
 	// LegacyChartLayerMediaType is the legacy reserved media type for Helm chart package content.
 	LegacyChartLayerMediaType = "application/tar+gzip"
+
+	// APIVersionV1 is the v1 API version for the aliases and substitutions file.
+	APIVersionV1 = "v1"
 )
