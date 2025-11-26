@@ -45,6 +45,7 @@ import (
 
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/chart/common"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	rcommon "helm.sh/helm/v4/pkg/release/common"
@@ -1067,4 +1068,43 @@ func TestInstallRun_UnreachableKubeClient(t *testing.T) {
 	done()
 	assert.Nil(t, res)
 	assert.ErrorContains(t, err, "connection refused")
+}
+
+func TestInstallCRDs_CheckNilErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []chart.CRD
+	}{
+		{
+			name: "only one crd with file nil",
+			input: []chart.CRD{
+				{Name: "one", File: nil},
+			},
+		},
+		{
+			name: "only one crd with its file data nil",
+			input: []chart.CRD{
+				{Name: "one", File: &common.File{Name: "crds/foo.yaml", Data: nil}},
+			},
+		},
+		{
+			name: "at least a crd with its file data nil",
+			input: []chart.CRD{
+				{Name: "one", File: &common.File{Name: "crds/foo.yaml", Data: []byte("data")}},
+				{Name: "two", File: &common.File{Name: "crds/foo.yaml", Data: nil}},
+				{Name: "three", File: &common.File{Name: "crds/foo.yaml", Data: []byte("data")}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			instAction := installAction(t)
+
+			err := instAction.installCRDs(tt.input)
+			if err == nil {
+				t.Errorf("got error expected nil")
+			}
+		})
+	}
 }
