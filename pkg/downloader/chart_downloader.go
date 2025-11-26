@@ -80,7 +80,7 @@ type ChartDownloader struct {
 
 	// ContentCache is the location where Cache stores its files by default
 	// In previous versions of Helm the charts were put in the RepositoryCache. The
-	// repositories and charts are stored in 2 difference caches.
+	// repositories and charts are stored in 2 different caches.
 	ContentCache string
 
 	// Cache specifies the cache implementation to use.
