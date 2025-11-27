@@ -57,7 +57,7 @@ func NewReleaseTesting(cfg *Configuration) *ReleaseTesting {
 }
 
 // Run executes 'helm test' against the given release.
-func (r *ReleaseTesting) Run(name string) (ri.Releaser, executeShutdownFunc, error) {
+func (r *ReleaseTesting) Run(name string) (ri.Releaser, ExecuteShutdownFunc, error) {
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
 		return nil, shutdownNoOp, err
 	}
