@@ -55,7 +55,7 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 			}
 			return compListReleases(toComplete, args, cfg)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) (returnError error) {
 			client.Namespace = settings.Namespace()
 			notName := regexp.MustCompile(`^!\s?name=`)
 			for _, f := range filter {
@@ -65,7 +65,16 @@ func newReleaseTestCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 					client.Filters[action.ExcludeNameFilter] = append(client.Filters[action.ExcludeNameFilter], notName.ReplaceAllLiteralString(f, ""))
 				}
 			}
-			reli, runErr := client.Run(args[0])
+
+			reli, shutdown, runErr := client.Run(args[0])
+			defer func() {
+				if shutdownErr := shutdown(); shutdownErr != nil {
+					if returnError == nil {
+						returnError = shutdownErr
+					}
+				}
+			}()
+
 			// We only return an error if we weren't even able to get the
 			// release, otherwise we keep going so we can print status and logs
 			// if requested
