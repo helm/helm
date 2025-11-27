@@ -80,6 +80,11 @@ func Crds(linter *support.Linter) {
 				return
 			}
 
+			// Skip validation if yamlStruct is nil (empty document or only comments/whitespace)
+			if yamlStruct == nil {
+				continue
+			}
+
 			linter.RunLinterRule(support.ErrorSev, fpath, validateCrdAPIVersion(yamlStruct))
 			linter.RunLinterRule(support.ErrorSev, fpath, validateCrdKind(yamlStruct))
 		}

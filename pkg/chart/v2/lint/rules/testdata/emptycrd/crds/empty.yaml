@@ -1,0 +1,3 @@
+# This file contains only comments and whitespace
+# It will decode to nil in the YAML decoder
+
