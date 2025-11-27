@@ -336,7 +336,13 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 
 		// Delete only owned resources
 		if len(ownedResources) > 0 {
-			u.cfg.Logger().Debug("deleting resources part of this release", "count", len(ownedResources), "propagation", u.DeletionPropagation)
+			for _, info := range ownedResources {
+				u.cfg.Logger().Debug("deleting resource owned by this release",
+					"kind", info.Mapping.GroupVersionKind.Kind,
+					"name", info.Name,
+					"namespace", info.Namespace,
+					"release", rel.Name)
+			}
 			_, errs = u.cfg.KubeClient.Delete(ownedResources, parseCascadingFlag(u.DeletionPropagation, u.cfg.Logger()))
 		}
 	}
