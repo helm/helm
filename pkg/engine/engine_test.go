@@ -169,7 +169,7 @@ func TestRenderRefsOrdering(t *testing.T) {
 		"parent/templates/test.yaml": "parent value",
 	}
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		out, err := Render(parentChart, common.Values{})
 		if err != nil {
 			t.Fatalf("Failed to render templates: %s", err)
@@ -431,7 +431,7 @@ func TestParallelRenderInternals(t *testing.T) {
 	// Make sure that we can use one Engine to run parallel template renders.
 	e := new(Engine)
 	var wg sync.WaitGroup
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		wg.Add(1)
 		go func(i int) {
 			tt := fmt.Sprintf("expect-%d", i)
@@ -1041,7 +1041,7 @@ func TestRenderRecursionLimit(t *testing.T) {
 	phrase := "All work and no play makes Jack a dull boy"
 	printFunc := `{{define "overlook"}}{{printf "` + phrase + `\n"}}{{end}}`
 	var repeatedIncl strings.Builder
-	for i := 0; i < times; i++ {
+	for range times {
 		repeatedIncl.WriteString(`{{include "overlook" . }}`)
 	}
 
@@ -1059,7 +1059,7 @@ func TestRenderRecursionLimit(t *testing.T) {
 	}
 
 	var expect string
-	for i := 0; i < times; i++ {
+	for range times {
 		expect += phrase + "\n"
 	}
 	if got := out["overlook/templates/quote"]; got != expect {

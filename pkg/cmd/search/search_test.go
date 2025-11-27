@@ -39,13 +39,13 @@ func TestSortScore(t *testing.T) {
 	SortScore(in)
 
 	// Test Score
-	for i := 0; i < len(expectScore); i++ {
+	for i := range expectScore {
 		if expectScore[i] != in[i].Score {
 			t.Errorf("Sort error on index %d: expected %d, got %d", i, expectScore[i], in[i].Score)
 		}
 	}
 	// Test Name
-	for i := 0; i < len(expect); i++ {
+	for i := range expect {
 		if expect[i] != in[i].Name {
 			t.Errorf("Sort error: expected %s, got %s", expect[i], in[i].Name)
 		}

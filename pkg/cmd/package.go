@@ -81,7 +81,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
 
-			for i := 0; i < len(args); i++ {
+			for i := range args {
 				path, err := filepath.Abs(args[i])
 				if err != nil {
 					return err
