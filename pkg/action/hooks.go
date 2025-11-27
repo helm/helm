@@ -46,14 +46,14 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	return shutdown()
 }
 
-type executeShutdownFunc = func() error
+type ExecuteShutdownFunc = func() error
 
 func shutdownNoOp() error {
 	return nil
 }
 
 // execHookWithDelayedShutdown executes all of the hooks for the given hook event and returns a shutdownHook function to trigger deletions after doing other things like e.g. retrieving logs.
-func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook release.HookEvent, waitStrategy kube.WaitStrategy, timeout time.Duration, serverSideApply bool) (executeShutdownFunc, error) {
+func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook release.HookEvent, waitStrategy kube.WaitStrategy, timeout time.Duration, serverSideApply bool) (ExecuteShutdownFunc, error) {
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
