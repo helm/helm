@@ -37,13 +37,15 @@ type HTTPGetter struct {
 
 // Get performs a Get from repo.Getter and returns the body.
 func (g *HTTPGetter) Get(href string, options ...Option) (*bytes.Buffer, error) {
+	// Create a local copy of options to avoid data races when Get is called concurrently
+	opts := g.opts
 	for _, opt := range options {
-		opt(&g.opts)
+		opt(&opts)
 	}
-	return g.get(href)
+	return g.get(href, opts)
 }
 
-func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
+func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error) {
 	// Set a helm specific user agent so that a repo server and metrics can
 	// separate helm calls from other tools interacting with repos.
 	req, err := http.NewRequest(http.MethodGet, href, nil)
@@ -51,18 +53,18 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 		return nil, err
 	}
 
-	if g.opts.acceptHeader != "" {
-		req.Header.Set("Accept", g.opts.acceptHeader)
+	if opts.acceptHeader != "" {
+		req.Header.Set("Accept", opts.acceptHeader)
 	}
 
 	req.Header.Set("User-Agent", version.GetUserAgent())
-	if g.opts.userAgent != "" {
-		req.Header.Set("User-Agent", g.opts.userAgent)
+	if opts.userAgent != "" {
+		req.Header.Set("User-Agent", opts.userAgent)
 	}
 
 	// Before setting the basic auth credentials, make sure the URL associated
 	// with the basic auth is the one being fetched.
-	u1, err := url.Parse(g.opts.url)
+	u1, err := url.Parse(opts.url)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse getter URL: %w", err)
 	}
@@ -74,13 +76,13 @@ func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
 	// Host on URL (returned from url.Parse) contains the port if present.
 	// This check ensures credentials are not passed between different
 	// services on different ports.
-	if g.opts.passCredentialsAll || (u1.Scheme == u2.Scheme && u1.Host == u2.Host) {
-		if g.opts.username != "" && g.opts.password != "" {
-			req.SetBasicAuth(g.opts.username, g.opts.password)
+	if opts.passCredentialsAll || (u1.Scheme == u2.Scheme && u1.Host == u2.Host) {
+		if opts.username != "" && opts.password != "" {
+			req.SetBasicAuth(opts.username, opts.password)
 		}
 	}
 
-	client, err := g.httpClient()
+	client, err := g.httpClient(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -110,51 +112,52 @@ func NewHTTPGetter(options ...Option) (Getter, error) {
 	return &client, nil
 }
 
-func (g *HTTPGetter) httpClient() (*http.Client, error) {
-	if g.opts.transport != nil {
+func (g *HTTPGetter) httpClient(opts getterOptions) (*http.Client, error) {
+	if opts.transport != nil {
 		return &http.Client{
-			Transport: g.opts.transport,
-			Timeout:   g.opts.timeout,
+			Transport: opts.transport,
+			Timeout:   opts.timeout,
 		}, nil
 	}
 
-	g.once.Do(func() {
-		g.transport = &http.Transport{
+	// Check if we need custom TLS configuration
+	needsCustomTLS := (opts.certFile != "" && opts.keyFile != "") || opts.caFile != "" || opts.insecureSkipVerifyTLS
+
+	if needsCustomTLS {
+		// Create a new transport for custom TLS to avoid race conditions
+		transport := &http.Transport{
 			DisableCompression: true,
 			Proxy:              http.ProxyFromEnvironment,
-			// Being nil would cause the tls.Config default to be used
-			// "NewTLSConfig" modifies an empty TLS config, not the default one
-			TLSClientConfig: &tls.Config{},
 		}
-	})
 
-	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" || g.opts.insecureSkipVerifyTLS {
 		tlsConf, err := tlsutil.NewTLSConfig(
-			tlsutil.WithInsecureSkipVerify(g.opts.insecureSkipVerifyTLS),
-			tlsutil.WithCertKeyPairFiles(g.opts.certFile, g.opts.keyFile),
-			tlsutil.WithCAFile(g.opts.caFile),
+			tlsutil.WithInsecureSkipVerify(opts.insecureSkipVerifyTLS),
+			tlsutil.WithCertKeyPairFiles(opts.certFile, opts.keyFile),
+			tlsutil.WithCAFile(opts.caFile),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("can't create TLS config for client: %w", err)
 		}
 
-		g.transport.TLSClientConfig = tlsConf
+		transport.TLSClientConfig = tlsConf
+
+		return &http.Client{
+			Transport: transport,
+			Timeout:   opts.timeout,
+		}, nil
 	}
 
-	if g.opts.insecureSkipVerifyTLS {
-		if g.transport.TLSClientConfig == nil {
-			g.transport.TLSClientConfig = &tls.Config{
-				InsecureSkipVerify: true,
-			}
-		} else {
-			g.transport.TLSClientConfig.InsecureSkipVerify = true
+	// Use shared transport for default case (no custom TLS)
+	g.once.Do(func() {
+		g.transport = &http.Transport{
+			DisableCompression: true,
+			Proxy:              http.ProxyFromEnvironment,
+			TLSClientConfig:    &tls.Config{},
 		}
-	}
+	})
 
-	client := &http.Client{
+	return &http.Client{
 		Transport: g.transport,
-		Timeout:   g.opts.timeout,
-	}
-
-	return client, nil
+		Timeout:   opts.timeout,
+	}, nil
 }
