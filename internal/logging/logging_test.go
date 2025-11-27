@@ -18,8 +18,10 @@ package logging
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -111,5 +113,261 @@ func TestLogHolder_InterfaceCompliance(t *testing.T) {
 
 		assert.NotNil(t, logger)
 		assert.Equal(t, handler, logger.Handler())
+	})
+}
+
+func TestDebugCheckHandler_Enabled(t *testing.T) {
+	t.Run("returns debugEnabled function result for debug level", func(t *testing.T) {
+		// Test with debug enabled
+		debugEnabled := func() bool { return true }
+		buf := &bytes.Buffer{}
+		baseHandler := slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+		handler := &DebugCheckHandler{
+			handler:      baseHandler,
+			debugEnabled: debugEnabled,
+		}
+
+		assert.True(t, handler.Enabled(t.Context(), slog.LevelDebug))
+	})
+
+	t.Run("returns false for debug level when debug disabled", func(t *testing.T) {
+		// Test with debug disabled
+		debugEnabled := func() bool { return false }
+		buf := &bytes.Buffer{}
+		baseHandler := slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+		handler := &DebugCheckHandler{
+			handler:      baseHandler,
+			debugEnabled: debugEnabled,
+		}
+
+		assert.False(t, handler.Enabled(t.Context(), slog.LevelDebug))
+	})
+
+	t.Run("always returns true for non-debug levels", func(t *testing.T) {
+		debugEnabled := func() bool { return false } // Debug disabled
+		buf := &bytes.Buffer{}
+		baseHandler := slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+		handler := &DebugCheckHandler{
+			handler:      baseHandler,
+			debugEnabled: debugEnabled,
+		}
+
+		// Even with debug disabled, other levels should always be enabled
+		assert.True(t, handler.Enabled(t.Context(), slog.LevelInfo))
+		assert.True(t, handler.Enabled(t.Context(), slog.LevelWarn))
+		assert.True(t, handler.Enabled(t.Context(), slog.LevelError))
+	})
+
+	t.Run("calls debugEnabled function dynamically", func(t *testing.T) {
+		callCount := 0
+		debugEnabled := func() bool {
+			callCount++
+			return callCount%2 == 1 // Alternates between true and false
+		}
+
+		buf := &bytes.Buffer{}
+		baseHandler := slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+		handler := &DebugCheckHandler{
+			handler:      baseHandler,
+			debugEnabled: debugEnabled,
+		}
+
+		// First call should return true
+		assert.True(t, handler.Enabled(t.Context(), slog.LevelDebug))
+		assert.Equal(t, 1, callCount)
+
+		// Second call should return false
+		assert.False(t, handler.Enabled(t.Context(), slog.LevelDebug))
+		assert.Equal(t, 2, callCount)
+
+		// Third call should return true again
+		assert.True(t, handler.Enabled(t.Context(), slog.LevelDebug))
+		assert.Equal(t, 3, callCount)
+	})
+}
+
+func TestDebugCheckHandler_Handle(t *testing.T) {
+	t.Run("delegates to underlying handler", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		baseHandler := slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+		handler := &DebugCheckHandler{
+			handler:      baseHandler,
+			debugEnabled: func() bool { return true },
+		}
+
+		record := slog.NewRecord(time.Now(), slog.LevelInfo, "test message", 0)
+		err := handler.Handle(t.Context(), record)
+
+		assert.NoError(t, err)
+		assert.Contains(t, buf.String(), "test message")
+	})
+
+	t.Run("handles context correctly", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		baseHandler := slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+		handler := &DebugCheckHandler{
+			handler:      baseHandler,
+			debugEnabled: func() bool { return true },
+		}
+
+		type testKey string
+		ctx := context.WithValue(t.Context(), testKey("test"), "value")
+		record := slog.NewRecord(time.Now(), slog.LevelInfo, "context test", 0)
+		err := handler.Handle(ctx, record)
+
+		assert.NoError(t, err)
+		assert.Contains(t, buf.String(), "context test")
+	})
+}
+
+func TestDebugCheckHandler_WithAttrs(t *testing.T) {
+	t.Run("returns new DebugCheckHandler with attributes", func(t *testing.T) {
+		logger := NewLogger(func() bool { return true })
+		handler := logger.Handler()
+		newHandler := handler.WithAttrs([]slog.Attr{
+			slog.String("key1", "value1"),
+			slog.Int("key2", 42),
+		})
+
+		// Should return a DebugCheckHandler
+		debugHandler, ok := newHandler.(*DebugCheckHandler)
+		assert.True(t, ok)
+		assert.NotNil(t, debugHandler)
+
+		// Should preserve the debugEnabled function
+		assert.True(t, debugHandler.Enabled(t.Context(), slog.LevelDebug))
+
+		// Should have the attributes applied to the underlying handler
+		assert.NotEqual(t, handler, debugHandler.handler)
+	})
+
+	t.Run("preserves debugEnabled function", func(t *testing.T) {
+		callCount := 0
+		debugEnabled := func() bool {
+			callCount++
+			return callCount%2 == 1
+		}
+
+		buf := &bytes.Buffer{}
+		baseHandler := slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+		handler := &DebugCheckHandler{
+			handler:      baseHandler,
+			debugEnabled: debugEnabled,
+		}
+
+		attrs := []slog.Attr{slog.String("test", "value")}
+		newHandler := handler.WithAttrs(attrs)
+
+		// The new handler should use the same debugEnabled function
+		assert.True(t, newHandler.Enabled(t.Context(), slog.LevelDebug))
+		assert.Equal(t, 1, callCount)
+
+		assert.False(t, newHandler.Enabled(t.Context(), slog.LevelDebug))
+		assert.Equal(t, 2, callCount)
+	})
+}
+
+func TestDebugCheckHandler_WithGroup(t *testing.T) {
+	t.Run("returns new DebugCheckHandler with group", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		baseHandler := slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+		handler := &DebugCheckHandler{
+			handler:      baseHandler,
+			debugEnabled: func() bool { return true },
+		}
+
+		newHandler := handler.WithGroup("testgroup")
+
+		// Should return a DebugCheckHandler
+		debugHandler, ok := newHandler.(*DebugCheckHandler)
+		assert.True(t, ok)
+		assert.NotNil(t, debugHandler)
+
+		// Should preserve the debugEnabled function
+		assert.True(t, debugHandler.Enabled(t.Context(), slog.LevelDebug))
+
+		// Should have the group applied to the underlying handler
+		assert.NotEqual(t, handler.handler, debugHandler.handler)
+	})
+
+	t.Run("preserves debugEnabled function", func(t *testing.T) {
+		callCount := 0
+		debugEnabled := func() bool {
+			callCount++
+			return callCount%2 == 1
+		}
+
+		buf := &bytes.Buffer{}
+		baseHandler := slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+		handler := &DebugCheckHandler{
+			handler:      baseHandler,
+			debugEnabled: debugEnabled,
+		}
+
+		newHandler := handler.WithGroup("testgroup")
+
+		// The new handler should use the same debugEnabled function
+		assert.True(t, newHandler.Enabled(t.Context(), slog.LevelDebug))
+		assert.Equal(t, 1, callCount)
+
+		assert.False(t, newHandler.Enabled(t.Context(), slog.LevelDebug))
+		assert.Equal(t, 2, callCount)
+	})
+}
+
+func TestDebugCheckHandler_Integration(t *testing.T) {
+	t.Run("works with NewLogger function", func(t *testing.T) {
+		debugEnabled := func() bool { return true }
+		logger := NewLogger(debugEnabled)
+
+		assert.NotNil(t, logger)
+
+		// The logger should have a DebugCheckHandler
+		handler := logger.Handler()
+		debugHandler, ok := handler.(*DebugCheckHandler)
+		assert.True(t, ok)
+
+		// Should enable debug when debugEnabled returns true
+		assert.True(t, debugHandler.Enabled(t.Context(), slog.LevelDebug))
+
+		// Should enable other levels regardless
+		assert.True(t, debugHandler.Enabled(t.Context(), slog.LevelInfo))
+	})
+
+	t.Run("dynamic debug checking works in practice", func(t *testing.T) {
+		debugState := false
+		debugEnabled := func() bool { return debugState }
+
+		logger := NewLogger(debugEnabled)
+
+		// Initially debug should be disabled
+		assert.False(t, logger.Handler().(*DebugCheckHandler).Enabled(t.Context(), slog.LevelDebug))
+
+		// Enable debug
+		debugState = true
+		assert.True(t, logger.Handler().(*DebugCheckHandler).Enabled(t.Context(), slog.LevelDebug))
+
+		// Disable debug again
+		debugState = false
+		assert.False(t, logger.Handler().(*DebugCheckHandler).Enabled(t.Context(), slog.LevelDebug))
+	})
+
+	t.Run("handles nil debugEnabled function", func(t *testing.T) {
+		logger := NewLogger(nil)
+
+		assert.NotNil(t, logger)
+
+		// The logger should have a DebugCheckHandler
+		handler := logger.Handler()
+		debugHandler, ok := handler.(*DebugCheckHandler)
+		assert.True(t, ok)
+
+		// When debugEnabled is nil, debug level should be disabled (default behavior)
+		assert.False(t, debugHandler.Enabled(t.Context(), slog.LevelDebug))
+
+		// Other levels should always be enabled
+		assert.True(t, debugHandler.Enabled(t.Context(), slog.LevelInfo))
+		assert.True(t, debugHandler.Enabled(t.Context(), slog.LevelWarn))
+		assert.True(t, debugHandler.Enabled(t.Context(), slog.LevelError))
 	})
 }
