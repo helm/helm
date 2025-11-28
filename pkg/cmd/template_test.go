@@ -166,6 +166,17 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("template '%s' -f %s/extra_values.yaml", chartPath, chartPath),
 			golden: "output/template-subchart-cm-set-file.txt",
 		},
+		{
+			name:   "template with default-api-versions-file",
+			cmd:    fmt.Sprintf("template '%s' --default-api-versions-file testdata/default-api-versions.txt",
+			"testdata/testcharts/chart-listing-apiversions"),
+			golden: "output/template-default-api-versions-file1.txt",
+		},
+		{
+			name:   "template with default-api-versions-file and api-versions",
+			cmd:    fmt.Sprintf("template '%s' --default-api-versions-file testdata/default-api-versions.txt --api-versions helm.sh/extra1 --api-versions helm.sh/extra2", "testdata/testcharts/chart-listing-apiversions"),
+			golden: "output/template-default-api-versions-file2.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }

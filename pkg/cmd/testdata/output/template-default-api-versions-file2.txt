@@ -1,0 +1,8 @@
+---
+# Source: chart-listing-apiversions/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "release-name-chart-listing-apiversions"
+data:
+  apiVersions: [apps/v1/Deployment apps/v1/StatefulSet networking.k8s.io/v1/NetworkPolicy helm.sh/extra1 helm.sh/extra2]
