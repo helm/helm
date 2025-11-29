@@ -18,6 +18,7 @@ package registry // import "helm.sh/helm/v4/pkg/registry"
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"time"
 
@@ -65,14 +66,31 @@ annotations:
 	return ociAnnotations
 }
 
+func escapeNonASCII(s string) string {
+	var result strings.Builder
+	result.Grow(len(s)) // Pre-allocate for efficiency
+
+	for _, r := range s {
+		if r > 127 {
+			// Escape non-ASCII as \uXXXX (lowercase hex)
+			fmt.Fprintf(&result, "\\u%04x", r)
+		} else {
+			result.WriteRune(r)
+		}
+	}
+	return result.String()
+}
+ 
 // generateChartOCIAnnotations will generate OCI annotations from the provided chart
+// Non-ASCII characters in annotation values are escaped as \uXXXX sequences
+// to ensure compatibility with registries that strictly follow OCI spec recommendations.
 func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[string]string {
 	chartOCIAnnotations := map[string]string{}
 
-	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationDescription, meta.Description)
-	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationTitle, meta.Name)
-	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationVersion, meta.Version)
-	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationURL, meta.Home)
+	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationDescription, escapeNonASCII(meta.Description))
+	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationTitle, escapeNonASCII(meta.Name))
+	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationVersion, escapeNonASCII(meta.Version))
+	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationURL, escapeNonASCII(meta.Home))
 
 	if len(creationTime) == 0 {
 		creationTime = time.Now().UTC().Format(time.RFC3339)
@@ -81,7 +99,7 @@ func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[
 	chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationCreated, creationTime)
 
 	if len(meta.Sources) > 0 {
-		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationSource, meta.Sources[0])
+		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationSource, escapeNonASCII(meta.Sources[0]))
 	}
 
 	if len(meta.Maintainers) > 0 {
@@ -90,12 +108,12 @@ func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[
 		for maintainerIdx, maintainer := range meta.Maintainers {
 
 			if len(maintainer.Name) > 0 {
-				maintainerSb.WriteString(maintainer.Name)
+				maintainerSb.WriteString(escapeNonASCII(maintainer.Name))
 			}
 
 			if len(maintainer.Email) > 0 {
 				maintainerSb.WriteString(" (")
-				maintainerSb.WriteString(maintainer.Email)
+				maintainerSb.WriteString(escapeNonASCII(maintainer.Email))
 				maintainerSb.WriteString(")")
 			}
 
