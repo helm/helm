@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
@@ -71,8 +72,8 @@ func escapeNonASCII(s string) string {
 	result.Grow(len(s)) // Pre-allocate for efficiency
 
 	for _, r := range s {
-		if r > 127 {
-			// Escape non-ASCII as \uXXXX (lowercase hex)
+		if r > unicode.MaxASCII {
+			// Escape non-ASCII using standard unicode escaping
 			fmt.Fprintf(&result, "\\u%04x", r)
 		} else {
 			result.WriteRune(r)
