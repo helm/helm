@@ -67,6 +67,8 @@ annotations:
 	return ociAnnotations
 }
 
+// Non-ASCII characters in annotation values are escaped
+// to ensure compatibility with registries that strictly follow OCI spec
 func escapeNonASCII(s string) string {
 	var result strings.Builder
 	result.Grow(len(s)) // Pre-allocate for efficiency
@@ -83,8 +85,6 @@ func escapeNonASCII(s string) string {
 }
  
 // generateChartOCIAnnotations will generate OCI annotations from the provided chart
-// Non-ASCII characters in annotation values are escaped as \uXXXX sequences
-// to ensure compatibility with registries that strictly follow OCI spec recommendations.
 func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[string]string {
 	chartOCIAnnotations := map[string]string{}
 
