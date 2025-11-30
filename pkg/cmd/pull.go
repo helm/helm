@@ -72,7 +72,7 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.SetRegistryClient(registryClient)
 
-			for i := 0; i < len(args); i++ {
+			for i := range args {
 				output, err := client.Run(args[i])
 				if err != nil {
 					return err
