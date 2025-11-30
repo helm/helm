@@ -45,11 +45,10 @@ func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
 		if err != nil {
 			return err
 		}
-		accessor, _ := meta.Accessor(info.Object)
-		if info.Name == "" && accessor.GetGenerateName() != "" {
-			return nil
-		} else if info.Name != "" && accessor.GetGenerateName() != "" {
-			return fmt.Errorf("metadata.name and metadata.generateName cannot both be set")
+
+		skip, err := validateNameAndgenerateName(info)
+		if skip {
+			return err
 		}
 
 		helper := resource.NewHelper(info.Client, info.Mapping)
@@ -77,11 +76,9 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 			return err
 		}
 
-		accessor, _ := meta.Accessor(info.Object)
-		if info.Name == "" && accessor.GetGenerateName() != "" {
-			return nil
-		} else if info.Name != "" && accessor.GetGenerateName() != "" {
-			return fmt.Errorf("metadata.name and metadata.generateName cannot both be set")
+		skip, err := validateNameAndgenerateName(info)
+		if skip {
+			return err
 		}
 
 		helper := resource.NewHelper(info.Client, info.Mapping)
@@ -213,4 +210,15 @@ func mergeStrStrMaps(current, desired map[string]string) map[string]string {
 	maps.Copy(result, current)
 	maps.Copy(result, desired)
 	return result
+}
+
+func validateNameAndgenerateName(info *resource.Info) (bool, error) {
+	accessor, _ := meta.Accessor(info.Object)
+	if info.Name == "" && accessor.GetGenerateName() != "" {
+		return true, nil
+	} else if info.Name != "" && accessor.GetGenerateName() != "" {
+		return true, fmt.Errorf("metadata.name and metadata.generateName cannot both be set")
+	}
+
+	return false, nil
 }
