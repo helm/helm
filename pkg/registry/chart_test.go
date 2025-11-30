@@ -329,6 +329,11 @@ func TestEscapeNonASCII(t *testing.T) {
 			input:    "Abc Déf Ghï",
 			expected: "Abc D\\u00e9f Gh\\u00ef",
 		},
+		{
+			name:     "Chinese characters",
+			input:    "张伟",
+			expected: "\\u5f20\\u4f1f",
+		},
 	}
 
 	for _, tt := range tests {
