@@ -231,6 +231,10 @@ func (i *Install) Run(chrt *chart.Chart, vals map[string]interface{}) (*release.
 // When the task is cancelled through ctx, the function returns and the install
 // proceeds in the background.
 func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+if vals == nil {
+    return nil, fmt.Errorf("values cannot be nil")
+}
+
 	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
 	if !i.ClientOnly {
 		if err := i.cfg.KubeClient.IsReachable(); err != nil {
