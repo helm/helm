@@ -83,7 +83,7 @@ func escapeNonASCII(s string) string {
 	}
 	return result.String()
 }
- 
+
 // generateChartOCIAnnotations will generate OCI annotations from the provided chart
 func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[string]string {
 	chartOCIAnnotations := map[string]string{}
