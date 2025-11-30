@@ -1,0 +1,5 @@
+apiVersion: v2
+name: otlp-forwarder
+version: 0.1.0   # or another valid version
+appVersion: "1.0"
+description: A Helm chart for the OpenTelemetry OTLP Forwarder

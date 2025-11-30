@@ -1,0 +1,81 @@
+# values.yaml - Default Configuration for OTLP Forwarder
+
+# General Settings for Image
+image:
+  repository: "ghcr.io/open-telemetry/opentelemetry-collector-contrib"  # Default image repository
+  tag: "v0.29.0"  # Default tag (chart app version can be used here as default)
+  pullPolicy: "IfNotPresent"  # Default pull policy
+
+# Replication Settings
+replicaCount: 1  # Number of replicas to run (set to 1 for single replica)
+
+# Service Settings (Expose the OTLP Forwarder as a Service)
+service:
+  name: "otlp-forwarder-service"  # Name of the service
+  port: 4317  # Port exposed by the service
+  targetPort: 4317  # Target port in the container
+  annotations: {}  # Optional: Add any annotations to the service here
+
+# Service Account Configuration
+serviceAccount:
+  create: true  # Set to true to create a service account
+  automount: true  # Enable automatic mounting of service account tokens (default: true)
+  annotations: {}  # Add annotations to the service account, if necessary
+  name: ""  # Leave empty to auto-generate the service account name
+
+# Pod Annotations and Labels
+podAnnotations: {}  # Optional: Pod annotations
+podLabels: {}  # Optional: Pod labels
+
+# Auto-scaling Settings (optional)
+autoscaling:
+  enabled: false  # Set to true to enable auto-scaling
+  minReplicas: 1  # Minimum number of replicas
+  maxReplicas: 3  # Maximum number of replicas
+  targetCPUUtilizationPercentage: 80  # CPU utilization for scaling
+
+# Liveness Probe Settings (optional)
+livenessProbe:
+  httpGet:
+    path: /healthz  # Path for the liveness probe to check
+    port: 4317  # Port for the liveness probe
+  initialDelaySeconds: 30  # Delay before starting the liveness probe
+  periodSeconds: 10  # Interval for the liveness probe checks
+
+# Readiness Probe Settings (optional)
+readinessProbe:
+  httpGet:
+    path: /readiness  # Path for the readiness probe to check
+    port: 4317  # Port for the readiness probe
+  initialDelaySeconds: 30  # Delay before starting the readiness probe
+  periodSeconds: 10  # Interval for the readiness probe checks
+
+# Resource Limits and Requests (optional)
+resources:
+  limits:
+    cpu: "500m"  # CPU limit for the pod
+    memory: "512Mi"  # Memory limit for the pod
+  requests:
+    cpu: "250m"  # Requested CPU for the pod
+    memory: "256Mi"  # Requested memory for the pod
+
+# Volume Configuration (optional)
+volumeMounts: []  # Volume mounts for the container, specify if needed
+volumes: []  # Volumes to be mounted into the pod
+
+# Node Selector for Pod Placement (optional)
+nodeSelector: {}  # Use this to schedule the pod on specific nodes
+
+# Affinity (optional, used for controlling pod placement)
+affinity: {}  # Affinity rules for pod placement
+
+# Tolerations (optional, for tainted nodes)
+tolerations: []  # Specify any tolerations for tainted nodes
+
+# Pod Security Context (optional)
+podSecurityContext: {}  # Security context for the pod (e.g., user, group)
+securityContext: {}  # Security context for the container (e.g., privileged mode)
+
+# Image Pull Secrets (optional, used for private Docker registry)
+imagePullSecrets: []  # Add secrets for pulling images from private registries
+

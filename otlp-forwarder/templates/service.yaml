@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-otlp-forwarder
+spec:
+  selector:
+    app: {{ .Release.Name }}-otlp-forwarder
+  ports:
+    - protocol: TCP
+      port: 4317
+      targetPort: 4317
