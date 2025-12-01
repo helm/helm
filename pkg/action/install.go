@@ -23,6 +23,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
@@ -127,6 +128,13 @@ type ChartPathOptions struct {
 	registryClient *registry.Client
 }
 
+type InstallItem struct {
+	ChartName string
+	WaitFor   string
+	Manifests []releaseutil.Manifest
+	Resources kube.ResourceList
+}
+
 // NewInstall creates a new Install object with the given configuration.
 func NewInstall(cfg *Configuration) *Install {
 	in := &Install{
@@ -167,6 +175,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 			}
 			return errors.Wrapf(err, "failed to install CRD %s", obj.Name)
 		}
+		i.cfg.Log("Installing CRD: %s", obj.Filename)
 		totalItems = append(totalItems, res...)
 	}
 	if len(totalItems) > 0 {
@@ -387,6 +396,478 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 }
 
+//func (i *Install) RunWithCustomContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+//	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
+//	if !i.ClientOnly {
+//		if err := i.cfg.KubeClient.IsReachable(); err != nil {
+//			return nil, err
+//		}
+//	}
+//
+//	if err := i.availableName(); err != nil {
+//		return nil, err
+//	}
+//
+//	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
+//		return nil, err
+//	}
+//
+//	// Pre-install anything in the crd/ directory. We do this before Helm
+//	// contacts the upstream server and builds the capabilities object.
+//	// 先install 所有的crd
+//	if crds := chrt.CRDObjects(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
+//		// On dry run, bail here
+//		if i.DryRun {
+//			i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
+//		} else if err := i.installCRDs(crds); err != nil {
+//			return nil, err
+//		}
+//	}
+//
+//	if i.ClientOnly {
+//		// Add mock objects in here so it doesn't use Kube API server
+//		// NOTE(bacongobbler): used for `helm template`
+//		i.cfg.Capabilities = chartutil.DefaultCapabilities.Copy()
+//		if i.KubeVersion != nil {
+//			i.cfg.Capabilities.KubeVersion = *i.KubeVersion
+//		}
+//		i.cfg.Capabilities.APIVersions = append(i.cfg.Capabilities.APIVersions, i.APIVersions...)
+//		i.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard}
+//
+//		mem := driver.NewMemory()
+//		mem.SetNamespace(i.Namespace)
+//		i.cfg.Releases = storage.Init(mem)
+//	} else if !i.ClientOnly && len(i.APIVersions) > 0 {
+//		i.cfg.Log("API Version list given outside of client only mode, this list will be ignored")
+//	}
+//
+//	// Make sure if Atomic is set, that wait is set as well. This makes it so
+//	// the user doesn't have to specify both
+//	i.Wait = i.Wait || i.Atomic
+//
+//	caps, err := i.cfg.getCapabilities()
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	// special case for helm template --is-upgrade
+//	isUpgrade := i.IsUpgrade && i.DryRun
+//	options := chartutil.ReleaseOptions{
+//		Name:      i.ReleaseName,
+//		Namespace: i.Namespace,
+//		Revision:  1,
+//		IsInstall: !isUpgrade,
+//		IsUpgrade: isUpgrade,
+//	}
+//	// 汇总的values文件
+//	valuesToRender, err := chartutil.ToRenderValues(chrt, vals, options, caps)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	rel := i.createRelease(chrt, vals)
+//
+//	var InstallDeps []chart.InstallItem
+//	if chrt.IsSequenceInstall() {
+//		InstallDeps, err = chrt.GetInstallItems(chrt.Metadata.Install)
+//		if err != nil {
+//			return nil, err
+//		}
+//	}
+//	// 按照顺序执行安装
+//	allmanifestDoc := new(bytes.Buffer)
+//	var allhooks []*release.Hook
+//
+//	for _, seq := range InstallDeps {
+//		var manifestDoc *bytes.Buffer
+//		var hooks []*release.Hook
+//
+//		hooks, manifestDoc, _, err = i.cfg.renderResources(seq.Chart, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, i.DryRun, i.EnableDNS)
+//		// Check error from render
+//		if err != nil {
+//			rel.SetStatus(release.StatusFailed, fmt.Sprintf("failed to render resource: %s", err.Error()))
+//			// Return a release with partial data so that the client can show debugging information.
+//			return rel, err
+//		}
+//
+//		allhooks = append(allhooks, hooks...)
+//		if manifestDoc != nil {
+//			allmanifestDoc.Write(manifestDoc.Bytes())
+//		}
+//
+//		// Mark this release as in-progress
+//		rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
+//
+//		var toBeAdopted kube.ResourceList
+//		resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(manifestDoc.String()), !i.DisableOpenAPIValidation)
+//		if err != nil {
+//			return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
+//		}
+//
+//		// It is safe to use "force" here because these are resources currently rendered by the chart.
+//		err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
+//		if err != nil {
+//			return nil, err
+//		}
+//
+//		if !i.ClientOnly && !isUpgrade && len(resources) > 0 {
+//			toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace)
+//			if err != nil {
+//				return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
+//			}
+//		}
+//
+//		if i.CreateNamespace {
+//			ns := &v1.Namespace{
+//				TypeMeta: metav1.TypeMeta{
+//					APIVersion: "v1",
+//					Kind:       "Namespace",
+//				},
+//				ObjectMeta: metav1.ObjectMeta{
+//					Name: i.Namespace,
+//					Labels: map[string]string{
+//						"name": i.Namespace,
+//					},
+//				},
+//			}
+//			buf, err := yaml.Marshal(ns)
+//			if err != nil {
+//				return nil, err
+//			}
+//			resourceList, err := i.cfg.KubeClient.Build(bytes.NewBuffer(buf), true)
+//			if err != nil {
+//				return nil, err
+//			}
+//			if _, err := i.cfg.KubeClient.Create(resourceList); err != nil && !apierrors.IsAlreadyExists(err) {
+//				return nil, err
+//			}
+//		}
+//
+//		if len(toBeAdopted) == 0 && len(resources) > 0 {
+//			if _, err = i.cfg.KubeClient.Create(resources); err != nil {
+//				return nil, err
+//			}
+//		} else if len(resources) > 0 {
+//			if _, err = i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force); err != nil {
+//				return nil, err
+//			}
+//		}
+//
+//		if seq.WaitFor != "" {
+//			i.cfg.Log("Waiting for resources: %s", seq.WaitFor)
+//
+//			cmd := exec.Command("bash", "-c", seq.WaitFor)
+//			stdoutStderr, err := cmd.CombinedOutput()
+//
+//			if err != nil {
+//				// kubectl wait 失败（超时或资源不存在等）
+//				i.cfg.Log("Wait command failed: %s, output: %s", err.Error(), string(stdoutStderr))
+//				rel.SetStatus(release.StatusFailed, fmt.Sprintf("wait command failed: %s", string(stdoutStderr)))
+//				return rel, fmt.Errorf("wait for resource failed: %s", string(stdoutStderr))
+//			}
+//
+//			// 成功，继续安装后续 chart
+//			i.cfg.Log("Wait completed: %s", string(stdoutStderr))
+//		}
+//
+//	}
+//
+//	// Even for errors, attach this if available
+//	if allmanifestDoc != nil {
+//		rel.Manifest = allmanifestDoc.String()
+//	}
+//	rel.Hooks = allhooks
+//
+//	if err := i.cfg.Releases.Create(rel); err != nil {
+//		// We could try to recover gracefully here, but since nothing has been installed
+//		// yet, this is probably safer than trying to continue when we know storage is
+//		// not working.
+//		return rel, err
+//	}
+//	return rel, nil
+//
+//	//var manifestDoc *bytes.Buffer
+//	//rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, i.DryRun, i.EnableDNS)
+//	// Even for errors, attach this if available
+//	//if manifestDoc != nil {
+//	//	rel.Manifest = manifestDoc.String()
+//	//}
+//	// Check error from render
+//	//if err != nil {
+//	//	rel.SetStatus(release.StatusFailed, fmt.Sprintf("failed to render resource: %s", err.Error()))
+//	//	Return a release with partial data so that the client can show debugging information.
+//	//return rel, err
+//	//}
+//
+//	//// Mark this release as in-progress
+//	//rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
+//
+//	//var toBeAdopted kube.ResourceList
+//	//resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
+//	//if err != nil {
+//	//	return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
+//	//}
+//	//
+//	//// It is safe to use "force" here because these are resources currently rendered by the chart.
+//	//err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
+//	//if err != nil {
+//	//	return nil, err
+//	//}
+//
+//	// Install requires an extra validation step of checking that resources
+//	// don't already exist before we actually create resources. If we continue
+//	// forward and create the release object with resources that already exist,
+//	// we'll end up in a state where we will delete those resources upon
+//	// deleting the release because the manifest will be pointing at that
+//	// resource
+//	//if !i.ClientOnly && !isUpgrade && len(resources) > 0 {
+//	//	toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace)
+//	//	if err != nil {
+//	//		return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
+//	//	}
+//	//}
+//
+//	// Bail out here if it is a dry run
+//	//######## dryrun失效
+//	//if i.DryRun {
+//	//	rel.Info.Description = "Dry run complete"
+//	//	return rel, nil
+//	//}
+//	//
+//	//if i.CreateNamespace {
+//	//	ns := &v1.Namespace{
+//	//		TypeMeta: metav1.TypeMeta{
+//	//			APIVersion: "v1",
+//	//			Kind:       "Namespace",
+//	//		},
+//	//		ObjectMeta: metav1.ObjectMeta{
+//	//			Name: i.Namespace,
+//	//			Labels: map[string]string{
+//	//				"name": i.Namespace,
+//	//			},
+//	//		},
+//	//	}
+//	//	buf, err := yaml.Marshal(ns)
+//	//	if err != nil {
+//	//		return nil, err
+//	//	}
+//	//	resourceList, err := i.cfg.KubeClient.Build(bytes.NewBuffer(buf), true)
+//	//	if err != nil {
+//	//		return nil, err
+//	//	}
+//	//	if _, err := i.cfg.KubeClient.Create(resourceList); err != nil && !apierrors.IsAlreadyExists(err) {
+//	//		return nil, err
+//	//	}
+//	//}
+//
+//	// If Replace is true, we need to supercede the last release.
+//	// Release 无效
+//	//if i.Replace {
+//	//	if err := i.replaceRelease(rel); err != nil {
+//	//		return nil, err
+//	//	}
+//	//}
+//
+//	//// Store the release in history before continuing (new in Helm 3). We always know
+//	//// that this is a create operation.
+//	//if err := i.cfg.Releases.Create(rel); err != nil {
+//	//	// We could try to recover gracefully here, but since nothing has been installed
+//	//	// yet, this is probably safer than trying to continue when we know storage is
+//	//	// not working.
+//	//	return rel, err
+//	//}
+//	//rChan := make(chan resultMessage)
+//	//ctxChan := make(chan resultMessage)
+//	//doneChan := make(chan struct{})
+//	//defer close(doneChan)
+//	//go i.performInstall(rChan, rel, toBeAdopted, resources)
+//	//go i.handleContext(ctx, ctxChan, doneChan, rel)
+//	//select {
+//	//case result := <-rChan:
+//	//	return result.r, result.e
+//	//case result := <-ctxChan:
+//	//	return result.r, result.e
+//	//}
+//}
+
+func (i *Install) RunWithCustomContext(ctx context.Context, chrt *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	// Check reachability of cluster unless in client-only mode (e.g. `helm template` without `--validate`)
+	if !i.ClientOnly {
+		if err := i.cfg.KubeClient.IsReachable(); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := i.availableName(); err != nil {
+		return nil, err
+	}
+
+	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
+		return nil, err
+	}
+
+	// Pre-install anything in the crd/ directory. We do this before Helm
+	// contacts the upstream server and builds the capabilities object.
+	if crds := chrt.CRDObjects(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
+		// On dry run, bail here
+		if i.DryRun {
+			i.cfg.Log("WARNING: This chart or one of its subcharts contains CRDs. Rendering may fail or contain inaccuracies.")
+		} else if err := i.installCRDs(crds); err != nil {
+			return nil, err
+		}
+	}
+
+	if i.ClientOnly {
+		// Add mock objects in here so it doesn't use Kube API server
+		// NOTE(bacongobbler): used for `helm template`
+		i.cfg.Capabilities = chartutil.DefaultCapabilities.Copy()
+		if i.KubeVersion != nil {
+			i.cfg.Capabilities.KubeVersion = *i.KubeVersion
+		}
+		i.cfg.Capabilities.APIVersions = append(i.cfg.Capabilities.APIVersions, i.APIVersions...)
+		i.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard}
+
+		mem := driver.NewMemory()
+		mem.SetNamespace(i.Namespace)
+		i.cfg.Releases = storage.Init(mem)
+	} else if !i.ClientOnly && len(i.APIVersions) > 0 {
+		i.cfg.Log("API Version list given outside of client only mode, this list will be ignored")
+	}
+
+	// Make sure if Atomic is set, that wait is set as well. This makes it so
+	// the user doesn't have to specify both
+	i.Wait = i.Wait || i.Atomic
+
+	caps, err := i.cfg.getCapabilities()
+	if err != nil {
+		return nil, err
+	}
+
+	// special case for helm template --is-upgrade
+	isUpgrade := i.IsUpgrade && i.DryRun
+	options := chartutil.ReleaseOptions{
+		Name:      i.ReleaseName,
+		Namespace: i.Namespace,
+		Revision:  1,
+		IsInstall: !isUpgrade,
+		IsUpgrade: isUpgrade,
+	}
+	valuesToRender, err := chartutil.ToRenderValues(chrt, vals, options, caps)
+	if err != nil {
+		return nil, err
+	}
+
+	rel := i.createRelease(chrt, vals)
+
+	var manifestDoc *bytes.Buffer
+	var sortedManifest []releaseutil.Manifest
+	//rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, i.DryRun, i.EnableDNS)
+	rel.Hooks, manifestDoc, rel.Info.Notes, sortedManifest, err = i.cfg.renderResourcesWithChartOrder(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, i.DryRun, i.EnableDNS)
+	// Even for errors, attach this if available
+	if manifestDoc != nil {
+		rel.Manifest = manifestDoc.String()
+	}
+	// Check error from render
+	if err != nil {
+		rel.SetStatus(release.StatusFailed, fmt.Sprintf("failed to render resource: %s", err.Error()))
+		// Return a release with partial data so that the client can show debugging information.
+		return rel, err
+	}
+
+	// Mark this release as in-progress
+	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
+	if i.CreateNamespace {
+		ns := &v1.Namespace{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "Namespace",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: i.Namespace,
+				Labels: map[string]string{
+					"name": i.Namespace,
+				},
+			},
+		}
+		buf, err := yaml.Marshal(ns)
+		if err != nil {
+			return nil, err
+		}
+		resourceList, err := i.cfg.KubeClient.Build(bytes.NewBuffer(buf), true)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := i.cfg.KubeClient.Create(resourceList); err != nil && !apierrors.IsAlreadyExists(err) {
+			return nil, err
+		}
+	}
+
+	var toBeAdopted kube.ResourceList
+	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
+	}
+
+	// It is safe to use "force" here because these are resources currently rendered by the chart.
+	err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
+	if err != nil {
+		return nil, err
+	}
+
+	// Install requires an extra validation step of checking that resources
+	// don't already exist before we actually create resources. If we continue
+	// forward and create the release object with resources that already exist,
+	// we'll end up in a state where we will delete those resources upon
+	// deleting the release because the manifest will be pointing at that
+	// resource
+	if !i.ClientOnly && !isUpgrade && len(resources) > 0 {
+		toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace)
+		if err != nil {
+			return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
+		}
+	}
+
+	// Bail out here if it is a dry run
+	if i.DryRun {
+		rel.Info.Description = "Dry run complete"
+		return rel, nil
+	}
+
+	// If Replace is true, we need to supercede the last release.
+	if i.Replace {
+		if err := i.replaceRelease(rel); err != nil {
+			return nil, err
+		}
+	}
+
+	sortedResources, err := GetInstallSequence(chrt, sortedManifest, resources)
+	if err != nil {
+		rel.SetStatus(release.StatusFailed, fmt.Sprintf("failed to get install sequence: %s", err.Error()))
+		return rel, err
+	}
+
+	// Store the release in history before continuing (new in Helm 3). We always know
+	// that this is a create operation.
+	if err := i.cfg.Releases.Create(rel); err != nil {
+		// We could try to recover gracefully here, but since nothing has been installed
+		// yet, this is probably safer than trying to continue when we know storage is
+		// not working.
+		return rel, err
+	}
+	rChan := make(chan resultMessage)
+	ctxChan := make(chan resultMessage)
+	doneChan := make(chan struct{})
+	defer close(doneChan)
+	go i.performCustomInstall(rChan, rel, toBeAdopted, sortedResources)
+	go i.handleContext(ctx, ctxChan, doneChan, rel)
+	select {
+	case result := <-rChan:
+		return result.r, result.e
+	case result := <-ctxChan:
+		return result.r, result.e
+	}
+}
+
 func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) {
 
 	// pre-install hooks
@@ -446,6 +927,112 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 	//
 	// One possible strategy would be to do a timed retry to see if we can get
 	// this stored in the future.
+	if err := i.recordRelease(rel); err != nil {
+		i.cfg.Log("failed to record the release: %s", err)
+	}
+
+	i.reportToRun(c, rel, nil)
+}
+
+func (i *Install) performCustomInstall(c chan<- resultMessage, rel *release.Release, toBeAdopted kube.ResourceList, installItems []InstallItem) {
+
+	// pre-install hooks
+	if !i.DisableHooks {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
+			i.reportToRun(c, rel, fmt.Errorf("failed pre-install: %s", err))
+			return
+		}
+	}
+
+	for _, item := range installItems {
+		i.cfg.Log("-------------Installing chart: %s--------------", item.ChartName)
+		fmt.Fprintf(os.Stdout, "============Installing chart: %s\n===========", item.ChartName)
+
+		if len(item.Resources) > 0 {
+			// 找出这个 item 中需要 adopt 的资源
+			var itemToBeAdopted kube.ResourceList
+			var itemToCreate kube.ResourceList
+
+			for _, r := range item.Resources {
+				adopted := false
+				for _, a := range toBeAdopted {
+					if a.Name == r.Name && a.Namespace == r.Namespace &&
+						a.Mapping.GroupVersionKind == r.Mapping.GroupVersionKind {
+						adopted = true
+						itemToBeAdopted = append(itemToBeAdopted, r)
+						break
+					}
+				}
+				if !adopted {
+					itemToCreate = append(itemToCreate, r)
+				}
+			}
+
+			// 创建新资源
+			if len(itemToCreate) > 0 {
+				if _, err := i.cfg.KubeClient.Create(itemToCreate); err != nil {
+					i.reportToRun(c, rel, err)
+					return
+				}
+			}
+
+			// 更新已存在的资源
+			if len(itemToBeAdopted) > 0 {
+				if _, err := i.cfg.KubeClient.Update(itemToBeAdopted, itemToBeAdopted, i.Force); err != nil {
+					i.reportToRun(c, rel, err)
+					return
+				}
+			}
+		}
+
+		// Helm 自带的 wait
+		if i.Wait && len(item.Resources) > 0 {
+			if i.WaitForJobs {
+				if err := i.cfg.KubeClient.WaitWithJobs(item.Resources, i.Timeout); err != nil {
+					i.reportToRun(c, rel, err)
+					return
+				}
+			} else {
+				if err := i.cfg.KubeClient.Wait(item.Resources, i.Timeout); err != nil {
+					i.reportToRun(c, rel, err)
+					return
+				}
+			}
+		}
+
+		// 自定义 waitFor
+		if item.WaitFor != "" {
+			fmt.Fprintf(os.Stdout, "Executing waitFor: %s\n==========", item.WaitFor)
+
+			cmd := exec.Command("bash", "-c", item.WaitFor)
+			stdoutStderr, err := cmd.CombinedOutput()
+
+			if err != nil {
+				fmt.Fprintf(os.Stdout, "Wait command failed: %s, output: %s", err.Error(), string(stdoutStderr))
+				rel.SetStatus(release.StatusFailed, fmt.Sprintf("wait failed for %s: %s", item.ChartName, string(stdoutStderr)))
+				i.reportToRun(c, rel, fmt.Errorf("wait for %s failed: %s", item.ChartName, string(stdoutStderr)))
+				return
+			}
+
+			i.cfg.Log("Wait completed for %s", item.ChartName)
+			fmt.Fprintf(os.Stdout, "Wait completed for %s", item.ChartName)
+		}
+	}
+
+	// post-install hooks - 只执行一次
+	if !i.DisableHooks {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
+			i.reportToRun(c, rel, fmt.Errorf("failed post-install: %s", err))
+			return
+		}
+	}
+
+	if len(i.Description) > 0 {
+		rel.SetStatus(release.StatusDeployed, i.Description)
+	} else {
+		rel.SetStatus(release.StatusDeployed, "Install complete")
+	}
+
 	if err := i.recordRelease(rel); err != nil {
 		i.cfg.Log("failed to record the release: %s", err)
 	}

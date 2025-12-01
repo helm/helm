@@ -87,6 +87,27 @@ func (ch *Chart) AddDependency(charts ...*Chart) {
 	}
 }
 
+func (ch *Chart) IsSequenceInstall() bool {
+	if ch.Metadata.Install != nil {
+		return true
+	}
+	return false
+}
+
+func (ch *Chart) ChartInstallOrder() []string {
+	order := make([]string, 0, len(ch.Dependencies()))
+	if ch.Metadata.Install != nil {
+		for _, item := range ch.Metadata.Install {
+			order = append(order, item.Name)
+		}
+	} else {
+		for _, item := range ch.Dependencies() {
+			order = append(order, item.Name())
+		}
+	}
+	return order
+}
+
 // Root finds the root chart.
 func (ch *Chart) Root() *Chart {
 	if ch.IsRoot() {

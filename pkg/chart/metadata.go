@@ -80,6 +80,13 @@ type Metadata struct {
 	Dependencies []*Dependency `json:"dependencies,omitempty"`
 	// Specifies the chart type: application or library
 	Type string `json:"type,omitempty"`
+
+	Install []ChartInstance `json:"install,omitempty"`
+}
+
+type ChartInstance struct {
+	Name    string `json:"name,omitempty"`
+	WaitFor string `json:"waitFor,omitempty"`
 }
 
 // Validate checks the metadata for known issues and sanitizes string

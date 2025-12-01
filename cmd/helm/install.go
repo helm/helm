@@ -284,6 +284,10 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		cancel()
 	}()
 
+	if chartRequested.IsSequenceInstall() {
+		return client.RunWithCustomContext(ctx, chartRequested, vals)
+	}
+
 	return client.RunWithContext(ctx, chartRequested, vals)
 }
 

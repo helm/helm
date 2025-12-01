@@ -111,6 +111,45 @@ func SortManifests(files map[string]string, apis chartutil.VersionSet, ordering 
 	return sortHooksByKind(result.hooks, ordering), sortManifestsByKind(result.generic, ordering), nil
 }
 
+func SortManifestsByChart(files map[string]string, apis chartutil.VersionSet, ordering ChartSortOrder) ([]*release.Hook, []Manifest, error) {
+	result := &result{}
+
+	var sortedFilePaths []string
+	for filePath := range files {
+		sortedFilePaths = append(sortedFilePaths, filePath)
+	}
+	sort.Strings(sortedFilePaths)
+
+	for _, filePath := range sortedFilePaths {
+		content := files[filePath]
+
+		// Skip partials. We could return these as a separate map, but there doesn't
+		// seem to be any need for that at this time.
+		if strings.HasPrefix(path.Base(filePath), "_") {
+			continue
+		}
+		// Skip empty files and log this.
+		if strings.TrimSpace(content) == "" {
+			continue
+		}
+
+		manifestFile := &manifestFile{
+			entries: SplitManifests(content),
+			path:    filePath,
+			apis:    apis,
+		}
+
+		if err := manifestFile.sort(result); err != nil {
+			return result.hooks, result.generic, err
+		}
+	}
+
+	hooks := sortHooksByKind(result.hooks, InstallOrder)
+	manifests := sortManifestsByKind(result.generic, InstallOrder)
+
+	return sortHooksByChart(hooks, ordering), sortManifestsByChart(manifests, ordering), nil
+}
+
 // sort takes a manifestFile object which may contain multiple resource definition
 // entries and sorts each entry by hook types, and saves the resulting hooks and
 // generic manifests (or non-hooks) to the result struct.

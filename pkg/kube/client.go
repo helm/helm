@@ -132,6 +132,7 @@ func (c *Client) IsReachable() error {
 // Create creates Kubernetes resources specified in the resource list.
 func (c *Client) Create(resources ResourceList) (*Result, error) {
 	c.Log("creating %d resource(s)", len(resources))
+	fmt.Fprintf(os.Stdout, "creating %d resource(s)\n", len(resources))
 	if err := perform(resources, createResource); err != nil {
 		return nil, err
 	}
@@ -383,6 +384,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 	res := &Result{}
 
 	c.Log("checking %d resources for changes", len(target))
+	fmt.Fprintf(os.Stdout, "checking %d resources for changes\n", len(target))
 	err := target.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
@@ -590,6 +592,7 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 }
 
 func createResource(info *resource.Info) error {
+	fmt.Fprintf(os.Stdout, "creating resource %s\n", info.Mapping.GroupVersionKind.Kind)
 	obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
 	if err != nil {
 		return err
@@ -668,6 +671,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 			return errors.Wrap(err, "failed to replace object")
 		}
 		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
+		fmt.Fprintf(os.Stdout, "Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
 		patch, patchType, err := createPatch(target, currentObj)
 		if err != nil {
@@ -685,6 +689,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 		// send patch to server
 		c.Log("Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
+		fmt.Fprintf(os.Stdout, "Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
 			return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
