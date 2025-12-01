@@ -117,15 +117,28 @@ func getAliasDependency(charts []*chart.Chart, dep *chart.Dependency) *chart.Cha
 		}
 
 		out := *c
-		md := *c.Metadata
-		out.Metadata = &md
+		out.Metadata = copyMetadata(c.Metadata)
 
 		if dep.Alias != "" {
-			md.Name = dep.Alias
+			out.Metadata.Name = dep.Alias
 		}
 		return &out
 	}
 	return nil
+}
+
+func copyMetadata(metadata *chart.Metadata) *chart.Metadata {
+	md := *metadata
+
+	if md.Dependencies != nil {
+		dependencies := make([]*chart.Dependency, len(md.Dependencies))
+		for i := range md.Dependencies {
+			dependency := *md.Dependencies[i]
+			dependencies[i] = &dependency
+		}
+		md.Dependencies = dependencies
+	}
+	return &md
 }
 
 // processDependencyEnabled removes disabled charts from dependencies
