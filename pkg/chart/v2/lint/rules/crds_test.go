@@ -25,6 +25,7 @@ import (
 )
 
 const invalidCrdsDir = "./testdata/invalidcrdsdir"
+const emptyCrdDir = "./testdata/emptycrd"
 
 func TestInvalidCrdsDir(t *testing.T) {
 	linter := support.Linter{ChartDir: invalidCrdsDir}
@@ -33,4 +34,16 @@ func TestInvalidCrdsDir(t *testing.T) {
 
 	assert.Len(t, res, 1)
 	assert.ErrorContains(t, res[0].Err, "not a directory")
+}
+
+// TestEmptyCrd tests that empty CRD files (containing only comments/whitespace)
+// don't cause a panic when the YAML decoder returns nil.
+// This is a regression test for issue #31571.
+func TestEmptyCrd(t *testing.T) {
+	linter := support.Linter{ChartDir: emptyCrdDir}
+	Crds(&linter)
+	res := linter.Messages
+
+	// Should not panic and should have no errors
+	assert.Len(t, res, 0)
 }

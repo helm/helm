@@ -1,0 +1,4 @@
+apiVersion: v2
+name: emptycrd
+description: A Helm chart with empty CRD file
+version: 0.1.0
