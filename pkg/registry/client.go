@@ -639,6 +639,7 @@ type (
 		provData     []byte
 		strictMode   bool
 		creationTime string
+		subject      *ocispec.Descriptor
 	}
 )
 
@@ -703,7 +704,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	ociAnnotations := generateOCIAnnotations(meta, operation.creationTime)
 
 	manifestDescriptor, err := c.tagManifest(ctx, memoryStore, configDescriptor,
-		layers, ociAnnotations, parsedRef)
+		layers, ociAnnotations, parsedRef, operation.subject)
 	if err != nil {
 		return nil, err
 	}
@@ -772,6 +773,13 @@ func PushOptStrictMode(strictMode bool) PushOption {
 func PushOptCreationTime(creationTime string) PushOption {
 	return func(operation *pushOperation) {
 		operation.creationTime = creationTime
+	}
+}
+
+// PushOptSubject returns a function that sets the subject for Referrers API
+func PushOptSubject(subject *ocispec.Descriptor) PushOption {
+	return func(operation *pushOperation) {
+		operation.subject = subject
 	}
 }
 
@@ -910,7 +918,8 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *ur
 // tagManifest prepares and tags a manifest in memory storage
 func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 	configDescriptor ocispec.Descriptor, layers []ocispec.Descriptor,
-	ociAnnotations map[string]string, parsedRef reference) (ocispec.Descriptor, error) {
+	ociAnnotations map[string]string, parsedRef reference,
+	subject *ocispec.Descriptor) (ocispec.Descriptor, error) {
 
 	manifest := ocispec.Manifest{
 		Versioned:    specs.Versioned{SchemaVersion: 2},
@@ -918,6 +927,7 @@ func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 		Config:       configDescriptor,
 		Layers:       layers,
 		Annotations:  ociAnnotations,
+		Subject:      subject,
 	}
 
 	manifestData, err := json.Marshal(manifest)
