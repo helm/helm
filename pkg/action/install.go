@@ -129,10 +129,12 @@ type ChartPathOptions struct {
 }
 
 type InstallItem struct {
-	ChartName string
-	WaitFor   string
-	Manifests []releaseutil.Manifest
-	Resources kube.ResourceList
+	ChartName        string
+	WaitFor          string
+	Manifests        []releaseutil.Manifest
+	Resources        kube.ResourceList
+	PreInstallHooks  []*release.Hook
+	PostInstallHooks []*release.Hook
 }
 
 // NewInstall creates a new Install object with the given configuration.
@@ -708,6 +710,7 @@ func (i *Install) RunWithCustomContext(ctx context.Context, chrt *chart.Chart, v
 
 	// Pre-install anything in the crd/ directory. We do this before Helm
 	// contacts the upstream server and builds the capabilities object.
+	fmt.Fprintf(os.Stdout, "Pre-install all crds in crds/...\n")
 	if crds := chrt.CRDObjects(); !i.ClientOnly && !i.SkipCRDs && len(crds) > 0 {
 		// On dry run, bail here
 		if i.DryRun {
@@ -840,7 +843,7 @@ func (i *Install) RunWithCustomContext(ctx context.Context, chrt *chart.Chart, v
 		}
 	}
 
-	sortedResources, err := GetInstallSequence(chrt, sortedManifest, resources)
+	sortedResources, err := GetInstallSequence(chrt, sortedManifest, resources, rel.Hooks)
 	if err != nil {
 		rel.SetStatus(release.StatusFailed, fmt.Sprintf("failed to get install sequence: %s", err.Error()))
 		return rel, err
@@ -939,14 +942,18 @@ func (i *Install) performCustomInstall(c chan<- resultMessage, rel *release.Rele
 	// pre-install hooks
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
+			rel.SetStatus(release.StatusFailed, fmt.Sprintf("failed pre-install: %s", err))
+			if err := i.recordRelease(rel); err != nil {
+				i.cfg.Log("failed to record the release: %s", err)
+			}
 			i.reportToRun(c, rel, fmt.Errorf("failed pre-install: %s", err))
 			return
 		}
 	}
 
 	for _, item := range installItems {
-		i.cfg.Log("-------------Installing chart: %s--------------", item.ChartName)
-		fmt.Fprintf(os.Stdout, "============Installing chart: %s\n===========", item.ChartName)
+		i.cfg.Log("-------------Installing chart: %s--------------\n", item.ChartName)
+		fmt.Fprintf(os.Stdout, "============ Installing chart: %s ===========\n", item.ChartName)
 
 		if len(item.Resources) > 0 {
 			// 找出这个 item 中需要 adopt 的资源
@@ -971,6 +978,11 @@ func (i *Install) performCustomInstall(c chan<- resultMessage, rel *release.Rele
 			// 创建新资源
 			if len(itemToCreate) > 0 {
 				if _, err := i.cfg.KubeClient.Create(itemToCreate); err != nil {
+					rel.SetStatus(release.StatusFailed, fmt.Sprintf("create failed: %s", err.Error()))
+					if err := i.recordRelease(rel); err != nil {
+						i.cfg.Log("failed to record the release: %s", err)
+					}
+
 					i.reportToRun(c, rel, err)
 					return
 				}
@@ -979,9 +991,22 @@ func (i *Install) performCustomInstall(c chan<- resultMessage, rel *release.Rele
 			// 更新已存在的资源
 			if len(itemToBeAdopted) > 0 {
 				if _, err := i.cfg.KubeClient.Update(itemToBeAdopted, itemToBeAdopted, i.Force); err != nil {
+					rel.SetStatus(release.StatusFailed, fmt.Sprintf("update failed: %s", err.Error()))
+					if err := i.recordRelease(rel); err != nil {
+						i.cfg.Log("failed to record the release: %s", err)
+					}
+
 					i.reportToRun(c, rel, err)
 					return
 				}
+			}
+		}
+
+		// Post-install hooks
+		if !i.DisableHooks {
+			if err := i.cfg.execChartHook(rel, item.PostInstallHooks, release.HookPostInstall, i.Timeout); err != nil {
+				i.reportToRun(c, rel, fmt.Errorf("failed post-install: %s", err))
+				return
 			}
 		}
 
@@ -1002,30 +1027,45 @@ func (i *Install) performCustomInstall(c chan<- resultMessage, rel *release.Rele
 
 		// 自定义 waitFor
 		if item.WaitFor != "" {
-			fmt.Fprintf(os.Stdout, "Executing waitFor: %s\n==========", item.WaitFor)
+			if err := i.executeWaitFor(item.ChartName, item.WaitFor); err != nil {
+				rel.SetStatus(release.StatusFailed, fmt.Sprintf("wait failed for %s: %s", item.ChartName, err.Error()))
+				if err := i.recordRelease(rel); err != nil {
+					i.cfg.Log("failed to record the release: %s", err)
+				}
 
-			cmd := exec.Command("bash", "-c", item.WaitFor)
-			stdoutStderr, err := cmd.CombinedOutput()
-
-			if err != nil {
-				fmt.Fprintf(os.Stdout, "Wait command failed: %s, output: %s", err.Error(), string(stdoutStderr))
-				rel.SetStatus(release.StatusFailed, fmt.Sprintf("wait failed for %s: %s", item.ChartName, string(stdoutStderr)))
-				i.reportToRun(c, rel, fmt.Errorf("wait for %s failed: %s", item.ChartName, string(stdoutStderr)))
+				i.reportToRun(c, rel, err)
 				return
 			}
-
-			i.cfg.Log("Wait completed for %s", item.ChartName)
-			fmt.Fprintf(os.Stdout, "Wait completed for %s", item.ChartName)
 		}
+
+		//if item.WaitFor != "" {
+		//	fmt.Fprintf(os.Stdout, "Executing waitFor: %s\n", item.WaitFor)
+		//
+		//	cmd := exec.Command("bash", "-c", item.WaitFor)
+		//	stdoutStderr, err := cmd.CombinedOutput()
+		//
+		//	if err != nil {
+		//		fmt.Fprintf(os.Stdout, "Wait command failed: %s, output: %s", err.Error(), string(stdoutStderr))
+		//		if strings.Contains(string(stdoutStderr), "no matching resources found") {
+		//			goto retryWaitFor
+		//		}
+		//		rel.SetStatus(release.StatusFailed, fmt.Sprintf("wait failed for %s: %s", item.ChartName, string(stdoutStderr)))
+		//		i.reportToRun(c, rel, fmt.Errorf("wait for %s failed: %s", item.ChartName, string(stdoutStderr)))
+		//		return
+		//	}
+		//
+		//	i.cfg.Log("Wait completed for %s", item.ChartName)
+		//	fmt.Fprintf(os.Stdout, "Wait completed for %s\n", item.ChartName)
+		//}
 	}
 
-	// post-install hooks - 只执行一次
-	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
-			i.reportToRun(c, rel, fmt.Errorf("failed post-install: %s", err))
-			return
-		}
-	}
+	//// post-install hooks - 只执行一次
+	//if !i.DisableHooks {
+	//	if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
+	//		i.reportToRun(c, rel, fmt.Errorf("failed post-install: %s", err))
+	//		return
+	//	}
+	//}
 
 	if len(i.Description) > 0 {
 		rel.SetStatus(release.StatusDeployed, i.Description)
@@ -1039,6 +1079,66 @@ func (i *Install) performCustomInstall(c chan<- resultMessage, rel *release.Rele
 
 	i.reportToRun(c, rel, nil)
 }
+
+// executeWaitFor 执行自定义等待命令，带重试机制
+func (i *Install) executeWaitFor(chartName, waitFor string) error {
+	const (
+		maxRetries    = 100
+		retryInterval = 5 * time.Second
+	)
+
+	// 可重试的错误关键字
+	retryableErrors := []string{
+		"no matching resources found",
+		"etcdserver: leader changed",
+		"etcdserver: request timed out",
+		"connection refused",
+		"connection reset by peer",
+		"i/o timeout",
+		"net/http: TLS handshake timeout",
+		"the object has been modified",
+		"unable to connect to the server",
+		"context deadline exceeded",
+		"EOF",
+	}
+
+	fmt.Fprintf(os.Stdout, "Executing waitFor: %s\n", waitFor)
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		cmd := exec.Command("bash", "-c", waitFor)
+		stdoutStderr, err := cmd.CombinedOutput()
+
+		if err == nil {
+			i.cfg.Log("Wait completed for %s", chartName)
+			fmt.Fprintf(os.Stdout, "Wait completed for %s\n", chartName)
+			return nil
+		}
+
+		output := string(stdoutStderr)
+
+		// 检查是否是可重试的错误
+		shouldRetry := false
+		for _, retryableErr := range retryableErrors {
+			if strings.Contains(output, retryableErr) {
+				shouldRetry = true
+				break
+			}
+		}
+
+		if shouldRetry {
+			fmt.Fprintf(os.Stdout, "Retryable error, retrying (%d/%d): %s\n", attempt, maxRetries, strings.TrimSpace(output))
+			time.Sleep(retryInterval)
+			continue
+		}
+
+		// 不可重试的错误，直接返回
+		fmt.Fprintf(os.Stdout, "Wait command failed: %s, output: %s\n", err.Error(), output)
+		return fmt.Errorf("wait for %s failed: %s", chartName, output)
+	}
+
+	return fmt.Errorf("wait for %s timed out after %d retries", chartName, maxRetries)
+}
+
 func (i *Install) handleContext(ctx context.Context, c chan<- resultMessage, done chan struct{}, rel *release.Release) {
 	select {
 	case <-ctx.Done():

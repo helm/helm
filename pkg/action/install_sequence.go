@@ -2,7 +2,9 @@ package action
 
 import (
 	"fmt"
+	"helm.sh/helm/v3/pkg/release"
 	"os"
+	"sort"
 	"strings"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -10,7 +12,7 @@ import (
 	"helm.sh/helm/v3/pkg/releaseutil"
 )
 
-func GetInstallSequence(ch *chart.Chart, manifests []releaseutil.Manifest, resources kube.ResourceList) ([]InstallItem, error) {
+func GetInstallSequence(ch *chart.Chart, manifests []releaseutil.Manifest, resources kube.ResourceList, hooks []*release.Hook) ([]InstallItem, error) {
 
 	if len(ch.Metadata.Install) == 0 {
 		return []InstallItem{
@@ -86,6 +88,34 @@ func GetInstallSequence(ch *chart.Chart, manifests []releaseutil.Manifest, resou
 			}
 			order = append(order, chartName)
 		}
+	}
+
+	for _, h := range hooks {
+		chartName := extractChartNameFromPath(h.Path)
+
+		item, exists := groupMap[chartName]
+		if !exists {
+			continue
+		}
+
+		for _, event := range h.Events {
+			switch event {
+			case release.HookPreInstall:
+				item.PreInstallHooks = append(item.PreInstallHooks, h)
+			case release.HookPostInstall:
+				item.PostInstallHooks = append(item.PostInstallHooks, h)
+			}
+		}
+	}
+
+	// 对每个 item 的 hooks 按 weight 排序
+	for _, item := range groupMap {
+		sort.Slice(item.PreInstallHooks, func(i, j int) bool {
+			return item.PreInstallHooks[i].Weight < item.PreInstallHooks[j].Weight
+		})
+		sort.Slice(item.PostInstallHooks, func(i, j int) bool {
+			return item.PostInstallHooks[i].Weight < item.PostInstallHooks[j].Weight
+		})
 	}
 
 	result := make([]InstallItem, 0, len(order))

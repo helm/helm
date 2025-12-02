@@ -592,7 +592,7 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 }
 
 func createResource(info *resource.Info) error {
-	fmt.Fprintf(os.Stdout, "creating resource %s\n '%s'", info.Mapping.GroupVersionKind.Kind, info.Name)
+	fmt.Fprintf(os.Stdout, "creating resource %s '%s'\n", info.Mapping.GroupVersionKind.Kind, info.Name)
 	obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
 	if err != nil {
 		return err
@@ -671,7 +671,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 			return errors.Wrap(err, "failed to replace object")
 		}
 		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
-		fmt.Fprintf(os.Stdout, "Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
+		fmt.Fprintf(os.Stdout, "Replaced %q with kind %s for kind %s\n", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
 		patch, patchType, err := createPatch(target, currentObj)
 		if err != nil {
@@ -689,7 +689,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 		// send patch to server
 		c.Log("Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
-		fmt.Fprintf(os.Stdout, "Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
+		fmt.Fprintf(os.Stdout, "Patch %s %q in namespace %s\n", kind, target.Name, target.Namespace)
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 		if err != nil {
 			return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
