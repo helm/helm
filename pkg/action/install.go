@@ -1100,6 +1100,7 @@ func (i *Install) executeWaitFor(chartName, waitFor string) error {
 		"unable to connect to the server",
 		"context deadline exceeded",
 		"EOF",
+		"no route to host",
 	}
 
 	fmt.Fprintf(os.Stdout, "Executing waitFor: %s\n", waitFor)
