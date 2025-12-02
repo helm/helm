@@ -913,10 +913,11 @@ func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 	ociAnnotations map[string]string, parsedRef reference) (ocispec.Descriptor, error) {
 
 	manifest := ocispec.Manifest{
-		Versioned:   specs.Versioned{SchemaVersion: 2},
-		Config:      configDescriptor,
-		Layers:      layers,
-		Annotations: ociAnnotations,
+		Versioned:    specs.Versioned{SchemaVersion: 2},
+		ArtifactType: ConfigMediaType,
+		Config:       configDescriptor,
+		Layers:       layers,
+		Annotations:  ociAnnotations,
 	}
 
 	manifestData, err := json.Marshal(manifest)
