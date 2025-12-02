@@ -592,7 +592,7 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 }
 
 func createResource(info *resource.Info) error {
-	fmt.Fprintf(os.Stdout, "creating resource %s\n", info.Mapping.GroupVersionKind.Kind)
+	fmt.Fprintf(os.Stdout, "creating resource %s\n '%s'", info.Mapping.GroupVersionKind.Kind, info.Name)
 	obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
 	if err != nil {
 		return err
