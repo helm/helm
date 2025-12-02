@@ -200,29 +200,39 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 	}
 
 	// when customer inputs specific version, check whether there's an exact match first
-	if len(version) != 0 {
-		for _, ver := range vs {
-			if version == ver.Version {
-				return ver, nil
-			}
-		}
-	}
-
-	for _, ver := range vs {
-		test, err := semver.NewVersion(ver.Version)
-		if err != nil {
-			continue
-		}
-
-		if constraint.Check(test) {
-			slog.Warn("unable to find exact version; falling back to closest available version", "chart", name, "requested", version, "selected", ver.Version)
-			return ver, nil
-		}
-	}
-	return nil, fmt.Errorf("no chart version found for %s-%s", name, version)
+	// Check exact match first
+if version != "" {
+    for _, ver := range vs {
+        if version == ver.Version {
+            return ver, nil
+        }
+    }
 }
 
-// WriteFile writes an index file to the given destination path.
+// Find closest match
+for _, ver := range vs {
+    test, err := semver.NewVersion(ver.Version)
+    if err != nil {
+        continue
+    }
+
+    if constraint.Check(test) {
+        // Only warn if a specific version was requested
+        if version != "" {
+            slog.Warn(
+                "unable to find exact version; falling back to closest available version",
+                "chart", name,
+                "requested", version,
+                "selected", ver.Version)
+        }
+        return ver, nil
+    }
+}
+
+// No match found at all
+return nil, fmt.Errorf("no chart version found for %s-%s", name, version)
+}
+//ile writes an index file to the given destination path.
 //
 // The mode on the file is set to 'mode'.
 func (i IndexFile) WriteFile(dest string, mode os.FileMode) error {
