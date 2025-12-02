@@ -28,6 +28,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/cmd/require"
+	"helm.sh/helm/v4/pkg/gates"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 
@@ -96,6 +97,9 @@ func (o *createOptions) run(out io.Writer) error {
 	case chart.APIVersionV2, "":
 		return o.createV2Chart(out)
 	case chartv3.APIVersionV3:
+		if !gates.ChartV3.IsEnabled() {
+			return gates.ChartV3.Error()
+		}
 		return o.createV3Chart(out)
 	default:
 		return fmt.Errorf("unsupported chart API version: %s (supported: v2, v3)", o.chartAPIVersion)

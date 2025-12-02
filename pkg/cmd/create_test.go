@@ -29,6 +29,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/gates"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 
@@ -94,6 +95,12 @@ func TestCreateStarterCmd(t *testing.T) {
 			t.Chdir(t.TempDir())
 			ensure.HelmHome(t)
 			defer resetEnv()()
+
+			// Enable feature gate for v3 charts
+			if tt.chartAPIVersion == "v3" {
+				t.Setenv(string(gates.ChartV3), "1")
+			}
+
 			cname := "testchart"
 
 			// Create a starter using the appropriate chartutil
@@ -224,6 +231,7 @@ func TestCreateCmdChartAPIVersionV2(t *testing.T) {
 func TestCreateCmdChartAPIVersionV3(t *testing.T) {
 	t.Chdir(t.TempDir())
 	ensure.HelmHome(t)
+	t.Setenv(string(gates.ChartV3), "1")
 	cname := "testchart"
 
 	// Run a create with v3
