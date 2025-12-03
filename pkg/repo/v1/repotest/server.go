@@ -140,11 +140,12 @@ func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 
 type OCIServer struct {
 	*registry.Registry
-	RegistryURL  string
-	Dir          string
-	TestUsername string
-	TestPassword string
-	Client       *ociRegistry.Client
+	RegistryURL    string
+	Dir            string
+	TestUsername   string
+	TestPassword   string
+	Client         *ociRegistry.Client
+	ManifestDigest string // Digest of the pushed oci-dependent-chart manifest
 }
 
 type OCIServerRunConfig struct {
@@ -282,6 +283,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		result.Chart.Digest, result.Chart.Size)
 
 	srv.Client = registryClient
+	srv.ManifestDigest = result.Manifest.Digest
 	c := cfg.DependingChart
 	if c == nil {
 		return

@@ -506,3 +506,51 @@ func TestPullFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "pull", false)
 	checkFileCompletion(t, "pull repo/chart", false)
 }
+
+// TestPullOCIWithTagAndDigest tests pulling an OCI chart with both tag and digest specified.
+// This is a regression test for https://github.com/helm/helm/issues/31600
+func TestPullOCIWithTagAndDigest(t *testing.T) {
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+	)
+	defer srv.Stop()
+
+	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ociSrv.Run(t)
+
+	contentCache := t.TempDir()
+	outdir := t.TempDir()
+
+	// Test: pull with tag and digest (the fixed bug from issue #31600)
+	// Previously this failed with "encoding/hex: invalid byte: U+0073 's'"
+	ref := fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0@%s",
+		ociSrv.RegistryURL, ociSrv.ManifestDigest)
+
+	cmd := fmt.Sprintf("pull %s -d '%s' --registry-config %s --content-cache %s --plain-http",
+		ref,
+		outdir,
+		filepath.Join(srv.Root(), "config.json"),
+		contentCache,
+	)
+
+	_, _, err = executeActionCommand(cmd)
+	if err != nil {
+		t.Fatalf("pull with tag+digest failed: %v", err)
+	}
+
+	// Verify the file was downloaded
+	// When digest is present, the filename uses the digest format
+	expectedFile := filepath.Join(outdir, "oci-dependent-chart-0.1.0.tgz")
+	if _, err := os.Stat(expectedFile); err != nil {
+		// Try the digest-based filename
+		digestPart := ociSrv.ManifestDigest[7:] // strip "sha256:"
+		expectedFile = filepath.Join(outdir, fmt.Sprintf("oci-dependent-chart@sha256-%s.tgz", digestPart))
+		if _, err := os.Stat(expectedFile); err != nil {
+			t.Errorf("expected chart file not found: %v", err)
+		}
+	}
+}
