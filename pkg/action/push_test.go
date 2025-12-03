@@ -47,7 +47,7 @@ func TestNewPushWithInsecureSkipTLSVerify(t *testing.T) {
 	client := NewPushWithOpts(WithInsecureSkipTLSVerify(true))
 
 	assert.NotNil(t, client)
-	assert.Equal(t, true, client.insecureSkipTLSverify)
+	assert.Equal(t, true, client.insecureSkipTLSVerify)
 }
 
 func TestNewPushWithPlainHTTP(t *testing.T) {
