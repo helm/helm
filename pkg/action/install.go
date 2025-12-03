@@ -1101,6 +1101,8 @@ func (i *Install) executeWaitFor(chartName, waitFor string) error {
 		"context deadline exceeded",
 		"EOF",
 		"no route to host",
+		"etcdserver: request timed out",
+		"http2: client connection lost",
 	}
 
 	fmt.Fprintf(os.Stdout, "Executing waitFor: %s\n", waitFor)
