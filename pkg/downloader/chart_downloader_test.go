@@ -485,3 +485,41 @@ func TestDownloadToCache(t *testing.T) {
 		c.Keyring = ""
 	})
 }
+
+func TestStripDigestAlgorithm(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "sha256 prefixed digest",
+			input:    "sha256:aef46c66a7f2d5a12a7e3f54a64790daf5c9a9e66af3f46955efdaa6c900341d",
+			expected: "aef46c66a7f2d5a12a7e3f54a64790daf5c9a9e66af3f46955efdaa6c900341d",
+		},
+		{
+			name:     "sha512 prefixed digest",
+			input:    "sha512:abcdef1234567890",
+			expected: "abcdef1234567890",
+		},
+		{
+			name:     "plain hex digest without prefix",
+			input:    "aef46c66a7f2d5a12a7e3f54a64790daf5c9a9e66af3f46955efdaa6c900341d",
+			expected: "aef46c66a7f2d5a12a7e3f54a64790daf5c9a9e66af3f46955efdaa6c900341d",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := stripDigestAlgorithm(tt.input)
+			if result != tt.expected {
+				t.Errorf("stripDigestAlgorithm(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
