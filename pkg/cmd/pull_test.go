@@ -520,7 +520,7 @@ func TestPullOCIWithTagAndDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ociSrv.Run(t)
+	result := ociSrv.Run(t)
 
 	contentCache := t.TempDir()
 	outdir := t.TempDir()
@@ -528,7 +528,7 @@ func TestPullOCIWithTagAndDigest(t *testing.T) {
 	// Test: pull with tag and digest (the fixed bug from issue #31600)
 	// Previously this failed with "encoding/hex: invalid byte: U+0073 's'"
 	ref := fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0@%s",
-		ociSrv.RegistryURL, ociSrv.ManifestDigest)
+		ociSrv.RegistryURL, result.PushedChart.Manifest.Digest)
 
 	cmd := fmt.Sprintf("pull %s -d '%s' --registry-config %s --content-cache %s --plain-http",
 		ref,
@@ -547,7 +547,7 @@ func TestPullOCIWithTagAndDigest(t *testing.T) {
 	expectedFile := filepath.Join(outdir, "oci-dependent-chart-0.1.0.tgz")
 	if _, err := os.Stat(expectedFile); err != nil {
 		// Try the digest-based filename
-		digestPart := ociSrv.ManifestDigest[7:] // strip "sha256:"
+		digestPart := result.PushedChart.Manifest.Digest[7:] // strip "sha256:"
 		expectedFile = filepath.Join(outdir, fmt.Sprintf("oci-dependent-chart@sha256-%s.tgz", digestPart))
 		if _, err := os.Stat(expectedFile); err != nil {
 			t.Errorf("expected chart file not found: %v", err)

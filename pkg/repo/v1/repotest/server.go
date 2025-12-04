@@ -140,12 +140,11 @@ func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 
 type OCIServer struct {
 	*registry.Registry
-	RegistryURL    string
-	Dir            string
-	TestUsername   string
-	TestPassword   string
-	Client         *ociRegistry.Client
-	ManifestDigest string // Digest of the pushed oci-dependent-chart manifest
+	RegistryURL  string
+	Dir          string
+	TestUsername string
+	TestPassword string
+	Client       *ociRegistry.Client
 }
 
 type OCIServerRunConfig struct {
@@ -153,6 +152,10 @@ type OCIServerRunConfig struct {
 }
 
 type OCIServerOpt func(config *OCIServerRunConfig)
+
+type OCIServerRunResult struct {
+	PushedChart *ociRegistry.PushResult
+}
 
 func WithDependingChart(c *chart.Chart) OCIServerOpt {
 	return func(config *OCIServerRunConfig) {
@@ -210,7 +213,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 	}, nil
 }
 
-func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
+func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) *OCIServerRunResult {
 	t.Helper()
 	cfg := &OCIServerRunConfig{}
 	for _, fn := range opts {
@@ -283,10 +286,11 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		result.Chart.Digest, result.Chart.Size)
 
 	srv.Client = registryClient
-	srv.ManifestDigest = result.Manifest.Digest
 	c := cfg.DependingChart
 	if c == nil {
-		return
+		return &OCIServerRunResult{
+			PushedChart: result,
+		}
 	}
 
 	dependingRef := fmt.Sprintf("%s/u/ocitestuser/%s:%s",
@@ -310,6 +314,10 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		result.Manifest.Digest, result.Manifest.Size,
 		result.Config.Digest, result.Config.Size,
 		result.Chart.Digest, result.Chart.Size)
+
+	return &OCIServerRunResult{
+		PushedChart: result,
+	}
 }
 
 // Root gets the docroot for the server.
