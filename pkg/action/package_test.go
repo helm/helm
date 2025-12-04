@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 )
@@ -90,7 +91,8 @@ func TestPassphraseFileFetcher_WithStdinAndMultipleFetches(t *testing.T) {
 	passphrase := "secret-from-stdin"
 
 	go func() {
-		w.Write([]byte(passphrase + "\n"))
+		_, err = w.Write([]byte(passphrase + "\n"))
+		require.NoError(t, err)
 	}()
 
 	for range 4 {
@@ -151,4 +153,19 @@ func TestValidateVersion(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRun_ErrorPath(t *testing.T) {
+	client := NewPackage()
+	_, err := client.Run("err-path", nil)
+	require.Error(t, err)
+}
+
+func TestRun(t *testing.T) {
+	chartPath := "testdata/charts/chart-with-schema"
+	client := NewPackage()
+	filename, err := client.Run(chartPath, nil)
+	require.NoError(t, err)
+	require.Equal(t, "empty-0.1.0.tgz", filename)
+	require.NoError(t, os.Remove(filename))
 }
