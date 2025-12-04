@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"strings"
 
 	"k8s.io/client-go/kubernetes/scheme"
 
@@ -39,11 +40,13 @@ var (
 	DefaultVersionSet = allKnownVersions()
 
 	// DefaultCapabilities is the default set of capabilities.
+	version             = fmt.Sprintf("v%s.%s.0", k8sVersionMajor, k8sVersionMinor)
 	DefaultCapabilities = &Capabilities{
 		KubeVersion: KubeVersion{
-			Version: fmt.Sprintf("v%s.%s.0", k8sVersionMajor, k8sVersionMinor),
-			Major:   k8sVersionMajor,
-			Minor:   k8sVersionMinor,
+			Version:           version,
+			normalizedVersion: version,
+			Major:             k8sVersionMajor,
+			Minor:             k8sVersionMinor,
 		},
 		APIVersions: DefaultVersionSet,
 		HelmVersion: helmversion.Get(),
@@ -70,15 +73,22 @@ func (capabilities *Capabilities) Copy() *Capabilities {
 
 // KubeVersion is the Kubernetes version.
 type KubeVersion struct {
-	Version string // Kubernetes version
-	Major   string // Kubernetes major version
-	Minor   string // Kubernetes minor version
+	Version           string // Full version (e.g., v1.33.4-gke.1245000)
+	normalizedVersion string // Normalized for constraint checking (e.g., v1.33.4)
+	Major             string // Kubernetes major version
+	Minor             string // Kubernetes minor version
 }
 
-// String implements fmt.Stringer
-func (kv *KubeVersion) String() string { return kv.Version }
+// String implements fmt.Stringer.
+// Returns the normalized version used for constraint checking.
+func (kv *KubeVersion) String() string {
+	if kv.normalizedVersion != "" {
+		return kv.normalizedVersion
+	}
+	return kv.Version
+}
 
-// GitVersion returns the Kubernetes version string.
+// GitVersion returns the full Kubernetes version string.
 //
 // Deprecated: use KubeVersion.Version.
 func (kv *KubeVersion) GitVersion() string { return kv.Version }
@@ -91,10 +101,21 @@ func ParseKubeVersion(version string) (*KubeVersion, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Preserve original input (e.g., v1.33.4-gke.1245000)
+	gitVersion := version
+	if !strings.HasPrefix(version, "v") {
+		gitVersion = "v" + version
+	}
+
+	// Normalize for constraint checking (strips all suffixes)
+	normalizedVer := "v" + sv.String()
+
 	return &KubeVersion{
-		Version: "v" + sv.String(),
-		Major:   strconv.FormatUint(uint64(sv.Major()), 10),
-		Minor:   strconv.FormatUint(uint64(sv.Minor()), 10),
+		Version:           gitVersion,
+		normalizedVersion: normalizedVer,
+		Major:             strconv.FormatUint(uint64(sv.Major()), 10),
+		Minor:             strconv.FormatUint(uint64(sv.Minor()), 10),
 	}, nil
 }
 
