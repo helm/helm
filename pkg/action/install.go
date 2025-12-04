@@ -116,6 +116,7 @@ type Install struct {
 	Labels                   map[string]string
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
+	// (for things like templating).
 	KubeVersion *common.KubeVersion
 	APIVersions common.VersionSet
 	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
