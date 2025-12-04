@@ -36,6 +36,3 @@ func (g Gate) IsEnabled() bool {
 func (g Gate) Error() error {
 	return fmt.Errorf("this feature has been marked as experimental and is not enabled by default. Please set %s=1 in your environment to use this feature", g.String())
 }
-
-// ChartV3 is the feature gate for chart API version v3.
-const ChartV3 Gate = "HELM_EXPERIMENTAL_CHART_V3"

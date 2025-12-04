@@ -23,13 +23,12 @@ import (
 	"testing"
 
 	chartv3 "helm.sh/helm/v4/internal/chart/v3"
-	loaderv3 "helm.sh/helm/v4/internal/chart/v3/loader"
 	chartutilv3 "helm.sh/helm/v4/internal/chart/v3/util"
 	"helm.sh/helm/v4/internal/test/ensure"
-	chart "helm.sh/helm/v4/pkg/chart/v2"
-	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chart "helm.sh/helm/v4/pkg/chart"
+	chartloader "helm.sh/helm/v4/pkg/chart/loader"
+	chartv2 "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
-	"helm.sh/helm/v4/pkg/gates"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 
@@ -50,16 +49,26 @@ func TestCreateCmd(t *testing.T) {
 		t.Fatalf("chart is not directory")
 	}
 
-	c, err := loader.LoadDir(cname)
+	c, err := chartloader.LoadDir(cname)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if c.Name() != cname {
-		t.Errorf("Expected %q name, got %q", cname, c.Name())
+	acc, err := chart.NewAccessor(c)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if c.Metadata.APIVersion != chart.APIVersionV2 {
-		t.Errorf("Wrong API version: %q", c.Metadata.APIVersion)
+
+	if acc.Name() != cname {
+		t.Errorf("Expected %q name, got %q", cname, acc.Name())
+	}
+	metadata := acc.MetadataAsMap()
+	apiVersion, ok := metadata["APIVersion"].(string)
+	if !ok {
+		t.Fatal("APIVersion not found in metadata")
+	}
+	if apiVersion != chartv2.APIVersionV2 {
+		t.Errorf("Wrong API version: %q", apiVersion)
 	}
 }
 
@@ -74,13 +83,13 @@ func TestCreateStarterCmd(t *testing.T) {
 			name:            "v2 with relative starter path",
 			chartAPIVersion: "",
 			useAbsolutePath: false,
-			expectedVersion: chart.APIVersionV2,
+			expectedVersion: chartv2.APIVersionV2,
 		},
 		{
 			name:            "v2 with absolute starter path",
 			chartAPIVersion: "",
 			useAbsolutePath: true,
-			expectedVersion: chart.APIVersionV2,
+			expectedVersion: chartv2.APIVersionV2,
 		},
 		{
 			name:            "v3 with relative starter path",
@@ -98,7 +107,7 @@ func TestCreateStarterCmd(t *testing.T) {
 
 			// Enable feature gate for v3 charts
 			if tt.chartAPIVersion == "v3" {
-				t.Setenv(string(gates.ChartV3), "1")
+				t.Setenv(string(chartV3), "1")
 			}
 
 			cname := "testchart"
@@ -129,8 +138,10 @@ func TestCreateStarterCmd(t *testing.T) {
 				starterArg = filepath.Join(starterchart, "starterchart")
 			}
 			cmd := fmt.Sprintf("create --starter=%s", starterArg)
-			if tt.chartAPIVersion != "" {
-				cmd += fmt.Sprintf(" --chart-api-version=%s", tt.chartAPIVersion)
+			if tt.chartAPIVersion == "v3" {
+				cmd += fmt.Sprintf(" --chart-api-version=%s", chartv3.APIVersionV3)
+			} else {
+				cmd += fmt.Sprintf(" --chart-api-version=%s", chartv2.APIVersionV2)
 			}
 			cmd += " " + cname
 
@@ -147,28 +158,25 @@ func TestCreateStarterCmd(t *testing.T) {
 			}
 
 			// Load and verify the chart
-			var chartName, apiVersion string
+			c, err := chartloader.LoadDir(cname)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			acc, err := chart.NewAccessor(c)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			chartName := acc.Name()
+			metadata := acc.MetadataAsMap()
+			apiVersion, ok := metadata["APIVersion"].(string)
+			if !ok {
+				t.Fatal("APIVersion not found in metadata")
+			}
 			var templates []string
-			if tt.chartAPIVersion == "v3" {
-				c, err := loaderv3.LoadDir(cname)
-				if err != nil {
-					t.Fatal(err)
-				}
-				chartName = c.Name()
-				apiVersion = c.Metadata.APIVersion
-				for _, tpl := range c.Templates {
-					templates = append(templates, tpl.Name)
-				}
-			} else {
-				c, err := loader.LoadDir(cname)
-				if err != nil {
-					t.Fatal(err)
-				}
-				chartName = c.Name()
-				apiVersion = c.Metadata.APIVersion
-				for _, tpl := range c.Templates {
-					templates = append(templates, tpl.Name)
-				}
+			for _, tpl := range acc.Templates() {
+				templates = append(templates, tpl.Name)
 			}
 
 			if chartName != cname {
@@ -215,23 +223,33 @@ func TestCreateCmdChartAPIVersionV2(t *testing.T) {
 		t.Fatalf("chart is not directory")
 	}
 
-	c, err := loader.LoadDir(cname)
+	c, err := chartloader.LoadDir(cname)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if c.Name() != cname {
-		t.Errorf("Expected %q name, got %q", cname, c.Name())
+	acc, err := chart.NewAccessor(c)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if c.Metadata.APIVersion != chart.APIVersionV2 {
-		t.Errorf("Wrong API version: expected %q, got %q", chart.APIVersionV2, c.Metadata.APIVersion)
+
+	if acc.Name() != cname {
+		t.Errorf("Expected %q name, got %q", cname, acc.Name())
+	}
+	metadata := acc.MetadataAsMap()
+	apiVersion, ok := metadata["APIVersion"].(string)
+	if !ok {
+		t.Fatal("APIVersion not found in metadata")
+	}
+	if apiVersion != chartv2.APIVersionV2 {
+		t.Errorf("Wrong API version: expected %q, got %q", chartv2.APIVersionV2, apiVersion)
 	}
 }
 
 func TestCreateCmdChartAPIVersionV3(t *testing.T) {
 	t.Chdir(t.TempDir())
 	ensure.HelmHome(t)
-	t.Setenv(string(gates.ChartV3), "1")
+	t.Setenv(string(chartV3), "1")
 	cname := "testchart"
 
 	// Run a create with v3
@@ -246,16 +264,26 @@ func TestCreateCmdChartAPIVersionV3(t *testing.T) {
 		t.Fatalf("chart is not directory")
 	}
 
-	c, err := loaderv3.LoadDir(cname)
+	c, err := chartloader.LoadDir(cname)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if c.Name() != cname {
-		t.Errorf("Expected %q name, got %q", cname, c.Name())
+	acc, err := chart.NewAccessor(c)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if c.Metadata.APIVersion != chartv3.APIVersionV3 {
-		t.Errorf("Wrong API version: expected %q, got %q", chartv3.APIVersionV3, c.Metadata.APIVersion)
+
+	if acc.Name() != cname {
+		t.Errorf("Expected %q name, got %q", cname, acc.Name())
+	}
+	metadata := acc.MetadataAsMap()
+	apiVersion, ok := metadata["APIVersion"].(string)
+	if !ok {
+		t.Fatal("APIVersion not found in metadata")
+	}
+	if apiVersion != chartv3.APIVersionV3 {
+		t.Errorf("Wrong API version: expected %q, got %q", chartv3.APIVersionV3, apiVersion)
 	}
 }
 

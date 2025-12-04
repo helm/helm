@@ -60,6 +60,9 @@ type createOptions struct {
 	chartAPIVersion string // --chart-api-version
 }
 
+// ChartV3 is the feature gate for chart API version v3.
+const chartV3 gates.Gate = "HELM_EXPERIMENTAL_CHART_V3"
+
 func newCreateCmd(out io.Writer) *cobra.Command {
 	o := &createOptions{}
 
@@ -97,8 +100,8 @@ func (o *createOptions) run(out io.Writer) error {
 	case chart.APIVersionV2, "":
 		return o.createV2Chart(out)
 	case chartv3.APIVersionV3:
-		if !gates.ChartV3.IsEnabled() {
-			return gates.ChartV3.Error()
+		if !chartV3.IsEnabled() {
+			return chartV3.Error()
 		}
 		return o.createV3Chart(out)
 	default:
