@@ -89,6 +89,8 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 
 	cmd.Flags().StringVarP(&o.starter, "starter", "p", "", "the name or absolute path to Helm starter scaffold")
 	cmd.Flags().StringVar(&o.chartAPIVersion, "chart-api-version", chart.APIVersionV2, "chart API version to use (v2 or v3)")
+	// Hide the flag until chart v3 is officially released
+	cmd.Flags().MarkHidden("chart-api-version")
 
 	return cmd
 }
