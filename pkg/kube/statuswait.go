@@ -113,7 +113,9 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		}
 		resources = append(resources, obj)
 	}
-	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
+	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{
+		RESTScopeStrategy: watcher.RESTScopeNamespace,
+	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
 	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus))
 	<-done
@@ -156,7 +158,9 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 		resources = append(resources, obj)
 	}
 
-	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
+	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{
+		RESTScopeStrategy: watcher.RESTScopeNamespace,
+	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
 	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus))
 	<-done
