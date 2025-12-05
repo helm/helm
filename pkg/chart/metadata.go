@@ -85,8 +85,8 @@ type Metadata struct {
 }
 
 type ChartInstance struct {
-	Name    string `json:"name,omitempty"`
-	WaitFor string `json:"waitFor,omitempty"`
+	Name    string   `json:"name,omitempty"`
+	WaitFor []string `json:"waitFor,omitempty"`
 }
 
 // Validate checks the metadata for known issues and sanitizes string

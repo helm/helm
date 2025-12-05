@@ -130,7 +130,7 @@ type ChartPathOptions struct {
 
 type InstallItem struct {
 	ChartName        string
-	WaitFor          string
+	WaitFor          []string
 	Manifests        []releaseutil.Manifest
 	Resources        kube.ResourceList
 	PreInstallHooks  []*release.Hook
@@ -1026,16 +1026,18 @@ func (i *Install) performCustomInstall(c chan<- resultMessage, rel *release.Rele
 		}
 
 		// 自定义 waitFor
-		if item.WaitFor != "" {
-			if err := i.executeWaitFor(item.ChartName, item.WaitFor); err != nil {
-				rel.SetStatus(release.StatusFailed, fmt.Sprintf("wait failed for %s: %s", item.ChartName, err.Error()))
-				if err := i.recordRelease(rel); err != nil {
-					i.cfg.Log("failed to record the release: %s", err)
+		if len(item.WaitFor) != 0 {
+			for _, waitFor := range item.WaitFor {
+				if err := i.executeWaitFor(item.ChartName, waitFor); err != nil {
+					rel.SetStatus(release.StatusFailed, fmt.Sprintf("wait failed for %s: %s", item.ChartName, err.Error()))
+					if err := i.recordRelease(rel); err != nil {
+						i.cfg.Log("failed to record the release: %s", err)
+					}
+					i.reportToRun(c, rel, err)
+					return
 				}
-
-				i.reportToRun(c, rel, err)
-				return
 			}
+
 		}
 
 		//if item.WaitFor != "" {
@@ -1114,6 +1116,7 @@ func (i *Install) executeWaitFor(chartName, waitFor string) error {
 		if err == nil {
 			i.cfg.Log("Wait completed for %s", chartName)
 			fmt.Fprintf(os.Stdout, "Wait completed for %s\n", chartName)
+			os.Stdout.Sync()
 			return nil
 		}
 

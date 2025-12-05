@@ -18,7 +18,7 @@ func GetInstallSequence(ch *chart.Chart, manifests []releaseutil.Manifest, resou
 		return []InstallItem{
 			{
 				ChartName: ch.Name(),
-				WaitFor:   "",
+				WaitFor:   []string{},
 				Resources: resources,
 			},
 		}, nil
@@ -49,7 +49,7 @@ func GetInstallSequence(ch *chart.Chart, manifests []releaseutil.Manifest, resou
 	}
 
 	// 构建 waitFor 映射
-	waitForMap := make(map[string]string)
+	waitForMap := make(map[string][]string, 0)
 	for _, inst := range ch.Metadata.Install {
 		waitForMap[inst.Name] = inst.WaitFor
 	}
