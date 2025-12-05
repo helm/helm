@@ -1087,9 +1087,9 @@ func (i *Install) executeWaitFor(chartName, waitFor string) error {
 	const (
 		maxRetries    = 100
 		retryInterval = 5 * time.Second
+		cmdTimeout    = 25 * time.Minute
 	)
 
-	// 可重试的错误关键字
 	retryableErrors := []string{
 		"no matching resources found",
 		"etcdserver: leader changed",
@@ -1103,16 +1103,29 @@ func (i *Install) executeWaitFor(chartName, waitFor string) error {
 		"context deadline exceeded",
 		"EOF",
 		"no route to host",
-		"etcdserver: request timed out",
 		"http2: client connection lost",
+		"timed out waiting for the condition",
 	}
 
 	fmt.Fprintf(os.Stdout, "Executing waitFor: %s\n", waitFor)
+	os.Stdout.Sync()
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
-		cmd := exec.Command("bash", "-c", waitFor)
-		stdoutStderr, err := cmd.CombinedOutput()
+		ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 
+		cmd := exec.CommandContext(ctx, "bash", "-c", waitFor)
+
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		err := cmd.Run()
+
+		output := strings.TrimSpace(stdout.String() + stderr.String())
+		ctxErr := ctx.Err()
+		cancel()
+
+		// 成功
 		if err == nil {
 			i.cfg.Log("Wait completed for %s", chartName)
 			fmt.Fprintf(os.Stdout, "Wait completed for %s\n", chartName)
@@ -1120,31 +1133,48 @@ func (i *Install) executeWaitFor(chartName, waitFor string) error {
 			return nil
 		}
 
-		output := string(stdoutStderr)
+		errString := err.Error()
 
-		// 检查是否是可重试的错误
+		// context
+		if ctxErr == context.DeadlineExceeded {
+			fmt.Fprintf(os.Stdout, "Command context timed out (%d/%d), output: %s\n", attempt, maxRetries, output)
+			os.Stdout.Sync()
+			time.Sleep(retryInterval)
+			continue
+		}
+
+		// 被 signal kill（context 取消时会发生）
+		if strings.Contains(errString, "signal: killed") {
+			fmt.Fprintf(os.Stdout, "Command was killed (%d/%d), output: %s\n", attempt, maxRetries, output)
+			os.Stdout.Sync()
+			time.Sleep(retryInterval)
+			continue
+		}
+
+		// 检查可重试错误
 		shouldRetry := false
 		for _, retryableErr := range retryableErrors {
-			if strings.Contains(output, retryableErr) {
+			if strings.Contains(output, retryableErr) || strings.Contains(errString, retryableErr) {
 				shouldRetry = true
 				break
 			}
 		}
 
 		if shouldRetry {
-			fmt.Fprintf(os.Stdout, "Retryable error, retrying (%d/%d): %s\n", attempt, maxRetries, strings.TrimSpace(output))
+			fmt.Fprintf(os.Stdout, "Retryable error (%d/%d): %s\n", attempt, maxRetries, output)
+			os.Stdout.Sync()
 			time.Sleep(retryInterval)
 			continue
 		}
 
-		// 不可重试的错误，直接返回
-		fmt.Fprintf(os.Stdout, "Wait command failed: %s, output: %s\n", err.Error(), output)
+		// 不可重试错误
+		fmt.Fprintf(os.Stdout, "Wait command failed: %s, output: %s\n", errString, output)
+		os.Stdout.Sync()
 		return fmt.Errorf("wait for %s failed: %s", chartName, output)
 	}
 
 	return fmt.Errorf("wait for %s timed out after %d retries", chartName, maxRetries)
 }
-
 func (i *Install) handleContext(ctx context.Context, c chan<- resultMessage, done chan struct{}, rel *release.Release) {
 	select {
 	case <-ctx.Done():
