@@ -55,6 +55,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewInstall(cfg)
 	valueOpts := &values.Options{}
 	var kubeVersion string
+	var apisFiles []string
 	var extraAPIs []string
 	var showFiles []string
 
@@ -94,6 +95,21 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.ReleaseName = "release-name"
 			client.Replace = true // Skip the name check
 			client.APIVersions = common.VersionSet(extraAPIs)
+			if len(apisFiles) > 0 {
+				x := []string{}
+				for _, apisFile := range apisFiles {
+					data, err := os.ReadFile(apisFile)
+					if err != nil {
+						return err
+					}
+					for _, line := range strings.Split(string(data), "\n") {
+						if strings.TrimSpace(line) != "" {
+							x = append(x, strings.TrimSpace(line))
+						}
+					}
+				}
+				common.DefaultCapabilities.APIVersions = common.VersionSet(x)
+			}
 			client.IncludeCRDs = includeCrds
 			rel, err := runInstall(args, client, valueOpts, out)
 
@@ -203,6 +219,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.IsUpgrade, "is-upgrade", false, "set .Release.IsUpgrade instead of .Release.IsInstall")
 	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for Capabilities.KubeVersion")
 	f.StringSliceVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions (multiple can be specified)")
+	f.StringSliceVarP(&apisFiles, "default-api-versions-file", "", []string{},
+		"Override default Capabilities.APIVersions from a local text file, one apiVerion per line. e.g.: \napps/v1/StatefulSet\napps/v1/ReplicaSet")
 	f.BoolVar(&client.UseReleaseName, "release-name", false, "use release name in the output-dir path.")
 	f.String(
 		"dry-run",
