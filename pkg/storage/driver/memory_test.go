@@ -107,6 +107,20 @@ func TestMemoryList(t *testing.T) {
 	ts := tsFixtureMemory(t)
 	ts.SetNamespace("default")
 
+	// list releases with pagination
+	err := ts.ListPages(func(page []release.Releaser, lastPage bool) (end bool) {
+		// check
+		if len(page) != 2 {
+			t.Errorf("Expected 2 releases, got %d:\n%v\n", len(page), page)
+		}
+
+		return !lastPage
+	}, 2, func(rel release.Releaser) bool { return true })
+	// check
+	if err != nil {
+		t.Errorf("Failed to list releases: %s", err)
+	}
+
 	// list all deployed releases
 	dpl, err := ts.List(func(rel release.Releaser) bool {
 		rls := convertReleaserToV1(t, rel)
@@ -255,6 +269,19 @@ func TestMemoryDelete(t *testing.T) {
 
 	ts := tsFixtureMemory(t)
 	ts.SetNamespace("")
+
+	// query cfgmaps with pagination
+	err := ts.QueryPages(func(page []release.Releaser, lastPage bool) (err bool) {
+		if len(page) != 1 {
+			t.Fatalf("Expected 1 results, actual %d", len(page))
+		}
+
+		return !lastPage
+	}, 1, map[string]string{"status": "deployed"})
+	if err != nil {
+		t.Fatalf("Failed to query: %s", err)
+	}
+
 	start, err := ts.Query(map[string]string{"status": "deployed"})
 	if err != nil {
 		t.Errorf("Query failed: %s", err)
