@@ -26,6 +26,7 @@ import (
 	"github.com/tetratelabs/wazero"
 	"go.yaml.in/yaml/v3"
 
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 
@@ -116,7 +117,9 @@ func newPrototypePluginManager() (*prototypePluginManager, error) {
 
 	return &prototypePluginManager{
 		runtimes: map[string]Runtime{
-			"subprocess": &RuntimeSubprocess{},
+			"subprocess": &RuntimeSubprocess{
+				EnvVars: cli.New().EnvVars(),
+			},
 			"extism/v1": &RuntimeExtismV1{
 				HostFunctions:    map[string]extism.HostFunction{},
 				CompilationCache: cc,
