@@ -129,6 +129,13 @@ test-coverage:
 
 .PHONY: test-style
 test-style:
+	@EXPECTED_VERSION=$$(grep GOLANGCI_LINT_VERSION .github/env | cut -d= -f2); \
+	ACTUAL_VERSION=$$(golangci-lint --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1); \
+	if [ "v$$ACTUAL_VERSION" != "$$EXPECTED_VERSION" ]; then \
+		echo "Warning: golangci-lint version is v$$ACTUAL_VERSION (expected $$EXPECTED_VERSION from CI)"; \
+		echo "To install the correct version, run:"; \
+		echo "  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b \$$(go env GOPATH)/bin $$EXPECTED_VERSION"; \
+	fi
 	golangci-lint run ./...
 	@scripts/validate-license.sh
 
