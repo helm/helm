@@ -31,9 +31,6 @@ import (
 // ErrMissingMetadata indicates that plugin.yaml is missing.
 var ErrMissingMetadata = errors.New("plugin metadata (plugin.yaml) missing")
 
-// Debug enables verbose output.
-var Debug bool
-
 // Options contains options for plugin installation.
 type Options struct {
 	// Verify enables signature verification before installation
