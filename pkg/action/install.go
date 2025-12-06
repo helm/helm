@@ -91,20 +91,21 @@ type Install struct {
 	DryRunStrategy DryRunStrategy
 	// HideSecret can be set to true when DryRun is enabled in order to hide
 	// Kubernetes Secrets in the output. It cannot be used outside of DryRun.
-	HideSecret       bool
-	DisableHooks     bool
-	Replace          bool
-	WaitStrategy     kube.WaitStrategy
-	WaitForJobs      bool
-	Devel            bool
-	DependencyUpdate bool
-	Timeout          time.Duration
-	Namespace        string
-	ReleaseName      string
-	GenerateName     bool
-	NameTemplate     string
-	Description      string
-	OutputDir        string
+	HideSecret                bool
+	DisableHooks              bool
+	Replace                   bool
+	WaitStrategy              kube.WaitStrategy
+	WaitForJobs               bool
+	Devel                     bool
+	DependencyUpdate          bool
+	DependencyUpdateRecursive bool
+	Timeout                   time.Duration
+	Namespace                 string
+	ReleaseName               string
+	GenerateName              bool
+	NameTemplate              string
+	Description               string
+	OutputDir                 string
 	// RollbackOnFailure enables rolling back (uninstalling) the release on failure if set
 	RollbackOnFailure        bool
 	SkipCRDs                 bool
