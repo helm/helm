@@ -144,7 +144,11 @@ func (md *Metadata) Validate() error {
 			key = dependency.Alias
 		}
 		if dependencies[key] != nil {
-			return ValidationErrorf("more than one dependency with name or alias %q", key)
+			return ValidationErrorf(
+				"more than one dependency with name or alias %q. "+
+					"Try using distinct aliases for dependencies with the same chart name.",
+				key,
+			)
 		}
 		dependencies[key] = dependency
 	}
