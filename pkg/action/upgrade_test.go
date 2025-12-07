@@ -636,23 +636,19 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 }
 
 func TestUpgradeRelease_DryRunServerValidation(t *testing.T) {
-	// Test that server-side dry-run actually calls the Kubernetes API for validation
 	is := assert.New(t)
 	req := require.New(t)
 
-	// Use a fixture that returns dummy resources so our code path is exercised
 	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(true))
 
 	upAction := NewUpgrade(config)
 	upAction.Namespace = "spaced"
 
-	// Create a previous release
 	rel := releaseStub()
 	rel.Name = "test-server-dry-run"
 	rel.Info.Status = common.StatusDeployed
 	req.NoError(upAction.cfg.Releases.Create(rel))
 
-	// Set up the fake client to return an error on Update
 	expectedErr := errors.New("validation error: unknown field in spec")
 	config.KubeClient.(*kubefake.FailingKubeClient).UpdateError = expectedErr
 	upAction.DryRunStrategy = DryRunServer
@@ -662,18 +658,15 @@ func TestUpgradeRelease_DryRunServerValidation(t *testing.T) {
 	_, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 	done()
 
-	// The error from the API should be returned
 	is.Error(err)
 	is.Contains(err.Error(), "validation error")
 
-	// Reset and test that client-side dry-run does NOT call the API
 	config2 := actionConfigFixtureWithDummyResources(t, createDummyResourceList(true))
 	config2.KubeClient.(*kubefake.FailingKubeClient).UpdateError = expectedErr
 
 	upAction2 := NewUpgrade(config2)
 	upAction2.Namespace = "spaced"
 
-	// Create a previous release
 	rel2 := releaseStub()
 	rel2.Name = "test-client-dry-run"
 	rel2.Info.Status = common.StatusDeployed
@@ -685,7 +678,6 @@ func TestUpgradeRelease_DryRunServerValidation(t *testing.T) {
 	resi, err := upAction2.RunWithContext(ctx, rel2.Name, buildChart(), vals)
 	done()
 
-	// Client-side dry-run should succeed since it doesn't call the API
 	is.NoError(err)
 	res, err := releaserToV1Release(resi)
 	is.NoError(err)

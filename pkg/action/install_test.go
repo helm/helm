@@ -413,17 +413,14 @@ func TestInstallRelease_DryRunClient(t *testing.T) {
 }
 
 func TestInstallRelease_DryRunServerValidation(t *testing.T) {
-	// Test that server-side dry-run actually calls the Kubernetes API for validation
 	is := assert.New(t)
 
-	// Use a fixture that returns dummy resources so our code path is exercised
 	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
 
 	instAction := NewInstall(config)
 	instAction.Namespace = "spaced"
 	instAction.ReleaseName = "test-server-dry-run"
 
-	// Set up the fake client to return an error on Create
 	expectedErr := errors.New("validation error: unknown field in spec")
 	config.KubeClient.(*kubefake.FailingKubeClient).CreateError = expectedErr
 	instAction.DryRunStrategy = DryRunServer
@@ -431,11 +428,9 @@ func TestInstallRelease_DryRunServerValidation(t *testing.T) {
 	vals := map[string]interface{}{}
 	_, err := instAction.Run(buildChart(withSampleTemplates()), vals)
 
-	// The error from the API should be returned
 	is.Error(err)
 	is.Contains(err.Error(), "validation error")
 
-	// Reset and test that client-side dry-run does NOT call the API
 	config2 := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
 	config2.KubeClient.(*kubefake.FailingKubeClient).CreateError = expectedErr
 
@@ -445,7 +440,6 @@ func TestInstallRelease_DryRunServerValidation(t *testing.T) {
 	instAction2.DryRunStrategy = DryRunClient
 
 	resi, err := instAction2.Run(buildChart(withSampleTemplates()), vals)
-	// Client-side dry-run should succeed since it doesn't call the API
 	is.NoError(err)
 	res, err := releaserToV1Release(resi)
 	is.NoError(err)
