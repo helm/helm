@@ -280,7 +280,11 @@ func processImportValues(c *chart.Chart, merge bool) error {
 				// get child table
 				vv, err := cvals.Table(r.Name + "." + child)
 				if err != nil {
-					slog.Warn("ImportValues missing table from chart", "chart", r.Name, slog.Any("error", err))
+					slog.Warn(
+						"ImportValues missing table from chart",
+						slog.String("chart", r.Name),
+						slog.Any("error", err),
+					)
 					continue
 				}
 				// create value map from child to be merged into parent

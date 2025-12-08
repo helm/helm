@@ -26,6 +26,7 @@ linters:
     - misspell
     - nakedret
     - revive
+    - sloglint
     - staticcheck
     - thelper
     - unused

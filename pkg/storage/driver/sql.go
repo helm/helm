@@ -319,18 +319,23 @@ func (s *SQL) Get(key string) (release.Releaser, error) {
 
 	// Get will return an error if the result is empty
 	if err := s.db.Get(&record, query, args...); err != nil {
-		s.Logger().Debug("got SQL error when getting release", "key", key, slog.Any("error", err))
+		s.Logger().Debug("got SQL error when getting release", slog.String("key", key), slog.Any("error", err))
 		return nil, ErrReleaseNotFound
 	}
 
 	release, err := decodeRelease(record.Body)
 	if err != nil {
-		s.Logger().Debug("failed to decode data", "key", key, slog.Any("error", err))
+		s.Logger().Debug("failed to decode data", slog.String("key", key), slog.Any("error", err))
 		return nil, err
 	}
 
 	if release.Labels, err = s.getReleaseCustomLabels(key, s.namespace); err != nil {
-		s.Logger().Debug("failed to get release custom labels", "namespace", s.namespace, "key", key, slog.Any("error", err))
+		s.Logger().Debug(
+			"failed to get release custom labels",
+			slog.String("namespace", s.namespace),
+			slog.String("key", key),
+			slog.Any("error", err),
+		)
 		return nil, err
 	}
 
@@ -365,12 +370,17 @@ func (s *SQL) List(filter func(release.Releaser) bool) ([]release.Releaser, erro
 	for _, record := range records {
 		release, err := decodeRelease(record.Body)
 		if err != nil {
-			s.Logger().Debug("failed to decode release", "record", record, slog.Any("error", err))
+			s.Logger().Debug("failed to decode release", slog.Any("record", record), slog.Any("error", err))
 			continue
 		}
 
 		if release.Labels, err = s.getReleaseCustomLabels(record.Key, record.Namespace); err != nil {
-			s.Logger().Debug("failed to get release custom labels", "namespace", record.Namespace, "key", record.Key, slog.Any("error", err))
+			s.Logger().Debug(
+				"failed to get release custom labels",
+				slog.String("namespace", record.Namespace),
+				slog.String("key", record.Key),
+				slog.Any("error", err),
+			)
 			return nil, err
 		}
 		maps.Copy(release.Labels, getReleaseSystemLabels(release))
@@ -429,12 +439,17 @@ func (s *SQL) Query(labels map[string]string) ([]release.Releaser, error) {
 	for _, record := range records {
 		release, err := decodeRelease(record.Body)
 		if err != nil {
-			s.Logger().Debug("failed to decode release", "record", record, slog.Any("error", err))
+			s.Logger().Debug("failed to decode release", slog.Any("record", record), slog.Any("error", err))
 			continue
 		}
 
 		if release.Labels, err = s.getReleaseCustomLabels(record.Key, record.Namespace); err != nil {
-			s.Logger().Debug("failed to get release custom labels", "namespace", record.Namespace, "key", record.Key, slog.Any("error", err))
+			s.Logger().Debug(
+				"failed to get release custom labels",
+				slog.String("namespace", record.Namespace),
+				slog.String("key", record.Key),
+				slog.Any("error", err),
+			)
 			return nil, err
 		}
 
@@ -518,11 +533,11 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 
 		var record SQLReleaseWrapper
 		if err := transaction.Get(&record, selectQuery, args...); err == nil {
-			s.Logger().Debug("release already exists", "key", key)
+			s.Logger().Debug("release already exists", slog.String("key", key))
 			return ErrReleaseExists
 		}
 
-		s.Logger().Debug("failed to store release in SQL database", "key", key, slog.Any("error", err))
+		s.Logger().Debug("failed to store release in SQL database", slog.String("key", key), slog.Any("error", err))
 		return err
 	}
 
@@ -596,7 +611,7 @@ func (s *SQL) Update(key string, rel release.Releaser) error {
 	}
 
 	if _, err := s.db.Exec(query, args...); err != nil {
-		s.Logger().Debug("failed to update release in SQL database", "key", key, slog.Any("error", err))
+		s.Logger().Debug("failed to update release in SQL database", slog.String("key", key), slog.Any("error", err))
 		return err
 	}
 
@@ -625,13 +640,13 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 	var record SQLReleaseWrapper
 	err = transaction.Get(&record, selectQuery, args...)
 	if err != nil {
-		s.Logger().Debug("release not found", "key", key, slog.Any("error", err))
+		s.Logger().Debug("release not found", slog.String("key", key), slog.Any("error", err))
 		return nil, ErrReleaseNotFound
 	}
 
 	release, err := decodeRelease(record.Body)
 	if err != nil {
-		s.Logger().Debug("failed to decode release", "key", key, slog.Any("error", err))
+		s.Logger().Debug("failed to decode release", slog.String("key", key), slog.Any("error", err))
 		transaction.Rollback()
 		return nil, err
 	}
@@ -654,7 +669,11 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 	}
 
 	if release.Labels, err = s.getReleaseCustomLabels(key, s.namespace); err != nil {
-		s.Logger().Debug("failed to get release custom labels", "namespace", s.namespace, "key", key, slog.Any("error", err))
+		s.Logger().Debug(
+			"failed to get release custom labels",
+			slog.String("namespace", s.namespace),
+			slog.String("key", key),
+			slog.Any("error", err))
 		return nil, err
 	}
 

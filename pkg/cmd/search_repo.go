@@ -190,7 +190,7 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 		f := filepath.Join(o.repoCacheDir, helmpath.CacheIndexFile(n))
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			slog.Warn("repo is corrupt or missing", "repo", n, slog.Any("error", err))
+			slog.Warn("repo is corrupt or missing", slog.String("repo", n), slog.Any("error", err))
 			continue
 		}
 

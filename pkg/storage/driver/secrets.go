@@ -103,7 +103,10 @@ func (secrets *Secrets) List(filter func(release.Releaser) bool) ([]release.Rele
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
-			secrets.Logger().Debug("list failed to decode release", "key", item.Name, slog.Any("error", err))
+			secrets.Logger().Debug(
+				"list failed to decode release", slog.String("key", item.Name),
+				slog.Any("error", err),
+			)
 			continue
 		}
 
@@ -142,7 +145,11 @@ func (secrets *Secrets) Query(labels map[string]string) ([]release.Releaser, err
 	for _, item := range list.Items {
 		rls, err := decodeRelease(string(item.Data["release"]))
 		if err != nil {
-			secrets.Logger().Debug("failed to decode release", "key", item.Name, slog.Any("error", err))
+			secrets.Logger().Debug(
+				"failed to decode release",
+				slog.String("key", item.Name),
+				slog.Any("error", err),
+			)
 			continue
 		}
 		rls.Labels = item.Labels

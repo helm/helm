@@ -293,7 +293,7 @@ func (s *Storage) deleteReleaseVersion(name string, version int) error {
 	key := makeKey(name, version)
 	_, err := s.Delete(name, version)
 	if err != nil {
-		s.Logger().Debug("error pruning release", "key", key, slog.Any("error", err))
+		s.Logger().Debug("error pruning release", slog.String("key", key), slog.Any("error", err))
 		return err
 	}
 	return nil
