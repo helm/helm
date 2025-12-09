@@ -4,6 +4,10 @@ on:
     paths:
       - go.sum
       - .github/workflows/govulncheck.yml
+  pull_request:
+    paths:
+      - go.sum
+      - .github/workflows/govulncheck.yml
   schedule:
     - cron: "0 0 * * *"
 
@@ -16,6 +20,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # pin@v6.0.1
+        with:
+          persist-credentials: false
       - name: Add variables to environment file
         run: cat ".github/env" >> "$GITHUB_ENV"
       - name: Setup Go
