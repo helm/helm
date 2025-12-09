@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - go.sum
+      - .github/workflows/govulncheck.yml
   schedule:
     - cron: "0 0 * * *"
 
