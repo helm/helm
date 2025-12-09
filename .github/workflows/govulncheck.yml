@@ -4,6 +4,10 @@ on:
     paths:
       - go.sum
       - .github/workflows/govulncheck.yml
+  pull_request:
+    paths:
+      - go.sum
+      - .github/workflows/govulncheck.yml
   schedule:
     - cron: "0 0 * * *"
 
