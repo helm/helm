@@ -17,10 +17,10 @@ limitations under the License.
 package registry
 
 import (
-	"context"
 	"fmt"
-	"log"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -43,20 +43,17 @@ func (suite *RegistryScopeTestSuite) TearDownSuite() {
 
 func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 
-	//set simple auth server to check the auth request scope
-	server := &http.Server{
-		Addr: suite.AuthServerHost,
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			suite.Equal(string("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull%2Cpush&service=testservice"), r.URL.String())
-			w.WriteHeader(http.StatusOK)
-		}),
-	}
-	go func() {
-		err := server.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
-			log.Fatalf("http server failed to ListenAndServe:%v", err)
-		}
-	}()
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		suite.Equal(string("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull%2Cpush&service=testservice"), r.URL.String())
+		w.WriteHeader(http.StatusOK)
+	})
+	listener, err := net.Listen("tcp", suite.AuthServerHost)
+	suite.Nil(err, "no error creating server listner")
+
+	ts := httptest.NewUnstartedServer(handler)
+	ts.Listener = listener
+	ts.Start()
+	defer ts.Close()
 
 	// basic push, good ref
 	testingChartCreationTime := "1977-09-02T22:04:05Z"
@@ -68,28 +65,21 @@ func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 	_, err = suite.RegistryClient.Push(chartData, ref, PushOptCreationTime(testingChartCreationTime))
 	suite.NotNil(err, "error pushing good ref because auth server don't give proper token")
 
-	//shutdown auth server
-	err = server.Shutdown(context.Background())
-	suite.Nil(err, "shutdown simple auth server")
-
 }
 
 func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 
-	//set simple auth server to check the auth request scope
-	server := &http.Server{
-		Addr: suite.AuthServerHost,
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			suite.Equal(string("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull&service=testservice"), r.URL.String())
-			w.WriteHeader(http.StatusOK)
-		}),
-	}
-	go func() {
-		err := server.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
-			log.Fatalf("http server failed to ListenAndServe:%v", err)
-		}
-	}()
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		suite.Equal(string("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull&service=testservice"), r.URL.String())
+		w.WriteHeader(http.StatusOK)
+	})
+	listener, err := net.Listen("tcp", suite.AuthServerHost)
+	suite.Nil(err, "no error creating server listner")
+
+	ts := httptest.NewUnstartedServer(handler)
+	ts.Listener = listener
+	ts.Start()
+	defer ts.Close()
 
 	// Load test chart (to build ref pushed in previous test)
 	// Simple pull, chart only
@@ -101,9 +91,6 @@ func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 	_, err = suite.RegistryClient.Pull(ref)
 	suite.NotNil(err, "error pulling a simple chart because auth server don't give proper token")
 
-	//shutdown auth server
-	err = server.Shutdown(context.Background())
-	suite.Nil(err, "shutdown simple auth server")
 }
 
 func TestRegistryScopeTestSuite(t *testing.T) {
