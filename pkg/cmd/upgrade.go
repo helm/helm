@@ -154,6 +154,17 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.HideSecret = client.HideSecret
 					instClient.TakeOwnership = client.TakeOwnership
 
+					// Convert ServerSideApply from string (upgrade) to bool (install)
+					switch client.ServerSideApply {
+					case "true":
+						instClient.ServerSideApply = true
+					case "false":
+						instClient.ServerSideApply = false
+					case "auto", "":
+						// For "auto" or empty, default to true (server-side apply)
+						instClient.ServerSideApply = true
+					}
+
 					if isReleaseUninstalled(versions) {
 						instClient.Replace = true
 					}

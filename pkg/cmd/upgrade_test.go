@@ -605,3 +605,53 @@ func TestUpgradeWithDryRun(t *testing.T) {
 		t.Error("expected error when --hide-secret used without --dry-run")
 	}
 }
+
+func TestUpgradeInstallServerSideApply(t *testing.T) {
+	releaseName := "test-server-side-apply"
+	chartPath := "testdata/testcharts/chart-with-subchart-notes"
+	
+	store := storageFixture()
+	
+	// Test that --server-side=false is properly passed to install client
+	cmd := fmt.Sprintf("upgrade %s -i --server-side=false '%s'", releaseName, chartPath)
+	_, _, err := executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error with --server-side=false: %v", err)
+	}
+	
+	// Verify the release was created and check ApplyMethod
+	reli, err := store.Get(releaseName, 1)
+	if err != nil {
+		t.Errorf("failed to get release: %v", err)
+	}
+	rel, err := releaserToV1Release(reli)
+	if err != nil {
+		t.Errorf("failed to convert release to *release.Release: %v", err)
+	}
+	// Check that ApplyMethod is not "ssa" (should be client-side apply)
+	if rel.ApplyMethod == "ssa" {
+		t.Errorf("expected release to use client-side apply, but ApplyMethod is 'ssa'")
+	}
+	
+	// Test that --server-side=true is properly passed to install client
+	releaseName2 := "test-server-side-apply-true"
+	cmd = fmt.Sprintf("upgrade %s -i --server-side=true '%s'", releaseName2, chartPath)
+	_, _, err = executeActionCommandC(store, cmd)
+	if err != nil {
+		t.Errorf("unexpected error with --server-side=true: %v", err)
+	}
+	
+	// Verify the release was created and check ApplyMethod
+	reli2, err := store.Get(releaseName2, 1)
+	if err != nil {
+		t.Errorf("failed to get release: %v", err)
+	}
+	rel2, err := releaserToV1Release(reli2)
+	if err != nil {
+		t.Errorf("failed to convert release to *release.Release: %v", err)
+	}
+	// Check that ApplyMethod is "ssa" (server-side apply)
+	if rel2.ApplyMethod != "ssa" {
+		t.Errorf("expected release to use server-side apply, but ApplyMethod is '%s'", rel2.ApplyMethod)
+	}
+}
