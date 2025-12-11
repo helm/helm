@@ -31,6 +31,7 @@ jobs:
         uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # pin@5.1.0
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
+          check-latest: true
 
       - name: Run unit tests
         run: make test-coverage
