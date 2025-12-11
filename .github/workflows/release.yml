@@ -31,6 +31,7 @@ jobs:
         uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # pin@5.5.0
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
+          check-latest: true
       - name: Run unit tests
         run: make test-coverage
       - name: Build Helm Binaries
