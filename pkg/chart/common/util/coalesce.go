@@ -302,23 +302,36 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 	if dst == nil {
 		return src
 	}
+	// Track original non-nil src keys before modifying src
+	// This lets us distinguish between user nullifying a chart default vs
+	// user setting nil for a key not in chart defaults.
+	srcOriginalNonNil := make(map[string]bool)
+	for key, val := range src {
+		if val != nil {
+			srcOriginalNonNil[key] = true
+		}
+	}
+	for key, val := range dst {
+		if val == nil {
+			src[key] = nil
+		}
+	}
 	// Because dest has higher precedence than src, dest values override src
 	// values.
 	for key, val := range src {
 		fullkey := concatPrefix(prefix, key)
-		dv, ok := dst[key]
-		if !ok {
-			dst[key] = val
-		} else if dv == nil && !merge && val != nil {
+		if dv, ok := dst[key]; ok && !merge && dv == nil && srcOriginalNonNil[key] {
 			// When coalescing (not merging), if dst has nil and src has a non-nil
 			// value, the user is nullifying a chart default - remove the key.
-			// Per Helm docs: setting a key to null deletes it.
-			// But if src also has nil (or key not in src), preserve the nil (issue #31643).
+			// But if src also has nil (or key not in src), preserve the nil
 			delete(dst, key)
+		} else if !ok {
+			// key not in user values, preserve src value (including nil)
+			dst[key] = val
 		} else if istable(val) {
 			if istable(dv) {
 				coalesceTablesFullKey(printf, dv.(map[string]interface{}), val.(map[string]interface{}), fullkey, merge)
-			} else if dv != nil {
+			} else {
 				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
 			}
 		} else if istable(dv) && val != nil {
