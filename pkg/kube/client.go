@@ -563,7 +563,12 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 			}
 
 			kind := target.Mapping.GroupVersionKind.Kind
-			c.Logger().Debug("created a new resource", "namespace", target.Namespace, "name", target.Name, "kind", kind)
+			c.Logger().Debug(
+				"created a new resource",
+				slog.String("namespace", target.Namespace),
+				slog.String("name", target.Name),
+				slog.String("kind", kind),
+			)
 			return nil
 		}
 
@@ -594,19 +599,37 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 		c.Logger().Debug("deleting resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 
 		if err := info.Get(); err != nil {
-			c.Logger().Debug("unable to get object", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+			c.Logger().Debug(
+				"unable to get object",
+				slog.String("namespace", info.Namespace),
+				slog.String("name", info.Name),
+				slog.String("kind", info.Mapping.GroupVersionKind.Kind),
+				slog.Any("error", err),
+			)
 			continue
 		}
 		annotations, err := metadataAccessor.Annotations(info.Object)
 		if err != nil {
-			c.Logger().Debug("unable to get annotations", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+			c.Logger().Debug(
+				"unable to get annotations",
+				slog.String("namespace", info.Namespace),
+				slog.String("name", info.Name),
+				slog.String("kind", info.Mapping.GroupVersionKind.Kind),
+				slog.Any("error", err),
+			)
 		}
 		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
 			c.Logger().Debug("skipping delete due to annotation", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "annotation", ResourcePolicyAnno, "value", KeepPolicy)
 			continue
 		}
 		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
-			c.Logger().Debug("failed to delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+			c.Logger().Debug(
+				"failed to delete resource",
+				slog.String("namespace", info.Namespace),
+				slog.String("name", info.Name),
+				slog.String("kind", info.Mapping.GroupVersionKind.Kind),
+				slog.Any("error", err),
+			)
 			if !apierrors.IsNotFound(err) {
 				updateErrors = append(updateErrors, fmt.Errorf("failed to delete resource %s: %w", info.Name, err))
 			}
@@ -760,7 +783,13 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 				slog.String("fieldValidationDirective", string(updateOptions.fieldValidationDirective)))
 			return func(original, target *resource.Info) error {
 				if err := replaceResource(target, updateOptions.fieldValidationDirective); err != nil {
-					c.Logger().Debug("error replacing the resource", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+					c.Logger().With(
+						slog.String("namespace", target.Namespace),
+						slog.String("name", target.Name),
+						slog.String("gvk", target.Mapping.GroupVersionKind.String()),
+					).Debug(
+						"error replacing the resource", slog.Any("error", err),
+					)
 					return err
 				}
 
@@ -829,7 +858,12 @@ func (c *Client) Delete(resources ResourceList, policy metav1.DeletionPropagatio
 		err := deleteResource(target, policy)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
-				c.Logger().Debug("ignoring delete failure", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+				c.Logger().Debug(
+					"ignoring delete failure",
+					slog.String("namespace", target.Namespace),
+					slog.String("name", target.Name),
+					slog.String("kind", target.Mapping.GroupVersionKind.Kind),
+					slog.Any("error", err))
 			}
 			mtx.Lock()
 			defer mtx.Unlock()
