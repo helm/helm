@@ -36,7 +36,7 @@ var (
 	k8sVersionMinor = "20"
 )
 
-// deprecatedAPIError indicates than an API is deprecated in Kubernetes
+// deprecatedAPIError indicates that an API is deprecated in Kubernetes
 type deprecatedAPIError struct {
 	Deprecated string
 	Message    string
