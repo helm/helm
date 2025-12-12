@@ -402,8 +402,8 @@ func TestMergeValues(t *testing.T) {
 }
 
 func TestCoalesceTables(t *testing.T) {
-	is := assert.New(t)
 	t.Run("case 1", func(t *testing.T) {
+		is := assert.New(t)
 		dst := map[string]interface{}{
 			"name": "Ishmael",
 			"address": map[string]interface{}{
@@ -456,7 +456,8 @@ func TestCoalesceTables(t *testing.T) {
 		_, ok = dst["hole"]
 		is.False(ok, "The hole should be removed")
 	})
-	t.Run("case 2", func(t *testing.T) {
+	t.Run("case 2", func(_ *testing.T) {
+		is := assert.New(t)
 		dst2 := map[string]interface{}{
 			"name": "Ishmael",
 			"address": map[string]interface{}{
@@ -492,6 +493,7 @@ func TestCoalesceTables(t *testing.T) {
 		is.Equal("black", dst2["hole"], "Expected hole string, got %v", dst2["hole"])
 	})
 	t.Run("chart values with nil user value", func(t *testing.T) {
+		is := assert.New(t)
 		dst := map[string]any{
 			"foo": "bar",
 			"baz": nil, // explicit nil from user
