@@ -484,23 +484,28 @@ func TestCoalesceTables(t *testing.T) {
 		is.Equal("pequod", dst2["boat"], "Expected boat string, got %v", dst2["boat"])
 		is.Equal("black", dst2["hole"], "Expected hole string, got %v", dst2["hole"])
 	})
-	t.Run("empty chart map with nil user value", func(t *testing.T) {
+	t.Run("chart values with nil user value", func(t *testing.T) {
 		dst := map[string]any{
 			"foo": "bar",
 			"baz": nil, // explicit nil from user
 		}
 
 		// Chart's default values (src - lower priority) - empty map
-		src := map[string]any{}
+		src := map[string]any{
+			"ben": nil,
+		}
 
 		CoalesceTables(dst, src)
 
 		// "foo" should be preserved
 		is.Equal("bar", dst["foo"])
+		_, ok := dst["ben"]
+		is.True(ok, "Expected ben key to be present")
+		is.Nil(dst["ben"], "Expected ben key to be nil but it is not")
 
-		_, ok := dst["baz"]
+		_, ok = dst["baz"]
 		is.True(ok, "Expected baz key to be present but it was removed")
-		is.True(dst["baz"] == nil, "Expected baz key to be nil but it is not")
+		is.Nil(dst["baz"], "Expected baz key to be nil but it is not")
 	})
 }
 
