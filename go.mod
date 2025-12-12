@@ -35,7 +35,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/tetratelabs/wazero v1.10.1
 	go.yaml.in/yaml/v3 v3.0.4
-	golang.org/x/crypto v0.45.0
+	golang.org/x/crypto v0.46.0
 	golang.org/x/term v0.38.0
 	golang.org/x/text v0.32.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
