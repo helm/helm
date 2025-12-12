@@ -271,7 +271,7 @@ func ClientCreateOptionDryRun(dryRun bool) ClientCreateOption {
 	}
 }
 
-// ClientCreateOptionFieldValidationDirective specifies show API operations validate object's schema
+// ClientCreateOptionFieldValidationDirective specifies how API operations validate object's schema
 //   - For client-side apply: this is ignored
 //   - For server-side apply: the directive is sent to the server to perform the validation
 //
@@ -681,7 +681,7 @@ func ClientUpdateOptionDryRun(dryRun bool) ClientUpdateOption {
 	}
 }
 
-// ClientUpdateOptionFieldValidationDirective specifies show API operations validate object's schema
+// ClientUpdateOptionFieldValidationDirective specifies how API operations validate object's schema
 //   - For client-side apply: this is ignored
 //   - For server-side apply: the directive is sent to the server to perform the validation
 //

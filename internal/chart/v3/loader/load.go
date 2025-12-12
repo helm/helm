@@ -181,7 +181,7 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 // LoadValues loads values from a reader.
 //
 // The reader is expected to contain one or more YAML documents, the values of which are merged.
-// And the values can be either a chart's default values or a user-supplied values.
+// And the values can be either a chart's default values or user-supplied values.
 func LoadValues(data io.Reader) (map[string]interface{}, error) {
 	values := map[string]interface{}{}
 	reader := utilyaml.NewYAMLReader(bufio.NewReader(data))
