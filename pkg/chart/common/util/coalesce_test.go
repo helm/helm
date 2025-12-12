@@ -25,6 +25,7 @@ import (
 	"text/template"
 
 	"github.com/stretchr/testify/assert"
+	req "github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -401,131 +402,113 @@ func TestMergeValues(t *testing.T) {
 }
 
 func TestCoalesceTables(t *testing.T) {
-	dst := map[string]interface{}{
-		"name": "Ishmael",
-		"address": map[string]interface{}{
-			"street":  "123 Spouter Inn Ct.",
-			"city":    "Nantucket",
-			"country": nil,
-		},
-		"details": map[string]interface{}{
-			"friends": []string{"Tashtego"},
-		},
-		"boat": "pequod",
-		"hole": nil,
-	}
-	src := map[string]interface{}{
-		"occupation": "whaler",
-		"address": map[string]interface{}{
-			"state":   "MA",
-			"street":  "234 Spouter Inn Ct.",
-			"country": "US",
-		},
-		"details": "empty",
-		"boat": map[string]interface{}{
-			"mast": true,
-		},
-		"hole": "black",
-	}
+	is := assert.New(t)
+	t.Run("case 1", func(t *testing.T) {
+		dst := map[string]interface{}{
+			"name": "Ishmael",
+			"address": map[string]interface{}{
+				"street":  "123 Spouter Inn Ct.",
+				"city":    "Nantucket",
+				"country": nil,
+			},
+			"details": map[string]interface{}{
+				"friends": []string{"Tashtego"},
+			},
+			"boat": "pequod",
+			"hole": nil,
+		}
+		src := map[string]interface{}{
+			"occupation": "whaler",
+			"address": map[string]interface{}{
+				"state":   "MA",
+				"street":  "234 Spouter Inn Ct.",
+				"country": "US",
+			},
+			"details": "empty",
+			"boat": map[string]interface{}{
+				"mast": true,
+			},
+			"hole": "black",
+		}
 
-	// What we expect is that anything in dst overrides anything in src, but that
-	// otherwise the values are coalesced.
-	CoalesceTables(dst, src)
+		// What we expect is that anything in dst overrides anything in src, but that
+		// otherwise the values are coalesced.
+		CoalesceTables(dst, src)
 
-	if dst["name"] != "Ishmael" {
-		t.Errorf("Unexpected name: %s", dst["name"])
-	}
-	if dst["occupation"] != "whaler" {
-		t.Errorf("Unexpected occupation: %s", dst["occupation"])
-	}
+		is.Equal("Ishmael", dst["name"], "Unexpected name: %s", dst["name"])
+		is.Equal("whaler", dst["occupation"], "Unexpected occupation: %s", dst["occupation"])
 
-	addr, ok := dst["address"].(map[string]interface{})
-	if !ok {
-		t.Fatal("Address went away.")
-	}
+		addr, ok := dst["address"].(map[string]interface{})
+		req.True(t, ok, "Address went away.")
 
-	if addr["street"].(string) != "123 Spouter Inn Ct." {
-		t.Errorf("Unexpected address: %v", addr["street"])
-	}
+		is.Equal("123 Spouter Inn Ct.", addr["street"], "Unexpected address: %v", addr["street"])
+		is.Equal("Nantucket", addr["city"], "Unexpected city: %v", addr["city"])
+		is.Equal("MA", addr["state"], "Unexpected state: %v", addr["state"])
+		_, ok = addr["country"]
+		is.False(ok, "The country should be removed")
 
-	if addr["city"].(string) != "Nantucket" {
-		t.Errorf("Unexpected city: %v", addr["city"])
-	}
+		det, ok := dst["details"].(map[string]interface{})
+		req.True(t, ok, "Details is the wrong type: %v", dst["details"])
+		_, ok = det["friends"]
+		is.True(ok, "Could not find your friends. Maybe you don't have any. :-(")
 
-	if addr["state"].(string) != "MA" {
-		t.Errorf("Unexpected state: %v", addr["state"])
-	}
+		is.Equal("pequod", dst["boat"], "Expected boat string, got %v", dst["boat"])
+		_, ok = dst["hole"]
+		is.False(ok, "The hole should be removed")
+	})
+	t.Run("case 2", func(t *testing.T) {
+		dst2 := map[string]interface{}{
+			"name": "Ishmael",
+			"address": map[string]interface{}{
+				"street":  "123 Spouter Inn Ct.",
+				"city":    "Nantucket",
+				"country": "US",
+			},
+			"details": map[string]interface{}{
+				"friends": []string{"Tashtego"},
+			},
+			"boat": "pequod",
+			"hole": "black",
+		}
 
-	if _, ok = addr["country"]; ok {
-		t.Error("The country is not left out.")
-	}
+		// What we expect is that anything in dst should have all values set,
+		// this happens when the --reuse-values flag is set but the chart has no modifications yet
+		CoalesceTables(dst2, nil)
 
-	if det, ok := dst["details"].(map[string]interface{}); !ok {
-		t.Fatalf("Details is the wrong type: %v", dst["details"])
-	} else if _, ok := det["friends"]; !ok {
-		t.Error("Could not find your friends. Maybe you don't have any. :-(")
-	}
+		is.Equal("Ishmael", dst2["name"], "Unexpected name: %s", dst2["name"])
+		addr2, ok := dst2["address"].(map[string]interface{})
+		req.True(t, ok, "Address went away.")
+		is.Equal("123 Spouter Inn Ct.", addr2["street"], "Unexpected address: %v", addr2["street"])
+		is.Equal("Nantucket", addr2["city"], "Unexpected city: %v", addr2["city"])
+		is.Equal("US", addr2["country"], "Unexpected country: %v", addr2["country"])
+		is.Equal("US", addr2["country"], "Unexpected country: %v", addr2["country"])
 
-	if dst["boat"].(string) != "pequod" {
-		t.Errorf("Expected boat string, got %v", dst["boat"])
-	}
+		det2, ok := dst2["details"].(map[string]interface{})
+		req.True(t, ok, "Details is the wrong type: %v", dst2["details"])
+		_, ok = det2["friends"]
+		is.True(ok, "Could not find your friends. Maybe you don't have any. :-(")
 
-	if _, ok = dst["hole"]; ok {
-		t.Error("The hole still exists.")
-	}
+		is.Equal("pequod", dst2["boat"], "Expected boat string, got %v", dst2["boat"])
+		is.Equal("black", dst2["hole"], "Expected hole string, got %v", dst2["hole"])
+	})
+	t.Run("empty chart map with nil user value", func(t *testing.T) {
+		dst := map[string]any{
+			"foo": "bar",
+			"baz": nil, // explicit nil from user
+		}
 
-	dst2 := map[string]interface{}{
-		"name": "Ishmael",
-		"address": map[string]interface{}{
-			"street":  "123 Spouter Inn Ct.",
-			"city":    "Nantucket",
-			"country": "US",
-		},
-		"details": map[string]interface{}{
-			"friends": []string{"Tashtego"},
-		},
-		"boat": "pequod",
-		"hole": "black",
-	}
+		// Chart's default values (src - lower priority) - empty map
+		src := map[string]any{}
 
-	// What we expect is that anything in dst should have all values set,
-	// this happens when the --reuse-values flag is set but the chart has no modifications yet
-	CoalesceTables(dst2, nil)
+		CoalesceTables(dst, src)
 
-	if dst2["name"] != "Ishmael" {
-		t.Errorf("Unexpected name: %s", dst2["name"])
-	}
+		// "foo" should be preserved
+		is.Equal("bar", dst["foo"])
 
-	addr2, ok := dst2["address"].(map[string]interface{})
-	if !ok {
-		t.Fatal("Address went away.")
-	}
-
-	if addr2["street"].(string) != "123 Spouter Inn Ct." {
-		t.Errorf("Unexpected address: %v", addr2["street"])
-	}
-
-	if addr2["city"].(string) != "Nantucket" {
-		t.Errorf("Unexpected city: %v", addr2["city"])
-	}
-
-	if addr2["country"].(string) != "US" {
-		t.Errorf("Unexpected Country: %v", addr2["country"])
-	}
-
-	if det2, ok := dst2["details"].(map[string]interface{}); !ok {
-		t.Fatalf("Details is the wrong type: %v", dst2["details"])
-	} else if _, ok := det2["friends"]; !ok {
-		t.Error("Could not find your friends. Maybe you don't have any. :-(")
-	}
-
-	if dst2["boat"].(string) != "pequod" {
-		t.Errorf("Expected boat string, got %v", dst2["boat"])
-	}
-
-	if dst2["hole"].(string) != "black" {
-		t.Errorf("Expected hole string, got %v", dst2["boat"])
-	}
+		_, ok := dst["baz"]
+		is.True(ok, "Expected baz key to be present but it was removed")
+		is.True(dst["baz"] == nil, "Expected baz key to be nil but it is not")
+	})
 }
 
 func TestMergeTables(t *testing.T) {
@@ -730,4 +713,38 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 func TestConcatPrefix(t *testing.T) {
 	assert.Equal(t, "b", concatPrefix("", "b"))
 	assert.Equal(t, "a.b", concatPrefix("a", "b"))
+}
+
+// TestCoalesceValuesEmptyMapWithNils tests the full CoalesceValues scenario
+// from issue #31643 where chart has data: {} and user provides data: {foo: bar, baz: ~}
+func TestCoalesceValuesEmptyMapWithNils(t *testing.T) {
+	is := assert.New(t)
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "test"},
+		Values: map[string]any{
+			"data": map[string]any{}, // empty map in chart defaults
+		},
+	}
+
+	vals := map[string]any{
+		"data": map[string]any{
+			"foo": "bar",
+			"baz": nil, // explicit nil from user
+		},
+	}
+
+	v, err := CoalesceValues(c, vals)
+	is.NoError(err)
+
+	data, ok := v["data"].(map[string]any)
+	is.True(ok, "data is not a map")
+
+	// "foo" should be preserved
+	is.Equal("bar", data["foo"])
+
+	// "baz" should be preserved with nil value since it wasn't in chart defaults
+	_, ok = data["baz"]
+	is.True(ok, "Expected data.baz key to be present but it was removed")
+	is.Nil(data["baz"], "Expected data.baz key to be nil but it is not")
 }
