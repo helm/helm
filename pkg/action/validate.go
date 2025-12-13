@@ -46,6 +46,11 @@ func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
 			return err
 		}
 
+		skip, err := validateNameAndgenerateName(info)
+		if skip {
+			return err
+		}
+
 		helper := resource.NewHelper(info.Client, info.Mapping)
 		_, err = helper.Get(info.Namespace, info.Name)
 		if err != nil {
@@ -68,6 +73,11 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 
 	err := resources.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
+			return err
+		}
+
+		skip, err := validateNameAndgenerateName(info)
+		if skip {
 			return err
 		}
 
@@ -200,4 +210,15 @@ func mergeStrStrMaps(current, desired map[string]string) map[string]string {
 	maps.Copy(result, current)
 	maps.Copy(result, desired)
 	return result
+}
+
+func validateNameAndgenerateName(info *resource.Info) (bool, error) {
+	accessor, _ := meta.Accessor(info.Object)
+	if info.Name == "" && accessor.GetGenerateName() != "" {
+		return true, nil
+	} else if info.Name != "" && accessor.GetGenerateName() != "" {
+		return true, fmt.Errorf("metadata.name and metadata.generateName cannot both be set")
+	}
+
+	return false, nil
 }
