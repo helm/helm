@@ -43,7 +43,7 @@ type Lint struct {
 // LintResult is the result of Lint
 type LintResult struct {
 	TotalChartsLinted int
-	Messages          []support.Message
+	Messages          []support.MessageError
 	Errors            []error
 }
 
