@@ -35,7 +35,7 @@ type Dependency struct {
 	//
 	// Appending `index.yaml` to this string should result in a URL that can be
 	// used to fetch the repository index.
-	Repository string `json:"repository" yaml:"repository"`
+	Repository string `json:"repository,omitempty" yaml:"repository,omitempty"`
 	// A yaml path that resolves to a boolean, used for enabling/disabling charts (e.g. subchart1.enabled )
 	Condition string `json:"condition,omitempty" yaml:"condition,omitempty"`
 	// Tags can be used to group charts for enabling/disabling together
