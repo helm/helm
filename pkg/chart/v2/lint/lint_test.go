@@ -238,7 +238,7 @@ func TestMalformedTemplate(t *testing.T) {
 	var values map[string]any
 	c := time.After(3 * time.Second)
 	ch := make(chan int, 1)
-	var m []support.Message
+	var m []support.MessageError
 	go func() {
 		m = RunAll(malformedTemplate, values, namespace).Messages
 		ch <- 1
