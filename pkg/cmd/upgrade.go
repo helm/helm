@@ -153,6 +153,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.EnableDNS = client.EnableDNS
 					instClient.HideSecret = client.HideSecret
 					instClient.TakeOwnership = client.TakeOwnership
+					instClient.ForceConflicts = client.ForceConflicts
+					instClient.ServerSideApply = client.ServerSideApply != "false"
 
 					if isReleaseUninstalled(versions) {
 						instClient.Replace = true

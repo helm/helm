@@ -605,3 +605,58 @@ func TestUpgradeWithDryRun(t *testing.T) {
 		t.Error("expected error when --hide-secret used without --dry-run")
 	}
 }
+
+func TestUpgradeInstallServerSideApply(t *testing.T) {
+	_, _, chartPath := prepareMockRelease(t, "ssa-test")
+
+	defer resetEnv()()
+
+	tests := []struct {
+		name                string
+		serverSideFlag      string
+		expectedApplyMethod string
+	}{
+		{
+			name:                "upgrade --install with --server-side=false uses client-side apply",
+			serverSideFlag:      "--server-side=false",
+			expectedApplyMethod: "csa",
+		},
+		{
+			name:                "upgrade --install with --server-side=true uses server-side apply",
+			serverSideFlag:      "--server-side=true",
+			expectedApplyMethod: "ssa",
+		},
+		{
+			name:                "upgrade --install with --server-side=auto uses server-side apply (default for new install)",
+			serverSideFlag:      "--server-side=auto",
+			expectedApplyMethod: "ssa",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := storageFixture()
+			releaseName := fmt.Sprintf("ssa-test-%s", tt.expectedApplyMethod)
+
+			cmd := fmt.Sprintf("upgrade %s --install %s '%s'", releaseName, tt.serverSideFlag, chartPath)
+			_, _, err := executeActionCommandC(store, cmd)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			rel, err := store.Get(releaseName, 1)
+			if err != nil {
+				t.Fatalf("unexpected error getting release: %v", err)
+			}
+
+			relV1, err := releaserToV1Release(rel)
+			if err != nil {
+				t.Fatalf("unexpected error converting release: %v", err)
+			}
+
+			if relV1.ApplyMethod != tt.expectedApplyMethod {
+				t.Errorf("expected ApplyMethod %q, got %q", tt.expectedApplyMethod, relV1.ApplyMethod)
+			}
+		})
+	}
+}
