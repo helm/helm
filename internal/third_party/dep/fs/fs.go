@@ -36,9 +36,11 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"syscall"
 )
 
@@ -68,7 +70,7 @@ func RenameWithFallback(src, dst string) error {
 func renameByCopy(src, dst string) error {
 	var cerr error
 	if dir, _ := IsDir(src); dir {
-		cerr = CopyDir(src, dst)
+		cerr = CopyDir(src, dst, CopyDirOptions{})
 		if cerr != nil {
 			cerr = fmt.Errorf("copying directory failed: %w", cerr)
 		}
@@ -95,11 +97,34 @@ var (
 	errDstExist  = errors.New("destination already exists")
 )
 
+// CopyDirOptions contains options for controlling the behavior of CopyDir.
+type CopyDirOptions struct {
+	// DirsInSrcToIgnore is a list of directory names (not paths) to skip during copying.
+	// Any directory whose base name matches an entry in this list will be ignored,
+	// along with all its contents. The check is performed recursively at each level
+	// of the directory tree.
+	DirsInSrcToIgnore []string
+}
+
 // CopyDir recursively copies a directory tree, attempting to preserve permissions.
 // Source directory must exist, destination directory must *not* exist.
-func CopyDir(src, dst string) error {
+//
+// See CopyDirOptions for details on available options.
+//
+// Example:
+//
+//	CopyDir("/src", "/dst", CopyDirOptions{DirsInSrcToIgnore: []string{".git", ".vscode"}})
+//	This will copy all files and directories from /src to /dst, but skip any
+//	directories named ".git" or ".vscode" and their contents.
+func CopyDir(src, dst string, options CopyDirOptions) error {
 	src = filepath.Clean(src)
 	dst = filepath.Clean(dst)
+
+	// Check if this directory name should be ignored
+	if len(options.DirsInSrcToIgnore) > 0 && slices.Contains(options.DirsInSrcToIgnore, filepath.Base(src)) {
+		slog.Debug("skipping directory", "directory", src, "dirsToIgnore", options.DirsInSrcToIgnore)
+		return nil
+	}
 
 	// We use os.Lstat() here to ensure we don't fall in a loop where a symlink
 	// actually links to a one of its parent directories.
@@ -129,11 +154,12 @@ func CopyDir(src, dst string) error {
 	}
 
 	for _, entry := range entries {
+		// Skip entries whose name matches any in dirsToIgnore
 		srcPath := filepath.Join(src, entry.Name())
 		dstPath := filepath.Join(dst, entry.Name())
 
 		if entry.IsDir() {
-			if err = CopyDir(srcPath, dstPath); err != nil {
+			if err = CopyDir(srcPath, dstPath, options); err != nil {
 				return fmt.Errorf("copying directory failed: %w", err)
 			}
 		} else {

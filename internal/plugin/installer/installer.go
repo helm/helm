@@ -25,11 +25,15 @@ import (
 	"strings"
 
 	"helm.sh/helm/v4/internal/plugin"
+	"helm.sh/helm/v4/internal/third_party/dep/fs"
 	"helm.sh/helm/v4/pkg/registry"
 )
 
 // ErrMissingMetadata indicates that plugin.yaml is missing.
 var ErrMissingMetadata = errors.New("plugin metadata (plugin.yaml) missing")
+
+// copyDirOptions is the default options for copying a plugin directory.
+var copyDirOptions = fs.CopyDirOptions{DirsInSrcToIgnore: []string{".git"}}
 
 // Debug enables verbose output.
 var Debug bool
