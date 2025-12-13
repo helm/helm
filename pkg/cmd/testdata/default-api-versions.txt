@@ -1,0 +1,3 @@
+apps/v1/Deployment
+apps/v1/StatefulSet
+networking.k8s.io/v1/NetworkPolicy
