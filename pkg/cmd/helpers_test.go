@@ -19,9 +19,11 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -34,6 +36,7 @@ import (
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/cli"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
@@ -60,6 +63,15 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 						t.Fatal(err)
 					}
 				}
+
+				if tt.preCmd != nil {
+					t.Logf("running preCmd (attempt %d): %s", i+1, tt.cmd)
+					if err := tt.preCmd(t); err != nil {
+						t.Errorf("expected no error executing preCmd, got: '%v'", err)
+						t.FailNow()
+					}
+				}
+
 				t.Logf("running cmd (attempt %d): %s", i+1, tt.cmd)
 				_, out, err := executeActionCommandC(storage, tt.cmd)
 				if tt.wantError && err == nil {
@@ -138,6 +150,7 @@ type cmdTestCase struct {
 	// Number of repeats (in case a feature was previously flaky and the test checks
 	// it's now stably producing identical results). 0 means test is run exactly once.
 	repeat int
+	preCmd func(t *testing.T) error
 }
 
 func executeActionCommand(cmd string) (*cobra.Command, string, error) {
@@ -154,6 +167,46 @@ func resetEnv() func() {
 		}
 		settings = cli.New()
 	}
+}
+
+// resetChartDependencyState completely resets dependency state of a given chart
+// by deleting `Chart.lock` and `charts/`.
+//
+// If `recursive` is set to true, it will recurse into all local dependency charts
+// and do the same.
+func resetChartDependencyState(chartPath string, recursive bool) error {
+	chartRequested, err := loader.Load(chartPath)
+
+	if err != nil {
+		return err
+	}
+
+	os.Remove(fmt.Sprintf("%s/Chart.lock", chartPath))
+	os.RemoveAll(fmt.Sprintf("%s/charts/", chartPath))
+
+	if recursive {
+		for _, chartDep := range chartRequested.Metadata.Dependencies {
+			if strings.HasPrefix(
+				chartDep.Repository,
+				"file://",
+			) {
+
+				fullDepPath, err := filepath.Abs(
+					fmt.Sprintf("%s/%s", chartPath, chartDep.Repository[7:]),
+				)
+
+				if err != nil {
+					return err
+				}
+
+				if err := resetChartDependencyState(fullDepPath, recursive); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func TestCmdGetDryRunFlagStrategy(t *testing.T) {
