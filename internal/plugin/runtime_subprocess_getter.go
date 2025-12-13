@@ -56,9 +56,9 @@ func (r *SubprocessPluginRuntime) runGetter(input *Input) (*Output, error) {
 		return nil, fmt.Errorf("no downloader found for protocol %q", msg.Protocol)
 	}
 
-	env := parseEnv(os.Environ())
+	env := ParseEnv(os.Environ())
 	maps.Insert(env, maps.All(r.EnvVars))
-	maps.Insert(env, maps.All(parseEnv(input.Env)))
+	maps.Insert(env, maps.All(ParseEnv(input.Env)))
 	env["HELM_PLUGIN_NAME"] = r.metadata.Name
 	env["HELM_PLUGIN_DIR"] = r.pluginDir
 	env["HELM_PLUGIN_USERNAME"] = msg.Options.Username
@@ -83,7 +83,7 @@ func (r *SubprocessPluginRuntime) runGetter(input *Input) (*Output, error) {
 	cmd := exec.Command(
 		pluginCommand,
 		args...)
-	cmd.Env = formatEnv(env)
+	cmd.Env = FormatEnv(env)
 	cmd.Stdout = &buf
 	cmd.Stderr = os.Stderr
 
