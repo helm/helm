@@ -59,6 +59,22 @@ type BuildInfo struct {
 	KubeClientVersion string `json:"kube_client_version"`
 }
 
+// String implements Stringer for formatting version output
+func (b BuildInfo) String() string {
+	return fmt.Sprintf(
+		"Version:\t\t%v\n"+
+			"Git Commit:\t\t%v\n"+
+			"Git Tree State:\t\t%v\n"+
+			"Go Version:\t\t%v\n"+
+			"Kubernetes Client:\t%v",
+		b.Version,
+		b.GitCommit,
+		b.GitTreeState,
+		b.GoVersion,
+		b.KubeClientVersion,
+	)
+}
+
 // GetVersion returns the semver string of the version
 func GetVersion() string {
 	if metadata == "" {
