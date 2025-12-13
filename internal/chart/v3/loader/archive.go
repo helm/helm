@@ -27,16 +27,34 @@ import (
 	"helm.sh/helm/v4/pkg/chart/loader/archive"
 )
 
-// FileLoader loads a chart from a file
-type FileLoader string
+// FileLoader loads a chart from a file with embedded options
+type FileLoader struct {
+	path string
+	opts archive.Options
+}
 
 // Load loads a chart
 func (l FileLoader) Load() (*chart.Chart, error) {
-	return LoadFile(string(l))
+	return LoadFile(l.path)
 }
 
-// LoadFile loads from an archive file.
+// NewFileLoader creates a file loader with custom options
+func NewFileLoader(path string, opts archive.Options) FileLoader {
+	return FileLoader{path: path, opts: opts}
+}
+
+// NewDefaultFileLoader creates a file loader with default options
+func NewDefaultFileLoader(path string) FileLoader {
+	return FileLoader{path: path, opts: archive.DefaultOptions}
+}
+
+// LoadFile loads from an archive file with default options
 func LoadFile(name string) (*chart.Chart, error) {
+	return LoadFileWithOptions(name, archive.DefaultOptions)
+}
+
+// LoadFile loads from an archive file with the provided options
+func LoadFileWithOptions(name string, opts archive.Options) (*chart.Chart, error) {
 	if fi, err := os.Stat(name); err != nil {
 		return nil, err
 	} else if fi.IsDir() {
@@ -54,7 +72,7 @@ func LoadFile(name string) (*chart.Chart, error) {
 		return nil, err
 	}
 
-	c, err := LoadArchive(raw)
+	c, err := LoadArchiveWithOptions(raw, opts)
 	if err != nil {
 		if err == gzip.ErrHeader {
 			return nil, fmt.Errorf("file '%s' does not appear to be a valid chart file (details: %s)", name, err)
@@ -65,7 +83,12 @@ func LoadFile(name string) (*chart.Chart, error) {
 
 // LoadArchive loads from a reader containing a compressed tar archive.
 func LoadArchive(in io.Reader) (*chart.Chart, error) {
-	files, err := archive.LoadArchiveFiles(in)
+	return LoadArchiveWithOptions(in, archive.DefaultOptions)
+}
+
+// LoadArchive loads from a reader containing a compressed tar archive with the provided options.
+func LoadArchiveWithOptions(in io.Reader, opts archive.Options) (*chart.Chart, error) {
+	files, err := archive.LoadArchiveFilesWithOptions(in, opts)
 	if err != nil {
 		return nil, err
 	}
