@@ -176,7 +176,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			}
 		}
 		if !found {
-			body, err = g.Get(u.String() + ".prov")
+			body, err = g.Get(u.String()+".prov", c.Options...)
 			if err != nil {
 				if c.Verify == VerifyAlways {
 					return destfile, ver, fmt.Errorf("failed to fetch provenance %q", u.String()+".prov")
