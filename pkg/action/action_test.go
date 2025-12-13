@@ -201,6 +201,12 @@ func withMetadataDependency(dependency chart.Dependency) chartOption {
 	}
 }
 
+func withFile(file common.File) chartOption {
+	return func(opts *chartOptions) {
+		opts.Files = append(opts.Files, &file)
+	}
+}
+
 func withSampleTemplates() chartOption {
 	return func(opts *chartOptions) {
 		modTime := time.Now()
