@@ -238,7 +238,23 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]interface{}, p
 				// This allows Helm's various sources of values (value files or --set) to
 				// remove incompatible keys from any previous chart, file, or set values.
 				delete(v, key)
-			} else if dest, ok := value.(map[string]interface{}); ok {
+				continue
+			}
+
+			if isExplicitEmptyOverride(value) {
+				// Interpret empty slices from values sources (for example, --set key={})
+				// as an explicit request for an empty map so chart defaults are removed.
+				dest := map[string]interface{}{}
+				v[key] = dest
+
+				if src, ok := val.(map[string]interface{}); ok {
+					merge := childChartMergeTrue(c, key, merge)
+					coalesceTablesFullKey(printf, dest, src, concatPrefix(subPrefix, key), merge)
+				}
+				continue
+			}
+
+			if dest, ok := value.(map[string]interface{}); ok {
 				// if v[key] is a table, merge nv's val table into v[key].
 				src, ok := val.(map[string]interface{})
 				if !ok {
@@ -247,14 +263,16 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]interface{}, p
 					if val != nil {
 						printf("warning: skipped value for %s.%s: Not a table.", subPrefix, key)
 					}
-				} else {
-					// If the key is a child chart, coalesce tables with Merge set to true
-					merge := childChartMergeTrue(c, key, merge)
-
-					// Because v has higher precedence than nv, dest values override src
-					// values.
-					coalesceTablesFullKey(printf, dest, src, concatPrefix(subPrefix, key), merge)
+					continue
 				}
+
+				// If the key is a child chart, coalesce tables with Merge set to true
+				merge := childChartMergeTrue(c, key, merge)
+
+				// Because v has higher precedence than nv, dest values override src
+				// values.
+				coalesceTablesFullKey(printf, dest, src, concatPrefix(subPrefix, key), merge)
+				continue
 			}
 		} else {
 			// If the key is not in v, copy it from nv.
@@ -302,6 +320,14 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 	if dst == nil {
 		return src
 	}
+	// If dst is empty and we're operating on a sub-key (prefix != ""),
+	// bail out when not merging so that child charts don't inherit defaults
+	// for an explicitly empty table in the parent. We only do this for
+	// non-top-level coalescing (prefix != "") because top-level coalescing
+	// still needs to pull chart defaults across when dst is empty.
+	if len(dst) == 0 && prefix != "" && !merge {
+		return dst
+	}
 	for key, val := range dst {
 		if val == nil {
 			src[key] = nil
@@ -311,17 +337,36 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 	// values.
 	for key, val := range src {
 		fullkey := concatPrefix(prefix, key)
-		if dv, ok := dst[key]; ok && !merge && dv == nil {
-			delete(dst, key)
-		} else if !ok {
+		dv, ok := dst[key]
+		if !ok {
 			dst[key] = val
-		} else if istable(val) {
+			continue
+		}
+
+		if !merge && dv == nil {
+			delete(dst, key)
+			continue
+		}
+
+		if isExplicitEmptyOverride(dv) {
+			empty := map[string]interface{}{}
+			dst[key] = empty
+			if srcMap, ok := val.(map[string]interface{}); ok {
+				coalesceTablesFullKey(printf, empty, srcMap, fullkey, merge)
+			}
+			continue
+		}
+
+		if istable(val) {
 			if istable(dv) {
 				coalesceTablesFullKey(printf, dv.(map[string]interface{}), val.(map[string]interface{}), fullkey, merge)
 			} else {
 				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
 			}
-		} else if istable(dv) && val != nil {
+			continue
+		}
+
+		if istable(dv) && val != nil {
 			printf("warning: destination for %s is a table. Ignoring non-table value (%v)", fullkey, val)
 		}
 	}
@@ -332,4 +377,38 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 func istable(v interface{}) bool {
 	_, ok := v.(map[string]interface{})
 	return ok
+}
+
+func isExplicitEmptyOverride(v interface{}) bool {
+	switch vv := v.(type) {
+	case map[string]interface{}:
+		return len(vv) == 0
+	case map[interface{}]interface{}:
+		return len(vv) == 0
+	case []interface{}:
+		switch len(vv) {
+		case 0:
+			return true
+		case 1:
+			switch item := vv[0].(type) {
+			case string:
+				return item == ""
+			default:
+				return isExplicitEmptyOverride(item)
+			}
+		default:
+			return false
+		}
+	case []string:
+		switch len(vv) {
+		case 0:
+			return true
+		case 1:
+			return vv[0] == ""
+		default:
+			return false
+		}
+	default:
+		return false
+	}
 }
