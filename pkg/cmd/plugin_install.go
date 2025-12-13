@@ -119,8 +119,6 @@ func (o *pluginInstallOptions) newInstallerForSource() (installer.Installer, err
 }
 
 func (o *pluginInstallOptions) run(out io.Writer) error {
-	installer.Debug = settings.Debug
-
 	i, err := o.newInstallerForSource()
 	if err != nil {
 		return err
