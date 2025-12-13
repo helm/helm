@@ -20,24 +20,24 @@ import (
 	"fmt"
 )
 
-// ErrNoTable indicates that a chart does not have a matching table.
-type ErrNoTable struct {
+// NoTableError indicates that a chart does not have a matching table.
+type NoTableError struct {
 	Key string
 }
 
-func (e ErrNoTable) Error() string { return fmt.Sprintf("%q is not a table", e.Key) }
+func (e NoTableError) Error() string { return fmt.Sprintf("%q is not a table", e.Key) }
 
-// ErrNoValue indicates that Values does not contain a key with a value
-type ErrNoValue struct {
+// NoValueError indicates that Values does not contain a key with a value
+type NoValueError struct {
 	Key string
 }
 
-func (e ErrNoValue) Error() string { return fmt.Sprintf("%q is not a value", e.Key) }
+func (e NoValueError) Error() string { return fmt.Sprintf("%q is not a value", e.Key) }
 
-type ErrInvalidChartName struct {
+type InvalidChartNameError struct {
 	Name string
 }
 
-func (e ErrInvalidChartName) Error() string {
+func (e InvalidChartNameError) Error() string {
 	return fmt.Sprintf("%q is not a valid chart name", e.Name)
 }

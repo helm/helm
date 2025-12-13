@@ -20,6 +20,7 @@ linters:
   enable:
     - depguard
     - dupl
+    - errname
     - gomodguard
     - govet
     - ineffassign

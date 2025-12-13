@@ -23,7 +23,7 @@ import (
 func TestErrorNoTableDoesNotPanic(t *testing.T) {
 	x := "empty"
 
-	y := ErrNoTable{x}
+	y := NoTableError{x}
 
 	t.Logf("error is: %s", y)
 }
@@ -31,7 +31,7 @@ func TestErrorNoTableDoesNotPanic(t *testing.T) {
 func TestErrorNoValueDoesNotPanic(t *testing.T) {
 	x := "empty"
 
-	y := ErrNoValue{x}
+	y := NoValueError{x}
 
 	t.Logf("error is: %s", y)
 }
