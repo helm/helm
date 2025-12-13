@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
 
@@ -168,6 +169,19 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 
 	if err := u.cfg.Releases.Update(rel); err != nil {
 		u.cfg.Log("uninstall: Failed to store updated release: %s", err)
+	}
+
+	// Supersede all previous deployments, see issue #12556 (which is a
+	// variation on #2941).
+	deployed, err := u.cfg.Releases.DeployedAll(name)
+	if err != nil && !errors.Is(err, driver.ErrNoDeployedReleases) {
+		return nil, err
+	}
+	for _, reli := range deployed {
+		reli.Info.Status = release.StatusSuperseded
+		if err = u.cfg.Releases.Update(reli); err != nil {
+			u.cfg.Log("uninstall: Failed to store updated release: %s", err)
+		}
 	}
 
 	if len(errs) > 0 {
