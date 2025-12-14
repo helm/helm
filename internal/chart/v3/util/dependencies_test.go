@@ -255,7 +255,7 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	case common.NoValueError:
 		// We found what we expected
 	default:
-		t.Errorf("expected an NoValueErr but got %q instead", xerr)
+		t.Errorf("expected a NoValueError but got %q instead", xerr)
 	}
 
 	c = loadChart(t, "testdata/subpop")

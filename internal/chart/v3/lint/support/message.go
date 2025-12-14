@@ -35,27 +35,27 @@ var sev = []string{"UNKNOWN", "INFO", "WARNING", "ERROR"}
 
 // Linter encapsulates a linting run of a particular chart.
 type Linter struct {
-	Messages []MessageError
+	Messages []LintMessageError
 	// The highest severity of all the failing lint rules
 	HighestSeverity int
 	ChartDir        string
 }
 
-// Message describes an error encountered while linting.
-type MessageError struct {
+// LintMessageError describes an error encountered while linting.
+type LintMessageError struct {
 	// Severity is one of the *Sev constants
 	Severity int
 	Path     string
 	Err      error
 }
 
-func (m MessageError) Error() string {
+func (m LintMessageError) Error() string {
 	return fmt.Sprintf("[%s] %s: %s", sev[m.Severity], m.Path, m.Err.Error())
 }
 
 // NewMessage creates a new Message struct
-func NewMessage(severity int, path string, err error) MessageError {
-	return MessageError{Severity: severity, Path: path, Err: err}
+func NewMessage(severity int, path string, err error) LintMessageError {
+	return LintMessageError{Severity: severity, Path: path, Err: err}
 }
 
 // RunLinterRule returns true if the validation passed

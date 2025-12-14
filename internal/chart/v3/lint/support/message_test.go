@@ -62,17 +62,17 @@ func TestRunLinterRule(t *testing.T) {
 }
 
 func TestMessage(t *testing.T) {
-	m := MessageError{ErrorSev, "Chart.yaml", errors.New("Foo")}
+	m := LintMessageError{ErrorSev, "Chart.yaml", errors.New("Foo")}
 	if m.Error() != "[ERROR] Chart.yaml: Foo" {
 		t.Errorf("Unexpected output: %s", m.Error())
 	}
 
-	m = MessageError{WarningSev, "templates/", errors.New("Bar")}
+	m = LintMessageError{WarningSev, "templates/", errors.New("Bar")}
 	if m.Error() != "[WARNING] templates/: Bar" {
 		t.Errorf("Unexpected output: %s", m.Error())
 	}
 
-	m = MessageError{InfoSev, "templates/rc.yaml", errors.New("FooBar")}
+	m = LintMessageError{InfoSev, "templates/rc.yaml", errors.New("FooBar")}
 	if m.Error() != "[INFO] templates/rc.yaml: FooBar" {
 		t.Errorf("Unexpected output: %s", m.Error())
 	}
