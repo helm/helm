@@ -56,7 +56,7 @@ func LoadFile(name string) (*chart.Chart, error) {
 
 	c, err := LoadArchive(raw)
 	if err != nil {
-		if err == gzip.ErrHeader {
+		if errors.Is(err, gzip.ErrHeader) {
 			return nil, fmt.Errorf("file '%s' does not appear to be a valid chart file (details: %s)", name, err)
 		}
 	}
