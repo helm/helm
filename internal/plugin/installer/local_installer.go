@@ -164,6 +164,10 @@ func (i *LocalInstaller) Update() error {
 	return nil
 }
 
+func (i *LocalInstaller) GetLatestVersion() (string, error) {
+	return "", fmt.Errorf("not supported")
+}
+
 // Path is overridden to handle archive plugin names properly
 func (i *LocalInstaller) Path() string {
 	if i.Source == "" {
