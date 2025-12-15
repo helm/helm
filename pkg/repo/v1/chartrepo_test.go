@@ -94,7 +94,7 @@ func TestIndexCustomSchemeDownload(t *testing.T) {
 	}
 }
 
-func TestConcurrenyDownloadIndex(t *testing.T) {
+func TestConcurrencyDownloadIndex(t *testing.T) {
 	srv, err := startLocalServerForTests(nil)
 	if err != nil {
 		t.Fatal(err)
