@@ -28,7 +28,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"helm.sh/helm/v4/internal/fileutil"
 	"helm.sh/helm/v4/pkg/getter"
@@ -54,7 +53,6 @@ type ChartRepository struct {
 	IndexFile *IndexFile
 	Client    getter.Getter
 	CachePath string
-	mutex     sync.RWMutex
 }
 
 // NewChartRepository constructs ChartRepository
@@ -79,8 +77,6 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 
 // DownloadIndexFile fetches the index from a repository.
 func (r *ChartRepository) DownloadIndexFile() (string, error) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
 
 	indexURL, err := ResolveReferenceURL(r.Config.URL, "index.yaml")
 	if err != nil {
