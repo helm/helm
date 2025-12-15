@@ -134,7 +134,7 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 
 		for _, cmd := range baseCmd.Commands() {
 			if cmd.Name() == c.Name() {
-				fmt.Fprintf(os.Stderr, "failed to load plugins: name conflicts %s\n", c.Name())
+				slog.Error("failed to load plugins: name conflicts", slog.String("name", c.Name()))
 				return
 			}
 		}
