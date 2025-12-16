@@ -112,13 +112,13 @@ func TestConfigMapList(t *testing.T) {
 	}...)
 
 	// list releases with pagination
-	err := cfgmaps.ListPages(func(page []release.Releaser, lastPage bool) (end bool) {
+	err := cfgmaps.ListPages(func(page []release.Releaser, remaining bool) (end bool) {
 		// check
 		if len(page) != 2 {
 			t.Errorf("Expected 2 cfgmaps, got %d:\n%v\n", len(page), page)
 		}
 
-		return !lastPage
+		return !remaining
 	}, 2, func(rel release.Releaser) bool { return true })
 	// check
 	if err != nil {
@@ -199,12 +199,12 @@ func TestConfigMapQuery(t *testing.T) {
 	}
 
 	// query cfgmaps with pagination
-	err = cfgmaps.QueryPages(func(page []release.Releaser, lastPage bool) (err bool) {
+	err = cfgmaps.QueryPages(func(page []release.Releaser, remaining bool) (err bool) {
 		if len(page) != 2 {
 			t.Fatalf("Expected 2 results, actual %d", len(page))
 		}
 
-		return !lastPage
+		return !remaining
 	}, 2, map[string]string{"status": "deployed"})
 	if err != nil {
 		t.Fatalf("Failed to query: %s", err)

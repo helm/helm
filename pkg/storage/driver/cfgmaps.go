@@ -90,7 +90,7 @@ func (cfgmaps *ConfigMaps) Get(key string) (release.Releaser, error) {
 }
 
 // listPages is a common method to list release with pagination
-func (cfgmaps *ConfigMaps) listPages(f func(page []release.Releaser, lastPage bool) (end bool), opts metav1.ListOptions, filter func(release.Releaser) bool) (err error) {
+func (cfgmaps *ConfigMaps) listPages(f func(page []release.Releaser, remaining bool) (end bool), opts metav1.ListOptions, filter func(release.Releaser) bool) (err error) {
 	if opts.Limit == 0 {
 		opts.Limit = DefaultPaginationLimit
 	}
@@ -163,7 +163,7 @@ func (cfgmaps *ConfigMaps) List(filter func(release.Releaser) bool) ([]release.R
 }
 
 // ListPages same as List, but with pagination
-func (cfgmaps *ConfigMaps) ListPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, filter func(release.Releaser) bool) error {
+func (cfgmaps *ConfigMaps) ListPages(f func(page []release.Releaser, remaining bool) (end bool), limit int64, filter func(release.Releaser) bool) error {
 	lsel := kblabels.Set{"owner": owner}.AsSelector()
 	opts := metav1.ListOptions{Limit: limit, LabelSelector: lsel.String()}
 
@@ -207,7 +207,7 @@ func (cfgmaps *ConfigMaps) Query(labels map[string]string) ([]release.Releaser, 
 }
 
 // QueryPages same as Query, but with pagination
-func (cfgmaps *ConfigMaps) QueryPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, labels map[string]string) error {
+func (cfgmaps *ConfigMaps) QueryPages(f func(page []release.Releaser, remaining bool) (end bool), limit int64, labels map[string]string) error {
 	ls := kblabels.Set{}
 	for k, v := range labels {
 		if errs := validation.IsValidLabelValue(v); len(errs) != 0 {

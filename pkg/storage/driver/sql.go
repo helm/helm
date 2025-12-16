@@ -384,7 +384,7 @@ func (s *SQL) List(filter func(release.Releaser) bool) ([]release.Releaser, erro
 }
 
 // ListPages is a common method to list release with pagination
-func (s *SQL) ListPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, filter func(release.Releaser) bool) (err error) {
+func (s *SQL) ListPages(f func(page []release.Releaser, remaining bool) (end bool), limit int64, filter func(release.Releaser) bool) (err error) {
 	if limit == 0 {
 		limit = DefaultPaginationLimit
 	}
@@ -399,8 +399,10 @@ func (s *SQL) ListPages(f func(page []release.Releaser, lastPage bool) (end bool
 		sb = sb.Where(sq.Eq{sqlReleaseTableNamespaceColumn: s.namespace})
 	}
 
+	var page, offset uint64
 	for {
-		query, args, err := sb.Limit(uint64(limit)).ToSql()
+		offset = (page - 1) * uint64(limit)
+		query, args, err := sb.Offset(offset).Limit(uint64(limit)).ToSql()
 		if err != nil {
 			s.Logger().Debug("failed to build query", slog.Any("error", err))
 			return err
@@ -434,6 +436,8 @@ func (s *SQL) ListPages(f func(page []release.Releaser, lastPage bool) (end bool
 		if f(releases, int64(len(records)) < limit) {
 			break
 		}
+
+		page++
 	}
 
 	return nil
@@ -505,7 +509,7 @@ func (s *SQL) Query(labels map[string]string) ([]release.Releaser, error) {
 }
 
 // QueryPages same as Query, but with pagination
-func (s *SQL) QueryPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, labels map[string]string) error {
+func (s *SQL) QueryPages(f func(page []release.Releaser, remaining bool) (end bool), limit int64, labels map[string]string) error {
 	sb := s.statementBuilder.
 		Select(sqlReleaseTableKeyColumn, sqlReleaseTableNamespaceColumn, sqlReleaseTableBodyColumn).
 		From(sqlReleaseTableName)
@@ -529,9 +533,11 @@ func (s *SQL) QueryPages(f func(page []release.Releaser, lastPage bool) (end boo
 		sb = sb.Where(sq.Eq{sqlReleaseTableNamespaceColumn: s.namespace})
 	}
 
+	var page, offset uint64
 	for {
 		// Build our query
-		query, args, err := sb.Limit(uint64(limit)).ToSql()
+		offset = (page - 1) * uint64(limit)
+		query, args, err := sb.Offset(offset).Limit(uint64(limit)).ToSql()
 		if err != nil {
 			s.Logger().Debug("failed to build query", slog.Any("error", err))
 			return err
@@ -541,10 +547,6 @@ func (s *SQL) QueryPages(f func(page []release.Releaser, lastPage bool) (end boo
 		if err := s.db.Select(&records, query, args...); err != nil {
 			s.Logger().Debug("failed to query with labels", slog.Any("error", err))
 			return err
-		}
-
-		if len(records) == 0 {
-			return ErrReleaseNotFound
 		}
 
 		var releases []release.Releaser
@@ -566,6 +568,8 @@ func (s *SQL) QueryPages(f func(page []release.Releaser, lastPage bool) (end boo
 		if f(releases, int64(len(records)) < limit) {
 			break
 		}
+
+		page++
 	}
 
 	return nil

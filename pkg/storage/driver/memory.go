@@ -17,7 +17,6 @@ limitations under the License.
 package driver
 
 import (
-	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -116,7 +115,7 @@ func (mem *Memory) List(filter func(release.Releaser) bool) ([]release.Releaser,
 }
 
 // ListPages is a common method to list release with pagination
-func (mem *Memory) ListPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, filter func(release.Releaser) bool) (err error) {
+func (mem *Memory) ListPages(f func(page []release.Releaser, remaining bool) (end bool), limit int64, filter func(release.Releaser) bool) (err error) {
 	defer unlock(mem.rlock())
 
 	if limit == 0 {
@@ -223,7 +222,7 @@ func (mem *Memory) Query(keyvals map[string]string) ([]release.Releaser, error) 
 }
 
 // QueryPages same as Query, but with pagination
-func (mem *Memory) QueryPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, keyvals map[string]string) error {
+func (mem *Memory) QueryPages(f func(page []release.Releaser, remaining bool) (end bool), limit int64, keyvals map[string]string) error {
 	defer unlock(mem.rlock())
 
 	if limit == 0 {
@@ -234,8 +233,6 @@ func (mem *Memory) QueryPages(f func(page []release.Releaser, lastPage bool) (en
 
 	lbs.init()
 	lbs.fromMap(keyvals)
-
-	fmt.Printf("namespace: %s\n", mem.namespace)
 
 	ls := make([]release.Releaser, 0, int(limit))
 	if mem.namespace != "" {

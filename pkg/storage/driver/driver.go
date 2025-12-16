@@ -96,9 +96,9 @@ type Deletor interface {
 type Queryor interface {
 	Get(key string) (release.Releaser, error)
 	List(filter func(release.Releaser) bool) ([]release.Releaser, error)
-	ListPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, filter func(release.Releaser) bool) error
+	ListPages(f func(page []release.Releaser, remaining bool) (end bool), limit int64, filter func(release.Releaser) bool) error
 	Query(labels map[string]string) ([]release.Releaser, error)
-	QueryPages(f func(page []release.Releaser, lastPage bool) (end bool), limit int64, labels map[string]string) error
+	QueryPages(f func(page []release.Releaser, remaining bool) (end bool), limit int64, labels map[string]string) error
 }
 
 // Driver is the interface composed of Creator, Updator, Deletor, and Queryor

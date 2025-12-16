@@ -142,12 +142,19 @@ func (mock *MockConfigMapsInterface) List(_ context.Context, opts metav1.ListOpt
 	}
 
 	if opts.Continue != "" {
-		i, _ := strconv.ParseInt(opts.Continue, 10, 64)
+		i, err := strconv.ParseInt(opts.Continue, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid continue value %q: %w", opts.Continue, err)
+		}
 		objects = objects[int(i):]
+		list.Continue = ""
 	}
 
 	if opts.Limit > 0 && opts.Limit <= int64(len(objects)) {
 		objects = objects[:int(opts.Limit)]
+		if opts.Limit < int64(len(objects)) {
+			list.Continue = strconv.FormatInt(opts.Limit, 10)
+		}
 	}
 
 	for _, cfgmap := range objects {
@@ -244,12 +251,19 @@ func (mock *MockSecretsInterface) List(_ context.Context, opts metav1.ListOption
 	}
 
 	if opts.Continue != "" {
-		i, _ := strconv.ParseInt(opts.Continue, 10, 64)
+		i, err := strconv.ParseInt(opts.Continue, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid continue value: %v", err)
+		}
 		objects = objects[int(i):]
+		list.Continue = ""
 	}
 
 	if opts.Limit > 0 && opts.Limit <= int64(len(objects)) {
 		objects = objects[:int(opts.Limit)]
+		if opts.Limit < int64(len(objects)) {
+			list.Continue = strconv.FormatInt(opts.Limit, 10)
+		}
 	}
 
 	for _, secret := range objects {

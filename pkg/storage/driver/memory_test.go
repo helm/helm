@@ -108,13 +108,13 @@ func TestMemoryList(t *testing.T) {
 	ts.SetNamespace("default")
 
 	// list releases with pagination
-	err := ts.ListPages(func(page []release.Releaser, lastPage bool) (end bool) {
+	err := ts.ListPages(func(page []release.Releaser, remaining bool) (end bool) {
 		// check
 		if len(page) != 2 {
 			t.Errorf("Expected 2 releases, got %d:\n%v\n", len(page), page)
 		}
 
-		return !lastPage
+		return !remaining
 	}, 2, func(rel release.Releaser) bool { return true })
 	// check
 	if err != nil {
@@ -271,12 +271,12 @@ func TestMemoryDelete(t *testing.T) {
 	ts.SetNamespace("")
 
 	// query cfgmaps with pagination
-	err := ts.QueryPages(func(page []release.Releaser, lastPage bool) (err bool) {
+	err := ts.QueryPages(func(page []release.Releaser, remaining bool) (err bool) {
 		if len(page) != 1 {
 			t.Fatalf("Expected 1 results, actual %d", len(page))
 		}
 
-		return !lastPage
+		return !remaining
 	}, 1, map[string]string{"status": "deployed"})
 	if err != nil {
 		t.Fatalf("Failed to query: %s", err)
