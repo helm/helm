@@ -569,6 +569,34 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 				return sw.WaitForDelete(rl, timeout)
 			},
 		},
+		{
+			name:         "cluster-scoped resources work correctly with unrestricted permissions",
+			objManifests: []string{podNamespace1Manifest, clusterRoleManifest},
+			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.Wait(rl, timeout)
+			},
+		},
+		{
+			name:         "namespace-scoped and cluster-scoped resources work together",
+			objManifests: []string{podNamespace1Manifest, podNamespace2Manifest, clusterRoleManifest},
+			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.Wait(rl, timeout)
+			},
+		},
+		{
+			name:         "delete cluster-scoped resources works correctly",
+			objManifests: []string{podNamespace1Manifest, namespaceManifest},
+			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.WaitForDelete(rl, timeout)
+			},
+		},
+		{
+			name:         "watch cluster-scoped resources works correctly",
+			objManifests: []string{clusterRoleManifest},
+			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.WatchUntilReady(rl, timeout)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -579,6 +607,8 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 			fakeMapper := testutil.NewFakeRESTMapper(
 				v1.SchemeGroupVersion.WithKind("Pod"),
 				batchv1.SchemeGroupVersion.WithKind("Job"),
+				schema.GroupVersion{Group: "rbac.authorization.k8s.io", Version: "v1"}.WithKind("ClusterRole"),
+				v1.SchemeGroupVersion.WithKind("Namespace"),
 			)
 			sw := statusWaiter{
 				client:     fakeClient,
