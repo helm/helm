@@ -29,8 +29,7 @@ import (
 )
 
 type pluginUpdateOptions struct {
-	names   []string
-	version string
+	names []string
 }
 
 func newPluginUpdateCmd(out io.Writer) *cobra.Command {
@@ -50,7 +49,6 @@ func newPluginUpdateCmd(out io.Writer) *cobra.Command {
 			return o.run(out)
 		},
 	}
-	cmd.Flags().StringVar(&o.version, "version", "", "specify a version constraint. If this is not specified, the latest version is installed")
 	return cmd
 }
 
@@ -73,7 +71,7 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 
 	for _, name := range o.names {
 		if found := findPlugin(plugins, name); found != nil {
-			if err := updatePlugin(found, o.version); err != nil {
+			if err := updatePlugin(found); err != nil {
 				errorPlugins = append(errorPlugins, fmt.Errorf("failed to update plugin %s, got error (%v)", name, err))
 			} else {
 				fmt.Fprintf(out, "Updated plugin: %s\n", name)
@@ -88,7 +86,7 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 	return nil
 }
 
-func updatePlugin(p plugin.Plugin, version string) error {
+func updatePlugin(p plugin.Plugin) error {
 	exactLocation, err := filepath.EvalSymlinks(p.Dir())
 	if err != nil {
 		return err
@@ -98,7 +96,7 @@ func updatePlugin(p plugin.Plugin, version string) error {
 		return err
 	}
 
-	i, err := installer.FindSource(absExactLocation, version)
+	i, err := installer.FindSource(absExactLocation)
 	if err != nil {
 		return err
 	}
