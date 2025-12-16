@@ -160,8 +160,8 @@ func NewForSource(source, version string) (installer Installer, err error) {
 }
 
 // FindSource determines the correct Installer for the given source.
-func FindSource(location string) (Installer, error) {
-	installer, err := existingVCSRepo(location)
+func FindSource(location string, version string) (Installer, error) {
+	installer, err := existingVCSRepo(location, version)
 	if err != nil && err.Error() == "Cannot detect VCS" {
 		slog.Warn("cannot get information about plugin source", "location", location, slog.Any("error", err))
 		return installer, errors.New("cannot get information about plugin source")
