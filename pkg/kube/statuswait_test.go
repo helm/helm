@@ -315,11 +315,11 @@ func TestStatusWaitForDelete(t *testing.T) {
 			for _, objToDelete := range objsToDelete {
 				u := objToDelete.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
-				go func() {
+				go func(gvr schema.GroupVersionResource, u *unstructured.Unstructured) {
 					time.Sleep(timeUntilPodDelete)
 					err := fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName())
 					assert.NoError(t, err)
-				}()
+				}(gvr, u)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objsToCreate)
 			err := statusWaiter.WaitForDelete(resourceList, timeout)
@@ -627,11 +627,11 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 				for _, obj := range objs {
 					u := obj.(*unstructured.Unstructured)
 					gvr := getGVR(t, fakeMapper, u)
-					go func() {
+					go func(gvr schema.GroupVersionResource, u *unstructured.Unstructured) {
 						time.Sleep(timeUntilDelete)
 						err := fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName())
 						assert.NoError(t, err)
-					}()
+					}(gvr, u)
 				}
 			}
 
@@ -812,11 +812,11 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 				for _, obj := range objs {
 					u := obj.(*unstructured.Unstructured)
 					gvr := getGVR(t, fakeMapper, u)
-					go func() {
+					go func(gvr schema.GroupVersionResource, u *unstructured.Unstructured) {
 						time.Sleep(timeUntilDelete)
 						err := baseFakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName())
 						assert.NoError(t, err)
-					}()
+					}(gvr, u)
 				}
 			}
 
@@ -919,11 +919,11 @@ func TestStatusWaitMixedResources(t *testing.T) {
 				for _, obj := range objs {
 					u := obj.(*unstructured.Unstructured)
 					gvr := getGVR(t, fakeMapper, u)
-					go func() {
+					go func(gvr schema.GroupVersionResource, u *unstructured.Unstructured) {
 						time.Sleep(timeUntilDelete)
 						err := baseFakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName())
 						assert.NoError(t, err)
-					}()
+					}(gvr, u)
 				}
 			}
 
