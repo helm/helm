@@ -227,3 +227,53 @@ func TestCRDObjects(t *testing.T) {
 	crds := chrt.CRDObjects()
 	is.Equal(expected, crds)
 }
+
+func TestCRDObjectsWithSubchart(t *testing.T) {
+	modTime := time.Now()
+	
+	// Create a subchart
+	subchart := &Chart{
+		Metadata: &Metadata{
+			Name: "subchart",
+		},
+		Files: []*common.File{
+			{
+				Name:    "crds/subchartcrd.yaml",
+				ModTime: modTime,
+				Data:    []byte("subchart crd"),
+			},
+		},
+	}
+	
+	// Create a parent chart with a dependency
+	parentChart := &Chart{
+		Metadata: &Metadata{
+			Name: "parent",
+		},
+		Files: []*common.File{
+			{
+				Name:    "crds/parentcrd.yaml",
+				ModTime: modTime,
+				Data:    []byte("parent crd"),
+			},
+		},
+	}
+	
+	parentChart.AddDependency(subchart)
+	
+	is := assert.New(t)
+	crds := parentChart.CRDObjects()
+	
+	// Verify we have CRDs from both parent and subchart
+	is.Equal(2, len(crds))
+	
+	// Verify parent CRD has forward slashes (not backslashes)
+	is.Equal("crds/parentcrd.yaml", crds[0].Name)
+	is.Equal("parent/crds/parentcrd.yaml", crds[0].Filename)
+	is.NotContains(crds[0].Filename, "\\", "CRD filename should use forward slashes, not backslashes")
+	
+	// Verify subchart CRD has forward slashes (not backslashes)
+	is.Equal("crds/subchartcrd.yaml", crds[1].Name)
+	is.Equal("parent/charts/subchart/crds/subchartcrd.yaml", crds[1].Filename)
+	is.NotContains(crds[1].Filename, "\\", "CRD filename should use forward slashes, not backslashes")
+}
