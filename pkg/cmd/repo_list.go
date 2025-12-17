@@ -30,6 +30,7 @@ import (
 
 func newRepoListCmd(out io.Writer) *cobra.Command {
 	var outfmt output.Format
+	var noHeaders bool
 	cmd := &cobra.Command{
 		Use:               "list",
 		Aliases:           []string{"ls"},
@@ -46,12 +47,17 @@ func newRepoListCmd(out io.Writer) *cobra.Command {
 				return nil
 			}
 
-			return outfmt.Write(out, &repoListWriter{f.Repositories})
+			w := &repoListWriter{
+				repos:     f.Repositories,
+				noHeaders: noHeaders,
+			}
+
+			return outfmt.Write(out, w)
 		},
 	}
 
+	cmd.Flags().BoolVar(&noHeaders, "no-headers", false, "suppress headers in the output")
 	bindOutputFlag(cmd, &outfmt)
-
 	return cmd
 }
 
@@ -61,12 +67,15 @@ type repositoryElement struct {
 }
 
 type repoListWriter struct {
-	repos []*repo.Entry
+	repos     []*repo.Entry
+	noHeaders bool
 }
 
 func (r *repoListWriter) WriteTable(out io.Writer) error {
 	table := uitable.New()
-	table.AddRow("NAME", "URL")
+	if !r.noHeaders {
+		table.AddRow("NAME", "URL")
+	}
 	for _, re := range r.repos {
 		table.AddRow(re.Name, re.URL)
 	}
