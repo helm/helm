@@ -46,8 +46,8 @@ func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
 			return err
 		}
 
-		skip, err := validateNameAndgenerateName(info)
-		if skip {
+		isGenerateName, err := validateNameAndgenerateName(info)
+		if isGenerateName {
 			return err
 		}
 
@@ -75,8 +75,8 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 			return err
 		}
 
-		skip, err := validateNameAndgenerateName(info)
-		if skip {
+		isGenerateName, err := validateNameAndgenerateName(info)
+		if isGenerateName {
 			return err
 		}
 
@@ -210,11 +210,20 @@ func mergeStrStrMaps(current, desired map[string]string) map[string]string {
 	return result
 }
 
+// validateNameAndgenerateName validates that an object only has either `Name` or `GenerateName` set (and not both)
+// If `GenerateName` is set, true is returned
+// If an invalid combination of `Name` and `GenerateName` are set, an error is returned
 func validateNameAndgenerateName(info *resource.Info) (bool, error) {
-	accessor, _ := meta.Accessor(info.Object)
+	accessor, err := meta.Accessor(info.Object)
+	if err != nil {
+		return true, err
+	}
+
 	if info.Name == "" && accessor.GetGenerateName() != "" {
 		return true, nil
-	} else if info.Name != "" && accessor.GetGenerateName() != "" {
+	}
+
+	if info.Name != "" && accessor.GetGenerateName() != "" {
 		return true, fmt.Errorf("metadata.name and metadata.generateName cannot both be set")
 	}
 
