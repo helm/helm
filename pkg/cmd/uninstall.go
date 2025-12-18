@@ -25,6 +25,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cmd/require"
+	"helm.sh/helm/v4/pkg/kube"
 )
 
 const uninstallDesc = `
@@ -50,11 +51,20 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compListReleases(toComplete, args, cfg)
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			validationErr := validateCascadeFlag(client)
 			if validationErr != nil {
 				return validationErr
 			}
+
+			// When --wait is used with a non-hookOnly strategy, default to foreground
+			// deletion to ensure dependent resources are cleaned up before returning.
+			// This prevents the issue where helm uninstall --wait returns before
+			// all resources (including controller-created dependents) are fully deleted.
+			if !cmd.Flags().Changed("cascade") && client.WaitStrategy != kube.HookOnlyStrategy {
+				client.DeletionPropagation = "foreground"
+			}
+
 			for i := range args {
 
 				res, err := client.Run(args[i])
@@ -76,7 +86,7 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.DisableHooks, "no-hooks", false, "prevent hooks from running during uninstallation")
 	f.BoolVar(&client.IgnoreNotFound, "ignore-not-found", false, `Treat "release not found" as a successful uninstall`)
 	f.BoolVar(&client.KeepHistory, "keep-history", false, "remove all associated resources and mark the release as deleted, but retain the release history")
-	f.StringVar(&client.DeletionPropagation, "cascade", "background", "Must be \"background\", \"orphan\", or \"foreground\". Selects the deletion cascading strategy for the dependents. Defaults to background.")
+	f.StringVar(&client.DeletionPropagation, "cascade", "background", "Must be \"background\", \"orphan\", or \"foreground\". Selects the deletion cascading strategy for the dependents. Defaults to background, or foreground if --wait is used.")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	AddWaitFlag(cmd, &client.WaitStrategy)
