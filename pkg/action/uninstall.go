@@ -276,12 +276,12 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		return nil, "", []error{fmt.Errorf("unable to build kubernetes objects for delete: %w", err)}
 	}
 	if len(resources) > 0 {
-		_, errs = u.cfg.KubeClient.Delete(resources, parseCascadingFlag(u.DeletionPropagation))
+		_, errs = u.cfg.KubeClient.Delete(resources, u.parseCascadingFlag(u.DeletionPropagation))
 	}
 	return resources, kept.String(), errs
 }
 
-func parseCascadingFlag(cascadingFlag string) v1.DeletionPropagation {
+func (u *Uninstall) parseCascadingFlag(cascadingFlag string) v1.DeletionPropagation {
 	switch cascadingFlag {
 	case "orphan":
 		return v1.DeletePropagationOrphan
@@ -290,6 +290,14 @@ func parseCascadingFlag(cascadingFlag string) v1.DeletionPropagation {
 	case "background":
 		return v1.DeletePropagationBackground
 	default:
+		// When --wait is used with a non-hookOnly strategy (i.e. watcher or legacy), default to foreground
+		// deletion to ensure dependent resources are cleaned up before returning.
+		// This prevents the issue where helm uninstall --wait returns before
+		// all resources (including controller-created dependents) are fully deleted.
+		if u.WaitStrategy != kube.HookOnlyStrategy {
+			slog.Debug("uninstall: defaulting to foreground deletion due to wait strategy", "wait strategy", u.WaitStrategy, "cascading flag", cascadingFlag)
+			return v1.DeletePropagationForeground
+		}
 		slog.Debug("uninstall: given cascade value, defaulting to delete propagation background", "value", cascadingFlag)
 		return v1.DeletePropagationBackground
 	}
