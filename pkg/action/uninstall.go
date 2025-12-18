@@ -290,11 +290,11 @@ func (u *Uninstall) parseCascadingFlag(cascadingFlag string) v1.DeletionPropagat
 	case "background":
 		return v1.DeletePropagationBackground
 	default:
-		// When --wait is used with a non-hookOnly strategy (i.e. watcher or legacy), default to foreground
+		// When --wait is used with watcher or legacy strategy, default to foreground
 		// deletion to ensure dependent resources are cleaned up before returning.
-		// This prevents the issue where helm uninstall --wait returns before
+		// This prevents the issue where uninstallation with wait strategy returns before
 		// all resources (including controller-created dependents) are fully deleted.
-		if u.WaitStrategy != kube.HookOnlyStrategy {
+		if u.WaitStrategy == kube.StatusWatcherStrategy || u.WaitStrategy == kube.LegacyStrategy {
 			slog.Debug("uninstall: defaulting to foreground deletion due to wait strategy", "wait strategy", u.WaitStrategy, "cascading flag", cascadingFlag)
 			return v1.DeletePropagationForeground
 		}
