@@ -249,7 +249,7 @@ func (t *parser) key(data map[string]interface{}, nestedNameLevel int) (reterr e
 				return e
 			case ErrNotList:
 				rs, e := t.val()
-				if e != nil && e != io.EOF {
+				if e != nil && !errors.Is(e, io.EOF) {
 					return e
 				}
 				v, e := t.reader(rs)
@@ -380,7 +380,7 @@ func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interfa
 			return setIndex(list, i, "")
 		case ErrNotList:
 			rs, e := t.val()
-			if e != nil && e != io.EOF {
+			if e != nil && !errors.Is(e, io.EOF) {
 				return list, e
 			}
 			v, e := t.reader(rs)
@@ -479,7 +479,7 @@ func (t *parser) valList() ([]interface{}, error) {
 	for {
 		switch rs, last, err := runesUntil(t.sc, stop); {
 		case err != nil:
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				err = errors.New("list must terminate with '}'")
 			}
 			return list, err
