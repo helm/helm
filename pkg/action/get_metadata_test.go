@@ -121,7 +121,7 @@ func TestGetMetadata_Run_WithDependencies(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -180,7 +180,7 @@ func TestGetMetadata_Run_WithDependenciesAliases(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -251,7 +251,7 @@ func TestGetMetadata_Run_WithMixedDependencies(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -315,7 +315,7 @@ func TestGetMetadata_Run_WithAnnotations(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -370,8 +370,8 @@ func TestGetMetadata_Run_SpecificVersion(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel1)
-	cfg.Releases.Create(rel2)
+	require.NoError(t, cfg.Releases.Create(rel1))
+	require.NoError(t, cfg.Releases.Create(rel2))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
@@ -424,7 +424,7 @@ func TestGetMetadata_Run_DifferentStatuses(t *testing.T) {
 				Namespace: "default",
 			}
 
-			cfg.Releases.Create(rel)
+			require.NoError(t, cfg.Releases.Create(rel))
 
 			result, err := client.Run(releaseName)
 			require.NoError(t, err)
@@ -480,7 +480,7 @@ func TestGetMetadata_Run_EmptyAppVersion(t *testing.T) {
 		Namespace: "default",
 	}
 
-	cfg.Releases.Create(rel)
+	require.NoError(t, cfg.Releases.Create(rel))
 
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
