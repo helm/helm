@@ -47,7 +47,7 @@ func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
 		}
 
 		isGenerateName, err := validateNameAndgenerateName(info)
-		if isGenerateName {
+		if isGenerateName || err != nil {
 			return err
 		}
 
@@ -76,7 +76,7 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 		}
 
 		isGenerateName, err := validateNameAndgenerateName(info)
-		if isGenerateName {
+		if isGenerateName || err != nil {
 			return err
 		}
 
@@ -216,7 +216,7 @@ func mergeStrStrMaps(current, desired map[string]string) map[string]string {
 func validateNameAndgenerateName(info *resource.Info) (bool, error) {
 	accessor, err := meta.Accessor(info.Object)
 	if err != nil {
-		return true, err
+		return false, err
 	}
 
 	if info.Name == "" && accessor.GetGenerateName() != "" {
