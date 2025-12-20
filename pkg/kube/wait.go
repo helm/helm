@@ -120,7 +120,7 @@ func (hw *legacyWaiter) isRetryableError(err error, resource *resource.Info) boo
 		)
 		return retryable
 	}
-	slog.Debug("retryable error assumed", slog.String("resource", resource.Name))
+	slog.Debug("retryable error assumed", "resource", resource.Name)
 	return true
 }
 
