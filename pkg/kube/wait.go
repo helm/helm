@@ -18,6 +18,7 @@ package kube // import "helm.sh/helm/v4/pkg/kube"
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -107,7 +108,8 @@ func (hw *legacyWaiter) isRetryableError(err error, resource *resource.Info) boo
 		slog.String("resource", resource.Name),
 		slog.Any("error", err),
 	)
-	if ev, ok := err.(*apierrors.StatusError); ok {
+	var ev *apierrors.StatusError
+	if ok := errors.As(err, &ev); ok {
 		statusCode := ev.Status().Code
 		retryable := hw.isRetryableHTTPStatusCode(statusCode)
 		slog.Debug(
@@ -118,7 +120,7 @@ func (hw *legacyWaiter) isRetryableError(err error, resource *resource.Info) boo
 		)
 		return retryable
 	}
-	slog.Debug("retryable error assumed", "resource", resource.Name)
+	slog.Debug("retryable error assumed", slog.String("resource", resource.Name))
 	return true
 }
 

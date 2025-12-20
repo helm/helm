@@ -18,6 +18,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -120,7 +121,8 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 					Stderr: os.Stderr,
 				}
 				_, err = plug.Invoke(context.Background(), input)
-				if execErr, ok := err.(*plugin.InvokeExecError); ok {
+				var execErr *plugin.InvokeExecError
+				if ok := errors.As(err, &execErr); ok {
 					return CommandError{
 						error:    execErr.Err,
 						ExitCode: execErr.ExitCode,
