@@ -502,7 +502,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
 			return rel, fmt.Errorf("failed pre-install: %w", err)
 		}
 	}
