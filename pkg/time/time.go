@@ -19,7 +19,7 @@ limitations under the License.
 // where the serializer doesn't omit an empty value for time:
 // https://github.com/golang/go/issues/11939. As such, this can be removed if a
 // proposal is ever accepted for Go
-package time
+package time //nolint:revive
 
 import (
 	"bytes"
