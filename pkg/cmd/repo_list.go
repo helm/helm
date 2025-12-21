@@ -103,11 +103,11 @@ func (r *repoListWriter) encodeByFormat(out io.Writer, format output.Format) err
 		return output.EncodeJSON(out, repolist)
 	case output.YAML:
 		return output.EncodeYAML(out, repolist)
+	default:
+		// Because this is a non-exported function and only called internally by
+		// WriteJSON and WriteYAML, we shouldn't get invalid types
+		return nil
 	}
-
-	// Because this is a non-exported function and only called internally by
-	// WriteJSON and WriteYAML, we shouldn't get invalid types
-	return nil
 }
 
 // Returns all repos from repos, except those with names matching ignoredRepoNames
