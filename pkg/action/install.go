@@ -190,10 +190,6 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 			return fmt.Errorf("failed to install CRD %s: %w", obj.Name, err)
 		}
 
-		if len(res) == 0 {
-			return fmt.Errorf("failed to install CRD %s: resources are empty", obj.Name)
-		}
-
 		// Send them to Kube
 		if _, err := i.cfg.KubeClient.Create(
 			res,
