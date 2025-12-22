@@ -712,7 +712,7 @@ func TestGetPodList(t *testing.T) {
 		responsePodList.Items = append(responsePodList.Items, newPodWithStatus(name, v1.PodStatus{}, namespace))
 	}
 
-	kubeClient := k8sfake.NewSimpleClientset(&responsePodList)
+	kubeClient := k8sfake.NewClientset(&responsePodList)
 	c := Client{Namespace: namespace, kubeClient: kubeClient}
 
 	podList, err := c.GetPodList(namespace, metav1.ListOptions{})
@@ -726,7 +726,7 @@ func TestOutputContainerLogsForPodList(t *testing.T) {
 	namespace := "some-namespace"
 	somePodList := newPodList("jimmy", "three", "structs")
 
-	kubeClient := k8sfake.NewSimpleClientset(&somePodList)
+	kubeClient := k8sfake.NewClientset(&somePodList)
 	c := Client{Namespace: namespace, kubeClient: kubeClient}
 	outBuffer := &bytes.Buffer{}
 	outBufferFunc := func(_, _, _ string) io.Writer { return outBuffer }
