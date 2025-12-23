@@ -210,6 +210,98 @@ func TestCheckOwnership(t *testing.T) {
 	assert.EqualError(t, err, `invalid ownership metadata; label validation error: key "app.kubernetes.io/managed-by" must equal "Helm": current value is "helm"`)
 }
 
+func TestVerifyOwnershipBeforeDelete(t *testing.T) {
+	var (
+		releaseName      = "rel-a"
+		releaseNamespace = "ns-a"
+		labels           = map[string]string{
+			appManagedByLabel: appManagedByHelm,
+		}
+		annotations = map[string]string{
+			helmReleaseNameAnnotation:      releaseName,
+			helmReleaseNamespaceAnnotation: releaseNamespace,
+		}
+		wrongAnnotations = map[string]string{
+			helmReleaseNameAnnotation:      "rel-b",
+			helmReleaseNamespaceAnnotation: releaseNamespace,
+		}
+	)
+
+	// Test all resources properly owned
+	t.Run("all resources owned", func(t *testing.T) {
+		owned1 := newDeploymentWithOwner("owned1", "ns-a", labels, annotations)
+		owned2 := newDeploymentWithOwner("owned2", "ns-a", labels, annotations)
+		resources := kube.ResourceList{owned1, owned2}
+
+		ownedList, unownedList, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		assert.NoError(t, err)
+		assert.Len(t, ownedList, 2)
+		assert.Len(t, unownedList, 0)
+	})
+
+	// Test mix of owned and unowned resources
+	t.Run("mixed ownership", func(t *testing.T) {
+		owned := newDeploymentWithOwner("owned", "ns-a", labels, annotations)
+		unowned := newDeploymentWithOwner("unowned", "ns-a", labels, wrongAnnotations)
+		resources := kube.ResourceList{owned, unowned}
+
+		ownedList, unownedList, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		assert.NoError(t, err)
+		assert.Len(t, ownedList, 1)
+		assert.Len(t, unownedList, 1)
+		assert.Equal(t, "owned", ownedList[0].Name)
+		assert.Equal(t, "unowned", unownedList[0].Name)
+	})
+
+	// Test resource not found (should be skipped - not in either list)
+	t.Run("resource not found", func(t *testing.T) {
+		missing := newMissingDeployment("missing", "ns-a")
+		resources := kube.ResourceList{missing}
+
+		ownedList, unownedList, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		assert.NoError(t, err)
+		assert.Len(t, ownedList, 0)
+		assert.Len(t, unownedList, 0)
+	})
+
+	// Test resource with no ownership metadata
+	t.Run("no ownership metadata", func(t *testing.T) {
+		noMeta := newDeploymentWithOwner("no-meta", "ns-a", nil, nil)
+		resources := kube.ResourceList{noMeta}
+
+		ownedList, unownedList, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		assert.NoError(t, err)
+		assert.Len(t, ownedList, 0)
+		assert.Len(t, unownedList, 1)
+	})
+
+	// Test resource owned by different release
+	t.Run("owned by different release", func(t *testing.T) {
+		otherRelease := newDeploymentWithOwner("other", "ns-a", labels, wrongAnnotations)
+		resources := kube.ResourceList{otherRelease}
+
+		ownedList, unownedList, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		assert.NoError(t, err)
+		assert.Len(t, ownedList, 0)
+		assert.Len(t, unownedList, 1)
+	})
+
+	// Test mixed scenario: owned, unowned, and missing resources
+	t.Run("mixed with missing resources", func(t *testing.T) {
+		owned := newDeploymentWithOwner("owned", "ns-a", labels, annotations)
+		unowned := newDeploymentWithOwner("unowned", "ns-a", labels, wrongAnnotations)
+		missing := newMissingDeployment("missing", "ns-a")
+		resources := kube.ResourceList{owned, unowned, missing}
+
+		ownedList, unownedList, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		assert.NoError(t, err)
+		assert.Len(t, ownedList, 1)
+		assert.Len(t, unownedList, 1)
+		assert.Equal(t, "owned", ownedList[0].Name)
+		assert.Equal(t, "unowned", unownedList[0].Name)
+	})
+}
+
 func TestSetMetadataVisitor(t *testing.T) {
 	var (
 		err       error

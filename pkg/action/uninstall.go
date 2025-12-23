@@ -81,6 +81,60 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		if err != nil {
 			return nil, err
 		}
+
+		// Verify ownership in dry-run mode to show what would actually be deleted
+		manifests := releaseutil.SplitManifests(r.Manifest)
+		_, files, err := releaseutil.SortManifests(manifests, nil, releaseutil.UninstallOrder)
+		if err == nil {
+			filesToKeep, filesToDelete := filterManifestsToKeep(files)
+
+			var builder strings.Builder
+			for _, file := range filesToDelete {
+				builder.WriteString("\n---\n" + file.Content)
+			}
+
+			resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
+			if err == nil && len(resources) > 0 {
+				ownedResources, unownedResources, err := verifyOwnershipBeforeDelete(resources, r.Name, r.Namespace)
+				if err == nil {
+					if len(unownedResources) > 0 {
+						u.cfg.Logger().Warn("dry-run: resources would be skipped because they are not owned by this release",
+							"release", r.Name,
+							"count", len(unownedResources))
+						for _, info := range unownedResources {
+							u.cfg.Logger().Warn("dry-run: would skip resource",
+								"kind", info.Mapping.GroupVersionKind.Kind,
+								"name", info.Name,
+								"namespace", info.Namespace)
+						}
+					}
+
+					if len(ownedResources) > 0 {
+						u.cfg.Logger().Debug("dry-run: resources would be deleted",
+							"release", r.Name,
+							"count", len(ownedResources))
+						for _, info := range ownedResources {
+							u.cfg.Logger().Debug("dry-run: would delete resource",
+								"kind", info.Mapping.GroupVersionKind.Kind,
+								"name", info.Name,
+								"namespace", info.Namespace)
+						}
+					}
+				}
+			}
+
+			// Include kept resources in dry-run info
+			if len(filesToKeep) > 0 {
+				var kept strings.Builder
+				kept.WriteString("These resources were kept due to the resource policy:\n")
+				for _, f := range filesToKeep {
+					fmt.Fprintf(&kept, "[%s] %s\n", f.Head.Kind, f.Head.Metadata.Name)
+				}
+				res := &releasei.UninstallReleaseResponse{Release: r, Info: kept.String()}
+				return res, nil
+			}
+		}
+
 		return &releasei.UninstallReleaseResponse{Release: r}, nil
 	}
 
@@ -275,13 +329,46 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 	if err != nil {
 		return nil, "", []error{fmt.Errorf("unable to build kubernetes objects for delete: %w", err)}
 	}
+
+	// Verify ownership before deleting resources
+	var ownedResources, unownedResources kube.ResourceList
 	if len(resources) > 0 {
-		_, errs = u.cfg.KubeClient.Delete(resources, parseCascadingFlag(u.DeletionPropagation))
+		ownedResources, unownedResources, err = verifyOwnershipBeforeDelete(resources, rel.Name, rel.Namespace)
+		if err != nil {
+			return nil, "", []error{fmt.Errorf("unable to verify resource ownership: %w", err)}
+		}
+
+		// Log warnings for unowned resources
+		if len(unownedResources) > 0 {
+			for _, info := range unownedResources {
+				u.cfg.Logger().Warn("skipping delete of resource not owned by this release",
+					"kind", info.Mapping.GroupVersionKind.Kind,
+					"name", info.Name,
+					"namespace", info.Namespace,
+					"release", rel.Name)
+			}
+			kept.WriteString(fmt.Sprintf("\n%d resource(s) were not deleted because they are not owned by this release:\n", len(unownedResources)))
+			for _, info := range unownedResources {
+				fmt.Fprintf(&kept, "[%s] %s\n", info.Mapping.GroupVersionKind.Kind, info.Name)
+			}
+		}
+
+		// Delete only owned resources
+		if len(ownedResources) > 0 {
+			for _, info := range ownedResources {
+				u.cfg.Logger().Debug("deleting resource owned by this release",
+					"kind", info.Mapping.GroupVersionKind.Kind,
+					"name", info.Name,
+					"namespace", info.Namespace,
+					"release", rel.Name)
+			}
+			_, errs = u.cfg.KubeClient.Delete(ownedResources, parseCascadingFlag(u.DeletionPropagation, u.cfg.Logger()))
+		}
 	}
-	return resources, kept.String(), errs
+	return ownedResources, kept.String(), errs
 }
 
-func parseCascadingFlag(cascadingFlag string) v1.DeletionPropagation {
+func parseCascadingFlag(cascadingFlag string, logger *slog.Logger) v1.DeletionPropagation {
 	switch cascadingFlag {
 	case "orphan":
 		return v1.DeletePropagationOrphan
@@ -290,7 +377,7 @@ func parseCascadingFlag(cascadingFlag string) v1.DeletionPropagation {
 	case "background":
 		return v1.DeletePropagationBackground
 	default:
-		slog.Debug("uninstall: given cascade value, defaulting to delete propagation background", "value", cascadingFlag)
+		logger.Debug("uninstall: given cascade value, defaulting to delete propagation background", "value", cascadingFlag)
 		return v1.DeletePropagationBackground
 	}
 }
