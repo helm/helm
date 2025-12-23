@@ -20,7 +20,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"testing"
 
+	"github.com/Masterminds/semver/v3"
 	"k8s.io/client-go/kubernetes/scheme"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -30,27 +32,23 @@ import (
 	helmversion "helm.sh/helm/v4/internal/version"
 )
 
-var (
-	// The Kubernetes version can be set by LDFLAGS. In order to do that the value
-	// must be a string.
-	k8sVersionMajor = "1"
-	k8sVersionMinor = "20"
+const (
+	kubeVersionMajorTesting = 1
+	kubeVersionMinorTesting = 20
+)
 
+var (
 	// DefaultVersionSet is the default version set, which includes only Core V1 ("v1").
 	DefaultVersionSet = allKnownVersions()
 
-	// DefaultCapabilities is the default set of capabilities.
-	version             = fmt.Sprintf("v%s.%s.0", k8sVersionMajor, k8sVersionMinor)
-	DefaultCapabilities = &Capabilities{
-		KubeVersion: KubeVersion{
-			Version:           version,
-			normalizedVersion: version,
-			Major:             k8sVersionMajor,
-			Minor:             k8sVersionMinor,
-		},
-		APIVersions: DefaultVersionSet,
-		HelmVersion: helmversion.Get(),
-	}
+	DefaultCapabilities = func() *Capabilities {
+		caps, err := makeDefaultCapabilities()
+		if err != nil {
+			panic(fmt.Sprintf("failed to create default capabilities: %v", err))
+		}
+		return caps
+
+	}()
 )
 
 // Capabilities describes the capabilities of the Kubernetes cluster.
@@ -142,4 +140,43 @@ func allKnownVersions() VersionSet {
 		vs = append(vs, gv.String())
 	}
 	return vs
+}
+
+func makeDefaultCapabilities() (*Capabilities, error) {
+	// Test builds don't include debug info / module info
+	// (And even if they did, we probably want stable capabilities for tests anyway)
+	// Return a default value for test builds
+	if testing.Testing() {
+		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
+	}
+
+	vstr, err := helmversion.K8sIOClientGoModVersion()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve k8s.io/client-go version: %w", err)
+	}
+
+	v, err := semver.NewVersion(vstr)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse k8s.io/client-go version %q: %v", vstr, err)
+	}
+
+	kubeVersionMajor := v.Major() + 1
+	kubeVersionMinor := v.Minor()
+
+	return newCapabilities(kubeVersionMajor, kubeVersionMinor)
+}
+
+func newCapabilities(kubeVersionMajor, kubeVersionMinor uint64) (*Capabilities, error) {
+
+	version := fmt.Sprintf("v%d.%d.0", kubeVersionMajor, kubeVersionMinor)
+	return &Capabilities{
+		KubeVersion: KubeVersion{
+			Version:           version,
+			normalizedVersion: version,
+			Major:             fmt.Sprintf("%d", kubeVersionMajor),
+			Minor:             fmt.Sprintf("%d", kubeVersionMinor),
+		},
+		APIVersions: DefaultVersionSet,
+		HelmVersion: helmversion.Get(),
+	}, nil
 }
