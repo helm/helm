@@ -1211,23 +1211,20 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 
 func TestInstallCRDs_CheckNilErrors(t *testing.T) {
 	tests := []struct {
-		name        string
-		input       []chart.CRD
-		expectedErr bool
+		name  string
+		input []chart.CRD
 	}{
 		{
 			name: "only one crd with file nil",
 			input: []chart.CRD{
 				{Name: "one", File: nil},
 			},
-			expectedErr: true,
 		},
 		{
 			name: "only one crd with its file data nil",
 			input: []chart.CRD{
 				{Name: "one", File: &common.File{Name: "crds/foo.yaml", Data: nil}},
 			},
-			expectedErr: false,
 		},
 		{
 			name: "at least a crd with its file data nil",
@@ -1236,7 +1233,6 @@ func TestInstallCRDs_CheckNilErrors(t *testing.T) {
 				{Name: "two", File: &common.File{Name: "crds/foo2.yaml", Data: nil}},
 				{Name: "three", File: &common.File{Name: "crds/foo3.yaml", Data: []byte("data")}},
 			},
-			expectedErr: false,
 		},
 	}
 
@@ -1245,8 +1241,8 @@ func TestInstallCRDs_CheckNilErrors(t *testing.T) {
 			instAction := installAction(t)
 
 			err := instAction.installCRDs(tt.input)
-			if tt.expectedErr && err == nil {
-				t.Errorf("got error %v expected nil", err)
+			if err == nil {
+				t.Errorf("got nil expected err")
 			}
 		})
 	}
