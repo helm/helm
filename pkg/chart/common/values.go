@@ -48,7 +48,7 @@ func (v Values) YAML() (string, error) {
 // The above will be evaluated as "The table bar inside the table
 // foo".
 //
-// An ErrNoTable is returned if the table does not exist.
+// An NoTableError is returned if the table does not exist.
 func (v Values) Table(name string) (Values, error) {
 	table := v
 	var err error
@@ -84,7 +84,7 @@ func (v Values) Encode(w io.Writer) error {
 func tableLookup(v Values, simple string) (Values, error) {
 	v2, ok := v[simple]
 	if !ok {
-		return v, ErrNoTable{simple}
+		return v, NoTableError{simple}
 	}
 	if vv, ok := v2.(map[string]interface{}); ok {
 		return vv, nil
@@ -97,7 +97,7 @@ func tableLookup(v Values, simple string) (Values, error) {
 		return vv, nil
 	}
 
-	return Values{}, ErrNoTable{simple}
+	return Values{}, NoTableError{simple}
 }
 
 // ReadValues will parse YAML byte data into a Values.
@@ -154,20 +154,20 @@ func (v Values) pathValue(path []string) (interface{}, error) {
 		if _, ok := v[path[0]]; ok && !istable(v[path[0]]) {
 			return v[path[0]], nil
 		}
-		return nil, ErrNoValue{path[0]}
+		return nil, NoValueError{path[0]}
 	}
 
 	key, path := path[len(path)-1], path[:len(path)-1]
 	// get our table for table path
 	t, err := v.Table(joinPath(path...))
 	if err != nil {
-		return nil, ErrNoValue{key}
+		return nil, NoValueError{key}
 	}
 	// check table for key and ensure value is not a table
 	if k, ok := t[key]; ok && !istable(k) {
 		return k, nil
 	}
-	return nil, ErrNoValue{key}
+	return nil, NoValueError{key}
 }
 
 func parsePath(key string) []string { return strings.Split(key, ".") }
