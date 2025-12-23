@@ -171,8 +171,8 @@ func EnsureArchive(name string, raw *os.File) error {
 	// Check the file format to give us a chance to provide the user with more actionable feedback.
 	buffer := make([]byte, 512)
 	_, err := raw.Read(buffer)
-	if err != nil && err != io.EOF {
-		return fmt.Errorf("file '%s' cannot be read: %s", name, err)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("file '%s' cannot be read: %w", name, err)
 	}
 
 	// Helm may identify achieve of the application/x-gzip as application/vnd.ms-fontobject.

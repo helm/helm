@@ -481,7 +481,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	// pre-install hooks
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
-			return rel, fmt.Errorf("failed pre-install: %s", err)
+			return rel, fmt.Errorf("failed pre-install: %w", err)
 		}
 	}
 
@@ -522,7 +522,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
-			return rel, fmt.Errorf("failed post-install: %s", err)
+			return rel, fmt.Errorf("failed post-install: %w", err)
 		}
 	}
 
