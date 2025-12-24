@@ -223,7 +223,7 @@ func TestLoadPluginsWithSpace(t *testing.T) {
 		t.Fatalf("Expected %d plugins, got %d", len(tests), len(plugins))
 	}
 
-	for i := 0; i < len(plugins); i++ {
+	for i := range plugins {
 		out.Reset()
 		tt := tests[i]
 		pp := plugins[i]

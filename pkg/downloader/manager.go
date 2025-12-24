@@ -315,7 +315,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
-		churl, username, password, insecureskiptlsverify, passcredentialsall, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		churl, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
 			saveError = fmt.Errorf("could not find %s: %w", churl, err)
 			break
@@ -339,8 +339,8 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			Getters:          m.Getters,
 			Options: []getter.Option{
 				getter.WithBasicAuth(username, password),
-				getter.WithPassCredentialsAll(passcredentialsall),
-				getter.WithInsecureSkipVerifyTLS(insecureskiptlsverify),
+				getter.WithPassCredentialsAll(passCredentialsAll),
+				getter.WithInsecureSkipVerifyTLS(insecureSkipTLSVerify),
 				getter.WithTLSClientConfig(certFile, keyFile, caFile),
 			},
 		}
@@ -725,7 +725,7 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 // repoURL is the repository to search
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, insecureskiptlsverify, passcredentialsall bool, caFile, certFile, keyFile string, err error) {
+func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, insecureSkipTLSVerify, passCredentialsAll bool, caFile, certFile, keyFile string, err error) {
 	if registry.IsOCI(repoURL) {
 		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", false, false, "", "", "", nil
 	}
@@ -754,8 +754,8 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 			}
 			username = cr.Config.Username
 			password = cr.Config.Password
-			passcredentialsall = cr.Config.PassCredentialsAll
-			insecureskiptlsverify = cr.Config.InsecureSkipTLSverify
+			passCredentialsAll = cr.Config.PassCredentialsAll
+			insecureSkipTLSVerify = cr.Config.InsecureSkipTLSVerify
 			caFile = cr.Config.CAFile
 			certFile = cr.Config.CertFile
 			keyFile = cr.Config.KeyFile

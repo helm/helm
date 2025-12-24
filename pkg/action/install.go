@@ -62,8 +62,8 @@ import (
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
-// notesFileSuffix that we want to treat special. It goes through the templating engine
-// but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
+// notesFileSuffix that we want to treat specially. It goes through the templating engine
+// but it's not a YAML file (resource) hence can't have hooks, etc. And the user actually
 // wants to see this file after rendering in the status command. However, it must be a suffix
 // since there can be filepath in front of it.
 const notesFileSuffix = "NOTES.txt"
@@ -139,7 +139,7 @@ type ChartPathOptions struct {
 	CaFile                string // --ca-file
 	CertFile              string // --cert-file
 	KeyFile               string // --key-file
-	InsecureSkipTLSverify bool   // --insecure-skip-verify
+	InsecureSkipTLSVerify bool   // --insecure-skip-verify
 	PlainHTTP             bool   // --plain-http
 	Keyring               string // --keyring
 	Password              string // --password
@@ -419,6 +419,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		if err != nil {
 			return nil, err
 		}
+
 		if _, err := i.cfg.KubeClient.Create(
 			resourceList,
 			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {
@@ -886,7 +887,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		Options: []getter.Option{
 			getter.WithPassCredentialsAll(c.PassCredentialsAll),
 			getter.WithTLSClientConfig(c.CertFile, c.KeyFile, c.CaFile),
-			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSverify),
+			getter.WithInsecureSkipVerifyTLS(c.InsecureSkipTLSVerify),
 			getter.WithPlainHTTP(c.PlainHTTP),
 			getter.WithBasicAuth(c.Username, c.Password),
 		},
@@ -911,7 +912,7 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 			repo.WithChartVersion(version),
 			repo.WithClientTLS(c.CertFile, c.KeyFile, c.CaFile),
 			repo.WithUsernamePassword(c.Username, c.Password),
-			repo.WithInsecureSkipTLSverify(c.InsecureSkipTLSverify),
+			repo.WithInsecureSkipTLSVerify(c.InsecureSkipTLSVerify),
 			repo.WithPassCredentialsAll(c.PassCredentialsAll),
 		)
 		if err != nil {

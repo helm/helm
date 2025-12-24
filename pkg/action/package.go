@@ -57,7 +57,7 @@ type Package struct {
 	CertFile              string
 	KeyFile               string
 	CaFile                string
-	InsecureSkipTLSverify bool
+	InsecureSkipTLSVerify bool
 }
 
 const (
@@ -103,7 +103,7 @@ func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
 		ch.Metadata.AppVersion = p.AppVersion
 	}
 
-	if reqs := ac.MetaDependencies(); reqs != nil {
+	if reqs := ac.MetaDependencies(); len(reqs) > 0 {
 		if err := CheckDependencies(ch, reqs); err != nil {
 			return "", err
 		}

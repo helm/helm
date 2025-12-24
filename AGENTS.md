@@ -1,4 +1,4 @@
-# Copilot Instructions for Helm
+# AGENTS.md
 
 ## Overview
 Helm is a package manager for Kubernetes written in Go, supporting v3 (stable) and v4 (unstable) APIs.

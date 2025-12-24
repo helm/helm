@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -224,11 +225,24 @@ type (
 	}
 )
 
+// warnIfHostHasPath checks if the host contains a repository path and logs a warning if it does.
+// Returns true if the host contains a path component (i.e., contains a '/').
+func warnIfHostHasPath(host string) bool {
+	if strings.Contains(host, "/") {
+		registryHost := strings.Split(host, "/")[0]
+		slog.Warn("registry login currently only supports registry hostname, not a repository path", "host", host, "suggested", registryHost)
+		return true
+	}
+	return false
+}
+
 // Login logs into a registry
 func (c *Client) Login(host string, options ...LoginOption) error {
 	for _, option := range options {
 		option(&loginOperation{host, c})
 	}
+
+	warnIfHostHasPath(host)
 
 	reg, err := remote.NewRegistry(host)
 	if err != nil {

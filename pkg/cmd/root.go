@@ -179,6 +179,16 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 
 	logSetup(settings.Debug)
 
+	// newRootCmdWithConfig is only called from NewRootCmd. NewRootCmd sets up
+	// NewConfiguration without a custom logger. So, the slog default is used. logSetup
+	// can change the default logger to the one in the logger package. This happens for
+	// the Helm client. This means the actionConfig logger is different from the slog
+	// default logger. If they are different we sync the actionConfig logger to the slog
+	// current default one.
+	if actionConfig.Logger() != slog.Default() {
+		actionConfig.SetLogger(slog.Default().Handler())
+	}
+
 	// Validate color mode setting
 	switch settings.ColorMode {
 	case "never", "auto", "always":
@@ -393,10 +403,10 @@ func checkForExpiredRepos(repofile string) {
 }
 
 func newRegistryClient(
-	certFile, keyFile, caFile string, insecureSkipTLSverify, plainHTTP bool, username, password string,
+	certFile, keyFile, caFile string, insecureSkipTLSVerify, plainHTTP bool, username, password string,
 ) (*registry.Client, error) {
-	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSverify {
-		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSverify, username, password)
+	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSVerify {
+		registryClient, err := newRegistryClientWithTLS(certFile, keyFile, caFile, insecureSkipTLSVerify, username, password)
 		if err != nil {
 			return nil, err
 		}
@@ -430,10 +440,10 @@ func newDefaultRegistryClient(plainHTTP bool, username, password string) (*regis
 }
 
 func newRegistryClientWithTLS(
-	certFile, keyFile, caFile string, insecureSkipTLSverify bool, username, password string,
+	certFile, keyFile, caFile string, insecureSkipTLSVerify bool, username, password string,
 ) (*registry.Client, error) {
 	tlsConf, err := tlsutil.NewTLSConfig(
-		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSVerify),
 		tlsutil.WithCertKeyPairFiles(certFile, keyFile),
 		tlsutil.WithCAFile(caFile),
 	)

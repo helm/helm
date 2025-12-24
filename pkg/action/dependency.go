@@ -43,7 +43,7 @@ type Dependency struct {
 	CertFile              string
 	KeyFile               string
 	CaFile                string
-	InsecureSkipTLSverify bool
+	InsecureSkipTLSVerify bool
 	PlainHTTP             bool
 }
 

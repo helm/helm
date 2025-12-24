@@ -144,7 +144,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
-				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
+				client.InsecureSkipTLSVerify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
@@ -275,7 +275,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		slog.Warn("this chart is deprecated")
 	}
 
-	if req := ac.MetaDependencies(); req != nil {
+	if req := ac.MetaDependencies(); len(req) > 0 {
 		// If CheckDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
 		// https://github.com/helm/helm/issues/2209

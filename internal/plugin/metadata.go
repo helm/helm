@@ -54,7 +54,7 @@ func (m Metadata) Validate() error {
 	var errs []error
 
 	if !validPluginName.MatchString(m.Name) {
-		errs = append(errs, fmt.Errorf("invalid name"))
+		errs = append(errs, fmt.Errorf("invalid plugin name %q: must contain only a-z, A-Z, 0-9, _ and -", m.Name))
 	}
 
 	if m.APIVersion == "" {
