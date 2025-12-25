@@ -1,0 +1,4 @@
+ship:
+  name: "Going Merry"
+  status: "Destroyed"
+  speed: "Slow"
