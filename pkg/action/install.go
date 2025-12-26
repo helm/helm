@@ -62,8 +62,8 @@ import (
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
-// notesFileSuffix that we want to treat special. It goes through the templating engine
-// but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
+// notesFileSuffix that we want to treat specially. It goes through the templating engine
+// but it's not a YAML file (resource) hence can't have hooks, etc. And the user actually
 // wants to see this file after rendering in the status command. However, it must be a suffix
 // since there can be filepath in front of it.
 const notesFileSuffix = "NOTES.txt"
@@ -419,6 +419,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		if err != nil {
 			return nil, err
 		}
+
 		if _, err := i.cfg.KubeClient.Create(
 			resourceList,
 			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {

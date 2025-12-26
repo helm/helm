@@ -80,7 +80,7 @@ type ChartDownloader struct {
 
 	// ContentCache is the location where Cache stores its files by default
 	// In previous versions of Helm the charts were put in the RepositoryCache. The
-	// repositories and charts are stored in 2 difference caches.
+	// repositories and charts are stored in 2 different caches.
 	ContentCache string
 
 	// Cache specifies the cache implementation to use.
@@ -104,7 +104,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			return "", nil, errors.New("content cache must be set")
 		}
 		c.Cache = &DiskCache{Root: c.ContentCache}
-		slog.Debug("setup up default downloader cache")
+		slog.Debug("set up default downloader cache")
 	}
 	hash, u, err := c.ResolveChartVersion(ref, version)
 	if err != nil {
@@ -209,7 +209,7 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 			return "", nil, errors.New("content cache must be set")
 		}
 		c.Cache = &DiskCache{Root: c.ContentCache}
-		slog.Debug("setup up default downloader cache")
+		slog.Debug("set up default downloader cache")
 	}
 
 	digestString, u, err := c.ResolveChartVersion(ref, version)
@@ -227,13 +227,10 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 	// Check the cache for the file
 	digest, err := hex.DecodeString(digestString)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("unable to decode digest: %w", err)
 	}
 	var digest32 [32]byte
 	copy(digest32[:], digest)
-	if err != nil {
-		return "", nil, fmt.Errorf("unable to decode digest: %w", err)
-	}
 
 	var pth string
 	// only fetch from the cache if we have a digest

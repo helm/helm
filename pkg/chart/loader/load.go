@@ -20,6 +20,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -130,8 +131,8 @@ func LoadFile(name string) (chart.Charter, error) {
 
 	files, err := archive.LoadArchiveFiles(raw)
 	if err != nil {
-		if err == gzip.ErrHeader {
-			return nil, fmt.Errorf("file '%s' does not appear to be a valid chart file (details: %s)", name, err)
+		if errors.Is(err, gzip.ErrHeader) {
+			return nil, fmt.Errorf("file '%s' does not appear to be a valid chart file (details: %w)", name, err)
 		}
 		return nil, errors.New("unable to load chart archive")
 	}
@@ -147,6 +148,38 @@ func LoadFile(name string) (chart.Charter, error) {
 				return c2load.Load(name)
 			case c3.APIVersionV3:
 				return c3load.Load(name)
+			default:
+				return nil, errors.New("unsupported chart version")
+			}
+		}
+	}
+
+	return nil, errors.New("unable to detect chart version, no Chart.yaml found")
+}
+
+// LoadArchive loads from a reader containing a compressed tar archive.
+func LoadArchive(in io.Reader) (chart.Charter, error) {
+	// Note: This function is for use by SDK users such as Flux.
+
+	files, err := archive.LoadArchiveFiles(in)
+	if err != nil {
+		if errors.Is(err, gzip.ErrHeader) {
+			return nil, fmt.Errorf("stream does not appear to be a valid chart file (details: %w)", err)
+		}
+		return nil, fmt.Errorf("unable to load chart archive: %w", err)
+	}
+
+	for _, f := range files {
+		if f.Name == "Chart.yaml" {
+			c := new(chartBase)
+			if err := yaml.Unmarshal(f.Data, c); err != nil {
+				return c, fmt.Errorf("cannot load Chart.yaml: %w", err)
+			}
+			switch c.APIVersion {
+			case c2.APIVersionV1, c2.APIVersionV2, "":
+				return c2load.LoadFiles(files)
+			case c3.APIVersionV3:
+				return c3load.LoadFiles(files)
 			default:
 				return nil, errors.New("unsupported chart version")
 			}

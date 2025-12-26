@@ -515,7 +515,11 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 
 func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, err error) (*release.Release, error) {
 	msg := fmt.Sprintf("Upgrade %q failed: %s", rel.Name, err)
-	u.cfg.Logger().Warn("upgrade failed", "name", rel.Name, slog.Any("error", err))
+	u.cfg.Logger().Warn(
+		"upgrade failed",
+		slog.String("name", rel.Name),
+		slog.Any("error", err),
+	)
 
 	rel.Info.Status = rcommon.StatusFailed
 	rel.Info.Description = msg
