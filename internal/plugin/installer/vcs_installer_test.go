@@ -175,15 +175,88 @@ func TestVCSInstallerUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Test update failure
-	if err := os.Remove(filepath.Join(vcsInstaller.Repo.LocalPath(), "plugin.yaml")); err != nil {
+	// Test that local modifications are automatically reset during update
+	// Remove plugin.yaml to simulate modifications
+	pluginYamlPath := filepath.Join(vcsInstaller.Repo.LocalPath(), "plugin.yaml")
+	if err := os.Remove(pluginYamlPath); err != nil {
 		t.Fatal(err)
 	}
-	// Testing update for error
-	if err := Update(vcsInstaller); err == nil {
-		t.Fatalf("expected error for plugin modified, got none")
-	} else if err.Error() != "plugin repo was modified" {
-		t.Fatalf("expected error for plugin modified, got (%v)", err)
+
+	// Verify the repo is dirty
+	if !vcsInstaller.Repo.IsDirty() {
+		t.Fatal("expected repo to be dirty after removing plugin.yaml")
 	}
 
+	// Update should succeed because local modifications are automatically reset
+	if err := Update(vcsInstaller); err != nil {
+		t.Fatalf("update should succeed after automatic reset, got error: %v", err)
+	}
+
+	// Verify plugin.yaml was restored after reset
+	if _, err := os.Stat(pluginYamlPath); err != nil {
+		t.Fatalf("plugin.yaml should be restored after update, got error: %v", err)
+	}
+
+}
+
+func TestResetRepo(t *testing.T) {
+	// Use a real git repository by cloning a test repo
+	ensure.HelmHome(t)
+
+	source := "https://github.com/adamreese/helm-env"
+
+	i, err := NewForSource(source, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	vcsInstaller, ok := i.(*VCSInstaller)
+	if !ok {
+		t.Fatal("expected a VCSInstaller")
+	}
+
+	// Clone the repository
+	if err := vcsInstaller.sync(vcsInstaller.Repo); err != nil {
+		if strings.Contains(err.Error(), "Could not resolve host: github.com") {
+			t.Skip("Unable to run test without Internet access")
+		}
+		t.Fatalf("Failed to sync repo: %v", err)
+	}
+
+	// Modify an existing file to make the repo dirty
+	pluginYaml := filepath.Join(vcsInstaller.Repo.LocalPath(), "plugin.yaml")
+	originalContent, err := os.ReadFile(pluginYaml)
+	if err != nil {
+		t.Fatalf("Failed to read plugin.yaml: %v", err)
+	}
+
+	modifiedContent := append(originalContent, []byte("\n# Test modification\n")...)
+	if err := os.WriteFile(pluginYaml, modifiedContent, 0644); err != nil {
+		t.Fatalf("Failed to modify plugin.yaml: %v", err)
+	}
+
+	// Verify the repo is dirty
+	if !vcsInstaller.Repo.IsDirty() {
+		t.Fatal("Expected repo to be dirty after modifying plugin.yaml")
+	}
+
+	// Reset the repo
+	if err := resetRepo(vcsInstaller.Repo); err != nil {
+		t.Fatalf("resetRepo failed: %v", err)
+	}
+
+	// Verify the repo is clean
+	if vcsInstaller.Repo.IsDirty() {
+		t.Fatal("Expected repo to be clean after reset")
+	}
+
+	// Verify the plugin.yaml was restored to original content
+	restoredContent, err := os.ReadFile(pluginYaml)
+	if err != nil {
+		t.Fatalf("Failed to read plugin.yaml after reset: %v", err)
+	}
+
+	if string(restoredContent) != string(originalContent) {
+		t.Fatal("Expected plugin.yaml to be restored to original content after reset")
+	}
 }
