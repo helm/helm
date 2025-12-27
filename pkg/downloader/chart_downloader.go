@@ -125,7 +125,8 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	var digest32 [32]byte
 	if hash != "" {
 		// if there is a hash, populate the other formats
-		digest, err = hex.DecodeString(hash)
+		// Strip the algorithm prefix (e.g., "sha256:") if present
+		digest, err = hex.DecodeString(stripDigestAlgorithm(hash))
 		if err != nil {
 			return "", nil, err
 		}
@@ -225,7 +226,8 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 	c.Options = append(c.Options, getter.WithAcceptHeader("application/gzip,application/octet-stream"))
 
 	// Check the cache for the file
-	digest, err := hex.DecodeString(digestString)
+	// Strip the algorithm prefix (e.g., "sha256:") if present
+	digest, err := hex.DecodeString(stripDigestAlgorithm(digestString))
 	if err != nil {
 		return "", nil, fmt.Errorf("unable to decode digest: %w", err)
 	}
@@ -577,4 +579,13 @@ func loadRepoConfig(file string) (*repo.File, error) {
 		return nil, err
 	}
 	return r, nil
+}
+
+// stripDigestAlgorithm removes the algorithm prefix (e.g., "sha256:") from a digest string.
+// If no prefix is present, the original string is returned unchanged.
+func stripDigestAlgorithm(digest string) string {
+	if idx := strings.Index(digest, ":"); idx >= 0 {
+		return digest[idx+1:]
+	}
+	return digest
 }
