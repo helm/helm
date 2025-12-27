@@ -17,7 +17,6 @@ limitations under the License.
 package kube // import "helm.sh/helm/v3/pkg/kube"
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -32,13 +31,13 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"k8s.io/client-go/dynamic"
+	"k8s.io/apimachinery/pkg/watch"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
+	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/kubectl/pkg/scheme"
 )
 
@@ -646,79 +645,72 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 	}
 }
 
-type restrictedDynamicClient struct {
-	dynamic.Interface
+// restrictedClientConfig holds the configuration for RBAC simulation on a fake dynamic client
+type restrictedClientConfig struct {
 	allowedNamespaces          map[string]bool
 	clusterScopedListAttempted bool
 }
 
-func newRestrictedDynamicClient(baseClient dynamic.Interface, allowedNamespaces []string) *restrictedDynamicClient {
+// setupRestrictedClient configures a fake dynamic client to simulate RBAC restrictions
+// by using PrependReactor and PrependWatchReactor to intercept list/watch operations.
+func setupRestrictedClient(fakeClient *dynamicfake.FakeDynamicClient, allowedNamespaces []string) *restrictedClientConfig {
 	allowed := make(map[string]bool)
 	for _, ns := range allowedNamespaces {
 		allowed[ns] = true
 	}
-	return &restrictedDynamicClient{
-		Interface:         baseClient,
+	config := &restrictedClientConfig{
 		allowedNamespaces: allowed,
 	}
-}
 
-func (r *restrictedDynamicClient) Resource(resource schema.GroupVersionResource) dynamic.NamespaceableResourceInterface {
-	return &restrictedNamespaceableResource{
-		NamespaceableResourceInterface: r.Interface.Resource(resource),
-		allowedNamespaces:              r.allowedNamespaces,
-		clusterScopedListAttempted:     &r.clusterScopedListAttempted,
-	}
-}
+	// Intercept list operations
+	fakeClient.PrependReactor("list", "*", func(action clienttesting.Action) (bool, runtime.Object, error) {
+		listAction := action.(clienttesting.ListAction)
+		ns := listAction.GetNamespace()
+		if ns == "" {
+			// Cluster-scoped list
+			config.clusterScopedListAttempted = true
+			return true, nil, apierrors.NewForbidden(
+				action.GetResource().GroupResource(),
+				"",
+				fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources"),
+			)
+		}
+		if !config.allowedNamespaces[ns] {
+			return true, nil, apierrors.NewForbidden(
+				action.GetResource().GroupResource(),
+				"",
+				fmt.Errorf("user does not have LIST permissions in namespace %q", ns),
+			)
+		}
+		// Fall through to the default handler
+		return false, nil, nil
+	})
 
-type restrictedNamespaceableResource struct {
-	dynamic.NamespaceableResourceInterface
-	allowedNamespaces          map[string]bool
-	clusterScopedListAttempted *bool
-}
+	// Intercept watch operations
+	fakeClient.PrependWatchReactor("*", func(action clienttesting.Action) (bool, watch.Interface, error) {
+		watchAction := action.(clienttesting.WatchAction)
+		ns := watchAction.GetNamespace()
+		if ns == "" {
+			// Cluster-scoped watch
+			config.clusterScopedListAttempted = true
+			return true, nil, apierrors.NewForbidden(
+				action.GetResource().GroupResource(),
+				"",
+				fmt.Errorf("user does not have cluster-wide WATCH permissions for cluster-scoped resources"),
+			)
+		}
+		if !config.allowedNamespaces[ns] {
+			return true, nil, apierrors.NewForbidden(
+				action.GetResource().GroupResource(),
+				"",
+				fmt.Errorf("user does not have WATCH permissions in namespace %q", ns),
+			)
+		}
+		// Fall through to the default handler
+		return false, nil, nil
+	})
 
-func (r *restrictedNamespaceableResource) Namespace(ns string) dynamic.ResourceInterface {
-	return &restrictedResource{
-		ResourceInterface:          r.NamespaceableResourceInterface.Namespace(ns),
-		namespace:                  ns,
-		allowedNamespaces:          r.allowedNamespaces,
-		clusterScopedListAttempted: r.clusterScopedListAttempted,
-	}
-}
-
-func (r *restrictedNamespaceableResource) List(_ context.Context, _ metav1.ListOptions) (*unstructured.UnstructuredList, error) {
-	*r.clusterScopedListAttempted = true
-	return nil, apierrors.NewForbidden(
-		schema.GroupResource{Resource: "pods"},
-		"",
-		fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources"),
-	)
-}
-
-type restrictedResource struct {
-	dynamic.ResourceInterface
-	namespace                  string
-	allowedNamespaces          map[string]bool
-	clusterScopedListAttempted *bool
-}
-
-func (r *restrictedResource) List(ctx context.Context, opts metav1.ListOptions) (*unstructured.UnstructuredList, error) {
-	if r.namespace == "" {
-		*r.clusterScopedListAttempted = true
-		return nil, apierrors.NewForbidden(
-			schema.GroupResource{Resource: "pods"},
-			"",
-			fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources"),
-		)
-	}
-	if !r.allowedNamespaces[r.namespace] {
-		return nil, apierrors.NewForbidden(
-			schema.GroupResource{Resource: "pods"},
-			"",
-			fmt.Errorf("user does not have LIST permissions in namespace %q", r.namespace),
-		)
-	}
-	return r.ResourceInterface.List(ctx, opts)
+	return config
 }
 
 func TestStatusWaitRestrictedRBAC(t *testing.T) {
@@ -794,9 +786,9 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 				schema.GroupVersion{Group: "rbac.authorization.k8s.io", Version: "v1"}.WithKind("ClusterRole"),
 				v1.SchemeGroupVersion.WithKind("Namespace"),
 			)
-			restrictedClient := newRestrictedDynamicClient(baseFakeClient, tt.allowedNamespaces)
+			restrictedConfig := setupRestrictedClient(baseFakeClient, tt.allowedNamespaces)
 			sw := statusWaiter{
-				client:     restrictedClient,
+				client:     baseFakeClient,
 				restMapper: fakeMapper,
 			}
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
@@ -830,7 +822,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
-			assert.False(t, restrictedClient.clusterScopedListAttempted)
+			assert.False(t, restrictedConfig.clusterScopedListAttempted)
 		})
 	}
 }
@@ -901,9 +893,9 @@ func TestStatusWaitMixedResources(t *testing.T) {
 				schema.GroupVersion{Group: "rbac.authorization.k8s.io", Version: "v1"}.WithKind("ClusterRole"),
 				v1.SchemeGroupVersion.WithKind("Namespace"),
 			)
-			restrictedClient := newRestrictedDynamicClient(baseFakeClient, tt.allowedNamespaces)
+			restrictedConfig := setupRestrictedClient(baseFakeClient, tt.allowedNamespaces)
 			sw := statusWaiter{
-				client:     restrictedClient,
+				client:     baseFakeClient,
 				restMapper: fakeMapper,
 			}
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
@@ -937,7 +929,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
-			assert.False(t, restrictedClient.clusterScopedListAttempted)
+			assert.False(t, restrictedConfig.clusterScopedListAttempted)
 		})
 	}
 }
