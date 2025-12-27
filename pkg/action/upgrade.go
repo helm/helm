@@ -392,6 +392,19 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 
 	if isDryRun(u.DryRunStrategy) {
 		u.cfg.Logger().Debug("dry run for release", "name", upgradedRelease.Name)
+		// For server-side dry-run, validate resources against the API server
+		if u.DryRunStrategy == DryRunServer {
+			_, err := u.cfg.KubeClient.Update(
+				current,
+				target,
+				kube.ClientUpdateOptionForceReplace(u.ForceReplace),
+				kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
+				kube.ClientUpdateOptionDryRun(true),
+			)
+			if err != nil {
+				return upgradedRelease, err
+			}
+		}
 		if len(u.Description) > 0 {
 			upgradedRelease.Info.Description = u.Description
 		} else {
