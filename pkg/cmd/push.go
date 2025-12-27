@@ -42,6 +42,7 @@ type registryPushOptions struct {
 	plainHTTP             bool
 	password              string
 	username              string
+	subject               string
 }
 
 func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -84,7 +85,8 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				action.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
 				action.WithInsecureSkipTLSVerify(o.insecureSkipTLSVerify),
 				action.WithPlainHTTP(o.plainHTTP),
-				action.WithPushOptWriter(out))
+				action.WithPushOptWriter(out),
+				action.WithSubject(o.subject))
 			client.Settings = settings
 			output, err := client.Run(chartRef, remote)
 			if err != nil {
@@ -103,6 +105,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart upload")
 	f.StringVar(&o.username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&o.password, "password", "", "chart repository password where to locate the requested chart")
+	f.StringVar(&o.subject, "subject", "", "associate chart with a container image via OCI Referrers API (digest format: sha256:...)")
 
 	return cmd
 }
