@@ -66,7 +66,11 @@ type Upgrade struct {
 	Devel bool
 	// Namespace is the namespace in which this operation should be performed.
 	Namespace string
-	// SkipCRDs skips installing CRDs when install flag is enabled during upgrade
+	// SkipCRDs opts the chart installation out of installing or upgrading CRs on the cluster, when
+	// Install is set in an install-or-upgrade operation.
+	//  - If set to false, CRDs are installed (or upgraded) during a chart installation and
+	//    AlreadyExists errors are ignored.
+	//  - If set to true, no operations on CRDs are performed on the cluster during installation.
 	SkipCRDs bool
 	// Timeout is the timeout for this operation
 	Timeout time.Duration
