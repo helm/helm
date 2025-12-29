@@ -75,9 +75,9 @@ func validateValuesFile(valuesPath string, overrides map[string]interface{}, ski
 	if err != nil {
 		return err
 	}
-
+	baseDir := filepath.Dir(schemaPath)
 	if !skipSchemaValidation {
-		return util.ValidateAgainstSingleSchema(coalescedValues, schema)
+		return util.ValidateAgainstSingleSchema(coalescedValues, schema, baseDir)
 	}
 
 	return nil
