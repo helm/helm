@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"text/template"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -97,6 +98,9 @@ type Configuration struct {
 
 	Log func(string, ...interface{})
 
+	// CustomTemplateFuncs is defined by users to provide custom template funcs
+	CustomTemplateFuncs template.FuncMap
+
 	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
 	HookOutputFunc func(namespace, pod, container string) io.Writer
 }
@@ -135,10 +139,14 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		}
 		e := engine.New(restConfig)
 		e.EnableDNS = enableDNS
+		e.CustomTemplateFuncs = cfg.CustomTemplateFuncs
+
 		files, err2 = e.Render(ch, values)
 	} else {
 		var e engine.Engine
 		e.EnableDNS = enableDNS
+		e.CustomTemplateFuncs = cfg.CustomTemplateFuncs
+
 		files, err2 = e.Render(ch, values)
 	}
 
