@@ -84,3 +84,8 @@ If you're interested in contributing, please refer to the [Contributing Guide](C
 ### Code of conduct
 
 Participation in the Helm community is governed by the [Code of Conduct](code-of-conduct.md).
+
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
