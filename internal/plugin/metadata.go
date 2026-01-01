@@ -174,13 +174,12 @@ func buildLegacyRuntimeConfig(m MetadataLegacy) RuntimeConfig {
 }
 
 func fromMetadataV1(mv1 MetadataV1) (*Metadata, error) {
-
-	config, err := unmarshaConfig(mv1.Type, mv1.Config)
+	config, err := unmarshalConfig(mv1.Type, mv1.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	runtimeConfig, err := convertMetdataRuntimeConfig(mv1.Runtime, mv1.RuntimeConfig)
+	runtimeConfig, err := convertMetadataRuntimeConfig(mv1.Runtime, mv1.RuntimeConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +196,7 @@ func fromMetadataV1(mv1 MetadataV1) (*Metadata, error) {
 	}, nil
 }
 
-func convertMetdataRuntimeConfig(runtimeType string, runtimeConfigRaw map[string]any) (RuntimeConfig, error) {
+func convertMetadataRuntimeConfig(runtimeType string, runtimeConfigRaw map[string]any) (RuntimeConfig, error) {
 	var runtimeConfig RuntimeConfig
 	var err error
 
