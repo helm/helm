@@ -138,6 +138,55 @@ func NewConfiguration(options ...ConfigurationOption) *Configuration {
 	return c
 }
 
+// ConfigurationState represents a saved state of Configuration that can be restored
+type ConfigurationState interface {
+	// unexported method to ensure only our implementation can satisfy this interface
+	restore(*Configuration)
+}
+
+// configurationSnapshot represents a saved state of Configuration for restoration
+type configurationSnapshot struct {
+	originalKubeClient   kube.Interface
+	originalCapabilities *common.Capabilities
+	originalReleases     *storage.Storage
+}
+
+// restore implements ConfigurationState interface
+func (cs *configurationSnapshot) restore(cfg *Configuration) {
+	cfg.KubeClient = cs.originalKubeClient
+	cfg.Capabilities = cs.originalCapabilities
+	cfg.Releases = cs.originalReleases
+}
+
+// SaveState creates a snapshot of the current configuration state
+func (cfg *Configuration) SaveState() ConfigurationState {
+	cfg.mutex.Lock()
+	defer cfg.mutex.Unlock()
+
+	return cfg.saveStateUnsafe()
+}
+
+// saveStateUnsafe creates a snapshot without locking (internal use only)
+func (cfg *Configuration) saveStateUnsafe() ConfigurationState {
+	return &configurationSnapshot{
+		originalKubeClient:   cfg.KubeClient,
+		originalCapabilities: cfg.Capabilities,
+		originalReleases:     cfg.Releases,
+	}
+}
+
+// RestoreState restores the configuration to a previously saved state
+func (cfg *Configuration) RestoreState(snapshot ConfigurationState) {
+	if snapshot == nil {
+		return
+	}
+
+	cfg.mutex.Lock()
+	defer cfg.mutex.Unlock()
+
+	snapshot.restore(cfg)
+}
+
 const (
 	// filenameAnnotation is the annotation key used to store the original filename
 	// information in manifest annotations for post-rendering reconstruction.
