@@ -1,4 +1,5 @@
 maintainers:
+  - banjoh
   - gjenkins8
   - joejulian
   - marckhouzam
@@ -9,7 +10,6 @@ maintainers:
   - technosophos
   - TerryHowe
 triage:
-  - banjoh
   - yxxhero
   - zonggen
   - z4ce
