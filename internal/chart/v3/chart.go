@@ -162,7 +162,7 @@ func (ch *Chart) CRDObjects() []CRD {
 	// Find all resources in the crds/ directory
 	for _, f := range ch.Files {
 		if strings.HasPrefix(f.Name, "crds/") && hasManifestExtension(f.Name) {
-			mycrd := CRD{Name: f.Name, Filename: filepath.Join(ch.ChartFullPath(), f.Name), File: f}
+			mycrd := CRD{Name: f.Name, Filename: filepath.ToSlash(filepath.Join(ch.ChartFullPath(), f.Name)), File: f}
 			crds = append(crds, mycrd)
 		}
 	}
