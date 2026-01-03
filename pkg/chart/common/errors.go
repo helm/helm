@@ -20,7 +20,7 @@ import (
 	"fmt"
 )
 
-// ErrNoTable exists due to compatibilty with API users
+// ErrNoTable exists due to compatibility with API users
 //
 //nolint:errname
 type ErrNoTable = NoTableError
@@ -32,7 +32,7 @@ type NoTableError struct {
 
 func (e NoTableError) Error() string { return fmt.Sprintf("%q is not a table", e.Key) }
 
-// ErrNoValue exists due to compatibilty with API users
+// ErrNoValue exists due to compatibility with API users
 //
 //nolint:errname
 type ErrNoValue = NoValueError
@@ -44,7 +44,7 @@ type NoValueError struct {
 
 func (e NoValueError) Error() string { return fmt.Sprintf("%q is not a value", e.Key) }
 
-// ErrInvalidChartName exists due to compatibilty with API users
+// ErrInvalidChartName exists due to compatibility with API users
 //
 //nolint:errname
 type ErrInvalidChartName = InvalidChartNameError

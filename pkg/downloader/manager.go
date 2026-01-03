@@ -45,6 +45,9 @@ import (
 	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
+// ErrRepoNotFound is maintained for backwards compatibility for API users
+//
+//nolint:errname
 type ErrRepoNotFound = RepoNotFoundError
 
 // RepoNotFoundError indicates that chart repositories can't be found in local repo cache.
