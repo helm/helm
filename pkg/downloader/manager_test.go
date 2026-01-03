@@ -550,7 +550,7 @@ func TestBuild_WithRepositoryAlias(t *testing.T) {
 	})
 }
 
-func TestErrRepoNotFound_Error(t *testing.T) {
+func TestRepoNotFound_Error(t *testing.T) {
 	type fields struct {
 		Repos []string
 	}

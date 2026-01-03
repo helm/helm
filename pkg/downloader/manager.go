@@ -45,6 +45,8 @@ import (
 	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
+type ErrRepoNotFound = RepoNotFoundError
+
 // RepoNotFoundError indicates that chart repositories can't be found in local repo cache.
 // The value of Repos is missing repos.
 type RepoNotFoundError struct {

@@ -41,6 +41,9 @@ type Linter struct {
 	ChartDir        string
 }
 
+//nolint:errname
+type Message = LintMessageError
+
 // Message describes an error encountered while linting.
 type LintMessageError struct {
 	// Severity is one of the *Sev constants

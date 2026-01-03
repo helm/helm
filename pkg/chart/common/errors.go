@@ -20,6 +20,11 @@ import (
 	"fmt"
 )
 
+// ErrNoTable exists due to compatibilty with API users
+//
+//nolint:errname
+type ErrNoTable = NoTableError
+
 // NoTableError indicates that a chart does not have a matching table.
 type NoTableError struct {
 	Key string
@@ -27,12 +32,22 @@ type NoTableError struct {
 
 func (e NoTableError) Error() string { return fmt.Sprintf("%q is not a table", e.Key) }
 
+// ErrNoValue exists due to compatibilty with API users
+//
+//nolint:errname
+type ErrNoValue = NoValueError
+
 // NoValueError indicates that Values does not contain a key with a value
 type NoValueError struct {
 	Key string
 }
 
 func (e NoValueError) Error() string { return fmt.Sprintf("%q is not a value", e.Key) }
+
+// ErrInvalidChartName exists due to compatibilty with API users
+//
+//nolint:errname
+type ErrInvalidChartName = InvalidChartNameError
 
 type InvalidChartNameError struct {
 	Name string
