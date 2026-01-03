@@ -33,6 +33,7 @@ linters:
     - unused
     - usestdlibvars
     - usetesting
+    - exhaustive
 
   exclusions:
   
@@ -73,6 +74,9 @@ linters:
           - github.com/evanphx/json-patch:
               recommendations:
                 - github.com/evanphx/json-patch/v5
+
+    exhaustive:
+      default-signifies-exhaustive: true
 
 run:
   timeout: 10m

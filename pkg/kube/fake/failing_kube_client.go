@@ -146,6 +146,9 @@ func (f *FailingKubeClient) BuildTable(r io.Reader, _ bool) (kube.ResourceList, 
 	if f.BuildTableError != nil {
 		return []*resource.Info{}, f.BuildTableError
 	}
+	if f.BuildDummy {
+		return createDummyResourceList(), nil
+	}
 	return f.PrintingKubeClient.BuildTable(r, false)
 }
 

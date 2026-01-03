@@ -68,7 +68,7 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 	for {
 		b := bytes.NewBuffer(nil)
 		hd, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

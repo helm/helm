@@ -333,6 +333,8 @@ func (hw *legacyWaiter) waitForPodSuccess(obj runtime.Object, name string) (bool
 		slog.Debug("pod pending", "pod", o.Name)
 	case corev1.PodRunning:
 		slog.Debug("pod running", "pod", o.Name)
+	case corev1.PodUnknown:
+		slog.Debug("pod unknown", "pod", o.Name)
 	}
 
 	return false, nil
