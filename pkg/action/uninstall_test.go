@@ -169,3 +169,72 @@ func TestUninstallRun_UnreachableKubeClient(t *testing.T) {
 	assert.Nil(t, result)
 	assert.ErrorContains(t, err, "connection refused")
 }
+
+func TestParseCascadingFlag(t *testing.T) {
+	tests := []struct {
+		name           string
+		cascadingFlag  string
+		waitStrategy   kube.WaitStrategy
+		expectedResult string
+	}{
+		{
+			name:           "explicit orphan",
+			cascadingFlag:  "orphan",
+			waitStrategy:   kube.HookOnlyStrategy,
+			expectedResult: "Orphan",
+		},
+		{
+			name:           "explicit foreground",
+			cascadingFlag:  "foreground",
+			waitStrategy:   kube.HookOnlyStrategy,
+			expectedResult: "Foreground",
+		},
+		{
+			name:           "explicit background",
+			cascadingFlag:  "background",
+			waitStrategy:   kube.HookOnlyStrategy,
+			expectedResult: "Background",
+		},
+		{
+			name:           "default with hookOnly strategy returns background",
+			cascadingFlag:  "",
+			waitStrategy:   kube.HookOnlyStrategy,
+			expectedResult: "Background",
+		},
+		{
+			name:           "default with watcher strategy returns foreground",
+			cascadingFlag:  "",
+			waitStrategy:   kube.StatusWatcherStrategy,
+			expectedResult: "Foreground",
+		},
+		{
+			name:           "default with legacy strategy returns foreground",
+			cascadingFlag:  "",
+			waitStrategy:   kube.LegacyStrategy,
+			expectedResult: "Foreground",
+		},
+		{
+			name:           "unknown value with hookOnly strategy returns background",
+			cascadingFlag:  "unknown",
+			waitStrategy:   kube.HookOnlyStrategy,
+			expectedResult: "Background",
+		},
+		{
+			name:           "unknown value with watcher strategy returns foreground",
+			cascadingFlag:  "unknown",
+			waitStrategy:   kube.StatusWatcherStrategy,
+			expectedResult: "Foreground",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			unAction := uninstallAction(t)
+			unAction.WaitStrategy = tt.waitStrategy
+
+			result := unAction.parseCascadingFlag(tt.cascadingFlag)
+
+			assert.Equal(t, tt.expectedResult, string(result))
+		})
+	}
+}
