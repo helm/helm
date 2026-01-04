@@ -199,7 +199,7 @@ func TestVCSInstallerUpdate(t *testing.T) {
 
 }
 
-func TestResetRepo(t *testing.T) {
+func TestResetPluginYaml(t *testing.T) {
 	// Use a real git repository by cloning a test repo
 	ensure.HelmHome(t)
 
@@ -223,7 +223,7 @@ func TestResetRepo(t *testing.T) {
 		t.Fatalf("Failed to sync repo: %v", err)
 	}
 
-	// Modify an existing file to make the repo dirty
+	// Modify plugin.yaml to make the repo dirty
 	pluginYaml := filepath.Join(vcsInstaller.Repo.LocalPath(), "plugin.yaml")
 	originalContent, err := os.ReadFile(pluginYaml)
 	if err != nil {
@@ -240,14 +240,14 @@ func TestResetRepo(t *testing.T) {
 		t.Fatal("Expected repo to be dirty after modifying plugin.yaml")
 	}
 
-	// Reset the repo
-	if err := resetRepo(vcsInstaller.Repo); err != nil {
-		t.Fatalf("resetRepo failed: %v", err)
+	// Reset only plugin.yaml
+	if err := resetPluginYaml(vcsInstaller.Repo); err != nil {
+		t.Fatalf("resetPluginYaml failed: %v", err)
 	}
 
 	// Verify the repo is clean
 	if vcsInstaller.Repo.IsDirty() {
-		t.Fatal("Expected repo to be clean after reset")
+		t.Fatal("Expected repo to be clean after resetting plugin.yaml")
 	}
 
 	// Verify the plugin.yaml was restored to original content

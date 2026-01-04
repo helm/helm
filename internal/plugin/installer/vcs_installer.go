@@ -96,38 +96,41 @@ func (i *VCSInstaller) Install() error {
 	return fs.CopyDir(i.Repo.LocalPath(), i.Path())
 }
 
-// resetRepo discards all local modifications in the repository.
+// resetPluginYaml discards local modifications to plugin.yaml file.
 // This is used to clean the cached repository before updating.
-func resetRepo(repo vcs.Repo) error {
+// plugin.yaml is the only file that Helm modifies during installation.
+func resetPluginYaml(repo vcs.Repo) error {
+	pluginYaml := "plugin.yaml"
+
 	// Check the VCS type to determine the appropriate reset command
 	switch repo.Vcs() {
 	case vcs.Git:
-		// For Git, use 'git reset --hard' to discard all local changes
-		cmd := exec.Command("git", "reset", "--hard")
+		// For Git, use 'git checkout -- plugin.yaml' to discard changes to this file
+		cmd := exec.Command("git", "checkout", "--", pluginYaml)
 		cmd.Dir = repo.LocalPath()
 		if output, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("git reset failed: %w, output: %s", err, output)
+			return fmt.Errorf("git checkout failed: %w, output: %s", err, output)
 		}
 		return nil
 	case vcs.Hg:
-		// For Mercurial, use 'hg revert --all --no-backup'
-		cmd := exec.Command("hg", "revert", "--all", "--no-backup")
+		// For Mercurial, use 'hg revert --no-backup plugin.yaml'
+		cmd := exec.Command("hg", "revert", "--no-backup", pluginYaml)
 		cmd.Dir = repo.LocalPath()
 		if output, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("hg revert failed: %w, output: %s", err, output)
 		}
 		return nil
 	case vcs.Bzr:
-		// For Bazaar, use 'bzr revert'
-		cmd := exec.Command("bzr", "revert")
+		// For Bazaar, use 'bzr revert plugin.yaml'
+		cmd := exec.Command("bzr", "revert", pluginYaml)
 		cmd.Dir = repo.LocalPath()
 		if output, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("bzr revert failed: %w, output: %s", err, output)
 		}
 		return nil
 	case vcs.Svn:
-		// For SVN, use 'svn revert -R .'
-		cmd := exec.Command("svn", "revert", "-R", ".")
+		// For SVN, use 'svn revert plugin.yaml'
+		cmd := exec.Command("svn", "revert", pluginYaml)
 		cmd.Dir = repo.LocalPath()
 		if output, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("svn revert failed: %w, output: %s", err, output)
@@ -142,14 +145,14 @@ func resetRepo(repo vcs.Repo) error {
 func (i *VCSInstaller) Update() error {
 	slog.Debug("updating", "source", i.Repo.Remote())
 
-	// Reset any local modifications in the cache directory before updating.
+	// Reset plugin.yaml if it was modified by Helm during installation.
 	// The cached repository is managed by Helm and should not contain user modifications.
-	// Any modifications made by Helm itself (e.g., to plugin.yaml during installation)
-	// should be discarded before attempting to update.
+	// plugin.yaml is the only file that Helm modifies during installation,
+	// so we only need to reset this specific file.
 	if i.Repo.IsDirty() {
-		slog.Debug("resetting local modifications in cache", "path", i.Repo.LocalPath())
-		if err := resetRepo(i.Repo); err != nil {
-			return fmt.Errorf("failed to reset local modifications: %w", err)
+		slog.Debug("resetting plugin.yaml in cache", "path", i.Repo.LocalPath())
+		if err := resetPluginYaml(i.Repo); err != nil {
+			return fmt.Errorf("failed to reset plugin.yaml: %w", err)
 		}
 	}
 
