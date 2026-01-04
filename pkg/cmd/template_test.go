@@ -97,6 +97,11 @@ func TestTemplateCmd(t *testing.T) {
 			golden: "output/template-with-crds.txt",
 		},
 		{
+			name:   "template with create-namespace",
+			cmd:    fmt.Sprintf("template '%s' --create-namespace --namespace create-ns", chartPath),
+			golden: "output/template-create-namespace.txt",
+		},
+		{
 			name:   "template with show-only one",
 			cmd:    fmt.Sprintf("template '%s' --show-only templates/service.yaml", chartPath),
 			golden: "output/template-show-only-one.txt",
