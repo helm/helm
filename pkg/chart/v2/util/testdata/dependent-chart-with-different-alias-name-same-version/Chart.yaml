@@ -1,0 +1,14 @@
+apiVersion: v2
+name: parent-chart
+version: 0.1.0
+appVersion: v0.1.0
+dependencies:
+  - name: test
+    alias: test1
+    version: "0.1.0"
+    condition: one.enabled
+
+  - name: test
+    alias: test2
+    version: "0.1.0"
+    condition: two.enabled
