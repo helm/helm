@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -76,8 +77,9 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 				man.Verify = downloader.VerifyIfPossible
 			}
 			err = man.Build()
-			if e, ok := err.(downloader.ErrRepoNotFound); ok {
-				return fmt.Errorf("%s. Please add the missing repos via 'helm repo add'", e.Error())
+			var repoNotFoundError *downloader.ErrRepoNotFound
+			if ok := errors.As(err, &repoNotFoundError); ok {
+				return fmt.Errorf("%s. Please add the missing repos via 'helm repo add'", repoNotFoundError.Error())
 			}
 			return err
 		},
