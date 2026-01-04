@@ -70,6 +70,16 @@ const notesFileSuffix = "NOTES.txt"
 
 const defaultDirectoryPermission = 0755
 
+const createNamespaceTemplateName = "templates/helm-create-namespace.yaml"
+
+const createNamespaceTemplate = `apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Release.Namespace }}
+  labels:
+    name: {{ .Release.Namespace }}
+`
+
 // Install performs an installation operation.
 type Install struct {
 	cfg *Configuration
@@ -241,6 +251,21 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 	return nil
 }
 
+func addCreateNamespaceTemplate(chrt *chart.Chart) {
+	if chrt == nil {
+		return
+	}
+	for _, tmpl := range chrt.Templates {
+		if tmpl != nil && tmpl.Name == createNamespaceTemplateName {
+			return
+		}
+	}
+	chrt.Templates = append(chrt.Templates, &common.File{
+		Name: createNamespaceTemplateName,
+		Data: []byte(createNamespaceTemplate),
+	})
+}
+
 // Run executes the installation
 //
 // If DryRun is set to true, this will prepare the release, but not install it
@@ -339,6 +364,10 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	valuesToRender, err := util.ToRenderValuesWithSchemaValidation(chrt, vals, options, caps, i.SkipSchemaValidation)
 	if err != nil {
 		return nil, err
+	}
+
+	if i.CreateNamespace && isDryRun(i.DryRunStrategy) && i.Namespace != "" {
+		addCreateNamespaceTemplate(chrt)
 	}
 
 	if driver.ContainsSystemLabels(i.Labels) {
