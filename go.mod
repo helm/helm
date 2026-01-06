@@ -15,7 +15,7 @@ require (
 	github.com/cyphar/filepath-securejoin v0.6.1
 	github.com/distribution/distribution/v3 v3.0.0
 	github.com/evanphx/json-patch v5.9.11+incompatible
-	github.com/foxcpp/go-mockdns v1.1.0
+	github.com/foxcpp/go-mockdns v1.2.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gofrs/flock v0.13.0
 	github.com/gosuri/uitable v0.0.4
