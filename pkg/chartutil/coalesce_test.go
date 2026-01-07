@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	req "github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v3/pkg/chart"
 )
