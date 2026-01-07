@@ -179,6 +179,16 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 
 	logSetup(settings.Debug)
 
+	// newRootCmdWithConfig is only called from NewRootCmd. NewRootCmd sets up
+	// NewConfiguration without a custom logger. So, the slog default is used. logSetup
+	// can change the default logger to the one in the logger package. This happens for
+	// the Helm client. This means the actionConfig logger is different from the slog
+	// default logger. If they are different we sync the actionConfig logger to the slog
+	// current default one.
+	if actionConfig.Logger() != slog.Default() {
+		actionConfig.SetLogger(slog.Default().Handler())
+	}
+
 	// Validate color mode setting
 	switch settings.ColorMode {
 	case "never", "auto", "always":

@@ -98,12 +98,23 @@ type Client struct {
 
 var _ Interface = (*Client)(nil)
 
+// WaitStrategy represents the algorithm used to wait for Kubernetes
+// resources to reach their desired state.
 type WaitStrategy string
 
 const (
+	// StatusWatcherStrategy: event-driven waits using kstatus (watches + aggregated readers).
+	// Default for --wait. More accurate and responsive; waits CRs and full reconciliation.
+	// Requires: reachable API server, list+watch RBAC on deployed resources, and a non-zero timeout.
 	StatusWatcherStrategy WaitStrategy = "watcher"
-	LegacyStrategy        WaitStrategy = "legacy"
-	HookOnlyStrategy      WaitStrategy = "hookOnly"
+
+	// LegacyStrategy: Helm 3-style periodic polling until ready or timeout.
+	// Use when watches aren’t available/reliable, or for compatibility/simple CI.
+	// Requires only list RBAC for polled resources.
+	LegacyStrategy WaitStrategy = "legacy"
+
+	// HookOnlyStrategy: wait only for hook Pods/Jobs to complete; does not wait for general chart resources.
+	HookOnlyStrategy WaitStrategy = "hookOnly"
 )
 
 type FieldValidationDirective string
@@ -113,6 +124,9 @@ const (
 	FieldValidationDirectiveWarn   FieldValidationDirective = "Warn"
 	FieldValidationDirectiveStrict FieldValidationDirective = "Strict"
 )
+
+type CreateApplyFunc func(target *resource.Info) error
+type UpdateApplyFunc func(original, target *resource.Info) error
 
 func init() {
 	// Add CRDs to the scheme. They are missing by default.
@@ -165,8 +179,10 @@ func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
 			return nil, err
 		}
 		return &hookOnlyWaiter{sw: sw}, nil
+	case "":
+		return nil, errors.New("wait strategy not set. Choose one of: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy))
 	default:
-		return nil, errors.New("unknown wait strategy")
+		return nil, errors.New("unknown wait strategy (s" + string(strategy) + "). Valid values are: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy))
 	}
 }
 
@@ -255,7 +271,7 @@ func ClientCreateOptionDryRun(dryRun bool) ClientCreateOption {
 	}
 }
 
-// ClientCreateOptionFieldValidationDirective specifies show API operations validate object's schema
+// ClientCreateOptionFieldValidationDirective specifies how API operations validate object's schema
 //   - For client-side apply: this is ignored
 //   - For server-side apply: the directive is sent to the server to perform the validation
 //
@@ -266,6 +282,36 @@ func ClientCreateOptionFieldValidationDirective(fieldValidationDirective FieldVa
 
 		return nil
 	}
+}
+
+func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun bool, fieldValidationDirective FieldValidationDirective) CreateApplyFunc {
+	if serverSideApply {
+		c.Logger().Debug(
+			"using server-side apply for resource creation",
+			slog.Bool("forceConflicts", forceConflicts),
+			slog.Bool("dryRun", dryRun),
+			slog.String("fieldValidationDirective", string(fieldValidationDirective)))
+
+		return func(target *resource.Info) error {
+			err := patchResourceServerSide(target, dryRun, forceConflicts, fieldValidationDirective)
+
+			logger := c.Logger().With(
+				slog.String("namespace", target.Namespace),
+				slog.String("name", target.Name),
+				slog.String("gvk", target.Mapping.GroupVersionKind.String()))
+			if err != nil {
+				logger.Debug("Error creating resource via patch", slog.Any("error", err))
+				return err
+			}
+
+			logger.Debug("Created resource via patch")
+
+			return nil
+		}
+	}
+
+	c.Logger().Debug("using client-side apply for resource creation")
+	return createResource
 }
 
 // Create creates Kubernetes resources specified in the resource list.
@@ -285,32 +331,12 @@ func (c *Client) Create(resources ResourceList, options ...ClientCreateOption) (
 		return nil, fmt.Errorf("invalid client create option(s): %w", err)
 	}
 
-	makeCreateApplyFunc := func() func(target *resource.Info) error {
-		if createOptions.serverSideApply {
-			c.Logger().Debug("using server-side apply for resource creation", slog.Bool("forceConflicts", createOptions.forceConflicts), slog.Bool("dryRun", createOptions.dryRun), slog.String("fieldValidationDirective", string(createOptions.fieldValidationDirective)))
-			return func(target *resource.Info) error {
-				err := patchResourceServerSide(target, createOptions.dryRun, createOptions.forceConflicts, createOptions.fieldValidationDirective)
-
-				logger := c.Logger().With(
-					slog.String("namespace", target.Namespace),
-					slog.String("name", target.Name),
-					slog.String("gvk", target.Mapping.GroupVersionKind.String()))
-				if err != nil {
-					logger.Debug("Error patching resource", slog.Any("error", err))
-					return err
-				}
-
-				logger.Debug("Patched resource")
-
-				return nil
-			}
-		}
-
-		c.Logger().Debug("using client-side apply for resource creation")
-		return createResource
-	}
-
-	if err := perform(resources, makeCreateApplyFunc()); err != nil {
+	createApplyFunc := c.makeCreateApplyFunc(
+		createOptions.serverSideApply,
+		createOptions.forceConflicts,
+		createOptions.dryRun,
+		createOptions.fieldValidationDirective)
+	if err := perform(resources, createApplyFunc); err != nil {
 		return nil, err
 	}
 	return &Result{Created: resources}, nil
@@ -512,7 +538,7 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 		transformRequests)
 }
 
-func (c *Client) update(originals, targets ResourceList, updateApplyFunc UpdateApplyFunc) (*Result, error) {
+func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateApplyFunc, updateApplyFunc UpdateApplyFunc) (*Result, error) {
 	updateErrors := []error{}
 	res := &Result{}
 
@@ -532,12 +558,17 @@ func (c *Client) update(originals, targets ResourceList, updateApplyFunc UpdateA
 			res.Created = append(res.Created, target)
 
 			// Since the resource does not exist, create it.
-			if err := createResource(target); err != nil {
+			if err := createApplyFunc(target); err != nil {
 				return fmt.Errorf("failed to create resource: %w", err)
 			}
 
 			kind := target.Mapping.GroupVersionKind.Kind
-			c.Logger().Debug("created a new resource", "namespace", target.Namespace, "name", target.Name, "kind", kind)
+			c.Logger().Debug(
+				"created a new resource",
+				slog.String("namespace", target.Namespace),
+				slog.String("name", target.Name),
+				slog.String("kind", kind),
+			)
 			return nil
 		}
 
@@ -568,19 +599,37 @@ func (c *Client) update(originals, targets ResourceList, updateApplyFunc UpdateA
 		c.Logger().Debug("deleting resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind)
 
 		if err := info.Get(); err != nil {
-			c.Logger().Debug("unable to get object", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+			c.Logger().Debug(
+				"unable to get object",
+				slog.String("namespace", info.Namespace),
+				slog.String("name", info.Name),
+				slog.String("kind", info.Mapping.GroupVersionKind.Kind),
+				slog.Any("error", err),
+			)
 			continue
 		}
 		annotations, err := metadataAccessor.Annotations(info.Object)
 		if err != nil {
-			c.Logger().Debug("unable to get annotations", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+			c.Logger().Debug(
+				"unable to get annotations",
+				slog.String("namespace", info.Namespace),
+				slog.String("name", info.Name),
+				slog.String("kind", info.Mapping.GroupVersionKind.Kind),
+				slog.Any("error", err),
+			)
 		}
 		if annotations != nil && annotations[ResourcePolicyAnno] == KeepPolicy {
 			c.Logger().Debug("skipping delete due to annotation", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, "annotation", ResourcePolicyAnno, "value", KeepPolicy)
 			continue
 		}
 		if err := deleteResource(info, metav1.DeletePropagationBackground); err != nil {
-			c.Logger().Debug("failed to delete resource", "namespace", info.Namespace, "name", info.Name, "kind", info.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+			c.Logger().Debug(
+				"failed to delete resource",
+				slog.String("namespace", info.Namespace),
+				slog.String("name", info.Name),
+				slog.String("kind", info.Mapping.GroupVersionKind.Kind),
+				slog.Any("error", err),
+			)
 			if !apierrors.IsNotFound(err) {
 				updateErrors = append(updateErrors, fmt.Errorf("failed to delete resource %s: %w", info.Name, err))
 			}
@@ -655,7 +704,7 @@ func ClientUpdateOptionDryRun(dryRun bool) ClientUpdateOption {
 	}
 }
 
-// ClientUpdateOptionFieldValidationDirective specifies show API operations validate object's schema
+// ClientUpdateOptionFieldValidationDirective specifies how API operations validate object's schema
 //   - For client-side apply: this is ignored
 //   - For server-side apply: the directive is sent to the server to perform the validation
 //
@@ -685,8 +734,6 @@ func ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManag
 		return nil
 	}
 }
-
-type UpdateApplyFunc func(original, target *resource.Info) error
 
 // Update takes the current list of objects and target list of objects and
 // creates resources that don't already exist, updates resources that have been
@@ -723,6 +770,12 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 		return &Result{}, fmt.Errorf("invalid operation: cannot use server-side apply and force replace together")
 	}
 
+	createApplyFunc := c.makeCreateApplyFunc(
+		updateOptions.serverSideApply,
+		updateOptions.forceConflicts,
+		updateOptions.dryRun,
+		updateOptions.fieldValidationDirective)
+
 	makeUpdateApplyFunc := func() UpdateApplyFunc {
 		if updateOptions.forceReplace {
 			c.Logger().Debug(
@@ -730,7 +783,13 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 				slog.String("fieldValidationDirective", string(updateOptions.fieldValidationDirective)))
 			return func(original, target *resource.Info) error {
 				if err := replaceResource(target, updateOptions.fieldValidationDirective); err != nil {
-					c.Logger().Debug("error replacing the resource", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+					c.Logger().With(
+						slog.String("namespace", target.Namespace),
+						slog.String("name", target.Name),
+						slog.String("gvk", target.Mapping.GroupVersionKind.String()),
+					).Debug(
+						"error replacing the resource", slog.Any("error", err),
+					)
 					return err
 				}
 
@@ -783,7 +842,7 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 		}
 	}
 
-	return c.update(originals, targets, makeUpdateApplyFunc())
+	return c.update(originals, targets, createApplyFunc, makeUpdateApplyFunc())
 }
 
 // Delete deletes Kubernetes resources specified in the resources list with
@@ -799,7 +858,12 @@ func (c *Client) Delete(resources ResourceList, policy metav1.DeletionPropagatio
 		err := deleteResource(target, policy)
 		if err == nil || apierrors.IsNotFound(err) {
 			if err != nil {
-				c.Logger().Debug("ignoring delete failure", "namespace", target.Namespace, "name", target.Name, "kind", target.Mapping.GroupVersionKind.Kind, slog.Any("error", err))
+				c.Logger().Debug(
+					"ignoring delete failure",
+					slog.String("namespace", target.Namespace),
+					slog.String("name", target.Name),
+					slog.String("kind", target.Mapping.GroupVersionKind.Kind),
+					slog.Any("error", err))
 			}
 			mtx.Lock()
 			defer mtx.Unlock()

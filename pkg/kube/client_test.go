@@ -350,9 +350,7 @@ func TestUpdate(t *testing.T) {
 		"/namespaces/default/pods/otter:GET",
 		"/namespaces/default/pods/otter:PATCH",
 		"/namespaces/default/pods/dolphin:GET",
-		"/namespaces/default/pods:POST", // create dolphin
-		"/namespaces/default/pods:POST", // retry due to 409
-		"/namespaces/default/pods:POST", // retry due to 409
+		"/namespaces/default/pods/dolphin:PATCH", // create dolphin
 		"/namespaces/default/pods/squid:GET",
 		"/namespaces/default/pods/squid:DELETE",
 		"/namespaces/default/pods/notfound:GET",
@@ -465,6 +463,8 @@ func TestUpdate(t *testing.T) {
 					}
 
 					return newResponse(http.StatusOK, &listTarget.Items[1])
+				case p == "/namespaces/default/pods/dolphin" && m == http.MethodPatch:
+					return newResponse(http.StatusOK, &listTarget.Items[1])
 				case p == "/namespaces/default/pods/squid" && m == http.MethodDelete:
 					return newResponse(http.StatusOK, &listTarget.Items[1])
 				case p == "/namespaces/default/pods/squid" && m == http.MethodGet:
@@ -485,10 +485,9 @@ func TestUpdate(t *testing.T) {
 						Reason:  metav1.StatusReasonForbidden,
 						Code:    http.StatusForbidden,
 					})
-				default:
 				}
 
-				t.Fail()
+				t.FailNow()
 				return nil, nil
 			}
 
@@ -924,7 +923,7 @@ func TestGetPodList(t *testing.T) {
 		responsePodList.Items = append(responsePodList.Items, newPodWithStatus(name, v1.PodStatus{}, namespace))
 	}
 
-	kubeClient := k8sfake.NewSimpleClientset(&responsePodList)
+	kubeClient := k8sfake.NewClientset(&responsePodList)
 	c := Client{Namespace: namespace, kubeClient: kubeClient}
 
 	podList, err := c.GetPodList(namespace, metav1.ListOptions{})
@@ -937,7 +936,7 @@ func TestOutputContainerLogsForPodList(t *testing.T) {
 	namespace := "some-namespace"
 	somePodList := newPodList("jimmy", "three", "structs")
 
-	kubeClient := k8sfake.NewSimpleClientset(&somePodList)
+	kubeClient := k8sfake.NewClientset(&somePodList)
 	c := Client{Namespace: namespace, kubeClient: kubeClient}
 	outBuffer := &bytes.Buffer{}
 	outBufferFunc := func(_, _, _ string) io.Writer { return outBuffer }
@@ -1315,7 +1314,7 @@ func TestIsReachable(t *testing.T) {
 			setupClient: func(t *testing.T) *Client {
 				t.Helper()
 				client := newTestClient(t)
-				client.kubeClient = k8sfake.NewSimpleClientset()
+				client.kubeClient = k8sfake.NewClientset()
 				return client
 			},
 			expectError: false,
