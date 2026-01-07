@@ -25,7 +25,7 @@ import (
 	"text/template"
 
 	"github.com/stretchr/testify/assert"
-	req "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
