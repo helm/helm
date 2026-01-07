@@ -18,8 +18,11 @@ package registry // import "helm.sh/helm/v4/pkg/registry"
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
 	"time"
+	"unicode/utf16"
+	"unicode/utf8"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
@@ -59,7 +62,7 @@ annotations:
 		}
 
 		// Add chart annotation
-		ociAnnotations[chartAnnotationKey] = chartAnnotationValue
+		ociAnnotations[chartAnnotationKey] = escapeNonASCII(chartAnnotationValue)
 	}
 
 	return ociAnnotations
@@ -117,8 +120,44 @@ func addToMap(inputMap map[string]string, newKey string, newValue string) map[st
 
 	// Add item to map if its
 	if len(strings.TrimSpace(newValue)) > 0 {
-		inputMap[newKey] = newValue
+		inputMap[newKey] = escapeNonASCII(newValue)
 	}
 
 	return inputMap
+}
+
+func escapeNonASCII(value string) string {
+	if value == "" {
+		return value
+	}
+
+	var escaped strings.Builder
+	escaped.Grow(len(value))
+
+	for _, r := range value {
+		if r < utf8.RuneSelf {
+			escaped.WriteRune(r)
+			continue
+		}
+
+		if r <= 0xFFFF {
+			writeEscapedRune(&escaped, r)
+			continue
+		}
+
+		high, low := utf16.EncodeRune(r)
+		writeEscapedRune(&escaped, high)
+		writeEscapedRune(&escaped, low)
+	}
+
+	return escaped.String()
+}
+
+func writeEscapedRune(builder *strings.Builder, r rune) {
+	builder.WriteString("\\u")
+	hex := strconv.FormatInt(int64(r), 16)
+	for i := len(hex); i < 4; i++ {
+		builder.WriteByte('0')
+	}
+	builder.WriteString(hex)
 }
