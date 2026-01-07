@@ -120,7 +120,7 @@ func TestSQLList(t *testing.T) {
 
 	sqlDriver, mock := newTestFixtureSQL(t)
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		query := fmt.Sprintf(
 			"SELECT %s, %s, %s FROM %s WHERE %s = $1 AND %s = $2",
 			sqlReleaseTableKeyColumn,

@@ -49,6 +49,7 @@ If you want to use a package manager:
 - [Scoop](https://scoop.sh/) users can use `scoop install helm`.
 - [Snapcraft](https://snapcraft.io/) users can use `snap install helm --classic`.
 - [Flox](https://flox.dev) users can use `flox install kubernetes-helm`.
+- [Mise-en-place](https://mise.jdx.dev/) users can use `mise use -g helm@latest`
 
 To rapidly get Helm up and running, start with the [Quick Start Guide](https://helm.sh/docs/intro/quickstart/).
 

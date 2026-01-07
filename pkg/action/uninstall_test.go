@@ -84,7 +84,7 @@ func TestUninstallRelease_deleteRelease(t *testing.T) {
 		  "password": "password"
 		}
 	}`
-	unAction.cfg.Releases.Create(rel)
+	require.NoError(t, unAction.cfg.Releases.Create(rel))
 	res, err := unAction.Run(rel.Name)
 	is.NoError(err)
 	expected := `These resources were kept due to the resource policy:
@@ -114,7 +114,7 @@ func TestUninstallRelease_Wait(t *testing.T) {
 		  "password": "password"
 		}
 	}`
-	unAction.cfg.Releases.Create(rel)
+	require.NoError(t, unAction.cfg.Releases.Create(rel))
 	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 	failer.WaitForDeleteError = fmt.Errorf("U timed out")
 	unAction.cfg.KubeClient = failer

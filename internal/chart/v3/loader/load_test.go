@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io"
 	"log"
 	"os"
@@ -116,7 +117,7 @@ func TestBomTestData(t *testing.T) {
 		tr := tar.NewReader(unzipped)
 		for {
 			file, err := tr.Next()
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			if err != nil {

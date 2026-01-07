@@ -176,7 +176,7 @@ func (r *Rules) parseRule(rule string) error {
 			rule = after
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				slog.Error("failed to compile", "rule", rule, slog.Any("error", err))
+				slog.Error("failed to compile", slog.String("rule", rule), slog.Any("error", err))
 				return false
 			}
 			return ok
@@ -186,7 +186,11 @@ func (r *Rules) parseRule(rule string) error {
 		p.match = func(n string, _ os.FileInfo) bool {
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				slog.Error("failed to compile", "rule", rule, slog.Any("error", err))
+				slog.Error(
+					"failed to compile",
+					slog.String("rule", rule),
+					slog.Any("error", err),
+				)
 				return false
 			}
 			return ok
@@ -198,7 +202,7 @@ func (r *Rules) parseRule(rule string) error {
 			n = filepath.Base(n)
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				slog.Error("failed to compile", "rule", rule, slog.Any("error", err))
+				slog.Error("failed to compile", slog.String("rule", rule), slog.Any("error", err))
 				return false
 			}
 			return ok

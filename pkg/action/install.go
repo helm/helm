@@ -62,8 +62,8 @@ import (
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
-// notesFileSuffix that we want to treat special. It goes through the templating engine
-// but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
+// notesFileSuffix that we want to treat specially. It goes through the templating engine
+// but it's not a YAML file (resource) hence can't have hooks, etc. And the user actually
 // wants to see this file after rendering in the status command. However, it must be a suffix
 // since there can be filepath in front of it.
 const notesFileSuffix = "NOTES.txt"
@@ -116,7 +116,7 @@ type Install struct {
 	Labels                   map[string]string
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
-	// (for things like templating). These are ignored if ClientOnly is false
+	// (for things like templating).
 	KubeVersion *common.KubeVersion
 	APIVersions common.VersionSet
 	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
@@ -192,7 +192,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts)); err != nil {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
-				crdName := res[0].Name
+				crdName := obj.Name
 				i.cfg.Logger().Debug("CRD is already present. Skipping", "crd", crdName)
 				continue
 			}
