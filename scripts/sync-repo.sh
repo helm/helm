@@ -44,7 +44,8 @@ verify_prereqs() {
 }
 
 confirm() {
-  case $confirm in
+  # shellcheck disable=SC2154
+  case $response in
     [yY][eE][sS]|[yY])
       true
       ;;
