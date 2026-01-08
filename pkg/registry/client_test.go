@@ -166,3 +166,54 @@ func TestWarnIfHostHasPath(t *testing.T) {
 		})
 	}
 }
+
+func TestHasNonASCIIAnnotationValues(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		annotations map[string]string
+		want        bool
+	}{
+		{
+			name: "ascii only",
+			annotations: map[string]string{
+				"org.opencontainers.image.title": "chart",
+				"custom":                         "alpha-._:@/+ 123",
+			},
+			want: false,
+		},
+		{
+			name: "non-ascii value",
+			annotations: map[string]string{
+				"org.opencontainers.image.description": "Kröpke",
+			},
+			want: true,
+		},
+		{
+			name: "non-ascii key",
+			annotations: map[string]string{
+				"\uC124\uBA85": "chart",
+			},
+			want: true,
+		},
+		{
+			name: "emoji value",
+			annotations: map[string]string{
+				"note": "chart \U0001F600",
+			},
+			want: true,
+		},
+		{
+			name:        "empty map",
+			annotations: map[string]string{},
+			want:        false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, hasNonASCIIAnnotationValues(tt.annotations))
+		})
+	}
+}

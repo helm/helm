@@ -64,20 +64,6 @@ func TestGenerateOCIChartAnnotations(t *testing.T) {
 			},
 		},
 		{
-			"Chart values with non-ASCII",
-			&chart.Metadata{
-				Name:        "oci",
-				Version:     "0.0.1",
-				Description: "OCI Helm Chart for Kr\u00f6pke",
-			},
-			map[string]string{
-				"org.opencontainers.image.title":       "oci",
-				"org.opencontainers.image.version":     "0.0.1",
-				"org.opencontainers.image.created":     nowString,
-				"org.opencontainers.image.description": "OCI Helm Chart for Kr\\u00f6pke",
-			},
-		},
-		{
 			"Maintainer without email",
 			&chart.Metadata{
 				Name:        "oci",
@@ -213,22 +199,6 @@ func TestGenerateOCIAnnotations(t *testing.T) {
 			},
 		},
 		{
-			"Custom annotations with non-ASCII values",
-			&chart.Metadata{
-				Name:    "oci",
-				Version: "0.0.1",
-				Annotations: map[string]string{
-					"extrakey": "Kr\u00f6pke",
-				},
-			},
-			map[string]string{
-				"org.opencontainers.image.title":   "oci",
-				"org.opencontainers.image.version": "0.0.1",
-				"org.opencontainers.image.created": nowString,
-				"extrakey":                         "Kr\\u00f6pke",
-			},
-		},
-		{
 			"Verify Chart Name and Version cannot be overridden from annotations",
 			&chart.Metadata{
 				Name:        "oci",
@@ -258,36 +228,6 @@ func TestGenerateOCIAnnotations(t *testing.T) {
 			t.Errorf("%s: expected map %v, got %v", tt.name, tt.expect, result)
 		}
 
-	}
-}
-
-func TestEscapeNonASCII(t *testing.T) {
-	tests := []struct {
-		name   string
-		input  string
-		expect string
-	}{
-		{
-			name:   "ASCII only",
-			input:  "alpha-._:@/+ 123",
-			expect: "alpha-._:@/+ 123",
-		},
-		{
-			name:   "Latin-1 characters",
-			input:  "Kr\u00f6pke",
-			expect: "Kr\\u00f6pke",
-		},
-		{
-			name:   "Emoji",
-			input:  "chart \U0001f600",
-			expect: "chart \\ud83d\\ude00",
-		},
-	}
-
-	for _, tt := range tests {
-		if got := escapeNonASCII(tt.input); got != tt.expect {
-			t.Errorf("%s: expected %q, got %q", tt.name, tt.expect, got)
-		}
 	}
 }
 

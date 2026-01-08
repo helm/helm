@@ -30,11 +30,13 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
@@ -715,6 +717,9 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 
 	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
 	if err != nil {
+		if hasNonASCIIAnnotationValues(ociAnnotations) && errors.Is(err, content.ErrMismatchedDigest) {
+			return nil, fmt.Errorf("manifest digest mismatch while pushing; the registry may be rewriting non-ASCII OCI annotation values. Consider using ASCII-only metadata/annotations or a registry that preserves annotations: %w", err)
+		}
 		return nil, err
 	}
 
@@ -750,6 +755,24 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 
 	return result, err
+}
+
+func hasNonASCIIAnnotationValues(annotations map[string]string) bool {
+	for key, value := range annotations {
+		if containsNonASCII(key) || containsNonASCII(value) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsNonASCII(value string) bool {
+	for i := 0; i < len(value); i++ {
+		if value[i] >= utf8.RuneSelf {
+			return true
+		}
+	}
+	return false
 }
 
 // PushOptProvData returns a function that sets the prov bytes setting on push
