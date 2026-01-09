@@ -46,7 +46,7 @@ func TestReleaseTestingRun_UnreachableKubeClient(t *testing.T) {
 	config.KubeClient = &failingKubeClient
 
 	client := NewReleaseTesting(config)
-	result, err := client.Run("")
+	result, _, err := client.Run("")
 	assert.Nil(t, result)
 	assert.Error(t, err)
 }
