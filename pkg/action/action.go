@@ -230,7 +230,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 
 	if ch.Metadata.KubeVersion != "" {
 		if !chartutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
-			return hs, b, "", fmt.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
+			return hs, b, "", fmt.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.Version)
 		}
 	}
 
@@ -502,7 +502,12 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (common.VersionSet
 // recordRelease with an update operation in case reuse has been set.
 func (cfg *Configuration) recordRelease(r *release.Release) {
 	if err := cfg.Releases.Update(r); err != nil {
-		cfg.Logger().Warn("failed to update release", "name", r.Name, "revision", r.Version, slog.Any("error", err))
+		cfg.Logger().Warn(
+			"failed to update release",
+			slog.String("name", r.Name),
+			slog.Int("revision", r.Version),
+			slog.Any("error", err),
+		)
 	}
 }
 

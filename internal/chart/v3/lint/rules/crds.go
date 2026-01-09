@@ -70,7 +70,7 @@ func Crds(linter *support.Linter) {
 			var yamlStruct *k8sYamlStruct
 
 			err := decoder.Decode(&yamlStruct)
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 
@@ -80,8 +80,10 @@ func Crds(linter *support.Linter) {
 				return
 			}
 
-			linter.RunLinterRule(support.ErrorSev, fpath, validateCrdAPIVersion(yamlStruct))
-			linter.RunLinterRule(support.ErrorSev, fpath, validateCrdKind(yamlStruct))
+			if yamlStruct != nil {
+				linter.RunLinterRule(support.ErrorSev, fpath, validateCrdAPIVersion(yamlStruct))
+				linter.RunLinterRule(support.ErrorSev, fpath, validateCrdKind(yamlStruct))
+			}
 		}
 	}
 }

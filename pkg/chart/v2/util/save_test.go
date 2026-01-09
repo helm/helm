@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -205,7 +206,7 @@ func retrieveAllHeadersFromTar(path string) ([]*tar.Header, error) {
 	headers := []*tar.Header{}
 	for {
 		hd, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 

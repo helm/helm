@@ -17,7 +17,12 @@ limitations under the License.
 package action
 
 import (
+	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
 )
 
 var (
@@ -162,4 +167,46 @@ func TestLint_ChartWithWarnings(t *testing.T) {
 			t.Error("expected one error, but got", len(result.Errors))
 		}
 	})
+}
+
+func TestHasWarningsOrErrors(t *testing.T) {
+	testError := errors.New("test-error")
+	cases := []struct {
+		name     string
+		data     LintResult
+		expected bool
+	}{
+		{
+			name:     "has no warning messages and no errors",
+			data:     LintResult{TotalChartsLinted: 1, Messages: make([]support.Message, 0), Errors: make([]error, 0)},
+			expected: false,
+		},
+		{
+			name:     "has error",
+			data:     LintResult{TotalChartsLinted: 1, Messages: make([]support.Message, 0), Errors: []error{testError}},
+			expected: true,
+		},
+		{
+			name:     "has info message only",
+			data:     LintResult{TotalChartsLinted: 1, Messages: []support.Message{{Severity: support.InfoSev, Path: "", Err: testError}}, Errors: make([]error, 0)},
+			expected: false,
+		},
+		{
+			name:     "has warning message",
+			data:     LintResult{TotalChartsLinted: 1, Messages: []support.Message{{Severity: support.WarningSev, Path: "", Err: testError}}, Errors: make([]error, 0)},
+			expected: true,
+		},
+		{
+			name:     "has error message",
+			data:     LintResult{TotalChartsLinted: 1, Messages: []support.Message{{Severity: support.ErrorSev, Path: "", Err: testError}}, Errors: make([]error, 0)},
+			expected: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := HasWarningsOrErrors(&tc.data)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
 }

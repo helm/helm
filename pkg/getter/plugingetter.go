@@ -38,12 +38,14 @@ func collectGetterPlugins(settings *cli.EnvSettings) (Providers, error) {
 	if err != nil {
 		return nil, err
 	}
+	env := plugin.FormatEnv(settings.EnvVars())
 	pluginConstructorBuilder := func(plg plugin.Plugin) Constructor {
 		return func(option ...Option) (Getter, error) {
 
 			return &getterPlugin{
 				options: append([]Option{}, option...),
 				plg:     plg,
+				env:     env,
 			}, nil
 		}
 	}
@@ -91,6 +93,7 @@ func convertOptions(globalOptions, options []Option) schema.GetterOptionsV1 {
 type getterPlugin struct {
 	options []Option
 	plg     plugin.Plugin
+	env     []string
 }
 
 func (g *getterPlugin) Get(href string, options ...Option) (*bytes.Buffer, error) {
@@ -108,6 +111,7 @@ func (g *getterPlugin) Get(href string, options ...Option) (*bytes.Buffer, error
 			Options:  opts,
 			Protocol: u.Scheme,
 		},
+		Env: g.env,
 		// TODO should we pass Stdin, Stdout, and Stderr through Input here to getter plugins?
 		// Stdout: os.Stdout,
 	}

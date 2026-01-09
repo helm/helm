@@ -20,6 +20,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"slices"
 	"sort"
 	"sync"
 
@@ -124,10 +125,8 @@ func (c *GenericClient) PullGeneric(ref string, options GenericPullOptions) (*Ge
 				mediaType := desc.MediaType
 
 				// Skip media types if specified
-				for _, skipType := range options.SkipMediaTypes {
-					if mediaType == skipType {
-						return oras.SkipNode
-					}
+				if slices.Contains(options.SkipMediaTypes, mediaType) {
+					return oras.SkipNode
 				}
 
 				// Filter by allowed media types if specified

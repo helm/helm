@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
@@ -43,11 +44,14 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
 
+	ci "helm.sh/helm/v4/pkg/chart"
+
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/registry"
 	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -501,7 +505,7 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 	instAction := installAction(t)
 	instAction.DisableHooks = true
 	instAction.ReleaseName = "no-hooks"
-	instAction.cfg.Releases.Create(releaseStub())
+	require.NoError(t, instAction.cfg.Releases.Create(releaseStub()))
 
 	vals := map[string]interface{}{}
 	resi, err := instAction.Run(buildChart(), vals)
@@ -541,7 +545,7 @@ func TestInstallRelease_ReplaceRelease(t *testing.T) {
 
 	rel := releaseStub()
 	rel.Info.Status = rcommon.StatusUninstalled
-	instAction.cfg.Releases.Create(rel)
+	require.NoError(t, instAction.cfg.Releases.Create(rel))
 	instAction.ReleaseName = rel.Name
 
 	vals := map[string]interface{}{}
@@ -573,7 +577,7 @@ func TestInstallRelease_KubeVersion(t *testing.T) {
 	vals = map[string]interface{}{}
 	_, err = instAction.Run(buildChart(withKube(">=99.0.0")), vals)
 	is.Error(err)
-	is.Contains(err.Error(), "chart requires kubeVersion")
+	is.Contains(err.Error(), "chart requires kubeVersion: >=99.0.0 which is incompatible with Kubernetes v1.20.")
 }
 
 func TestInstallRelease_Wait(t *testing.T) {
