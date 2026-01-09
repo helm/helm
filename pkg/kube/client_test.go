@@ -28,6 +28,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/engine"
+	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/event"
+	"github.com/fluxcd/cli-utils/pkg/kstatus/status"
+	"github.com/fluxcd/cli-utils/pkg/object"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -722,7 +726,7 @@ func TestWait(t *testing.T) {
 		}),
 	}
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -783,7 +787,7 @@ func TestWaitJob(t *testing.T) {
 		}),
 	}
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -845,7 +849,7 @@ func TestWaitDelete(t *testing.T) {
 		}),
 	}
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1852,7 +1856,7 @@ func TestClientWaitContextCancellationLegacy(t *testing.T) {
 	}
 
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(objBody(&podList), false)
@@ -1907,7 +1911,7 @@ func TestClientWaitWithJobsContextCancellationLegacy(t *testing.T) {
 	}
 
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(objBody(job), false)
@@ -1968,7 +1972,7 @@ func TestClientWaitForDeleteContextCancellationLegacy(t *testing.T) {
 	}
 
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(objBody(&pod), false)
@@ -2030,7 +2034,7 @@ func TestClientWaitContextNilDoesNotPanic(t *testing.T) {
 	}
 
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(objBody(&podList), false)
@@ -2080,7 +2084,7 @@ func TestClientWaitContextPreCancelledLegacy(t *testing.T) {
 	}
 
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(objBody(&podList), false)
@@ -2111,7 +2115,7 @@ metadata:
   namespace: default
 `
 	var err error
-	c.Waiter, err = c.GetWaiter(StatusWatcherStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(StatusWatcherStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(strings.NewReader(podManifest), false)
@@ -2138,7 +2142,7 @@ metadata:
   namespace: default
 `
 	var err error
-	c.Waiter, err = c.GetWaiter(StatusWatcherStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(StatusWatcherStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(strings.NewReader(jobManifest), false)
@@ -2170,7 +2174,7 @@ status:
   phase: Running
 `
 	var err error
-	c.Waiter, err = c.GetWaiter(StatusWatcherStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(StatusWatcherStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(strings.NewReader(podManifest), false)
@@ -2181,4 +2185,101 @@ status:
 	err = c.WaitForDelete(resources, time.Second*30)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+}
+
+// testStatusReader is a custom status reader for testing that returns a configurable status.
+type testStatusReader struct {
+	supportedGK schema.GroupKind
+	status      status.Status
+}
+
+func (r *testStatusReader) Supports(gk schema.GroupKind) bool {
+	return gk == r.supportedGK
+}
+
+func (r *testStatusReader) ReadStatus(_ context.Context, _ engine.ClusterReader, id object.ObjMetadata) (*event.ResourceStatus, error) {
+	return &event.ResourceStatus{
+		Identifier: id,
+		Status:     r.status,
+		Message:    "test status reader",
+	}, nil
+}
+
+func (r *testStatusReader) ReadStatusForObject(_ context.Context, _ engine.ClusterReader, u *unstructured.Unstructured) (*event.ResourceStatus, error) {
+	id := object.ObjMetadata{
+		Namespace: u.GetNamespace(),
+		Name:      u.GetName(),
+		GroupKind: u.GroupVersionKind().GroupKind(),
+	}
+	return &event.ResourceStatus{
+		Identifier: id,
+		Status:     r.status,
+		Message:    "test status reader",
+	}, nil
+}
+
+func TestClientStatusReadersPassedToStatusWaiter(t *testing.T) {
+	// This test verifies that Client.StatusReaders is correctly passed through
+	// to the statusWaiter when using the StatusWatcherStrategy.
+	// We use a custom status reader that immediately returns CurrentStatus for pods,
+	// which allows a pod without Ready condition to pass the wait.
+	podManifest := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  namespace: default
+`
+
+	c := newTestClient(t)
+	statusReaders := []engine.StatusReader{
+		&testStatusReader{
+			supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+			status:      status.CurrentStatus,
+		},
+	}
+
+	var err error
+	c.Waiter, err = c.GetWaiterWithOptions(StatusWatcherStrategy, WithKStatusReaders(statusReaders...))
+	require.NoError(t, err)
+
+	resources, err := c.Build(strings.NewReader(podManifest), false)
+	require.NoError(t, err)
+
+	// The pod has no Ready condition, but our custom reader returns CurrentStatus,
+	// so the wait should succeed immediately without timeout.
+	err = c.Wait(resources, time.Second*3)
+	require.NoError(t, err)
+}
+
+func TestClientStatusReadersWithWaitWithJobs(t *testing.T) {
+	// This test verifies that Client.StatusReaders is correctly passed through
+	// to the statusWaiter when using WaitWithJobs.
+	jobManifest := `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-job
+  namespace: default
+`
+
+	c := newTestClient(t)
+	statusReaders := []engine.StatusReader{
+		&testStatusReader{
+			supportedGK: schema.GroupKind{Group: "batch", Kind: "Job"},
+			status:      status.CurrentStatus,
+		},
+	}
+
+	var err error
+	c.Waiter, err = c.GetWaiterWithOptions(StatusWatcherStrategy, WithKStatusReaders(statusReaders...))
+	require.NoError(t, err)
+
+	resources, err := c.Build(strings.NewReader(jobManifest), false)
+	require.NoError(t, err)
+
+	// The job has no Complete condition, but our custom reader returns CurrentStatus,
+	// so the wait should succeed immediately without timeout.
+	err = c.WaitWithJobs(resources, time.Second*3)
+	require.NoError(t, err)
 }

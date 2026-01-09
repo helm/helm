@@ -17,12 +17,15 @@ limitations under the License.
 package action
 
 import (
+	"context"
 	"errors"
 	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 )
 
@@ -42,4 +45,41 @@ func TestRollbackRun_UnreachableKubeClient(t *testing.T) {
 
 	client := NewRollback(config)
 	assert.Error(t, client.Run(""))
+}
+
+func TestRollback_WaitOptionsPassedDownstream(t *testing.T) {
+	is := assert.New(t)
+	config := actionConfigFixture(t)
+
+	// Create a deployed release and a second version to roll back to
+	rel := releaseStub()
+	rel.Name = "wait-options-rollback"
+	rel.Info.Status = "deployed"
+	rel.ApplyMethod = "csa"
+	require.NoError(t, config.Releases.Create(rel))
+
+	rel2 := releaseStub()
+	rel2.Name = "wait-options-rollback"
+	rel2.Version = 2
+	rel2.Info.Status = "deployed"
+	rel2.ApplyMethod = "csa"
+	require.NoError(t, config.Releases.Create(rel2))
+
+	client := NewRollback(config)
+	client.Version = 1
+	client.WaitStrategy = kube.StatusWatcherStrategy
+	client.ServerSideApply = "auto"
+
+	// Use WithWaitContext as a marker WaitOption that we can track
+	ctx := context.Background()
+	client.WaitOptions = []kube.WaitOption{kube.WithWaitContext(ctx)}
+
+	// Access the underlying FailingKubeClient to check recorded options
+	failer := config.KubeClient.(*kubefake.FailingKubeClient)
+
+	err := client.Run(rel.Name)
+	is.NoError(err)
+
+	// Verify that WaitOptions were passed to GetWaiter
+	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }

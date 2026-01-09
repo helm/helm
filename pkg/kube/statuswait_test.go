@@ -14,15 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube // import "helm.sh/helm/v3/pkg/kube"
+package kube // import "helm.sh/helm/v4/pkg/kube"
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/engine"
+	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/event"
+	"github.com/fluxcd/cli-utils/pkg/kstatus/status"
+	"github.com/fluxcd/cli-utils/pkg/object"
 	"github.com/fluxcd/cli-utils/pkg/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -930,6 +936,275 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			}
 			assert.NoError(t, err)
 			assert.False(t, restrictedConfig.clusterScopedListAttempted)
+		})
+	}
+}
+
+// mockStatusReader is a custom status reader for testing that tracks when it's used
+// and returns a configurable status for resources it supports.
+type mockStatusReader struct {
+	supportedGK schema.GroupKind
+	status      status.Status
+	callCount   atomic.Int32
+}
+
+func (m *mockStatusReader) Supports(gk schema.GroupKind) bool {
+	return gk == m.supportedGK
+}
+
+func (m *mockStatusReader) ReadStatus(_ context.Context, _ engine.ClusterReader, id object.ObjMetadata) (*event.ResourceStatus, error) {
+	m.callCount.Add(1)
+	return &event.ResourceStatus{
+		Identifier: id,
+		Status:     m.status,
+		Message:    "mock status reader",
+	}, nil
+}
+
+func (m *mockStatusReader) ReadStatusForObject(_ context.Context, _ engine.ClusterReader, u *unstructured.Unstructured) (*event.ResourceStatus, error) {
+	m.callCount.Add(1)
+	id := object.ObjMetadata{
+		Namespace: u.GetNamespace(),
+		Name:      u.GetName(),
+		GroupKind: u.GroupVersionKind().GroupKind(),
+	}
+	return &event.ResourceStatus{
+		Identifier: id,
+		Status:     m.status,
+		Message:    "mock status reader",
+	}, nil
+}
+
+func TestStatusWaitWithCustomReaders(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		objManifests []string
+		customReader *mockStatusReader
+		expectErrs   []error
+	}{
+		{
+			name:         "custom reader makes pod immediately current",
+			objManifests: []string{podNoStatusManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.CurrentStatus,
+			},
+			expectErrs: nil,
+		},
+		{
+			name:         "custom reader returns in-progress status",
+			objManifests: []string{podCurrentManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.InProgressStatus,
+			},
+			expectErrs: []error{errors.New("resource not ready, name: current-pod, kind: Pod, status: InProgress"), errors.New("context deadline exceeded")},
+		},
+		{
+			name:         "custom reader for different resource type is not used",
+			objManifests: []string{podCurrentManifest},
+			customReader: &mockStatusReader{
+				supportedGK: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
+				status:      status.InProgressStatus,
+			},
+			expectErrs: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				v1.SchemeGroupVersion.WithKind("Pod"),
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+			)
+			statusWaiter := statusWaiter{
+				client:     fakeClient,
+				restMapper: fakeMapper,
+				readers:    []engine.StatusReader{tt.customReader},
+			}
+			objs := getRuntimeObjFromManifests(t, tt.objManifests)
+			for _, obj := range objs {
+				u := obj.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+				assert.NoError(t, err)
+			}
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+			err := statusWaiter.Wait(resourceList, time.Second*3)
+			if tt.expectErrs != nil {
+				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestStatusWaitWithJobsAndCustomReaders(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		objManifests []string
+		customReader *mockStatusReader
+		expectErrs   []error
+	}{
+		{
+			name:         "custom reader makes job immediately current",
+			objManifests: []string{jobNoStatusManifest},
+			customReader: &mockStatusReader{
+				supportedGK: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
+				status:      status.CurrentStatus,
+			},
+			expectErrs: nil,
+		},
+		{
+			name:         "custom reader for pod works with WaitWithJobs",
+			objManifests: []string{podNoStatusManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.CurrentStatus,
+			},
+			expectErrs: nil,
+		},
+		{
+			name:         "built-in job reader is still appended after custom readers",
+			objManifests: []string{jobCompleteManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.CurrentStatus,
+			},
+			expectErrs: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				v1.SchemeGroupVersion.WithKind("Pod"),
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+			)
+			statusWaiter := statusWaiter{
+				client:     fakeClient,
+				restMapper: fakeMapper,
+				readers:    []engine.StatusReader{tt.customReader},
+			}
+			objs := getRuntimeObjFromManifests(t, tt.objManifests)
+			for _, obj := range objs {
+				u := obj.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+				assert.NoError(t, err)
+			}
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+			err := statusWaiter.WaitWithJobs(resourceList, time.Second*3)
+			if tt.expectErrs != nil {
+				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		objManifests []string
+		customReader *mockStatusReader
+		expectErrs   []error
+	}{
+		{
+			name:         "custom reader makes job immediately current for hooks",
+			objManifests: []string{jobNoStatusManifest},
+			customReader: &mockStatusReader{
+				supportedGK: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
+				status:      status.CurrentStatus,
+			},
+			expectErrs: nil,
+		},
+		{
+			name:         "custom reader makes pod immediately current for hooks",
+			objManifests: []string{podCurrentManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.CurrentStatus,
+			},
+			expectErrs: nil,
+		},
+		{
+			name:         "custom reader takes precedence over built-in pod reader",
+			objManifests: []string{podCompleteManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.InProgressStatus,
+			},
+			expectErrs: []error{errors.New("resource not ready, name: good-pod, kind: Pod, status: InProgress"), errors.New("context deadline exceeded")},
+		},
+		{
+			name:         "custom reader takes precedence over built-in job reader",
+			objManifests: []string{jobCompleteManifest},
+			customReader: &mockStatusReader{
+				supportedGK: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
+				status:      status.InProgressStatus,
+			},
+			expectErrs: []error{errors.New("resource not ready, name: test, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
+		},
+		{
+			name:         "custom reader for different resource type does not affect pods",
+			objManifests: []string{podCompleteManifest},
+			customReader: &mockStatusReader{
+				supportedGK: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
+				status:      status.InProgressStatus,
+			},
+			expectErrs: nil,
+		},
+		{
+			name:         "built-in readers still work when custom reader does not match",
+			objManifests: []string{jobCompleteManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.InProgressStatus,
+			},
+			expectErrs: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				v1.SchemeGroupVersion.WithKind("Pod"),
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+			)
+			statusWaiter := statusWaiter{
+				client:     fakeClient,
+				restMapper: fakeMapper,
+				readers:    []engine.StatusReader{tt.customReader},
+			}
+			objs := getRuntimeObjFromManifests(t, tt.objManifests)
+			for _, obj := range objs {
+				u := obj.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+				assert.NoError(t, err)
+			}
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+			err := statusWaiter.WatchUntilReady(resourceList, time.Second*3)
+			if tt.expectErrs != nil {
+				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+				return
+			}
+			assert.NoError(t, err)
 		})
 	}
 }
