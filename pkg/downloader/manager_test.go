@@ -550,7 +550,7 @@ func TestBuild_WithRepositoryAlias(t *testing.T) {
 	})
 }
 
-func TestErrRepoNotFound_Error(t *testing.T) {
+func TestRepoNotFound_Error(t *testing.T) {
 	type fields struct {
 		Repos []string
 	}
@@ -569,7 +569,7 @@ func TestErrRepoNotFound_Error(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := ErrRepoNotFound{
+			e := RepoNotFoundError{
 				Repos: tt.fields.Repos,
 			}
 			if got := e.Error(); got != tt.want {
