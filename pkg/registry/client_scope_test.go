@@ -48,7 +48,7 @@ func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 		w.WriteHeader(http.StatusOK)
 	})
 	listener, err := net.Listen("tcp", suite.AuthServerHost)
-	suite.Nil(err, "no error creating server listner")
+	suite.NoError(err, "no error creating server listner")
 
 	ts := httptest.NewUnstartedServer(handler)
 	ts.Listener = listener
@@ -58,12 +58,12 @@ func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 	// basic push, good ref
 	testingChartCreationTime := "1977-09-02T22:04:05Z"
 	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
-	suite.Nil(err, "no error loading test chart")
+	suite.NoError(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
-	suite.Nil(err, "no error extracting chart meta")
+	suite.NoError(err, "no error extracting chart meta")
 	ref := fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 	_, err = suite.RegistryClient.Push(chartData, ref, PushOptCreationTime(testingChartCreationTime))
-	suite.NotNil(err, "error pushing good ref because auth server don't give proper token")
+	suite.Error(err, "error pushing good ref because auth server don't give proper token")
 
 }
 
@@ -74,7 +74,7 @@ func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 		w.WriteHeader(http.StatusOK)
 	})
 	listener, err := net.Listen("tcp", suite.AuthServerHost)
-	suite.Nil(err, "no error creating server listner")
+	suite.NoError(err, "no error creating server listner")
 
 	ts := httptest.NewUnstartedServer(handler)
 	ts.Listener = listener
@@ -84,12 +84,12 @@ func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 	// Load test chart (to build ref pushed in previous test)
 	// Simple pull, chart only
 	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
-	suite.Nil(err, "no error loading test chart")
+	suite.NoError(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
-	suite.Nil(err, "no error extracting chart meta")
+	suite.NoError(err, "no error extracting chart meta")
 	ref := fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 	_, err = suite.RegistryClient.Pull(ref)
-	suite.NotNil(err, "error pulling a simple chart because auth server don't give proper token")
+	suite.Error(err, "error pulling a simple chart because auth server don't give proper token")
 
 }
 
