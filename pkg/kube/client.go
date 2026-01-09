@@ -87,6 +87,8 @@ type Client struct {
 	// WaitContext is an optional context to use for wait operations.
 	// If not set, a context will be created internally using the
 	// timeout provided to the wait functions.
+	//
+	// Deprecated: Use WithWaitContext wait option when getting a Waiter instead.
 	WaitContext context.Context
 
 	Waiter
@@ -139,7 +141,11 @@ func init() {
 	}
 }
 
-func (c *Client) newStatusWatcher() (*statusWaiter, error) {
+func (c *Client) newStatusWatcher(opts ...WaitOption) (*statusWaiter, error) {
+	var o waitOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
 	cfg, err := c.Factory.ToRESTConfig()
 	if err != nil {
 		return nil, err
@@ -156,14 +162,19 @@ func (c *Client) newStatusWatcher() (*statusWaiter, error) {
 	if err != nil {
 		return nil, err
 	}
+	waitContext := o.ctx
+	if waitContext == nil {
+		waitContext = c.WaitContext
+	}
 	return &statusWaiter{
 		restMapper: restMapper,
 		client:     dynamicClient,
-		ctx:        c.WaitContext,
+		ctx:        waitContext,
+		readers:    o.statusReaders,
 	}, nil
 }
 
-func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
+func (c *Client) GetWaiter(strategy WaitStrategy, opts ...WaitOption) (Waiter, error) {
 	switch strategy {
 	case LegacyStrategy:
 		kc, err := c.Factory.KubernetesClientSet()
@@ -172,9 +183,9 @@ func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
 		}
 		return &legacyWaiter{kubeClient: kc, ctx: c.WaitContext}, nil
 	case StatusWatcherStrategy:
-		return c.newStatusWatcher()
+		return c.newStatusWatcher(opts...)
 	case HookOnlyStrategy:
-		sw, err := c.newStatusWatcher()
+		sw, err := c.newStatusWatcher(opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -186,9 +197,9 @@ func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
 	}
 }
 
-func (c *Client) SetWaiter(ws WaitStrategy) error {
+func (c *Client) SetWaiter(ws WaitStrategy, opts ...WaitOption) error {
 	var err error
-	c.Waiter, err = c.GetWaiter(ws)
+	c.Waiter, err = c.GetWaiter(ws, opts...)
 	if err != nil {
 		return err
 	}

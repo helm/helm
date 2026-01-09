@@ -1186,3 +1186,25 @@ func TestCheckDependencies_MissingDependency(t *testing.T) {
 
 	assert.ErrorContains(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}), "missing in charts")
 }
+
+func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
+	is := assert.New(t)
+
+	instAction := installAction(t)
+	instAction.ReleaseName = "wait-options-test"
+	instAction.WaitStrategy = kube.StatusWatcherStrategy
+
+	// Use WithWaitContext as a marker WaitOption that we can track
+	ctx := context.Background()
+	instAction.WaitOptions = []kube.WaitOption{kube.WithWaitContext(ctx)}
+
+	// Access the underlying FailingKubeClient to check recorded options
+	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+
+	vals := map[string]interface{}{}
+	_, err := instAction.Run(buildChart(), vals)
+	is.NoError(err)
+
+	// Verify that WaitOptions were passed to GetWaiter
+	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
+}

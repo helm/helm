@@ -40,6 +40,7 @@ type Rollback struct {
 	Version      int
 	Timeout      time.Duration
 	WaitStrategy kube.WaitStrategy
+	WaitOptions  []kube.WaitOption
 	WaitForJobs  bool
 	DisableHooks bool
 	// DryRunStrategy can be set to prepare, but not execute the operation and whether or not to interact with the remote cluster
@@ -210,7 +211,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	// pre-rollback hooks
 
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.Timeout, serverSideApply); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply); err != nil {
 			return targetRelease, err
 		}
 	} else {
@@ -251,7 +252,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		return targetRelease, err
 	}
 
-	waiter, err := r.cfg.KubeClient.GetWaiter(r.WaitStrategy)
+	waiter, err := r.cfg.KubeClient.GetWaiter(r.WaitStrategy, r.WaitOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get waiter: %w", err)
 	}
@@ -273,7 +274,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.WaitStrategy, r.Timeout, serverSideApply); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply); err != nil {
 			return targetRelease, err
 		}
 	}
