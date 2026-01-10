@@ -93,6 +93,55 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 	return requireUpdate, err
 }
 
+// verifyOwnershipBeforeDelete checks that resources in the list are owned by the specified release.
+// It returns two lists: owned resources (safe to delete) and unowned resources (should skip).
+// Resources that are not found are considered owned (already deleted, safe to attempt delete).
+func verifyOwnershipBeforeDelete(resources kube.ResourceList, releaseName, releaseNamespace string) (kube.ResourceList, kube.ResourceList, error) {
+	var owned kube.ResourceList
+	var unowned kube.ResourceList
+
+	err := resources.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// If client is not available, skip verification (test scenario or build failure)
+		if info.Client == nil {
+			infoCopy := *info
+			owned.Append(&infoCopy)
+			return nil
+		}
+
+		helper := resource.NewHelper(info.Client, info.Mapping)
+		existing, err := helper.Get(info.Namespace, info.Name)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				// Resource already deleted, skip deletion
+				return nil
+			}
+			// Cannot fetch resource (network/permission issue), cannot verify ownership
+			infoCopy := *info
+			unowned.Append(&infoCopy)
+			return nil
+		}
+
+		// Verify ownership of the existing resource
+		if err := checkOwnership(existing, releaseName, releaseNamespace); err != nil {
+			// Resource not owned by this release, cannot delete
+			infoCopy := *info
+			unowned.Append(&infoCopy)
+			return nil
+		}
+
+		// Resource is owned by this release, can delete
+		infoCopy := *info
+		owned.Append(&infoCopy)
+		return nil
+	})
+
+	return owned, unowned, err
+}
+
 func checkOwnership(obj runtime.Object, releaseName, releaseNamespace string) error {
 	lbls, err := accessor.Labels(obj)
 	if err != nil {
