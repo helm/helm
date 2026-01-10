@@ -485,8 +485,17 @@ func (t *parser) valList() ([]interface{}, error) {
 			return list, err
 		case last == '}':
 			// If this is followed by ',', consume it.
-			if r, _, e := t.sc.ReadRune(); e == nil && r != ',' {
-				t.sc.UnreadRune()
+			r, _, e := t.sc.ReadRune()
+			if e == nil {
+				if r != ',' {
+					t.sc.UnreadRune()
+				}
+			} else if e != io.EOF {
+				return list, e
+			}
+			if len(rs) == 0 && len(list) == 0 {
+				// Interpret "{}" as an explicit empty map, not an empty list.
+				return []interface{}{map[string]interface{}{}}, nil
 			}
 			v, e := t.reader(rs)
 			list = append(list, v)
