@@ -57,7 +57,7 @@ type Interface interface {
 	IsReachable() error
 
 	// Get Waiter gets the Kube.Waiter
-	GetWaiter(ws WaitStrategy) (Waiter, error)
+	GetWaiter(ws WaitStrategy, opts ...WaitOption) (Waiter, error)
 
 	// GetPodList lists all pods that match the specified listOptions
 	GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error)

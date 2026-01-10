@@ -47,6 +47,8 @@ type FailingKubeClient struct {
 	WaitForDeleteError     error
 	WatchUntilReadyError   error
 	WaitDuration           time.Duration
+	// RecordedWaitOptions stores the WaitOptions passed to GetWaiter for testing
+	RecordedWaitOptions []kube.WaitOption
 }
 
 var _ kube.Interface = &FailingKubeClient{}
@@ -152,8 +154,10 @@ func (f *FailingKubeClient) BuildTable(r io.Reader, _ bool) (kube.ResourceList, 
 	return f.PrintingKubeClient.BuildTable(r, false)
 }
 
-func (f *FailingKubeClient) GetWaiter(ws kube.WaitStrategy) (kube.Waiter, error) {
-	waiter, _ := f.PrintingKubeClient.GetWaiter(ws)
+func (f *FailingKubeClient) GetWaiter(ws kube.WaitStrategy, opts ...kube.WaitOption) (kube.Waiter, error) {
+	// Record the WaitOptions for testing
+	f.RecordedWaitOptions = append(f.RecordedWaitOptions, opts...)
+	waiter, _ := f.PrintingKubeClient.GetWaiter(ws, opts...)
 	printingKubeWaiter, _ := waiter.(*PrintingKubeWaiter)
 	return &FailingKubeWaiter{
 		PrintingKubeWaiter:   printingKubeWaiter,
