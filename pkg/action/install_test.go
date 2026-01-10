@@ -1186,3 +1186,42 @@ func TestCheckDependencies_MissingDependency(t *testing.T) {
 
 	assert.ErrorContains(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}), "missing in charts")
 }
+
+func TestInstallCRDs_CheckNilErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []chart.CRD
+	}{
+		{
+			name: "only one crd with file nil",
+			input: []chart.CRD{
+				{Name: "one", File: nil},
+			},
+		},
+		{
+			name: "only one crd with its file data nil",
+			input: []chart.CRD{
+				{Name: "one", File: &common.File{Name: "crds/foo.yaml", Data: nil}},
+			},
+		},
+		{
+			name: "at least a crd with its file data nil",
+			input: []chart.CRD{
+				{Name: "one", File: &common.File{Name: "crds/foo.yaml", Data: []byte("data")}},
+				{Name: "two", File: &common.File{Name: "crds/foo2.yaml", Data: nil}},
+				{Name: "three", File: &common.File{Name: "crds/foo3.yaml", Data: []byte("data")}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			instAction := installAction(t)
+
+			err := instAction.installCRDs(tt.input)
+			if err == nil {
+				t.Errorf("got nil expected err")
+			}
+		})
+	}
+}
