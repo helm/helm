@@ -34,7 +34,6 @@ import (
 	"github.com/fluxcd/cli-utils/pkg/object"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
 
@@ -54,13 +53,6 @@ type statusWaiter struct {
 // when they don't set a timeout.
 var DefaultStatusWatcherTimeout = 30 * time.Second
 
-func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
-	return &status.Result{
-		Status:  status.CurrentStatus,
-		Message: "Resource is current",
-	}, nil
-}
-
 func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.Duration) error {
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
@@ -71,8 +63,7 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	jobSR := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	podSR := helmStatusReaders.NewCustomPodStatusReader(w.restMapper)
-	// We don't want to wait on any other resources as watchUntilReady is only for Helm hooks
-	genericSR := statusreaders.NewGenericStatusReader(w.restMapper, alwaysReady)
+	genericSR := statusreaders.NewGenericStatusReader(w.restMapper, status.Compute)
 
 	sr := &statusreaders.DelegatingStatusReader{
 		StatusReaders: []engine.StatusReader{
