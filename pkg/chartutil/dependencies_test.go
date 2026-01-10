@@ -111,6 +111,22 @@ func TestDependencyEnabled(t *testing.T) {
 		"subcharts with alias also respect conditions",
 		M{"subchart1": M{"enabled": false}, "subchart2alias": M{"enabled": true, "subchartb": M{"enabled": true}}},
 		[]string{"parentchart", "parentchart.subchart2alias", "parentchart.subchart2alias.subchartb"},
+	}, {
+		"subcharts with multilevel aliases are not added when disabled",
+		M{
+			"subchart1":      M{"enabled": false},
+			"subchart2":      M{"enabled": true, "subchartbalias": M{"enabled": false}},
+			"subchart2alias": M{"enabled": true, "subchartbalias": M{"enabled": false}},
+		},
+		[]string{"parentchart", "parentchart.subchart2", "parentchart.subchart2alias"},
+	}, {
+		"subchart with multilevel aliases is added when enabled",
+		M{
+			"subchart1":      M{"enabled": false},
+			"subchart2":      M{"enabled": true, "subchartbalias": M{"enabled": true}},
+			"subchart2alias": M{"enabled": true, "subchartbalias": M{"enabled": false}},
+		},
+		[]string{"parentchart", "parentchart.subchart2", "parentchart.subchart2.subchartbalias", "parentchart.subchart2alias"},
 	}}
 
 	for _, tc := range tests {
