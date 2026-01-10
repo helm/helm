@@ -113,6 +113,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 				return err
 			}
+			savedErr := err
 
 			// We ignore a potential error here because, when the --debug flag was specified,
 			// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
@@ -187,7 +188,12 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							missing = false
 						}
 						if missing {
-							return fmt.Errorf("could not find template %s in chart", f)
+							if savedErr != nil && settings.Debug {
+								// assume the manifest itself is too malformed to be rendered
+								return savedErr
+							} else {
+								return fmt.Errorf("could not find template %s in chart", f)
+							}
 						}
 					}
 					for _, m := range manifestsToRender {
@@ -198,7 +204,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 			}
 
-			return err
+			return savedErr
 		},
 	}
 
