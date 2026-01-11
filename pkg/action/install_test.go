@@ -1084,8 +1084,8 @@ func TestInstallSetRegistryClient(t *testing.T) {
 	assert.Equal(t, registryClient, instAction.GetRegistryClient())
 }
 
-func TestInstalLCRDs(t *testing.T) {
-	config := actionConfigFixture(t)
+func TestInstallCRDs(t *testing.T) {
+	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
 	instAction := NewInstall(config)
 
 	mockFile := common.File{
@@ -1100,7 +1100,7 @@ func TestInstalLCRDs(t *testing.T) {
 	require.NoError(t, instAction.installCRDs(crdsToInstall))
 }
 
-func TestInstalLCRDs_KubeClient_BuildError(t *testing.T) {
+func TestInstallCRDs_KubeClient_BuildError(t *testing.T) {
 	config := actionConfigFixture(t)
 	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
 	failingKubeClient.BuildError = errors.New("build error")
@@ -1117,7 +1117,7 @@ func TestInstalLCRDs_KubeClient_BuildError(t *testing.T) {
 	require.Error(t, instAction.installCRDs(crdsToInstall), "failed to install CRD")
 }
 
-func TestInstalLCRDs_KubeClient_CreateError(t *testing.T) {
+func TestInstallCRDs_KubeClient_CreateError(t *testing.T) {
 	config := actionConfigFixture(t)
 	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
 	failingKubeClient.CreateError = errors.New("create error")
@@ -1134,7 +1134,7 @@ func TestInstalLCRDs_KubeClient_CreateError(t *testing.T) {
 	require.Error(t, instAction.installCRDs(crdsToInstall), "failed to install CRD")
 }
 
-func TestInstalLCRDs_AlreadyExist(t *testing.T) {
+func TestInstallCRDs_AlreadyExist(t *testing.T) {
 	config := actionConfigFixture(t)
 	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
 	mockError := &apierrors.StatusError{ErrStatus: metav1.Status{
@@ -1149,13 +1149,14 @@ func TestInstalLCRDs_AlreadyExist(t *testing.T) {
 		Name: "crds/foo.yaml",
 		Data: []byte("hello"),
 	}
+
 	mockChart := buildChart(withFile(mockFile))
 	crdsToInstall := mockChart.CRDObjects()
 
-	assert.Nil(t, instAction.installCRDs(crdsToInstall))
+	require.Error(t, instAction.installCRDs(crdsToInstall), "failed to install CRD")
 }
 
-func TestInstalLCRDs_WaiterError(t *testing.T) {
+func TestInstallCRDs_WaiterError(t *testing.T) {
 	config := actionConfigFixture(t)
 	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
 	failingKubeClient.WaitError = errors.New("wait error")
