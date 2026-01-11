@@ -11,6 +11,11 @@ _dist_versions/
 bin/
 vendor/
 # Ignores charts pulled for dependency build tests
-cmd/helm/testdata/testcharts/issue-7233/charts/*
 pkg/cmd/testdata/testcharts/issue-7233/charts/*
+pkg/cmd/testdata/testcharts/chart-with-multi-level-deps/root/charts/*
+pkg/cmd/testdata/testcharts/chart-with-multi-level-deps/root/Chart.lock
+pkg/cmd/testdata/testcharts/chart-with-multi-level-deps/dep1/charts/*
+pkg/cmd/testdata/testcharts/chart-with-multi-level-deps/dep1/Chart.lock
+pkg/cmd/testdata/testcharts/chart-with-multi-level-deps/dep2/charts/*
+pkg/cmd/testdata/testcharts/chart-with-multi-level-deps/dep2/Chart.lock
 .pre-commit-config.yaml

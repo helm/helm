@@ -1,0 +1,18 @@
+Saving 1 charts
+Deleting outdated charts
+Saving 1 charts
+Deleting outdated charts
+---
+# Source: root/charts/dep1/templates/configmap1.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dep1
+  annotations:
+    text: This is a message from dep2!!!
+---
+# Source: root/templates/configmaproot.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: root

@@ -90,7 +90,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 					return err
 				}
 
-				if client.DependencyUpdate {
+				if client.DependencyUpdate || client.DependencyUpdateRecursive {
 					downloadManager := &downloader.Manager{
 						Out:              io.Discard,
 						ChartPath:        path,
@@ -103,7 +103,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 						ContentCache:     settings.ContentCache,
 					}
 
-					if err := downloadManager.Update(); err != nil {
+					if err := downloadManager.Update(client.DependencyUpdateRecursive); err != nil {
 						return err
 					}
 				}
@@ -126,6 +126,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&client.AppVersion, "app-version", "", "set the appVersion on the chart to this version")
 	f.StringVarP(&client.Destination, "destination", "d", ".", "location to write the chart.")
 	f.BoolVarP(&client.DependencyUpdate, "dependency-update", "u", false, `update dependencies from "Chart.yaml" to dir "charts/" before packaging`)
+	f.BoolVarP(&client.DependencyUpdateRecursive, "dependency-update-recursive", "r", false, `update dependencies recursively from from "Chart.yaml" and all of its subcharts before packaging`)
 	f.StringVar(&client.Username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&client.Password, "password", "", "chart repository password where to locate the requested chart")
 	f.StringVar(&client.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
