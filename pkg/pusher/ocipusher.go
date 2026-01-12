@@ -26,6 +26,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	"helm.sh/helm/v4/internal/tlsutil"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/registry"
@@ -92,6 +95,14 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	// The time the chart was "created" is semantically the time the chart archive file was last written(modified)
 	chartArchiveFileCreatedTime := stat.ModTime()
 	pushOpts = append(pushOpts, registry.PushOptCreationTime(chartArchiveFileCreatedTime.Format(time.RFC3339)))
+
+	// Add subject for OCI Referrers API if specified
+	if pusher.opts.subject != "" {
+		subjectDesc := &ocispec.Descriptor{
+			Digest: digest.Digest(pusher.opts.subject),
+		}
+		pushOpts = append(pushOpts, registry.PushOptSubject(subjectDesc))
+	}
 
 	_, err = client.Push(chartBytes, ref, pushOpts...)
 	return err
