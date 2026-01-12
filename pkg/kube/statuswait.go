@@ -105,7 +105,8 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
-	readers := append(w.readers, newCustomJobStatusReader)
+	readers := append([]engine.StatusReader(nil), w.readers...)
+	readers = append(readers, newCustomJobStatusReader)
 	customSR := statusreaders.NewStatusReader(w.restMapper, readers...)
 	sw.StatusReader = customSR
 	return w.wait(ctx, resourceList, sw)
