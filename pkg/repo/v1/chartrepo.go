@@ -77,6 +77,7 @@ func NewChartRepository(cfg *Entry, getters getter.Providers) (*ChartRepository,
 
 // DownloadIndexFile fetches the index from a repository.
 func (r *ChartRepository) DownloadIndexFile() (string, error) {
+
 	indexURL, err := ResolveReferenceURL(r.Config.URL, "index.yaml")
 	if err != nil {
 		return "", err
