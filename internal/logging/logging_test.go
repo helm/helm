@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	api "helm.sh/helm/v4/pkg/logging"
 )
 
 func TestLogHolder_Logger(t *testing.T) {
@@ -99,11 +101,11 @@ func TestLogHolder_SetLogger(t *testing.T) {
 
 func TestLogHolder_InterfaceCompliance(t *testing.T) {
 	t.Run("implements LoggerSetterGetter interface", func(_ *testing.T) {
-		var _ LoggerSetterGetter = &LogHolder{}
+		var _ api.LoggerSetterGetter = &LogHolder{}
 	})
 
 	t.Run("interface methods work correctly", func(t *testing.T) {
-		var holder LoggerSetterGetter = &LogHolder{}
+		var holder api.LoggerSetterGetter = &LogHolder{}
 
 		buf := &bytes.Buffer{}
 		handler := slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug})

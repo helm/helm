@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"helm.sh/helm/v4/internal/logging"
+	loggingapi "helm.sh/helm/v4/pkg/logging"
 	"helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/release/common"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
@@ -340,7 +341,7 @@ func Init(d driver.Driver) *Storage {
 	}
 
 	// Get logger from driver if it implements the LoggerSetterGetter interface
-	if ls, ok := d.(logging.LoggerSetterGetter); ok {
+	if ls, ok := d.(loggingapi.LoggerSetterGetter); ok {
 		ls.SetLogger(s.Logger().Handler())
 	} else {
 		// If the driver does not implement the LoggerSetterGetter interface, set the default logger

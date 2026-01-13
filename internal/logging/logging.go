@@ -21,6 +21,8 @@ import (
 	"log/slog"
 	"os"
 	"sync/atomic"
+
+	api "helm.sh/helm/v4/pkg/logging"
 )
 
 // DebugEnabledFunc is a function type that determines if debug logging is enabled
@@ -90,14 +92,6 @@ func NewLogger(debugEnabled DebugEnabledFunc) *slog.Logger {
 	return slog.New(dynamicHandler)
 }
 
-// LoggerSetterGetter is an interface that can set and get a logger
-type LoggerSetterGetter interface {
-	// SetLogger sets a new slog.Handler
-	SetLogger(newHandler slog.Handler)
-	// Logger returns the slog.Logger created from the slog.Handler
-	Logger() *slog.Logger
-}
-
 type LogHolder struct {
 	// logger is an atomic.Pointer[slog.Logger] to store the slog.Logger
 	// We use atomic.Pointer for thread safety
@@ -122,4 +116,4 @@ func (l *LogHolder) SetLogger(newHandler slog.Handler) {
 }
 
 // Ensure LogHolder implements LoggerSetterGetter
-var _ LoggerSetterGetter = &LogHolder{}
+var _ api.LoggerSetterGetter = &LogHolder{}
