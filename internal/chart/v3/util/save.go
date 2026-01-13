@@ -250,7 +250,7 @@ func validateName(name string) error {
 	nname := filepath.Base(name)
 
 	if nname != name {
-		return common.ErrInvalidChartName{Name: name}
+		return common.InvalidChartNameError{Name: name}
 	}
 
 	return nil
