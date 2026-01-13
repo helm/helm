@@ -18,8 +18,8 @@ package action
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 // Rollback is the action for rolling back to a given release.
@@ -39,6 +40,7 @@ type Rollback struct {
 	Version      int
 	Timeout      time.Duration
 	WaitStrategy kube.WaitStrategy
+	WaitOptions  []kube.WaitOption
 	WaitForJobs  bool
 	DisableHooks bool
 	// DryRunStrategy can be set to prepare, but not execute the operation and whether or not to interact with the remote cluster
@@ -209,7 +211,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	// pre-rollback hooks
 
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.Timeout, serverSideApply); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply); err != nil {
 			return targetRelease, err
 		}
 	} else {
@@ -250,7 +252,12 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		return targetRelease, err
 	}
 
-	waiter, err := r.cfg.KubeClient.GetWaiter(r.WaitStrategy)
+	var waiter kube.Waiter
+	if c, supportsOptions := r.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+		waiter, err = c.GetWaiterWithOptions(r.WaitStrategy, r.WaitOptions...)
+	} else {
+		waiter, err = r.cfg.KubeClient.GetWaiter(r.WaitStrategy)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("unable to get waiter: %w", err)
 	}
@@ -272,13 +279,13 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.WaitStrategy, r.Timeout, serverSideApply); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply); err != nil {
 			return targetRelease, err
 		}
 	}
 
 	deployed, err := r.cfg.Releases.DeployedAll(currentRelease.Name)
-	if err != nil && !strings.Contains(err.Error(), "has no deployed releases") {
+	if err != nil && !errors.Is(err, driver.ErrNoDeployedReleases) {
 		return nil, err
 	}
 	// Supersede all previous deployments, see issue #2941.

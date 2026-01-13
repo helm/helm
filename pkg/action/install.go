@@ -62,8 +62,8 @@ import (
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
-// notesFileSuffix that we want to treat special. It goes through the templating engine
-// but it's not a yaml file (resource) hence can't have hooks, etc. And the user actually
+// notesFileSuffix that we want to treat specially. It goes through the templating engine
+// but it's not a YAML file (resource) hence can't have hooks, etc. And the user actually
 // wants to see this file after rendering in the status command. However, it must be a suffix
 // since there can be filepath in front of it.
 const notesFileSuffix = "NOTES.txt"
@@ -95,6 +95,7 @@ type Install struct {
 	DisableHooks     bool
 	Replace          bool
 	WaitStrategy     kube.WaitStrategy
+	WaitOptions      []kube.WaitOption
 	WaitForJobs      bool
 	Devel            bool
 	DependencyUpdate bool
@@ -116,7 +117,7 @@ type Install struct {
 	Labels                   map[string]string
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
-	// (for things like templating). These are ignored if ClientOnly is false
+	// (for things like templating).
 	KubeVersion *common.KubeVersion
 	APIVersions common.VersionSet
 	// Used by helm template to render charts with .Release.IsUpgrade. Ignored if Dry-Run is false
@@ -192,7 +193,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts)); err != nil {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
-				crdName := res[0].Name
+				crdName := obj.Name
 				i.cfg.Logger().Debug("CRD is already present. Skipping", "crd", crdName)
 				continue
 			}
@@ -201,7 +202,13 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		totalItems = append(totalItems, res...)
 	}
 	if len(totalItems) > 0 {
-		waiter, err := i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+		var waiter kube.Waiter
+		var err error
+		if c, supportsOptions := i.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+			waiter, err = c.GetWaiterWithOptions(i.WaitStrategy, i.WaitOptions...)
+		} else {
+			waiter, err = i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+		}
 		if err != nil {
 			return fmt.Errorf("unable to get waiter: %w", err)
 		}
@@ -508,7 +515,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
 			return rel, fmt.Errorf("failed pre-install: %s", err)
 		}
 	}
@@ -534,7 +541,12 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		return rel, err
 	}
 
-	waiter, err := i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+	var waiter kube.Waiter
+	if c, supportsOptions := i.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+		waiter, err = c.GetWaiterWithOptions(i.WaitStrategy, i.WaitOptions...)
+	} else {
+		waiter, err = i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+	}
 	if err != nil {
 		return rel, fmt.Errorf("failed to get waiter: %w", err)
 	}
@@ -549,7 +561,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	}
 
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
 			return rel, fmt.Errorf("failed post-install: %s", err)
 		}
 	}
@@ -583,6 +595,7 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 		uninstall.KeepHistory = false
 		uninstall.Timeout = i.Timeout
 		uninstall.WaitStrategy = i.WaitStrategy
+		uninstall.WaitOptions = i.WaitOptions
 		if _, uninstallErr := uninstall.Run(i.ReleaseName); uninstallErr != nil {
 			return rel, fmt.Errorf("an error occurred while uninstalling the release. original install error: %w: %w", err, uninstallErr)
 		}

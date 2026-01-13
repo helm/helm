@@ -28,6 +28,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/engine"
+	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/event"
+	"github.com/fluxcd/cli-utils/pkg/kstatus/status"
+	"github.com/fluxcd/cli-utils/pkg/object"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -411,7 +415,25 @@ func TestUpdate(t *testing.T) {
 				"/namespaces/default/pods/forbidden:GET",
 				"/namespaces/default/pods/forbidden:DELETE",
 			),
-			ExpectedError: "failed to delete resource forbidden:",
+			ExpectedError: "failed to delete resource namespace=default, name=forbidden, kind=Pod:",
+		},
+		"rollback after failed upgrade with removed resource": {
+			// Simulates rollback scenario:
+			// - Revision 1 had "newpod"
+			// - Revision 2 removed "newpod" but upgrade failed (OriginalPods is empty)
+			// - Cluster still has "newpod" from Revision 1
+			// - Rolling back to Revision 1 (TargetPods with "newpod") should succeed
+			OriginalPods:                 v1.PodList{},         // Revision 2 (failed) - resource was removed
+			TargetPods:                   newPodList("newpod"), // Revision 1 - rolling back to this
+			ThreeWayMergeForUnstructured: false,
+			ServerSideApply:              true,
+			ExpectedActions: []string{
+				"/namespaces/default/pods/newpod:GET",   // Check if resource exists
+				"/namespaces/default/pods/newpod:GET",   // Get current state (first call in update path)
+				"/namespaces/default/pods/newpod:GET",   // Get current cluster state to use as baseline
+				"/namespaces/default/pods/newpod:PATCH", // Update using cluster state as baseline
+			},
+			ExpectedError: "",
 		},
 	}
 
@@ -428,6 +450,10 @@ func TestUpdate(t *testing.T) {
 				p, m := req.URL.Path, req.Method
 
 				switch {
+				case p == "/namespaces/default/pods/newpod" && m == http.MethodGet:
+					return newResponse(http.StatusOK, &listTarget.Items[0])
+				case p == "/namespaces/default/pods/newpod" && m == http.MethodPatch:
+					return newResponse(http.StatusOK, &listTarget.Items[0])
 				case p == "/namespaces/default/pods/starfish" && m == http.MethodGet:
 					return newResponse(http.StatusOK, &listOriginal.Items[0])
 				case p == "/namespaces/default/pods/otter" && m == http.MethodGet:
@@ -519,9 +545,23 @@ func TestUpdate(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
-			assert.Len(t, result.Updated, 2, "expected 2 resource updated, got %d", len(result.Updated))
-			assert.Len(t, result.Deleted, 1, "expected 1 resource deleted, got %d", len(result.Deleted))
+			// Special handling for the rollback test case
+			if name == "rollback after failed upgrade with removed resource" {
+				assert.Len(t, result.Created, 0, "expected 0 resource created, got %d", len(result.Created))
+				assert.Len(t, result.Updated, 1, "expected 1 resource updated, got %d", len(result.Updated))
+				assert.Len(t, result.Deleted, 0, "expected 0 resource deleted, got %d", len(result.Deleted))
+			} else {
+				assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
+				assert.Len(t, result.Updated, 2, "expected 2 resource updated, got %d", len(result.Updated))
+				assert.Len(t, result.Deleted, 1, "expected 1 resource deleted, got %d", len(result.Deleted))
+			}
+
+			if tc.ExpectedError != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.ExpectedError)
+			} else {
+				require.NoError(t, err)
+			}
 
 			actions := []string{}
 			for _, action := range client.Actions {
@@ -722,7 +762,7 @@ func TestWait(t *testing.T) {
 		}),
 	}
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -783,7 +823,7 @@ func TestWaitJob(t *testing.T) {
 		}),
 	}
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -845,7 +885,7 @@ func TestWaitDelete(t *testing.T) {
 		}),
 	}
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -923,7 +963,7 @@ func TestGetPodList(t *testing.T) {
 		responsePodList.Items = append(responsePodList.Items, newPodWithStatus(name, v1.PodStatus{}, namespace))
 	}
 
-	kubeClient := k8sfake.NewSimpleClientset(&responsePodList)
+	kubeClient := k8sfake.NewClientset(&responsePodList)
 	c := Client{Namespace: namespace, kubeClient: kubeClient}
 
 	podList, err := c.GetPodList(namespace, metav1.ListOptions{})
@@ -936,7 +976,7 @@ func TestOutputContainerLogsForPodList(t *testing.T) {
 	namespace := "some-namespace"
 	somePodList := newPodList("jimmy", "three", "structs")
 
-	kubeClient := k8sfake.NewSimpleClientset(&somePodList)
+	kubeClient := k8sfake.NewClientset(&somePodList)
 	c := Client{Namespace: namespace, kubeClient: kubeClient}
 	outBuffer := &bytes.Buffer{}
 	outBufferFunc := func(_, _, _ string) io.Writer { return outBuffer }
@@ -1314,7 +1354,7 @@ func TestIsReachable(t *testing.T) {
 			setupClient: func(t *testing.T) *Client {
 				t.Helper()
 				client := newTestClient(t)
-				client.kubeClient = k8sfake.NewSimpleClientset()
+				client.kubeClient = k8sfake.NewClientset()
 				return client
 			},
 			expectError: false,
@@ -1852,7 +1892,7 @@ func TestClientWaitContextCancellationLegacy(t *testing.T) {
 	}
 
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(objBody(&podList), false)
@@ -1907,7 +1947,7 @@ func TestClientWaitWithJobsContextCancellationLegacy(t *testing.T) {
 	}
 
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(objBody(job), false)
@@ -1968,7 +2008,7 @@ func TestClientWaitForDeleteContextCancellationLegacy(t *testing.T) {
 	}
 
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(objBody(&pod), false)
@@ -2030,7 +2070,7 @@ func TestClientWaitContextNilDoesNotPanic(t *testing.T) {
 	}
 
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(objBody(&podList), false)
@@ -2080,7 +2120,7 @@ func TestClientWaitContextPreCancelledLegacy(t *testing.T) {
 	}
 
 	var err error
-	c.Waiter, err = c.GetWaiter(LegacyStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(LegacyStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(objBody(&podList), false)
@@ -2111,7 +2151,7 @@ metadata:
   namespace: default
 `
 	var err error
-	c.Waiter, err = c.GetWaiter(StatusWatcherStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(StatusWatcherStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(strings.NewReader(podManifest), false)
@@ -2138,7 +2178,7 @@ metadata:
   namespace: default
 `
 	var err error
-	c.Waiter, err = c.GetWaiter(StatusWatcherStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(StatusWatcherStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(strings.NewReader(jobManifest), false)
@@ -2170,7 +2210,7 @@ status:
   phase: Running
 `
 	var err error
-	c.Waiter, err = c.GetWaiter(StatusWatcherStrategy)
+	c.Waiter, err = c.GetWaiterWithOptions(StatusWatcherStrategy)
 	require.NoError(t, err)
 
 	resources, err := c.Build(strings.NewReader(podManifest), false)
@@ -2181,4 +2221,101 @@ status:
 	err = c.WaitForDelete(resources, time.Second*30)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+}
+
+// testStatusReader is a custom status reader for testing that returns a configurable status.
+type testStatusReader struct {
+	supportedGK schema.GroupKind
+	status      status.Status
+}
+
+func (r *testStatusReader) Supports(gk schema.GroupKind) bool {
+	return gk == r.supportedGK
+}
+
+func (r *testStatusReader) ReadStatus(_ context.Context, _ engine.ClusterReader, id object.ObjMetadata) (*event.ResourceStatus, error) {
+	return &event.ResourceStatus{
+		Identifier: id,
+		Status:     r.status,
+		Message:    "test status reader",
+	}, nil
+}
+
+func (r *testStatusReader) ReadStatusForObject(_ context.Context, _ engine.ClusterReader, u *unstructured.Unstructured) (*event.ResourceStatus, error) {
+	id := object.ObjMetadata{
+		Namespace: u.GetNamespace(),
+		Name:      u.GetName(),
+		GroupKind: u.GroupVersionKind().GroupKind(),
+	}
+	return &event.ResourceStatus{
+		Identifier: id,
+		Status:     r.status,
+		Message:    "test status reader",
+	}, nil
+}
+
+func TestClientStatusReadersPassedToStatusWaiter(t *testing.T) {
+	// This test verifies that Client.StatusReaders is correctly passed through
+	// to the statusWaiter when using the StatusWatcherStrategy.
+	// We use a custom status reader that immediately returns CurrentStatus for pods,
+	// which allows a pod without Ready condition to pass the wait.
+	podManifest := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  namespace: default
+`
+
+	c := newTestClient(t)
+	statusReaders := []engine.StatusReader{
+		&testStatusReader{
+			supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+			status:      status.CurrentStatus,
+		},
+	}
+
+	var err error
+	c.Waiter, err = c.GetWaiterWithOptions(StatusWatcherStrategy, WithKStatusReaders(statusReaders...))
+	require.NoError(t, err)
+
+	resources, err := c.Build(strings.NewReader(podManifest), false)
+	require.NoError(t, err)
+
+	// The pod has no Ready condition, but our custom reader returns CurrentStatus,
+	// so the wait should succeed immediately without timeout.
+	err = c.Wait(resources, time.Second*3)
+	require.NoError(t, err)
+}
+
+func TestClientStatusReadersWithWaitWithJobs(t *testing.T) {
+	// This test verifies that Client.StatusReaders is correctly passed through
+	// to the statusWaiter when using WaitWithJobs.
+	jobManifest := `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-job
+  namespace: default
+`
+
+	c := newTestClient(t)
+	statusReaders := []engine.StatusReader{
+		&testStatusReader{
+			supportedGK: schema.GroupKind{Group: "batch", Kind: "Job"},
+			status:      status.CurrentStatus,
+		},
+	}
+
+	var err error
+	c.Waiter, err = c.GetWaiterWithOptions(StatusWatcherStrategy, WithKStatusReaders(statusReaders...))
+	require.NoError(t, err)
+
+	resources, err := c.Build(strings.NewReader(jobManifest), false)
+	require.NoError(t, err)
+
+	// The job has no Complete condition, but our custom reader returns CurrentStatus,
+	// so the wait should succeed immediately without timeout.
+	err = c.WaitWithJobs(resources, time.Second*3)
+	require.NoError(t, err)
 }

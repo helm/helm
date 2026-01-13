@@ -259,7 +259,7 @@ func buildPluginConfig(input *Input, r *RuntimeExtismV1) extism.PluginConfig {
 		mc = mc.WithStderr(input.Stderr)
 	}
 	if len(input.Env) > 0 {
-		env := parseEnv(input.Env)
+		env := ParseEnv(input.Env)
 		for k, v := range env {
 			mc = mc.WithEnv(k, v)
 		}

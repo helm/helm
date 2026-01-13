@@ -45,6 +45,7 @@ type statusWaiter struct {
 	client     dynamic.Interface
 	restMapper meta.RESTMapper
 	ctx        context.Context
+	readers    []engine.StatusReader
 }
 
 // DefaultStatusWatcherTimeout is the timeout used by the status waiter when a
@@ -71,15 +72,13 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	jobSR := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	podSR := helmStatusReaders.NewCustomPodStatusReader(w.restMapper)
-	// We don't want to wait on any other resources as watchUntilReady is only for Helm hooks
+	// We don't want to wait on any other resources as watchUntilReady is only for Helm hooks.
+	// If custom readers are defined they can be used as Helm hooks support any resource.
+	// We put them in front since the DelegatingStatusReader uses the first reader that matches.
 	genericSR := statusreaders.NewGenericStatusReader(w.restMapper, alwaysReady)
 
 	sr := &statusreaders.DelegatingStatusReader{
-		StatusReaders: []engine.StatusReader{
-			jobSR,
-			podSR,
-			genericSR,
-		},
+		StatusReaders: append(w.readers, jobSR, podSR, genericSR),
 	}
 	sw.StatusReader = sr
 	return w.wait(ctx, resourceList, sw)
@@ -93,6 +92,7 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 	defer cancel()
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
+	sw.StatusReader = statusreaders.NewStatusReader(w.restMapper, w.readers...)
 	return w.wait(ctx, resourceList, sw)
 }
 
@@ -105,7 +105,9 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
-	customSR := statusreaders.NewStatusReader(w.restMapper, newCustomJobStatusReader)
+	readers := append([]engine.StatusReader(nil), w.readers...)
+	readers = append(readers, newCustomJobStatusReader)
+	customSR := statusreaders.NewStatusReader(w.restMapper, readers...)
 	sw.StatusReader = customSR
 	return w.wait(ctx, resourceList, sw)
 }
@@ -132,7 +134,9 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		}
 		resources = append(resources, obj)
 	}
-	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
+	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{
+		RESTScopeStrategy: watcher.RESTScopeNamespace,
+	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
 	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus))
 	<-done
@@ -175,7 +179,9 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 		resources = append(resources, obj)
 	}
 
-	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{})
+	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{
+		RESTScopeStrategy: watcher.RESTScopeNamespace,
+	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
 	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus))
 	<-done

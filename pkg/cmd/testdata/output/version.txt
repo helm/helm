@@ -1,1 +1,1 @@
-version.BuildInfo{Version:"v4.1", GitCommit:"", GitTreeState:"", GoVersion:"", KubeClientVersion:"v."}
+version.BuildInfo{Version:"v4.1", GitCommit:"", GitTreeState:"", GoVersion:"", KubeClientVersion:"v1.20"}

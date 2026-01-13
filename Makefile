@@ -58,20 +58,6 @@ LDFLAGS += -X helm.sh/helm/v4/internal/version.gitCommit=${GIT_COMMIT}
 LDFLAGS += -X helm.sh/helm/v4/internal/version.gitTreeState=${GIT_DIRTY}
 LDFLAGS += $(EXT_LDFLAGS)
 
-# Define constants based on the client-go version
-K8S_MODULES_VER=$(subst ., ,$(subst v,,$(shell go list -f '{{.Version}}' -m k8s.io/client-go)))
-K8S_MODULES_MAJOR_VER=$(shell echo $$(($(firstword $(K8S_MODULES_VER)) + 1)))
-K8S_MODULES_MINOR_VER=$(word 2,$(K8S_MODULES_VER))
-
-LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/lint/rules.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/chart/v2/lint/rules.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/internal/v3/lint/rules.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/internal/v3/lint/rules.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/chart/common.k8sVersionMajor=$(K8S_MODULES_MAJOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/pkg/chart/common.k8sVersionMinor=$(K8S_MODULES_MINOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/internal/version.kubeClientVersionMajor=$(K8S_MODULES_MAJOR_VER)
-LDFLAGS += -X helm.sh/helm/v4/internal/version.kubeClientVersionMinor=$(K8S_MODULES_MINOR_VER)
-
 .PHONY: all
 all: build
 
@@ -129,6 +115,13 @@ test-coverage:
 
 .PHONY: test-style
 test-style:
+	@EXPECTED_VERSION=$$(grep GOLANGCI_LINT_VERSION .github/env | cut -d= -f2); \
+	ACTUAL_VERSION=$$(golangci-lint --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1); \
+	if [ "v$$ACTUAL_VERSION" != "$$EXPECTED_VERSION" ]; then \
+		echo "Warning: golangci-lint version is v$$ACTUAL_VERSION (expected $$EXPECTED_VERSION from CI)"; \
+		echo "To install the correct version, run:"; \
+		echo "  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b \$$(go env GOPATH)/bin $$EXPECTED_VERSION"; \
+	fi
 	golangci-lint run ./...
 	@scripts/validate-license.sh
 
