@@ -594,7 +594,32 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 		original := originals.Get(target)
 		if original == nil {
 			kind := target.Mapping.GroupVersionKind.Kind
-			return fmt.Errorf("original object %s with the name %q not found", kind, target.Name)
+
+			slog.Warn("resource exists on cluster but not in original release, using cluster state as baseline",
+				"namespace", target.Namespace, "name", target.Name, "kind", kind)
+
+			currentObj, err := helper.Get(target.Namespace, target.Name)
+			if err != nil {
+				return fmt.Errorf("original object %s with the name %q not found", kind, target.Name)
+			}
+
+			// Create a temporary Info with the current cluster state to use as "original"
+			currentInfo := &resource.Info{
+				Client:    target.Client,
+				Mapping:   target.Mapping,
+				Namespace: target.Namespace,
+				Name:      target.Name,
+				Object:    currentObj,
+			}
+
+			if err := updateApplyFunc(currentInfo, target); err != nil {
+				updateErrors = append(updateErrors, err)
+			}
+
+			// Because we check for errors later, append the info regardless
+			res.Updated = append(res.Updated, target)
+
+			return nil
 		}
 
 		if err := updateApplyFunc(original, target); err != nil {
@@ -650,7 +675,9 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 				slog.Any("error", err),
 			)
 			if !apierrors.IsNotFound(err) {
-				updateErrors = append(updateErrors, fmt.Errorf("failed to delete resource %s: %w", info.Name, err))
+				updateErrors = append(updateErrors, fmt.Errorf(
+					"failed to delete resource namespace=%s, name=%s, kind=%s: %w",
+					info.Namespace, info.Name, info.Mapping.GroupVersionKind.Kind, err))
 			}
 			continue
 		}
