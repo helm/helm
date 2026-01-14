@@ -32,9 +32,11 @@ import (
 	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/event"
 	"github.com/fluxcd/cli-utils/pkg/kstatus/status"
 	"github.com/fluxcd/cli-utils/pkg/object"
+	"github.com/fluxcd/cli-utils/pkg/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -44,8 +46,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	jsonserializer "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
+	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -1205,7 +1209,7 @@ func (c createPatchTestCase) run(t *testing.T) {
 	}
 }
 
-func newTestCustomResourceData(metadata map[string]string, spec map[string]interface{}) *unstructured.Unstructured {
+func newTestCustomResourceData(metadata map[string]string, spec map[string]any) *unstructured.Unstructured {
 	if metadata == nil {
 		metadata = make(map[string]string)
 	}
@@ -1215,7 +1219,7 @@ func newTestCustomResourceData(metadata map[string]string, spec map[string]inter
 	if _, ok := metadata["namespace"]; !ok {
 		metadata["namespace"] = "default"
 	}
-	o := map[string]interface{}{
+	o := map[string]any{
 		"apiVersion": "crd.com/v1",
 		"kind":       "Data",
 		"metadata":   metadata,
@@ -1238,7 +1242,7 @@ func TestCreatePatchCustomResourceMetadata(t *testing.T) {
 		name:     "take ownership of resource",
 		target:   target,
 		original: target,
-		actual: newTestCustomResourceData(nil, map[string]interface{}{
+		actual: newTestCustomResourceData(nil, map[string]any{
 			"color": "red",
 		}),
 		threeWayMergeForUnstructured: true,
@@ -1254,7 +1258,7 @@ func TestCreatePatchCustomResourceMetadata(t *testing.T) {
 }
 
 func TestCreatePatchCustomResourceSpec(t *testing.T) {
-	target := newTestCustomResourceData(nil, map[string]interface{}{
+	target := newTestCustomResourceData(nil, map[string]any{
 		"color": "red",
 		"size":  "large",
 	})
@@ -1262,7 +1266,7 @@ func TestCreatePatchCustomResourceSpec(t *testing.T) {
 		name:     "merge with spec of existing custom resource",
 		target:   target,
 		original: target,
-		actual: newTestCustomResourceData(nil, map[string]interface{}{
+		actual: newTestCustomResourceData(nil, map[string]any{
 			"color":  "red",
 			"weight": "heavy",
 		}),
@@ -2239,9 +2243,19 @@ metadata:
 		},
 	}
 
-	var err error
-	c.Waiter, err = c.GetWaiterWithOptions(StatusWatcherStrategy, WithKStatusReaders(statusReaders...))
-	require.NoError(t, err)
+	// Create a fake dynamic client with the pod resource
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(v1.SchemeGroupVersion.WithKind("Pod"))
+
+	// Create the pod in the fake client
+	createManifest(t, podManifest, fakeMapper, fakeClient)
+
+	// Set up the waiter with the fake client and custom status readers
+	c.Waiter = &statusWaiter{
+		client:     fakeClient,
+		restMapper: fakeMapper,
+		readers:    statusReaders,
+	}
 
 	resources, err := c.Build(strings.NewReader(podManifest), false)
 	require.NoError(t, err)
@@ -2271,9 +2285,19 @@ metadata:
 		},
 	}
 
-	var err error
-	c.Waiter, err = c.GetWaiterWithOptions(StatusWatcherStrategy, WithKStatusReaders(statusReaders...))
-	require.NoError(t, err)
+	// Create a fake dynamic client with the job resource
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(batchv1.SchemeGroupVersion.WithKind("Job"))
+
+	// Create the job in the fake client
+	createManifest(t, jobManifest, fakeMapper, fakeClient)
+
+	// Set up the waiter with the fake client and custom status readers
+	c.Waiter = &statusWaiter{
+		client:     fakeClient,
+		restMapper: fakeMapper,
+		readers:    statusReaders,
+	}
 
 	resources, err := c.Build(strings.NewReader(jobManifest), false)
 	require.NoError(t, err)
@@ -2281,5 +2305,20 @@ metadata:
 	// The job has no Complete condition, but our custom reader returns CurrentStatus,
 	// so the wait should succeed immediately without timeout.
 	err = c.WaitWithJobs(resources, time.Second*3)
+	require.NoError(t, err)
+}
+
+func createManifest(t *testing.T, manifest string,
+	fakeMapper meta.RESTMapper, fakeClient *dynamicfake.FakeDynamicClient) {
+	t.Helper()
+
+	m := make(map[string]any)
+	err := yaml.Unmarshal([]byte(manifest), &m)
+	require.NoError(t, err)
+	obj := &unstructured.Unstructured{Object: m}
+	gvk := obj.GroupVersionKind()
+	mapping, err := fakeMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	require.NoError(t, err)
+	err = fakeClient.Tracker().Create(mapping.Resource, obj, obj.GetNamespace())
 	require.NoError(t, err)
 }
