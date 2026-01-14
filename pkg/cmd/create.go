@@ -25,10 +25,10 @@ import (
 
 	chartv3 "helm.sh/helm/v4/internal/chart/v3"
 	chartutilv3 "helm.sh/helm/v4/internal/chart/v3/util"
+	"helm.sh/helm/v4/internal/gates"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/cmd/require"
-	"helm.sh/helm/v4/pkg/gates"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 
@@ -60,9 +60,6 @@ type createOptions struct {
 	chartAPIVersion string // --chart-api-version
 }
 
-// ChartV3 is the feature gate for chart API version v3.
-const chartV3 gates.Gate = "HELM_EXPERIMENTAL_CHART_V3"
-
 func newCreateCmd(out io.Writer) *cobra.Command {
 	o := &createOptions{}
 
@@ -90,7 +87,7 @@ func newCreateCmd(out io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&o.starter, "starter", "p", "", "the name or absolute path to Helm starter scaffold")
 	cmd.Flags().StringVar(&o.chartAPIVersion, "chart-api-version", chart.APIVersionV2, "chart API version to use (v2 or v3)")
 
-	if !chartV3.IsEnabled() {
+	if !gates.ChartV3.IsEnabled() {
 		cmd.Flags().MarkHidden("chart-api-version")
 	}
 
@@ -104,8 +101,8 @@ func (o *createOptions) run(out io.Writer) error {
 	case chart.APIVersionV2, "":
 		return o.createV2Chart(out)
 	case chartv3.APIVersionV3:
-		if !chartV3.IsEnabled() {
-			return chartV3.Error()
+		if !gates.ChartV3.IsEnabled() {
+			return gates.ChartV3.Error()
 		}
 		return o.createV3Chart(out)
 	default:

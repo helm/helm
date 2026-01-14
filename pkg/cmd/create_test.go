@@ -24,6 +24,7 @@ import (
 
 	chartv3 "helm.sh/helm/v4/internal/chart/v3"
 	chartutilv3 "helm.sh/helm/v4/internal/chart/v3/util"
+	"helm.sh/helm/v4/internal/gates"
 	"helm.sh/helm/v4/internal/test/ensure"
 	chart "helm.sh/helm/v4/pkg/chart"
 	chartloader "helm.sh/helm/v4/pkg/chart/loader"
@@ -107,7 +108,7 @@ func TestCreateStarterCmd(t *testing.T) {
 
 			// Enable feature gate for v3 charts
 			if tt.chartAPIVersion == "v3" {
-				t.Setenv(string(chartV3), "1")
+				t.Setenv(string(gates.ChartV3), "1")
 			}
 
 			cname := "testchart"
@@ -249,7 +250,7 @@ func TestCreateCmdChartAPIVersionV2(t *testing.T) {
 func TestCreateCmdChartAPIVersionV3(t *testing.T) {
 	t.Chdir(t.TempDir())
 	ensure.HelmHome(t)
-	t.Setenv(string(chartV3), "1")
+	t.Setenv(string(gates.ChartV3), "1")
 	cname := "testchart"
 
 	// Run a create with v3
