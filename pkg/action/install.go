@@ -95,6 +95,7 @@ type Install struct {
 	DisableHooks     bool
 	Replace          bool
 	WaitStrategy     kube.WaitStrategy
+	WaitOptions      []kube.WaitOption
 	WaitForJobs      bool
 	Devel            bool
 	DependencyUpdate bool
@@ -201,7 +202,13 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		totalItems = append(totalItems, res...)
 	}
 	if len(totalItems) > 0 {
-		waiter, err := i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+		var waiter kube.Waiter
+		var err error
+		if c, supportsOptions := i.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+			waiter, err = c.GetWaiterWithOptions(i.WaitStrategy, i.WaitOptions...)
+		} else {
+			waiter, err = i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+		}
 		if err != nil {
 			return fmt.Errorf("unable to get waiter: %w", err)
 		}
@@ -480,7 +487,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
 			return rel, fmt.Errorf("failed pre-install: %s", err)
 		}
 	}
@@ -506,7 +513,12 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		return rel, err
 	}
 
-	waiter, err := i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+	var waiter kube.Waiter
+	if c, supportsOptions := i.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+		waiter, err = c.GetWaiterWithOptions(i.WaitStrategy, i.WaitOptions...)
+	} else {
+		waiter, err = i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+	}
 	if err != nil {
 		return rel, fmt.Errorf("failed to get waiter: %w", err)
 	}
@@ -521,7 +533,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	}
 
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
 			return rel, fmt.Errorf("failed post-install: %s", err)
 		}
 	}
@@ -555,6 +567,7 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 		uninstall.KeepHistory = false
 		uninstall.Timeout = i.Timeout
 		uninstall.WaitStrategy = i.WaitStrategy
+		uninstall.WaitOptions = i.WaitOptions
 		if _, uninstallErr := uninstall.Run(i.ReleaseName); uninstallErr != nil {
 			return rel, fmt.Errorf("an error occurred while uninstalling the release. original install error: %w: %w", err, uninstallErr)
 		}

@@ -775,3 +775,30 @@ func TestObjectKey(t *testing.T) {
 
 	assert.Equal(t, "apps/v1/Deployment/namespace/name", objectKey(&info))
 }
+
+func TestUpgradeRelease_WaitOptionsPassedDownstream(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "wait-options-test"
+	rel.Info.Status = common.StatusDeployed
+	req.NoError(upAction.cfg.Releases.Create(rel))
+
+	upAction.WaitStrategy = kube.StatusWatcherStrategy
+
+	// Use WithWaitContext as a marker WaitOption that we can track
+	ctx := context.Background()
+	upAction.WaitOptions = []kube.WaitOption{kube.WithWaitContext(ctx)}
+
+	// Access the underlying FailingKubeClient to check recorded options
+	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+
+	vals := map[string]interface{}{}
+	_, err := upAction.Run(rel.Name, buildChart(), vals)
+	req.NoError(err)
+
+	// Verify that WaitOptions were passed to GetWaiter
+	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
+}

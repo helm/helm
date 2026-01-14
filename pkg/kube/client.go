@@ -87,6 +87,8 @@ type Client struct {
 	// WaitContext is an optional context to use for wait operations.
 	// If not set, a context will be created internally using the
 	// timeout provided to the wait functions.
+	//
+	// Deprecated: Use WithWaitContext wait option when getting a Waiter instead.
 	WaitContext context.Context
 
 	Waiter
@@ -139,7 +141,11 @@ func init() {
 	}
 }
 
-func (c *Client) newStatusWatcher() (*statusWaiter, error) {
+func (c *Client) newStatusWatcher(opts ...WaitOption) (*statusWaiter, error) {
+	var o waitOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
 	cfg, err := c.Factory.ToRESTConfig()
 	if err != nil {
 		return nil, err
@@ -156,14 +162,23 @@ func (c *Client) newStatusWatcher() (*statusWaiter, error) {
 	if err != nil {
 		return nil, err
 	}
+	waitContext := o.ctx
+	if waitContext == nil {
+		waitContext = c.WaitContext
+	}
 	return &statusWaiter{
 		restMapper: restMapper,
 		client:     dynamicClient,
-		ctx:        c.WaitContext,
+		ctx:        waitContext,
+		readers:    o.statusReaders,
 	}, nil
 }
 
-func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
+func (c *Client) GetWaiter(ws WaitStrategy) (Waiter, error) {
+	return c.GetWaiterWithOptions(ws)
+}
+
+func (c *Client) GetWaiterWithOptions(strategy WaitStrategy, opts ...WaitOption) (Waiter, error) {
 	switch strategy {
 	case LegacyStrategy:
 		kc, err := c.Factory.KubernetesClientSet()
@@ -172,9 +187,9 @@ func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
 		}
 		return &legacyWaiter{kubeClient: kc, ctx: c.WaitContext}, nil
 	case StatusWatcherStrategy:
-		return c.newStatusWatcher()
+		return c.newStatusWatcher(opts...)
 	case HookOnlyStrategy:
-		sw, err := c.newStatusWatcher()
+		sw, err := c.newStatusWatcher(opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -187,8 +202,12 @@ func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
 }
 
 func (c *Client) SetWaiter(ws WaitStrategy) error {
+	return c.SetWaiterWithOptions(ws)
+}
+
+func (c *Client) SetWaiterWithOptions(ws WaitStrategy, opts ...WaitOption) error {
 	var err error
-	c.Waiter, err = c.GetWaiter(ws)
+	c.Waiter, err = c.GetWaiterWithOptions(ws, opts...)
 	if err != nil {
 		return err
 	}
@@ -575,7 +594,32 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 		original := originals.Get(target)
 		if original == nil {
 			kind := target.Mapping.GroupVersionKind.Kind
-			return fmt.Errorf("original object %s with the name %q not found", kind, target.Name)
+
+			slog.Warn("resource exists on cluster but not in original release, using cluster state as baseline",
+				"namespace", target.Namespace, "name", target.Name, "kind", kind)
+
+			currentObj, err := helper.Get(target.Namespace, target.Name)
+			if err != nil {
+				return fmt.Errorf("original object %s with the name %q not found", kind, target.Name)
+			}
+
+			// Create a temporary Info with the current cluster state to use as "original"
+			currentInfo := &resource.Info{
+				Client:    target.Client,
+				Mapping:   target.Mapping,
+				Namespace: target.Namespace,
+				Name:      target.Name,
+				Object:    currentObj,
+			}
+
+			if err := updateApplyFunc(currentInfo, target); err != nil {
+				updateErrors = append(updateErrors, err)
+			}
+
+			// Because we check for errors later, append the info regardless
+			res.Updated = append(res.Updated, target)
+
+			return nil
 		}
 
 		if err := updateApplyFunc(original, target); err != nil {
@@ -631,7 +675,9 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 				slog.Any("error", err),
 			)
 			if !apierrors.IsNotFound(err) {
-				updateErrors = append(updateErrors, fmt.Errorf("failed to delete resource %s: %w", info.Name, err))
+				updateErrors = append(updateErrors, fmt.Errorf(
+					"failed to delete resource namespace=%s, name=%s, kind=%s: %w",
+					info.Namespace, info.Name, info.Mapping.GroupVersionKind.Kind, err))
 			}
 			continue
 		}

@@ -32,8 +32,11 @@ import (
 )
 
 // execHook executes all of the hooks for the given hook event.
-func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, waitStrategy kube.WaitStrategy, timeout time.Duration, serverSideApply bool) error {
-	shutdown, err := cfg.execHookWithDelayedShutdown(rl, hook, waitStrategy, timeout, serverSideApply)
+func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent,
+	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption,
+	timeout time.Duration, serverSideApply bool) error {
+
+	shutdown, err := cfg.execHookWithDelayedShutdown(rl, hook, waitStrategy, waitOptions, timeout, serverSideApply)
 	if shutdown == nil {
 		return err
 	}
@@ -53,7 +56,10 @@ func shutdownNoOp() error {
 }
 
 // execHookWithDelayedShutdown executes all of the hooks for the given hook event and returns a shutdownHook function to trigger deletions after doing other things like e.g. retrieving logs.
-func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook release.HookEvent, waitStrategy kube.WaitStrategy, timeout time.Duration, serverSideApply bool) (ExecuteShutdownFunc, error) {
+func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook release.HookEvent,
+	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption, timeout time.Duration,
+	serverSideApply bool) (ExecuteShutdownFunc, error) {
+
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
@@ -71,7 +77,7 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 		// Set default delete policy to before-hook-creation
 		cfg.hookSetDeletePolicy(h)
 
-		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation, waitStrategy, timeout); err != nil {
+		if err := cfg.deleteHookByPolicy(h, release.HookBeforeHookCreation, waitStrategy, waitOptions, timeout); err != nil {
 			return shutdownNoOp, err
 		}
 
@@ -101,7 +107,12 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 			return shutdownNoOp, fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err)
 		}
 
-		waiter, err := cfg.KubeClient.GetWaiter(waitStrategy)
+		var waiter kube.Waiter
+		if c, supportsOptions := cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+			waiter, err = c.GetWaiterWithOptions(waitStrategy, waitOptions...)
+		} else {
+			waiter, err = cfg.KubeClient.GetWaiter(waitStrategy)
+		}
 		if err != nil {
 			return shutdownNoOp, fmt.Errorf("unable to get waiter: %w", err)
 		}
@@ -120,14 +131,14 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 			// If a hook is failed, check the annotation of the hook to determine whether the hook should be deleted
 			// under failed condition. If so, then clear the corresponding resource object in the hook
 			return func() error {
-				if errDeleting := cfg.deleteHookByPolicy(h, release.HookFailed, waitStrategy, timeout); errDeleting != nil {
+				if errDeleting := cfg.deleteHookByPolicy(h, release.HookFailed, waitStrategy, waitOptions, timeout); errDeleting != nil {
 					// We log the error here as we want to propagate the hook failure upwards to the release object.
 					log.Printf("error deleting the hook resource on hook failure: %v", errDeleting)
 				}
 
 				// If a hook is failed, check the annotation of the previous successful hooks to determine whether the hooks
 				// should be deleted under succeeded condition.
-				if err := cfg.deleteHooksByPolicy(executingHooks[0:i], release.HookSucceeded, waitStrategy, timeout); err != nil {
+				if err := cfg.deleteHooksByPolicy(executingHooks[0:i], release.HookSucceeded, waitStrategy, waitOptions, timeout); err != nil {
 					return err
 				}
 				return err
@@ -145,7 +156,7 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 				// We log here as we still want to attempt hook resource deletion even if output logging fails.
 				log.Printf("error outputting logs for hook failure: %v", err)
 			}
-			if err := cfg.deleteHookByPolicy(h, release.HookSucceeded, waitStrategy, timeout); err != nil {
+			if err := cfg.deleteHookByPolicy(h, release.HookSucceeded, waitStrategy, waitOptions, timeout); err != nil {
 				return err
 			}
 		}
@@ -166,7 +177,9 @@ func (x hookByWeight) Less(i, j int) bool {
 }
 
 // deleteHookByPolicy deletes a hook if the hook policy instructs it to
-func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.HookDeletePolicy, waitStrategy kube.WaitStrategy, timeout time.Duration) error {
+func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.HookDeletePolicy,
+	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption, timeout time.Duration) error {
+
 	// Never delete CustomResourceDefinitions; this could cause lots of
 	// cascading garbage collection.
 	if h.Kind == "CustomResourceDefinition" {
@@ -182,7 +195,12 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 			return joinErrors(errs, "; ")
 		}
 
-		waiter, err := cfg.KubeClient.GetWaiter(waitStrategy)
+		var waiter kube.Waiter
+		if c, supportsOptions := cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+			waiter, err = c.GetWaiterWithOptions(waitStrategy, waitOptions...)
+		} else {
+			waiter, err = cfg.KubeClient.GetWaiter(waitStrategy)
+		}
 		if err != nil {
 			return err
 		}
@@ -194,9 +212,11 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 }
 
 // deleteHooksByPolicy deletes all hooks if the hook policy instructs it to
-func (cfg *Configuration) deleteHooksByPolicy(hooks []*release.Hook, policy release.HookDeletePolicy, waitStrategy kube.WaitStrategy, timeout time.Duration) error {
+func (cfg *Configuration) deleteHooksByPolicy(hooks []*release.Hook, policy release.HookDeletePolicy,
+	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption, timeout time.Duration) error {
+
 	for _, h := range hooks {
-		if err := cfg.deleteHookByPolicy(h, policy, waitStrategy, timeout); err != nil {
+		if err := cfg.deleteHookByPolicy(h, policy, waitStrategy, waitOptions, timeout); err != nil {
 			return err
 		}
 	}

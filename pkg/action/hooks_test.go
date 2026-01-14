@@ -18,6 +18,7 @@ package action
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"reflect"
@@ -278,8 +279,8 @@ func (h *HookFailingKubeClient) Delete(resources kube.ResourceList, deletionProp
 	return h.PrintingKubeClient.Delete(resources, deletionPropagation)
 }
 
-func (h *HookFailingKubeClient) GetWaiter(strategy kube.WaitStrategy) (kube.Waiter, error) {
-	waiter, _ := h.PrintingKubeClient.GetWaiter(strategy)
+func (h *HookFailingKubeClient) GetWaiterWithOptions(strategy kube.WaitStrategy, opts ...kube.WaitOption) (kube.Waiter, error) {
+	waiter, _ := h.PrintingKubeClient.GetWaiterWithOptions(strategy, opts...)
 	return &HookFailingKubeWaiter{
 		PrintingKubeWaiter: waiter.(*kubefake.PrintingKubeWaiter),
 		failOn:             h.failOn,
@@ -394,7 +395,7 @@ data:
 			}
 
 			serverSideApply := true
-			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, 600, serverSideApply)
+			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, nil, 600, serverSideApply)
 
 			if !reflect.DeepEqual(kubeClient.deleteRecord, tc.expectedDeleteRecord) {
 				t.Fatalf("Got unexpected delete record, expected: %#v, but got: %#v", kubeClient.deleteRecord, tc.expectedDeleteRecord)
@@ -441,4 +442,52 @@ func TestConfiguration_hookSetDeletePolicy(t *testing.T) {
 			assert.Equal(t, tt.expected, h.DeletePolicies)
 		})
 	}
+}
+
+func TestExecHook_WaitOptionsPassedDownstream(t *testing.T) {
+	is := assert.New(t)
+
+	failer := &kubefake.FailingKubeClient{
+		PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
+	}
+
+	configuration := &Configuration{
+		Releases:     storage.Init(driver.NewMemory()),
+		KubeClient:   failer,
+		Capabilities: common.DefaultCapabilities,
+	}
+
+	rel := &release.Release{
+		Name:      "test-release",
+		Namespace: "test",
+		Hooks: []*release.Hook{
+			{
+				Name: "test-hook",
+				Kind: "ConfigMap",
+				Path: "templates/hook.yaml",
+				Manifest: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-hook
+  namespace: test
+data:
+  foo: bar
+`,
+				Weight: 0,
+				Events: []release.HookEvent{
+					release.HookPreInstall,
+				},
+			},
+		},
+	}
+
+	// Use WithWaitContext as a marker WaitOption that we can track
+	ctx := context.Background()
+	waitOptions := []kube.WaitOption{kube.WithWaitContext(ctx)}
+
+	err := configuration.execHook(rel, release.HookPreInstall, kube.StatusWatcherStrategy, waitOptions, 600, false)
+	is.NoError(err)
+
+	// Verify that WaitOptions were passed to GetWaiter
+	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }

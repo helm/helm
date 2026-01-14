@@ -41,8 +41,9 @@ const (
 //
 // It provides the implementation of 'helm test'.
 type ReleaseTesting struct {
-	cfg     *Configuration
-	Timeout time.Duration
+	cfg         *Configuration
+	Timeout     time.Duration
+	WaitOptions []kube.WaitOption
 	// Used for fetching logs from test pods
 	Namespace string
 	Filters   map[string][]string
@@ -102,7 +103,7 @@ func (r *ReleaseTesting) Run(name string) (ri.Releaser, ExecuteShutdownFunc, err
 	}
 
 	serverSideApply := rel.ApplyMethod == string(release.ApplyMethodServerSideApply)
-	shutdown, err := r.cfg.execHookWithDelayedShutdown(rel, release.HookTest, kube.StatusWatcherStrategy, r.Timeout, serverSideApply)
+	shutdown, err := r.cfg.execHookWithDelayedShutdown(rel, release.HookTest, kube.StatusWatcherStrategy, r.WaitOptions, r.Timeout, serverSideApply)
 
 	if err != nil {
 		rel.Hooks = append(skippedHooks, rel.Hooks...)
