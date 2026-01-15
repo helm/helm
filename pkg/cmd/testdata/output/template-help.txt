@@ -1,0 +1,86 @@
+
+Render chart templates locally and display the output.
+
+Any values that would normally be looked up or retrieved in-cluster will be
+faked locally. Additionally, none of the server-side testing of chart validity
+(e.g. whether an API is supported) is done.
+
+Usage:
+  helm template [NAME] [CHART] [flags]
+
+Flags:
+  -a, --api-versions strings                       Kubernetes api versions used for Capabilities.APIVersions (multiple can be specified)
+      --ca-file string                             verify certificates of HTTPS-enabled servers using this CA bundle
+      --cert-file string                           identify HTTPS client using this SSL certificate file
+      --create-namespace                           create the release namespace if not present
+      --dependency-update                          update dependencies if they are missing before installing the chart
+      --description string                         add a custom description
+      --devel                                      use development versions, too. Equivalent to version '>0.0.0-0'. If --version is set, this is ignored
+      --disable-openapi-validation                 if set, the installation process will not validate rendered templates against the Kubernetes OpenAPI Schema
+      --dry-run string[="unset"]                   simulates the operation either client-side or server-side. Must be either: "client", or "server". '--dry-run=client simulates the operation client-side only and avoids cluster connections. '--dry-run=server' simulates/validates the operation on the server, requiring cluster connectivity. (default "client")
+      --enable-dns                                 enable DNS lookups when rendering templates
+      --force-conflicts                            if set server-side apply will force changes against conflicts
+      --force-replace                              force resource updates by replacement
+  -g, --generate-name                              generate the name (and omit the NAME parameter)
+  -h, --help                                       help for template
+      --hide-notes                                 if set, do not show notes in install output. Does not affect presence in chart metadata
+      --include-crds                               include CRDs in the templated output
+      --insecure-skip-tls-verify                   skip tls certificate checks for the chart download
+      --is-upgrade                                 set .Release.IsUpgrade instead of .Release.IsInstall
+      --key-file string                            identify HTTPS client using this SSL key file
+      --keyring string                             location of public keys used for verification (default "test-gpg/pubring.gpg")
+      --kube-version string                        Kubernetes version used for Capabilities.KubeVersion
+  -l, --labels stringToString                      Labels that would be added to release metadata. Should be divided by comma. (default [])
+      --name-template string                       specify template used to name the release
+      --no-hooks                                   prevent hooks from running during install
+      --notes                                      if set, render the current chart's notes file
+      --output-dir string                          writes the executed templates to files in output-dir instead of stdout
+      --pass-credentials                           pass credentials to all domains
+      --password string                            chart repository password where to locate the requested chart
+      --plain-http                                 use insecure HTTP connections for the chart download
+      --post-renderer postRendererString           the name of a postrenderer type plugin to be used for post rendering. If it exists, the plugin will be used
+      --post-renderer-args postRendererArgsSlice   an argument to the post-renderer (can specify multiple) (default [])
+      --release-name                               use release name in the output-dir path.
+      --render-subchart-notes                      if set, render subchart notes along with the parent. Note: This will only work if --notes flag is enabled.
+      --replace                                    reuse the given name, only if that name is a deleted release which remains in the history. This is unsafe in production
+      --repo string                                chart repository url where to locate the requested chart
+      --rollback-on-failure                        if set, Helm will rollback (uninstall) the installation upon failure. The --wait flag will be default to "watcher" if --rollback-on-failure is set
+      --server-side                                object updates run in the server instead of the client (default true)
+      --set stringArray                            set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)
+      --set-file stringArray                       set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)
+      --set-json stringArray                       set JSON values on the command line (can specify multiple or separate values with commas: key1=jsonval1,key2=jsonval2 or using json format: {"key1": jsonval1, "key2": "jsonval2"})
+      --set-literal stringArray                    set a literal STRING value on the command line
+      --set-string stringArray                     set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)
+  -s, --show-only stringArray                      only show manifests rendered from the given templates
+      --skip-crds                                  if set, no CRDs will be installed. By default, CRDs are installed if not already present
+      --skip-schema-validation                     if set, disables JSON schema validation
+      --skip-tests                                 skip tests from templated output
+      --take-ownership                             if set, install will ignore the check for helm annotations and take ownership of the existing resources
+      --timeout duration                           time to wait for any individual Kubernetes operation (like Jobs for hooks) (default 5m0s)
+      --username string                            chart repository username where to locate the requested chart
+  -f, --values strings                             specify values in a YAML file or a URL (can specify multiple)
+      --verify                                     verify the package before using it
+      --version string                             specify a version constraint for the chart version to use. This constraint can be a specific tag (e.g. 1.1.1) or it may reference a valid range (e.g. ^2.0.0). If this is not specified, the latest version is used
+      --wait WaitStrategy[=watcher]                if specified, will wait until all resources are in the expected state before marking the operation as successful. It will wait for as long as --timeout. Valid inputs are 'watcher' and 'legacy' (default hookOnly)
+      --wait-for-jobs                              if set and --wait enabled, will wait until all Jobs have been completed before marking the release as successful. It will wait for as long as --timeout
+
+Global Flags:
+      --burst-limit int                 client-side default throttling limit (default 100)
+      --color string                    use colored output (never, auto, always) (default "auto")
+      --colour string                   use colored output (never, auto, always) (default "auto")
+      --content-cache string            path to the directory containing cached content (e.g. charts) (default "test-content-cache")
+      --debug                           enable verbose output
+      --kube-apiserver string           the address and the port for the Kubernetes API server
+      --kube-as-group stringArray       group to impersonate for the operation, this flag can be repeated to specify multiple groups.
+      --kube-as-user string             username to impersonate for the operation
+      --kube-ca-file string             the certificate authority file for the Kubernetes API server connection
+      --kube-context string             name of the kubeconfig context to use
+      --kube-insecure-skip-tls-verify   if true, the Kubernetes API server's certificate will not be checked for validity. This will make your HTTPS connections insecure
+      --kube-tls-server-name string     server name to use for Kubernetes API server certificate validation. If it is not provided, the hostname used to contact the server is used
+      --kube-token string               bearer token used for authentication
+      --kubeconfig string               path to the kubeconfig file
+  -n, --namespace string                namespace scope for this request (default "test-namespace")
+      --qps float32                     queries per second used when communicating with the Kubernetes API, not including bursting
+      --registry-config string          path to the registry config file (default "test-registry-config.json")
+      --repository-cache string         path to the directory containing cached repository indexes (default "test-repository-cache-dir")
+      --repository-config string        path to the file containing repository names and URLs (default "test-repository-config.yaml")
