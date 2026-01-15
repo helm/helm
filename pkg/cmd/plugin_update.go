@@ -50,7 +50,7 @@ func newPluginUpdateCmd(out io.Writer) *cobra.Command {
 			return o.run(out)
 		},
 	}
-	cmd.Flags().StringVar(&o.version, "version", "", "specify a version constraint. If this is not specified, the latest version is installed")
+	cmd.Flags().StringVar(&o.version, "version", "", "specify a version constraint. If this is not specified, the plugin is updated to the latest version")
 	return cmd
 }
 
