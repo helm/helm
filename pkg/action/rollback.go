@@ -59,6 +59,8 @@ type Rollback struct {
 	ServerSideApply string
 	CleanupOnFail   bool
 	MaxHistory      int // MaxHistory limits the maximum number of revisions saved per release
+	// Description is the description of this rollback operation
+	Description string
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -168,6 +170,12 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		return nil, nil, false, err
 	}
 
+	// Determine the description for this rollback
+	description := fmt.Sprintf("Rollback to %d", previousVersion)
+	if r.Description != "" {
+		description = r.Description
+	}
+
 	// Store a new release object with previous release's configuration
 	targetRelease := &release.Release{
 		Name:      name,
@@ -181,7 +189,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 			Notes:         previousRelease.Info.Notes,
 			// Because we lose the reference to previous version elsewhere, we set the
 			// message here, and only override it later if we experience failure.
-			Description: fmt.Sprintf("Rollback to %d", previousVersion),
+			Description: description,
 		},
 		Version:     currentRelease.Version + 1,
 		Labels:      previousRelease.Labels,
