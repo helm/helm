@@ -42,10 +42,14 @@ import (
 )
 
 type statusWaiter struct {
-	client     dynamic.Interface
-	restMapper meta.RESTMapper
-	ctx        context.Context
-	readers    []engine.StatusReader
+	client             dynamic.Interface
+	restMapper         meta.RESTMapper
+	ctx                context.Context
+	watchUntilReadyCtx context.Context
+	waitCtx            context.Context
+	waitWithJobsCtx    context.Context
+	waitForDeleteCtx   context.Context
+	readers            []engine.StatusReader
 }
 
 // DefaultStatusWatcherTimeout is the timeout used by the status waiter when a
@@ -66,7 +70,7 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
 	}
-	ctx, cancel := w.contextWithTimeout(timeout)
+	ctx, cancel := w.contextWithTimeout(w.watchUntilReadyCtx, timeout)
 	defer cancel()
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
@@ -88,7 +92,7 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
 	}
-	ctx, cancel := w.contextWithTimeout(timeout)
+	ctx, cancel := w.contextWithTimeout(w.waitCtx, timeout)
 	defer cancel()
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
@@ -100,7 +104,7 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
 	}
-	ctx, cancel := w.contextWithTimeout(timeout)
+	ctx, cancel := w.contextWithTimeout(w.waitWithJobsCtx, timeout)
 	defer cancel()
 	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
@@ -116,7 +120,7 @@ func (w *statusWaiter) WaitForDelete(resourceList ResourceList, timeout time.Dur
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
 	}
-	ctx, cancel := w.contextWithTimeout(timeout)
+	ctx, cancel := w.contextWithTimeout(w.waitForDeleteCtx, timeout)
 	defer cancel()
 	slog.Debug("waiting for resources to be deleted", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
@@ -210,8 +214,11 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 	return nil
 }
 
-func (w *statusWaiter) contextWithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
-	return contextWithTimeout(w.ctx, timeout)
+func (w *statusWaiter) contextWithTimeout(methodCtx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if methodCtx == nil {
+		methodCtx = w.ctx
+	}
+	return contextWithTimeout(methodCtx, timeout)
 }
 
 func contextWithTimeout(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {

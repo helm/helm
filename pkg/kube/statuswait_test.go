@@ -1246,6 +1246,475 @@ func TestStatusWaitWithFailedResources(t *testing.T) {
 	}
 }
 
+func TestWaitOptionFunctions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("WithWatchUntilReadyMethodContext sets watchUntilReadyCtx", func(t *testing.T) {
+		t.Parallel()
+		type contextKey struct{}
+		ctx := context.WithValue(context.Background(), contextKey{}, "test")
+		opts := &waitOptions{}
+		WithWatchUntilReadyMethodContext(ctx)(opts)
+		assert.Equal(t, ctx, opts.watchUntilReadyCtx)
+	})
+
+	t.Run("WithWaitMethodContext sets waitCtx", func(t *testing.T) {
+		t.Parallel()
+		type contextKey struct{}
+		ctx := context.WithValue(context.Background(), contextKey{}, "test")
+		opts := &waitOptions{}
+		WithWaitMethodContext(ctx)(opts)
+		assert.Equal(t, ctx, opts.waitCtx)
+	})
+
+	t.Run("WithWaitWithJobsMethodContext sets waitWithJobsCtx", func(t *testing.T) {
+		t.Parallel()
+		type contextKey struct{}
+		ctx := context.WithValue(context.Background(), contextKey{}, "test")
+		opts := &waitOptions{}
+		WithWaitWithJobsMethodContext(ctx)(opts)
+		assert.Equal(t, ctx, opts.waitWithJobsCtx)
+	})
+
+	t.Run("WithWaitForDeleteMethodContext sets waitForDeleteCtx", func(t *testing.T) {
+		t.Parallel()
+		type contextKey struct{}
+		ctx := context.WithValue(context.Background(), contextKey{}, "test")
+		opts := &waitOptions{}
+		WithWaitForDeleteMethodContext(ctx)(opts)
+		assert.Equal(t, ctx, opts.waitForDeleteCtx)
+	})
+}
+
+func TestMethodSpecificContextCancellation(t *testing.T) {
+	t.Parallel()
+
+	t.Run("WatchUntilReady uses method-specific context", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// Create a cancelled method-specific context
+		methodCtx, methodCancel := context.WithCancel(context.Background())
+		methodCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:             fakeClient,
+			restMapper:         fakeMapper,
+			ctx:                context.Background(), // General context is not cancelled
+			watchUntilReadyCtx: methodCtx,            // Method context is cancelled
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCompleteManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WatchUntilReady(resourceList, time.Second*3)
+		// Should fail due to cancelled method context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+
+	t.Run("Wait uses method-specific context", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// Create a cancelled method-specific context
+		methodCtx, methodCancel := context.WithCancel(context.Background())
+		methodCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:     fakeClient,
+			restMapper: fakeMapper,
+			ctx:        context.Background(), // General context is not cancelled
+			waitCtx:    methodCtx,            // Method context is cancelled
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.Wait(resourceList, time.Second*3)
+		// Should fail due to cancelled method context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+
+	t.Run("WaitWithJobs uses method-specific context", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			batchv1.SchemeGroupVersion.WithKind("Job"),
+		)
+
+		// Create a cancelled method-specific context
+		methodCtx, methodCancel := context.WithCancel(context.Background())
+		methodCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			ctx:             context.Background(), // General context is not cancelled
+			waitWithJobsCtx: methodCtx,            // Method context is cancelled
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{jobCompleteManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WaitWithJobs(resourceList, time.Second*3)
+		// Should fail due to cancelled method context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+
+	t.Run("WaitForDelete uses method-specific context", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// Create a cancelled method-specific context
+		methodCtx, methodCancel := context.WithCancel(context.Background())
+		methodCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:           fakeClient,
+			restMapper:       fakeMapper,
+			ctx:              context.Background(), // General context is not cancelled
+			waitForDeleteCtx: methodCtx,            // Method context is cancelled
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WaitForDelete(resourceList, time.Second*3)
+		// Should fail due to cancelled method context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+}
+
+func TestMethodContextFallbackToGeneralContext(t *testing.T) {
+	t.Parallel()
+
+	t.Run("WatchUntilReady falls back to general context when method context is nil", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// Create a cancelled general context
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:             fakeClient,
+			restMapper:         fakeMapper,
+			ctx:                generalCtx, // General context is cancelled
+			watchUntilReadyCtx: nil,        // Method context is nil, should fall back
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCompleteManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WatchUntilReady(resourceList, time.Second*3)
+		// Should fail due to cancelled general context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+
+	t.Run("Wait falls back to general context when method context is nil", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// Create a cancelled general context
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:     fakeClient,
+			restMapper: fakeMapper,
+			ctx:        generalCtx, // General context is cancelled
+			waitCtx:    nil,        // Method context is nil, should fall back
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.Wait(resourceList, time.Second*3)
+		// Should fail due to cancelled general context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+
+	t.Run("WaitWithJobs falls back to general context when method context is nil", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			batchv1.SchemeGroupVersion.WithKind("Job"),
+		)
+
+		// Create a cancelled general context
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			ctx:             generalCtx, // General context is cancelled
+			waitWithJobsCtx: nil,        // Method context is nil, should fall back
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{jobCompleteManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WaitWithJobs(resourceList, time.Second*3)
+		// Should fail due to cancelled general context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+
+	t.Run("WaitForDelete falls back to general context when method context is nil", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// Create a cancelled general context
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:           fakeClient,
+			restMapper:       fakeMapper,
+			ctx:              generalCtx, // General context is cancelled
+			waitForDeleteCtx: nil,        // Method context is nil, should fall back
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WaitForDelete(resourceList, time.Second*3)
+		// Should fail due to cancelled general context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+}
+
+func TestMethodContextOverridesGeneralContext(t *testing.T) {
+	t.Parallel()
+
+	t.Run("method-specific context overrides general context for WatchUntilReady", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// General context is cancelled, but method context is not
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel()
+
+		sw := statusWaiter{
+			client:             fakeClient,
+			restMapper:         fakeMapper,
+			ctx:                generalCtx,           // Cancelled
+			watchUntilReadyCtx: context.Background(), // Not cancelled - should be used
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCompleteManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WatchUntilReady(resourceList, time.Second*3)
+		// Should succeed because method context is used and it's not cancelled
+		assert.NoError(t, err)
+	})
+
+	t.Run("method-specific context overrides general context for Wait", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// General context is cancelled, but method context is not
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel()
+
+		sw := statusWaiter{
+			client:     fakeClient,
+			restMapper: fakeMapper,
+			ctx:        generalCtx,           // Cancelled
+			waitCtx:    context.Background(), // Not cancelled - should be used
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.Wait(resourceList, time.Second*3)
+		// Should succeed because method context is used and it's not cancelled
+		assert.NoError(t, err)
+	})
+
+	t.Run("method-specific context overrides general context for WaitWithJobs", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			batchv1.SchemeGroupVersion.WithKind("Job"),
+		)
+
+		// General context is cancelled, but method context is not
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel()
+
+		sw := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			ctx:             generalCtx,           // Cancelled
+			waitWithJobsCtx: context.Background(), // Not cancelled - should be used
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{jobCompleteManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WaitWithJobs(resourceList, time.Second*3)
+		// Should succeed because method context is used and it's not cancelled
+		assert.NoError(t, err)
+	})
+
+	t.Run("method-specific context overrides general context for WaitForDelete", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		timeout := time.Second
+		timeUntilPodDelete := time.Millisecond * 500
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// General context is cancelled, but method context is not
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel()
+
+		sw := statusWaiter{
+			client:           fakeClient,
+			restMapper:       fakeMapper,
+			ctx:              generalCtx,           // Cancelled
+			waitForDeleteCtx: context.Background(), // Not cancelled - should be used
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+
+		// Schedule deletion
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			go func(gvr schema.GroupVersionResource, u *unstructured.Unstructured) {
+				time.Sleep(timeUntilPodDelete)
+				err := fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName())
+				assert.NoError(t, err)
+			}(gvr, u)
+		}
+
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+		err := sw.WaitForDelete(resourceList, timeout)
+		// Should succeed because method context is used and it's not cancelled
+		assert.NoError(t, err)
+	})
+}
+
 func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
