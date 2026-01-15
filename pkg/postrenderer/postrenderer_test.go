@@ -18,14 +18,36 @@ package postrenderer
 
 import (
 	"bytes"
+	"path"
 	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/pkg/cli"
 )
+
+func buildLoadExtismPostRendererPlugin(t *testing.T, dir string, args ...string) PostRenderer {
+	t.Helper()
+	r := plugin.RuntimeExtismV1{}
+
+	pr := plugin.BuildLoadExtismPlugin(t, dir)
+	require.Equal(t, "postrenderer/v1", pr.Metadata.Type)
+
+	p, err := r.CreatePlugin(pr.Dir, &pr.Metadata)
+
+	assert.NoError(t, err, "expected no error creating plugin")
+	assert.NotNil(t, p, "expected plugin to be created")
+
+	s := cli.New()
+	s.PluginsDirectory = path.Dir(p.Dir())
+
+	renderer, err := NewPostRendererPlugin(s, p.Metadata().Name, args...)
+	require.NoError(t, err)
+	return renderer
+}
 
 func TestNewPostRenderPluginRunWithNoOutput(t *testing.T) {
 	if runtime.GOOS == "windows" {
@@ -59,7 +81,7 @@ func TestNewPostRenderPluginWithOneArgsRun(t *testing.T) {
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
 	is.NoError(err)
-	is.Contains(output.String(), "ARG1")
+	is.Contains(output, "ARG1")
 }
 
 func TestNewPostRenderPluginWithTwoArgsRun(t *testing.T) {
@@ -77,5 +99,32 @@ func TestNewPostRenderPluginWithTwoArgsRun(t *testing.T) {
 
 	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
 	is.NoError(err)
-	is.Contains(output.String(), "ARG1 ARG2")
+	is.Contains(output, "ARG1 ARG2")
+}
+
+func TestExtismPostRenderPluginRunWithNoArgsRun(t *testing.T) {
+	is := assert.New(t)
+	renderer := buildLoadExtismPostRendererPlugin(t, "testdata/plugins/extismv1-str-replace")
+
+	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
+	is.NoError(err)
+	is.Equal(output, "BARTEST")
+}
+
+func TestExtismPostRenderPluginWithOneArgsRun(t *testing.T) {
+	is := assert.New(t)
+	renderer := buildLoadExtismPostRendererPlugin(t, "testdata/plugins/extismv1-str-replace", "ARG1")
+
+	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
+	is.NoError(err)
+	is.Equal(output, "ARG1")
+}
+
+func TestExtismPostRenderPluginWithTwoArgsRun(t *testing.T) {
+	is := assert.New(t)
+	renderer := buildLoadExtismPostRendererPlugin(t, "testdata/plugins/extismv1-str-replace", "ARG1", "ARG2")
+
+	output, err := renderer.Run(bytes.NewBufferString("FOOTEST"))
+	is.NoError(err)
+	is.Equal(output, "ARG1 ARG2")
 }
