@@ -166,12 +166,14 @@ func (c *Client) newStatusWatcher(opts ...WaitOption) (*statusWaiter, error) {
 	if waitContext == nil {
 		waitContext = c.WaitContext
 	}
-	return &statusWaiter{
+	sw := &statusWaiter{
 		restMapper: restMapper,
 		client:     dynamicClient,
 		ctx:        waitContext,
 		readers:    o.statusReaders,
-	}, nil
+	}
+	sw.SetLogger(c.Logger().Handler())
+	return sw, nil
 }
 
 func (c *Client) GetWaiter(ws WaitStrategy) (Waiter, error) {
