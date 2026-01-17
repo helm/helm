@@ -140,7 +140,7 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 		return nil
 	}
 
-	env := parseEnv(os.Environ())
+	env := ParseEnv(os.Environ())
 	maps.Insert(env, maps.All(r.EnvVars))
 	env["HELM_PLUGIN_NAME"] = r.metadata.Name
 	env["HELM_PLUGIN_DIR"] = r.pluginDir
@@ -151,7 +151,7 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 	}
 
 	cmd := exec.Command(main, argv...)
-	cmd.Env = formatEnv(env)
+	cmd.Env = FormatEnv(env)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -202,9 +202,9 @@ func (r *SubprocessPluginRuntime) runCLI(input *Input) (*Output, error) {
 
 	cmds := r.RuntimeConfig.PlatformCommand
 
-	env := parseEnv(os.Environ())
+	env := ParseEnv(os.Environ())
 	maps.Insert(env, maps.All(r.EnvVars))
-	maps.Insert(env, maps.All(parseEnv(input.Env)))
+	maps.Insert(env, maps.All(ParseEnv(input.Env)))
 	env["HELM_PLUGIN_NAME"] = r.metadata.Name
 	env["HELM_PLUGIN_DIR"] = r.pluginDir
 
@@ -214,7 +214,7 @@ func (r *SubprocessPluginRuntime) runCLI(input *Input) (*Output, error) {
 	}
 
 	cmd := exec.Command(command, args...)
-	cmd.Env = formatEnv(env)
+	cmd.Env = FormatEnv(env)
 
 	cmd.Stdin = input.Stdin
 	cmd.Stdout = input.Stdout
@@ -235,9 +235,9 @@ func (r *SubprocessPluginRuntime) runPostrenderer(input *Input) (*Output, error)
 		return nil, fmt.Errorf("plugin %q input message does not implement InputMessagePostRendererV1", r.metadata.Name)
 	}
 
-	env := parseEnv(os.Environ())
+	env := ParseEnv(os.Environ())
 	maps.Insert(env, maps.All(r.EnvVars))
-	maps.Insert(env, maps.All(parseEnv(input.Env)))
+	maps.Insert(env, maps.All(ParseEnv(input.Env)))
 	env["HELM_PLUGIN_NAME"] = r.metadata.Name
 	env["HELM_PLUGIN_DIR"] = r.pluginDir
 
@@ -265,7 +265,7 @@ func (r *SubprocessPluginRuntime) runPostrenderer(input *Input) (*Output, error)
 	postRendered := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
-	cmd.Env = formatEnv(env)
+	cmd.Env = FormatEnv(env)
 	cmd.Stdout = postRendered
 	cmd.Stderr = stderr
 

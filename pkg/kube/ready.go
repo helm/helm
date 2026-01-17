@@ -354,6 +354,8 @@ func (c *ReadyChecker) crdBetaReady(crd apiextv1beta1.CustomResourceDefinition) 
 				// continue.
 				return true
 			}
+		default:
+			// intentionally left empty
 		}
 	}
 	return false
@@ -374,6 +376,8 @@ func (c *ReadyChecker) crdReady(crd apiextv1.CustomResourceDefinition) bool {
 				// continue.
 				return true
 			}
+		default:
+			// intentionally left empty
 		}
 	}
 	return false

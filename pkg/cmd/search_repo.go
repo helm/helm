@@ -260,11 +260,11 @@ func (r *repoSearchWriter) encodeByFormat(out io.Writer, format output.Format) e
 		return output.EncodeJSON(out, chartList)
 	case output.YAML:
 		return output.EncodeYAML(out, chartList)
+	default:
+		// Because this is a non-exported function and only called internally by
+		// WriteJSON and WriteYAML, we shouldn't get invalid types
+		return nil
 	}
-
-	// Because this is a non-exported function and only called internally by
-	// WriteJSON and WriteYAML, we shouldn't get invalid types
-	return nil
 }
 
 // Provides the list of charts that are part of the specified repo, and that starts with 'prefix'.

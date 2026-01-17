@@ -17,8 +17,10 @@ limitations under the License.
 package storage // import "helm.sh/helm/v4/pkg/storage"
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"testing"
 
@@ -578,4 +580,36 @@ func assertErrNil(eh func(args ...interface{}), err error, message string) {
 	if err != nil {
 		eh(fmt.Sprintf("%s: %q", message, err))
 	}
+}
+
+func TestStorageGetsLoggerFromDriver(t *testing.T) {
+	d := driver.NewMemory()
+	l := &mockSLogHandler{}
+	d.SetLogger(l)
+	s := Init(d)
+	_, _ = s.Get("doesnt-matter", 123)
+	if !l.Called {
+		t.Fatalf("Expected storage to use driver's logger, but it did not")
+	}
+}
+
+type mockSLogHandler struct {
+	Called bool
+}
+
+func (m *mockSLogHandler) Enabled(context.Context, slog.Level) bool {
+	return true
+}
+
+func (m *mockSLogHandler) Handle(context.Context, slog.Record) error {
+	m.Called = true
+	return nil
+}
+
+func (m *mockSLogHandler) WithAttrs([]slog.Attr) slog.Handler {
+	return m
+}
+
+func (m *mockSLogHandler) WithGroup(string) slog.Handler {
+	return m
 }

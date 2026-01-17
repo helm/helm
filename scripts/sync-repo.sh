@@ -44,6 +44,7 @@ verify_prereqs() {
 }
 
 confirm() {
+  # shellcheck disable=SC2154
   case $response in
     [yY][eE][sS]|[yY])
       true
@@ -66,11 +67,11 @@ main() {
   verify_prereqs
 
   # dry run of the command
-  gsutil rsync -d -n $1 gs://$2
+  gsutil rsync -d -n "$1" gs://"$2"
 
-  read -p "Are you sure you would like to continue with these changes? [y/N]} " confirm
+  read -r -p "Are you sure you would like to continue with these changes? [y/N] " confirm
   if [[ $confirm =~ [yY](es)* ]]; then
-    gsutil rsync -d $1 gs://$2
+    gsutil rsync -d "$1" gs://"$2"
   else
     error_exit "Discontinuing sync process."
   fi

@@ -86,19 +86,19 @@ func podConditions(u *unstructured.Unstructured) (*status.Result, error) {
 				},
 			},
 		}, nil
-	}
-
-	message := "Pod in progress"
-	return &status.Result{
-		Status:  status.InProgressStatus,
-		Message: message,
-		Conditions: []status.Condition{
-			{
-				Type:    status.ConditionReconciling,
-				Status:  corev1.ConditionTrue,
-				Reason:  "PodInProgress",
-				Message: message,
+	default:
+		message := "Pod in progress"
+		return &status.Result{
+			Status:  status.InProgressStatus,
+			Message: message,
+			Conditions: []status.Condition{
+				{
+					Type:    status.ConditionReconciling,
+					Status:  corev1.ConditionTrue,
+					Reason:  "PodInProgress",
+					Message: message,
+				},
 			},
-		},
-	}, nil
+		}, nil
+	}
 }

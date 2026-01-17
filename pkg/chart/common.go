@@ -186,7 +186,7 @@ func structToMap(obj interface{}) (map[string]interface{}, error) {
 	objValue := reflect.ValueOf(obj)
 
 	// If the value is a pointer, dereference it
-	if objValue.Kind() == reflect.Ptr {
+	if objValue.Kind() == reflect.Pointer {
 		objValue = objValue.Elem()
 	}
 
@@ -209,7 +209,7 @@ func structToMap(obj interface{}) (map[string]interface{}, error) {
 				return nil, err
 			}
 			result[field.Name] = nestedMap
-		case reflect.Ptr:
+		case reflect.Pointer:
 			// Recurse for pointers by dereferencing
 			if value.IsNil() {
 				result[field.Name] = nil
@@ -224,7 +224,7 @@ func structToMap(obj interface{}) (map[string]interface{}, error) {
 			sliceOfMaps := make([]interface{}, value.Len())
 			for j := 0; j < value.Len(); j++ {
 				sliceElement := value.Index(j)
-				if sliceElement.Kind() == reflect.Struct || sliceElement.Kind() == reflect.Ptr {
+				if sliceElement.Kind() == reflect.Struct || sliceElement.Kind() == reflect.Pointer {
 					nestedMap, err := structToMap(sliceElement.Interface())
 					if err != nil {
 						return nil, err
