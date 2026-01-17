@@ -122,9 +122,10 @@ func fakeClientWith(code int, gv schema.GroupVersion, body string) *fake.RESTCli
 
 func TestRequireAdoption(t *testing.T) {
 	var (
-		missing   = newMissingDeployment("missing", "ns-a")
-		existing  = newDeploymentWithOwner("existing", "ns-a", nil, nil)
-		resources = kube.ResourceList{missing, existing}
+		missing                   = newMissingDeployment("missing", "ns-a")
+		existing                  = newDeploymentWithOwner("existing", "ns-a", nil, nil)
+		existingWithGeneratedName = newDeploymentWithOwner("", "ns-a", nil, nil)
+		resources                 = kube.ResourceList{missing, existing, existingWithGeneratedName}
 	)
 
 	// Verify that a resource that lacks labels/annotations can be adopted
@@ -146,10 +147,11 @@ func TestExistingResourceConflict(t *testing.T) {
 			helmReleaseNameAnnotation:      releaseName,
 			helmReleaseNamespaceAnnotation: releaseNamespace,
 		}
-		missing   = newMissingDeployment("missing", "ns-a")
-		existing  = newDeploymentWithOwner("existing", "ns-a", labels, annotations)
-		conflict  = newDeploymentWithOwner("conflict", "ns-a", nil, nil)
-		resources = kube.ResourceList{missing, existing}
+		missing                   = newMissingDeployment("missing", "ns-a")
+		existing                  = newDeploymentWithOwner("existing", "ns-a", labels, annotations)
+		existingWithGeneratedName = newDeploymentWithOwner("", "ns-a", nil, nil)
+		conflict                  = newDeploymentWithOwner("conflict", "ns-a", nil, nil)
+		resources                 = kube.ResourceList{missing, existing, existingWithGeneratedName}
 	)
 
 	// Verify only existing resources are returned
