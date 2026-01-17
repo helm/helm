@@ -101,8 +101,25 @@ status:
    succeeded: 1
    active: 0
    conditions:
-    - type: Complete 
+    - type: Complete
       status: "True"
+`
+
+var jobFailedManifest = `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: failed-job
+  namespace: default
+  generation: 1
+status:
+  failed: 1
+  active: 0
+  conditions:
+  - type: Failed
+    status: "True"
+    reason: BackoffLimitExceeded
+    message: "Job has reached the specified backoff limit"
 `
 
 var podCompleteManifest = `
@@ -279,7 +296,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 		name              string
 		manifestsToCreate []string
 		manifestsToDelete []string
-		expectErrs        []error
+		expectErrs        []string
 	}{
 		{
 			name:              "wait for pod to be deleted",
@@ -291,7 +308,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 			name:              "error when not all objects are deleted",
 			manifestsToCreate: []string{jobCompleteManifest, podCurrentManifest},
 			manifestsToDelete: []string{jobCompleteManifest},
-			expectErrs:        []error{errors.New("resource still exists, name: current-pod, kind: Pod, status: Current"), errors.New("context deadline exceeded")},
+			expectErrs:        []string{"resource Pod/ns/current-pod still exists. status: Current", "context deadline exceeded"},
 		},
 	}
 	for _, tt := range tests {
@@ -329,7 +346,10 @@ func TestStatusWaitForDelete(t *testing.T) {
 			resourceList := getResourceListFromRuntimeObjs(t, c, objsToCreate)
 			err := statusWaiter.WaitForDelete(resourceList, timeout)
 			if tt.expectErrs != nil {
-				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
 				return
 			}
 			assert.NoError(t, err)
@@ -359,37 +379,35 @@ func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 func TestStatusWait(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name         string
-		objManifests []string
-		expectErrs   []error
-		waitForJobs  bool
+		name          string
+		objManifests  []string
+		expectErrStrs []string
+		waitForJobs   bool
 	}{
 		{
-			name:         "Job is not complete",
-			objManifests: []string{jobNoStatusManifest},
-			expectErrs:   []error{errors.New("resource not ready, name: test, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
-			waitForJobs:  true,
+			name:          "Job is not complete",
+			objManifests:  []string{jobNoStatusManifest},
+			expectErrStrs: []string{"resource Job/qual/test not ready. status: InProgress", "context deadline exceeded"},
+			waitForJobs:   true,
 		},
 		{
-			name:         "Job is ready but not complete",
-			objManifests: []string{jobReadyManifest},
-			expectErrs:   nil,
-			waitForJobs:  false,
+			name:          "Job is ready but not complete",
+			objManifests:  []string{jobReadyManifest},
+			expectErrStrs: nil,
+			waitForJobs:   false,
 		},
 		{
 			name:         "Pod is ready",
 			objManifests: []string{podCurrentManifest},
-			expectErrs:   nil,
 		},
 		{
-			name:         "one of the pods never becomes ready",
-			objManifests: []string{podNoStatusManifest, podCurrentManifest},
-			expectErrs:   []error{errors.New("resource not ready, name: in-progress-pod, kind: Pod, status: InProgress"), errors.New("context deadline exceeded")},
+			name:          "one of the pods never becomes ready",
+			objManifests:  []string{podNoStatusManifest, podCurrentManifest},
+			expectErrStrs: []string{"resource Pod/ns/in-progress-pod not ready. status: InProgress", "context deadline exceeded"},
 		},
 		{
 			name:         "paused deployment passes",
 			objManifests: []string{pausedDeploymentManifest},
-			expectErrs:   nil,
 		},
 	}
 
@@ -416,8 +434,11 @@ func TestStatusWait(t *testing.T) {
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.Wait(resourceList, time.Second*3)
-			if tt.expectErrs != nil {
-				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
 				return
 			}
 			assert.NoError(t, err)
@@ -428,23 +449,23 @@ func TestStatusWait(t *testing.T) {
 func TestWaitForJobComplete(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name         string
-		objManifests []string
-		expectErrs   []error
+		name          string
+		objManifests  []string
+		expectErrStrs []string
 	}{
 		{
 			name:         "Job is complete",
 			objManifests: []string{jobCompleteManifest},
 		},
 		{
-			name:         "Job is not ready",
-			objManifests: []string{jobNoStatusManifest},
-			expectErrs:   []error{errors.New("resource not ready, name: test, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
+			name:          "Job is not ready",
+			objManifests:  []string{jobNoStatusManifest},
+			expectErrStrs: []string{"resource Job/qual/test not ready. status: InProgress", "context deadline exceeded"},
 		},
 		{
-			name:         "Job is ready but not complete",
-			objManifests: []string{jobReadyManifest},
-			expectErrs:   []error{errors.New("resource not ready, name: ready-not-complete, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
+			name:          "Job is ready but not complete",
+			objManifests:  []string{jobReadyManifest},
+			expectErrStrs: []string{"resource Job/default/ready-not-complete not ready. status: InProgress", "context deadline exceeded"},
 		},
 	}
 
@@ -469,8 +490,11 @@ func TestWaitForJobComplete(t *testing.T) {
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WaitWithJobs(resourceList, time.Second*3)
-			if tt.expectErrs != nil {
-				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
 				return
 			}
 			assert.NoError(t, err)
@@ -481,9 +505,9 @@ func TestWaitForJobComplete(t *testing.T) {
 func TestWatchForReady(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name         string
-		objManifests []string
-		expectErrs   []error
+		name          string
+		objManifests  []string
+		expectErrStrs []string
 	}{
 		{
 			name:         "succeeds if pod and job are complete",
@@ -494,14 +518,14 @@ func TestWatchForReady(t *testing.T) {
 			objManifests: []string{notReadyDeploymentManifest},
 		},
 		{
-			name:         "Fails if job is not complete",
-			objManifests: []string{jobReadyManifest},
-			expectErrs:   []error{errors.New("resource not ready, name: ready-not-complete, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
+			name:          "Fails if job is not complete",
+			objManifests:  []string{jobReadyManifest},
+			expectErrStrs: []string{"resource Job/default/ready-not-complete not ready. status: InProgress", "context deadline exceeded"},
 		},
 		{
-			name:         "Fails if pod is not complete",
-			objManifests: []string{podCurrentManifest},
-			expectErrs:   []error{errors.New("resource not ready, name: current-pod, kind: Pod, status: InProgress"), errors.New("context deadline exceeded")},
+			name:          "Fails if pod is not complete",
+			objManifests:  []string{podCurrentManifest},
+			expectErrStrs: []string{"resource Pod/ns/current-pod not ready. status: InProgress", "context deadline exceeded"},
 		},
 	}
 
@@ -528,8 +552,11 @@ func TestWatchForReady(t *testing.T) {
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WatchUntilReady(resourceList, time.Second*3)
-			if tt.expectErrs != nil {
-				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
 				return
 			}
 			assert.NoError(t, err)
@@ -540,10 +567,10 @@ func TestWatchForReady(t *testing.T) {
 func TestStatusWaitMultipleNamespaces(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name         string
-		objManifests []string
-		expectErrs   []error
-		testFunc     func(statusWaiter, ResourceList, time.Duration) error
+		name          string
+		objManifests  []string
+		expectErrStrs []string
+		testFunc      func(statusWaiter, ResourceList, time.Duration) error
 	}{
 		{
 			name:         "pods in multiple namespaces",
@@ -560,9 +587,9 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 			},
 		},
 		{
-			name:         "error when resource not ready in one namespace",
-			objManifests: []string{podNamespace1NoStatusManifest, podNamespace2Manifest},
-			expectErrs:   []error{errors.New("resource not ready, name: pod-ns1, kind: Pod, status: InProgress"), errors.New("context deadline exceeded")},
+			name:          "error when resource not ready in one namespace",
+			objManifests:  []string{podNamespace1NoStatusManifest, podNamespace2Manifest},
+			expectErrStrs: []string{"resource Pod/namespace-1/pod-ns1 not ready. status: InProgress", "context deadline exceeded"},
 			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
@@ -642,8 +669,11 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := tt.testFunc(sw, resourceList, time.Second*3)
-			if tt.expectErrs != nil {
-				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
 				return
 			}
 			assert.NoError(t, err)
@@ -978,10 +1008,10 @@ func (m *mockStatusReader) ReadStatusForObject(_ context.Context, _ engine.Clust
 func TestStatusWaitWithCustomReaders(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name         string
-		objManifests []string
-		customReader *mockStatusReader
-		expectErrs   []error
+		name          string
+		objManifests  []string
+		customReader  *mockStatusReader
+		expectErrStrs []string
 	}{
 		{
 			name:         "custom reader makes pod immediately current",
@@ -990,7 +1020,6 @@ func TestStatusWaitWithCustomReaders(t *testing.T) {
 				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
 				status:      status.CurrentStatus,
 			},
-			expectErrs: nil,
 		},
 		{
 			name:         "custom reader returns in-progress status",
@@ -999,7 +1028,7 @@ func TestStatusWaitWithCustomReaders(t *testing.T) {
 				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
 				status:      status.InProgressStatus,
 			},
-			expectErrs: []error{errors.New("resource not ready, name: current-pod, kind: Pod, status: InProgress"), errors.New("context deadline exceeded")},
+			expectErrStrs: []string{"resource Pod/ns/current-pod not ready. status: InProgress", "context deadline exceeded"},
 		},
 		{
 			name:         "custom reader for different resource type is not used",
@@ -1008,7 +1037,6 @@ func TestStatusWaitWithCustomReaders(t *testing.T) {
 				supportedGK: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
 				status:      status.InProgressStatus,
 			},
-			expectErrs: nil,
 		},
 	}
 
@@ -1035,8 +1063,11 @@ func TestStatusWaitWithCustomReaders(t *testing.T) {
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.Wait(resourceList, time.Second*3)
-			if tt.expectErrs != nil {
-				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
 				return
 			}
 			assert.NoError(t, err)
@@ -1113,13 +1144,115 @@ func TestStatusWaitWithJobsAndCustomReaders(t *testing.T) {
 	}
 }
 
+func TestStatusWaitWithFailedResources(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		objManifests  []string
+		customReader  *mockStatusReader
+		expectErrStrs []string
+		testFunc      func(statusWaiter, ResourceList, time.Duration) error
+	}{
+		{
+			name:         "Wait returns error when resource has failed",
+			objManifests: []string{podNoStatusManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.FailedStatus,
+			},
+			expectErrStrs: []string{"resource Pod/ns/in-progress-pod not ready. status: Failed, message: mock status reader"},
+			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.Wait(rl, timeout)
+			},
+		},
+		{
+			name:         "WaitWithJobs returns error when job has failed",
+			objManifests: []string{jobFailedManifest},
+			customReader: nil, // Use the built-in job status reader
+			expectErrStrs: []string{
+				"resource Job/default/failed-job not ready. status: Failed",
+			},
+			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.WaitWithJobs(rl, timeout)
+			},
+		},
+		{
+			name:         "Wait returns errors when multiple resources fail",
+			objManifests: []string{podNoStatusManifest, podCurrentManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.FailedStatus,
+			},
+			// The mock reader will make both pods return FailedStatus
+			expectErrStrs: []string{
+				"resource Pod/ns/in-progress-pod not ready. status: Failed, message: mock status reader",
+				"resource Pod/ns/current-pod not ready. status: Failed, message: mock status reader",
+			},
+			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.Wait(rl, timeout)
+			},
+		},
+		{
+			name:         "WatchUntilReady returns error when resource has failed",
+			objManifests: []string{podNoStatusManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.FailedStatus,
+			},
+			// WatchUntilReady also waits for CurrentStatus, so failed resources should return error
+			expectErrStrs: []string{"resource Pod/ns/in-progress-pod not ready. status: Failed, message: mock status reader"},
+			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.WatchUntilReady(rl, timeout)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				v1.SchemeGroupVersion.WithKind("Pod"),
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+			)
+			var readers []engine.StatusReader
+			if tt.customReader != nil {
+				readers = []engine.StatusReader{tt.customReader}
+			}
+			sw := statusWaiter{
+				client:     fakeClient,
+				restMapper: fakeMapper,
+				readers:    readers,
+			}
+			objs := getRuntimeObjFromManifests(t, tt.objManifests)
+			for _, obj := range objs {
+				u := obj.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+				assert.NoError(t, err)
+			}
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+			err := tt.testFunc(sw, resourceList, time.Second*3)
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
 func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name         string
-		objManifests []string
-		customReader *mockStatusReader
-		expectErrs   []error
+		name          string
+		objManifests  []string
+		customReader  *mockStatusReader
+		expectErrStrs []string
 	}{
 		{
 			name:         "custom reader makes job immediately current for hooks",
@@ -1128,7 +1261,6 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 				supportedGK: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
 				status:      status.CurrentStatus,
 			},
-			expectErrs: nil,
 		},
 		{
 			name:         "custom reader makes pod immediately current for hooks",
@@ -1137,7 +1269,6 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
 				status:      status.CurrentStatus,
 			},
-			expectErrs: nil,
 		},
 		{
 			name:         "custom reader takes precedence over built-in pod reader",
@@ -1146,7 +1277,7 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
 				status:      status.InProgressStatus,
 			},
-			expectErrs: []error{errors.New("resource not ready, name: good-pod, kind: Pod, status: InProgress"), errors.New("context deadline exceeded")},
+			expectErrStrs: []string{"resource Pod/ns/good-pod not ready. status: InProgress", "context deadline exceeded"},
 		},
 		{
 			name:         "custom reader takes precedence over built-in job reader",
@@ -1155,7 +1286,7 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 				supportedGK: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
 				status:      status.InProgressStatus,
 			},
-			expectErrs: []error{errors.New("resource not ready, name: test, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
+			expectErrStrs: []string{"resource Job/qual/test not ready. status: InProgress", "context deadline exceeded"},
 		},
 		{
 			name:         "custom reader for different resource type does not affect pods",
@@ -1164,7 +1295,6 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 				supportedGK: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
 				status:      status.InProgressStatus,
 			},
-			expectErrs: nil,
 		},
 		{
 			name:         "built-in readers still work when custom reader does not match",
@@ -1173,7 +1303,6 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
 				status:      status.InProgressStatus,
 			},
-			expectErrs: nil,
 		},
 	}
 
@@ -1200,8 +1329,11 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WatchUntilReady(resourceList, time.Second*3)
-			if tt.expectErrs != nil {
-				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
 				return
 			}
 			assert.NoError(t, err)
