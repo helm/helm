@@ -32,6 +32,34 @@ func WithWaitContext(ctx context.Context) WaitOption {
 	}
 }
 
+// WithWatchUntilReadyMethodContext sets the context specifically for the WatchUntilReady method.
+func WithWatchUntilReadyMethodContext(ctx context.Context) WaitOption {
+	return func(wo *waitOptions) {
+		wo.watchUntilReadyCtx = ctx
+	}
+}
+
+// WithWaitMethodContext sets the context specifically for the Wait method.
+func WithWaitMethodContext(ctx context.Context) WaitOption {
+	return func(wo *waitOptions) {
+		wo.waitCtx = ctx
+	}
+}
+
+// WithWaitWithJobsMethodContext sets the context specifically for the WaitWithJobs method.
+func WithWaitWithJobsMethodContext(ctx context.Context) WaitOption {
+	return func(wo *waitOptions) {
+		wo.waitWithJobsCtx = ctx
+	}
+}
+
+// WithWaitForDeleteMethodContext sets the context specifically for the WaitForDelete method.
+func WithWaitForDeleteMethodContext(ctx context.Context) WaitOption {
+	return func(wo *waitOptions) {
+		wo.waitForDeleteCtx = ctx
+	}
+}
+
 // WithKStatusReaders sets the status readers to be used while waiting on resources.
 func WithKStatusReaders(readers ...engine.StatusReader) WaitOption {
 	return func(wo *waitOptions) {
@@ -40,6 +68,10 @@ func WithKStatusReaders(readers ...engine.StatusReader) WaitOption {
 }
 
 type waitOptions struct {
-	ctx           context.Context
-	statusReaders []engine.StatusReader
+	ctx                context.Context
+	watchUntilReadyCtx context.Context
+	waitCtx            context.Context
+	waitWithJobsCtx    context.Context
+	waitForDeleteCtx   context.Context
+	statusReaders      []engine.StatusReader
 }
