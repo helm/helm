@@ -133,6 +133,10 @@ type Install struct {
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock           sync.Mutex
 	goroutineCount atomic.Int32
+	// MaxChartSize is the maximum size of a decompressed chart in bytes
+	MaxChartSize int64
+	// MaxChartFileSize is the maximum size of a single file in a chart in bytes
+	MaxChartFileSize int64
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
