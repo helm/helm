@@ -387,3 +387,284 @@ func TestMergeValuesCLI(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadValuesTpl(t *testing.T) {
+	tests := []struct {
+		name          string
+		templateData  string
+		currentValues map[string]interface{}
+		expected      map[string]interface{}
+		wantErr       bool
+		errContains   string
+	}{
+		{
+			name: "basic template with .Values access",
+			templateData: `
+environment: {{ .Values.env }}
+replicas: {{ .Values.replicas }}
+`,
+			currentValues: map[string]interface{}{
+				"env":      "production",
+				"replicas": float64(5),
+			},
+			expected: map[string]interface{}{
+				"environment": "production",
+				"replicas":    float64(5),
+			},
+			wantErr: false,
+		},
+		{
+			name: "template with conditional logic",
+			templateData: `
+{{- if eq .Values.env "production" }}
+replicas: 5
+resources:
+  limits:
+    cpu: "2000m"
+{{- else }}
+replicas: 1
+resources:
+  limits:
+    cpu: "500m"
+{{- end }}
+`,
+			currentValues: map[string]interface{}{
+				"env": "production",
+			},
+			expected: map[string]interface{}{
+				"replicas": float64(5),
+				"resources": map[string]interface{}{
+					"limits": map[string]interface{}{
+						"cpu": "2000m",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "template with Sprig default function",
+			templateData: `
+environment: {{ .Values.env | default "dev" }}
+debug: {{ .Values.debug | default false }}
+`,
+			currentValues: map[string]interface{}{},
+			expected: map[string]interface{}{
+				"environment": "dev",
+				"debug":       false,
+			},
+			wantErr: false,
+		},
+		{
+			name: "template with toYaml function",
+			templateData: `
+config: |
+{{ .Values.config | toYaml | indent 2 }}
+`,
+			currentValues: map[string]interface{}{
+				"config": map[string]interface{}{
+					"key1": "value1",
+					"key2": "value2",
+				},
+			},
+			expected: map[string]interface{}{
+				"config": "key1: value1\nkey2: value2\n",
+			},
+			wantErr: false,
+		},
+		{
+			name: "template with toJson function",
+			templateData: `
+jsonConfig: '{{ .Values.data | toJson }}'
+`,
+			currentValues: map[string]interface{}{
+				"data": map[string]interface{}{
+					"foo": "bar",
+				},
+			},
+			expected: map[string]interface{}{
+				"jsonConfig": `{"foo":"bar"}`,
+			},
+			wantErr: false,
+		},
+		{
+			name: "template with fromYaml function",
+			templateData: `
+{{- $parsed := .Values.yamlString | fromYaml }}
+key: {{ $parsed.foo }}
+`,
+			currentValues: map[string]interface{}{
+				"yamlString": "foo: bar",
+			},
+			expected: map[string]interface{}{
+				"key": "bar",
+			},
+			wantErr: false,
+		},
+		{
+			name: "empty template",
+			templateData: `
+# Just a comment
+`,
+			currentValues: map[string]interface{}{
+				"env": "prod",
+			},
+			expected: map[string]interface{}{},
+			wantErr:  false,
+		},
+		{
+			name: "template with undefined value (using default)",
+			templateData: `
+value: {{ .Values.undefined | default "fallback" }}
+`,
+			currentValues: map[string]interface{}{},
+			expected: map[string]interface{}{
+				"value": "fallback",
+			},
+			wantErr: false,
+		},
+		{
+			name: "template syntax error",
+			templateData: `
+value: {{ .Values.env
+`,
+			currentValues: map[string]interface{}{
+				"env": "prod",
+			},
+			wantErr:     true,
+			errContains: "unclosed action",
+		},
+		{
+			name: "template execution error - invalid function",
+			templateData: `
+value: {{ .Values.env | nonExistentFunction }}
+`,
+			currentValues: map[string]interface{}{
+				"env": "prod",
+			},
+			wantErr:     true,
+			errContains: "not defined",
+		},
+		{
+			name: "template outputs invalid YAML",
+			templateData: `
+invalid: {{ "{this is not valid yaml: [}" }}
+`,
+			currentValues: map[string]interface{}{},
+			wantErr:       true,
+			errContains:   "failed to parse rendered template",
+		},
+		{
+			name: "template with nested values access",
+			templateData: `
+database:
+  host: {{ .Values.db.host }}
+  port: {{ .Values.db.port }}
+`,
+			currentValues: map[string]interface{}{
+				"db": map[string]interface{}{
+					"host": "localhost",
+					"port": float64(5432),
+				},
+			},
+			expected: map[string]interface{}{
+				"database": map[string]interface{}{
+					"host": "localhost",
+					"port": float64(5432),
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "template with list iteration",
+			templateData: `
+services:
+{{- range .Values.services }}
+- name: {{ .name }}
+  port: {{ .port }}
+{{- end }}
+`,
+			currentValues: map[string]interface{}{
+				"services": []interface{}{
+					map[string]interface{}{"name": "web", "port": float64(80)},
+					map[string]interface{}{"name": "api", "port": float64(8080)},
+				},
+			},
+			expected: map[string]interface{}{
+				"services": []interface{}{
+					map[string]interface{}{"name": "web", "port": float64(80)},
+					map[string]interface{}{"name": "api", "port": float64(8080)},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "template with upper and lower functions",
+			templateData: `
+upper: {{ .Values.text | upper }}
+lower: {{ .Values.text | lower }}
+`,
+			currentValues: map[string]interface{}{
+				"text": "Hello World",
+			},
+			expected: map[string]interface{}{
+				"upper": "HELLO WORLD",
+				"lower": "hello world",
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Render the template
+			got, err := LoadValuesTpl(t.Name(), tt.templateData, tt.currentValues)
+
+			// Check error expectations
+			if (err != nil) != tt.wantErr {
+				t.Errorf("LoadValuesTpl() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantErr {
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("LoadValuesTpl() error = %v, want error containing %q", err, tt.errContains)
+				}
+				return
+			}
+
+			// Compare results
+			if !reflect.DeepEqual(got, tt.expected) {
+				t.Errorf("LoadValuesTpl() got = %#v, want %#v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestLoadValuesTpl_InvalidTemplate(t *testing.T) {
+	// Test with invalid template syntax
+	_, err := LoadValuesTpl(t.Name(), "{{ .Values.foo", map[string]interface{}{})
+	if err == nil {
+		t.Error("LoadValuesTpl() expected error for invalid template, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to render template") {
+		t.Errorf("LoadValuesTpl() error = %v, want error containing 'failed to render template'", err)
+	}
+}
+
+func TestLoadValuesTpl_EmptyCurrentValues(t *testing.T) {
+	templateData := `
+fallback: {{ .Values.missing | default "defaultValue" }}
+`
+	got, err := LoadValuesTpl(t.Name(), templateData, map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("LoadValuesTpl() unexpected error: %v", err)
+	}
+
+	expected := map[string]interface{}{
+		"fallback": "defaultValue",
+	}
+
+	if !reflect.DeepEqual(got, expected) {
+		t.Errorf("LoadValuesTpl() = %v, want %v", got, expected)
+	}
+}
