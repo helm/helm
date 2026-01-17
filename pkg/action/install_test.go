@@ -35,7 +35,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
@@ -45,6 +44,7 @@ import (
 	"k8s.io/client-go/rest/fake"
 
 	ci "helm.sh/helm/v4/pkg/chart"
+	"helm.sh/helm/v4/pkg/cli"
 
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/chart/common"
@@ -1084,8 +1084,10 @@ func TestInstallSetRegistryClient(t *testing.T) {
 	assert.Equal(t, registryClient, instAction.GetRegistryClient())
 }
 
-func TestInstalLCRDs(t *testing.T) {
-	config := actionConfigFixture(t)
+func TestInstallCRDs(t *testing.T) {
+	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
+	config.RESTClientGetter = cli.New().RESTClientGetter()
+
 	instAction := NewInstall(config)
 
 	mockFile := common.File{
@@ -1094,13 +1096,21 @@ func TestInstalLCRDs(t *testing.T) {
 	}
 	mockChart := buildChart(withFile(mockFile))
 	crdsToInstall := mockChart.CRDObjects()
-	assert.Len(t, crdsToInstall, 1)
-	assert.Equal(t, crdsToInstall[0].File.Data, mockFile.Data)
 
-	require.NoError(t, instAction.installCRDs(crdsToInstall))
+	t.Run("fresh installation", func(t *testing.T) {
+		assert.Len(t, crdsToInstall, 1)
+		assert.Equal(t, crdsToInstall[0].File.Data, mockFile.Data)
+		require.NoError(t, instAction.installCRDs(crdsToInstall))
+	})
+
+	t.Run("already exist", func(t *testing.T) {
+		assert.Len(t, crdsToInstall, 1)
+		assert.Equal(t, crdsToInstall[0].File.Data, mockFile.Data)
+		require.NoError(t, instAction.installCRDs(crdsToInstall))
+	})
 }
 
-func TestInstalLCRDs_KubeClient_BuildError(t *testing.T) {
+func TestInstallCRDs_KubeClient_BuildError(t *testing.T) {
 	config := actionConfigFixture(t)
 	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
 	failingKubeClient.BuildError = errors.New("build error")
@@ -1117,7 +1127,7 @@ func TestInstalLCRDs_KubeClient_BuildError(t *testing.T) {
 	require.Error(t, instAction.installCRDs(crdsToInstall), "failed to install CRD")
 }
 
-func TestInstalLCRDs_KubeClient_CreateError(t *testing.T) {
+func TestInstallCRDs_KubeClient_CreateError(t *testing.T) {
 	config := actionConfigFixture(t)
 	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
 	failingKubeClient.CreateError = errors.New("create error")
@@ -1134,28 +1144,7 @@ func TestInstalLCRDs_KubeClient_CreateError(t *testing.T) {
 	require.Error(t, instAction.installCRDs(crdsToInstall), "failed to install CRD")
 }
 
-func TestInstalLCRDs_AlreadyExist(t *testing.T) {
-	config := actionConfigFixture(t)
-	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
-	mockError := &apierrors.StatusError{ErrStatus: metav1.Status{
-		Status: metav1.StatusFailure,
-		Reason: metav1.StatusReasonAlreadyExists,
-	}}
-	failingKubeClient.CreateError = mockError
-	config.KubeClient = &failingKubeClient
-	instAction := NewInstall(config)
-
-	mockFile := common.File{
-		Name: "crds/foo.yaml",
-		Data: []byte("hello"),
-	}
-	mockChart := buildChart(withFile(mockFile))
-	crdsToInstall := mockChart.CRDObjects()
-
-	assert.Nil(t, instAction.installCRDs(crdsToInstall))
-}
-
-func TestInstalLCRDs_WaiterError(t *testing.T) {
+func TestInstallCRDs_WaiterError(t *testing.T) {
 	config := actionConfigFixture(t)
 	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
 	failingKubeClient.WaitError = errors.New("wait error")
@@ -1185,6 +1174,45 @@ func TestCheckDependencies_MissingDependency(t *testing.T) {
 	mockChart := buildChart(withDependency())
 
 	assert.ErrorContains(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}), "missing in charts")
+}
+
+func TestInstallCRDs_CheckNilErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []chart.CRD
+	}{
+		{
+			name: "only one crd with file nil",
+			input: []chart.CRD{
+				{Name: "one", File: nil},
+			},
+		},
+		{
+			name: "only one crd with its file data nil",
+			input: []chart.CRD{
+				{Name: "one", File: &common.File{Name: "crds/foo.yaml", Data: nil}},
+			},
+		},
+		{
+			name: "at least a crd with its file data nil",
+			input: []chart.CRD{
+				{Name: "one", File: &common.File{Name: "crds/foo.yaml", Data: []byte("data")}},
+				{Name: "two", File: &common.File{Name: "crds/foo2.yaml", Data: nil}},
+				{Name: "three", File: &common.File{Name: "crds/foo3.yaml", Data: []byte("data")}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			instAction := installAction(t)
+
+			err := instAction.installCRDs(tt.input)
+			if err == nil {
+				t.Errorf("got nil expected err")
+			}
+		})
+	}
 }
 
 func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
