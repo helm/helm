@@ -184,7 +184,7 @@ func (t *literalParser) listItem(list []interface{}, i, nestedNameLevel int) ([]
 
 	case lastRune == '=':
 		value, err := t.val()
-		if !errors.Is(err, io.EOF) {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return list, err
 		}
 		return setIndex(list, i, string(value))
