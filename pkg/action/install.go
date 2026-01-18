@@ -159,7 +159,7 @@ type ChartPathOptions struct {
 func NewInstall(cfg *Configuration) *Install {
 	in := &Install{
 		cfg:             cfg,
-		ServerSideApply: true,
+		ServerSideApply: true, // Must always match the CLI default.
 		DryRunStrategy:  DryRunNone,
 	}
 	in.registryClient = cfg.RegistryClient
