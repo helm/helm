@@ -145,17 +145,19 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		return statusCollector.Error
 	}
 
-	// Only check parent context error, otherwise we would error when desired status is achieved.
-	if ctx.Err() != nil {
-		errs := []error{}
-		for _, id := range resources {
-			rs := statusCollector.ResourceStatuses[id]
-			if rs.Status == status.NotFoundStatus {
-				continue
-			}
-			errs = append(errs, fmt.Errorf("resource still exists, name: %s, kind: %s, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
+	errs := []error{}
+	for _, id := range resources {
+		rs := statusCollector.ResourceStatuses[id]
+		if rs.Status == status.NotFoundStatus || rs.Status == status.UnknownStatus {
+			continue
 		}
-		errs = append(errs, ctx.Err())
+		errs = append(errs, fmt.Errorf("resource %s/%s/%s still exists. status: %s, message: %s",
+			rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, rs.Status, rs.Message))
+	}
+	if err := ctx.Err(); err != nil {
+		errs = append(errs, err)
+	}
+	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
 	return nil
@@ -190,17 +192,19 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 		return statusCollector.Error
 	}
 
-	// Only check parent context error, otherwise we would error when desired status is achieved.
-	if ctx.Err() != nil {
-		errs := []error{}
-		for _, id := range resources {
-			rs := statusCollector.ResourceStatuses[id]
-			if rs.Status == status.CurrentStatus {
-				continue
-			}
-			errs = append(errs, fmt.Errorf("resource not ready, name: %s, kind: %s, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
+	errs := []error{}
+	for _, id := range resources {
+		rs := statusCollector.ResourceStatuses[id]
+		if rs.Status == status.CurrentStatus {
+			continue
 		}
-		errs = append(errs, ctx.Err())
+		errs = append(errs, fmt.Errorf("resource %s/%s/%s not ready. status: %s, message: %s",
+			rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, rs.Status, rs.Message))
+	}
+	if err := ctx.Err(); err != nil {
+		errs = append(errs, err)
+	}
+	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
 	return nil
@@ -225,9 +229,14 @@ func statusObserver(cancel context.CancelFunc, desired status.Status) collector.
 			if rs == nil {
 				continue
 			}
-			// If a resource is already deleted before waiting has started, it will show as unknown
-			// this check ensures we don't wait forever for a resource that is already deleted
+			// If a resource is already deleted before waiting has started, it will show as unknown.
+			// This check ensures we don't wait forever for a resource that is already deleted.
 			if rs.Status == status.UnknownStatus && desired == status.NotFoundStatus {
+				continue
+			}
+			// Failed is a terminal state. This check ensures we don't wait forever for a resource
+			// that has already failed, as intervention is required to resolve the failure.
+			if rs.Status == status.FailedStatus && desired == status.CurrentStatus {
 				continue
 			}
 			rss = append(rss, rs)
