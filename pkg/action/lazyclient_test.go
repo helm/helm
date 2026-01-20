@@ -38,6 +38,8 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 )
 
+const fakeErrorMessage = "fake helm error"
+
 func TestLazyClient_Init(t *testing.T) {
 	kc := kube.New(nil)
 	lazyClient := &lazyClient{
@@ -54,7 +56,7 @@ func TestLazyClient_Init_Error(t *testing.T) {
 		clientFn:  getErrorClient,
 	}
 
-	assert.Errorf(t, lazyClient.init(), "fake error")
+	assert.EqualError(t, lazyClient.init(), fakeErrorMessage)
 }
 
 func TestLazySecretClient_Create(t *testing.T) {
@@ -125,28 +127,28 @@ func TestLazySecretClient_InitErrorHandling(t *testing.T) {
 	secretClient := newSecretClient(lazyClient)
 
 	_, err := secretClient.Create(t.Context(), mockSecret("created"), metav1.CreateOptions{})
-	assert.Errorf(t, err, "fake error")
+	assert.EqualError(t, err, fakeErrorMessage)
 
 	_, err = secretClient.Update(t.Context(), mockSecret("updated"), metav1.UpdateOptions{})
-	assert.Errorf(t, err, "fake error")
+	assert.EqualError(t, err, fakeErrorMessage)
 
-	assert.Errorf(t, secretClient.Delete(t.Context(), "secret", metav1.DeleteOptions{}), "fake error")
-	assert.Errorf(t, secretClient.DeleteCollection(t.Context(), metav1.DeleteOptions{}, metav1.ListOptions{}), "fake error")
+	assert.EqualError(t, secretClient.Delete(t.Context(), "secret", metav1.DeleteOptions{}), fakeErrorMessage)
+	assert.EqualError(t, secretClient.DeleteCollection(t.Context(), metav1.DeleteOptions{}, metav1.ListOptions{}), fakeErrorMessage)
 
 	_, err = secretClient.Get(t.Context(), "test", metav1.GetOptions{})
-	assert.Errorf(t, err, "fake error")
+	assert.EqualError(t, err, fakeErrorMessage)
 
 	_, err = secretClient.List(t.Context(), metav1.ListOptions{})
-	assert.Errorf(t, err, "fake error")
+	assert.EqualError(t, err, fakeErrorMessage)
 
 	_, err = secretClient.Watch(t.Context(), metav1.ListOptions{})
-	assert.Errorf(t, err, "fake error")
+	assert.EqualError(t, err, fakeErrorMessage)
 
 	_, err = secretClient.Patch(t.Context(), "secret", types.MergePatchType, []byte("data"), metav1.PatchOptions{})
-	assert.Errorf(t, err, "fake error")
+	assert.EqualError(t, err, fakeErrorMessage)
 
 	_, err = secretClient.Apply(t.Context(), &applycorev1.SecretApplyConfiguration{}, metav1.ApplyOptions{})
-	assert.Errorf(t, err, "fake error")
+	assert.EqualError(t, err, fakeErrorMessage)
 }
 
 func TestLazyConfigMapClient_Create(t *testing.T) {
@@ -217,33 +219,33 @@ func TestLazyConfigMapClient_InitErrorHandling(t *testing.T) {
 	configMapClient := newConfigMapClient(lazyClient)
 
 	_, err := configMapClient.Create(t.Context(), mockConfigMap("created"), metav1.CreateOptions{})
-	assert.Errorf(t, err, "fake error")
+	assert.EqualError(t, err, fakeErrorMessage)
 
 	_, err = configMapClient.Update(t.Context(), mockConfigMap("updated"), metav1.UpdateOptions{})
-	assert.Errorf(t, err, "fake error")
+	assert.EqualError(t, err, fakeErrorMessage)
 
-	assert.Errorf(t, configMapClient.Delete(t.Context(), "configMap", metav1.DeleteOptions{}), "fake error")
-	assert.Errorf(t, configMapClient.DeleteCollection(t.Context(), metav1.DeleteOptions{}, metav1.ListOptions{}), "fake error")
+	assert.EqualError(t, configMapClient.Delete(t.Context(), "configMap", metav1.DeleteOptions{}), fakeErrorMessage)
+	assert.EqualError(t, configMapClient.DeleteCollection(t.Context(), metav1.DeleteOptions{}, metav1.ListOptions{}), fakeErrorMessage)
 
 	_, err = configMapClient.Get(t.Context(), "test", metav1.GetOptions{})
-	assert.Errorf(t, err, "fake error")
+	assert.EqualError(t, err, fakeErrorMessage)
 
 	_, err = configMapClient.List(t.Context(), metav1.ListOptions{})
-	assert.Errorf(t, err, "fake error")
+	assert.EqualError(t, err, fakeErrorMessage)
 
 	_, err = configMapClient.Watch(t.Context(), metav1.ListOptions{})
-	assert.Errorf(t, err, "fake error")
+	assert.EqualError(t, err, fakeErrorMessage)
 
 	_, err = configMapClient.Patch(t.Context(), "configMap", types.MergePatchType, []byte("data"), metav1.PatchOptions{})
-	assert.Errorf(t, err, "fake error")
+	assert.EqualError(t, err, fakeErrorMessage)
 
 	_, err = configMapClient.Apply(t.Context(), &applycorev1.ConfigMapApplyConfiguration{}, metav1.ApplyOptions{})
-	assert.Errorf(t, err, "fake error")
+	assert.EqualError(t, err, fakeErrorMessage)
 }
 
 // HELPER FUNCTIONS
 func getErrorClient() (*kubernetes.Clientset, error) {
-	return nil, errors.New("fake error")
+	return nil, errors.New(fakeErrorMessage)
 }
 
 func getLazyClientWithFakeHTTP(t *testing.T, httpMethod string) *lazyClient {
