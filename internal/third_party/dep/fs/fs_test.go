@@ -114,7 +114,7 @@ func TestCopyDir(t *testing.T) {
 	}
 
 	destdir := filepath.Join(dir, "dest")
-	if err := CopyDir(srcdir, destdir); err != nil {
+	if err := CopyDir(srcdir, destdir, CopyDirOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -151,6 +151,130 @@ func TestCopyDir(t *testing.T) {
 	}
 }
 
+func TestCopyDir_IgnoreDirectories(t *testing.T) {
+	dir := t.TempDir()
+
+	srcdir := filepath.Join(dir, "src")
+	if err := os.MkdirAll(srcdir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a .git directory that should be ignored
+	gitdir := filepath.Join(srcdir, ".git")
+	if err := os.MkdirAll(gitdir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	gitFile := filepath.Join(gitdir, "config")
+	if err := os.WriteFile(gitFile, []byte("git config"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a nested .git directory
+	nestedDir := filepath.Join(srcdir, "subdir")
+	if err := os.MkdirAll(nestedDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	// Add a regular file in subdir to ensure the directory itself gets copied
+	nestedRegularFile := filepath.Join(nestedDir, "file.txt")
+	if err := os.WriteFile(nestedRegularFile, []byte("nested regular file"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	nestedGitDir := filepath.Join(nestedDir, ".git")
+	if err := os.MkdirAll(nestedGitDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	nestedGitFile := filepath.Join(nestedGitDir, "config")
+	if err := os.WriteFile(nestedGitFile, []byte("nested git config"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a regular directory that should NOT be ignored
+	regulardir := filepath.Join(srcdir, "regular")
+	if err := os.MkdirAll(regulardir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	regularFile := filepath.Join(regulardir, "file.txt")
+	if err := os.WriteFile(regularFile, []byte("regular file"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a regular file at the root
+	rootFile := filepath.Join(srcdir, "root.txt")
+	if err := os.WriteFile(rootFile, []byte("root file"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create another directory to ignore (e.g., .vscode)
+	vscodeDir := filepath.Join(srcdir, ".vscode")
+	if err := os.MkdirAll(vscodeDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	vscodeFile := filepath.Join(vscodeDir, "settings.json")
+	if err := os.WriteFile(vscodeFile, []byte("vscode settings"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	destdir := filepath.Join(dir, "dest")
+	dirsToIgnore := []string{".git", ".vscode"}
+	if err := CopyDir(srcdir, destdir, CopyDirOptions{DirsInSrcToIgnore: dirsToIgnore}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify .git directory was NOT copied
+	destGitDir := filepath.Join(destdir, ".git")
+	if _, err := os.Stat(destGitDir); err == nil {
+		t.Fatalf("expected .git directory to be ignored, but it was copied to %s", destGitDir)
+	}
+
+	// Verify nested .git directory was NOT copied
+	destNestedGitDir := filepath.Join(destdir, "subdir", ".git")
+	if _, err := os.Stat(destNestedGitDir); err == nil {
+		t.Fatalf("expected nested .git directory to be ignored, but it was copied to %s", destNestedGitDir)
+	}
+
+	// Verify subdir itself WAS copied (it contains a regular file)
+	destSubdirFile := filepath.Join(destdir, "subdir", "file.txt")
+	gotSubdir, err := os.ReadFile(destSubdirFile)
+	if err != nil {
+		t.Fatalf("expected nested regular file to be copied, but it was not found at %s: %v", destSubdirFile, err)
+	}
+	if string(gotSubdir) != "nested regular file" {
+		t.Fatalf("expected file contents 'nested regular file', got %s", string(gotSubdir))
+	}
+
+	// Verify .vscode directory was NOT copied
+	destVscodeDir := filepath.Join(destdir, ".vscode")
+	if _, err := os.Stat(destVscodeDir); err == nil {
+		t.Fatalf("expected .vscode directory to be ignored, but it was copied to %s", destVscodeDir)
+	}
+
+	// Verify regular directory WAS copied
+	destRegularDir := filepath.Join(destdir, "regular")
+	if _, err := os.Stat(destRegularDir); err != nil {
+		t.Fatalf("expected regular directory to be copied, but it was not found at %s: %v", destRegularDir, err)
+	}
+
+	// Verify regular file WAS copied
+	destRegularFile := filepath.Join(destdir, "regular", "file.txt")
+	got, err := os.ReadFile(destRegularFile)
+	if err != nil {
+		t.Fatalf("expected regular file to be copied, but it was not found at %s: %v", destRegularFile, err)
+	}
+	if string(got) != "regular file" {
+		t.Fatalf("expected file contents 'regular file', got %s", string(got))
+	}
+
+	// Verify root file WAS copied
+	destRootFile := filepath.Join(destdir, "root.txt")
+	got, err = os.ReadFile(destRootFile)
+	if err != nil {
+		t.Fatalf("expected root file to be copied, but it was not found at %s: %v", destRootFile, err)
+	}
+	if string(got) != "root file" {
+		t.Fatalf("expected file contents 'root file', got %s", string(got))
+	}
+}
+
 func TestCopyDirFail_SrcInaccessible(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// XXX: setting permissions works differently in
@@ -177,7 +301,7 @@ func TestCopyDirFail_SrcInaccessible(t *testing.T) {
 	dir := t.TempDir()
 
 	dstdir = filepath.Join(dir, "dst")
-	if err := CopyDir(srcdir, dstdir); err == nil {
+	if err := CopyDir(srcdir, dstdir, CopyDirOptions{}); err == nil {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 }
@@ -212,7 +336,7 @@ func TestCopyDirFail_DstInaccessible(t *testing.T) {
 	})
 	defer cleanup()
 
-	if err := CopyDir(srcdir, dstdir); err == nil {
+	if err := CopyDir(srcdir, dstdir, CopyDirOptions{}); err == nil {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 }
@@ -230,7 +354,7 @@ func TestCopyDirFail_SrcIsNotDir(t *testing.T) {
 
 	dstdir = filepath.Join(dir, "dst")
 
-	if err = CopyDir(srcdir, dstdir); err == nil {
+	if err = CopyDir(srcdir, dstdir, CopyDirOptions{}); err == nil {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 
@@ -256,7 +380,7 @@ func TestCopyDirFail_DstExists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = CopyDir(srcdir, dstdir); err == nil {
+	if err = CopyDir(srcdir, dstdir, CopyDirOptions{}); err == nil {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 
@@ -306,7 +430,7 @@ func TestCopyDirFailOpen(t *testing.T) {
 
 	dstdir = filepath.Join(dir, "dst")
 
-	if err = CopyDir(srcdir, dstdir); err == nil {
+	if err = CopyDir(srcdir, dstdir, CopyDirOptions{}); err == nil {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 }

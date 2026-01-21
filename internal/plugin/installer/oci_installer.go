@@ -25,6 +25,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/internal/plugin/cache"
@@ -178,7 +179,7 @@ func (i *OCIInstaller) Install() error {
 	}
 
 	slog.Debug("copying", "source", src, "path", i.Path())
-	return fs.CopyDir(src, i.Path())
+	return fs.CopyDir(src, i.Path(), copyDirOptions)
 }
 
 // Update updates a plugin by reinstalling it
@@ -220,6 +221,11 @@ func extractTar(r io.Reader, targetDir string) error {
 		}
 		if err != nil {
 			return err
+		}
+
+		// Skip .git directories and their contents
+		if strings.HasPrefix(header.Name, ".git/") || header.Name == ".git" {
+			continue
 		}
 
 		path, err := cleanJoin(targetDir, header.Name)
