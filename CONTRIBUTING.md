@@ -13,11 +13,11 @@ chance to try to fix the issue before it is exploited in the wild.
 
 ## Helm v3
 
-Helm v4 is developed on the `main` branch. Helm v3 on the `dev-v3` branch.
+Helm v4 development takes place on the `main` branch while Helm v3 is on the `dev-v3` branch.
 
-Helm v3 will continue to get bug fixes and updates for new Kubernetes releases until July 8th 2026. And security fixes until November 11th 2026. See the blog <https://helm.sh/blog/helm-4-released#helm-v3-support> for more details.
+Helm v3 will continue to receive bug fixes and updates for new Kubernetes releases until July 8th 2026. Security enhancement will still be applied until November 11th 2026. See the blog <https://helm.sh/blog/helm-4-released#helm-v3-support> for more details.
 
-Bugs should first be fixed on Helm v4 and then backported to Helm v3. Helm v3 (and the `dev-v3` branch) is no longer accepting features.
+Bugs should first be fixed on Helm v4 and then backported to Helm v3. Helm v3 (and the `dev-v3` branch) is no longer accepting new features.
 
 ## Sign Your Work
 
