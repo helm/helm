@@ -18,10 +18,15 @@ package engine
 
 import (
 	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"io"
 	"maps"
 	"strings"
 	"text/template"
+	"unicode/utf8"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
@@ -60,6 +65,8 @@ func funcMap() template.FuncMap {
 		"mustToJson":    mustToJSON,
 		"fromJson":      fromJSON,
 		"fromJsonArray": fromJSONArray,
+		"gzip":          gzipFunc,
+		"ungzip":        ungzipFunc,
 
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the
@@ -231,4 +238,74 @@ func fromJSONArray(str string) []interface{} {
 		a = []interface{}{err.Error()}
 	}
 	return a
+}
+
+// gzipFunc compresses a string using gzip and returns the base64 encoded result.
+//
+// It enforces a size limit (1MB) on the output to prevent creating objects too large for Kubernetes Secrets/ConfigMap.
+//
+// This is designed to be called from a template.
+func gzipFunc(str string) (string, error) {
+	var b bytes.Buffer
+	w := gzip.NewWriter(&b)
+	if _, err := w.Write([]byte(str)); err != nil {
+		return "", err
+	}
+	if err := w.Close(); err != nil {
+		return "", err
+	}
+
+	encoded := base64.StdEncoding.EncodeToString(b.Bytes())
+
+	// Kubernetes limit for Secret/ConfigMap is 1MB.
+	const maxLimit = 1048576
+	if len(encoded) > maxLimit {
+		return "", fmt.Errorf("gzip: output size %d exceeds limit of %d bytes", len(encoded), maxLimit)
+	}
+
+	return encoded, nil
+}
+
+// ungzipFunc decodes a base64 encoded and gzip-compressed string.
+//
+// It enforces a size limit (1MB) on the input and output to prevent abuse.
+//
+// This is designed to be called from a template.
+func ungzipFunc(str string) (string, error) {
+	// Kubernetes limit for Secret/ConfigMap is 1MB.
+	const maxLimit = 1048576
+
+	if len(str) > maxLimit {
+		return "", fmt.Errorf("ungzip: input size %d exceeds limit of %d bytes", len(str), maxLimit)
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return "", fmt.Errorf("ungzip: base64 decode failed: %w", err)
+	}
+
+	r, err := gzip.NewReader(bytes.NewReader(decoded))
+	if err != nil {
+		return "", err
+	}
+	defer r.Close()
+
+	// Enforce a size limit on the decompressed content.
+	limitR := io.LimitReader(r, maxLimit+1)
+
+	b, err := io.ReadAll(limitR)
+	if err != nil {
+		return "", err
+	}
+
+	if len(b) > maxLimit {
+		return "", fmt.Errorf("ungzip: decompressed content exceeds size limit of %d bytes", maxLimit)
+	}
+
+	// Ensure the content is valid text (UTF-8) to prevent binary obfuscation.
+	if !utf8.Valid(b) {
+		return "", fmt.Errorf("ungzip: content is not valid UTF-8 text")
+	}
+
+	return string(b), nil
 }

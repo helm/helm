@@ -127,6 +127,14 @@ keyInElement1 = "valueInElement1"`,
 		tpl:    `{{ lookup "v1" "Namespace" "" "unlikelynamespace99999999" }}`,
 		expect: `map[]`,
 		vars:   `["one", "two"]`,
+	}, {
+		tpl:    `{{ "hello world" | gzip }}`,
+		expect: `H4sIAAAAAAAA/8pIzcnJVyjPL8pJAQQAAP//hRFKDQsAAAA=`,
+		vars:   nil,
+	}, {
+		tpl:    `{{ "H4sIAAAAAAAA/8pIzcnJVyjPL8pJAQQAAP//hRFKDQsAAAA=" | ungzip }}`,
+		expect: `hello world`,
+		vars:   nil,
 	}}
 
 	for _, tt := range tests {
