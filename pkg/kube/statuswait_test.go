@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -326,6 +327,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 				restMapper: fakeMapper,
 				client:     fakeClient,
 			}
+			statusWaiter.SetLogger(slog.Default().Handler())
 			objsToCreate := getRuntimeObjFromManifests(t, tt.manifestsToCreate)
 			for _, objToCreate := range objsToCreate {
 				u := objToCreate.(*unstructured.Unstructured)
@@ -369,6 +371,7 @@ func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 		restMapper: fakeMapper,
 		client:     fakeClient,
 	}
+	statusWaiter.SetLogger(slog.Default().Handler())
 	// Don't create the object to test that the wait for delete works when the object doesn't exist
 	objManifest := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
 	resourceList := getResourceListFromRuntimeObjs(t, c, objManifest)
@@ -425,6 +428,7 @@ func TestStatusWait(t *testing.T) {
 				client:     fakeClient,
 				restMapper: fakeMapper,
 			}
+			statusWaiter.SetLogger(slog.Default().Handler())
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
@@ -481,6 +485,7 @@ func TestWaitForJobComplete(t *testing.T) {
 				client:     fakeClient,
 				restMapper: fakeMapper,
 			}
+			statusWaiter.SetLogger(slog.Default().Handler())
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
@@ -543,6 +548,7 @@ func TestWatchForReady(t *testing.T) {
 				client:     fakeClient,
 				restMapper: fakeMapper,
 			}
+			statusWaiter.SetLogger(slog.Default().Handler())
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
@@ -570,19 +576,19 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 		name          string
 		objManifests  []string
 		expectErrStrs []string
-		testFunc      func(statusWaiter, ResourceList, time.Duration) error
+		testFunc      func(*statusWaiter, ResourceList, time.Duration) error
 	}{
 		{
 			name:         "pods in multiple namespaces",
 			objManifests: []string{podNamespace1Manifest, podNamespace2Manifest},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
 		{
 			name:         "hooks in multiple namespaces",
 			objManifests: []string{jobNamespace1CompleteManifest, podNamespace2SucceededManifest},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WatchUntilReady(rl, timeout)
 			},
 		},
@@ -590,42 +596,42 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 			name:          "error when resource not ready in one namespace",
 			objManifests:  []string{podNamespace1NoStatusManifest, podNamespace2Manifest},
 			expectErrStrs: []string{"resource Pod/namespace-1/pod-ns1 not ready. status: InProgress", "context deadline exceeded"},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
 		{
 			name:         "delete resources in multiple namespaces",
 			objManifests: []string{podNamespace1Manifest, podNamespace2Manifest},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WaitForDelete(rl, timeout)
 			},
 		},
 		{
 			name:         "cluster-scoped resources work correctly with unrestricted permissions",
 			objManifests: []string{podNamespace1Manifest, clusterRoleManifest},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
 		{
 			name:         "namespace-scoped and cluster-scoped resources work together",
 			objManifests: []string{podNamespace1Manifest, podNamespace2Manifest, clusterRoleManifest},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
 		{
 			name:         "delete cluster-scoped resources works correctly",
 			objManifests: []string{podNamespace1Manifest, namespaceManifest},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WaitForDelete(rl, timeout)
 			},
 		},
 		{
 			name:         "watch cluster-scoped resources works correctly",
 			objManifests: []string{clusterRoleManifest},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WatchUntilReady(rl, timeout)
 			},
 		},
@@ -646,6 +652,7 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 				client:     fakeClient,
 				restMapper: fakeMapper,
 			}
+			sw.SetLogger(slog.Default().Handler())
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
@@ -668,7 +675,7 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 			}
 
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
-			err := tt.testFunc(sw, resourceList, time.Second*3)
+			err := tt.testFunc(&sw, resourceList, time.Second*3)
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
@@ -756,13 +763,13 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 		objManifests      []string
 		allowedNamespaces []string
 		expectErrs        []error
-		testFunc          func(statusWaiter, ResourceList, time.Duration) error
+		testFunc          func(*statusWaiter, ResourceList, time.Duration) error
 	}{
 		{
 			name:              "pods in multiple namespaces with namespace permissions",
 			objManifests:      []string{podNamespace1Manifest, podNamespace2Manifest},
 			allowedNamespaces: []string{"namespace-1", "namespace-2"},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -770,7 +777,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			name:              "delete pods in multiple namespaces with namespace permissions",
 			objManifests:      []string{podNamespace1Manifest, podNamespace2Manifest},
 			allowedNamespaces: []string{"namespace-1", "namespace-2"},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WaitForDelete(rl, timeout)
 			},
 		},
@@ -778,7 +785,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			name:              "hooks in multiple namespaces with namespace permissions",
 			objManifests:      []string{jobNamespace1CompleteManifest, podNamespace2SucceededManifest},
 			allowedNamespaces: []string{"namespace-1", "namespace-2"},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WatchUntilReady(rl, timeout)
 			},
 		},
@@ -787,7 +794,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			objManifests:      []string{podNamespace1Manifest, clusterRoleManifest},
 			allowedNamespaces: []string{"namespace-1"},
 			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -796,7 +803,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			objManifests:      []string{podNamespace1Manifest, namespaceManifest},
 			allowedNamespaces: []string{"namespace-1"},
 			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WaitForDelete(rl, timeout)
 			},
 		},
@@ -805,7 +812,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			objManifests:      []string{podNamespace1Manifest, podNamespace2Manifest},
 			allowedNamespaces: []string{"namespace-1"},
 			expectErrs:        []error{fmt.Errorf("user does not have LIST permissions in namespace %q", "namespace-2")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -827,6 +834,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 				client:     baseFakeClient,
 				restMapper: fakeMapper,
 			}
+			sw.SetLogger(slog.Default().Handler())
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
@@ -849,7 +857,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			}
 
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
-			err := tt.testFunc(sw, resourceList, time.Second*3)
+			err := tt.testFunc(&sw, resourceList, time.Second*3)
 			if tt.expectErrs != nil {
 				require.Error(t, err)
 				for _, expectedErr := range tt.expectErrs {
@@ -870,13 +878,13 @@ func TestStatusWaitMixedResources(t *testing.T) {
 		objManifests      []string
 		allowedNamespaces []string
 		expectErrs        []error
-		testFunc          func(statusWaiter, ResourceList, time.Duration) error
+		testFunc          func(*statusWaiter, ResourceList, time.Duration) error
 	}{
 		{
 			name:              "wait succeeds with namespace-scoped resources only",
 			objManifests:      []string{podNamespace1Manifest, podNamespace2Manifest},
 			allowedNamespaces: []string{"namespace-1", "namespace-2"},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -885,7 +893,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			objManifests:      []string{podNamespace1Manifest, clusterRoleManifest},
 			allowedNamespaces: []string{"namespace-1"},
 			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -894,7 +902,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			objManifests:      []string{podNamespace1Manifest, clusterRoleManifest},
 			allowedNamespaces: []string{"namespace-1"},
 			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WaitForDelete(rl, timeout)
 			},
 		},
@@ -903,7 +911,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			objManifests:      []string{podNamespace1Manifest, namespaceManifest},
 			allowedNamespaces: []string{"namespace-1"},
 			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -912,7 +920,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			objManifests:      []string{podNamespace1Manifest, podNamespace2Manifest},
 			allowedNamespaces: []string{"namespace-1"},
 			expectErrs:        []error{fmt.Errorf("user does not have LIST permissions in namespace %q", "namespace-2")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -934,6 +942,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 				client:     baseFakeClient,
 				restMapper: fakeMapper,
 			}
+			sw.SetLogger(slog.Default().Handler())
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
@@ -956,7 +965,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			}
 
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
-			err := tt.testFunc(sw, resourceList, time.Second*3)
+			err := tt.testFunc(&sw, resourceList, time.Second*3)
 			if tt.expectErrs != nil {
 				require.Error(t, err)
 				for _, expectedErr := range tt.expectErrs {
@@ -1151,7 +1160,7 @@ func TestStatusWaitWithFailedResources(t *testing.T) {
 		objManifests  []string
 		customReader  *mockStatusReader
 		expectErrStrs []string
-		testFunc      func(statusWaiter, ResourceList, time.Duration) error
+		testFunc      func(*statusWaiter, ResourceList, time.Duration) error
 	}{
 		{
 			name:         "Wait returns error when resource has failed",
@@ -1161,7 +1170,7 @@ func TestStatusWaitWithFailedResources(t *testing.T) {
 				status:      status.FailedStatus,
 			},
 			expectErrStrs: []string{"resource Pod/ns/in-progress-pod not ready. status: Failed, message: mock status reader"},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -1172,7 +1181,7 @@ func TestStatusWaitWithFailedResources(t *testing.T) {
 			expectErrStrs: []string{
 				"resource Job/default/failed-job not ready. status: Failed",
 			},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WaitWithJobs(rl, timeout)
 			},
 		},
@@ -1188,7 +1197,7 @@ func TestStatusWaitWithFailedResources(t *testing.T) {
 				"resource Pod/ns/in-progress-pod not ready. status: Failed, message: mock status reader",
 				"resource Pod/ns/current-pod not ready. status: Failed, message: mock status reader",
 			},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -1201,7 +1210,7 @@ func TestStatusWaitWithFailedResources(t *testing.T) {
 			},
 			// WatchUntilReady also waits for CurrentStatus, so failed resources should return error
 			expectErrStrs: []string{"resource Pod/ns/in-progress-pod not ready. status: Failed, message: mock status reader"},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WatchUntilReady(rl, timeout)
 			},
 		},
@@ -1233,7 +1242,7 @@ func TestStatusWaitWithFailedResources(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
-			err := tt.testFunc(sw, resourceList, time.Second*3)
+			err := tt.testFunc(&sw, resourceList, time.Second*3)
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
