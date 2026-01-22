@@ -166,7 +166,6 @@ func (c *Client) newStatusWatcher(opts ...WaitOption) (*statusWaiter, error) {
 	if waitContext == nil {
 		waitContext = c.WaitContext
 	}
-
 	sw := &statusWaiter{
 		restMapper:         restMapper,
 		client:             dynamicClient,
