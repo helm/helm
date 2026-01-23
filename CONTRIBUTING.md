@@ -11,9 +11,13 @@ vulnerability_, please email a report to
 [cncf-helm-security@lists.cncf.io](mailto:cncf-helm-security@lists.cncf.io). This will give us a
 chance to try to fix the issue before it is exploited in the wild.
 
-## Helm v3 and v4
+## Helm v3
 
-Helm v4 is currently under development on the `main` branch. During the development of Helm v4 and for some time after its released, Helm v3 will continue to be supported and developed on the `dev-v3` branch. Helm v3 will continue to get bug fixes and updates for new Kubernetes releases. Helm v4 is where new features and major changes will happen. For features to be backported to Helm v3, an exception will be needed. Bugs should first be fixed on Helm v4 and then backported to Helm v3.
+Helm v4 development takes place on the `main` branch while Helm v3 is on the `dev-v3` branch.
+
+Helm v3 will continue to receive bug fixes and updates for new Kubernetes releases until July 8th 2026. Security enhancement will still be applied until November 11th 2026. See the blog <https://helm.sh/blog/helm-4-released#helm-v3-support> for more details.
+
+Bugs should first be fixed on Helm v4 and then backported to Helm v3. Helm v3 (and the `dev-v3` branch) is no longer accepting new features.
 
 ## Sign Your Work
 
