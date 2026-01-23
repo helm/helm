@@ -38,14 +38,20 @@ import (
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
 
+	"helm.sh/helm/v4/internal/logging"
 	helmStatusReaders "helm.sh/helm/v4/internal/statusreaders"
 )
 
 type statusWaiter struct {
-	client     dynamic.Interface
-	restMapper meta.RESTMapper
-	ctx        context.Context
-	readers    []engine.StatusReader
+	client             dynamic.Interface
+	restMapper         meta.RESTMapper
+	ctx                context.Context
+	watchUntilReadyCtx context.Context
+	waitCtx            context.Context
+	waitWithJobsCtx    context.Context
+	waitForDeleteCtx   context.Context
+	readers            []engine.StatusReader
+	logging.LogHolder
 }
 
 // DefaultStatusWatcherTimeout is the timeout used by the status waiter when a
@@ -66,9 +72,9 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
 	}
-	ctx, cancel := w.contextWithTimeout(timeout)
+	ctx, cancel := w.contextWithTimeout(w.watchUntilReadyCtx, timeout)
 	defer cancel()
-	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
+	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	jobSR := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	podSR := helmStatusReaders.NewCustomPodStatusReader(w.restMapper)
@@ -88,9 +94,9 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
 	}
-	ctx, cancel := w.contextWithTimeout(timeout)
+	ctx, cancel := w.contextWithTimeout(w.waitCtx, timeout)
 	defer cancel()
-	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
+	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	sw.StatusReader = statusreaders.NewStatusReader(w.restMapper, w.readers...)
 	return w.wait(ctx, resourceList, sw)
@@ -100,9 +106,9 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
 	}
-	ctx, cancel := w.contextWithTimeout(timeout)
+	ctx, cancel := w.contextWithTimeout(w.waitWithJobsCtx, timeout)
 	defer cancel()
-	slog.Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
+	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	readers := append([]engine.StatusReader(nil), w.readers...)
@@ -116,9 +122,9 @@ func (w *statusWaiter) WaitForDelete(resourceList ResourceList, timeout time.Dur
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
 	}
-	ctx, cancel := w.contextWithTimeout(timeout)
+	ctx, cancel := w.contextWithTimeout(w.waitForDeleteCtx, timeout)
 	defer cancel()
-	slog.Debug("waiting for resources to be deleted", "count", len(resourceList), "timeout", timeout)
+	w.Logger().Debug("waiting for resources to be deleted", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
 	return w.waitForDelete(ctx, resourceList, sw)
 }
@@ -138,24 +144,26 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		RESTScopeStrategy: watcher.RESTScopeNamespace,
 	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus))
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus, w.Logger()))
 	<-done
 
 	if statusCollector.Error != nil {
 		return statusCollector.Error
 	}
 
-	// Only check parent context error, otherwise we would error when desired status is achieved.
-	if ctx.Err() != nil {
-		errs := []error{}
-		for _, id := range resources {
-			rs := statusCollector.ResourceStatuses[id]
-			if rs.Status == status.NotFoundStatus {
-				continue
-			}
-			errs = append(errs, fmt.Errorf("resource still exists, name: %s, kind: %s, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
+	errs := []error{}
+	for _, id := range resources {
+		rs := statusCollector.ResourceStatuses[id]
+		if rs.Status == status.NotFoundStatus || rs.Status == status.UnknownStatus {
+			continue
 		}
-		errs = append(errs, ctx.Err())
+		errs = append(errs, fmt.Errorf("resource %s/%s/%s still exists. status: %s, message: %s",
+			rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, rs.Status, rs.Message))
+	}
+	if err := ctx.Err(); err != nil {
+		errs = append(errs, err)
+	}
+	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
 	return nil
@@ -183,31 +191,36 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 		RESTScopeStrategy: watcher.RESTScopeNamespace,
 	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus))
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus, w.Logger()))
 	<-done
 
 	if statusCollector.Error != nil {
 		return statusCollector.Error
 	}
 
-	// Only check parent context error, otherwise we would error when desired status is achieved.
-	if ctx.Err() != nil {
-		errs := []error{}
-		for _, id := range resources {
-			rs := statusCollector.ResourceStatuses[id]
-			if rs.Status == status.CurrentStatus {
-				continue
-			}
-			errs = append(errs, fmt.Errorf("resource not ready, name: %s, kind: %s, status: %s", rs.Identifier.Name, rs.Identifier.GroupKind.Kind, rs.Status))
+	errs := []error{}
+	for _, id := range resources {
+		rs := statusCollector.ResourceStatuses[id]
+		if rs.Status == status.CurrentStatus {
+			continue
 		}
-		errs = append(errs, ctx.Err())
+		errs = append(errs, fmt.Errorf("resource %s/%s/%s not ready. status: %s, message: %s",
+			rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, rs.Status, rs.Message))
+	}
+	if err := ctx.Err(); err != nil {
+		errs = append(errs, err)
+	}
+	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
 	return nil
 }
 
-func (w *statusWaiter) contextWithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
-	return contextWithTimeout(w.ctx, timeout)
+func (w *statusWaiter) contextWithTimeout(methodCtx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if methodCtx == nil {
+		methodCtx = w.ctx
+	}
+	return contextWithTimeout(methodCtx, timeout)
 }
 
 func contextWithTimeout(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
@@ -217,7 +230,7 @@ func contextWithTimeout(ctx context.Context, timeout time.Duration) (context.Con
 	return watchtools.ContextWithOptionalTimeout(ctx, timeout)
 }
 
-func statusObserver(cancel context.CancelFunc, desired status.Status) collector.ObserverFunc {
+func statusObserver(cancel context.CancelFunc, desired status.Status, logger *slog.Logger) collector.ObserverFunc {
 	return func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
 		var rss []*event.ResourceStatus
 		var nonDesiredResources []*event.ResourceStatus
@@ -225,9 +238,14 @@ func statusObserver(cancel context.CancelFunc, desired status.Status) collector.
 			if rs == nil {
 				continue
 			}
-			// If a resource is already deleted before waiting has started, it will show as unknown
-			// this check ensures we don't wait forever for a resource that is already deleted
+			// If a resource is already deleted before waiting has started, it will show as unknown.
+			// This check ensures we don't wait forever for a resource that is already deleted.
 			if rs.Status == status.UnknownStatus && desired == status.NotFoundStatus {
+				continue
+			}
+			// Failed is a terminal state. This check ensures we don't wait forever for a resource
+			// that has already failed, as intervention is required to resolve the failure.
+			if rs.Status == status.FailedStatus && desired == status.CurrentStatus {
 				continue
 			}
 			rss = append(rss, rs)
@@ -237,7 +255,7 @@ func statusObserver(cancel context.CancelFunc, desired status.Status) collector.
 		}
 
 		if aggregator.AggregateStatus(rss, desired) == desired {
-			slog.Debug("all resources achieved desired status", "desiredStatus", desired, "resourceCount", len(rss))
+			logger.Debug("all resources achieved desired status", "desiredStatus", desired, "resourceCount", len(rss))
 			cancel()
 			return
 		}
@@ -248,7 +266,7 @@ func statusObserver(cancel context.CancelFunc, desired status.Status) collector.
 				return nonDesiredResources[i].Identifier.Name < nonDesiredResources[j].Identifier.Name
 			})
 			first := nonDesiredResources[0]
-			slog.Debug("waiting for resource", "namespace", first.Identifier.Namespace, "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", desired, "actualStatus", first.Status)
+			logger.Debug("waiting for resource", "namespace", first.Identifier.Namespace, "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", desired, "actualStatus", first.Status)
 		}
 	}
 }
