@@ -36,6 +36,7 @@ type HTTPInstaller struct {
 	CacheDir   string
 	PluginName string
 	base
+	settings  *cli.EnvSettings
 	extractor Extractor
 	getter    getter.Getter
 	// Cached data to avoid duplicate downloads
@@ -49,6 +50,8 @@ func NewHTTPInstaller(source string) (*HTTPInstaller, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	settings := cli.New()
 
 	extractor, err := NewExtractor(source)
 	if err != nil {
@@ -64,6 +67,7 @@ func NewHTTPInstaller(source string) (*HTTPInstaller, error) {
 		CacheDir:   helmpath.CachePath("plugins", key),
 		PluginName: stripPluginName(filepath.Base(source)),
 		base:       newBase(source),
+		settings:   settings,
 		extractor:  extractor,
 		getter:     get,
 	}
@@ -151,7 +155,7 @@ func (i HTTPInstaller) Path() string {
 	if i.Source == "" {
 		return ""
 	}
-	return helmpath.DataPath("plugins", i.PluginName)
+	return filepath.Join(i.settings.PluginsDirectory, i.PluginName)
 }
 
 // SupportsVerification returns true if the HTTP installer can verify plugins
