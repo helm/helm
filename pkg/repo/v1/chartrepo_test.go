@@ -101,10 +101,13 @@ func TestConcurrencyDownloadIndex(t *testing.T) {
 	}
 	defer srv.Close()
 
-	repo, err := NewChartRepository(&Entry{
+	// set base environment settings
+	baseEntry := &Entry{
 		Name: "nginx",
 		URL:  srv.URL,
-	}, getter.All(&cli.EnvSettings{}))
+	}
+	settings := cli.EnvSettings{}
+	repo, err := NewChartRepository(baseEntry, getter.All(&settings))
 
 	if err != nil {
 		t.Fatalf("Problem loading chart repository from %s: %v", srv.URL, err)
@@ -130,7 +133,14 @@ func TestConcurrencyDownloadIndex(t *testing.T) {
 
 		go func() {
 			defer wg.Done()
-			idx, err := repo.DownloadIndexFile()
+			localRepo, err := NewChartRepository(baseEntry, getter.All(&settings))
+			if err != nil {
+				t.Errorf("Failed to create chart repository: %v", err)
+				return
+			}
+			localRepo.CachePath = repo.CachePath
+
+			idx, err := localRepo.DownloadIndexFile()
 			if err != nil {
 				t.Errorf("Failed to download index file to %s: %v", idx, err)
 			}
