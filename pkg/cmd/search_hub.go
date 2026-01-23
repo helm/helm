@@ -141,7 +141,7 @@ func (h *hubSearchWriter) WriteTable(out io.Writer) error {
 
 		_, err := out.Write([]byte("No results found\n"))
 		if err != nil {
-			return fmt.Errorf("unable to write results: %s", err)
+			return fmt.Errorf("unable to write results: %w", err)
 		}
 		return nil
 	}

@@ -180,7 +180,7 @@ func TestConfigMapQuery(t *testing.T) {
 	}
 
 	_, err = cfgmaps.Query(map[string]string{"name": "notExist"})
-	if err != ErrReleaseNotFound {
+	if !errors.Is(err, ErrReleaseNotFound) {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
 	}
 }
@@ -252,7 +252,7 @@ func TestConfigMapDelete(t *testing.T) {
 
 	// perform the delete on a non-existent release
 	_, err := cfgmaps.Delete("nonexistent")
-	if err != ErrReleaseNotFound {
+	if !errors.Is(err, ErrReleaseNotFound) {
 		t.Fatalf("Expected ErrReleaseNotFound: got {%v}", err)
 	}
 
