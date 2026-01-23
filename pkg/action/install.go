@@ -403,29 +403,22 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	if isDryRun(i.DryRunStrategy) {
 		// For server-side dry-run, validate resources against the API server
 		if i.DryRunStrategy == DryRunServer {
-			var errs []error
-			if len(toBeAdopted) > 0 {
-				_, err := i.cfg.KubeClient.Update(
+			var err error
+			if len(toBeAdopted) == 0 && len(resources) > 0 {
+				_, err = i.cfg.KubeClient.Create(
+					resources,
+					kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false),
+					kube.ClientCreateOptionDryRun(true),
+				)
+			} else if len(resources) > 0 {
+				_, err = i.cfg.KubeClient.Update(
 					toBeAdopted,
 					resources,
 					kube.ClientUpdateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts),
 					kube.ClientUpdateOptionDryRun(true),
 				)
-				if err != nil {
-					errs = append(errs, err)
-				}
 			}
-			if len(resources) > 0 {
-				_, err := i.cfg.KubeClient.Create(
-					resources,
-					kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false),
-					kube.ClientCreateOptionDryRun(true),
-				)
-				if err != nil {
-					errs = append(errs, err)
-				}
-			}
-			if err := errors.Join(errs...); err != nil {
+			if err != nil {
 				return rel, err
 			}
 		}
