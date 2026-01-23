@@ -26,9 +26,42 @@ import (
 type WaitOption func(*waitOptions)
 
 // WithWaitContext sets the context for waiting on resources.
+// If unset, context.Background() will be used.
 func WithWaitContext(ctx context.Context) WaitOption {
 	return func(wo *waitOptions) {
 		wo.ctx = ctx
+	}
+}
+
+// WithWatchUntilReadyMethodContext sets the context specifically for the WatchUntilReady method.
+// If unset, the context set by `WithWaitContext` will be used (falling back to `context.Background()`).
+func WithWatchUntilReadyMethodContext(ctx context.Context) WaitOption {
+	return func(wo *waitOptions) {
+		wo.watchUntilReadyCtx = ctx
+	}
+}
+
+// WithWaitMethodContext sets the context specifically for the Wait method.
+// If unset, the context set by `WithWaitContext` will be used (falling back to `context.Background()`).
+func WithWaitMethodContext(ctx context.Context) WaitOption {
+	return func(wo *waitOptions) {
+		wo.waitCtx = ctx
+	}
+}
+
+// WithWaitWithJobsMethodContext sets the context specifically for the WaitWithJobs method.
+// If unset, the context set by `WithWaitContext` will be used (falling back to `context.Background()`).
+func WithWaitWithJobsMethodContext(ctx context.Context) WaitOption {
+	return func(wo *waitOptions) {
+		wo.waitWithJobsCtx = ctx
+	}
+}
+
+// WithWaitForDeleteMethodContext sets the context specifically for the WaitForDelete method.
+// If unset, the context set by `WithWaitContext` will be used (falling back to `context.Background()`).
+func WithWaitForDeleteMethodContext(ctx context.Context) WaitOption {
+	return func(wo *waitOptions) {
+		wo.waitForDeleteCtx = ctx
 	}
 }
 
@@ -40,6 +73,10 @@ func WithKStatusReaders(readers ...engine.StatusReader) WaitOption {
 }
 
 type waitOptions struct {
-	ctx           context.Context
-	statusReaders []engine.StatusReader
+	ctx                context.Context
+	watchUntilReadyCtx context.Context
+	waitCtx            context.Context
+	waitWithJobsCtx    context.Context
+	waitForDeleteCtx   context.Context
+	statusReaders      []engine.StatusReader
 }

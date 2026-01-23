@@ -64,8 +64,9 @@ type Rollback struct {
 // NewRollback creates a new Rollback object with the given configuration.
 func NewRollback(cfg *Configuration) *Rollback {
 	return &Rollback{
-		cfg:            cfg,
-		DryRunStrategy: DryRunNone,
+		cfg:             cfg,
+		ServerSideApply: "auto", // Must always match the CLI default.
+		DryRunStrategy:  DryRunNone,
 	}
 }
 

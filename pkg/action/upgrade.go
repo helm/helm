@@ -142,7 +142,7 @@ type resultMessage struct {
 func NewUpgrade(cfg *Configuration) *Upgrade {
 	up := &Upgrade{
 		cfg:             cfg,
-		ServerSideApply: "auto",
+		ServerSideApply: "auto", // Must always match the CLI default.
 		DryRunStrategy:  DryRunNone,
 	}
 	up.registryClient = cfg.RegistryClient
