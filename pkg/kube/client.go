@@ -1299,19 +1299,19 @@ func scrubValidationError(err error) error {
 	return err
 }
 
-type joinedErrors struct {
+type joinedListError struct {
 	errs []error
 	sep  string
 }
 
 func joinErrors(errs []error, sep string) error {
-	return &joinedErrors{
+	return &joinedListError{
 		errs: errs,
 		sep:  sep,
 	}
 }
 
-func (e *joinedErrors) Error() string {
+func (e *joinedListError) Error() string {
 	errs := make([]string, 0, len(e.errs))
 	for _, err := range e.errs {
 		errs = append(errs, err.Error())
@@ -1319,6 +1319,6 @@ func (e *joinedErrors) Error() string {
 	return strings.Join(errs, e.sep)
 }
 
-func (e *joinedErrors) Unwrap() []error {
+func (e *joinedListError) Unwrap() []error {
 	return e.errs
 }

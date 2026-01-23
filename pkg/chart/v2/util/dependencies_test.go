@@ -252,10 +252,10 @@ func TestProcessDependencyImportValues(t *testing.T) {
 		t.Error("expect nil value not found but found it")
 	}
 	switch xerr := err.(type) {
-	case common.ErrNoValue:
+	case common.NoValueError:
 		// We found what we expected
 	default:
-		t.Errorf("expected an ErrNoValue but got %q instead", xerr)
+		t.Errorf("expected a NoValueError but got %q instead", xerr)
 	}
 
 	c = loadChart(t, "testdata/subpop")

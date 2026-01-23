@@ -51,7 +51,7 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, 
 						break
 					}
 					slog.Warn("returned non-bool value", "path", c, "chart", r.Name)
-				} else if _, ok := err.(common.ErrNoValue); !ok {
+				} else if _, ok := err.(common.NoValueError); !ok {
 					// this is a real error
 					slog.Warn("the method PathValue returned error", slog.Any("error", err))
 				}
