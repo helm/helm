@@ -175,6 +175,12 @@ func (i IndexFile) SortEntries() {
 	}
 }
 
+// isVersionRange checks if the version string is a range constraint (e.g., "^1", "~1.10")
+// rather than an exact version (e.g., "1.10.0").
+func isVersionRange(version string) bool {
+	return strings.ContainsAny(version, "^~<>=!*xX") || strings.Contains(version, " || ") || strings.Contains(version, " - ")
+}
+
 // Get returns the ChartVersion for the given name.
 //
 // If version is empty, this will return the chart with the latest stable version,
@@ -215,7 +221,7 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 		}
 
 		if constraint.Check(test) {
-			if len(version) != 0 {
+			if len(version) != 0 && !isVersionRange(version) {
 				slog.Warn("unable to find exact version requested; falling back to closest available version", "chart", name, "requested", version, "selected", ver.Version)
 			}
 			return ver, nil
