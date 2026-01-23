@@ -223,6 +223,8 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 		if constraint.Check(test) {
 			if len(version) != 0 && !isVersionRange(version) {
 				slog.Warn("unable to find exact version requested; falling back to closest available version", "chart", name, "requested", version, "selected", ver.Version)
+			} else if len(version) != 0 && isVersionRange(version) {
+				slog.Debug("selected version matching constraint", "chart", name, "constraint", version, "selected", ver.Version)
 			}
 			return ver, nil
 		}

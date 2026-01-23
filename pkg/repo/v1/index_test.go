@@ -726,6 +726,8 @@ func TestIsVersionRange(t *testing.T) {
 	}{
 		{"1.0.0", false},
 		{"1.0.0+metadata", false},
+		{"v1.19.2", false},
+		{"v1", false},
 		{"^1", true},
 		{"^1.2.3", true},
 		{"~1.10", true},
@@ -738,6 +740,8 @@ func TestIsVersionRange(t *testing.T) {
 		{"1.*", true},
 		{"1.x", true},
 		{"1.X", true},
+		{"v1.x", true},
+		{"v1.X", true},
 		{"1.0.0 - 2.0.0", true},
 		{"^1.0.0 || ^2.0.0", true},
 		{">=1.0.0 <2.0.0", true},
