@@ -91,7 +91,7 @@ func TestDependencyEnabled(t *testing.T) {
 	}, {
 		"conditions enabling the parent charts, but back-end (b, c) is still disabled via values.yaml",
 		M{"subchart1": M{"enabled": true}, "subchart2": M{"enabled": true}},
-		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb", "parentchart.subchart2"},
+		[]string{"parentchart", "parentchart.subchart1", "parentchart.subchart1.subcharta", "parentchart.subchart1.subchartb"},
 	}, {
 		"conditions disabling the parent charts, effectively disabling children",
 		M{"subchart1": M{"enabled": false}, "subchart2": M{"enabled": false}},
@@ -111,7 +111,15 @@ func TestDependencyEnabled(t *testing.T) {
 	}, {
 		"subcharts with alias also respect conditions",
 		M{"subchart1": M{"enabled": false}, "subchart2alias": M{"enabled": true, "subchartb": M{"enabled": true}}},
-		[]string{"parentchart", "parentchart.subchart2alias", "parentchart.subchart2alias.subchartb"},
+		[]string{"parentchart", "parentchart.subchart2alias"},
+	}, {
+		"tags disable chart even when condition is true (AND logic)",
+		M{"tags": M{"front-end": false}, "subchart1": M{"enabled": true}},
+		[]string{"parentchart"},
+	}, {
+		"tags disable child charts even when their conditions are true (AND logic)",
+		M{"tags": M{"front-end": false, "subcharta": false}, "subchart1": M{"enabled": true, "subcharta": M{"enabled": true}}},
+		[]string{"parentchart"},
 	}}
 
 	for _, tc := range tests {
