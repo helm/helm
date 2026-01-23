@@ -135,6 +135,42 @@ keyInElement1 = "valueInElement1"`,
 		tpl:    `{{ "H4sIAAAAAAAA/8pIzcnJVyjPL8pJAQQAAP//hRFKDQsAAAA=" | ungzip }}`,
 		expect: `hello world`,
 		vars:   nil,
+	}, {
+		// Test Zstd
+		tpl:    `{{ "Hello world!" | zstd }}`,
+		expect: `KLUv/QQAYQAASGVsbG8gd29ybGQhsn39fw==`,
+		vars:   nil,
+	}, {
+		tpl:    `{{ "KLUv/QQAYQAASGVsbG8gd29ybGQhsn39fw==" | unzstd }}`,
+		expect: "Hello world!",
+		vars:   nil,
+	}, {
+		// Test LZ4
+		tpl:    `{{ "Hello world!" | lz4 }}`,
+		expect: `BCJNGGRwuQwAAIBIZWxsbyB3b3JsZCEAAAAAcXerxA==`,
+		vars:   nil,
+	}, {
+		tpl:    `{{ "BCJNGGRwuQwAAIBIZWxsbyB3b3JsZCEAAAAAcXerxA==" | unlz4 }}`,
+		expect: "Hello world!",
+		vars:   nil,
+	}, {
+		// Test Snappy
+		tpl:    `{{ "Hello world!" | snappy }}`,
+		expect: `DCxIZWxsbyB3b3JsZCE=`,
+		vars:   nil,
+	}, {
+		tpl:    `{{ "DCxIZWxsbyB3b3JsZCE=" | unsnappy }}`,
+		expect: "Hello world!",
+		vars:   nil,
+	}, {
+		// Test Brotli
+		tpl:    `{{ "Hello world!" | brotli }}`,
+		expect: `GwsAACRBQpBKkUVq+pw1CQ==`,
+		vars:   nil,
+	}, {
+		tpl:    `{{ "GwsAACRBQpBKkUVq+pw1CQ==" | unbrotli }}`,
+		expect: "Hello world!",
+		vars:   nil,
 	}}
 
 	for _, tt := range tests {
