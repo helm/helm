@@ -213,13 +213,48 @@ func splitAndDeannotate(postrendered string) (map[string]string, error) {
 	return reconstructed, nil
 }
 
+// transformManifestPath modifies the manifest path based on the skipChartNameDir and skipTemplatesDir flags.
+// The input path is typically in the format "chart-name/templates/file.yaml" or "chart-name/charts/subchart/templates/file.yaml"
+// - skipChartNameDir: removes the root chart name directory
+// - skipTemplatesDir: removes all "templates" directories from the path
+func transformManifestPath(name string, skipChartNameDir, skipTemplatesDir bool) string {
+	if !skipChartNameDir && !skipTemplatesDir {
+		return name
+	}
+
+	parts := strings.Split(name, "/")
+	if len(parts) == 0 {
+		return name
+	}
+
+	var result []string
+
+	for i, part := range parts {
+		// Skip the first part (chart name) if skipChartNameDir is true
+		if i == 0 && skipChartNameDir {
+			continue
+		}
+		// Skip "templates" directories if skipTemplatesDir is true
+		if skipTemplatesDir && part == "templates" {
+			continue
+		}
+		result = append(result, part)
+	}
+
+	if len(result) == 0 {
+		return name
+	}
+
+	return strings.Join(result, "/")
+}
+
 // renderResources renders the templates in a chart
 //
 // TODO: This function is badly in need of a refactor.
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //
 //	This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS, hideSecret, skipChartNameDir, skipTemplatesDir bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	var hs []*release.Hook
 	b := bytes.NewBuffer(nil)
 
@@ -336,11 +371,12 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 			if outputDir == "" {
 				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data[:]))
 			} else {
-				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Filename])
+				transformedName := transformManifestPath(crd.Filename, skipChartNameDir, skipTemplatesDir)
+				err = writeToFile(outputDir, transformedName, string(crd.File.Data[:]), fileWritten[transformedName])
 				if err != nil {
 					return hs, b, "", err
 				}
-				fileWritten[crd.Filename] = true
+				fileWritten[transformedName] = true
 			}
 		}
 	}
@@ -361,11 +397,12 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 			// output dir is only used by `helm template`. In the next major
 			// release, we should move this logic to template only as it is not
 			// used by install or upgrade
-			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
+			transformedName := transformManifestPath(m.Name, skipChartNameDir, skipTemplatesDir)
+			err = writeToFile(newDir, transformedName, m.Content, fileWritten[transformedName])
 			if err != nil {
 				return hs, b, "", err
 			}
-			fileWritten[m.Name] = true
+			fileWritten[transformedName] = true
 		}
 	}
 
