@@ -79,7 +79,6 @@ type (
 		credentialsStore   credentials.Store
 		httpClient         *http.Client
 		plainHTTP          bool
-		wg                 sync.WaitGroup
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -685,8 +684,9 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 
 	layers := []ocispec.Descriptor{chartBlob.descriptor}
+	var wg sync.WaitGroup
 	if !exists {
-		c.runWorker(ctx, chartBlob.push)
+		runWorker(ctx, &wg, chartBlob.push)
 	}
 
 	configData, err := json.Marshal(meta)
@@ -694,14 +694,14 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 	configBlob := newBlob(repository, ConfigMediaType, configData)
-	c.runWorker(ctx, configBlob.pushNew)
+	runWorker(ctx, &wg, configBlob.pushNew)
 
 	var provBlob blob
 	if operation.provData != nil {
 		provBlob = newBlob(repository, ProvLayerMediaType, operation.provData)
-		c.runWorker(ctx, provBlob.pushNew)
+		runWorker(ctx, &wg, provBlob.pushNew)
 	}
-	c.wg.Wait()
+	wg.Wait()
 
 	if chartBlob.err != nil {
 		return nil, chartBlob.err
@@ -949,14 +949,20 @@ func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 		manifestData, parsedRef.String())
 }
 
-func (c *Client) runWorker(ctx context.Context, worker func(context.Context)) {
-	c.wg.Add(1)
+// runWorker spawns a goroutine to execute the worker function and tracks it
+// with the provided WaitGroup. The WaitGroup counter is incremented before
+// spawning and decremented when the worker completes.
+func runWorker(ctx context.Context, wg *sync.WaitGroup, worker func(context.Context)) {
+	wg.Add(1)
 	go func() {
-		defer c.wg.Done()
+		defer wg.Done()
 		worker(ctx)
 	}()
 }
 
+// blob represents a content-addressable blob to be pushed to an OCI registry.
+// It encapsulates the data, media type, and destination repository, and tracks
+// the resulting descriptor and any error from push operations.
 type blob struct {
 	mediaType  string
 	dst        *remote.Repository
@@ -965,6 +971,7 @@ type blob struct {
 	err        error
 }
 
+// newBlob creates a new blob with the given repository, media type, and data.
 func newBlob(dst *remote.Repository, mediaType string, data []byte) blob {
 	return blob{
 		mediaType: mediaType,
@@ -973,6 +980,9 @@ func newBlob(dst *remote.Repository, mediaType string, data []byte) blob {
 	}
 }
 
+// exists checks if the blob already exists in the registry by computing its
+// digest and querying the repository. It also populates the blob's descriptor
+// with size, media type, and digest information.
 func (b *blob) exists(ctx context.Context) (bool, error) {
 	hash := sha256.Sum256(b.data)
 	b.descriptor.Size = int64(len(b.data))
@@ -981,6 +991,9 @@ func (b *blob) exists(ctx context.Context) (bool, error) {
 	return b.dst.Exists(ctx, b.descriptor)
 }
 
+// pushNew checks if the blob exists in the registry first, and only pushes
+// if it doesn't exist. This avoids redundant uploads for blobs that are
+// already present. Any error is stored in b.err.
 func (b *blob) pushNew(ctx context.Context) {
 	var exists bool
 	exists, b.err = b.exists(ctx)
@@ -993,6 +1006,8 @@ func (b *blob) pushNew(ctx context.Context) {
 	b.descriptor, b.err = oras.PushBytes(ctx, b.dst, b.mediaType, b.data)
 }
 
+// push unconditionally pushes the blob to the registry without checking
+// for existence first. Any error is stored in b.err.
 func (b *blob) push(ctx context.Context) {
 	b.descriptor, b.err = oras.PushBytes(ctx, b.dst, b.mediaType, b.data)
 }
