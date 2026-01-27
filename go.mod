@@ -17,7 +17,7 @@ require (
 	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/extism/go-sdk v1.7.1
 	github.com/fatih/color v1.18.0
-	github.com/fluxcd/cli-utils v0.37.0-flux.1
+	github.com/fluxcd/cli-utils v0.37.1-flux.1
 	github.com/foxcpp/go-mockdns v1.2.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gofrs/flock v0.13.0
