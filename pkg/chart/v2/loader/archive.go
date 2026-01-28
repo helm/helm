@@ -37,6 +37,11 @@ func (l FileLoader) Load() (*chart.Chart, error) {
 
 // LoadFile loads from an archive file.
 func LoadFile(name string) (*chart.Chart, error) {
+	return LoadFileWithOptions(name, archive.DefaultOptions)
+}
+
+// LoadFileWithOptions loads from an archive file using the provided options.
+func LoadFileWithOptions(name string, opts archive.Options) (*chart.Chart, error) {
 	if fi, err := os.Stat(name); err != nil {
 		return nil, err
 	} else if fi.IsDir() {
@@ -54,7 +59,7 @@ func LoadFile(name string) (*chart.Chart, error) {
 		return nil, err
 	}
 
-	c, err := LoadArchive(raw)
+	c, err := LoadArchiveWithOptions(raw, opts)
 	if err != nil {
 		if errors.Is(err, gzip.ErrHeader) {
 			return nil, fmt.Errorf("file '%s' does not appear to be a valid chart file (details: %w)", name, err)
@@ -65,10 +70,14 @@ func LoadFile(name string) (*chart.Chart, error) {
 
 // LoadArchive loads from a reader containing a compressed tar archive.
 func LoadArchive(in io.Reader) (*chart.Chart, error) {
-	files, err := archive.LoadArchiveFiles(in)
+	return LoadArchiveWithOptions(in, archive.DefaultOptions)
+}
+
+// LoadArchiveWithOptions loads from a reader containing a compressed tar archive using the provided options.
+func LoadArchiveWithOptions(in io.Reader, opts archive.Options) (*chart.Chart, error) {
+	files, err := archive.LoadArchiveFilesWithOptions(in, opts)
 	if err != nil {
 		return nil, err
 	}
-
 	return LoadFiles(files)
 }
