@@ -38,14 +38,15 @@ type VCSInstaller struct {
 	base
 }
 
-func existingVCSRepo(location string) (Installer, error) {
+func existingVCSRepo(location string, version string) (Installer, error) {
 	repo, err := vcs.NewRepo("", location)
 	if err != nil {
 		return nil, err
 	}
 	i := &VCSInstaller{
-		Repo: repo,
-		base: newBase(repo.Remote()),
+		Repo:    repo,
+		Version: version,
+		base:    newBase(repo.Remote()),
 	}
 	return i, nil
 }
@@ -104,6 +105,17 @@ func (i *VCSInstaller) Update() error {
 	if err := i.Repo.Update(); err != nil {
 		return err
 	}
+
+	ref, err := i.solveVersion(i.Repo)
+	if err != nil {
+		return err
+	}
+	if ref != "" {
+		if err := i.setVersion(i.Repo, ref); err != nil {
+			return err
+		}
+	}
+
 	if !isPlugin(i.Repo.LocalPath()) {
 		return ErrMissingMetadata
 	}
