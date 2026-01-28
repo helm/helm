@@ -213,11 +213,11 @@ func splitAndDeannotate(postrendered string) (map[string]string, error) {
 	return reconstructed, nil
 }
 
-// transformManifestPath modifies the manifest path based on the skipChartNameDir and skipTemplatesDir flags.
+// TransformManifestPath modifies the manifest path based on the skipChartNameDir and skipTemplatesDir flags.
 // The input path is typically in the format "chart-name/templates/file.yaml" or "chart-name/charts/subchart/templates/file.yaml"
 // - skipChartNameDir: removes the root chart name directory
 // - skipTemplatesDir: removes all "templates" directories from the path
-func transformManifestPath(name string, skipChartNameDir, skipTemplatesDir bool) string {
+func TransformManifestPath(name string, skipChartNameDir, skipTemplatesDir bool) string {
 	if !skipChartNameDir && !skipTemplatesDir {
 		return name
 	}
@@ -230,6 +230,10 @@ func transformManifestPath(name string, skipChartNameDir, skipTemplatesDir bool)
 	var result []string
 
 	for i, part := range parts {
+		// Skip empty parts (e.g., from leading slash or double slashes)
+		if part == "" {
+			continue
+		}
 		// Skip the first part (chart name) if skipChartNameDir is true
 		if i == 0 && skipChartNameDir {
 			continue
@@ -371,7 +375,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 			if outputDir == "" {
 				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data[:]))
 			} else {
-				transformedName := transformManifestPath(crd.Filename, skipChartNameDir, skipTemplatesDir)
+				transformedName := TransformManifestPath(crd.Filename, skipChartNameDir, skipTemplatesDir)
 				err = writeToFile(outputDir, transformedName, string(crd.File.Data[:]), fileWritten[transformedName])
 				if err != nil {
 					return hs, b, "", err
@@ -397,7 +401,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 			// output dir is only used by `helm template`. In the next major
 			// release, we should move this logic to template only as it is not
 			// used by install or upgrade
-			transformedName := transformManifestPath(m.Name, skipChartNameDir, skipTemplatesDir)
+			transformedName := TransformManifestPath(m.Name, skipChartNameDir, skipTemplatesDir)
 			err = writeToFile(newDir, transformedName, m.Content, fileWritten[transformedName])
 			if err != nil {
 				return hs, b, "", err

@@ -1064,7 +1064,7 @@ func TestTransformManifestPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := transformManifestPath(tt.input, tt.skipChartNameDir, tt.skipTemplatesDir)
+			result := TransformManifestPath(tt.input, tt.skipChartNameDir, tt.skipTemplatesDir)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

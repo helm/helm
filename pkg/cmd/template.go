@@ -132,7 +132,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							if client.UseReleaseName {
 								newDir = filepath.Join(client.OutputDir, client.ReleaseName)
 							}
-							transformedPath := transformManifestPath(m.Path, client.SkipChartNameDir, client.SkipTemplatesDir)
+							transformedPath := action.TransformManifestPath(m.Path, client.SkipChartNameDir, client.SkipTemplatesDir)
 							_, err := os.Stat(filepath.Join(newDir, transformedPath))
 							if err == nil {
 								fileWritten[transformedPath] = true
@@ -277,39 +277,4 @@ func ensureDirectoryForFile(file string) error {
 	}
 
 	return os.MkdirAll(baseDir, 0755)
-}
-
-// transformManifestPath modifies the manifest path based on the skipChartNameDir and skipTemplatesDir flags.
-// The input path is typically in the format "chart-name/templates/file.yaml" or "chart-name/charts/subchart/templates/file.yaml"
-// - skipChartNameDir: removes the root chart name directory
-// - skipTemplatesDir: removes all "templates" directories from the path
-func transformManifestPath(name string, skipChartNameDir, skipTemplatesDir bool) string {
-	if !skipChartNameDir && !skipTemplatesDir {
-		return name
-	}
-
-	parts := strings.Split(name, "/")
-	if len(parts) == 0 {
-		return name
-	}
-
-	var result []string
-
-	for i, part := range parts {
-		// Skip the first part (chart name) if skipChartNameDir is true
-		if i == 0 && skipChartNameDir {
-			continue
-		}
-		// Skip "templates" directories if skipTemplatesDir is true
-		if skipTemplatesDir && part == "templates" {
-			continue
-		}
-		result = append(result, part)
-	}
-
-	if len(result) == 0 {
-		return name
-	}
-
-	return strings.Join(result, "/")
 }
