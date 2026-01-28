@@ -66,13 +66,13 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 			// If value is JSON object format, parse it as map
 			var jsonMap map[string]interface{}
 			if err := json.Unmarshal([]byte(trimmedValue), &jsonMap); err != nil {
-				return nil, fmt.Errorf("failed parsing --set-json data JSON: %s", value)
+				return nil, fmt.Errorf("failed parsing --set-json data %q: expected valid JSON", value)
 			}
 			base = loader.MergeMaps(base, jsonMap)
 		} else {
 			// Otherwise, parse it as key=value format
 			if err := strvals.ParseJSON(value, base); err != nil {
-				return nil, fmt.Errorf("failed parsing --set-json data %s", value)
+				return nil, fmt.Errorf("failed parsing --set-json data %q: expected valid JSON", value)
 			}
 		}
 	}
