@@ -72,8 +72,8 @@ func TestIsMatchingInfo(t *testing.T) {
 
 	gvkDiffVersion := schema.GroupVersionKind{Group: "group1", Version: "diff", Kind: "pod"}
 	resourceInfoDiffVersion := resource.Info{Name: "name1", Namespace: "namespace1", Mapping: &meta.RESTMapping{GroupVersionKind: gvkDiffVersion}}
-	if isMatchingInfo(&resourceInfo, &resourceInfoDiffVersion) {
-		t.Error("expected resources not equal")
+	if !isMatchingInfo(&resourceInfo, &resourceInfoDiffVersion) {
+		t.Error("expected resources with different versions but same group and kind to be equal")
 	}
 
 	gvkDiffKind := schema.GroupVersionKind{Group: "group1", Version: "version1", Kind: "deployment"}
