@@ -37,6 +37,7 @@ type Dependency struct {
 	Verify                bool
 	Keyring               string
 	SkipRefresh           bool
+	SkipDownloadIfExists  bool
 	ColumnWidth           uint
 	Username              string
 	Password              string
