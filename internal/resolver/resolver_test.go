@@ -137,6 +137,28 @@ func TestResolve(t *testing.T) {
 			},
 			err: true,
 		},
+		{
+			name: "no version set for local chart under charts path",
+			req: []*chart.Dependency{
+				{Name: "localdependency", Repository: "", Version: ""},
+			},
+			expect: &chart.Lock{
+				Dependencies: []*chart.Dependency{
+					{Name: "localdependency", Repository: "", Version: "0.1.0"},
+				},
+			},
+		},
+		{
+			name: "no version set for local chart from file://",
+			req: []*chart.Dependency{
+				{Name: "localdependency", Repository: "file://base", Version: ""},
+			},
+			expect: &chart.Lock{
+				Dependencies: []*chart.Dependency{
+					{Name: "localdependency", Repository: "file://base", Version: "0.1.0"},
+				},
+			},
+		},
 	}
 
 	repoNames := map[string]string{"alpine": "kubernetes-charts", "redis": "kubernetes-charts"}
