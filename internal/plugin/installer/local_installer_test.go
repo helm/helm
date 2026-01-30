@@ -146,3 +146,50 @@ func TestLocalInstallerTarball(t *testing.T) {
 		t.Fatalf("plugin not found at %s: %v", i.Path(), err)
 	}
 }
+
+func TestLocalInstaller_Path(t *testing.T) {
+	tests := []struct {
+		name           string
+		source         string
+		helmPluginsDir string
+		expectPath     string
+	}{
+		{
+			name:           "default helm plugins dir",
+			source:         "../testdata/plugdir/good/echo-v1",
+			helmPluginsDir: "",
+			expectPath:     helmpath.DataPath("plugins", "echo-v1"),
+		}, {
+			name:           "archive default helm plugins dir",
+			source:         "../testdata/plugdir/good/archive-1.2.3.tar.gz",
+			helmPluginsDir: "",
+			expectPath:     helmpath.DataPath("plugins", "archive"),
+		}, {
+			name:           "custom helm plugins dir",
+			source:         "../testdata/plugdir/good/echo-v1",
+			helmPluginsDir: "/foo/bar",
+			expectPath:     "/foo/bar/echo-v1",
+		}, {
+			name:           "archive custom helm plugins dir",
+			source:         "../testdata/plugdir/good/archive-1.2.3.tar.gz",
+			helmPluginsDir: "/foo/bar",
+			expectPath:     "/foo/bar/archive",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.helmPluginsDir != "" {
+				t.Setenv("HELM_PLUGINS", tt.helmPluginsDir)
+			}
+			installer, err := NewLocalInstaller(tt.source)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			path := installer.Path()
+			if path != tt.expectPath {
+				t.Errorf("expected path %s, got %s", tt.expectPath, path)
+			}
+		})
+	}
+}
