@@ -17,7 +17,7 @@ require (
 	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/extism/go-sdk v1.7.1
 	github.com/fatih/color v1.18.0
-	github.com/fluxcd/cli-utils v0.37.0-flux.1
+	github.com/fluxcd/cli-utils v0.37.1-flux.1
 	github.com/foxcpp/go-mockdns v1.2.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gofrs/flock v0.13.0
@@ -48,7 +48,7 @@ require (
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kubectl v0.35.0
 	oras.land/oras-go/v2 v2.6.0
-	sigs.k8s.io/controller-runtime v0.23.0
+	sigs.k8s.io/controller-runtime v0.23.1
 	sigs.k8s.io/kustomize/kyaml v0.21.0
 	sigs.k8s.io/yaml v1.6.0
 )
@@ -182,5 +182,5 @@ require (
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/kustomize/api v0.20.1 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
-	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
+	sigs.k8s.io/structured-merge-diff/v6 v6.3.2-0.20260122202528-d9cc6641c482 // indirect
 )
