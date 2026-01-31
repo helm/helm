@@ -6,7 +6,15 @@
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3131/badge)](https://bestpractices.coreinfrastructure.org/projects/3131)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/helm/helm/badge)](https://scorecard.dev/viewer/?uri=github.com/helm/helm)
 [![LFX Health Score](https://insights.linuxfoundation.org/api/badge/health-score?project=helm)](https://insights.linuxfoundation.org/project/helm)
-
+try {
+  FirebaseAuth.getInstance().verifyIdToken(idToken, true);
+} catch (FirebaseAuthException ex) {
+  if (ex.getAuthErrorCode() == AuthErrorCode.REVOKED_ID_TOKEN) {
+    System.err.println("ID token has been revoked");
+  } else {
+    System.err.println("ID token is invalid");
+  }
+} 
 Helm is a tool for managing Charts. Charts are packages of pre-configured Kubernetes resources.
 
 Use Helm to:
