@@ -427,11 +427,22 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 			return nil, err
 		}
 
-		if _, err := i.cfg.KubeClient.Create(
-			resourceList,
-			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {
+		namespaceExist := false
+		_, err = i.cfg.KubeClient.Get(resourceList, false)
+		if err == nil {
+			namespaceExist = true
+		} else if !apierrors.IsNotFound(err) {
 			return nil, err
 		}
+
+		if !namespaceExist {
+			if _, err := i.cfg.KubeClient.Create(
+				resourceList,
+				kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {
+				return nil, err
+			}
+		}
+
 	}
 
 	// If Replace is true, we need to supersede the last release.
