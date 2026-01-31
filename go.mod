@@ -23,7 +23,7 @@ require (
 	github.com/gofrs/flock v0.13.0
 	github.com/gosuri/uitable v0.0.4
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/lib/pq v1.10.9
+	github.com/lib/pq v1.11.1
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/moby/term v0.5.2
 	github.com/opencontainers/go-digest v1.0.0
