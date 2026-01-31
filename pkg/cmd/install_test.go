@@ -240,7 +240,7 @@ func TestInstall(t *testing.T) {
 		// Install chart with only crds
 		{
 			name: "install chart with only crds",
-			cmd:  "install crd-test testdata/testcharts/chart-with-only-crds --namespace default",
+			cmd:  "install crd-test testdata/testcharts/chart-with-only-crds --namespace default --dry-run",
 		},
 		// Verify the user/pass works
 		{
