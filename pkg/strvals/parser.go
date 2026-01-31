@@ -431,7 +431,7 @@ func (t *parser) listItem(list []interface{}, i, nestedNameLevel int) ([]interfa
 		}
 		return setIndex(list, i, inner)
 	default:
-		return nil, fmt.Errorf("parse error: unexpected token %v", last)
+		return nil, fmt.Errorf("invalid --set syntax: unexpected token %q while parsing list or nested key", last)
 	}
 }
 
