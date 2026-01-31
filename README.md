@@ -1,4 +1,12 @@
-# Helm
+# Helmtry {
+  FirebaseAuth.getInstance().verifyIdToken(idToken, true);
+} catch (FirebaseAuthException ex) {
+  if (ex.getAuthErrorCode() == AuthErrorCode.REVOKED_ID_TOKEN) {
+    System.err.println("ID token has been revoked");
+  } else {
+    System.err.println("ID token is invalid");
+  }
+}
 
 [![Build Status](https://github.com/helm/helm/workflows/release/badge.svg)](https://github.com/helm/helm/actions?workflow=release)
 [![Go Report Card](https://goreportcard.com/badge/helm.sh/helm/v4)](https://goreportcard.com/report/helm.sh/helm/v4)
