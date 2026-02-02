@@ -1208,3 +1208,41 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }
+
+func TestInstall_CreateNamespaceAlreadyExists(t *testing.T) {
+	is := assert.New(t)
+
+	// Namespace already exists in cluster
+	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(true))
+
+	instAction := installActionWithConfig(config)
+	instAction.CreateNamespace = true
+	instAction.Namespace = "spaced"
+
+	resi, err := instAction.Run(buildChart(), nil)
+	is.NoError(err)
+
+	res, err := releaserToV1Release(resi)
+	is.NoError(err)
+	is.Equal("spaced", res.Namespace)
+	is.Equal("Install complete", res.Info.Description)
+}
+
+func TestInstall_CreateNamespaceNotExists(t *testing.T) {
+	is := assert.New(t)
+
+	// Empty cluster state, thats mean namespace not present
+	config := actionConfigFixture(t)
+
+	instAction := installActionWithConfig(config)
+	instAction.CreateNamespace = true
+	instAction.Namespace = "spaced"
+
+	resi, err := instAction.Run(buildChart(), nil)
+	is.NoError(err)
+
+	res, err := releaserToV1Release(resi)
+	is.NoError(err)
+	is.Equal("spaced", res.Namespace)
+	is.Equal("Install complete", res.Info.Description)
+}
