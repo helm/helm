@@ -1,0 +1,5 @@
+name: extismv1-str-replace
+version: 1.2.3
+type: postrenderer/v1
+apiVersion: v1
+runtime: extism/v1
