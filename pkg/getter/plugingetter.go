@@ -108,6 +108,7 @@ func (g *getterPlugin) Get(href string, options ...Option) (*bytes.Buffer, error
 		env = append(env, "HELM_DEBUG=1")
 	}
 
+	// TODO optimization: pass this along to Get() instead of re-parsing here
 	u, err := url.Parse(href)
 	if err != nil {
 		return nil, err
@@ -120,6 +121,8 @@ func (g *getterPlugin) Get(href string, options ...Option) (*bytes.Buffer, error
 			Protocol: u.Scheme,
 		},
 		Env: env,
+		// TODO should we pass Stdin, Stdout, and Stderr through Input here to getter plugins?
+		// Stdout: os.Stdout,
 	}
 	output, err := g.plg.Invoke(context.Background(), input)
 	if err != nil {
