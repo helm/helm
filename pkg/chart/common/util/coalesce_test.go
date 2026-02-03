@@ -731,3 +731,37 @@ func TestConcatPrefix(t *testing.T) {
 	assert.Equal(t, "b", concatPrefix("", "b"))
 	assert.Equal(t, "a.b", concatPrefix("a", "b"))
 }
+
+// TestCoalesceValuesEmptyMapWithNils tests the full CoalesceValues scenario
+// from issue #31643 where chart has data: {} and user provides data: {foo: bar, baz: ~}
+func TestCoalesceValuesEmptyMapWithNils(t *testing.T) {
+	is := assert.New(t)
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "test"},
+		Values: map[string]any{
+			"data": map[string]any{}, // empty map in chart defaults
+		},
+	}
+
+	vals := map[string]any{
+		"data": map[string]any{
+			"foo": "bar",
+			"baz": nil, // explicit nil from user
+		},
+	}
+
+	v, err := CoalesceValues(c, vals)
+	is.NoError(err)
+
+	data, ok := v["data"].(map[string]any)
+	is.True(ok, "data is not a map")
+
+	// "foo" should be preserved
+	is.Equal("bar", data["foo"])
+
+	// "baz" should be preserved with nil value since it wasn't in chart defaults
+	_, ok = data["baz"]
+	is.True(ok, "Expected data.baz key to be present but it was removed")
+	is.Nil(data["baz"], "Expected data.baz key to be nil but it is not")
+}
