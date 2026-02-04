@@ -835,10 +835,11 @@ func (m *Manager) loadChartRepositories() (map[string]*repo.ChartRepository, err
 		}
 
 		// TODO: use constructor
-		cr := &repo.ChartRepository{
-			Config:    re,
-			IndexFile: index,
+		cr, err := repo.NewChartRepository(re, m.Getters)
+		if err != nil {
+			return indices, err
 		}
+		cr.IndexFile = index
 		indices[lname] = cr
 	}
 	return indices, nil
