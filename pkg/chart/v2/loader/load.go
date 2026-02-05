@@ -36,6 +36,8 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
+const mergePrefix = "\\*"
+
 // ChartLoader loads a chart.
 type ChartLoader interface {
 	Load() (*chart.Chart, error)
@@ -224,6 +226,7 @@ func LoadValues(data io.Reader) (map[string]interface{}, error) {
 		if err := yaml.Unmarshal(raw, &currentMap); err != nil {
 			return nil, fmt.Errorf("cannot unmarshal yaml document: %w", err)
 		}
+
 		values = MergeMaps(values, currentMap)
 	}
 	return values, nil
@@ -231,19 +234,103 @@ func LoadValues(data io.Reader) (map[string]interface{}, error) {
 
 // MergeMaps merges two maps. If a key exists in both maps, the value from b will be used.
 // If the value is a map, the maps will be merged recursively.
+// If the value is a list, the lists will be merged
 func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
 	out := make(map[string]interface{}, len(a))
 	maps.Copy(out, a)
 	for k, v := range b {
-		if v, ok := v.(map[string]interface{}); ok {
+		if val, ok := v.(map[string]interface{}); ok {
 			if bv, ok := out[k]; ok {
 				if bv, ok := bv.(map[string]interface{}); ok {
-					out[k] = MergeMaps(bv, v)
+					out[k] = MergeMaps(bv, val)
 					continue
 				}
 			}
+		} else {
+			strippedKey := strings.TrimPrefix(k, mergePrefix)
+			if out[k] != nil {
+				out[strippedKey] = out[k]
+				delete(out, k)
+			}
+			if sourceList, ok := out[strippedKey].([]any); ok && strings.HasPrefix(k, mergePrefix) {
+
+				_, isMapSlice := sourceList[0].(map[string]any)
+				if isMapSlice {
+					val, ok := v.([]any)
+					if !ok {
+						// List is explicitly made null on a subsequent file
+						if v == nil {
+							delete(out, strippedKey)
+							continue
+						} else {
+							log.Printf("Property \"%s\" mismatch during merge", strippedKey)
+							continue
+						}
+					}
+
+					out[strippedKey] = MergeMapLists(sourceList, val)
+					continue
+				} else if sourceList, ok := out[strippedKey].([]any); ok {
+					if val, ok := v.([]any); ok {
+						out[strippedKey] = append(sourceList, val...)
+					} else {
+						out[strippedKey] = v
+					}
+					continue
+				}
+			}
+
 		}
 		out[k] = v
 	}
 	return out
+}
+
+// MergeMapLists merges two lists of maps. If a prefix of * is set on a map key,
+// that key will be used to de-duplicate/merge with the source map
+func MergeMapLists(a, b []any) []any {
+	out := a
+	for j, mapEntry := range b {
+		mapEntry, ok := mapEntry.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		var uniqueKey string
+		var dedupValue interface{}
+		for k, v := range mapEntry {
+			if strings.HasPrefix(k, mergePrefix) {
+				uniqueKey = k
+				dedupValue = v
+				bj, ok := b[j].(map[string]any)
+				if !ok {
+					continue
+				}
+				bj[strings.TrimPrefix(uniqueKey, mergePrefix)] = v
+				delete(bj, uniqueKey)
+				break
+			}
+		}
+		if len(uniqueKey) > 0 {
+			strippedMergeKey := strings.TrimPrefix(uniqueKey, mergePrefix)
+
+			for i, sourceMapEntry := range out {
+				sourceMapEntry, ok := sourceMapEntry.(map[string]any)
+				if !ok {
+					continue
+				}
+				for k, v := range sourceMapEntry {
+					if (k == strippedMergeKey || k == uniqueKey) && v == dedupValue {
+						mergedMapEntry := MergeMaps(sourceMapEntry, mapEntry)
+						out[i] = mergedMapEntry
+						break
+					}
+				}
+			}
+		} else {
+			out = append(out, mapEntry)
+		}
+	}
+	return out
+
 }
