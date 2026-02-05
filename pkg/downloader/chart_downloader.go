@@ -357,7 +357,12 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 	}
 
 	if registry.IsOCI(u.String()) {
-		return c.getOciURI(ref, version, u)
+		if c.RegistryClient == nil {
+			return "", nil, fmt.Errorf("unable to lookup ref %s at version '%s', missing registry client", ref, version)
+		}
+
+		digest, OCIref, err := c.RegistryClient.ValidateReference(ref, version, u)
+		return digest, OCIref, err
 	}
 
 	rf, err := loadRepoConfig(c.RepositoryConfig)
