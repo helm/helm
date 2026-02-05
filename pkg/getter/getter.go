@@ -49,6 +49,7 @@ type getterOptions struct {
 	timeout               time.Duration
 	transport             *http.Transport
 	artifactType          string
+	Debug                 bool
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults

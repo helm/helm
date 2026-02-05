@@ -98,6 +98,15 @@ type getterPlugin struct {
 
 func (g *getterPlugin) Get(href string, options ...Option) (*bytes.Buffer, error) {
 	opts := convertOptions(g.options, options)
+	var finalOpts getterOptions
+	for _, opt := range g.options {
+		opt(&finalOpts)
+	}
+
+	env := g.env
+	if finalOpts.Debug {
+		env = append(env, "HELM_DEBUG=1")
+	}
 
 	// TODO optimization: pass this along to Get() instead of re-parsing here
 	u, err := url.Parse(href)
@@ -111,7 +120,7 @@ func (g *getterPlugin) Get(href string, options ...Option) (*bytes.Buffer, error
 			Options:  opts,
 			Protocol: u.Scheme,
 		},
-		Env: g.env,
+		Env: env,
 		// TODO should we pass Stdin, Stdout, and Stderr through Input here to getter plugins?
 		// Stdout: os.Stdout,
 	}

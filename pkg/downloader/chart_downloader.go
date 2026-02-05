@@ -85,6 +85,7 @@ type ChartDownloader struct {
 
 	// Cache specifies the cache implementation to use.
 	Cache Cache
+	Debug bool
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -110,7 +111,6 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	if err != nil {
 		return "", nil, err
 	}
-
 	g, err := c.Getters.ByScheme(u.Scheme)
 	if err != nil {
 		return "", nil, err
@@ -139,9 +139,12 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			}
 		}
 	}
-
 	if !found {
 		c.Options = append(c.Options, getter.WithAcceptHeader("application/gzip,application/octet-stream"))
+
+		if c.Debug {
+			c.Options = append(c.Options, getter.WithDebug(true))
+		}
 
 		data, err = g.Get(u.String(), c.Options...)
 		if err != nil {

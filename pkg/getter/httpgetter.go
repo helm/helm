@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"sync"
@@ -41,6 +42,12 @@ func (g *HTTPGetter) Get(href string, options ...Option) (*bytes.Buffer, error) 
 		opt(&g.opts)
 	}
 	return g.get(href)
+}
+
+func WithDebug(debug bool) Option {
+	return func(o *getterOptions) {
+		o.Debug = debug
+	}
 }
 
 func (g *HTTPGetter) get(href string) (*bytes.Buffer, error) {
@@ -112,8 +119,12 @@ func NewHTTPGetter(options ...Option) (Getter, error) {
 
 func (g *HTTPGetter) httpClient() (*http.Client, error) {
 	if g.opts.transport != nil {
+		var tr http.RoundTripper = g.opts.transport
+		if g.opts.Debug {
+			tr = &debugTransport{transport: tr}
+		}
 		return &http.Client{
-			Transport: g.opts.transport,
+			Transport: tr,
 			Timeout:   g.opts.timeout,
 		}, nil
 	}
@@ -151,10 +162,32 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 		}
 	}
 
+	var tr http.RoundTripper = g.transport
+	if g.opts.Debug {
+		tr = &debugTransport{transport: g.transport}
+	}
+
 	client := &http.Client{
-		Transport: g.transport,
+		Transport: tr,
 		Timeout:   g.opts.timeout,
 	}
 
 	return client, nil
+}
+
+type debugTransport struct {
+	transport http.RoundTripper
+}
+
+func (d *debugTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	slog.Debug("http request", "method", req.Method, "url", req.URL.String())
+
+	resp, err := d.transport.RoundTrip(req)
+	if err != nil {
+		slog.Debug("http request failed", "error", err)
+		return nil, err
+	}
+
+	slog.Debug("http response", "status", resp.Status)
+	return resp, nil
 }
