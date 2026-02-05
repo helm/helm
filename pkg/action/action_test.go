@@ -799,7 +799,7 @@ func TestRenderResources_PostRenderer_Success(t *testing.T) {
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, false, false,
 	)
 
 	assert.NoError(t, err)
@@ -842,7 +842,7 @@ func TestRenderResources_PostRenderer_Error(t *testing.T) {
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, false, false,
 	)
 
 	assert.Error(t, err)
@@ -870,7 +870,7 @@ func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, false, false,
 	)
 
 	assert.Error(t, err)
@@ -892,7 +892,7 @@ func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, false, false,
 	)
 
 	assert.Error(t, err)
@@ -913,7 +913,7 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, false, false,
 	)
 
 	assert.NoError(t, err)
@@ -949,7 +949,7 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		nil, false, false, false,
+		nil, false, false, false, false, false,
 	)
 
 	assert.NoError(t, err)
@@ -973,4 +973,99 @@ func TestInteractWithServer(t *testing.T) {
 	assert.True(t, interactWithServer(DryRunNone))
 	assert.False(t, interactWithServer(DryRunClient))
 	assert.True(t, interactWithServer(DryRunServer))
+}
+
+func TestTransformManifestPath(t *testing.T) {
+	tests := []struct {
+		name             string
+		input            string
+		skipChartNameDir bool
+		skipTemplatesDir bool
+		expected         string
+	}{
+		{
+			name:             "no transformation",
+			input:            "mychart/templates/deployment.yaml",
+			skipChartNameDir: false,
+			skipTemplatesDir: false,
+			expected:         "mychart/templates/deployment.yaml",
+		},
+		{
+			name:             "skip chart name only",
+			input:            "mychart/templates/deployment.yaml",
+			skipChartNameDir: true,
+			skipTemplatesDir: false,
+			expected:         "templates/deployment.yaml",
+		},
+		{
+			name:             "skip templates dir only",
+			input:            "mychart/templates/deployment.yaml",
+			skipChartNameDir: false,
+			skipTemplatesDir: true,
+			expected:         "mychart/deployment.yaml",
+		},
+		{
+			name:             "skip both chart name and templates dir",
+			input:            "mychart/templates/deployment.yaml",
+			skipChartNameDir: true,
+			skipTemplatesDir: true,
+			expected:         "deployment.yaml",
+		},
+		{
+			name:             "subchart path - skip chart name",
+			input:            "mychart/charts/subchart/templates/deployment.yaml",
+			skipChartNameDir: true,
+			skipTemplatesDir: false,
+			expected:         "charts/subchart/templates/deployment.yaml",
+		},
+		{
+			name:             "subchart path - skip templates",
+			input:            "mychart/charts/subchart/templates/deployment.yaml",
+			skipChartNameDir: false,
+			skipTemplatesDir: true,
+			expected:         "mychart/charts/subchart/deployment.yaml",
+		},
+		{
+			name:             "subchart path - skip both",
+			input:            "mychart/charts/subchart/templates/deployment.yaml",
+			skipChartNameDir: true,
+			skipTemplatesDir: true,
+			expected:         "charts/subchart/deployment.yaml",
+		},
+		{
+			name:             "crds path - skip chart name",
+			input:            "mychart/crds/crd.yaml",
+			skipChartNameDir: true,
+			skipTemplatesDir: false,
+			expected:         "crds/crd.yaml",
+		},
+		{
+			name:             "crds path - skip templates (no effect)",
+			input:            "mychart/crds/crd.yaml",
+			skipChartNameDir: false,
+			skipTemplatesDir: true,
+			expected:         "mychart/crds/crd.yaml",
+		},
+		{
+			name:             "single filename - skip both returns original",
+			input:            "deployment.yaml",
+			skipChartNameDir: true,
+			skipTemplatesDir: true,
+			expected:         "deployment.yaml",
+		},
+		{
+			name:             "empty string",
+			input:            "",
+			skipChartNameDir: true,
+			skipTemplatesDir: true,
+			expected:         "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := TransformManifestPath(tt.input, tt.skipChartNameDir, tt.skipTemplatesDir)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
