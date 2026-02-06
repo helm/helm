@@ -26,17 +26,17 @@ import (
 
 func TestToRenderValues(t *testing.T) {
 
-	chartValues := map[string]interface{}{
+	chartValues := map[string]any{
 		"name": "al Rashid",
-		"where": map[string]interface{}{
+		"where": map[string]any{
 			"city":  "Basrah",
 			"title": "caliph",
 		},
 	}
 
-	overrideValues := map[string]interface{}{
+	overrideValues := map[string]any{
 		"name": "Haroun",
-		"where": map[string]interface{}{
+		"where": map[string]any{
 			"city": "Baghdad",
 			"date": "809 CE",
 		},
@@ -67,11 +67,11 @@ func TestToRenderValues(t *testing.T) {
 	}
 
 	// Ensure that the top-level values are all set.
-	metamap := res["Chart"].(map[string]interface{})
+	metamap := res["Chart"].(map[string]any)
 	if name := metamap["Name"]; name.(string) != "test" {
 		t.Errorf("Expected chart name 'test', got %q", name)
 	}
-	relmap := res["Release"].(map[string]interface{})
+	relmap := res["Release"].(map[string]any)
 	if name := relmap["Name"]; name.(string) != "Seven Voyages" {
 		t.Errorf("Expected release name 'Seven Voyages', got %q", name)
 	}
@@ -98,7 +98,7 @@ func TestToRenderValues(t *testing.T) {
 	if vals["name"] != "Haroun" {
 		t.Errorf("Expected 'Haroun', got %q (%v)", vals["name"], vals)
 	}
-	where := vals["where"].(map[string]interface{})
+	where := vals["where"].(map[string]any)
 	expects := map[string]string{
 		"city":  "Baghdad",
 		"date":  "809 CE",
