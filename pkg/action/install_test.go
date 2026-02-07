@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
@@ -44,7 +45,6 @@ import (
 	"k8s.io/client-go/rest/fake"
 
 	ci "helm.sh/helm/v4/pkg/chart"
-	"helm.sh/helm/v4/pkg/cli"
 
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/chart/common"
@@ -95,6 +95,54 @@ func createDummyResourceList(owned bool) kube.ResourceList {
 
 	resInfo.Client = &fake.RESTClient{
 		GroupVersion:         schema.GroupVersion{Group: "apps", Version: "v1"},
+		NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
+		Client: fake.CreateHTTPClient(func(_ *http.Request) (*http.Response, error) {
+			header := http.Header{}
+			header.Set("Content-Type", kuberuntime.ContentTypeJSON)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     header,
+				Body:       body,
+			}, nil
+		}),
+	}
+	var resourceList kube.ResourceList
+	resourceList.Append(&resInfo)
+	return resourceList
+}
+
+func createDummyCRDList(owned bool) kube.ResourceList {
+	obj := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dummyName",
+			Namespace: "spaced",
+		},
+	}
+
+	if owned {
+		obj.Labels = map[string]string{
+			"app.kubernetes.io/managed-by": "Helm",
+		}
+		obj.Annotations = map[string]string{
+			"meta.helm.sh/release-name":      "test-install-release",
+			"meta.helm.sh/release-namespace": "spaced",
+		}
+	}
+
+	resInfo := resource.Info{
+		Name:      "dummyName",
+		Namespace: "spaced",
+		Mapping: &meta.RESTMapping{
+			Resource:         schema.GroupVersionResource{Group: "test", Version: "v1", Resource: "crd"},
+			GroupVersionKind: schema.GroupVersionKind{Group: "test", Version: "v1", Kind: "crd"},
+			Scope:            meta.RESTScopeNamespace,
+		},
+		Object: obj,
+	}
+	body := io.NopCloser(bytes.NewReader([]byte(kuberuntime.EncodeOrDie(appsv1Codec, obj))))
+
+	resInfo.Client = &fake.RESTClient{
+		GroupVersion:         schema.GroupVersion{Group: "test", Version: "v1"},
 		NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
 		Client: fake.CreateHTTPClient(func(_ *http.Request) (*http.Response, error) {
 			header := http.Header{}
@@ -1085,9 +1133,7 @@ func TestInstallSetRegistryClient(t *testing.T) {
 }
 
 func TestInstallCRDs(t *testing.T) {
-	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
-	config.RESTClientGetter = cli.New().RESTClientGetter()
-
+	config := actionConfigFixtureWithDummyResources(t, createDummyCRDList(false))
 	instAction := NewInstall(config)
 
 	mockFile := common.File{
@@ -1097,17 +1143,32 @@ func TestInstallCRDs(t *testing.T) {
 	mockChart := buildChart(withFile(mockFile))
 	crdsToInstall := mockChart.CRDObjects()
 
-	t.Run("fresh installation", func(t *testing.T) {
-		assert.Len(t, crdsToInstall, 1)
-		assert.Equal(t, crdsToInstall[0].File.Data, mockFile.Data)
-		require.NoError(t, instAction.installCRDs(crdsToInstall))
-	})
+	assert.Len(t, crdsToInstall, 1)
+	assert.Equal(t, crdsToInstall[0].File.Data, mockFile.Data)
+	require.NoError(t, instAction.installCRDs(crdsToInstall))
+}
 
-	t.Run("already exist", func(t *testing.T) {
-		assert.Len(t, crdsToInstall, 1)
-		assert.Equal(t, crdsToInstall[0].File.Data, mockFile.Data)
-		require.NoError(t, instAction.installCRDs(crdsToInstall))
-	})
+func TestInstallCRDs_AlreadyExist(t *testing.T) {
+	dummyResources := createDummyCRDList(false)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: dummyResources}
+	mockError := &apierrors.StatusError{ErrStatus: metav1.Status{
+		Status: metav1.StatusFailure,
+		Reason: metav1.StatusReasonAlreadyExists,
+	}}
+	failingKubeClient.CreateError = mockError
+
+	config := actionConfigFixtureWithDummyResources(t, dummyResources)
+	config.KubeClient = &failingKubeClient
+	instAction := NewInstall(config)
+
+	mockFile := common.File{
+		Name: "crds/foo.yaml",
+		Data: []byte("hello"),
+	}
+	mockChart := buildChart(withFile(mockFile))
+	crdsToInstall := mockChart.CRDObjects()
+
+	assert.Nil(t, instAction.installCRDs(crdsToInstall))
 }
 
 func TestInstallCRDs_KubeClient_BuildError(t *testing.T) {
