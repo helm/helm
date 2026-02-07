@@ -42,7 +42,7 @@ func concatPrefix(a, b string) string {
 //   - Scalar values and arrays are replaced, maps are merged
 //   - A chart has access to all of the variables for it, as well as all of
 //     the values destined for its dependencies.
-func CoalesceValues(chrt chart.Charter, vals map[string]interface{}) (common.Values, error) {
+func CoalesceValues(chrt chart.Charter, vals map[string]any) (common.Values, error) {
 	valsCopy, err := copyValues(vals)
 	if err != nil {
 		return vals, err
@@ -64,7 +64,7 @@ func CoalesceValues(chrt chart.Charter, vals map[string]interface{}) (common.Val
 // Retaining Nils is useful when processes early in a Helm action or business
 // logic need to retain them for when Coalescing will happen again later in the
 // business logic.
-func MergeValues(chrt chart.Charter, vals map[string]interface{}) (common.Values, error) {
+func MergeValues(chrt chart.Charter, vals map[string]any) (common.Values, error) {
 	valsCopy, err := copyValues(vals)
 	if err != nil {
 		return vals, err
@@ -72,22 +72,22 @@ func MergeValues(chrt chart.Charter, vals map[string]interface{}) (common.Values
 	return coalesce(log.Printf, chrt, valsCopy, "", true)
 }
 
-func copyValues(vals map[string]interface{}) (common.Values, error) {
+func copyValues(vals map[string]any) (common.Values, error) {
 	v, err := copystructure.Copy(vals)
 	if err != nil {
 		return vals, err
 	}
 
-	valsCopy := v.(map[string]interface{})
+	valsCopy := v.(map[string]any)
 	// if we have an empty map, make sure it is initialized
 	if valsCopy == nil {
-		valsCopy = make(map[string]interface{})
+		valsCopy = make(map[string]any)
 	}
 
 	return valsCopy, nil
 }
 
-type printFn func(format string, v ...interface{})
+type printFn func(format string, v ...any)
 
 // coalesce coalesces the dest values and the chart values, giving priority to the dest values.
 //
@@ -96,13 +96,13 @@ type printFn func(format string, v ...interface{})
 // Note, the merge argument specifies whether this is being used by MergeValues
 // or CoalesceValues. Coalescing removes null values and their keys in some
 // situations while merging keeps the null values.
-func coalesce(printf printFn, ch chart.Charter, dest map[string]interface{}, prefix string, merge bool) (map[string]interface{}, error) {
+func coalesce(printf printFn, ch chart.Charter, dest map[string]any, prefix string, merge bool) (map[string]any, error) {
 	coalesceValues(printf, ch, dest, prefix, merge)
 	return coalesceDeps(printf, ch, dest, prefix, merge)
 }
 
 // coalesceDeps coalesces the dependencies of the given chart.
-func coalesceDeps(printf printFn, chrt chart.Charter, dest map[string]interface{}, prefix string, merge bool) (map[string]interface{}, error) {
+func coalesceDeps(printf printFn, chrt chart.Charter, dest map[string]any, prefix string, merge bool) (map[string]any, error) {
 	ch, err := chart.NewAccessor(chrt)
 	if err != nil {
 		return dest, err
@@ -114,12 +114,12 @@ func coalesceDeps(printf printFn, chrt chart.Charter, dest map[string]interface{
 		}
 		if c, ok := dest[sub.Name()]; !ok {
 			// If dest doesn't already have the key, create it.
-			dest[sub.Name()] = make(map[string]interface{})
+			dest[sub.Name()] = make(map[string]any)
 		} else if !istable(c) {
 			return dest, fmt.Errorf("type mismatch on %s: %t", sub.Name(), c)
 		}
 		if dv, ok := dest[sub.Name()]; ok {
-			dvmap := dv.(map[string]interface{})
+			dvmap := dv.(map[string]any)
 			subPrefix := concatPrefix(prefix, ch.Name())
 			// Get globals out of dest and merge them into dvmap.
 			coalesceGlobals(printf, dvmap, dest, subPrefix, merge)
@@ -137,19 +137,19 @@ func coalesceDeps(printf printFn, chrt chart.Charter, dest map[string]interface{
 // coalesceGlobals copies the globals out of src and merges them into dest.
 //
 // For convenience, returns dest.
-func coalesceGlobals(printf printFn, dest, src map[string]interface{}, prefix string, _ bool) {
-	var dg, sg map[string]interface{}
+func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ bool) {
+	var dg, sg map[string]any
 
 	if destglob, ok := dest[common.GlobalKey]; !ok {
-		dg = make(map[string]interface{})
-	} else if dg, ok = destglob.(map[string]interface{}); !ok {
+		dg = make(map[string]any)
+	} else if dg, ok = destglob.(map[string]any); !ok {
 		printf("warning: skipping globals because destination %s is not a table.", common.GlobalKey)
 		return
 	}
 
 	if srcglob, ok := src[common.GlobalKey]; !ok {
-		sg = make(map[string]interface{})
-	} else if sg, ok = srcglob.(map[string]interface{}); !ok {
+		sg = make(map[string]any)
+	} else if sg, ok = srcglob.(map[string]any); !ok {
 		printf("warning: skipping globals because source %s is not a table.", common.GlobalKey)
 		return
 	}
@@ -160,12 +160,12 @@ func coalesceGlobals(printf printFn, dest, src map[string]interface{}, prefix st
 	// tables in globals.
 	for key, val := range sg {
 		if istable(val) {
-			vv := copyMap(val.(map[string]interface{}))
+			vv := copyMap(val.(map[string]any))
 			if destv, ok := dg[key]; !ok {
 				// Here there is no merge. We're just adding.
 				dg[key] = vv
 			} else {
-				if destvmap, ok := destv.(map[string]interface{}); !ok {
+				if destvmap, ok := destv.(map[string]any); !ok {
 					printf("Conflict: cannot merge map onto non-map for %q. Skipping.", key)
 				} else {
 					// Basically, we reverse order of coalesce here to merge
@@ -189,8 +189,8 @@ func coalesceGlobals(printf printFn, dest, src map[string]interface{}, prefix st
 	dest[common.GlobalKey] = dg
 }
 
-func copyMap(src map[string]interface{}) map[string]interface{} {
-	m := make(map[string]interface{}, len(src))
+func copyMap(src map[string]any) map[string]any {
+	m := make(map[string]any, len(src))
 	maps.Copy(m, src)
 	return m
 }
@@ -198,7 +198,7 @@ func copyMap(src map[string]interface{}) map[string]interface{} {
 // coalesceValues builds up a values map for a particular chart.
 //
 // Values in v will override the values in the chart.
-func coalesceValues(printf printFn, c chart.Charter, v map[string]interface{}, prefix string, merge bool) {
+func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix string, merge bool) {
 	ch, err := chart.NewAccessor(c)
 	if err != nil {
 		return
@@ -210,7 +210,7 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]interface{}, p
 	// the original c.Values is altered. Creating a deep copy stops the problem.
 	// This section is fault-tolerant as there is no ability to return an error.
 	valuesCopy, err := copystructure.Copy(ch.Values())
-	var vc map[string]interface{}
+	var vc map[string]any
 	var ok bool
 	if err != nil {
 		// If there is an error something is wrong with copying c.Values it
@@ -220,7 +220,7 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]interface{}, p
 		printf("warning: unable to copy values, err: %s", err)
 		vc = ch.Values()
 	} else {
-		vc, ok = valuesCopy.(map[string]interface{})
+		vc, ok = valuesCopy.(map[string]any)
 		if !ok {
 			// c.Values has a map[string]interface{} structure. If the copy of
 			// it cannot be treated as map[string]interface{} there is something
@@ -238,9 +238,9 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]interface{}, p
 				// This allows Helm's various sources of values (value files or --set) to
 				// remove incompatible keys from any previous chart, file, or set values.
 				delete(v, key)
-			} else if dest, ok := value.(map[string]interface{}); ok {
+			} else if dest, ok := value.(map[string]any); ok {
 				// if v[key] is a table, merge nv's val table into v[key].
-				src, ok := val.(map[string]interface{})
+				src, ok := val.(map[string]any)
 				if !ok {
 					// If the original value is nil, there is nothing to coalesce, so we don't print
 					// the warning
@@ -283,18 +283,18 @@ func childChartMergeTrue(chrt chart.Charter, key string, merge bool) bool {
 // CoalesceTables merges a source map into a destination map.
 //
 // dest is considered authoritative.
-func CoalesceTables(dst, src map[string]interface{}) map[string]interface{} {
+func CoalesceTables(dst, src map[string]any) map[string]any {
 	return coalesceTablesFullKey(log.Printf, dst, src, "", false)
 }
 
-func MergeTables(dst, src map[string]interface{}) map[string]interface{} {
+func MergeTables(dst, src map[string]any) map[string]any {
 	return coalesceTablesFullKey(log.Printf, dst, src, "", true)
 }
 
 // coalesceTablesFullKey merges a source map into a destination map.
 //
 // dest is considered authoritative.
-func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, prefix string, merge bool) map[string]interface{} {
+func coalesceTablesFullKey(printf printFn, dst, src map[string]any, prefix string, merge bool) map[string]any {
 	// When --reuse-values is set but there are no modifications yet, return new values
 	if src == nil {
 		return dst
@@ -330,7 +330,7 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 			dst[key] = val
 		} else if istable(val) {
 			if istable(dv) {
-				coalesceTablesFullKey(printf, dv.(map[string]interface{}), val.(map[string]interface{}), fullkey, merge)
+				coalesceTablesFullKey(printf, dv.(map[string]any), val.(map[string]any), fullkey, merge)
 			} else {
 				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
 			}
@@ -342,7 +342,7 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 }
 
 // istable is a special-purpose function to see if the present thing matches the definition of a YAML table.
-func istable(v interface{}) bool {
-	_, ok := v.(map[string]interface{})
+func istable(v any) bool {
+	_, ok := v.(map[string]any)
 	return ok
 }
