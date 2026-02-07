@@ -73,6 +73,13 @@ func (suite *HTTPRegistryClientTestSuite) Test_4_ManInTheMiddle() {
 	suite.True(errors.Is(err, content.ErrMismatchedDigest))
 }
 
+func (suite *HTTPRegistryClientTestSuite) Test_5_ImageIndex() {
+	ref := fmt.Sprintf("%s/testrepo/image-index:0.1.0", suite.FakeRegistryHost)
+
+	_, err := suite.RegistryClient.Pull(ref)
+	suite.Nil(err)
+}
+
 func TestHTTPRegistryClientTestSuite(t *testing.T) {
 	suite.Run(t, new(HTTPRegistryClientTestSuite))
 }

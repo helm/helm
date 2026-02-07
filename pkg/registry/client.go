@@ -566,6 +566,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 
 	// Build allowed media types for chart pull
 	allowedMediaTypes := []string{
+		ocispec.MediaTypeImageIndex,
 		ocispec.MediaTypeImageManifest,
 		ConfigMediaType,
 	}
