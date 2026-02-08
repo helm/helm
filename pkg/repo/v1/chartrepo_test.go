@@ -126,24 +126,20 @@ func TestConcurrencyDownloadIndex(t *testing.T) {
 	// 2) read index.yaml via LoadIndexFile (read operation).
 	// This checks for race conditions and ensures correct behavior under concurrent read/write access.
 	for range 150 {
-		wg.Add(1)
 
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			idx, err := repo.DownloadIndexFile()
 			if err != nil {
 				t.Errorf("Failed to download index file to %s: %v", idx, err)
 			}
-		}()
+		})
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			_, err := LoadIndexFile(indexFName)
 			if err != nil {
 				t.Errorf("Failed to load index file: %v", err)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 }
