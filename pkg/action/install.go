@@ -181,10 +181,22 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 	// We do these one file at a time in the order they were read.
 	totalItems := []*resource.Info{}
 	for _, obj := range crds {
+		if obj.File == nil {
+			return fmt.Errorf("failed to install CRD %s: file is empty", obj.Name)
+		}
+
+		if obj.File.Data == nil {
+			return fmt.Errorf("failed to install CRD %s: file data is empty", obj.Name)
+		}
+
 		// Read in the resources
 		res, err := i.cfg.KubeClient.Build(bytes.NewBuffer(obj.File.Data), false)
 		if err != nil {
 			return fmt.Errorf("failed to install CRD %s: %w", obj.Name, err)
+		}
+
+		if len(res) == 0 {
+			return fmt.Errorf("failed to install CRD %s: resources are empty", obj.Name)
 		}
 
 		// Send them to Kube
@@ -222,27 +234,30 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		// the case when an action configuration is reused for multiple actions,
 		// as otherwise it is later loaded by ourselves when getCapabilities
 		// is called later on in the installation process.
-		if i.cfg.Capabilities != nil {
-			discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient()
+		if i.cfg.RESTClientGetter != nil {
+			if i.cfg.Capabilities != nil {
+				discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient()
+				if err != nil {
+					return err
+				}
+
+				if discoveryClient != nil {
+					i.cfg.Logger().Debug("clearing discovery cache")
+					discoveryClient.Invalidate()
+					_, _ = discoveryClient.ServerGroups()
+				}
+			}
+
+			// Invalidate the REST mapper, since it will not have the new CRDs
+			// present.
+			restMapper, err := i.cfg.RESTClientGetter.ToRESTMapper()
 			if err != nil {
 				return err
 			}
-
-			i.cfg.Logger().Debug("clearing discovery cache")
-			discoveryClient.Invalidate()
-
-			_, _ = discoveryClient.ServerGroups()
-		}
-
-		// Invalidate the REST mapper, since it will not have the new CRDs
-		// present.
-		restMapper, err := i.cfg.RESTClientGetter.ToRESTMapper()
-		if err != nil {
-			return err
-		}
-		if resettable, ok := restMapper.(meta.ResettableRESTMapper); ok {
-			i.cfg.Logger().Debug("clearing REST mapper cache")
-			resettable.Reset()
+			if resettable, ok := restMapper.(meta.ResettableRESTMapper); ok {
+				i.cfg.Logger().Debug("clearing REST mapper cache")
+				resettable.Reset()
+			}
 		}
 	}
 	return nil
