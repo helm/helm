@@ -298,7 +298,7 @@ func TestMergeValuesCLI(t *testing.T) {
 	tests := []struct {
 		name     string
 		opts     Options
-		expected map[string]interface{}
+		expected map[string]any
 		wantErr  bool
 	}{
 		{
@@ -306,8 +306,8 @@ func TestMergeValuesCLI(t *testing.T) {
 			opts: Options{
 				JSONValues: []string{`{"foo": {"bar": "baz"}}`},
 			},
-			expected: map[string]interface{}{
-				"foo": map[string]interface{}{
+			expected: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 				},
 			},
@@ -317,9 +317,9 @@ func TestMergeValuesCLI(t *testing.T) {
 			opts: Options{
 				JSONValues: []string{"foo.bar=[1,2,3]"},
 			},
-			expected: map[string]interface{}{
-				"foo": map[string]interface{}{
-					"bar": []interface{}{1.0, 2.0, 3.0},
+			expected: map[string]any{
+				"foo": map[string]any{
+					"bar": []any{1.0, 2.0, 3.0},
 				},
 			},
 		},
@@ -328,7 +328,7 @@ func TestMergeValuesCLI(t *testing.T) {
 			opts: Options{
 				Values: []string{"foo=bar"},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"foo": "bar",
 			},
 		},
@@ -337,7 +337,7 @@ func TestMergeValuesCLI(t *testing.T) {
 			opts: Options{
 				StringValues: []string{"foo=123"},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"foo": "123",
 			},
 		},
@@ -346,7 +346,7 @@ func TestMergeValuesCLI(t *testing.T) {
 			opts: Options{
 				LiteralValues: []string{"foo=true"},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"foo": "true",
 			},
 		},
@@ -358,7 +358,7 @@ func TestMergeValuesCLI(t *testing.T) {
 				JSONValues:    []string{`{"c": "foo1"}`},
 				LiteralValues: []string{"d=bar1"},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"a": "foo",
 				"b": "bar",
 				"c": "foo1",
