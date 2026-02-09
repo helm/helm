@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package fs
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -234,7 +235,7 @@ func TestCopyDirFail_SrcIsNotDir(t *testing.T) {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 
-	if err != errSrcNotDir {
+	if !errors.Is(err, errSrcNotDir) {
 		t.Fatalf("expected %v error for CopyDir(%s, %s), got %s", errSrcNotDir, srcdir, dstdir, err)
 	}
 
@@ -260,7 +261,7 @@ func TestCopyDirFail_DstExists(t *testing.T) {
 		t.Fatalf("expected error for CopyDir(%s, %s), got none", srcdir, dstdir)
 	}
 
-	if err != errDstExist {
+	if !errors.Is(err, errDstExist) {
 		t.Fatalf("expected %v error for CopyDir(%s, %s), got %s", errDstExist, srcdir, dstdir, err)
 	}
 }
