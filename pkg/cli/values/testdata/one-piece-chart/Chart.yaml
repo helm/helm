@@ -1,0 +1,6 @@
+apiVersion: v2
+name: onepiece-novals
+description: Helm chart for testing --values-directory precedence with no defaults
+type: application
+version: 0.1.0
+appVersion: "1.0"
