@@ -16,6 +16,7 @@ limitations under the License.
 package util
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -44,6 +45,7 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, 
 			if len(c) > 0 {
 				// retrieve value
 				vv, err := cvals.PathValue(cpath + c)
+				var errNoValue common.ErrNoValue
 				if err == nil {
 					// if not bool, warn
 					if bv, ok := vv.(bool); ok {
@@ -51,7 +53,7 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, 
 						break
 					}
 					slog.Warn("returned non-bool value", "path", c, "chart", r.Name)
-				} else if _, ok := err.(common.ErrNoValue); !ok {
+				} else if !errors.As(err, &errNoValue) {
 					// this is a real error
 					slog.Warn("the method PathValue returned error", slog.Any("error", err))
 				}
