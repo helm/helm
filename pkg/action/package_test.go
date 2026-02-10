@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"errors"
 	"os"
 	"path"
 	"testing"
@@ -146,7 +147,7 @@ func TestValidateVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := validateVersion(tt.args.ver); err != nil {
-				if err != tt.wantErr {
+				if !errors.Is(err, tt.wantErr) {
 					t.Errorf("Expected {%v}, got {%v}", tt.wantErr, err)
 				}
 
