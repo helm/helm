@@ -599,3 +599,40 @@ func TestExtractPluginInSubdirectory(t *testing.T) {
 		t.Errorf("Expected plugin root to be %s but got %s", expectedRoot, pluginRoot)
 	}
 }
+
+func TestHttpInstaller_Path(t *testing.T) {
+	tests := []struct {
+		name           string
+		source         string
+		helmPluginsDir string
+		expectPath     string
+	}{
+		{
+			name:           "default helm plugins dir",
+			source:         "https://example.com/fake-plugin-0.0.1.tar.gz",
+			helmPluginsDir: "",
+			expectPath:     helmpath.DataPath("plugins", "fake-plugin"),
+		}, {
+			name:           "custom helm plugins dir",
+			source:         "https://example.com/fake-plugin-0.0.1.tar.gz",
+			helmPluginsDir: "/foo/bar",
+			expectPath:     "/foo/bar/fake-plugin",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.helmPluginsDir != "" {
+				t.Setenv("HELM_PLUGINS", tt.helmPluginsDir)
+			}
+			installer, err := NewHTTPInstaller(tt.source)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			path := installer.Path()
+			if path != tt.expectPath {
+				t.Errorf("expected path %s, got %s", tt.expectPath, path)
+			}
+		})
+	}
+}
