@@ -42,8 +42,8 @@ type Options struct {
 
 // MergeValues merges values from files specified via -f/--values and directly
 // via --set-json, --set, --set-string, or --set-file, marshaling them to YAML
-func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, error) {
-	base := map[string]interface{}{}
+func (opts *Options) MergeValues(p getter.Providers) (map[string]any, error) {
+	base := map[string]any{}
 
 	// User specified a values files via -f/--values
 	for _, filePath := range opts.ValueFiles {
@@ -64,7 +64,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 		trimmedValue := strings.TrimSpace(value)
 		if len(trimmedValue) > 0 && trimmedValue[0] == '{' {
 			// If value is JSON object format, parse it as map
-			var jsonMap map[string]interface{}
+			var jsonMap map[string]any
 			if err := json.Unmarshal([]byte(trimmedValue), &jsonMap); err != nil {
 				return nil, fmt.Errorf("failed parsing --set-json data JSON: %s", value)
 			}
@@ -93,7 +93,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 
 	// User specified a value via --set-file
 	for _, value := range opts.FileValues {
-		reader := func(rs []rune) (interface{}, error) {
+		reader := func(rs []rune) (any, error) {
 			bytes, err := readFile(string(rs), p)
 			if err != nil {
 				return nil, err

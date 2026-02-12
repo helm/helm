@@ -19,21 +19,21 @@ import (
 	common "helm.sh/helm/v4/pkg/chart/common"
 )
 
-type Charter interface{}
+type Charter any
 
-type Dependency interface{}
+type Dependency any
 
 type Accessor interface {
 	Name() string
 	IsRoot() bool
-	MetadataAsMap() map[string]interface{}
+	MetadataAsMap() map[string]any
 	Files() []*common.File
 	Templates() []*common.File
 	ChartFullPath() string
 	IsLibraryChart() bool
 	Dependencies() []Charter
 	MetaDependencies() []Dependency
-	Values() map[string]interface{}
+	Values() map[string]any
 	Schema() []byte
 	Deprecated() bool
 }

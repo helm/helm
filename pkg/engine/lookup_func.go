@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type lookupFunc = func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error)
+type lookupFunc = func(apiversion string, resource string, namespace string, name string) (map[string]any, error)
 
 // NewLookupFunction returns a function for looking up objects in the cluster.
 //
@@ -55,11 +55,11 @@ func (c clientProviderFromConfig) GetClientFor(apiVersion, kind string) (dynamic
 }
 
 func newLookupFunction(clientProvider ClientProvider) lookupFunc {
-	return func(apiversion string, kind string, namespace string, name string) (map[string]interface{}, error) {
+	return func(apiversion string, kind string, namespace string, name string) (map[string]any, error) {
 		var client dynamic.ResourceInterface
 		c, namespaced, err := clientProvider.GetClientFor(apiversion, kind)
 		if err != nil {
-			return map[string]interface{}{}, err
+			return map[string]any{}, err
 		}
 		if namespaced && namespace != "" {
 			client = c.Namespace(namespace)
@@ -73,9 +73,9 @@ func newLookupFunction(clientProvider ClientProvider) lookupFunc {
 				if apierrors.IsNotFound(err) {
 					// Just return an empty interface when the object was not found.
 					// That way, users can use `if not (lookup ...)` in their templates.
-					return map[string]interface{}{}, nil
+					return map[string]any{}, nil
 				}
-				return map[string]interface{}{}, err
+				return map[string]any{}, err
 			}
 			return obj.UnstructuredContent(), nil
 		}
@@ -85,9 +85,9 @@ func newLookupFunction(clientProvider ClientProvider) lookupFunc {
 			if apierrors.IsNotFound(err) {
 				// Just return an empty interface when the object was not found.
 				// That way, users can use `if not (lookup ...)` in their templates.
-				return map[string]interface{}{}, nil
+				return map[string]any{}, nil
 			}
-			return map[string]interface{}{}, err
+			return map[string]any{}, err
 		}
 		return obj.UnstructuredContent(), nil
 	}

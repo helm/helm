@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -124,7 +125,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				histClient := action.NewHistory(cfg)
 				histClient.Max = 1
 				versions, err := histClient.Run(args[0])
-				if err == driver.ErrReleaseNotFound || isReleaseUninstalled(versions) {
+				if errors.Is(err, driver.ErrReleaseNotFound) || isReleaseUninstalled(versions) {
 					// Only print this to stdout for table output
 					if outfmt == output.Table {
 						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
