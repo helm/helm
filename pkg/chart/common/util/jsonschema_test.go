@@ -138,9 +138,9 @@ func TestValidateAgainstSchema(t *testing.T) {
 	}
 	chrt.AddDependency(subchart)
 
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"name": "John",
-		"subchart": map[string]interface{}{
+		"subchart": map[string]any{
 			"age": 25,
 		},
 	}
@@ -165,9 +165,9 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 	}
 	chrt.AddDependency(subchart)
 
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"name":     "John",
-		"subchart": map[string]interface{}{},
+		"subchart": map[string]any{},
 	}
 
 	var errString string
@@ -200,9 +200,9 @@ func TestValidateAgainstSchema2020(t *testing.T) {
 	}
 	chrt.AddDependency(subchart)
 
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"name": "John",
-		"subchart": map[string]interface{}{
+		"subchart": map[string]any{
 			"data": []any{"hello", 12},
 		},
 	}
@@ -227,9 +227,9 @@ func TestValidateAgainstSchema2020Negative(t *testing.T) {
 	}
 	chrt.AddDependency(subchart)
 
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"name": "John",
-		"subchart": map[string]interface{}{
+		"subchart": map[string]any{
 			"data": []any{12},
 		},
 	}
@@ -294,7 +294,7 @@ func TestValidateAgainstSingleSchema_UnresolvedURN_Ignored(t *testing.T) {
         "$schema": "https://json-schema.org/draft-07/schema#",
         "$ref": "urn:example:helm:schemas:v1:helm-schema-validation-conditions:v1/helmSchemaValidation-true"
     }`)
-	vals := map[string]interface{}{"any": "value"}
+	vals := map[string]any{"any": "value"}
 	if err := ValidateAgainstSingleSchema(vals, schema); err != nil {
 		t.Fatalf("expected no error when URN unresolved is ignored, got: %v", err)
 	}

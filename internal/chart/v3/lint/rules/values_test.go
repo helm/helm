@@ -67,7 +67,7 @@ func TestValidateValuesFileWellFormed(t *testing.T) {
 	`
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(badYaml))
 	valfile := filepath.Join(tmpdir, "values.yaml")
-	if err := validateValuesFile(valfile, map[string]interface{}{}, false); err == nil {
+	if err := validateValuesFile(valfile, map[string]any{}, false); err == nil {
 		t.Fatal("expected values file to fail parsing")
 	}
 }
@@ -78,7 +78,7 @@ func TestValidateValuesFileSchema(t *testing.T) {
 	createTestingSchema(t, tmpdir)
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
-	if err := validateValuesFile(valfile, map[string]interface{}{}, false); err != nil {
+	if err := validateValuesFile(valfile, map[string]any{}, false); err != nil {
 		t.Fatalf("Failed validation with %s", err)
 	}
 }
@@ -91,7 +91,7 @@ func TestValidateValuesFileSchemaFailure(t *testing.T) {
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
 
-	err := validateValuesFile(valfile, map[string]interface{}{}, false)
+	err := validateValuesFile(valfile, map[string]any{}, false)
 	if err == nil {
 		t.Fatal("expected values file to fail parsing")
 	}
@@ -107,7 +107,7 @@ func TestValidateValuesFileSchemaFailureButWithSkipSchemaValidation(t *testing.T
 
 	valfile := filepath.Join(tmpdir, "values.yaml")
 
-	err := validateValuesFile(valfile, map[string]interface{}{}, true)
+	err := validateValuesFile(valfile, map[string]any{}, true)
 	if err != nil {
 		t.Fatal("expected values file to pass parsing because of skipSchemaValidation")
 	}
@@ -115,7 +115,7 @@ func TestValidateValuesFileSchemaFailureButWithSkipSchemaValidation(t *testing.T
 
 func TestValidateValuesFileSchemaOverrides(t *testing.T) {
 	yaml := "username: admin"
-	overrides := map[string]interface{}{
+	overrides := map[string]any{
 		"password": "swordfish",
 	}
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
@@ -131,24 +131,24 @@ func TestValidateValuesFile(t *testing.T) {
 	tests := []struct {
 		name         string
 		yaml         string
-		overrides    map[string]interface{}
+		overrides    map[string]any
 		errorMessage string
 	}{
 		{
 			name:      "value added",
 			yaml:      "username: admin",
-			overrides: map[string]interface{}{"password": "swordfish"},
+			overrides: map[string]any{"password": "swordfish"},
 		},
 		{
 			name:         "value not overridden",
 			yaml:         "username: admin\npassword:",
-			overrides:    map[string]interface{}{"username": "anotherUser"},
+			overrides:    map[string]any{"username": "anotherUser"},
 			errorMessage: "- at '/password': got null, want string",
 		},
 		{
 			name:      "value overridden",
 			yaml:      "username: admin\npassword:",
-			overrides: map[string]interface{}{"username": "anotherUser", "password": "swordfish"},
+			overrides: map[string]any{"username": "anotherUser", "password": "swordfish"},
 		},
 	}
 
