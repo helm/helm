@@ -42,17 +42,17 @@ import (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values map[string]interface{}, namespace string, _ bool) {
+func Templates(linter *support.Linter, values map[string]any, namespace string, _ bool) {
 	TemplatesWithKubeVersion(linter, values, namespace, nil)
 }
 
 // TemplatesWithKubeVersion lints the templates in the Linter, allowing to specify the kubernetes version.
-func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *common.KubeVersion) {
+func TemplatesWithKubeVersion(linter *support.Linter, values map[string]any, namespace string, kubeVersion *common.KubeVersion) {
 	TemplatesWithSkipSchemaValidation(linter, values, namespace, kubeVersion, false)
 }
 
 // TemplatesWithSkipSchemaValidation lints the templates in the Linter, allowing to specify the kubernetes version and if schema validation is enabled or not.
-func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *common.KubeVersion, skipSchemaValidation bool) {
+func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string]any, namespace string, kubeVersion *common.KubeVersion, skipSchemaValidation bool) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 

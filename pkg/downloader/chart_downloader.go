@@ -156,7 +156,11 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	}
 
 	destfile := filepath.Join(dest, name)
-	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
+
+	// Use PlatformAtomicWriteFile to handle platform-specific concurrency concerns
+	// (Windows requires locking to avoid "Access Denied" errors when multiple
+	// processes write the same file)
+	if err := fileutil.PlatformAtomicWriteFile(destfile, data, 0644); err != nil {
 		return destfile, nil, err
 	}
 
@@ -186,7 +190,9 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			}
 		}
 		provfile := destfile + ".prov"
-		if err := fileutil.AtomicWriteFile(provfile, body, 0644); err != nil {
+
+		// Use PlatformAtomicWriteFile for the provenance file as well
+		if err := fileutil.PlatformAtomicWriteFile(provfile, body, 0644); err != nil {
 			return destfile, nil, err
 		}
 
@@ -380,7 +386,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 		if err != nil {
 			// If there is no special config, return the default HTTP client and
 			// swallow the error.
-			if err == ErrNoOwnerRepo {
+			if errors.Is(err, ErrNoOwnerRepo) {
 				// Make sure to add the ref URL as the URL for the getter
 				c.Options = append(c.Options, getter.WithURL(ref))
 				return "", u, nil

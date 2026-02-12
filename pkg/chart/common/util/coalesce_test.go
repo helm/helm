@@ -75,65 +75,65 @@ func TestCoalesceValues(t *testing.T) {
 
 	c := withDeps(&chart.Chart{
 		Metadata: &chart.Metadata{Name: "moby"},
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"back":     "exists",
 			"bottom":   "exists",
 			"front":    "exists",
 			"left":     "exists",
 			"name":     "moby",
-			"nested":   map[string]interface{}{"boat": true},
+			"nested":   map[string]any{"boat": true},
 			"override": "bad",
 			"right":    "exists",
 			"scope":    "moby",
 			"top":      "nope",
-			"global": map[string]interface{}{
-				"nested2": map[string]interface{}{"l0": "moby"},
+			"global": map[string]any{
+				"nested2": map[string]any{"l0": "moby"},
 			},
-			"pequod": map[string]interface{}{
+			"pequod": map[string]any{
 				"boat": "maybe",
-				"ahab": map[string]interface{}{
+				"ahab": map[string]any{
 					"boat":   "maybe",
-					"nested": map[string]interface{}{"boat": "maybe"},
+					"nested": map[string]any{"boat": "maybe"},
 				},
 			},
 		},
 	},
 		withDeps(&chart.Chart{
 			Metadata: &chart.Metadata{Name: "pequod"},
-			Values: map[string]interface{}{
+			Values: map[string]any{
 				"name":  "pequod",
 				"scope": "pequod",
-				"global": map[string]interface{}{
-					"nested2": map[string]interface{}{"l1": "pequod"},
+				"global": map[string]any{
+					"nested2": map[string]any{"l1": "pequod"},
 				},
 				"boat": false,
-				"ahab": map[string]interface{}{
+				"ahab": map[string]any{
 					"boat":   false,
-					"nested": map[string]interface{}{"boat": false},
+					"nested": map[string]any{"boat": false},
 				},
 			},
 		},
 			&chart.Chart{
 				Metadata: &chart.Metadata{Name: "ahab"},
-				Values: map[string]interface{}{
-					"global": map[string]interface{}{
-						"nested":  map[string]interface{}{"foo": "bar", "foo2": "bar2"},
-						"nested2": map[string]interface{}{"l2": "ahab"},
+				Values: map[string]any{
+					"global": map[string]any{
+						"nested":  map[string]any{"foo": "bar", "foo2": "bar2"},
+						"nested2": map[string]any{"l2": "ahab"},
 					},
 					"scope":  "ahab",
 					"name":   "ahab",
 					"boat":   true,
-					"nested": map[string]interface{}{"foo": false, "boat": true},
-					"object": map[string]interface{}{"foo": "bar"},
+					"nested": map[string]any{"foo": false, "boat": true},
+					"object": map[string]any{"foo": "bar"},
 				},
 			},
 		),
 		&chart.Chart{
 			Metadata: &chart.Metadata{Name: "spouter"},
-			Values: map[string]interface{}{
+			Values: map[string]any{
 				"scope": "spouter",
-				"global": map[string]interface{}{
-					"nested2": map[string]interface{}{"l1": "spouter"},
+				"global": map[string]any{
+					"nested2": map[string]any{"l1": "spouter"},
 				},
 			},
 		},
@@ -215,21 +215,21 @@ func TestCoalesceValues(t *testing.T) {
 		}
 	}
 
-	if _, ok := v["nested"].(map[string]interface{})["boat"]; ok {
+	if _, ok := v["nested"].(map[string]any)["boat"]; ok {
 		t.Error("Expected nested boat key to be removed, still present")
 	}
 
-	subchart := v["pequod"].(map[string]interface{})
+	subchart := v["pequod"].(map[string]any)
 	if _, ok := subchart["boat"]; ok {
 		t.Error("Expected subchart boat key to be removed, still present")
 	}
 
-	subsubchart := subchart["ahab"].(map[string]interface{})
+	subsubchart := subchart["ahab"].(map[string]any)
 	if _, ok := subsubchart["boat"]; ok {
 		t.Error("Expected sub-subchart ahab boat key to be removed, still present")
 	}
 
-	if _, ok := subsubchart["nested"].(map[string]interface{})["boat"]; ok {
+	if _, ok := subsubchart["nested"].(map[string]any)["boat"]; ok {
 		t.Error("Expected sub-subchart nested boat key to be removed, still present")
 	}
 
@@ -241,7 +241,7 @@ func TestCoalesceValues(t *testing.T) {
 	is.Equal(valsCopy, vals)
 }
 
-func ttpl(tpl string, v map[string]interface{}) (string, error) {
+func ttpl(tpl string, v map[string]any) (string, error) {
 	var b bytes.Buffer
 	tt := template.Must(template.New("t").Parse(tpl))
 	err := tt.Execute(&b, v)
@@ -253,52 +253,52 @@ func TestMergeValues(t *testing.T) {
 
 	c := withDeps(&chart.Chart{
 		Metadata: &chart.Metadata{Name: "moby"},
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"back":     "exists",
 			"bottom":   "exists",
 			"front":    "exists",
 			"left":     "exists",
 			"name":     "moby",
-			"nested":   map[string]interface{}{"boat": true},
+			"nested":   map[string]any{"boat": true},
 			"override": "bad",
 			"right":    "exists",
 			"scope":    "moby",
 			"top":      "nope",
-			"global": map[string]interface{}{
-				"nested2": map[string]interface{}{"l0": "moby"},
+			"global": map[string]any{
+				"nested2": map[string]any{"l0": "moby"},
 			},
 		},
 	},
 		withDeps(&chart.Chart{
 			Metadata: &chart.Metadata{Name: "pequod"},
-			Values: map[string]interface{}{
+			Values: map[string]any{
 				"name":  "pequod",
 				"scope": "pequod",
-				"global": map[string]interface{}{
-					"nested2": map[string]interface{}{"l1": "pequod"},
+				"global": map[string]any{
+					"nested2": map[string]any{"l1": "pequod"},
 				},
 			},
 		},
 			&chart.Chart{
 				Metadata: &chart.Metadata{Name: "ahab"},
-				Values: map[string]interface{}{
-					"global": map[string]interface{}{
-						"nested":  map[string]interface{}{"foo": "bar"},
-						"nested2": map[string]interface{}{"l2": "ahab"},
+				Values: map[string]any{
+					"global": map[string]any{
+						"nested":  map[string]any{"foo": "bar"},
+						"nested2": map[string]any{"l2": "ahab"},
 					},
 					"scope":  "ahab",
 					"name":   "ahab",
 					"boat":   true,
-					"nested": map[string]interface{}{"foo": false, "bar": true},
+					"nested": map[string]any{"foo": false, "bar": true},
 				},
 			},
 		),
 		&chart.Chart{
 			Metadata: &chart.Metadata{Name: "spouter"},
-			Values: map[string]interface{}{
+			Values: map[string]any{
 				"scope": "spouter",
-				"global": map[string]interface{}{
-					"nested2": map[string]interface{}{"l1": "spouter"},
+				"global": map[string]any{
+					"nested2": map[string]any{"l1": "spouter"},
 				},
 			},
 		},
@@ -383,16 +383,16 @@ func TestMergeValues(t *testing.T) {
 		}
 	}
 
-	if _, ok := v["nested"].(map[string]interface{})["boat"]; !ok {
+	if _, ok := v["nested"].(map[string]any)["boat"]; !ok {
 		t.Error("Expected nested boat key to be present but it was removed")
 	}
 
-	subchart := v["pequod"].(map[string]interface{})["ahab"].(map[string]interface{})
+	subchart := v["pequod"].(map[string]any)["ahab"].(map[string]any)
 	if _, ok := subchart["boat"]; !ok {
 		t.Error("Expected subchart boat key to be present but it was removed")
 	}
 
-	if _, ok := subchart["nested"].(map[string]interface{})["bar"]; !ok {
+	if _, ok := subchart["nested"].(map[string]any)["bar"]; !ok {
 		t.Error("Expected subchart nested bar key to be present but it was removed")
 	}
 
@@ -401,28 +401,28 @@ func TestMergeValues(t *testing.T) {
 }
 
 func TestCoalesceTables(t *testing.T) {
-	dst := map[string]interface{}{
+	dst := map[string]any{
 		"name": "Ishmael",
-		"address": map[string]interface{}{
+		"address": map[string]any{
 			"street":  "123 Spouter Inn Ct.",
 			"city":    "Nantucket",
 			"country": nil,
 		},
-		"details": map[string]interface{}{
+		"details": map[string]any{
 			"friends": []string{"Tashtego"},
 		},
 		"boat": "pequod",
 		"hole": nil,
 	}
-	src := map[string]interface{}{
+	src := map[string]any{
 		"occupation": "whaler",
-		"address": map[string]interface{}{
+		"address": map[string]any{
 			"state":   "MA",
 			"street":  "234 Spouter Inn Ct.",
 			"country": "US",
 		},
 		"details": "empty",
-		"boat": map[string]interface{}{
+		"boat": map[string]any{
 			"mast": true,
 		},
 		"hole": "black",
@@ -439,7 +439,7 @@ func TestCoalesceTables(t *testing.T) {
 		t.Errorf("Unexpected occupation: %s", dst["occupation"])
 	}
 
-	addr, ok := dst["address"].(map[string]interface{})
+	addr, ok := dst["address"].(map[string]any)
 	if !ok {
 		t.Fatal("Address went away.")
 	}
@@ -460,7 +460,7 @@ func TestCoalesceTables(t *testing.T) {
 		t.Error("The country is not left out.")
 	}
 
-	if det, ok := dst["details"].(map[string]interface{}); !ok {
+	if det, ok := dst["details"].(map[string]any); !ok {
 		t.Fatalf("Details is the wrong type: %v", dst["details"])
 	} else if _, ok := det["friends"]; !ok {
 		t.Error("Could not find your friends. Maybe you don't have any. :-(")
@@ -474,14 +474,14 @@ func TestCoalesceTables(t *testing.T) {
 		t.Error("The hole still exists.")
 	}
 
-	dst2 := map[string]interface{}{
+	dst2 := map[string]any{
 		"name": "Ishmael",
-		"address": map[string]interface{}{
+		"address": map[string]any{
 			"street":  "123 Spouter Inn Ct.",
 			"city":    "Nantucket",
 			"country": "US",
 		},
-		"details": map[string]interface{}{
+		"details": map[string]any{
 			"friends": []string{"Tashtego"},
 		},
 		"boat": "pequod",
@@ -496,7 +496,7 @@ func TestCoalesceTables(t *testing.T) {
 		t.Errorf("Unexpected name: %s", dst2["name"])
 	}
 
-	addr2, ok := dst2["address"].(map[string]interface{})
+	addr2, ok := dst2["address"].(map[string]any)
 	if !ok {
 		t.Fatal("Address went away.")
 	}
@@ -513,7 +513,7 @@ func TestCoalesceTables(t *testing.T) {
 		t.Errorf("Unexpected Country: %v", addr2["country"])
 	}
 
-	if det2, ok := dst2["details"].(map[string]interface{}); !ok {
+	if det2, ok := dst2["details"].(map[string]any); !ok {
 		t.Fatalf("Details is the wrong type: %v", dst2["details"])
 	} else if _, ok := det2["friends"]; !ok {
 		t.Error("Could not find your friends. Maybe you don't have any. :-(")
@@ -529,28 +529,28 @@ func TestCoalesceTables(t *testing.T) {
 }
 
 func TestMergeTables(t *testing.T) {
-	dst := map[string]interface{}{
+	dst := map[string]any{
 		"name": "Ishmael",
-		"address": map[string]interface{}{
+		"address": map[string]any{
 			"street":  "123 Spouter Inn Ct.",
 			"city":    "Nantucket",
 			"country": nil,
 		},
-		"details": map[string]interface{}{
+		"details": map[string]any{
 			"friends": []string{"Tashtego"},
 		},
 		"boat": "pequod",
 		"hole": nil,
 	}
-	src := map[string]interface{}{
+	src := map[string]any{
 		"occupation": "whaler",
-		"address": map[string]interface{}{
+		"address": map[string]any{
 			"state":   "MA",
 			"street":  "234 Spouter Inn Ct.",
 			"country": "US",
 		},
 		"details": "empty",
-		"boat": map[string]interface{}{
+		"boat": map[string]any{
 			"mast": true,
 		},
 		"hole": "black",
@@ -567,7 +567,7 @@ func TestMergeTables(t *testing.T) {
 		t.Errorf("Unexpected occupation: %s", dst["occupation"])
 	}
 
-	addr, ok := dst["address"].(map[string]interface{})
+	addr, ok := dst["address"].(map[string]any)
 	if !ok {
 		t.Fatal("Address went away.")
 	}
@@ -590,7 +590,7 @@ func TestMergeTables(t *testing.T) {
 		t.Error("The country is left out.")
 	}
 
-	if det, ok := dst["details"].(map[string]interface{}); !ok {
+	if det, ok := dst["details"].(map[string]any); !ok {
 		t.Fatalf("Details is the wrong type: %v", dst["details"])
 	} else if _, ok := det["friends"]; !ok {
 		t.Error("Could not find your friends. Maybe you don't have any. :-(")
@@ -606,14 +606,14 @@ func TestMergeTables(t *testing.T) {
 		t.Error("The hole no longer exists.")
 	}
 
-	dst2 := map[string]interface{}{
+	dst2 := map[string]any{
 		"name": "Ishmael",
-		"address": map[string]interface{}{
+		"address": map[string]any{
 			"street":  "123 Spouter Inn Ct.",
 			"city":    "Nantucket",
 			"country": "US",
 		},
-		"details": map[string]interface{}{
+		"details": map[string]any{
 			"friends": []string{"Tashtego"},
 		},
 		"boat":   "pequod",
@@ -629,7 +629,7 @@ func TestMergeTables(t *testing.T) {
 		t.Errorf("Unexpected name: %s", dst2["name"])
 	}
 
-	addr2, ok := dst2["address"].(map[string]interface{})
+	addr2, ok := dst2["address"].(map[string]any)
 	if !ok {
 		t.Fatal("Address went away.")
 	}
@@ -646,7 +646,7 @@ func TestMergeTables(t *testing.T) {
 		t.Errorf("Unexpected Country: %v", addr2["country"])
 	}
 
-	if det2, ok := dst2["details"].(map[string]interface{}); !ok {
+	if det2, ok := dst2["details"].(map[string]any); !ok {
 		t.Fatalf("Details is the wrong type: %v", dst2["details"])
 	} else if _, ok := det2["friends"]; !ok {
 		t.Error("Could not find your friends. Maybe you don't have any. :-(")
@@ -669,24 +669,24 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 
 	c := withDeps(&chart.Chart{
 		Metadata: &chart.Metadata{Name: "level1"},
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"name": "moby",
 		},
 	},
 		withDeps(&chart.Chart{
 			Metadata: &chart.Metadata{Name: "level2"},
-			Values: map[string]interface{}{
+			Values: map[string]any{
 				"name": "pequod",
 			},
 		},
 			&chart.Chart{
 				Metadata: &chart.Metadata{Name: "level3"},
-				Values: map[string]interface{}{
+				Values: map[string]any{
 					"name": "ahab",
 					"boat": true,
-					"spear": map[string]interface{}{
+					"spear": map[string]any{
 						"tip": true,
-						"sail": map[string]interface{}{
+						"sail": map[string]any{
 							"cotton": true,
 						},
 					},
@@ -695,12 +695,12 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 		),
 	)
 
-	vals := map[string]interface{}{
-		"level2": map[string]interface{}{
-			"level3": map[string]interface{}{
-				"boat": map[string]interface{}{"mast": true},
-				"spear": map[string]interface{}{
-					"tip": map[string]interface{}{
+	vals := map[string]any{
+		"level2": map[string]any{
+			"level3": map[string]any{
+				"boat": map[string]any{"mast": true},
+				"spear": map[string]any{
+					"tip": map[string]any{
 						"sharp": true,
 					},
 					"sail": true,
@@ -710,7 +710,7 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 	}
 
 	warnings := make([]string, 0)
-	printf := func(format string, v ...interface{}) {
+	printf := func(format string, v ...any) {
 		t.Logf(format, v...)
 		warnings = append(warnings, fmt.Sprintf(format, v...))
 	}

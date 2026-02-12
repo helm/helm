@@ -13,18 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v3
+package gates
 
-import "fmt"
+import "helm.sh/helm/v4/pkg/gates"
 
-// ValidationError represents a data validation error.
-type ValidationError string
-
-func (v ValidationError) Error() string {
-	return "validation: " + string(v)
-}
-
-// ValidationErrorf takes a message and formatting options and creates a ValidationError
-func ValidationErrorf(msg string, args ...any) ValidationError {
-	return ValidationError(fmt.Sprintf(msg, args...))
-}
+// ChartV3 is the feature gate for chart API version v3.
+const ChartV3 gates.Gate = "HELM_EXPERIMENTAL_CHART_V3"

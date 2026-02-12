@@ -26,7 +26,7 @@ import (
 func TestParseLiteral(t *testing.T) {
 	cases := []struct {
 		str    string
-		expect map[string]interface{}
+		expect map[string]any
 		err    bool
 	}{
 		{
@@ -35,61 +35,61 @@ func TestParseLiteral(t *testing.T) {
 		},
 		{
 			str:    "name=",
-			expect: map[string]interface{}{"name": ""},
+			expect: map[string]any{"name": ""},
 		},
 		{
 			str:    "name=value",
-			expect: map[string]interface{}{"name": "value"},
+			expect: map[string]any{"name": "value"},
 			err:    false,
 		},
 		{
 			str:    "long_int_string=1234567890",
-			expect: map[string]interface{}{"long_int_string": "1234567890"},
+			expect: map[string]any{"long_int_string": "1234567890"},
 			err:    false,
 		},
 		{
 			str:    "boolean=true",
-			expect: map[string]interface{}{"boolean": "true"},
+			expect: map[string]any{"boolean": "true"},
 			err:    false,
 		},
 		{
 			str:    "is_null=null",
-			expect: map[string]interface{}{"is_null": "null"},
+			expect: map[string]any{"is_null": "null"},
 			err:    false,
 		},
 		{
 			str:    "zero=0",
-			expect: map[string]interface{}{"zero": "0"},
+			expect: map[string]any{"zero": "0"},
 			err:    false,
 		},
 		{
 			str:    "name1=null,name2=value2",
-			expect: map[string]interface{}{"name1": "null,name2=value2"},
+			expect: map[string]any{"name1": "null,name2=value2"},
 			err:    false,
 		},
 		{
 			str:    "name1=value,,,tail",
-			expect: map[string]interface{}{"name1": "value,,,tail"},
+			expect: map[string]any{"name1": "value,,,tail"},
 			err:    false,
 		},
 		{
 			str:    "leading_zeros=00009",
-			expect: map[string]interface{}{"leading_zeros": "00009"},
+			expect: map[string]any{"leading_zeros": "00009"},
 			err:    false,
 		},
 		{
 			str:    "name=one two three",
-			expect: map[string]interface{}{"name": "one two three"},
+			expect: map[string]any{"name": "one two three"},
 			err:    false,
 		},
 		{
 			str:    "outer.inner=value",
-			expect: map[string]interface{}{"outer": map[string]interface{}{"inner": "value"}},
+			expect: map[string]any{"outer": map[string]any{"inner": "value"}},
 			err:    false,
 		},
 		{
 			str:    "outer.middle.inner=value",
-			expect: map[string]interface{}{"outer": map[string]interface{}{"middle": map[string]interface{}{"inner": "value"}}},
+			expect: map[string]any{"outer": map[string]any{"middle": map[string]any{"inner": "value"}}},
 			err:    false,
 		},
 		{
@@ -98,7 +98,7 @@ func TestParseLiteral(t *testing.T) {
 		},
 		{
 			str:    "name1.name2=",
-			expect: map[string]interface{}{"name1": map[string]interface{}{"name2": ""}},
+			expect: map[string]any{"name1": map[string]any{"name2": ""}},
 			err:    false,
 		},
 		{
@@ -111,20 +111,20 @@ func TestParseLiteral(t *testing.T) {
 		},
 		{
 			str:    "name1={value1,value2}",
-			expect: map[string]interface{}{"name1": "{value1,value2}"},
+			expect: map[string]any{"name1": "{value1,value2}"},
 		},
 
 		// List support
 		{
 			str:    "list[0]=foo",
-			expect: map[string]interface{}{"list": []string{"foo"}},
+			expect: map[string]any{"list": []string{"foo"}},
 			err:    false,
 		},
 		{
 			str: "list[0].foo=bar",
-			expect: map[string]interface{}{
-				"list": []interface{}{
-					map[string]interface{}{"foo": "bar"},
+			expect: map[string]any{
+				"list": []any{
+					map[string]any{"foo": "bar"},
 				},
 			},
 			err: false,
@@ -135,7 +135,7 @@ func TestParseLiteral(t *testing.T) {
 		},
 		{
 			str:    "list[3]=bar",
-			expect: map[string]interface{}{"list": []interface{}{nil, nil, nil, "bar"}},
+			expect: map[string]any{"list": []any{nil, nil, nil, "bar"}},
 			err:    false,
 		},
 		{
@@ -144,133 +144,133 @@ func TestParseLiteral(t *testing.T) {
 		},
 		{
 			str:    "noval[0]",
-			expect: map[string]interface{}{"noval": []interface{}{}},
+			expect: map[string]any{"noval": []any{}},
 			err:    false,
 		},
 		{
 			str:    "noval[0]=",
-			expect: map[string]interface{}{"noval": []interface{}{""}},
+			expect: map[string]any{"noval": []any{""}},
 			err:    false,
 		},
 		{
 			str:    "nested[0][0]=1",
-			expect: map[string]interface{}{"nested": []interface{}{[]interface{}{"1"}}},
+			expect: map[string]any{"nested": []any{[]any{"1"}}},
 			err:    false,
 		},
 		{
 			str:    "nested[1][1]=1",
-			expect: map[string]interface{}{"nested": []interface{}{nil, []interface{}{nil, "1"}}},
+			expect: map[string]any{"nested": []any{nil, []any{nil, "1"}}},
 			err:    false,
 		},
 		{
 			str: "name1.name2[0].foo=bar",
-			expect: map[string]interface{}{
-				"name1": map[string]interface{}{
-					"name2": []map[string]interface{}{{"foo": "bar"}},
+			expect: map[string]any{
+				"name1": map[string]any{
+					"name2": []map[string]any{{"foo": "bar"}},
 				},
 			},
 		},
 		{
 			str: "name1.name2[1].foo=bar",
-			expect: map[string]interface{}{
-				"name1": map[string]interface{}{
-					"name2": []map[string]interface{}{nil, {"foo": "bar"}},
+			expect: map[string]any{
+				"name1": map[string]any{
+					"name2": []map[string]any{nil, {"foo": "bar"}},
 				},
 			},
 		},
 		{
 			str: "name1.name2[1].foo=bar",
-			expect: map[string]interface{}{
-				"name1": map[string]interface{}{
-					"name2": []map[string]interface{}{nil, {"foo": "bar"}},
+			expect: map[string]any{
+				"name1": map[string]any{
+					"name2": []map[string]any{nil, {"foo": "bar"}},
 				},
 			},
 		},
 		{
 			str:    "]={}].",
-			expect: map[string]interface{}{"]": "{}]."},
+			expect: map[string]any{"]": "{}]."},
 			err:    false,
 		},
 
 		// issue test cases: , = $ ( ) { } . \ \\
 		{
 			str:    "name=val,val",
-			expect: map[string]interface{}{"name": "val,val"},
+			expect: map[string]any{"name": "val,val"},
 			err:    false,
 		},
 		{
 			str:    "name=val.val",
-			expect: map[string]interface{}{"name": "val.val"},
+			expect: map[string]any{"name": "val.val"},
 			err:    false,
 		},
 		{
 			str:    "name=val=val",
-			expect: map[string]interface{}{"name": "val=val"},
+			expect: map[string]any{"name": "val=val"},
 			err:    false,
 		},
 		{
 			str:    "name=val$val",
-			expect: map[string]interface{}{"name": "val$val"},
+			expect: map[string]any{"name": "val$val"},
 			err:    false,
 		},
 		{
 			str:    "name=(value",
-			expect: map[string]interface{}{"name": "(value"},
+			expect: map[string]any{"name": "(value"},
 			err:    false,
 		},
 		{
 			str:    "name=value)",
-			expect: map[string]interface{}{"name": "value)"},
+			expect: map[string]any{"name": "value)"},
 			err:    false,
 		},
 		{
 			str:    "name=(value)",
-			expect: map[string]interface{}{"name": "(value)"},
+			expect: map[string]any{"name": "(value)"},
 			err:    false,
 		},
 		{
 			str:    "name={value",
-			expect: map[string]interface{}{"name": "{value"},
+			expect: map[string]any{"name": "{value"},
 			err:    false,
 		},
 		{
 			str:    "name=value}",
-			expect: map[string]interface{}{"name": "value}"},
+			expect: map[string]any{"name": "value}"},
 			err:    false,
 		},
 		{
 			str:    "name={value}",
-			expect: map[string]interface{}{"name": "{value}"},
+			expect: map[string]any{"name": "{value}"},
 			err:    false,
 		},
 		{
 			str:    "name={value1,value2}",
-			expect: map[string]interface{}{"name": "{value1,value2}"},
+			expect: map[string]any{"name": "{value1,value2}"},
 			err:    false,
 		},
 		{
 			str:    `name=val\val`,
-			expect: map[string]interface{}{"name": `val\val`},
+			expect: map[string]any{"name": `val\val`},
 			err:    false,
 		},
 		{
 			str:    `name=val\\val`,
-			expect: map[string]interface{}{"name": `val\\val`},
+			expect: map[string]any{"name": `val\\val`},
 			err:    false,
 		},
 		{
 			str:    `name=val\\\val`,
-			expect: map[string]interface{}{"name": `val\\\val`},
+			expect: map[string]any{"name": `val\\\val`},
 			err:    false,
 		},
 		{
 			str:    `name={val,.?*v\0a!l)some`,
-			expect: map[string]interface{}{"name": `{val,.?*v\0a!l)some`},
+			expect: map[string]any{"name": `{val,.?*v\0a!l)some`},
 			err:    false,
 		},
 		{
 			str:    `name=em%GT)tqUDqz,i-\h+Mbqs-!:.m\\rE=mkbM#rR}@{-k@`,
-			expect: map[string]interface{}{"name": `em%GT)tqUDqz,i-\h+Mbqs-!:.m\\rE=mkbM#rR}@{-k@`},
+			expect: map[string]any{"name": `em%GT)tqUDqz,i-\h+Mbqs-!:.m\\rE=mkbM#rR}@{-k@`},
 		},
 	}
 
@@ -307,20 +307,20 @@ func TestParseLiteralInto(t *testing.T) {
 	tests := []struct {
 		input  string
 		input2 string
-		got    map[string]interface{}
-		expect map[string]interface{}
+		got    map[string]any
+		expect map[string]any
 		err    bool
 	}{
 		{
 			input: "outer.inner1=value1,outer.inner3=value3,outer.inner4=4",
-			got: map[string]interface{}{
-				"outer": map[string]interface{}{
+			got: map[string]any{
+				"outer": map[string]any{
 					"inner1": "overwrite",
 					"inner2": "value2",
 				},
 			},
-			expect: map[string]interface{}{
-				"outer": map[string]interface{}{
+			expect: map[string]any{
+				"outer": map[string]any{
 					"inner1": "value1,outer.inner3=value3,outer.inner4=4",
 					"inner2": "value2",
 				}},
@@ -329,9 +329,9 @@ func TestParseLiteralInto(t *testing.T) {
 		{
 			input:  "listOuter[0][0].type=listValue",
 			input2: "listOuter[0][0].status=alive",
-			got:    map[string]interface{}{},
-			expect: map[string]interface{}{
-				"listOuter": [][]interface{}{{map[string]string{
+			got:    map[string]any{},
+			expect: map[string]any{
+				"listOuter": [][]any{{map[string]string{
 					"type":   "listValue",
 					"status": "alive",
 				}}},
@@ -341,9 +341,9 @@ func TestParseLiteralInto(t *testing.T) {
 		{
 			input:  "listOuter[0][0].type=listValue",
 			input2: "listOuter[1][0].status=alive",
-			got:    map[string]interface{}{},
-			expect: map[string]interface{}{
-				"listOuter": [][]interface{}{
+			got:    map[string]any{},
+			expect: map[string]any{
+				"listOuter": [][]any{
 					{
 						map[string]string{"type": "listValue"},
 					},
@@ -357,17 +357,17 @@ func TestParseLiteralInto(t *testing.T) {
 		{
 			input:  "listOuter[0][1][0].type=listValue",
 			input2: "listOuter[0][0][1].status=alive",
-			got: map[string]interface{}{
-				"listOuter": []interface{}{
-					[]interface{}{
-						[]interface{}{
+			got: map[string]any{
+				"listOuter": []any{
+					[]any{
+						[]any{
 							map[string]string{"exited": "old"},
 						},
 					},
 				},
 			},
-			expect: map[string]interface{}{
-				"listOuter": [][][]interface{}{
+			expect: map[string]any{
+				"listOuter": [][][]any{
 					{
 						{
 							map[string]string{"exited": "old"},
@@ -429,13 +429,13 @@ func TestParseLiteralNestedLevels(t *testing.T) {
 
 	tests := []struct {
 		str    string
-		expect map[string]interface{}
+		expect map[string]any
 		err    bool
 		errStr string
 	}{
 		{
 			"outer.middle.inner=value",
-			map[string]interface{}{"outer": map[string]interface{}{"middle": map[string]interface{}{"inner": "value"}}},
+			map[string]any{"outer": map[string]any{"middle": map[string]any{"inner": "value"}}},
 			false,
 			"",
 		},

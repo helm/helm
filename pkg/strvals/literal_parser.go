@@ -106,7 +106,7 @@ func (t *literalParser) key(data map[string]interface{}, nestedNameLevel int) (r
 		case lastRune == '=':
 			// found end of key: swallow the '=' and get the value
 			value, err := t.val()
-			if err == nil && err != io.EOF {
+			if err == nil && !errors.Is(err, io.EOF) {
 				return err
 			}
 			set(data, string(key), string(value))

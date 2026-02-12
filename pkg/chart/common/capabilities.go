@@ -157,7 +157,7 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 
 	v, err := semver.NewVersion(vstr)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse k8s.io/client-go version %q: %v", vstr, err)
+		return nil, fmt.Errorf("unable to parse k8s.io/client-go version %q: %w", vstr, err)
 	}
 
 	kubeVersionMajor := v.Major() + 1
