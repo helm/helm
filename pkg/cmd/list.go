@@ -134,10 +134,9 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.IntVar(&client.Offset, "offset", 0, "next release index in the list, used to offset from start value")
 	f.StringVarP(&client.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
 	f.StringVarP(&client.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2). Works only for secret(default) and configmap storage backends.")
-	f.BoolVarP(&client.All, "all", "a", false, "show all releases without any filter applied")
+	f.BoolVarP(&client.All, "all", "a", true, "show all releases without any filter applied")
 	bindOutputFlag(cmd, &outfmt)
-
-	f.MarkDeprecated("all", "this flag is no longer needed; 'helm list' shows all releases by default and it will be removed in a future release")
+	f.MarkHidden("all")
 
 	return cmd
 }
