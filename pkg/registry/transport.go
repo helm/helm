@@ -48,6 +48,14 @@ const payloadSizeLimit int64 = 16 * 1024 // 16 KiB
 // request and add hooks to report HTTP tracing events.
 type LoggingTransport struct {
 	http.RoundTripper
+	Logger *slog.Logger
+}
+
+func (t *LoggingTransport) log() *slog.Logger {
+	if t.Logger != nil {
+		return t.Logger
+	}
+	return slog.New(slog.DiscardHandler)
 }
 
 // NewTransport creates and returns a new instance of LoggingTransport
@@ -81,14 +89,14 @@ func NewTransport(debug bool) *retry.Transport {
 func (t *LoggingTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	id := requestCount.Add(1) - 1
 
-	slog.Debug(req.Method, "id", id, "url", req.URL, "header", logHeader(req.Header))
+	t.log().Debug(req.Method, "id", id, "url", req.URL, "header", logHeader(req.Header))
 	resp, err = t.RoundTripper.RoundTrip(req)
 	if err != nil {
-		slog.Debug("Response"[:len(req.Method)], "id", id, "error", err)
+		t.log().Debug("Response"[:len(req.Method)], "id", id, "error", err)
 	} else if resp != nil {
-		slog.Debug("Response"[:len(req.Method)], "id", id, "status", resp.Status, "header", logHeader(resp.Header), "body", logResponseBody(resp))
+		t.log().Debug("Response"[:len(req.Method)], "id", id, "status", resp.Status, "header", logHeader(resp.Header), "body", logResponseBody(resp))
 	} else {
-		slog.Debug("Response"[:len(req.Method)], "id", id, "response", "nil")
+		t.log().Debug("Response"[:len(req.Method)], "id", id, "response", "nil")
 	}
 
 	return resp, err

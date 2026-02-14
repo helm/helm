@@ -272,7 +272,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 		return nil, nil, false, err
 	}
 
-	if err := chartutil.ProcessDependencies(chart, vals); err != nil {
+	if err := chartutil.ProcessDependencies(chart, vals, nil); err != nil {
 		return nil, nil, false, err
 	}
 

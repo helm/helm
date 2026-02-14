@@ -76,6 +76,7 @@ type (
 		credentialsStore   credentials.Store
 		httpClient         *http.Client
 		plainHTTP          bool
+		logger             *slog.Logger
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -215,6 +216,20 @@ func ClientOptPlainHTTP() ClientOption {
 	}
 }
 
+// ClientOptLogger returns a function that sets the logger on client options set
+func ClientOptLogger(logger *slog.Logger) ClientOption {
+	return func(client *Client) {
+		client.logger = logger
+	}
+}
+
+func (c *Client) log() *slog.Logger {
+	if c.logger != nil {
+		return c.logger
+	}
+	return slog.New(slog.DiscardHandler)
+}
+
 type (
 	// LoginOption allows specifying various settings on login
 	LoginOption func(*loginOperation)
@@ -227,10 +242,10 @@ type (
 
 // warnIfHostHasPath checks if the host contains a repository path and logs a warning if it does.
 // Returns true if the host contains a path component (i.e., contains a '/').
-func warnIfHostHasPath(host string) bool {
+func warnIfHostHasPath(host string, logger *slog.Logger) bool {
 	if strings.Contains(host, "/") {
 		registryHost := strings.Split(host, "/")[0]
-		slog.Warn("registry login currently only supports registry hostname, not a repository path", "host", host, "suggested", registryHost)
+		logger.Warn("registry login currently only supports registry hostname, not a repository path", "host", host, "suggested", registryHost)
 		return true
 	}
 	return false
@@ -242,7 +257,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		option(&loginOperation{host, c})
 	}
 
-	warnIfHostHasPath(host)
+	warnIfHostHasPath(host, c.log())
 
 	reg, err := remote.NewRegistry(host)
 	if err != nil {

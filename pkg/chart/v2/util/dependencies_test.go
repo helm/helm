@@ -15,6 +15,7 @@ limitations under the License.
 package util
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -117,7 +118,7 @@ func TestDependencyEnabled(t *testing.T) {
 	for _, tc := range tests {
 		c := loadChart(t, "testdata/subpop")
 		t.Run(tc.name, func(t *testing.T) {
-			if err := processDependencyEnabled(c, tc.v, ""); err != nil {
+			if err := processDependencyEnabled(c, tc.v, "", slog.New(slog.DiscardHandler)); err != nil {
 				t.Fatalf("error processing enabled dependencies %v", err)
 			}
 
@@ -219,7 +220,7 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	e["SCBexported2A"] = "blaster"
 	e["global.SC1exported2.all.SC1exported3"] = "SC1expstr"
 
-	if err := processDependencyImportValues(c, false); err != nil {
+	if err := processDependencyImportValues(c, false, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 	cc := common.Values(c.Values)
@@ -259,7 +260,7 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	}
 
 	c = loadChart(t, "testdata/subpop")
-	if err := processDependencyImportValues(c, true); err != nil {
+	if err := processDependencyImportValues(c, true, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 	cc = common.Values(c.Values)
@@ -275,10 +276,10 @@ func TestProcessDependencyImportValues(t *testing.T) {
 func TestProcessDependencyImportValuesFromSharedDependencyToAliases(t *testing.T) {
 	c := loadChart(t, "testdata/chart-with-import-from-aliased-dependencies")
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+	if err := processDependencyEnabled(c, c.Values, "", slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
-	if err := processDependencyImportValues(c, true); err != nil {
+	if err := processDependencyImportValues(c, true, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 	e := make(map[string]string)
@@ -327,7 +328,7 @@ func TestProcessDependencyImportValuesMultiLevelPrecedence(t *testing.T) {
 	e["app2.service.port"] = "8080"
 	e["app3.service.port"] = "9090"
 	e["app4.service.port"] = "1234"
-	if err := processDependencyImportValues(c, true); err != nil {
+	if err := processDependencyImportValues(c, true, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 	cc := common.Values(c.Values)
@@ -354,7 +355,7 @@ func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 	c := loadChart(t, "testdata/import-values-from-enabled-subchart/parent-chart")
 	nameOverride := "parent-chart-prod"
 
-	if err := processDependencyImportValues(c, true); err != nil {
+	if err := processDependencyImportValues(c, true, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("processing import values dependencies %v", err)
 	}
 
@@ -362,7 +363,7 @@ func TestProcessDependencyImportValuesForEnabledCharts(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+	if err := processDependencyEnabled(c, c.Values, "", slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
@@ -427,7 +428,7 @@ func TestDependentChartAliases(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+	if err := processDependencyEnabled(c, c.Values, "", slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
@@ -469,7 +470,7 @@ func TestDependentChartWithSubChartsAbsentInDependency(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+	if err := processDependencyEnabled(c, c.Values, "", slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
@@ -506,7 +507,7 @@ func TestDependentChartsWithSubchartsAllSpecifiedInDependency(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+	if err := processDependencyEnabled(c, c.Values, "", slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
@@ -526,7 +527,7 @@ func TestDependentChartsWithSomeSubchartsSpecifiedInDependency(t *testing.T) {
 		t.Fatalf("expected 2 dependencies for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+	if err := processDependencyEnabled(c, c.Values, "", slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 
@@ -559,7 +560,7 @@ func TestChartWithDependencyAliasedTwiceAndDoublyReferencedSubDependency(t *test
 		t.Fatalf("expected one dependency for this chart, but got %d", len(c.Dependencies()))
 	}
 
-	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+	if err := processDependencyEnabled(c, c.Values, "", slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("expected no errors but got %q", err)
 	}
 

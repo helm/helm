@@ -73,10 +73,11 @@ type searchRepoOptions struct {
 	repoCacheDir   string
 	outputFormat   output.Format
 	failOnNoResult bool
+	logger         *slog.Logger
 }
 
-func newSearchRepoCmd(out io.Writer) *cobra.Command {
-	o := &searchRepoOptions{}
+func newSearchRepoCmd(out io.Writer, logger *slog.Logger) *cobra.Command {
+	o := &searchRepoOptions{logger: logger}
 
 	cmd := &cobra.Command{
 		Use:   "repo [keyword]",
@@ -131,17 +132,17 @@ func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 }
 
 func (o *searchRepoOptions) setupSearchedVersion() {
-	slog.Debug("original chart version", "version", o.version)
+	o.logger.Debug("original chart version", "version", o.version)
 
 	if o.version != "" {
 		return
 	}
 
 	if o.devel { // search for releases and prereleases (alpha, beta, and release candidate releases).
-		slog.Debug("setting version to >0.0.0-0")
+		o.logger.Debug("setting version to >0.0.0-0")
 		o.version = ">0.0.0-0"
 	} else { // search only for stable releases, prerelease versions will be skipped
-		slog.Debug("setting version to >0.0.0")
+		o.logger.Debug("setting version to >0.0.0")
 		o.version = ">0.0.0"
 	}
 }
@@ -190,7 +191,7 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 		f := filepath.Join(o.repoCacheDir, helmpath.CacheIndexFile(n))
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			slog.Warn("repo is corrupt or missing", slog.String("repo", n), slog.Any("error", err))
+			o.logger.Warn("repo is corrupt or missing", slog.String("repo", n), slog.Any("error", err))
 			continue
 		}
 

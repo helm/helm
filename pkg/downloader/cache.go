@@ -48,7 +48,15 @@ var CacheProv = ".prov"
 
 // DiskCache is a cache that stores data on disk.
 type DiskCache struct {
-	Root string
+	Root   string
+	Logger *slog.Logger
+}
+
+func (c *DiskCache) log() *slog.Logger {
+	if c.Logger != nil {
+		return c.Logger
+	}
+	return slog.New(slog.DiscardHandler)
 }
 
 // Get returns a reader for the given key.
@@ -76,7 +84,7 @@ func (c *DiskCache) Put(key [sha256.Size]byte, data io.Reader, cacheType string)
 	// TODO: verify the key and digest of the key are the same.
 	p := c.fileName(key, cacheType)
 	if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
-		slog.Error("failed to create cache directory")
+		c.log().Error("failed to create cache directory")
 		return p, err
 	}
 	return p, fileutil.AtomicWriteFile(p, data, 0644)

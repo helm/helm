@@ -18,6 +18,7 @@ package registry
 
 import (
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -121,6 +122,38 @@ func TestLogin_ResetsForceAttemptOAuth2_OnFailure(t *testing.T) {
 	}
 }
 
+// TestClientOptLogger verifies that the logger option properly injects a custom logger.
+func TestClientOptLogger(t *testing.T) {
+	t.Parallel()
+
+	var buf strings.Builder
+	customHandler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})
+	logger := slog.New(customHandler)
+
+	credFile := filepath.Join(t.TempDir(), "config.json")
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(credFile),
+		ClientOptLogger(logger),
+	)
+	require.NoError(t, err)
+
+	// The client's log() should return the custom logger
+	if c.log().Handler() != customHandler {
+		t.Error("expected client logger to use the custom handler")
+	}
+
+	// Without the option, log() should return a discard handler
+	c2, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(credFile),
+	)
+	require.NoError(t, err)
+
+	// Verify logging to the nil-logger client doesn't panic
+	c2.log().Warn("should not panic")
+}
+
 // TestWarnIfHostHasPath verifies that warnIfHostHasPath correctly detects path components.
 func TestWarnIfHostHasPath(t *testing.T) {
 	t.Parallel()
@@ -159,7 +192,7 @@ func TestWarnIfHostHasPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := warnIfHostHasPath(tt.host)
+			got := warnIfHostHasPath(tt.host, slog.New(slog.DiscardHandler))
 			if got != tt.wantWarn {
 				t.Errorf("warnIfHostHasPath(%q) = %v, want %v", tt.host, got, tt.wantWarn)
 			}

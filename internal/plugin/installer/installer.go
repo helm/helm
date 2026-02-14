@@ -31,6 +31,17 @@ import (
 // ErrMissingMetadata indicates that plugin.yaml is missing.
 var ErrMissingMetadata = errors.New("plugin metadata (plugin.yaml) missing")
 
+// installerLogger extracts a *slog.Logger from an Installer if it provides one.
+func installerLogger(i Installer) *slog.Logger {
+	type logProvider interface {
+		log() *slog.Logger
+	}
+	if lp, ok := i.(logProvider); ok {
+		return lp.log()
+	}
+	return slog.New(slog.DiscardHandler)
+}
+
 // Options contains options for plugin installation.
 type Options struct {
 	// Verify enables signature verification before installation
@@ -77,7 +88,7 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 		return nil, err
 	}
 	if _, pathErr := os.Stat(i.Path()); !os.IsNotExist(pathErr) {
-		slog.Warn("plugin already exists", slog.String("path", i.Path()), slog.Any("error", pathErr))
+		installerLogger(i).Warn("plugin already exists", slog.String("path", i.Path()), slog.Any("error", pathErr))
 		return nil, errors.New("plugin already exists")
 	}
 
@@ -129,7 +140,7 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 // Update updates a plugin.
 func Update(i Installer) error {
 	if _, pathErr := os.Stat(i.Path()); os.IsNotExist(pathErr) {
-		slog.Warn("plugin does not exist", slog.String("path", i.Path()), slog.Any("error", pathErr))
+		installerLogger(i).Warn("plugin does not exist", slog.String("path", i.Path()), slog.Any("error", pathErr))
 		return errors.New("plugin does not exist")
 	}
 	return i.Update()
@@ -160,7 +171,7 @@ func NewForSource(source, version string) (installer Installer, err error) {
 func FindSource(location string) (Installer, error) {
 	installer, err := existingVCSRepo(location)
 	if err != nil && err.Error() == "Cannot detect VCS" {
-		slog.Warn(
+		installerLogger(installer).Warn(
 			"cannot get information about plugin source",
 			slog.String("location", location),
 			slog.Any("error", err),

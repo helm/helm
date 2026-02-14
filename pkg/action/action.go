@@ -129,7 +129,6 @@ func ConfigurationSetLogger(h slog.Handler) ConfigurationOption {
 
 func NewConfiguration(options ...ConfigurationOption) *Configuration {
 	c := &Configuration{}
-	c.SetLogger(slog.Default().Handler())
 
 	for _, o := range options {
 		o(c)
@@ -312,7 +311,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	hs, manifests, err := releaseutil.SortManifests(files, nil, releaseutil.InstallOrder)
+	hs, manifests, err := releaseutil.SortManifests(files, nil, releaseutil.InstallOrder, nil)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.

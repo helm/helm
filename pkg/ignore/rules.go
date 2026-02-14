@@ -36,6 +36,14 @@ const HelmIgnore = ".helmignore"
 // Empty() will create an immutable empty ruleset.
 type Rules struct {
 	patterns []*pattern
+	logger   *slog.Logger
+}
+
+func (r *Rules) log() *slog.Logger {
+	if r.logger != nil {
+		return r.logger
+	}
+	return slog.New(slog.DiscardHandler)
 }
 
 // Empty builds an empty ruleset.
@@ -101,7 +109,7 @@ func (r *Rules) Ignore(path string, fi os.FileInfo) bool {
 	}
 	for _, p := range r.patterns {
 		if p.match == nil {
-			slog.Info("this will be ignored no matcher supplied", "patterns", p.raw)
+			r.log().Info("this will be ignored no matcher supplied", "patterns", p.raw)
 			return false
 		}
 
@@ -176,7 +184,7 @@ func (r *Rules) parseRule(rule string) error {
 			rule = after
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				slog.Error("failed to compile", slog.String("rule", rule), slog.Any("error", err))
+				r.log().Error("failed to compile", slog.String("rule", rule), slog.Any("error", err))
 				return false
 			}
 			return ok
@@ -186,7 +194,7 @@ func (r *Rules) parseRule(rule string) error {
 		p.match = func(n string, _ os.FileInfo) bool {
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				slog.Error(
+				r.log().Error(
 					"failed to compile",
 					slog.String("rule", rule),
 					slog.Any("error", err),
@@ -202,7 +210,7 @@ func (r *Rules) parseRule(rule string) error {
 			n = filepath.Base(n)
 			ok, err := filepath.Match(rule, n)
 			if err != nil {
-				slog.Error("failed to compile", slog.String("rule", rule), slog.Any("error", err))
+				r.log().Error("failed to compile", slog.String("rule", rule), slog.Any("error", err))
 				return false
 			}
 			return ok

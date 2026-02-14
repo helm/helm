@@ -28,15 +28,18 @@ import (
 )
 
 // ProcessDependencies checks through this chart's dependencies, processing accordingly.
-func ProcessDependencies(c *chart.Chart, v common.Values) error {
-	if err := processDependencyEnabled(c, v, ""); err != nil {
+func ProcessDependencies(c *chart.Chart, v common.Values, logger *slog.Logger) error {
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
+	}
+	if err := processDependencyEnabled(c, v, "", logger); err != nil {
 		return err
 	}
-	return processDependencyImportValues(c, true)
+	return processDependencyImportValues(c, true, logger)
 }
 
 // processDependencyConditions disables charts based on condition path value in values
-func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, cpath string) {
+func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, cpath string, logger *slog.Logger) {
 	if reqs == nil {
 		return
 	}
@@ -52,10 +55,10 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, 
 						r.Enabled = bv
 						break
 					}
-					slog.Warn("returned non-bool value", "path", c, "chart", r.Name)
+					logger.Warn("returned non-bool value", "path", c, "chart", r.Name)
 				} else if !errors.As(err, &errNoValue) {
 					// this is a real error
-					slog.Warn("the method PathValue returned error", slog.Any("error", err))
+					logger.Warn("the method PathValue returned error", slog.Any("error", err))
 				}
 			}
 		}
@@ -63,7 +66,7 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, 
 }
 
 // processDependencyTags disables charts based on tags in values
-func processDependencyTags(reqs []*chart.Dependency, cvals common.Values) {
+func processDependencyTags(reqs []*chart.Dependency, cvals common.Values, logger *slog.Logger) {
 	if reqs == nil {
 		return
 	}
@@ -83,7 +86,7 @@ func processDependencyTags(reqs []*chart.Dependency, cvals common.Values) {
 						hasFalse = true
 					}
 				} else {
-					slog.Warn("returned non-bool value", "tag", k, "chart", r.Name)
+					logger.Warn("returned non-bool value", "tag", k, "chart", r.Name)
 				}
 			}
 		}
@@ -142,7 +145,7 @@ func copyMetadata(metadata *chart.Metadata) *chart.Metadata {
 }
 
 // processDependencyEnabled removes disabled charts from dependencies
-func processDependencyEnabled(c *chart.Chart, v map[string]interface{}, path string) error {
+func processDependencyEnabled(c *chart.Chart, v map[string]interface{}, path string, logger *slog.Logger) error {
 	if c.Metadata.Dependencies == nil {
 		return nil
 	}
@@ -185,8 +188,8 @@ Loop:
 		return err
 	}
 	// flag dependencies as enabled/disabled
-	processDependencyTags(c.Metadata.Dependencies, cvals)
-	processDependencyConditions(c.Metadata.Dependencies, cvals, path)
+	processDependencyTags(c.Metadata.Dependencies, cvals, logger)
+	processDependencyConditions(c.Metadata.Dependencies, cvals, path, logger)
 	// make a map of charts to remove
 	rm := map[string]struct{}{}
 	for _, r := range c.Metadata.Dependencies {
@@ -215,7 +218,7 @@ Loop:
 	// recursively call self to process sub dependencies
 	for _, t := range cd {
 		subpath := path + t.Metadata.Name + "."
-		if err := processDependencyEnabled(t, cvals, subpath); err != nil {
+		if err := processDependencyEnabled(t, cvals, subpath, logger); err != nil {
 			return err
 		}
 	}
@@ -249,7 +252,7 @@ func set(path []string, data map[string]interface{}) map[string]interface{} {
 }
 
 // processImportValues merges values from child to parent based on the chart's dependencies' ImportValues field.
-func processImportValues(c *chart.Chart, merge bool) error {
+func processImportValues(c *chart.Chart, merge bool, logger *slog.Logger) error {
 	if c.Metadata.Dependencies == nil {
 		return nil
 	}
@@ -282,7 +285,7 @@ func processImportValues(c *chart.Chart, merge bool) error {
 				// get child table
 				vv, err := cvals.Table(r.Name + "." + child)
 				if err != nil {
-					slog.Warn(
+					logger.Warn(
 						"ImportValues missing table from chart",
 						slog.String("chart", r.Name),
 						slog.Any("error", err),
@@ -303,7 +306,7 @@ func processImportValues(c *chart.Chart, merge bool) error {
 				})
 				vm, err := cvals.Table(r.Name + "." + child)
 				if err != nil {
-					slog.Warn("ImportValues missing table", slog.Any("error", err))
+					logger.Warn("ImportValues missing table", slog.Any("error", err))
 					continue
 				}
 				if merge {
@@ -371,12 +374,12 @@ func istable(v interface{}) bool {
 }
 
 // processDependencyImportValues imports specified chart values from child to parent.
-func processDependencyImportValues(c *chart.Chart, merge bool) error {
+func processDependencyImportValues(c *chart.Chart, merge bool, logger *slog.Logger) error {
 	for _, d := range c.Dependencies() {
 		// recurse
-		if err := processDependencyImportValues(d, merge); err != nil {
+		if err := processDependencyImportValues(d, merge, logger); err != nil {
 			return err
 		}
 	}
-	return processImportValues(c, merge)
+	return processImportValues(c, merge, logger)
 }

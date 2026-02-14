@@ -87,8 +87,8 @@ func (r *SubprocessPluginRuntime) runGetter(input *Input) (*Output, error) {
 	cmd.Stdout = &buf
 	cmd.Stderr = os.Stderr
 
-	slog.Debug("executing plugin command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
-	if err := executeCmd(cmd, r.metadata.Name); err != nil {
+	r.log().Debug("executing plugin command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
+	if err := executeCmd(cmd, r.metadata.Name, r.logger); err != nil {
 		return nil, err
 	}
 

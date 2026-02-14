@@ -18,7 +18,7 @@ package main // import "helm.sh/helm/v4/cmd/helm"
 
 import (
 	"errors"
-	"log/slog"
+	"fmt"
 	"os"
 
 	// Import to initialize client auth plugins.
@@ -37,7 +37,7 @@ func main() {
 
 	cmd, err := helmcmd.NewRootCmd(os.Stdout, os.Args[1:], helmcmd.SetupLogging)
 	if err != nil {
-		slog.Warn("command failed", slog.Any("error", err))
+		fmt.Fprintf(os.Stderr, "Warning: command setup failed: %v\n", err)
 		os.Exit(1)
 	}
 

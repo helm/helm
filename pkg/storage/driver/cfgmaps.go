@@ -53,11 +53,9 @@ type ConfigMaps struct {
 // NewConfigMaps initializes a new ConfigMaps wrapping an implementation of
 // the kubernetes ConfigMapsInterface.
 func NewConfigMaps(impl corev1.ConfigMapInterface) *ConfigMaps {
-	c := &ConfigMaps{
+	return &ConfigMaps{
 		impl: impl,
 	}
-	c.SetLogger(slog.Default().Handler())
-	return c
 }
 
 // Name returns the name of the driver.
