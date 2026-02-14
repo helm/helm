@@ -74,20 +74,21 @@ func newHTTPURLLoader() *HTTPURLLoader {
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
 func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
+	logger := slog.Default()
 	chrt, err := chart.NewAccessor(ch)
 	if err != nil {
 		return err
 	}
 	var sb strings.Builder
 	if chrt.Schema() != nil {
-		slog.Debug("chart name", "chart-name", chrt.Name())
+		logger.Debug("chart name", "chart-name", chrt.Name())
 		err := ValidateAgainstSingleSchema(values, chrt.Schema())
 		if err != nil {
 			fmt.Fprintf(&sb, "%s:\n", chrt.Name())
 			sb.WriteString(err.Error())
 		}
 	}
-	slog.Debug("number of dependencies in the chart", "chart", chrt.Name(), "dependencies", len(chrt.Dependencies()))
+	logger.Debug("number of dependencies in the chart", "chart", chrt.Name(), "dependencies", len(chrt.Dependencies()))
 	// For each dependency, recursively call this function with the coalesced values
 	for _, subchart := range chrt.Dependencies() {
 		sub, err := chart.NewAccessor(subchart)
@@ -122,6 +123,7 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 
 // ValidateAgainstSingleSchema checks that values does not violate the structure laid out in this schema
 func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reterr error) {
+	logger := slog.Default()
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to validate schema: %s", r)
@@ -134,14 +136,14 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 	if err != nil {
 		return err
 	}
-	slog.Debug("unmarshalled JSON schema", "schema", schemaJSON)
+	logger.Debug("unmarshalled JSON schema", "schema", schemaJSON)
 
 	// Configure compiler with loaders for different URL schemes
 	loader := jsonschema.SchemeURLLoader{
 		"file":  jsonschema.FileLoader{},
 		"http":  newHTTPURLLoader(),
 		"https": newHTTPURLLoader(),
-		"urn":   urnLoader{},
+		"urn":   urnLoader{logger: logger},
 	}
 
 	compiler := jsonschema.NewCompiler()
@@ -178,7 +180,9 @@ var URNResolver URNResolverFunc = func(urn string) (any, error) {
 // urnLoader implements resolution for the urn: scheme by delegating to
 // URNResolver. If unresolved, it logs a warning and returns a permissive
 // boolean-true schema to avoid hard failures (back-compat behavior).
-type urnLoader struct{}
+type urnLoader struct {
+	logger *slog.Logger
+}
 
 // warnedURNs ensures we log the unresolved-URN warning only once per URN.
 var warnedURNs sync.Map
@@ -188,7 +192,7 @@ func (l urnLoader) Load(urlStr string) (any, error) {
 		return doc, nil
 	}
 	if _, loaded := warnedURNs.LoadOrStore(urlStr, struct{}{}); !loaded {
-		slog.Warn("unresolved URN reference ignored; using permissive schema", "urn", urlStr)
+		l.logger.Warn("unresolved URN reference ignored; using permissive schema", "urn", urlStr)
 	}
 	return jsonschema.UnmarshalJSON(strings.NewReader("true"))
 }

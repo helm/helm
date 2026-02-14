@@ -92,7 +92,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			client.SetRegistryClient(registryClient)
 
-			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, true)
+			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, true, cfg.Logger())
 			if err != nil {
 				return err
 			}
@@ -105,7 +105,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.Replace = true // Skip the name check
 			client.APIVersions = common.VersionSet(extraAPIs)
 			client.IncludeCRDs = includeCrds
-			rel, err := runInstall(args, client, valueOpts, out)
+			rel, err := runInstall(args, client, valueOpts, out, cfg.Logger())
 
 			if err != nil && !settings.Debug {
 				if rel != nil {
@@ -203,7 +203,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	addInstallFlags(cmd, f, client, valueOpts)
+	addInstallFlags(cmd, f, client, valueOpts, cfg.Logger())
 	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "deprecated")

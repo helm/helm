@@ -102,7 +102,7 @@ By default, the default directories depend on the Operating System. The defaults
 
 var settings = cli.New()
 
-func NewRootCmd(out io.Writer, args []string, logSetup func(bool)) (*cobra.Command, error) {
+func NewRootCmd(out io.Writer, args []string, logSetup func(bool) *slog.Logger) (*cobra.Command, error) {
 	actionConfig := action.NewConfiguration()
 	cmd, err := newRootCmdWithConfig(actionConfig, out, args, logSetup)
 	if err != nil {
@@ -121,16 +121,15 @@ func NewRootCmd(out io.Writer, args []string, logSetup func(bool)) (*cobra.Comma
 	return cmd, nil
 }
 
-// SetupLogging sets up Helm logging used by the Helm client.
+// SetupLogging creates the Helm logger used by the Helm client.
 // This function is passed to the NewRootCmd function to enable logging. Any other
 // application that uses the NewRootCmd function to setup all the Helm commands may
 // use this function to setup logging or their own. Using a custom logging setup function
 // enables applications using Helm commands to integrate with their existing logging
 // system.
 // The debug argument is the value if Helm is set for debugging (i.e. --debug flag)
-func SetupLogging(debug bool) {
-	logger := logging.NewLogger(func() bool { return debug })
-	slog.SetDefault(logger)
+func SetupLogging(debug bool) *slog.Logger {
+	return logging.NewLogger(func() bool { return debug })
 }
 
 // configureColorOutput configures the color output based on the ColorMode setting
@@ -147,7 +146,7 @@ func configureColorOutput(settings *cli.EnvSettings) {
 	}
 }
 
-func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, args []string, logSetup func(bool)) (*cobra.Command, error) {
+func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, args []string, logSetup func(bool) *slog.Logger) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:          "helm",
 		Short:        "The Helm package manager for Kubernetes.",
@@ -177,17 +176,8 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	flags.ParseErrorsAllowlist.UnknownFlags = true
 	flags.Parse(args)
 
-	logSetup(settings.Debug)
-
-	// newRootCmdWithConfig is only called from NewRootCmd. NewRootCmd sets up
-	// NewConfiguration without a custom logger. So, the slog default is used. logSetup
-	// can change the default logger to the one in the logger package. This happens for
-	// the Helm client. This means the actionConfig logger is different from the slog
-	// default logger. If they are different we sync the actionConfig logger to the slog
-	// current default one.
-	if actionConfig.Logger() != slog.Default() {
-		actionConfig.SetLogger(slog.Default().Handler())
-	}
+	logger := logSetup(settings.Debug)
+	actionConfig.SetLogger(logger.Handler())
 
 	// Validate color mode setting
 	switch settings.ColorMode {
@@ -273,7 +263,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 		newLintCmd(out),
 		newPackageCmd(out),
 		newRepoCmd(out),
-		newSearchCmd(out),
+		newSearchCmd(out, logger),
 		newVerifyCmd(out),
 
 		// release commands
@@ -290,7 +280,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 
 		newCompletionCmd(out),
 		newEnvCmd(out),
-		newPluginCmd(out),
+		newPluginCmd(out, logger),
 		newVersionCmd(out),
 
 		// Hidden documentation generator command: 'helm docs'
@@ -303,7 +293,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	)
 
 	// Find and add CLI plugins
-	loadCLIPlugins(cmd, out)
+	loadCLIPlugins(cmd, out, logger)
 
 	// Check for expired repositories
 	checkForExpiredRepos(settings.RepositoryConfig)

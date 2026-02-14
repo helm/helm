@@ -17,7 +17,6 @@ limitations under the License.
 package driver
 
 import (
-	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
@@ -50,9 +49,7 @@ type Memory struct {
 
 // NewMemory initializes a new memory driver.
 func NewMemory() *Memory {
-	m := &Memory{cache: map[string]memReleases{}, namespace: "default"}
-	m.SetLogger(slog.Default().Handler())
-	return m
+	return &Memory{cache: map[string]memReleases{}, namespace: "default"}
 }
 
 // SetNamespace sets a specific namespace in which releases will be accessed.

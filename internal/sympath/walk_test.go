@@ -136,7 +136,7 @@ func TestWalk(t *testing.T) {
 		return mark(info, err, &errors, true)
 	}
 	// Expect no errors.
-	err := Walk(tree.name, markFn)
+	err := Walk(tree.name, markFn, nil)
 	if err != nil {
 		t.Fatalf("no error expected, found: %s", err)
 	}

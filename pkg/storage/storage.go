@@ -339,14 +339,9 @@ func Init(d driver.Driver) *Storage {
 		Driver: d,
 	}
 
-	var h slog.Handler
 	// Get logger from driver if it implements the LoggerSetterGetter interface
 	if ls, ok := d.(logging.LoggerSetterGetter); ok {
-		h = ls.Logger().Handler()
-	} else {
-		// If the driver does not implement the LoggerSetterGetter interface, set the default logger
-		h = slog.Default().Handler()
+		s.SetLogger(ls.Logger().Handler())
 	}
-	s.SetLogger(h)
 	return s
 }

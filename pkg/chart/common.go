@@ -31,20 +31,28 @@ var NewAccessor func(chrt Charter) (Accessor, error) = NewDefaultAccessor //noli
 func NewDefaultAccessor(chrt Charter) (Accessor, error) {
 	switch v := chrt.(type) {
 	case v2chart.Chart:
-		return &v2Accessor{&v}, nil
+		return &v2Accessor{chrt: &v}, nil
 	case *v2chart.Chart:
-		return &v2Accessor{v}, nil
+		return &v2Accessor{chrt: v}, nil
 	case v3chart.Chart:
-		return &v3Accessor{&v}, nil
+		return &v3Accessor{chrt: &v}, nil
 	case *v3chart.Chart:
-		return &v3Accessor{v}, nil
+		return &v3Accessor{chrt: v}, nil
 	default:
 		return nil, errors.New("unsupported chart type")
 	}
 }
 
 type v2Accessor struct {
-	chrt *v2chart.Chart
+	chrt   *v2chart.Chart
+	logger *slog.Logger
+}
+
+func (r *v2Accessor) log() *slog.Logger {
+	if r.logger != nil {
+		return r.logger
+	}
+	return slog.New(slog.DiscardHandler)
 }
 
 func (r *v2Accessor) Name() string {
@@ -63,7 +71,7 @@ func (r *v2Accessor) MetadataAsMap() map[string]any {
 
 	ret, err := structToMap(r.chrt.Metadata)
 	if err != nil {
-		slog.Error("error converting metadata to map", "error", err)
+		r.log().Error("error converting metadata to map", "error", err)
 	}
 	return ret
 }
@@ -113,7 +121,15 @@ func (r *v2Accessor) Deprecated() bool {
 }
 
 type v3Accessor struct {
-	chrt *v3chart.Chart
+	chrt   *v3chart.Chart
+	logger *slog.Logger
+}
+
+func (r *v3Accessor) log() *slog.Logger {
+	if r.logger != nil {
+		return r.logger
+	}
+	return slog.New(slog.DiscardHandler)
 }
 
 func (r *v3Accessor) Name() string {
@@ -132,7 +148,7 @@ func (r *v3Accessor) MetadataAsMap() map[string]any {
 
 	ret, err := structToMap(r.chrt.Metadata)
 	if err != nil {
-		slog.Error("error converting metadata to map", "error", err)
+		r.log().Error("error converting metadata to map", "error", err)
 	}
 	return ret
 }

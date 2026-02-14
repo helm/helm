@@ -36,7 +36,7 @@ type lookupFunc = func(apiversion string, resource string, namespace string, nam
 //
 // If the resource does not exist, no error is raised.
 func NewLookupFunction(config *rest.Config) lookupFunc { //nolint:revive
-	return newLookupFunction(clientProviderFromConfig{config: config})
+	return newLookupFunction(clientProviderFromConfig{config: config}, slog.New(slog.DiscardHandler))
 }
 
 type ClientProvider interface {
@@ -51,10 +51,10 @@ type clientProviderFromConfig struct {
 }
 
 func (c clientProviderFromConfig) GetClientFor(apiVersion, kind string) (dynamic.NamespaceableResourceInterface, bool, error) {
-	return getDynamicClientOnKind(apiVersion, kind, c.config)
+	return getDynamicClientOnKind(apiVersion, kind, c.config, slog.New(slog.DiscardHandler))
 }
 
-func newLookupFunction(clientProvider ClientProvider) lookupFunc {
+func newLookupFunction(clientProvider ClientProvider, logger *slog.Logger) lookupFunc {
 	return func(apiversion string, kind string, namespace string, name string) (map[string]any, error) {
 		var client dynamic.ResourceInterface
 		c, namespaced, err := clientProvider.GetClientFor(apiversion, kind)
@@ -94,11 +94,11 @@ func newLookupFunction(clientProvider ClientProvider) lookupFunc {
 }
 
 // getDynamicClientOnKind returns a dynamic client on an Unstructured type. This client can be further namespaced.
-func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config) (dynamic.NamespaceableResourceInterface, bool, error) {
+func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config, logger *slog.Logger) (dynamic.NamespaceableResourceInterface, bool, error) {
 	gvk := schema.FromAPIVersionAndKind(apiversion, kind)
-	apiRes, err := getAPIResourceForGVK(gvk, config)
+	apiRes, err := getAPIResourceForGVK(gvk, config, logger)
 	if err != nil {
-		slog.Error(
+		logger.Error(
 			"unable to get apiresource",
 			slog.String("groupVersionKind", gvk.String()),
 			slog.Any("error", err),
@@ -112,23 +112,23 @@ func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config)
 	}
 	intf, err := dynamic.NewForConfig(config)
 	if err != nil {
-		slog.Error("unable to get dynamic client", slog.Any("error", err))
+		logger.Error("unable to get dynamic client", slog.Any("error", err))
 		return nil, false, err
 	}
 	res := intf.Resource(gvr)
 	return res, apiRes.Namespaced, nil
 }
 
-func getAPIResourceForGVK(gvk schema.GroupVersionKind, config *rest.Config) (metav1.APIResource, error) {
+func getAPIResourceForGVK(gvk schema.GroupVersionKind, config *rest.Config, logger *slog.Logger) (metav1.APIResource, error) {
 	res := metav1.APIResource{}
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
 	if err != nil {
-		slog.Error("unable to create discovery client", slog.Any("error", err))
+		logger.Error("unable to create discovery client", slog.Any("error", err))
 		return res, err
 	}
 	resList, err := discoveryClient.ServerResourcesForGroupVersion(gvk.GroupVersion().String())
 	if err != nil {
-		slog.Error(
+		logger.Error(
 			"unable to retrieve resource list",
 			slog.String("GroupVersion", gvk.GroupVersion().String()),
 			slog.Any("error", err),

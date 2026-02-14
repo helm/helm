@@ -142,10 +142,37 @@ func TestRootCmdLogger(t *testing.T) {
 		t.Errorf("expected no error, got: '%v'", err)
 	}
 
-	l1 := actionConfig.Logger()
-	l2 := slog.Default()
+	l := actionConfig.Logger()
 
-	if l1.Handler() != l2.Handler() {
-		t.Error("expected actionConfig logger to be the slog default logger")
+	// The actionConfig logger should be set (not the discard handler)
+	if l.Handler() == slog.New(slog.DiscardHandler).Handler() {
+		t.Error("expected actionConfig logger to be set, got discard handler")
+	}
+
+	// The actionConfig logger should NOT be the global default (we no longer set slog.SetDefault)
+	if l.Handler() == slog.Default().Handler() {
+		t.Error("expected actionConfig logger to NOT be the slog default logger")
+	}
+}
+
+func TestRootCmdCustomLogger(t *testing.T) {
+	args := []string{}
+	buf := new(bytes.Buffer)
+	actionConfig := action.NewConfiguration()
+
+	// SDK users should be able to inject a custom logger
+	customHandler := slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+	customLogSetup := func(_ bool) *slog.Logger {
+		return slog.New(customHandler)
+	}
+
+	_, err := newRootCmdWithConfig(actionConfig, buf, args, customLogSetup)
+	if err != nil {
+		t.Errorf("expected no error, got: '%v'", err)
+	}
+
+	// Verify the custom handler was injected into actionConfig
+	if actionConfig.Logger().Handler() != customHandler {
+		t.Error("expected actionConfig logger to use the custom handler")
 	}
 }

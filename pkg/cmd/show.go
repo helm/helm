@@ -88,7 +88,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			output, err := runShow(args, client)
+			output, err := runShow(args, client, cfg.Logger())
 			if err != nil {
 				return err
 			}
@@ -109,7 +109,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			output, err := runShow(args, client)
+			output, err := runShow(args, client, cfg.Logger())
 			if err != nil {
 				return err
 			}
@@ -130,7 +130,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			output, err := runShow(args, client)
+			output, err := runShow(args, client, cfg.Logger())
 			if err != nil {
 				return err
 			}
@@ -151,7 +151,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			output, err := runShow(args, client)
+			output, err := runShow(args, client, cfg.Logger())
 			if err != nil {
 				return err
 			}
@@ -172,7 +172,7 @@ func newShowCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			output, err := runShow(args, client)
+			output, err := runShow(args, client, cfg.Logger())
 			if err != nil {
 				return err
 			}
@@ -211,10 +211,10 @@ func addShowFlags(subCmd *cobra.Command, client *action.Show) {
 	}
 }
 
-func runShow(args []string, client *action.Show) (string, error) {
-	slog.Debug("original chart version", "version", client.Version)
+func runShow(args []string, client *action.Show, logger *slog.Logger) (string, error) {
+	logger.Debug("original chart version", "version", client.Version)
 	if client.Version == "" && client.Devel {
-		slog.Debug("setting version to >0.0.0-0")
+		logger.Debug("setting version to >0.0.0-0")
 		client.Version = ">0.0.0-0"
 	}
 

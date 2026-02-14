@@ -119,7 +119,7 @@ func (t *templateLinter) Lint() {
 
 	// lint ignores import-values
 	// See https://github.com/helm/helm/issues/9658
-	if err := chartutil.ProcessDependencies(chart, t.values); err != nil {
+	if err := chartutil.ProcessDependencies(chart, t.values, nil); err != nil {
 		return
 	}
 

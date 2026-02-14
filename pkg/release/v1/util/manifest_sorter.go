@@ -74,7 +74,10 @@ var events = map[string]release.HookEvent{
 //
 // Files that do not parse into the expected format are simply placed into a map and
 // returned.
-func SortManifests(files map[string]string, _ common.VersionSet, ordering KindSortOrder) ([]*release.Hook, []Manifest, error) {
+func SortManifests(files map[string]string, _ common.VersionSet, ordering KindSortOrder, logger *slog.Logger) ([]*release.Hook, []Manifest, error) {
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
+	}
 	result := &result{}
 
 	var sortedFilePaths []string
@@ -101,7 +104,7 @@ func SortManifests(files map[string]string, _ common.VersionSet, ordering KindSo
 			path:    filePath,
 		}
 
-		if err := manifestFile.sort(result); err != nil {
+		if err := manifestFile.sort(result, logger); err != nil {
 			return result.hooks, result.generic, err
 		}
 	}
@@ -136,7 +139,7 @@ func SortManifests(files map[string]string, _ common.VersionSet, ordering KindSo
 //	 metadata:
 //			annotations:
 //				helm.sh/hook-output-log-policy: hook-succeeded,hook-failed
-func (file *manifestFile) sort(result *result) error {
+func (file *manifestFile) sort(result *result, logger *slog.Logger) error {
 	// Go through manifests in order found in file (function `SplitManifests` creates integer-sortable keys)
 	var sortedEntryKeys []string
 	for entryKey := range file.entries {
@@ -196,7 +199,7 @@ func (file *manifestFile) sort(result *result) error {
 		}
 
 		if isUnknownHook {
-			slog.Info("skipping unknown hooks", "hookTypes", hookTypes)
+			logger.Info("skipping unknown hooks", "hookTypes", hookTypes)
 			continue
 		}
 

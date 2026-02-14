@@ -90,6 +90,16 @@ type IndexFile struct {
 	// Annotations are additional mappings uninterpreted by Helm. They are made available for
 	// other applications to add information to the index file.
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Logger is the structured logger for this index file. It is not serialized.
+	Logger *slog.Logger `json:"-"`
+}
+
+func (i IndexFile) log() *slog.Logger {
+	if i.Logger != nil {
+		return i.Logger
+	}
+	return slog.Default()
 }
 
 // NewIndexFile initializes an index.
@@ -154,7 +164,7 @@ func (i IndexFile) MustAdd(md *chart.Metadata, filename, baseURL, digest string)
 // Deprecated: Use index.MustAdd instead.
 func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 	if err := i.MustAdd(md, filename, baseURL, digest); err != nil {
-		slog.Error("skipping loading invalid entry for chart", "name", md.Name, "version", md.Version, "file", filename, "error", err)
+		i.log().Error("skipping loading invalid entry for chart", "name", md.Name, "version", md.Version, "file", filename, "error", err)
 	}
 }
 
@@ -217,7 +227,7 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 
 		if constraint.Check(test) {
 			if len(version) != 0 {
-				slog.Warn("unable to find exact version requested; falling back to closest available version", "chart", name, "requested", version, "selected", ver.Version)
+				i.log().Warn("unable to find exact version requested; falling back to closest available version", "chart", name, "requested", version, "selected", ver.Version)
 			}
 			return ver, nil
 		}
@@ -359,7 +369,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 	for name, cvs := range i.Entries {
 		for idx, v := range slices.Backward(cvs) {
 			if v == nil {
-				slog.Warn("skipping loading invalid entry for chart: empty entry", "name", name, "source", source)
+				i.log().Warn("skipping loading invalid entry for chart: empty entry", "name", name, "source", source)
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 				continue
 			}
@@ -371,7 +381,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 				v.APIVersion = chart.APIVersionV1
 			}
 			if err := v.Validate(); ignoreSkippableChartValidationError(err) != nil {
-				slog.Warn("skipping loading invalid entry for chart", "name", name, "version", v.Version, "source", source, "error", err)
+				i.log().Warn("skipping loading invalid entry for chart", "name", name, "version", v.Version, "source", source, "error", err)
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}
 		}

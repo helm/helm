@@ -138,7 +138,7 @@ metadata:
 		manifests[o.path] = o.manifest
 	}
 
-	hs, generic, err := SortManifests(manifests, nil, InstallOrder)
+	hs, generic, err := SortManifests(manifests, nil, InstallOrder, nil)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}

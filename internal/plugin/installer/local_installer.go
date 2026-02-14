@@ -39,6 +39,14 @@ type LocalInstaller struct {
 	extractor  Extractor
 	pluginData []byte // Cached plugin data
 	provData   []byte // Cached provenance data
+	logger     *slog.Logger
+}
+
+func (i *LocalInstaller) log() *slog.Logger {
+	if i.logger != nil {
+		return i.logger
+	}
+	return slog.New(slog.DiscardHandler)
 }
 
 // NewLocalInstaller creates a new LocalInstaller.
@@ -97,7 +105,7 @@ func (i *LocalInstaller) installFromDirectory() error {
 	if !isPlugin(i.Source) {
 		return ErrMissingMetadata
 	}
-	slog.Debug("symlinking", "source", i.Source, "path", i.Path())
+	i.log().Debug("symlinking", "source", i.Source, "path", i.Path())
 	return os.Symlink(i.Source, i.Path())
 }
 
@@ -129,7 +137,7 @@ func (i *LocalInstaller) installFromArchive() error {
 	if provData, err := os.ReadFile(provSource); err == nil {
 		provPath := tarballPath + ".prov"
 		if err := os.WriteFile(provPath, provData, 0644); err != nil {
-			slog.Debug("failed to save provenance file", "error", err)
+			i.log().Debug("failed to save provenance file", "error", err)
 		}
 	}
 
@@ -154,13 +162,13 @@ func (i *LocalInstaller) installFromArchive() error {
 	}
 
 	// Copy to the final destination
-	slog.Debug("copying", "source", pluginDir, "path", i.Path())
+	i.log().Debug("copying", "source", pluginDir, "path", i.Path())
 	return fs.CopyDir(pluginDir, i.Path())
 }
 
 // Update updates a local repository
 func (i *LocalInstaller) Update() error {
-	slog.Debug("local repository is auto-updated")
+	i.log().Debug("local repository is auto-updated")
 	return nil
 }
 
