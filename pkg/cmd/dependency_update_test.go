@@ -151,6 +151,132 @@ func TestDependencyUpdateCmd(t *testing.T) {
 	}
 }
 
+func TestDependencyUpdateCmd_Untar(t *testing.T) {
+	srv := setupMockRepoServer(t)
+	defer srv.Stop()
+
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
+
+	chartname := "depup-untar"
+	ch := createTestingMetadata(chartname, srv.URL())
+	if err := chartutil.SaveDir(ch, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	contentCache := t.TempDir()
+	cmd := fmt.Sprintf(
+		"dependency update '%s' --untar --repository-config %s --repository-cache %s --content-cache %s --plain-http",
+		dir(chartname),
+		dir("repositories.yaml"),
+		dir(),
+		contentCache,
+	)
+
+	_, out, err := executeActionCommand(cmd)
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+
+	for _, dependencyName := range []string{"reqtest", "compressedchart"} {
+		unpackedPath := dir(chartname, "charts", dependencyName)
+		if fi, err := os.Stat(unpackedPath); err != nil || !fi.IsDir() {
+			t.Fatalf("Expected unpacked chart directory %q: %v", unpackedPath, err)
+		}
+	}
+
+	for _, archivePath := range []string{
+		dir(chartname, "charts", "reqtest-0.1.0.tgz"),
+		dir(chartname, "charts", "compressedchart-0.1.0.tgz"),
+	} {
+		if _, err := os.Stat(archivePath); !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("Expected chart archive to be deleted %q", archivePath)
+		}
+	}
+
+	_, out, err = executeActionCommand(cmd)
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+}
+
+func TestDependencyUpdateCmd_UntarDir(t *testing.T) {
+	srv := setupMockRepoServer(t)
+	defer srv.Stop()
+
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
+
+	chartname := "depup-untardir"
+	ch := createTestingMetadata(chartname, srv.URL())
+	if err := chartutil.SaveDir(ch, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	contentCache := t.TempDir()
+	cmd := fmt.Sprintf(
+		"dependency update '%s' --untar --untardir vendor/charts --repository-config %s --repository-cache %s --content-cache %s --plain-http",
+		dir(chartname),
+		dir("repositories.yaml"),
+		dir(),
+		contentCache,
+	)
+
+	_, out, err := executeActionCommand(cmd)
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+
+	for _, dependencyName := range []string{"reqtest", "compressedchart"} {
+		unpackedPath := dir(chartname, "vendor", "charts", dependencyName)
+		if fi, err := os.Stat(unpackedPath); err != nil || !fi.IsDir() {
+			t.Fatalf("Expected unpacked chart directory %q: %v", unpackedPath, err)
+		}
+	}
+}
+
+func TestDependencyUpdateCmd_UntarWithAliases(t *testing.T) {
+	srv := setupMockRepoServer(t)
+	defer srv.Stop()
+
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
+
+	chartname := "depup-untar-alias"
+	ch := createTestingMetadataWithAliases(chartname, srv.URL())
+	if err := chartutil.SaveDir(ch, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	contentCache := t.TempDir()
+	cmd := fmt.Sprintf(
+		"dependency update '%s' --untar --repository-config %s --repository-cache %s --content-cache %s --plain-http",
+		dir(chartname),
+		dir("repositories.yaml"),
+		dir(),
+		contentCache,
+	)
+
+	_, out, err := executeActionCommand(cmd)
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+
+	for _, dependencyName := range []string{"cache-a", "cache-b"} {
+		unpackedPath := dir(chartname, "charts", dependencyName)
+		if fi, err := os.Stat(unpackedPath); err != nil || !fi.IsDir() {
+			t.Fatalf("Expected unpacked chart directory %q: %v", unpackedPath, err)
+		}
+	}
+}
+
 func TestDependencyUpdateCmd_DoNotDeleteOldChartsOnError(t *testing.T) {
 	defer resetEnv()()
 	ensure.HelmHome(t)
@@ -295,6 +421,20 @@ func createTestingMetadataForOCI(name, registryURL string) *chart.Chart {
 			Version:    "1.2.3",
 			Dependencies: []*chart.Dependency{
 				{Name: "oci-dependent-chart", Version: "0.1.0", Repository: fmt.Sprintf("oci://%s/u/ocitestuser", registryURL)},
+			},
+		},
+	}
+}
+
+func createTestingMetadataWithAliases(name, baseURL string) *chart.Chart {
+	return &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       name,
+			Version:    "1.2.3",
+			Dependencies: []*chart.Dependency{
+				{Name: "reqtest", Alias: "cache-a", Version: "0.1.0", Repository: baseURL},
+				{Name: "reqtest", Alias: "cache-b", Version: "0.1.0", Repository: baseURL},
 			},
 		},
 	}
