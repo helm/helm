@@ -17,6 +17,7 @@ package provenance
 
 import (
 	"crypto"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -398,8 +399,9 @@ func TestVerify(t *testing.T) {
 		t.Errorf("Expected %s to fail.", testTamperedSigBlock)
 	}
 
-	switch err.(type) {
-	case pgperrors.SignatureError:
+	var errCase0 pgperrors.SignatureError
+	switch {
+	case errors.As(err, &errCase0):
 		t.Logf("Tampered sig block error: %s (%T)", err, err)
 	default:
 		t.Errorf("Expected invalid signature error, got %q (%T)", err, err)
