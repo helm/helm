@@ -64,7 +64,7 @@ func (r *postRendererPlugin) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer
 	input := &plugin.Input{
 		Message: schema.InputMessagePostRendererV1{
 			ExtraArgs: r.args,
-			Manifests: renderedManifests,
+			Manifests: renderedManifests.String(),
 		},
 	}
 	output, err := r.plugin.Invoke(context.Background(), input)
@@ -76,9 +76,9 @@ func (r *postRendererPlugin) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer
 
 	// If the binary returned almost nothing, it's likely that it didn't
 	// successfully render anything
-	if len(bytes.TrimSpace(outputMessage.Manifests.Bytes())) == 0 {
+	if len(bytes.TrimSpace([]byte(outputMessage.Manifests))) == 0 {
 		return nil, fmt.Errorf("post-renderer %q produced empty output", r.plugin.Metadata().Name)
 	}
 
-	return outputMessage.Manifests, nil
+	return bytes.NewBufferString(outputMessage.Manifests), nil
 }
