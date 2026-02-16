@@ -31,6 +31,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/repo/v1"
 	"helm.sh/helm/v4/pkg/repo/v1/repotest"
@@ -61,6 +62,7 @@ func TestFindChartURL(t *testing.T) {
 		Out:              &b,
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
+		Getters:          getter.All(cli.New()),
 	}
 	repos, err := m.loadChartRepositories()
 	if err != nil {
@@ -235,6 +237,7 @@ func TestDownloadAll(t *testing.T) {
 		RepositoryConfig: repoConfig,
 		RepositoryCache:  repoCache,
 		ChartPath:        chartPath,
+		Getters:          getter.All(cli.New()),
 	}
 	signtest, err := loader.LoadDir(filepath.Join("testdata", "signtest"))
 	if err != nil {
