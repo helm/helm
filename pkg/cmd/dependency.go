@@ -134,7 +134,7 @@ func addDependencySubcommandFlags(f *pflag.FlagSet, client *action.Dependency, w
 	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
 	f.StringVar(&client.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	if withUntar {
-		f.BoolVar(&client.Untar, "untar", false, "if set to true, will untar the dependency charts after downloading them and remove the chart archives")
+		f.BoolVar(&client.Untar, "untar", false, "if set to true, will untar dependency charts after downloading them; with the default --untardir (charts/), chart archives are removed after extraction")
 		f.StringVar(&client.UntarDir, "untardir", "charts", "if untar is specified, this flag specifies the directory (relative to chart root) into which dependencies are expanded")
 	}
 }
