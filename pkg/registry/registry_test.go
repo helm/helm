@@ -35,6 +35,7 @@ import (
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
@@ -60,6 +61,7 @@ var (
 type TestRegistry struct {
 	suite.Suite
 	Out                     io.Writer
+	FakeRegistryHost        string
 	DockerRegistryHost      string
 	CompromisedRegistryHost string
 	WorkspaceDir            string
@@ -159,6 +161,7 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
 	suite.dockerRegistry, err = registry.NewRegistry(context.Background(), config)
 	suite.Nil(err, "no error creating test registry")
 
+	suite.FakeRegistryHost = initFakeRegistryTestServer()
 	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()
 	go func() {
 		_ = suite.dockerRegistry.ListenAndServe()
@@ -202,6 +205,173 @@ func initCompromisedRegistryTestServer() string {
 			_, _ = w.Write([]byte("b"))
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+
+	u, _ := url.Parse(s.URL)
+	return fmt.Sprintf("localhost:%s", u.Port())
+}
+
+func initFakeRegistryTestServer() string {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/testrepo/image-index/manifests/0.1.0":
+			w.Header().Set("Content-Type", ocispec.MediaTypeImageIndex)
+			w.Write([]byte(`{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "manifests": [
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:2771e37a12b7bcb2902456ecf3f29bf9ee11ec348e66e8eb322d9780ad7fc2df",
+      "size": 1035,
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "annotations": {
+        "com.docker.official-images.bashbrew.arch": "amd64",
+        "org.opencontainers.image.base.name": "scratch",
+        "org.opencontainers.image.created": "2025-08-13T22:16:57Z",
+        "org.opencontainers.image.revision": "6930d60e10e81283a57be3ee3a2b5ca328a40304",
+        "org.opencontainers.image.source": "https://github.com/docker-library/hello-world.git#6930d60e10e81283a57be3ee3a2b5ca328a40304:amd64/hello-world",
+        "org.opencontainers.image.url": "https://hub.docker.com/_/hello-world",
+        "org.opencontainers.image.version": "linux"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:6b75187531c5e9b6a85c8946d5d82e4ef3801e051fbff338f382f3edfa60e3d2",
+      "size": 566,
+      "platform": {
+        "architecture": "unknown",
+        "os": "unknown"
+      },
+      "annotations": {
+        "com.docker.official-images.bashbrew.arch": "amd64",
+        "vnd.docker.reference.digest": "sha256:2771e37a12b7bcb2902456ecf3f29bf9ee11ec348e66e8eb322d9780ad7fc2df",
+        "vnd.docker.reference.type": "attestation-manifest"
+      }
+    },
+    {
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "digest": "sha256:7fbdc47de56b45d092f8f419e8b6183adf0159d00e05574c01787231b54fe28f",
+      "size": 815
+    }
+  ]
+}`))
+
+		case "/v2/testrepo/image-index/manifests/sha256:2771e37a12b7bcb2902456ecf3f29bf9ee11ec348e66e8eb322d9780ad7fc2df":
+			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
+			w.Write([]byte(`{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {
+    "mediaType": "application/vnd.oci.image.config.v1+json",
+    "digest": "sha256:1b44b5a3e06a9aae883e7bf25e45c100be0bb81a0e01b32de604f3ac44711634",
+    "size": 547
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:17eec7bbc9d79fa397ac95c7283ecd04d1fe6978516932a3db110c6206430809",
+      "size": 2380
+    }
+  ],
+  "annotations": {
+    "com.docker.official-images.bashbrew.arch": "amd64",
+    "org.opencontainers.image.base.name": "scratch",
+    "org.opencontainers.image.created": "2025-08-08T19:05:17Z",
+    "org.opencontainers.image.revision": "6930d60e10e81283a57be3ee3a2b5ca328a40304",
+    "org.opencontainers.image.source": "https://github.com/docker-library/hello-world.git#6930d60e10e81283a57be3ee3a2b5ca328a40304:amd64/hello-world",
+    "org.opencontainers.image.url": "https://hub.docker.com/_/hello-world",
+    "org.opencontainers.image.version": "linux"
+  }
+}`))
+
+		case "/v2/testrepo/image-index/manifests/sha256:6b75187531c5e9b6a85c8946d5d82e4ef3801e051fbff338f382f3edfa60e3d2":
+			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
+			w.Write([]byte(`{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {
+    "mediaType": "application/vnd.oci.image.config.v1+json",
+    "digest": "sha256:ec4b6233950725be4c816667d1eb2782ad59dc65b12f7ac53f1ffa0ad5b95b5b",
+    "size": 167
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.in-toto+json",
+      "digest": "sha256:ea52d2000f90ad63267302cba134025ee586b07a63c47aa9467471a395aee6c2",
+      "size": 4822,
+      "annotations": {
+        "in-toto.io/predicate-type": "https://slsa.dev/provenance/v0.2"
+      }
+    }
+  ]
+}`))
+
+		case "/v2/testrepo/image-index/manifests/sha256:7fbdc47de56b45d092f8f419e8b6183adf0159d00e05574c01787231b54fe28f":
+			w.Header().Set("Content-Type", ocispec.MediaTypeImageManifest)
+			w.Write([]byte(`{
+  "schemaVersion": 2,
+  "config": {
+    "mediaType": "application/vnd.cncf.helm.config.v1+json",
+    "digest": "sha256:24de43e4a9f5ed9427479f27dd7bab9d158227abe593302a6f54d1e13a903ac3",
+    "size": 112
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.cncf.helm.chart.provenance.v1.prov",
+      "digest": "sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256",
+      "size": 695
+    },
+    {
+      "mediaType": "application/vnd.cncf.helm.chart.content.v1.tar+gzip",
+      "digest": "sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55",
+      "size": 973
+    }
+  ],
+  "annotations": {
+    "org.opencontainers.image.description": "A Helm chart for Kubernetes",
+    "org.opencontainers.image.title": "signtest",
+    "org.opencontainers.image.version": "0.1.0"
+  }
+}`))
+
+		case "/v2/testrepo/image-index/blobs/sha256:24de43e4a9f5ed9427479f27dd7bab9d158227abe593302a6f54d1e13a903ac3":
+			w.Header().Set("Content-Type", ConfigMediaType)
+			w.Write([]byte(`{
+  "name":"signtest",
+  "version":"0.1.0",
+  "description":"A Helm chart for Kubernetes",
+  "apiVersion":"v1"
+}`))
+
+		case "/v2/testrepo/image-index/blobs/sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256":
+			data, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			w.Header().Set("Content-Type", ProvLayerMediaType)
+			w.Write(data)
+
+		case "/v2/testrepo/image-index/blobs/sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55":
+			data, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			w.Header().Set("Content-Type", ChartLayerMediaType)
+			w.Write(data)
+
+		default:
+			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
 
