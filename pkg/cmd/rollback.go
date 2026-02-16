@@ -39,7 +39,7 @@ To see revision numbers, run 'helm history RELEASE'.
 `
 
 // maxDescriptionLength is the maximum length allowed for a rollback description
-const maxDescriptionLength = 512
+const maxDescriptionLength = 256
 
 func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewRollback(cfg)
