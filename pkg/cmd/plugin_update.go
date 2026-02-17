@@ -36,10 +36,12 @@ type pluginUpdateOptions struct {
 
 const pluginUpdateDesc = `Update one or more Helm plugins.
 
-An exact version can be supplied per-plugin using the @version syntax:
+An exact semver version can be supplied per-plugin using the @version syntax:
 
     helm plugin update myplugin@1.2.3 otherplugin@2.0.0
     helm plugin update myplugin@v1.0.0
+
+Range constraints (e.g. ~1.2, ^1.0.0, >=1.0.0) are not supported.
 
 If no version is given for a plugin it is updated to the latest version:
 
