@@ -172,9 +172,9 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 	}
 
 	// Determine the description for this rollback
-	description := fmt.Sprintf("Rollback to %d", previousVersion)
-	if r.Description != "" {
-		description = r.Description
+	description := r.Description
+	if description == "" {
+		description = fmt.Sprintf("Rollback to %d", previousVersion)
 	}
 
 	// Store a new release object with previous release's configuration
