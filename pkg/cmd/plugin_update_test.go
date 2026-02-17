@@ -80,8 +80,8 @@ func TestPluginUpdateComplete(t *testing.T) {
 		},
 		{
 			name:        "multiple plugins each with different exact versions",
-			args:        []string{"plugin-a@v1.2.3", "plugin-b@2.0.0", "plugin-c@3.0.0"},
-			wantPlugins: map[string]string{"plugin-a": "v1.2.3", "plugin-b": "2.0.0", "plugin-c": "3.0.0"},
+			args:        []string{"plugin-a@1.2.3", "plugin-b@2.0.0", "plugin-c@3.0.0"},
+			wantPlugins: map[string]string{"plugin-a": "1.2.3", "plugin-b": "2.0.0", "plugin-c": "3.0.0"},
 		},
 		{
 			name:        "multiple plugins mixed versions",
@@ -104,39 +104,44 @@ func TestPluginUpdateComplete(t *testing.T) {
 			wantErr: `invalid plugin reference "@1.0.0": plugin name must not be empty`,
 		},
 		{
+			name:    "v-prefixed version rejected",
+			args:    []string{"myplugin@v1.2.3"},
+			wantErr: `invalid version "v1.2.3" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
+		},
+		{
 			name:    "tilde range version rejected",
 			args:    []string{"myplugin@~1.2"},
-			wantErr: `invalid version "~1.2" for plugin "myplugin": must be an exact version (e.g. 1.2.3 or v1.2.3)`,
+			wantErr: `invalid version "~1.2" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
 		},
 		{
 			name:    "caret range version rejected",
 			args:    []string{"myplugin@^1.2.3"},
-			wantErr: `invalid version "^1.2.3" for plugin "myplugin": must be an exact version (e.g. 1.2.3 or v1.2.3)`,
+			wantErr: `invalid version "^1.2.3" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
 		},
 		{
 			name:    "gte constraint rejected",
 			args:    []string{"myplugin@>=1.0.0"},
-			wantErr: `invalid version ">=1.0.0" for plugin "myplugin": must be an exact version (e.g. 1.2.3 or v1.2.3)`,
+			wantErr: `invalid version ">=1.0.0" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
 		},
 		{
 			name:    "wildcard version rejected",
 			args:    []string{"myplugin@1.x"},
-			wantErr: `invalid version "1.x" for plugin "myplugin": must be an exact version (e.g. 1.2.3 or v1.2.3)`,
+			wantErr: `invalid version "1.x" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
 		},
 		{
 			name:    "range constraint rejected",
 			args:    []string{"myplugin@>=1.0.0, <2.0.0"},
-			wantErr: `invalid version ">=1.0.0, <2.0.0" for plugin "myplugin": must be an exact version (e.g. 1.2.3 or v1.2.3)`,
+			wantErr: `invalid version ">=1.0.0, <2.0.0" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
 		},
 		{
 			name:    "garbage version rejected",
 			args:    []string{"myplugin@notaversion"},
-			wantErr: `invalid version "notaversion" for plugin "myplugin": must be an exact version (e.g. 1.2.3 or v1.2.3)`,
+			wantErr: `invalid version "notaversion" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
 		},
 		{
 			name:    "range rejected among multiple plugins",
 			args:    []string{"plugin-a@1.0.0", "plugin-b@~2.0"},
-			wantErr: `invalid version "~2.0" for plugin "plugin-b": must be an exact version (e.g. 1.2.3 or v1.2.3)`,
+			wantErr: `invalid version "~2.0" for plugin "plugin-b": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
 		},
 	}
 	for _, tt := range tests {
