@@ -41,7 +41,7 @@ An exact semver version can be supplied per-plugin using the @version syntax:
     helm plugin update myplugin@1.2.3 otherplugin@2.0.0
     helm plugin update myplugin@v1.0.0
 
-Range constraints (e.g. ~1.2, ^1.0.0, >=1.0.0) are not supported.
+Range constraints (e.g. ~1.2, ^1.0.0, >=1.0.0, v1.0.0) are not supported.
 
 If no version is given for a plugin it is updated to the latest version:
 
@@ -85,8 +85,8 @@ func (o *pluginUpdateOptions) complete(args []string) error {
 			return fmt.Errorf("plugin %q specified more than once", name)
 		}
 		if version != "" {
-			if _, err := semver.NewVersion(version); err != nil {
-				return fmt.Errorf("invalid version %q for plugin %q: must be an exact version (e.g. 1.2.3 or v1.2.3)", version, name)
+			if _, err := semver.StrictNewVersion(version); err != nil {
+				return fmt.Errorf("invalid version %q for plugin %q: must be an exact semver version (e.g. 1.2.3); the \"v\" prefix is not allowed", version, name)
 			}
 		}
 		o.plugins[name] = version
