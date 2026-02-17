@@ -99,6 +99,7 @@ func New() *EnvSettings {
 	env := &EnvSettings{
 		namespace:                 os.Getenv("HELM_NAMESPACE"),
 		MaxHistory:                envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
+		KubeConfig:                os.Getenv("KUBECONFIG"),
 		KubeContext:               os.Getenv("HELM_KUBECONTEXT"),
 		KubeToken:                 os.Getenv("HELM_KUBETOKEN"),
 		KubeAsUser:                os.Getenv("HELM_KUBEASUSER"),
@@ -274,8 +275,10 @@ func (s *EnvSettings) EnvVars() map[string]string {
 
 // Namespace gets the namespace from the configuration
 func (s *EnvSettings) Namespace() string {
-	if ns, _, err := s.config.ToRawKubeConfigLoader().Namespace(); err == nil {
-		return ns
+	if s.config != nil {
+		if ns, _, err := s.config.ToRawKubeConfigLoader().Namespace(); err == nil {
+			return ns
+		}
 	}
 	if s.namespace != "" {
 		return s.namespace

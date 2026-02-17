@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -639,7 +640,7 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 				return
 			}
 
-			if tc.Input != result {
+			if !errors.Is(tc.Input, result) {
 				t.Error("expected the result equal to input")
 			}
 
@@ -708,9 +709,7 @@ func TestLoadIndex_DuplicateChartDeps(t *testing.T) {
 			}
 			cvs := idx.Entries["nginx"]
 			if cvs == nil {
-				if err != nil {
-					t.Error("expected one chart version not to be filtered out")
-				}
+				t.Error("expected one chart version not to be filtered out")
 			}
 			for _, v := range cvs {
 				if v.Name == "alpine" {

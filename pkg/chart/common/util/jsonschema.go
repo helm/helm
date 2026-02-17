@@ -87,7 +87,7 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]interface{}) erro
 			sb.WriteString(err.Error())
 		}
 	}
-	slog.Debug("number of dependencies in the chart", "dependencies", len(chrt.Dependencies()))
+	slog.Debug("number of dependencies in the chart", "chart", chrt.Name(), "dependencies", len(chrt.Dependencies()))
 	// For each dependency, recursively call this function with the coalesced values
 	for _, subchart := range chrt.Dependencies() {
 		sub, err := chart.NewAccessor(subchart)

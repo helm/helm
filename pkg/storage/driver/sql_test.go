@@ -15,6 +15,7 @@ package driver
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -120,7 +121,7 @@ func TestSQLList(t *testing.T) {
 
 	sqlDriver, mock := newTestFixtureSQL(t)
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		query := fmt.Sprintf(
 			"SELECT %s, %s, %s FROM %s WHERE %s = $1 AND %s = $2",
 			sqlReleaseTableKeyColumn,
@@ -447,7 +448,7 @@ func TestSqlQuery(t *testing.T) {
 	_, err := sqlDriver.Query(labelSetUnknown)
 	if err == nil {
 		t.Errorf("Expected error {%v}, got nil", ErrReleaseNotFound)
-	} else if err != ErrReleaseNotFound {
+	} else if !errors.Is(err, ErrReleaseNotFound) {
 		t.Fatalf("failed to query for unknown smug-pigeon release: %v", err)
 	}
 

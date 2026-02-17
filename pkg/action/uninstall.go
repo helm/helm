@@ -45,6 +45,7 @@ type Uninstall struct {
 	IgnoreNotFound      bool
 	KeepHistory         bool
 	WaitStrategy        kube.WaitStrategy
+	WaitOptions         []kube.WaitOption
 	DeletionPropagation string
 	Timeout             time.Duration
 	Description         string
@@ -63,7 +64,13 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		return nil, err
 	}
 
-	waiter, err := u.cfg.KubeClient.GetWaiter(u.WaitStrategy)
+	var waiter kube.Waiter
+	var err error
+	if c, supportsOptions := u.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+		waiter, err = c.GetWaiterWithOptions(u.WaitStrategy, u.WaitOptions...)
+	} else {
+		waiter, err = u.cfg.KubeClient.GetWaiter(u.WaitStrategy)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +134,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 
 	if !u.DisableHooks {
 		serverSideApply := true
-		if err := u.cfg.execHook(rel, release.HookPreDelete, u.WaitStrategy, u.Timeout, serverSideApply); err != nil {
+		if err := u.cfg.execHook(rel, release.HookPreDelete, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
 			return res, err
 		}
 	} else {
@@ -157,7 +164,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 
 	if !u.DisableHooks {
 		serverSideApply := true
-		if err := u.cfg.execHook(rel, release.HookPostDelete, u.WaitStrategy, u.Timeout, serverSideApply); err != nil {
+		if err := u.cfg.execHook(rel, release.HookPostDelete, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -186,6 +193,25 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 
 	if err := u.cfg.Releases.Update(rel); err != nil {
 		u.cfg.Logger().Debug("uninstall: Failed to store updated release", slog.Any("error", err))
+	}
+
+	// Supersede all previous deployments, see issue #12556 (which is a
+	// variation on #2941).
+	deployed, err := u.cfg.Releases.DeployedAll(name)
+	if err != nil && !errors.Is(err, driver.ErrNoDeployedReleases) {
+		return nil, err
+	}
+	for _, reli := range deployed {
+		rel, err := releaserToV1Release(reli)
+		if err != nil {
+			return nil, err
+		}
+
+		u.cfg.Logger().Debug("superseding previous deployment", "version", rel.Version)
+		rel.Info.Status = common.StatusSuperseded
+		if err := u.cfg.Releases.Update(rel); err != nil {
+			u.cfg.Logger().Debug("uninstall: Failed to store updated release", slog.Any("error", err))
+		}
 	}
 
 	if len(errs) > 0 {
@@ -242,9 +268,9 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 	}
 
 	filesToKeep, filesToDelete := filterManifestsToKeep(files)
-	var kept string
+	var kept strings.Builder
 	for _, f := range filesToKeep {
-		kept += "[" + f.Head.Kind + "] " + f.Head.Metadata.Name + "\n"
+		fmt.Fprintf(&kept, "[%s] %s\n", f.Head.Kind, f.Head.Metadata.Name)
 	}
 
 	var builder strings.Builder
@@ -259,7 +285,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 	if len(resources) > 0 {
 		_, errs = u.cfg.KubeClient.Delete(resources, parseCascadingFlag(u.DeletionPropagation))
 	}
-	return resources, kept, errs
+	return resources, kept.String(), errs
 }
 
 func parseCascadingFlag(cascadingFlag string) v1.DeletionPropagation {

@@ -18,9 +18,10 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -63,7 +64,7 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 	}
 	found, err := plugin.FindPlugins(dirs, descriptor)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to load plugins: %s\n", err)
+		slog.Error("failed to load plugins", slog.String("error", err.Error()))
 		return
 	}
 
@@ -120,7 +121,8 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 					Stderr: os.Stderr,
 				}
 				_, err = plug.Invoke(context.Background(), input)
-				if execErr, ok := err.(*plugin.InvokeExecError); ok {
+				execErr := &plugin.InvokeExecError{}
+				if errors.As(err, &execErr) {
 					return CommandError{
 						error:    execErr.Err,
 						ExitCode: execErr.ExitCode,
@@ -132,7 +134,13 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 			DisableFlagParsing: true,
 		}
 
-		// TODO: Make sure a command with this name does not already exist.
+		for _, cmd := range baseCmd.Commands() {
+			if cmd.Name() == c.Name() {
+				slog.Error("failed to load plugins: name conflicts", slog.String("name", c.Name()))
+				return
+			}
+		}
+
 		baseCmd.AddCommand(c)
 
 		// For completion, we try to load more details about the plugins so as to allow for command and
@@ -217,9 +225,7 @@ func loadCompletionForPlugin(pluginCmd *cobra.Command, plug plugin.Plugin) {
 
 	if err != nil {
 		// The file could be missing or invalid.  No static completion for this plugin.
-		if settings.Debug {
-			log.Output(2, fmt.Sprintf("[info] %s\n", err.Error()))
-		}
+		slog.Debug("plugin completion file loading", slog.String("error", err.Error()))
 		// Continue to setup dynamic completion.
 		cmds = &pluginCommand{}
 	}
@@ -238,10 +244,7 @@ func addPluginCommands(plug plugin.Plugin, baseCmd *cobra.Command, cmds *pluginC
 	}
 
 	if len(cmds.Name) == 0 {
-		// Missing name for a command
-		if settings.Debug {
-			log.Output(2, fmt.Sprintf("[info] sub-command name field missing for %s", baseCmd.CommandPath()))
-		}
+		slog.Debug("sub-command name field missing", slog.String("commandPath", baseCmd.CommandPath()))
 		return
 	}
 

@@ -69,15 +69,15 @@ func Chartfile(linter *support.Linter) {
 	linter.RunLinterRule(support.ErrorSev, chartFileName, validateChartDependencies(chartFile))
 }
 
-func validateChartVersionType(data map[string]interface{}) error {
+func validateChartVersionType(data map[string]any) error {
 	return isStringValue(data, "version")
 }
 
-func validateChartAppVersionType(data map[string]interface{}) error {
+func validateChartAppVersionType(data map[string]any) error {
 	return isStringValue(data, "appVersion")
 }
 
-func isStringValue(data map[string]interface{}, key string) error {
+func isStringValue(data map[string]any, key string) error {
 	value, ok := data[key]
 	if !ok {
 		return nil
@@ -214,12 +214,12 @@ func validateChartType(cf *chart.Metadata) error {
 // loadChartFileForTypeCheck loads the Chart.yaml
 // in a generic form of a map[string]interface{}, so that the type
 // of the values can be checked
-func loadChartFileForTypeCheck(filename string) (map[string]interface{}, error) {
+func loadChartFileForTypeCheck(filename string) (map[string]any, error) {
 	b, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	y := make(map[string]interface{})
+	y := make(map[string]any)
 	err = yaml.Unmarshal(b, &y)
 	return y, err
 }

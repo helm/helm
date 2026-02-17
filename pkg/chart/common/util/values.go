@@ -26,14 +26,14 @@ import (
 // ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
 //
 // This takes both ReleaseOptions and Capabilities to merge into the render values.
-func ToRenderValues(chrt chart.Charter, chrtVals map[string]interface{}, options common.ReleaseOptions, caps *common.Capabilities) (common.Values, error) {
+func ToRenderValues(chrt chart.Charter, chrtVals map[string]any, options common.ReleaseOptions, caps *common.Capabilities) (common.Values, error) {
 	return ToRenderValuesWithSchemaValidation(chrt, chrtVals, options, caps, false)
 }
 
 // ToRenderValuesWithSchemaValidation composes the struct from the data coming from the Releases, Charts and Values files
 //
 // This takes both ReleaseOptions and Capabilities to merge into the render values.
-func ToRenderValuesWithSchemaValidation(chrt chart.Charter, chrtVals map[string]interface{}, options common.ReleaseOptions, caps *common.Capabilities, skipSchemaValidation bool) (common.Values, error) {
+func ToRenderValuesWithSchemaValidation(chrt chart.Charter, chrtVals map[string]any, options common.ReleaseOptions, caps *common.Capabilities, skipSchemaValidation bool) (common.Values, error) {
 	if caps == nil {
 		caps = common.DefaultCapabilities
 	}
@@ -41,10 +41,10 @@ func ToRenderValuesWithSchemaValidation(chrt chart.Charter, chrtVals map[string]
 	if err != nil {
 		return nil, err
 	}
-	top := map[string]interface{}{
+	top := map[string]any{
 		"Chart":        accessor.MetadataAsMap(),
 		"Capabilities": caps,
-		"Release": map[string]interface{}{
+		"Release": map[string]any{
 			"Name":      options.Name,
 			"Namespace": options.Namespace,
 			"IsUpgrade": options.IsUpgrade,
