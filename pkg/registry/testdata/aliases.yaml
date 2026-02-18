@@ -1,0 +1,9 @@
+apiVersion: v1
+aliases:
+  staging: oci://example.com/charts/staging
+  production: oci://example.com/charts/production
+  dev: oci://example.com/charts/dev
+substitutions:
+  oci://example.com/charts/dev: oci://dev.example.com/charts
+  oci://example.com/charts/staging: oci://staging.example.com/charts
+  https://example.com/stable/charts: oci://stable.example.com/charts
