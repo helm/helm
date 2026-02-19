@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -37,6 +38,7 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/cmd/require"
+	"helm.sh/helm/v4/pkg/kube"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 )
 
@@ -117,84 +119,100 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// We ignore a potential error here because, when the --debug flag was specified,
 			// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
 			if rel != nil {
-				var manifests bytes.Buffer
-				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
-				if !client.DisableHooks {
-					fileWritten := make(map[string]bool)
-					for _, m := range rel.Hooks {
-						if skipTests && isTestHook(m) {
-							continue
-						}
-						if client.OutputDir == "" {
-							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
-						} else {
-							newDir := client.OutputDir
-							if client.UseReleaseName {
-								newDir = filepath.Join(client.OutputDir, client.ReleaseName)
-							}
-							_, err := os.Stat(filepath.Join(newDir, m.Path))
-							if err == nil {
-								fileWritten[m.Path] = true
-							}
-
-							err = writeToFile(newDir, m.Path, m.Manifest, fileWritten[m.Path])
-							if err != nil {
-								return err
-							}
-						}
-
+				// When --wait=ordered is set and no file filters or output-dir are active,
+				// render manifests in resource-group DAG order with delimiters.
+				if client.WaitStrategy == kube.OrderedWaitStrategy && len(showFiles) == 0 && client.OutputDir == "" {
+					if err2 := renderOrderedTemplate(strings.TrimSpace(rel.Manifest), out); err2 != nil {
+						return err2
 					}
-				}
-
-				// if we have a list of files to render, then check that each of the
-				// provided files exists in the chart.
-				if len(showFiles) > 0 {
-					// This is necessary to ensure consistent manifest ordering when using --show-only
-					// with globs or directory names.
-					splitManifests := releaseutil.SplitManifests(manifests.String())
-					manifestsKeys := make([]string, 0, len(splitManifests))
-					for k := range splitManifests {
-						manifestsKeys = append(manifestsKeys, k)
-					}
-					sort.Sort(releaseutil.BySplitManifestsOrder(manifestsKeys))
-
-					manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
-					var manifestsToRender []string
-					for _, f := range showFiles {
-						missing := true
-						// Use linux-style filepath separators to unify user's input path
-						f = filepath.ToSlash(f)
-						for _, manifestKey := range manifestsKeys {
-							manifest := splitManifests[manifestKey]
-							submatch := manifestNameRegex.FindStringSubmatch(manifest)
-							if len(submatch) == 0 {
+					if !client.DisableHooks {
+						for _, m := range rel.Hooks {
+							if skipTests && isTestHook(m) {
 								continue
 							}
-							manifestName := submatch[1]
-							// manifest.Name is rendered using linux-style filepath separators on Windows as
-							// well as macOS/linux.
-							manifestPathSplit := strings.Split(manifestName, "/")
-							// manifest.Path is connected using linux-style filepath separators on Windows as
-							// well as macOS/linux
-							manifestPath := strings.Join(manifestPathSplit, "/")
-
-							// if the filepath provided matches a manifest path in the
-							// chart, render that manifest
-							if matched, _ := filepath.Match(f, manifestPath); !matched {
-								continue
-							}
-							manifestsToRender = append(manifestsToRender, manifest)
-							missing = false
+							fmt.Fprintf(out, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
 						}
-						if missing {
-							return fmt.Errorf("could not find template %s in chart", f)
-						}
-					}
-					for _, m := range manifestsToRender {
-						fmt.Fprintf(out, "---\n%s\n", m)
 					}
 				} else {
-					fmt.Fprintf(out, "%s", manifests.String())
+					var manifests bytes.Buffer
+					fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+					if !client.DisableHooks {
+						fileWritten := make(map[string]bool)
+						for _, m := range rel.Hooks {
+							if skipTests && isTestHook(m) {
+								continue
+							}
+							if client.OutputDir == "" {
+								fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+							} else {
+								newDir := client.OutputDir
+								if client.UseReleaseName {
+									newDir = filepath.Join(client.OutputDir, client.ReleaseName)
+								}
+								_, err := os.Stat(filepath.Join(newDir, m.Path))
+								if err == nil {
+									fileWritten[m.Path] = true
+								}
+
+								err = writeToFile(newDir, m.Path, m.Manifest, fileWritten[m.Path])
+								if err != nil {
+									return err
+								}
+							}
+
+						}
+					}
+
+					// if we have a list of files to render, then check that each of the
+					// provided files exists in the chart.
+					if len(showFiles) > 0 {
+						// This is necessary to ensure consistent manifest ordering when using --show-only
+						// with globs or directory names.
+						splitManifests := releaseutil.SplitManifests(manifests.String())
+						manifestsKeys := make([]string, 0, len(splitManifests))
+						for k := range splitManifests {
+							manifestsKeys = append(manifestsKeys, k)
+						}
+						sort.Sort(releaseutil.BySplitManifestsOrder(manifestsKeys))
+
+						manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
+						var manifestsToRender []string
+						for _, f := range showFiles {
+							missing := true
+							// Use linux-style filepath separators to unify user's input path
+							f = filepath.ToSlash(f)
+							for _, manifestKey := range manifestsKeys {
+								manifest := splitManifests[manifestKey]
+								submatch := manifestNameRegex.FindStringSubmatch(manifest)
+								if len(submatch) == 0 {
+									continue
+								}
+								manifestName := submatch[1]
+								// manifest.Name is rendered using linux-style filepath separators on Windows as
+								// well as macOS/linux.
+								manifestPathSplit := strings.Split(manifestName, "/")
+								// manifest.Path is connected using linux-style filepath separators on Windows as
+								// well as macOS/linux
+								manifestPath := strings.Join(manifestPathSplit, "/")
+
+								// if the filepath provided matches a manifest path in the
+								// chart, render that manifest
+								if matched, _ := filepath.Match(f, manifestPath); !matched {
+									continue
+								}
+								manifestsToRender = append(manifestsToRender, manifest)
+								missing = false
+							}
+							if missing {
+								return fmt.Errorf("could not find template %s in chart", f)
+							}
+						}
+						for _, m := range manifestsToRender {
+							fmt.Fprintf(out, "---\n%s\n", m)
+						}
+					} else {
+						fmt.Fprintf(out, "%s", manifests.String())
+					}
 				}
 			}
 
@@ -223,6 +241,62 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd.MarkFlagsMutuallyExclusive("validate", "dry-run")
 
 	return cmd
+}
+
+// renderOrderedTemplate outputs manifests in resource-group DAG order with
+// ## START resource-group / ## END resource-group delimiters per the HIP-0025 spec.
+// Resources without a resource-group annotation are output after all sequenced groups.
+func renderOrderedTemplate(manifest string, out io.Writer) error {
+	if manifest == "" {
+		return nil
+	}
+
+	rawManifests := releaseutil.SplitManifests(manifest)
+	_, sortedManifests, err := releaseutil.SortManifests(rawManifests, nil, releaseutil.InstallOrder)
+	if err != nil {
+		return fmt.Errorf("sorting manifests for ordered output: %w", err)
+	}
+
+	result, warnings := releaseutil.ParseResourceGroups(sortedManifests)
+	for _, w := range warnings {
+		slog.Warn("resource-group annotation warning during helm template", "warning", w)
+	}
+
+	// If no resource-groups present, output in sorted install order without delimiters.
+	if len(result.Groups) == 0 {
+		for _, m := range sortedManifests {
+			fmt.Fprintf(out, "---\n%s\n", m.Content)
+		}
+		return nil
+	}
+
+	dag, err := releaseutil.BuildResourceGroupDAG(result)
+	if err != nil {
+		return fmt.Errorf("building resource-group DAG for ordered output: %w", err)
+	}
+	batches, err := dag.GetBatches()
+	if err != nil {
+		return fmt.Errorf("computing resource-group batches for ordered output: %w", err)
+	}
+
+	// Output each batch's groups with START/END delimiters.
+	// m.Content already contains the "# Source:" comment from rel.Manifest.
+	for _, batch := range batches {
+		for _, groupName := range batch {
+			fmt.Fprintf(out, "## START resource-group: %s\n", groupName)
+			for _, m := range result.Groups[groupName] {
+				fmt.Fprintf(out, "---\n%s\n", m.Content)
+			}
+			fmt.Fprintf(out, "## END resource-group: %s\n", groupName)
+		}
+	}
+
+	// Output unsequenced resources without delimiters.
+	for _, m := range result.Unsequenced {
+		fmt.Fprintf(out, "---\n%s\n", m.Content)
+	}
+
+	return nil
 }
 
 func isTestHook(h *release.Hook) bool {

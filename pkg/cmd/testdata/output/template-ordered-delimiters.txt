@@ -1,0 +1,33 @@
+## START resource-group: databases
+---
+# Source: sequenced-chart/templates/aa-databases-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: database-config
+  annotations:
+    helm.sh/resource-group: databases
+data:
+  host: localhost
+## END resource-group: databases
+## START resource-group: app
+---
+# Source: sequenced-chart/templates/bb-app-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  annotations:
+    helm.sh/resource-group: app
+    helm.sh/depends-on/resource-groups: '["databases"]'
+data:
+  db_host: localhost
+## END resource-group: app
+---
+# Source: sequenced-chart/templates/cc-unsequenced-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unsequenced-config
+data:
+  key: value

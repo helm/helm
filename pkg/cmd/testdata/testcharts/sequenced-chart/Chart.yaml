@@ -1,0 +1,5 @@
+apiVersion: v2
+name: sequenced-chart
+description: A test chart with resource-group sequencing annotations
+type: application
+version: 0.1.0
