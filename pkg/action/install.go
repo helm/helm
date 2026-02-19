@@ -362,8 +362,14 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 
 	rel := i.createRelease(chrt, vals, i.Labels)
 
+	// For ordered installs, also capture the per-file manifest list for DAG grouping.
+	var sortedManifests []releaseutil.Manifest
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret)
+	if i.WaitStrategy == kube.OrderedWaitStrategy {
+		rel.Hooks, manifestDoc, rel.Info.Notes, sortedManifests, err = i.cfg.renderResourcesWithFiles(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret)
+	} else {
+		rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret)
+	}
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -457,7 +463,11 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		return rel, err
 	}
 
-	rel, err = i.performInstallCtx(ctx, rel, toBeAdopted, resources)
+	if i.WaitStrategy == kube.OrderedWaitStrategy {
+		rel, err = i.performSequencedInstallCtx(ctx, chrt, rel, sortedManifests)
+	} else {
+		rel, err = i.performInstallCtx(ctx, rel, toBeAdopted, resources)
+	}
 	if err != nil {
 		rel, err = i.failRelease(rel, err)
 	}
@@ -484,6 +494,84 @@ func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, t
 	case msg := <-resultChan:
 		return msg.r, msg.e
 	}
+}
+
+// performSequencedInstallCtx runs performSequencedInstall in a goroutine and
+// respects context cancellation, mirroring the pattern in performInstallCtx.
+func (i *Install) performSequencedInstallCtx(ctx context.Context, chrt *chart.Chart, rel *release.Release, manifests []releaseutil.Manifest) (*release.Release, error) {
+	type Msg struct {
+		r *release.Release
+		e error
+	}
+	resultChan := make(chan Msg, 1)
+
+	go func() {
+		i.goroutineCount.Add(1)
+		rel, err := i.performSequencedInstall(ctx, chrt, rel, manifests)
+		resultChan <- Msg{rel, err}
+		i.goroutineCount.Add(-1)
+	}()
+	select {
+	case <-ctx.Done():
+		return rel, ctx.Err()
+	case msg := <-resultChan:
+		return msg.r, msg.e
+	}
+}
+
+// performSequencedInstall deploys chart resources in DAG-ordered batches when
+// --wait=ordered is active. Subcharts are deployed in dependency order, and within
+// each chart, resource-groups are deployed in annotation-declared order.
+func (i *Install) performSequencedInstall(ctx context.Context, chrt *chart.Chart, rel *release.Release, manifests []releaseutil.Manifest) (*release.Release, error) {
+	// pre-install hooks
+	if !i.DisableHooks {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
+			return rel, fmt.Errorf("failed pre-install: %s", err)
+		}
+	}
+
+	// Determine per-batch readiness timeout (default 1 minute when unset)
+	readinessTimeout := i.ReadinessTimeout
+	if readinessTimeout <= 0 {
+		readinessTimeout = time.Minute
+	}
+
+	sd := &sequencedDeployment{
+		cfg:              i.cfg,
+		disableOpenAPI:   i.DisableOpenAPIValidation,
+		serverSideApply:  i.ServerSideApply,
+		forceConflicts:   i.ForceConflicts,
+		forceReplace:     i.ForceReplace,
+		waitStrategy:     i.WaitStrategy,
+		waitOptions:      i.WaitOptions,
+		waitForJobs:      i.WaitForJobs,
+		timeout:          i.Timeout,
+		readinessTimeout: readinessTimeout,
+		deadline:         time.Now().Add(i.Timeout),
+	}
+
+	if err := sd.deployChartLevel(ctx, chrt, manifests); err != nil {
+		return rel, err
+	}
+
+	// post-install hooks
+	if !i.DisableHooks {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
+			return rel, fmt.Errorf("failed post-install: %s", err)
+		}
+	}
+
+	if len(i.Description) > 0 {
+		rel.SetStatus(rcommon.StatusDeployed, i.Description)
+	} else {
+		rel.SetStatus(rcommon.StatusDeployed, "Install complete")
+	}
+
+	if err := i.recordRelease(rel); err != nil {
+		i.cfg.Logger().Error("failed to record the release", slog.Any("error", err))
+	}
+
+	return rel, nil
 }
 
 // getGoroutineCount return the number of running routines
