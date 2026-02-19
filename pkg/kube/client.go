@@ -117,6 +117,11 @@ const (
 
 	// HookOnlyStrategy: wait only for hook Pods/Jobs to complete; does not wait for general chart resources.
 	HookOnlyStrategy WaitStrategy = "hookOnly"
+
+	// OrderedStrategy: deploy resources in dependency order defined by HIP-0025
+	// sequencing annotations. Each batch of resources is deployed and waited for
+	// before the next batch begins. Uses StatusWatcherStrategy for readiness checks.
+	OrderedStrategy WaitStrategy = "ordered"
 )
 
 type FieldValidationDirective string
@@ -200,10 +205,14 @@ func (c *Client) GetWaiterWithOptions(strategy WaitStrategy, opts ...WaitOption)
 			return nil, err
 		}
 		return &hookOnlyWaiter{sw: sw}, nil
+	case OrderedStrategy:
+		// Ordered strategy uses the status watcher for readiness checks.
+		// The batching/sequencing logic is handled by the action layer.
+		return c.newStatusWatcher(opts...)
 	case "":
-		return nil, errors.New("wait strategy not set. Choose one of: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy))
+		return nil, errors.New("wait strategy not set. Choose one of: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy) + ", " + string(OrderedStrategy))
 	default:
-		return nil, errors.New("unknown wait strategy (s" + string(strategy) + "). Valid values are: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy))
+		return nil, errors.New("unknown wait strategy (s" + string(strategy) + "). Valid values are: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy) + ", " + string(OrderedStrategy))
 	}
 }
 
