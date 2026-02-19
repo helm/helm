@@ -25,6 +25,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"sigs.k8s.io/yaml"
@@ -225,6 +226,20 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	return nil
 }
 
+// sourceDateEpoch returns the time from SOURCE_DATE_EPOCH environment variable
+// if set, otherwise returns the zero time. SOURCE_DATE_EPOCH is a standard
+// environment variable for reproducible builds; see
+// https://reproducible-builds.org/docs/source-date-epoch/
+func sourceDateEpoch() time.Time {
+	if epochStr, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok && epochStr != "" {
+		epoch, err := strconv.ParseInt(epochStr, 10, 64)
+		if err == nil {
+			return time.Unix(epoch, 0)
+		}
+	}
+	return time.Time{}
+}
+
 // writeToTar writes a single file to a tar archive.
 func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time) error {
 	// TODO: Do we need to create dummy parent directory names if none exist?
@@ -235,7 +250,13 @@ func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time) er
 		ModTime: modTime,
 	}
 	if h.ModTime.IsZero() {
-		h.ModTime = time.Now()
+		// If SOURCE_DATE_EPOCH is set, use it for reproducible builds.
+		// See https://reproducible-builds.org/docs/source-date-epoch/
+		if sde := sourceDateEpoch(); !sde.IsZero() {
+			h.ModTime = sde
+		} else {
+			h.ModTime = time.Now()
+		}
 	}
 	if err := out.WriteHeader(h); err != nil {
 		return err
