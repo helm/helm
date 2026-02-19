@@ -46,6 +46,16 @@ Render chart templates locally and display the output.
 Any values that would normally be looked up or retrieved in-cluster will be
 faked locally. Additionally, none of the server-side testing of chart validity
 (e.g. whether an API is supported) is done.
+
+To specify the Kubernetes API versions used for Capabilities.APIVersions, use
+the '--api-versions' flag. This flag can be specified multiple times or as a
+comma-separated list:
+
+    $ helm template --api-versions networking.k8s.io/v1 --api-versions cert-manager.io/v1 mychart ./mychart
+
+or
+
+    $ helm template --api-versions networking.k8s.io/v1,cert-manager.io/v1 mychart ./mychart
 `
 
 func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -70,7 +80,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if kubeVersion != "" {
 				parsedKubeVersion, err := common.ParseKubeVersion(kubeVersion)
 				if err != nil {
-					return fmt.Errorf("invalid kube version '%s': %s", kubeVersion, err)
+					return fmt.Errorf("invalid kube version '%s': %w", kubeVersion, err)
 				}
 				client.KubeVersion = parsedKubeVersion
 			}

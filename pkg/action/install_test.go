@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
@@ -43,10 +44,14 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
 
+	ci "helm.sh/helm/v4/pkg/chart"
+
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/chart/common"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/registry"
 	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -90,6 +95,54 @@ func createDummyResourceList(owned bool) kube.ResourceList {
 
 	resInfo.Client = &fake.RESTClient{
 		GroupVersion:         schema.GroupVersion{Group: "apps", Version: "v1"},
+		NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
+		Client: fake.CreateHTTPClient(func(_ *http.Request) (*http.Response, error) {
+			header := http.Header{}
+			header.Set("Content-Type", kuberuntime.ContentTypeJSON)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     header,
+				Body:       body,
+			}, nil
+		}),
+	}
+	var resourceList kube.ResourceList
+	resourceList.Append(&resInfo)
+	return resourceList
+}
+
+func createDummyCRDList(owned bool) kube.ResourceList {
+	obj := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dummyName",
+			Namespace: "spaced",
+		},
+	}
+
+	if owned {
+		obj.Labels = map[string]string{
+			"app.kubernetes.io/managed-by": "Helm",
+		}
+		obj.Annotations = map[string]string{
+			"meta.helm.sh/release-name":      "test-install-release",
+			"meta.helm.sh/release-namespace": "spaced",
+		}
+	}
+
+	resInfo := resource.Info{
+		Name:      "dummyName",
+		Namespace: "spaced",
+		Mapping: &meta.RESTMapping{
+			Resource:         schema.GroupVersionResource{Group: "test", Version: "v1", Resource: "crd"},
+			GroupVersionKind: schema.GroupVersionKind{Group: "test", Version: "v1", Kind: "crd"},
+			Scope:            meta.RESTScopeNamespace,
+		},
+		Object: obj,
+	}
+	body := io.NopCloser(bytes.NewReader([]byte(kuberuntime.EncodeOrDie(appsv1Codec, obj))))
+
+	resInfo.Client = &fake.RESTClient{
+		GroupVersion:         schema.GroupVersion{Group: "test", Version: "v1"},
 		NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
 		Client: fake.CreateHTTPClient(func(_ *http.Request) (*http.Response, error) {
 			header := http.Header{}
@@ -500,7 +553,7 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 	instAction := installAction(t)
 	instAction.DisableHooks = true
 	instAction.ReleaseName = "no-hooks"
-	instAction.cfg.Releases.Create(releaseStub())
+	require.NoError(t, instAction.cfg.Releases.Create(releaseStub()))
 
 	vals := map[string]interface{}{}
 	resi, err := instAction.Run(buildChart(), vals)
@@ -540,7 +593,7 @@ func TestInstallRelease_ReplaceRelease(t *testing.T) {
 
 	rel := releaseStub()
 	rel.Info.Status = rcommon.StatusUninstalled
-	instAction.cfg.Releases.Create(rel)
+	require.NoError(t, instAction.cfg.Releases.Create(rel))
 	instAction.ReleaseName = rel.Name
 
 	vals := map[string]interface{}{}
@@ -572,7 +625,7 @@ func TestInstallRelease_KubeVersion(t *testing.T) {
 	vals = map[string]interface{}{}
 	_, err = instAction.Run(buildChart(withKube(">=99.0.0")), vals)
 	is.Error(err)
-	is.Contains(err.Error(), "chart requires kubeVersion")
+	is.Contains(err.Error(), "chart requires kubeVersion: >=99.0.0 which is incompatible with Kubernetes v1.20.")
 }
 
 func TestInstallRelease_Wait(t *testing.T) {
@@ -1067,4 +1120,180 @@ func TestInstallRun_UnreachableKubeClient(t *testing.T) {
 	done()
 	assert.Nil(t, res)
 	assert.ErrorContains(t, err, "connection refused")
+}
+
+func TestInstallSetRegistryClient(t *testing.T) {
+	config := actionConfigFixture(t)
+	instAction := NewInstall(config)
+
+	registryClient := &registry.Client{}
+	instAction.SetRegistryClient(registryClient)
+
+	assert.Equal(t, registryClient, instAction.GetRegistryClient())
+}
+
+func TestInstallCRDs(t *testing.T) {
+	config := actionConfigFixtureWithDummyResources(t, createDummyCRDList(false))
+	instAction := NewInstall(config)
+
+	mockFile := common.File{
+		Name: "crds/foo.yaml",
+		Data: []byte("hello"),
+	}
+	mockChart := buildChart(withFile(mockFile))
+	crdsToInstall := mockChart.CRDObjects()
+
+	assert.Len(t, crdsToInstall, 1)
+	assert.Equal(t, crdsToInstall[0].File.Data, mockFile.Data)
+	require.NoError(t, instAction.installCRDs(crdsToInstall))
+}
+
+func TestInstallCRDs_AlreadyExist(t *testing.T) {
+	dummyResources := createDummyCRDList(false)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: dummyResources}
+	mockError := &apierrors.StatusError{ErrStatus: metav1.Status{
+		Status: metav1.StatusFailure,
+		Reason: metav1.StatusReasonAlreadyExists,
+	}}
+	failingKubeClient.CreateError = mockError
+
+	config := actionConfigFixtureWithDummyResources(t, dummyResources)
+	config.KubeClient = &failingKubeClient
+	instAction := NewInstall(config)
+
+	mockFile := common.File{
+		Name: "crds/foo.yaml",
+		Data: []byte("hello"),
+	}
+	mockChart := buildChart(withFile(mockFile))
+	crdsToInstall := mockChart.CRDObjects()
+
+	assert.Nil(t, instAction.installCRDs(crdsToInstall))
+}
+
+func TestInstallCRDs_KubeClient_BuildError(t *testing.T) {
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.BuildError = errors.New("build error")
+	config.KubeClient = &failingKubeClient
+	instAction := NewInstall(config)
+
+	mockFile := common.File{
+		Name: "crds/foo.yaml",
+		Data: []byte("hello"),
+	}
+	mockChart := buildChart(withFile(mockFile))
+	crdsToInstall := mockChart.CRDObjects()
+
+	require.Error(t, instAction.installCRDs(crdsToInstall), "failed to install CRD")
+}
+
+func TestInstallCRDs_KubeClient_CreateError(t *testing.T) {
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.CreateError = errors.New("create error")
+	config.KubeClient = &failingKubeClient
+	instAction := NewInstall(config)
+
+	mockFile := common.File{
+		Name: "crds/foo.yaml",
+		Data: []byte("hello"),
+	}
+	mockChart := buildChart(withFile(mockFile))
+	crdsToInstall := mockChart.CRDObjects()
+
+	require.Error(t, instAction.installCRDs(crdsToInstall), "failed to install CRD")
+}
+
+func TestInstallCRDs_WaiterError(t *testing.T) {
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.WaitError = errors.New("wait error")
+	failingKubeClient.BuildDummy = true
+	config.KubeClient = &failingKubeClient
+	instAction := NewInstall(config)
+
+	mockFile := common.File{
+		Name: "crds/foo.yaml",
+		Data: []byte("hello"),
+	}
+	mockChart := buildChart(withFile(mockFile))
+	crdsToInstall := mockChart.CRDObjects()
+
+	require.Error(t, instAction.installCRDs(crdsToInstall), "wait error")
+}
+
+func TestCheckDependencies(t *testing.T) {
+	dependency := chart.Dependency{Name: "hello"}
+	mockChart := buildChart(withDependency())
+
+	assert.Nil(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}))
+}
+
+func TestCheckDependencies_MissingDependency(t *testing.T) {
+	dependency := chart.Dependency{Name: "missing"}
+	mockChart := buildChart(withDependency())
+
+	assert.ErrorContains(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}), "missing in charts")
+}
+
+func TestInstallCRDs_CheckNilErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []chart.CRD
+	}{
+		{
+			name: "only one crd with file nil",
+			input: []chart.CRD{
+				{Name: "one", File: nil},
+			},
+		},
+		{
+			name: "only one crd with its file data nil",
+			input: []chart.CRD{
+				{Name: "one", File: &common.File{Name: "crds/foo.yaml", Data: nil}},
+			},
+		},
+		{
+			name: "at least a crd with its file data nil",
+			input: []chart.CRD{
+				{Name: "one", File: &common.File{Name: "crds/foo.yaml", Data: []byte("data")}},
+				{Name: "two", File: &common.File{Name: "crds/foo2.yaml", Data: nil}},
+				{Name: "three", File: &common.File{Name: "crds/foo3.yaml", Data: []byte("data")}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			instAction := installAction(t)
+
+			err := instAction.installCRDs(tt.input)
+			if err == nil {
+				t.Errorf("got nil expected err")
+			}
+		})
+	}
+}
+
+func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
+	is := assert.New(t)
+
+	instAction := installAction(t)
+	instAction.ReleaseName = "wait-options-test"
+	instAction.WaitStrategy = kube.StatusWatcherStrategy
+
+	// Use WithWaitContext as a marker WaitOption that we can track
+	ctx := context.Background()
+	instAction.WaitOptions = []kube.WaitOption{kube.WithWaitContext(ctx)}
+
+	// Access the underlying FailingKubeClient to check recorded options
+	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+
+	vals := map[string]interface{}{}
+	_, err := instAction.Run(buildChart(), vals)
+	is.NoError(err)
+
+	// Verify that WaitOptions were passed to GetWaiter
+	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }

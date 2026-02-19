@@ -59,9 +59,8 @@ func AddWaitFlag(cmd *cobra.Command, wait *kube.WaitStrategy) {
 	cmd.Flags().Var(
 		newWaitValue(kube.HookOnlyStrategy, wait),
 		"wait",
-		"if specified, wait until resources are ready (up to --timeout). Values: 'watcher' (default), 'hookOnly', and 'legacy'.",
+		"wait until resources are ready (up to --timeout). Use '--wait' alone for 'watcher' strategy, or specify one of: 'watcher', 'hookOnly', 'legacy'. Default when flag is omitted: 'hookOnly'.",
 	)
-	// Sets the strategy to use the watcher strategy if `--wait` is used without an argument
 	cmd.Flags().Lookup("wait").NoOptDefVal = string(kube.StatusWatcherStrategy)
 }
 

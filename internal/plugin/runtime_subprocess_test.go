@@ -16,6 +16,7 @@ limitations under the License.
 package plugin
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -76,7 +77,8 @@ func TestSubprocessPluginRuntime(t *testing.T) {
 	})
 
 	require.Error(t, err)
-	ieerr, ok := err.(*InvokeExecError)
+	ieerr := &InvokeExecError{}
+	ok := errors.As(err, &ieerr)
 	require.True(t, ok, "expected InvokeExecError, got %T", err)
 	assert.Equal(t, 56, ieerr.ExitCode)
 

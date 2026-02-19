@@ -68,7 +68,7 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 	for {
 		b := bytes.NewBuffer(nil)
 		hd, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -172,7 +172,7 @@ func EnsureArchive(name string, raw *os.File) error {
 	buffer := make([]byte, 512)
 	_, err := raw.Read(buffer)
 	if err != nil && err != io.EOF {
-		return fmt.Errorf("file '%s' cannot be read: %s", name, err)
+		return fmt.Errorf("file '%s' cannot be read: %w", name, err)
 	}
 
 	// Helm may identify achieve of the application/x-gzip as application/vnd.ms-fontobject.

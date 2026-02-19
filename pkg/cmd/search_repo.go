@@ -190,7 +190,7 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 		f := filepath.Join(o.repoCacheDir, helmpath.CacheIndexFile(n))
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			slog.Warn("repo is corrupt or missing", "repo", n, slog.Any("error", err))
+			slog.Warn("repo is corrupt or missing", slog.String("repo", n), slog.Any("error", err))
 			continue
 		}
 
@@ -221,7 +221,7 @@ func (r *repoSearchWriter) WriteTable(out io.Writer) error {
 
 		_, err := out.Write([]byte("No results found\n"))
 		if err != nil {
-			return fmt.Errorf("unable to write results: %s", err)
+			return fmt.Errorf("unable to write results: %w", err)
 		}
 		return nil
 	}
@@ -260,11 +260,11 @@ func (r *repoSearchWriter) encodeByFormat(out io.Writer, format output.Format) e
 		return output.EncodeJSON(out, chartList)
 	case output.YAML:
 		return output.EncodeYAML(out, chartList)
+	default:
+		// Because this is a non-exported function and only called internally by
+		// WriteJSON and WriteYAML, we shouldn't get invalid types
+		return nil
 	}
-
-	// Because this is a non-exported function and only called internally by
-	// WriteJSON and WriteYAML, we shouldn't get invalid types
-	return nil
 }
 
 // Provides the list of charts that are part of the specified repo, and that starts with 'prefix'.

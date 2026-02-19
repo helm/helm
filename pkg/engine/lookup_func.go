@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type lookupFunc = func(apiversion string, resource string, namespace string, name string) (map[string]interface{}, error)
+type lookupFunc = func(apiversion string, resource string, namespace string, name string) (map[string]any, error)
 
 // NewLookupFunction returns a function for looking up objects in the cluster.
 //
@@ -55,11 +55,11 @@ func (c clientProviderFromConfig) GetClientFor(apiVersion, kind string) (dynamic
 }
 
 func newLookupFunction(clientProvider ClientProvider) lookupFunc {
-	return func(apiversion string, kind string, namespace string, name string) (map[string]interface{}, error) {
+	return func(apiversion string, kind string, namespace string, name string) (map[string]any, error) {
 		var client dynamic.ResourceInterface
 		c, namespaced, err := clientProvider.GetClientFor(apiversion, kind)
 		if err != nil {
-			return map[string]interface{}{}, err
+			return map[string]any{}, err
 		}
 		if namespaced && namespace != "" {
 			client = c.Namespace(namespace)
@@ -73,9 +73,9 @@ func newLookupFunction(clientProvider ClientProvider) lookupFunc {
 				if apierrors.IsNotFound(err) {
 					// Just return an empty interface when the object was not found.
 					// That way, users can use `if not (lookup ...)` in their templates.
-					return map[string]interface{}{}, nil
+					return map[string]any{}, nil
 				}
-				return map[string]interface{}{}, err
+				return map[string]any{}, err
 			}
 			return obj.UnstructuredContent(), nil
 		}
@@ -85,9 +85,9 @@ func newLookupFunction(clientProvider ClientProvider) lookupFunc {
 			if apierrors.IsNotFound(err) {
 				// Just return an empty interface when the object was not found.
 				// That way, users can use `if not (lookup ...)` in their templates.
-				return map[string]interface{}{}, nil
+				return map[string]any{}, nil
 			}
-			return map[string]interface{}{}, err
+			return map[string]any{}, err
 		}
 		return obj.UnstructuredContent(), nil
 	}
@@ -98,7 +98,11 @@ func getDynamicClientOnKind(apiversion string, kind string, config *rest.Config)
 	gvk := schema.FromAPIVersionAndKind(apiversion, kind)
 	apiRes, err := getAPIResourceForGVK(gvk, config)
 	if err != nil {
-		slog.Error("unable to get apiresource", "groupVersionKind", gvk.String(), slog.Any("error", err))
+		slog.Error(
+			"unable to get apiresource",
+			slog.String("groupVersionKind", gvk.String()),
+			slog.Any("error", err),
+		)
 		return nil, false, fmt.Errorf("unable to get apiresource from unstructured: %s: %w", gvk.String(), err)
 	}
 	gvr := schema.GroupVersionResource{
@@ -124,7 +128,11 @@ func getAPIResourceForGVK(gvk schema.GroupVersionKind, config *rest.Config) (met
 	}
 	resList, err := discoveryClient.ServerResourcesForGroupVersion(gvk.GroupVersion().String())
 	if err != nil {
-		slog.Error("unable to retrieve resource list", "GroupVersion", gvk.GroupVersion().String(), slog.Any("error", err))
+		slog.Error(
+			"unable to retrieve resource list",
+			slog.String("GroupVersion", gvk.GroupVersion().String()),
+			slog.Any("error", err),
+		)
 		return res, err
 	}
 	for _, resource := range resList.APIResources {

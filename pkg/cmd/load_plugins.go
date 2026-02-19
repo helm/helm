@@ -18,6 +18,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -120,7 +121,8 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 					Stderr: os.Stderr,
 				}
 				_, err = plug.Invoke(context.Background(), input)
-				if execErr, ok := err.(*plugin.InvokeExecError); ok {
+				execErr := &plugin.InvokeExecError{}
+				if errors.As(err, &execErr) {
 					return CommandError{
 						error:    execErr.Err,
 						ExitCode: execErr.ExitCode,
@@ -132,7 +134,13 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 			DisableFlagParsing: true,
 		}
 
-		// TODO: Make sure a command with this name does not already exist.
+		for _, cmd := range baseCmd.Commands() {
+			if cmd.Name() == c.Name() {
+				slog.Error("failed to load plugins: name conflicts", slog.String("name", c.Name()))
+				return
+			}
+		}
+
 		baseCmd.AddCommand(c)
 
 		// For completion, we try to load more details about the plugins so as to allow for command and

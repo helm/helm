@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     steps:
       - name: Checkout source code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # pin@v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
         with:
           fetch-depth: 0
 
@@ -28,9 +28,10 @@ jobs:
         run: cat ".github/env" >> "$GITHUB_ENV"
 
       - name: Setup Go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # pin@6.1.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # pin@6.2.0
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
+          check-latest: true
       - name: Run unit tests
         run: make test-coverage
       - name: Build Helm Binaries
@@ -84,13 +85,13 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.repository == 'helm/helm'
     steps:
       - name: Checkout source code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # pin@v6.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
 
       - name: Add variables to environment file
         run: cat ".github/env" >> "$GITHUB_ENV"
 
       - name: Setup Go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # pin@6.1.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # pin@6.2.0
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true

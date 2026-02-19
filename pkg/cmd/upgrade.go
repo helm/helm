@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -124,7 +125,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				histClient := action.NewHistory(cfg)
 				histClient.Max = 1
 				versions, err := histClient.Run(args[0])
-				if err == driver.ErrReleaseNotFound || isReleaseUninstalled(versions) {
+				if errors.Is(err, driver.ErrReleaseNotFound) || isReleaseUninstalled(versions) {
 					// Only print this to stdout for table output
 					if outfmt == output.Table {
 						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
@@ -153,6 +154,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.EnableDNS = client.EnableDNS
 					instClient.HideSecret = client.HideSecret
 					instClient.TakeOwnership = client.TakeOwnership
+					instClient.ForceConflicts = client.ForceConflicts
+					instClient.ServerSideApply = client.ServerSideApply != "false"
 
 					if isReleaseUninstalled(versions) {
 						instClient.Replace = true
@@ -200,7 +203,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if req := ac.MetaDependencies(); req != nil {
+			if req := ac.MetaDependencies(); len(req) > 0 {
 				if err := action.CheckDependencies(ch, req); err != nil {
 					err = fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies: %w", err)
 					if client.DependencyUpdate {

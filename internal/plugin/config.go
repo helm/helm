@@ -23,14 +23,13 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-// Config represents an plugin type specific configuration
-// It is expected to type assert (cast) the a Config to its expected underlying type (schema.ConfigCLIV1, schema.ConfigGetterV1, etc).
+// Config represents a plugin type specific configuration
+// It is expected to type assert (cast) the Config to its expected underlying type (schema.ConfigCLIV1, schema.ConfigGetterV1, etc).
 type Config interface {
 	Validate() error
 }
 
-func unmarshaConfig(pluginType string, configData map[string]any) (Config, error) {
-
+func unmarshalConfig(pluginType string, configData map[string]any) (Config, error) {
 	pluginTypeMeta, ok := pluginTypesIndex[pluginType]
 	if !ok {
 		return nil, fmt.Errorf("unknown plugin type %q", pluginType)

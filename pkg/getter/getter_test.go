@@ -60,7 +60,8 @@ func TestProvidersWithTimeout(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	client, err := getter.(*HTTPGetter).httpClient()
+	httpGetter := getter.(*HTTPGetter)
+	client, err := httpGetter.httpClient(httpGetter.opts)
 	if err != nil {
 		t.Error(err)
 	}

@@ -131,8 +131,8 @@ func LoadFile(name string) (chart.Charter, error) {
 
 	files, err := archive.LoadArchiveFiles(raw)
 	if err != nil {
-		if err == gzip.ErrHeader {
-			return nil, fmt.Errorf("file '%s' does not appear to be a valid chart file (details: %s)", name, err)
+		if errors.Is(err, gzip.ErrHeader) {
+			return nil, fmt.Errorf("file '%s' does not appear to be a valid chart file (details: %w)", name, err)
 		}
 		return nil, errors.New("unable to load chart archive")
 	}
@@ -163,7 +163,7 @@ func LoadArchive(in io.Reader) (chart.Charter, error) {
 
 	files, err := archive.LoadArchiveFiles(in)
 	if err != nil {
-		if err == gzip.ErrHeader {
+		if errors.Is(err, gzip.ErrHeader) {
 			return nil, fmt.Errorf("stream does not appear to be a valid chart file (details: %w)", err)
 		}
 		return nil, fmt.Errorf("unable to load chart archive: %w", err)
