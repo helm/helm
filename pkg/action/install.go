@@ -571,6 +571,13 @@ func (i *Install) performOrderedInstall(rel *release.Release, toBeAdopted kube.R
 		return i.createAndWaitResources(toBeAdopted, resources)
 	}
 
+	// Store sequencing metadata in the release for rollback/uninstall
+	rel.Sequencing = &release.SequencingMetadata{
+		Enabled:  true,
+		Strategy: string(kube.OrderedStrategy),
+		Batches:  batches,
+	}
+
 	// Split the manifest by subchart
 	subchartManifests := SplitManifestsBySubchart(rel.Manifest, rel.Chart.Metadata.Name)
 

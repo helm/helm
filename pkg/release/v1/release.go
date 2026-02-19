@@ -51,6 +51,22 @@ type Release struct {
 	// ApplyMethod stores whether server-side or client-side apply was used for the release
 	// Unset (empty string) should be treated as the default of client-side apply
 	ApplyMethod string `json:"apply_method,omitempty"` // "ssa" | "csa"
+	// Sequencing stores metadata about ordered deployment used for this release.
+	// Nil when sequencing was not enabled (--wait=ordered not used).
+	// Used during rollback/uninstall to respect original deployment order.
+	Sequencing *SequencingMetadata `json:"sequencing,omitempty"`
+}
+
+// SequencingMetadata stores the subchart deployment order used during install/upgrade.
+// This allows rollback and uninstall operations to reconstruct the dependency graph.
+type SequencingMetadata struct {
+	// Enabled indicates that ordered sequencing was used for this release.
+	Enabled bool `json:"enabled"`
+	// Strategy is the wait strategy used (e.g., "ordered").
+	Strategy string `json:"strategy,omitempty"`
+	// Batches records the ordered deployment batches.
+	// Each batch is a list of subchart names deployed together.
+	Batches [][]string `json:"batches,omitempty"`
 }
 
 // SetStatus is a helper for setting the status on a release.
