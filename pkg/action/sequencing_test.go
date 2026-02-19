@@ -17,7 +17,10 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -217,4 +220,114 @@ func manifestNames(ms []releaseutil.Manifest) []string {
 		names[i] = m.Name
 	}
 	return names
+}
+
+// captureWarnings redirects the default slog logger to a buffer for the duration
+// of the test and returns a function to retrieve the captured output.
+func captureWarnings(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	handler := slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})
+	oldLogger := slog.Default()
+	slog.SetDefault(slog.New(handler))
+	t.Cleanup(func() { slog.SetDefault(oldLogger) })
+	return &buf
+}
+
+func TestWarnIfPartialReadinessAnnotations_OnlySuccess(t *testing.T) {
+	buf := captureWarnings(t)
+	manifests := []releaseutil.Manifest{
+		makeTestManifest("cm", "chart/templates/cm.yaml", map[string]string{
+			kube.AnnotationReadinessSuccess: "{.status.ready} == true",
+		}),
+	}
+	warnIfPartialReadinessAnnotations(manifests)
+	if !strings.Contains(buf.String(), "readiness") {
+		t.Errorf("expected warning about partial readiness annotation, got: %q", buf.String())
+	}
+}
+
+func TestWarnIfPartialReadinessAnnotations_OnlyFailure(t *testing.T) {
+	buf := captureWarnings(t)
+	manifests := []releaseutil.Manifest{
+		makeTestManifest("cm", "chart/templates/cm.yaml", map[string]string{
+			kube.AnnotationReadinessFailure: "{.status.failed} == true",
+		}),
+	}
+	warnIfPartialReadinessAnnotations(manifests)
+	if !strings.Contains(buf.String(), "readiness") {
+		t.Errorf("expected warning about partial readiness annotation, got: %q", buf.String())
+	}
+}
+
+func TestWarnIfPartialReadinessAnnotations_BothPresent(t *testing.T) {
+	buf := captureWarnings(t)
+	manifests := []releaseutil.Manifest{
+		makeTestManifest("cm", "chart/templates/cm.yaml", map[string]string{
+			kube.AnnotationReadinessSuccess: "{.status.ready} == true",
+			kube.AnnotationReadinessFailure: "{.status.failed} == true",
+		}),
+	}
+	warnIfPartialReadinessAnnotations(manifests)
+	if buf.Len() > 0 {
+		t.Errorf("expected no warning when both annotations present, got: %q", buf.String())
+	}
+}
+
+func TestWarnIfPartialReadinessAnnotations_NeitherPresent(t *testing.T) {
+	buf := captureWarnings(t)
+	manifests := []releaseutil.Manifest{
+		makeTestManifest("cm", "chart/templates/cm.yaml", nil),
+	}
+	warnIfPartialReadinessAnnotations(manifests)
+	if buf.Len() > 0 {
+		t.Errorf("expected no warning when neither annotation present, got: %q", buf.String())
+	}
+}
+
+func TestWarnIfIsolatedGroups_TwoGroupsNoConnections(t *testing.T) {
+	buf := captureWarnings(t)
+	result := releaseutil.ResourceGroupResult{
+		Groups: map[string][]releaseutil.Manifest{
+			"groupA": {makeTestManifest("cmA", "chart/templates/cmA.yaml", nil)},
+			"groupB": {makeTestManifest("cmB", "chart/templates/cmB.yaml", nil)},
+		},
+		GroupDeps: map[string][]string{},
+	}
+	warnIfIsolatedGroups(result)
+	output := buf.String()
+	if !strings.Contains(output, "isolated") {
+		t.Errorf("expected warning about isolated groups, got: %q", output)
+	}
+}
+
+func TestWarnIfIsolatedGroups_ConnectedGroups(t *testing.T) {
+	buf := captureWarnings(t)
+	result := releaseutil.ResourceGroupResult{
+		Groups: map[string][]releaseutil.Manifest{
+			"groupA": {makeTestManifest("cmA", "chart/templates/cmA.yaml", nil)},
+			"groupB": {makeTestManifest("cmB", "chart/templates/cmB.yaml", nil)},
+		},
+		GroupDeps: map[string][]string{
+			"groupB": {"groupA"}, // groupB depends on groupA
+		},
+	}
+	warnIfIsolatedGroups(result)
+	if buf.Len() > 0 {
+		t.Errorf("expected no warning when groups are connected, got: %q", buf.String())
+	}
+}
+
+func TestWarnIfIsolatedGroups_SingleGroup(t *testing.T) {
+	buf := captureWarnings(t)
+	result := releaseutil.ResourceGroupResult{
+		Groups: map[string][]releaseutil.Manifest{
+			"groupA": {makeTestManifest("cmA", "chart/templates/cmA.yaml", nil)},
+		},
+		GroupDeps: map[string][]string{},
+	}
+	warnIfIsolatedGroups(result)
+	if buf.Len() > 0 {
+		t.Errorf("expected no warning for single group, got: %q", buf.String())
+	}
 }
