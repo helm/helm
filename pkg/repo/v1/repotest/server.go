@@ -213,7 +213,12 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 	}, nil
 }
 
-func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) *OCIServerRunResult {
+func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
+	t.Helper()
+	_ = srv.RunWithReturn(t, opts...)
+}
+
+func (srv *OCIServer) RunWithReturn(t *testing.T, opts ...OCIServerOpt) *OCIServerRunResult {
 	t.Helper()
 	cfg := &OCIServerRunConfig{}
 	for _, fn := range opts {

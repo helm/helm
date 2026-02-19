@@ -130,6 +130,10 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		if err != nil {
 			return "", nil, err
 		}
+		if len(digest) != 32 {
+			return "", nil, fmt.Errorf("invalid digest length: %d", len(digest))
+		}
+
 		copy(digest32[:], digest)
 		if pth, err := c.Cache.Get(digest32, CacheChart); err == nil {
 			fdata, err := os.ReadFile(pth)
@@ -236,6 +240,9 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 	digest, err := hex.DecodeString(stripDigestAlgorithm(digestString))
 	if err != nil {
 		return "", nil, fmt.Errorf("unable to decode digest: %w", err)
+	}
+	if digestString != "" && len(digest) != 32 {
+		return "", nil, fmt.Errorf("invalid digest length: %d", len(digest))
 	}
 	var digest32 [32]byte
 	copy(digest32[:], digest)

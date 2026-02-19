@@ -22,6 +22,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"helm.sh/helm/v4/pkg/repo/v1/repotest"
@@ -520,7 +521,7 @@ func TestPullOCIWithTagAndDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := ociSrv.Run(t)
+	result := ociSrv.RunWithReturn(t)
 
 	contentCache := t.TempDir()
 	outdir := t.TempDir()
@@ -543,12 +544,15 @@ func TestPullOCIWithTagAndDigest(t *testing.T) {
 	}
 
 	// Verify the file was downloaded
-	// When digest is present, the filename uses the digest format
+	// When digest is present, the filename uses the digest format (e.g. chart@sha256-hex.tgz)
 	expectedFile := filepath.Join(outdir, "oci-dependent-chart-0.1.0.tgz")
 	if _, err := os.Stat(expectedFile); err != nil {
-		// Try the digest-based filename
-		digestPart := result.PushedChart.Manifest.Digest[7:] // strip "sha256:"
-		expectedFile = filepath.Join(outdir, fmt.Sprintf("oci-dependent-chart@sha256-%s.tgz", digestPart))
+		// Try the digest-based filename; parse algorithm:hex to avoid fixed-offset assumptions
+		algorithm, digestPart, ok := strings.Cut(result.PushedChart.Manifest.Digest, ":")
+		if !ok {
+			t.Fatalf("digest must be in algorithm:hex format, got %q", result.PushedChart.Manifest.Digest)
+		}
+		expectedFile = filepath.Join(outdir, fmt.Sprintf("oci-dependent-chart@%s-%s.tgz", algorithm, digestPart))
 		if _, err := os.Stat(expectedFile); err != nil {
 			t.Errorf("expected chart file not found: %v", err)
 		}
