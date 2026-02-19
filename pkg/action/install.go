@@ -492,44 +492,49 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		}
 	}
 
-	// At this point, we can do the install. Note that before we were detecting whether to
-	// do an update, but it's not clear whether we WANT to do an update if the reuse is set
-	// to true, since that is basically an upgrade operation.
-	if len(toBeAdopted) == 0 && len(resources) > 0 {
-		_, err = i.cfg.KubeClient.Create(
-			resources,
-			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false))
-	} else if len(resources) > 0 {
-		updateThreeWayMergeForUnstructured := i.TakeOwnership && !i.ServerSideApply // Use three-way merge when taking ownership (and not using server-side apply)
-		_, err = i.cfg.KubeClient.Update(
-			toBeAdopted,
-			resources,
-			kube.ClientUpdateOptionForceReplace(i.ForceReplace),
-			kube.ClientUpdateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts),
-			kube.ClientUpdateOptionThreeWayMergeForUnstructured(updateThreeWayMergeForUnstructured),
-			kube.ClientUpdateOptionUpgradeClientSideFieldManager(true))
-	}
-	if err != nil {
-		return rel, err
-	}
-
-	var waiter kube.Waiter
-	if c, supportsOptions := i.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
-		waiter, err = c.GetWaiterWithOptions(i.WaitStrategy, i.WaitOptions...)
+	// HIP-0025: ordered sequencing — deploy resources in subchart dependency order
+	if i.WaitStrategy == kube.OrderedStrategy {
+		if err := i.performOrderedInstall(rel, toBeAdopted, resources); err != nil {
+			return rel, err
+		}
 	} else {
-		waiter, err = i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
-	}
-	if err != nil {
-		return rel, fmt.Errorf("failed to get waiter: %w", err)
-	}
+		// Default: install all resources at once
+		if len(toBeAdopted) == 0 && len(resources) > 0 {
+			_, err = i.cfg.KubeClient.Create(
+				resources,
+				kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false))
+		} else if len(resources) > 0 {
+			updateThreeWayMergeForUnstructured := i.TakeOwnership && !i.ServerSideApply
+			_, err = i.cfg.KubeClient.Update(
+				toBeAdopted,
+				resources,
+				kube.ClientUpdateOptionForceReplace(i.ForceReplace),
+				kube.ClientUpdateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts),
+				kube.ClientUpdateOptionThreeWayMergeForUnstructured(updateThreeWayMergeForUnstructured),
+				kube.ClientUpdateOptionUpgradeClientSideFieldManager(true))
+		}
+		if err != nil {
+			return rel, err
+		}
 
-	if i.WaitForJobs {
-		err = waiter.WaitWithJobs(resources, i.Timeout)
-	} else {
-		err = waiter.Wait(resources, i.Timeout)
-	}
-	if err != nil {
-		return rel, err
+		var waiter kube.Waiter
+		if c, supportsOptions := i.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+			waiter, err = c.GetWaiterWithOptions(i.WaitStrategy, i.WaitOptions...)
+		} else {
+			waiter, err = i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+		}
+		if err != nil {
+			return rel, fmt.Errorf("failed to get waiter: %w", err)
+		}
+
+		if i.WaitForJobs {
+			err = waiter.WaitWithJobs(resources, i.Timeout)
+		} else {
+			err = waiter.Wait(resources, i.Timeout)
+		}
+		if err != nil {
+			return rel, err
+		}
 	}
 
 	if !i.DisableHooks {
@@ -544,18 +549,105 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		rel.SetStatus(rcommon.StatusDeployed, "Install complete")
 	}
 
-	// This is a tricky case. The release has been created, but the result
-	// cannot be recorded. The truest thing to tell the user is that the
-	// release was created. However, the user will not be able to do anything
-	// further with this release.
-	//
-	// One possible strategy would be to do a timed retry to see if we can get
-	// this stored in the future.
 	if err := i.recordRelease(rel); err != nil {
 		i.cfg.Logger().Error("failed to record the release", slog.Any("error", err))
 	}
 
 	return rel, nil
+}
+
+// performOrderedInstall deploys resources in subchart dependency order as defined
+// by HIP-0025. Resources are grouped by subchart, then deployed in batches
+// according to the subchart DAG. Each batch is deployed and waited for before
+// the next batch begins.
+func (i *Install) performOrderedInstall(rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) error {
+	batches, err := BuildInstallBatches(rel.Chart)
+	if err != nil {
+		return fmt.Errorf("failed to build installation order: %w", err)
+	}
+
+	// If no sequencing declared, fall back to deploying all at once
+	if batches == nil {
+		return i.createAndWaitResources(toBeAdopted, resources)
+	}
+
+	// Split the manifest by subchart
+	subchartManifests := SplitManifestsBySubchart(rel.Manifest, rel.Chart.Metadata.Name)
+
+	i.cfg.Logger().Info(fmt.Sprintf("ordered install: %d batches to deploy", len(batches)))
+
+	for batchIdx, batch := range batches {
+		i.cfg.Logger().Info(fmt.Sprintf("deploying batch %d: %v", batchIdx+1, batch))
+
+		// Collect manifests for this batch
+		var batchManifest string
+		for _, subchartName := range batch {
+			if m, ok := subchartManifests[subchartName]; ok {
+				if batchManifest != "" {
+					batchManifest += "\n---\n"
+				}
+				batchManifest += m
+			}
+		}
+
+		if batchManifest == "" {
+			continue
+		}
+
+		// Build resource list from batch manifest
+		batchResources, err := i.cfg.KubeClient.Build(
+			bytes.NewBufferString(batchManifest),
+			!i.DisableOpenAPIValidation,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to build resources for batch %d: %w", batchIdx+1, err)
+		}
+
+		if err := i.createAndWaitResources(nil, batchResources); err != nil {
+			return fmt.Errorf("batch %d (%v) failed: %w", batchIdx+1, batch, err)
+		}
+	}
+
+	return nil
+}
+
+// createAndWaitResources creates resources and waits for readiness.
+func (i *Install) createAndWaitResources(toBeAdopted kube.ResourceList, resources kube.ResourceList) error {
+	var err error
+	if len(toBeAdopted) == 0 && len(resources) > 0 {
+		_, err = i.cfg.KubeClient.Create(
+			resources,
+			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false))
+	} else if len(resources) > 0 {
+		updateThreeWayMergeForUnstructured := i.TakeOwnership && !i.ServerSideApply
+		_, err = i.cfg.KubeClient.Update(
+			toBeAdopted,
+			resources,
+			kube.ClientUpdateOptionForceReplace(i.ForceReplace),
+			kube.ClientUpdateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts),
+			kube.ClientUpdateOptionThreeWayMergeForUnstructured(updateThreeWayMergeForUnstructured),
+			kube.ClientUpdateOptionUpgradeClientSideFieldManager(true))
+	}
+	if err != nil {
+		return err
+	}
+
+	var waiter kube.Waiter
+	if c, supportsOptions := i.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+		waiter, err = c.GetWaiterWithOptions(i.WaitStrategy, i.WaitOptions...)
+	} else {
+		waiter, err = i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to get waiter: %w", err)
+	}
+
+	if i.WaitForJobs {
+		err = waiter.WaitWithJobs(resources, i.Timeout)
+	} else {
+		err = waiter.Wait(resources, i.Timeout)
+	}
+	return err
 }
 
 func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
