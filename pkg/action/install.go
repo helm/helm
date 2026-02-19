@@ -100,6 +100,10 @@ type Install struct {
 	Devel            bool
 	DependencyUpdate bool
 	Timeout          time.Duration
+	// ReadinessTimeout is the per-batch timeout when --wait=ordered is used.
+	// Each batch waits at most this long for resources to become ready.
+	// Must not exceed Timeout. Defaults to 1 minute when zero.
+	ReadinessTimeout time.Duration
 	Namespace        string
 	ReleaseName      string
 	GenerateName     bool
@@ -288,6 +292,10 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	if err := i.availableName(); err != nil {
 		i.cfg.Logger().Error("release name check failed", slog.Any("error", err))
 		return nil, fmt.Errorf("release name check failed: %w", err)
+	}
+
+	if i.ReadinessTimeout > 0 && i.Timeout > 0 && i.ReadinessTimeout > i.Timeout {
+		return nil, fmt.Errorf("--readiness-timeout (%s) must not exceed --timeout (%s)", i.ReadinessTimeout, i.Timeout)
 	}
 
 	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {

@@ -212,6 +212,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	AddWaitFlag(cmd, &client.WaitStrategy)
+	f.DurationVar(&client.ReadinessTimeout, "readiness-timeout", time.Minute, "per-batch timeout when --wait=ordered is used; each resource batch must become ready within this duration (must not exceed --timeout)")
 	cmd.MarkFlagsMutuallyExclusive("force-replace", "force-conflicts")
 	cmd.MarkFlagsMutuallyExclusive("force", "force-conflicts")
 

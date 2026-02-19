@@ -25,6 +25,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -97,6 +98,27 @@ func outputFlagCompletionTest(t *testing.T, cmdName string) {
 		}),
 	}}
 	runTestCmd(t, tests)
+}
+
+func TestWaitValueOrdered(t *testing.T) {
+	// --wait=ordered should be accepted and set the strategy correctly.
+	var ws kube.WaitStrategy
+	wv := newWaitValue(kube.HookOnlyStrategy, &ws)
+
+	if err := wv.Set("ordered"); err != nil {
+		t.Fatalf("expected --wait=ordered to be accepted, got error: %v", err)
+	}
+	if ws != kube.OrderedWaitStrategy {
+		t.Errorf("expected OrderedWaitStrategy, got %q", ws)
+	}
+}
+
+func TestWaitValueInvalid(t *testing.T) {
+	var ws kube.WaitStrategy
+	wv := newWaitValue(kube.HookOnlyStrategy, &ws)
+	if err := wv.Set("invalid"); err == nil {
+		t.Error("expected error for invalid wait strategy, got nil")
+	}
 }
 
 func TestPostRendererFlagSetOnce(t *testing.T) {

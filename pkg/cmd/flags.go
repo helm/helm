@@ -59,7 +59,7 @@ func AddWaitFlag(cmd *cobra.Command, wait *kube.WaitStrategy) {
 	cmd.Flags().Var(
 		newWaitValue(kube.HookOnlyStrategy, wait),
 		"wait",
-		"wait until resources are ready (up to --timeout). Use '--wait' alone for 'watcher' strategy, or specify one of: 'watcher', 'hookOnly', 'legacy'. Default when flag is omitted: 'hookOnly'.",
+		"wait until resources are ready (up to --timeout). Use '--wait' alone for 'watcher' strategy, or specify one of: 'watcher', 'hookOnly', 'legacy', 'ordered'. Default when flag is omitted: 'hookOnly'.",
 	)
 	cmd.Flags().Lookup("wait").NoOptDefVal = string(kube.StatusWatcherStrategy)
 }
@@ -80,7 +80,7 @@ func (ws *waitValue) String() string {
 
 func (ws *waitValue) Set(s string) error {
 	switch s {
-	case string(kube.StatusWatcherStrategy), string(kube.LegacyStrategy), string(kube.HookOnlyStrategy):
+	case string(kube.StatusWatcherStrategy), string(kube.LegacyStrategy), string(kube.HookOnlyStrategy), string(kube.OrderedWaitStrategy):
 		*ws = waitValue(s)
 		return nil
 	case "true":
@@ -92,7 +92,7 @@ func (ws *waitValue) Set(s string) error {
 		*ws = waitValue(kube.HookOnlyStrategy)
 		return nil
 	default:
-		return fmt.Errorf("invalid wait input %q. Valid inputs are %s, %s, and %s", s, kube.StatusWatcherStrategy, kube.HookOnlyStrategy, kube.LegacyStrategy)
+		return fmt.Errorf("invalid wait input %q. Valid inputs are %s, %s, %s, and %s", s, kube.StatusWatcherStrategy, kube.HookOnlyStrategy, kube.LegacyStrategy, kube.OrderedWaitStrategy)
 	}
 }
 

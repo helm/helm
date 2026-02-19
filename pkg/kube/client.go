@@ -117,6 +117,13 @@ const (
 
 	// HookOnlyStrategy: wait only for hook Pods/Jobs to complete; does not wait for general chart resources.
 	HookOnlyStrategy WaitStrategy = "hookOnly"
+
+	// OrderedWaitStrategy: deploy resources in DAG-ordered batches, waiting for each batch to become ready
+	// before proceeding to the next. Subchart and resource-group sequencing is driven by
+	// helm.sh/depends-on/subcharts, helm.sh/resource-group, and helm.sh/depends-on/resource-groups annotations.
+	// Custom readiness conditions via helm.sh/readiness-success and helm.sh/readiness-failure are evaluated
+	// per-resource; otherwise kstatus is used.
+	OrderedWaitStrategy WaitStrategy = "ordered"
 )
 
 type FieldValidationDirective string
@@ -200,10 +207,14 @@ func (c *Client) GetWaiterWithOptions(strategy WaitStrategy, opts ...WaitOption)
 			return nil, err
 		}
 		return &hookOnlyWaiter{sw: sw}, nil
+	case OrderedWaitStrategy:
+		// Sequencing logic lives in the action layer; at the kube level, ordered
+		// strategy uses the status watcher for per-batch readiness checks.
+		return c.newStatusWatcher(opts...)
 	case "":
-		return nil, errors.New("wait strategy not set. Choose one of: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy))
+		return nil, errors.New("wait strategy not set. Choose one of: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy) + ", " + string(OrderedWaitStrategy))
 	default:
-		return nil, errors.New("unknown wait strategy (s" + string(strategy) + "). Valid values are: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy))
+		return nil, errors.New("unknown wait strategy (" + string(strategy) + "). Valid values are: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy) + ", " + string(OrderedWaitStrategy))
 	}
 }
 

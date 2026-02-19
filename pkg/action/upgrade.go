@@ -70,6 +70,10 @@ type Upgrade struct {
 	SkipCRDs bool
 	// Timeout is the timeout for this operation
 	Timeout time.Duration
+	// ReadinessTimeout is the per-batch timeout when --wait=ordered is used.
+	// Each batch waits at most this long for resources to become ready.
+	// Must not exceed Timeout. Defaults to 1 minute when zero.
+	ReadinessTimeout time.Duration
 	// WaitStrategy determines what type of waiting should be done
 	WaitStrategy kube.WaitStrategy
 	// WaitOptions are additional options for waiting on resources
@@ -185,6 +189,10 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 
 	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, fmt.Errorf("release name is invalid: %s", name)
+	}
+
+	if u.ReadinessTimeout > 0 && u.Timeout > 0 && u.ReadinessTimeout > u.Timeout {
+		return nil, fmt.Errorf("--readiness-timeout (%s) must not exceed --timeout (%s)", u.ReadinessTimeout, u.Timeout)
 	}
 
 	u.cfg.Logger().Debug("preparing upgrade", "name", name)
