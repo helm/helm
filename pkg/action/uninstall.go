@@ -273,6 +273,12 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		fmt.Fprintf(&kept, "[%s] %s\n", f.Head.Kind, f.Head.Metadata.Name)
 	}
 
+	// Use sequenced (reverse DAG order) deletion when the release was deployed with sequencing.
+	if rel.SequencingInfo != nil && rel.SequencingInfo.Enabled {
+		deleted, batchErrs := u.sequencedDeleteManifests(filesToDelete)
+		return deleted, kept.String(), batchErrs
+	}
+
 	var builder strings.Builder
 	for _, file := range filesToDelete {
 		builder.WriteString("\n---\n" + file.Content)
@@ -286,6 +292,72 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		_, errs = u.cfg.KubeClient.Delete(resources, parseCascadingFlag(u.DeletionPropagation))
 	}
 	return resources, kept.String(), errs
+}
+
+// sequencedDeleteManifests deletes manifests in reverse resource-group DAG order:
+// dependents are deleted before the resources they depend on.
+// Unsequenced resources (no resource-group annotation) are deleted first (they were installed last).
+func (u *Uninstall) sequencedDeleteManifests(manifests []releaseutil.Manifest) (kube.ResourceList, []error) {
+	var allDeleted kube.ResourceList
+	var allErrs []error
+	cascade := parseCascadingFlag(u.DeletionPropagation)
+
+	deleteManifestBatch := func(batch []releaseutil.Manifest) {
+		if len(batch) == 0 {
+			return
+		}
+		var builder strings.Builder
+		for _, m := range batch {
+			builder.WriteString("\n---\n" + m.Content)
+		}
+		resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
+		if err != nil {
+			allErrs = append(allErrs, fmt.Errorf("unable to build kubernetes objects for delete: %w", err))
+			return
+		}
+		if len(resources) == 0 {
+			return
+		}
+		allDeleted = append(allDeleted, resources...)
+		if _, errs := u.cfg.KubeClient.Delete(resources, cascade); errs != nil {
+			allErrs = append(allErrs, errs...)
+		}
+	}
+
+	result, warnings := releaseutil.ParseResourceGroups(manifests)
+	for _, w := range warnings {
+		slog.Warn("resource-group annotation warning during uninstall", "warning", w)
+	}
+
+	// Delete unsequenced resources first (they were deployed last in install order).
+	deleteManifestBatch(result.Unsequenced)
+
+	// For sequenced groups: get install-order batches and reverse them.
+	if len(result.Groups) > 0 {
+		dag, err := releaseutil.BuildResourceGroupDAG(result)
+		if err != nil {
+			allErrs = append(allErrs, fmt.Errorf("building resource-group DAG for sequenced uninstall: %w", err))
+			return allDeleted, allErrs
+		}
+		batches, err := dag.GetBatches()
+		if err != nil {
+			allErrs = append(allErrs, fmt.Errorf("getting resource-group batches for sequenced uninstall: %w", err))
+			return allDeleted, allErrs
+		}
+		// Reverse the batches: delete dependents before their dependencies.
+		for i, j := 0, len(batches)-1; i < j; i, j = i+1, j-1 {
+			batches[i], batches[j] = batches[j], batches[i]
+		}
+		for _, groupBatch := range batches {
+			var batchManifests []releaseutil.Manifest
+			for _, groupName := range groupBatch {
+				batchManifests = append(batchManifests, result.Groups[groupName]...)
+			}
+			deleteManifestBatch(batchManifests)
+		}
+	}
+
+	return allDeleted, allErrs
 }
 
 func parseCascadingFlag(cascadingFlag string) v1.DeletionPropagation {

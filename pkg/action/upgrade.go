@@ -645,6 +645,10 @@ func (u *Upgrade) performSequencedUpgrade(ctx context.Context, chrt *chartv2.Cha
 	currentRelease.Info.Status = rcommon.StatusSuperseded
 	u.cfg.recordRelease(currentRelease)
 
+	upgradedRelease.SequencingInfo = &release.SequencingInfo{
+		Enabled:  true,
+		Strategy: string(u.WaitStrategy),
+	}
 	upgradedRelease.Info.Status = rcommon.StatusDeployed
 	if len(u.Description) > 0 {
 		upgradedRelease.Info.Description = u.Description

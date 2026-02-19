@@ -563,6 +563,11 @@ func (i *Install) performSequencedInstall(ctx context.Context, chrt *chart.Chart
 		}
 	}
 
+	rel.SequencingInfo = &release.SequencingInfo{
+		Enabled:  true,
+		Strategy: string(i.WaitStrategy),
+	}
+
 	if len(i.Description) > 0 {
 		rel.SetStatus(rcommon.StatusDeployed, i.Description)
 	} else {

@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release/common"
+	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func uninstallAction(t *testing.T) *Uninstall {
@@ -206,4 +207,19 @@ func TestUninstall_WaitOptionsPassedDownstream(t *testing.T) {
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
+}
+
+// TestUninstallRelease_SequencedDeleteSucceeds verifies that a sequenced release
+// (SequencingInfo.Enabled) can be uninstalled without error.
+func TestUninstallRelease_SequencedDeleteSucceeds(t *testing.T) {
+	unAction := uninstallAction(t)
+	unAction.DisableHooks = true
+
+	rel := releaseStub()
+	rel.Name = "seq-uninstall-test"
+	rel.SequencingInfo = &release.SequencingInfo{Enabled: true, Strategy: "ordered"}
+	require.NoError(t, unAction.cfg.Releases.Create(rel))
+
+	_, err := unAction.Run(rel.Name)
+	require.NoError(t, err)
 }

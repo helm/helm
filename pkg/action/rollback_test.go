@@ -21,12 +21,14 @@ import (
 	"errors"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func TestNewRollback(t *testing.T) {
@@ -82,4 +84,45 @@ func TestRollback_WaitOptionsPassedDownstream(t *testing.T) {
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
+}
+
+// TestRollback_SequencingInfoPropagated verifies that a previous release's SequencingInfo
+// is carried forward into the new rollback release record.
+func TestRollback_SequencingInfoPropagated(t *testing.T) {
+	config := actionConfigFixture(t)
+
+	// rel1 was originally deployed with --wait=ordered
+	rel1 := releaseStub()
+	rel1.Name = "seq-rollback-test"
+	rel1.Version = 1
+	rel1.Info.Status = "deployed"
+	rel1.ApplyMethod = "csa"
+	rel1.SequencingInfo = &release.SequencingInfo{Enabled: true, Strategy: "ordered"}
+	require.NoError(t, config.Releases.Create(rel1))
+
+	// rel2 is the current (last) deployed version
+	rel2 := releaseStub()
+	rel2.Name = "seq-rollback-test"
+	rel2.Version = 2
+	rel2.Info.Status = "deployed"
+	rel2.ApplyMethod = "csa"
+	require.NoError(t, config.Releases.Create(rel2))
+
+	client := NewRollback(config)
+	client.Version = 1
+	client.WaitStrategy = kube.OrderedWaitStrategy
+	client.ServerSideApply = "auto"
+	client.Timeout = 5 * time.Minute
+
+	err := client.Run(rel1.Name)
+	require.NoError(t, err)
+
+	// The new rollback release (version 3) should have SequencingInfo from rel1
+	newReli, err := config.Releases.Last(rel1.Name)
+	require.NoError(t, err)
+	newRel, err := releaserToV1Release(newReli)
+	require.NoError(t, err)
+	assert.Equal(t, 3, newRel.Version)
+	require.NotNil(t, newRel.SequencingInfo, "rollback release should carry SequencingInfo from previous version")
+	assert.True(t, newRel.SequencingInfo.Enabled)
 }

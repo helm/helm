@@ -25,6 +25,16 @@ type ApplyMethod string
 const ApplyMethodClientSideApply ApplyMethod = "csa"
 const ApplyMethodServerSideApply ApplyMethod = "ssa"
 
+// SequencingInfo records whether and how this release was deployed with
+// resource sequencing (--wait=ordered). It is consulted by rollback and
+// uninstall to replicate or reverse the original deployment order.
+type SequencingInfo struct {
+	// Enabled is true when --wait=ordered was used for this release.
+	Enabled bool `json:"enabled,omitempty"`
+	// Strategy is the WaitStrategy value used (e.g., "ordered").
+	Strategy string `json:"strategy,omitempty"`
+}
+
 // Release describes a deployment of a chart, together with the chart
 // and the variables used to deploy that chart.
 type Release struct {
@@ -51,6 +61,9 @@ type Release struct {
 	// ApplyMethod stores whether server-side or client-side apply was used for the release
 	// Unset (empty string) should be treated as the default of client-side apply
 	ApplyMethod string `json:"apply_method,omitempty"` // "ssa" | "csa"
+	// SequencingInfo stores metadata about sequenced deployment for use by rollback/uninstall.
+	// Nil means the release was not deployed with sequencing (backward-compatible default).
+	SequencingInfo *SequencingInfo `json:"sequencing_info,omitempty"`
 }
 
 // SetStatus is a helper for setting the status on a release.

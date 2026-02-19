@@ -148,6 +148,34 @@ func containsStr(s, substr string) bool {
 	return false
 }
 
+// TestInstallRelease_StoresSequencingInfo verifies that a sequenced install stores
+// SequencingInfo in the release record.
+func TestInstallRelease_StoresSequencingInfo(t *testing.T) {
+	config := actionConfigFixture(t)
+	instAction := NewInstall(config)
+	instAction.Namespace = "spaced"
+	instAction.ReleaseName = "seq-info-test"
+	instAction.WaitStrategy = kube.OrderedWaitStrategy
+	instAction.Timeout = 5 * time.Minute
+	instAction.ReadinessTimeout = time.Minute
+
+	ch := buildChart(withSampleTemplates())
+	reli, err := instAction.RunWithContext(context.Background(), ch, map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("install failed: %v", err)
+	}
+	rel, err := releaserToV1Release(reli)
+	if err != nil {
+		t.Fatalf("type assertion failed: %v", err)
+	}
+	if rel.SequencingInfo == nil {
+		t.Fatal("expected SequencingInfo to be set after ordered install, got nil")
+	}
+	if !rel.SequencingInfo.Enabled {
+		t.Error("expected SequencingInfo.Enabled to be true")
+	}
+}
+
 // TestInstallRelease_OrderedWaitStrategy verifies that --wait=ordered installs
 // succeed end-to-end using the fake kube client.
 func TestInstallRelease_OrderedWaitStrategy(t *testing.T) {
