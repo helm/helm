@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orphan-group-resource
+  annotations:
+    helm.sh/resource-group: mygroup
+    helm.sh/depends-on/resource-groups: '["nonexistent-group"]'
+data:
+  key: value

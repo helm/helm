@@ -1,0 +1,4 @@
+apiVersion: v2
+name: sequencing-partial-readiness
+description: Chart with partial readiness annotation for lint testing
+version: 0.1.0

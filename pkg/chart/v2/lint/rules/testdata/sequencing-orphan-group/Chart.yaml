@@ -1,0 +1,4 @@
+apiVersion: v2
+name: sequencing-orphan-group
+description: Chart with resource referencing non-existent group
+version: 0.1.0
