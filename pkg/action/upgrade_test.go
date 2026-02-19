@@ -802,3 +802,38 @@ func TestUpgradeRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }
+
+// TestUpgradeRelease_OrderedWaitStrategy verifies that --wait=ordered upgrades
+// succeed end-to-end using the fake kube client.
+func TestUpgradeRelease_OrderedWaitStrategy(t *testing.T) {
+	req := require.New(t)
+
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "seq-upgrade-test"
+	rel.Info.Status = common.StatusDeployed
+	req.NoError(upAction.cfg.Releases.Create(rel))
+
+	upAction.WaitStrategy = kube.OrderedWaitStrategy
+	upAction.Timeout = 5 * time.Minute
+	upAction.ReadinessTimeout = time.Minute
+
+	_, err := upAction.Run(rel.Name, buildChart(withSampleTemplates()), map[string]interface{}{})
+	req.NoError(err)
+}
+
+// TestUpgradeRelease_ReadinessTimeoutValidation checks that ReadinessTimeout > Timeout returns an error.
+func TestUpgradeRelease_ReadinessTimeoutValidation(t *testing.T) {
+	upAction := upgradeAction(t)
+	rel := releaseStub()
+	rel.Name = "timeout-upgrade-test"
+	rel.Info.Status = common.StatusDeployed
+	require.NoError(t, upAction.cfg.Releases.Create(rel))
+
+	upAction.WaitStrategy = kube.OrderedWaitStrategy
+	upAction.Timeout = 5
+	upAction.ReadinessTimeout = 10 // exceeds Timeout
+
+	_, err := upAction.Run(rel.Name, buildChart(withSampleTemplates()), map[string]interface{}{})
+	require.Error(t, err)
+}

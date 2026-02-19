@@ -538,6 +538,8 @@ func (i *Install) performSequencedInstall(ctx context.Context, chrt *chart.Chart
 
 	sd := &sequencedDeployment{
 		cfg:              i.cfg,
+		releaseName:      rel.Name,
+		releaseNamespace: rel.Namespace,
 		disableOpenAPI:   i.DisableOpenAPIValidation,
 		serverSideApply:  i.ServerSideApply,
 		forceConflicts:   i.ForceConflicts,

@@ -80,11 +80,13 @@ func buildManifestYAML(manifests []releaseutil.Manifest) string {
 	return buf.String()
 }
 
-// sequencedDeployment performs ordered installation of chart resources.
+// sequencedDeployment performs ordered installation or upgrade of chart resources.
 // It handles the two-level DAG: first subchart ordering, then resource-group
 // ordering within each chart level.
 type sequencedDeployment struct {
 	cfg              *Configuration
+	releaseName      string
+	releaseNamespace string
 	disableOpenAPI   bool
 	serverSideApply  bool
 	forceConflicts   bool
@@ -95,6 +97,12 @@ type sequencedDeployment struct {
 	timeout          time.Duration
 	readinessTimeout time.Duration
 	deadline         time.Time // overall operation deadline
+
+	// Upgrade-specific fields. When upgradeMode is true, createAndWait delegates
+	// to updateAndWait which calls KubeClient.Update() instead of Create().
+	upgradeMode           bool
+	currentResources      kube.ResourceList // full set of old (current) resources
+	upgradeCSAFieldManager bool              // upgrade client-side apply field manager
 }
 
 // deployChartLevel deploys all resources for a single chart level in sequenced order.
@@ -202,9 +210,14 @@ func (s *sequencedDeployment) deployResourceGroupBatches(ctx context.Context, ma
 	return nil
 }
 
-// createAndWait creates a set of manifest resources and waits for them to be ready.
-// It respects both the per-batch readiness timeout and the overall operation deadline.
+// createAndWait creates (or updates, in upgrade mode) a set of manifest resources
+// and waits for them to be ready. It respects both the per-batch readiness timeout
+// and the overall operation deadline.
 func (s *sequencedDeployment) createAndWait(ctx context.Context, manifests []releaseutil.Manifest) error {
+	if s.upgradeMode {
+		return s.updateAndWait(ctx, manifests)
+	}
+
 	if len(manifests) == 0 {
 		return nil
 	}
@@ -218,11 +231,69 @@ func (s *sequencedDeployment) createAndWait(ctx context.Context, manifests []rel
 		return nil
 	}
 
+	if err := resources.Visit(setMetadataVisitor(s.releaseName, s.releaseNamespace, true)); err != nil {
+		return fmt.Errorf("setting metadata for resource batch: %w", err)
+	}
+
 	_, err = s.cfg.KubeClient.Create(resources, kube.ClientCreateOptionServerSideApply(s.serverSideApply, false))
 	if err != nil {
 		return fmt.Errorf("creating resource batch: %w", err)
 	}
 
+	return s.waitForResources(resources)
+}
+
+// updateAndWait applies an upgrade batch using KubeClient.Update() and waits for readiness.
+// It matches current (old) resources by objectKey to compute the per-batch diff.
+func (s *sequencedDeployment) updateAndWait(ctx context.Context, manifests []releaseutil.Manifest) error {
+	if len(manifests) == 0 {
+		return nil
+	}
+
+	yaml := buildManifestYAML(manifests)
+	target, err := s.cfg.KubeClient.Build(bytes.NewBufferString(yaml), !s.disableOpenAPI)
+	if err != nil {
+		return fmt.Errorf("building resource batch: %w", err)
+	}
+	if len(target) == 0 {
+		return nil
+	}
+
+	if err := target.Visit(setMetadataVisitor(s.releaseName, s.releaseNamespace, true)); err != nil {
+		return fmt.Errorf("setting metadata for resource batch: %w", err)
+	}
+
+	// Find the subset of current (old) resources that are represented in this batch.
+	// Update() will handle creates (target resources not in matchingCurrent) and
+	// updates (resources in both). Deletions are handled separately after all batches.
+	targetKeys := make(map[string]bool, len(target))
+	for _, r := range target {
+		targetKeys[objectKey(r)] = true
+	}
+	var matchingCurrent kube.ResourceList
+	for _, r := range s.currentResources {
+		if targetKeys[objectKey(r)] {
+			matchingCurrent = append(matchingCurrent, r)
+		}
+	}
+
+	_, err = s.cfg.KubeClient.Update(
+		matchingCurrent,
+		target,
+		kube.ClientUpdateOptionForceReplace(s.forceReplace),
+		kube.ClientUpdateOptionServerSideApply(s.serverSideApply, s.forceConflicts),
+		kube.ClientUpdateOptionUpgradeClientSideFieldManager(s.upgradeCSAFieldManager),
+	)
+	if err != nil {
+		return fmt.Errorf("updating resource batch: %w", err)
+	}
+
+	return s.waitForResources(target)
+}
+
+// waitForResources waits for the given resources to become ready,
+// applying the per-batch and overall deadline constraints.
+func (s *sequencedDeployment) waitForResources(resources kube.ResourceList) error {
 	// Determine effective wait timeout: min(readinessTimeout, remaining time to overall deadline)
 	waitTimeout := s.readinessTimeout
 	if !s.deadline.IsZero() {
@@ -238,6 +309,7 @@ func (s *sequencedDeployment) createAndWait(ctx context.Context, manifests []rel
 		waitTimeout = time.Minute // safe default
 	}
 
+	var err error
 	var waiter kube.Waiter
 	if c, ok := s.cfg.KubeClient.(kube.InterfaceWaitOptions); ok {
 		waiter, err = c.GetWaiterWithOptions(s.waitStrategy, s.waitOptions...)
