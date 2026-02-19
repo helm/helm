@@ -70,15 +70,11 @@ func BuildSubchartDAG(c *chart.Chart) (*DAG, error) {
 		if dep.Alias != "" {
 			effective = dep.Alias
 		}
+		// A dependency is disabled when Enabled is false AND there's no condition or
+		// tag that could re-enable it at runtime. Conditions and tags are evaluated
+		// at install-time from user-supplied values, so we can't resolve them here.
+		// If Enabled is false but a condition/tag is set, treat as potentially enabled.
 		disabled := !dep.Enabled && dep.Condition == "" && len(dep.Tags) == 0
-		// A dependency with Enabled=false explicitly is disabled.
-		// We also check: if Enabled is true OR there's a condition/tag, treat as
-		// potentially enabled (conditions are runtime values we can't evaluate here).
-		// For DAG purposes: if Enabled is explicitly false and no condition/tag,
-		// treat as disabled. Otherwise treat as enabled.
-		if !dep.Enabled {
-			disabled = true
-		}
 		byName[effective] = &depInfo{dep: dep, disabled: disabled}
 	}
 

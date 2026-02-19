@@ -608,10 +608,16 @@ func (u *Upgrade) performSequencedUpgrade(ctx context.Context, chrt *chartv2.Cha
 		waitForJobs:           u.WaitForJobs,
 		timeout:               u.Timeout,
 		readinessTimeout:      readinessTimeout,
-		deadline:              time.Now().Add(u.Timeout),
+		deadline:              computeDeadline(u.Timeout),
 		upgradeMode:           true,
 		currentResources:      current,
 		upgradeCSAFieldManager: upgradeCSAFieldManager,
+	}
+
+	// Set SequencingInfo before deployment so that failure recovery can use sequenced order.
+	upgradedRelease.SequencingInfo = &release.SequencingInfo{
+		Enabled:  true,
+		Strategy: string(u.WaitStrategy),
 	}
 
 	if err := sd.deployChartLevel(ctx, chrt, manifests); err != nil {
@@ -644,11 +650,6 @@ func (u *Upgrade) performSequencedUpgrade(ctx context.Context, chrt *chartv2.Cha
 
 	currentRelease.Info.Status = rcommon.StatusSuperseded
 	u.cfg.recordRelease(currentRelease)
-
-	upgradedRelease.SequencingInfo = &release.SequencingInfo{
-		Enabled:  true,
-		Strategy: string(u.WaitStrategy),
-	}
 	upgradedRelease.Info.Status = rcommon.StatusDeployed
 	if len(u.Description) > 0 {
 		upgradedRelease.Info.Description = u.Description

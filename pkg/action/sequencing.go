@@ -30,6 +30,15 @@ import (
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 )
 
+// computeDeadline returns a deadline based on the given timeout duration.
+// If timeout is zero or negative, it returns the zero time (no deadline).
+func computeDeadline(timeout time.Duration) time.Time {
+	if timeout <= 0 {
+		return time.Time{}
+	}
+	return time.Now().Add(timeout)
+}
+
 // GroupManifestsByDirectSubchart groups manifests by the direct subchart they belong to.
 // The parent chart's own manifests (templates directly under `<chartName>/templates/`) are
 // returned under the empty string key "".
@@ -383,13 +392,27 @@ func (s *sequencedDeployment) waitForResources(resources kube.ResourceList) erro
 }
 
 // findSubchart finds the subchart chart object within chrt's direct dependencies by name or alias.
+// It uses the parent chart's Metadata.Dependencies to resolve aliases, since the alias is stored
+// on the Dependency struct in Chart.yaml, not on the subchart's own Metadata.
 func findSubchart(chrt *chartv2.Chart, nameOrAlias string) *chartv2.Chart {
-	for _, dep := range chrt.Dependencies() {
-		alias := dep.Metadata.Annotations["alias"]
-		if alias == "" {
-			alias = dep.Name()
+	// Build a map from subchart chart name → alias from the parent's dependency declarations.
+	aliasMap := make(map[string]string) // chart name → effective name (alias or name)
+	if chrt.Metadata != nil {
+		for _, dep := range chrt.Metadata.Dependencies {
+			effective := dep.Name
+			if dep.Alias != "" {
+				effective = dep.Alias
+			}
+			aliasMap[dep.Name] = effective
 		}
-		if alias == nameOrAlias || dep.Name() == nameOrAlias {
+	}
+
+	for _, dep := range chrt.Dependencies() {
+		effective := dep.Name()
+		if alias, ok := aliasMap[dep.Name()]; ok {
+			effective = alias
+		}
+		if effective == nameOrAlias || dep.Name() == nameOrAlias {
 			return dep
 		}
 	}

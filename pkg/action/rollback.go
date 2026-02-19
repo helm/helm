@@ -361,7 +361,7 @@ func (r *Rollback) performSequencedRollback(ctx context.Context, currentRelease,
 		waitForJobs:      r.WaitForJobs,
 		timeout:          r.Timeout,
 		readinessTimeout: readinessTimeout,
-		deadline:         time.Now().Add(r.Timeout),
+		deadline:         computeDeadline(r.Timeout),
 		upgradeMode:      true,
 		currentResources: current,
 		// upgradeCSAFieldManager: always true for rollback (same as existing performRollback)

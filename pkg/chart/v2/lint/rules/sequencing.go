@@ -70,9 +70,17 @@ func validateSubchartSequencing(c *chart.Chart) error {
 
 	// In lint context, conditions/tags cannot be evaluated. Treat all deps as
 	// enabled to catch cycles that would manifest with any values configuration.
-	for _, dep := range c.Metadata.Dependencies {
+	// Save and restore original Enabled values to avoid mutating the chart.
+	origEnabled := make([]bool, len(c.Metadata.Dependencies))
+	for i, dep := range c.Metadata.Dependencies {
+		origEnabled[i] = dep.Enabled
 		dep.Enabled = true
 	}
+	defer func() {
+		for i, dep := range c.Metadata.Dependencies {
+			dep.Enabled = origEnabled[i]
+		}
+	}()
 
 	dag, err := chartutil.BuildSubchartDAG(c)
 	if err != nil {
@@ -147,6 +155,26 @@ func validateRenderedSequencingAnnotations(linter *support.Linter, c *chart.Char
 			Content: raw,
 			Head:    &head,
 		})
+	}
+
+	// Check for resources assigned to multiple different groups.
+	resourceGroups := make(map[string]string) // "kind/name" → group
+	for _, m := range manifests {
+		if m.Head == nil || m.Head.Metadata == nil {
+			continue
+		}
+		group, hasGroup := m.Head.Metadata.Annotations[releaseutil.AnnotationResourceGroup]
+		if !hasGroup || group == "" {
+			continue
+		}
+		key := m.Head.Kind + "/" + m.Head.Metadata.Name
+		if prev, exists := resourceGroups[key]; exists && prev != group {
+			linter.RunLinterRule(support.ErrorSev, linter.ChartDir,
+				fmt.Errorf("resource %q is assigned to multiple resource-groups (%q and %q); each resource must belong to exactly one group",
+					key, prev, group))
+		} else {
+			resourceGroups[key] = group
+		}
 	}
 
 	// Check partial readiness annotations.

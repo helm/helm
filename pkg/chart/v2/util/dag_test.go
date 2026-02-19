@@ -201,6 +201,33 @@ func TestDAGGetBatches_NodesWithoutEdges(t *testing.T) {
 	}
 }
 
+func TestDAGAddEdge_DuplicateIdempotent(t *testing.T) {
+	d := NewDAG()
+	d.AddNode("a")
+	d.AddNode("b")
+	if err := d.AddEdge("a", "b"); err != nil {
+		t.Fatal(err)
+	}
+	// Adding the same edge again should be a no-op.
+	if err := d.AddEdge("a", "b"); err != nil {
+		t.Fatal(err)
+	}
+	batches, err := d.GetBatches()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Should be 2 batches: [a] then [b], NOT corrupted by double in-degree.
+	if len(batches) != 2 {
+		t.Fatalf("expected 2 batches, got %d: %v", len(batches), batches)
+	}
+	if !containsExactly(batches[0], "a") {
+		t.Errorf("batch 0 should be [a], got %v", batches[0])
+	}
+	if !containsExactly(batches[1], "b") {
+		t.Errorf("batch 1 should be [b], got %v", batches[1])
+	}
+}
+
 // helper: checks slice contains exactly these elements (order-independent)
 func containsExactly(slice []string, items ...string) bool {
 	if len(slice) != len(items) {

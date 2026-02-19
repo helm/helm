@@ -29,6 +29,7 @@ import (
 type DAG struct {
 	nodes    map[string]struct{}
 	edges    map[string][]string // from -> []to (dependents)
+	edgeSet  map[string]struct{} // "from\x00to" -> exists (dedup guard)
 	inDegree map[string]int      // node -> number of prerequisites
 }
 
@@ -37,6 +38,7 @@ func NewDAG() *DAG {
 	return &DAG{
 		nodes:    make(map[string]struct{}),
 		edges:    make(map[string][]string),
+		edgeSet:  make(map[string]struct{}),
 		inDegree: make(map[string]int),
 	}
 }
@@ -63,6 +65,12 @@ func (d *DAG) AddEdge(from, to string) error {
 	if _, ok := d.nodes[to]; !ok {
 		return fmt.Errorf("unknown node %q", to)
 	}
+	// Silently skip duplicate edges to prevent in-degree corruption.
+	key := from + "\x00" + to
+	if _, exists := d.edgeSet[key]; exists {
+		return nil
+	}
+	d.edgeSet[key] = struct{}{}
 	d.edges[from] = append(d.edges[from], to)
 	d.inDegree[to]++
 	return nil

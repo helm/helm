@@ -122,10 +122,10 @@ func TestBuildManifestYAML(t *testing.T) {
 		t.Error("expected non-empty YAML output")
 	}
 	// Should contain content from both manifests
-	if !contains(result, "name: cm1") {
+	if !strings.Contains(result, "name: cm1") {
 		t.Error("expected cm1 in output")
 	}
-	if !contains(result, "name: cm2") {
+	if !strings.Contains(result, "name: cm2") {
 		t.Error("expected cm2 in output")
 	}
 }
@@ -135,20 +135,6 @@ func TestBuildManifestYAML_Empty(t *testing.T) {
 	if result != "" {
 		t.Errorf("expected empty string for nil manifests, got %q", result)
 	}
-}
-
-// contains checks if s contains substr.
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsStr(s, substr))
-}
-
-func containsStr(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 // TestInstallRelease_StoresSequencingInfo verifies that a sequenced install stores

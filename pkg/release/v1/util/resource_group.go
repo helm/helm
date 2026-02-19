@@ -121,8 +121,17 @@ func ParseResourceGroups(manifests []Manifest) (ResourceGroupResult, []string) {
 		// Only record deps if we haven't already moved this group to unsequenced.
 		if _, ok := result.Groups[p.groupName]; ok {
 			if len(p.deps) > 0 {
-				existing := result.GroupDeps[p.groupName]
-				result.GroupDeps[p.groupName] = append(existing, p.deps...)
+				// Deduplicate deps to prevent in-degree corruption in the DAG.
+				seen := make(map[string]struct{})
+				for _, d := range result.GroupDeps[p.groupName] {
+					seen[d] = struct{}{}
+				}
+				for _, d := range p.deps {
+					if _, exists := seen[d]; !exists {
+						result.GroupDeps[p.groupName] = append(result.GroupDeps[p.groupName], d)
+						seen[d] = struct{}{}
+					}
+				}
 			}
 		}
 	nextPending:

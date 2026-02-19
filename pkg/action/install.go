@@ -549,7 +549,14 @@ func (i *Install) performSequencedInstall(ctx context.Context, chrt *chart.Chart
 		waitForJobs:      i.WaitForJobs,
 		timeout:          i.Timeout,
 		readinessTimeout: readinessTimeout,
-		deadline:         time.Now().Add(i.Timeout),
+		deadline:         computeDeadline(i.Timeout),
+	}
+
+	// Set SequencingInfo before deployment so that failure recovery (e.g.,
+	// rollback-on-failure) can also use sequenced deletion order.
+	rel.SequencingInfo = &release.SequencingInfo{
+		Enabled:  true,
+		Strategy: string(i.WaitStrategy),
 	}
 
 	if err := sd.deployChartLevel(ctx, chrt, manifests); err != nil {
@@ -561,11 +568,6 @@ func (i *Install) performSequencedInstall(ctx context.Context, chrt *chart.Chart
 		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
 			return rel, fmt.Errorf("failed post-install: %s", err)
 		}
-	}
-
-	rel.SequencingInfo = &release.SequencingInfo{
-		Enabled:  true,
-		Strategy: string(i.WaitStrategy),
 	}
 
 	if len(i.Description) > 0 {

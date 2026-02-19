@@ -280,14 +280,16 @@ func renderOrderedTemplate(manifest string, out io.Writer) error {
 	}
 
 	// Output each batch's groups with START/END delimiters.
-	// m.Content already contains the "# Source:" comment from rel.Manifest.
+	// Format per HIP-0025: ## START resource-group: <chart-path> <group-name>
+	// where chart-path is derived from the manifest source (e.g., "foo" or "foo/bar").
 	for _, batch := range batches {
 		for _, groupName := range batch {
-			fmt.Fprintf(out, "## START resource-group: %s\n", groupName)
+			chartPath := chartPathFromGroup(result.Groups[groupName])
+			fmt.Fprintf(out, "## START resource-group: %s %s\n", chartPath, groupName)
 			for _, m := range result.Groups[groupName] {
 				fmt.Fprintf(out, "---\n%s\n", m.Content)
 			}
-			fmt.Fprintf(out, "## END resource-group: %s\n", groupName)
+			fmt.Fprintf(out, "## END resource-group: %s %s\n", chartPath, groupName)
 		}
 	}
 
@@ -297,6 +299,34 @@ func renderOrderedTemplate(manifest string, out io.Writer) error {
 	}
 
 	return nil
+}
+
+// chartPathFromGroup extracts the chart/subchart path from the first manifest's
+// "# Source:" comment in its content.
+// For "# Source: mychart/templates/foo.yaml" → "mychart".
+// For "# Source: mychart/charts/sub/templates/bar.yaml" → "mychart/sub".
+func chartPathFromGroup(manifests []releaseutil.Manifest) string {
+	if len(manifests) == 0 {
+		return ""
+	}
+	content := manifests[0].Content
+	// Look for "# Source: <path>" line.
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "# Source: ") {
+			source := strings.TrimPrefix(line, "# Source: ")
+			// Extract chart path up to "/templates/"
+			idx := strings.Index(source, "/templates/")
+			if idx < 0 {
+				return source
+			}
+			p := source[:idx]
+			// Collapse "parent/charts/sub" into "parent/sub" per HIP spec.
+			p = strings.ReplaceAll(p, "/charts/", "/")
+			return p
+		}
+	}
+	return ""
 }
 
 func isTestHook(h *release.Hook) bool {
