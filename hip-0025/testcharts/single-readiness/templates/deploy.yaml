@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-app
+  annotations:
+    helm.sh/resource-group: app
+    helm.sh/readiness-success: '["{.availableReplicas} >= 1"]'
+    # NOTE: Missing helm.sh/readiness-failure — should trigger lint error and runtime warning
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: single-readiness
+  template:
+    metadata:
+      labels:
+        app: single-readiness
+    spec:
+      containers:
+        - name: app
+          image: busybox:1.36
+          command: ["sh", "-c", "sleep 3600"]

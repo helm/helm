@@ -1,0 +1,5 @@
+apiVersion: v2
+name: backend
+description: Backend subchart
+version: 0.1.0
+type: application

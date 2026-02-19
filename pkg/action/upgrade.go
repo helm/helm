@@ -485,6 +485,12 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		u.cfg.Logger().Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
 	}
 
+	// Strip Helm-internal sequencing annotations before applying to K8s.
+	if err := stripSequencingAnnotations(target); err != nil {
+		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("stripping sequencing annotations: %w", err))
+		return
+	}
+
 	upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply // Update client-side field manager if transitioning from client-side to server-side apply
 	results, err := u.cfg.KubeClient.Update(
 		current,

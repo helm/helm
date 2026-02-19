@@ -1,0 +1,5 @@
+apiVersion: v2
+name: custom-readiness
+description: Test chart for HIP-0025 custom readiness evaluation
+version: 0.1.0
+type: application

@@ -597,6 +597,14 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		}
 	}
 
+	// Strip Helm-internal sequencing annotations that may contain invalid K8s
+	// annotation key characters (e.g. helm.sh/depends-on/resource-groups has
+	// multiple slashes). These annotations are only used by Helm's sequencing
+	// engine and must not be sent to the K8s API server.
+	if err := stripSequencingAnnotations(resources); err != nil {
+		return rel, fmt.Errorf("stripping sequencing annotations: %w", err)
+	}
+
 	// At this point, we can do the install. Note that before we were detecting whether to
 	// do an update, but it's not clear whether we WANT to do an update if the reuse is set
 	// to true, since that is basically an upgrade operation.

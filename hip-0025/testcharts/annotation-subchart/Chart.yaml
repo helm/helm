@@ -1,0 +1,14 @@
+apiVersion: v2
+name: annotation-subchart
+description: Test chart using helm.sh/depends-on/subcharts annotation
+version: 0.1.0
+type: application
+annotations:
+  helm.sh/depends-on/subcharts: '{"app": ["redis", "postgres"]}'
+dependencies:
+  - name: redis
+    version: "0.1.0"
+  - name: postgres
+    version: "0.1.0"
+  - name: app
+    version: "0.1.0"

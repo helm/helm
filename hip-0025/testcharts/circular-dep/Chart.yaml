@@ -1,0 +1,14 @@
+apiVersion: v2
+name: circular-dep
+description: Test chart with circular subchart dependencies (should fail lint + install)
+version: 0.1.0
+type: application
+dependencies:
+  - name: a
+    version: "0.1.0"
+    depends-on:
+      - b
+  - name: b
+    version: "0.1.0"
+    depends-on:
+      - a

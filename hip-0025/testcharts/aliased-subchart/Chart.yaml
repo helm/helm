@@ -1,0 +1,9 @@
+apiVersion: v2
+name: aliased-subchart
+description: Test chart with aliased subchart dependency
+version: 0.1.0
+type: application
+dependencies:
+  - name: pg
+    version: "0.1.0"
+    alias: mydb

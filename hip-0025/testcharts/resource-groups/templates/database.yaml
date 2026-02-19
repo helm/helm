@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-database-config
+  annotations:
+    helm.sh/resource-group: database
+data:
+  host: "localhost"
+  port: "5432"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-database
+  annotations:
+    helm.sh/resource-group: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: database
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: database
+          image: busybox:1.36
+          command: ["sh", "-c", "echo 'database running' && sleep 3600"]

@@ -1,0 +1,12 @@
+apiVersion: v2
+name: combined
+description: Test chart with both subchart ordering and resource-group sequencing
+version: 0.1.0
+type: application
+dependencies:
+  - name: database
+    version: "0.1.0"
+  - name: app
+    version: "0.1.0"
+    depends-on:
+      - database

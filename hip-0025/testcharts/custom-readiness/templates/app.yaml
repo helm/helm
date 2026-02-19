@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-app
+  annotations:
+    helm.sh/resource-group: app
+    helm.sh/depends-on/resource-groups: '["database"]'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: readiness-app
+  template:
+    metadata:
+      labels:
+        app: readiness-app
+    spec:
+      containers:
+        - name: app
+          image: busybox:1.36
+          command: ["sh", "-c", "echo 'app running after db init' && sleep 3600"]

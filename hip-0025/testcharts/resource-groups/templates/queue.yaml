@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-queue-config
+  annotations:
+    helm.sh/resource-group: queue
+    helm.sh/depends-on/resource-groups: '["database"]'
+data:
+  broker: "amqp://localhost"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-queue
+  annotations:
+    helm.sh/resource-group: queue
+    helm.sh/depends-on/resource-groups: '["database"]'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: queue
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: queue
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: queue
+          image: busybox:1.36
+          command: ["sh", "-c", "echo 'queue running' && sleep 3600"]

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-services
+  annotations:
+    helm.sh/resource-group: services
+    helm.sh/depends-on/resource-groups: '["infra"]'
+data:
+  info: "Services config - parent chart, batch 2 (after infra)"

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: single-readiness
+description: Test chart with only one readiness annotation (should warn)
+version: 0.1.0
+type: application

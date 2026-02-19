@@ -1,0 +1,5 @@
+apiVersion: v2
+name: monitoring
+description: Monitoring subchart (no deps, parallel with backend)
+version: 0.1.0
+type: application

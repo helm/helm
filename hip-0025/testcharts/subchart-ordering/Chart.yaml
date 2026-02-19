@@ -1,0 +1,14 @@
+apiVersion: v2
+name: subchart-ordering
+description: Test chart for HIP-0025 subchart dependency ordering
+version: 0.1.0
+type: application
+dependencies:
+  - name: backend
+    version: "0.1.0"
+  - name: frontend
+    version: "0.1.0"
+    depends-on:
+      - backend
+  - name: monitoring
+    version: "0.1.0"

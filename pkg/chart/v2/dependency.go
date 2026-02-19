@@ -49,7 +49,7 @@ type Dependency struct {
 	Alias string `json:"alias,omitempty" yaml:"alias,omitempty"`
 	// DependsOn is a list of subchart names (or aliases) that must be deployed
 	// before this subchart. Used for HIP-0025 resource sequencing.
-	DependsOn []string `json:"dependsOn,omitempty" yaml:"depends-on,omitempty"`
+	DependsOn []string `json:"depends-on,omitempty" yaml:"depends-on,omitempty"`
 }
 
 // Validate checks for common problems with the dependency datastructure in

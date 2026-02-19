@@ -28,6 +28,9 @@ import (
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
+
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/cli-runtime/pkg/resource"
 )
 
 // computeDeadline returns a deadline based on the given timeout duration.
@@ -82,7 +85,10 @@ func buildManifestYAML(manifests []releaseutil.Manifest) string {
 		return ""
 	}
 	var buf strings.Builder
-	for _, m := range manifests {
+	for i, m := range manifests {
+		if i > 0 {
+			buf.WriteString("---\n")
+		}
 		buf.WriteString(m.Content)
 		buf.WriteString("\n")
 	}
@@ -275,6 +281,44 @@ func (s *sequencedDeployment) deployResourceGroupBatches(ctx context.Context, ma
 	return nil
 }
 
+// helmSequencingAnnotations lists annotation keys used internally by Helm for
+// resource sequencing. These are stripped from resources before applying to
+// Kubernetes because some (e.g. helm.sh/depends-on/resource-groups) contain
+// multiple slashes which is invalid per the K8s annotation key format.
+var helmSequencingAnnotations = []string{
+	releaseutil.AnnotationDependsOnResourceGroups,
+}
+
+// stripSequencingAnnotations removes Helm-internal sequencing annotations from
+// resources before they are applied to Kubernetes. This prevents K8s API
+// validation errors for annotation keys that are not valid K8s label keys.
+func stripSequencingAnnotations(resources kube.ResourceList) error {
+	return resources.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+		acc, accErr := meta.Accessor(info.Object)
+		if accErr != nil {
+			return nil // skip non-accessible objects
+		}
+		annotations := acc.GetAnnotations()
+		if len(annotations) == 0 {
+			return nil
+		}
+		changed := false
+		for _, key := range helmSequencingAnnotations {
+			if _, exists := annotations[key]; exists {
+				delete(annotations, key)
+				changed = true
+			}
+		}
+		if changed {
+			acc.SetAnnotations(annotations)
+		}
+		return nil
+	})
+}
+
 // createAndWait creates (or updates, in upgrade mode) a set of manifest resources
 // and waits for them to be ready. It respects both the per-batch readiness timeout
 // and the overall operation deadline.
@@ -298,6 +342,10 @@ func (s *sequencedDeployment) createAndWait(ctx context.Context, manifests []rel
 
 	if err := resources.Visit(setMetadataVisitor(s.releaseName, s.releaseNamespace, true)); err != nil {
 		return fmt.Errorf("setting metadata for resource batch: %w", err)
+	}
+
+	if err := stripSequencingAnnotations(resources); err != nil {
+		return fmt.Errorf("stripping sequencing annotations: %w", err)
 	}
 
 	_, err = s.cfg.KubeClient.Create(resources, kube.ClientCreateOptionServerSideApply(s.serverSideApply, false))
@@ -326,6 +374,10 @@ func (s *sequencedDeployment) updateAndWait(ctx context.Context, manifests []rel
 
 	if err := target.Visit(setMetadataVisitor(s.releaseName, s.releaseNamespace, true)); err != nil {
 		return fmt.Errorf("setting metadata for resource batch: %w", err)
+	}
+
+	if err := stripSequencingAnnotations(target); err != nil {
+		return fmt.Errorf("stripping sequencing annotations: %w", err)
 	}
 
 	// Find the subset of current (old) resources that are represented in this batch.

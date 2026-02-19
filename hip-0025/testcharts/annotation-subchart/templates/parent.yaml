@@ -1,0 +1,6 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-parent
+data:
+  info: "Parent chart - deploys after all subcharts"

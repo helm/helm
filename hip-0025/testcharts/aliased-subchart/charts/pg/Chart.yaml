@@ -1,0 +1,4 @@
+apiVersion: v2
+name: pg
+version: 0.1.0
+type: application

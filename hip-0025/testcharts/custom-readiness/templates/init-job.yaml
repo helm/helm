@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-db-init
+  annotations:
+    helm.sh/resource-group: database
+    helm.sh/readiness-success: '["{.succeeded} >= 1"]'
+    helm.sh/readiness-failure: '["{.failed} >= 1"]'
+spec:
+  template:
+    spec:
+      containers:
+        - name: init
+          image: busybox:1.36
+          command: ["sh", "-c", "echo 'initializing database' && sleep 5 && echo 'done'"]
+      restartPolicy: Never
+  backoffLimit: 1

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: app
+description: App subchart (depends on database)
+version: 0.1.0
+type: application
