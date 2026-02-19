@@ -1,84 +1,84 @@
-# PLAN.md — worktree/1: HIP-0025 Foundation (Chart Metadata + DAG)
+# PLAN.md — worktree/1: HIP-0025 Subchart Sequencing (Full Stack)
 
 ## Context
 
 HIP-0025 introduces native resource and subchart sequencing to Helm v4.
-This worktree implements the **foundation layer**: chart metadata extensions
-and DAG construction needed before action/CLI integration.
+This worktree implements the complete subchart sequencing pipeline: chart metadata,
+DAG engine, CLI flag, action layer integration, and release storage.
 
 **Spec source:** `hip-0025/hip-0025.md`, `hip-0025/subchart-sequencing.md`
 
-## Scope (this branch)
+## Delivered
 
-### 1. Chart Metadata Extension — `DependsOn` field
-- Add `DependsOn []string` to `Dependency` struct in both v2 and v3
-- Supports `depends-on` YAML key in Chart.yaml dependencies list
-- Add validation: each DependsOn entry must reference a known dependency name/alias
-- Sanitize DependsOn strings in `Validate()`
+### Phase 2: Chart Metadata Extension — DONE
+- `DependsOn []string` field on v2 + v3 `Dependency` struct
+- Sanitization in `Validate()`
+- Files: `pkg/chart/v2/dependency.go`, `internal/chart/v3/dependency.go`
 
-**Files:**
-- `pkg/chart/v2/dependency.go` — add field + validation
-- `internal/chart/v3/dependency.go` — add field + validation
+### Phase 3: DAG Construction & Topo Sort — DONE
+- DAG struct: AddNode, AddEdge, DetectCycles, TopologicalSort, Batches
+- `BuildSubchartDAG` combines DependsOn field + annotation parsing
+- `ParseDependsOnSubcharts` for `helm.sh/depends-on/subcharts` annotation
+- Annotation constants for resource-group sequencing (future use)
+- Files: `pkg/chart/v2/util/dag.go`, `pkg/chart/v2/util/sequencing.go` (+ v3 mirrors)
 
-### 2. Annotation Parsing — `helm.sh/depends-on/subcharts`
-- Parse `helm.sh/depends-on/subcharts` from `Metadata.Annotations`
-- Already available: `Annotations map[string]string` exists on both v2/v3 Metadata
-- Utility function to extract and parse the annotation value (JSON array of strings)
+### Phase 4: WaitStrategy Extension — DONE
+- `OrderedStrategy WaitStrategy = "ordered"` constant
+- Delegates to StatusWatcher for readiness checks
+- CLI accepts `--wait=ordered`
+- Files: `pkg/kube/client.go`, `pkg/cmd/flags.go`
 
-**Files:**
-- New: `pkg/chart/v2/util/sequencing.go` — annotation constants, parse helpers
-- New: `internal/chart/v3/util/sequencing.go` — v3 variant
+### Phase 5: Action System Integration — DONE
+- `performOrderedInstall`: deploy resources in DAG batch order
+- `SplitManifestsBySubchart`: partition manifest by `# Source:` comments
+- `BuildInstallBatches`: compute ordered batches from chart metadata
+- `createAndWaitResources`: extracted helper for create+wait
+- Falls back to all-at-once when no sequencing metadata exists
+- Files: `pkg/action/install.go`, `pkg/action/sequencing.go`
 
-### 3. DAG Construction & Topological Sort
-- Build subchart dependency graph from:
-  - `Dependency.DependsOn` field entries
-  - `Metadata.Annotations["helm.sh/depends-on/subcharts"]` entries
-- Topological sort → produce ordered batches (layers)
-- Circular dependency detection with clear error messages
-- Orphaned subchart handling (no deps → deployed with parent in final batch)
+### Phase 6: CLI Integration — DONE (bundled with Phase 4)
+- `--wait=ordered` accepted alongside watcher/hookOnly/legacy
+- Error messages updated to include ordered option
 
-**Files:**
-- New: `pkg/chart/v2/util/dag.go` — DAG struct, AddNode, AddEdge, TopologicalSort, DetectCycles
-- New: `internal/chart/v3/util/dag.go` — v3 variant (or shared via common)
+### Phase 7: Release Storage — DONE
+- `SequencingMetadata` struct: enabled, strategy, batches
+- Persisted in `Release.Sequencing` during ordered install
+- Enables rollback/uninstall to reconstruct deployment order
+- Files: `pkg/release/v1/release.go`
 
-### 4. Integration with ProcessDependencies
-- After existing enable/disable logic, build subchart DAG
-- Validate DAG (no cycles, all DependsOn refs resolve)
-- Attach DAG to chart processing result for downstream use
+## Test Coverage
 
-**Files:**
-- `pkg/chart/v2/util/dependencies.go` — add DAG building after ProcessDependencies
-- `internal/chart/v3/util/dependencies.go` — same
+- 10 DAG unit tests (empty, single, linear, diamond, parallel, cycles, self-dep, orphans, complex)
+- 7 annotation parsing tests (nil, empty, valid, invalid JSON, etc.)
+- 6 BuildSubchartDAG tests (HIP-0025 example, aliases, cycles, unknown refs)
+- 7 action sequencing tests (manifest splitting, batch construction, circular deps)
+- All existing tests pass — zero regressions
 
-### 5. Tests
-- Unit tests for DependsOn parsing and validation
-- Unit tests for DAG construction (linear, diamond, parallel, orphan patterns)
-- Unit tests for circular dependency detection
-- Unit tests for annotation parsing
-- Integration test with chart fixtures
+## Commits
 
-**Files:**
-- `pkg/chart/v2/util/dag_test.go`
-- `pkg/chart/v2/util/sequencing_test.go`
-- `pkg/chart/v2/dependency_test.go` (extend existing)
-
-## Verification
-
-```bash
-make test-unit                    # Full unit test suite
-go test ./pkg/chart/v2/...       # Chart v2 tests
-go test ./pkg/chart/v2/util/...  # DAG + sequencing tests
-go test ./internal/chart/v3/...  # Chart v3 tests
-make test-style                   # Linting
 ```
+01fdc96b feat(chart): add DependsOn field and DAG engine for HIP-0025
+c8a23f04 feat(kube): add OrderedStrategy WaitStrategy for HIP-0025
+1e79330b feat(action): implement ordered subchart install for HIP-0025
+7550e729 feat(release): store sequencing metadata in Release
+```
+
+## Remaining (future worktrees)
+
+- Resource-group sequencing (within single chart)
+- Custom readiness evaluation (helm.sh/readiness-success/failure + JSONPath)
+- Upgrade ordered sequencing
+- Uninstall/rollback reverse-order logic
+- `helm template` ordered output with START/END resource-group comments
+- Readiness timeout flag (--readiness-timeout)
 
 ## bd Issues
 
 | ID | Phase | Status |
 |----|-------|--------|
-| helm-btq | Phase 2: Chart Metadata | in-progress |
-| helm-ed3 | Phase 3: DAG Construction | blocked-by helm-btq |
-| helm-40n | Phase 4: WaitStrategy | future worktree |
-| helm-fby | Phase 5: Action System | future worktree |
-| helm-0d5 | Phase 6: CLI | future worktree |
-| helm-7an | Phase 7: Release Storage | future worktree |
+| helm-btq | Phase 2: Chart Metadata | done |
+| helm-ed3 | Phase 3: DAG Construction | done |
+| helm-40n | Phase 4: WaitStrategy | done |
+| helm-fby | Phase 5: Action System | done |
+| helm-0d5 | Phase 6: CLI | done |
+| helm-7an | Phase 7: Release Storage | done |
