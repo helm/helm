@@ -134,6 +134,35 @@ func TestDependencyEnabled(t *testing.T) {
 	}
 }
 
+// TestDependencyEnabledAliasNestedCondition tests that a condition defaulting to false in a
+// leaf chart's values.yaml is respected when the leaf chart is accessed through multiple
+// levels of aliased dependencies.
+func TestDependencyEnabledAliasNestedCondition(t *testing.T) {
+	// Chart structure:
+	//   parentchart -> mid (alias: midchart) -> leaf (alias: leafchart) -> util (condition: util.enabled)
+	//
+	// leaf/values.yaml sets util.enabled: false.
+	// No user-provided values override this.
+	// Expected: util is NOT included in the output.
+	c := loadChart(t, "testdata/alias-condition-nested")
+	if err := processDependencyEnabled(c, c.Values, ""); err != nil {
+		t.Fatalf("error processing enabled dependencies: %v", err)
+	}
+
+	names := extractChartNames(c)
+	expected := []string{"parentchart", "parentchart.midchart", "parentchart.midchart.leafchart"}
+	sort.Strings(expected)
+
+	if len(names) != len(expected) {
+		t.Fatalf("slice lengths do not match: got %v, expected %v", names, expected)
+	}
+	for i := range names {
+		if names[i] != expected[i] {
+			t.Fatalf("slice values do not match: got %v, expected %v", names, expected)
+		}
+	}
+}
+
 // extractChartNames recursively searches chart dependencies returning all charts found
 func extractChartNames(c *chart.Chart) []string {
 	var out []string
