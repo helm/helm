@@ -21,7 +21,9 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
+	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/internal/plugin"
@@ -29,16 +31,31 @@ import (
 )
 
 type pluginUpdateOptions struct {
-	names []string
+	plugins map[string]string
 }
+
+const pluginUpdateDesc = `Update one or more Helm plugins.
+
+An exact semver version can be supplied per-plugin using the @version syntax:
+
+    helm plugin update myplugin@1.2.3 otherplugin@2.0.0
+    helm plugin update myplugin@v1.0.0
+
+Range constraints (e.g. ~1.2, ^1.0.0, >=1.0.0, v1.0.0) are not supported.
+
+If no version is given for a plugin it is updated to the latest version:
+
+    helm plugin update myplugin otherplugin
+`
 
 func newPluginUpdateCmd(out io.Writer) *cobra.Command {
 	o := &pluginUpdateOptions{}
 
 	cmd := &cobra.Command{
-		Use:     "update <plugin>...",
+		Use:     "update <plugin[@version]>...",
 		Aliases: []string{"up"},
 		Short:   "update one or more Helm plugins",
+		Long:    pluginUpdateDesc,
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compListPlugins(toComplete, args), cobra.ShellCompDirectiveNoFileComp
 		},
@@ -56,21 +73,39 @@ func (o *pluginUpdateOptions) complete(args []string) error {
 	if len(args) == 0 {
 		return errors.New("please provide plugin name to update")
 	}
-	o.names = args
+
+	o.plugins = make(map[string]string, len(args))
+
+	for _, arg := range args {
+		name, version := parsePluginVersion(arg)
+		if name == "" {
+			return fmt.Errorf("invalid plugin reference %q: plugin name must not be empty", arg)
+		}
+		if _, exists := o.plugins[name]; exists {
+			return fmt.Errorf("plugin %q specified more than once", name)
+		}
+		if version != "" {
+			if _, err := semver.StrictNewVersion(version); err != nil {
+				return fmt.Errorf("invalid version %q for plugin %q: must be an exact semver version (e.g. 1.2.3)", version, name)
+			}
+		}
+		o.plugins[name] = version
+	}
+
 	return nil
 }
 
 func (o *pluginUpdateOptions) run(out io.Writer) error {
 	slog.Debug("loading installed plugins", "path", settings.PluginsDirectory)
-	plugins, err := plugin.LoadAll(settings.PluginsDirectory)
+	installed, err := plugin.LoadAll(settings.PluginsDirectory)
 	if err != nil {
 		return err
 	}
 	var errorPlugins []error
 
-	for _, name := range o.names {
-		if found := findPlugin(plugins, name); found != nil {
-			if err := updatePlugin(found); err != nil {
+	for name, version := range o.plugins {
+		if found := findPlugin(installed, name); found != nil {
+			if err := updatePlugin(found, version); err != nil {
 				errorPlugins = append(errorPlugins, fmt.Errorf("failed to update plugin %s, got error (%v)", name, err))
 			} else {
 				fmt.Fprintf(out, "Updated plugin: %s\n", name)
@@ -85,7 +120,14 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 	return nil
 }
 
-func updatePlugin(p plugin.Plugin) error {
+func parsePluginVersion(arg string) (name, version string) {
+	if i := strings.LastIndex(arg, "@"); i >= 0 {
+		return arg[:i], arg[i+1:]
+	}
+	return arg, ""
+}
+
+func updatePlugin(p plugin.Plugin, version string) error {
 	exactLocation, err := filepath.EvalSymlinks(p.Dir())
 	if err != nil {
 		return err
@@ -95,7 +137,7 @@ func updatePlugin(p plugin.Plugin) error {
 		return err
 	}
 
-	i, err := installer.FindSource(absExactLocation)
+	i, err := installer.FindSource(absExactLocation, version)
 	if err != nil {
 		return err
 	}
