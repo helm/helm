@@ -242,6 +242,142 @@ func TestEnvOrBool(t *testing.T) {
 	}
 }
 
+func TestEnvInt64OrQuantityBytes(t *testing.T) {
+	envName := "TEST_ENV_INT64"
+
+	tests := []struct {
+		name     string
+		env      string
+		val      string
+		def      int64
+		expected int64
+	}{
+		{
+			name:     "empty env name uses default",
+			env:      "",
+			val:      "999",
+			def:      100,
+			expected: 100,
+		},
+		{
+			name:     "env set with valid int64",
+			env:      envName,
+			val:      "12345",
+			def:      100,
+			expected: 12345,
+		},
+		{
+			name:     "env fails parsing with default",
+			env:      envName,
+			val:      "NOT_A_NUMBER",
+			def:      100,
+			expected: 100,
+		},
+		{
+			name:     "env empty string with default",
+			env:      envName,
+			val:      "",
+			def:      200,
+			expected: 200,
+		},
+
+		// Quantity cases (bytes)
+		{
+			name:     "quantity Mi",
+			env:      envName,
+			val:      "512Mi",
+			def:      100,
+			expected: 512 * 1024 * 1024,
+		},
+		{
+			name:     "quantity Gi",
+			env:      envName,
+			val:      "2Gi",
+			def:      100,
+			expected: 2 * 1024 * 1024 * 1024,
+		},
+		{
+			name:     "quantity Ki",
+			env:      envName,
+			val:      "4096Ki",
+			def:      100,
+			expected: 4096 * 1024,
+		},
+		{
+			name: "decimal SI 1G (base10)",
+			env:  envName,
+			val:  "1G",
+			def:  100,
+			// 1G in decimal SI is 1,000,000,000 bytes
+			expected: 1_000_000_000,
+		},
+		{
+			name:     "decimal SI 500M (base10)",
+			env:      envName,
+			val:      "500M",
+			def:      100,
+			expected: 500_000_000,
+		},
+		{
+			name:     "lowercase suffix returns default with error message",
+			env:      envName,
+			val:      "1gi",
+			def:      100,
+			expected: 100, // Returns default but prints error about uppercase requirement
+		},
+		{
+			name:     "suffix Mb rejected",
+			env:      envName,
+			val:      "1000Mb",
+			def:      100,
+			expected: 100, // Returns default but prints error about 'Mb' being invalid
+		},
+		{
+			name:     "suffix mo rejected",
+			env:      envName,
+			val:      "1000mo",
+			def:      100,
+			expected: 100, // Returns default but prints error about 'mo' being invalid
+		},
+		{
+			name:     "suffix m rejected (milli)",
+			env:      envName,
+			val:      "10m",
+			def:      100,
+			expected: 100, // Returns default but prints error about 'm' being invalid
+		},
+		{
+			name:     "whitespace trimmed",
+			env:      envName,
+			val:      " 256Mi ",
+			def:      100,
+			expected: 256 * 1024 * 1024,
+		},
+		{
+			name: "too large to fit in int64 returns default",
+			env:  envName,
+			// ~9.22e18 is max int64; use larger than that to trigger overflow handling.
+			val:      "10000000000Gi", // 10,000,000,000 * 1024^3 bytes ≈ 1.07e22
+			def:      1234,
+			expected: 1234,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Clear previous value to avoid bleed between tests
+			t.Setenv(envName, "")
+			if tt.env != "" {
+				t.Setenv(tt.env, tt.val)
+			}
+			actual := envInt64OrQuantityBytes(tt.env, tt.def)
+			if actual != tt.expected {
+				t.Errorf("expected result %d, got %d (env=%q val=%q def=%d)", tt.expected, actual, tt.env, tt.val, tt.def)
+			}
+		})
+	}
+}
+
 func TestUserAgentHeaderInK8sRESTClientConfig(t *testing.T) {
 	defer resetEnv()()
 
@@ -254,6 +390,60 @@ func TestUserAgentHeaderInK8sRESTClientConfig(t *testing.T) {
 	expectedUserAgent := version.GetUserAgent()
 	if restConfig.UserAgent != expectedUserAgent {
 		t.Errorf("expected User-Agent header %q in K8s REST client config, got %q", expectedUserAgent, restConfig.UserAgent)
+	}
+}
+
+func TestQuantityBytesValue(t *testing.T) {
+	// This test only verifies that the pflag.Value wrapper correctly propagates
+	// values and errors. Comprehensive parsing logic is tested in TestEnvInt64OrQuantityBytes.
+	tests := []struct {
+		name        string
+		input       string
+		expected    int64
+		expectError bool
+	}{
+		{
+			name:     "valid quantity sets value",
+			input:    "256Mi",
+			expected: 256 * 1024 * 1024,
+		},
+		{
+			name:        "invalid value propagates error",
+			input:       "not-a-number",
+			expectError: true,
+		},
+		{
+			name:        "Mb suffix rejected",
+			input:       "1Mb",
+			expectError: true,
+		},
+		{
+			name:        "m suffix rejected",
+			input:       "1m",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var val int64
+			qv := NewQuantityBytesValue(&val)
+
+			err := qv.Set(tt.input)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("expected error but got none")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+				if val != tt.expected {
+					t.Errorf("expected %d, got %d", tt.expected, val)
+				}
+			}
+		})
 	}
 }
 
