@@ -191,7 +191,7 @@ func (c *Client) GetWaiterWithOptions(strategy WaitStrategy, opts ...WaitOption)
 		if err != nil {
 			return nil, err
 		}
-		return &legacyWaiter{kubeClient: kc, ctx: c.WaitContext}, nil
+		return &legacyWaiter{kubeClient: kc, ctx: c.WaitContext, logger: c.Logger()}, nil
 	case StatusWatcherStrategy:
 		return c.newStatusWatcher(opts...)
 	case HookOnlyStrategy:
@@ -226,11 +226,9 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 		getter = genericclioptions.NewConfigFlags(true)
 	}
 	factory := cmdutil.NewFactory(getter)
-	c := &Client{
+	return &Client{
 		Factory: factory,
 	}
-	c.SetLogger(slog.Default().Handler())
-	return c
 }
 
 // getKubeClient get or create a new KubernetesClientSet
@@ -601,7 +599,7 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 		if original == nil {
 			kind := target.Mapping.GroupVersionKind.Kind
 
-			slog.Warn("resource exists on cluster but not in original release, using cluster state as baseline",
+			c.Logger().Warn("resource exists on cluster but not in original release, using cluster state as baseline",
 				"namespace", target.Namespace, "name", target.Name, "kind", kind)
 
 			currentObj, err := helper.Get(target.Namespace, target.Name)
@@ -890,7 +888,7 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 
 		c.Logger().Debug("using client-side apply for resource update", slog.Bool("threeWayMergeForUnstructured", updateOptions.threeWayMergeForUnstructured))
 		return func(original, target *resource.Info) error {
-			return patchResourceClientSide(original.Object, target, updateOptions.threeWayMergeForUnstructured)
+			return patchResourceClientSide(original.Object, target, updateOptions.threeWayMergeForUnstructured, c.Logger())
 		}
 	}
 
@@ -1120,7 +1118,7 @@ func replaceResource(target *resource.Info, fieldValidationDirective FieldValida
 
 }
 
-func patchResourceClientSide(original runtime.Object, target *resource.Info, threeWayMergeForUnstructured bool) error {
+func patchResourceClientSide(original runtime.Object, target *resource.Info, threeWayMergeForUnstructured bool, logger *slog.Logger) error {
 
 	patch, patchType, err := createPatch(original, target, threeWayMergeForUnstructured)
 	if err != nil {
@@ -1129,7 +1127,7 @@ func patchResourceClientSide(original runtime.Object, target *resource.Info, thr
 
 	kind := target.Mapping.GroupVersionKind.Kind
 	if patch == nil || string(patch) == "{}" {
-		slog.Debug("no changes detected", "kind", kind, "name", target.Name)
+		logger.Debug("no changes detected", "kind", kind, "name", target.Name)
 		// This needs to happen to make sure that Helm has the latest info from the API
 		// Otherwise there will be no labels and other functions that use labels will panic
 		if err := target.Get(); err != nil {
@@ -1139,7 +1137,7 @@ func patchResourceClientSide(original runtime.Object, target *resource.Info, thr
 	}
 
 	// send patch to server
-	slog.Debug("patching resource", "kind", kind, "name", target.Name, "namespace", target.Namespace)
+	logger.Debug("patching resource", "kind", kind, "name", target.Name, "namespace", target.Namespace)
 	helper := resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
 	obj, err := helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
 	if err != nil {

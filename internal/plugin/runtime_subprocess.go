@@ -84,6 +84,14 @@ type SubprocessPluginRuntime struct {
 	pluginDir     string
 	RuntimeConfig RuntimeConfigSubprocess
 	EnvVars       map[string]string
+	logger        *slog.Logger
+}
+
+func (r *SubprocessPluginRuntime) log() *slog.Logger {
+	if r.logger != nil {
+		return r.logger
+	}
+	return slog.New(slog.DiscardHandler)
 }
 
 var _ Plugin = (*SubprocessPluginRuntime)(nil)
@@ -125,7 +133,7 @@ func (r *SubprocessPluginRuntime) InvokeWithEnv(main string, argv []string, env 
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
-	if err := executeCmd(cmd, r.metadata.Name); err != nil {
+	if err := executeCmd(cmd, r.metadata.Name, r.logger); err != nil {
 		return err
 	}
 
@@ -154,7 +162,7 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	slog.Debug("executing plugin hook command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
+	r.log().Debug("executing plugin hook command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
 	if err := cmd.Run(); err != nil {
 		if eerr, ok := err.(*exec.ExitError); ok {
 			os.Stderr.Write(eerr.Stderr)
@@ -168,10 +176,13 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 // TODO decide the best way to handle this code
 // right now we implement status and error return in 3 slightly different ways in this file
 // then replace the other three with a call to this func
-func executeCmd(prog *exec.Cmd, pluginName string) error {
+func executeCmd(prog *exec.Cmd, pluginName string, logger *slog.Logger) error {
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
+	}
 	if err := prog.Run(); err != nil {
 		if eerr, ok := err.(*exec.ExitError); ok {
-			slog.Debug(
+			logger.Debug(
 				"plugin execution failed",
 				slog.String("pluginName", pluginName),
 				slog.String("error", err.Error()),
@@ -216,8 +227,8 @@ func (r *SubprocessPluginRuntime) runCLI(input *Input) (*Output, error) {
 	cmd.Stdout = input.Stdout
 	cmd.Stderr = input.Stderr
 
-	slog.Debug("executing plugin command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
-	if err := executeCmd(cmd, r.metadata.Name); err != nil {
+	r.log().Debug("executing plugin command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
+	if err := executeCmd(cmd, r.metadata.Name, r.logger); err != nil {
 		return nil, err
 	}
 
@@ -265,8 +276,8 @@ func (r *SubprocessPluginRuntime) runPostrenderer(input *Input) (*Output, error)
 	cmd.Stdout = postRendered
 	cmd.Stderr = stderr
 
-	slog.Debug("executing plugin command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
-	if err := executeCmd(cmd, r.metadata.Name); err != nil {
+	r.log().Debug("executing plugin command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
+	if err := executeCmd(cmd, r.metadata.Name, r.logger); err != nil {
 		return nil, err
 	}
 

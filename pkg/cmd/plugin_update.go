@@ -29,11 +29,12 @@ import (
 )
 
 type pluginUpdateOptions struct {
-	names []string
+	names  []string
+	logger *slog.Logger
 }
 
-func newPluginUpdateCmd(out io.Writer) *cobra.Command {
-	o := &pluginUpdateOptions{}
+func newPluginUpdateCmd(out io.Writer, logger *slog.Logger) *cobra.Command {
+	o := &pluginUpdateOptions{logger: logger}
 
 	cmd := &cobra.Command{
 		Use:     "update <plugin>...",
@@ -61,7 +62,7 @@ func (o *pluginUpdateOptions) complete(args []string) error {
 }
 
 func (o *pluginUpdateOptions) run(out io.Writer) error {
-	slog.Debug("loading installed plugins", "path", settings.PluginsDirectory)
+	o.logger.Debug("loading installed plugins", "path", settings.PluginsDirectory)
 	plugins, err := plugin.LoadAll(settings.PluginsDirectory)
 	if err != nil {
 		return err
@@ -70,7 +71,7 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 
 	for _, name := range o.names {
 		if found := findPlugin(plugins, name); found != nil {
-			if err := updatePlugin(found); err != nil {
+			if err := updatePlugin(found, o.logger); err != nil {
 				errorPlugins = append(errorPlugins, fmt.Errorf("failed to update plugin %s, got error (%v)", name, err))
 			} else {
 				fmt.Fprintf(out, "Updated plugin: %s\n", name)
@@ -85,7 +86,7 @@ func (o *pluginUpdateOptions) run(out io.Writer) error {
 	return nil
 }
 
-func updatePlugin(p plugin.Plugin) error {
+func updatePlugin(p plugin.Plugin, logger *slog.Logger) error {
 	exactLocation, err := filepath.EvalSymlinks(p.Dir())
 	if err != nil {
 		return err
@@ -103,7 +104,7 @@ func updatePlugin(p plugin.Plugin) error {
 		return err
 	}
 
-	slog.Debug("loading plugin", "path", i.Path())
+	logger.Debug("loading plugin", "path", i.Path())
 	updatedPlugin, err := plugin.LoadDir(i.Path())
 	if err != nil {
 		return err

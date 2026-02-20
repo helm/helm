@@ -258,7 +258,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 	var errs []error
 
 	manifests := releaseutil.SplitManifests(rel.Manifest)
-	_, files, err := releaseutil.SortManifests(manifests, nil, releaseutil.UninstallOrder)
+	_, files, err := releaseutil.SortManifests(manifests, nil, releaseutil.UninstallOrder, nil)
 	if err != nil {
 		// We could instead just delete everything in no particular order.
 		// FIXME: One way to delete at this point would be to try a label-based
@@ -283,12 +283,12 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		return nil, "", []error{fmt.Errorf("unable to build kubernetes objects for delete: %w", err)}
 	}
 	if len(resources) > 0 {
-		_, errs = u.cfg.KubeClient.Delete(resources, parseCascadingFlag(u.DeletionPropagation))
+		_, errs = u.cfg.KubeClient.Delete(resources, u.parseCascadingFlag(u.DeletionPropagation))
 	}
 	return resources, kept.String(), errs
 }
 
-func parseCascadingFlag(cascadingFlag string) v1.DeletionPropagation {
+func (u *Uninstall) parseCascadingFlag(cascadingFlag string) v1.DeletionPropagation {
 	switch cascadingFlag {
 	case "orphan":
 		return v1.DeletePropagationOrphan
@@ -297,7 +297,7 @@ func parseCascadingFlag(cascadingFlag string) v1.DeletionPropagation {
 	case "background":
 		return v1.DeletePropagationBackground
 	default:
-		slog.Debug("uninstall: given cascade value, defaulting to delete propagation background", "value", cascadingFlag)
+		u.cfg.Logger().Debug("uninstall: given cascade value, defaulting to delete propagation background", "value", cascadingFlag)
 		return v1.DeletePropagationBackground
 	}
 }

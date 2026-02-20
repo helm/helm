@@ -37,7 +37,7 @@ func TestValidateAgainstSingleSchema(t *testing.T) {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
 
-	if err := ValidateAgainstSingleSchema(values, schema); err != nil {
+	if err := ValidateAgainstSingleSchema(values, schema, nil); err != nil {
 		t.Errorf("Error validating Values against Schema: %s", err)
 	}
 }
@@ -53,7 +53,7 @@ func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
 	}
 
 	var errString string
-	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
+	if err := ValidateAgainstSingleSchema(values, schema, nil); err == nil {
 		t.Fatalf("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
@@ -77,7 +77,7 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	}
 
 	var errString string
-	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
+	if err := ValidateAgainstSingleSchema(values, schema, nil); err == nil {
 		t.Fatalf("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
@@ -145,7 +145,7 @@ func TestValidateAgainstSchema(t *testing.T) {
 		},
 	}
 
-	if err := ValidateAgainstSchema(chrt, vals); err != nil {
+	if err := ValidateAgainstSchema(chrt, vals, nil); err != nil {
 		t.Errorf("Error validating Values against Schema: %s", err)
 	}
 }
@@ -171,7 +171,7 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 	}
 
 	var errString string
-	if err := ValidateAgainstSchema(chrt, vals); err == nil {
+	if err := ValidateAgainstSchema(chrt, vals, nil); err == nil {
 		t.Fatalf("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
@@ -207,7 +207,7 @@ func TestValidateAgainstSchema2020(t *testing.T) {
 		},
 	}
 
-	if err := ValidateAgainstSchema(chrt, vals); err != nil {
+	if err := ValidateAgainstSchema(chrt, vals, nil); err != nil {
 		t.Errorf("Error validating Values against Schema: %s", err)
 	}
 }
@@ -235,7 +235,7 @@ func TestValidateAgainstSchema2020Negative(t *testing.T) {
 	}
 
 	var errString string
-	if err := ValidateAgainstSchema(chrt, vals); err == nil {
+	if err := ValidateAgainstSchema(chrt, vals, nil); err == nil {
 		t.Fatalf("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
@@ -295,7 +295,7 @@ func TestValidateAgainstSingleSchema_UnresolvedURN_Ignored(t *testing.T) {
         "$ref": "urn:example:helm:schemas:v1:helm-schema-validation-conditions:v1/helmSchemaValidation-true"
     }`)
 	vals := map[string]any{"any": "value"}
-	if err := ValidateAgainstSingleSchema(vals, schema); err != nil {
+	if err := ValidateAgainstSingleSchema(vals, schema, nil); err != nil {
 		t.Fatalf("expected no error when URN unresolved is ignored, got: %v", err)
 	}
 }
@@ -328,7 +328,7 @@ func TestValidateAgainstSchema_MissingSubchartValues_NoPanic(t *testing.T) {
 		}
 	}()
 
-	if err := ValidateAgainstSchema(chrt, vals); err != nil {
+	if err := ValidateAgainstSchema(chrt, vals, nil); err != nil {
 		t.Fatalf("expected no error when subchart values are missing, got: %v", err)
 	}
 }
@@ -356,7 +356,7 @@ func TestValidateAgainstSchema_SubchartNil_NoPanic(t *testing.T) {
 		}
 	}()
 
-	if err := ValidateAgainstSchema(chrt, vals); err != nil {
+	if err := ValidateAgainstSchema(chrt, vals, nil); err != nil {
 		t.Fatalf("expected no error when subchart values are nil, got: %v", err)
 	}
 }
@@ -385,7 +385,7 @@ func TestValidateAgainstSchema_InvalidSubchartValuesType_NoPanic(t *testing.T) {
 	}()
 
 	// We expect a non-nil error (invalid type), but crucially no panic.
-	if err := ValidateAgainstSchema(chrt, vals); err == nil {
+	if err := ValidateAgainstSchema(chrt, vals, nil); err == nil {
 		t.Fatalf("expected an error when subchart values have invalid type, got nil")
 	}
 }

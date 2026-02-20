@@ -18,6 +18,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"os"
 	"runtime"
 	"strings"
@@ -92,7 +93,7 @@ func TestLoadCLIPlugins(t *testing.T) {
 		out bytes.Buffer
 		cmd cobra.Command
 	)
-	loadCLIPlugins(&cmd, &out)
+	loadCLIPlugins(&cmd, &out, slog.Default())
 
 	fullEnvOutput := strings.Join([]string{
 		"HELM_PLUGIN_NAME=fullenv",
@@ -170,7 +171,7 @@ func TestLoadPluginsWithSpace(t *testing.T) {
 		out bytes.Buffer
 		cmd cobra.Command
 	)
-	loadCLIPlugins(&cmd, &out)
+	loadCLIPlugins(&cmd, &out, slog.Default())
 
 	envs := strings.Join([]string{
 		"fullenv",
@@ -249,7 +250,7 @@ func TestLoadCLIPluginsForCompletion(t *testing.T) {
 	cmd := &cobra.Command{
 		Use: "completion",
 	}
-	loadCLIPlugins(cmd, &out)
+	loadCLIPlugins(cmd, &out, slog.Default())
 
 	tests := []staticCompletionDetails{
 		{"args", []string{}, []string{}, []staticCompletionDetails{}},
@@ -342,7 +343,7 @@ func TestLoadCLIPlugins_HelmNoPlugins(t *testing.T) {
 
 	out := bytes.NewBuffer(nil)
 	cmd := &cobra.Command{}
-	loadCLIPlugins(cmd, out)
+	loadCLIPlugins(cmd, out, slog.Default())
 	plugins := cmd.Commands()
 
 	if len(plugins) != 0 {

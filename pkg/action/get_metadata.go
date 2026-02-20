@@ -52,6 +52,10 @@ type Metadata struct {
 	Status       string            `json:"status" yaml:"status"`
 	DeployedAt   string            `json:"deployedAt" yaml:"deployedAt"`
 	ApplyMethod  string            `json:"applyMethod,omitempty" yaml:"applyMethod,omitempty"`
+
+	// logger is the structured logger for this metadata instance.
+	// It is not serialized.
+	logger *slog.Logger `json:"-" yaml:"-"`
 }
 
 // NewGetMetadata creates a new GetMetadata object with the given configuration.
@@ -106,16 +110,21 @@ func (g *GetMetadata) Run(name string) (*Metadata, error) {
 		Status:       rac.Status(),
 		DeployedAt:   rac.DeployedAt().Format(time.RFC3339),
 		ApplyMethod:  rac.ApplyMethod(),
+		logger:       g.cfg.Logger(),
 	}, nil
 }
 
 // FormattedDepNames formats metadata.dependencies names into a comma-separated list.
 func (m *Metadata) FormattedDepNames() string {
+	logger := m.logger
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
+	}
 	depsNames := make([]string, 0, len(m.Dependencies))
 	for _, dep := range m.Dependencies {
 		ac, err := ci.NewDependencyAccessor(dep)
 		if err != nil {
-			slog.Error("unable to access dependency metadata", "error", err)
+			logger.Error("unable to access dependency metadata", "error", err)
 			continue
 		}
 		depsNames = append(depsNames, ac.Name())

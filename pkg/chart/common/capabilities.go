@@ -177,6 +177,6 @@ func newCapabilities(kubeVersionMajor, kubeVersionMinor uint64) (*Capabilities, 
 			Minor:             fmt.Sprintf("%d", kubeVersionMinor),
 		},
 		APIVersions: DefaultVersionSet,
-		HelmVersion: helmversion.Get(),
+		HelmVersion: helmversion.Get(nil),
 	}, nil
 }

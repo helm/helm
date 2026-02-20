@@ -60,7 +60,7 @@ func ToRenderValuesWithSchemaValidation(chrt chart.Charter, chrtVals map[string]
 	}
 
 	if !skipSchemaValidation {
-		if err := ValidateAgainstSchema(chrt, vals); err != nil {
+		if err := ValidateAgainstSchema(chrt, vals, nil); err != nil {
 			return top, fmt.Errorf("values don't meet the specifications of the schema(s) in the following chart(s):\n%w", err)
 		}
 	}

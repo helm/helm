@@ -41,6 +41,14 @@ type HTTPInstaller struct {
 	// Cached data to avoid duplicate downloads
 	pluginData []byte
 	provData   []byte
+	logger     *slog.Logger
+}
+
+func (i *HTTPInstaller) log() *slog.Logger {
+	if i.logger != nil {
+		return i.logger
+	}
+	return slog.New(slog.DiscardHandler)
 }
 
 // NewHTTPInstaller creates a new HttpInstaller.
@@ -112,7 +120,7 @@ func (i *HTTPInstaller) Install() error {
 	if i.provData != nil {
 		provPath := tarballPath + ".prov"
 		if err := os.WriteFile(provPath, i.provData, 0644); err != nil {
-			slog.Debug("failed to save provenance file", "error", err)
+			i.log().Debug("failed to save provenance file", "error", err)
 		}
 	}
 
@@ -136,7 +144,7 @@ func (i *HTTPInstaller) Install() error {
 		return err
 	}
 
-	slog.Debug("copying", "source", src, "path", i.Path())
+	i.log().Debug("copying", "source", src, "path", i.Path())
 	return fs.CopyDir(src, i.Path())
 }
 

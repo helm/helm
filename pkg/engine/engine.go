@@ -47,6 +47,15 @@ type Engine struct {
 	EnableDNS bool
 	// CustomTemplateFuncs is defined by users to provide custom template funcs
 	CustomTemplateFuncs template.FuncMap
+	// logger is the structured logger for this engine instance
+	logger *slog.Logger
+}
+
+func (e Engine) log() *slog.Logger {
+	if e.logger != nil {
+		return e.logger
+	}
+	return slog.New(slog.DiscardHandler)
 }
 
 // New creates a new instance of Engine using the passed in rest config.
@@ -77,7 +86,7 @@ func New(config *rest.Config) Engine {
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
 func (e Engine) Render(chrt ci.Charter, values common.Values) (map[string]string, error) {
-	tmap := allTemplates(chrt, values)
+	tmap := allTemplates(chrt, values, e.log())
 	return e.render(tmap)
 }
 
@@ -208,7 +217,7 @@ func (e Engine) initFunMap(t *template.Template) {
 		if val == nil {
 			if e.LintMode {
 				// Don't fail on missing required values when linting
-				slog.Warn("missing required value", "message", warn)
+				e.log().Warn("missing required value", "message", warn)
 				return "", nil
 			}
 			return val, errors.New(warnWrap(warn))
@@ -216,7 +225,7 @@ func (e Engine) initFunMap(t *template.Template) {
 			if val == "" {
 				if e.LintMode {
 					// Don't fail on missing required values when linting
-					slog.Warn("missing required values", "message", warn)
+					e.log().Warn("missing required values", "message", warn)
 					return "", nil
 				}
 				return val, errors.New(warnWrap(warn))
@@ -229,7 +238,7 @@ func (e Engine) initFunMap(t *template.Template) {
 	funcMap["fail"] = func(msg string) (string, error) {
 		if e.LintMode {
 			// Don't fail when linting
-			slog.Info("funcMap fail", "message", msg)
+			e.log().Info("funcMap fail", "message", msg)
 			return "", nil
 		}
 		return "", errors.New(warnWrap(msg))
@@ -238,7 +247,7 @@ func (e Engine) initFunMap(t *template.Template) {
 	// If we are not linting and have a cluster connection, provide a Kubernetes-backed
 	// implementation.
 	if !e.LintMode && e.clientProvider != nil {
-		funcMap["lookup"] = newLookupFunction(*e.clientProvider)
+		funcMap["lookup"] = newLookupFunction(*e.clientProvider, e.log())
 	}
 
 	// When DNS lookups are not enabled override the sprig function and return
@@ -525,9 +534,9 @@ func (p byPathLen) Less(i, j int) bool {
 // allTemplates returns all templates for a chart and its dependencies.
 //
 // As it goes, it also prepares the values in a scope-sensitive manner.
-func allTemplates(c ci.Charter, vals common.Values) map[string]renderable {
+func allTemplates(c ci.Charter, vals common.Values, logger *slog.Logger) map[string]renderable {
 	templates := make(map[string]renderable)
-	recAllTpls(c, templates, vals)
+	recAllTpls(c, templates, vals, logger)
 	return templates
 }
 
@@ -535,12 +544,12 @@ func allTemplates(c ci.Charter, vals common.Values) map[string]renderable {
 //
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
-func recAllTpls(c ci.Charter, templates map[string]renderable, values common.Values) map[string]interface{} {
+func recAllTpls(c ci.Charter, templates map[string]renderable, values common.Values, logger *slog.Logger) map[string]interface{} {
 	vals := values.AsMap()
 	subCharts := make(map[string]interface{})
 	accessor, err := ci.NewAccessor(c)
 	if err != nil {
-		slog.Error("error accessing chart", "error", err)
+		logger.Error("error accessing chart", "error", err)
 	}
 	chartMetaData := accessor.MetadataAsMap()
 	chartMetaData["IsRoot"] = accessor.IsRoot()
@@ -565,7 +574,7 @@ func recAllTpls(c ci.Charter, templates map[string]renderable, values common.Val
 	for _, child := range accessor.Dependencies() {
 		// TODO: Handle error
 		sub, _ := ci.NewAccessor(child)
-		subCharts[sub.Name()] = recAllTpls(child, templates, next)
+		subCharts[sub.Name()] = recAllTpls(child, templates, next, logger)
 	}
 
 	newParentID := accessor.ChartFullPath()

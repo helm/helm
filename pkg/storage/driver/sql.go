@@ -296,7 +296,6 @@ func NewSQL(connectionString string, namespace string) (*SQL, error) {
 	}
 
 	driver.namespace = namespace
-	driver.SetLogger(slog.Default().Handler())
 
 	return driver, nil
 }

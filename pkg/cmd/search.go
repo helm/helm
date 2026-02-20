@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"io"
+	"log/slog"
 
 	"github.com/spf13/cobra"
 )
@@ -28,7 +29,7 @@ they can be stored including the Artifact Hub and repositories you have added.
 Use search subcommands to search different locations for charts.
 `
 
-func newSearchCmd(out io.Writer) *cobra.Command {
+func newSearchCmd(out io.Writer, logger *slog.Logger) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "search [keyword]",
@@ -36,8 +37,8 @@ func newSearchCmd(out io.Writer) *cobra.Command {
 		Long:  searchDesc,
 	}
 
-	cmd.AddCommand(newSearchHubCmd(out))
-	cmd.AddCommand(newSearchRepoCmd(out))
+	cmd.AddCommand(newSearchHubCmd(out, logger))
+	cmd.AddCommand(newSearchRepoCmd(out, logger))
 
 	return cmd
 }

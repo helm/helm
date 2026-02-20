@@ -75,8 +75,13 @@ func GetUserAgent() string {
 	return "Helm/" + strings.TrimPrefix(GetVersion(), "v")
 }
 
-// Get returns build info
-func Get() BuildInfo {
+// Get returns build info.
+// An optional logger may be provided for diagnostic messages. If nil, a discard
+// logger is used.
+func Get(logger *slog.Logger) BuildInfo {
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
+	}
 
 	makeKubeClientVersionString := func() string {
 		// Test builds don't include debug info / module info
@@ -88,13 +93,13 @@ func Get() BuildInfo {
 
 		vstr, err := K8sIOClientGoModVersion()
 		if err != nil {
-			slog.Error("failed to retrieve k8s.io/client-go version", slog.Any("error", err))
+			logger.Error("failed to retrieve k8s.io/client-go version", slog.Any("error", err))
 			return ""
 		}
 
 		v, err := semver.NewVersion(vstr)
 		if err != nil {
-			slog.Error("unable to parse k8s.io/client-go version", slog.String("version", vstr), slog.Any("error", err))
+			logger.Error("unable to parse k8s.io/client-go version", slog.String("version", vstr), slog.Any("error", err))
 			return ""
 		}
 

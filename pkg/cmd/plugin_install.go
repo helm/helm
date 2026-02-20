@@ -44,6 +44,7 @@ type pluginInstallOptions struct {
 	plainHTTP             bool
 	password              string
 	username              string
+	logger                *slog.Logger
 }
 
 const pluginInstallDesc = `
@@ -57,8 +58,8 @@ treated as "local dev" and do not require signatures.
 Use --verify=false to skip signature verification for remote plugins.
 `
 
-func newPluginInstallCmd(out io.Writer) *cobra.Command {
-	o := &pluginInstallOptions{}
+func newPluginInstallCmd(out io.Writer, logger *slog.Logger) *cobra.Command {
+	o := &pluginInstallOptions{logger: logger}
 	cmd := &cobra.Command{
 		Use:     "install [options] <path|url>",
 		Short:   "install a Helm plugin",
@@ -168,7 +169,7 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 		fmt.Fprintf(out, "Plugin Hash Verified: %s\n", verifyResult.FileHash)
 	}
 
-	slog.Debug("loading plugin", "path", i.Path())
+	o.logger.Debug("loading plugin", "path", i.Path())
 	p, err := plugin.LoadDir(i.Path())
 	if err != nil {
 		return fmt.Errorf("plugin is installed but unusable: %w", err)

@@ -52,7 +52,7 @@ const (
 // This follows a different pattern than the other commands because it has
 // to inspect its environment and then add commands to the base command
 // as it finds them.
-func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
+func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer, logger *slog.Logger) {
 	// If HELM_NO_PLUGINS is set to 1, do not load plugins.
 	if os.Getenv("HELM_NO_PLUGINS") == "1" {
 		return
@@ -64,7 +64,7 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 	}
 	found, err := plugin.FindPlugins(dirs, descriptor)
 	if err != nil {
-		slog.Error("failed to load plugins", slog.String("error", err.Error()))
+		logger.Error("failed to load plugins", slog.String("error", err.Error()))
 		return
 	}
 
@@ -136,7 +136,7 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 
 		for _, cmd := range baseCmd.Commands() {
 			if cmd.Name() == c.Name() {
-				slog.Error("failed to load plugins: name conflicts", slog.String("name", c.Name()))
+				logger.Error("failed to load plugins: name conflicts", slog.String("name", c.Name()))
 				return
 			}
 		}
@@ -151,7 +151,7 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer) {
 		if (err == nil &&
 			((subCmd.HasParent() && subCmd.Parent().Name() == "completion") || subCmd.Name() == cobra.ShellCompRequestCmd)) ||
 			/* for the tests */ subCmd == baseCmd.Root() {
-			loadCompletionForPlugin(c, plug)
+			loadCompletionForPlugin(c, plug, logger)
 		}
 	}
 }
@@ -218,14 +218,14 @@ type pluginCommand struct {
 
 // loadCompletionForPlugin will load and parse any completion.yaml provided by the plugin
 // and add the dynamic completion hook to call the optional plugin.complete
-func loadCompletionForPlugin(pluginCmd *cobra.Command, plug plugin.Plugin) {
+func loadCompletionForPlugin(pluginCmd *cobra.Command, plug plugin.Plugin, logger *slog.Logger) {
 	// Parse the yaml file providing the plugin's sub-commands and flags
 	cmds, err := loadFile(strings.Join(
 		[]string{plug.Dir(), pluginStaticCompletionFile}, string(filepath.Separator)))
 
 	if err != nil {
 		// The file could be missing or invalid.  No static completion for this plugin.
-		slog.Debug("plugin completion file loading", slog.String("error", err.Error()))
+		logger.Debug("plugin completion file loading", slog.String("error", err.Error()))
 		// Continue to setup dynamic completion.
 		cmds = &pluginCommand{}
 	}
@@ -233,18 +233,18 @@ func loadCompletionForPlugin(pluginCmd *cobra.Command, plug plugin.Plugin) {
 	// Preserve the Usage string specified for the plugin
 	cmds.Name = pluginCmd.Use
 
-	addPluginCommands(plug, pluginCmd, cmds)
+	addPluginCommands(plug, pluginCmd, cmds, logger)
 }
 
 // addPluginCommands is a recursive method that adds each different level
 // of sub-commands and flags for the plugins that have provided such information
-func addPluginCommands(plug plugin.Plugin, baseCmd *cobra.Command, cmds *pluginCommand) {
+func addPluginCommands(plug plugin.Plugin, baseCmd *cobra.Command, cmds *pluginCommand, logger *slog.Logger) {
 	if cmds == nil {
 		return
 	}
 
 	if len(cmds.Name) == 0 {
-		slog.Debug("sub-command name field missing", slog.String("commandPath", baseCmd.CommandPath()))
+		logger.Debug("sub-command name field missing", slog.String("commandPath", baseCmd.CommandPath()))
 		return
 	}
 
@@ -313,7 +313,7 @@ func addPluginCommands(plug plugin.Plugin, baseCmd *cobra.Command, cmds *pluginC
 			Run: func(_ *cobra.Command, _ []string) {},
 		}
 		baseCmd.AddCommand(subCmd)
-		addPluginCommands(plug, subCmd, &cmd)
+		addPluginCommands(plug, subCmd, &cmd, logger)
 	}
 }
 

@@ -55,41 +55,44 @@ func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
 	f.StringArrayVar(&v.LiteralValues, "set-literal", []string{}, "set a literal STRING value on the command line")
 }
 
-func AddWaitFlag(cmd *cobra.Command, wait *kube.WaitStrategy) {
+func AddWaitFlag(cmd *cobra.Command, wait *kube.WaitStrategy, logger *slog.Logger) {
 	cmd.Flags().Var(
-		newWaitValue(kube.HookOnlyStrategy, wait),
+		newWaitValue(kube.HookOnlyStrategy, wait, logger),
 		"wait",
 		"wait until resources are ready (up to --timeout). Use '--wait' alone for 'watcher' strategy, or specify one of: 'watcher', 'hookOnly', 'legacy'. Default when flag is omitted: 'hookOnly'.",
 	)
 	cmd.Flags().Lookup("wait").NoOptDefVal = string(kube.StatusWatcherStrategy)
 }
 
-type waitValue kube.WaitStrategy
+type waitValue struct {
+	ws     *kube.WaitStrategy
+	logger *slog.Logger
+}
 
-func newWaitValue(defaultValue kube.WaitStrategy, ws *kube.WaitStrategy) *waitValue {
+func newWaitValue(defaultValue kube.WaitStrategy, ws *kube.WaitStrategy, logger *slog.Logger) *waitValue {
 	*ws = defaultValue
-	return (*waitValue)(ws)
+	return &waitValue{ws: ws, logger: logger}
 }
 
 func (ws *waitValue) String() string {
-	if ws == nil {
+	if ws == nil || ws.ws == nil {
 		return ""
 	}
-	return string(*ws)
+	return string(*ws.ws)
 }
 
 func (ws *waitValue) Set(s string) error {
 	switch s {
 	case string(kube.StatusWatcherStrategy), string(kube.LegacyStrategy), string(kube.HookOnlyStrategy):
-		*ws = waitValue(s)
+		*ws.ws = kube.WaitStrategy(s)
 		return nil
 	case "true":
-		slog.Warn("--wait=true is deprecated (boolean value) and can be replaced with --wait=watcher")
-		*ws = waitValue(kube.StatusWatcherStrategy)
+		ws.logger.Warn("--wait=true is deprecated (boolean value) and can be replaced with --wait=watcher")
+		*ws.ws = kube.StatusWatcherStrategy
 		return nil
 	case "false":
-		slog.Warn("--wait=false is deprecated (boolean value) and can be replaced with --wait=hookOnly")
-		*ws = waitValue(kube.HookOnlyStrategy)
+		ws.logger.Warn("--wait=false is deprecated (boolean value) and can be replaced with --wait=hookOnly")
+		*ws.ws = kube.HookOnlyStrategy
 		return nil
 	default:
 		return fmt.Errorf("invalid wait input %q. Valid inputs are %s, %s, and %s", s, kube.StatusWatcherStrategy, kube.HookOnlyStrategy, kube.LegacyStrategy)

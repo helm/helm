@@ -85,6 +85,16 @@ type ChartDownloader struct {
 
 	// Cache specifies the cache implementation to use.
 	Cache Cache
+
+	// Logger is the structured logger for this downloader instance.
+	Logger *slog.Logger
+}
+
+func (c *ChartDownloader) log() *slog.Logger {
+	if c.Logger != nil {
+		return c.Logger
+	}
+	return slog.New(slog.DiscardHandler)
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -104,7 +114,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			return "", nil, errors.New("content cache must be set")
 		}
 		c.Cache = &DiskCache{Root: c.ContentCache}
-		slog.Debug("set up default downloader cache")
+		c.log().Debug("set up default downloader cache")
 	}
 	hash, u, err := c.ResolveChartVersion(ref, version)
 	if err != nil {
@@ -140,7 +150,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			if err == nil {
 				found = true
 				data = bytes.NewBuffer(fdata)
-				slog.Debug("found chart in cache", "id", hash)
+				c.log().Debug("found chart in cache", "id", hash)
 			}
 		}
 	}
@@ -180,7 +190,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 				if err == nil {
 					found = true
 					body = bytes.NewBuffer(fdata)
-					slog.Debug("found provenance in cache", "id", hash)
+					c.log().Debug("found provenance in cache", "id", hash)
 				}
 			}
 		}
@@ -220,7 +230,7 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 			return "", nil, errors.New("content cache must be set")
 		}
 		c.Cache = &DiskCache{Root: c.ContentCache}
-		slog.Debug("set up default downloader cache")
+		c.log().Debug("set up default downloader cache")
 	}
 
 	digestString, u, err := c.ResolveChartVersion(ref, version)
@@ -252,11 +262,11 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 	if len(digest) > 0 {
 		pth, err = c.Cache.Get(digest32, CacheChart)
 		if err == nil {
-			slog.Debug("found chart in cache", "id", digestString)
+			c.log().Debug("found chart in cache", "id", digestString)
 		}
 	}
 	if len(digest) == 0 || err != nil {
-		slog.Debug("attempting to download chart", "ref", ref, "version", version)
+		c.log().Debug("attempting to download chart", "ref", ref, "version", version)
 		if err != nil && !os.IsNotExist(err) {
 			return "", nil, err
 		}
@@ -276,7 +286,7 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 		if err != nil {
 			return "", nil, err
 		}
-		slog.Debug("put downloaded chart in cache", "id", hex.EncodeToString(digest32[:]))
+		c.log().Debug("put downloaded chart in cache", "id", hex.EncodeToString(digest32[:]))
 	}
 
 	// If provenance is requested, verify it.
@@ -285,7 +295,7 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 
 		ppth, err := c.Cache.Get(digest32, CacheProv)
 		if err == nil {
-			slog.Debug("found provenance in cache", "id", digestString)
+			c.log().Debug("found provenance in cache", "id", digestString)
 		} else {
 			if !os.IsNotExist(err) {
 				return pth, ver, err
@@ -304,7 +314,7 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 			if err != nil {
 				return "", nil, err
 			}
-			slog.Debug("put downloaded provenance file in cache", "id", hex.EncodeToString(digest32[:]))
+			c.log().Debug("put downloaded provenance file in cache", "id", hex.EncodeToString(digest32[:]))
 		}
 
 		if c.Verify != VerifyLater {

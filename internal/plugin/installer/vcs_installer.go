@@ -36,6 +36,14 @@ type VCSInstaller struct {
 	Repo    vcs.Repo
 	Version string
 	base
+	logger *slog.Logger
+}
+
+func (i *VCSInstaller) log() *slog.Logger {
+	if i.logger != nil {
+		return i.logger
+	}
+	return slog.New(slog.DiscardHandler)
 }
 
 func existingVCSRepo(location string) (Installer, error) {
@@ -91,13 +99,13 @@ func (i *VCSInstaller) Install() error {
 		return ErrMissingMetadata
 	}
 
-	slog.Debug("copying files", "source", i.Repo.LocalPath(), "destination", i.Path())
+	i.log().Debug("copying files", "source", i.Repo.LocalPath(), "destination", i.Path())
 	return fs.CopyDir(i.Repo.LocalPath(), i.Path())
 }
 
 // Update updates a remote repository
 func (i *VCSInstaller) Update() error {
-	slog.Debug("updating", "source", i.Repo.Remote())
+	i.log().Debug("updating", "source", i.Repo.Remote())
 	if i.Repo.IsDirty() {
 		return errors.New("plugin repo was modified")
 	}
@@ -131,7 +139,7 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	slog.Debug("found refs", "refs", refs)
+	i.log().Debug("found refs", "refs", refs)
 
 	// Convert and filter the list to semver.Version instances
 	semvers := getSemVers(refs)
@@ -142,7 +150,7 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 		if constraint.Check(v) {
 			// If the constraint passes get the original reference
 			ver := v.Original()
-			slog.Debug("setting to version", "version", ver)
+			i.log().Debug("setting to version", "version", ver)
 			return ver, nil
 		}
 	}
@@ -152,17 +160,17 @@ func (i *VCSInstaller) solveVersion(repo vcs.Repo) (string, error) {
 
 // setVersion attempts to checkout the version
 func (i *VCSInstaller) setVersion(repo vcs.Repo, ref string) error {
-	slog.Debug("setting version", "version", i.Version)
+	i.log().Debug("setting version", "version", i.Version)
 	return repo.UpdateVersion(ref)
 }
 
 // sync will clone or update a remote repo.
 func (i *VCSInstaller) sync(repo vcs.Repo) error {
 	if _, err := os.Stat(repo.LocalPath()); errors.Is(err, stdfs.ErrNotExist) {
-		slog.Debug("cloning", "source", repo.Remote(), "destination", repo.LocalPath())
+		i.log().Debug("cloning", "source", repo.Remote(), "destination", repo.LocalPath())
 		return repo.Get()
 	}
-	slog.Debug("updating", "source", repo.Remote(), "destination", repo.LocalPath())
+	i.log().Debug("updating", "source", repo.Remote(), "destination", repo.LocalPath())
 	return repo.Update()
 }
 
