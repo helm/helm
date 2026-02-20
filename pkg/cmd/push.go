@@ -30,8 +30,25 @@ import (
 const pushDesc = `
 Upload a chart to a registry.
 
-If the chart has an associated provenance file,
-it will also be uploaded.
+If the chart has an associated provenance file, it will also be uploaded.
+
+Remote target formats:
+- oci://REGISTRY/REPO
+- oci://REGISTRY/REPO/CHART
+- oci://REGISTRY/REPO/CHART:VERSION
+
+When CHART is omitted, the chart name is derived from the package. When VERSION is omitted,
+it comes from Chart.yaml. Use --ensure-version as an optional verification. If set, it
+must match Chart.yaml or the command fails.
+
+Note: OCI tags do not support "+". Helm replaces "+" with "_" in tags when pushing and restores
+"+" when pulling.
+
+Examples:
+
+	$ helm push mychart-0.1.0.tgz oci://my-registry.io/helm/charts
+	$ helm push mychart-0.1.0.tgz oci://my-registry.io/helm/charts --ensure-version 0.1.0
+	$ helm push mychart-0.1.0.tgz oci://my-registry.io/helm/charts/mychart:0.1.0
 `
 
 type registryPushOptions struct {
@@ -42,6 +59,7 @@ type registryPushOptions struct {
 	plainHTTP             bool
 	password              string
 	username              string
+	ensureVersion         string
 }
 
 func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -84,6 +102,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				action.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
 				action.WithInsecureSkipTLSVerify(o.insecureSkipTLSVerify),
 				action.WithPlainHTTP(o.plainHTTP),
+				action.WithExpectedVersion(o.ensureVersion),
 				action.WithPushOptWriter(out))
 			client.Settings = settings
 			output, err := client.Run(chartRef, remote)
@@ -103,6 +122,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart upload")
 	f.StringVar(&o.username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&o.password, "password", "", "chart repository password where to locate the requested chart")
+	f.StringVar(&o.ensureVersion, "ensure-version", "", "verify the chart version; must match Chart.yaml (optional check)")
 
 	return cmd
 }

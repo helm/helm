@@ -426,3 +426,53 @@ func TestOCIPusher_Push_MultipleOptions(t *testing.T) {
 		t.Error("Expected insecureSkipTLSVerify option to be applied")
 	}
 }
+
+func TestOCIPusher_Push_InvalidChartVersion(t *testing.T) {
+	chartPath := "../../pkg/cmd/testdata/testcharts/compressedchart-0.1.0.tgz"
+
+	// Skip test if chart file doesn't exist
+	if _, err := os.Stat(chartPath); err != nil {
+		t.Skipf("Test chart %s not found, skipping test", chartPath)
+	}
+
+	pusher, err := NewOCIPusher()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = pusher.Push(chartPath, "oci://localhost:5000/test:0.2.0")
+
+	if err == nil {
+		t.Fatal("Expected error when pushing without a valid registry")
+	}
+	if !strings.Contains(err.Error(), "does not match provided chart version") {
+		t.Error("Expected error to mention tag mismatch")
+	}
+}
+
+func TestOCIPusher_Push_ExpectedVersionMismatch(t *testing.T) {
+	chartPath := "../../pkg/cmd/testdata/testcharts/compressedchart-0.1.0.tgz"
+
+	// Skip test if chart file doesn't exist
+	if _, err := os.Stat(chartPath); err != nil {
+		t.Skipf("Test chart %s not found, skipping test", chartPath)
+	}
+
+	pusher, err := NewOCIPusher()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Provide an expected version that does not match the chart's version
+	err = pusher.Push(chartPath, "oci://localhost:5000/test",
+		WithExpectedVersion("0.2.0"),
+	)
+
+	if err == nil {
+		t.Fatal("Expected error when --version does not match chart version")
+	}
+
+	if !strings.Contains(err.Error(), "specified --ensure-version") {
+		t.Errorf("Expected error to mention version mismatch check, got %q", err.Error())
+	}
+}

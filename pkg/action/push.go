@@ -38,6 +38,7 @@ type Push struct {
 	insecureSkipTLSVerify bool
 	plainHTTP             bool
 	out                   io.Writer
+	expectedVersion       string
 }
 
 // PushOpt is a type of function that sets options for a push action.
@@ -80,6 +81,13 @@ func WithPushOptWriter(out io.Writer) PushOpt {
 	}
 }
 
+// WithExpectedVersion configures an expected chart version that must match Chart.yaml.
+func WithExpectedVersion(version string) PushOpt {
+	return func(p *Push) {
+		p.expectedVersion = version
+	}
+}
+
 // NewPushWithOpts creates a new push, with configuration options.
 func NewPushWithOpts(opts ...PushOpt) *Push {
 	p := &Push{}
@@ -101,6 +109,10 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 			pusher.WithInsecureSkipTLSVerify(p.insecureSkipTLSVerify),
 			pusher.WithPlainHTTP(p.plainHTTP),
 		},
+	}
+
+	if p.expectedVersion != "" {
+		c.Options = append(c.Options, pusher.WithExpectedVersion(p.expectedVersion))
 	}
 
 	if registry.IsOCI(remote) {
