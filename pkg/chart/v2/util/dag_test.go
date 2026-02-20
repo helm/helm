@@ -172,3 +172,15 @@ func TestDAGComplexGraph(t *testing.T) {
 	assert.Equal(t, []string{"queue"}, batches[1])
 	assert.Equal(t, []string{"app"}, batches[2])
 }
+
+func TestDAGString(t *testing.T) {
+	dag := NewDAG()
+	dag.AddNode("redis")
+	dag.AddNode("app")
+	require.NoError(t, dag.AddEdge("redis", "app"))
+
+	s := dag.String()
+	assert.Contains(t, s, "Batch 1: redis")
+	assert.Contains(t, s, "Batch 2: app")
+	assert.Contains(t, s, "app <- [redis]")
+}

@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -98,6 +99,14 @@ func (ws *waitValue) Set(s string) error {
 
 func (ws *waitValue) Type() string {
 	return "WaitStrategy"
+}
+
+// AddReadinessTimeoutFlag adds the --readiness-timeout flag to a command.
+// This flag controls how long to wait for custom readiness conditions (HIP-0025).
+// Must not exceed --timeout. Default: 1 minute.
+func AddReadinessTimeoutFlag(cmd *cobra.Command, readinessTimeout *time.Duration) {
+	cmd.Flags().DurationVar(readinessTimeout, "readiness-timeout", time.Minute,
+		"time to wait for custom readiness conditions per resource (HIP-0025). Must not exceed --timeout.")
 }
 
 func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {

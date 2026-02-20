@@ -66,6 +66,7 @@ func RunAll(baseDir string, values map[string]interface{}, namespace string, opt
 		rules.TemplateLinterSkipSchemaValidation(lo.SkipSchemaValidation))
 	rules.Dependencies(&result)
 	rules.Crds(&result)
+	rules.Sequencing(&result)
 
 	return result
 }

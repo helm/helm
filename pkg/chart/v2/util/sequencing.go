@@ -18,6 +18,7 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
@@ -53,6 +54,124 @@ func ParseDependsOnSubcharts(md *chart.Metadata) ([]string, error) {
 		return nil, fmt.Errorf("invalid %s annotation: %w", AnnotationDependsOnSubcharts, err)
 	}
 	return names, nil
+}
+
+// ResourceGroupAnnotation holds the parsed resource-group annotation value
+// for a single rendered manifest document.
+type ResourceGroupAnnotation struct {
+	// Group is the resource-group name assigned to this resource.
+	Group string
+	// DependsOn is the list of resource-group names this group depends on.
+	DependsOn []string
+}
+
+// ParseResourceGroupAnnotations extracts resource-group metadata from a rendered
+// manifest document (single YAML document string). It reads:
+//   - metadata.annotations["helm.sh/resource-group"]
+//   - metadata.annotations["helm.sh/depends-on/resource-groups"] (JSON array)
+//
+// Returns nil if the resource has no resource-group annotation.
+func ParseResourceGroupAnnotations(doc string) (*ResourceGroupAnnotation, error) {
+	group := extractAnnotationValue(doc, AnnotationResourceGroup)
+	if group == "" {
+		return nil, nil
+	}
+
+	rga := &ResourceGroupAnnotation{Group: group}
+
+	depsRaw := extractAnnotationValue(doc, AnnotationDependsOnResourceGroups)
+	if depsRaw != "" {
+		var deps []string
+		if err := json.Unmarshal([]byte(depsRaw), &deps); err != nil {
+			return nil, fmt.Errorf("invalid %s annotation: %w", AnnotationDependsOnResourceGroups, err)
+		}
+		rga.DependsOn = deps
+	}
+
+	return rga, nil
+}
+
+// extractAnnotationValue does a simple line-based scan for a YAML annotation
+// key and returns its value. This avoids a full YAML parse for performance.
+// It handles both quoted and unquoted values.
+func extractAnnotationValue(doc string, key string) string {
+	// Look for the annotation key in lines
+	for line := range strings.SplitSeq(doc, "\n") {
+		trimmed := strings.TrimSpace(line)
+		// Check for key: value or "key": value patterns
+		if prefix, ok := strings.CutPrefix(trimmed, key+":"); ok {
+			return strings.Trim(strings.TrimSpace(prefix), "\"'")
+		}
+		// Also check for quoted key
+		if prefix, ok := strings.CutPrefix(trimmed, "\""+key+"\":"); ok {
+			return strings.Trim(strings.TrimSpace(prefix), "\"'")
+		}
+	}
+	return ""
+}
+
+// BuildResourceGroupDAG constructs a dependency DAG for resource-groups found
+// in a set of rendered manifest documents. Returns the DAG, a map of group name
+// to manifest documents, the list of unsequenced documents, and any error.
+//
+// Emits warnings (returned as []string) for:
+//   - References to non-existent groups
+//   - Resources assigned to multiple groups (error)
+func BuildResourceGroupDAG(docs []string) (*DAG, map[string][]string, []string, []string, error) {
+	dag := NewDAG()
+	grouped := make(map[string][]string) // group name → list of YAML docs
+	var unsequenced []string
+	var warnings []string
+
+	// First pass: collect all groups and their documents
+	knownGroups := make(map[string]bool)
+	type docMeta struct {
+		index int
+		group string
+		deps  []string
+	}
+	var metas []docMeta
+
+	for i, doc := range docs {
+		rga, err := ParseResourceGroupAnnotations(doc)
+		if err != nil {
+			return nil, nil, nil, nil, fmt.Errorf("document %d: %w", i, err)
+		}
+		if rga == nil {
+			unsequenced = append(unsequenced, doc)
+			metas = append(metas, docMeta{index: i})
+			continue
+		}
+		knownGroups[rga.Group] = true
+		grouped[rga.Group] = append(grouped[rga.Group], doc)
+		metas = append(metas, docMeta{index: i, group: rga.Group, deps: rga.DependsOn})
+	}
+
+	// Second pass: build DAG edges
+	for _, m := range metas {
+		if m.group == "" {
+			continue
+		}
+		dag.AddNode(m.group)
+		for _, dep := range m.deps {
+			if !knownGroups[dep] {
+				warnings = append(warnings, fmt.Sprintf(
+					"resource-group %q depends on %q, but group %q does not exist in rendered manifests",
+					m.group, dep, dep,
+				))
+				continue
+			}
+			if err := dag.AddEdge(dep, m.group); err != nil {
+				return nil, nil, nil, nil, err
+			}
+		}
+	}
+
+	if err := dag.DetectCycles(); err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	return dag, grouped, unsequenced, warnings, nil
 }
 
 // BuildSubchartDAG constructs a dependency DAG for subcharts of the given chart.

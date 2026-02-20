@@ -16,6 +16,7 @@ limitations under the License.
 package action
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -101,6 +102,137 @@ metadata:
 	// No Source comment → attributed to parent
 	assert.Contains(t, result, "myapp")
 	assert.Contains(t, result["myapp"], "orphan")
+}
+
+func TestSplitManifestDocs(t *testing.T) {
+	manifest := "---\napiVersion: v1\nkind: ConfigMap\n---\napiVersion: apps/v1\nkind: Deployment\n---\n"
+	docs := SplitManifestDocs(manifest)
+	assert.Len(t, docs, 2)
+}
+
+func TestBuildResourceGroupBatchesNone(t *testing.T) {
+	manifest := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test"
+	result, err := BuildResourceGroupBatches(manifest)
+	require.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+func TestBuildResourceGroupBatchesLinear(t *testing.T) {
+	manifest := `---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-config
+  annotations:
+    helm.sh/resource-group: database
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-deploy
+  annotations:
+    helm.sh/resource-group: application
+    helm.sh/depends-on/resource-groups: '["database"]'`
+
+	result, err := BuildResourceGroupBatches(manifest)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, [][]string{{"database"}, {"application"}}, result.Batches)
+	assert.Contains(t, result.GroupedManifests, "database")
+	assert.Contains(t, result.GroupedManifests, "application")
+	assert.Empty(t, result.UnsequencedManifest)
+}
+
+func TestBuildResourceGroupBatchesMixed(t *testing.T) {
+	manifest := `---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-config
+  annotations:
+    helm.sh/resource-group: database
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orphan`
+
+	result, err := BuildResourceGroupBatches(manifest)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, [][]string{{"database"}}, result.Batches)
+	assert.NotEmpty(t, result.UnsequencedManifest)
+	assert.Contains(t, result.UnsequencedManifest, "orphan")
+}
+
+func TestBuildResourceGroupBatchesWarnings(t *testing.T) {
+	manifest := `---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+    helm.sh/resource-group: app
+    helm.sh/depends-on/resource-groups: '["nonexistent"]'`
+
+	result, err := BuildResourceGroupBatches(manifest)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Len(t, result.Warnings, 1)
+	assert.Contains(t, result.Warnings[0], "nonexistent")
+}
+
+func TestReorderManifestForTemplateNoSequencing(t *testing.T) {
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "myapp",
+		},
+	}
+	manifest := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test"
+	result := ReorderManifestForTemplate(manifest, chrt)
+	assert.Equal(t, manifest, result, "unchanged when no sequencing")
+}
+
+func TestReorderManifestForTemplateWithSequencing(t *testing.T) {
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "parent",
+			Dependencies: []*chart.Dependency{
+				{Name: "redis"},
+				{Name: "app", DependsOn: []string{"redis"}},
+			},
+			Annotations: map[string]string{
+				chartutil.AnnotationDependsOnSubcharts: `["app"]`,
+			},
+		},
+	}
+
+	manifest := `---
+# Source: parent/charts/redis/templates/deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+---
+# Source: parent/charts/app/templates/deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+---
+# Source: parent/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: parent-svc`
+
+	result := ReorderManifestForTemplate(manifest, chrt)
+	// Redis should appear before app, and parent should be last
+	redisIdx := strings.Index(result, "redis")
+	appIdx := strings.Index(result, "name: app")
+	parentIdx := strings.Index(result, "parent-svc")
+
+	assert.True(t, redisIdx < appIdx, "redis should come before app")
+	assert.True(t, appIdx < parentIdx, "app should come before parent")
 }
 
 func TestBuildInstallBatchesNoSequencing(t *testing.T) {

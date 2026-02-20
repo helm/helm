@@ -67,6 +67,9 @@ type SequencingMetadata struct {
 	// Batches records the ordered deployment batches.
 	// Each batch is a list of subchart names deployed together.
 	Batches [][]string `json:"batches,omitempty"`
+	// ResourceGroupBatches records per-subchart resource-group ordering.
+	// Key is the subchart name; value is the ordered resource-group batches within that subchart.
+	ResourceGroupBatches map[string][][]string `json:"resource_group_batches,omitempty"`
 }
 
 // SetStatus is a helper for setting the status on a release.

@@ -118,7 +118,15 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
 			if rel != nil {
 				var manifests bytes.Buffer
-				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+				// HIP-0025: reorder manifests by sequencing order if chart has sequencing metadata
+				manifestContent := rel.Manifest
+				if rel.Chart != nil {
+					reordered := action.ReorderManifestForTemplate(manifestContent, rel.Chart)
+					if reordered != "" {
+						manifestContent = reordered
+					}
+				}
+				fmt.Fprintln(&manifests, strings.TrimSpace(manifestContent))
 				if !client.DisableHooks {
 					fileWritten := make(map[string]bool)
 					for _, m := range rel.Hooks {

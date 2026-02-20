@@ -250,6 +250,28 @@ func (d *DAG) Len() int {
 	return len(d.nodes)
 }
 
+// String returns a human-readable ASCII representation of the DAG,
+// showing nodes grouped by batch level with dependency arrows.
+func (d *DAG) String() string {
+	batches, err := d.Batches()
+	if err != nil {
+		return fmt.Sprintf("error computing batches: %v", err)
+	}
+
+	var b strings.Builder
+	b.WriteString("DAG Dependency Order:\n")
+	for i, batch := range batches {
+		b.WriteString(fmt.Sprintf("  Batch %d: %s\n", i+1, strings.Join(batch, ", ")))
+		for _, node := range batch {
+			deps := d.DependsOn(node)
+			if len(deps) > 0 {
+				b.WriteString(fmt.Sprintf("    %s <- [%s]\n", node, strings.Join(deps, ", ")))
+			}
+		}
+	}
+	return b.String()
+}
+
 func (d *DAG) sortedNodes() []string {
 	result := make([]string, 0, len(d.nodes))
 	for n := range d.nodes {

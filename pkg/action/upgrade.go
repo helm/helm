@@ -462,48 +462,57 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		u.cfg.Logger().Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
 	}
 
-	upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply // Update client-side field manager if transitioning from client-side to server-side apply
-	results, err := u.cfg.KubeClient.Update(
-		current,
-		target,
-		kube.ClientUpdateOptionForceReplace(u.ForceReplace),
-		kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
-		kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager))
-	if err != nil {
-		u.cfg.recordRelease(originalRelease)
-		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-		return
-	}
-
-	var waiter kube.Waiter
-	if c, supportsOptions := u.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
-		waiter, err = c.GetWaiterWithOptions(u.WaitStrategy, u.WaitOptions...)
+	// HIP-0025: ordered sequencing — deploy resources in subchart dependency order
+	if u.WaitStrategy == kube.OrderedStrategy {
+		if err := u.performOrderedUpgrade(upgradedRelease, current, target, originalRelease, serverSideApply); err != nil {
+			u.cfg.recordRelease(originalRelease)
+			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, err)
+			return
+		}
 	} else {
-		waiter, err = u.cfg.KubeClient.GetWaiter(u.WaitStrategy)
-	}
-	if err != nil {
-		u.cfg.recordRelease(originalRelease)
-		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-		return
-	}
-	if u.WaitForJobs {
-		if err := waiter.WaitWithJobs(target, u.Timeout); err != nil {
+		upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply
+		results, err := u.cfg.KubeClient.Update(
+			current,
+			target,
+			kube.ClientUpdateOptionForceReplace(u.ForceReplace),
+			kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
+			kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager))
+		if err != nil {
 			u.cfg.recordRelease(originalRelease)
 			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
 			return
 		}
-	} else {
-		if err := waiter.Wait(target, u.Timeout); err != nil {
+
+		var waiter kube.Waiter
+		if wc, supportsOptions := u.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+			waiter, err = wc.GetWaiterWithOptions(u.WaitStrategy, u.WaitOptions...)
+		} else {
+			waiter, err = u.cfg.KubeClient.GetWaiter(u.WaitStrategy)
+		}
+		if err != nil {
 			u.cfg.recordRelease(originalRelease)
 			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
 			return
+		}
+		if u.WaitForJobs {
+			if err := waiter.WaitWithJobs(target, u.Timeout); err != nil {
+				u.cfg.recordRelease(originalRelease)
+				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+				return
+			}
+		} else {
+			if err := waiter.Wait(target, u.Timeout); err != nil {
+				u.cfg.recordRelease(originalRelease)
+				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+				return
+			}
 		}
 	}
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
-			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
+			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("post-upgrade hooks failed: %s", err))
 			return
 		}
 	}
@@ -518,6 +527,120 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		upgradedRelease.Info.Description = "Upgrade complete"
 	}
 	u.reportToPerformUpgrade(c, upgradedRelease, nil, nil)
+}
+
+// performOrderedUpgrade deploys resources in subchart dependency order during upgrade.
+// Mirrors performOrderedInstall logic from install.go but uses Update instead of Create.
+func (u *Upgrade) performOrderedUpgrade(upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release, serverSideApply bool) error {
+	batches, err := BuildInstallBatches(upgradedRelease.Chart)
+	if err != nil {
+		return fmt.Errorf("failed to build upgrade order: %w", err)
+	}
+
+	// If no sequencing declared, fall back to standard update
+	if batches == nil {
+		upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply
+		_, err := u.cfg.KubeClient.Update(
+			current, target,
+			kube.ClientUpdateOptionForceReplace(u.ForceReplace),
+			kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
+			kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager))
+		if err != nil {
+			return err
+		}
+
+		var waiter kube.Waiter
+		if wc, supportsOptions := u.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+			waiter, err = wc.GetWaiterWithOptions(u.WaitStrategy, u.WaitOptions...)
+		} else {
+			waiter, err = u.cfg.KubeClient.GetWaiter(u.WaitStrategy)
+		}
+		if err != nil {
+			return err
+		}
+		return waiter.Wait(target, u.Timeout)
+	}
+
+	// Store sequencing metadata in the release
+	upgradedRelease.Sequencing = &release.SequencingMetadata{
+		Enabled:  true,
+		Strategy: string(kube.OrderedStrategy),
+		Batches:  batches,
+	}
+
+	// Split manifests by subchart for both current and target
+	subchartManifests := SplitManifestsBySubchart(upgradedRelease.Manifest, upgradedRelease.Chart.Metadata.Name)
+	currentSubchartManifests := SplitManifestsBySubchart(originalRelease.Manifest, originalRelease.Chart.Metadata.Name)
+
+	u.cfg.Logger().Info(fmt.Sprintf("ordered upgrade: %d batches to deploy", len(batches)))
+
+	upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply
+
+	for batchIdx, batch := range batches {
+		u.cfg.Logger().Info(fmt.Sprintf("upgrading batch %d: %v", batchIdx+1, batch))
+
+		var batchManifest, currentBatchManifest string
+		for _, subchartName := range batch {
+			if m, ok := subchartManifests[subchartName]; ok {
+				if batchManifest != "" {
+					batchManifest += "\n---\n"
+				}
+				batchManifest += m
+			}
+			if m, ok := currentSubchartManifests[subchartName]; ok {
+				if currentBatchManifest != "" {
+					currentBatchManifest += "\n---\n"
+				}
+				currentBatchManifest += m
+			}
+		}
+
+		if batchManifest == "" {
+			continue
+		}
+
+		batchTarget, err := u.cfg.KubeClient.Build(bytes.NewBufferString(batchManifest), !u.DisableOpenAPIValidation)
+		if err != nil {
+			return fmt.Errorf("failed to build target resources for batch %d: %w", batchIdx+1, err)
+		}
+
+		var batchCurrent kube.ResourceList
+		if currentBatchManifest != "" {
+			batchCurrent, err = u.cfg.KubeClient.Build(bytes.NewBufferString(currentBatchManifest), false)
+			if err != nil {
+				return fmt.Errorf("failed to build current resources for batch %d: %w", batchIdx+1, err)
+			}
+		}
+
+		err = batchTarget.Visit(setMetadataVisitor(upgradedRelease.Name, upgradedRelease.Namespace, true))
+		if err != nil {
+			return err
+		}
+
+		_, err = u.cfg.KubeClient.Update(
+			batchCurrent, batchTarget,
+			kube.ClientUpdateOptionForceReplace(u.ForceReplace),
+			kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
+			kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager))
+		if err != nil {
+			return fmt.Errorf("batch %d (%v) update failed: %w", batchIdx+1, batch, err)
+		}
+
+		var waiter kube.Waiter
+		if wc, supportsOptions := u.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+			waiter, err = wc.GetWaiterWithOptions(u.WaitStrategy, u.WaitOptions...)
+		} else {
+			waiter, err = u.cfg.KubeClient.GetWaiter(u.WaitStrategy)
+		}
+		if err != nil {
+			return err
+		}
+		if err := waiter.Wait(batchTarget, u.Timeout); err != nil {
+			return fmt.Errorf("batch %d (%v) wait failed: %w", batchIdx+1, batch, err)
+		}
+	}
+
+	return nil
 }
 
 func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, err error) (*release.Release, error) {

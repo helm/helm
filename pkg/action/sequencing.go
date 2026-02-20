@@ -17,6 +17,7 @@ package action
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -80,6 +81,140 @@ func subchartFromSourcePath(sourcePath, chartName string) string {
 	}
 	// No "charts" segment → belongs to parent chart
 	return chartName
+}
+
+// SplitManifestDocs splits a rendered manifest string into individual YAML documents.
+func SplitManifestDocs(manifest string) []string {
+	var docs []string
+	for _, doc := range strings.Split(manifest, "---") {
+		doc = strings.TrimSpace(doc)
+		if doc == "" {
+			continue
+		}
+		docs = append(docs, doc)
+	}
+	return docs
+}
+
+// ResourceGroupBatches holds the ordered deployment plan for resource-group sequencing.
+type ResourceGroupBatches struct {
+	// Batches is the ordered list of resource-group batches.
+	// Each batch is a list of group names that can be deployed in parallel.
+	Batches [][]string
+	// GroupedManifests maps group name to concatenated manifest YAML.
+	GroupedManifests map[string]string
+	// UnsequencedManifest is the combined manifest for resources without a resource-group.
+	UnsequencedManifest string
+	// Warnings contains any non-fatal issues found during parsing.
+	Warnings []string
+}
+
+// BuildResourceGroupBatches analyzes rendered manifests for a single chart/subchart
+// and produces ordered batches based on resource-group annotations.
+// Returns nil if no resource-group annotations are found.
+func BuildResourceGroupBatches(manifest string) (*ResourceGroupBatches, error) {
+	docs := SplitManifestDocs(manifest)
+	if len(docs) == 0 {
+		return nil, nil
+	}
+
+	dag, grouped, unsequenced, warnings, err := chartutil.BuildResourceGroupDAG(docs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build resource-group DAG: %w", err)
+	}
+
+	// No resource-group annotations found
+	if dag.Len() == 0 {
+		return nil, nil
+	}
+
+	batches, err := dag.Batches()
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute resource-group batch order: %w", err)
+	}
+
+	// Build concatenated manifests per group
+	groupedManifests := make(map[string]string, len(grouped))
+	for group, groupDocs := range grouped {
+		groupedManifests[group] = strings.Join(groupDocs, "\n---\n")
+	}
+
+	var unsequencedManifest string
+	if len(unsequenced) > 0 {
+		unsequencedManifest = strings.Join(unsequenced, "\n---\n")
+	}
+
+	// Log warnings
+	for _, w := range warnings {
+		slog.Warn("resource-group sequencing warning", "message", w)
+	}
+
+	return &ResourceGroupBatches{
+		Batches:             batches,
+		GroupedManifests:    groupedManifests,
+		UnsequencedManifest: unsequencedManifest,
+		Warnings:            warnings,
+	}, nil
+}
+
+// ReorderManifestForTemplate reorders a rendered manifest string according to
+// HIP-0025 sequencing metadata. Adds resource-group delimiters as comments.
+// Returns the original manifest unchanged if no sequencing metadata exists.
+func ReorderManifestForTemplate(manifest string, chrt *chart.Chart) string {
+	batches, err := BuildInstallBatches(chrt)
+	if err != nil || batches == nil {
+		return manifest
+	}
+
+	subchartManifests := SplitManifestsBySubchart(manifest, chrt.Metadata.Name)
+
+	var result strings.Builder
+	for _, batch := range batches {
+		for _, subchartName := range batch {
+			m, ok := subchartManifests[subchartName]
+			if !ok {
+				continue
+			}
+
+			// Check for resource-group sequencing within this subchart
+			rgBatches, rgErr := BuildResourceGroupBatches(m)
+			if rgErr != nil || rgBatches == nil {
+				// No resource-group ordering — output as-is
+				if result.Len() > 0 {
+					result.WriteString("\n---\n")
+				}
+				result.WriteString(m)
+				continue
+			}
+
+			// Output in resource-group batch order with delimiters
+			for _, rgBatch := range rgBatches.Batches {
+				for _, groupName := range rgBatch {
+					groupManifest, ok := rgBatches.GroupedManifests[groupName]
+					if !ok {
+						continue
+					}
+					if result.Len() > 0 {
+						result.WriteString("\n---\n")
+					}
+					result.WriteString(fmt.Sprintf("## START resource-group: %s/%s\n", subchartName, groupName))
+					result.WriteString(groupManifest)
+					result.WriteString(fmt.Sprintf("\n## END resource-group: %s/%s", subchartName, groupName))
+				}
+			}
+
+			// Unsequenced resources (no delimiters)
+			if rgBatches.UnsequencedManifest != "" {
+				if result.Len() > 0 {
+					result.WriteString("\n---\n")
+				}
+				result.WriteString(rgBatches.UnsequencedManifest)
+			}
+		}
+	}
+
+	// Add any resources not in any batch (shouldn't happen, but safety)
+	return result.String()
 }
 
 // BuildInstallBatches constructs ordered batches of subchart names for installation.

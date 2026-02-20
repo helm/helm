@@ -255,15 +255,85 @@ func (e *joinedErrors) Unwrap() []error {
 
 // deleteRelease deletes the release and returns list of delete resources and manifests that were kept in the deletion process
 func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, string, []error) {
+	// HIP-0025: If sequencing metadata exists, delete in reverse batch order
+	if rel.Sequencing != nil && rel.Sequencing.Enabled && len(rel.Sequencing.Batches) > 0 {
+		return u.deleteReleaseOrdered(rel)
+	}
+
+	return u.deleteReleaseUnordered(rel)
+}
+
+// deleteReleaseOrdered deletes resources in reverse subchart batch order
+// using the SequencingMetadata stored in the release.
+func (u *Uninstall) deleteReleaseOrdered(rel *release.Release) (kube.ResourceList, string, []error) {
+	var allDeleted kube.ResourceList
+	var errs []error
+
+	subchartManifests := SplitManifestsBySubchart(rel.Manifest, rel.Chart.Metadata.Name)
+
+	// Reverse the batch order
+	batches := rel.Sequencing.Batches
+	u.cfg.Logger().Info(fmt.Sprintf("ordered uninstall: %d batches to delete (reverse order)", len(batches)))
+
+	var waiter kube.Waiter
+	var wErr error
+	if c, supportsOptions := u.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+		waiter, wErr = c.GetWaiterWithOptions(u.WaitStrategy, u.WaitOptions...)
+	} else {
+		waiter, wErr = u.cfg.KubeClient.GetWaiter(u.WaitStrategy)
+	}
+	if wErr != nil {
+		return nil, "", []error{wErr}
+	}
+
+	for i := len(batches) - 1; i >= 0; i-- {
+		batch := batches[i]
+		u.cfg.Logger().Info(fmt.Sprintf("deleting batch %d: %v", i+1, batch))
+
+		var batchManifest string
+		for _, subchartName := range batch {
+			if m, ok := subchartManifests[subchartName]; ok {
+				if batchManifest != "" {
+					batchManifest += "\n---\n"
+				}
+				batchManifest += m
+			}
+		}
+
+		if batchManifest == "" {
+			continue
+		}
+
+		resources, err := u.cfg.KubeClient.Build(strings.NewReader(batchManifest), false)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("unable to build resources for batch %d: %w", i+1, err))
+			continue
+		}
+
+		if len(resources) > 0 {
+			_, delErrs := u.cfg.KubeClient.Delete(resources, parseCascadingFlag(u.DeletionPropagation))
+			if delErrs != nil {
+				errs = append(errs, delErrs...)
+			} else {
+				allDeleted = append(allDeleted, resources...)
+				// Wait for resources to be gone before next batch
+				if err := waiter.WaitForDelete(resources, u.Timeout); err != nil {
+					errs = append(errs, fmt.Errorf("batch %d wait for delete failed: %w", i+1, err))
+				}
+			}
+		}
+	}
+
+	return allDeleted, "", errs
+}
+
+// deleteReleaseUnordered is the original unordered deletion path.
+func (u *Uninstall) deleteReleaseUnordered(rel *release.Release) (kube.ResourceList, string, []error) {
 	var errs []error
 
 	manifests := releaseutil.SplitManifests(rel.Manifest)
 	_, files, err := releaseutil.SortManifests(manifests, nil, releaseutil.UninstallOrder)
 	if err != nil {
-		// We could instead just delete everything in no particular order.
-		// FIXME: One way to delete at this point would be to try a label-based
-		// deletion. The problem with this is that we could get a false positive
-		// and delete something that was not legitimately part of this release.
 		return nil, rel.Manifest, []error{fmt.Errorf("corrupted release record. You must manually delete the resources: %w", err)}
 	}
 

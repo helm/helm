@@ -224,57 +224,72 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	if err != nil {
 		return targetRelease, fmt.Errorf("unable to set metadata visitor from target release: %w", err)
 	}
-	results, err := r.cfg.KubeClient.Update(
-		current,
-		target,
-		kube.ClientUpdateOptionForceReplace(r.ForceReplace),
-		kube.ClientUpdateOptionServerSideApply(serverSideApply, r.ForceConflicts),
-		kube.ClientUpdateOptionThreeWayMergeForUnstructured(false),
-		kube.ClientUpdateOptionUpgradeClientSideFieldManager(true))
 
-	if err != nil {
-		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
-		r.cfg.Logger().Warn(msg)
-		currentRelease.Info.Status = common.StatusSuperseded
-		targetRelease.Info.Status = common.StatusFailed
-		targetRelease.Info.Description = msg
-		r.cfg.recordRelease(currentRelease)
-		r.cfg.recordRelease(targetRelease)
-		if r.CleanupOnFail {
-			r.cfg.Logger().Debug("cleanup on fail set, cleaning up resources", "count", len(results.Created))
-			_, errs := r.cfg.KubeClient.Delete(results.Created, metav1.DeletePropagationBackground)
-			if errs != nil {
-				return targetRelease, fmt.Errorf(
-					"an error occurred while cleaning up resources. original rollback error: %w",
-					fmt.Errorf("unable to cleanup resources: %w", joinErrors(errs, ", ")))
+	// HIP-0025: If target release has sequencing metadata, apply in stored batch order
+	if r.WaitStrategy == kube.OrderedStrategy && targetRelease.Sequencing != nil && targetRelease.Sequencing.Enabled {
+		if err := r.performOrderedRollback(currentRelease, targetRelease, serverSideApply); err != nil {
+			msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
+			r.cfg.Logger().Warn(msg)
+			currentRelease.Info.Status = common.StatusSuperseded
+			targetRelease.Info.Status = common.StatusFailed
+			targetRelease.Info.Description = msg
+			r.cfg.recordRelease(currentRelease)
+			r.cfg.recordRelease(targetRelease)
+			return targetRelease, err
+		}
+	} else {
+		results, err := r.cfg.KubeClient.Update(
+			current,
+			target,
+			kube.ClientUpdateOptionForceReplace(r.ForceReplace),
+			kube.ClientUpdateOptionServerSideApply(serverSideApply, r.ForceConflicts),
+			kube.ClientUpdateOptionThreeWayMergeForUnstructured(false),
+			kube.ClientUpdateOptionUpgradeClientSideFieldManager(true))
+
+		if err != nil {
+			msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
+			r.cfg.Logger().Warn(msg)
+			currentRelease.Info.Status = common.StatusSuperseded
+			targetRelease.Info.Status = common.StatusFailed
+			targetRelease.Info.Description = msg
+			r.cfg.recordRelease(currentRelease)
+			r.cfg.recordRelease(targetRelease)
+			if r.CleanupOnFail {
+				r.cfg.Logger().Debug("cleanup on fail set, cleaning up resources", "count", len(results.Created))
+				_, errs := r.cfg.KubeClient.Delete(results.Created, metav1.DeletePropagationBackground)
+				if errs != nil {
+					return targetRelease, fmt.Errorf(
+						"an error occurred while cleaning up resources. original rollback error: %w",
+						fmt.Errorf("unable to cleanup resources: %w", joinErrors(errs, ", ")))
+				}
+				r.cfg.Logger().Debug("resource cleanup complete")
 			}
-			r.cfg.Logger().Debug("resource cleanup complete")
+			return targetRelease, err
 		}
-		return targetRelease, err
-	}
 
-	var waiter kube.Waiter
-	if c, supportsOptions := r.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
-		waiter, err = c.GetWaiterWithOptions(r.WaitStrategy, r.WaitOptions...)
-	} else {
-		waiter, err = r.cfg.KubeClient.GetWaiter(r.WaitStrategy)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("unable to get waiter: %w", err)
-	}
-	if r.WaitForJobs {
-		if err := waiter.WaitWithJobs(target, r.Timeout); err != nil {
-			targetRelease.SetStatus(common.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
-			r.cfg.recordRelease(currentRelease)
-			r.cfg.recordRelease(targetRelease)
-			return targetRelease, fmt.Errorf("release %s failed: %w", targetRelease.Name, err)
+		var waiter kube.Waiter
+		if c, supportsOptions := r.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+			waiter, err = c.GetWaiterWithOptions(r.WaitStrategy, r.WaitOptions...)
+		} else {
+			waiter, err = r.cfg.KubeClient.GetWaiter(r.WaitStrategy)
 		}
-	} else {
-		if err := waiter.Wait(target, r.Timeout); err != nil {
-			targetRelease.SetStatus(common.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
-			r.cfg.recordRelease(currentRelease)
-			r.cfg.recordRelease(targetRelease)
-			return targetRelease, fmt.Errorf("release %s failed: %w", targetRelease.Name, err)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get waiter: %w", err)
+		}
+		if r.WaitForJobs {
+			if err := waiter.WaitWithJobs(target, r.Timeout); err != nil {
+				targetRelease.SetStatus(common.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
+				r.cfg.recordRelease(currentRelease)
+				r.cfg.recordRelease(targetRelease)
+				return targetRelease, fmt.Errorf("release %s failed: %w", targetRelease.Name, err)
+			}
+		} else {
+			if err := waiter.Wait(target, r.Timeout); err != nil {
+				targetRelease.SetStatus(common.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
+				r.cfg.recordRelease(currentRelease)
+				r.cfg.recordRelease(targetRelease)
+				return targetRelease, fmt.Errorf("release %s failed: %w", targetRelease.Name, err)
+			}
 		}
 	}
 
@@ -303,4 +318,94 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	targetRelease.Info.Status = common.StatusDeployed
 
 	return targetRelease, nil
+}
+
+// performOrderedRollback applies the target release's resources in stored batch order
+// and deletes the current release's resources in reverse batch order.
+func (r *Rollback) performOrderedRollback(currentRelease, targetRelease *release.Release, serverSideApply bool) error {
+	batches := targetRelease.Sequencing.Batches
+
+	// Delete current release resources in reverse order (if current was also sequenced)
+	if currentRelease.Sequencing != nil && currentRelease.Sequencing.Enabled {
+		currentSubcharts := SplitManifestsBySubchart(currentRelease.Manifest, currentRelease.Chart.Metadata.Name)
+		currentBatches := currentRelease.Sequencing.Batches
+
+		r.cfg.Logger().Info(fmt.Sprintf("ordered rollback: deleting current release in reverse order (%d batches)", len(currentBatches)))
+
+		for i := len(currentBatches) - 1; i >= 0; i-- {
+			batch := currentBatches[i]
+			var batchManifest string
+			for _, name := range batch {
+				if m, ok := currentSubcharts[name]; ok {
+					if batchManifest != "" {
+						batchManifest += "\n---\n"
+					}
+					batchManifest += m
+				}
+			}
+			if batchManifest == "" {
+				continue
+			}
+			resources, err := r.cfg.KubeClient.Build(bytes.NewBufferString(batchManifest), false)
+			if err != nil {
+				continue // best-effort deletion
+			}
+			r.cfg.KubeClient.Delete(resources, metav1.DeletePropagationBackground)
+		}
+	}
+
+	// Install target release resources in forward batch order
+	targetSubcharts := SplitManifestsBySubchart(targetRelease.Manifest, targetRelease.Chart.Metadata.Name)
+
+	r.cfg.Logger().Info(fmt.Sprintf("ordered rollback: installing target release (%d batches)", len(batches)))
+
+	for batchIdx, batch := range batches {
+		var batchManifest string
+		for _, name := range batch {
+			if m, ok := targetSubcharts[name]; ok {
+				if batchManifest != "" {
+					batchManifest += "\n---\n"
+				}
+				batchManifest += m
+			}
+		}
+		if batchManifest == "" {
+			continue
+		}
+
+		batchResources, err := r.cfg.KubeClient.Build(bytes.NewBufferString(batchManifest), false)
+		if err != nil {
+			return fmt.Errorf("failed to build target resources for rollback batch %d: %w", batchIdx+1, err)
+		}
+
+		err = batchResources.Visit(setMetadataVisitor(targetRelease.Name, targetRelease.Namespace, true))
+		if err != nil {
+			return err
+		}
+
+		// Use Update with empty current to handle create-or-update
+		_, err = r.cfg.KubeClient.Update(
+			nil, batchResources,
+			kube.ClientUpdateOptionForceReplace(r.ForceReplace),
+			kube.ClientUpdateOptionServerSideApply(serverSideApply, r.ForceConflicts),
+			kube.ClientUpdateOptionUpgradeClientSideFieldManager(true))
+		if err != nil {
+			return fmt.Errorf("rollback batch %d (%v) failed: %w", batchIdx+1, batch, err)
+		}
+
+		var waiter kube.Waiter
+		if wc, supportsOptions := r.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+			waiter, err = wc.GetWaiterWithOptions(r.WaitStrategy, r.WaitOptions...)
+		} else {
+			waiter, err = r.cfg.KubeClient.GetWaiter(r.WaitStrategy)
+		}
+		if err != nil {
+			return err
+		}
+		if err := waiter.Wait(batchResources, r.Timeout); err != nil {
+			return fmt.Errorf("rollback batch %d (%v) wait failed: %w", batchIdx+1, batch, err)
+		}
+	}
+
+	return nil
 }

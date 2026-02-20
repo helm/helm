@@ -101,6 +101,143 @@ func TestParseDependsOnSubcharts(t *testing.T) {
 	}
 }
 
+func TestParseResourceGroupAnnotations(t *testing.T) {
+	tests := []struct {
+		name        string
+		doc         string
+		expected    *ResourceGroupAnnotation
+		expectError bool
+	}{
+		{
+			name: "no annotation",
+			doc: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test`,
+			expected: nil,
+		},
+		{
+			name: "resource-group only",
+			doc: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    helm.sh/resource-group: database`,
+			expected: &ResourceGroupAnnotation{Group: "database"},
+		},
+		{
+			name: "resource-group with depends-on",
+			doc: `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  annotations:
+    helm.sh/resource-group: application
+    helm.sh/depends-on/resource-groups: '["database", "cache"]'`,
+			expected: &ResourceGroupAnnotation{
+				Group:     "application",
+				DependsOn: []string{"database", "cache"},
+			},
+		},
+		{
+			name: "invalid depends-on JSON",
+			doc: `apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    helm.sh/resource-group: app
+    helm.sh/depends-on/resource-groups: not-json`,
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := ParseResourceGroupAnnotations(tt.doc)
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestBuildResourceGroupDAG(t *testing.T) {
+	tests := []struct {
+		name           string
+		docs           []string
+		expectedBatch  [][]string
+		expectWarnings int
+		expectError    bool
+		errorContains  string
+	}{
+		{
+			name:          "no resource groups",
+			docs:          []string{"apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test"},
+			expectedBatch: nil,
+		},
+		{
+			name: "linear dependency: database -> application",
+			docs: []string{
+				"apiVersion: v1\nkind: ConfigMap\nmetadata:\n  annotations:\n    helm.sh/resource-group: database",
+				"apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  annotations:\n    helm.sh/resource-group: application\n    helm.sh/depends-on/resource-groups: '[\"database\"]'",
+			},
+			expectedBatch: [][]string{{"database"}, {"application"}},
+		},
+		{
+			name: "parallel groups with shared downstream",
+			docs: []string{
+				"apiVersion: v1\nkind: ConfigMap\nmetadata:\n  annotations:\n    helm.sh/resource-group: database",
+				"apiVersion: v1\nkind: ConfigMap\nmetadata:\n  annotations:\n    helm.sh/resource-group: cache",
+				"apiVersion: v1\nkind: ConfigMap\nmetadata:\n  annotations:\n    helm.sh/resource-group: app\n    helm.sh/depends-on/resource-groups: '[\"database\", \"cache\"]'",
+			},
+			expectedBatch: [][]string{{"cache", "database"}, {"app"}},
+		},
+		{
+			name: "warning on non-existent group reference",
+			docs: []string{
+				"apiVersion: v1\nkind: ConfigMap\nmetadata:\n  annotations:\n    helm.sh/resource-group: app\n    helm.sh/depends-on/resource-groups: '[\"ghost\"]'",
+			},
+			expectedBatch:  [][]string{{"app"}},
+			expectWarnings: 1,
+		},
+		{
+			name: "cycle detection",
+			docs: []string{
+				"apiVersion: v1\nkind: ConfigMap\nmetadata:\n  annotations:\n    helm.sh/resource-group: A\n    helm.sh/depends-on/resource-groups: '[\"B\"]'",
+				"apiVersion: v1\nkind: ConfigMap\nmetadata:\n  annotations:\n    helm.sh/resource-group: B\n    helm.sh/depends-on/resource-groups: '[\"A\"]'",
+			},
+			expectError:   true,
+			errorContains: "circular dependency",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dag, _, _, warnings, err := BuildResourceGroupDAG(tt.docs)
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				require.NoError(t, err)
+				if tt.expectedBatch == nil {
+					assert.Equal(t, 0, dag.Len())
+				} else {
+					batches, err := dag.Batches()
+					require.NoError(t, err)
+					assert.Equal(t, tt.expectedBatch, batches)
+				}
+				assert.Len(t, warnings, tt.expectWarnings)
+			}
+		})
+	}
+}
+
 func TestBuildSubchartDAG(t *testing.T) {
 	tests := []struct {
 		name           string

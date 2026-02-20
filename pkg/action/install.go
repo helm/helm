@@ -584,7 +584,7 @@ func (i *Install) performOrderedInstall(rel *release.Release, toBeAdopted kube.R
 	i.cfg.Logger().Info(fmt.Sprintf("ordered install: %d batches to deploy", len(batches)))
 
 	for batchIdx, batch := range batches {
-		i.cfg.Logger().Info(fmt.Sprintf("deploying batch %d: %v", batchIdx+1, batch))
+		i.cfg.Logger().Info(fmt.Sprintf("deploying subchart batch %d: %v", batchIdx+1, batch))
 
 		// Collect manifests for this batch
 		var batchManifest string
@@ -601,17 +601,84 @@ func (i *Install) performOrderedInstall(rel *release.Release, toBeAdopted kube.R
 			continue
 		}
 
-		// Build resource list from batch manifest
+		// Check for resource-group sequencing within this subchart batch
+		if err := i.deployWithResourceGroupSequencing(batchManifest, batchIdx+1, batch); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// deployWithResourceGroupSequencing deploys a batch manifest, applying resource-group
+// ordering if resource-group annotations are present. If no annotations are found,
+// deploys all resources at once.
+func (i *Install) deployWithResourceGroupSequencing(batchManifest string, batchIdx int, batchNames []string) error {
+	rgBatches, err := BuildResourceGroupBatches(batchManifest)
+	if err != nil {
+		return fmt.Errorf("subchart batch %d (%v): %w", batchIdx, batchNames, err)
+	}
+
+	if rgBatches == nil {
+		// No resource-group annotations — deploy all at once
 		batchResources, err := i.cfg.KubeClient.Build(
 			bytes.NewBufferString(batchManifest),
 			!i.DisableOpenAPIValidation,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to build resources for batch %d: %w", batchIdx+1, err)
+			return fmt.Errorf("failed to build resources for batch %d: %w", batchIdx, err)
+		}
+		if err := i.createAndWaitResources(nil, batchResources); err != nil {
+			return fmt.Errorf("batch %d (%v) failed: %w", batchIdx, batchNames, err)
+		}
+		return nil
+	}
+
+	// Deploy resource groups in DAG batch order
+	for rgIdx, rgBatch := range rgBatches.Batches {
+		i.cfg.Logger().Info(fmt.Sprintf("deploying resource-group batch %d.%d: %v", batchIdx, rgIdx+1, rgBatch))
+
+		var rgManifest string
+		for _, groupName := range rgBatch {
+			if m, ok := rgBatches.GroupedManifests[groupName]; ok {
+				if rgManifest != "" {
+					rgManifest += "\n---\n"
+				}
+				rgManifest += m
+			}
 		}
 
-		if err := i.createAndWaitResources(nil, batchResources); err != nil {
-			return fmt.Errorf("batch %d (%v) failed: %w", batchIdx+1, batch, err)
+		if rgManifest == "" {
+			continue
+		}
+
+		rgResources, err := i.cfg.KubeClient.Build(
+			bytes.NewBufferString(rgManifest),
+			!i.DisableOpenAPIValidation,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to build resources for resource-group batch %d.%d: %w", batchIdx, rgIdx+1, err)
+		}
+
+		if err := i.createAndWaitResources(nil, rgResources); err != nil {
+			return fmt.Errorf("resource-group batch %d.%d (%v) failed: %w", batchIdx, rgIdx+1, rgBatch, err)
+		}
+	}
+
+	// Deploy unsequenced resources last
+	if rgBatches.UnsequencedManifest != "" {
+		i.cfg.Logger().Info(fmt.Sprintf("deploying unsequenced resources for batch %d", batchIdx))
+
+		unResources, err := i.cfg.KubeClient.Build(
+			bytes.NewBufferString(rgBatches.UnsequencedManifest),
+			!i.DisableOpenAPIValidation,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to build unsequenced resources for batch %d: %w", batchIdx, err)
+		}
+
+		if err := i.createAndWaitResources(nil, unResources); err != nil {
+			return fmt.Errorf("unsequenced resources for batch %d (%v) failed: %w", batchIdx, batchNames, err)
 		}
 	}
 
