@@ -341,6 +341,53 @@ func TestRepeatableSave(t *testing.T) {
 	}
 }
 
+func TestRepeatableSaveWithSourceDateEpoch(t *testing.T) {
+	// SOURCE_DATE_EPOCH is a standard environment variable for reproducible builds.
+	// When it is set, we should use it as the ModTime for files that don't have one.
+	const sde = "1609459200" // 2021-01-01T00:00:00Z
+	os.Setenv("SOURCE_DATE_EPOCH", sde)
+	t.Cleanup(func() { os.Unsetenv("SOURCE_DATE_EPOCH") })
+
+	tmp := t.TempDir()
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV3,
+			Name:       "ahab",
+			Version:    "1.2.3",
+		},
+		Lock: &chart.Lock{Digest: "testdigest"},
+		Files: []*common.File{
+			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
+		},
+		Schema: []byte("{\n  \"title\": \"Values\"\n}"),
+	}
+
+	dest1 := path.Join(tmp, "out1")
+	where1, err := Save(c, dest1)
+	if err != nil {
+		t.Fatalf("Failed to save: %s", err)
+	}
+	h1, err := sha256Sum(where1)
+	if err != nil {
+		t.Fatalf("Failed to check shasum: %s", err)
+	}
+
+	dest2 := path.Join(tmp, "out2")
+	where2, err := Save(c, dest2)
+	if err != nil {
+		t.Fatalf("Failed to save: %s", err)
+	}
+	h2, err := sha256Sum(where2)
+	if err != nil {
+		t.Fatalf("Failed to check shasum: %s", err)
+	}
+
+	if h1 != h2 {
+		t.Fatalf("Expected deterministic output with SOURCE_DATE_EPOCH set, got %s and %s", h1, h2)
+	}
+}
+
 func sha256Sum(filePath string) (string, error) {
 	f, err := os.Open(filePath)
 	if err != nil {
