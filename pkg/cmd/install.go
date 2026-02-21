@@ -209,6 +209,26 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
 	f.BoolVar(&client.HideNotes, "hide-notes", false, "if set, do not show notes in install output. Does not affect presence in chart metadata")
 	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, install will ignore the check for helm annotations and take ownership of the existing resources")
+
+	// For `helm template`, these notes flags are legacy, unused, and should not show in help, but
+	// must remain accepted for backwards compatibility in Helm 4. Deprecate and hide them for now
+	// TODO remove these from template command in Helm 5
+	if cmd.Name() == "template" {
+		if err := cmd.Flags().MarkDeprecated("hide-notes", "this flag has no effect for 'helm template' and will be removed in Helm 5"); err != nil {
+			log.Fatal(err)
+		}
+		if err := cmd.Flags().MarkHidden("hide-notes"); err != nil {
+			log.Fatal(err)
+		}
+
+		if err := cmd.Flags().MarkDeprecated("render-subchart-notes", "this flag has no effect for 'helm template' and will be removed in Helm 5"); err != nil {
+			log.Fatal(err)
+		}
+		if err := cmd.Flags().MarkHidden("render-subchart-notes"); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	AddWaitFlag(cmd, &client.WaitStrategy)
