@@ -319,7 +319,7 @@ func cleanupParseError(filename string, err error) error {
 	tokens := strings.Split(err.Error(), ": ")
 	if len(tokens) == 1 {
 		// This might happen if a non-templating error occurs
-		return fmt.Errorf("parse error in (%s): %s", filename, err)
+		return fmt.Errorf("parse error in (%s): %w", filename, err)
 	}
 	// The first token is "template"
 	// The second token is either "filename:lineno" or "filename:lineNo:columnNo"
@@ -466,7 +466,7 @@ func reformatExecErrorMsg(filename string, err error) error {
 	tokens := strings.SplitN(err.Error(), ": ", 3)
 	if len(tokens) != 3 {
 		// This might happen if a non-templating error occurs
-		return fmt.Errorf("execution error in (%s): %s", filename, err)
+		return fmt.Errorf("execution error in (%s): %w", filename, err)
 	}
 
 	// The first token is "template"
