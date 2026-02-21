@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -121,6 +122,23 @@ status:
     status: "True"
     reason: BackoffLimitExceeded
     message: "Job has reached the specified backoff limit"
+`
+
+var jobWithTTLManifest = `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-with-ttl
+  namespace: default
+  generation: 1
+spec:
+  ttlSecondsAfterFinished: 0
+status:
+  succeeded: 1
+  active: 0
+  conditions:
+  - type: Complete
+    status: "True"
 `
 
 var podCompleteManifest = `
@@ -1807,6 +1825,108 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WatchUntilReady(resourceList, time.Second*3)
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
+// TestJobWithTTLDeletedDuringWait tests that Jobs with ttlSecondsAfterFinished
+// are properly handled when they get deleted by the TTL controller after completion.
+// This simulates the regression scenario from issue #31786.
+func TestJobWithTTLDeletedDuringWait(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		objManifests  []string
+		deleteDuring  bool // If true, delete the Job during the wait
+		skipCreate    bool // If true, don't create the object (simulates already deleted)
+		expectErrStrs []string
+		testFunc      func(*statusWaiter, ResourceList, time.Duration) error
+	}{
+		{
+			name:         "Job with TTL completes and is deleted during WatchUntilReady",
+			objManifests: []string{jobWithTTLManifest},
+			deleteDuring: true,
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.WatchUntilReady(rl, timeout)
+			},
+		},
+		{
+			name:         "Job with TTL completes and is deleted during WaitWithJobs",
+			objManifests: []string{jobWithTTLManifest},
+			deleteDuring: true,
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.WaitWithJobs(rl, timeout)
+			},
+		},
+		{
+			name:         "Job with TTL completes and is deleted during Wait",
+			objManifests: []string{jobWithTTLManifest},
+			deleteDuring: true,
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.Wait(rl, timeout)
+			},
+		},
+		{
+			name:         "Job with TTL exists and is complete (not deleted)",
+			objManifests: []string{jobWithTTLManifest},
+			deleteDuring: false,
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.WatchUntilReady(rl, timeout)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+			)
+			statusWaiter := statusWaiter{
+				client:     fakeClient,
+				restMapper: fakeMapper,
+			}
+			statusWaiter.SetLogger(slog.Default().Handler())
+			objs := getRuntimeObjFromManifests(t, tt.objManifests)
+
+			// Create the objects initially
+			for _, obj := range objs {
+				u := obj.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+				require.NoError(t, err)
+			}
+
+			var wg sync.WaitGroup
+			// If deleteDuring is true, delete the Job after a short delay
+			// This simulates the TTL controller deleting the Job after it completes
+			if tt.deleteDuring {
+				wg.Add(1)
+				for _, obj := range objs {
+					u := obj.(*unstructured.Unstructured)
+					gvr := getGVR(t, fakeMapper, u)
+					go func(gvr schema.GroupVersionResource, u *unstructured.Unstructured) {
+						defer wg.Done()
+						time.Sleep(time.Millisecond * 100)
+						_ = fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName())
+					}(gvr, u)
+				}
+			}
+
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+			err := tt.testFunc(&statusWaiter, resourceList, time.Second*3)
+			wg.Wait() // Ensure goroutine completes before test ends
+
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
