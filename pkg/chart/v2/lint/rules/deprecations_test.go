@@ -16,7 +16,10 @@ limitations under the License.
 
 package rules // import "helm.sh/helm/v4/pkg/chart/v2/lint/rules"
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestValidateNoDeprecations(t *testing.T) {
 	deprecated := &k8sYamlStruct{
@@ -27,7 +30,11 @@ func TestValidateNoDeprecations(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expected deprecated extension to be flagged")
 	}
-	depErr := err.(deprecatedAPIError)
+	depErr := func() deprecatedAPIError {
+		var target deprecatedAPIError
+		_ = errors.As(err, &target)
+		return target
+	}()
 	if depErr.Message == "" {
 		t.Fatalf("Expected error message to be non-blank: %v", err)
 	}
