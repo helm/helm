@@ -68,6 +68,17 @@ func NewExtractor(source string) (Extractor, error) {
 			return extractor, nil
 		}
 	}
+	if strings.HasPrefix(source, "http") {
+		isGzip, err := isGzipArchiveFromURL(source)
+		if err != nil {
+			return nil, err
+		}
+
+		if isGzip {
+			return &TarGzExtractor{}, nil
+		}
+	}
+
 	return nil, fmt.Errorf("no extractor implemented yet for %s", source)
 }
 
