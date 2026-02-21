@@ -33,6 +33,7 @@ import (
 	"github.com/fluxcd/cli-utils/pkg/kstatus/watcher"
 	"github.com/fluxcd/cli-utils/pkg/object"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
@@ -144,7 +145,7 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		RESTScopeStrategy: watcher.RESTScopeNamespace,
 	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus, w.Logger()))
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.NotFoundStatus, nil, w.Logger()))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -173,11 +174,20 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	resources := []object.ObjMetadata{}
+	jobsWithTTL := make(map[object.ObjMetadata]struct{})
 	for _, resource := range resourceList {
 		switch value := AsVersioned(resource).(type) {
 		case *appsv1.Deployment:
 			if value.Spec.Paused {
 				continue
+			}
+		case *batchv1.Job:
+			if value.Spec.TTLSecondsAfterFinished != nil {
+				obj, err := object.RuntimeToObjMeta(resource.Object)
+				if err != nil {
+					return err
+				}
+				jobsWithTTL[obj] = struct{}{}
 			}
 		}
 		obj, err := object.RuntimeToObjMeta(resource.Object)
@@ -191,7 +201,7 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 		RESTScopeStrategy: watcher.RESTScopeNamespace,
 	})
 	statusCollector := collector.NewResourceStatusCollector(resources)
-	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus, w.Logger()))
+	done := statusCollector.ListenWithObserver(eventCh, statusObserver(cancel, status.CurrentStatus, jobsWithTTL, w.Logger()))
 	<-done
 
 	if statusCollector.Error != nil {
@@ -201,7 +211,15 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 	errs := []error{}
 	for _, id := range resources {
 		rs := statusCollector.ResourceStatuses[id]
-		if rs.Status == status.CurrentStatus {
+		effectiveStatus := rs.Status
+		// Treat NotFound Jobs with TTL as Current for aggregation purposes.
+		// This handles the case where the TTL controller deletes the Job after it completes.
+		if rs.Status == status.NotFoundStatus {
+			if _, hasTTL := jobsWithTTL[id]; hasTTL {
+				effectiveStatus = status.CurrentStatus
+			}
+		}
+		if effectiveStatus == status.CurrentStatus {
 			continue
 		}
 		errs = append(errs, fmt.Errorf("resource %s/%s/%s not ready. status: %s, message: %s",
@@ -230,7 +248,7 @@ func contextWithTimeout(ctx context.Context, timeout time.Duration) (context.Con
 	return watchtools.ContextWithOptionalTimeout(ctx, timeout)
 }
 
-func statusObserver(cancel context.CancelFunc, desired status.Status, logger *slog.Logger) collector.ObserverFunc {
+func statusObserver(cancel context.CancelFunc, desired status.Status, jobsWithTTL map[object.ObjMetadata]struct{}, logger *slog.Logger) collector.ObserverFunc {
 	return func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
 		var rss []*event.ResourceStatus
 		var nonDesiredResources []*event.ResourceStatus
@@ -248,8 +266,20 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			if rs.Status == status.FailedStatus && desired == status.CurrentStatus {
 				continue
 			}
-			rss = append(rss, rs)
-			if rs.Status != desired {
+			// Treat NotFound Jobs with TTL as Current for aggregation purposes.
+			// This handles the case where the TTL controller deletes the Job after it completes.
+			effectiveStatus := rs.Status
+			if rs.Status == status.NotFoundStatus && desired == status.CurrentStatus {
+				if _, hasTTL := jobsWithTTL[rs.Identifier]; hasTTL {
+					effectiveStatus = status.CurrentStatus
+				}
+			}
+			rss = append(rss, &event.ResourceStatus{
+				Identifier: rs.Identifier,
+				Status:     effectiveStatus,
+				Message:    rs.Message,
+			})
+			if effectiveStatus != desired {
 				nonDesiredResources = append(nonDesiredResources, rs)
 			}
 		}
