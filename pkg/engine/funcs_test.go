@@ -17,11 +17,14 @@ limitations under the License.
 package engine
 
 import (
+	"math"
 	"strings"
 	"testing"
 	"text/template"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFuncs(t *testing.T) {
@@ -152,6 +155,17 @@ keyInElement1 = "valueInElement1"`,
 		tpl:  `{{ mustToJson . }}`,
 		vars: loopMap,
 	}, {
+		tpl:    `{{ mustToDuration 30 }}`,
+		expect: `30s`,
+		vars:   nil,
+	}, {
+		tpl:    `{{ mustToDuration "1m30s" }}`,
+		expect: `1m30s`,
+		vars:   nil,
+	}, {
+		tpl:  `{{ mustToDuration "foo" }}`,
+		vars: nil,
+	}, {
 		tpl:    `{{ toYaml . }}`,
 		expect: "", // should return empty string and swallow error
 		vars:   loopMap,
@@ -171,6 +185,239 @@ keyInElement1 = "valueInElement1"`,
 		} else {
 			assert.Error(t, err)
 		}
+	}
+}
+
+func TestDurationHelpers(t *testing.T) {
+	maxDurationSeconds := int64(math.MaxInt64 / int64(time.Second))
+	minDurationSeconds := int64(math.MinInt64 / int64(time.Second))
+	maxDurationSecondsFloat := float64(math.MaxInt64) / float64(time.Second)
+	minDurationSecondsFloat := float64(math.MinInt64) / float64(time.Second)
+
+	tests := []struct {
+		name   string
+		tpl    string
+		vars   any
+		expect string
+	}{{
+		name:   "durationSeconds parses duration string",
+		tpl:    `{{ durationSeconds "1m30s" }}`,
+		expect: `90`,
+	}, {
+		name:   "durationSeconds parses numeric string as seconds",
+		tpl:    `{{ durationSeconds "2.5" }}`,
+		expect: `2.5`,
+	}, {
+		name:   "durationSeconds trims whitespace around numeric string",
+		tpl:    `{{ durationSeconds "  2.5  " }}`,
+		expect: `2.5`,
+	}, {
+		name:   "durationSeconds int treated as seconds",
+		tpl:    `{{ durationSeconds 2 }}`,
+		expect: `2`,
+	}, {
+		name:   "durationSeconds float treated as seconds",
+		tpl:    `{{ durationSeconds 2.5 }}`,
+		expect: `2.5`,
+	}, {
+		name:   "durationSeconds uint treated as seconds",
+		tpl:    `{{ durationSeconds . }}`,
+		vars:   uint(2),
+		expect: `2`,
+	}, {
+		name:   "durationSeconds time.Duration passthrough",
+		tpl:    `{{ durationSeconds . }}`,
+		vars:   1500 * time.Millisecond,
+		expect: `1.5`,
+	}, {
+		name:   "invalid duration string returns 0",
+		tpl:    `{{ durationSeconds "nope" }}`,
+		expect: `0`,
+	}, {
+		name:   "empty duration string returns 0",
+		tpl:    `{{ durationSeconds "" }}`,
+		expect: `0`,
+	}, {
+		name:   "whitespace-only duration string returns 0",
+		tpl:    `{{ durationSeconds "   " }}`,
+		expect: `0`,
+	}, {
+		name:   "nil returns 0",
+		tpl:    `{{ durationSeconds . }}`,
+		vars:   nil,
+		expect: `0`,
+	}, {
+		name:   "durationSeconds uint overflow returns 0",
+		tpl:    `{{ durationSeconds . }}`,
+		vars:   uint64(math.MaxInt64) + 1,
+		expect: `0`,
+	}, {
+		name:   "durationSeconds int overflow returns 0",
+		tpl:    `{{ durationSeconds . }}`,
+		vars:   maxDurationSeconds + 1,
+		expect: `0`,
+	}, {
+		name:   "durationSeconds int underflow returns 0",
+		tpl:    `{{ durationSeconds . }}`,
+		vars:   minDurationSeconds - 1,
+		expect: `0`,
+	}, {
+		name:   "durationSeconds float overflow returns 0",
+		tpl:    `{{ durationSeconds . }}`,
+		vars:   maxDurationSecondsFloat + 0.5,
+		expect: `0`,
+	}, {
+		name:   "durationSeconds float underflow returns 0",
+		tpl:    `{{ durationSeconds . }}`,
+		vars:   minDurationSecondsFloat - 0.5,
+		expect: `0`,
+	}, {
+		name:   "durationSeconds NaN returns 0",
+		tpl:    `{{ durationSeconds . }}`,
+		vars:   math.NaN(),
+		expect: `0`,
+	}, {
+		name:   "durationSeconds Inf returns 0",
+		tpl:    `{{ durationSeconds . }}`,
+		vars:   math.Inf(1),
+		expect: `0`,
+	}, {
+		name:   "durationMilliseconds int seconds",
+		tpl:    `{{ durationMilliseconds 2 }}`,
+		expect: `2000`,
+	}, {
+		name:   "durationMilliseconds float seconds",
+		tpl:    `{{ durationMilliseconds 1.5 }}`,
+		expect: `1500`,
+	}, {
+		name:   "durationMicroseconds int seconds",
+		tpl:    `{{ durationMicroseconds 2 }}`,
+		expect: `2000000`,
+	}, {
+		name:   "durationNanoseconds int seconds",
+		tpl:    `{{ durationNanoseconds 2 }}`,
+		expect: `2000000000`,
+	}, {
+		name:   "durationMinutes parses duration string",
+		tpl:    `{{ durationMinutes "90s" }}`,
+		expect: `1.5`,
+	}, {
+		name:   "durationHours parses duration string",
+		tpl:    `{{ durationHours "90m" }}`,
+		expect: `1.5`,
+	}, {
+		name:   "durationDays parses duration string",
+		tpl:    `{{ durationDays "36h" }}`,
+		expect: `1.5`,
+	}, {
+		name:   "durationDays numeric seconds",
+		tpl:    `{{ durationDays 86400 }}`,
+		expect: `1`,
+	}, {
+		name:   "durationWeeks parses duration string",
+		tpl:    `{{ durationWeeks "168h" }}`,
+		expect: `1`,
+	}, {
+		name:   "durationWeeks parses fractional weeks",
+		tpl:    `{{ durationWeeks "252h" }}`,
+		expect: `1.5`,
+	}, {
+		name:   "durationRoundTo numeric seconds",
+		tpl:    `{{ durationRoundTo 93 60 }}`, // 93s rounded to 60s = 120s
+		expect: `2m0s`,
+	}, {
+		name:   "durationTruncateTo numeric seconds",
+		tpl:    `{{ durationTruncateTo 93 60 }}`, // 93s truncated to 60s = 60s
+		expect: `1m0s`,
+	}, {
+		name:   "durationRoundTo accepts duration-string multiplier",
+		tpl:    `{{ durationRoundTo "93s" "1m" }}`,
+		expect: `2m0s`,
+	}, {
+		name:   "durationTruncateTo accepts duration-string multiplier",
+		tpl:    `{{ durationTruncateTo "93s" "1m" }}`,
+		expect: `1m0s`,
+	}, {
+		name:   "durationRoundTo invalid m returns v unchanged",
+		tpl:    `{{ durationRoundTo "93s" "nope" }}`,
+		expect: `1m33s`,
+	}, {
+		name:   "durationTruncateTo invalid m returns v unchanged",
+		tpl:    `{{ durationTruncateTo "93s" "nope" }}`,
+		expect: `1m33s`,
+	}, {
+		name:   "durationRoundTo zero m returns v unchanged",
+		tpl:    `{{ durationRoundTo "93s" 0 }}`,
+		expect: `1m33s`,
+	}, {
+		name:   "durationTruncateTo negative m returns v unchanged",
+		tpl:    `{{ durationTruncateTo "93s" -1 }}`,
+		expect: `1m33s`,
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var b strings.Builder
+			err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars)
+			require.NoError(t, err, tt.tpl)
+			assert.Equal(t, tt.expect, b.String(), tt.tpl)
+		})
+	}
+
+	mustErrTests := []struct {
+		name string
+		tpl  string
+		vars any
+	}{{
+		name: "mustToDuration invalid string",
+		tpl:  `{{ mustToDuration "nope" }}`,
+	}, {
+		name: "mustToDuration empty string",
+		tpl:  `{{ mustToDuration "" }}`,
+	}, {
+		name: "mustToDuration whitespace string",
+		tpl:  `{{ mustToDuration "   " }}`,
+	}, {
+		name: "mustToDuration unsupported type",
+		tpl:  `{{ mustToDuration . }}`,
+		vars: []int{1, 2, 3},
+	}, {
+		name: "mustToDuration uint overflow",
+		tpl:  `{{ mustToDuration . }}`,
+		vars: uint64(math.MaxInt64) + 1,
+	}, {
+		name: "mustToDuration int overflow",
+		tpl:  `{{ mustToDuration . }}`,
+		vars: maxDurationSeconds + 1,
+	}, {
+		name: "mustToDuration int underflow",
+		tpl:  `{{ mustToDuration . }}`,
+		vars: minDurationSeconds - 1,
+	}, {
+		name: "mustToDuration float overflow",
+		tpl:  `{{ mustToDuration . }}`,
+		vars: maxDurationSecondsFloat + 0.5,
+	}, {
+		name: "mustToDuration float underflow",
+		tpl:  `{{ mustToDuration . }}`,
+		vars: minDurationSecondsFloat - 0.5,
+	}, {
+		name: "mustToDuration NaN",
+		tpl:  `{{ mustToDuration . }}`,
+		vars: math.NaN(),
+	}, {
+		name: "mustToDuration Inf",
+		tpl:  `{{ mustToDuration . }}`,
+		vars: math.Inf(-1),
+	},
+	}
+
+	for _, tt := range mustErrTests {
+		t.Run(tt.name, func(t *testing.T) {
+			var b strings.Builder
+			err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars)
+			require.Error(t, err, tt.tpl)
+		})
 	}
 }
 
