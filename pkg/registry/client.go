@@ -18,6 +18,7 @@ package registry // import "helm.sh/helm/v4/pkg/registry"
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -30,8 +31,10 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
@@ -665,33 +668,53 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		}
 	}
 
-	ctx := context.Background()
-
-	memoryStore := memory.New()
-	chartDescriptor, err := oras.PushBytes(ctx, memoryStore, ChartLayerMediaType, data)
+	repository, err := remote.NewRepository(parsedRef.String())
 	if err != nil {
 		return nil, err
+	}
+	repository.PlainHTTP = c.plainHTTP
+	repository.Client = c.authorizer
+
+	ctx := context.Background()
+	ctx = auth.AppendRepositoryScope(ctx, repository.Reference, auth.ActionPull, auth.ActionPush)
+
+	chartBlob := newBlob(repository, ChartLayerMediaType, data)
+	exists, err := chartBlob.exists(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	layers := []ocispec.Descriptor{chartBlob.descriptor}
+	var wg sync.WaitGroup
+	if !exists {
+		runWorker(ctx, &wg, chartBlob.push)
 	}
 
 	configData, err := json.Marshal(meta)
 	if err != nil {
 		return nil, err
 	}
+	configBlob := newBlob(repository, ConfigMediaType, configData)
+	runWorker(ctx, &wg, configBlob.pushNew)
 
-	configDescriptor, err := oras.PushBytes(ctx, memoryStore, ConfigMediaType, configData)
-	if err != nil {
-		return nil, err
-	}
-
-	layers := []ocispec.Descriptor{chartDescriptor}
-	var provDescriptor ocispec.Descriptor
+	var provBlob blob
 	if operation.provData != nil {
-		provDescriptor, err = oras.PushBytes(ctx, memoryStore, ProvLayerMediaType, operation.provData)
-		if err != nil {
-			return nil, err
-		}
+		provBlob = newBlob(repository, ProvLayerMediaType, operation.provData)
+		runWorker(ctx, &wg, provBlob.pushNew)
+	}
+	wg.Wait()
 
-		layers = append(layers, provDescriptor)
+	if chartBlob.err != nil {
+		return nil, chartBlob.err
+	}
+	if configBlob.err != nil {
+		return nil, configBlob.err
+	}
+	if provBlob.err != nil {
+		return nil, provBlob.err
+	}
+	if operation.provData != nil {
+		layers = append(layers, provBlob.descriptor)
 	}
 
 	// sort layers for determinism, similar to how ORAS v1 does it
@@ -701,20 +724,20 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 
 	ociAnnotations := generateOCIAnnotations(meta, operation.creationTime)
 
-	manifestDescriptor, err := c.tagManifest(ctx, memoryStore, configDescriptor,
-		layers, ociAnnotations, parsedRef)
+	manifest := ocispec.Manifest{
+		Versioned:   specs.Versioned{SchemaVersion: 2},
+		Config:      configBlob.descriptor,
+		Layers:      layers,
+		Annotations: ociAnnotations,
+	}
+
+	manifestData, err := json.Marshal(manifest)
 	if err != nil {
 		return nil, err
 	}
 
-	repository, err := remote.NewRepository(parsedRef.String())
-	if err != nil {
-		return nil, err
-	}
-	repository.PlainHTTP = c.plainHTTP
-	repository.Client = c.authorizer
-
-	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
+	manifestDescriptor, err := oras.TagBytes(ctx, repository, ocispec.MediaTypeImageManifest,
+		manifestData, parsedRef.String())
 	if err != nil {
 		return nil, err
 	}
@@ -722,16 +745,16 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	chartSummary := &descriptorPushSummaryWithMeta{
 		Meta: meta,
 	}
-	chartSummary.Digest = chartDescriptor.Digest.String()
-	chartSummary.Size = chartDescriptor.Size
+	chartSummary.Digest = chartBlob.descriptor.Digest.String()
+	chartSummary.Size = chartBlob.descriptor.Size
 	result := &PushResult{
 		Manifest: &descriptorPushSummary{
 			Digest: manifestDescriptor.Digest.String(),
 			Size:   manifestDescriptor.Size,
 		},
 		Config: &descriptorPushSummary{
-			Digest: configDescriptor.Digest.String(),
-			Size:   configDescriptor.Size,
+			Digest: configBlob.descriptor.Digest.String(),
+			Size:   configBlob.descriptor.Size,
 		},
 		Chart: chartSummary,
 		Prov:  &descriptorPushSummary{}, // prevent nil references
@@ -739,8 +762,8 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 	if operation.provData != nil {
 		result.Prov = &descriptorPushSummary{
-			Digest: provDescriptor.Digest.String(),
-			Size:   provDescriptor.Size,
+			Digest: provBlob.descriptor.Digest.String(),
+			Size:   provBlob.descriptor.Size,
 		}
 	}
 	_, _ = fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
@@ -925,4 +948,67 @@ func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 
 	return oras.TagBytes(ctx, memoryStore, ocispec.MediaTypeImageManifest,
 		manifestData, parsedRef.String())
+}
+
+// runWorker spawns a goroutine to execute the worker function and tracks it
+// with the provided WaitGroup. The WaitGroup counter is incremented before
+// spawning and decremented when the worker completes.
+func runWorker(ctx context.Context, wg *sync.WaitGroup, worker func(context.Context)) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		worker(ctx)
+	}()
+}
+
+// blob represents a content-addressable blob to be pushed to an OCI registry.
+// It encapsulates the data, media type, and destination repository, and tracks
+// the resulting descriptor and any error from push operations.
+type blob struct {
+	mediaType  string
+	dst        *remote.Repository
+	data       []byte
+	descriptor ocispec.Descriptor
+	err        error
+}
+
+// newBlob creates a new blob with the given repository, media type, and data.
+func newBlob(dst *remote.Repository, mediaType string, data []byte) blob {
+	return blob{
+		mediaType: mediaType,
+		dst:       dst,
+		data:      data,
+	}
+}
+
+// exists checks if the blob already exists in the registry by computing its
+// digest and querying the repository. It also populates the blob's descriptor
+// with size, media type, and digest information.
+func (b *blob) exists(ctx context.Context) (bool, error) {
+	hash := sha256.Sum256(b.data)
+	b.descriptor.Size = int64(len(b.data))
+	b.descriptor.MediaType = b.mediaType
+	b.descriptor.Digest = digest.NewDigestFromBytes(digest.SHA256, hash[:])
+	return b.dst.Exists(ctx, b.descriptor)
+}
+
+// pushNew checks if the blob exists in the registry first, and only pushes
+// if it doesn't exist. This avoids redundant uploads for blobs that are
+// already present. Any error is stored in b.err.
+func (b *blob) pushNew(ctx context.Context) {
+	var exists bool
+	exists, b.err = b.exists(ctx)
+	if b.err != nil {
+		return
+	}
+	if exists {
+		return
+	}
+	b.descriptor, b.err = oras.PushBytes(ctx, b.dst, b.mediaType, b.data)
+}
+
+// push unconditionally pushes the blob to the registry without checking
+// for existence first. Any error is stored in b.err.
+func (b *blob) push(ctx context.Context) {
+	b.descriptor, b.err = oras.PushBytes(ctx, b.dst, b.mediaType, b.data)
 }
