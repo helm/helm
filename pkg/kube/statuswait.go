@@ -33,6 +33,7 @@ import (
 	"github.com/fluxcd/cli-utils/pkg/kstatus/watcher"
 	"github.com/fluxcd/cli-utils/pkg/object"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
@@ -177,6 +178,10 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 		switch value := AsVersioned(resource).(type) {
 		case *appsv1.Deployment:
 			if value.Spec.Paused {
+				continue
+			}
+		case *batchv1.Job:
+			if value.Spec.TTLSecondsAfterFinished != nil {
 				continue
 			}
 		}

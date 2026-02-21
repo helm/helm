@@ -123,6 +123,23 @@ status:
     message: "Job has reached the specified backoff limit"
 `
 
+var jobWithTTLManifest = `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-with-ttl
+  namespace: default
+  generation: 1
+spec:
+  ttlSecondsAfterFinished: 0
+status:
+  succeeded: 1
+  active: 0
+  conditions:
+  - type: Complete
+    status: "True"
+`
+
 var podCompleteManifest = `
 apiVersion: v1
 kind: Pod
@@ -412,6 +429,10 @@ func TestStatusWait(t *testing.T) {
 			name:         "paused deployment passes",
 			objManifests: []string{pausedDeploymentManifest},
 		},
+		{
+			name:         "job with TTL is skipped",
+			objManifests: []string{jobWithTTLManifest},
+		},
 	}
 
 	for _, tt := range tests {
@@ -470,6 +491,10 @@ func TestWaitForJobComplete(t *testing.T) {
 			name:          "Job is ready but not complete",
 			objManifests:  []string{jobReadyManifest},
 			expectErrStrs: []string{"resource Job/default/ready-not-complete not ready. status: InProgress", "context deadline exceeded"},
+		},
+		{
+			name:         "job with TTL is skipped",
+			objManifests: []string{jobWithTTLManifest},
 		},
 	}
 
@@ -531,6 +556,10 @@ func TestWatchForReady(t *testing.T) {
 			name:          "Fails if pod is not complete",
 			objManifests:  []string{podCurrentManifest},
 			expectErrStrs: []string{"resource Pod/ns/current-pod not ready. status: InProgress", "context deadline exceeded"},
+		},
+		{
+			name:         "job with TTL is skipped",
+			objManifests: []string{jobWithTTLManifest},
 		},
 	}
 
