@@ -236,7 +236,12 @@ func (e JSONSchemaValidationError) Error() string {
 
 	// This string prefixes all of our error details. Further up the stack of helm error message
 	// building more detail is provided to users. This is removed.
-	errStr = strings.TrimPrefix(errStr, "jsonschema validation failed with 'file:///values.schema.json#'\n")
+	// Remove the "jsonschema validation failed with 'file://...#'" line regardless of the path
+	if strings.HasPrefix(errStr, "jsonschema validation failed with 'file://") {
+		if idx := strings.Index(errStr, "#'\n"); idx != -1 {
+			errStr = errStr[idx+3:] // Skip past "#'\n"
+		}
+	}
 
 	// The extra new line is needed for when there are sub-charts.
 	return errStr + "\n"
