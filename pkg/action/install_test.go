@@ -505,7 +505,7 @@ func TestInstallRelease_DryRunHiddenSecret(t *testing.T) {
 	vals = map[string]any{}
 	_, err = instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
 	if err == nil {
-		t.Fatalf("Did not get expected an error when dry-run false and hide secret is true")
+		t.Fatal("Did not get the expected error when dry-run is false and hide secret is true")
 	}
 }
 

@@ -370,7 +370,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 
 	nginx, ok := i.Entries["nginx"]
 	if !ok || len(nginx) != 2 {
-		t.Fatalf("Expected 2 nginx entries")
+		t.Fatal("Expected 2 nginx entries")
 	}
 
 	expects := []*ChartVersion{
