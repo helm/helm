@@ -38,7 +38,7 @@ func TestValidateAgainstSingleSchema(t *testing.T) {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
 
-	if err := ValidateAgainstSingleSchema(values, schema, ""); err != nil {
+	if err := ValidateAgainstSingleSchema(values, schema); err != nil {
 		t.Errorf("Error validating Values against Schema: %s", err)
 	}
 }
@@ -54,7 +54,7 @@ func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
 	}
 
 	var errString string
-	if err := ValidateAgainstSingleSchema(values, schema, ""); err == nil {
+	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
 		t.Fatalf("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
@@ -78,7 +78,7 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	}
 
 	var errString string
-	if err := ValidateAgainstSingleSchema(values, schema, ""); err == nil {
+	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
 		t.Fatalf("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
@@ -264,19 +264,18 @@ func TestValidateWithRelativeSchemaReferencesCurrentDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
-	schema, err := os.ReadFile("./testdata/current-dir-test/values.schema.json")
+	schemaPath := "./testdata/current-dir-test/values.schema.json"
+	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
 		t.Fatalf("Error reading JSON schema file: %s", err)
 	}
 
-	// Test with absolute base directory - this should work with your fix
-	baseDir := "./testdata/current-dir-test"
-	absBaseDir, err := filepath.Abs(baseDir)
+	absSchemaPath, err := filepath.Abs(schemaPath)
 	if err != nil {
 		t.Fatalf("Error getting absolute path: %s", err)
 	}
 
-	if err := ValidateAgainstSingleSchema(values, schema, absBaseDir); err != nil {
+	if err := ValidateAgainstSingleSchemaWithPath(values, schema, absSchemaPath); err != nil {
 		t.Errorf("Error validating Values against Schema with relative references: %s", err)
 	}
 }
@@ -288,18 +287,18 @@ func TestValidateWithRelativeSchemaReferencesSubfolder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error reading YAML file: %s", err)
 	}
-	schema, err := os.ReadFile("./testdata/subdir-test/subfolder/values.schema.json")
+	schemaPath := "./testdata/subdir-test/subfolder/values.schema.json"
+	schema, err := os.ReadFile(schemaPath)
 	if err != nil {
 		t.Fatalf("Error reading JSON schema file: %s", err)
 	}
 
-	baseDir := "./testdata/subdir-test/subfolder"
-	absBaseDir, err := filepath.Abs(baseDir)
+	absSchemaPath, err := filepath.Abs(schemaPath)
 	if err != nil {
 		t.Fatalf("Error getting absolute path: %s", err)
 	}
 
-	if err := ValidateAgainstSingleSchema(values, schema, absBaseDir); err != nil {
+	if err := ValidateAgainstSingleSchemaWithPath(values, schema, absSchemaPath); err != nil {
 		t.Errorf("Error validating Values against Schema with relative references from subfolder: %s", err)
 	}
 }

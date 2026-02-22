@@ -75,14 +75,31 @@ func newHTTPURLLoader() *HTTPURLLoader {
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
 func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
+	return ValidateAgainstSchemaWithPath(ch, values, "")
+}
+
+func ValidateAgainstSchemaWithPath(ch chart.Charter, values map[string]any, chartDir string) error {
 	chrt, err := chart.NewAccessor(ch)
 	if err != nil {
 		return err
 	}
+
+	var absChartPath string
+	if chartDir != "" {
+		absChartPath, err = filepath.Abs(chartDir)
+	} else {
+		absChartPath, err = filepath.Abs(chrt.ChartFullPath())
+	}
+	if err != nil {
+		return err
+	}
+
 	var sb strings.Builder
 	if chrt.Schema() != nil {
 		slog.Debug("chart name", "chart-name", chrt.Name())
-		err := ValidateAgainstSingleSchema(values, chrt.Schema(), chrt.ChartFullPath())
+
+		schemaPath := filepath.Join(absChartPath, "values.schema.json")
+		err = ValidateAgainstSingleSchemaWithPath(values, chrt.Schema(), schemaPath)
 		if err != nil {
 			fmt.Fprintf(&sb, "%s:\n", chrt.Name())
 			sb.WriteString(err.Error())
@@ -109,7 +126,8 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 			continue
 		}
 
-		if err := ValidateAgainstSchema(subchart, subchartValues); err != nil {
+		subchartPath := filepath.Join(absChartPath, "charts", sub.Name())
+		if err := ValidateAgainstSchemaWithPath(subchart, subchartValues, subchartPath); err != nil {
 			sb.WriteString(err.Error())
 		}
 	}
@@ -122,7 +140,13 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 }
 
 // ValidateAgainstSingleSchema checks that values does not violate the structure laid out in this schema
-func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte, absBaseDir string) (reterr error) {
+func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reterr error) {
+	return ValidateAgainstSingleSchemaWithPath(values, schemaJSON, "/values.schema.json")
+}
+
+// ValidateAgainstSingleSchemaWithPath checks that values does not violate the structure laid out in this schema.
+// schemaPath is the absolute path to the schema file, used to resolve relative $ref references.
+func ValidateAgainstSingleSchemaWithPath(values common.Values, schemaJSON []byte, schemaPath string) (reterr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to validate schema: %s", r)
@@ -147,13 +171,14 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte, absBas
 
 	compiler := jsonschema.NewCompiler()
 	compiler.UseLoader(loader)
-	base := "file://" + filepath.ToSlash(absBaseDir) + "/values.schema.json"
-	err = compiler.AddResource(base, schema)
+
+	schemaURL := fmt.Sprintf("file://%s", schemaPath)
+	err = compiler.AddResource(schemaURL, schema)
 	if err != nil {
 		return err
 	}
 
-	validator, err := compiler.Compile(base)
+	validator, err := compiler.Compile(schemaURL)
 	if err != nil {
 		return err
 	}
@@ -211,11 +236,7 @@ func (e JSONSchemaValidationError) Error() string {
 
 	// This string prefixes all of our error details. Further up the stack of helm error message
 	// building more detail is provided to users. This is removed.
-	if strings.HasPrefix(errStr, "jsonschema validation failed with ") {
-		if idx := strings.Index(errStr, "#'\n"); idx != -1 {
-			errStr = errStr[idx+3:]
-		}
-	}
+	errStr = strings.TrimPrefix(errStr, "jsonschema validation failed with 'file:///values.schema.json#'\n")
 
 	// The extra new line is needed for when there are sub-charts.
 	return errStr + "\n"

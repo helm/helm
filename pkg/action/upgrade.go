@@ -113,6 +113,9 @@ type Upgrade struct {
 	HideNotes bool
 	// SkipSchemaValidation determines if JSON schema validation is disabled.
 	SkipSchemaValidation bool
+	// ChartDir is the local directory path of the chart, used for resolving
+	// relative $ref in JSON schemas. Empty for remote charts.
+	ChartDir string
 	// Description is the description of this operation
 	Description string
 	Labels      map[string]string
@@ -291,7 +294,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 	if err != nil {
 		return nil, nil, false, err
 	}
-	valuesToRender, err := util.ToRenderValuesWithSchemaValidation(chart, vals, options, caps, u.SkipSchemaValidation)
+	valuesToRender, err := util.ToRenderValuesWithSchemaValidationAndPath(chart, vals, options, caps, u.SkipSchemaValidation, u.ChartDir)
 	if err != nil {
 		return nil, nil, false, err
 	}
