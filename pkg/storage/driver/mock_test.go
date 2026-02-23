@@ -19,6 +19,7 @@ package driver // import "helm.sh/helm/v4/pkg/storage/driver"
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
@@ -133,10 +134,31 @@ func (mock *MockConfigMapsInterface) List(_ context.Context, opts metav1.ListOpt
 		return nil, err
 	}
 
+	objects := make([]*v1.ConfigMap, 0, len(mock.objects))
 	for _, cfgmap := range mock.objects {
 		if labelSelector.Matches(kblabels.Set(cfgmap.Labels)) {
-			list.Items = append(list.Items, *cfgmap)
+			objects = append(objects, cfgmap)
 		}
+	}
+
+	if opts.Continue != "" {
+		i, err := strconv.ParseInt(opts.Continue, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid continue value %q: %w", opts.Continue, err)
+		}
+		objects = objects[int(i):]
+		list.Continue = ""
+	}
+
+	if opts.Limit > 0 && opts.Limit <= int64(len(objects)) {
+		objects = objects[:int(opts.Limit)]
+		if opts.Limit < int64(len(objects)) {
+			list.Continue = strconv.FormatInt(opts.Limit, 10)
+		}
+	}
+
+	for _, cfgmap := range objects {
+		list.Items = append(list.Items, *cfgmap)
 	}
 	return &list, nil
 }
@@ -221,10 +243,31 @@ func (mock *MockSecretsInterface) List(_ context.Context, opts metav1.ListOption
 		return nil, err
 	}
 
+	objects := make([]*v1.Secret, 0, len(mock.objects))
 	for _, secret := range mock.objects {
 		if labelSelector.Matches(kblabels.Set(secret.Labels)) {
-			list.Items = append(list.Items, *secret)
+			objects = append(objects, secret)
 		}
+	}
+
+	if opts.Continue != "" {
+		i, err := strconv.ParseInt(opts.Continue, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid continue value: %v", err)
+		}
+		objects = objects[int(i):]
+		list.Continue = ""
+	}
+
+	if opts.Limit > 0 && opts.Limit <= int64(len(objects)) {
+		objects = objects[:int(opts.Limit)]
+		if opts.Limit < int64(len(objects)) {
+			list.Continue = strconv.FormatInt(opts.Limit, 10)
+		}
+	}
+
+	for _, secret := range objects {
+		list.Items = append(list.Items, *secret)
 	}
 	return &list, nil
 }
