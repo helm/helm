@@ -68,8 +68,8 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			// Validate description length
-			if utf8.RuneCountInString(client.Description) > action.MaxDescriptionLength {
-				return fmt.Errorf("description must be %d characters or less, got %d", action.MaxDescriptionLength, utf8.RuneCountInString(client.Description))
+			if descLen := utf8.RuneCountInString(client.Description); descLen > action.MaxDescriptionLength {
+				return fmt.Errorf("description must be %d characters or less, got %d", action.MaxDescriptionLength, descLen)
 			}
 
 			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, false)
