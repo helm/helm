@@ -125,9 +125,9 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 		return fmt.Errorf("unable to get kubernetes client to fetch pod logs: %w", err)
 	}
 
-	hooksByWight := append([]*release.Hook{}, rel.Hooks...)
-	sort.Stable(hookByWeight(hooksByWight))
-	for _, h := range hooksByWight {
+	hooksByWeight := append([]*release.Hook{}, rel.Hooks...)
+	sort.Stable(hookByWeight(hooksByWeight))
+	for _, h := range hooksByWeight {
 		for _, e := range h.Events {
 			if e == release.HookTest {
 				if slices.Contains(r.Filters[ExcludeNameFilter], h.Name) {
