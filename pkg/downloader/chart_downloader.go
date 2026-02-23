@@ -125,10 +125,15 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	var digest32 [32]byte
 	if hash != "" {
 		// if there is a hash, populate the other formats
-		digest, err = hex.DecodeString(hash)
+		// Strip the algorithm prefix (e.g., "sha256:") if present
+		digest, err = hex.DecodeString(stripDigestAlgorithm(hash))
 		if err != nil {
 			return "", nil, err
 		}
+		if len(digest) != 32 {
+			return "", nil, fmt.Errorf("invalid digest length: %d", len(digest))
+		}
+
 		copy(digest32[:], digest)
 		if pth, err := c.Cache.Get(digest32, CacheChart); err == nil {
 			fdata, err := os.ReadFile(pth)
@@ -180,7 +185,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			}
 		}
 		if !found {
-			body, err = g.Get(u.String() + ".prov")
+			body, err = g.Get(u.String()+".prov", c.Options...)
 			if err != nil {
 				if c.Verify == VerifyAlways {
 					return destfile, ver, fmt.Errorf("failed to fetch provenance %q", u.String()+".prov")
@@ -231,9 +236,13 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 	c.Options = append(c.Options, getter.WithAcceptHeader("application/gzip,application/octet-stream"))
 
 	// Check the cache for the file
-	digest, err := hex.DecodeString(digestString)
+	// Strip the algorithm prefix (e.g., "sha256:") if present
+	digest, err := hex.DecodeString(stripDigestAlgorithm(digestString))
 	if err != nil {
 		return "", nil, fmt.Errorf("unable to decode digest: %w", err)
+	}
+	if digestString != "" && len(digest) != 32 {
+		return "", nil, fmt.Errorf("invalid digest length: %d", len(digest))
 	}
 	var digest32 [32]byte
 	copy(digest32[:], digest)
@@ -583,4 +592,13 @@ func loadRepoConfig(file string) (*repo.File, error) {
 		return nil, err
 	}
 	return r, nil
+}
+
+// stripDigestAlgorithm removes the algorithm prefix (e.g., "sha256:") from a digest string.
+// If no prefix is present, the original string is returned unchanged.
+func stripDigestAlgorithm(digest string) string {
+	if idx := strings.Index(digest, ":"); idx >= 0 {
+		return digest[idx+1:]
+	}
+	return digest
 }
