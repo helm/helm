@@ -21,6 +21,7 @@ import (
 	"io"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 
@@ -67,8 +68,8 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			// Validate description length
-			if len(client.Description) > action.MaxDescriptionLength {
-				return fmt.Errorf("description must be %d characters or less, got %d", action.MaxDescriptionLength, len(client.Description))
+			if utf8.RuneCountInString(client.Description) > action.MaxDescriptionLength {
+				return fmt.Errorf("description must be %d characters or less, got %d", action.MaxDescriptionLength, utf8.RuneCountInString(client.Description))
 			}
 
 			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, false)

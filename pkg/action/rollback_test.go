@@ -276,3 +276,39 @@ func TestRollback_DescriptionAtMaxLength(t *testing.T) {
 
 	is.Equal(strings.Repeat("a", MaxDescriptionLength), newRelease.Info.Description)
 }
+
+func TestRollback_DescriptionMultiByteCharacters(t *testing.T) {
+	is := assert.New(t)
+	req := require.New(t)
+
+	rollAction := rollbackAction(t)
+
+	rel1 := releaseStub()
+	rel1.Name = "test-release-desc-utf8"
+	rel1.Version = 1
+	rel1.Info.Status = common.StatusSuperseded
+	rel1.ApplyMethod = "csa"
+	req.NoError(rollAction.cfg.Releases.Create(rel1))
+
+	rel2 := releaseStub()
+	rel2.Name = "test-release-desc-utf8"
+	rel2.Version = 2
+	rel2.Info.Status = common.StatusDeployed
+	rel2.ApplyMethod = "csa"
+	req.NoError(rollAction.cfg.Releases.Create(rel2))
+
+	// "é" is 2 bytes in UTF-8 but 1 rune
+	rollAction.Description = strings.Repeat("é", MaxDescriptionLength)
+	rollAction.Version = 1
+	rollAction.ServerSideApply = "false"
+
+	err := rollAction.Run("test-release-desc-utf8")
+	req.NoError(err)
+
+	newReleasei, err := rollAction.cfg.Releases.Get("test-release-desc-utf8", 3)
+	req.NoError(err)
+	newRelease, err := releaserToV1Release(newReleasei)
+	req.NoError(err)
+
+	is.Equal(strings.Repeat("é", MaxDescriptionLength), newRelease.Info.Description)
+}

@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"unicode/utf8"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -120,8 +121,8 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		return nil, nil, false, errInvalidRevision
 	}
 
-	if len(r.Description) > MaxDescriptionLength {
-		return nil, nil, false, fmt.Errorf("description must be %d characters or less, got %d", MaxDescriptionLength, len(r.Description))
+	if utf8.RuneCountInString(r.Description) > MaxDescriptionLength {
+		return nil, nil, false, fmt.Errorf("description must be %d characters or less, got %d", MaxDescriptionLength, utf8.RuneCountInString(r.Description))
 	}
 
 	currentReleasei, err := r.cfg.Releases.Last(name)
