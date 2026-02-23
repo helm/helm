@@ -120,6 +120,41 @@ func fakeClientWith(code int, gv schema.GroupVersion, body string) *fake.RESTCli
 	}
 }
 
+func newGenerateNameDeployment(generateName, namespace string) *resource.Info {
+	return &resource.Info{
+		Name:      "", // Name is empty when generateName is used
+		Namespace: namespace,
+		Mapping: &meta.RESTMapping{
+			Resource:         schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployment"},
+			GroupVersionKind: schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
+			Scope:            meta.RESTScopeNamespace,
+		},
+		Object: &appsv1.Deployment{
+			ObjectMeta: v1.ObjectMeta{
+				GenerateName: generateName,
+				Namespace:    namespace,
+			},
+		},
+	}
+}
+
+func newUnnamedDeployment(namespace string) *resource.Info {
+	return &resource.Info{
+		Name:      "", // Neither name nor generateName
+		Namespace: namespace,
+		Mapping: &meta.RESTMapping{
+			Resource:         schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployment"},
+			GroupVersionKind: schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
+			Scope:            meta.RESTScopeNamespace,
+		},
+		Object: &appsv1.Deployment{
+			ObjectMeta: v1.ObjectMeta{
+				Namespace: namespace,
+			},
+		},
+	}
+}
+
 func TestRequireAdoption(t *testing.T) {
 	var (
 		missing   = newMissingDeployment("missing", "ns-a")
@@ -133,6 +168,35 @@ func TestRequireAdoption(t *testing.T) {
 	assert.Len(t, found, 1)
 	assert.Equal(t, found[0], existing)
 	assert.NotSame(t, found[0], existing)
+}
+
+func TestRequireAdoptionSkipsGenerateName(t *testing.T) {
+	var (
+		missing      = newMissingDeployment("missing", "ns-a")
+		existing     = newDeploymentWithOwner("existing", "ns-a", nil, nil)
+		generateName = newGenerateNameDeployment("hello-world-", "ns-a")
+		resources    = kube.ResourceList{missing, existing, generateName}
+	)
+
+	// Resources with generateName (empty name) should be skipped,
+	// not cause an error about empty resource name.
+	found, err := requireAdoption(resources)
+	assert.NoError(t, err)
+	assert.Len(t, found, 1)
+	assert.Equal(t, found[0], existing)
+}
+
+func TestRequireAdoptionRejectsUnnamedResource(t *testing.T) {
+	var (
+		missing   = newMissingDeployment("missing", "ns-a")
+		unnamed   = newUnnamedDeployment("ns-a")
+		resources = kube.ResourceList{missing, unnamed}
+	)
+
+	// A resource with neither name nor generateName should produce an error.
+	_, err := requireAdoption(resources)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "missing both metadata.name and metadata.generateName")
 }
 
 func TestExistingResourceConflict(t *testing.T) {
@@ -163,6 +227,44 @@ func TestExistingResourceConflict(t *testing.T) {
 	resources = append(resources, conflict)
 	_, err = existingResourceConflict(resources, releaseName, releaseNamespace)
 	assert.Error(t, err)
+}
+
+func TestExistingResourceConflictSkipsGenerateName(t *testing.T) {
+	var (
+		releaseName      = "rel-name"
+		releaseNamespace = "rel-namespace"
+		labels           = map[string]string{
+			appManagedByLabel: appManagedByHelm,
+		}
+		annotations = map[string]string{
+			helmReleaseNameAnnotation:      releaseName,
+			helmReleaseNamespaceAnnotation: releaseNamespace,
+		}
+		missing      = newMissingDeployment("missing", "ns-a")
+		existing     = newDeploymentWithOwner("existing", "ns-a", labels, annotations)
+		generateName = newGenerateNameDeployment("hello-world-", "ns-a")
+		resources    = kube.ResourceList{missing, existing, generateName}
+	)
+
+	// Resources with generateName (empty name) should be skipped,
+	// not cause an error about empty resource name.
+	found, err := existingResourceConflict(resources, releaseName, releaseNamespace)
+	assert.NoError(t, err)
+	assert.Len(t, found, 1)
+	assert.Equal(t, found[0], existing)
+}
+
+func TestExistingResourceConflictRejectsUnnamedResource(t *testing.T) {
+	var (
+		missing   = newMissingDeployment("missing", "ns-a")
+		unnamed   = newUnnamedDeployment("ns-a")
+		resources = kube.ResourceList{missing, unnamed}
+	)
+
+	// A resource with neither name nor generateName should produce an error.
+	_, err := existingResourceConflict(resources, "rel-name", "rel-namespace")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "missing both metadata.name and metadata.generateName")
 }
 
 func TestCheckOwnership(t *testing.T) {

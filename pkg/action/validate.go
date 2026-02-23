@@ -46,6 +46,17 @@ func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
 			return err
 		}
 
+		// Resources that use generateName instead of name don't have a
+		// fixed identity yet — the server assigns one at creation time.
+		// They cannot already exist, so skip the lookup.
+		if info.Name == "" {
+			generateName, _ := accessor.GenerateName(info.Object)
+			if generateName != "" {
+				return nil
+			}
+			return fmt.Errorf("resource %s is missing both metadata.name and metadata.generateName", resourceString(info))
+		}
+
 		helper := resource.NewHelper(info.Client, info.Mapping)
 		_, err = helper.Get(info.Namespace, info.Name)
 		if err != nil {
@@ -69,6 +80,17 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 	err := resources.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
 			return err
+		}
+
+		// Resources that use generateName instead of name don't have a
+		// fixed identity yet — the server assigns one at creation time.
+		// They cannot already exist, so skip the conflict check.
+		if info.Name == "" {
+			generateName, _ := accessor.GenerateName(info.Object)
+			if generateName != "" {
+				return nil
+			}
+			return fmt.Errorf("resource %s is missing both metadata.name and metadata.generateName", resourceString(info))
 		}
 
 		helper := resource.NewHelper(info.Client, info.Mapping)
