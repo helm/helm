@@ -200,13 +200,12 @@ func TestRollbackDescriptionTooLong(t *testing.T) {
 		}
 	}
 
-	// Create a description that exceeds the 512 character limit
-	longDescription := strings.Repeat("a", 513)
+	longDescription := strings.Repeat("a", action.MaxDescriptionLength+1)
 	_, _, err := executeActionCommandC(storage, fmt.Sprintf("rollback %s 1 --description '%s'", releaseName, longDescription))
 	if err == nil {
 		t.Error("expected error for description exceeding max length, got success")
 	}
-	if err != nil && !strings.Contains(err.Error(), "description must be 512 characters or less") {
+	if err != nil && !strings.Contains(err.Error(), fmt.Sprintf("description must be %d characters or less", action.MaxDescriptionLength)) {
 		t.Errorf("expected error about description length, got: %v", err)
 	}
 }

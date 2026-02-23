@@ -38,9 +38,6 @@ second is a revision (version) number. If this argument is omitted or set to
 To see revision numbers, run 'helm history RELEASE'.
 `
 
-// maxDescriptionLength is the maximum length allowed for a rollback description
-const maxDescriptionLength = 256
-
 func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewRollback(cfg)
 	client.WaitOptions = append(client.WaitOptions, defaultCLIWaitOptions()...)
@@ -71,8 +68,8 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			// Validate description length
-			if len(client.Description) > maxDescriptionLength {
-				return fmt.Errorf("description must be %d characters or less, got %d", maxDescriptionLength, len(client.Description))
+			if len(client.Description) > action.MaxDescriptionLength {
+				return fmt.Errorf("description must be %d characters or less, got %d", action.MaxDescriptionLength, len(client.Description))
 			}
 
 			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, false)
@@ -91,7 +88,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVar(&client.Description, "description", "", fmt.Sprintf("add a custom description for the rollback (max %d characters)", maxDescriptionLength))
+	f.StringVar(&client.Description, "description", "", fmt.Sprintf("add a custom description for the rollback (max %d characters)", action.MaxDescriptionLength))
 	f.BoolVar(&client.ForceReplace, "force-replace", false, "force resource updates by replacement")
 	f.BoolVar(&client.ForceReplace, "force", false, "deprecated")
 	f.MarkDeprecated("force", "use --force-replace instead")
