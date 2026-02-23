@@ -61,6 +61,15 @@ func Expand(dir string, r io.Reader) error {
 		return err
 	}
 
+	// Check if chartdir conflict with an already existing directory
+	if _, err := os.Stat(chartdir); err != nil {
+		if err := os.MkdirAll(chartdir, 0755); err != nil {
+			return fmt.Errorf("failed to untar (mkdir): %w", err)
+		}
+	} else {
+		return fmt.Errorf("failed to untar: a file or directory with the name %s already exists", chartdir)
+	}
+
 	// Copy all files verbatim. We don't parse these files because parsing can remove
 	// comments.
 	for _, file := range files {
