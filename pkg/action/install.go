@@ -426,11 +426,15 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 					kube.ClientCreateOptionDryRun(true),
 				)
 			} else if len(resources) > 0 {
+				updateThreeWayMergeForUnstructured := i.TakeOwnership && !i.ServerSideApply
 				_, err = i.cfg.KubeClient.Update(
 					toBeAdopted,
 					resources,
+					kube.ClientUpdateOptionForceReplace(i.ForceReplace),
 					kube.ClientUpdateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts),
 					kube.ClientUpdateOptionDryRun(true),
+					kube.ClientUpdateOptionThreeWayMergeForUnstructured(updateThreeWayMergeForUnstructured),
+					kube.ClientUpdateOptionUpgradeClientSideFieldManager(true),
 				)
 			}
 			if err != nil {

@@ -396,12 +396,14 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		u.cfg.Logger().Debug("dry run for release", "name", upgradedRelease.Name)
 		// For server-side dry-run, validate resources against the API server
 		if u.DryRunStrategy == DryRunServer {
+			upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply
 			_, err := u.cfg.KubeClient.Update(
 				current,
 				target,
 				kube.ClientUpdateOptionForceReplace(u.ForceReplace),
 				kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
 				kube.ClientUpdateOptionDryRun(true),
+				kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager),
 			)
 			if err != nil {
 				return upgradedRelease, err
