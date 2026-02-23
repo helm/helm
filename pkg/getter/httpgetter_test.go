@@ -577,7 +577,7 @@ func TestHttpClientInsecureSkipVerify(t *testing.T) {
 
 func verifyInsecureSkipVerify(t *testing.T, g *HTTPGetter, caseName string, expectedValue bool) *http.Transport {
 	t.Helper()
-	returnVal, err := g.httpClient()
+	returnVal, err := g.httpClient(g.opts)
 
 	if err != nil {
 		t.Fatal(err)
@@ -601,7 +601,7 @@ func verifyInsecureSkipVerify(t *testing.T, g *HTTPGetter, caseName string, expe
 func TestDefaultHTTPTransportReuse(t *testing.T) {
 	g := HTTPGetter{}
 
-	httpClient1, err := g.httpClient()
+	httpClient1, err := g.httpClient(g.opts)
 
 	if err != nil {
 		t.Fatal(err)
@@ -613,7 +613,7 @@ func TestDefaultHTTPTransportReuse(t *testing.T) {
 
 	transport1 := (httpClient1.Transport).(*http.Transport) //nolint:staticcheck
 
-	httpClient2, err := g.httpClient()
+	httpClient2, err := g.httpClient(g.opts)
 
 	if err != nil {
 		t.Fatal(err)
@@ -635,7 +635,7 @@ func TestHTTPTransportOption(t *testing.T) {
 
 	g := HTTPGetter{}
 	g.opts.transport = transport
-	httpClient1, err := g.httpClient()
+	httpClient1, err := g.httpClient(g.opts)
 
 	if err != nil {
 		t.Fatal(err)
@@ -651,7 +651,7 @@ func TestHTTPTransportOption(t *testing.T) {
 		t.Fatalf("Expected transport option to be applied")
 	}
 
-	httpClient2, err := g.httpClient()
+	httpClient2, err := g.httpClient(g.opts)
 
 	if err != nil {
 		t.Fatal(err)
