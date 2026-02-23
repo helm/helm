@@ -121,8 +121,8 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		return nil, nil, false, errInvalidRevision
 	}
 
-	if utf8.RuneCountInString(r.Description) > MaxDescriptionLength {
-		return nil, nil, false, fmt.Errorf("description must be %d characters or less, got %d", MaxDescriptionLength, utf8.RuneCountInString(r.Description))
+	if descLen := utf8.RuneCountInString(r.Description); descLen > MaxDescriptionLength {
+		return nil, nil, false, fmt.Errorf("description must be %d characters or less, got %d", MaxDescriptionLength, descLen)
 	}
 
 	currentReleasei, err := r.cfg.Releases.Last(name)
