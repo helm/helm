@@ -31,6 +31,8 @@ import (
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
+const MaxDescriptionLength = 256
+
 // Rollback is the action for rolling back to a given release.
 //
 // It provides the implementation of 'helm rollback'.
@@ -116,6 +118,10 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 
 	if r.Version < 0 {
 		return nil, nil, false, errInvalidRevision
+	}
+
+	if len(r.Description) > MaxDescriptionLength {
+		return nil, nil, false, fmt.Errorf("description must be %d characters or less, got %d", MaxDescriptionLength, len(r.Description))
 	}
 
 	currentReleasei, err := r.cfg.Releases.Last(name)
