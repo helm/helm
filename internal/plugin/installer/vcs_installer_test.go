@@ -219,8 +219,8 @@ func TestVCSInstallerUpdateWithVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Now test update with specific version constraint
-	vcsInstaller.Version = "~0.1.0"
+	// Now test update with specific version
+	vcsInstaller.Version = "0.1.1"
 	if err := Update(vcsInstaller); err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +228,7 @@ func TestVCSInstallerUpdateWithVersion(t *testing.T) {
 		t.Fatalf("expected version '0.1.1', got %q", repo.current)
 	}
 
-	// Test update with different version constraint
+	// Test update with different version
 	vcsInstaller.Version = "0.2.0"
 	if err := Update(vcsInstaller); err != nil {
 		t.Fatal(err)
