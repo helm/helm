@@ -36,7 +36,7 @@ import (
 	"k8s.io/client-go/rest/fake"
 )
 
-func newDeploymentResource(name, namespace string) *resource.Info {
+func newDeploymentResource(name, namespace, generateName string) *resource.Info {
 	return &resource.Info{
 		Name: name,
 		Mapping: &meta.RESTMapping{
@@ -45,8 +45,9 @@ func newDeploymentResource(name, namespace string) *resource.Info {
 		},
 		Object: &appsv1.Deployment{
 			ObjectMeta: v1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
+				Name:         name,
+				Namespace:    namespace,
+				GenerateName: generateName,
 			},
 		},
 	}
@@ -166,7 +167,7 @@ func TestExistingResourceConflict(t *testing.T) {
 }
 
 func TestCheckOwnership(t *testing.T) {
-	deployFoo := newDeploymentResource("foo", "ns-a")
+	deployFoo := newDeploymentResource("foo", "ns-a", "")
 
 	// Verify that a resource that lacks labels/annotations is not owned
 	err := checkOwnership(deployFoo.Object, "rel-a", "ns-a")
@@ -213,8 +214,8 @@ func TestCheckOwnership(t *testing.T) {
 func TestSetMetadataVisitor(t *testing.T) {
 	var (
 		err       error
-		deployFoo = newDeploymentResource("foo", "ns-a")
-		deployBar = newDeploymentResource("bar", "ns-a-system")
+		deployFoo = newDeploymentResource("foo", "ns-a", "")
+		deployBar = newDeploymentResource("bar", "ns-a-system", "")
 		resources = kube.ResourceList{deployFoo, deployBar}
 	)
 
@@ -235,8 +236,54 @@ func TestSetMetadataVisitor(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Add a new resource that is missing ownership metadata and verify error
-	resources.Append(newDeploymentResource("baz", "default"))
+	resources.Append(newDeploymentResource("baz", "default", ""))
 	err = resources.Visit(setMetadataVisitor("rel-b", "ns-a", false))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `Deployment "baz" in namespace "" cannot be owned`)
+}
+
+func TestValidateNameAndGenerateName(t *testing.T) {
+	tests := []struct {
+		name        string
+		info        *resource.Info
+		wantSkip    bool
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:        "both name and generateName present",
+			info:        newDeploymentResource("job-a", "foo", "job-a-"),
+			wantSkip:    true,
+			wantErr:     true,
+			errContains: "metadata.name and metadata.generateName cannot both be set",
+		},
+		{
+			name:     "only generateName present",
+			info:     newDeploymentResource("", "foo", "job-a-"),
+			wantSkip: true,
+			wantErr:  false,
+		},
+		{
+			name:     "only name present",
+			info:     newDeploymentResource("job-a", "foo", ""),
+			wantSkip: false,
+			wantErr:  false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+
+			skip, err := validateNameAndGenerateName(tc.info)
+
+			if tc.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.errContains)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.Equal(t, tc.wantSkip, skip)
+		})
+	}
 }
