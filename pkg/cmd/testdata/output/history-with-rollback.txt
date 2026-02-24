@@ -1,0 +1,4 @@
+REVISION	UPDATED                 	STATUS    	CHART           	APP VERSION	  DESCRIPTION
+1       	Fri Sep  2 22:04:05 1977	superseded	foo-0.1.0-beta.1	1.0        	  Install complete
+2       	Fri Sep  2 22:04:05 1977	superseded	foo-0.1.0-beta.1	1.0        	  Upgrade complete
+3       	Fri Sep  2 22:04:05 1977	deployed  	foo-0.1.0-beta.1	1.0        	  Rollback to 1
