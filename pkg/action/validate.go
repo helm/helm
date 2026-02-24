@@ -46,15 +46,9 @@ func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
 			return err
 		}
 
-		// Resources that use generateName instead of name don't have a
-		// fixed identity yet — the server assigns one at creation time.
-		// They cannot already exist, so skip the lookup.
-		if info.Name == "" {
-			generateName, _ := accessor.GenerateName(info.Object)
-			if generateName != "" {
-				return nil
-			}
-			return fmt.Errorf("resource %s is missing both metadata.name and metadata.generateName", resourceString(info))
+		isGenerateName, err := validateNameAndGenerateName(info)
+		if isGenerateName || err != nil {
+			return err
 		}
 
 		helper := resource.NewHelper(info.Client, info.Mapping)
@@ -82,15 +76,9 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 			return err
 		}
 
-		// Resources that use generateName instead of name don't have a
-		// fixed identity yet — the server assigns one at creation time.
-		// They cannot already exist, so skip the conflict check.
-		if info.Name == "" {
-			generateName, _ := accessor.GenerateName(info.Object)
-			if generateName != "" {
-				return nil
-			}
-			return fmt.Errorf("resource %s is missing both metadata.name and metadata.generateName", resourceString(info))
+		isGenerateName, err := validateNameAndGenerateName(info)
+		if isGenerateName || err != nil {
+			return err
 		}
 
 		helper := resource.NewHelper(info.Client, info.Mapping)
@@ -222,4 +210,24 @@ func mergeStrStrMaps(current, desired map[string]string) map[string]string {
 	maps.Copy(result, current)
 	maps.Copy(result, desired)
 	return result
+}
+
+// validateNameAndGenerateName validates that an object only has either `Name` or `GenerateName` set (and not both)
+// If `GenerateName` is set, true is returned
+// If an invalid combination of `Name` and `GenerateName` are set, an error is returned
+func validateNameAndGenerateName(info *resource.Info) (bool, error) {
+	accessor, err := meta.Accessor(info.Object)
+	if err != nil {
+		return false, err
+	}
+
+	if info.Name == "" && accessor.GetGenerateName() != "" {
+		return true, nil
+	}
+
+	if info.Name != "" && accessor.GetGenerateName() != "" {
+		return true, fmt.Errorf("metadata.name and metadata.generateName cannot both be set")
+	}
+
+	return false, nil
 }
