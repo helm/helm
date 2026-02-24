@@ -77,6 +77,10 @@ func NewRollback(cfg *Configuration) *Rollback {
 
 // Run executes 'helm rollback' against the given release.
 func (r *Rollback) Run(name string) error {
+	if descLen := utf8.RuneCountInString(r.Description); descLen > MaxDescriptionLength {
+		return fmt.Errorf("description must be %d characters or less, got %d", MaxDescriptionLength, descLen)
+	}
+
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
 		return err
 	}
@@ -119,10 +123,6 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 
 	if r.Version < 0 {
 		return nil, nil, false, errInvalidRevision
-	}
-
-	if descLen := utf8.RuneCountInString(r.Description); descLen > MaxDescriptionLength {
-		return nil, nil, false, fmt.Errorf("description must be %d characters or less, got %d", MaxDescriptionLength, descLen)
 	}
 
 	currentReleasei, err := r.cfg.Releases.Last(name)
