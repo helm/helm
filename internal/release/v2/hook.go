@@ -86,7 +86,7 @@ type Hook struct {
 	// Events are the events that this hook fires on.
 	Events []HookEvent `json:"events,omitempty"`
 	// LastRun indicates the date/time this was last run.
-	LastRun HookExecution `json:"last_run,omitempty"`
+	LastRun HookExecution `json:"last_run"`
 	// Weight indicates the sort order for execution among similar Hook type
 	Weight int `json:"weight,omitempty"`
 	// DeletePolicies are the policies that indicate when to delete the hook
@@ -133,7 +133,7 @@ type hookExecutionJSON struct {
 // It handles empty string time fields by treating them as zero values.
 func (h *HookExecution) UnmarshalJSON(data []byte) error {
 	// First try to unmarshal into a map to handle empty string time fields
-	var raw map[string]interface{}
+	var raw map[string]any
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}

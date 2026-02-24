@@ -135,7 +135,7 @@ chapter:
 	}
 }
 
-func matchValues(t *testing.T, data map[string]interface{}) {
+func matchValues(t *testing.T, data map[string]any) {
 	t.Helper()
 	if data["poet"] != "Coleridge" {
 		t.Errorf("Unexpected poet: %s", data["poet"])
@@ -160,7 +160,7 @@ func matchValues(t *testing.T, data map[string]interface{}) {
 	}
 }
 
-func ttpl(tpl string, v map[string]interface{}) (string, error) {
+func ttpl(tpl string, v map[string]any) (string, error) {
 	var b bytes.Buffer
 	tt := template.Must(template.New("t").Parse(tpl))
 	err := tt.Execute(&b, v)

@@ -123,7 +123,7 @@ func Mock(opts *MockReleaseOptions) *Release {
 		Name:      name,
 		Info:      info,
 		Chart:     ch,
-		Config:    map[string]interface{}{"name": "value"},
+		Config:    map[string]any{"name": "value"},
 		Version:   version,
 		Namespace: namespace,
 		Hooks: []*Hook{

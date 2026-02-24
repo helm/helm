@@ -39,7 +39,7 @@ import (
 func TestSelectorsForObject(t *testing.T) {
 	tests := []struct {
 		name           string
-		object         interface{}
+		object         any
 		expectError    bool
 		errorContains  string
 		expectedLabels map[string]string

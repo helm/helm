@@ -271,7 +271,7 @@ func getRuntimeObjFromManifests(t *testing.T, manifests []string) []runtime.Obje
 	t.Helper()
 	objects := []runtime.Object{}
 	for _, manifest := range manifests {
-		m := make(map[string]interface{})
+		m := make(map[string]any)
 		err := yaml.Unmarshal([]byte(manifest), &m)
 		assert.NoError(t, err)
 		resource := &unstructured.Unstructured{Object: m}

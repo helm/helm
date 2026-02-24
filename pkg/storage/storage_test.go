@@ -576,7 +576,7 @@ func (test ReleaseTestData) ToRelease() *rspb.Release {
 	}
 }
 
-func assertErrNil(eh func(args ...interface{}), err error, message string) {
+func assertErrNil(eh func(args ...any), err error, message string) {
 	if err != nil {
 		eh(fmt.Sprintf("%s: %q", message, err))
 	}
