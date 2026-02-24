@@ -410,9 +410,7 @@ func parseTemplateSimpleErrorString(remainder string) (TraceableError, bool) {
 // Executing form: "<templateName>: executing \"<funcName>\" at <<location>>: <errMsg>[ template:...]"
 // Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
 func parseTemplateExecutingAtErrorType(remainder string) (TraceableError, bool) {
-	if before, after, ok := strings.Cut(remainder, ": executing "); ok {
-		templateName := before
-		after := after
+	if templateName, after, found := strings.Cut(remainder, ": executing "); found {
 		if len(after) == 0 || after[0] != '"' {
 			return TraceableError{}, false
 		}
@@ -431,12 +429,10 @@ func parseTemplateExecutingAtErrorType(remainder string) (TraceableError, bool) 
 			return TraceableError{}, false
 		}
 		afterAt := afterFunc[len(atPrefix):]
-		before, after0, ok := strings.Cut(afterAt, ">: ")
-		if !ok {
+		locationName, errMsg, found := strings.Cut(afterAt, ">: ")
+		if !found {
 			return TraceableError{}, false
 		}
-		locationName := before
-		errMsg := after0
 
 		// trim chained next error starting with space + "template:" if present
 		if cut := strings.Index(errMsg, " template:"); cut != -1 {
