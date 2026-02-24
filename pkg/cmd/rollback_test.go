@@ -84,7 +84,7 @@ func TestRollbackCmd(t *testing.T) {
 	}, {
 		name:   "rollback a release with description",
 		cmd:    "rollback funny-honey 1 --description 'Reverting due to bug in version 2'",
-		golden: "output/rollback-with-description.txt",
+		golden: "output/rollback.txt",
 		rels:   rels,
 	}}
 	runTestCmd(t, tests)
