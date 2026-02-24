@@ -43,11 +43,11 @@ configures the maximum length of the revision list returned.
 The historical release set is printed as a formatted table, e.g:
 
     $ helm history angry-bird
-    REVISION    UPDATED                     STATUS          CHART             APP VERSION     DESCRIPTION
-    1           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0             Initial install
-    2           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0             Upgraded successfully
-    3           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0             Rolled back to 2
-    4           Mon Oct 3 10:15:13 2016     deployed        alpine-0.1.0      1.0             Upgraded successfully
+    REVISION    UPDATED                     STATUS          CHART             APP VERSION     ROLLBACK     DESCRIPTION
+    1           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0                          Initial install
+    2           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0                          Upgraded successfully
+    3           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0             2            Rolled back to 2
+    4           Mon Oct 3 10:15:13 2016     deployed        alpine-0.1.0      1.0                          Upgraded successfully
 `
 
 func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -84,22 +84,24 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type releaseInfo struct {
-	Revision    int       `json:"revision"`
-	Updated     time.Time `json:"updated,omitzero"`
-	Status      string    `json:"status"`
-	Chart       string    `json:"chart"`
-	AppVersion  string    `json:"app_version"`
-	Description string    `json:"description"`
+	Revision         int       `json:"revision"`
+	Updated          time.Time `json:"updated,omitzero"`
+	Status           string    `json:"status"`
+	Chart            string    `json:"chart"`
+	AppVersion       string    `json:"app_version"`
+	RollbackRevision int       `json:"rollback_revision,omitempty"`
+	Description      string    `json:"description"`
 }
 
 // releaseInfoJSON is used for custom JSON marshaling/unmarshaling
 type releaseInfoJSON struct {
-	Revision    int        `json:"revision"`
-	Updated     *time.Time `json:"updated,omitempty"`
-	Status      string     `json:"status"`
-	Chart       string     `json:"chart"`
-	AppVersion  string     `json:"app_version"`
-	Description string     `json:"description"`
+	Revision         int        `json:"revision"`
+	Updated          *time.Time `json:"updated,omitempty"`
+	Status           string     `json:"status"`
+	Chart            string     `json:"chart"`
+	AppVersion       string     `json:"app_version"`
+	RollbackRevision int        `json:"rollback_revision,omitempty"`
+	Description      string     `json:"description"`
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
@@ -138,6 +140,7 @@ func (r *releaseInfo) UnmarshalJSON(data []byte) error {
 	r.Status = tmp.Status
 	r.Chart = tmp.Chart
 	r.AppVersion = tmp.AppVersion
+	r.RollbackRevision = tmp.RollbackRevision
 	r.Description = tmp.Description
 
 	return nil
@@ -147,11 +150,12 @@ func (r *releaseInfo) UnmarshalJSON(data []byte) error {
 // It omits zero-value time fields from the JSON output.
 func (r releaseInfo) MarshalJSON() ([]byte, error) {
 	tmp := releaseInfoJSON{
-		Revision:    r.Revision,
-		Status:      r.Status,
-		Chart:       r.Chart,
-		AppVersion:  r.AppVersion,
-		Description: r.Description,
+		Revision:         r.Revision,
+		Status:           r.Status,
+		Chart:            r.Chart,
+		AppVersion:       r.AppVersion,
+		RollbackRevision: r.RollbackRevision,
+		Description:      r.Description,
 	}
 
 	if !r.Updated.IsZero() {
@@ -173,9 +177,13 @@ func (r releaseHistory) WriteYAML(out io.Writer) error {
 
 func (r releaseHistory) WriteTable(out io.Writer) error {
 	tbl := uitable.New()
-	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
+	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "ROLLBACK", "DESCRIPTION")
 	for _, item := range r {
-		tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
+		rollback := ""
+		if item.RollbackRevision > 0 {
+			rollback = strconv.Itoa(item.RollbackRevision)
+		}
+		tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, rollback, item.Description)
 	}
 	return output.EncodeTable(out, tbl)
 }
@@ -216,11 +224,12 @@ func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 		a := formatAppVersion(r.Chart)
 
 		rInfo := releaseInfo{
-			Revision:    v,
-			Status:      s,
-			Chart:       c,
-			AppVersion:  a,
-			Description: d,
+			Revision:         v,
+			Status:           s,
+			Chart:            c,
+			AppVersion:       a,
+			RollbackRevision: r.Info.RollbackRevision,
+			Description:      d,
 		}
 		if !r.Info.LastDeployed.IsZero() {
 			rInfo.Updated = r.Info.LastDeployed
