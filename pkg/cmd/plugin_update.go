@@ -57,7 +57,12 @@ func newPluginUpdateCmd(out io.Writer) *cobra.Command {
 		Short:   "update one or more Helm plugins",
 		Long:    pluginUpdateDesc,
 		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compListPlugins(toComplete, args), cobra.ShellCompDirectiveNoFileComp
+			ignoredNames := make([]string, len(args))
+			for i, arg := range args {
+				name, _ := parsePluginVersion(arg)
+				ignoredNames[i] = name
+			}
+			return compListPlugins(toComplete, ignoredNames), cobra.ShellCompDirectiveNoFileComp
 		},
 		PreRunE: func(_ *cobra.Command, args []string) error {
 			return o.complete(args)
