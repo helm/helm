@@ -186,7 +186,6 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			client.ChartDir = chartPath
 
 			p := getter.All(settings)
 			vals, err := valueOpts.MergeValues(p)

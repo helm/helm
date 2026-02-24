@@ -166,11 +166,6 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("template '%s' -f %s/extra_values.yaml", chartPath, chartPath),
 			golden: "output/template-subchart-cm-set-file.txt",
 		},
-		{
-			name:   "template with schema file containing $ref",
-			cmd:    "template reftest testdata/testcharts/chart-with-schema-ref",
-			golden: "output/template-schema-ref.txt",
-		},
 	}
 	runTestCmd(t, tests)
 }

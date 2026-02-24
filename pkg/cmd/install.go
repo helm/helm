@@ -247,7 +247,6 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	if err != nil {
 		return nil, err
 	}
-	client.ChartDir = cp
 
 	slog.Debug("Chart path", "path", cp)
 

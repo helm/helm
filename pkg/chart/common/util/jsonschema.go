@@ -86,20 +86,28 @@ func ValidateAgainstSchemaWithPath(ch chart.Charter, values map[string]any, char
 
 	var absChartPath string
 	if chartDir != "" {
+		var err error
 		absChartPath, err = filepath.Abs(chartDir)
-	} else {
-		absChartPath, err = filepath.Abs(chrt.ChartFullPath())
-	}
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	var sb strings.Builder
 	if chrt.Schema() != nil {
 		slog.Debug("chart name", "chart-name", chrt.Name())
 
-		schemaPath := filepath.Join(absChartPath, "values.schema.json")
-		err = ValidateAgainstSingleSchemaWithPath(values, chrt.Schema(), schemaPath)
+		var schemaPath string
+		if absChartPath != "" {
+			// Use the chart directory for $ref resolution
+			schemaPath = filepath.Join(absChartPath, "values.schema.json")
+		} else {
+			// No chart directory (e.g., chart loaded from .tgz archive).
+			// Use a synthetic path - $ref resolution will not work, but main schema validation will.
+			schemaPath = "/values.schema.json"
+		}
+
+		err := ValidateAgainstSingleSchemaWithPath(values, chrt.Schema(), schemaPath)
 		if err != nil {
 			fmt.Fprintf(&sb, "%s:\n", chrt.Name())
 			sb.WriteString(err.Error())
@@ -126,7 +134,11 @@ func ValidateAgainstSchemaWithPath(ch chart.Charter, values map[string]any, char
 			continue
 		}
 
-		subchartPath := filepath.Join(absChartPath, "charts", sub.Name())
+		var subchartPath string
+		if absChartPath != "" {
+			subchartPath = filepath.Join(absChartPath, "charts", sub.Name())
+		}
+		// If absChartPath is empty (archived chart), pass empty string to disable $ref resolution for subcharts too
 		if err := ValidateAgainstSchemaWithPath(subchart, subchartValues, subchartPath); err != nil {
 			sb.WriteString(err.Error())
 		}

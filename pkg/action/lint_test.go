@@ -76,6 +76,10 @@ func TestLintChart(t *testing.T) {
 			chartPath: "testdata/charts/chart-with-schema-ref",
 		},
 		{
+			name:      "archived-chart-with-schema-ref",
+			chartPath: "testdata/charts/chart-with-schema-ref.tgz",
+		},
+		{
 			name:      "chart-with-schema-negative",
 			chartPath: "testdata/charts/chart-with-schema-negative",
 		},
