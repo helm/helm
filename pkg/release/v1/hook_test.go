@@ -220,7 +220,7 @@ func TestHookExecutionEmptyStringRoundTrip(t *testing.T) {
 	data, err := json.Marshal(&exec)
 	require.NoError(t, err)
 
-	var result map[string]interface{}
+	var result map[string]any
 	err = json.Unmarshal(data, &result)
 	require.NoError(t, err)
 

@@ -63,7 +63,7 @@ func TestLoadDependency(t *testing.T) {
 }
 
 func TestDependencyEnabled(t *testing.T) {
-	type M = map[string]interface{}
+	type M = map[string]any
 	tests := []struct {
 		name string
 		v    M

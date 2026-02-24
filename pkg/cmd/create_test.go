@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	chartv3 "helm.sh/helm/v4/internal/chart/v3"
@@ -188,13 +189,7 @@ func TestCreateStarterCmd(t *testing.T) {
 			}
 
 			// Verify custom template exists
-			found := false
-			for _, name := range templates {
-				if name == "templates/foo.tpl" {
-					found = true
-					break
-				}
-			}
+			found := slices.Contains(templates, "templates/foo.tpl")
 			if !found {
 				t.Error("Did not find foo.tpl")
 			}

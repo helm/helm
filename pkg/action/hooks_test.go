@@ -186,7 +186,7 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
 		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifest)},
 	}
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	resi, err := instAction.Run(buildChartWithTemplates(templates), vals)
 	is.NoError(err)
@@ -216,7 +216,7 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
 		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifest)},
 	}
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	resi, err := instAction.Run(buildChartWithTemplates(templates), vals)
 	is.Error(err)

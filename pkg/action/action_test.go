@@ -157,12 +157,12 @@ func withName(name string) chartOption {
 }
 
 func withSampleValues() chartOption {
-	values := map[string]interface{}{
+	values := map[string]any{
 		"someKey": "someValue",
-		"nestedKey": map[string]interface{}{
+		"nestedKey": map[string]any{
 			"simpleKey": "simpleValue",
-			"anotherNestedKey": map[string]interface{}{
-				"yetAnotherNestedKey": map[string]interface{}{
+			"anotherNestedKey": map[string]any{
+				"yetAnotherNestedKey": map[string]any{
 					"youReadyForAnotherNestedKey": "No",
 				},
 			},
@@ -173,7 +173,7 @@ func withSampleValues() chartOption {
 	}
 }
 
-func withValues(values map[string]interface{}) chartOption {
+func withValues(values map[string]any) chartOption {
 	return func(opts *chartOptions) {
 		opts.Values = values
 	}
@@ -274,7 +274,7 @@ func namedReleaseStub(name string, status rcommon.Status) *release.Release {
 			Description:   "Named Release Stub",
 		},
 		Chart:   buildChart(withSampleTemplates()),
-		Config:  map[string]interface{}{"name": "value"},
+		Config:  map[string]any{"name": "value"},
 		Version: 1,
 		Hooks: []*release.Hook{
 			{
@@ -304,7 +304,7 @@ func TestConfiguration_Init(t *testing.T) {
 	tests := []struct {
 		name               string
 		helmDriver         string
-		expectedDriverType interface{}
+		expectedDriverType any
 		expectErr          bool
 		errMsg             string
 	}{
@@ -795,7 +795,7 @@ func TestRenderResources_PostRenderer_Success(t *testing.T) {
 	}
 
 	ch := buildChart(withSampleTemplates())
-	values := map[string]interface{}{}
+	values := map[string]any{}
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
@@ -838,7 +838,7 @@ func TestRenderResources_PostRenderer_Error(t *testing.T) {
 	}
 
 	ch := buildChart(withSampleTemplates())
-	values := map[string]interface{}{}
+	values := map[string]any{}
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
@@ -866,7 +866,7 @@ func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
 			{Name: "templates/invalid", ModTime: time.Now(), Data: []byte("invalid: yaml: content:")},
 		},
 	}
-	values := map[string]interface{}{}
+	values := map[string]any{}
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
@@ -888,7 +888,7 @@ func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
 	}
 
 	ch := buildChart(withSampleTemplates())
-	values := map[string]interface{}{}
+	values := map[string]any{}
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
@@ -909,7 +909,7 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 	}
 
 	ch := buildChart(withSampleTemplates())
-	values := map[string]interface{}{}
+	values := map[string]any{}
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
@@ -945,7 +945,7 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 	cfg := actionConfigFixture(t)
 
 	ch := buildChart(withSampleTemplates())
-	values := map[string]interface{}{}
+	values := map[string]any{}
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,

@@ -28,19 +28,19 @@ func TestFuncs(t *testing.T) {
 	//TODO write tests for failure cases
 	tests := []struct {
 		tpl, expect string
-		vars        interface{}
+		vars        any
 	}{{
 		tpl:    `{{ toYaml . }}`,
 		expect: `foo: bar`,
-		vars:   map[string]interface{}{"foo": "bar"},
+		vars:   map[string]any{"foo": "bar"},
 	}, {
 		tpl:    `{{ toYamlPretty . }}`,
 		expect: "baz:\n  - 1\n  - 2\n  - 3",
-		vars:   map[string]interface{}{"baz": []int{1, 2, 3}},
+		vars:   map[string]any{"baz": []int{1, 2, 3}},
 	}, {
 		tpl:    `{{ toToml . }}`,
 		expect: "foo = \"bar\"\n",
-		vars:   map[string]interface{}{"foo": "bar"},
+		vars:   map[string]any{"foo": "bar"},
 	}, {
 		tpl:    `{{ fromToml . }}`,
 		expect: "map[hello:world]",
@@ -68,7 +68,7 @@ keyInElement1 = "valueInElement1"`,
 	}, {
 		tpl:    `{{ toJson . }}`,
 		expect: `{"foo":"bar"}`,
-		vars:   map[string]interface{}{"foo": "bar"},
+		vars:   map[string]any{"foo": "bar"},
 	}, {
 		tpl:    `{{ fromYaml . }}`,
 		expect: "map[hello:world]",
@@ -109,11 +109,11 @@ keyInElement1 = "valueInElement1"`,
 	}, {
 		tpl:    `{{ merge .dict (fromYaml .yaml) }}`,
 		expect: `map[a:map[b:c]]`,
-		vars:   map[string]interface{}{"dict": map[string]interface{}{"a": map[string]interface{}{"b": "c"}}, "yaml": `{"a":{"b":"d"}}`},
+		vars:   map[string]any{"dict": map[string]any{"a": map[string]any{"b": "c"}}, "yaml": `{"a":{"b":"d"}}`},
 	}, {
 		tpl:    `{{ merge (fromYaml .yaml) .dict }}`,
 		expect: `map[a:map[b:d]]`,
-		vars:   map[string]interface{}{"dict": map[string]interface{}{"a": map[string]interface{}{"b": "c"}}, "yaml": `{"a":{"b":"d"}}`},
+		vars:   map[string]any{"dict": map[string]any{"a": map[string]any{"b": "c"}}, "yaml": `{"a":{"b":"d"}}`},
 	}, {
 		tpl:    `{{ fromYaml . }}`,
 		expect: `map[Error:error unmarshaling JSON: while decoding JSON: json: cannot unmarshal array into Go value of type map[string]interface {}]`,
@@ -136,15 +136,15 @@ keyInElement1 = "valueInElement1"`,
 		assert.Equal(t, tt.expect, b.String(), tt.tpl)
 	}
 
-	loopMap := map[string]interface{}{
+	loopMap := map[string]any{
 		"foo": "bar",
 	}
-	loopMap["loop"] = []interface{}{loopMap}
+	loopMap["loop"] = []any{loopMap}
 
 	mustFuncsTests := []struct {
 		tpl    string
-		expect interface{}
-		vars   interface{}
+		expect any
+		vars   any
 	}{{
 		tpl:  `{{ mustToYaml . }}`,
 		vars: loopMap,
@@ -186,34 +186,34 @@ keyInElement1 = "valueInElement1"`,
 // be used to accidentally update mergo. This test and message should catch
 // the problem and explain why it's happening.
 func TestMerge(t *testing.T) {
-	dict := map[string]interface{}{
-		"src2": map[string]interface{}{
+	dict := map[string]any{
+		"src2": map[string]any{
 			"h": 10,
 			"i": "i",
 			"j": "j",
 		},
-		"src1": map[string]interface{}{
+		"src1": map[string]any{
 			"a": 1,
 			"b": 2,
-			"d": map[string]interface{}{
+			"d": map[string]any{
 				"e": "four",
 			},
 			"g": []int{6, 7},
 			"i": "aye",
 			"j": "jay",
-			"k": map[string]interface{}{
+			"k": map[string]any{
 				"l": false,
 			},
 		},
-		"dst": map[string]interface{}{
+		"dst": map[string]any{
 			"a": "one",
 			"c": 3,
-			"d": map[string]interface{}{
+			"d": map[string]any{
 				"f": 5,
 			},
 			"g": []int{8, 9},
 			"i": "eye",
-			"k": map[string]interface{}{
+			"k": map[string]any{
 				"l": true,
 			},
 		},
@@ -223,11 +223,11 @@ func TestMerge(t *testing.T) {
 	err := template.Must(template.New("test").Funcs(funcMap()).Parse(tpl)).Execute(&b, dict)
 	assert.NoError(t, err)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"a": "one", // key overridden
 		"b": 2,     // merged from src1
 		"c": 3,     // merged from dst
-		"d": map[string]interface{}{ // deep merge
+		"d": map[string]any{ // deep merge
 			"e": "four",
 			"f": 5,
 		},
@@ -235,7 +235,7 @@ func TestMerge(t *testing.T) {
 		"h": 10,          // merged from src2
 		"i": "eye",       // overridden twice
 		"j": "jay",       // overridden and merged
-		"k": map[string]interface{}{
+		"k": map[string]any{
 			"l": true, // overridden
 		},
 	}
