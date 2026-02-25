@@ -84,6 +84,9 @@ func ValidateAgainstSchemaWithPath(ch chart.Charter, values map[string]any, char
 		return err
 	}
 
+	// Convert chartDir to absolute path for $ref resolution.
+	// If chartDir is empty (e.g., chart loaded from .tgz archive), absChartPath
+	// remains empty and a synthetic path will be used instead.
 	var absChartPath string
 	if chartDir != "" {
 		var err error
