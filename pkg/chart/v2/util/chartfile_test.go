@@ -35,11 +35,11 @@ func TestLoadChartfile(t *testing.T) {
 
 func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 	t.Helper()
-	if f == nil { //nolint:staticcheck
+	if f == nil {
 		t.Fatal("Failed verifyChartfile because f is nil")
 	}
 
-	if f.APIVersion != chart.APIVersionV1 { //nolint:staticcheck
+	if f.APIVersion != chart.APIVersionV1 {
 		t.Errorf("Expected API Version %q, got %q", chart.APIVersionV1, f.APIVersion)
 	}
 
