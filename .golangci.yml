@@ -18,12 +18,15 @@ linters:
   default: none
 
   enable:
+    # Please keep this list in alphabetic order
     - depguard
     - dupl
+    - exhaustive
     - gomodguard
     - govet
     - ineffassign
     - misspell
+    - modernize
     - nakedret
     - revive
     - sloglint
@@ -32,7 +35,6 @@ linters:
     - unused
     - usestdlibvars
     - usetesting
-    - exhaustive
 
   exclusions:
   
