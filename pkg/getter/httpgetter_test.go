@@ -583,10 +583,10 @@ func verifyInsecureSkipVerify(t *testing.T, g *HTTPGetter, caseName string, expe
 		t.Fatal(err)
 	}
 
-	if returnVal == nil { //nolint:staticcheck
+	if returnVal == nil {
 		t.Fatalf("Expected non nil value for http client")
 	}
-	transport := (returnVal.Transport).(*http.Transport) //nolint:staticcheck
+	transport := (returnVal.Transport).(*http.Transport)
 	gotValue := false
 	if transport.TLSClientConfig != nil {
 		gotValue = transport.TLSClientConfig.InsecureSkipVerify
@@ -607,11 +607,11 @@ func TestDefaultHTTPTransportReuse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if httpClient1 == nil { //nolint:staticcheck
+	if httpClient1 == nil {
 		t.Fatalf("Expected non nil value for http client")
 	}
 
-	transport1 := (httpClient1.Transport).(*http.Transport) //nolint:staticcheck
+	transport1 := (httpClient1.Transport).(*http.Transport)
 
 	httpClient2, err := g.httpClient(g.opts)
 
@@ -619,11 +619,11 @@ func TestDefaultHTTPTransportReuse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if httpClient2 == nil { //nolint:staticcheck
+	if httpClient2 == nil {
 		t.Fatalf("Expected non nil value for http client")
 	}
 
-	transport2 := (httpClient2.Transport).(*http.Transport) //nolint:staticcheck
+	transport2 := (httpClient2.Transport).(*http.Transport)
 
 	if transport1 != transport2 {
 		t.Fatalf("Expected default transport to be reused")
@@ -641,11 +641,11 @@ func TestHTTPTransportOption(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if httpClient1 == nil { //nolint:staticcheck
+	if httpClient1 == nil {
 		t.Fatalf("Expected non nil value for http client")
 	}
 
-	transport1 := (httpClient1.Transport).(*http.Transport) //nolint:staticcheck
+	transport1 := (httpClient1.Transport).(*http.Transport)
 
 	if transport1 != transport {
 		t.Fatalf("Expected transport option to be applied")
@@ -657,11 +657,11 @@ func TestHTTPTransportOption(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if httpClient2 == nil { //nolint:staticcheck
+	if httpClient2 == nil {
 		t.Fatalf("Expected non nil value for http client")
 	}
 
-	transport2 := (httpClient2.Transport).(*http.Transport) //nolint:staticcheck
+	transport2 := (httpClient2.Transport).(*http.Transport)
 
 	if transport1 != transport2 {
 		t.Fatalf("Expected applied transport to be reused")

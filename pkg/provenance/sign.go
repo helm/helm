@@ -25,9 +25,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ProtonMail/go-crypto/openpgp"           //nolint
-	"github.com/ProtonMail/go-crypto/openpgp/clearsign" //nolint
-	"github.com/ProtonMail/go-crypto/openpgp/packet"    //nolint
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"sigs.k8s.io/yaml"
 )
 

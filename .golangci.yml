@@ -25,6 +25,7 @@ linters:
     - ineffassign
     - misspell
     - nakedret
+    - nolintlint
     - revive
     - sloglint
     - staticcheck
@@ -67,6 +68,9 @@ linters:
     dupl:
       threshold: 400
 
+    exhaustive:
+      default-signifies-exhaustive: true
+
     gomodguard:
       blocked:
         modules:
@@ -74,8 +78,8 @@ linters:
               recommendations:
                 - github.com/evanphx/json-patch/v5
 
-    exhaustive:
-      default-signifies-exhaustive: true
+    nolintlint:
+      require-specific: true
 
 run:
   timeout: 10m
