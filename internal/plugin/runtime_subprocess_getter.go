@@ -17,6 +17,7 @@ package plugin
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -39,7 +40,7 @@ func getProtocolCommand(commands []SubprocessProtocolCommand, protocol string) *
 }
 
 // TODO can we replace a lot of this func with RuntimeSubprocess.invokeWithEnv?
-func (r *SubprocessPluginRuntime) runGetter(input *Input) (*Output, error) {
+func (r *SubprocessPluginRuntime) runGetter(ctx context.Context, input *Input) (*Output, error) {
 	msg, ok := (input.Message).(schema.InputMessageGetterV1)
 	if !ok {
 		return nil, fmt.Errorf("expected input type schema.InputMessageGetterV1, got %T", input)
@@ -80,7 +81,8 @@ func (r *SubprocessPluginRuntime) runGetter(input *Input) (*Output, error) {
 	buf := bytes.Buffer{} // subprocess getters are expected to write content to stdout
 
 	pluginCommand := filepath.Join(r.pluginDir, command)
-	cmd := exec.Command(
+	cmd := exec.CommandContext(
+		ctx,
 		pluginCommand,
 		args...)
 	cmd.Env = FormatEnv(env)

@@ -17,6 +17,7 @@ limitations under the License.
 package monocular
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -114,7 +115,12 @@ func (c *Client) Search(term string) ([]SearchResult, error) {
 	p.RawQuery = "q=" + url.QueryEscape(term)
 
 	// Create request
-	req, err := http.NewRequest(http.MethodGet, p.String(), nil)
+	req, err := http.NewRequestWithContext(
+		context.Background(),
+		http.MethodGet,
+		p.String(),
+		http.NoBody,
+	)
 	if err != nil {
 		return nil, err
 	}

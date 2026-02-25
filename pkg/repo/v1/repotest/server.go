@@ -180,7 +180,8 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 
 	// Registry config
 	config := &configuration.Configuration{}
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	lnCfg := net.ListenConfig{}
+	ln, err := lnCfg.Listen(t.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("error finding free port for test registry")
 	}

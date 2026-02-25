@@ -18,7 +18,6 @@ package registry
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -125,7 +124,8 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
 
 	// Registry config
 	config := &configuration.Configuration{}
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	lnCfg := net.ListenConfig{}
+	ln, err := lnCfg.Listen(suite.T().Context(), "tcp", "127.0.0.1:0")
 	suite.Nil(err, "no error finding free port for test registry")
 	defer func() { _ = ln.Close() }()
 
@@ -158,7 +158,7 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
 			config.HTTP.TLS.ClientCAs = []string{tlsCA}
 		}
 	}
-	suite.dockerRegistry, err = registry.NewRegistry(context.Background(), config)
+	suite.dockerRegistry, err = registry.NewRegistry(suite.T().Context(), config)
 	suite.Nil(err, "no error creating test registry")
 
 	suite.FakeRegistryHost = initFakeRegistryTestServer()
@@ -170,7 +170,7 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
 
 func teardown(suite *TestRegistry) {
 	if suite.dockerRegistry != nil {
-		_ = suite.dockerRegistry.Shutdown(context.Background())
+		_ = suite.dockerRegistry.Shutdown(suite.T().Context())
 	}
 }
 
