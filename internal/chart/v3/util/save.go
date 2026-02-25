@@ -25,6 +25,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"sigs.k8s.io/yaml"
@@ -147,14 +148,19 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 		}
 	}()
 
-	if err := writeTarContents(twriter, c, ""); err != nil {
+	// Resolve SOURCE_DATE_EPOCH once for the entire archive, so that
+	// entries without an explicit ModTime get a deterministic fallback
+	// instead of time.Now(). See https://reproducible-builds.org/docs/source-date-epoch/
+	defaultTime := sourceDateEpoch()
+
+	if err := writeTarContents(twriter, c, "", defaultTime); err != nil {
 		rollback = true
 		return filename, err
 	}
 	return filename, nil
 }
 
-func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
+func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string, defaultTime time.Time) error {
 	err := validateName(c.Name())
 	if err != nil {
 		return err
@@ -166,7 +172,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	if err != nil {
 		return err
 	}
-	if err := writeToTar(out, filepath.Join(base, ChartfileName), cdata, c.ModTime); err != nil {
+	if err := writeToTar(out, filepath.Join(base, ChartfileName), cdata, c.ModTime, defaultTime); err != nil {
 		return err
 	}
 
@@ -176,7 +182,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 		if err != nil {
 			return err
 		}
-		if err := writeToTar(out, filepath.Join(base, "Chart.lock"), ldata, c.Lock.Generated); err != nil {
+		if err := writeToTar(out, filepath.Join(base, "Chart.lock"), ldata, c.Lock.Generated, defaultTime); err != nil {
 			return err
 		}
 	}
@@ -184,7 +190,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	// Save values.yaml
 	for _, f := range c.Raw {
 		if f.Name == ValuesfileName {
-			if err := writeToTar(out, filepath.Join(base, ValuesfileName), f.Data, f.ModTime); err != nil {
+			if err := writeToTar(out, filepath.Join(base, ValuesfileName), f.Data, f.ModTime, defaultTime); err != nil {
 				return err
 			}
 		}
@@ -195,7 +201,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 		if !json.Valid(c.Schema) {
 			return errors.New("invalid JSON in " + SchemafileName)
 		}
-		if err := writeToTar(out, filepath.Join(base, SchemafileName), c.Schema, c.SchemaModTime); err != nil {
+		if err := writeToTar(out, filepath.Join(base, SchemafileName), c.Schema, c.SchemaModTime, defaultTime); err != nil {
 			return err
 		}
 	}
@@ -203,7 +209,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	// Save templates
 	for _, f := range c.Templates {
 		n := filepath.Join(base, f.Name)
-		if err := writeToTar(out, n, f.Data, f.ModTime); err != nil {
+		if err := writeToTar(out, n, f.Data, f.ModTime, defaultTime); err != nil {
 			return err
 		}
 	}
@@ -211,22 +217,39 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	// Save files
 	for _, f := range c.Files {
 		n := filepath.Join(base, f.Name)
-		if err := writeToTar(out, n, f.Data, f.ModTime); err != nil {
+		if err := writeToTar(out, n, f.Data, f.ModTime, defaultTime); err != nil {
 			return err
 		}
 	}
 
 	// Save dependencies
 	for _, dep := range c.Dependencies() {
-		if err := writeTarContents(out, dep, filepath.Join(base, ChartsDir)); err != nil {
+		if err := writeTarContents(out, dep, filepath.Join(base, ChartsDir), defaultTime); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// writeToTar writes a single file to a tar archive.
-func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time) error {
+// sourceDateEpoch returns the time from SOURCE_DATE_EPOCH environment variable
+// if set, otherwise returns the zero time. SOURCE_DATE_EPOCH is a standard
+// environment variable for reproducible builds; see
+// https://reproducible-builds.org/docs/source-date-epoch/
+func sourceDateEpoch() time.Time {
+	if epochStr, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok && epochStr != "" {
+		epoch, err := strconv.ParseInt(epochStr, 10, 64)
+		if err == nil {
+			return time.Unix(epoch, 0)
+		}
+	}
+	return time.Time{}
+}
+
+// writeToTar writes a single file to a tar archive. The defaultTime parameter
+// is used as the fallback ModTime when the file's own ModTime is zero; it is
+// typically the pre-computed SOURCE_DATE_EPOCH value (or the zero time when the
+// variable is unset, in which case time.Now() is used).
+func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time, defaultTime time.Time) error {
 	// TODO: Do we need to create dummy parent directory names if none exist?
 	h := &tar.Header{
 		Name:    filepath.ToSlash(name),
@@ -235,7 +258,11 @@ func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time) er
 		ModTime: modTime,
 	}
 	if h.ModTime.IsZero() {
-		h.ModTime = time.Now()
+		if !defaultTime.IsZero() {
+			h.ModTime = defaultTime
+		} else {
+			h.ModTime = time.Now()
+		}
 	}
 	if err := out.WriteHeader(h); err != nil {
 		return err
