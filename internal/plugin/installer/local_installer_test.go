@@ -19,6 +19,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -64,7 +65,7 @@ func TestLocalInstallerNotAFolder(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if err != ErrPluginNotADirectory {
+	if !errors.Is(err, ErrPluginNotADirectory) {
 		t.Fatalf("expected error to equal: %q", err)
 	}
 }
