@@ -19,6 +19,7 @@ package rules
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -104,7 +105,7 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 	}
 	var e engine.Engine
 	e.LintMode = true
-	renderedContentMap, err := e.Render(chart, valuesToRender)
+	renderedContentMap, err := e.RenderWithContext(context.Background(), chart, valuesToRender)
 
 	renderOk := linter.RunLinterRule(support.ErrorSev, fpath, err)
 

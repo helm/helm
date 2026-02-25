@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/internal/test/ensure"
@@ -52,26 +53,24 @@ func TestServer(t *testing.T) {
 		t.Errorf("Unexpected chart: %s", c[0])
 	}
 
-	res, err := http.Get(srv.URL() + "/examplechart-0.1.0.tgz")
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL()+"/examplechart-0.1.0.tgz", http.NoBody)
+	require.NoError(t, err)
+	client := http.DefaultClient
+	res, err := client.Do(req)
+	require.NoError(t, err)
 	res.Body.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	if res.ContentLength < 500 {
 		t.Errorf("Expected at least 500 bytes of data, got %d", res.ContentLength)
 	}
 
-	res, err = http.Get(srv.URL() + "/index.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	req, err = http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL()+"/index.yaml", http.NoBody)
+	require.NoError(t, err)
+	res, err = client.Do(req)
+	require.NoError(t, err)
 	data, err := io.ReadAll(res.Body)
 	res.Body.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	m := repo.NewIndexFile()
 	if err := yaml.Unmarshal(data, m); err != nil {
@@ -87,11 +86,11 @@ func TestServer(t *testing.T) {
 		t.Errorf("missing %q", expect)
 	}
 
-	res, err = http.Get(srv.URL() + "/index.yaml-nosuchthing")
+	req, err = http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL()+"/index.yaml-nosuchthing", http.NoBody)
+	require.NoError(t, err)
+	res, err = client.Do(req)
+	require.NoError(t, err)
 	res.Body.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
 	if res.StatusCode != http.StatusNotFound {
 		t.Fatalf("Expected 404, got %d", res.StatusCode)
 	}
@@ -133,70 +132,56 @@ func TestNewTempServer(t *testing.T) {
 			client := srv.Client()
 
 			{
-				res, err := client.Head(srv.URL() + "/repositories.yaml")
-				if err != nil {
-					t.Error(err)
-				}
-
+				req, err := http.NewRequestWithContext(t.Context(), http.MethodHead, srv.URL()+"/repositories.yaml", http.NoBody)
+				require.NoError(t, err)
+				res, err := client.Do(req)
+				require.NoError(t, err)
 				res.Body.Close()
-
 				if res.StatusCode != http.StatusOK {
 					t.Errorf("Expected 200, got %d", res.StatusCode)
 				}
 			}
-
 			{
-				res, err := client.Head(srv.URL() + "/examplechart-0.1.0.tgz")
-				if err != nil {
-					t.Error(err)
-				}
+				req, err := http.NewRequestWithContext(t.Context(), http.MethodHead, srv.URL()+"/examplechart-0.1.0.tgz", http.NoBody)
+				require.NoError(t, err)
+				res, err := client.Do(req)
+				require.NoError(t, err)
 				res.Body.Close()
-
 				if res.StatusCode != http.StatusOK {
 					t.Errorf("Expected 200, got %d", res.StatusCode)
 				}
 			}
-
-			res, err := client.Get(srv.URL() + "/examplechart-0.1.0.tgz")
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL()+"/examplechart-0.1.0.tgz", http.NoBody)
+			require.NoError(t, err)
+			res, err := client.Do(req)
+			require.NoError(t, err)
 			res.Body.Close()
-			if err != nil {
-				t.Fatal(err)
-			}
-
 			if res.ContentLength < 500 {
 				t.Errorf("Expected at least 500 bytes of data, got %d", res.ContentLength)
 			}
-
-			res, err = client.Get(srv.URL() + "/index.yaml")
-			if err != nil {
-				t.Fatal(err)
-			}
-
+			req, err = http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL()+"/index.yaml", http.NoBody)
+			require.NoError(t, err)
+			res, err = client.Do(req)
+			require.NoError(t, err)
 			data, err := io.ReadAll(res.Body)
 			res.Body.Close()
-			if err != nil {
-				t.Fatal(err)
-			}
-
+			require.NoError(t, err)
 			m := repo.NewIndexFile()
 			if err := yaml.Unmarshal(data, m); err != nil {
 				t.Fatal(err)
 			}
-
 			if l := len(m.Entries); l != 1 {
 				t.Fatalf("Expected 1 entry, got %d", l)
 			}
-
 			expect := "examplechart"
 			if !m.Has(expect, "0.1.0") {
 				t.Errorf("missing %q", expect)
 			}
-
-			res, err = client.Get(srv.URL() + "/index.yaml-nosuchthing")
+			req, err = http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL()+"/index.yaml-nosuchthing", http.NoBody)
+			require.NoError(t, err)
+			res, err = client.Do(req)
+			require.NoError(t, err)
 			res.Body.Close()
-			if err != nil {
-				t.Fatal(err)
-			}
 			if res.StatusCode != http.StatusNotFound {
 				t.Fatalf("Expected 404, got %d", res.StatusCode)
 			}
