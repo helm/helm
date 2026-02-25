@@ -19,15 +19,18 @@ linters:
 
   # Keep sorted alphabetically
   enable:
+    - contextcheck
     - depguard
     - dupl
     - exhaustive
+    - fatcontext
     - gomodguard
     - govet
     - ineffassign
     - misspell
     - modernize
     - nakedret
+    - noctx
     - nolintlint
     - revive
     - sloglint
@@ -78,6 +81,7 @@ linters:
 
     revive:
       max-open-files: 2048
+      enable-all-rules: false
       enable-default-rules: true
       rules:
         - name: var-naming
