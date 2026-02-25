@@ -36,12 +36,13 @@ type pluginUpdateOptions struct {
 
 const pluginUpdateDesc = `Update one or more Helm plugins.
 
-An exact semver version can be supplied per-plugin using the @version syntax:
+An exact semver version can be pinned per-plugin using the @version syntax.
+Only exact versions (e.g. 1.2.3) are accepted; the "v" prefix and semver range
+constraints (e.g. ~1.2, ^1.0.0, >=1.0.0) are not supported for updates.
+This ensures a deterministic, reproducible update to a known version:
 
     helm plugin update myplugin@1.2.3 otherplugin@2.0.0
     helm plugin update myplugin@1.0.0
-
-Range constraints (e.g. ~1.2, ^1.0.0, >=1.0.0, v1.0.0) are not supported.
 
 If no version is given for a plugin it is updated to the latest version:
 
@@ -91,7 +92,7 @@ func (o *pluginUpdateOptions) complete(args []string) error {
 		}
 		if version != "" {
 			if _, err := semver.StrictNewVersion(version); err != nil {
-				return fmt.Errorf("invalid version %q for plugin %q: must be an exact semver version (e.g. 1.2.3); the 'v' prefix is not allowed", version, name)
+				return fmt.Errorf("invalid version %q for plugin %q: must be an exact semver version (e.g. 1.2.3); the \"v\" prefix is not allowed", version, name)
 			}
 		}
 		o.plugins[name] = version
