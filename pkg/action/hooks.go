@@ -257,9 +257,9 @@ func (cfg *Configuration) outputLogsByPolicy(h *release.Hook, releaseNamespace s
 	}
 	switch h.Kind {
 	case "Job":
-		return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{LabelSelector: fmt.Sprintf("job-name=%s", h.Name)})
+		return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{LabelSelector: "job-name=" + h.Name})
 	case "Pod":
-		return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", h.Name)})
+		return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{FieldSelector: "metadata.name=" + h.Name})
 	default:
 		return nil
 	}

@@ -17,7 +17,7 @@ package provenance
 
 import (
 	"crypto"
-	"fmt"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -330,7 +330,7 @@ func (s failSigner) Public() crypto.PublicKey {
 }
 
 func (s failSigner) Sign(_ io.Reader, _ []byte, _ crypto.SignerOpts) ([]byte, error) {
-	return nil, fmt.Errorf("always fails")
+	return nil, errors.New("always fails")
 }
 
 func TestClearSignError(t *testing.T) {
