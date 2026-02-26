@@ -214,9 +214,12 @@ Loop:
 
 	// recursively call self to process sub dependencies
 	for _, t := range cd {
-		// cvals[path][alias] may be stale when an alias is used, because ancestor
-		// CoalesceValues calls used the original chart name. Fill in missing keys from the
-		// correctly-coalesced top-level entry, keeping the nested entry authoritative.
+		// When a dependency uses an alias, cvals[path][alias] may be missing keys
+		// that were coalesced into cvals[originalName] by ancestor CoalesceValues
+		// calls (which used the original chart name, not the alias). To correct
+		// this, we backfill any missing keys from the top-level entry into the
+		// nested path entry. The nested entry is authoritative: if a key exists
+		// in both, the nested (alias-keyed) value wins.
 		if path != "" {
 			if pt, err := cvals.Table(strings.TrimSuffix(path, ".")); err == nil {
 				if top, ok := cvals[t.Metadata.Name].(map[string]interface{}); ok {

@@ -578,6 +578,47 @@ func TestDependencyEnabledAliasNestedCondition(t *testing.T) {
 	}
 }
 
+// TestDependencyEnabledAliasNestedConditionEnabled tests that overriding util.enabled=true
+// through the parent chart's values correctly includes the dependency even when the leaf
+// chart's default disables it. This is the complementary positive case to
+// TestDependencyEnabledAliasNestedCondition.
+func TestDependencyEnabledAliasNestedConditionEnabled(t *testing.T) {
+	// Chart structure:
+	//   parentchart -> mid (alias: midchart) -> leaf (alias: leafchart) -> util (condition: util.enabled)
+	//
+	// leaf/values.yaml sets util.enabled: false by default.
+	// User-provided values override util.enabled=true via the full alias path.
+	// Expected: util IS included in the output.
+	c := loadChart(t, "testdata/alias-condition-nested")
+	vals := map[string]interface{}{
+		"midchart": map[string]interface{}{
+			"enabled": true,
+			"leafchart": map[string]interface{}{
+				"enabled": true,
+				"util": map[string]interface{}{
+					"enabled": true,
+				},
+			},
+		},
+	}
+	if err := processDependencyEnabled(c, vals, ""); err != nil {
+		t.Fatalf("error processing enabled dependencies: %v", err)
+	}
+
+	names := extractChartNames(c)
+	expected := []string{"parentchart", "parentchart.midchart", "parentchart.midchart.leafchart", "parentchart.midchart.leafchart.util"}
+	sort.Strings(expected)
+
+	if len(names) != len(expected) {
+		t.Fatalf("slice lengths do not match: got %v, expected %v", names, expected)
+	}
+	for i := range names {
+		if names[i] != expected[i] {
+			t.Fatalf("slice values do not match: got %v, expected %v", names, expected)
+		}
+	}
+}
+
 func TestChartWithDependencyAliasedTwiceAndDoublyReferencedSubDependency(t *testing.T) {
 	c := loadChart(t, "testdata/chart-with-dependency-aliased-twice")
 
