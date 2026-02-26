@@ -197,8 +197,8 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 			}
 			_, _ = fmt.Fprintf(out, "TEST SUITE:     %s\n%s\n%s\n%s\n",
 				h.Name,
-				fmt.Sprintf("Last Started:   %s", h.LastRun.StartedAt.Format(time.ANSIC)),
-				fmt.Sprintf("Last Completed: %s", h.LastRun.CompletedAt.Format(time.ANSIC)),
+				"Last Started:   "+h.LastRun.StartedAt.Format(time.ANSIC),
+				"Last Completed: "+h.LastRun.CompletedAt.Format(time.ANSIC),
 				fmt.Sprintf("Phase:          %s", h.LastRun.Phase),
 			)
 		}
