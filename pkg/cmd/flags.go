@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -119,7 +120,7 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 // value to the given format pointer
 func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 	cmd.Flags().VarP(newOutputValue(output.Table, varRef), outputFlag, "o",
-		fmt.Sprintf("prints the output in the specified format. Allowed values: %s", strings.Join(output.Formats(), ", ")))
+		"prints the output in the specified format. Allowed values: "+strings.Join(output.Formats(), ", "))
 
 	err := cmd.RegisterFlagCompletionFunc(outputFlag, func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		var formatNames []string
@@ -195,7 +196,7 @@ func (p *postRendererString) Set(val string) error {
 		return nil
 	}
 	if p.options.pluginName != "" {
-		return fmt.Errorf("cannot specify --post-renderer flag more than once")
+		return errors.New("cannot specify --post-renderer flag more than once")
 	}
 	p.options.pluginName = val
 	pr, err := postrenderer.NewPostRendererPlugin(p.options.settings, p.options.pluginName, p.options.args...)

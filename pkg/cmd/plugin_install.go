@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -102,7 +103,7 @@ func (o *pluginInstallOptions) complete(args []string) error {
 
 func (o *pluginInstallOptions) newInstallerForSource() (installer.Installer, error) {
 	// Check if source is an OCI registry reference
-	if strings.HasPrefix(o.source, fmt.Sprintf("%s://", registry.OCIScheme)) {
+	if strings.HasPrefix(o.source, registry.OCIScheme+"://") {
 		// Build getter options for OCI
 		options := []getter.Option{
 			getter.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
@@ -135,7 +136,7 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 	} else if shouldVerify {
 		// For remote installations, check if verification is supported
 		if verifier, ok := i.(installer.Verifier); !ok || !verifier.SupportsVerification() {
-			return fmt.Errorf("plugin source does not support verification. Use --verify=false to skip verification")
+			return errors.New("plugin source does not support verification. Use --verify=false to skip verification")
 		}
 	} else {
 		// User explicitly disabled verification

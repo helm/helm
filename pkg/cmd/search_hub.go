@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -136,7 +137,7 @@ func (h *hubSearchWriter) WriteTable(out io.Writer) error {
 	if len(h.elements) == 0 {
 		// Fail if no results found and --fail-on-no-result is enabled
 		if h.failOnNoResult {
-			return fmt.Errorf("no results found")
+			return errors.New("no results found")
 		}
 
 		_, err := out.Write([]byte("No results found\n"))
@@ -175,7 +176,7 @@ func (h *hubSearchWriter) WriteYAML(out io.Writer) error {
 func (h *hubSearchWriter) encodeByFormat(out io.Writer, format output.Format) error {
 	// Fail if no results found and --fail-on-no-result is enabled
 	if len(h.elements) == 0 && h.failOnNoResult {
-		return fmt.Errorf("no results found")
+		return errors.New("no results found")
 	}
 
 	// Initialize the array so no results returns an empty array instead of null
