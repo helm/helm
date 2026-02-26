@@ -384,7 +384,7 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 	rel, err := releaserToV1Release(r)
 	is.NoError(err)
 
-	expectedNotes := fmt.Sprintf("got-%s", res.Name)
+	expectedNotes := "got-" + res.Name
 	is.Equal(expectedNotes, rel.Info.Notes)
 	is.Equal(rel.Info.Description, "Install complete")
 }
@@ -571,7 +571,7 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = "failed-hooks"
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WatchUntilReadyError = fmt.Errorf("Failed watch")
+	failer.WatchUntilReadyError = errors.New("Failed watch")
 	instAction.cfg.KubeClient = failer
 	outBuffer := &bytes.Buffer{}
 	failer.PrintingKubeClient = kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
@@ -633,7 +633,7 @@ func TestInstallRelease_Wait(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = "come-fail-away"
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("I timed out")
+	failer.WaitError = errors.New("I timed out")
 	instAction.cfg.KubeClient = failer
 	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]any{}
@@ -677,7 +677,7 @@ func TestInstallRelease_WaitForJobs(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = "come-fail-away"
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("I timed out")
+	failer.WaitError = errors.New("I timed out")
 	instAction.cfg.KubeClient = failer
 	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	instAction.WaitForJobs = true
@@ -698,7 +698,7 @@ func TestInstallRelease_RollbackOnFailure(t *testing.T) {
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away"
 		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-		failer.WaitError = fmt.Errorf("I timed out")
+		failer.WaitError = errors.New("I timed out")
 		instAction.cfg.KubeClient = failer
 		instAction.RollbackOnFailure = true
 		// disabling hooks to avoid an early fail when
@@ -723,8 +723,8 @@ func TestInstallRelease_RollbackOnFailure(t *testing.T) {
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away-with-me"
 		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-		failer.WaitError = fmt.Errorf("I timed out")
-		failer.DeleteError = fmt.Errorf("uninstall fail")
+		failer.WaitError = errors.New("I timed out")
+		failer.DeleteError = errors.New("uninstall fail")
 		instAction.cfg.KubeClient = failer
 		instAction.RollbackOnFailure = true
 		vals := map[string]any{}
