@@ -214,6 +214,21 @@ Loop:
 
 	// recursively call self to process sub dependencies
 	for _, t := range cd {
+		// cvals[path][alias] may be stale when an alias is used, because ancestor
+		// CoalesceValues calls used the original chart name. Fill in missing keys from the
+		// correctly-coalesced top-level entry, keeping the nested entry authoritative.
+		if path != "" {
+			if pt, err := cvals.Table(strings.TrimSuffix(path, ".")); err == nil {
+				if top, ok := cvals[t.Metadata.Name].(map[string]interface{}); ok {
+					if v, ok := pt[t.Metadata.Name]; ok && !istable(v) {
+						slog.Warn("skipping nested path update: value is not a table", "path", path+t.Metadata.Name)
+					} else {
+						nested, _ := v.(map[string]interface{})
+						pt[t.Metadata.Name] = util.CoalesceTables(nested, top)
+					}
+				}
+			}
+		}
 		subpath := path + t.Metadata.Name + "."
 		if err := processDependencyEnabled(t, cvals, subpath); err != nil {
 			return err

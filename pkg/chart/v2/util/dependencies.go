@@ -220,8 +220,12 @@ Loop:
 		if path != "" {
 			if pt, err := cvals.Table(strings.TrimSuffix(path, ".")); err == nil {
 				if top, ok := cvals[t.Metadata.Name].(map[string]interface{}); ok {
-					nested, _ := pt[t.Metadata.Name].(map[string]interface{})
-					pt[t.Metadata.Name] = util.CoalesceTables(nested, top)
+					if v, ok := pt[t.Metadata.Name]; ok && !istable(v) {
+						slog.Warn("skipping nested path update: value is not a table", "path", path+t.Metadata.Name)
+					} else {
+						nested, _ := v.(map[string]interface{})
+						pt[t.Metadata.Name] = util.CoalesceTables(nested, top)
+					}
 				}
 			}
 		}
