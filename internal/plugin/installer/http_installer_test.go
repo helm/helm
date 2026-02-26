@@ -150,7 +150,7 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 
 	// inject fake http client responding with error
 	httpInstaller.getter = &TestHTTPGetter{
-		MockError: fmt.Errorf("failed to download plugin for some reason"),
+		MockError: errors.New("failed to download plugin for some reason"),
 	}
 
 	// attempt to install the plugin

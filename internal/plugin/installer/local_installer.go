@@ -188,7 +188,7 @@ func (i *LocalInstaller) SupportsVerification() bool {
 // GetVerificationData loads plugin and provenance data from local files for verification
 func (i *LocalInstaller) GetVerificationData() (archiveData, provData []byte, filename string, err error) {
 	if !i.SupportsVerification() {
-		return nil, nil, "", fmt.Errorf("verification not supported for directories")
+		return nil, nil, "", errors.New("verification not supported for directories")
 	}
 
 	// Read and cache the plugin archive file
