@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"unicode/utf8"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -30,6 +31,8 @@ import (
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
+
+const MaxDescriptionLength = 256
 
 // Rollback is the action for rolling back to a given release.
 //
@@ -59,6 +62,8 @@ type Rollback struct {
 	ServerSideApply string
 	CleanupOnFail   bool
 	MaxHistory      int // MaxHistory limits the maximum number of revisions saved per release
+	// Description is the description of this rollback operation
+	Description string
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -72,6 +77,10 @@ func NewRollback(cfg *Configuration) *Rollback {
 
 // Run executes 'helm rollback' against the given release.
 func (r *Rollback) Run(name string) error {
+	if descLen := utf8.RuneCountInString(r.Description); descLen > MaxDescriptionLength {
+		return fmt.Errorf("description must be %d characters or less, got %d", MaxDescriptionLength, descLen)
+	}
+
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
 		return err
 	}
@@ -169,6 +178,12 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		return nil, nil, false, err
 	}
 
+	// Determine the description for this rollback
+	description := r.Description
+	if description == "" {
+		description = fmt.Sprintf("Rollback to %d", previousVersion)
+	}
+
 	// Store a new release object with previous release's configuration
 	targetRelease := &release.Release{
 		Name:      name,
@@ -182,7 +197,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 			Notes:         previousRelease.Info.Notes,
 			// Because we lose the reference to previous version elsewhere, we set the
 			// message here, and only override it later if we experience failure.
-			Description: fmt.Sprintf("Rollback to %d", previousVersion),
+			Description: description,
 		},
 		Version:     currentRelease.Version + 1,
 		Labels:      previousRelease.Labels,
