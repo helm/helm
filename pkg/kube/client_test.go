@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -1434,7 +1433,7 @@ func TestIsIncompatibleServerError(t *testing.T) {
 			Want: false,
 		},
 		"Generic error": {
-			Err:  fmt.Errorf("some generic error"),
+			Err:  errors.New("some generic error"),
 			Want: false,
 		},
 	}

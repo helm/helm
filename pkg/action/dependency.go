@@ -92,7 +92,7 @@ func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, p
 		for _, arc := range archives {
 			// we need to trip the prefix dirs and the extension off.
 			filename = strings.TrimSuffix(filepath.Base(arc), ".tgz")
-			maybeVersion := strings.TrimPrefix(filename, fmt.Sprintf("%s-", dep.Name))
+			maybeVersion := strings.TrimPrefix(filename, dep.Name+"-")
 
 			if _, err := semver.StrictNewVersion(maybeVersion); err == nil {
 				// If the version parsed without an error, it is possibly a valid
