@@ -28,6 +28,7 @@ linters:
     - misspell
     - modernize
     - nakedret
+    - nolintlint
     - revive
     - sloglint
     - staticcheck
@@ -71,6 +72,9 @@ linters:
           - github.com/evanphx/json-patch:
               recommendations:
                 - github.com/evanphx/json-patch/v5
+
+    nolintlint:
+      require-specific: true
 
     revive:
       max-open-files: 2048

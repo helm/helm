@@ -35,7 +35,7 @@ func TestLoadChartfile(t *testing.T) {
 
 func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 	t.Helper()
-	if f == nil { //nolint:staticcheck
+	if f == nil {
 		t.Fatal("Failed verifyChartfile because f is nil")
 	}
 
