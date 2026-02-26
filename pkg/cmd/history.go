@@ -260,7 +260,7 @@ func compListRevisions(_ string, cfg *action.Configuration, releaseName string) 
 			return nil, cobra.ShellCompDirectiveError
 		}
 		for _, version := range hist {
-			appVersion := fmt.Sprintf("App: %s", version.Chart.Metadata.AppVersion)
+			appVersion := "App: " + version.Chart.Metadata.AppVersion
 			chartDesc := fmt.Sprintf("Chart: %s-%s", version.Chart.Metadata.Name, version.Chart.Metadata.Version)
 			revisions = append(revisions, fmt.Sprintf("%s\t%s, %s", strconv.Itoa(version.Version), appVersion, chartDesc))
 		}

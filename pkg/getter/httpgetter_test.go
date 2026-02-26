@@ -403,7 +403,7 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 		// request URL for every request (including redirects). Setting `tls.Config.ServerName` on the
 		// client just overrides the remote endpoint's hostname.
 		// See https://github.com/golang/go/blob/3979fb9/src/net/http/transport.go#L1505-L1513.
-		u.Host = fmt.Sprintf("localhost:%s", u.Port())
+		u.Host = "localhost:" + u.Port()
 
 		http.Redirect(rw, r, u.String(), http.StatusTemporaryRedirect)
 	}))

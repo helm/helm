@@ -100,7 +100,7 @@ func TestLoadCLIPlugins(t *testing.T) {
 		"HELM_PLUGINS=testdata/helmhome/helm/plugins",
 		"HELM_REPOSITORY_CONFIG=testdata/helmhome/helm/repositories.yaml",
 		"HELM_REPOSITORY_CACHE=testdata/helmhome/helm/repository",
-		fmt.Sprintf("HELM_BIN=%s", os.Args[0]),
+		"HELM_BIN=" + os.Args[0],
 	}, "\n") + "\n"
 
 	// Test that the YAML file was correctly converted to a command.

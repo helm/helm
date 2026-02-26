@@ -249,7 +249,7 @@ func (srv *OCIServer) RunWithReturn(t *testing.T, opts ...OCIServerOpt) *OCIServ
 		t.Fatalf("error logging into registry with good credentials: %v", err)
 	}
 
-	ref := fmt.Sprintf("%s/u/ocitestuser/oci-dependent-chart:0.1.0", srv.RegistryURL)
+	ref := srv.RegistryURL + "/u/ocitestuser/oci-dependent-chart:0.1.0"
 
 	err = chartutil.ExpandFile(srv.Dir, filepath.Join(srv.Dir, "oci-dependent-chart-0.1.0.tgz"))
 	if err != nil {
