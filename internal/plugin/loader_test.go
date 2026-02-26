@@ -17,7 +17,6 @@ package plugin
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -71,7 +70,7 @@ func TestLoadDir(t *testing.T) {
 		}
 		return Metadata{
 			APIVersion: apiVersion,
-			Name:       fmt.Sprintf("hello-%s", apiVersion),
+			Name:       "hello-" + apiVersion,
 			Version:    "0.1.0",
 			Type:       "cli/v1",
 			Runtime:    "subprocess",

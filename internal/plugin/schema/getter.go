@@ -14,6 +14,7 @@
 package schema
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -55,7 +56,7 @@ type ConfigGetterV1 struct {
 
 func (c *ConfigGetterV1) Validate() error {
 	if len(c.Protocols) == 0 {
-		return fmt.Errorf("getter has no protocols")
+		return errors.New("getter has no protocols")
 	}
 	for i, protocol := range c.Protocols {
 		if protocol == "" {
