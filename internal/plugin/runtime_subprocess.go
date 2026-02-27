@@ -117,8 +117,8 @@ func (r *SubprocessPluginRuntime) InvokeWithEnv(main string, argv []string, env 
 	cmd.Env = slices.Clone(os.Environ())
 	cmd.Env = append(
 		cmd.Env,
-		fmt.Sprintf("HELM_PLUGIN_NAME=%s", r.metadata.Name),
-		fmt.Sprintf("HELM_PLUGIN_DIR=%s", r.pluginDir))
+		"HELM_PLUGIN_NAME="+r.metadata.Name,
+		"HELM_PLUGIN_DIR="+r.pluginDir)
 	cmd.Env = append(cmd.Env, env...)
 
 	cmd.Stdin = stdin

@@ -58,23 +58,23 @@ func (m Metadata) Validate() error {
 	}
 
 	if m.APIVersion == "" {
-		errs = append(errs, fmt.Errorf("empty APIVersion"))
+		errs = append(errs, errors.New("empty APIVersion"))
 	}
 
 	if m.Type == "" {
-		errs = append(errs, fmt.Errorf("empty type field"))
+		errs = append(errs, errors.New("empty type field"))
 	}
 
 	if m.Runtime == "" {
-		errs = append(errs, fmt.Errorf("empty runtime field"))
+		errs = append(errs, errors.New("empty runtime field"))
 	}
 
 	if m.Config == nil {
-		errs = append(errs, fmt.Errorf("missing config field"))
+		errs = append(errs, errors.New("missing config field"))
 	}
 
 	if m.RuntimeConfig == nil {
-		errs = append(errs, fmt.Errorf("missing runtimeConfig field"))
+		errs = append(errs, errors.New("missing runtimeConfig field"))
 	}
 
 	// Validate the config itself
