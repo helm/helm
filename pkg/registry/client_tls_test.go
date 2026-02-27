@@ -31,7 +31,8 @@ type TLSRegistryClientTestSuite struct {
 
 func (suite *TLSRegistryClientTestSuite) SetupSuite() {
 	// init test client
-	setup(&suite.TestRegistry, true, false)
+	setup(&suite.TestRegistry, true, false, "htpasswd")
+
 }
 
 func (suite *TLSRegistryClientTestSuite) TearDownSuite() {

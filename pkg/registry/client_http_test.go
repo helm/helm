@@ -32,7 +32,7 @@ type HTTPRegistryClientTestSuite struct {
 
 func (suite *HTTPRegistryClientTestSuite) SetupSuite() {
 	// init test client
-	setup(&suite.TestRegistry, false, false)
+	setup(&suite.TestRegistry, false, false, "htpasswd")
 }
 
 func (suite *HTTPRegistryClientTestSuite) TearDownSuite() {
