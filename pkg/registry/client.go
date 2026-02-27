@@ -510,6 +510,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 	}
 	memoryStore := memory.New()
 	allowedMediaTypes := []string{
+		ocispec.MediaTypeImageIndex,
 		ocispec.MediaTypeImageManifest,
 		ConfigMediaType,
 	}
