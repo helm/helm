@@ -23,13 +23,10 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
-	"k8s.io/client-go/kubernetes/scheme"
-
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8sversion "k8s.io/apimachinery/pkg/util/version"
 
 	helmversion "helm.sh/helm/v4/internal/version"
+	"helm.sh/helm/v4/pkg/kube"
 )
 
 const (
@@ -47,7 +44,6 @@ var (
 			panic(fmt.Sprintf("failed to create default capabilities: %v", err))
 		}
 		return caps
-
 	}()
 )
 
@@ -128,13 +124,7 @@ func (v VersionSet) Has(apiVersion string) bool {
 }
 
 func allKnownVersions() VersionSet {
-	// We should register the built in extension APIs as well so CRDs are
-	// supported in the default version set. This has caused problems with `helm
-	// template` in the past, so let's be safe
-	apiextensionsv1beta1.AddToScheme(scheme.Scheme)
-	apiextensionsv1.AddToScheme(scheme.Scheme)
-
-	groups := scheme.Scheme.PrioritizedVersionsAllGroups()
+	groups := kube.NativeScheme.PrioritizedVersionsAllGroups()
 	vs := make(VersionSet, 0, len(groups))
 	for _, gv := range groups {
 		vs = append(vs, gv.String())
