@@ -33,7 +33,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
-var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
+var headerBytes = []byte("rr(\x00aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
 
 // SaveDir saves a chart as files in a directory.
 //
