@@ -302,6 +302,105 @@ version: 0.1.0`
 	}
 }
 
+func TestDownloadAll_SkipDownloadIfExists(t *testing.T) {
+	// Set up a fake repo
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/*.tgz*"),
+	)
+	defer srv.Stop()
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	chartPath := t.TempDir()
+	contentCache := t.TempDir()
+	b := bytes.NewBuffer(nil)
+	g := getter.Providers{getter.Provider{
+		Schemes: []string{"http", "https"},
+		New:     getter.NewHTTPGetter,
+	}}
+	m := &Manager{
+		Out:              b,
+		RepositoryConfig: filepath.Join(srv.Root(), "repositories.yaml"),
+		RepositoryCache:  srv.Root(),
+		ChartPath:        chartPath,
+		Getters:          g,
+		ContentCache:     contentCache,
+	}
+
+	dep := &chart.Dependency{
+		Name:       "local-subchart",
+		Repository: srv.URL(),
+		Version:    "0.1.0",
+	}
+
+	// First download without SkipDownloadIfExists flag - should download the chart
+	if err := m.downloadAll([]*chart.Dependency{dep}); err != nil {
+		t.Fatal(err)
+	}
+
+	chartFile := filepath.Join(chartPath, "charts", "local-subchart-0.1.0.tgz")
+	if _, err := os.Stat(chartFile); errors.Is(err, fs.ErrNotExist) {
+		t.Fatal("chart should have been downloaded")
+	}
+
+	// Get the file info to check modification time later
+	fileInfo1, err := os.Stat(chartFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Second download with SkipDownloadIfExists flag - should NOT re-download
+	m.SkipDownloadIfExists = true
+	b.Reset()
+	if err := m.downloadAll([]*chart.Dependency{dep}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify the chart file still exists
+	if _, err := os.Stat(chartFile); errors.Is(err, fs.ErrNotExist) {
+		t.Fatal("chart should still exist")
+	}
+
+	// Verify the file was NOT re-downloaded by checking modification time hasn't changed
+	fileInfo2, err := os.Stat(chartFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !fileInfo1.ModTime().Equal(fileInfo2.ModTime()) {
+		t.Errorf("chart file should not have been re-downloaded, but modification time changed: %v vs %v", fileInfo1.ModTime(), fileInfo2.ModTime())
+	}
+
+	output := b.String()
+	if !bytes.Contains([]byte(output), []byte("Already exists locally")) {
+		t.Errorf("expected 'Already exists locally' message in output, got: %s", output)
+	}
+
+	// Third test: Delete the file and verify it gets re-downloaded when flag is disabled
+	if err := os.Remove(chartFile); err != nil {
+		t.Fatal(err)
+	}
+
+	m.SkipDownloadIfExists = false
+	b.Reset()
+	if err := m.downloadAll([]*chart.Dependency{dep}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify the file was re-downloaded
+	if _, err := os.Stat(chartFile); errors.Is(err, fs.ErrNotExist) {
+		t.Fatal("chart should have been re-downloaded")
+	}
+
+	// Verify the output does NOT contain "Already exists locally"
+	output = b.String()
+	if bytes.Contains([]byte(output), []byte("Already exists locally")) {
+		t.Error("should not skip download when file doesn't exist")
+	}
+}
+
 func TestUpdateBeforeBuild(t *testing.T) {
 	// Set up a fake repo
 	srv := repotest.NewTempServer(
