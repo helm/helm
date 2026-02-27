@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"helm.sh/helm/v4/internal/plugin/schema"
 
@@ -64,9 +65,10 @@ func (r *postRendererPlugin) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer
 	input := &plugin.Input{
 		Message: schema.InputMessagePostRendererV1{
 			ExtraArgs: r.args,
-			Manifests: renderedManifests,
+			Manifests: renderedManifests.String(),
 		},
 	}
+
 	output, err := r.plugin.Invoke(context.Background(), input)
 	if err != nil {
 		return nil, fmt.Errorf("failed to invoke post-renderer plugin %q: %w", r.plugin.Metadata().Name, err)
@@ -76,9 +78,9 @@ func (r *postRendererPlugin) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer
 
 	// If the binary returned almost nothing, it's likely that it didn't
 	// successfully render anything
-	if len(bytes.TrimSpace(outputMessage.Manifests.Bytes())) == 0 {
+	if len(strings.TrimSpace(outputMessage.Manifests)) == 0 {
 		return nil, fmt.Errorf("post-renderer %q produced empty output", r.plugin.Metadata().Name)
 	}
 
-	return outputMessage.Manifests, nil
+	return bytes.NewBufferString(outputMessage.Manifests), nil
 }
