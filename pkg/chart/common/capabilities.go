@@ -167,7 +167,6 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 }
 
 func newCapabilities(kubeVersionMajor, kubeVersionMinor uint64) (*Capabilities, error) {
-
 	version := fmt.Sprintf("v%d.%d.0", kubeVersionMajor, kubeVersionMinor)
 	return &Capabilities{
 		KubeVersion: KubeVersion{

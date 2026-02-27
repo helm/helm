@@ -25,7 +25,6 @@ import (
 )
 
 func TestToRenderValues(t *testing.T) {
-
 	chartValues := map[string]any{
 		"name": "al Rashid",
 		"where": map[string]any{

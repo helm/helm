@@ -224,7 +224,6 @@ func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
 		}
 		if !r.Info.LastDeployed.IsZero() {
 			rInfo.Updated = r.Info.LastDeployed
-
 		}
 		history = append(history, rInfo)
 	}

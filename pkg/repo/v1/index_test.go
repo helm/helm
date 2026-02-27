@@ -141,7 +141,6 @@ func TestIndexFile(t *testing.T) {
 }
 
 func TestLoadIndex(t *testing.T) {
-
 	tests := []struct {
 		Name     string
 		Filename string
@@ -251,7 +250,6 @@ func TestMerge(t *testing.T) {
 	if v := vs[1]; v.Version != "0.2.0" {
 		t.Errorf("Expected %q version to be 0.2.0, got %s", v.Name, v.Version)
 	}
-
 }
 
 func TestDownloadIndexFile(t *testing.T) {
@@ -643,7 +641,6 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 			if !errors.Is(tc.Input, result) {
 				t.Error("expected the result equal to input")
 			}
-
 		})
 	}
 }

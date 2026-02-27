@@ -737,7 +737,6 @@ func TestInstallRelease_RollbackOnFailure(t *testing.T) {
 	})
 }
 func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
-
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "interrupted-release"
@@ -767,7 +766,6 @@ func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 	is.Equal(goroutines+1, instAction.getGoroutineCount()) // installation goroutine still is in background
 	time.Sleep(10 * time.Second)                           // wait for goroutine to finish
 	is.Equal(goroutines, instAction.getGoroutineCount())
-
 }
 func TestNameTemplate(t *testing.T) {
 	testCases := []nameTemplateTestCase{
@@ -804,7 +802,6 @@ func TestNameTemplate(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		n, err := TemplateName(tc.tpl)
 		if err != nil {
 			if tc.expectedErrorStr == "" {

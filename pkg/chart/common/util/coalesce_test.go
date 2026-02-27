@@ -666,7 +666,6 @@ func TestMergeTables(t *testing.T) {
 }
 
 func TestCoalesceValuesWarnings(t *testing.T) {
-
 	c := withDeps(&chart.Chart{
 		Metadata: &chart.Metadata{Name: "level1"},
 		Values: map[string]any{
@@ -724,7 +723,6 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 	assert.Contains(t, warnings, "warning: skipped value for level1.level2.level3.boat: Not a table.")
 	assert.Contains(t, warnings, "warning: destination for level1.level2.level3.spear.tip is a table. Ignoring non-table value (true)")
 	assert.Contains(t, warnings, "warning: cannot overwrite table with non table for level1.level2.level3.spear.sail (map[cotton:true])")
-
 }
 
 func TestConcatPrefix(t *testing.T) {

@@ -816,7 +816,6 @@ func (c *Client) Tags(ref string) ([]string, error) {
 	}
 
 	return tags, nil
-
 }
 
 // Resolve a reference to a descriptor.
@@ -910,7 +909,6 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *ur
 func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 	configDescriptor ocispec.Descriptor, layers []ocispec.Descriptor,
 	ociAnnotations map[string]string, parsedRef reference) (ocispec.Descriptor, error) {
-
 	manifest := ocispec.Manifest{
 		Versioned:   specs.Versioned{SchemaVersion: 2},
 		Config:      configDescriptor,

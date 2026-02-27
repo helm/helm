@@ -77,7 +77,6 @@ func newGetMetadataCmd(cfg *action.Configuration, out io.Writer) *cobra.Command 
 }
 
 func (w metadataWriter) WriteTable(out io.Writer) error {
-
 	formatApplyMethod := func(applyMethod string) string {
 		switch applyMethod {
 		case "":
