@@ -153,6 +153,8 @@ func (l *List) Run() ([]ri.Releaser, error) {
 		return nil, err
 	}
 
+	l.Truncated = false
+
 	var filter *regexp.Regexp
 	if l.Filter != "" {
 		var err error

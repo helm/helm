@@ -209,19 +209,20 @@ func TestList_Truncation(t *testing.T) {
 	is.Len(list, 1)
 	is.True(lister.Truncated, "Expected Truncated to be true when offset + limit < total")
 
-	lister.Limit = 1
-	lister.Offset = 2
-	list, err = lister.Run()
-	is.NoError(err)
-	is.Len(list, 1)
-	is.False(lister.Truncated, "Expected Truncated to be false when offset + limit == total")
-
+	// Early return path should reset Truncated even after a truncated run
 	lister.Limit = 1
 	lister.Offset = 3
 	list, err = lister.Run()
 	is.NoError(err)
 	is.Len(list, 0)
 	is.False(lister.Truncated, "Expected Truncated to be false when offset >= total")
+
+	lister.Limit = 1
+	lister.Offset = 2
+	list, err = lister.Run()
+	is.NoError(err)
+	is.Len(list, 1)
+	is.False(lister.Truncated, "Expected Truncated to be false when offset + limit == total")
 }
 
 func TestList_StateMask(t *testing.T) {

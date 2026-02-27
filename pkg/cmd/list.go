@@ -119,7 +119,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 			outputFlag := cmd.Flag("output")
 			if outputFlag.Value.String() == "table" && client.Truncated && !cmd.Flags().Changed("max") {
-				fmt.Fprintln(os.Stderr, "WARNING: results were truncated due to the default --max limit. Use --max to show more releases.")
+				fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: results were truncated due to the default --max limit. Use --max to show more releases.")
 			}
 
 			return nil
