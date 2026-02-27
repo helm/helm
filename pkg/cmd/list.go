@@ -113,7 +113,16 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 			}
 
-			return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat, client.NoHeaders, settings.ShouldDisableColor()))
+			if err := outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat, client.NoHeaders, settings.ShouldDisableColor())); err != nil {
+				return err
+			}
+
+			outputFlag := cmd.Flag("output")
+			if outputFlag.Value.String() == "table" && client.Truncated && !cmd.Flags().Changed("max") {
+				fmt.Fprintln(os.Stderr, "WARNING: results were truncated due to the default --max limit. Use --max to show more releases.")
+			}
+
+			return nil
 		},
 	}
 

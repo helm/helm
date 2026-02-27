@@ -135,6 +135,8 @@ type List struct {
 	Failed       bool
 	Pending      bool
 	Selector     string
+	// Truncated indicates results were omitted due to Limit
+	Truncated bool
 }
 
 // NewList constructs a new *List
@@ -213,7 +215,7 @@ func (l *List) Run() ([]ri.Releaser, error) {
 	}
 
 	// Calculate the limit and offset, and then truncate results if necessary.
-	limit := len(results)
+	limit := len(rresults)
 	if l.Limit > 0 && l.Limit < limit {
 		limit = l.Limit
 	}
@@ -221,6 +223,8 @@ func (l *List) Run() ([]ri.Releaser, error) {
 	if l := len(rresults); l < last {
 		last = l
 	}
+	l.Truncated = last < len(rresults)
+
 	rresults = rresults[l.Offset:last]
 
 	return releaseV1ListToReleaserList(rresults)

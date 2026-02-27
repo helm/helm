@@ -175,6 +175,55 @@ func TestList_LimitOffsetOutOfBounds(t *testing.T) {
 	is.Len(list, 2)
 }
 
+func TestList_Truncation(t *testing.T) {
+	is := assert.New(t)
+	// Create 3 releases
+	lister := newListFixture(t)
+	makeMeSomeReleases(t, lister.cfg.Releases)
+
+	lister.Limit = 5
+	lister.Offset = 0
+	list, err := lister.Run()
+	is.NoError(err)
+	is.Len(list, 3)
+	is.False(lister.Truncated, "Expected Truncated to be false when limit > total")
+
+	lister.Limit = 3
+	lister.Offset = 0
+	list, err = lister.Run()
+	is.NoError(err)
+	is.Len(list, 3)
+	is.False(lister.Truncated, "Expected Truncated to be false when limit == total")
+
+	lister.Limit = 2
+	lister.Offset = 0
+	list, err = lister.Run()
+	is.NoError(err)
+	is.Len(list, 2)
+	is.True(lister.Truncated, "Expected Truncated to be true when limit < total")
+
+	lister.Limit = 1
+	lister.Offset = 1
+	list, err = lister.Run()
+	is.NoError(err)
+	is.Len(list, 1)
+	is.True(lister.Truncated, "Expected Truncated to be true when offset + limit < total")
+
+	lister.Limit = 1
+	lister.Offset = 2
+	list, err = lister.Run()
+	is.NoError(err)
+	is.Len(list, 1)
+	is.False(lister.Truncated, "Expected Truncated to be false when offset + limit == total")
+
+	lister.Limit = 1
+	lister.Offset = 3
+	list, err = lister.Run()
+	is.NoError(err)
+	is.Len(list, 0)
+	is.False(lister.Truncated, "Expected Truncated to be false when offset >= total")
+}
+
 func TestList_StateMask(t *testing.T) {
 	is := assert.New(t)
 	lister := newListFixture(t)
