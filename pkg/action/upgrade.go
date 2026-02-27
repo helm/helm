@@ -263,7 +263,6 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 				return nil, nil, false, err
 			}
 		}
-
 	}
 
 	// determine if values will be reused

@@ -51,7 +51,6 @@ func checkFileCompletion(t *testing.T, cmdName string, shouldBePerformed bool) {
 		if shouldBePerformed {
 			t.Errorf("Unexpected directive ShellCompDirectiveNoFileComp when completing '%s'", cmdName)
 		} else {
-
 			t.Errorf("Did not receive directive ShellCompDirectiveNoFileComp when completing '%s'", cmdName)
 		}
 		t.Log(out)
