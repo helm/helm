@@ -37,6 +37,7 @@ import (
 // ChartLoader loads a chart.
 type ChartLoader interface {
 	Load() (chart.Charter, error)
+	LoadWithOptions() (chart.Charter, error)
 }
 
 // Loader returns a new ChartLoader appropriate for the given chart name
@@ -46,9 +47,31 @@ func Loader(name string) (ChartLoader, error) {
 		return nil, err
 	}
 	if fi.IsDir() {
-		return DirLoader(name), nil
+		return NewDefaultDirLoader(name), nil
 	}
-	return FileLoader(name), nil
+	return NewDefaultFileLoader(name), nil
+}
+
+// WithOptions returns a new ChartLoader appropriate for the given chart name
+// with the provided options.
+func WithOptions(name string, opts archive.Options) (ChartLoader, error) {
+	fi, err := os.Stat(name)
+	if err != nil {
+		return nil, err
+	}
+	if fi.IsDir() {
+		return NewDirLoader(name, opts), nil
+	}
+	return NewFileLoader(name, opts), nil
+}
+
+// LoadWithOptions takes a string name, resolves it to a file or directory, and loads it with custom options.
+func LoadWithOptions(name string, opts archive.Options) (chart.Charter, error) {
+	l, err := WithOptions(name, opts)
+	if err != nil {
+		return nil, err
+	}
+	return l.LoadWithOptions()
 }
 
 // Load takes a string name, tries to resolve it to a file or directory, and then loads it.
@@ -67,14 +90,36 @@ func Load(name string) (chart.Charter, error) {
 }
 
 // DirLoader loads a chart from a directory
-type DirLoader string
+type DirLoader struct {
+	path string
+	opts archive.Options
+}
+
+// NewDefaultDirLoader creates a new directory loader with default options
+func NewDefaultDirLoader(path string) DirLoader {
+	return DirLoader{path: path, opts: archive.DefaultOptions}
+}
+
+// NewDirLoader creates a new directory loader with custom options
+func NewDirLoader(path string, opts archive.Options) DirLoader {
+	return DirLoader{path: path, opts: opts}
+}
 
 // Load loads the chart
 func (l DirLoader) Load() (chart.Charter, error) {
-	return LoadDir(string(l))
+	return LoadDir(l.path)
+}
+
+// LoadWithOptions loads the chart with custom options
+func (l DirLoader) LoadWithOptions() (chart.Charter, error) {
+	return LoadDirWithOptions(l.path, l.opts)
 }
 
 func LoadDir(dir string) (chart.Charter, error) {
+	return LoadDirWithOptions(dir, archive.DefaultOptions)
+}
+
+func LoadDirWithOptions(dir string, opts archive.Options) (chart.Charter, error) {
 	topdir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
@@ -94,24 +139,46 @@ func LoadDir(dir string) (chart.Charter, error) {
 
 	switch c.APIVersion {
 	case c2.APIVersionV1, c2.APIVersionV2, "":
-		return c2load.Load(dir)
+		return c2load.LoadWithOptions(dir, opts)
 	case c3.APIVersionV3:
-		return c3load.Load(dir)
+		return c3load.LoadWithOptions(dir, opts)
 	default:
 		return nil, errors.New("unsupported chart version")
 	}
 
 }
 
-// FileLoader loads a chart from a file
-type FileLoader string
+// FileLoader with embedded options
+type FileLoader struct {
+	path string
+	opts archive.Options
+}
 
-// Load loads a chart
+// NewFileLoader creates a file loader with custom options
+func NewFileLoader(path string, opts archive.Options) FileLoader {
+	return FileLoader{path: path, opts: opts}
+}
+
+// NewDefaultFileLoader creates a file loader with default options
+func NewDefaultFileLoader(path string) FileLoader {
+	return FileLoader{path: path, opts: archive.DefaultOptions}
+}
+
+// Load loads a chart with default options
 func (l FileLoader) Load() (chart.Charter, error) {
-	return LoadFile(string(l))
+	return LoadFileWithOptions(l.path, archive.DefaultOptions)
+}
+
+// LoadWithOptions loads a chart with custom options
+func (l FileLoader) LoadWithOptions() (chart.Charter, error) {
+	return LoadFileWithOptions(l.path, l.opts)
 }
 
 func LoadFile(name string) (chart.Charter, error) {
+	return LoadFileWithOptions(name, archive.DefaultOptions)
+}
+
+func LoadFileWithOptions(name string, opts archive.Options) (chart.Charter, error) {
 	if fi, err := os.Stat(name); err != nil {
 		return nil, err
 	} else if fi.IsDir() {
@@ -129,12 +196,12 @@ func LoadFile(name string) (chart.Charter, error) {
 		return nil, err
 	}
 
-	files, err := archive.LoadArchiveFiles(raw)
+	files, err := archive.LoadArchiveFilesWithOptions(raw, opts)
 	if err != nil {
 		if errors.Is(err, gzip.ErrHeader) {
 			return nil, fmt.Errorf("file '%s' does not appear to be a valid chart file (details: %w)", name, err)
 		}
-		return nil, errors.New("unable to load chart archive")
+		return nil, fmt.Errorf("unable to load chart archive: %w", err)
 	}
 
 	for _, f := range files {
@@ -145,9 +212,9 @@ func LoadFile(name string) (chart.Charter, error) {
 			}
 			switch c.APIVersion {
 			case c2.APIVersionV1, c2.APIVersionV2, "":
-				return c2load.Load(name)
+				return c2load.LoadWithOptions(name, opts)
 			case c3.APIVersionV3:
-				return c3load.Load(name)
+				return c3load.LoadWithOptions(name, opts)
 			default:
 				return nil, errors.New("unsupported chart version")
 			}

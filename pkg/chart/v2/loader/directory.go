@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"helm.sh/helm/v4/internal/sympath"
 	"helm.sh/helm/v4/pkg/chart/loader/archive"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -43,6 +45,11 @@ func (l DirLoader) Load() (*chart.Chart, error) {
 //
 // This loads charts only from directories.
 func LoadDir(dir string) (*chart.Chart, error) {
+	return LoadDirWithOptions(dir, archive.DefaultOptions)
+}
+
+// LoadDirWithOptions loads from a directory using the provided options.
+func LoadDirWithOptions(dir string, opts archive.Options) (*chart.Chart, error) {
 	topdir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
@@ -100,8 +107,9 @@ func LoadDir(dir string) (*chart.Chart, error) {
 			return fmt.Errorf("cannot load irregular file %s as it has file mode type bits set", name)
 		}
 
-		if fi.Size() > archive.MaxDecompressedFileSize {
-			return fmt.Errorf("chart file %q is larger than the maximum file size %d", fi.Name(), archive.MaxDecompressedFileSize)
+		if fi.Size() > opts.MaxDecompressedFileSize {
+			maxSize := resource.NewQuantity(opts.MaxDecompressedFileSize, resource.BinarySI)
+			return fmt.Errorf("chart file %q is larger than the maximum file size %s", fi.Name(), maxSize.String())
 		}
 
 		data, err := os.ReadFile(name)

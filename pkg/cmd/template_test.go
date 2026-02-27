@@ -166,6 +166,18 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("template '%s' -f %s/extra_values.yaml", chartPath, chartPath),
 			golden: "output/template-subchart-cm-set-file.txt",
 		},
+		{
+			name:      "template with restricted max size (with IEC size)",
+			cmd:       "template too-big testdata/testcharts/oci-dependent-chart-0.1.0.tgz --max-chart-size=1Ki",
+			wantError: true,
+			golden:    "output/template-with-restricted-chart-size.txt",
+		},
+		{
+			name:      "template with restricted max file size",
+			cmd:       "template too-big testdata/testcharts/compressedchart-0.1.0.tgz --max-file-size=10",
+			wantError: true,
+			golden:    "output/template-with-restricted-file-size.txt",
+		},
 	}
 	runTestCmd(t, tests)
 }

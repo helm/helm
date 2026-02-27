@@ -25,12 +25,14 @@ package cli
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 
@@ -93,6 +95,10 @@ type EnvSettings struct {
 	ColorMode string
 	// ContentCache is the location where cached charts are stored
 	ContentCache string
+	// MaxChartSize is the maximum size of a decompressed chart in bytes
+	MaxChartSize int64
+	// MaxChartFileSize is the maximum size of a single file in a chart in bytes
+	MaxChartFileSize int64
 }
 
 func New() *EnvSettings {
@@ -116,6 +122,8 @@ func New() *EnvSettings {
 		BurstLimit:                envIntOr("HELM_BURST_LIMIT", defaultBurstLimit),
 		QPS:                       envFloat32Or("HELM_QPS", defaultQPS),
 		ColorMode:                 envColorMode(),
+		MaxChartSize:              envInt64OrQuantityBytes("HELM_MAX_CHART_SIZE", 100*1024*1024), // 100 MiB
+		MaxChartFileSize:          envInt64OrQuantityBytes("HELM_MAX_FILE_SIZE", 5*1024*1024),    // 5 MiB
 	}
 	env.Debug, _ = strconv.ParseBool(os.Getenv("HELM_DEBUG"))
 
@@ -215,6 +223,92 @@ func envFloat32Or(name string, def float32) float32 {
 	return float32(ret)
 }
 
+// parseByteSizeOrInt64 parses a string as either a Kubernetes Quantity or plain int64,
+// specifically for byte sizes. Returns the parsed value in bytes
+func parseByteSizeOrInt64(s string) (int64, error) {
+	s = strings.TrimSpace(s)
+
+	// Try parsing as Kubernetes Quantity first
+	if q, err := resource.ParseQuantity(s); err == nil {
+		if v, ok := q.AsInt64(); ok {
+			return v, nil
+		}
+		f := q.AsApproximateFloat64()
+		// Reject quantities that evaluate to less than 1 byte (e.g. "1m" -> 0.001)
+		// because file sizes must be whole bytes. Treat those as parsing errors.
+		if f < 1 {
+			// Provide a helpful message if the user tried to use "m" (milli) suffix
+			if strings.HasSuffix(strings.ToLower(s), "m") && !strings.HasSuffix(s, "M") {
+				return 0, fmt.Errorf("quantity %q uses 'm' (milli) suffix which represents 0.001; please use IEC values like Ki, Mi, Gi", s)
+			}
+			return 0, fmt.Errorf("quantity %q is too small (less than 1 byte)", s)
+		}
+		if f >= float64(^uint64(0)>>1) {
+			return 0, fmt.Errorf("quantity %q is too large to fit in int64", s)
+		}
+		return int64(f), nil
+	}
+
+	// Fallback to plain int64
+	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid value %q (expected int or k8s Quantity like 512Mi)", s)
+	}
+	return v, nil
+}
+
+// Tries to parse as a k8s Quantity first, falls back to plain int64 parsing.
+func envInt64OrQuantityBytes(name string, def int64) int64 {
+	if name == "" {
+		return def
+	}
+	envVal := os.Getenv(name)
+	if envVal == "" {
+		return def
+	}
+
+	v, err := parseByteSizeOrInt64(envVal)
+	if err != nil {
+		defQuantity := resource.NewQuantity(def, resource.BinarySI)
+		slog.Warn(err.Error() + fmt.Sprintf(": using default %s", defQuantity.String()))
+		return def
+	}
+	return v
+}
+
+// QuantityBytesValue is a custom flag type that accepts both plain int64 and k8s Quantity formats
+type QuantityBytesValue struct {
+	value *int64
+}
+
+// NewQuantityBytesValue creates a new QuantityBytesValue flag with a pointer to an int64
+func NewQuantityBytesValue(p *int64) *QuantityBytesValue {
+	return &QuantityBytesValue{value: p}
+}
+
+// Set parses the input string as either a Kubernetes Quantity or plain int64
+func (q *QuantityBytesValue) Set(s string) error {
+	v, err := parseByteSizeOrInt64(s)
+	if err != nil {
+		return err
+	}
+	*q.value = v
+	return nil
+}
+
+// String returns the string representation of the value
+func (q *QuantityBytesValue) String() string {
+	if q.value == nil {
+		return "0"
+	}
+	return strconv.FormatInt(*q.value, 10)
+}
+
+// Type returns the type name for help messages
+func (q *QuantityBytesValue) Type() string {
+	return "quantity"
+}
+
 func envCSV(name string) (ls []string) {
 	trimmed := strings.Trim(os.Getenv(name), ", ")
 	if trimmed != "" {
@@ -256,6 +350,8 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_MAX_HISTORY":       strconv.Itoa(s.MaxHistory),
 		"HELM_BURST_LIMIT":       strconv.Itoa(s.BurstLimit),
 		"HELM_QPS":               strconv.FormatFloat(float64(s.QPS), 'f', 2, 32),
+		"HELM_MAX_CHART_SIZE":    strconv.FormatInt(s.MaxChartSize, 10),
+		"HELM_MAX_FILE_SIZE":     strconv.FormatInt(s.MaxChartFileSize, 10),
 
 		// broken, these are populated from helm flags and not kubeconfig.
 		"HELM_KUBECONTEXT":                  s.KubeContext,

@@ -1,0 +1,1 @@
+Error: unable to load chart archive: decompressed chart file "compressedchart/Chart.yaml" is larger than the maximum file size 10

@@ -1,0 +1,1 @@
+Error: INSTALLATION FAILED: unable to load chart archive: decompressed chart is larger than the maximum size 42

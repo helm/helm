@@ -84,6 +84,8 @@ Environment variables:
 | $HELM_QPS                          | set the Queries Per Second in cases where a high number of calls exceed the option for higher burst values |
 | $HELM_COLOR                        | set color output mode. Allowed values: never, always, auto (default: never)                                |
 | $NO_COLOR                          | set to any non-empty value to disable all colored output (overrides $HELM_COLOR)                           |
+| $HELM_MAX_CHART_SIZE               | set the maximum size in bytes for a decompressed chart (default: 100MiB, 0 means use default limit)        |
+| $HELM_MAX_FILE_SIZE                | set the maximum size in bytes for a single file in a chart (default: 5MiB, 0 means use default limit)      |
 
 Helm stores cache, configuration, and data based on the following configuration order:
 

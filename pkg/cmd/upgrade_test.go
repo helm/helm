@@ -29,6 +29,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/cli"
 	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -83,6 +84,7 @@ func TestUpgradeCmd(t *testing.T) {
 	missingDepsPath := "testdata/testcharts/chart-missing-deps"
 	badDepsPath := "testdata/testcharts/chart-bad-requirements"
 	presentDepsPath := "testdata/testcharts/chart-with-subchart-update"
+	compressedPath := "testdata/testcharts/compressedchart-0.1.0.tgz"
 
 	relWithStatusMock := func(n string, v int, ch *chart.Chart, status rcommon.Status) *release.Release {
 		return release.Mock(&release.MockReleaseOptions{Name: n, Version: v, Chart: ch, Status: status})
@@ -190,8 +192,64 @@ func TestUpgradeCmd(t *testing.T) {
 			golden: "output/upgrade-uninstalled-with-keep-history.txt",
 			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, rcommon.StatusUninstalled)},
 		},
+		{
+			name:      "upgrade with restricted max size",
+			cmd:       fmt.Sprintf("upgrade too-big '%s' --max-chart-size=52", compressedPath),
+			wantError: true,
+			golden:    "output/upgrade-failed-max-chart-size.txt",
+		},
 	}
 	runTestCmd(t, tests)
+}
+
+func TestUpgradeWithEnvVars(t *testing.T) {
+	tests := []struct {
+		name      string
+		cmd       string
+		envVars   map[string]string
+		wantError bool
+		golden    string
+	}{
+		{
+			name: "upgrade with HELM_MAX_CHART_SIZE env var with bytes",
+			cmd:  "upgrade too-big testdata/testcharts/compressedchart-0.1.0.tgz",
+			envVars: map[string]string{
+				"HELM_MAX_CHART_SIZE": "10",
+			},
+			wantError: true,
+			golden:    "output/upgrade-with-restricted-chart-size-env.txt",
+		},
+		{
+			name: "upgrade with HELM_MAX_FILE_SIZE env var with Quantity suffix",
+			cmd:  "upgrade test-max-file testdata/testcharts/bigchart-0.1.0.tgz",
+			envVars: map[string]string{
+				"HELM_MAX_FILE_SIZE": "2Ki",
+			},
+			wantError: true,
+			golden:    "output/upgrade-with-restricted-file-size-env.txt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer resetEnv()()
+
+			for k, v := range tt.envVars {
+				t.Setenv(k, v)
+			}
+			// Reset settings to pick up env vars
+			settings = cli.New()
+
+			test := cmdTestCase{
+				name:      tt.name,
+				cmd:       tt.cmd,
+				golden:    tt.golden,
+				wantError: tt.wantError,
+			}
+
+			runTestCmd(t, []cmdTestCase{test})
+		})
+	}
 }
 
 func TestUpgradeWithValue(t *testing.T) {
