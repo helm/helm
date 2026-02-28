@@ -254,7 +254,7 @@ func filterReleases(releases []*release.Release, ignoredReleaseNames []string) [
 
 // Provide dynamic auto-completion for release names
 func compListReleases(toComplete string, ignoredReleaseNames []string, cfg *action.Configuration) ([]string, cobra.ShellCompDirective) {
-	cobra.CompDebugln(fmt.Sprintf("compListReleases with toComplete %s", toComplete), settings.Debug)
+	cobra.CompDebugln("compListReleases with toComplete "+toComplete, settings.Debug)
 
 	client := action.NewList(cfg)
 	client.All = true

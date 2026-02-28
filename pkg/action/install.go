@@ -377,7 +377,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	}
 	// Check error from render
 	if err != nil {
-		rel.SetStatus(rcommon.StatusFailed, fmt.Sprintf("failed to render resource: %s", err.Error()))
+		rel.SetStatus(rcommon.StatusFailed, "failed to render resource: "+err.Error())
 		// Return a release with partial data so that the client can show debugging information.
 		return rel, err
 	}
