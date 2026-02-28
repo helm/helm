@@ -46,7 +46,7 @@ func buildLoadExtismPlugin(t *testing.T, dir string) pluginRaw {
 	require.NoError(t, err)
 	require.Equal(t, "extism/v1", m.Runtime, "expected plugin runtime to be extism/v1")
 
-	cmd := exec.Command("make", "-C", dir)
+	cmd := exec.CommandContext(t.Context(), "make", "-C", dir)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	require.NoError(t, cmd.Run(), "failed to build plugin in %q", dir)

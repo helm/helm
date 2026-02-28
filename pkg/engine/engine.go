@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -77,8 +78,12 @@ func New(config *rest.Config) Engine {
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
 func (e Engine) Render(chrt ci.Charter, values common.Values) (map[string]string, error) {
+	return e.RenderWithContext(context.Background(), chrt, values)
+}
+
+func (e Engine) RenderWithContext(ctx context.Context, chrt ci.Charter, values common.Values) (map[string]string, error) {
 	tmap := allTemplates(chrt, values)
-	return e.render(tmap)
+	return e.render(ctx, tmap)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to
@@ -195,7 +200,7 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 }
 
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
-func (e Engine) initFunMap(t *template.Template) {
+func (e Engine) initFunMap(ctx context.Context, t *template.Template) {
 	funcMap := funcMap()
 	includedNames := make(map[string]int)
 
@@ -238,7 +243,7 @@ func (e Engine) initFunMap(t *template.Template) {
 	// If we are not linting and have a cluster connection, provide a Kubernetes-backed
 	// implementation.
 	if !e.LintMode && e.clientProvider != nil {
-		funcMap["lookup"] = newLookupFunction(*e.clientProvider)
+		funcMap["lookup"] = newLookupFunction(ctx, *e.clientProvider)
 	}
 
 	// When DNS lookups are not enabled override the sprig function and return
@@ -256,7 +261,7 @@ func (e Engine) initFunMap(t *template.Template) {
 }
 
 // render takes a map of templates/values and renders them.
-func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, err error) {
+func (e Engine) render(ctx context.Context, tpls map[string]renderable) (rendered map[string]string, err error) {
 	// Basically, what we do here is start with an empty parent template and then
 	// build up a list of templates -- one for each file. Once all of the templates
 	// have been parsed, we loop through again and execute every template.
@@ -278,7 +283,7 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 		t.Option("missingkey=zero")
 	}
 
-	e.initFunMap(t)
+	e.initFunMap(ctx, t)
 
 	// We want to parse the templates in a predictable order. The order favors
 	// higher-level (in file system) templates over deeply nested templates.

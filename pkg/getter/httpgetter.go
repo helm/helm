@@ -17,6 +17,7 @@ package getter
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -48,7 +49,7 @@ func (g *HTTPGetter) Get(href string, options ...Option) (*bytes.Buffer, error) 
 func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error) {
 	// Set a helm specific user agent so that a repo server and metrics can
 	// separate helm calls from other tools interacting with repos.
-	req, err := http.NewRequest(http.MethodGet, href, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, href, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
