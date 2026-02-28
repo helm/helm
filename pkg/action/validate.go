@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 
@@ -226,7 +227,7 @@ func validateNameAndGenerateName(info *resource.Info) (bool, error) {
 	}
 
 	if info.Name != "" && accessor.GetGenerateName() != "" {
-		return true, fmt.Errorf("metadata.name and metadata.generateName cannot both be set")
+		return true, errors.New("metadata.name and metadata.generateName cannot both be set")
 	}
 
 	return false, nil

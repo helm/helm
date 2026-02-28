@@ -17,7 +17,6 @@ package chart
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"reflect"
 	"strings"
@@ -192,7 +191,7 @@ func structToMap(obj any) (map[string]any, error) {
 
 	// Check if the input is a struct
 	if objValue.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("input must be a struct or a pointer to a struct")
+		return nil, errors.New("input must be a struct or a pointer to a struct")
 	}
 
 	result := make(map[string]any)
