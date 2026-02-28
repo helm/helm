@@ -192,6 +192,26 @@ func (m *Manager) Update() error {
 		}
 	}
 
+	// Do resolution for each local dependency first. Local dependencies may
+	// have their own dependencies which must be resolved.
+	for _, dep := range req {
+		if !resolver.IsLocalDependency(dep.Repository) {
+			continue
+		}
+		chartpath, err := resolver.GetLocalPath(dep.Repository, m.ChartPath)
+		if err != nil {
+			return err
+		}
+		man := *m
+		// no need to update repositories, it is already done in main chart
+		man.SkipUpdate = true
+		man.ChartPath = chartpath
+		err = man.Update()
+		if err != nil {
+			return err
+		}
+	}
+
 	// Now we need to find out which version of a chart best satisfies the
 	// dependencies in the Chart.yaml
 	lock, err := m.resolve(req, repoNames)
@@ -300,7 +320,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			}
 			continue
 		}
-		if strings.HasPrefix(dep.Repository, "file://") {
+		if resolver.IsLocalDependency(dep.Repository) {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
 			}
@@ -476,7 +496,7 @@ func (m *Manager) hasAllRepos(deps []*chart.Dependency) error {
 Loop:
 	for _, dd := range deps {
 		// If repo is from local path or OCI, continue
-		if strings.HasPrefix(dd.Repository, "file://") || registry.IsOCI(dd.Repository) {
+		if resolver.IsLocalDependency(dd.Repository) || registry.IsOCI(dd.Repository) {
 			continue
 		}
 
@@ -581,7 +601,7 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			continue
 		}
 		// if dep chart is from local path, verify the path is valid
-		if strings.HasPrefix(dd.Repository, "file://") {
+		if resolver.IsLocalDependency(dd.Repository) {
 			if _, err := resolver.GetLocalPath(dd.Repository, m.ChartPath); err != nil {
 				return nil, err
 			}
@@ -874,7 +894,7 @@ func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 
 // archive a dep chart from local directory and save it into destPath
 func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, error) {
-	if !strings.HasPrefix(repo, "file://") {
+	if !resolver.IsLocalDependency(repo) {
 		return "", fmt.Errorf("wrong format: chart %s repository %s", name, repo)
 	}
 
