@@ -18,6 +18,7 @@ package plugin
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -156,7 +157,9 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 
 	slog.Debug("executing plugin hook command", slog.String("pluginName", r.metadata.Name), slog.String("command", cmd.String()))
 	if err := cmd.Run(); err != nil {
-		if eerr, ok := err.(*exec.ExitError); ok {
+		var eerr *exec.ExitError
+		ok := errors.As(err, &eerr)
+		if ok {
 			os.Stderr.Write(eerr.Stderr)
 			return fmt.Errorf("plugin %s hook for %q exited with error", event, r.metadata.Name)
 		}
@@ -170,7 +173,8 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 // then replace the other three with a call to this func
 func executeCmd(prog *exec.Cmd, pluginName string) error {
 	if err := prog.Run(); err != nil {
-		if eerr, ok := err.(*exec.ExitError); ok {
+		var eerr *exec.ExitError
+		if ok := errors.As(err, &eerr); ok {
 			slog.Debug(
 				"plugin execution failed",
 				slog.String("pluginName", pluginName),
