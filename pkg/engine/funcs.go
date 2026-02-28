@@ -19,9 +19,14 @@ package engine
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"maps"
+	"math"
+	"reflect"
+	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
@@ -60,6 +65,19 @@ func funcMap() template.FuncMap {
 		"mustToJson":    mustToJSON,
 		"fromJson":      fromJSON,
 		"fromJsonArray": fromJSONArray,
+
+		// Duration helpers
+		"mustToDuration":       mustToDuration,
+		"durationSeconds":      durationSeconds,
+		"durationMilliseconds": durationMilliseconds,
+		"durationMicroseconds": durationMicroseconds,
+		"durationNanoseconds":  durationNanoseconds,
+		"durationMinutes":      durationMinutes,
+		"durationHours":        durationHours,
+		"durationDays":         durationDays,
+		"durationWeeks":        durationWeeks,
+		"durationRoundTo":      durationRoundTo,
+		"durationTruncateTo":   durationTruncateTo,
 
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the
@@ -231,4 +249,211 @@ func fromJSONArray(str string) []any {
 		a = []any{err.Error()}
 	}
 	return a
+}
+
+// -----------------------------------------------------------------------------
+// Duration helpers (numeric-only returns)
+// -----------------------------------------------------------------------------
+
+const (
+	maxDurationSeconds      = int64(math.MaxInt64 / int64(time.Second))
+	minDurationSeconds      = int64(math.MinInt64 / int64(time.Second))
+	maxDurationSecondsFloat = float64(math.MaxInt64) / float64(time.Second)
+	minDurationSecondsFloat = float64(math.MinInt64) / float64(time.Second)
+)
+
+func durationFromSecondsInt(seconds int64) (time.Duration, error) {
+	if seconds > maxDurationSeconds || seconds < minDurationSeconds {
+		return 0, fmt.Errorf("duration seconds overflow: %d", seconds)
+	}
+	return time.Duration(seconds) * time.Second, nil
+}
+
+func durationFromSecondsUint(seconds uint64) (time.Duration, error) {
+	if seconds > uint64(maxDurationSeconds) {
+		return 0, fmt.Errorf("duration seconds overflow: %d", seconds)
+	}
+	return time.Duration(int64(seconds)) * time.Second, nil
+}
+
+func durationFromSecondsFloat(seconds float64) (time.Duration, error) {
+	if math.IsNaN(seconds) || math.IsInf(seconds, 0) {
+		return 0, fmt.Errorf("invalid duration seconds: %v", seconds)
+	}
+	if seconds > maxDurationSecondsFloat || seconds < minDurationSecondsFloat {
+		return 0, fmt.Errorf("duration seconds overflow: %v", seconds)
+	}
+	nanos := seconds * float64(time.Second)
+	if nanos > float64(math.MaxInt64) || nanos < float64(math.MinInt64) {
+		return 0, fmt.Errorf("duration nanoseconds overflow: %v", seconds)
+	}
+	return time.Duration(nanos), nil
+}
+
+// asDuration converts common template values into a time.Duration.
+//
+// Supported inputs:
+//   - time.Duration
+//   - string duration values parsed by time.ParseDuration (e.g. "1h2m3s")
+//   - numeric strings treated as seconds (e.g. "2.5")
+//   - ints and uints treated as seconds
+//   - floats treated as seconds
+func asDuration(v any) (time.Duration, error) {
+	switch x := v.(type) {
+	case time.Duration:
+		return x, nil
+
+	case string:
+		s := strings.TrimSpace(x)
+		if s == "" {
+			return 0, fmt.Errorf("empty duration")
+		}
+		if d, err := time.ParseDuration(s); err == nil {
+			return d, nil
+		}
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			return durationFromSecondsFloat(f)
+		}
+		return 0, fmt.Errorf("could not parse duration %q", x)
+
+	case nil:
+		return 0, fmt.Errorf("invalid duration")
+	}
+
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return durationFromSecondsInt(rv.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return durationFromSecondsUint(rv.Uint())
+	case reflect.Float32, reflect.Float64:
+		return durationFromSecondsFloat(rv.Float())
+	default:
+		return 0, fmt.Errorf("unsupported duration type %T", v)
+	}
+}
+
+// mustToDuration takes anything and attempts to parse as a duration returning a time.Duration.
+//
+// This is designed to be called from a template when need to ensure that a
+// duration is valid.
+func mustToDuration(v any) time.Duration {
+	d, err := asDuration(v)
+	if err != nil {
+		panic(err)
+	}
+	return d
+}
+
+// durationSeconds converts a duration to seconds (float64).
+// On error it returns 0.
+func durationSeconds(v any) float64 {
+	d, err := asDuration(v)
+	if err != nil {
+		return 0
+	}
+	return d.Seconds()
+}
+
+// durationMilliseconds converts a duration to milliseconds (int64).
+// On error it returns 0.
+func durationMilliseconds(v any) int64 {
+	d, err := asDuration(v)
+	if err != nil {
+		return 0
+	}
+	return d.Milliseconds()
+}
+
+// durationMicroseconds converts a duration to microseconds (int64).
+// On error it returns 0.
+func durationMicroseconds(v any) int64 {
+	d, err := asDuration(v)
+	if err != nil {
+		return 0
+	}
+	return d.Microseconds()
+}
+
+// durationNanoseconds converts a duration to nanoseconds (int64).
+// On error it returns 0.
+func durationNanoseconds(v any) int64 {
+	d, err := asDuration(v)
+	if err != nil {
+		return 0
+	}
+	return d.Nanoseconds()
+}
+
+// durationMinutes converts a duration to minutes (float64).
+// On error it returns 0.
+func durationMinutes(v any) float64 {
+	d, err := asDuration(v)
+	if err != nil {
+		return 0
+	}
+	return d.Minutes()
+}
+
+// durationHours converts a duration to hours (float64).
+// On error it returns 0.
+func durationHours(v any) float64 {
+	d, err := asDuration(v)
+	if err != nil {
+		return 0
+	}
+	return d.Hours()
+}
+
+// durationDays converts a duration to days (float64). (Not in Go's stdlib; handy in templates.)
+// On error it returns 0.
+func durationDays(v any) float64 {
+	d, err := asDuration(v)
+	if err != nil {
+		return 0
+	}
+	return d.Hours() / 24.0
+}
+
+// durationWeeks converts a duration to weeks (float64). (Not in Go's stdlib; handy in templates.)
+// On error it returns 0.
+func durationWeeks(v any) float64 {
+	d, err := asDuration(v)
+	if err != nil {
+		return 0
+	}
+	return d.Hours() / 24.0 / 7.0
+}
+
+// durationRoundTo rounds v to the nearest multiple of m.
+// Returns a time.Duration.
+//
+// v and m accept the same forms as asDuration (e.g. "2h13m", "30s").
+// On error, it returns time.Duration(0). If m is invalid, it returns v.
+func durationRoundTo(v any, m any) time.Duration {
+	d, err := asDuration(v)
+	if err != nil {
+		return 0
+	}
+	mul, err := asDuration(m)
+	if err != nil {
+		return d
+	}
+	return d.Round(mul)
+}
+
+// durationTruncateTo truncates v toward zero to a multiple of m.
+// Returns a time.Duration.
+//
+// On error, it returns time.Duration(0). If m is invalid, it returns v.
+func durationTruncateTo(v any, m any) time.Duration {
+	d, err := asDuration(v)
+	if err != nil {
+		return 0
+	}
+	mul, err := asDuration(m)
+	if err != nil {
+		return d
+	}
+	return d.Truncate(mul)
 }
