@@ -130,6 +130,50 @@ func TestSave(t *testing.T) {
 	}
 }
 
+func TestSavedGzipExtraFieldIsValid(t *testing.T) {
+	tmp := t.TempDir()
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       "ahab",
+			Version:    "1.2.3",
+		},
+	}
+
+	where, err := Save(c, tmp)
+	if err != nil {
+		t.Fatalf("Failed to save: %s", err)
+	}
+
+	f, err := os.Open(where)
+	if err != nil {
+		t.Fatalf("Failed to open saved file: %s", err)
+	}
+	defer f.Close()
+
+	r, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatalf("Failed to create gzip reader: %s", err)
+	}
+	defer r.Close()
+
+	// RFC 1952 §2.3.1.1:
+	// Each subfield consists of SI1, SI2 (1 byte each),
+	// a 2-byte little-endian LEN, and LEN bytes of data.
+	// https://www.rfc-editor.org/rfc/rfc1952.html#page-8
+	// https://github.com/helm/helm/issues/31844
+	extra := r.Header.Extra
+	if len(extra) > 0 {
+		if len(extra) < 4 {
+			t.Fatalf("gzip extra field too short to contain a valid subfield: %d byte(s)", len(extra))
+		}
+		dataLen := int(extra[2]) | int(extra[3])<<8
+		if len(extra) != 4+dataLen {
+			t.Errorf("gzip extra field has malformed subfield: LEN=%d but %d data byte(s) follow the subfield header", dataLen, len(extra)-4)
+		}
+	}
+}
+
 // Creates a copy with a different schema; does not modify anything.
 func withSchema(chart chart.Chart, schema []byte) chart.Chart {
 	chart.Schema = schema
@@ -299,7 +343,7 @@ func TestRepeatableSave(t *testing.T) {
 				Schema:        []byte("{\n  \"title\": \"Values\"\n}"),
 				SchemaModTime: modTime,
 			},
-			want: "fea2662522317b65c2788ff9e5fc446a9264830038dac618d4449493d99b3257",
+			want: "63358874b93ea095c857cd66bcf5d0a4464840cf84a07547db744d81d6c5af59",
 		},
 		{
 			name: "Package 2 files",
@@ -321,7 +365,7 @@ func TestRepeatableSave(t *testing.T) {
 				Schema:        []byte("{\n  \"title\": \"Values\"\n}"),
 				SchemaModTime: modTime,
 			},
-			want: "7ae92b2f274bb51ea3f1969e4187d78cc52b5f6f663b44b8fb3b40bcb8ee46f3",
+			want: "c2a43990053da788ad4e260d3b00d52a0b103ccc67ab9f48278a7b6dcfb2a4bd",
 		},
 	}
 	for _, test := range tests {
