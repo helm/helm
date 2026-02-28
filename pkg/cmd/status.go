@@ -199,7 +199,7 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 				h.Name,
 				"Last Started:   "+h.LastRun.StartedAt.Format(time.ANSIC),
 				"Last Completed: "+h.LastRun.CompletedAt.Format(time.ANSIC),
-				fmt.Sprintf("Phase:          %s", h.LastRun.Phase),
+				"Phase:          "+h.LastRun.Phase,
 			)
 		}
 	}
