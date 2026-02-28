@@ -77,7 +77,6 @@ func GetUserAgent() string {
 
 // Get returns build info
 func Get() BuildInfo {
-
 	makeKubeClientVersionString := func() string {
 		// Test builds don't include debug info / module info
 		// (And even if they did, we probably want a stable version during tests anyway)

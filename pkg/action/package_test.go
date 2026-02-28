@@ -150,7 +150,6 @@ func TestValidateVersion(t *testing.T) {
 				if !errors.Is(err, tt.wantErr) {
 					t.Errorf("Expected {%v}, got {%v}", tt.wantErr, err)
 				}
-
 			}
 		})
 	}

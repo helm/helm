@@ -195,5 +195,4 @@ func (h *hubSearchWriter) encodeByFormat(out io.Writer, format output.Format) er
 		// WriteJSON and WriteYAML, we shouldn't get invalid types
 		return nil
 	}
-
 }

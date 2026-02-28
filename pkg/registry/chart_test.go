@@ -27,7 +27,6 @@ import (
 )
 
 func TestGenerateOCIChartAnnotations(t *testing.T) {
-
 	nowString := time.Now().Format(time.RFC3339)
 
 	tests := []struct {
@@ -147,18 +146,15 @@ func TestGenerateOCIChartAnnotations(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-
 		result := generateChartOCIAnnotations(tt.chart, nowString)
 
 		if !reflect.DeepEqual(tt.expect, result) {
 			t.Errorf("%s: expected map %v, got %v", tt.name, tt.expect, result)
 		}
-
 	}
 }
 
 func TestGenerateOCIAnnotations(t *testing.T) {
-
 	nowString := time.Now().Format(time.RFC3339)
 
 	tests := []struct {
@@ -221,18 +217,15 @@ func TestGenerateOCIAnnotations(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-
 		result := generateOCIAnnotations(tt.chart, nowString)
 
 		if !reflect.DeepEqual(tt.expect, result) {
 			t.Errorf("%s: expected map %v, got %v", tt.name, tt.expect, result)
 		}
-
 	}
 }
 
 func TestGenerateOCICreatedAnnotations(t *testing.T) {
-
 	nowTime := time.Now()
 	nowTimeString := nowTime.Format(time.RFC3339)
 
@@ -268,7 +261,5 @@ func TestGenerateOCICreatedAnnotations(t *testing.T) {
 		if !nowTime.Before(createdTimeAnnotation) {
 			t.Errorf("%s annotation with value '%s' not configured properly. Annotation value is not after %s", ocispec.AnnotationCreated, result[ocispec.AnnotationCreated], nowTimeString)
 		}
-
 	}
-
 }

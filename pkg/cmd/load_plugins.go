@@ -333,7 +333,6 @@ func loadFile(path string) (*pluginCommand, error) {
 // to obtain the dynamic completion choices.  It must pass all the flags and sub-commands
 // specified in the command-line to the plugin.complete executable (except helm's global flags)
 func pluginDynamicComp(plug plugin.Plugin, cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-
 	subprocessPlug, ok := plug.(*plugin.SubprocessPluginRuntime)
 	if !ok {
 		// Completion only supported for subprocess plugins (TODO: fix this)

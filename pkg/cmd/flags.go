@@ -219,7 +219,6 @@ func (p *postRendererArgsSlice) Type() string {
 }
 
 func (p *postRendererArgsSlice) Set(val string) error {
-
 	// a post-renderer defined by a user may accept empty arguments
 	p.options.args = append(p.options.args, val)
 
