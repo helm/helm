@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"path"
 	"strings"
@@ -417,7 +418,7 @@ func TestRenderWithClientProvider_error(t *testing.T) {
 		t: t,
 		scheme: map[string]kindProps{
 			"v1/Error": {
-				shouldErr: fmt.Errorf("kaboom"),
+				shouldErr: errors.New("kaboom"),
 			},
 		},
 	}
@@ -1059,9 +1060,11 @@ func TestRenderRecursionLimit(t *testing.T) {
 	}
 
 	var expect string
+	var expectSb1062 strings.Builder
 	for range times {
-		expect += phrase + "\n"
+		expectSb1062.WriteString(phrase + "\n")
 	}
+	expect += expectSb1062.String()
 	if got := out["overlook/templates/quote"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}

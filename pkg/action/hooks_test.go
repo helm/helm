@@ -19,6 +19,7 @@ package action
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -173,7 +174,7 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 	t.Helper()
 	var expectedOutput string
 	if shouldOutput {
-		expectedOutput = fmt.Sprintf("attempted to output logs for namespace: %s", expectedNamespace)
+		expectedOutput = "attempted to output logs for namespace: " + expectedNamespace
 	}
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -200,13 +201,13 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 	t.Helper()
 	var expectedOutput string
 	if shouldOutput {
-		expectedOutput = fmt.Sprintf("attempted to output logs for namespace: %s", expectedNamespace)
+		expectedOutput = "attempted to output logs for namespace: " + expectedNamespace
 	}
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "failed-hooks"
 	failingClient := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failingClient.WatchUntilReadyError = fmt.Errorf("failed watch")
+	failingClient.WatchUntilReadyError = errors.New("failed watch")
 	instAction.cfg.KubeClient = failingClient
 	outBuffer := &bytes.Buffer{}
 	failingClient.PrintingKubeClient = kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}

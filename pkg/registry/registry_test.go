@@ -209,7 +209,7 @@ func initCompromisedRegistryTestServer() string {
 	}))
 
 	u, _ := url.Parse(s.URL)
-	return fmt.Sprintf("localhost:%s", u.Port())
+	return "localhost:" + u.Port()
 }
 
 func initFakeRegistryTestServer() string {
@@ -376,7 +376,7 @@ func initFakeRegistryTestServer() string {
 	}))
 
 	u, _ := url.Parse(s.URL)
-	return fmt.Sprintf("localhost:%s", u.Port())
+	return "localhost:" + u.Port()
 }
 
 func testPush(suite *TestRegistry) {
@@ -384,7 +384,7 @@ func testPush(suite *TestRegistry) {
 	testingChartCreationTime := "1977-09-02T22:04:05Z"
 
 	// Bad bytes
-	ref := fmt.Sprintf("%s/testrepo/testchart:1.2.3", suite.DockerRegistryHost)
+	ref := suite.DockerRegistryHost + "/testrepo/testchart:1.2.3"
 	_, err := suite.RegistryClient.Push([]byte("hello"), ref, PushOptCreationTime(testingChartCreationTime))
 	suite.NotNil(err, "error pushing non-chart bytes")
 
@@ -468,7 +468,7 @@ func testPush(suite *TestRegistry) {
 
 func testPull(suite *TestRegistry) {
 	// bad/missing ref
-	ref := fmt.Sprintf("%s/testrepo/no-existy:1.2.3", suite.DockerRegistryHost)
+	ref := suite.DockerRegistryHost + "/testrepo/no-existy:1.2.3"
 	_, err := suite.RegistryClient.Pull(ref)
 	suite.NotNil(err, "error on bad/missing ref")
 

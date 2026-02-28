@@ -216,7 +216,7 @@ func (r *repoSearchWriter) WriteTable(out io.Writer) error {
 	if len(r.results) == 0 {
 		// Fail if no results found and --fail-on-no-result is enabled
 		if r.failOnNoResult {
-			return fmt.Errorf("no results found")
+			return errors.New("no results found")
 		}
 
 		_, err := out.Write([]byte("No results found\n"))
@@ -245,7 +245,7 @@ func (r *repoSearchWriter) WriteYAML(out io.Writer) error {
 func (r *repoSearchWriter) encodeByFormat(out io.Writer, format output.Format) error {
 	// Fail if no results found and --fail-on-no-result is enabled
 	if len(r.results) == 0 && r.failOnNoResult {
-		return fmt.Errorf("no results found")
+		return errors.New("no results found")
 	}
 
 	// Initialize the array so no results returns an empty array instead of null
@@ -307,7 +307,7 @@ func compListChartsOfRepo(repoName string, prefix string) []string {
 // Provide dynamic auto-completion for commands that operate on charts (e.g., helm show)
 // When true, the includeFiles argument indicates that completion should include local files (e.g., local charts)
 func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.ShellCompDirective) {
-	cobra.CompDebugln(fmt.Sprintf("compListCharts with toComplete %s", toComplete), settings.Debug)
+	cobra.CompDebugln("compListCharts with toComplete "+toComplete, settings.Debug)
 
 	noSpace := false
 	noFile := false
@@ -323,7 +323,7 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 		if len(repoInfo) > 1 {
 			repoDesc = repoInfo[1]
 		}
-		repoWithSlash := fmt.Sprintf("%s/", repo)
+		repoWithSlash := repo + "/"
 		if strings.HasPrefix(toComplete, repoWithSlash) {
 			// Must complete with charts within the specified repo.
 			// Don't filter on toComplete to allow for shell fuzzy matching
