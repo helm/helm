@@ -234,6 +234,16 @@ func TestListCmd(t *testing.T) {
 		cmd:    "list -n milano",
 		golden: "output/list-namespace.txt",
 		rels:   releaseFixture,
+	}, {
+		name:   "list with deprecated --all flag produces same output",
+		cmd:    "list --all",
+		golden: "output/list-all-deprecated.txt",
+		rels:   releaseFixture,
+	}, {
+		name:   "list with deprecated -a flag produces same output",
+		cmd:    "list -a",
+		golden: "output/list-all-deprecated.txt",
+		rels:   releaseFixture,
 	}}
 	runTestCmd(t, tests)
 }
