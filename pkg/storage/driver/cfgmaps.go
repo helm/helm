@@ -171,7 +171,7 @@ func (cfgmaps *ConfigMaps) Create(key string, rls release.Releaser) error {
 
 	lbs.init()
 	lbs.fromMap(rac.Labels())
-	lbs.set("createdAt", fmt.Sprintf("%v", time.Now().Unix()))
+	lbs.set("createdAt", strconv.FormatInt(time.Now().Unix(), 10))
 
 	rel, err := releaserToV1Release(rls)
 	if err != nil {
@@ -209,7 +209,7 @@ func (cfgmaps *ConfigMaps) Update(key string, rel release.Releaser) error {
 
 	lbs.init()
 	lbs.fromMap(rls.Labels)
-	lbs.set("modifiedAt", fmt.Sprintf("%v", time.Now().Unix()))
+	lbs.set("modifiedAt", strconv.FormatInt(time.Now().Unix(), 10))
 
 	// create a new configmap object to hold the release
 	obj, err := newConfigMapsObject(key, rls, lbs)
