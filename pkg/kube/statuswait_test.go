@@ -715,7 +715,7 @@ func setupRestrictedClient(fakeClient *dynamicfake.FakeDynamicClient, allowedNam
 			return true, nil, apierrors.NewForbidden(
 				action.GetResource().GroupResource(),
 				"",
-				fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources"),
+				errors.New("user does not have cluster-wide LIST permissions for cluster-scoped resources"),
 			)
 		}
 		if !config.allowedNamespaces[ns] {
@@ -739,7 +739,7 @@ func setupRestrictedClient(fakeClient *dynamicfake.FakeDynamicClient, allowedNam
 			return true, nil, apierrors.NewForbidden(
 				action.GetResource().GroupResource(),
 				"",
-				fmt.Errorf("user does not have cluster-wide WATCH permissions for cluster-scoped resources"),
+				errors.New("user does not have cluster-wide WATCH permissions for cluster-scoped resources"),
 			)
 		}
 		if !config.allowedNamespaces[ns] {
@@ -793,7 +793,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			name:              "error when cluster-scoped resource included",
 			objManifests:      []string{podNamespace1Manifest, clusterRoleManifest},
 			allowedNamespaces: []string{"namespace-1"},
-			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
+			expectErrs:        []error{errors.New("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
 			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
@@ -802,7 +802,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			name:              "error when deleting cluster-scoped resource",
 			objManifests:      []string{podNamespace1Manifest, namespaceManifest},
 			allowedNamespaces: []string{"namespace-1"},
-			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
+			expectErrs:        []error{errors.New("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
 			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WaitForDelete(rl, timeout)
 			},
@@ -892,7 +892,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			name:              "wait fails when cluster-scoped resource included",
 			objManifests:      []string{podNamespace1Manifest, clusterRoleManifest},
 			allowedNamespaces: []string{"namespace-1"},
-			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
+			expectErrs:        []error{errors.New("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
 			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
@@ -901,7 +901,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			name:              "waitForDelete fails when cluster-scoped resource included",
 			objManifests:      []string{podNamespace1Manifest, clusterRoleManifest},
 			allowedNamespaces: []string{"namespace-1"},
-			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
+			expectErrs:        []error{errors.New("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
 			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WaitForDelete(rl, timeout)
 			},
@@ -910,7 +910,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			name:              "wait fails when namespace resource included",
 			objManifests:      []string{podNamespace1Manifest, namespaceManifest},
 			allowedNamespaces: []string{"namespace-1"},
-			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
+			expectErrs:        []error{errors.New("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
 			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},

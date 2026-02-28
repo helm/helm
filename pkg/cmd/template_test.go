@@ -178,23 +178,23 @@ func TestTemplateVersionCompletion(t *testing.T) {
 
 	tests := []cmdTestCase{{
 		name:   "completion for template version flag with release name",
-		cmd:    fmt.Sprintf("%s __complete template releasename testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete template releasename testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for template version flag with generate-name",
-		cmd:    fmt.Sprintf("%s __complete template --generate-name testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete template --generate-name testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for template version flag too few args",
-		cmd:    fmt.Sprintf("%s __complete template testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete template testing/alpine --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for template version flag too many args",
-		cmd:    fmt.Sprintf("%s __complete template releasename testing/alpine badarg --version ''", repoSetup),
+		cmd:    repoSetup + " __complete template releasename testing/alpine badarg --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for template version flag invalid chart",
-		cmd:    fmt.Sprintf("%s __complete template releasename invalid/invalid --version ''", repoSetup),
+		cmd:    repoSetup + " __complete template releasename invalid/invalid --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}}
 	runTestCmd(t, tests)

@@ -342,7 +342,7 @@ func runPullTests(t *testing.T, tests []struct {
 func buildOCIURL(registryURL, chartName, version, username, password string) string {
 	baseURL := fmt.Sprintf("oci://%s/u/ocitestuser/%s", registryURL, chartName)
 	if version != "" {
-		baseURL += fmt.Sprintf(" --version %s", version)
+		baseURL += " --version " + version
 	}
 	if username != "" && password != "" {
 		baseURL += fmt.Sprintf(" --username %s --password %s", username, password)
@@ -416,23 +416,23 @@ func TestPullVersionCompletion(t *testing.T) {
 
 	tests := []cmdTestCase{{
 		name:   "completion for pull version flag",
-		cmd:    fmt.Sprintf("%s __complete pull testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete pull testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for pull version flag, no filter",
-		cmd:    fmt.Sprintf("%s __complete pull testing/alpine --version 0.3", repoSetup),
+		cmd:    repoSetup + " __complete pull testing/alpine --version 0.3",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for pull version flag too few args",
-		cmd:    fmt.Sprintf("%s __complete pull --version ''", repoSetup),
+		cmd:    repoSetup + " __complete pull --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for pull version flag too many args",
-		cmd:    fmt.Sprintf("%s __complete pull testing/alpine badarg --version ''", repoSetup),
+		cmd:    repoSetup + " __complete pull testing/alpine badarg --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for pull version flag invalid chart",
-		cmd:    fmt.Sprintf("%s __complete pull invalid/invalid --version ''", repoSetup),
+		cmd:    repoSetup + " __complete pull invalid/invalid --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}}
 	runTestCmd(t, tests)
