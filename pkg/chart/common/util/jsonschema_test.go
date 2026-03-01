@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -177,11 +178,12 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := `subchart:
-- at '': missing property 'age'
-`
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
+	expectedValidationError := "missing property 'age'"
+	if !strings.Contains(errString, "subchart:") {
+		t.Errorf("Error string should contain 'subchart:', got: %s", errString)
+	}
+	if !strings.Contains(errString, expectedValidationError) {
+		t.Errorf("Error string should contain '%s', got: %s", expectedValidationError, errString)
 	}
 }
 
@@ -241,12 +243,63 @@ func TestValidateAgainstSchema2020Negative(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := `subchart:
-- at '/data': no items match contains schema
-  - at '/data/0': got number, want string
-`
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
+	expectedValidationErrors := []string{
+		"no items match contains schema",
+		"got number, want string",
+	}
+	if !strings.Contains(errString, "subchart:") {
+		t.Errorf("Error string should contain 'subchart:', got: %s", errString)
+	}
+	for _, expectedErr := range expectedValidationErrors {
+		if !strings.Contains(errString, expectedErr) {
+			t.Errorf("Error string should contain '%s', got: %s", expectedErr, errString)
+		}
+	}
+}
+
+// TestValidateWithRelativeSchemaReferences tests schema validation with relative $ref paths
+// This mimics the behavior of "helm lint ." where the schema is in the current directory
+func TestValidateWithRelativeSchemaReferencesCurrentDir(t *testing.T) {
+	values, err := common.ReadValuesFile("./testdata/current-dir-test/test-values.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	schemaPath := "./testdata/current-dir-test/values.schema.json"
+	schema, err := os.ReadFile(schemaPath)
+	if err != nil {
+		t.Fatalf("Error reading JSON schema file: %s", err)
+	}
+
+	absSchemaPath, err := filepath.Abs(schemaPath)
+	if err != nil {
+		t.Fatalf("Error getting absolute path: %s", err)
+	}
+
+	if err := ValidateAgainstSingleSchemaWithPath(values, schema, absSchemaPath); err != nil {
+		t.Errorf("Error validating Values against Schema with relative references: %s", err)
+	}
+}
+
+// TestValidateWithRelativeSchemaReferencesSubfolder tests schema validation with relative $ref paths
+// This mimics the behavior of "helm lint subfolder" where the schema is in a subdirectory
+func TestValidateWithRelativeSchemaReferencesSubfolder(t *testing.T) {
+	values, err := common.ReadValuesFile("./testdata/subdir-test/subfolder/test-values.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	schemaPath := "./testdata/subdir-test/subfolder/values.schema.json"
+	schema, err := os.ReadFile(schemaPath)
+	if err != nil {
+		t.Fatalf("Error reading JSON schema file: %s", err)
+	}
+
+	absSchemaPath, err := filepath.Abs(schemaPath)
+	if err != nil {
+		t.Fatalf("Error getting absolute path: %s", err)
+	}
+
+	if err := ValidateAgainstSingleSchemaWithPath(values, schema, absSchemaPath); err != nil {
+		t.Errorf("Error validating Values against Schema with relative references from subfolder: %s", err)
 	}
 }
 

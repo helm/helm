@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -74,14 +75,39 @@ func newHTTPURLLoader() *HTTPURLLoader {
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
 func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
+	return ValidateAgainstSchemaWithPath(ch, values, "")
+}
+
+func ValidateAgainstSchemaWithPath(ch chart.Charter, values map[string]any, chartDir string) error {
 	chrt, err := chart.NewAccessor(ch)
 	if err != nil {
 		return err
 	}
+
+	var absChartPath string
+	if chartDir != "" {
+		var err error
+		absChartPath, err = filepath.Abs(chartDir)
+		if err != nil {
+			return err
+		}
+	}
+
 	var sb strings.Builder
 	if chrt.Schema() != nil {
 		slog.Debug("chart name", "chart-name", chrt.Name())
-		err := ValidateAgainstSingleSchema(values, chrt.Schema())
+
+		var schemaPath string
+		if absChartPath != "" {
+			// Use the chart directory for $ref resolution
+			schemaPath = filepath.Join(absChartPath, "values.schema.json")
+		} else {
+			// No chart directory (e.g., chart loaded from .tgz archive).
+			// Use a synthetic path - $ref resolution will not work, but main schema validation will.
+			schemaPath = "/values.schema.json"
+		}
+
+		err := ValidateAgainstSingleSchemaWithPath(values, chrt.Schema(), schemaPath)
 		if err != nil {
 			fmt.Fprintf(&sb, "%s:\n", chrt.Name())
 			sb.WriteString(err.Error())
@@ -108,7 +134,12 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 			continue
 		}
 
-		if err := ValidateAgainstSchema(subchart, subchartValues); err != nil {
+		var subchartPath string
+		if absChartPath != "" {
+			subchartPath = filepath.Join(absChartPath, "charts", sub.Name())
+		}
+		// If absChartPath is empty (archived chart), pass empty string to disable $ref resolution for subcharts too
+		if err := ValidateAgainstSchemaWithPath(subchart, subchartValues, subchartPath); err != nil {
 			sb.WriteString(err.Error())
 		}
 	}
@@ -122,6 +153,12 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 
 // ValidateAgainstSingleSchema checks that values does not violate the structure laid out in this schema
 func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reterr error) {
+	return ValidateAgainstSingleSchemaWithPath(values, schemaJSON, "/values.schema.json")
+}
+
+// ValidateAgainstSingleSchemaWithPath checks that values does not violate the structure laid out in this schema.
+// schemaPath is the absolute path to the schema file, used to resolve relative $ref references.
+func ValidateAgainstSingleSchemaWithPath(values common.Values, schemaJSON []byte, schemaPath string) (reterr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to validate schema: %s", r)
@@ -146,12 +183,14 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 
 	compiler := jsonschema.NewCompiler()
 	compiler.UseLoader(loader)
-	err = compiler.AddResource("file:///values.schema.json", schema)
+
+	schemaURL := fmt.Sprintf("file://%s", schemaPath)
+	err = compiler.AddResource(schemaURL, schema)
 	if err != nil {
 		return err
 	}
 
-	validator, err := compiler.Compile("file:///values.schema.json")
+	validator, err := compiler.Compile(schemaURL)
 	if err != nil {
 		return err
 	}
@@ -209,7 +248,12 @@ func (e JSONSchemaValidationError) Error() string {
 
 	// This string prefixes all of our error details. Further up the stack of helm error message
 	// building more detail is provided to users. This is removed.
-	errStr = strings.TrimPrefix(errStr, "jsonschema validation failed with 'file:///values.schema.json#'\n")
+	// Remove the "jsonschema validation failed with 'file://...#'" line regardless of the path
+	if strings.HasPrefix(errStr, "jsonschema validation failed with 'file://") {
+		if idx := strings.Index(errStr, "#'\n"); idx != -1 {
+			errStr = errStr[idx+3:] // Skip past "#'\n"
+		}
+	}
 
 	// The extra new line is needed for when there are sub-charts.
 	return errStr + "\n"

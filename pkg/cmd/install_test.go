@@ -231,6 +231,11 @@ func TestInstall(t *testing.T) {
 			cmd:    "install schema testdata/testcharts/chart-with-schema-and-subchart --set lastname=doe --set subchart-with-schema.age=-25 --skip-schema-validation",
 			golden: "output/schema.txt",
 		},
+		{
+			name:   "install with schema file containing $ref",
+			cmd:    "install reftest testdata/testcharts/chart-with-schema-ref",
+			golden: "output/schema-ref.txt",
+		},
 		// Install deprecated chart
 		{
 			name:   "install with warning about deprecated chart",

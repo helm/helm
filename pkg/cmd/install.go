@@ -248,6 +248,13 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
+	// Only set ChartDir for directory-based charts to enable $ref resolution.
+	// Archived charts (.tgz) are loaded into memory without filesystem extraction,
+	// so $ref resolution is not supported for them.
+	if fi, err := os.Stat(cp); err == nil && fi.IsDir() {
+		client.ChartDir = cp
+	}
+
 	slog.Debug("Chart path", "path", cp)
 
 	p := getter.All(settings)

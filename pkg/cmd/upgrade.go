@@ -187,6 +187,13 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
+			// Only set ChartDir for directory-based charts to enable $ref resolution.
+			// Archived charts (.tgz) are loaded into memory without filesystem extraction,
+			// so $ref resolution is not supported for them.
+			if fi, err := os.Stat(chartPath); err == nil && fi.IsDir() {
+				client.ChartDir = chartPath
+			}
+
 			p := getter.All(settings)
 			vals, err := valueOpts.MergeValues(p)
 			if err != nil {

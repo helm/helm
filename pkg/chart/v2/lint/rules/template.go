@@ -128,7 +128,7 @@ func (t *templateLinter) Lint() {
 		return
 	}
 
-	valuesToRender, err := util.ToRenderValuesWithSchemaValidation(chart, cvals, options, caps, t.skipSchemaValidation)
+	valuesToRender, err := util.ToRenderValuesWithSchemaValidationAndPath(chart, cvals, options, caps, t.skipSchemaValidation, t.linter.ChartDir)
 	if err != nil {
 		t.linter.RunLinterRule(support.ErrorSev, templatesDir, err)
 		return
