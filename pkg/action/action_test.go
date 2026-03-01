@@ -403,6 +403,71 @@ func (m *mockPostRenderer) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, 
 	return bytes.NewBufferString(content), nil
 }
 
+func TestFixDocSeparators(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "no separator",
+			input:    "apiVersion: v1\nkind: Service\n",
+			expected: "apiVersion: v1\nkind: Service\n",
+		},
+		{
+			name:     "separator on its own line",
+			input:    "---\napiVersion: v1\nkind: Service\n",
+			expected: "---\napiVersion: v1\nkind: Service\n",
+		},
+		{
+			name:     "leading separator glued to content",
+			input:    "---apiVersion: v1\nkind: Service\n",
+			expected: "---\napiVersion: v1\nkind: Service\n",
+		},
+		{
+			name:     "mid-content separator glued to content",
+			input:    "apiVersion: v1\nkind: ConfigMap\n---apiVersion: v1\nkind: Service\n",
+			expected: "apiVersion: v1\nkind: ConfigMap\n---\napiVersion: v1\nkind: Service\n",
+		},
+		{
+			name:     "multiple separators all proper",
+			input:    "---\napiVersion: v1\n---\napiVersion: v1\n",
+			expected: "---\napiVersion: v1\n---\napiVersion: v1\n",
+		},
+		{
+			name:     "multiple separators some glued",
+			input:    "---apiVersion: v1\nkind: ConfigMap\n---apiVersion: v1\nkind: Service\n",
+			expected: "---\napiVersion: v1\nkind: ConfigMap\n---\napiVersion: v1\nkind: Service\n",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "only separator",
+			input:    "---\n",
+			expected: "---\n",
+		},
+		{
+			name:     "triple dash in a value is not a separator",
+			input:    "data:\n  key: ---value\n",
+			expected: "data:\n  key: ---value\n",
+		},
+		{
+			name:     "realistic multi-doc template output",
+			input:    "apiVersion: v1\nkind: Deployment\n---\napiVersion: v1\nkind: Ingress\n---apiVersion: v1\nkind: Service\n",
+			expected: "apiVersion: v1\nkind: Deployment\n---\napiVersion: v1\nkind: Ingress\n---\napiVersion: v1\nkind: Service\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, fixDocSeparators(tt.input))
+		})
+	}
+}
+
 func TestAnnotateAndMerge(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -542,6 +607,65 @@ metadata:
   - malformed`,
 			},
 			expectedError: "parsing templates/invalid.yaml",
+		},
+		{
+			name: "leading doc separator glued to content by template whitespace trimming",
+			files: map[string]string{
+				"templates/service.yaml": "---apiVersion: v1\nkind: Service\nmetadata:\n  name: test-svc\n",
+			},
+			expected: `apiVersion: v1
+kind: Service
+metadata:
+  name: test-svc
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/service.yaml'
+`,
+		},
+		{
+			name: "leading doc separator on its own line",
+			files: map[string]string{
+				"templates/service.yaml": "---\napiVersion: v1\nkind: Service\nmetadata:\n  name: test-svc\n",
+			},
+			expected: `apiVersion: v1
+kind: Service
+metadata:
+  name: test-svc
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/service.yaml'
+`,
+		},
+		{
+			name: "multiple leading doc separators",
+			files: map[string]string{
+				"templates/service.yaml": "---\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: test-svc\n",
+			},
+			expected: `apiVersion: v1
+kind: Service
+metadata:
+  name: test-svc
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/service.yaml'
+`,
+		},
+		{
+			name: "mid-content doc separator glued to content by template whitespace trimming",
+			files: map[string]string{
+				"templates/all.yaml": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test-cm\n---apiVersion: v1\nkind: Service\nmetadata:\n  name: test-svc\n",
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/all.yaml'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-svc
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/all.yaml'
+`,
 		},
 	}
 
