@@ -27,6 +27,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -68,6 +69,10 @@ type Manager struct {
 	Debug bool
 	// Keyring is the key ring file.
 	Keyring string
+	// Untar indicates that downloaded dependencies should be unpacked.
+	Untar bool
+	// UntarDir is the root directory where unpacked dependencies are written.
+	UntarDir string
 	// SkipUpdate indicates that the repository should not be updated first.
 	SkipUpdate bool
 	// Getter collection for the operation
@@ -144,7 +149,8 @@ func (m *Manager) Build() error {
 	}
 
 	// Now we need to fetch every package here into charts/
-	return m.downloadAll(lock.Dependencies)
+	// Use lock deps for download, and original metadata deps for extraction naming (aliases).
+	return m.downloadAll(lock.Dependencies, req)
 }
 
 // Update updates a local charts directory.
@@ -200,7 +206,7 @@ func (m *Manager) Update() error {
 	}
 
 	// Now we need to fetch every package here into charts/
-	if err := m.downloadAll(lock.Dependencies); err != nil {
+	if err := m.downloadAll(lock.Dependencies, req); err != nil {
 		return err
 	}
 
@@ -242,7 +248,7 @@ func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) 
 //
 // It will delete versions of the chart that exist on disk and might cause
 // a conflict.
-func (m *Manager) downloadAll(deps []*chart.Dependency) error {
+func (m *Manager) downloadAll(downloadDeps, extractionDeps []*chart.Dependency) error {
 	repos, err := m.loadChartRepositories()
 	if err != nil {
 		return err
@@ -270,10 +276,10 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	}
 	defer os.RemoveAll(tmpPath)
 
-	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
+	fmt.Fprintf(m.Out, "Saving %d charts\n", len(downloadDeps))
 	var saveError error
 	churls := make(map[string]struct{})
-	for _, dep := range deps {
+	for _, dep := range downloadDeps {
 		// No repository means the chart is in charts directory
 		if dep.Repository == "" {
 			fmt.Fprintf(m.Out, "Dependency %s did not declare a repository. Assuming it exists in the charts directory\n", dep.Name)
@@ -367,14 +373,396 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	// TODO: this should probably be refactored to be a []error, so we can capture and provide more information rather than "last error wins".
 	if saveError == nil {
 		// now we can move all downloaded charts to destPath and delete outdated dependencies
-		if err := m.safeMoveDeps(deps, tmpPath, destPath); err != nil {
+		if err := m.safeMoveDeps(downloadDeps, tmpPath, destPath); err != nil {
 			return err
+		}
+		if m.Untar {
+			if err := m.untarDeps(extractionDeps, downloadDeps, destPath); err != nil {
+				return err
+			}
 		}
 	} else {
 		fmt.Fprintln(m.Out, "Save error occurred: ", saveError)
 		return saveError
 	}
 	return nil
+}
+
+type depExtractionTarget struct {
+	dep        *chart.Dependency
+	archive    string
+	extracted  string
+	targetName string
+}
+
+func (m *Manager) untarDeps(extractionDeps, resolvedDeps []*chart.Dependency, sourcePath string) error {
+	targets, err := m.buildExtractionTargets(extractionDeps, resolvedDeps, sourcePath)
+	if err != nil {
+		return err
+	}
+	if len(targets) == 0 {
+		return nil
+	}
+
+	untarRoot, err := m.resolveUntarRoot()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(untarRoot, 0755); err != nil {
+		return err
+	}
+
+	tmpUntarRoot, err := os.MkdirTemp(m.ChartPath, "tmpuntar-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpUntarRoot)
+	tmpExtractRoot := filepath.Join(tmpUntarRoot, ".extract")
+	if err := os.MkdirAll(tmpExtractRoot, 0755); err != nil {
+		return err
+	}
+
+	for i, target := range targets {
+		extractRoot := filepath.Join(tmpExtractRoot, strconv.Itoa(i))
+		if err := os.MkdirAll(extractRoot, 0755); err != nil {
+			return err
+		}
+		if err := chartutil.ExpandFile(extractRoot, target.archive); err != nil {
+			return fmt.Errorf("failed to untar %s: %w", filepath.Base(target.archive), err)
+		}
+
+		extractedPath := filepath.Join(extractRoot, target.extracted)
+		finalPath := filepath.Join(tmpUntarRoot, target.targetName)
+		if _, err := os.Stat(finalPath); err == nil {
+			return fmt.Errorf("failed to untar: a file or directory with the name %s already exists", filepath.Join(untarRoot, target.targetName))
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		if err := os.Rename(extractedPath, finalPath); err != nil {
+			return fmt.Errorf("failed to untar %s: %w", filepath.Base(target.archive), err)
+		}
+	}
+
+	expectedTargets := make(map[string]struct{}, len(targets))
+	for _, target := range targets {
+		expectedTargets[target.targetName] = struct{}{}
+		destPath := filepath.Join(untarRoot, target.targetName)
+
+		if _, err := os.Stat(filepath.Join(tmpUntarRoot, target.targetName)); err != nil {
+			return fmt.Errorf("failed to untar %s: %w", filepath.Base(target.archive), err)
+		}
+
+		info, err := os.Stat(destPath)
+		if err == nil && !info.IsDir() {
+			return fmt.Errorf("failed to untar: %s exists and is not a directory", destPath)
+		}
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+
+	for _, target := range targets {
+		destPath := filepath.Join(untarRoot, target.targetName)
+		if err := os.RemoveAll(destPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		if err := fs.RenameWithFallback(filepath.Join(tmpUntarRoot, target.targetName), destPath); err != nil {
+			return fmt.Errorf("failed to untar %s: %w", filepath.Base(target.archive), err)
+		}
+	}
+
+	if m.shouldCleanupUntarRoot(untarRoot) {
+		if err := m.cleanupOutdatedUnpackedCharts(extractionDeps, untarRoot, expectedTargets); err != nil {
+			return err
+		}
+	}
+
+	if m.shouldCleanupUntarRoot(untarRoot) {
+		archives := make(map[string]struct{}, len(targets))
+		for _, target := range targets {
+			archives[target.archive] = struct{}{}
+		}
+		for archive := range archives {
+			if err := os.Remove(archive); err != nil && !errors.Is(err, os.ErrNotExist) {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (m *Manager) buildExtractionTargets(extractionDeps, resolvedDeps []*chart.Dependency, sourcePath string) ([]depExtractionTarget, error) {
+	targets := make([]depExtractionTarget, 0, len(extractionDeps))
+	seenTargetNames := make(map[string]string, len(extractionDeps))
+	for i, dep := range extractionDeps {
+		if dep.Repository == "" {
+			continue
+		}
+
+		targetName := dep.Name
+		if dep.Alias != "" {
+			targetName = dep.Alias
+		}
+		if previous, ok := seenTargetNames[targetName]; ok {
+			return nil, fmt.Errorf("dependency conflict detected: dependencies %q and %q resolve to the same target directory %q. Please set unique aliases", previous, dep.Name, targetName)
+		}
+		seenTargetNames[targetName] = dep.Name
+
+		resolvedDep, err := findResolvedDependencyAtIndex(dep, resolvedDeps, i)
+		if err != nil {
+			return nil, err
+		}
+		archive, err := findDependencyArchive(sourcePath, dep, resolvedDep)
+		if err != nil {
+			return nil, err
+		}
+		ch, err := loader.LoadFile(archive)
+		if err != nil {
+			return nil, err
+		}
+		extracted := ch.Name()
+		if extracted == "" {
+			extracted = dep.Name
+		}
+
+		targets = append(targets, depExtractionTarget{
+			dep:        dep,
+			archive:    archive,
+			extracted:  extracted,
+			targetName: targetName,
+		})
+	}
+
+	return targets, nil
+}
+
+func findResolvedDependencyAtIndex(dep *chart.Dependency, resolvedDeps []*chart.Dependency, depIndex int) (*chart.Dependency, error) {
+	if depIndex >= 0 && depIndex < len(resolvedDeps) {
+		resolvedDep := resolvedDeps[depIndex]
+		if resolvedDep.Repository != "" &&
+			resolvedDep.Name == dep.Name &&
+			resolvedDep.Repository == dep.Repository &&
+			dependencyVersionMatches(dep.Version, resolvedDep.Version) {
+			return resolvedDep, nil
+		}
+	}
+	return findResolvedDependency(dep, resolvedDeps)
+}
+
+func findResolvedDependency(dep *chart.Dependency, resolvedDeps []*chart.Dependency) (*chart.Dependency, error) {
+	candidates := make([]*chart.Dependency, 0, 1)
+	for _, resolvedDep := range resolvedDeps {
+		if resolvedDep.Repository == "" {
+			continue
+		}
+		if resolvedDep.Name != dep.Name {
+			continue
+		}
+		if dep.Repository != resolvedDep.Repository {
+			continue
+		}
+		if !dependencyVersionMatches(dep.Version, resolvedDep.Version) {
+			continue
+		}
+		candidates = append(candidates, resolvedDep)
+	}
+	if len(candidates) == 1 {
+		return candidates[0], nil
+	}
+	if len(candidates) > 1 {
+		baseVersion := candidates[0].Version
+		sameVersion := true
+		for _, candidate := range candidates[1:] {
+			if candidate.Version != baseVersion {
+				sameVersion = false
+				break
+			}
+		}
+		if sameVersion {
+			return candidates[0], nil
+		}
+		return nil, fmt.Errorf("dependency conflict detected: found multiple resolved versions for dependency %q with constraint %q", dep.Name, dep.Version)
+	}
+
+	return nil, nil
+}
+
+func findDependencyArchive(sourcePath string, dep, resolvedDep *chart.Dependency) (string, error) {
+	matches, err := filepath.Glob(filepath.Join(sourcePath, fmt.Sprintf("%s-*.tgz", dep.Name)))
+	if err != nil {
+		return "", err
+	}
+
+	versionConstraint := dep.Version
+	if resolvedDep != nil && resolvedDep.Version != "" {
+		versionConstraint = resolvedDep.Version
+	}
+
+	for _, candidate := range matches {
+		ch, err := loader.LoadFile(candidate)
+		if err != nil {
+			continue
+		}
+		if ch.Metadata.Name == dep.Name && dependencyVersionMatches(versionConstraint, ch.Metadata.Version) {
+			return candidate, nil
+		}
+	}
+
+	return "", fmt.Errorf("could not find downloaded dependency archive for %s-%s", dep.Name, dep.Version)
+}
+
+func dependencyVersionMatches(versionConstraint, actualVersion string) bool {
+	if versionConstraint == "" || versionEquals(versionConstraint, actualVersion) {
+		return true
+	}
+
+	constraint, err := semver.NewConstraint(versionConstraint)
+	if err != nil {
+		return false
+	}
+	actual, err := semver.NewVersion(actualVersion)
+	if err != nil {
+		return false
+	}
+	return constraint.Check(actual)
+}
+
+func (m *Manager) resolveUntarRoot() (string, error) {
+	chartRoot, err := filepath.Abs(m.ChartPath)
+	if err != nil {
+		return "", err
+	}
+	chartRoot, err = filepath.EvalSymlinks(chartRoot)
+	if err != nil {
+		return "", err
+	}
+
+	untarRoot := m.UntarDir
+	if untarRoot == "" {
+		untarRoot = "charts"
+	} else {
+		untarRoot = filepath.Clean(untarRoot)
+	}
+	if filepath.IsAbs(untarRoot) {
+		return "", fmt.Errorf("--untardir must be relative to the chart root")
+	}
+	untarRoot = filepath.Join(chartRoot, untarRoot)
+	untarRoot, err = resolvePathThroughExistingSymlinks(untarRoot)
+	if err != nil {
+		return "", err
+	}
+
+	relToChartRoot, err := filepath.Rel(chartRoot, untarRoot)
+	if err != nil {
+		return "", err
+	}
+	if relToChartRoot == ".." || strings.HasPrefix(relToChartRoot, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("--untardir must stay within the chart root")
+	}
+
+	info, err := os.Stat(untarRoot)
+	if err == nil && !info.IsDir() {
+		return "", fmt.Errorf("%q is not a directory", untarRoot)
+	}
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+
+	return untarRoot, nil
+}
+
+func resolvePathThroughExistingSymlinks(path string) (string, error) {
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+
+	current := path
+	var suffix []string
+	for {
+		if _, err := os.Lstat(current); err == nil {
+			break
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return "", err
+		}
+
+		parent, base := filepath.Split(current)
+		parent = filepath.Clean(parent)
+		if parent == current {
+			break
+		}
+		suffix = append([]string{base}, suffix...)
+		current = parent
+	}
+
+	resolvedCurrent, err := filepath.EvalSymlinks(current)
+	if err != nil {
+		return "", err
+	}
+
+	for _, part := range suffix {
+		resolvedCurrent = filepath.Join(resolvedCurrent, part)
+	}
+
+	return filepath.Clean(resolvedCurrent), nil
+}
+
+func (m *Manager) cleanupOutdatedUnpackedCharts(deps []*chart.Dependency, untarRoot string, expectedTargets map[string]struct{}) error {
+	localDependencyTargets := make(map[string]struct{}, len(deps)*2)
+	for _, dep := range deps {
+		if dep.Repository != "" {
+			continue
+		}
+		localDependencyTargets[dep.Name] = struct{}{}
+		if dep.Alias != "" {
+			localDependencyTargets[dep.Alias] = struct{}{}
+		}
+	}
+
+	rootEntries, err := os.ReadDir(untarRoot)
+	if err != nil {
+		return err
+	}
+	for _, entry := range rootEntries {
+		if !entry.IsDir() {
+			continue
+		}
+		if _, ok := expectedTargets[entry.Name()]; ok {
+			continue
+		}
+		if _, ok := localDependencyTargets[entry.Name()]; ok {
+			continue
+		}
+
+		candidate := filepath.Join(untarRoot, entry.Name())
+		if _, err := loader.LoadDir(candidate); err != nil {
+			continue
+		}
+
+		if err := os.RemoveAll(candidate); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *Manager) shouldCleanupUntarRoot(untarRoot string) bool {
+	chartRoot, err := filepath.Abs(m.ChartPath)
+	if err != nil {
+		return false
+	}
+	chartRoot, err = filepath.EvalSymlinks(chartRoot)
+	if err != nil {
+		return false
+	}
+	defaultUntarRoot := filepath.Join(chartRoot, "charts")
+	resolvedUntarRoot, err := filepath.Abs(untarRoot)
+	if err != nil {
+		return false
+	}
+	return filepath.Clean(resolvedUntarRoot) == filepath.Clean(defaultUntarRoot)
 }
 
 func parseOCIRef(chartRef string) (string, string, error) {
