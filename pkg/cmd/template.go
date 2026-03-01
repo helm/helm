@@ -132,12 +132,13 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							if client.UseReleaseName {
 								newDir = filepath.Join(client.OutputDir, client.ReleaseName)
 							}
-							_, err := os.Stat(filepath.Join(newDir, m.Path))
+							transformedPath := action.TransformManifestPath(m.Path, client.SkipChartNameDir, client.SkipTemplatesDir)
+							_, err := os.Stat(filepath.Join(newDir, transformedPath))
 							if err == nil {
-								fileWritten[m.Path] = true
+								fileWritten[transformedPath] = true
 							}
 
-							err = writeToFile(newDir, m.Path, m.Manifest, fileWritten[m.Path])
+							err = writeToFile(newDir, transformedPath, m.Manifest, fileWritten[transformedPath])
 							if err != nil {
 								return err
 							}
@@ -214,6 +215,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&kubeVersion, "kube-version", "", "Kubernetes version used for Capabilities.KubeVersion")
 	f.StringSliceVarP(&extraAPIs, "api-versions", "a", []string{}, "Kubernetes api versions used for Capabilities.APIVersions (multiple can be specified)")
 	f.BoolVar(&client.UseReleaseName, "release-name", false, "use release name in the output-dir path.")
+	f.BoolVar(&client.SkipChartNameDir, "skip-chart-dir", false, "skip adding the chart name directory when writing to output-dir")
+	f.BoolVar(&client.SkipTemplatesDir, "skip-templates-dir", false, "skip adding the templates subdirectory when writing to output-dir")
 	f.String(
 		"dry-run",
 		"client",
