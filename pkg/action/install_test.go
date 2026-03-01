@@ -465,6 +465,40 @@ func TestInstallRelease_DryRunClient(t *testing.T) {
 	}
 }
 
+func TestInstallRelease_DryRunServerValidation(t *testing.T) {
+	is := assert.New(t)
+
+	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
+
+	instAction := NewInstall(config)
+	instAction.Namespace = "spaced"
+	instAction.ReleaseName = "test-server-dry-run"
+
+	expectedErr := errors.New("validation error: unknown field in spec")
+	config.KubeClient.(*kubefake.FailingKubeClient).CreateError = expectedErr
+	instAction.DryRunStrategy = DryRunServer
+
+	vals := map[string]interface{}{}
+	_, err := instAction.Run(buildChart(withSampleTemplates()), vals)
+
+	is.Error(err)
+	is.Contains(err.Error(), "validation error")
+
+	config2 := actionConfigFixtureWithDummyResources(t, createDummyResourceList(false))
+	config2.KubeClient.(*kubefake.FailingKubeClient).CreateError = expectedErr
+
+	instAction2 := NewInstall(config2)
+	instAction2.Namespace = "spaced"
+	instAction2.ReleaseName = "test-client-dry-run"
+	instAction2.DryRunStrategy = DryRunClient
+
+	resi, err := instAction2.Run(buildChart(withSampleTemplates()), vals)
+	is.NoError(err)
+	res, err := releaserToV1Release(resi)
+	is.NoError(err)
+	is.Equal(res.Info.Description, "Dry run complete")
+}
+
 func TestInstallRelease_DryRunHiddenSecret(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
