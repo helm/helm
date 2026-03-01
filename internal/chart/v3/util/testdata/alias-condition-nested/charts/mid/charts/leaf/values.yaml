@@ -1,0 +1,3 @@
+# util is disabled by default in this chart's values
+util:
+  enabled: false
