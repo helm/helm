@@ -1,0 +1,88 @@
+version: 2
+
+project_name: helm
+
+before:
+  hooks:
+    - go mod tidy
+
+dist: _dist
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+      - arm
+      - "386"
+      - ppc64le
+      - s390x
+      - riscv64
+      - loong64
+    goarm:
+      - "7"
+    ignore:
+      - goos: darwin
+        goarch: "386"
+      - goos: darwin
+        goarch: arm
+      - goos: darwin
+        goarch: ppc64le
+      - goos: darwin
+        goarch: s390x
+      - goos: darwin
+        goarch: riscv64
+      - goos: darwin
+        goarch: loong64
+      - goos: windows
+        goarch: "386"
+      - goos: windows
+        goarch: arm
+      - goos: windows
+        goarch: ppc64le
+      - goos: windows
+        goarch: s390x
+      - goos: windows
+        goarch: riscv64
+      - goos: windows
+        goarch: loong64
+    main: ./cmd/helm
+    no_unique_dist_dir: true
+    binary: "{{ .Os }}-{{ .Arch }}/helm"
+    ldflags:
+      - "{{ .Env.LDFLAGS }}"
+    flags:
+      - -trimpath
+    dir: .
+
+archives:
+  - id: default
+    # this name template makes the OS and Arch compatible with the results of uname.
+    name_template: >-
+      {{- .ProjectName }}-
+      {{- .Version }}-
+      {{- .Os }}-
+      {{- .Arch }}
+    formats:
+      - tar.gz
+      - zip
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ if .Env.GORELEASER_CURRENT_TAG }}{{ .Env.GORELEASER_CURRENT_TAG }}{{ else }}{{ incpatch .Version }}-next{{ end }}"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
