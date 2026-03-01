@@ -240,16 +240,16 @@ func (t *parser) key(data map[string]any, nestedNameLevel int) (reterr error) {
 			// End of key. Consume =, Get value.
 			// FIXME: Get value list first
 			vl, e := t.valList()
-			switch e {
-			case nil:
+			switch {
+			case e == nil:
 				set(data, string(k), vl)
 				return nil
-			case io.EOF:
+			case errors.Is(e, io.EOF):
 				set(data, string(k), "")
 				return e
-			case ErrNotList:
+			case errors.Is(e, ErrNotList):
 				rs, e := t.val()
-				if e != nil && e != io.EOF {
+				if e != nil && !errors.Is(e, io.EOF) {
 					return e
 				}
 				v, e := t.reader(rs)
@@ -373,14 +373,14 @@ func (t *parser) listItem(list []any, i, nestedNameLevel int) ([]any, error) {
 			return list, err
 		}
 		vl, e := t.valList()
-		switch e {
-		case nil:
+		switch {
+		case e == nil:
 			return setIndex(list, i, vl)
-		case io.EOF:
+		case errors.Is(e, io.EOF):
 			return setIndex(list, i, "")
-		case ErrNotList:
+		case errors.Is(e, ErrNotList):
 			rs, e := t.val()
-			if e != nil && e != io.EOF {
+			if e != nil && !errors.Is(e, io.EOF) {
 				return list, e
 			}
 			v, e := t.reader(rs)
@@ -479,7 +479,7 @@ func (t *parser) valList() ([]any, error) {
 	for {
 		switch rs, last, err := runesUntil(t.sc, stop); {
 		case err != nil:
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				err = errors.New("list must terminate with '}'")
 			}
 			return list, err
