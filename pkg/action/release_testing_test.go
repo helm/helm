@@ -89,7 +89,7 @@ func TestReleaseTestingGetPodLogs_PodRetrievalError(t *testing.T) {
 		},
 	}
 
-	require.ErrorContains(t, client.GetPodLogs(&bytes.Buffer{}, &release.Release{Hooks: hooks}), "unable to get pod logs")
+	require.ErrorContains(t, client.GetPodLogs(&bytes.Buffer{}, &release.Release{Hooks: hooks}), "unable to get pod")
 }
 
 func TestReleaseTesting_WaitOptionsPassedDownstream(t *testing.T) {
