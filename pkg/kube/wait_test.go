@@ -17,7 +17,7 @@ limitations under the License.
 package kube
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -451,7 +451,7 @@ func TestLegacyWaiter_isRetryableError(t *testing.T) {
 		},
 		{
 			name:      "non-status error",
-			err:       fmt.Errorf("some generic error"),
+			err:       errors.New("some generic error"),
 			wantRetry: true,
 		},
 	}
