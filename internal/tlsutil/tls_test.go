@@ -58,10 +58,10 @@ func TestNewTLSConfig(t *testing.T) {
 			t.Fatalf("expecting 1 client certificates, got %d", got)
 		}
 		if cfg.InsecureSkipVerify {
-			t.Fatalf("insecure skip verify mismatch, expecting false")
+			t.Fatal("insecure skip verify mismatch, expecting false")
 		}
 		if cfg.RootCAs == nil {
-			t.Fatalf("mismatch tls RootCAs, expecting non-nil")
+			t.Fatal("mismatch tls RootCAs, expecting non-nil")
 		}
 	}
 	{
@@ -77,10 +77,10 @@ func TestNewTLSConfig(t *testing.T) {
 			t.Fatalf("expecting 0 client certificates, got %d", got)
 		}
 		if cfg.InsecureSkipVerify {
-			t.Fatalf("insecure skip verify mismatch, expecting false")
+			t.Fatal("insecure skip verify mismatch, expecting false")
 		}
 		if cfg.RootCAs == nil {
-			t.Fatalf("mismatch tls RootCAs, expecting non-nil")
+			t.Fatal("mismatch tls RootCAs, expecting non-nil")
 		}
 	}
 
@@ -97,10 +97,10 @@ func TestNewTLSConfig(t *testing.T) {
 			t.Fatalf("expecting 1 client certificates, got %d", got)
 		}
 		if cfg.InsecureSkipVerify {
-			t.Fatalf("insecure skip verify mismatch, expecting false")
+			t.Fatal("insecure skip verify mismatch, expecting false")
 		}
 		if cfg.RootCAs != nil {
-			t.Fatalf("mismatch tls RootCAs, expecting nil")
+			t.Fatal("mismatch tls RootCAs, expecting nil")
 		}
 	}
 }

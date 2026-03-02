@@ -90,7 +90,7 @@ func TestSave(t *testing.T) {
 				t.Fatalf("Schema data did not match.\nExpected:\n%s\nActual:\n%s", formattedExpected, formattedActual)
 			}
 			if _, err := Save(&chartWithInvalidJSON, dest); err == nil {
-				t.Fatalf("Invalid JSON was not caught while saving chart")
+				t.Fatal("Invalid JSON was not caught while saving chart")
 			}
 
 			c.Metadata.APIVersion = chart.APIVersionV2

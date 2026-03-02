@@ -231,7 +231,7 @@ func TestMalformedTemplate(t *testing.T) {
 	}()
 	select {
 	case <-c:
-		t.Fatalf("lint malformed template timeout")
+		t.Fatal("lint malformed template timeout")
 	case <-ch:
 		if len(m) != 1 {
 			t.Fatalf("All didn't fail with expected errors, got %#v", m)

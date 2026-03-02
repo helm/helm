@@ -107,7 +107,7 @@ func TestInstallWithOptions_VerifyWithValidProvenance(t *testing.T) {
 
 	// Should fail due to invalid signature (empty keyring) but we test that it gets past the hash check
 	if err == nil {
-		t.Fatalf("Expected installation to fail with empty keyring")
+		t.Fatal("Expected installation to fail with empty keyring")
 	}
 	if !strings.Contains(err.Error(), "plugin verification failed") {
 		t.Errorf("Expected plugin verification failed error, got: %v", err)
@@ -218,7 +218,7 @@ func TestInstallWithOptions_VerifyDirectoryNotSupported(t *testing.T) {
 
 	// Should fail with verification not supported error
 	if err == nil {
-		t.Fatalf("Expected installation to fail with verification not supported error")
+		t.Fatal("Expected installation to fail with verification not supported error")
 	}
 	if !strings.Contains(err.Error(), "--verify is only supported for plugin tarballs") {
 		t.Errorf("Expected verification not supported error, got: %v", err)
@@ -257,7 +257,7 @@ func TestInstallWithOptions_VerifyMismatchedProvenance(t *testing.T) {
 
 	// Should fail with verification error
 	if err == nil {
-		t.Fatalf("Expected installation to fail with hash mismatch")
+		t.Fatal("Expected installation to fail with hash mismatch")
 	}
 	if !strings.Contains(err.Error(), "plugin verification failed") {
 		t.Errorf("Expected plugin verification failed error, got: %v", err)
@@ -298,7 +298,7 @@ func TestInstallWithOptions_VerifyProvenanceAccessError(t *testing.T) {
 
 	// Should fail with access error (either at stat level or during verification)
 	if err == nil {
-		t.Fatalf("Expected installation to fail with provenance file access error")
+		t.Fatal("Expected installation to fail with provenance file access error")
 	}
 	// The error could be either "failed to access provenance file" or "plugin verification failed"
 	// depending on when the permission error occurs
