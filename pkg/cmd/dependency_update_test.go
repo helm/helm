@@ -396,3 +396,52 @@ func TestDependencyUpdateCmd_NestedLocalDependencies(t *testing.T) {
 		t.Fatalf("Expected reqtest dependency: %s", err)
 	}
 }
+
+func TestDependencyUpdateCmd_CircularDependency(t *testing.T) {
+	srv := repotest.NewTempServer(t)
+	defer srv.Stop()
+
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
+
+	// Create chart A that depends on B
+	chartA := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       "chart-a",
+			Version:    "1.0.0",
+			Dependencies: []*chart.Dependency{
+				{Name: "chart-b", Version: "1.0.0", Repository: "file://../chart-b"},
+			},
+		},
+	}
+	if err := chartutil.SaveDir(chartA, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create chart B that depends on A (circular)
+	chartB := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       "chart-b",
+			Version:    "1.0.0",
+			Dependencies: []*chart.Dependency{
+				{Name: "chart-a", Version: "1.0.0", Repository: "file://../chart-a"},
+			},
+		},
+	}
+	if err := chartutil.SaveDir(chartB, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	_, out, err := executeActionCommand(
+		fmt.Sprintf("dependency update '%s'", dir("chart-a")),
+	)
+	if err == nil {
+		t.Fatal("Expected circular dependency error")
+	}
+	if !strings.Contains(out, "circular dependency detected") {
+		t.Fatalf("Expected 'circular dependency detected' in output, got: %s", out)
+	}
+}
