@@ -50,6 +50,7 @@ func funcMap() template.FuncMap {
 	// Add some extra functionality
 	extra := template.FuncMap{
 		"toToml":        toTOML,
+		"mustToToml":    mustToTOML,
 		"fromToml":      fromTOML,
 		"toYaml":        toYAML,
 		"mustToYaml":    mustToYAML,
@@ -158,6 +159,20 @@ func toTOML(v any) string {
 	err := e.Encode(v)
 	if err != nil {
 		return err.Error()
+	}
+	return b.String()
+}
+
+// mustToTOML takes an interface, marshals it to toml, and returns a string.
+// It will panic if there is an error.
+//
+// This is designed to be called from a template when need to ensure that the
+// output TOML is valid.
+func mustToTOML(v any) string {
+	b := bytes.NewBuffer(nil)
+	e := toml.NewEncoder(b)
+	if err := e.Encode(v); err != nil {
+		panic(err)
 	}
 	return b.String()
 }
