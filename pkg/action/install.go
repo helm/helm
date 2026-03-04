@@ -127,6 +127,9 @@ type Install struct {
 	// Used by helm template to add the release as part of OutputDir path
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
+	// ChartDir is the local directory path of the chart, used for resolving
+	// relative $ref in JSON schemas. Empty for remote charts.
+	ChartDir string
 	// TakeOwnership will ignore the check for helm annotations and take ownership of the resources.
 	TakeOwnership bool
 	PostRenderer  postrenderer.PostRenderer
@@ -358,7 +361,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		IsInstall: !isUpgrade,
 		IsUpgrade: isUpgrade,
 	}
-	valuesToRender, err := util.ToRenderValuesWithSchemaValidation(chrt, vals, options, caps, i.SkipSchemaValidation)
+	valuesToRender, err := util.ToRenderValuesWithSchemaValidationAndPath(chrt, vals, options, caps, i.SkipSchemaValidation, i.ChartDir)
 	if err != nil {
 		return nil, err
 	}
