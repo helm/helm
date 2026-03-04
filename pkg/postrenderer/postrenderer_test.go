@@ -40,8 +40,25 @@ func TestNewPostRenderPluginRunWithNoOutput(t *testing.T) {
 	renderer, err := NewPostRendererPlugin(s, name, "")
 	require.NoError(t, err)
 
-	_, err = renderer.Run(bytes.NewBufferString(""))
+	_, err = renderer.Run(bytes.NewBufferString("FOOTEST"))
 	is.Error(err)
+}
+
+func TestNewPostRenderPluginRunWithNoInputAndOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// the actual Run test uses a basic sed example, so skip this test on windows
+		t.Skip("skipping on windows")
+	}
+	is := assert.New(t)
+	s := cli.New()
+	s.PluginsDirectory = "testdata/plugins"
+	name := "postrenderer-v1"
+
+	renderer, err := NewPostRendererPlugin(s, name, "")
+	require.NoError(t, err)
+
+	_, err = renderer.Run(bytes.NewBufferString(""))
+	is.NoError(err)
 }
 
 func TestNewPostRenderPluginWithOneArgsRun(t *testing.T) {

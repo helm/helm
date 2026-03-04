@@ -61,6 +61,8 @@ type postRendererPlugin struct {
 
 // Run implements PostRenderer by using the plugin's Runtime
 func (r *postRendererPlugin) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, error) {
+	renderedManifestsLen := renderedManifests.Len()
+
 	input := &plugin.Input{
 		Message: schema.InputMessagePostRendererV1{
 			ExtraArgs: r.args,
@@ -74,9 +76,9 @@ func (r *postRendererPlugin) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer
 
 	outputMessage := output.Message.(schema.OutputMessagePostRendererV1)
 
-	// If the binary returned almost nothing, it's likely that it didn't
-	// successfully render anything
-	if len(bytes.TrimSpace(outputMessage.Manifests.Bytes())) == 0 {
+	// If the binary returned almost nothing and the input isn't empty, it's
+	// likely that it didn't successfully render anything
+	if len(bytes.TrimSpace(outputMessage.Manifests.Bytes())) == 0 && renderedManifestsLen != 0 {
 		return nil, fmt.Errorf("post-renderer %q produced empty output", r.plugin.Metadata().Name)
 	}
 
