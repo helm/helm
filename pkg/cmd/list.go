@@ -136,6 +136,13 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVarP(&client.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2). Works only for secret(default) and configmap storage backends.")
 	bindOutputFlag(cmd, &outfmt)
 
+	// deprecated flags -- kept for backwards compatibility with helm v3 scripts
+	var all bool
+	f.BoolVarP(&all, "all", "a", false, "show all releases without any filter applied (default behavior in v4)")
+	if err := cmd.Flags().MarkDeprecated("all", "this is now the default behavior in Helm v4 and this flag will be removed in a future release"); err != nil {
+		panic(err)
+	}
+
 	return cmd
 }
 
