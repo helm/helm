@@ -246,7 +246,7 @@ func (hw *legacyWaiter) watchUntilReady(timeout time.Duration, info *resource.In
 
 	// Use a selector on the name of the resource. This should be unique for the
 	// given version and kind
-	selector, err := fields.ParseSelector(fmt.Sprintf("metadata.name=%s", info.Name))
+	selector, err := fields.ParseSelector("metadata.name=" + info.Name)
 	if err != nil {
 		return err
 	}

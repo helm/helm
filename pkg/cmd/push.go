@@ -62,7 +62,7 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				var comps []string
 				for _, p := range providers {
 					for _, scheme := range p.Schemes {
-						comps = append(comps, fmt.Sprintf("%s://", scheme))
+						comps = append(comps, scheme+"://")
 					}
 				}
 				return comps, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace

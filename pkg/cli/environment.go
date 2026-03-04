@@ -24,7 +24,6 @@ These dependencies are expressed as interfaces so that alternate implementations
 package cli
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -246,7 +245,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_CACHE_HOME":        helmpath.CachePath(""),
 		"HELM_CONFIG_HOME":       helmpath.ConfigPath(""),
 		"HELM_DATA_HOME":         helmpath.DataPath(""),
-		"HELM_DEBUG":             fmt.Sprint(s.Debug),
+		"HELM_DEBUG":             strconv.FormatBool(s.Debug),
 		"HELM_PLUGINS":           s.PluginsDirectory,
 		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
 		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
