@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -119,6 +120,17 @@ func (p *Package) Run(path string, _ map[string]any) (string, error) {
 	} else {
 		// Otherwise save to set destination
 		dest = p.Destination
+	}
+
+	// When SOURCE_DATE_EPOCH is set, apply it to every zero-ModTime entry
+	// in the chart so that the archive is reproducible.  Parse the variable
+	// here (at the call-site) rather than deep inside the tar writer so that
+	// the low-level save helpers stay environment-agnostic.
+	// See https://reproducible-builds.org/docs/source-date-epoch/
+	if epochTime, err := chartutil.ParseSourceDateEpoch(); err != nil {
+		log.Printf("WARNING: %v", err)
+	} else {
+		chartutil.ApplySourceDateEpoch(ch, epochTime)
 	}
 
 	name, err := chartutil.Save(ch, dest)
