@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -611,7 +610,7 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 			Input: nil,
 		},
 		"generic_error": {
-			Input: fmt.Errorf("foo"),
+			Input: errors.New("foo"),
 		},
 		"non_skipped_validation_error": {
 			Input: chart.ValidationError("chart.metadata.type must be application or library"),

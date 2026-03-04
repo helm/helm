@@ -19,7 +19,6 @@ package values
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -265,7 +264,7 @@ func TestReadFileErrorMessages(t *testing.T) {
 		{
 			name:      "getter error with message",
 			filePath:  "http://example.com/file",
-			providers: getter.Providers{mockProvider([]string{"http"}, nil, fmt.Errorf("connection refused"))},
+			providers: getter.Providers{mockProvider([]string{"http"}, nil, errors.New("connection refused"))},
 			wantErr:   "connection refused",
 		},
 	}
