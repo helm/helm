@@ -114,11 +114,11 @@ func TestRepoFile_Get(t *testing.T) {
 	name := "second"
 
 	entry := repo.Get(name)
-	if entry == nil { //nolint:staticcheck
+	if entry == nil {
 		t.Fatalf("Expected repo entry %q to be found", name)
 	}
 
-	if entry.URL != "https://example.com/second" { //nolint:staticcheck
+	if entry.URL != "https://example.com/second" {
 		t.Errorf("Expected repo URL to be %q but got %q", "https://example.com/second", entry.URL)
 	}
 

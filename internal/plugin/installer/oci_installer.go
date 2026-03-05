@@ -130,7 +130,7 @@ func (i *OCIInstaller) Install() error {
 
 	// Check if this is a gzip compressed file
 	if len(i.pluginData) < 2 || i.pluginData[0] != 0x1f || i.pluginData[1] != 0x8b {
-		return fmt.Errorf("plugin data is not a gzip compressed archive")
+		return errors.New("plugin data is not a gzip compressed archive")
 	}
 
 	// Create cache directory

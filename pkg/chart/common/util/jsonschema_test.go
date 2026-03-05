@@ -54,7 +54,7 @@ func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
 
 	var errString string
 	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
-		t.Fatalf("Expected an error, but got nil")
+		t.Fatal("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
 	}
@@ -78,7 +78,7 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 
 	var errString string
 	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
-		t.Fatalf("Expected an error, but got nil")
+		t.Fatal("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
 	}
@@ -172,7 +172,7 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 
 	var errString string
 	if err := ValidateAgainstSchema(chrt, vals); err == nil {
-		t.Fatalf("Expected an error, but got nil")
+		t.Fatal("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
 	}
@@ -236,7 +236,7 @@ func TestValidateAgainstSchema2020Negative(t *testing.T) {
 
 	var errString string
 	if err := ValidateAgainstSchema(chrt, vals); err == nil {
-		t.Fatalf("Expected an error, but got nil")
+		t.Fatal("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
 	}
@@ -386,6 +386,6 @@ func TestValidateAgainstSchema_InvalidSubchartValuesType_NoPanic(t *testing.T) {
 
 	// We expect a non-nil error (invalid type), but crucially no panic.
 	if err := ValidateAgainstSchema(chrt, vals); err == nil {
-		t.Fatalf("expected an error when subchart values have invalid type, got nil")
+		t.Fatal("expected an error when subchart values have invalid type, got nil")
 	}
 }

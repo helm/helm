@@ -165,7 +165,7 @@ func TestSecretQuery(t *testing.T) {
 	}
 
 	_, err = secrets.Query(map[string]string{"name": "notExist"})
-	if err != ErrReleaseNotFound {
+	if !errors.Is(err, ErrReleaseNotFound) {
 		t.Errorf("Expected {%v}, got {%v}", ErrReleaseNotFound, err)
 	}
 }
@@ -237,7 +237,7 @@ func TestSecretDelete(t *testing.T) {
 
 	// perform the delete on a non-existing release
 	_, err := secrets.Delete("nonexistent")
-	if err != ErrReleaseNotFound {
+	if !errors.Is(err, ErrReleaseNotFound) {
 		t.Fatalf("Expected ErrReleaseNotFound, got: {%v}", err)
 	}
 

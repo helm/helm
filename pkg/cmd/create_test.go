@@ -17,9 +17,9 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	chartv3 "helm.sh/helm/v4/internal/chart/v3"
@@ -47,7 +47,7 @@ func TestCreateCmd(t *testing.T) {
 	if fi, err := os.Stat(cname); err != nil {
 		t.Fatalf("no chart directory: %s", err)
 	} else if !fi.IsDir() {
-		t.Fatalf("chart is not directory")
+		t.Fatal("chart is not directory")
 	}
 
 	c, err := chartloader.LoadDir(cname)
@@ -138,11 +138,11 @@ func TestCreateStarterCmd(t *testing.T) {
 			if tt.useAbsolutePath {
 				starterArg = filepath.Join(starterchart, "starterchart")
 			}
-			cmd := fmt.Sprintf("create --starter=%s", starterArg)
+			cmd := "create --starter=" + starterArg
 			if tt.chartAPIVersion == "v3" {
-				cmd += fmt.Sprintf(" --chart-api-version=%s", chartv3.APIVersionV3)
+				cmd += " --chart-api-version=" + chartv3.APIVersionV3
 			} else {
-				cmd += fmt.Sprintf(" --chart-api-version=%s", chartv2.APIVersionV2)
+				cmd += " --chart-api-version=" + chartv2.APIVersionV2
 			}
 			cmd += " " + cname
 
@@ -155,7 +155,7 @@ func TestCreateStarterCmd(t *testing.T) {
 			if fi, err := os.Stat(cname); err != nil {
 				t.Fatalf("no chart directory: %s", err)
 			} else if !fi.IsDir() {
-				t.Fatalf("chart is not directory")
+				t.Fatal("chart is not directory")
 			}
 
 			// Load and verify the chart
@@ -188,13 +188,7 @@ func TestCreateStarterCmd(t *testing.T) {
 			}
 
 			// Verify custom template exists
-			found := false
-			for _, name := range templates {
-				if name == "templates/foo.tpl" {
-					found = true
-					break
-				}
-			}
+			found := slices.Contains(templates, "templates/foo.tpl")
 			if !found {
 				t.Error("Did not find foo.tpl")
 			}
@@ -221,7 +215,7 @@ func TestCreateCmdChartAPIVersionV2(t *testing.T) {
 	if fi, err := os.Stat(cname); err != nil {
 		t.Fatalf("no chart directory: %s", err)
 	} else if !fi.IsDir() {
-		t.Fatalf("chart is not directory")
+		t.Fatal("chart is not directory")
 	}
 
 	c, err := chartloader.LoadDir(cname)
@@ -262,7 +256,7 @@ func TestCreateCmdChartAPIVersionV3(t *testing.T) {
 	if fi, err := os.Stat(cname); err != nil {
 		t.Fatalf("no chart directory: %s", err)
 	} else if !fi.IsDir() {
-		t.Fatalf("chart is not directory")
+		t.Fatal("chart is not directory")
 	}
 
 	c, err := chartloader.LoadDir(cname)

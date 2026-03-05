@@ -35,7 +35,7 @@ func TestLoadChartfile(t *testing.T) {
 
 func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 	t.Helper()
-	if f == nil { //nolint:staticcheck
+	if f == nil {
 		t.Fatal("Failed verifyChartfile because f is nil")
 	}
 
@@ -64,7 +64,7 @@ func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 	}
 
 	if len(f.Sources) != 1 {
-		t.Fatalf("Unexpected number of sources")
+		t.Fatal("Unexpected number of sources")
 	}
 
 	if f.Sources[0] != "https://example.com/foo/bar" {
@@ -84,7 +84,7 @@ func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 	}
 
 	if len(f.Annotations) != 2 {
-		t.Fatalf("Unexpected annotations")
+		t.Fatal("Unexpected annotations")
 	}
 
 	if want, got := "extravalue", f.Annotations["extrakey"]; want != got {

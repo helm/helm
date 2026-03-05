@@ -210,7 +210,7 @@ func TestPrepareCommandsNoMatch(t *testing.T) {
 
 	env := map[string]string{}
 	if _, _, err := PrepareCommands(cmds, true, []string{}, env); err == nil {
-		t.Fatalf("Expected error to be returned")
+		t.Fatal("Expected error to be returned")
 	}
 }
 
@@ -219,7 +219,7 @@ func TestPrepareCommandsNoCommands(t *testing.T) {
 
 	env := map[string]string{}
 	if _, _, err := PrepareCommands(cmds, true, []string{}, env); err == nil {
-		t.Fatalf("Expected error to be returned")
+		t.Fatal("Expected error to be returned")
 	}
 }
 

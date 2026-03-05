@@ -80,7 +80,7 @@ func (c ChartVersions) Less(a, b int) bool {
 // IndexFile represents the index file in a chart repository
 type IndexFile struct {
 	// This is used ONLY for validation against chartmuseum's index files and is discarded after validation.
-	ServerInfo map[string]interface{}   `json:"serverInfo,omitempty"`
+	ServerInfo map[string]any           `json:"serverInfo,omitempty"`
 	APIVersion string                   `json:"apiVersion"`
 	Generated  time.Time                `json:"generated"`
 	Entries    map[string]ChartVersions `json:"entries"`
@@ -270,7 +270,7 @@ func (i *IndexFile) Merge(f *IndexFile) {
 type ChartVersion struct {
 	*chart.Metadata
 	URLs    []string  `json:"urls"`
-	Created time.Time `json:"created,omitempty"`
+	Created time.Time `json:"created"`
 	Removed bool      `json:"removed,omitempty"`
 	Digest  string    `json:"digest,omitempty"`
 
@@ -391,7 +391,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 // checking its validity as JSON. If the data is valid JSON, it will use the
 // `encoding/json` package to unmarshal it. Otherwise, it will use the
 // `sigs.k8s.io/yaml` package to unmarshal the YAML data.
-func jsonOrYamlUnmarshal(b []byte, i interface{}) error {
+func jsonOrYamlUnmarshal(b []byte, i any) error {
 	if json.Valid(b) {
 		return json.Unmarshal(b, i)
 	}

@@ -71,7 +71,7 @@ func TestGetTagMatchingVersionOrConstraint_InvalidConstraint(t *testing.T) {
 	tags := []string{"1.0.0"}
 	_, err := GetTagMatchingVersionOrConstraint(tags, ">a1")
 	if err == nil {
-		t.Fatalf("expected error for invalid constraint")
+		t.Fatal("expected error for invalid constraint")
 	}
 }
 
@@ -79,7 +79,7 @@ func TestGetTagMatchingVersionOrConstraint_NoMatches(t *testing.T) {
 	tags := []string{"0.1.0", "0.2.0"}
 	_, err := GetTagMatchingVersionOrConstraint(tags, ">=1.0.0")
 	if err == nil {
-		t.Fatalf("expected error when no tags match")
+		t.Fatal("expected error when no tags match")
 	}
 	if !strings.Contains(err.Error(), ">=1.0.0") {
 		t.Fatalf("expected error to contain version string, got: %v", err)
