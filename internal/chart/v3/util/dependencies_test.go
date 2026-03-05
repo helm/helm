@@ -15,6 +15,7 @@ limitations under the License.
 package util
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -251,8 +252,9 @@ func TestProcessDependencyImportValues(t *testing.T) {
 	if err == nil {
 		t.Error("expect nil value not found but found it")
 	}
-	switch xerr := err.(type) {
-	case common.ErrNoValue:
+	var xerr common.ErrNoValue
+	switch {
+	case errors.As(err, &xerr):
 		// We found what we expected
 	default:
 		t.Errorf("expected an ErrNoValue but got %q instead", xerr)
