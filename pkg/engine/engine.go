@@ -559,8 +559,11 @@ func recAllTpls(c ci.Charter, templates map[string]renderable, values common.Val
 	}
 
 	for _, child := range accessor.Dependencies() {
-		// TODO: Handle error
-		sub, _ := ci.NewAccessor(child)
+		sub, err := ci.NewAccessor(child)
+		if err != nil {
+			slog.Error("error accessing dependency chart", slog.Any("error", err))
+			continue
+		}
 		subCharts[sub.Name()] = recAllTpls(child, templates, next)
 	}
 
