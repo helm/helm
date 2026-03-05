@@ -18,7 +18,6 @@ package registry
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"testing"
 
@@ -65,7 +64,7 @@ func (suite *HTTPRegistryClientTestSuite) Test_3_Tags() {
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_4_ManInTheMiddle() {
-	ref := fmt.Sprintf("%s/testrepo/supposedlysafechart:9.9.9", suite.CompromisedRegistryHost)
+	ref := suite.CompromisedRegistryHost + "/testrepo/supposedlysafechart:9.9.9"
 
 	// returns content that does not match the expected digest
 	_, err := suite.RegistryClient.Pull(ref)
@@ -74,7 +73,7 @@ func (suite *HTTPRegistryClientTestSuite) Test_4_ManInTheMiddle() {
 }
 
 func (suite *HTTPRegistryClientTestSuite) Test_5_ImageIndex() {
-	ref := fmt.Sprintf("%s/testrepo/image-index:0.1.0", suite.FakeRegistryHost)
+	ref := suite.FakeRegistryHost + "/testrepo/image-index:0.1.0"
 
 	_, err := suite.RegistryClient.Pull(ref)
 	suite.Nil(err)

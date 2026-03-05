@@ -73,7 +73,7 @@ func newHTTPURLLoader() *HTTPURLLoader {
 }
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
-func ValidateAgainstSchema(ch chart.Charter, values map[string]interface{}) error {
+func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 	chrt, err := chart.NewAccessor(ch)
 	if err != nil {
 		return err

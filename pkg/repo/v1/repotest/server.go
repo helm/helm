@@ -175,21 +175,21 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 	htpasswdPath := filepath.Join(dir, testHtpasswdFileBasename)
 	err = os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0o644)
 	if err != nil {
-		t.Fatalf("error creating test htpasswd file")
+		t.Fatal("error creating test htpasswd file")
 	}
 
 	// Registry config
 	config := &configuration.Configuration{}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		t.Fatalf("error finding free port for test registry")
+		t.Fatalf("error finding free port for test registry: %v", err)
 	}
 	defer ln.Close()
 
 	port := ln.Addr().(*net.TCPAddr).Port
 	config.HTTP.Addr = ln.Addr().String()
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
-	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
+	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]any{}}
 	config.Auth = configuration.Auth{
 		"htpasswd": configuration.Parameters{
 			"realm": "localhost",
@@ -237,7 +237,7 @@ func (srv *OCIServer) RunWithReturn(t *testing.T, opts ...OCIServerOpt) *OCIServ
 		ociRegistry.ClientOptCredentialsFile(credentialsFile),
 	)
 	if err != nil {
-		t.Fatalf("error creating registry client")
+		t.Fatalf("error creating registry client: %v", err)
 	}
 
 	err = registryClient.Login(

@@ -16,6 +16,7 @@ limitations under the License.
 package plugin
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"unicode"
@@ -74,11 +75,11 @@ func (m *MetadataLegacy) Validate() error {
 	m.Usage = sanitizeString(m.Usage)
 
 	if len(m.PlatformCommand) > 0 && len(m.Command) > 0 {
-		return fmt.Errorf("both platformCommand and command are set")
+		return errors.New("both platformCommand and command are set")
 	}
 
 	if len(m.PlatformHooks) > 0 && len(m.Hooks) > 0 {
-		return fmt.Errorf("both platformHooks and hooks are set")
+		return errors.New("both platformHooks and hooks are set")
 	}
 
 	// Validate downloader plugins

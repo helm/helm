@@ -87,7 +87,7 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 	if opts.Verify {
 		verifier, ok := i.(Verifier)
 		if !ok || !verifier.SupportsVerification() {
-			return nil, fmt.Errorf("--verify is only supported for plugin tarballs (.tgz files)")
+			return nil, errors.New("--verify is only supported for plugin tarballs (.tgz files)")
 		}
 
 		// Get verification data (works for both memory and file-based installers)
@@ -137,7 +137,7 @@ func Update(i Installer) error {
 
 // NewForSource determines the correct Installer for the given source.
 func NewForSource(source, version string) (installer Installer, err error) {
-	if strings.HasPrefix(source, fmt.Sprintf("%s://", registry.OCIScheme)) {
+	if strings.HasPrefix(source, registry.OCIScheme+"://") {
 		// Source is an OCI registry reference
 		installer, err = NewOCIInstaller(source)
 	} else if isLocalReference(source) {
