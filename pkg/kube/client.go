@@ -246,7 +246,7 @@ func (c *Client) getKubeClient() (kubernetes.Interface, error) {
 // IsReachable tests connectivity to the cluster.
 func (c *Client) IsReachable() error {
 	client, err := c.getKubeClient()
-	if err == genericclioptions.ErrEmptyConfig {
+	if errors.Is(err, genericclioptions.ErrEmptyConfig) {
 		// re-replace kubernetes ErrEmptyConfig error with a friendly error
 		// moar workarounds for Kubernetes API breaking.
 		return errors.New("kubernetes cluster unreachable")
@@ -944,11 +944,16 @@ func (c *Client) Delete(resources ResourceList, policy metav1.DeletionPropagatio
 func isIncompatibleServerError(err error) bool {
 	// 415: Unsupported media type means we're talking to a server which doesn't
 	// support server-side apply.
-	if _, ok := err.(*apierrors.StatusError); !ok {
+	statusError := &apierrors.StatusError{}
+	if errors.As(err, &statusError) {
 		// Non-StatusError means the error isn't because the server is incompatible.
 		return false
 	}
-	return err.(*apierrors.StatusError).Status().Code == http.StatusUnsupportedMediaType
+	return func() *apierrors.StatusError {
+		target := &apierrors.StatusError{}
+		_ = errors.As(err, &target)
+		return target
+	}().Status().Code == http.StatusUnsupportedMediaType
 }
 
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.
@@ -1234,7 +1239,7 @@ func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts 
 	)
 	if err != nil {
 		if isIncompatibleServerError(err) {
-			return fmt.Errorf("server-side apply not available on the server: %v", err)
+			return fmt.Errorf("server-side apply not available on the server: %w", err)
 		}
 
 		if apierrors.IsConflict(err) {
@@ -1251,7 +1256,7 @@ func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts 
 func (c *Client) GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error) {
 	podList, err := c.kubeClient.CoreV1().Pods(namespace).List(context.Background(), listOptions)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pod list with options: %+v with error: %v", listOptions, err)
+		return nil, fmt.Errorf("failed to get pod list with options: %+v with error: %w", listOptions, err)
 	}
 	return podList, nil
 }
