@@ -72,6 +72,40 @@ func TestValidatePluginData(t *testing.T) {
 	}
 }
 
+func TestMetadataValidateVersionPathTraversal(t *testing.T) {
+	tests := map[string]struct {
+		version string
+		valid   bool
+	}{
+		"valid semver":                {version: "1.0.0", valid: true},
+		"valid semver with v prefix":  {version: "v1.0.0", valid: true},
+		"valid semver with prerelease": {version: "1.2.3-alpha.1+build.123", valid: true},
+		"empty version":               {version: "", valid: true},
+		"path traversal":              {version: "../../../../tmp/evil", valid: false},
+		"path traversal etc":          {version: "../../../etc/passwd", valid: false},
+		"path traversal in version":   {version: "1.0.0/../../etc", valid: false},
+		"not a version":               {version: "not-a-version", valid: false},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			m := mockSubprocessCLIPlugin(t, "testplugin")
+			m.metadata.Version = tc.version
+			err := m.Metadata().Validate()
+			if tc.valid && err != nil {
+				t.Errorf("expected valid, got error: %s", err)
+			}
+			if !tc.valid {
+				if err == nil {
+					t.Errorf("expected error for version %q, got nil", tc.version)
+				} else if !strings.Contains(err.Error(), "invalid plugin version") {
+					t.Errorf("expected 'invalid plugin version' error, got: %s", err)
+				}
+			}
+		})
+	}
+}
+
 func TestMetadataValidateMultipleErrors(t *testing.T) {
 	// Create metadata with multiple validation issues
 	metadata := Metadata{
