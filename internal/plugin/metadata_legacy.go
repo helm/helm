@@ -71,6 +71,11 @@ func (m *MetadataLegacy) Validate() error {
 	if !validPluginName.MatchString(m.Name) {
 		return fmt.Errorf("invalid plugin name %q: must contain only a-z, A-Z, 0-9, _ and -", m.Name)
 	}
+
+	if m.Version != "" && !isValidSemver(m.Version) {
+		return fmt.Errorf("invalid plugin version %q: must be valid semver", m.Version)
+	}
+
 	m.Usage = sanitizeString(m.Usage)
 
 	if len(m.PlatformCommand) > 0 && len(m.Command) > 0 {

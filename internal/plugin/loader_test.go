@@ -338,6 +338,7 @@ runtime: subprocess
 		"correct name field": {
 			yaml: `apiVersion: v1
 name: my-plugin
+version: 1.0.0
 type: cli/v1
 runtime: subprocess
 `,
