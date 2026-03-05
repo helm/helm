@@ -157,7 +157,6 @@ func resetEnv() func() {
 }
 
 func TestCmdGetDryRunFlagStrategy(t *testing.T) {
-
 	type testCaseExpectedLog struct {
 		Level string
 		Msg   string
@@ -274,7 +273,6 @@ func TestCmdGetDryRunFlagStrategy(t *testing.T) {
 	}
 
 	for name, tc := range testCases {
-
 		logBuf := new(bytes.Buffer)
 		logger := slog.New(slog.NewJSONHandler(logBuf, nil))
 		slog.SetDefault(logger)

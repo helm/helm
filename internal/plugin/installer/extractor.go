@@ -90,7 +90,6 @@ func NewExtractor(source string) (Extractor, error) {
 //   - Beginning a path with a path separator is illegal
 //   - Rudimentary symlink protections are offered by SecureJoin.
 func cleanJoin(root, dest string) (string, error) {
-
 	// On Windows, this is a drive separator. On UNIX-like, this is the path list separator.
 	// In neither case do we want to trust a TAR that contains these.
 	if strings.Contains(dest, ":") {
