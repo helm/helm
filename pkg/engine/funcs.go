@@ -18,13 +18,22 @@ package engine
 
 import (
 	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"io"
 	"maps"
 	"strings"
 	"text/template"
+	"unicode/utf8"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
+	"github.com/andybalholm/brotli"
+	"github.com/klauspost/compress/snappy"
+	"github.com/klauspost/compress/zstd"
+	"github.com/pierrec/lz4/v4"
 	"sigs.k8s.io/yaml"
 	goYaml "sigs.k8s.io/yaml/goyaml.v3"
 )
@@ -60,6 +69,16 @@ func funcMap() template.FuncMap {
 		"mustToJson":    mustToJSON,
 		"fromJson":      fromJSON,
 		"fromJsonArray": fromJSONArray,
+		"gzip":          gzipFunc,
+		"ungzip":        ungzipFunc,
+		"zstd":          zstdFunc,
+		"unzstd":        unzstdFunc,
+		"lz4":           lz4Func,
+		"unlz4":         unlz4Func,
+		"snappy":        snappyFunc,
+		"unsnappy":      unsnappyFunc,
+		"brotli":        brotliFunc,
+		"unbrotli":      unbrotliFunc,
 
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the
@@ -231,4 +250,327 @@ func fromJSONArray(str string) []any {
 		a = []any{err.Error()}
 	}
 	return a
+}
+
+// gzipFunc compresses a string using gzip and returns the base64 encoded result.
+//
+// It enforces a size limit (1MB) on the output to prevent creating objects too large for Kubernetes Secrets/ConfigMap.
+//
+// This is designed to be called from a template.
+func gzipFunc(str string) (string, error) {
+	var b bytes.Buffer
+	w := gzip.NewWriter(&b)
+	if _, err := w.Write([]byte(str)); err != nil {
+		return "", err
+	}
+	if err := w.Close(); err != nil {
+		return "", err
+	}
+
+	encoded := base64.StdEncoding.EncodeToString(b.Bytes())
+
+	// Kubernetes limit for Secret/ConfigMap is 1MB.
+	const maxLimit = 1048576
+	if len(encoded) > maxLimit {
+		return "", fmt.Errorf("gzip: output size %d exceeds limit of %d bytes", len(encoded), maxLimit)
+	}
+
+	return encoded, nil
+}
+
+// ungzipFunc decodes a base64 encoded and gzip-compressed string.
+//
+// It enforces a size limit (1MB) on the input and output to prevent abuse.
+//
+// This is designed to be called from a template.
+func ungzipFunc(str string) (string, error) {
+	// Kubernetes limit for Secret/ConfigMap is 1MB.
+	const maxLimit = 1048576
+
+	if len(str) > maxLimit {
+		return "", fmt.Errorf("ungzip: input size %d exceeds limit of %d bytes", len(str), maxLimit)
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return "", fmt.Errorf("ungzip: base64 decode failed: %w", err)
+	}
+
+	r, err := gzip.NewReader(bytes.NewReader(decoded))
+	if err != nil {
+		return "", err
+	}
+	defer r.Close()
+
+	// Enforce a size limit on the decompressed content.
+	limitR := io.LimitReader(r, maxLimit+1)
+
+	b, err := io.ReadAll(limitR)
+	if err != nil {
+		return "", err
+	}
+
+	if len(b) > maxLimit {
+		return "", fmt.Errorf("ungzip: decompressed content exceeds size limit of %d bytes", maxLimit)
+	}
+
+	// Ensure the content is valid text (UTF-8) to prevent binary obfuscation.
+	if !utf8.Valid(b) {
+		return "", fmt.Errorf("ungzip: content is not valid UTF-8 text")
+	}
+
+	return string(b), nil
+}
+
+// zstdFunc compresses a string with zstd.
+func zstdFunc(str string) (string, error) {
+	// Kubernetes limit for Secret/ConfigMap is 1MB.
+	const maxLimit = 1048576
+
+	encoder, err := zstd.NewWriter(nil)
+	if err != nil {
+		return "", err
+	}
+	compressed := encoder.EncodeAll([]byte(str), nil)
+
+	encoded := base64.StdEncoding.EncodeToString(compressed)
+
+	if len(encoded) > maxLimit {
+		return "", fmt.Errorf("zstd: output size %d exceeds limit of %d bytes", len(encoded), maxLimit)
+	}
+	return encoded, nil
+}
+
+// unzstdFunc decodes a base64 encoded and zstd-compressed string.
+//
+// It enforces a size limit (1MB) on the input and output to prevent abuse.
+//
+// This is designed to be called from a template.
+func unzstdFunc(str string) (string, error) {
+	// Kubernetes limit for Secret/ConfigMap is 1MB.
+	const maxLimit = 1048576
+
+	if len(str) > maxLimit {
+		return "", fmt.Errorf("unzstd: input size %d exceeds limit of %d bytes", len(str), maxLimit)
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return "", fmt.Errorf("unzstd: base64 decode failed: %w", err)
+	}
+
+	decoder, err := zstd.NewReader(nil)
+	if err != nil {
+		return "", err
+	}
+	defer decoder.Close()
+
+	// Enforce a size limit on the decompressed content.
+	const maxLimitOutput = 1048576
+
+	// Ideally we would use LimitReader, but zstd.Decoder doesn't use io.Reader directly for simple DecodeAll
+	// But `zstd.NewReader` returns a decoder that implements io.Reader? Yes.
+	// But `EncodeAll`/`DecodeAll` are stateless faster paths.
+	// Let's use DecodeAll for simplicity and valid memory check if possible, OR standard io.Copy with limit.
+	// zstd's DecodeAll allocates. To be safe against bombs, we should probably check size *if possible* or use the reader.
+	// Let's use the Reader interface to be consistent with ungzip and reusable limit logic.
+
+	// However, zstd.DecodeAll is highly optimized.
+	// Let's try DecodeAll but pre-check if we can? No, we don't know decompressed size easily.
+	// Let's stick to Reader for safety.
+
+	// Re-creating reader:
+	// decoder, _ := zstd.NewReader(bytes.NewReader(decoded))
+	// But zstd.NewReader takes io.Reader.
+
+	reader, err := zstd.NewReader(bytes.NewReader(decoded))
+	if err != nil {
+		return "", err
+	}
+	defer reader.Close()
+
+	limitR := io.LimitReader(reader, maxLimitOutput+1)
+	b, err := io.ReadAll(limitR)
+	if err != nil {
+		return "", err
+	}
+
+	if len(b) > maxLimitOutput {
+		return "", fmt.Errorf("unzstd: decompressed content exceeds size limit of %d bytes", maxLimitOutput)
+	}
+
+	if !utf8.Valid(b) {
+		return "", fmt.Errorf("unzstd: content is not valid UTF-8 text")
+	}
+
+	return string(b), nil
+}
+
+// lz4Func compresses a string with lz4.
+func lz4Func(str string) (string, error) {
+	const maxLimit = 1048576
+
+	var buf bytes.Buffer
+	writer := lz4.NewWriter(&buf)
+	if _, err := writer.Write([]byte(str)); err != nil {
+		return "", err
+	}
+	if err := writer.Close(); err != nil {
+		return "", err
+	}
+
+	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
+
+	if len(encoded) > maxLimit {
+		return "", fmt.Errorf("lz4: output size %d exceeds limit of %d bytes", len(encoded), maxLimit)
+	}
+	return encoded, nil
+}
+
+// unlz4Func decodes a base64 encoded and lz4-compressed string.
+//
+// It enforces a size limit (1MB) on the input and output to prevent abuse.
+//
+// This is designed to be called from a template.
+func unlz4Func(str string) (string, error) {
+	const maxLimit = 1048576
+
+	if len(str) > maxLimit {
+		return "", fmt.Errorf("unlz4: input size %d exceeds limit of %d bytes", len(str), maxLimit)
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return "", fmt.Errorf("unlz4: base64 decode failed: %w", err)
+	}
+
+	reader := lz4.NewReader(bytes.NewReader(decoded))
+
+	// Enforce a size limit on the decompressed content.
+	const maxLimitOutput = 1048576
+	limitR := io.LimitReader(reader, maxLimitOutput+1)
+
+	b, err := io.ReadAll(limitR)
+	if err != nil {
+		return "", err
+	}
+
+	if len(b) > maxLimitOutput {
+		return "", fmt.Errorf("unlz4: decompressed content exceeds size limit of %d bytes", maxLimitOutput)
+	}
+
+	if !utf8.Valid(b) {
+		return "", fmt.Errorf("unlz4: content is not valid UTF-8 text")
+	}
+	return string(b), nil
+}
+
+// snappyFunc compresses a string with snappy.
+func snappyFunc(str string) (string, error) {
+	const maxLimit = 1048576
+
+	// Snappy Encode returns byte slice
+	compressed := snappy.Encode(nil, []byte(str))
+	encoded := base64.StdEncoding.EncodeToString(compressed)
+
+	if len(encoded) > maxLimit {
+		return "", fmt.Errorf("snappy: output size %d exceeds limit of %d bytes", len(encoded), maxLimit)
+	}
+	return encoded, nil
+}
+
+// unsnappyFunc decodes a base64 encoded and snappy-compressed string.
+//
+// It enforces a size limit (1MB) on the input and output to prevent abuse.
+//
+// This is designed to be called from a template.
+func unsnappyFunc(str string) (string, error) {
+	const maxLimit = 1048576
+
+	if len(str) > maxLimit {
+		return "", fmt.Errorf("unsnappy: input size %d exceeds limit of %d bytes", len(str), maxLimit)
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return "", fmt.Errorf("unsnappy: base64 decode failed: %w", err)
+	}
+
+	// Snappy DecodedLen is available, use it for safety check before allocation if possible
+	decodedLen, err := snappy.DecodedLen(decoded)
+	if err != nil {
+		return "", err
+	}
+	const maxLimitOutput = 1048576
+	if decodedLen > maxLimitOutput {
+		return "", fmt.Errorf("unsnappy: decompressed content exceeds size limit of %d bytes", maxLimitOutput)
+	}
+
+	b, err := snappy.Decode(nil, decoded)
+	if err != nil {
+		return "", err
+	}
+
+	if !utf8.Valid(b) {
+		return "", fmt.Errorf("unsnappy: content is not valid UTF-8 text")
+	}
+	return string(b), nil
+}
+
+// brotliFunc compresses a string with brotli.
+func brotliFunc(str string) (string, error) {
+	const maxLimit = 1048576
+
+	var buf bytes.Buffer
+	writer := brotli.NewWriter(&buf)
+	if _, err := writer.Write([]byte(str)); err != nil {
+		return "", err
+	}
+	if err := writer.Close(); err != nil {
+		return "", err
+	}
+
+	encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
+
+	if len(encoded) > maxLimit {
+		return "", fmt.Errorf("brotli: output size %d exceeds limit of %d bytes", len(encoded), maxLimit)
+	}
+	return encoded, nil
+}
+
+// unbrotliFunc decodes a base64 encoded and brotli-compressed string.
+//
+// It enforces a size limit (1MB) on the input and output to prevent abuse.
+//
+// This is designed to be called from a template.
+func unbrotliFunc(str string) (string, error) {
+	const maxLimit = 1048576
+
+	if len(str) > maxLimit {
+		return "", fmt.Errorf("unbrotli: input size %d exceeds limit of %d bytes", len(str), maxLimit)
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return "", fmt.Errorf("unbrotli: base64 decode failed: %w", err)
+	}
+
+	reader := brotli.NewReader(bytes.NewReader(decoded))
+
+	const maxLimitOutput = 1048576
+	limitR := io.LimitReader(reader, maxLimitOutput+1)
+
+	b, err := io.ReadAll(limitR)
+	if err != nil {
+		return "", err
+	}
+
+	if len(b) > maxLimitOutput {
+		return "", fmt.Errorf("unbrotli: decompressed content exceeds size limit of %d bytes", maxLimitOutput)
+	}
+
+	if !utf8.Valid(b) {
+		return "", fmt.Errorf("unbrotli: content is not valid UTF-8 text")
+	}
+	return string(b), nil
 }
