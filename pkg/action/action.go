@@ -213,12 +213,7 @@ func splitAndDeannotate(postrendered string) (map[string]string, error) {
 	return reconstructed, nil
 }
 
-// renderResources renders the templates in a chart
-//
-// TODO: This function is badly in need of a refactor.
-// TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
-//
-//	This code has to do with writing files to disk.
+// renderResources renders the templates in a chart and returns the hooks, manifest buffer, and notes.
 func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
 	var hs []*release.Hook
 	b := bytes.NewBuffer(nil)
@@ -234,91 +229,27 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 		}
 	}
 
-	var files map[string]string
-	var err2 error
-
-	// A `helm template` should not talk to the remote cluster. However, commands with the flag
-	// `--dry-run` with the value of `false`, `none`, or `server` should try to interact with the cluster.
-	// It may break in interesting and exotic ways because other data (e.g. discovery) is mocked.
-	if interactWithRemote && cfg.RESTClientGetter != nil {
-		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
-		if err != nil {
-			return hs, b, "", err
-		}
-		e := engine.New(restConfig)
-		e.EnableDNS = enableDNS
-		e.CustomTemplateFuncs = cfg.CustomTemplateFuncs
-
-		files, err2 = e.Render(ch, values)
-	} else {
-		var e engine.Engine
-		e.EnableDNS = enableDNS
-		e.CustomTemplateFuncs = cfg.CustomTemplateFuncs
-
-		files, err2 = e.Render(ch, values)
+	files, err := cfg.renderTemplates(ch, values, interactWithRemote, enableDNS)
+	if err != nil {
+		return hs, b, "", err
 	}
 
-	if err2 != nil {
-		return hs, b, "", err2
+	notes, files, err := extractNotes(files, ch.Name(), subNotes)
+	if err != nil {
+		return hs, b, "", err
 	}
-
-	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
-	// pull it out of here into a separate file so that we can actually use the output of the rendered
-	// text file. We have to spin through this map because the file contains path information, so we
-	// look for terminating NOTES.txt. We also remove it from the files so that we don't have to skip
-	// it in the sortHooks.
-	var notesBuffer bytes.Buffer
-	for k, v := range files {
-		if strings.HasSuffix(k, notesFileSuffix) {
-			if subNotes || (k == path.Join(ch.Name(), "templates", notesFileSuffix)) {
-				// If buffer contains data, add newline before adding more
-				if notesBuffer.Len() > 0 {
-					notesBuffer.WriteString("\n")
-				}
-				notesBuffer.WriteString(v)
-			}
-			delete(files, k)
-		}
-	}
-	notes := notesBuffer.String()
 
 	if pr != nil {
-		// We need to send files to the post-renderer before sorting and splitting
-		// hooks from manifests. The post-renderer interface expects a stream of
-		// manifests (similar to what tools like Kustomize and kubectl expect), whereas
-		// the sorter uses filenames.
-		// Here, we merge the documents into a stream, post-render them, and then split
-		// them back into a map of filename -> content.
-
-		// Merge files as stream of documents for sending to post renderer
-		merged, err := annotateAndMerge(files)
+		files, err = cfg.applyPostRenderer(files, pr)
 		if err != nil {
-			return hs, b, notes, fmt.Errorf("error merging manifests: %w", err)
-		}
-
-		// Run the post renderer
-		postRendered, err := pr.Run(bytes.NewBufferString(merged))
-		if err != nil {
-			return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
-		}
-
-		// Use the file list and contents received from the post renderer
-		files, err = splitAndDeannotate(postRendered.String())
-		if err != nil {
-			return hs, b, notes, fmt.Errorf("error while parsing post rendered output: %w", err)
+			return hs, b, notes, err
 		}
 	}
 
-	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
-	// as partials are not used after renderer.Render. Empty manifests are also
-	// removed here.
 	hs, manifests, err := releaseutil.SortManifests(files, nil, releaseutil.InstallOrder)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
-		// to Kubernetes.
-		//
-		// We return the files as a big blob of data to help the user debug parser
-		// errors.
+		// to Kubernetes. We return the files as a big blob of data to help the user
 		for name, content := range files {
 			if strings.TrimSpace(content) == "" {
 				continue
@@ -328,17 +259,99 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 		return hs, b, "", err
 	}
 
-	// Aggregate all valid manifests into one big doc.
+	err = cfg.writeRenderedOutput(b, manifests, ch.CRDObjects(), outputDir, releaseName, useReleaseName, includeCrds, hideSecret)
+	if err != nil {
+		return hs, b, "", err
+	}
+
+	return hs, b, notes, nil
+}
+
+// renderTemplates renders the chart templates using the appropriate engine.
+func (cfg *Configuration) renderTemplates(ch *chart.Chart, values common.Values, interactWithRemote, enableDNS bool) (map[string]string, error) {
+	// A `helm template` should not talk to the remote cluster. However, commands with the flag
+	// `--dry-run` with the value of `false`, `none`, or `server` should try to interact with the cluster.
+	// It may break in interesting and exotic ways because other data (e.g. discovery) is mocked.
+	if interactWithRemote && cfg.RESTClientGetter != nil {
+		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
+		if err != nil {
+			return nil, err
+		}
+		e := engine.New(restConfig)
+		e.EnableDNS = enableDNS
+		e.CustomTemplateFuncs = cfg.CustomTemplateFuncs
+
+		return e.Render(ch, values)
+	}
+
+	var e engine.Engine
+	e.EnableDNS = enableDNS
+	e.CustomTemplateFuncs = cfg.CustomTemplateFuncs
+
+	return e.Render(ch, values)
+}
+
+// extractNotes extracts NOTES.txt files from the rendered templates.
+// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
+// we pull it out here into a separate string. We have to spin through this map because the file
+// contains path information, so we look for files ending with NOTES.txt. We also remove them from
+// the files map so that we don't have to skip them in the sortHooks.
+func extractNotes(files map[string]string, chartName string, subNotes bool) (string, map[string]string, error) {
+	var notesBuffer bytes.Buffer
+	for k, v := range files {
+		if strings.HasSuffix(k, notesFileSuffix) {
+			if subNotes || (k == path.Join(chartName, "templates", notesFileSuffix)) {
+				// If buffer contains data, add newline before adding more
+				if notesBuffer.Len() > 0 {
+					notesBuffer.WriteString("\n")
+				}
+				notesBuffer.WriteString(v)
+			}
+			delete(files, k)
+		}
+	}
+	return notesBuffer.String(), files, nil
+}
+
+// applyPostRenderer applies the post-renderer to the rendered files.
+// We need to send files to the post-renderer before sorting and splitting hooks from manifests.
+// The post-renderer interface expects a stream of manifests (similar to what tools like Kustomize
+// and kubectl expect), whereas the sorter uses filenames. Here, we merge the documents into a
+// stream, post-render them, and then split them back into a map of filename -> content.
+func (cfg *Configuration) applyPostRenderer(files map[string]string, pr postrenderer.PostRenderer) (map[string]string, error) {
+	// Merge files as stream of documents for sending to post renderer
+	merged, err := annotateAndMerge(files)
+	if err != nil {
+		return nil, fmt.Errorf("error merging manifests: %w", err)
+	}
+
+	// Run the post renderer
+	postRendered, err := pr.Run(bytes.NewBufferString(merged))
+	if err != nil {
+		return nil, fmt.Errorf("error while running post render on files: %w", err)
+	}
+
+	// Use the file list and contents received from the post renderer
+	files, err = splitAndDeannotate(postRendered.String())
+	if err != nil {
+		return nil, fmt.Errorf("error while parsing post rendered output: %w", err)
+	}
+
+	return files, nil
+}
+
+// writeRenderedOutput writes the rendered manifests and CRDs to a buffer or to files.
+func (cfg *Configuration) writeRenderedOutput(b *bytes.Buffer, manifests []releaseutil.Manifest, crds []chart.CRD, outputDir, releaseName string, useReleaseName, includeCrds, hideSecret bool) error {
 	fileWritten := make(map[string]bool)
 
 	if includeCrds {
-		for _, crd := range ch.CRDObjects() {
+		for _, crd := range crds {
 			if outputDir == "" {
 				fmt.Fprintf(b, "---\n# Source: %s\n%s\n", crd.Filename, string(crd.File.Data[:]))
 			} else {
-				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Filename])
+				err := WriteManifestToFile(outputDir, crd.Filename, string(crd.File.Data[:]), fileWritten[crd.Filename])
 				if err != nil {
-					return hs, b, "", err
+					return err
 				}
 				fileWritten[crd.Filename] = true
 			}
@@ -361,15 +374,15 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 			// output dir is only used by `helm template`. In the next major
 			// release, we should move this logic to template only as it is not
 			// used by install or upgrade
-			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
+			err := WriteManifestToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
 			if err != nil {
-				return hs, b, "", err
+				return err
 			}
 			fileWritten[m.Name] = true
 		}
 	}
 
-	return hs, b, notes, nil
+	return nil
 }
 
 // RESTClientGetter gets the rest client
