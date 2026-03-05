@@ -19,7 +19,6 @@ package rules
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -102,14 +101,14 @@ func validateCrdsDir(crdsPath string) error {
 
 func validateCrdAPIVersion(obj *k8sYamlStruct) error {
 	if !strings.HasPrefix(obj.APIVersion, "apiextensions.k8s.io") {
-		return fmt.Errorf("apiVersion is not in 'apiextensions.k8s.io'")
+		return errors.New("apiVersion is not in 'apiextensions.k8s.io'")
 	}
 	return nil
 }
 
 func validateCrdKind(obj *k8sYamlStruct) error {
 	if obj.Kind != "CustomResourceDefinition" {
-		return fmt.Errorf("object kind is not 'CustomResourceDefinition'")
+		return errors.New("object kind is not 'CustomResourceDefinition'")
 	}
 	return nil
 }

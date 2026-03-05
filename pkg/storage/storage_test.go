@@ -208,7 +208,7 @@ func TestStorageDeployed(t *testing.T) {
 
 	switch {
 	case rls == nil:
-		t.Fatalf("Release is nil")
+		t.Fatal("Release is nil")
 	case rel.Name != name:
 		t.Fatalf("Expected release name %q, actual %q\n", name, rel.Name)
 	case rel.Version != vers:
@@ -251,7 +251,7 @@ func TestStorageDeployedWithCorruption(t *testing.T) {
 
 	switch {
 	case rls == nil:
-		t.Fatalf("Release is nil")
+		t.Fatal("Release is nil")
 	case rel.Name != name:
 		t.Fatalf("Expected release name %q, actual %q\n", name, rel.Name)
 	case rel.Version != vers:
@@ -576,7 +576,7 @@ func (test ReleaseTestData) ToRelease() *rspb.Release {
 	}
 }
 
-func assertErrNil(eh func(args ...interface{}), err error, message string) {
+func assertErrNil(eh func(args ...any), err error, message string) {
 	if err != nil {
 		eh(fmt.Sprintf("%s: %q", message, err))
 	}

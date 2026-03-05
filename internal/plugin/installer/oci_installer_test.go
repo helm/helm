@@ -82,7 +82,7 @@ command: "$HELM_PLUGIN_DIR/bin/%s"
 	// Add executable
 	execContent := fmt.Sprintf("#!/bin/sh\necho '%s test plugin'", pluginName)
 	execHeader := &tar.Header{
-		Name:     fmt.Sprintf("bin/%s", pluginName),
+		Name:     "bin/" + pluginName,
 		Mode:     0755,
 		Size:     int64(len(execContent)),
 		Typeflag: tar.TypeReg,

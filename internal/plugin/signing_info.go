@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ProtonMail/go-crypto/openpgp/clearsign" //nolint
+	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
 
 	"helm.sh/helm/v4/pkg/helmpath"
 )

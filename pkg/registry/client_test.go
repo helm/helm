@@ -82,7 +82,7 @@ func TestLogin_ResetsForceAttemptOAuth2_OnSuccess(t *testing.T) {
 	}
 
 	if c.authorizer == nil || c.authorizer.ForceAttemptOAuth2 {
-		t.Fatalf("expected ForceAttemptOAuth2 default to be false")
+		t.Fatal("expected ForceAttemptOAuth2 default to be false")
 	}
 
 	// Call Login with plain HTTP against our test server

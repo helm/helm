@@ -16,6 +16,7 @@ limitations under the License.
 package plugin
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -48,7 +49,7 @@ type MetadataV1 struct {
 
 func (m *MetadataV1) Validate() error {
 	if !validPluginName.MatchString(m.Name) {
-		return fmt.Errorf("invalid plugin `name`")
+		return errors.New("invalid plugin `name`")
 	}
 
 	if m.APIVersion != "v1" {
@@ -56,11 +57,11 @@ func (m *MetadataV1) Validate() error {
 	}
 
 	if m.Type == "" {
-		return fmt.Errorf("`type` missing")
+		return errors.New("`type` missing")
 	}
 
 	if m.Runtime == "" {
-		return fmt.Errorf("`runtime` missing")
+		return errors.New("`runtime` missing")
 	}
 
 	return nil

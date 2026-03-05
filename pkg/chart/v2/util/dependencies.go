@@ -142,7 +142,7 @@ func copyMetadata(metadata *chart.Metadata) *chart.Metadata {
 }
 
 // processDependencyEnabled removes disabled charts from dependencies
-func processDependencyEnabled(c *chart.Chart, v map[string]interface{}, path string) error {
+func processDependencyEnabled(c *chart.Chart, v map[string]any, path string) error {
 	if c.Metadata.Dependencies == nil {
 		return nil
 	}
@@ -228,7 +228,7 @@ Loop:
 }
 
 // pathToMap creates a nested map given a YAML path in dot notation.
-func pathToMap(path string, data map[string]interface{}) map[string]interface{} {
+func pathToMap(path string, data map[string]any) map[string]any {
 	if path == "." {
 		return data
 	}
@@ -237,13 +237,13 @@ func pathToMap(path string, data map[string]interface{}) map[string]interface{} 
 
 func parsePath(key string) []string { return strings.Split(key, ".") }
 
-func set(path []string, data map[string]interface{}) map[string]interface{} {
+func set(path []string, data map[string]any) map[string]any {
 	if len(path) == 0 {
 		return nil
 	}
 	cur := data
 	for i := len(path) - 1; i >= 0; i-- {
-		cur = map[string]interface{}{path[i]: cur}
+		cur = map[string]any{path[i]: cur}
 	}
 	return cur
 }
@@ -264,13 +264,13 @@ func processImportValues(c *chart.Chart, merge bool) error {
 	if err != nil {
 		return err
 	}
-	b := make(map[string]interface{})
+	b := make(map[string]any)
 	// import values from each dependency if specified in import-values
 	for _, r := range c.Metadata.Dependencies {
-		var outiv []interface{}
+		var outiv []any
 		for _, riv := range r.ImportValues {
 			switch iv := riv.(type) {
-			case map[string]interface{}:
+			case map[string]any:
 				child := fmt.Sprintf("%v", iv["child"])
 				parent := fmt.Sprintf("%v", iv["parent"])
 
@@ -337,27 +337,27 @@ func processImportValues(c *chart.Chart, merge bool) error {
 	return nil
 }
 
-func deepCopyMap(vals map[string]interface{}) map[string]interface{} {
+func deepCopyMap(vals map[string]any) map[string]any {
 	valsCopy, err := copystructure.Copy(vals)
 	if err != nil {
 		return vals
 	}
-	return valsCopy.(map[string]interface{})
+	return valsCopy.(map[string]any)
 }
 
-func trimNilValues(vals map[string]interface{}) map[string]interface{} {
+func trimNilValues(vals map[string]any) map[string]any {
 	valsCopy, err := copystructure.Copy(vals)
 	if err != nil {
 		return vals
 	}
-	valsCopyMap := valsCopy.(map[string]interface{})
+	valsCopyMap := valsCopy.(map[string]any)
 	for key, val := range valsCopyMap {
 		if val == nil {
 			// Iterate over the values and remove nil keys
 			delete(valsCopyMap, key)
 		} else if istable(val) {
 			// Recursively call into ourselves to remove keys from inner tables
-			valsCopyMap[key] = trimNilValues(val.(map[string]interface{}))
+			valsCopyMap[key] = trimNilValues(val.(map[string]any))
 		}
 	}
 
@@ -365,8 +365,8 @@ func trimNilValues(vals map[string]interface{}) map[string]interface{} {
 }
 
 // istable is a special-purpose function to see if the present thing matches the definition of a YAML table.
-func istable(v interface{}) bool {
-	_, ok := v.(map[string]interface{})
+func istable(v any) bool {
+	_, ok := v.(map[string]any)
 	return ok
 }
 

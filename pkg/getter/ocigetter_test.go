@@ -128,7 +128,7 @@ func TestOCIHTTPTransportReuse(t *testing.T) {
 	}
 
 	if g.transport == nil {
-		t.Fatalf("Expected non nil value for transport")
+		t.Fatal("Expected non nil value for transport")
 	}
 
 	transport1 := g.transport
@@ -140,12 +140,12 @@ func TestOCIHTTPTransportReuse(t *testing.T) {
 	}
 
 	if g.transport == nil {
-		t.Fatalf("Expected non nil value for transport")
+		t.Fatal("Expected non nil value for transport")
 	}
 
 	transport2 := g.transport
 
 	if transport1 != transport2 {
-		t.Fatalf("Expected default transport to be reused")
+		t.Fatal("Expected default transport to be reused")
 	}
 }

@@ -24,8 +24,8 @@ import (
 	"strings"
 	"testing"
 
-	pgperrors "github.com/ProtonMail/go-crypto/openpgp/errors" //nolint
-	"github.com/ProtonMail/go-crypto/openpgp/packet"           //nolint
+	pgperrors "github.com/ProtonMail/go-crypto/openpgp/errors"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"

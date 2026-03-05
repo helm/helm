@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"path"
 	"strings"
@@ -104,14 +105,14 @@ func TestRender(t *testing.T) {
 			{Name: "templates/test4", ModTime: modTime, Data: []byte("{{toJson .Values}}")},
 			{Name: "templates/test5", ModTime: modTime, Data: []byte("{{getHostByName \"helm.sh\"}}")},
 		},
-		Values: map[string]interface{}{"outer": "DEFAULT", "inner": "DEFAULT"},
+		Values: map[string]any{"outer": "DEFAULT", "inner": "DEFAULT"},
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{
+	vals := map[string]any{
+		"Values": map[string]any{
 			"outer": "spouter",
 			"inner": "inn",
-			"global": map[string]interface{}{
+			"global": map[string]any{
 				"callme": "Ishmael",
 			},
 		},
@@ -226,11 +227,11 @@ func TestRenderWithDNS(t *testing.T) {
 		Templates: []*common.File{
 			{Name: "templates/test1", ModTime: time.Now(), Data: []byte("{{getHostByName \"helm.sh\"}}")},
 		},
-		Values: map[string]interface{}{},
+		Values: map[string]any{},
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{},
+	vals := map[string]any{
+		"Values": map[string]any{},
 	}
 
 	v, err := util.CoalesceValues(c, vals)
@@ -277,15 +278,15 @@ var _ ClientProvider = &testClientProvider{}
 
 // makeUnstructured is a convenience function for single-line creation of Unstructured objects.
 func makeUnstructured(apiVersion, kind, name, namespace string) *unstructured.Unstructured {
-	ret := &unstructured.Unstructured{Object: map[string]interface{}{
+	ret := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": apiVersion,
 		"kind":       kind,
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name": name,
 		},
 	}}
 	if namespace != "" {
-		ret.Object["metadata"].(map[string]interface{})["namespace"] = namespace
+		ret.Object["metadata"].(map[string]any)["namespace"] = namespace
 	}
 	return ret
 }
@@ -356,7 +357,7 @@ func TestRenderWithClientProvider(t *testing.T) {
 			Name:    "moby",
 			Version: "1.2.3",
 		},
-		Values: map[string]interface{}{},
+		Values: map[string]any{},
 	}
 
 	modTime := time.Now()
@@ -368,8 +369,8 @@ func TestRenderWithClientProvider(t *testing.T) {
 		})
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{},
+	vals := map[string]any{
+		"Values": map[string]any{},
 	}
 
 	v, err := util.CoalesceValues(c, vals)
@@ -401,11 +402,11 @@ func TestRenderWithClientProvider_error(t *testing.T) {
 		Templates: []*common.File{
 			{Name: "templates/error", ModTime: time.Now(), Data: []byte(`{{ lookup "v1" "Error" "" "" }}`)},
 		},
-		Values: map[string]interface{}{},
+		Values: map[string]any{},
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{},
+	vals := map[string]any{
+		"Values": map[string]any{},
 	}
 
 	v, err := util.CoalesceValues(c, vals)
@@ -417,7 +418,7 @@ func TestRenderWithClientProvider_error(t *testing.T) {
 		t: t,
 		scheme: map[string]kindProps{
 			"v1/Error": {
-				shouldErr: fmt.Errorf("kaboom"),
+				shouldErr: errors.New("kaboom"),
 			},
 		},
 	}
@@ -438,7 +439,7 @@ func TestParallelRenderInternals(t *testing.T) {
 			tpls := map[string]renderable{
 				"t": {
 					tpl:  `{{.val}}`,
-					vals: map[string]interface{}{"val": tt},
+					vals: map[string]any{"val": tt},
 				},
 			}
 			out, err := e.render(tpls)
@@ -455,7 +456,7 @@ func TestParallelRenderInternals(t *testing.T) {
 }
 
 func TestParseErrors(t *testing.T) {
-	vals := common.Values{"Values": map[string]interface{}{}}
+	vals := common.Values{"Values": map[string]any{}}
 
 	tplsUndefinedFunction := map[string]renderable{
 		"undefined_function": {tpl: `{{foo}}`, vals: vals},
@@ -471,7 +472,7 @@ func TestParseErrors(t *testing.T) {
 }
 
 func TestExecErrors(t *testing.T) {
-	vals := common.Values{"Values": map[string]interface{}{}}
+	vals := common.Values{"Values": map[string]any{}}
 	cases := []struct {
 		name     string
 		tpls     map[string]renderable
@@ -535,7 +536,7 @@ linebreak`,
 }
 
 func TestFailErrors(t *testing.T) {
-	vals := common.Values{"Values": map[string]interface{}{}}
+	vals := common.Values{"Values": map[string]any{}}
 
 	failtpl := `All your base are belong to us{{ fail "This is an error" }}`
 	tplsFailed := map[string]renderable{
@@ -643,7 +644,7 @@ func TestRenderDependency(t *testing.T) {
 		},
 	})
 
-	out, err := Render(ch, map[string]interface{}{})
+	out, err := Render(ch, map[string]any{})
 	if err != nil {
 		t.Fatalf("failed to render chart: %s", err)
 	}
@@ -675,7 +676,7 @@ func TestRenderNestedValues(t *testing.T) {
 			{Name: deepestpath, ModTime: modTime, Data: []byte(`And this same {{.Values.what}} that smiles {{.Values.global.when}}`)},
 			{Name: checkrelease, ModTime: modTime, Data: []byte(`Tomorrow will be {{default "happy" .Release.Name }}`)},
 		},
-		Values: map[string]interface{}{"what": "milkshake", "where": "here"},
+		Values: map[string]any{"what": "milkshake", "where": "here"},
 	}
 
 	inner := &chart.Chart{
@@ -683,7 +684,7 @@ func TestRenderNestedValues(t *testing.T) {
 		Templates: []*common.File{
 			{Name: innerpath, ModTime: modTime, Data: []byte(`Old {{.Values.who}} is still a-flyin'`)},
 		},
-		Values: map[string]interface{}{"who": "Robert", "what": "glasses"},
+		Values: map[string]any{"who": "Robert", "what": "glasses"},
 	}
 	inner.AddDependency(deepest)
 
@@ -693,10 +694,10 @@ func TestRenderNestedValues(t *testing.T) {
 			{Name: outerpath, ModTime: modTime, Data: []byte(`Gather ye {{.Values.what}} while ye may`)},
 			{Name: subchartspath, ModTime: modTime, Data: []byte(`The glorious Lamp of {{.Subcharts.herrick.Subcharts.deepest.Values.where}}, the {{.Subcharts.herrick.Values.what}}`)},
 		},
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"what": "stinkweed",
 			"who":  "me",
-			"herrick": map[string]interface{}{
+			"herrick": map[string]any{
 				"who":  "time",
 				"what": "Sun",
 			},
@@ -704,15 +705,15 @@ func TestRenderNestedValues(t *testing.T) {
 	}
 	outer.AddDependency(inner)
 
-	injValues := map[string]interface{}{
+	injValues := map[string]any{
 		"what": "rosebuds",
-		"herrick": map[string]interface{}{
-			"deepest": map[string]interface{}{
+		"herrick": map[string]any{
+			"deepest": map[string]any{
 				"what":  "flower",
 				"where": "Heaven",
 			},
 		},
-		"global": map[string]interface{}{
+		"global": map[string]any{
 			"when": "to-day",
 		},
 	}
@@ -1059,9 +1060,11 @@ func TestRenderRecursionLimit(t *testing.T) {
 	}
 
 	var expect string
+	var expectSb1062 strings.Builder
 	for range times {
-		expect += phrase + "\n"
+		expectSb1062.WriteString(phrase + "\n")
 	}
+	expect += expectSb1062.String()
 	if got := out["overlook/templates/quote"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
@@ -1349,7 +1352,7 @@ NestedHelperFunctions/charts/common/templates/_helpers_2.tpl:1:49
 	v := common.Values{}
 
 	val, _ := util.CoalesceValues(c, v)
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"Values": val.AsMap(),
 	}
 	_, err := Render(c, vals)
@@ -1383,7 +1386,7 @@ template: no template "nested_helper.name" associated with template "gotpl"`
 	v := common.Values{}
 
 	val, _ := util.CoalesceValues(c, v)
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"Values": val.AsMap(),
 	}
 	_, err := Render(c, vals)

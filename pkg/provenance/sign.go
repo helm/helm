@@ -25,9 +25,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ProtonMail/go-crypto/openpgp"           //nolint
-	"github.com/ProtonMail/go-crypto/openpgp/clearsign" //nolint
-	"github.com/ProtonMail/go-crypto/openpgp/packet"    //nolint
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"sigs.k8s.io/yaml"
 )
 
@@ -332,7 +332,7 @@ func parseMessageBlock(data []byte) (*SumCollection, error) {
 //
 // This is the generic version that can work with any metadata type.
 // The metadata parameter should be a pointer to a struct that can be unmarshaled from YAML.
-func ParseMessageBlock(data []byte, metadata interface{}, sums *SumCollection) error {
+func ParseMessageBlock(data []byte, metadata any, sums *SumCollection) error {
 	parts := bytes.Split(data, []byte("\n...\n"))
 	if len(parts) < 2 {
 		return errors.New("message block must have at least two parts")
