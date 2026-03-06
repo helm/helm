@@ -507,6 +507,61 @@ data:
 `,
 		},
 		{
+			name: "normalizes glued document separator at file start",
+			files: map[string]string{
+				"templates/glued.yaml": `---apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+data:
+  key: value`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/glued.yaml'
+data:
+  key: value
+`,
+		},
+		{
+			name: "normalizes glued document separator between manifests",
+			files: map[string]string{
+				"templates/glued-multi.yaml": `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+data:
+  key: value
+---apiVersion: v1
+kind: Secret
+metadata:
+  name: test-secret
+data:
+  password: dGVzdA==`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/glued-multi.yaml'
+data:
+  key: value
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-secret
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/glued-multi.yaml'
+data:
+  password: dGVzdA==
+`,
+		},
+		{
 			name: "partials and empty files are removed",
 			files: map[string]string{
 				"templates/cm.yaml": `apiVersion: v1
