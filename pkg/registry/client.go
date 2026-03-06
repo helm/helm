@@ -882,7 +882,7 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *ur
 		tag = version
 	} else {
 		// Retrieve list of repository tags
-		tags, err := c.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", OCIScheme)))
+		tags, err := c.Tags(strings.TrimPrefix(ref, OCIScheme+"://"))
 		if err != nil {
 			return "", nil, err
 		}
