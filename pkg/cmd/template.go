@@ -35,6 +35,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/cmd/require"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
@@ -204,6 +205,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	addInstallFlags(cmd, f, client, valueOpts)
+	f.Var(cli.NewQuantityBytesValue(&client.MaxChartSize), "max-chart-size", "maximum size for a decompressed chart (e.g., 500Ki, 5Mi)")
+	f.Var(cli.NewQuantityBytesValue(&client.MaxChartFileSize), "max-file-size", "maximum size for a single file in a chart (e.g., 5Mi, 10Mi)")
 	f.StringArrayVarP(&showFiles, "show-only", "s", []string{}, "only show manifests rendered from the given templates")
 	f.StringVar(&client.OutputDir, "output-dir", "", "writes the executed templates to files in output-dir instead of stdout")
 	f.BoolVar(&validate, "validate", false, "deprecated")
