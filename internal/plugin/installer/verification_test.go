@@ -16,10 +16,8 @@ limitations under the License.
 package installer
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,33 +42,49 @@ func TestInstallWithOptions_VerifyMissingProvenance(t *testing.T) {
 	}
 	defer os.RemoveAll(installer.Path())
 
-	// Capture stderr to check warning message
-	oldStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
-
-	// Install with verification enabled (should warn but succeed)
+	// Install with verification enabled should fail when .prov is missing
 	result, err := InstallWithOptions(installer, Options{Verify: true, Keyring: "dummy"})
 
-	// Restore stderr and read captured output
-	w.Close()
-	os.Stderr = oldStderr
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
-	output := buf.String()
-
-	// Should succeed with nil result (no verification performed)
-	if err != nil {
-		t.Fatalf("Expected installation to succeed despite missing .prov file, got error: %v", err)
+	// Should fail with a missing provenance error
+	if err == nil {
+		t.Fatal("Expected installation to fail when .prov file is missing and verification is enabled")
+	}
+	if !strings.Contains(err.Error(), "no provenance file") {
+		t.Errorf("Expected 'no provenance file' in error message, got: %v", err)
 	}
 	if result != nil {
 		t.Errorf("Expected nil verification result when .prov file is missing, got: %+v", result)
 	}
 
-	// Should contain warning message
-	expectedWarning := "WARNING: No provenance file found for plugin"
-	if !strings.Contains(output, expectedWarning) {
-		t.Errorf("Expected warning message '%s' in output, got: %s", expectedWarning, output)
+	// Plugin should NOT be installed
+	if _, err := os.Stat(installer.Path()); !os.IsNotExist(err) {
+		t.Errorf("Plugin should not be installed when verification fails due to missing .prov")
+	}
+}
+
+func TestInstallWithOptions_NoVerifyMissingProvenance(t *testing.T) {
+	ensure.HelmHome(t)
+
+	// Create a temporary plugin tarball without .prov file
+	pluginDir := createTestPluginDir(t)
+	pluginTgz := createTarballFromPluginDir(t, pluginDir)
+	defer os.Remove(pluginTgz)
+
+	// Create local installer
+	installer, err := NewLocalInstaller(pluginTgz)
+	if err != nil {
+		t.Fatalf("Failed to create installer: %v", err)
+	}
+	defer os.RemoveAll(installer.Path())
+
+	// Install with verification explicitly disabled should succeed without .prov
+	result, err := InstallWithOptions(installer, Options{Verify: false})
+
+	if err != nil {
+		t.Fatalf("Expected installation to succeed with --verify=false, got error: %v", err)
+	}
+	if result != nil {
+		t.Errorf("Expected nil verification result when verification is disabled, got: %+v", result)
 	}
 
 	// Plugin should be installed
