@@ -29,6 +29,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
+
 	"helm.sh/helm/v4/internal/fileutil"
 	ifs "helm.sh/helm/v4/internal/third_party/dep/fs"
 	"helm.sh/helm/v4/internal/urlutil"
@@ -154,12 +156,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		}
 	}
 
-	name := filepath.Base(u.Path)
-	if u.Scheme == registry.OCIScheme {
-		idx := strings.LastIndexByte(name, ':')
-		name = fmt.Sprintf("%s-%s.tgz", name[:idx], name[idx+1:])
-	}
-
+	name := c.getChartName(u.String())
 	destfile := filepath.Join(dest, name)
 
 	// Use PlatformAtomicWriteFile to handle platform-specific concurrency concerns
@@ -314,11 +311,7 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 			// Note, this does make an assumption that the name/version is unique to a
 			// hash when a provenance file is used. If this isn't true, this section of code
 			// will need to be reworked.
-			name := filepath.Base(u.Path)
-			if u.Scheme == registry.OCIScheme {
-				idx := strings.LastIndexByte(name, ':')
-				name = fmt.Sprintf("%s-%s.tgz", name[:idx], name[idx+1:])
-			}
+			name := c.getChartName(u.String())
 
 			// Copy chart to a known location with the right name for verification and then
 			// clean it up.
@@ -367,7 +360,12 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url.URL, error) {
 	u, err := url.Parse(ref)
 	if err != nil {
-		return "", nil, fmt.Errorf("invalid chart URL format: %s", ref)
+		return "", nil, err
+	}
+
+	u, err = c.appendTagToURLIfNeeded(u, version)
+	if err != nil {
+		return "", nil, err
 	}
 
 	if registry.IsOCI(u.String()) {
@@ -584,6 +582,66 @@ func (c *ChartDownloader) scanReposForURL(u string, rf *repo.File) (*repo.Entry,
 	}
 	// This means that there is no repo file for the given URL.
 	return nil, ErrNoOwnerRepo
+}
+
+func (c *ChartDownloader) getChartName(url string) string {
+	name := filepath.Base(url)
+	if registry.IsOCI(url) {
+		idx := strings.LastIndexByte(name, ':')
+		name = fmt.Sprintf("%s-%s.tgz", name[:idx], name[idx+1:])
+	}
+
+	return name
+}
+
+func (c *ChartDownloader) appendTagToURLIfNeeded(chartURL *url.URL, version string) (*url.URL, error) {
+	if !registry.IsOCI(chartURL.String()) {
+		return chartURL, nil
+	}
+
+	refAlreadyHasTagOrDigest := strings.Contains(chartURL.Path, ":") || strings.Contains(chartURL.Path, "@")
+	if refAlreadyHasTagOrDigest {
+		return chartURL, nil
+	}
+
+	tag, err := c.getOciTag(chartURL.String(), version)
+	if err != nil {
+		return nil, err
+	}
+
+	chartURL.Path = fmt.Sprintf("%s:%s", chartURL.Path, tag)
+
+	return chartURL, nil
+}
+
+func (c *ChartDownloader) getOciTag(ref, version string) (string, error) {
+	var tag string
+
+	// Evaluate whether an explicit version has been provided. Otherwise, determine version to use
+	_, errSemVer := semver.NewVersion(version)
+	if errSemVer == nil {
+		tag = version
+	} else {
+		// Retrieve list of repository tags
+		tags, err := c.RegistryClient.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", registry.OCIScheme)))
+		if err != nil {
+			return "", err
+		}
+		if len(tags) == 0 {
+			return "", fmt.Errorf("unable to locate any tags in provided repository: %s", ref)
+		}
+
+		// Determine if version provided
+		// If empty, try to get the highest available tag
+		// If exact version, try to find it
+		// If semver constraint string, try to find a match
+		tag, err = registry.GetTagMatchingVersionOrConstraint(tags, version)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return tag, nil
 }
 
 func loadRepoConfig(file string) (*repo.File, error) {
