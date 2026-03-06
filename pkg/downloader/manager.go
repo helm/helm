@@ -192,6 +192,31 @@ func (m *Manager) Update() error {
 		}
 	}
 
+	// Check for circular dependencies in local dependencies
+	if err := m.checkCircularDeps(req, nil); err != nil {
+		return err
+	}
+
+	// Do resolution for each local dependency first. Local dependencies may
+	// have their own dependencies which must be resolved.
+	for _, dep := range req {
+		if !resolver.IsLocalDependency(dep.Repository) {
+			continue
+		}
+		chartpath, err := resolver.GetLocalPath(dep.Repository, m.ChartPath)
+		if err != nil {
+			return err
+		}
+		man := *m
+		// no need to update repositories, it is already done in main chart
+		man.SkipUpdate = true
+		man.ChartPath = chartpath
+		err = man.Update()
+		if err != nil {
+			return err
+		}
+	}
+
 	// Now we need to find out which version of a chart best satisfies the
 	// dependencies in the Chart.yaml
 	lock, err := m.resolve(req, repoNames)
@@ -300,7 +325,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			}
 			continue
 		}
-		if strings.HasPrefix(dep.Repository, "file://") {
+		if resolver.IsLocalDependency(dep.Repository) {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
 			}
@@ -476,7 +501,7 @@ func (m *Manager) hasAllRepos(deps []*chart.Dependency) error {
 Loop:
 	for _, dd := range deps {
 		// If repo is from local path or OCI, continue
-		if strings.HasPrefix(dd.Repository, "file://") || registry.IsOCI(dd.Repository) {
+		if resolver.IsLocalDependency(dd.Repository) || registry.IsOCI(dd.Repository) {
 			continue
 		}
 
@@ -581,7 +606,7 @@ func (m *Manager) resolveRepoNames(deps []*chart.Dependency) (map[string]string,
 			continue
 		}
 		// if dep chart is from local path, verify the path is valid
-		if strings.HasPrefix(dd.Repository, "file://") {
+		if resolver.IsLocalDependency(dd.Repository) {
 			if _, err := resolver.GetLocalPath(dd.Repository, m.ChartPath); err != nil {
 				return nil, err
 			}
@@ -874,7 +899,7 @@ func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 
 // archive a dep chart from local directory and save it into destPath
 func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, error) {
-	if !strings.HasPrefix(repo, "file://") {
+	if !resolver.IsLocalDependency(repo) {
 		return "", fmt.Errorf("wrong format: chart %s repository %s", name, repo)
 	}
 
@@ -919,4 +944,46 @@ func key(name string) (string, error) {
 		return "", nil
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+// checkCircularDeps checks local dependencies for circular dependency issue.
+// When local charts depend on each other, helm will quit at the very beginning with the clear message.
+func (m *Manager) checkCircularDeps(deps []*chart.Dependency, chain []string) error {
+	absPath, err := filepath.Abs(m.ChartPath)
+	if err != nil {
+		return err
+	}
+
+	for i, visited := range chain {
+		if visited == absPath {
+			cycle := append(chain[i:], absPath)
+			return fmt.Errorf("circular dependency detected:\n%s", strings.Join(cycle, "\n -> "))
+		}
+	}
+
+	// Create a new chain with the current path to avoid modifying the caller's slice
+	newChain := make([]string, len(chain)+1)
+	copy(newChain, chain)
+	newChain[len(chain)] = absPath
+
+	for _, dep := range deps {
+		if !resolver.IsLocalDependency(dep.Repository) {
+			continue
+		}
+		chartpath, err := resolver.GetLocalPath(dep.Repository, m.ChartPath)
+		if err != nil {
+			return err
+		}
+		c, err := loader.LoadDir(chartpath)
+		if err != nil {
+			return err
+		}
+		man := *m
+		man.ChartPath = chartpath
+		if err := man.checkCircularDeps(c.Metadata.Dependencies, newChain); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
