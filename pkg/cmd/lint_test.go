@@ -25,12 +25,12 @@ func TestLintCmdWithSubchartsFlag(t *testing.T) {
 	testChart := "testdata/testcharts/chart-with-bad-subcharts"
 	tests := []cmdTestCase{{
 		name:      "lint good chart with bad subcharts",
-		cmd:       fmt.Sprintf("lint %s", testChart),
+		cmd:       "lint " + testChart,
 		golden:    "output/lint-chart-with-bad-subcharts.txt",
 		wantError: true,
 	}, {
 		name:      "lint good chart with bad subcharts using --with-subcharts flag",
-		cmd:       fmt.Sprintf("lint --with-subcharts %s", testChart),
+		cmd:       "lint --with-subcharts " + testChart,
 		golden:    "output/lint-chart-with-bad-subcharts-with-subcharts.txt",
 		wantError: true,
 	}}
@@ -42,7 +42,7 @@ func TestLintCmdWithQuietFlag(t *testing.T) {
 	testChart2 := "testdata/testcharts/chart-bad-requirements"
 	tests := []cmdTestCase{{
 		name:   "lint good chart using --quiet flag",
-		cmd:    fmt.Sprintf("lint --quiet %s", testChart1),
+		cmd:    "lint --quiet " + testChart1,
 		golden: "output/lint-quiet.txt",
 	}, {
 		name:      "lint two charts, one with error using --quiet flag",
@@ -67,24 +67,24 @@ func TestLintCmdWithKubeVersionFlag(t *testing.T) {
 	testChart := "testdata/testcharts/chart-with-deprecated-api"
 	tests := []cmdTestCase{{
 		name:      "lint chart with deprecated api version using kube version flag",
-		cmd:       fmt.Sprintf("lint --kube-version 1.22.0 %s", testChart),
+		cmd:       "lint --kube-version 1.22.0 " + testChart,
 		golden:    "output/lint-chart-with-deprecated-api.txt",
 		wantError: false,
 	}, {
 		name:      "lint chart with deprecated api version using kube version and strict flag",
-		cmd:       fmt.Sprintf("lint --kube-version 1.22.0 --strict %s", testChart),
+		cmd:       "lint --kube-version 1.22.0 --strict " + testChart,
 		golden:    "output/lint-chart-with-deprecated-api-strict.txt",
 		wantError: true,
 	}, {
 		// the test builds will use the kubeVersionMinorTesting const in capabilities.go
 		// which is "20"
 		name:      "lint chart with deprecated api version without kube version",
-		cmd:       fmt.Sprintf("lint %s", testChart),
+		cmd:       "lint " + testChart,
 		golden:    "output/lint-chart-with-deprecated-api-old-k8s.txt",
 		wantError: false,
 	}, {
 		name:      "lint chart with deprecated api version with older kube version",
-		cmd:       fmt.Sprintf("lint --kube-version 1.21.0 --strict %s", testChart),
+		cmd:       "lint --kube-version 1.21.0 --strict " + testChart,
 		golden:    "output/lint-chart-with-deprecated-api-old-k8s.txt",
 		wantError: false,
 	}}

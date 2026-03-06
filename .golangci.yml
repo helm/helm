@@ -17,6 +17,7 @@ formatters:
 linters:
   default: none
 
+  # Keep sorted alphabetically
   enable:
     - contextcheck
     - depguard
@@ -27,6 +28,7 @@ linters:
     - govet
     - ineffassign
     - misspell
+    - modernize
     - nakedret
     - noctx
     - nolintlint
@@ -50,6 +52,7 @@ linters:
 
     warn-unused: true
 
+  # Keep sorted alphabetically
   settings:
     depguard:
       rules:

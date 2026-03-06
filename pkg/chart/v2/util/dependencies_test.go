@@ -385,7 +385,7 @@ func TestGetAliasDependency(t *testing.T) {
 	req := c.Metadata.Dependencies
 
 	if len(req) == 0 {
-		t.Fatalf("there are no dependencies to test")
+		t.Fatal("there are no dependencies to test")
 	}
 
 	// Success case
@@ -403,7 +403,7 @@ func TestGetAliasDependency(t *testing.T) {
 
 	if req[0].Version != "" {
 		if !IsCompatibleRange(req[0].Version, aliasChart.Metadata.Version) {
-			t.Fatalf("dependency chart version is not in the compatible range")
+			t.Fatal("dependency chart version is not in the compatible range")
 		}
 	}
 
@@ -415,7 +415,7 @@ func TestGetAliasDependency(t *testing.T) {
 
 	req[0].Version = "something else which is not in the compatible range"
 	if IsCompatibleRange(req[0].Version, aliasChart.Metadata.Version) {
-		t.Fatalf("dependency chart version which is not in the compatible range should cause a failure other than a success ")
+		t.Fatal("dependency chart version outside the compatible range should fail, but it succeeded")
 	}
 }
 

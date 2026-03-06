@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 
 	"helm.sh/helm/v4/internal/plugin/schema"
 )
@@ -64,7 +65,7 @@ func (r *SubprocessPluginRuntime) runGetter(ctx context.Context, input *Input) (
 	env["HELM_PLUGIN_DIR"] = r.pluginDir
 	env["HELM_PLUGIN_USERNAME"] = msg.Options.Username
 	env["HELM_PLUGIN_PASSWORD"] = msg.Options.Password
-	env["HELM_PLUGIN_PASS_CREDENTIALS_ALL"] = fmt.Sprintf("%t", msg.Options.PassCredentialsAll)
+	env["HELM_PLUGIN_PASS_CREDENTIALS_ALL"] = strconv.FormatBool(msg.Options.PassCredentialsAll)
 
 	command, args, err := PrepareCommands(d.PlatformCommand, false, []string{}, env)
 	if err != nil {

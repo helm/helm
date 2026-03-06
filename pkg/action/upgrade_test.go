@@ -91,7 +91,7 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("I timed out")
+	failer.WaitError = errors.New("I timed out")
 	upAction.cfg.KubeClient = failer
 	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	vals := map[string]any{}
@@ -115,7 +115,7 @@ func TestUpgradeRelease_WaitForJobs(t *testing.T) {
 	require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("I timed out")
+	failer.WaitError = errors.New("I timed out")
 	upAction.cfg.KubeClient = failer
 	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	upAction.WaitForJobs = true
@@ -140,8 +140,8 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("I timed out")
-	failer.DeleteError = fmt.Errorf("I tried to delete nil")
+	failer.WaitError = errors.New("I timed out")
+	failer.DeleteError = errors.New("I tried to delete nil")
 	upAction.cfg.KubeClient = failer
 	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	upAction.CleanupOnFail = true
@@ -170,7 +170,7 @@ func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
 
 		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 		// We can't make Update error because then the rollback won't work
-		failer.WatchUntilReadyError = fmt.Errorf("arming key removed")
+		failer.WatchUntilReadyError = errors.New("arming key removed")
 		upAction.cfg.KubeClient = failer
 		upAction.RollbackOnFailure = true
 		vals := map[string]any{}
@@ -199,7 +199,7 @@ func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
 		require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-		failer.UpdateError = fmt.Errorf("update fail")
+		failer.UpdateError = errors.New("update fail")
 		upAction.cfg.KubeClient = failer
 		upAction.RollbackOnFailure = true
 		vals := map[string]any{}

@@ -17,8 +17,8 @@ limitations under the License.
 package v2
 
 import (
-	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
 
 	v3 "helm.sh/helm/v4/internal/chart/v3"
@@ -57,7 +57,7 @@ func Mock(opts *MockReleaseOptions) *Release {
 
 	name := opts.Name
 	if name == "" {
-		name = "testrelease-" + fmt.Sprint(rand.Intn(100))
+		name = "testrelease-" + strconv.Itoa(rand.Intn(100))
 	}
 
 	version := 1

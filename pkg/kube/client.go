@@ -277,7 +277,7 @@ type ClientCreateOption func(*clientCreateOptions) error
 func ClientCreateOptionServerSideApply(serverSideApply, forceConflicts bool) ClientCreateOption {
 	return func(o *clientCreateOptions) error {
 		if !serverSideApply && forceConflicts {
-			return fmt.Errorf("forceConflicts enabled when serverSideApply disabled")
+			return errors.New("forceConflicts enabled when serverSideApply disabled")
 		}
 
 		o.serverSideApply = serverSideApply
@@ -727,7 +727,7 @@ func ClientUpdateOptionThreeWayMergeForUnstructured(threeWayMergeForUnstructured
 func ClientUpdateOptionServerSideApply(serverSideApply, forceConflicts bool) ClientUpdateOption {
 	return func(o *clientUpdateOptions) error {
 		if !serverSideApply && forceConflicts {
-			return fmt.Errorf("forceConflicts enabled when serverSideApply disabled")
+			return errors.New("forceConflicts enabled when serverSideApply disabled")
 		}
 
 		o.serverSideApply = serverSideApply
@@ -811,15 +811,15 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 	}
 
 	if updateOptions.threeWayMergeForUnstructured && updateOptions.serverSideApply {
-		return &Result{}, fmt.Errorf("invalid operation: cannot use three-way merge for unstructured and server-side apply together")
+		return &Result{}, errors.New("invalid operation: cannot use three-way merge for unstructured and server-side apply together")
 	}
 
 	if updateOptions.forceConflicts && updateOptions.forceReplace {
-		return &Result{}, fmt.Errorf("invalid operation: cannot use force conflicts and force replace together")
+		return &Result{}, errors.New("invalid operation: cannot use force conflicts and force replace together")
 	}
 
 	if updateOptions.serverSideApply && updateOptions.forceReplace {
-		return &Result{}, fmt.Errorf("invalid operation: cannot use server-side apply and force replace together")
+		return &Result{}, errors.New("invalid operation: cannot use server-side apply and force replace together")
 	}
 
 	createApplyFunc := c.makeCreateApplyFunc(

@@ -208,7 +208,7 @@ func TestStorageDeployed(t *testing.T) {
 
 	switch {
 	case rls == nil:
-		t.Fatalf("Release is nil")
+		t.Fatal("Release is nil")
 	case rel.Name != name:
 		t.Fatalf("Expected release name %q, actual %q\n", name, rel.Name)
 	case rel.Version != vers:
@@ -251,7 +251,7 @@ func TestStorageDeployedWithCorruption(t *testing.T) {
 
 	switch {
 	case rls == nil:
-		t.Fatalf("Release is nil")
+		t.Fatal("Release is nil")
 	case rel.Name != name:
 		t.Fatalf("Expected release name %q, actual %q\n", name, rel.Name)
 	case rel.Version != vers:
