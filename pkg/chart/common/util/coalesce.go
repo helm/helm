@@ -137,8 +137,6 @@ func coalesceDeps(printf printFn, chrt chart.Charter, dest map[string]any, prefi
 }
 
 // coalesceGlobals copies the globals out of src and merges them into dest.
-//
-// For convenience, returns dest.
 func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ bool) error {
 	var dg, sg map[string]any
 
