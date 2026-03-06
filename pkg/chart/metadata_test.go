@@ -41,6 +41,16 @@ func TestValidate(t *testing.T) {
 			ValidationError("chart.metadata.name is required"),
 		},
 		{
+			"chart with dot name",
+			&Metadata{Name: ".", APIVersion: "v2", Version: "1.0"},
+			ValidationError("chart.metadata.name \".\" is not allowed"),
+		},
+		{
+			"chart with dotdot name",
+			&Metadata{Name: "..", APIVersion: "v2", Version: "1.0"},
+			ValidationError("chart.metadata.name \"..\" is not allowed"),
+		},
+		{
 			"chart without name",
 			&Metadata{Name: "../../test", APIVersion: "v2", Version: "1.0"},
 			ValidationError("chart.metadata.name \"../../test\" is invalid"),
