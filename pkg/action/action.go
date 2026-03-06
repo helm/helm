@@ -26,6 +26,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -62,6 +63,7 @@ import (
 var Timestamper = time.Now
 
 var (
+	compactDocSeparatorPattern = regexp.MustCompile(`(?m)^---(?=\S)`)
 	// errMissingChart indicates that a chart was not provided.
 	errMissingChart = errors.New("no chart provided")
 	// errMissingRelease indicates that a release (name) was not provided.
@@ -159,7 +161,9 @@ func annotateAndMerge(files map[string]string) (string, error) {
 			continue
 		}
 
-		manifests, err := kio.ParseAll(content)
+		// Go template whitespace trimming can produce lines like `---apiVersion: ...`.
+		// Normalize those into valid document separators before YAML parsing.
+		manifests, err := kio.ParseAll(normalizeDocSeparators(content))
 		if err != nil {
 			return "", fmt.Errorf("parsing %s: %w", fname, err)
 		}
@@ -176,6 +180,10 @@ func annotateAndMerge(files map[string]string) (string, error) {
 		return "", fmt.Errorf("writing merged docs: %w", err)
 	}
 	return merged, nil
+}
+
+func normalizeDocSeparators(content string) string {
+	return compactDocSeparatorPattern.ReplaceAllString(content, "---\n")
 }
 
 // splitAndDeannotate reconstructs individual files from a merged YAML stream,
