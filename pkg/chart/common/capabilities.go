@@ -152,7 +152,9 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 
 	vstr, err := helmversion.K8sIOClientGoModVersion()
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve k8s.io/client-go version: %w", err)
+		// Build info may be unavailable when compiled with toolchains other
+		// than "go build" (e.g. Bazel). Fall back to a safe default.
+		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
 	}
 
 	v, err := semver.NewVersion(vstr)
