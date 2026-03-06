@@ -17,6 +17,7 @@ package common
 
 import (
 	"fmt"
+	"log/slog"
 	"slices"
 	"strconv"
 	"strings"
@@ -33,8 +34,8 @@ import (
 )
 
 const (
-	kubeVersionMajorTesting = 1
-	kubeVersionMinorTesting = 20
+	kubeVersionMajorDefault = 1
+	kubeVersionMinorDefault = 20
 )
 
 var (
@@ -147,12 +148,15 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 	// (And even if they did, we probably want stable capabilities for tests anyway)
 	// Return a default value for test builds
 	if testing.Testing() {
-		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
+		return newCapabilities(kubeVersionMajorDefault, kubeVersionMinorDefault)
 	}
 
 	vstr, err := helmversion.K8sIOClientGoModVersion()
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve k8s.io/client-go version: %w", err)
+		// Build info may be unavailable when compiled with toolchains other
+		// than "go build" (e.g. Bazel). Fall back to a safe default.
+		slog.Warn("failed to retrieve k8s.io/client-go version, falling back to default Kubernetes version", slog.Any("error", err))
+		return newCapabilities(kubeVersionMajorDefault, kubeVersionMinorDefault)
 	}
 
 	v, err := semver.NewVersion(vstr)
