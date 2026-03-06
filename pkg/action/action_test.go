@@ -797,7 +797,7 @@ func TestRenderResources_PostRenderer_Success(t *testing.T) {
 	ch := buildChart(withSampleTemplates())
 	values := map[string]any{}
 
-	hooks, buf, notes, err := cfg.renderResources(
+	hooks, buf, notes, err := cfg.renderResources(t.Context(),
 		ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false,
 	)
@@ -840,7 +840,7 @@ func TestRenderResources_PostRenderer_Error(t *testing.T) {
 	ch := buildChart(withSampleTemplates())
 	values := map[string]any{}
 
-	_, _, _, err := cfg.renderResources(
+	_, _, _, err := cfg.renderResources(t.Context(),
 		ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false,
 	)
@@ -868,7 +868,7 @@ func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
 	}
 	values := map[string]any{}
 
-	_, _, _, err := cfg.renderResources(
+	_, _, _, err := cfg.renderResources(t.Context(),
 		ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false,
 	)
@@ -890,7 +890,7 @@ func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
 	ch := buildChart(withSampleTemplates())
 	values := map[string]any{}
 
-	_, _, _, err := cfg.renderResources(
+	_, _, _, err := cfg.renderResources(t.Context(),
 		ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false,
 	)
@@ -911,7 +911,7 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 	ch := buildChart(withSampleTemplates())
 	values := map[string]any{}
 
-	hooks, buf, notes, err := cfg.renderResources(
+	hooks, buf, notes, err := cfg.renderResources(t.Context(),
 		ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false,
 	)
@@ -947,7 +947,7 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 	ch := buildChart(withSampleTemplates())
 	values := map[string]any{}
 
-	hooks, buf, notes, err := cfg.renderResources(
+	hooks, buf, notes, err := cfg.renderResources(t.Context(),
 		ch, values, "test-release", "", false, false, false,
 		nil, false, false, false,
 	)

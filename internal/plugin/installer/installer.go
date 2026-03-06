@@ -16,6 +16,7 @@ limitations under the License.
 package installer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -191,12 +192,18 @@ func isRemoteHTTPArchive(source string) bool {
 		}
 
 		// If no suffix match, try HEAD request to check content type
-		res, err := http.Head(source)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodHead, source, http.NoBody)
 		if err != nil {
 			// If we get an error at the network layer, we can't install it. So
 			// we return false.
 			return false
 		}
+		client := http.DefaultClient
+		res, err := client.Do(req)
+		if err != nil {
+			return false
+		}
+		defer res.Body.Close()
 
 		// Next, we look for the content type or content disposition headers to see
 		// if they have matching extractors.

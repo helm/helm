@@ -188,7 +188,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 	}
 
 	u.cfg.Logger().Debug("preparing upgrade", "name", name)
-	currentRelease, upgradedRelease, serverSideApply, err := u.prepareUpgrade(name, chrt, vals)
+	currentRelease, upgradedRelease, serverSideApply, err := u.prepareUpgrade(ctx, name, chrt, vals)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +213,7 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 }
 
 // prepareUpgrade builds an upgraded release for an upgrade operation.
-func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[string]any) (*release.Release, *release.Release, bool, error) {
+func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv2.Chart, vals map[string]any) (*release.Release, *release.Release, bool, error) {
 	if chart == nil {
 		return nil, nil, false, errMissingChart
 	}
@@ -296,7 +296,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 		return nil, nil, false, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(ctx, chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret)
 	if err != nil {
 		return nil, nil, false, err
 	}
