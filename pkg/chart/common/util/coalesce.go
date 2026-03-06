@@ -164,7 +164,8 @@ func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ 
 		if istable(val) {
 			valCopy, err := copystructure.Copy(val)
 			if err != nil {
-				return err
+				fullPath := concatPrefix(prefix, key)
+				return fmt.Errorf("copying globals for %s: %w", fullPath, err)
 			}
 			vv, ok := valCopy.(map[string]any)
 			if !ok {
