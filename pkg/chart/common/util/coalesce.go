@@ -199,7 +199,6 @@ func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ 
 	return nil
 }
 
-
 // coalesceValues builds up a values map for a particular chart.
 //
 // Values in v will override the values in the chart.
