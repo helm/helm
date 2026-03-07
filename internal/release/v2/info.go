@@ -36,6 +36,8 @@ type Info struct {
 	Description string `json:"description,omitempty"`
 	// Status is the current state of the release
 	Status common.Status `json:"status,omitempty"`
+	// RollbackRevision is the revision that was rolled back to. Zero means not a rollback.
+	RollbackRevision int `json:"rollback_revision,omitempty"`
 	// Contains the rendered templates/NOTES.txt if available
 	Notes string `json:"notes,omitempty"`
 	// Contains the deployed resources information
@@ -44,13 +46,14 @@ type Info struct {
 
 // infoJSON is used for custom JSON marshaling/unmarshaling
 type infoJSON struct {
-	FirstDeployed *time.Time                  `json:"first_deployed,omitempty"`
-	LastDeployed  *time.Time                  `json:"last_deployed,omitempty"`
-	Deleted       *time.Time                  `json:"deleted,omitempty"`
-	Description   string                      `json:"description,omitempty"`
-	Status        common.Status               `json:"status,omitempty"`
-	Notes         string                      `json:"notes,omitempty"`
-	Resources     map[string][]runtime.Object `json:"resources,omitempty"`
+	FirstDeployed    *time.Time                  `json:"first_deployed,omitempty"`
+	LastDeployed     *time.Time                  `json:"last_deployed,omitempty"`
+	Deleted          *time.Time                  `json:"deleted,omitempty"`
+	Description      string                      `json:"description,omitempty"`
+	Status           common.Status               `json:"status,omitempty"`
+	RollbackRevision int                         `json:"rollback_revision,omitempty"`
+	Notes            string                      `json:"notes,omitempty"`
+	Resources        map[string][]runtime.Object `json:"resources,omitempty"`
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
@@ -95,6 +98,7 @@ func (i *Info) UnmarshalJSON(data []byte) error {
 	}
 	i.Description = tmp.Description
 	i.Status = tmp.Status
+	i.RollbackRevision = tmp.RollbackRevision
 	i.Notes = tmp.Notes
 	i.Resources = tmp.Resources
 
@@ -105,10 +109,11 @@ func (i *Info) UnmarshalJSON(data []byte) error {
 // It omits zero-value time fields from the JSON output.
 func (i Info) MarshalJSON() ([]byte, error) {
 	tmp := infoJSON{
-		Description: i.Description,
-		Status:      i.Status,
-		Notes:       i.Notes,
-		Resources:   i.Resources,
+		Description:      i.Description,
+		Status:           i.Status,
+		RollbackRevision: i.RollbackRevision,
+		Notes:            i.Notes,
+		Resources:        i.Resources,
 	}
 
 	if !i.FirstDeployed.IsZero() {
