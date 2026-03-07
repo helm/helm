@@ -1,0 +1,8 @@
+apiVersion: v1
+description: A Helm chart for Kubernetes
+name: chart-with-outdated-dependency
+version: 0.1.0
+dependencies:
+  - name: oci-dependent-chart
+    version: 0.1.0
+    repository: "@test"
