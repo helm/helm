@@ -1297,3 +1297,79 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }
+
+func TestInstallDryRunClientStatePreservation(t *testing.T) {
+	is := assert.New(t)
+
+	// Create configuration with original kube client
+	config := actionConfigFixture(t)
+	originalKubeClient := config.KubeClient
+	originalCapabilities := config.Capabilities
+	originalReleases := config.Releases
+
+	// First install action with DryRunClient
+	client1 := NewInstall(config)
+	client1.DryRunStrategy = DryRunClient
+	client1.ReleaseName = "test-client-only"
+	client1.Namespace = "test-namespace"
+
+	// Run first action
+	_, err := client1.Run(buildChart(), nil)
+	is.NoError(err)
+
+	// Verify that the configuration has been restored to original state
+	is.Equal(originalKubeClient, config.KubeClient, "KubeClient should be restored to original")
+	is.Equal(originalCapabilities, config.Capabilities, "Capabilities should be restored to original")
+	is.Equal(originalReleases, config.Releases, "Releases should be restored to original")
+
+	// Second install action with DryRunNone (should work now)
+	client2 := NewInstall(config)
+	client2.DryRunStrategy = DryRunNone
+	client2.ReleaseName = "test-real-install"
+	client2.Namespace = "test-namespace"
+
+	// Run second action - this should not fail due to fake client
+	_, err = client2.Run(buildChart(), nil)
+	is.NoError(err)
+
+	// Verify configuration was not permanently modified
+	is.Equal(originalKubeClient, config.KubeClient, "KubeClient should still be original after second action")
+}
+
+func TestInstallDryRunClientMultipleActionsWithSameConfig(t *testing.T) {
+	is := assert.New(t)
+
+	// Create configuration
+	config := actionConfigFixture(t)
+	originalKubeClient := config.KubeClient
+
+	// First action: DryRunClient
+	client1 := NewInstall(config)
+	client1.DryRunStrategy = DryRunClient
+	client1.ReleaseName = "test1"
+	client1.Namespace = "test-namespace"
+
+	_, err := client1.Run(buildChart(), nil)
+	is.NoError(err)
+
+	// Second action: DryRunNone (using same config)
+	client2 := NewInstall(config)
+	client2.DryRunStrategy = DryRunNone
+	client2.ReleaseName = "test2"
+	client2.Namespace = "test-namespace"
+
+	_, err = client2.Run(buildChart(), nil)
+	is.NoError(err)
+
+	// Third action: DryRunClient again
+	client3 := NewInstall(config)
+	client3.DryRunStrategy = DryRunClient
+	client3.ReleaseName = "test3"
+	client3.Namespace = "test-namespace"
+
+	_, err = client3.Run(buildChart(), nil)
+	is.NoError(err)
+
+	// Configuration should still be in original state
+	is.Equal(originalKubeClient, config.KubeClient, "KubeClient should be preserved across multiple actions")
+}
