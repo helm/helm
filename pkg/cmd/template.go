@@ -191,9 +191,8 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							if savedErr != nil && settings.Debug {
 								// assume the manifest itself is too malformed to be rendered
 								return savedErr
-							} else {
-								return fmt.Errorf("could not find template %s in chart", f)
 							}
+							return fmt.Errorf("could not find template %s in chart", f)
 						}
 					}
 					for _, m := range manifestsToRender {
