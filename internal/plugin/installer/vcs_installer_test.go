@@ -103,6 +103,63 @@ func TestVCSInstaller(t *testing.T) {
 	}
 }
 
+func TestVCSInstallerPluginAlreadyExists(t *testing.T) {
+	ensure.HelmHome(t)
+
+	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
+	}
+
+	source := "https://github.com/adamreese/helm-env"
+	testRepoPath, _ := filepath.Abs("../testdata/plugdir/good/echo-v1")
+	repo := &testRepo{
+		local: testRepoPath,
+		tags:  []string{"0.1.0", "0.1.1"},
+	}
+
+	i, err := NewForSource(source, "~0.1.0")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	// ensure a VCSInstaller was returned
+	vcsInstaller, ok := i.(*VCSInstaller)
+	if !ok {
+		t.Fatal("expected a VCSInstaller")
+	}
+
+	// set the testRepo in the VCSInstaller
+	vcsInstaller.Repo = repo
+
+	// First install should succeed
+	if err := Install(i); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a second VCS installer for the same plugin
+	i2, err := NewForSource(source, "~0.1.0")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	vcsInstaller2, ok := i2.(*VCSInstaller)
+	if !ok {
+		t.Fatal("expected a VCSInstaller")
+	}
+
+	// set the testRepo in the VCSInstaller
+	vcsInstaller2.Repo = repo
+
+	// Second install should fail with plugin already exists error
+	err = vcsInstaller2.Install()
+	if err == nil {
+		t.Fatal("expected error for plugin already exists")
+	}
+	if !strings.Contains(err.Error(), "plugin \"echo-v1\" already exists at") {
+		t.Fatalf("expected 'plugin already exists' error message, got: %v", err)
+	}
+}
+
 func TestVCSInstallerNonExistentVersion(t *testing.T) {
 	ensure.HelmHome(t)
 

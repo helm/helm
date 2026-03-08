@@ -127,6 +127,58 @@ func TestHTTPInstaller(t *testing.T) {
 
 }
 
+func TestHTTPInstallerPluginAlreadyExists(t *testing.T) {
+	ensure.HelmHome(t)
+
+	srv := mockArchiveServer()
+	defer srv.Close()
+	source := srv.URL + "/plugins/fake-plugin-0.0.1.tar.gz"
+
+	if err := os.MkdirAll(helmpath.DataPath("plugins"), 0755); err != nil {
+		t.Fatalf("Could not create %s: %s", helmpath.DataPath("plugins"), err)
+	}
+
+	i, err := NewForSource(source, "0.0.1")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	// ensure a HTTPInstaller was returned
+	httpInstaller, ok := i.(*HTTPInstaller)
+	if !ok {
+		t.Fatal("expected a HTTPInstaller")
+	}
+
+	// inject fake http client responding with minimal plugin tarball
+	mockTgz, err := base64.StdEncoding.DecodeString(fakePluginB64)
+	if err != nil {
+		t.Fatalf("Could not decode fake tgz plugin: %s", err)
+	}
+
+	httpInstaller.getter = &TestHTTPGetter{
+		MockResponse: bytes.NewBuffer(mockTgz),
+	}
+
+	// First install should succeed
+	if err := Install(i); err != nil {
+		t.Fatal(err)
+	}
+
+	// Reset the getter mock for second install attempt
+	httpInstaller.getter = &TestHTTPGetter{
+		MockResponse: bytes.NewBuffer(mockTgz),
+	}
+
+	// Second install should fail with specific error message
+	err = httpInstaller.Install()
+	if err == nil {
+		t.Fatal("expected error for plugin already exists")
+	}
+	if !strings.Contains(err.Error(), "plugin \"fake-plugin\" already exists at") {
+		t.Fatalf("expected 'plugin already exists' error message, got: %v", err)
+	}
+}
+
 func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 	ensure.HelmHome(t)
 	srv := mockArchiveServer()
