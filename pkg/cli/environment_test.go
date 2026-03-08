@@ -123,7 +123,8 @@ func TestEnvSettings(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer resetEnv()()
+			cleanup := resetEnv()
+			t.Cleanup(cleanup)
 
 			for k, v := range tt.envvars {
 				t.Setenv(k, v)
@@ -244,7 +245,8 @@ func TestEnvOrBool(t *testing.T) {
 }
 
 func TestUserAgentHeaderInK8sRESTClientConfig(t *testing.T) {
-	defer resetEnv()()
+	cleanup := resetEnv()
+	t.Cleanup(cleanup)
 
 	kubeconfigPath := filepath.Join(t.TempDir(), "config")
 	kubeconfig := `apiVersion: v1
