@@ -150,6 +150,7 @@ func fromYAMLArray(str string) []any {
 
 // toTOML takes an interface, marshals it to toml, and returns a string. It will
 // always return a string, even on marshal error (empty string).
+// Errors are swallowed, consistent with toYAML and toJSON behavior.
 //
 // This is designed to be called from a template.
 func toTOML(v any) string {
@@ -157,7 +158,8 @@ func toTOML(v any) string {
 	e := toml.NewEncoder(b)
 	err := e.Encode(v)
 	if err != nil {
-		return err.Error()
+		// Swallow errors inside of a template.
+		return ""
 	}
 	return b.String()
 }
