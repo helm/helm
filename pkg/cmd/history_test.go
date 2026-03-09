@@ -25,9 +25,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
-	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
 func TestHistoryCmd(t *testing.T) {
@@ -125,8 +125,13 @@ func TestHistoryWithRollback(t *testing.T) {
 	}
 
 	tests := []cmdTestCase{{
-		name:   "history with rollback revision",
+		name:   "history with rollback revision (default, no rollback column)",
 		cmd:    "history angry-bird",
+		rels:   rels,
+		golden: "output/history-with-rollback-no-flag.txt",
+	}, {
+		name:   "history with rollback revision and --show-rollback flag",
+		cmd:    "history angry-bird --show-rollback",
 		rels:   rels,
 		golden: "output/history-with-rollback.txt",
 	}, {

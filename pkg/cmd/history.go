@@ -43,6 +43,15 @@ configures the maximum length of the revision list returned.
 The historical release set is printed as a formatted table, e.g:
 
     $ helm history angry-bird
+    REVISION    UPDATED                     STATUS          CHART             APP VERSION     DESCRIPTION
+    1           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0             Initial install
+    2           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0             Upgraded successfully
+    3           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0             Rolled back to 2
+    4           Mon Oct 3 10:15:13 2016     deployed        alpine-0.1.0      1.0             Upgraded successfully
+
+Use '--show-rollback' to include a column showing the revision that was rolled back to:
+
+    $ helm history angry-bird --show-rollback
     REVISION    UPDATED                     STATUS          CHART             APP VERSION     ROLLBACK     DESCRIPTION
     1           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0                          Initial install
     2           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0                          Upgraded successfully
@@ -53,6 +62,7 @@ The historical release set is printed as a formatted table, e.g:
 func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewHistory(cfg)
 	var outfmt output.Format
+	var showRollback bool
 
 	cmd := &cobra.Command{
 		Use:     "history RELEASE_NAME",
@@ -72,12 +82,16 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
+			if showRollback {
+				return outfmt.Write(out, releaseHistoryWithRollback(history))
+			}
 			return outfmt.Write(out, history)
 		},
 	}
 
 	f := cmd.Flags()
 	f.IntVar(&client.Max, "max", 256, "maximum number of revision to include in history")
+	f.BoolVar(&showRollback, "show-rollback", false, "show the rollback revision column in the output")
 	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
@@ -176,6 +190,26 @@ func (r releaseHistory) WriteYAML(out io.Writer) error {
 }
 
 func (r releaseHistory) WriteTable(out io.Writer) error {
+	tbl := uitable.New()
+	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
+	for _, item := range r {
+		tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
+	}
+	return output.EncodeTable(out, tbl)
+}
+
+// releaseHistoryWithRollback wraps releaseHistory to include the rollback column in table output.
+type releaseHistoryWithRollback releaseHistory
+
+func (r releaseHistoryWithRollback) WriteJSON(out io.Writer) error {
+	return output.EncodeJSON(out, releaseHistory(r))
+}
+
+func (r releaseHistoryWithRollback) WriteYAML(out io.Writer) error {
+	return output.EncodeYAML(out, releaseHistory(r))
+}
+
+func (r releaseHistoryWithRollback) WriteTable(out io.Writer) error {
 	tbl := uitable.New()
 	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "ROLLBACK", "DESCRIPTION")
 	for _, item := range r {
