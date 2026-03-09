@@ -91,7 +91,7 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.IntVar(&client.Max, "max", 256, "maximum number of revision to include in history")
-	f.BoolVar(&showRollback, "show-rollback", false, "show the rollback revision column in the output")
+	f.BoolVar(&showRollback, "show-rollback", false, "show the rollback revision column in table output")
 	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
