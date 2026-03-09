@@ -597,8 +597,8 @@ func loadRepoConfig(file string) (*repo.File, error) {
 // stripDigestAlgorithm removes the algorithm prefix (e.g., "sha256:") from a digest string.
 // If no prefix is present, the original string is returned unchanged.
 func stripDigestAlgorithm(digest string) string {
-	if idx := strings.Index(digest, ":"); idx >= 0 {
-		return digest[idx+1:]
+	if _, after, ok := strings.Cut(digest, ":"); ok {
+		return after
 	}
 	return digest
 }
