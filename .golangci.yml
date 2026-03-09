@@ -17,13 +17,16 @@ formatters:
 linters:
   default: none
 
+  # Keep sorted alphabetically
   enable:
     - depguard
     - dupl
+    - exhaustive
     - gomodguard
     - govet
     - ineffassign
     - misspell
+    - modernize
     - nakedret
     - nolintlint
     - revive
@@ -33,7 +36,6 @@ linters:
     - unused
     - usestdlibvars
     - usetesting
-    - exhaustive
 
   exclusions:
   
@@ -45,16 +47,9 @@ linters:
       - legacy
       - std-error-handling
 
-    rules:
-        # This rule is triggered for packages like 'util'. When changes to those packages
-        # occur it triggers this rule. This exclusion enables making changes to existing
-        # packages.
-        - linters:
-            - revive
-          text: 'var-naming: avoid meaningless package names'
-
     warn-unused: true
 
+  # Keep sorted alphabetically
   settings:
     depguard:
       rules:
@@ -80,6 +75,22 @@ linters:
 
     nolintlint:
       require-specific: true
+
+    revive:
+      max-open-files: 2048
+      enable-default-rules: true
+      rules:
+        - name: var-naming
+          arguments:
+            - ["ID"] # AllowList
+            - ["VM"] # DenyList
+            - - skip-initialism-name-checks: true
+                upper-case-const: true
+                skip-package-name-checks: true
+                skip-package-name-collision-with-go-std: true
+                extra-bad-package-names:
+                  - helpers
+                  - models
 
 run:
   timeout: 10m
