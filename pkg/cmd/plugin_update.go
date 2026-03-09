@@ -92,7 +92,11 @@ func (o *pluginUpdateOptions) complete(args []string) error {
 		}
 		if version != "" {
 			if _, err := semver.StrictNewVersion(version); err != nil {
-				return fmt.Errorf("invalid version %q for plugin %q: must be an exact semver version (e.g. 1.2.3); the \"v\" prefix is not allowed", version, name)
+				errMsg := fmt.Sprintf("invalid version %q for plugin %q: must be an exact semver version (e.g. 1.2.3); semver range constraints (e.g. ~1.2, ^1.0.0, >=1.0.0) are not supported", version, name)
+				if strings.HasPrefix(version, "v") {
+					errMsg += `; the "v" prefix is not allowed`
+				}
+				return fmt.Errorf("%s", errMsg)
 			}
 		}
 		o.plugins[name] = version
