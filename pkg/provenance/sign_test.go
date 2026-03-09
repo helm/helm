@@ -28,7 +28,6 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 )
@@ -71,6 +70,10 @@ const (
 	// with shasum.
 	// shasum -a 256 hashtest-1.2.3.tgz > testdata/hashtest.sha256
 	testSumfile = "testdata/hashtest.sha256"
+
+	// testChartfileWithKeywords is a chart archive that includes keywords and sources
+	// fields to test that they are not double-nested in the provenance file.
+	testChartfileWithKeywords = "testdata/hashtest-keywords-1.2.3.tgz"
 )
 
 // testMessageBlock represents the expected message block for the testdata/hashtest chart.
@@ -93,7 +96,7 @@ func loadChartMetadataForSigning(t *testing.T, chartPath string) []byte {
 		t.Fatal(err)
 	}
 
-	metadataBytes, err := yaml.Marshal(chart.Metadata)
+	metadataBytes, err := MarshalMetadata(chart.Metadata)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,6 +121,51 @@ func TestMessageBlock(t *testing.T) {
 
 	if got != testMessageBlock {
 		t.Errorf("Expected:\n%q\nGot\n%q\n", testMessageBlock, got)
+	}
+}
+
+// TestMessageBlockKeywordsAndSources verifies that keywords and sources
+// are not double-nested in the provenance file metadata.
+// Regression test for https://github.com/helm/helm/issues/31866
+func TestMessageBlockKeywordsAndSources(t *testing.T) {
+	metadataBytes := loadChartMetadataForSigning(t, testChartfileWithKeywords)
+
+	// Verify the metadata YAML does not contain double-nested arrays
+	metadataStr := string(metadataBytes)
+	if strings.Contains(metadataStr, "- - ") {
+		t.Errorf("metadata contains double-nested array entries (- - ), indicating keywords/sources are incorrectly wrapped:\n%s", metadataStr)
+	}
+
+	// Verify the metadata contains correctly formatted keywords and sources using flow style.
+	// Flow style avoids PGP dash-escaping, which would otherwise double-nest list items.
+	assert.Contains(t, metadataStr, "keywords: [foo, bar]", "keywords should use flow style to avoid PGP dash-escaping")
+	assert.Contains(t, metadataStr, "sources:", "sources field should be present")
+
+	// Verify the metadata can be round-tripped: unmarshal back into Metadata and check fields
+	chart, err := loader.LoadFile(testChartfileWithKeywords)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, []string{"foo", "bar"}, chart.Metadata.Keywords, "keywords should be a flat string slice")
+	assert.Equal(t, []string{"https://example.com", "https://example.org"}, chart.Metadata.Sources, "sources should be a flat string slice")
+
+	// Verify the full message block is well-formed
+	archiveData, err := os.ReadFile(testChartfileWithKeywords)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := messageBlock(archiveData, filepath.Base(testChartfileWithKeywords), metadataBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Parse the message block back and verify checksums section is valid
+	sc, err := parseMessageBlock(out.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := sc.Files["hashtest-keywords-1.2.3.tgz"]; !ok {
+		t.Error("chart file not found in message block checksums")
 	}
 }
 

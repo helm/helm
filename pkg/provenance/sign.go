@@ -28,11 +28,44 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
+	yaml3 "gopkg.in/yaml.v3"
 	"sigs.k8s.io/yaml"
 )
 
 var defaultPGPConfig = packet.Config{
 	DefaultHash: crypto.SHA512,
+}
+
+// MarshalMetadata serializes metadata to YAML suitable for use in a provenance file.
+//
+// Unlike standard YAML marshaling, this function uses flow style (inline) for
+// sequence (array) fields. This avoids PGP clear-text signature "dash escaping",
+// where lines beginning with '-' are prefixed with '- ', which would cause YAML
+// list items to be double-nested (e.g., "- - foo" instead of "- foo") in the
+// provenance file.
+func MarshalMetadata(meta any) ([]byte, error) {
+	// Marshal to block-style YAML first
+	yamlBytes, err := yaml.Marshal(meta)
+	if err != nil {
+		return nil, err
+	}
+	// Parse into a yaml.v3 Node tree so we can set flow style on sequences
+	var node yaml3.Node
+	if err := yaml3.Unmarshal(yamlBytes, &node); err != nil {
+		return nil, err
+	}
+	setFlowStyleForSequences(&node)
+	return yaml3.Marshal(&node)
+}
+
+// setFlowStyleForSequences recursively sets flow style on all YAML sequence nodes.
+func setFlowStyleForSequences(node *yaml3.Node) {
+	if node.Kind == yaml3.SequenceNode {
+		node.Style = yaml3.FlowStyle
+	}
+	for _, n := range node.Content {
+		setFlowStyleForSequences(n)
+	}
 }
 
 // SumCollection represents a collection of file and image checksums.
