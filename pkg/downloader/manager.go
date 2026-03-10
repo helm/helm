@@ -899,6 +899,13 @@ func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, e
 	}
 
 	if constraint.Check(v) {
+		// Apply SOURCE_DATE_EPOCH for reproducible builds if set.
+		epoch, epochErr := chartutil.ParseSourceDateEpoch()
+		if epochErr != nil {
+			fmt.Fprintf(os.Stderr, "WARNING: %v\n", epochErr)
+		}
+		chartutil.ApplySourceDateEpoch(ch, epoch)
+
 		_, err = chartutil.Save(ch, destPath)
 		return ch.Metadata.Version, err
 	}
