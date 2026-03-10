@@ -50,6 +50,10 @@ func init() {
 func runTestCmd(t *testing.T, tests []cmdTestCase) {
 	t.Helper()
 	t.Setenv("TZ", "UTC")
+	prevLocal := time.Local
+	t.Cleanup(func() {
+		time.Local = prevLocal
+	})
 	time.Local = time.UTC
 	for _, tt := range tests {
 		for i := 0; i <= tt.repeat; i++ {
