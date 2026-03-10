@@ -262,6 +262,8 @@ func GetLocalPath(repo, chartpath string) (string, error) {
 	return depPath, nil
 }
 
+// IsLocalDependency checks if the repository path is a local file dependency.
+// Local dependencies use the "file://" protocol prefix.
 func IsLocalDependency(repositoryPath string) bool {
 	return strings.HasPrefix(repositoryPath, "file://")
 }

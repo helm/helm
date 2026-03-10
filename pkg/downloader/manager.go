@@ -23,6 +23,7 @@ import (
 	"io"
 	stdfs "io/fs"
 	"log"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -192,29 +193,10 @@ func (m *Manager) Update() error {
 		}
 	}
 
-	// Check for circular dependencies in local dependencies
-	if err := m.checkCircularDeps(req, nil); err != nil {
-		return err
-	}
-
 	// Do resolution for each local dependency first. Local dependencies may
 	// have their own dependencies which must be resolved.
-	for _, dep := range req {
-		if !resolver.IsLocalDependency(dep.Repository) {
-			continue
-		}
-		chartpath, err := resolver.GetLocalPath(dep.Repository, m.ChartPath)
-		if err != nil {
-			return err
-		}
-		man := *m
-		// no need to update repositories, it is already done in main chart
-		man.SkipUpdate = true
-		man.ChartPath = chartpath
-		err = man.Update()
-		if err != nil {
-			return err
-		}
+	if err := m.updateLocalDeps(req, nil); err != nil {
+		return err
 	}
 
 	// Now we need to find out which version of a chart best satisfies the
@@ -946,14 +928,14 @@ func key(name string) (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
-// checkCircularDeps checks local dependencies for circular dependency issue.
-// When local charts depend on each other, helm will quit at the very beginning with the clear message.
-func (m *Manager) checkCircularDeps(deps []*chart.Dependency, chain []string) error {
+// updateLocalDeps recursively updates local dependencies and detects circular dependencies.
+func (m *Manager) updateLocalDeps(deps []*chart.Dependency, chain []string) error {
 	absPath, err := filepath.Abs(m.ChartPath)
 	if err != nil {
 		return err
 	}
 
+	// Check for circular dependency
 	for i, visited := range chain {
 		if visited == absPath {
 			cycle := append(chain[i:], absPath)
@@ -961,10 +943,7 @@ func (m *Manager) checkCircularDeps(deps []*chart.Dependency, chain []string) er
 		}
 	}
 
-	// Create a new chain with the current path to avoid modifying the caller's slice
-	newChain := make([]string, len(chain)+1)
-	copy(newChain, chain)
-	newChain[len(chain)] = absPath
+	chain = append(chain, absPath)
 
 	for _, dep := range deps {
 		if !resolver.IsLocalDependency(dep.Repository) {
@@ -974,13 +953,22 @@ func (m *Manager) checkCircularDeps(deps []*chart.Dependency, chain []string) er
 		if err != nil {
 			return err
 		}
+
 		c, err := loader.LoadDir(chartpath)
 		if err != nil {
 			return err
 		}
+
 		man := *m
+		man.SkipUpdate = true
 		man.ChartPath = chartpath
-		if err := man.checkCircularDeps(c.Metadata.Dependencies, newChain); err != nil {
+		slog.Debug("Recursively updating dependencies for local chart", "chart", dep.Name, "path", chartpath)
+
+		if err := man.updateLocalDeps(c.Metadata.Dependencies, chain); err != nil {
+			return err
+		}
+
+		if err := man.Update(); err != nil {
 			return err
 		}
 	}
