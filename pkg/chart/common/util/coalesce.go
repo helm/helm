@@ -168,6 +168,10 @@ func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ 
 				printf("warning: unable to convert globals copy to Helm values type")
 				continue
 			}
+			// Ensure vv is a non-nil map so that merges into it are not lost.
+			if vv == nil {
+				vv = make(map[string]any)
+			}
 			if destv, ok := dg[key]; !ok {
 				// Here there is no merge. We're just adding.
 				dg[key] = vv
