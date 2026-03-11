@@ -43,10 +43,10 @@ func (suite *RegistryScopeTestSuite) TearDownSuite() {
 
 func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 
-	var requestUrl string
+	var requestURL string
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestUrl = r.URL.String()
+		requestURL = r.URL.String()
 		w.WriteHeader(http.StatusOK)
 	})
 	listener, err := net.Listen("tcp", suite.AuthServerHost)
@@ -68,16 +68,16 @@ func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 	suite.Error(err, "error pushing good ref because auth server doesn't give proper token")
 
 	//check the url that authentication server received
-	suite.Equal("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull%2Cpush&service=testservice", requestUrl)
+	suite.Equal("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull%2Cpush&service=testservice", requestURL)
 
 }
 
 func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 
-	var requestUrl string
+	var requestURL string
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestUrl = r.URL.String()
+		requestURL = r.URL.String()
 		w.WriteHeader(http.StatusOK)
 	})
 	listener, err := net.Listen("tcp", suite.AuthServerHost)
@@ -99,7 +99,7 @@ func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 	suite.Error(err, "error pulling a simple chart because auth server doesn't give proper token")
 
 	//check the url that authentication server received
-	suite.Equal("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull&service=testservice", requestUrl)
+	suite.Equal("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull&service=testservice", requestURL)
 }
 
 func TestRegistryScopeTestSuite(t *testing.T) {
