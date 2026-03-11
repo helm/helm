@@ -123,7 +123,7 @@ func TestApplySourceDateEpoch(t *testing.T) {
 	}
 }
 
-func TestApplySourceDateEpochPreservesExisting(t *testing.T) {
+func TestApplySourceDateEpochOverridesExisting(t *testing.T) {
 	epoch := time.Unix(1700000000, 0)
 	existing := time.Unix(1600000000, 0)
 
@@ -133,12 +133,28 @@ func TestApplySourceDateEpochPreservesExisting(t *testing.T) {
 			Version: "0.1.0",
 		},
 		ModTime: existing,
+		Templates: []*common.File{
+			{Name: "templates/test.yaml", ModTime: existing},
+		},
+		Files: []*common.File{
+			{Name: "README.md", ModTime: existing},
+		},
 	}
 
 	ApplySourceDateEpoch(c, epoch)
 
-	if !c.ModTime.Equal(existing) {
-		t.Errorf("Chart.ModTime = %v, want existing %v", c.ModTime, existing)
+	if !c.ModTime.Equal(epoch) {
+		t.Errorf("Chart.ModTime = %v, want epoch %v", c.ModTime, epoch)
+	}
+	for _, f := range c.Templates {
+		if !f.ModTime.Equal(epoch) {
+			t.Errorf("Template %s ModTime = %v, want epoch %v", f.Name, f.ModTime, epoch)
+		}
+	}
+	for _, f := range c.Files {
+		if !f.ModTime.Equal(epoch) {
+			t.Errorf("File %s ModTime = %v, want epoch %v", f.Name, f.ModTime, epoch)
+		}
 	}
 }
 
@@ -185,9 +201,9 @@ func TestApplySourceDateEpochDependencies(t *testing.T) {
 
 	ApplySourceDateEpoch(c, epoch)
 
-	// Parent chart already had a ModTime, so it should be preserved.
-	if !c.ModTime.Equal(existing) {
-		t.Errorf("parent Chart.ModTime = %v, want existing %v", c.ModTime, existing)
+	// Parent chart had an existing ModTime, but it should be overridden.
+	if !c.ModTime.Equal(epoch) {
+		t.Errorf("parent Chart.ModTime = %v, want epoch %v", c.ModTime, epoch)
 	}
 	// Dependency had a zero ModTime, so it should be stamped.
 	if !dep.ModTime.Equal(epoch) {

@@ -304,7 +304,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
 			}
-			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version, tmpPath)
+			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version, tmpPath, m.Out)
 			if err != nil {
 				saveError = err
 				break
@@ -873,7 +873,7 @@ func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 }
 
 // archive a dep chart from local directory and save it into destPath
-func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, error) {
+func tarFromLocalDir(chartpath, name, repo, version, destPath string, out io.Writer) (string, error) {
 	if !strings.HasPrefix(repo, "file://") {
 		return "", fmt.Errorf("wrong format: chart %s repository %s", name, repo)
 	}
@@ -902,7 +902,7 @@ func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, e
 		// Apply SOURCE_DATE_EPOCH for reproducible builds if set.
 		epoch, epochErr := chartutil.ParseSourceDateEpoch()
 		if epochErr != nil {
-			fmt.Fprintf(os.Stderr, "WARNING: %v\n", epochErr)
+			fmt.Fprintf(out, "WARNING: %v\n", epochErr)
 		}
 		chartutil.ApplySourceDateEpoch(ch, epoch)
 

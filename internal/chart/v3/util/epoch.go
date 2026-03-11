@@ -47,36 +47,29 @@ func ParseSourceDateEpoch() (time.Time, error) {
 	return time.Unix(epoch, 0), nil
 }
 
-// ApplySourceDateEpoch sets the ModTime on the chart and all of its entries
-// that currently have a zero ModTime to t. It recurses into dependencies.
+// ApplySourceDateEpoch overrides the ModTime on the chart and all of its
+// entries to t, ensuring reproducible archives regardless of the original
+// timestamps. It recurses into dependencies.
 // When t is the zero time this is a no-op.
 func ApplySourceDateEpoch(c *chart.Chart, t time.Time) {
 	if t.IsZero() {
 		return
 	}
-	if c.ModTime.IsZero() {
-		c.ModTime = t
-	}
-	if c.Lock != nil && c.Lock.Generated.IsZero() {
+	c.ModTime = t
+	if c.Lock != nil {
 		c.Lock.Generated = t
 	}
-	if c.Schema != nil && c.SchemaModTime.IsZero() {
+	if c.Schema != nil {
 		c.SchemaModTime = t
 	}
 	for _, f := range c.Raw {
-		if f.ModTime.IsZero() {
-			f.ModTime = t
-		}
+		f.ModTime = t
 	}
 	for _, f := range c.Templates {
-		if f.ModTime.IsZero() {
-			f.ModTime = t
-		}
+		f.ModTime = t
 	}
 	for _, f := range c.Files {
-		if f.ModTime.IsZero() {
-			f.ModTime = t
-		}
+		f.ModTime = t
 	}
 	for _, dep := range c.Dependencies() {
 		ApplySourceDateEpoch(dep, t)
