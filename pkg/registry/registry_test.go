@@ -143,7 +143,6 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 	if auth == "token" {
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		suite.Nil(err, "no error finding free port for test auth server")
-		defer ln.Close()
 
 		//set test auth server host
 		suite.AuthServerHost = ln.Addr().String()

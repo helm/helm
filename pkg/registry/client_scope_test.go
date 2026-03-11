@@ -43,12 +43,14 @@ func (suite *RegistryScopeTestSuite) TearDownSuite() {
 
 func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 
+	var requestUrl string
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		suite.Equal(string("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull%2Cpush&service=testservice"), r.URL.String())
+		requestUrl = r.URL.String()
 		w.WriteHeader(http.StatusOK)
 	})
 	listener, err := net.Listen("tcp", suite.AuthServerHost)
-	suite.NoError(err, "no error creating server listner")
+	suite.NoError(err, "no error creating server listener")
 
 	ts := httptest.NewUnstartedServer(handler)
 	ts.Listener = listener
@@ -63,18 +65,23 @@ func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 	suite.NoError(err, "no error extracting chart meta")
 	ref := fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 	_, err = suite.RegistryClient.Push(chartData, ref, PushOptCreationTime(testingChartCreationTime))
-	suite.Error(err, "error pushing good ref because auth server don't give proper token")
+	suite.Error(err, "error pushing good ref because auth server doesn't give proper token")
+
+	//check the url that authentication server received
+	suite.Equal("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull%2Cpush&service=testservice", requestUrl)
 
 }
 
 func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 
+	var requestUrl string
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		suite.Equal(string("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull&service=testservice"), r.URL.String())
+		requestUrl = r.URL.String()
 		w.WriteHeader(http.StatusOK)
 	})
 	listener, err := net.Listen("tcp", suite.AuthServerHost)
-	suite.NoError(err, "no error creating server listner")
+	suite.NoError(err, "no error creating server listener")
 
 	ts := httptest.NewUnstartedServer(handler)
 	ts.Listener = listener
@@ -89,8 +96,10 @@ func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 	suite.NoError(err, "no error extracting chart meta")
 	ref := fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 	_, err = suite.RegistryClient.Pull(ref)
-	suite.Error(err, "error pulling a simple chart because auth server don't give proper token")
+	suite.Error(err, "error pulling a simple chart because auth server doesn't give proper token")
 
+	//check the url that authentication server received
+	suite.Equal("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull&service=testservice", requestUrl)
 }
 
 func TestRegistryScopeTestSuite(t *testing.T) {
