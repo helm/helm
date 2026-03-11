@@ -156,3 +156,96 @@ func TestApplySourceDateEpochZeroNoop(t *testing.T) {
 		t.Errorf("Chart.ModTime = %v, want zero", c.ModTime)
 	}
 }
+
+func TestApplySourceDateEpochDependencies(t *testing.T) {
+	epoch := time.Unix(1700000000, 0)
+	existing := time.Unix(1600000000, 0)
+
+	dep := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "dep",
+			Version: "0.1.0",
+		},
+		Templates: []*common.File{
+			{Name: "templates/dep.yaml"},
+		},
+	}
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "parent",
+			Version: "1.0.0",
+		},
+		ModTime: existing,
+		Templates: []*common.File{
+			{Name: "templates/main.yaml"},
+		},
+	}
+	c.AddDependency(dep)
+
+	ApplySourceDateEpoch(c, epoch)
+
+	// Parent chart already had a ModTime, so it should be preserved.
+	if !c.ModTime.Equal(existing) {
+		t.Errorf("parent Chart.ModTime = %v, want existing %v", c.ModTime, existing)
+	}
+	// Dependency had a zero ModTime, so it should be stamped.
+	if !dep.ModTime.Equal(epoch) {
+		t.Errorf("dep Chart.ModTime = %v, want %v", dep.ModTime, epoch)
+	}
+	for _, f := range dep.Templates {
+		if !f.ModTime.Equal(epoch) {
+			t.Errorf("dep Template %s ModTime = %v, want %v", f.Name, f.ModTime, epoch)
+		}
+	}
+}
+
+func TestSaveWithSourceDateEpoch(t *testing.T) {
+	// End-to-end: parse SOURCE_DATE_EPOCH, apply to a chart with zero
+	// ModTimes, save as a tar archive, and verify every tar entry carries
+	// exactly the expected timestamp.
+	const epochStr = "1700000000"
+	want := time.Unix(1700000000, 0)
+
+	t.Setenv("SOURCE_DATE_EPOCH", epochStr)
+
+	epoch, err := ParseSourceDateEpoch()
+	if err != nil {
+		t.Fatalf("ParseSourceDateEpoch() error: %v", err)
+	}
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV3,
+			Name:       "epoch-test",
+			Version:    "0.1.0",
+		},
+		Values:   map[string]any{"key": "value"},
+		Schema:   []byte(`{"title": "Values"}`),
+		Files:    []*common.File{{Name: "README.md", Data: []byte("# test")}},
+		Templates: []*common.File{{Name: "templates/test.yaml", Data: []byte("apiVersion: v1")}},
+	}
+
+	ApplySourceDateEpoch(c, epoch)
+
+	tmp := t.TempDir()
+	where, err := Save(c, tmp)
+	if err != nil {
+		t.Fatalf("Save() error: %v", err)
+	}
+
+	headers, err := retrieveAllHeadersFromTar(where)
+	if err != nil {
+		t.Fatalf("failed to read tar: %v", err)
+	}
+
+	if len(headers) == 0 {
+		t.Fatal("archive contains no entries")
+	}
+
+	for _, h := range headers {
+		if !h.ModTime.Equal(want) {
+			t.Errorf("tar entry %q ModTime = %v, want %v", h.Name, h.ModTime, want)
+		}
+	}
+}
