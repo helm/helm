@@ -1,0 +1,7 @@
+apiVersion: v1
+name: noversion
+type: cli/v1
+runtime: subprocess
+runtimeConfig:
+  platformCommand:
+  - command: "echo hello"

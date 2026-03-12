@@ -24,9 +24,9 @@ import (
 	"helm.sh/helm/v4/internal/plugin/schema"
 )
 
-// isValidSemver checks if the given string is a valid semantic version.
+// isValidSemver checks if the given string is a valid semantic version
 func isValidSemver(v string) bool {
-	_, err := semver.NewVersion(v)
+	_, err := semver.StrictNewVersion(v)
 	return err == nil
 }
 
@@ -65,6 +65,7 @@ func (m Metadata) Validate() error {
 		errs = append(errs, fmt.Errorf("invalid plugin name %q: must contain only a-z, A-Z, 0-9, _ and -", m.Name))
 	}
 
+	// Require version to be valid semver if specified
 	if m.Version != "" && !isValidSemver(m.Version) {
 		errs = append(errs, fmt.Errorf("invalid plugin version %q: must be valid semver", m.Version))
 	}
