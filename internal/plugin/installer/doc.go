@@ -14,4 +14,4 @@ limitations under the License.
 */
 
 // Package installer provides an interface for installing Helm plugins.
-package installer // import "helm.sh/helm/v4/internal/plugin/installer"
+package installer
