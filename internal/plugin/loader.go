@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -158,17 +159,26 @@ func LoadDir(dirname string) (Plugin, error) {
 	return pm.CreatePlugin(dirname, m)
 }
 
-// LoadAll loads all plugins found beneath the base directory.
+func LogIgnorePluginLoadErrorFilterFunc(pluginYAML string, err error) error {
+	slog.Warn("failed to load plugin (ignoring)", slog.String("plugin_yaml", pluginYAML), slog.Any("error", err))
+	return nil
+}
+
+// errorFilterFunc is a function that can filter errors during plugin loading
+type ErrorFilterFunc func(string, error) error
+
+// LoadAllDir load all plugins found beneath the base directory, using the provided error filter to determine whether to fail on individual plugin load errors.
 //
 // This scans only one directory level.
-func LoadAll(basedir string) ([]Plugin, error) {
-	var plugins []Plugin
-	// We want basedir/*/plugin.yaml
+func LoadAllDir(basedir string, errorFilter ErrorFilterFunc) ([]Plugin, error) {
+	// We want <basedir>/*/plugin.yaml
 	scanpath := filepath.Join(basedir, "*", PluginFileName)
 	matches, err := filepath.Glob(scanpath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search for plugins in %q: %w", scanpath, err)
 	}
+
+	plugins := make([]Plugin, 0, len(matches))
 
 	// empty dir should load
 	if len(matches) == 0 {
@@ -179,9 +189,12 @@ func LoadAll(basedir string) ([]Plugin, error) {
 		dir := filepath.Dir(yamlFile)
 		p, err := LoadDir(dir)
 		if err != nil {
-			return plugins, err
+			if errNew := errorFilter(yamlFile, err); errNew != nil {
+				return plugins, errNew
+			}
+		} else {
+			plugins = append(plugins, p)
 		}
-		plugins = append(plugins, p)
 	}
 	return plugins, detectDuplicates(plugins)
 }
@@ -193,8 +206,12 @@ type findFunc func(pluginsDir string) ([]Plugin, error)
 type filterFunc func(Plugin) bool
 
 // FindPlugins returns a list of plugins that match the descriptor
+// Errors loading a plugin are ignored with a warning
 func FindPlugins(pluginsDirs []string, descriptor Descriptor) ([]Plugin, error) {
-	return findPlugins(pluginsDirs, LoadAll, makeDescriptorFilter(descriptor))
+	loadAllIgnoreErrors := func(pluginsDir string) ([]Plugin, error) {
+		return LoadAllDir(pluginsDir, LogIgnorePluginLoadErrorFilterFunc)
+	}
+	return findPlugins(pluginsDirs, loadAllIgnoreErrors, makeDescriptorFilter(descriptor))
 }
 
 // findPlugins is the internal implementation that uses the find and filter functions
@@ -237,7 +254,11 @@ func makeDescriptorFilter(descriptor Descriptor) filterFunc {
 
 // FindPlugin returns a single plugin that matches the descriptor
 func FindPlugin(dirs []string, descriptor Descriptor) (Plugin, error) {
-	plugins, err := FindPlugins(dirs, descriptor)
+	loadAllIgnoreErrors := func(pluginsDir string) ([]Plugin, error) {
+		return LoadAllDir(pluginsDir, LogIgnorePluginLoadErrorFilterFunc)
+	}
+
+	plugins, err := findPlugins(dirs, loadAllIgnoreErrors, makeDescriptorFilter(descriptor))
 	if err != nil {
 		return nil, err
 	}

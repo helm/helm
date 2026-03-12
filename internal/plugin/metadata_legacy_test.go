@@ -26,6 +26,10 @@ func TestMetadataLegacyValidate(t *testing.T) {
 		"valid metadata": {
 			Name: "myplugin",
 		},
+		"valid metadata (empty version)": {
+			Name:    "myplugin",
+			Version: "",
+		},
 		"valid with command": {
 			Name:    "myplugin",
 			Command: "echo hello",

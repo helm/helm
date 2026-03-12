@@ -33,11 +33,10 @@ func TestMetadataV1ValidateVersion(t *testing.T) {
 	}
 
 	testsValid := map[string]string{
-		"simple version":    "1.0.0",
-		"v prefix":          "v1.0.0",
-		"with prerelease":   "1.2.3-alpha.1",
-		"with build meta":   "1.2.3+build.123",
-		"full prerelease":   "1.2.3-alpha.1+build.123",
+		"simple version":  "1.0.0",
+		"with prerelease": "1.2.3-alpha.1",
+		"with build meta": "1.2.3+build.123",
+		"full prerelease": "1.2.3-alpha.1+build.123",
 	}
 
 	for name, version := range testsValid {
@@ -55,6 +54,10 @@ func TestMetadataV1ValidateVersion(t *testing.T) {
 		"empty version": {
 			version: "",
 			errMsg:  "plugin `version` is required",
+		},
+		"v prefix": {
+			version: "v1.0.0",
+			errMsg:  "invalid plugin `version` \"v1.0.0\": must be valid semver",
 		},
 		"path traversal": {
 			version: "../../../../tmp/evil",

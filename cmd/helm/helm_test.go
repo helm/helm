@@ -67,7 +67,7 @@ func TestCliPluginExitCode(t *testing.T) {
 
 		assert.Empty(t, stdout.String())
 
-		expectedStderr := "Error: plugin \"exitwith\" exited with error\n"
+		expectedStderr := "level=WARN msg=\"failed to load plugin (ignoring)\" plugin_yaml=../../pkg/cmd/testdata/helmhome/helm/plugins/noversion/plugin.yaml error=\"failed to load plugin \\\"../../pkg/cmd/testdata/helmhome/helm/plugins/noversion\\\": plugin `version` is required\"\nError: plugin \"exitwith\" exited with error\n"
 		if stderr.String() != expectedStderr {
 			t.Errorf("Expected %q written to stderr: Got %q", expectedStderr, stderr.String())
 		}

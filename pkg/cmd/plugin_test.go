@@ -117,6 +117,7 @@ func TestLoadCLIPlugins(t *testing.T) {
 		{"exitwith", "exitwith code", "This exits with the specified exit code", "", []string{"2"}, 2},
 		{"fullenv", "show env vars", "show all env vars", fullEnvOutput, []string{}, 0},
 		{"shortenv", "env stuff", "show the env", "HELM_PLUGIN_NAME=shortenv\n", []string{}, 0},
+		// "noversion": plugin is invalid, and should not be loaded
 	}
 
 	pluginCmds := cmd.Commands()
