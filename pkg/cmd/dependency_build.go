@@ -86,7 +86,7 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	addDependencySubcommandFlags(f, client)
+	addDependencySubcommandFlags(f, client, false)
 
 	return cmd
 }
