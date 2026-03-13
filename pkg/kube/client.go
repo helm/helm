@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube // import "helm.sh/helm/v4/pkg/kube"
+package kube
 
 import (
 	"bytes"
@@ -272,7 +272,7 @@ type ClientCreateOption func(*clientCreateOptions) error
 // ClientCreateOptionServerSideApply enables performing object apply server-side
 // see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
 //
-// `forceConflicts` forces conflicts to be resolved (may be  when serverSideApply enabled only)
+// `forceConflicts` forces conflicts to be resolved (may be used when serverSideApply enabled only)
 // see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
 func ClientCreateOptionServerSideApply(serverSideApply, forceConflicts bool) ClientCreateOption {
 	return func(o *clientCreateOptions) error {
