@@ -99,7 +99,7 @@ func TestValidate(t *testing.T) {
 					{Name: "foo", Alias: ""},
 				},
 			},
-			ValidationError("more than one dependency with name or alias \"foo\""),
+			ValidationError("more than one dependency with name or alias \"foo\". Try using distinct aliases for dependencies with the same chart name."),
 		},
 		{
 			"two dependencies with alias from second dependency shadowing first one",
@@ -113,7 +113,7 @@ func TestValidate(t *testing.T) {
 					{Name: "bar", Alias: "foo"},
 				},
 			},
-			ValidationError("more than one dependency with name or alias \"foo\""),
+			ValidationError("more than one dependency with name or alias \"foo\". Try using distinct aliases for dependencies with the same chart name."),
 		},
 		{
 			// this case would make sense and could work in future versions of Helm, currently template rendering would
@@ -129,7 +129,7 @@ func TestValidate(t *testing.T) {
 					{Name: "foo", Alias: "", Version: "1.0.0"},
 				},
 			},
-			ValidationError("more than one dependency with name or alias \"foo\""),
+			ValidationError("more than one dependency with name or alias \"foo\". Try using distinct aliases for dependencies with the same chart name."),
 		},
 		{
 			// this case would make sense and could work in future versions of Helm, currently template rendering would
@@ -145,7 +145,7 @@ func TestValidate(t *testing.T) {
 					{Name: "foo", Repository: "repo-1"},
 				},
 			},
-			ValidationError("more than one dependency with name or alias \"foo\""),
+			ValidationError("more than one dependency with name or alias \"foo\". Try using distinct aliases for dependencies with the same chart name."),
 		},
 		{
 			"dependencies has nil",
