@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"text/template"
 )
 
 // UpdateGolden writes out the golden files with the latest values, rather than failing the test.
@@ -40,10 +41,10 @@ type HelperT interface {
 }
 
 // AssertGoldenString asserts that the given string matches the contents of the given file.
-func AssertGoldenString(t TestingT, actual, filename string) {
+func AssertGoldenString(t TestingT, actual, filename string, goldenArgs map[string]string) {
 	t.Helper()
 
-	if err := compare([]byte(actual), path(filename)); err != nil {
+	if err := compare([]byte(actual), path(filename), goldenArgs); err != nil {
 		t.Fatalf("%v\n", err)
 	}
 }
@@ -56,7 +57,7 @@ func AssertGoldenFile(t TestingT, actualFileName string, expectedFilename string
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	AssertGoldenString(t, string(actual), expectedFilename)
+	AssertGoldenString(t, string(actual), expectedFilename, map[string]string{})
 }
 
 func path(filename string) string {
@@ -66,7 +67,7 @@ func path(filename string) string {
 	return filepath.Join("testdata", filename)
 }
 
-func compare(actual []byte, filename string) error {
+func compare(actual []byte, filename string, templates map[string]string) error {
 	actual = normalize(actual)
 	if err := update(filename, actual); err != nil {
 		return err
@@ -77,10 +78,32 @@ func compare(actual []byte, filename string) error {
 		return fmt.Errorf("unable to read testdata %s: %w", filename, err)
 	}
 	expected = normalize(expected)
+
+	if templates != nil && len(templates) > 0 {
+		expected, err = templateString(expected, templates)
+		if err != nil {
+			return fmt.Errorf("unable to template testdata %s: %w", filename, err)
+		}
+	}
+
 	if !bytes.Equal(expected, actual) {
 		return fmt.Errorf("does not match golden file %s\n\nWANT:\n'%s'\n\nGOT:\n'%s'", filename, expected, actual)
 	}
 	return nil
+}
+
+func templateString(content []byte, data map[string]string) ([]byte, error) {
+	tmpl, err := template.New("content").Parse(string(content))
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 func update(filename string, in []byte) error {
