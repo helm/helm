@@ -17,11 +17,15 @@ limitations under the License.
 package registry
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -164,5 +168,100 @@ func TestWarnIfHostHasPath(t *testing.T) {
 				t.Errorf("warnIfHostHasPath(%q) = %v, want %v", tt.host, got, tt.wantWarn)
 			}
 		})
+	}
+}
+
+// TestPushConcurrent verifies that concurrent Push operations on the same Client
+// do not interfere with each other. This test is designed to catch race conditions
+// when run with -race flag.
+func TestPushConcurrent(t *testing.T) {
+	t.Parallel()
+
+	// Create a mock registry server that accepts pushes
+	var mu sync.Mutex
+	uploads := make(map[string][]byte)
+	var uploadCounter int
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodHead && strings.Contains(r.URL.Path, "/blobs/"):
+			// Blob existence check - return 404 to force upload
+			w.WriteHeader(http.StatusNotFound)
+
+		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/blobs/uploads/"):
+			// Start upload - return upload URL with unique ID
+			mu.Lock()
+			uploadCounter++
+			uploadID := fmt.Sprintf("upload-%d", uploadCounter)
+			mu.Unlock()
+			w.Header().Set("Location", fmt.Sprintf("%s%s", r.URL.Path, uploadID))
+			w.WriteHeader(http.StatusAccepted)
+
+		case r.Method == http.MethodPut && strings.Contains(r.URL.Path, "/blobs/uploads/"):
+			// Complete upload - extract digest from query param
+			body, _ := io.ReadAll(r.Body)
+			digest := r.URL.Query().Get("digest")
+			mu.Lock()
+			uploads[r.URL.Path] = body
+			mu.Unlock()
+			w.Header().Set("Docker-Content-Digest", digest)
+			w.WriteHeader(http.StatusCreated)
+
+		case r.Method == http.MethodPut && strings.Contains(r.URL.Path, "/manifests/"):
+			// Manifest push - compute actual sha256 digest of the body
+			body, _ := io.ReadAll(r.Body)
+			hash := sha256.Sum256(body)
+			digest := fmt.Sprintf("sha256:%x", hash)
+			w.Header().Set("Docker-Content-Digest", digest)
+			w.WriteHeader(http.StatusCreated)
+
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	host := strings.TrimPrefix(srv.URL, "http://")
+
+	// Create client
+	credFile := filepath.Join(t.TempDir(), "config.json")
+	client, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(credFile),
+		ClientOptPlainHTTP(),
+	)
+	require.NoError(t, err)
+
+	// Load test chart
+	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
+	require.NoError(t, err, "no error loading test chart")
+
+	meta, err := extractChartMeta(chartData)
+	require.NoError(t, err, "no error extracting chart meta")
+
+	// Run concurrent pushes
+	const numGoroutines = 10
+	var wg sync.WaitGroup
+	errs := make(chan error, numGoroutines)
+
+	for i := range numGoroutines {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			// Each goroutine pushes to a different tag to avoid conflicts
+			ref := fmt.Sprintf("%s/testrepo/%s:%s-%d", host, meta.Name, meta.Version, idx)
+			_, err := client.Push(chartData, ref, PushOptStrictMode(false))
+			if err != nil {
+				errs <- fmt.Errorf("goroutine %d: %w", idx, err)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(errs)
+
+	// Check for errors
+	for err := range errs {
+		t.Error(err)
 	}
 }
