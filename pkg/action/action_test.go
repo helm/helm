@@ -460,6 +460,11 @@ func TestFixDocSeparators(t *testing.T) {
 			expected: "data:\n  key: ---------value\n",
 		},
 		{
+				name:  "block scalar with dashes in quoted string",
+				input: "---\napiVersion: v1\nkind: ConfigMap\ndata:\n  script.sh: |\n    echo \"------------------------------------\"\n",
+				expected: "---\napiVersion: v1\nkind: ConfigMap\ndata:\n  script.sh: |\n    echo \"------------------------------------\"\n",
+		},
+		{
 			name:     "realistic multi-doc template output",
 			input:    "apiVersion: v1\nkind: Deployment\n---\napiVersion: v1\nkind: Ingress\n---apiVersion: v1\nkind: Service\n",
 			expected: "apiVersion: v1\nkind: Deployment\n---\napiVersion: v1\nkind: Ingress\n---\napiVersion: v1\nkind: Service\n",
