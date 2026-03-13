@@ -455,6 +455,11 @@ func TestFixDocSeparators(t *testing.T) {
 			expected: "data:\n  key: ---value\n",
 		},
 		{
+			name:     "multiple triple dashes in a value is not a separator",
+			input:    "data:\n  key: ---------value\n",
+			expected: "data:\n  key: ---------value\n",
+		},
+		{
 			name:     "realistic multi-doc template output",
 			input:    "apiVersion: v1\nkind: Deployment\n---\napiVersion: v1\nkind: Ingress\n---apiVersion: v1\nkind: Service\n",
 			expected: "apiVersion: v1\nkind: Deployment\n---\napiVersion: v1\nkind: Ingress\n---\napiVersion: v1\nkind: Service\n",
