@@ -49,7 +49,8 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, 
 				if err == nil {
 					// if not bool, warn
 					if bv, ok := vv.(bool); ok {
-						r.Enabled = bv
+						// Use AND logic: both tags and condition must be true
+						r.Enabled = r.Enabled && bv
 						break
 					}
 					slog.Warn("returned non-bool value", "path", c, "chart", r.Name)
