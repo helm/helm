@@ -106,42 +106,42 @@ func TestPluginUpdateComplete(t *testing.T) {
 		{
 			name:    "v-prefixed version rejected",
 			args:    []string{"myplugin@v1.2.3"},
-			wantErr: `invalid version "v1.2.3" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
+			wantErr: `invalid version "v1.2.3" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); semver range constraints (e.g. ~1.2, ^1.0.0, >=1.0.0) are not supported; the "v" prefix is not allowed`,
 		},
 		{
 			name:    "tilde range version rejected",
 			args:    []string{"myplugin@~1.2"},
-			wantErr: `invalid version "~1.2" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
+			wantErr: `invalid version "~1.2" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); semver range constraints (e.g. ~1.2, ^1.0.0, >=1.0.0) are not supported`,
 		},
 		{
 			name:    "caret range version rejected",
 			args:    []string{"myplugin@^1.2.3"},
-			wantErr: `invalid version "^1.2.3" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
+			wantErr: `invalid version "^1.2.3" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); semver range constraints (e.g. ~1.2, ^1.0.0, >=1.0.0) are not supported`,
 		},
 		{
 			name:    "gte constraint rejected",
 			args:    []string{"myplugin@>=1.0.0"},
-			wantErr: `invalid version ">=1.0.0" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
+			wantErr: `invalid version ">=1.0.0" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); semver range constraints (e.g. ~1.2, ^1.0.0, >=1.0.0) are not supported`,
 		},
 		{
 			name:    "wildcard version rejected",
 			args:    []string{"myplugin@1.x"},
-			wantErr: `invalid version "1.x" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
+			wantErr: `invalid version "1.x" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); semver range constraints (e.g. ~1.2, ^1.0.0, >=1.0.0) are not supported`,
 		},
 		{
 			name:    "range constraint rejected",
 			args:    []string{"myplugin@>=1.0.0, <2.0.0"},
-			wantErr: `invalid version ">=1.0.0, <2.0.0" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
+			wantErr: `invalid version ">=1.0.0, <2.0.0" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); semver range constraints (e.g. ~1.2, ^1.0.0, >=1.0.0) are not supported`,
 		},
 		{
 			name:    "garbage version rejected",
 			args:    []string{"myplugin@notaversion"},
-			wantErr: `invalid version "notaversion" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
+			wantErr: `invalid version "notaversion" for plugin "myplugin": must be an exact semver version (e.g. 1.2.3); semver range constraints (e.g. ~1.2, ^1.0.0, >=1.0.0) are not supported`,
 		},
 		{
 			name:    "range rejected among multiple plugins",
 			args:    []string{"plugin-a@1.0.0", "plugin-b@~2.0"},
-			wantErr: `invalid version "~2.0" for plugin "plugin-b": must be an exact semver version (e.g. 1.2.3); the "v" prefix is not allowed`,
+			wantErr: `invalid version "~2.0" for plugin "plugin-b": must be an exact semver version (e.g. 1.2.3); semver range constraints (e.g. ~1.2, ^1.0.0, >=1.0.0) are not supported`,
 		},
 	}
 	for _, tt := range tests {
