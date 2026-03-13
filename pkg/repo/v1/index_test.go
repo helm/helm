@@ -719,3 +719,41 @@ func TestLoadIndex_DuplicateChartDeps(t *testing.T) {
 		})
 	}
 }
+
+func TestIsVersionRange(t *testing.T) {
+	tests := []struct {
+		version  string
+		expected bool
+	}{
+		{"1.0.0", false},
+		{"1.0.0+metadata", false},
+		{"v1.19.2", false},
+		{"v1", false},
+		{"^1", true},
+		{"^1.2.3", true},
+		{"~1.10", true},
+		{"~1.10.0", true},
+		{">= 1.0.0", true},
+		{"> 1.0.0", true},
+		{"< 2.0.0", true},
+		{"<= 2.0.0", true},
+		{"!= 1.0.0", true},
+		{"1.*", true},
+		{"1.x", true},
+		{"1.X", true},
+		{"v1.x", true},
+		{"v1.X", true},
+		{"1.0.0 - 2.0.0", true},
+		{"^1.0.0 || ^2.0.0", true},
+		{">=1.0.0 <2.0.0", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.version, func(t *testing.T) {
+			got := isVersionRange(tt.version)
+			if got != tt.expected {
+				t.Errorf("isVersionRange(%q) = %v, want %v", tt.version, got, tt.expected)
+			}
+		})
+	}
+}
