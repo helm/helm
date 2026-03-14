@@ -73,6 +73,11 @@ func MergeValues(chrt chart.Charter, vals map[string]any) (common.Values, error)
 }
 
 func copyValues(vals map[string]any) (common.Values, error) {
+	// preemptively intercept scenarios with empty values to prevent panics.
+	if vals == nil {
+		return nil, fmt.Errorf("copy vals is nil")
+	}
+
 	v, err := copystructure.Copy(vals)
 	if err != nil {
 		return vals, err
