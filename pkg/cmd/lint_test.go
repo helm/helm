@@ -60,7 +60,6 @@ func TestLintCmdWithQuietFlag(t *testing.T) {
 		wantError: true,
 	}}
 	runTestCmd(t, tests)
-
 }
 
 func TestLintCmdWithKubeVersionFlag(t *testing.T) {

@@ -35,7 +35,6 @@ import (
 func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent,
 	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption,
 	timeout time.Duration, serverSideApply bool) error {
-
 	shutdown, err := cfg.execHookWithDelayedShutdown(rl, hook, waitStrategy, waitOptions, timeout, serverSideApply)
 	if shutdown == nil {
 		return err
@@ -59,7 +58,6 @@ func shutdownNoOp() error {
 func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook release.HookEvent,
 	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption, timeout time.Duration,
 	serverSideApply bool) (ExecuteShutdownFunc, error) {
-
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
@@ -179,7 +177,6 @@ func (x hookByWeight) Less(i, j int) bool {
 // deleteHookByPolicy deletes a hook if the hook policy instructs it to
 func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.HookDeletePolicy,
 	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption, timeout time.Duration) error {
-
 	// Never delete CustomResourceDefinitions; this could cause lots of
 	// cascading garbage collection.
 	if h.Kind == "CustomResourceDefinition" {
@@ -214,7 +211,6 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 // deleteHooksByPolicy deletes all hooks if the hook policy instructs it to
 func (cfg *Configuration) deleteHooksByPolicy(hooks []*release.Hook, policy release.HookDeletePolicy,
 	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption, timeout time.Duration) error {
-
 	for _, h := range hooks {
 		if err := cfg.deleteHookByPolicy(h, policy, waitStrategy, waitOptions, timeout); err != nil {
 			return err

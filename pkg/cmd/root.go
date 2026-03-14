@@ -355,7 +355,6 @@ func hookOutputWriter(_, _, _ string) io.Writer {
 }
 
 func checkForExpiredRepos(repofile string) {
-
 	expiredRepos := []struct {
 		name string
 		old  string
@@ -399,7 +398,6 @@ func checkForExpiredRepos(repofile string) {
 			)
 		}
 	}
-
 }
 
 func newRegistryClient(
