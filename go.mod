@@ -38,7 +38,7 @@ require (
 	golang.org/x/crypto v0.48.0
 	golang.org/x/term v0.41.0
 	golang.org/x/text v0.34.0
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.35.1
 	k8s.io/apiextensions-apiserver v0.35.1
 	k8s.io/apimachinery v0.35.1

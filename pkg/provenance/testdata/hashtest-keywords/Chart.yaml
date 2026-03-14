@@ -1,0 +1,12 @@
+apiVersion: v2
+name: hashtest-keywords
+description: Test chart with keywords and sources
+keywords:
+  - foo
+  - bar
+sources:
+  - https://example.com
+  - https://example.org
+type: application
+version: 1.2.3
+appVersion: "1.0.0"
