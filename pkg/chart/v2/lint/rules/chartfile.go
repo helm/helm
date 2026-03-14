@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/asaskevich/govalidator"
@@ -30,6 +31,13 @@ import (
 	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
+
+// chartName is a regular expression for testing the supplied name of a chart.
+var chartName = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+// maxChartNameLength is lower than the limits we know of with certain file systems,
+// and with certain Kubernetes fields.
+const maxChartNameLength = 250
 
 // Chartfile runs a set of linter rules related to Chart.yaml file
 func Chartfile(linter *support.Linter) {
@@ -114,12 +122,11 @@ func validateChartYamlStrictFormat(chartFileError error) error {
 }
 
 func validateChartName(cf *chart.Metadata) error {
-	if cf.Name == "" {
-		return errors.New("name is required")
+	if cf.Name == "" || len(cf.Name) > maxChartNameLength {
+		return fmt.Errorf("chart name must be between 1 and %d characters", maxChartNameLength)
 	}
-	name := filepath.Base(cf.Name)
-	if name != cf.Name {
-		return fmt.Errorf("chart name %q is invalid", cf.Name)
+	if !chartName.MatchString(cf.Name) {
+		return fmt.Errorf("chart name must use only lowercase letters or digits optionally with dash separators")
 	}
 	return nil
 }
