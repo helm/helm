@@ -29,6 +29,7 @@ linters:
     - modernize
     - nakedret
     - nolintlint
+    - perfsprint
     - revive
     - sloglint
     - staticcheck
