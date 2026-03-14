@@ -36,7 +36,7 @@ type lookupFunc = func(apiversion string, resource string, namespace string, nam
 //
 // If the resource does not exist, no error is raised.
 func NewLookupFunction(config *rest.Config) lookupFunc { //nolint:revive
-	return newLookupFunction(clientProviderFromConfig{config: config})
+	return newLookupFunction(context.Background(), clientProviderFromConfig{config: config})
 }
 
 type ClientProvider interface {
@@ -54,7 +54,7 @@ func (c clientProviderFromConfig) GetClientFor(apiVersion, kind string) (dynamic
 	return getDynamicClientOnKind(apiVersion, kind, c.config)
 }
 
-func newLookupFunction(clientProvider ClientProvider) lookupFunc {
+func newLookupFunction(ctx context.Context, clientProvider ClientProvider) lookupFunc {
 	return func(apiversion string, kind string, namespace string, name string) (map[string]any, error) {
 		var client dynamic.ResourceInterface
 		c, namespaced, err := clientProvider.GetClientFor(apiversion, kind)
@@ -68,7 +68,7 @@ func newLookupFunction(clientProvider ClientProvider) lookupFunc {
 		}
 		if name != "" {
 			// this will return a single object
-			obj, err := client.Get(context.Background(), name, metav1.GetOptions{})
+			obj, err := client.Get(ctx, name, metav1.GetOptions{})
 			if err != nil {
 				if apierrors.IsNotFound(err) {
 					// Just return an empty interface when the object was not found.
@@ -80,7 +80,7 @@ func newLookupFunction(clientProvider ClientProvider) lookupFunc {
 			return obj.UnstructuredContent(), nil
 		}
 		// this will return a list
-		obj, err := client.List(context.Background(), metav1.ListOptions{})
+		obj, err := client.List(ctx, metav1.ListOptions{})
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				// Just return an empty interface when the object was not found.

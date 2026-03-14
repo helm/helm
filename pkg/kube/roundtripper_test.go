@@ -134,7 +134,7 @@ func TestRetryingRoundTripper_RoundTrip(t *testing.T) {
 			rt := RetryingRoundTripper{
 				Wrapped: fakeRT,
 			}
-			req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com", http.NoBody)
 			resp, err := rt.RoundTrip(req)
 
 			if tt.expectedErr != "" {

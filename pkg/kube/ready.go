@@ -108,7 +108,7 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 			return c.pausedAsReady, nil
 		}
 		// Find RS associated with deployment
-		newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, c.client.AppsV1())
+		newReplicaSet, err := deploymentutil.GetNewReplicaSet(currentDeployment, c.client.AppsV1()) //nolint:contextcheck
 		if err != nil || newReplicaSet == nil {
 			return false, err
 		}
