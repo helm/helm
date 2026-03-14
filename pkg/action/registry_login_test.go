@@ -48,7 +48,7 @@ func TestWithInsecure(t *testing.T) {
 	opt := WithInsecure(true)
 
 	assert.Nil(t, opt(client))
-	assert.Equal(t, true, client.insecure)
+	assert.True(t, client.insecure)
 }
 
 func TestWithKeyFile(t *testing.T) {
@@ -80,5 +80,5 @@ func TestWithPlainHTTPLogin(t *testing.T) {
 	opt := WithPlainHTTPLogin(true)
 
 	assert.Nil(t, opt(client))
-	assert.Equal(t, true, client.plainHTTP)
+	assert.True(t, client.plainHTTP)
 }
