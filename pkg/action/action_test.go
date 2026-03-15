@@ -403,96 +403,6 @@ func (m *mockPostRenderer) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, 
 	return bytes.NewBufferString(content), nil
 }
 
-func TestFixDocSeparators(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "no separator",
-			input:    "apiVersion: v1\nkind: Service\n",
-			expected: "apiVersion: v1\nkind: Service\n",
-		},
-		{
-			name:     "separator on its own line",
-			input:    "---\napiVersion: v1\nkind: Service\n",
-			expected: "---\napiVersion: v1\nkind: Service\n",
-		},
-		{
-			name:     "leading separator glued to content",
-			input:    "---apiVersion: v1\nkind: Service\n",
-			expected: "---\napiVersion: v1\nkind: Service\n",
-		},
-		{
-			name:     "mid-content separator glued to content",
-			input:    "apiVersion: v1\nkind: ConfigMap\n---apiVersion: v1\nkind: Service\n",
-			expected: "apiVersion: v1\nkind: ConfigMap\n---\napiVersion: v1\nkind: Service\n",
-		},
-		{
-			name:     "multiple separators all proper",
-			input:    "---\napiVersion: v1\n---\napiVersion: v1\n",
-			expected: "---\napiVersion: v1\n---\napiVersion: v1\n",
-		},
-		{
-			name:     "multiple separators some glued",
-			input:    "---apiVersion: v1\nkind: ConfigMap\n---apiVersion: v1\nkind: Service\n",
-			expected: "---\napiVersion: v1\nkind: ConfigMap\n---\napiVersion: v1\nkind: Service\n",
-		},
-		{
-			name:     "empty string",
-			input:    "",
-			expected: "",
-		},
-		{
-			name:     "only separator",
-			input:    "---\n",
-			expected: "---\n",
-		},
-		{
-			name:     "triple dash in a value is not a separator",
-			input:    "data:\n  key: ---value\n",
-			expected: "data:\n  key: ---value\n",
-		},
-		{
-			name:     "realistic multi-doc template output",
-			input:    "apiVersion: v1\nkind: Deployment\n---\napiVersion: v1\nkind: Ingress\n---apiVersion: v1\nkind: Service\n",
-			expected: "apiVersion: v1\nkind: Deployment\n---\napiVersion: v1\nkind: Ingress\n---\napiVersion: v1\nkind: Service\n",
-		},
-		{
-			name:     "separator followed by carriage return",
-			input:    "---\r\napiVersion: v1\n",
-			expected: "---\r\napiVersion: v1\n",
-		},
-		{
-			name:     "separator followed by space",
-			input:    "--- \napiVersion: v1\n",
-			expected: "--- \napiVersion: v1\n",
-		},
-		{
-			name:     "separator followed by tab",
-			input:    "---\t\napiVersion: v1\n",
-			expected: "---\t\napiVersion: v1\n",
-		},
-		{
-			name:     "four dashes on its own line",
-			input:    "----\napiVersion: v1\n",
-			expected: "---\n-\napiVersion: v1\n",
-		},
-		{
-			name:     "four dashes followed by text",
-			input:    "----more\napiVersion: v1\n",
-			expected: "---\n-more\napiVersion: v1\n",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, fixDocSeparators(tt.input))
-		})
-	}
-}
-
 func TestAnnotateAndMerge(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -690,6 +600,339 @@ metadata:
   name: test-svc
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/all.yaml'
+`,
+		},
+		{
+			name: "ConfigMap with embedded CA certificate",
+			files: map[string]string{
+				"templates/configmap.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ca-bundle
+data:
+  ca.crt: |
+    ------BEGIN CERTIFICATE------
+    MIICEzCCAXygAwIBAgIQMIMChMLGrR+QvmQvpwAU6zAKBggqhkjOPQQDAzASMRAw
+    DgYDVQQKEwdBY21lIENvMCAXDTcwMDEwMTAwMDAwMFoYDzIwODQwMTI5MTYwMDAw
+    WjASMRAwDgYDVQQKEwdBY21lIENvMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE7Rmm
+    ------END CERTIFICATE------
+    ------BEGIN CERTIFICATE------
+    MIICEzCCAXygAwIBAgIQMIMChMLGrR+QvmQvpwAU6zAKBggqhkjOPQQDAzASMRAw
+    DgYDVQQKEwdBY21lIENvMCAXDTcwMDEwMTAwMDAwMFoYDzIwODQwMTI5MTYwMDAw
+    WjASMRAwDgYDVQQKEwdBY21lIENvMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE7Rmm
+    ------END CERTIFICATE------
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ca-bundle
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/configmap.yaml'
+data:
+  ca.crt: |-
+    ------BEGIN CERTIFICATE------
+    MIICEzCCAXygAwIBAgIQMIMChMLGrR+QvmQvpwAU6zAKBggqhkjOPQQDAzASMRAw
+    DgYDVQQKEwdBY21lIENvMCAXDTcwMDEwMTAwMDAwMFoYDzIwODQwMTI5MTYwMDAw
+    WjASMRAwDgYDVQQKEwdBY21lIENvMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE7Rmm
+    ------END CERTIFICATE------
+    ------BEGIN CERTIFICATE------
+    MIICEzCCAXygAwIBAgIQMIMChMLGrR+QvmQvpwAU6zAKBggqhkjOPQQDAzASMRAw
+    DgYDVQQKEwdBY21lIENvMCAXDTcwMDEwMTAwMDAwMFoYDzIwODQwMTI5MTYwMDAw
+    WjASMRAwDgYDVQQKEwdBY21lIENvMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE7Rmm
+    ------END CERTIFICATE------
+`,
+		},
+		{
+			name: "consecutive dashes in YAML value are not treated as document separators",
+			files: map[string]string{
+				"templates/configmap.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+data:
+  config: |
+    # ---------------------------------------------------------------------------
+    [section]
+    key = value
+    # ---------------------------------------------------------------------------
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/configmap.yaml'
+data:
+  config: |-
+    # ---------------------------------------------------------------------------
+    [section]
+    key = value
+    # ---------------------------------------------------------------------------
+`,
+		},
+		{
+			name: "JSON with dashes in values is not corrupted",
+			files: map[string]string{
+				"templates/dashboard.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard
+data:
+  dashboard.json: |
+    {"options":{"---------":{"color":"#292929","text":"N/A"}}}
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/dashboard.yaml'
+data:
+  dashboard.json: |-
+    {"options":{"---------":{"color":"#292929","text":"N/A"}}}
+`,
+		},
+
+		// **Note for Chart API v3**: This input should return an _ERROR_ in Chart API v3.
+		// See the comment on the releaseutil.SplitManifests function for more details.
+		{
+			name: "multiple glued separators in same file",
+			files: map[string]string{
+				"templates/multi.yaml": `
+---apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm1
+---apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm2
+---apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm3
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm1
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/multi.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/multi.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm3
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/multi.yaml'
+`,
+		},
+
+		// **Note for Chart API v3**: This input should return an _ERROR_ in Chart API v3.
+		// See the comment on the releaseutil.SplitManifests function for more details.
+		{
+			name: "mixed glued and proper separators",
+			files: map[string]string{
+				"templates/mixed.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm2
+---apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm3
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm1
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/mixed.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/mixed.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm3
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/mixed.yaml'
+`,
+		},
+		{
+			name: "12 documents preserve in-file order",
+			files: map[string]string{
+				"templates/many.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-01
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-02
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-03
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-04
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-05
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-06
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-07
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-08
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-09
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-10
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-11
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-12
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-01
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-02
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-03
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-04
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-05
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-06
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-07
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-08
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-09
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-10
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-11
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-12
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
 `,
 		},
 	}
