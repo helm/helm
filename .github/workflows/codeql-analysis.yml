@@ -24,14 +24,15 @@ on:
   schedule:
     - cron: '29 6 * * 6'
 
-permissions:  
-  contents: read
-  security-events: write
+permissions: {}
 
 jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
 
     strategy:
       fail-fast: false
