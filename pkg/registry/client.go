@@ -714,6 +714,8 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	repository.PlainHTTP = c.plainHTTP
 	repository.Client = c.authorizer
 
+	ctx = withScopeHint(ctx, repository, auth.ActionPull, auth.ActionPush)
+
 	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
 	if err != nil {
 		return nil, err
@@ -925,4 +927,18 @@ func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 
 	return oras.TagBytes(ctx, memoryStore, ocispec.MediaTypeImageManifest,
 		manifestData, parsedRef.String())
+}
+
+// add actions when request a registry authentication token(jwt)
+// example1. when we want to pull 'testrepo/local-subchart' we can send bellow url, and 'pull' is the action
+// auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull&service=testservice
+// example2. when we want to push 'testrepo/local-subchart' we can send bellow url, and 'pull%2Cpush' are the actions
+// auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull%2Cpush&service=testservice
+// we can set the actions like bellow
+// example) ctx = WithScopeHint(ctx, repository, auth.ActionPush, auth.ActionPull)
+func withScopeHint(ctx context.Context, target any, actions ...string) context.Context {
+	if repo, ok := target.(*remote.Repository); ok {
+		return auth.AppendRepositoryScope(ctx, repo.Reference, actions...)
+	}
+	return ctx
 }
