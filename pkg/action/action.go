@@ -27,6 +27,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"text/template"
@@ -144,39 +145,6 @@ const (
 	filenameAnnotation = "postrenderer.helm.sh/postrender-filename"
 )
 
-// fixDocSeparators ensures YAML document separators ("---") are always
-// followed by a newline in rendered template content. Go template whitespace
-// trimming ({{-) can remove the newline after "---", producing e.g.
-// "---apiVersion: v1" which is not a valid YAML document separator.
-// This function inserts a newline after any "---" at the start of a line
-// that is immediately followed by non-whitespace content.
-func fixDocSeparators(content string) string {
-	var b strings.Builder
-	remaining := content
-	for {
-		// Find "---" at the start of a line (or start of content).
-		idx := strings.Index(remaining, "---")
-		if idx == -1 {
-			b.WriteString(remaining)
-			break
-		}
-		// "---" must be at the start of a line: either idx==0 or preceded by '\n'.
-		if idx > 0 && remaining[idx-1] != '\n' {
-			b.WriteString(remaining[:idx+3])
-			remaining = remaining[idx+3:]
-			continue
-		}
-		b.WriteString(remaining[:idx+3])
-		remaining = remaining[idx+3:]
-		// If "---" is followed by non-whitespace (e.g. "---apiVersion"),
-		// insert a newline to make it a proper document separator.
-		if len(remaining) > 0 && remaining[0] != '\n' && remaining[0] != '\r' && remaining[0] != ' ' && remaining[0] != '\t' {
-			b.WriteByte('\n')
-		}
-	}
-	return b.String()
-}
-
 // annotateAndMerge combines multiple YAML files into a single stream of documents,
 // adding filename annotations to each document for later reconstruction.
 func annotateAndMerge(files map[string]string) (string, error) {
@@ -192,22 +160,32 @@ func annotateAndMerge(files map[string]string) (string, error) {
 			continue
 		}
 
-		// Fix document separators where Go template whitespace trimming
-		// ({{-) has removed the newline after "---", producing e.g.
-		// "---apiVersion: v1" which is not a valid YAML document
-		// separator. Insert the missing newline so kio.ParseAll can
-		// parse the content correctly.
-		content = fixDocSeparators(content)
-
-		manifests, err := kio.ParseAll(content)
-		if err != nil {
-			return "", fmt.Errorf("parsing %s: %w", fname, err)
+		// For consistency with the non-post-renderers code path, we need
+		// to use releaseutil.SplitManifests here to split the file into
+		// individual documents before feeding them to kio.ParseAll. In
+		// Chart API before v3 this function had leniency for badly-written
+		// Go templates, so this must be preserved for older charts.
+		splitDocs := releaseutil.SplitManifests(content)
+		keys := make([]string, 0, len(splitDocs))
+		for k := range splitDocs {
+			keys = append(keys, k)
 		}
-		for _, manifest := range manifests {
-			if err := manifest.PipeE(kyaml.SetAnnotation(filenameAnnotation, fname)); err != nil {
-				return "", fmt.Errorf("annotating %s: %w", fname, err)
+		sort.Sort(releaseutil.BySplitManifestsOrder(keys))
+		for _, key := range keys {
+			doc := splitDocs[key]
+			if strings.TrimSpace(doc) == "" {
+				continue
 			}
-			combinedManifests = append(combinedManifests, manifest)
+			manifests, err := kio.ParseAll(doc)
+			if err != nil {
+				return "", fmt.Errorf("parsing %s: %w", fname, err)
+			}
+			for _, manifest := range manifests {
+				if err := manifest.PipeE(kyaml.SetAnnotation(filenameAnnotation, fname)); err != nil {
+					return "", fmt.Errorf("annotating %s: %w", fname, err)
+				}
+				combinedManifests = append(combinedManifests, manifest)
+			}
 		}
 	}
 
