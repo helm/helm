@@ -162,8 +162,13 @@ func fixDocSeparators(content string) string {
 		}
 		// "---" must be at the start of a line: either idx==0 or preceded by '\n'.
 		if idx > 0 && remaining[idx-1] != '\n' {
-			b.WriteString(remaining[:idx+3])
-			remaining = remaining[idx+3:]
+			// Skip all remaining dashes in the line, otherwise they'll be considered as at the start of a line
+			nonDashIndex := idx + 3
+			for nonDashIndex < len(remaining) && remaining[nonDashIndex] == '-' {
+				nonDashIndex++
+			}
+			b.WriteString(remaining[:nonDashIndex])
+			remaining = remaining[nonDashIndex:]
 			continue
 		}
 		b.WriteString(remaining[:idx+3])
