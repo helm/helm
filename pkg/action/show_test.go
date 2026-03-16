@@ -18,27 +18,32 @@ package action
 
 import (
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 func TestShow(t *testing.T) {
 	config := actionConfigFixture(t)
 	client := NewShow(ShowAll, config)
+	modTime := time.Now()
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*common.File{
-			{Name: "README.md", Data: []byte("README\n")},
-			{Name: "crds/ignoreme.txt", Data: []byte("error")},
-			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
-			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},
-			{Name: "crds/baz.yaml", Data: []byte("baz\n")},
+			{Name: "README.md", ModTime: modTime, Data: []byte("README\n")},
+			{Name: "crds/ignoreme.txt", ModTime: modTime, Data: []byte("error")},
+			{Name: "crds/foo.yaml", ModTime: modTime, Data: []byte("---\nfoo\n")},
+			{Name: "crds/bar.json", ModTime: modTime, Data: []byte("---\nbar\n")},
+			{Name: "crds/baz.yaml", ModTime: modTime, Data: []byte("baz\n")},
 		},
 		Raw: []*common.File{
-			{Name: "values.yaml", Data: []byte("VALUES\n")},
+			{Name: "values.yaml", ModTime: modTime, Data: []byte("VALUES\n")},
 		},
-		Values: map[string]interface{}{},
+		Values: map[string]any{},
 	}
 
 	output, err := client.Run("")
@@ -104,13 +109,14 @@ func TestShowValuesByJsonPathFormat(t *testing.T) {
 func TestShowCRDs(t *testing.T) {
 	config := actionConfigFixture(t)
 	client := NewShow(ShowCRDs, config)
+	modTime := time.Now()
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*common.File{
-			{Name: "crds/ignoreme.txt", Data: []byte("error")},
-			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
-			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},
-			{Name: "crds/baz.yaml", Data: []byte("baz\n")},
+			{Name: "crds/ignoreme.txt", ModTime: modTime, Data: []byte("error")},
+			{Name: "crds/foo.yaml", ModTime: modTime, Data: []byte("---\nfoo\n")},
+			{Name: "crds/bar.json", ModTime: modTime, Data: []byte("---\nbar\n")},
+			{Name: "crds/baz.yaml", ModTime: modTime, Data: []byte("baz\n")},
 		},
 	}
 
@@ -137,12 +143,13 @@ baz
 func TestShowNoReadme(t *testing.T) {
 	config := actionConfigFixture(t)
 	client := NewShow(ShowAll, config)
+	modTime := time.Now()
 	client.chart = &chart.Chart{
 		Metadata: &chart.Metadata{Name: "alpine"},
 		Files: []*common.File{
-			{Name: "crds/ignoreme.txt", Data: []byte("error")},
-			{Name: "crds/foo.yaml", Data: []byte("---\nfoo\n")},
-			{Name: "crds/bar.json", Data: []byte("---\nbar\n")},
+			{Name: "crds/ignoreme.txt", ModTime: modTime, Data: []byte("error")},
+			{Name: "crds/foo.yaml", ModTime: modTime, Data: []byte("---\nfoo\n")},
+			{Name: "crds/bar.json", ModTime: modTime, Data: []byte("---\nbar\n")},
 		},
 	}
 
@@ -163,4 +170,13 @@ bar
 	if output != expect {
 		t.Errorf("Expected\n%q\nGot\n%q\n", expect, output)
 	}
+}
+
+func TestShowSetRegistryClient(t *testing.T) {
+	config := actionConfigFixture(t)
+	client := NewShow(ShowAll, config)
+
+	registryClient := &registry.Client{}
+	client.SetRegistryClient(registryClient)
+	assert.Equal(t, registryClient, client.registryClient)
 }

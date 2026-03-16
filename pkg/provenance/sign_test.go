@@ -17,15 +17,15 @@ package provenance
 
 import (
 	"crypto"
-	"fmt"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	pgperrors "github.com/ProtonMail/go-crypto/openpgp/errors" //nolint
-	"github.com/ProtonMail/go-crypto/openpgp/packet"           //nolint
+	pgperrors "github.com/ProtonMail/go-crypto/openpgp/errors"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
@@ -330,7 +330,7 @@ func (s failSigner) Public() crypto.PublicKey {
 }
 
 func (s failSigner) Sign(_ io.Reader, _ []byte, _ crypto.SignerOpts) ([]byte, error) {
-	return nil, fmt.Errorf("always fails")
+	return nil, errors.New("always fails")
 }
 
 func TestClearSignError(t *testing.T) {

@@ -150,7 +150,7 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 
 	// inject fake http client responding with error
 	httpInstaller.getter = &TestHTTPGetter{
-		MockError: fmt.Errorf("failed to download plugin for some reason"),
+		MockError: errors.New("failed to download plugin for some reason"),
 	}
 
 	// attempt to install the plugin
@@ -368,7 +368,7 @@ func TestExtractWithNestedDirectories(t *testing.T) {
 	}{
 		{"plugin.yaml", "plugin metadata", 0600, tar.TypeReg},
 		{"bin/", "", 0755, tar.TypeDir},
-		{"bin/plugin", "#!/bin/bash\necho plugin", 0755, tar.TypeReg},
+		{"bin/plugin", "#!/usr/bin/env sh\necho plugin", 0755, tar.TypeReg},
 		{"docs/", "", 0755, tar.TypeDir},
 		{"docs/README.md", "readme content", 0644, tar.TypeReg},
 		{"docs/examples/", "", 0755, tar.TypeDir},
@@ -531,7 +531,7 @@ func TestExtractPluginInSubdirectory(t *testing.T) {
 		{"my-plugin/", "", 0755, tar.TypeDir},
 		{"my-plugin/plugin.yaml", "name: my-plugin\nversion: 1.0.0\nusage: test\ndescription: test plugin\ncommand: $HELM_PLUGIN_DIR/bin/my-plugin", 0644, tar.TypeReg},
 		{"my-plugin/bin/", "", 0755, tar.TypeDir},
-		{"my-plugin/bin/my-plugin", "#!/bin/bash\necho test", 0755, tar.TypeReg},
+		{"my-plugin/bin/my-plugin", "#!/usr/bin/env sh\necho test", 0755, tar.TypeReg},
 	}
 
 	for _, file := range files {

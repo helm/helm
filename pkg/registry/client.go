@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -224,11 +225,24 @@ type (
 	}
 )
 
+// warnIfHostHasPath checks if the host contains a repository path and logs a warning if it does.
+// Returns true if the host contains a path component (i.e., contains a '/').
+func warnIfHostHasPath(host string) bool {
+	if strings.Contains(host, "/") {
+		registryHost := strings.Split(host, "/")[0]
+		slog.Warn("registry login currently only supports registry hostname, not a repository path", "host", host, "suggested", registryHost)
+		return true
+	}
+	return false
+}
+
 // Login logs into a registry
 func (c *Client) Login(host string, options ...LoginOption) error {
 	for _, option := range options {
 		option(&loginOperation{host, c})
 	}
+
+	warnIfHostHasPath(host)
 
 	reg, err := remote.NewRegistry(host)
 	if err != nil {
@@ -255,7 +269,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		return err
 	}
 
-	fmt.Fprintln(c.out, "Login Succeeded")
+	_, _ = fmt.Fprintln(c.out, "Login Succeeded")
 	return nil
 }
 
@@ -383,7 +397,7 @@ func (c *Client) Logout(host string, opts ...LogoutOption) error {
 	if err := credentials.Logout(context.Background(), c.credentialsStore, host); err != nil {
 		return err
 	}
-	fmt.Fprintf(c.out, "Removing login credentials for %s\n", host)
+	_, _ = fmt.Fprintf(c.out, "Removing login credentials for %s\n", host)
 	return nil
 }
 
@@ -453,7 +467,7 @@ func (c *Client) processChartPull(genericResult *GenericPullResult, operation *p
 			provDescriptor = &d
 		case LegacyChartLayerMediaType:
 			chartDescriptor = &d
-			fmt.Fprintf(c.out, "Warning: chart media type %s is deprecated\n", LegacyChartLayerMediaType)
+			_, _ = fmt.Fprintf(c.out, "Warning: chart media type %s is deprecated\n", LegacyChartLayerMediaType)
 		}
 	}
 
@@ -526,12 +540,12 @@ func (c *Client) processChartPull(genericResult *GenericPullResult, operation *p
 		result.Prov.Size = provDescriptor.Size
 	}
 
-	fmt.Fprintf(c.out, "Pulled: %s\n", result.Ref)
-	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	_, _ = fmt.Fprintf(c.out, "Pulled: %s\n", result.Ref)
+	_, _ = fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
 
 	if strings.Contains(result.Ref, "_") {
-		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
-		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
+		_, _ = fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
+		_, _ = fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
 	}
 
 	return result, nil
@@ -552,6 +566,7 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 
 	// Build allowed media types for chart pull
 	allowedMediaTypes := []string{
+		ocispec.MediaTypeImageIndex,
 		ocispec.MediaTypeImageManifest,
 		ConfigMediaType,
 	}
@@ -728,11 +743,11 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 			Size:   provDescriptor.Size,
 		}
 	}
-	fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
-	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	_, _ = fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
+	_, _ = fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
 	if strings.Contains(parsedRef.orasReference.Reference, "_") {
-		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
-		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
+		_, _ = fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
+		_, _ = fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
 	}
 
 	return result, err
@@ -867,7 +882,7 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *ur
 		tag = version
 	} else {
 		// Retrieve list of repository tags
-		tags, err := c.Tags(strings.TrimPrefix(ref, fmt.Sprintf("%s://", OCIScheme)))
+		tags, err := c.Tags(strings.TrimPrefix(ref, OCIScheme+"://"))
 		if err != nil {
 			return "", nil, err
 		}

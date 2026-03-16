@@ -42,11 +42,11 @@ func TestNewTLSConfig(t *testing.T) {
 	certFile := testfile(t, testCertFile)
 	keyFile := testfile(t, testKeyFile)
 	caCertFile := testfile(t, testCaCertFile)
-	insecureSkipTLSverify := false
+	insecureSkipTLSVerify := false
 
 	{
 		cfg, err := NewTLSConfig(
-			WithInsecureSkipVerify(insecureSkipTLSverify),
+			WithInsecureSkipVerify(insecureSkipTLSVerify),
 			WithCertKeyPairFiles(certFile, keyFile),
 			WithCAFile(caCertFile),
 		)
@@ -58,15 +58,15 @@ func TestNewTLSConfig(t *testing.T) {
 			t.Fatalf("expecting 1 client certificates, got %d", got)
 		}
 		if cfg.InsecureSkipVerify {
-			t.Fatalf("insecure skip verify mismatch, expecting false")
+			t.Fatal("insecure skip verify mismatch, expecting false")
 		}
 		if cfg.RootCAs == nil {
-			t.Fatalf("mismatch tls RootCAs, expecting non-nil")
+			t.Fatal("mismatch tls RootCAs, expecting non-nil")
 		}
 	}
 	{
 		cfg, err := NewTLSConfig(
-			WithInsecureSkipVerify(insecureSkipTLSverify),
+			WithInsecureSkipVerify(insecureSkipTLSVerify),
 			WithCAFile(caCertFile),
 		)
 		if err != nil {
@@ -77,16 +77,16 @@ func TestNewTLSConfig(t *testing.T) {
 			t.Fatalf("expecting 0 client certificates, got %d", got)
 		}
 		if cfg.InsecureSkipVerify {
-			t.Fatalf("insecure skip verify mismatch, expecting false")
+			t.Fatal("insecure skip verify mismatch, expecting false")
 		}
 		if cfg.RootCAs == nil {
-			t.Fatalf("mismatch tls RootCAs, expecting non-nil")
+			t.Fatal("mismatch tls RootCAs, expecting non-nil")
 		}
 	}
 
 	{
 		cfg, err := NewTLSConfig(
-			WithInsecureSkipVerify(insecureSkipTLSverify),
+			WithInsecureSkipVerify(insecureSkipTLSVerify),
 			WithCertKeyPairFiles(certFile, keyFile),
 		)
 		if err != nil {
@@ -97,10 +97,10 @@ func TestNewTLSConfig(t *testing.T) {
 			t.Fatalf("expecting 1 client certificates, got %d", got)
 		}
 		if cfg.InsecureSkipVerify {
-			t.Fatalf("insecure skip verify mismatch, expecting false")
+			t.Fatal("insecure skip verify mismatch, expecting false")
 		}
 		if cfg.RootCAs != nil {
-			t.Fatalf("mismatch tls RootCAs, expecting nil")
+			t.Fatal("mismatch tls RootCAs, expecting nil")
 		}
 	}
 }

@@ -26,16 +26,16 @@ import (
 )
 
 type TLSConfigOptions struct {
-	insecureSkipTLSverify     bool
+	insecureSkipTLSVerify     bool
 	certPEMBlock, keyPEMBlock []byte
 	caPEMBlock                []byte
 }
 
 type TLSConfigOption func(options *TLSConfigOptions) error
 
-func WithInsecureSkipVerify(insecureSkipTLSverify bool) TLSConfigOption {
+func WithInsecureSkipVerify(insecureSkipTLSVerify bool) TLSConfigOption {
 	return func(options *TLSConfigOptions) error {
-		options.insecureSkipTLSverify = insecureSkipTLSverify
+		options.insecureSkipTLSVerify = insecureSkipTLSVerify
 
 		return nil
 	}
@@ -97,7 +97,7 @@ func NewTLSConfig(options ...TLSConfigOption) (*tls.Config, error) {
 	}
 
 	config := tls.Config{
-		InsecureSkipVerify: to.insecureSkipTLSverify,
+		InsecureSkipVerify: to.insecureSkipTLSVerify,
 	}
 
 	if len(to.certPEMBlock) > 0 && len(to.keyPEMBlock) > 0 {
@@ -112,7 +112,7 @@ func NewTLSConfig(options ...TLSConfigOption) (*tls.Config, error) {
 	if len(to.caPEMBlock) > 0 {
 		cp := x509.NewCertPool()
 		if !cp.AppendCertsFromPEM(to.caPEMBlock) {
-			return nil, fmt.Errorf("failed to append certificates from pem block")
+			return nil, errors.New("failed to append certificates from pem block")
 		}
 
 		config.RootCAs = cp

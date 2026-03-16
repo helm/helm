@@ -306,11 +306,11 @@ func TestDownload(t *testing.T) {
 func TestDownloadTLS(t *testing.T) {
 	cd := "../../testdata"
 	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "crt.pem"), filepath.Join(cd, "key.pem")
-	insecureSkipTLSverify := false
+	insecureSkipTLSVerify := false
 
 	tlsSrv := httptest.NewUnstartedServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 	tlsConf, err := tlsutil.NewTLSConfig(
-		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSVerify),
 		tlsutil.WithCertKeyPairFiles(pub, priv),
 		tlsutil.WithCAFile(ca),
 	)
@@ -359,14 +359,14 @@ func TestDownloadTLS(t *testing.T) {
 func TestDownloadTLSWithRedirect(t *testing.T) {
 	cd := "../../testdata"
 	srv2Resp := "hello"
-	insecureSkipTLSverify := false
+	insecureSkipTLSVerify := false
 
 	// Server 2 that will actually fulfil the request.
 	ca, pub, priv := filepath.Join(cd, "rootca.crt"), filepath.Join(cd, "localhost-crt.pem"), filepath.Join(cd, "key.pem")
 	tlsConf, err := tlsutil.NewTLSConfig(
 		tlsutil.WithCAFile(ca),
 		tlsutil.WithCertKeyPairFiles(pub, priv),
-		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSVerify),
 	)
 
 	if err != nil {
@@ -387,7 +387,7 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 	tlsConf, err = tlsutil.NewTLSConfig(
 		tlsutil.WithCAFile(ca),
 		tlsutil.WithCertKeyPairFiles(pub, priv),
-		tlsutil.WithInsecureSkipVerify(insecureSkipTLSverify),
+		tlsutil.WithInsecureSkipVerify(insecureSkipTLSVerify),
 	)
 
 	if err != nil {
@@ -403,7 +403,7 @@ func TestDownloadTLSWithRedirect(t *testing.T) {
 		// request URL for every request (including redirects). Setting `tls.Config.ServerName` on the
 		// client just overrides the remote endpoint's hostname.
 		// See https://github.com/golang/go/blob/3979fb9/src/net/http/transport.go#L1505-L1513.
-		u.Host = fmt.Sprintf("localhost:%s", u.Port())
+		u.Host = "localhost:" + u.Port()
 
 		http.Redirect(rw, r, u.String(), http.StatusTemporaryRedirect)
 	}))
@@ -577,16 +577,16 @@ func TestHttpClientInsecureSkipVerify(t *testing.T) {
 
 func verifyInsecureSkipVerify(t *testing.T, g *HTTPGetter, caseName string, expectedValue bool) *http.Transport {
 	t.Helper()
-	returnVal, err := g.httpClient()
+	returnVal, err := g.httpClient(g.opts)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if returnVal == nil { //nolint:staticcheck
-		t.Fatalf("Expected non nil value for http client")
+	if returnVal == nil {
+		t.Fatal("Expected non nil value for http client")
 	}
-	transport := (returnVal.Transport).(*http.Transport) //nolint:staticcheck
+	transport := (returnVal.Transport).(*http.Transport)
 	gotValue := false
 	if transport.TLSClientConfig != nil {
 		gotValue = transport.TLSClientConfig.InsecureSkipVerify
@@ -601,32 +601,32 @@ func verifyInsecureSkipVerify(t *testing.T, g *HTTPGetter, caseName string, expe
 func TestDefaultHTTPTransportReuse(t *testing.T) {
 	g := HTTPGetter{}
 
-	httpClient1, err := g.httpClient()
+	httpClient1, err := g.httpClient(g.opts)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if httpClient1 == nil { //nolint:staticcheck
-		t.Fatalf("Expected non nil value for http client")
+	if httpClient1 == nil {
+		t.Fatal("Expected non nil value for http client")
 	}
 
-	transport1 := (httpClient1.Transport).(*http.Transport) //nolint:staticcheck
+	transport1 := (httpClient1.Transport).(*http.Transport)
 
-	httpClient2, err := g.httpClient()
+	httpClient2, err := g.httpClient(g.opts)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if httpClient2 == nil { //nolint:staticcheck
-		t.Fatalf("Expected non nil value for http client")
+	if httpClient2 == nil {
+		t.Fatal("Expected non nil value for http client")
 	}
 
-	transport2 := (httpClient2.Transport).(*http.Transport) //nolint:staticcheck
+	transport2 := (httpClient2.Transport).(*http.Transport)
 
 	if transport1 != transport2 {
-		t.Fatalf("Expected default transport to be reused")
+		t.Fatal("Expected default transport to be reused")
 	}
 }
 
@@ -635,36 +635,36 @@ func TestHTTPTransportOption(t *testing.T) {
 
 	g := HTTPGetter{}
 	g.opts.transport = transport
-	httpClient1, err := g.httpClient()
+	httpClient1, err := g.httpClient(g.opts)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if httpClient1 == nil { //nolint:staticcheck
-		t.Fatalf("Expected non nil value for http client")
+	if httpClient1 == nil {
+		t.Fatal("Expected non nil value for http client")
 	}
 
-	transport1 := (httpClient1.Transport).(*http.Transport) //nolint:staticcheck
+	transport1 := (httpClient1.Transport).(*http.Transport)
 
 	if transport1 != transport {
-		t.Fatalf("Expected transport option to be applied")
+		t.Fatal("Expected transport option to be applied")
 	}
 
-	httpClient2, err := g.httpClient()
+	httpClient2, err := g.httpClient(g.opts)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if httpClient2 == nil { //nolint:staticcheck
-		t.Fatalf("Expected non nil value for http client")
+	if httpClient2 == nil {
+		t.Fatal("Expected non nil value for http client")
 	}
 
-	transport2 := (httpClient2.Transport).(*http.Transport) //nolint:staticcheck
+	transport2 := (httpClient2.Transport).(*http.Transport)
 
 	if transport1 != transport2 {
-		t.Fatalf("Expected applied transport to be reused")
+		t.Fatal("Expected applied transport to be reused")
 	}
 
 	g = HTTPGetter{}

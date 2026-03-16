@@ -18,10 +18,12 @@ package downloader
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
@@ -376,7 +378,7 @@ func TestScanReposForURL(t *testing.T) {
 
 	// A lookup failure should produce an ErrNoOwnerRepo
 	u = "https://no.such.repo/foo/bar-1.23.4.tgz"
-	if _, err = c.scanReposForURL(u, rf); err != ErrNoOwnerRepo {
+	if _, err = c.scanReposForURL(u, rf); !errors.Is(err, ErrNoOwnerRepo) {
 		t.Fatalf("expected ErrNoOwnerRepo, got %v", err)
 	}
 }
@@ -484,4 +486,35 @@ func TestDownloadToCache(t *testing.T) {
 		c.Verify = VerifyNever
 		c.Keyring = ""
 	})
+}
+
+func TestStripDigestAlgorithm(t *testing.T) {
+	tests := map[string]struct {
+		input    string
+		expected string
+	}{
+		"sha256 prefixed digest": {
+			input:    "sha256:aef46c66a7f2d5a12a7e3f54a64790daf5c9a9e66af3f46955efdaa6c900341d",
+			expected: "aef46c66a7f2d5a12a7e3f54a64790daf5c9a9e66af3f46955efdaa6c900341d",
+		},
+		"sha512 prefixed digest": {
+			input:    "sha512:abcdef1234567890",
+			expected: "abcdef1234567890",
+		},
+		"plain hex digest without prefix": {
+			input:    "aef46c66a7f2d5a12a7e3f54a64790daf5c9a9e66af3f46955efdaa6c900341d",
+			expected: "aef46c66a7f2d5a12a7e3f54a64790daf5c9a9e66af3f46955efdaa6c900341d",
+		},
+		"empty string": {
+			input:    "",
+			expected: "",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := stripDigestAlgorithm(tt.input)
+			assert.Equalf(t, tt.expected, result, "stripDigestAlgorithm(%q) = %q, want %q", tt.input, result, tt.expected)
+		})
+	}
 }

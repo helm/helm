@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 )
@@ -44,12 +45,16 @@ type Chart struct {
 	// Templates for this chart.
 	Templates []*common.File `json:"templates"`
 	// Values are default config for this chart.
-	Values map[string]interface{} `json:"values"`
+	Values map[string]any `json:"values"`
 	// Schema is an optional JSON schema for imposing structure on Values
 	Schema []byte `json:"schema"`
+	// SchemaModTime the schema was last modified
+	SchemaModTime time.Time `json:"schemamodtime"`
 	// Files are miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
 	Files []*common.File `json:"files"`
+	// ModTime the chart metadata was last modified
+	ModTime time.Time `json:"modtime,omitzero"`
 
 	parent       *Chart
 	dependencies []*Chart

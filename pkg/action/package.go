@@ -57,7 +57,7 @@ type Package struct {
 	CertFile              string
 	KeyFile               string
 	CaFile                string
-	InsecureSkipTLSverify bool
+	InsecureSkipTLSVerify bool
 }
 
 const (
@@ -70,7 +70,7 @@ func NewPackage() *Package {
 }
 
 // Run executes 'helm package' against the given chart and returns the path to the packaged chart.
-func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
+func (p *Package) Run(path string, _ map[string]any) (string, error) {
 	chrt, err := loader.LoadDir(path)
 	if err != nil {
 		return "", err
@@ -103,7 +103,7 @@ func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
 		ch.Metadata.AppVersion = p.AppVersion
 	}
 
-	if reqs := ac.MetaDependencies(); reqs != nil {
+	if reqs := ac.MetaDependencies(); len(reqs) > 0 {
 		if err := CheckDependencies(ch, reqs); err != nil {
 			return "", err
 		}

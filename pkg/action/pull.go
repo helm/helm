@@ -82,7 +82,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			getter.WithBasicAuth(p.Username, p.Password),
 			getter.WithPassCredentialsAll(p.PassCredentialsAll),
 			getter.WithTLSClientConfig(p.CertFile, p.KeyFile, p.CaFile),
-			getter.WithInsecureSkipVerifyTLS(p.InsecureSkipTLSverify),
+			getter.WithInsecureSkipVerifyTLS(p.InsecureSkipTLSVerify),
 			getter.WithPlainHTTP(p.PlainHTTP),
 		},
 		RegistryClient:   p.cfg.RegistryClient,
@@ -124,7 +124,7 @@ func (p *Pull) Run(chartRef string) (string, error) {
 			repo.WithChartVersion(p.Version),
 			repo.WithClientTLS(p.CertFile, p.KeyFile, p.CaFile),
 			repo.WithUsernamePassword(p.Username, p.Password),
-			repo.WithInsecureSkipTLSverify(p.InsecureSkipTLSverify),
+			repo.WithInsecureSkipTLSVerify(p.InsecureSkipTLSVerify),
 			repo.WithPassCredentialsAll(p.PassCredentialsAll),
 		)
 		if err != nil {

@@ -17,7 +17,6 @@ limitations under the License.
 package fake
 
 import (
-	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -133,7 +132,7 @@ func (p *PrintingKubeClient) GetPodList(_ string, _ metav1.ListOptions) (*v1.Pod
 
 // OutputContainerLogsForPodList implements KubeClient OutputContainerLogsForPodList.
 func (p *PrintingKubeClient) OutputContainerLogsForPodList(_ *v1.PodList, someNamespace string, _ func(namespace, pod, container string) io.Writer) error {
-	_, err := io.Copy(p.LogOutput, strings.NewReader(fmt.Sprintf("attempted to output logs for namespace: %s", someNamespace)))
+	_, err := io.Copy(p.LogOutput, strings.NewReader("attempted to output logs for namespace: "+someNamespace))
 	return err
 }
 
@@ -148,7 +147,11 @@ func (p *PrintingKubeClient) DeleteWithPropagationPolicy(resources kube.Resource
 	return &kube.Result{Deleted: resources}, nil
 }
 
-func (p *PrintingKubeClient) GetWaiter(_ kube.WaitStrategy) (kube.Waiter, error) {
+func (p *PrintingKubeClient) GetWaiter(ws kube.WaitStrategy) (kube.Waiter, error) {
+	return p.GetWaiterWithOptions(ws)
+}
+
+func (p *PrintingKubeClient) GetWaiterWithOptions(_ kube.WaitStrategy, _ ...kube.WaitOption) (kube.Waiter, error) {
 	return &PrintingKubeWaiter{Out: p.Out, LogOutput: p.LogOutput}, nil
 }
 

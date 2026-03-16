@@ -82,7 +82,7 @@ func TestLogin_ResetsForceAttemptOAuth2_OnSuccess(t *testing.T) {
 	}
 
 	if c.authorizer == nil || c.authorizer.ForceAttemptOAuth2 {
-		t.Fatalf("expected ForceAttemptOAuth2 default to be false")
+		t.Fatal("expected ForceAttemptOAuth2 default to be false")
 	}
 
 	// Call Login with plain HTTP against our test server
@@ -118,5 +118,51 @@ func TestLogin_ResetsForceAttemptOAuth2_OnFailure(t *testing.T) {
 
 	if c.authorizer.ForceAttemptOAuth2 {
 		t.Errorf("ForceAttemptOAuth2 should be false after failed Login")
+	}
+}
+
+// TestWarnIfHostHasPath verifies that warnIfHostHasPath correctly detects path components.
+func TestWarnIfHostHasPath(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		host     string
+		wantWarn bool
+	}{
+		{
+			name:     "domain only",
+			host:     "ghcr.io",
+			wantWarn: false,
+		},
+		{
+			name:     "domain with port",
+			host:     "localhost:8000",
+			wantWarn: false,
+		},
+		{
+			name:     "domain with repository path",
+			host:     "ghcr.io/terryhowe",
+			wantWarn: true,
+		},
+		{
+			name:     "domain with nested path",
+			host:     "ghcr.io/terryhowe/myrepo",
+			wantWarn: true,
+		},
+		{
+			name:     "localhost with port and path",
+			host:     "localhost:8000/myrepo",
+			wantWarn: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := warnIfHostHasPath(tt.host)
+			if got != tt.wantWarn {
+				t.Errorf("warnIfHostHasPath(%q) = %v, want %v", tt.host, got, tt.wantWarn)
+			}
+		})
 	}
 }

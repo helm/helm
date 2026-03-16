@@ -20,6 +20,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io"
 	"log"
 	"os"
@@ -116,7 +117,7 @@ func TestBomTestData(t *testing.T) {
 		tr := tar.NewReader(unzipped)
 		for {
 			file, err := tr.Next()
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			if err != nil {
@@ -219,8 +220,9 @@ func TestLoadFiles_BadCases(t *testing.T) {
 			name: "These files contain only requirements.lock",
 			bufferedFiles: []*archive.BufferedFile{
 				{
-					Name: "requirements.lock",
-					Data: []byte(""),
+					Name:    "requirements.lock",
+					ModTime: time.Now(),
+					Data:    []byte(""),
 				},
 			},
 			expectError: "validation: chart.metadata.apiVersion is required"},
@@ -236,9 +238,11 @@ func TestLoadFiles_BadCases(t *testing.T) {
 }
 
 func TestLoadFiles(t *testing.T) {
+	modTime := time.Now()
 	goodFiles := []*archive.BufferedFile{
 		{
-			Name: "Chart.yaml",
+			Name:    "Chart.yaml",
+			ModTime: modTime,
 			Data: []byte(`apiVersion: v1
 name: frobnitz
 description: This is a frobnitz.
@@ -259,20 +263,24 @@ icon: https://example.com/64x64.png
 `),
 		},
 		{
-			Name: "values.yaml",
-			Data: []byte("var: some values"),
+			Name:    "values.yaml",
+			ModTime: modTime,
+			Data:    []byte("var: some values"),
 		},
 		{
-			Name: "values.schema.json",
-			Data: []byte("type: Values"),
+			Name:    "values.schema.json",
+			ModTime: modTime,
+			Data:    []byte("type: Values"),
 		},
 		{
-			Name: "templates/deployment.yaml",
-			Data: []byte("some deployment"),
+			Name:    "templates/deployment.yaml",
+			ModTime: modTime,
+			Data:    []byte("some deployment"),
 		},
 		{
-			Name: "templates/service.yaml",
-			Data: []byte("some service"),
+			Name:    "templates/service.yaml",
+			ModTime: modTime,
+			Data:    []byte("some service"),
 		},
 	}
 
@@ -312,26 +320,32 @@ icon: https://example.com/64x64.png
 // Test the order of file loading. The Chart.yaml file needs to come first for
 // later comparison checks. See https://github.com/helm/helm/pull/8948
 func TestLoadFilesOrder(t *testing.T) {
+	modTime := time.Now()
 	goodFiles := []*archive.BufferedFile{
 		{
-			Name: "requirements.yaml",
-			Data: []byte("dependencies:"),
+			Name:    "requirements.yaml",
+			ModTime: modTime,
+			Data:    []byte("dependencies:"),
 		},
 		{
-			Name: "values.yaml",
-			Data: []byte("var: some values"),
+			Name:    "values.yaml",
+			ModTime: modTime,
+			Data:    []byte("var: some values"),
 		},
 
 		{
-			Name: "templates/deployment.yaml",
-			Data: []byte("some deployment"),
+			Name:    "templates/deployment.yaml",
+			ModTime: modTime,
+			Data:    []byte("some deployment"),
 		},
 		{
-			Name: "templates/service.yaml",
-			Data: []byte("some service"),
+			Name:    "templates/service.yaml",
+			ModTime: modTime,
+			Data:    []byte("some service"),
 		},
 		{
-			Name: "Chart.yaml",
+			Name:    "Chart.yaml",
+			ModTime: modTime,
 			Data: []byte(`apiVersion: v1
 name: frobnitz
 description: This is a frobnitz.
@@ -494,7 +508,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 func TestLoadValues(t *testing.T) {
 	testCases := map[string]struct {
 		data          []byte
-		expctedValues map[string]interface{}
+		expctedValues map[string]any
 	}{
 		"It should load values correctly": {
 			data: []byte(`
@@ -503,11 +517,11 @@ foo:
 bar:
   version: v2
 `),
-			expctedValues: map[string]interface{}{
-				"foo": map[string]interface{}{
+			expctedValues: map[string]any{
+				"foo": map[string]any{
 					"image": "foo:v1",
 				},
-				"bar": map[string]interface{}{
+				"bar": map[string]any{
 					"version": "v2",
 				},
 			},
@@ -522,11 +536,11 @@ bar:
 foo:
   image: foo:v2
 `),
-			expctedValues: map[string]interface{}{
-				"foo": map[string]interface{}{
+			expctedValues: map[string]any{
+				"foo": map[string]any{
 					"image": "foo:v2",
 				},
-				"bar": map[string]interface{}{
+				"bar": map[string]any{
 					"version": "v2",
 				},
 			},
@@ -546,24 +560,24 @@ foo:
 }
 
 func TestMergeValuesV2(t *testing.T) {
-	nestedMap := map[string]interface{}{
+	nestedMap := map[string]any{
 		"foo": "bar",
 		"baz": map[string]string{
 			"cool": "stuff",
 		},
 	}
-	anotherNestedMap := map[string]interface{}{
+	anotherNestedMap := map[string]any{
 		"foo": "bar",
 		"baz": map[string]string{
 			"cool":    "things",
 			"awesome": "stuff",
 		},
 	}
-	flatMap := map[string]interface{}{
+	flatMap := map[string]any{
 		"foo": "bar",
 		"baz": "stuff",
 	}
-	anotherFlatMap := map[string]interface{}{
+	anotherFlatMap := map[string]any{
 		"testing": "fun",
 	}
 
@@ -586,7 +600,7 @@ func TestMergeValuesV2(t *testing.T) {
 	}
 
 	testMap = MergeMaps(anotherFlatMap, anotherNestedMap)
-	expectedMap := map[string]interface{}{
+	expectedMap := map[string]any{
 		"testing": "fun",
 		"foo":     "bar",
 		"baz": map[string]string{

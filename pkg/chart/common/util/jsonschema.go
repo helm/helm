@@ -24,6 +24,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -72,7 +73,7 @@ func newHTTPURLLoader() *HTTPURLLoader {
 }
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
-func ValidateAgainstSchema(ch chart.Charter, values map[string]interface{}) error {
+func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 	chrt, err := chart.NewAccessor(ch)
 	if err != nil {
 		return err
@@ -82,11 +83,11 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]interface{}) erro
 		slog.Debug("chart name", "chart-name", chrt.Name())
 		err := ValidateAgainstSingleSchema(values, chrt.Schema())
 		if err != nil {
-			sb.WriteString(fmt.Sprintf("%s:\n", chrt.Name()))
+			fmt.Fprintf(&sb, "%s:\n", chrt.Name())
 			sb.WriteString(err.Error())
 		}
 	}
-	slog.Debug("number of dependencies in the chart", "dependencies", len(chrt.Dependencies()))
+	slog.Debug("number of dependencies in the chart", "chart", chrt.Name(), "dependencies", len(chrt.Dependencies()))
 	// For each dependency, recursively call this function with the coalesced values
 	for _, subchart := range chrt.Dependencies() {
 		sub, err := chart.NewAccessor(subchart)
@@ -102,10 +103,8 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]interface{}) erro
 
 		subchartValues, ok := raw.(map[string]any)
 		if !ok {
-			sb.WriteString(fmt.Sprintf(
-				"%s:\ninvalid type for values: expected object (map), got %T\n",
-				sub.Name(), raw,
-			))
+			fmt.Fprintf(&sb, "%s:\ninvalid type for values: expected object (map), got %T\n",
+				sub.Name(), raw)
 			continue
 		}
 
@@ -142,6 +141,7 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 		"file":  jsonschema.FileLoader{},
 		"http":  newHTTPURLLoader(),
 		"https": newHTTPURLLoader(),
+		"urn":   urnLoader{},
 	}
 
 	compiler := jsonschema.NewCompiler()
@@ -162,6 +162,35 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 	}
 
 	return nil
+}
+
+// URNResolverFunc allows SDK to plug a URN resolver. It must return a
+// schema document compatible with the validator (e.g., result of
+// jsonschema.UnmarshalJSON).
+type URNResolverFunc func(urn string) (any, error)
+
+// URNResolver is the default resolver used by the URN loader. By default it
+// returns a clear error.
+var URNResolver URNResolverFunc = func(urn string) (any, error) {
+	return nil, fmt.Errorf("URN not resolved: %s", urn)
+}
+
+// urnLoader implements resolution for the urn: scheme by delegating to
+// URNResolver. If unresolved, it logs a warning and returns a permissive
+// boolean-true schema to avoid hard failures (back-compat behavior).
+type urnLoader struct{}
+
+// warnedURNs ensures we log the unresolved-URN warning only once per URN.
+var warnedURNs sync.Map
+
+func (l urnLoader) Load(urlStr string) (any, error) {
+	if doc, err := URNResolver(urlStr); err == nil && doc != nil {
+		return doc, nil
+	}
+	if _, loaded := warnedURNs.LoadOrStore(urlStr, struct{}{}); !loaded {
+		slog.Warn("unresolved URN reference ignored; using permissive schema", "urn", urlStr)
+	}
+	return jsonschema.UnmarshalJSON(strings.NewReader("true"))
 }
 
 // Note, JSONSchemaValidationError is used to wrap the error from the underlying

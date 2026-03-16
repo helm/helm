@@ -76,7 +76,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	}
 
 	var pushOpts []registry.PushOption
-	provRef := fmt.Sprintf("%s.prov", chartRef)
+	provRef := chartRef + ".prov"
 	if _, err := os.Stat(provRef); err == nil {
 		provBytes, err := os.ReadFile(provRef)
 		if err != nil {
@@ -86,7 +86,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	}
 
 	ref := fmt.Sprintf("%s:%s",
-		path.Join(strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme)), meta.Metadata.Name),
+		path.Join(strings.TrimPrefix(href, registry.OCIScheme+"://"), meta.Metadata.Name),
 		meta.Metadata.Version)
 
 	// The time the chart was "created" is semantically the time the chart archive file was last written(modified)
@@ -109,9 +109,9 @@ func NewOCIPusher(ops ...Option) (Pusher, error) {
 }
 
 func (pusher *OCIPusher) newRegistryClient() (*registry.Client, error) {
-	if (pusher.opts.certFile != "" && pusher.opts.keyFile != "") || pusher.opts.caFile != "" || pusher.opts.insecureSkipTLSverify {
+	if (pusher.opts.certFile != "" && pusher.opts.keyFile != "") || pusher.opts.caFile != "" || pusher.opts.insecureSkipTLSVerify {
 		tlsConf, err := tlsutil.NewTLSConfig(
-			tlsutil.WithInsecureSkipVerify(pusher.opts.insecureSkipTLSverify),
+			tlsutil.WithInsecureSkipVerify(pusher.opts.insecureSkipTLSVerify),
 			tlsutil.WithCertKeyPairFiles(pusher.opts.certFile, pusher.opts.keyFile),
 			tlsutil.WithCAFile(pusher.opts.caFile),
 		)

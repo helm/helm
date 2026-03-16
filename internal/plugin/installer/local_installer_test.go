@@ -19,6 +19,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -64,7 +65,7 @@ func TestLocalInstallerNotAFolder(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if err != ErrPluginNotADirectory {
+	if !errors.Is(err, ErrPluginNotADirectory) {
 		t.Fatalf("expected error to equal: %q", err)
 	}
 }
@@ -87,7 +88,7 @@ func TestLocalInstallerTarball(t *testing.T) {
 		Mode int64
 	}{
 		{"test-plugin/plugin.yaml", "name: test-plugin\napiVersion: v1\ntype: cli/v1\nruntime: subprocess\nversion: 1.0.0\nconfig:\n  shortHelp: test\n  longHelp: test\nruntimeConfig:\n  platformCommand:\n  - command: echo", 0644},
-		{"test-plugin/bin/test-plugin", "#!/bin/bash\necho test", 0755},
+		{"test-plugin/bin/test-plugin", "#!/usr/bin/env sh\necho test", 0755},
 	}
 
 	for _, file := range files {

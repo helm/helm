@@ -11,9 +11,13 @@ vulnerability_, please email a report to
 [cncf-helm-security@lists.cncf.io](mailto:cncf-helm-security@lists.cncf.io). This will give us a
 chance to try to fix the issue before it is exploited in the wild.
 
-## Helm v3 and v4
+## Helm v3
 
-Helm v4 is currently under development on the `main` branch. During the development of Helm v4 and for some time after its released, Helm v3 will continue to be supported and developed on the `dev-v3` branch. Helm v3 will continue to get bug fixes and updates for new Kubernetes releases. Helm v4 is where new features and major changes will happen. For features to be backported to Helm v3, an exception will be needed. Bugs should first be fixed on Helm v4 and then backported to Helm v3.
+Helm v4 development takes place on the `main` branch while Helm v3 is on the `dev-v3` branch.
+
+Helm v3 will continue to receive bug fixes and updates for new Kubernetes releases until July 8th 2026. Security enhancement will still be applied until November 11th 2026. See the blog <https://helm.sh/blog/helm-4-released#helm-v3-support> for more details.
+
+Bugs should first be fixed on Helm v4 and then backported to Helm v3. Helm v3 (and the `dev-v3` branch) is no longer accepting new features.
 
 ## Sign Your Work
 
@@ -120,7 +124,7 @@ specific upcoming bugfix or feature release could fall into one of two different
 
 Issues and PRs which are deemed backwards-incompatible may be added to the discussion items for
 Helm 4 with [label:v4.x](https://github.com/helm/helm/labels/v4.x). An issue or PR that we are not
-sure we will be addressing will not be added to any milestone.
+sure if we will be addressing will not be added to any milestone.
 
 A milestone (and hence release) can be closed when all outstanding issues/PRs have been closed
 or moved to another milestone and the associated release has been published.
@@ -160,8 +164,8 @@ There are 5 types of issues (each with their own corresponding [label](#labels))
   discussion, these can turn into `feature` or `bug` issues.
 - `proposal`: Used for items (like this one) that propose a new ideas or functionality that require
   a larger community discussion. This allows for feedback from others in the community before a
-  feature is actually  developed. This is not needed for small additions. Final word on whether or
-  not a feature needs a proposal is up to the core maintainers. All issues that are proposals should
+  feature is actually  developed. This is not needed for small additions. Final word on whether
+  a feature needs a proposal is up to the core maintainers. All issues that are proposals should
   both have a label and an issue title of "Proposal: [the rest of the title]." A proposal can become
   a `feature` and does not require a milestone.
 - `feature`: These track specific feature requests and ideas until they are complete. They can
@@ -179,7 +183,7 @@ below.
 2. Triage
     - The maintainer in charge of triaging will apply the proper labels for the issue. This includes
       labels for priority, type, and metadata (such as `good first issue`). The only issue priority
-      we will be tracking is whether or not the issue is "critical." If additional levels are needed
+      we will be tracking is whether the issue is "critical." If additional levels are needed
       in the future, we will add them.
     - (If needed) Clean up the title to succinctly and clearly state the issue. Also ensure that
       proposals are prefaced with "Proposal: [the rest of the title]".

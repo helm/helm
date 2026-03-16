@@ -17,12 +17,14 @@ limitations under the License.
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"path"
 	"strings"
 	"sync"
 	"testing"
 	"text/template"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -90,26 +92,27 @@ func TestFuncMap(t *testing.T) {
 }
 
 func TestRender(t *testing.T) {
+	modTime := time.Now()
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:    "moby",
 			Version: "1.2.3",
 		},
 		Templates: []*common.File{
-			{Name: "templates/test1", Data: []byte("{{.Values.outer | title }} {{.Values.inner | title}}")},
-			{Name: "templates/test2", Data: []byte("{{.Values.global.callme | lower }}")},
-			{Name: "templates/test3", Data: []byte("{{.noValue}}")},
-			{Name: "templates/test4", Data: []byte("{{toJson .Values}}")},
-			{Name: "templates/test5", Data: []byte("{{getHostByName \"helm.sh\"}}")},
+			{Name: "templates/test1", ModTime: modTime, Data: []byte("{{.Values.outer | title }} {{.Values.inner | title}}")},
+			{Name: "templates/test2", ModTime: modTime, Data: []byte("{{.Values.global.callme | lower }}")},
+			{Name: "templates/test3", ModTime: modTime, Data: []byte("{{.noValue}}")},
+			{Name: "templates/test4", ModTime: modTime, Data: []byte("{{toJson .Values}}")},
+			{Name: "templates/test5", ModTime: modTime, Data: []byte("{{getHostByName \"helm.sh\"}}")},
 		},
-		Values: map[string]interface{}{"outer": "DEFAULT", "inner": "DEFAULT"},
+		Values: map[string]any{"outer": "DEFAULT", "inner": "DEFAULT"},
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{
+	vals := map[string]any{
+		"Values": map[string]any{
 			"outer": "spouter",
 			"inner": "inn",
-			"global": map[string]interface{}{
+			"global": map[string]any{
 				"callme": "Ishmael",
 			},
 		},
@@ -140,14 +143,16 @@ func TestRender(t *testing.T) {
 }
 
 func TestRenderRefsOrdering(t *testing.T) {
+	modTime := time.Now()
+
 	parentChart := &chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:    "parent",
 			Version: "1.2.3",
 		},
 		Templates: []*common.File{
-			{Name: "templates/_helpers.tpl", Data: []byte(`{{- define "test" -}}parent value{{- end -}}`)},
-			{Name: "templates/test.yaml", Data: []byte(`{{ tpl "{{ include \"test\" . }}" . }}`)},
+			{Name: "templates/_helpers.tpl", ModTime: modTime, Data: []byte(`{{- define "test" -}}parent value{{- end -}}`)},
+			{Name: "templates/test.yaml", ModTime: modTime, Data: []byte(`{{ tpl "{{ include \"test\" . }}" . }}`)},
 		},
 	}
 	childChart := &chart.Chart{
@@ -156,7 +161,7 @@ func TestRenderRefsOrdering(t *testing.T) {
 			Version: "1.2.3",
 		},
 		Templates: []*common.File{
-			{Name: "templates/_helpers.tpl", Data: []byte(`{{- define "test" -}}child value{{- end -}}`)},
+			{Name: "templates/_helpers.tpl", ModTime: modTime, Data: []byte(`{{- define "test" -}}child value{{- end -}}`)},
 		},
 	}
 	parentChart.AddDependency(childChart)
@@ -165,7 +170,7 @@ func TestRenderRefsOrdering(t *testing.T) {
 		"parent/templates/test.yaml": "parent value",
 	}
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		out, err := Render(parentChart, common.Values{})
 		if err != nil {
 			t.Fatalf("Failed to render templates: %s", err)
@@ -220,13 +225,13 @@ func TestRenderWithDNS(t *testing.T) {
 			Version: "1.2.3",
 		},
 		Templates: []*common.File{
-			{Name: "templates/test1", Data: []byte("{{getHostByName \"helm.sh\"}}")},
+			{Name: "templates/test1", ModTime: time.Now(), Data: []byte("{{getHostByName \"helm.sh\"}}")},
 		},
-		Values: map[string]interface{}{},
+		Values: map[string]any{},
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{},
+	vals := map[string]any{
+		"Values": map[string]any{},
 	}
 
 	v, err := util.CoalesceValues(c, vals)
@@ -273,15 +278,15 @@ var _ ClientProvider = &testClientProvider{}
 
 // makeUnstructured is a convenience function for single-line creation of Unstructured objects.
 func makeUnstructured(apiVersion, kind, name, namespace string) *unstructured.Unstructured {
-	ret := &unstructured.Unstructured{Object: map[string]interface{}{
+	ret := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": apiVersion,
 		"kind":       kind,
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name": name,
 		},
 	}}
 	if namespace != "" {
-		ret.Object["metadata"].(map[string]interface{})["namespace"] = namespace
+		ret.Object["metadata"].(map[string]any)["namespace"] = namespace
 	}
 	return ret
 }
@@ -352,18 +357,20 @@ func TestRenderWithClientProvider(t *testing.T) {
 			Name:    "moby",
 			Version: "1.2.3",
 		},
-		Values: map[string]interface{}{},
+		Values: map[string]any{},
 	}
 
+	modTime := time.Now()
 	for name, exp := range cases {
 		c.Templates = append(c.Templates, &common.File{
-			Name: path.Join("templates", name),
-			Data: []byte(exp.template),
+			Name:    path.Join("templates", name),
+			ModTime: modTime,
+			Data:    []byte(exp.template),
 		})
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{},
+	vals := map[string]any{
+		"Values": map[string]any{},
 	}
 
 	v, err := util.CoalesceValues(c, vals)
@@ -393,13 +400,13 @@ func TestRenderWithClientProvider_error(t *testing.T) {
 			Version: "1.2.3",
 		},
 		Templates: []*common.File{
-			{Name: "templates/error", Data: []byte(`{{ lookup "v1" "Error" "" "" }}`)},
+			{Name: "templates/error", ModTime: time.Now(), Data: []byte(`{{ lookup "v1" "Error" "" "" }}`)},
 		},
-		Values: map[string]interface{}{},
+		Values: map[string]any{},
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{},
+	vals := map[string]any{
+		"Values": map[string]any{},
 	}
 
 	v, err := util.CoalesceValues(c, vals)
@@ -411,7 +418,7 @@ func TestRenderWithClientProvider_error(t *testing.T) {
 		t: t,
 		scheme: map[string]kindProps{
 			"v1/Error": {
-				shouldErr: fmt.Errorf("kaboom"),
+				shouldErr: errors.New("kaboom"),
 			},
 		},
 	}
@@ -425,14 +432,14 @@ func TestParallelRenderInternals(t *testing.T) {
 	// Make sure that we can use one Engine to run parallel template renders.
 	e := new(Engine)
 	var wg sync.WaitGroup
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		wg.Add(1)
 		go func(i int) {
 			tt := fmt.Sprintf("expect-%d", i)
 			tpls := map[string]renderable{
 				"t": {
 					tpl:  `{{.val}}`,
-					vals: map[string]interface{}{"val": tt},
+					vals: map[string]any{"val": tt},
 				},
 			}
 			out, err := e.render(tpls)
@@ -449,7 +456,7 @@ func TestParallelRenderInternals(t *testing.T) {
 }
 
 func TestParseErrors(t *testing.T) {
-	vals := common.Values{"Values": map[string]interface{}{}}
+	vals := common.Values{"Values": map[string]any{}}
 
 	tplsUndefinedFunction := map[string]renderable{
 		"undefined_function": {tpl: `{{foo}}`, vals: vals},
@@ -465,7 +472,7 @@ func TestParseErrors(t *testing.T) {
 }
 
 func TestExecErrors(t *testing.T) {
-	vals := common.Values{"Values": map[string]interface{}{}}
+	vals := common.Values{"Values": map[string]any{}}
 	cases := []struct {
 		name     string
 		tpls     map[string]renderable
@@ -529,7 +536,7 @@ linebreak`,
 }
 
 func TestFailErrors(t *testing.T) {
-	vals := common.Values{"Values": map[string]interface{}{}}
+	vals := common.Values{"Values": map[string]any{}}
 
 	failtpl := `All your base are belong to us{{ fail "This is an error" }}`
 	tplsFailed := map[string]renderable{
@@ -558,18 +565,19 @@ func TestFailErrors(t *testing.T) {
 }
 
 func TestAllTemplates(t *testing.T) {
+	modTime := time.Now()
 	ch1 := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "ch1"},
 		Templates: []*common.File{
-			{Name: "templates/foo", Data: []byte("foo")},
-			{Name: "templates/bar", Data: []byte("bar")},
+			{Name: "templates/foo", ModTime: modTime, Data: []byte("foo")},
+			{Name: "templates/bar", ModTime: modTime, Data: []byte("bar")},
 		},
 	}
 	dep1 := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "laboratory mice"},
 		Templates: []*common.File{
-			{Name: "templates/pinky", Data: []byte("pinky")},
-			{Name: "templates/brain", Data: []byte("brain")},
+			{Name: "templates/pinky", ModTime: modTime, Data: []byte("pinky")},
+			{Name: "templates/brain", ModTime: modTime, Data: []byte("brain")},
 		},
 	}
 	ch1.AddDependency(dep1)
@@ -577,7 +585,7 @@ func TestAllTemplates(t *testing.T) {
 	dep2 := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "same thing we do every night"},
 		Templates: []*common.File{
-			{Name: "templates/innermost", Data: []byte("innermost")},
+			{Name: "templates/innermost", ModTime: modTime, Data: []byte("innermost")},
 		},
 	}
 	dep1.AddDependency(dep2)
@@ -589,16 +597,17 @@ func TestAllTemplates(t *testing.T) {
 }
 
 func TestChartValuesContainsIsRoot(t *testing.T) {
+	modTime := time.Now()
 	ch1 := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "parent"},
 		Templates: []*common.File{
-			{Name: "templates/isroot", Data: []byte("{{.Chart.IsRoot}}")},
+			{Name: "templates/isroot", ModTime: modTime, Data: []byte("{{.Chart.IsRoot}}")},
 		},
 	}
 	dep1 := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "child"},
 		Templates: []*common.File{
-			{Name: "templates/isroot", Data: []byte("{{.Chart.IsRoot}}")},
+			{Name: "templates/isroot", ModTime: modTime, Data: []byte("{{.Chart.IsRoot}}")},
 		},
 	}
 	ch1.AddDependency(dep1)
@@ -621,20 +630,21 @@ func TestChartValuesContainsIsRoot(t *testing.T) {
 func TestRenderDependency(t *testing.T) {
 	deptpl := `{{define "myblock"}}World{{end}}`
 	toptpl := `Hello {{template "myblock"}}`
+	modTime := time.Now()
 	ch := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "outerchart"},
 		Templates: []*common.File{
-			{Name: "templates/outer", Data: []byte(toptpl)},
+			{Name: "templates/outer", ModTime: modTime, Data: []byte(toptpl)},
 		},
 	}
 	ch.AddDependency(&chart.Chart{
 		Metadata: &chart.Metadata{Name: "innerchart"},
 		Templates: []*common.File{
-			{Name: "templates/inner", Data: []byte(deptpl)},
+			{Name: "templates/inner", ModTime: modTime, Data: []byte(deptpl)},
 		},
 	})
 
-	out, err := Render(ch, map[string]interface{}{})
+	out, err := Render(ch, map[string]any{})
 	if err != nil {
 		t.Fatalf("failed to render chart: %s", err)
 	}
@@ -659,34 +669,35 @@ func TestRenderNestedValues(t *testing.T) {
 	// Ensure subcharts scopes are working.
 	subchartspath := "templates/subcharts.tpl"
 
+	modTime := time.Now()
 	deepest := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "deepest"},
 		Templates: []*common.File{
-			{Name: deepestpath, Data: []byte(`And this same {{.Values.what}} that smiles {{.Values.global.when}}`)},
-			{Name: checkrelease, Data: []byte(`Tomorrow will be {{default "happy" .Release.Name }}`)},
+			{Name: deepestpath, ModTime: modTime, Data: []byte(`And this same {{.Values.what}} that smiles {{.Values.global.when}}`)},
+			{Name: checkrelease, ModTime: modTime, Data: []byte(`Tomorrow will be {{default "happy" .Release.Name }}`)},
 		},
-		Values: map[string]interface{}{"what": "milkshake", "where": "here"},
+		Values: map[string]any{"what": "milkshake", "where": "here"},
 	}
 
 	inner := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "herrick"},
 		Templates: []*common.File{
-			{Name: innerpath, Data: []byte(`Old {{.Values.who}} is still a-flyin'`)},
+			{Name: innerpath, ModTime: modTime, Data: []byte(`Old {{.Values.who}} is still a-flyin'`)},
 		},
-		Values: map[string]interface{}{"who": "Robert", "what": "glasses"},
+		Values: map[string]any{"who": "Robert", "what": "glasses"},
 	}
 	inner.AddDependency(deepest)
 
 	outer := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "top"},
 		Templates: []*common.File{
-			{Name: outerpath, Data: []byte(`Gather ye {{.Values.what}} while ye may`)},
-			{Name: subchartspath, Data: []byte(`The glorious Lamp of {{.Subcharts.herrick.Subcharts.deepest.Values.where}}, the {{.Subcharts.herrick.Values.what}}`)},
+			{Name: outerpath, ModTime: modTime, Data: []byte(`Gather ye {{.Values.what}} while ye may`)},
+			{Name: subchartspath, ModTime: modTime, Data: []byte(`The glorious Lamp of {{.Subcharts.herrick.Subcharts.deepest.Values.where}}, the {{.Subcharts.herrick.Values.what}}`)},
 		},
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"what": "stinkweed",
 			"who":  "me",
-			"herrick": map[string]interface{}{
+			"herrick": map[string]any{
 				"who":  "time",
 				"what": "Sun",
 			},
@@ -694,15 +705,15 @@ func TestRenderNestedValues(t *testing.T) {
 	}
 	outer.AddDependency(inner)
 
-	injValues := map[string]interface{}{
+	injValues := map[string]any{
 		"what": "rosebuds",
-		"herrick": map[string]interface{}{
-			"deepest": map[string]interface{}{
+		"herrick": map[string]any{
+			"deepest": map[string]any{
 				"what":  "flower",
 				"where": "Heaven",
 			},
 		},
-		"global": map[string]interface{}{
+		"global": map[string]any{
 			"when": "to-day",
 		},
 	}
@@ -754,23 +765,24 @@ func TestRenderNestedValues(t *testing.T) {
 }
 
 func TestRenderBuiltinValues(t *testing.T) {
+	modTime := time.Now()
 	inner := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "Latium", APIVersion: chart.APIVersionV2},
 		Templates: []*common.File{
-			{Name: "templates/Lavinia", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
-			{Name: "templates/From", Data: []byte(`{{.Files.author | printf "%s"}} {{.Files.Get "book/title.txt"}}`)},
+			{Name: "templates/Lavinia", ModTime: modTime, Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
+			{Name: "templates/From", ModTime: modTime, Data: []byte(`{{.Files.author | printf "%s"}} {{.Files.Get "book/title.txt"}}`)},
 		},
 		Files: []*common.File{
-			{Name: "author", Data: []byte("Virgil")},
-			{Name: "book/title.txt", Data: []byte("Aeneid")},
+			{Name: "author", ModTime: modTime, Data: []byte("Virgil")},
+			{Name: "book/title.txt", ModTime: modTime, Data: []byte("Aeneid")},
 		},
 	}
 
 	outer := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "Troy", APIVersion: chart.APIVersionV2},
 		Templates: []*common.File{
-			{Name: "templates/Aeneas", Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
-			{Name: "templates/Amata", Data: []byte(`{{.Subcharts.Latium.Chart.Name}} {{.Subcharts.Latium.Files.author | printf "%s"}}`)},
+			{Name: "templates/Aeneas", ModTime: modTime, Data: []byte(`{{.Template.Name}}{{.Chart.Name}}{{.Release.Name}}`)},
+			{Name: "templates/Amata", ModTime: modTime, Data: []byte(`{{.Subcharts.Latium.Chart.Name}} {{.Subcharts.Latium.Files.author | printf "%s"}}`)},
 		},
 	}
 	outer.AddDependency(inner)
@@ -805,11 +817,12 @@ func TestRenderBuiltinValues(t *testing.T) {
 }
 
 func TestAlterFuncMap_include(t *testing.T) {
+	modTime := time.Now()
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "conrad"},
 		Templates: []*common.File{
-			{Name: "templates/quote", Data: []byte(`{{include "conrad/templates/_partial" . | indent 2}} dead.`)},
-			{Name: "templates/_partial", Data: []byte(`{{.Release.Name}} - he`)},
+			{Name: "templates/quote", ModTime: modTime, Data: []byte(`{{include "conrad/templates/_partial" . | indent 2}} dead.`)},
+			{Name: "templates/_partial", ModTime: modTime, Data: []byte(`{{.Release.Name}} - he`)},
 		},
 	}
 
@@ -817,8 +830,8 @@ func TestAlterFuncMap_include(t *testing.T) {
 	d := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "nested"},
 		Templates: []*common.File{
-			{Name: "templates/quote", Data: []byte(`{{include "nested/templates/quote" . | indent 2}} dead.`)},
-			{Name: "templates/_partial", Data: []byte(`{{.Release.Name}} - he`)},
+			{Name: "templates/quote", ModTime: modTime, Data: []byte(`{{include "nested/templates/quote" . | indent 2}} dead.`)},
+			{Name: "templates/_partial", ModTime: modTime, Data: []byte(`{{.Release.Name}} - he`)},
 		},
 	}
 
@@ -848,11 +861,12 @@ func TestAlterFuncMap_include(t *testing.T) {
 }
 
 func TestAlterFuncMap_require(t *testing.T) {
+	modTime := time.Now()
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "conan"},
 		Templates: []*common.File{
-			{Name: "templates/quote", Data: []byte(`All your base are belong to {{ required "A valid 'who' is required" .Values.who }}`)},
-			{Name: "templates/bases", Data: []byte(`All {{ required "A valid 'bases' is required" .Values.bases }} of them!`)},
+			{Name: "templates/quote", ModTime: modTime, Data: []byte(`All your base are belong to {{ required "A valid 'who' is required" .Values.who }}`)},
+			{Name: "templates/bases", ModTime: modTime, Data: []byte(`All {{ required "A valid 'bases' is required" .Values.bases }} of them!`)},
 		},
 	}
 
@@ -913,7 +927,7 @@ func TestAlterFuncMap_tpl(t *testing.T) {
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "TplFunction"},
 		Templates: []*common.File{
-			{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ .Values.value}}" .}}`)},
+			{Name: "templates/base", ModTime: time.Now(), Data: []byte(`Evaluate tpl {{tpl "Value: {{ .Values.value}}" .}}`)},
 		},
 	}
 
@@ -942,7 +956,7 @@ func TestAlterFuncMap_tplfunc(t *testing.T) {
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "TplFunction"},
 		Templates: []*common.File{
-			{Name: "templates/base", Data: []byte(`Evaluate tpl {{tpl "Value: {{ .Values.value | quote}}" .}}`)},
+			{Name: "templates/base", ModTime: time.Now(), Data: []byte(`Evaluate tpl {{tpl "Value: {{ .Values.value | quote}}" .}}`)},
 		},
 	}
 
@@ -968,11 +982,12 @@ func TestAlterFuncMap_tplfunc(t *testing.T) {
 }
 
 func TestAlterFuncMap_tplinclude(t *testing.T) {
+	modTime := time.Now()
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "TplFunction"},
 		Templates: []*common.File{
-			{Name: "templates/base", Data: []byte(`{{ tpl "{{include ` + "`" + `TplFunction/templates/_partial` + "`" + ` .  | quote }}" .}}`)},
-			{Name: "templates/_partial", Data: []byte(`{{.Template.Name}}`)},
+			{Name: "templates/base", ModTime: modTime, Data: []byte(`{{ tpl "{{include ` + "`" + `TplFunction/templates/_partial` + "`" + ` .  | quote }}" .}}`)},
+			{Name: "templates/_partial", ModTime: modTime, Data: []byte(`{{.Template.Name}}`)},
 		},
 	}
 	v := common.Values{
@@ -998,12 +1013,14 @@ func TestAlterFuncMap_tplinclude(t *testing.T) {
 }
 
 func TestRenderRecursionLimit(t *testing.T) {
+	modTime := time.Now()
+
 	// endless recursion should produce an error
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "bad"},
 		Templates: []*common.File{
-			{Name: "templates/base", Data: []byte(`{{include "recursion" . }}`)},
-			{Name: "templates/recursion", Data: []byte(`{{define "recursion"}}{{include "recursion" . }}{{end}}`)},
+			{Name: "templates/base", ModTime: modTime, Data: []byte(`{{include "recursion" . }}`)},
+			{Name: "templates/recursion", ModTime: modTime, Data: []byte(`{{define "recursion"}}{{include "recursion" . }}{{end}}`)},
 		},
 	}
 	v := common.Values{
@@ -1025,15 +1042,15 @@ func TestRenderRecursionLimit(t *testing.T) {
 	phrase := "All work and no play makes Jack a dull boy"
 	printFunc := `{{define "overlook"}}{{printf "` + phrase + `\n"}}{{end}}`
 	var repeatedIncl strings.Builder
-	for i := 0; i < times; i++ {
+	for range times {
 		repeatedIncl.WriteString(`{{include "overlook" . }}`)
 	}
 
 	d := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "overlook"},
 		Templates: []*common.File{
-			{Name: "templates/quote", Data: []byte(repeatedIncl.String())},
-			{Name: "templates/_function", Data: []byte(printFunc)},
+			{Name: "templates/quote", ModTime: modTime, Data: []byte(repeatedIncl.String())},
+			{Name: "templates/_function", ModTime: modTime, Data: []byte(printFunc)},
 		},
 	}
 
@@ -1043,9 +1060,11 @@ func TestRenderRecursionLimit(t *testing.T) {
 	}
 
 	var expect string
-	for i := 0; i < times; i++ {
-		expect += phrase + "\n"
+	var expectSb1062 strings.Builder
+	for range times {
+		expectSb1062.WriteString(phrase + "\n")
 	}
+	expect += expectSb1062.String()
 	if got := out["overlook/templates/quote"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
@@ -1053,15 +1072,16 @@ func TestRenderRecursionLimit(t *testing.T) {
 }
 
 func TestRenderLoadTemplateForTplFromFile(t *testing.T) {
+	modTime := time.Now()
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "TplLoadFromFile"},
 		Templates: []*common.File{
-			{Name: "templates/base", Data: []byte(`{{ tpl (.Files.Get .Values.filename) . }}`)},
-			{Name: "templates/_function", Data: []byte(`{{define "test-function"}}test-function{{end}}`)},
+			{Name: "templates/base", ModTime: modTime, Data: []byte(`{{ tpl (.Files.Get .Values.filename) . }}`)},
+			{Name: "templates/_function", ModTime: modTime, Data: []byte(`{{define "test-function"}}test-function{{end}}`)},
 		},
 		Files: []*common.File{
-			{Name: "test", Data: []byte(`{{ tpl (.Files.Get .Values.filename2) .}}`)},
-			{Name: "test2", Data: []byte(`{{include "test-function" .}}{{define "nested-define"}}nested-define-content{{end}} {{include "nested-define" .}}`)},
+			{Name: "test", ModTime: modTime, Data: []byte(`{{ tpl (.Files.Get .Values.filename2) .}}`)},
+			{Name: "test2", ModTime: modTime, Data: []byte(`{{include "test-function" .}}{{define "nested-define"}}nested-define-content{{end}} {{include "nested-define" .}}`)},
 		},
 	}
 
@@ -1088,12 +1108,13 @@ func TestRenderLoadTemplateForTplFromFile(t *testing.T) {
 }
 
 func TestRenderTplEmpty(t *testing.T) {
+	modTime := time.Now()
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "TplEmpty"},
 		Templates: []*common.File{
-			{Name: "templates/empty-string", Data: []byte(`{{tpl "" .}}`)},
-			{Name: "templates/empty-action", Data: []byte(`{{tpl "{{ \"\"}}" .}}`)},
-			{Name: "templates/only-defines", Data: []byte(`{{tpl "{{define \"not-invoked\"}}not-rendered{{end}}" .}}`)},
+			{Name: "templates/empty-string", ModTime: modTime, Data: []byte(`{{tpl "" .}}`)},
+			{Name: "templates/empty-action", ModTime: modTime, Data: []byte(`{{tpl "{{ \"\"}}" .}}`)},
+			{Name: "templates/only-defines", ModTime: modTime, Data: []byte(`{{tpl "{{define \"not-invoked\"}}not-rendered{{end}}" .}}`)},
 		},
 	}
 	v := common.Values{
@@ -1121,15 +1142,16 @@ func TestRenderTplEmpty(t *testing.T) {
 }
 
 func TestRenderTplTemplateNames(t *testing.T) {
+	modTime := time.Now()
 	// .Template.BasePath and .Name make it through
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "TplTemplateNames"},
 		Templates: []*common.File{
-			{Name: "templates/default-basepath", Data: []byte(`{{tpl "{{ .Template.BasePath }}" .}}`)},
-			{Name: "templates/default-name", Data: []byte(`{{tpl "{{ .Template.Name }}" .}}`)},
-			{Name: "templates/modified-basepath", Data: []byte(`{{tpl "{{ .Template.BasePath }}" .Values.dot}}`)},
-			{Name: "templates/modified-name", Data: []byte(`{{tpl "{{ .Template.Name }}" .Values.dot}}`)},
-			{Name: "templates/modified-field", Data: []byte(`{{tpl "{{ .Template.Field }}" .Values.dot}}`)},
+			{Name: "templates/default-basepath", ModTime: modTime, Data: []byte(`{{tpl "{{ .Template.BasePath }}" .}}`)},
+			{Name: "templates/default-name", ModTime: modTime, Data: []byte(`{{tpl "{{ .Template.Name }}" .}}`)},
+			{Name: "templates/modified-basepath", ModTime: modTime, Data: []byte(`{{tpl "{{ .Template.BasePath }}" .Values.dot}}`)},
+			{Name: "templates/modified-name", ModTime: modTime, Data: []byte(`{{tpl "{{ .Template.Name }}" .Values.dot}}`)},
+			{Name: "templates/modified-field", ModTime: modTime, Data: []byte(`{{tpl "{{ .Template.Field }}" .Values.dot}}`)},
 		},
 	}
 	v := common.Values{
@@ -1168,12 +1190,13 @@ func TestRenderTplTemplateNames(t *testing.T) {
 }
 
 func TestRenderTplRedefines(t *testing.T) {
+	modTime := time.Now()
 	// Redefining a template inside 'tpl' does not affect the outer definition
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "TplRedefines"},
 		Templates: []*common.File{
-			{Name: "templates/_partials", Data: []byte(`{{define "partial"}}original-in-partial{{end}}`)},
-			{Name: "templates/partial", Data: []byte(
+			{Name: "templates/_partials", ModTime: modTime, Data: []byte(`{{define "partial"}}original-in-partial{{end}}`)},
+			{Name: "templates/partial", ModTime: modTime, Data: []byte(
 				`before: {{include "partial" .}}\n{{tpl .Values.partialText .}}\nafter: {{include "partial" .}}`,
 			)},
 			{Name: "templates/manifest", Data: []byte(
@@ -1238,7 +1261,7 @@ func TestRenderTplMissingKey(t *testing.T) {
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "TplMissingKey"},
 		Templates: []*common.File{
-			{Name: "templates/manifest", Data: []byte(
+			{Name: "templates/manifest", ModTime: time.Now(), Data: []byte(
 				`missingValue: {{tpl "{{.Values.noSuchKey}}" .}}`,
 			)},
 		},
@@ -1271,7 +1294,7 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "TplMissingKeyStrict"},
 		Templates: []*common.File{
-			{Name: "templates/manifest", Data: []byte(
+			{Name: "templates/manifest", ModTime: time.Now(), Data: []byte(
 				`missingValue: {{tpl "{{.Values.noSuchKey}}" .}}`,
 			)},
 		},
@@ -1300,16 +1323,17 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 }
 
 func TestNestedHelpersProducesMultilineStacktrace(t *testing.T) {
+	modTime := time.Now()
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "NestedHelperFunctions"},
 		Templates: []*common.File{
-			{Name: "templates/svc.yaml", Data: []byte(
+			{Name: "templates/svc.yaml", ModTime: modTime, Data: []byte(
 				`name: {{ include "nested_helper.name" . }}`,
 			)},
-			{Name: "templates/_helpers_1.tpl", Data: []byte(
+			{Name: "templates/_helpers_1.tpl", ModTime: modTime, Data: []byte(
 				`{{- define "nested_helper.name" -}}{{- include "common.names.get_name" . -}}{{- end -}}`,
 			)},
-			{Name: "charts/common/templates/_helpers_2.tpl", Data: []byte(
+			{Name: "charts/common/templates/_helpers_2.tpl", ModTime: modTime, Data: []byte(
 				`{{- define "common.names.get_name" -}}{{- .Values.nonexistant.key | trunc 63 | trimSuffix "-" -}}{{- end -}}`,
 			)},
 		},
@@ -1328,7 +1352,7 @@ NestedHelperFunctions/charts/common/templates/_helpers_2.tpl:1:49
 	v := common.Values{}
 
 	val, _ := util.CoalesceValues(c, v)
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"Values": val.AsMap(),
 	}
 	_, err := Render(c, vals)
@@ -1338,16 +1362,17 @@ NestedHelperFunctions/charts/common/templates/_helpers_2.tpl:1:49
 }
 
 func TestMultilineNoTemplateAssociatedError(t *testing.T) {
+	modTime := time.Now()
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "multiline"},
 		Templates: []*common.File{
-			{Name: "templates/svc.yaml", Data: []byte(
+			{Name: "templates/svc.yaml", ModTime: modTime, Data: []byte(
 				`name: {{ include "nested_helper.name" . }}`,
 			)},
-			{Name: "templates/test.yaml", Data: []byte(
+			{Name: "templates/test.yaml", ModTime: modTime, Data: []byte(
 				`{{ toYaml .Values }}`,
 			)},
-			{Name: "charts/common/templates/_helpers_2.tpl", Data: []byte(
+			{Name: "charts/common/templates/_helpers_2.tpl", ModTime: modTime, Data: []byte(
 				`{{ toYaml .Values }}`,
 			)},
 		},
@@ -1361,7 +1386,7 @@ template: no template "nested_helper.name" associated with template "gotpl"`
 	v := common.Values{}
 
 	val, _ := util.CoalesceValues(c, v)
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"Values": val.AsMap(),
 	}
 	_, err := Render(c, vals)
@@ -1371,17 +1396,21 @@ template: no template "nested_helper.name" associated with template "gotpl"`
 }
 
 func TestRenderCustomTemplateFuncs(t *testing.T) {
+	modTime := time.Now()
+
 	// Create a chart with two templates that use custom functions
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{Name: "CustomFunc"},
 		Templates: []*common.File{
 			{
-				Name: "templates/manifest",
-				Data: []byte(`{{exclaim .Values.message}}`),
+				Name:    "templates/manifest",
+				ModTime: modTime,
+				Data:    []byte(`{{exclaim .Values.message}}`),
 			},
 			{
-				Name: "templates/override",
-				Data: []byte(`{{ upper .Values.message }}`),
+				Name:    "templates/override",
+				ModTime: modTime,
+				Data:    []byte(`{{ upper .Values.message }}`),
 			},
 		},
 	}

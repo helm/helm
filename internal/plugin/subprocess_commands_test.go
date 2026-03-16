@@ -210,7 +210,7 @@ func TestPrepareCommandsNoMatch(t *testing.T) {
 
 	env := map[string]string{}
 	if _, _, err := PrepareCommands(cmds, true, []string{}, env); err == nil {
-		t.Fatalf("Expected error to be returned")
+		t.Fatal("Expected error to be returned")
 	}
 }
 
@@ -219,21 +219,24 @@ func TestPrepareCommandsNoCommands(t *testing.T) {
 
 	env := map[string]string{}
 	if _, _, err := PrepareCommands(cmds, true, []string{}, env); err == nil {
-		t.Fatalf("Expected error to be returned")
+		t.Fatal("Expected error to be returned")
 	}
 }
 
 func TestPrepareCommandsExpand(t *testing.T) {
-	t.Setenv("TEST", "test")
 	cmdMain := "sh"
-	cmdArgs := []string{"-c", "echo \"${TEST}\""}
+	cmdArgs := []string{"-c", "echo \"${TESTX}${TESTY}\""}
 	cmds := []PlatformCommand{
 		{OperatingSystem: "", Architecture: "", Command: cmdMain, Args: cmdArgs},
 	}
 
-	expectedArgs := []string{"-c", "echo \"test\""}
+	expectedArgs := []string{"-c", "echo \"testxtesty\""}
 
-	env := map[string]string{}
+	env := map[string]string{
+		"TESTX": "testx",
+		"TESTY": "testy",
+	}
+
 	cmd, args, err := PrepareCommands(cmds, true, []string{}, env)
 	if err != nil {
 		t.Fatal(err)
@@ -247,14 +250,16 @@ func TestPrepareCommandsExpand(t *testing.T) {
 }
 
 func TestPrepareCommandsNoExpand(t *testing.T) {
-	t.Setenv("TEST", "test")
 	cmdMain := "sh"
 	cmdArgs := []string{"-c", "echo \"${TEST}\""}
 	cmds := []PlatformCommand{
 		{OperatingSystem: "", Architecture: "", Command: cmdMain, Args: cmdArgs},
 	}
 
-	env := map[string]string{}
+	env := map[string]string{
+		"TEST": "test",
+	}
+
 	cmd, args, err := PrepareCommands(cmds, false, []string{}, env)
 	if err != nil {
 		t.Fatal(err)

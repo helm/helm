@@ -660,7 +660,7 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 
 	for _, template := range schart.Templates {
 		newData := transform(string(template.Data), schart.Name())
-		updatedTemplates = append(updatedTemplates, &common.File{Name: template.Name, Data: newData})
+		updatedTemplates = append(updatedTemplates, &common.File{Name: template.Name, ModTime: template.ModTime, Data: newData})
 	}
 
 	schart.Templates = updatedTemplates
@@ -669,7 +669,7 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 		return fmt.Errorf("reading values file: %w", err)
 	}
 
-	var m map[string]interface{}
+	var m map[string]any
 	if err := yaml.Unmarshal(transform(string(b), schart.Name()), &m); err != nil {
 		return fmt.Errorf("transforming values file: %w", err)
 	}

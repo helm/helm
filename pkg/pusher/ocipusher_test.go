@@ -40,13 +40,13 @@ func TestNewOCIPusher(t *testing.T) {
 	cd := "../../testdata"
 	join := filepath.Join
 	ca, pub, priv := join(cd, "rootca.crt"), join(cd, "crt.pem"), join(cd, "key.pem")
-	insecureSkipTLSverify := false
+	insecureSkipTLSVerify := false
 	plainHTTP := false
 
 	// Test with options
 	p, err = NewOCIPusher(
 		WithTLSClientConfig(pub, priv, ca),
-		WithInsecureSkipTLSVerify(insecureSkipTLSverify),
+		WithInsecureSkipTLSVerify(insecureSkipTLSVerify),
 		WithPlainHTTP(plainHTTP),
 	)
 	if err != nil {
@@ -74,8 +74,8 @@ func TestNewOCIPusher(t *testing.T) {
 		t.Errorf("Expected NewOCIPusher to have plainHTTP as %t, got %t", plainHTTP, op.opts.plainHTTP)
 	}
 
-	if op.opts.insecureSkipTLSverify != insecureSkipTLSverify {
-		t.Errorf("Expected NewOCIPusher to have insecureSkipVerifyTLS as %t, got %t", insecureSkipTLSverify, op.opts.insecureSkipTLSverify)
+	if op.opts.insecureSkipTLSVerify != insecureSkipTLSVerify {
+		t.Errorf("Expected NewOCIPusher to have insecureSkipVerifyTLS as %t, got %t", insecureSkipTLSVerify, op.opts.insecureSkipTLSVerify)
 	}
 
 	// Test if setting registryClient is being passed to the ops
@@ -422,7 +422,7 @@ func TestOCIPusher_Push_MultipleOptions(t *testing.T) {
 	if !op.opts.plainHTTP {
 		t.Error("Expected plainHTTP option to be applied")
 	}
-	if !op.opts.insecureSkipTLSverify {
-		t.Error("Expected insecureSkipTLSverify option to be applied")
+	if !op.opts.insecureSkipTLSVerify {
+		t.Error("Expected insecureSkipTLSVerify option to be applied")
 	}
 }

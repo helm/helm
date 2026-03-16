@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -40,7 +41,7 @@ type pluginInstallOptions struct {
 	certFile              string
 	keyFile               string
 	caFile                string
-	insecureSkipTLSverify bool
+	insecureSkipTLSVerify bool
 	plainHTTP             bool
 	password              string
 	username              string
@@ -88,7 +89,7 @@ func newPluginInstallCmd(out io.Writer) *cobra.Command {
 	cmd.Flags().StringVar(&o.certFile, "cert-file", "", "identify registry client using this SSL certificate file")
 	cmd.Flags().StringVar(&o.keyFile, "key-file", "", "identify registry client using this SSL key file")
 	cmd.Flags().StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
-	cmd.Flags().BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the plugin download")
+	cmd.Flags().BoolVar(&o.insecureSkipTLSVerify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the plugin download")
 	cmd.Flags().BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the plugin download")
 	cmd.Flags().StringVar(&o.username, "username", "", "registry username")
 	cmd.Flags().StringVar(&o.password, "password", "", "registry password")
@@ -102,11 +103,11 @@ func (o *pluginInstallOptions) complete(args []string) error {
 
 func (o *pluginInstallOptions) newInstallerForSource() (installer.Installer, error) {
 	// Check if source is an OCI registry reference
-	if strings.HasPrefix(o.source, fmt.Sprintf("%s://", registry.OCIScheme)) {
+	if strings.HasPrefix(o.source, registry.OCIScheme+"://") {
 		// Build getter options for OCI
 		options := []getter.Option{
 			getter.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
-			getter.WithInsecureSkipVerifyTLS(o.insecureSkipTLSverify),
+			getter.WithInsecureSkipVerifyTLS(o.insecureSkipTLSVerify),
 			getter.WithPlainHTTP(o.plainHTTP),
 			getter.WithBasicAuth(o.username, o.password),
 		}
@@ -119,8 +120,6 @@ func (o *pluginInstallOptions) newInstallerForSource() (installer.Installer, err
 }
 
 func (o *pluginInstallOptions) run(out io.Writer) error {
-	installer.Debug = settings.Debug
-
 	i, err := o.newInstallerForSource()
 	if err != nil {
 		return err
@@ -137,7 +136,7 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 	} else if shouldVerify {
 		// For remote installations, check if verification is supported
 		if verifier, ok := i.(installer.Verifier); !ok || !verifier.SupportsVerification() {
-			return fmt.Errorf("plugin source does not support verification. Use --verify=false to skip verification")
+			return errors.New("plugin source does not support verification. Use --verify=false to skip verification")
 		}
 	} else {
 		// User explicitly disabled verification

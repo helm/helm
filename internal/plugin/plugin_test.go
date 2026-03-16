@@ -21,6 +21,44 @@ import (
 	"helm.sh/helm/v4/internal/plugin/schema"
 )
 
+func TestValidPluginName(t *testing.T) {
+	validNames := map[string]string{
+		"lowercase":       "myplugin",
+		"uppercase":       "MYPLUGIN",
+		"mixed case":      "MyPlugin",
+		"with digits":     "plugin123",
+		"with hyphen":     "my-plugin",
+		"with underscore": "my_plugin",
+		"mixed chars":     "my-awesome_plugin_123",
+	}
+
+	for name, pluginName := range validNames {
+		t.Run("valid/"+name, func(t *testing.T) {
+			if !validPluginName.MatchString(pluginName) {
+				t.Errorf("expected %q to match validPluginName regex", pluginName)
+			}
+		})
+	}
+
+	invalidNames := map[string]string{
+		"empty":   "",
+		"space":   "my plugin",
+		"colon":   "plugin:",
+		"period":  "my.plugin",
+		"slash":   "my/plugin",
+		"dollar":  "$plugin",
+		"unicode": "plügîn",
+	}
+
+	for name, pluginName := range invalidNames {
+		t.Run("invalid/"+name, func(t *testing.T) {
+			if validPluginName.MatchString(pluginName) {
+				t.Errorf("expected %q to not match validPluginName regex", pluginName)
+			}
+		})
+	}
+}
+
 func mockSubprocessCLIPlugin(t *testing.T, pluginName string) *SubprocessPluginRuntime {
 	t.Helper()
 

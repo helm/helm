@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
 	"helm.sh/helm/v4/internal/chart/v3/lint/support"
@@ -48,7 +49,7 @@ func TestValidateAllowedExtension(t *testing.T) {
 	}
 }
 
-var values = map[string]interface{}{"nameOverride": "", "httpPort": 80}
+var values = map[string]any{"nameOverride": "", "httpPort": 80}
 
 const namespace = "testNamespace"
 const strict = false
@@ -183,6 +184,7 @@ func TestValidateMetadataName(t *testing.T) {
 }
 
 func TestDeprecatedAPIFails(t *testing.T) {
+	modTime := time.Now()
 	mychart := chart.Chart{
 		Metadata: &chart.Metadata{
 			APIVersion: "v2",
@@ -192,12 +194,14 @@ func TestDeprecatedAPIFails(t *testing.T) {
 		},
 		Templates: []*common.File{
 			{
-				Name: "templates/baddeployment.yaml",
-				Data: []byte("apiVersion: apps/v1beta1\nkind: Deployment\nmetadata:\n  name: baddep\nspec: {selector: {matchLabels: {foo: bar}}}"),
+				Name:    "templates/baddeployment.yaml",
+				ModTime: modTime,
+				Data:    []byte("apiVersion: apps/v1beta1\nkind: Deployment\nmetadata:\n  name: baddep\nspec: {selector: {matchLabels: {foo: bar}}}"),
 			},
 			{
-				Name: "templates/goodsecret.yaml",
-				Data: []byte("apiVersion: v1\nkind: Secret\nmetadata:\n  name: goodsecret"),
+				Name:    "templates/goodsecret.yaml",
+				ModTime: modTime,
+				Data:    []byte("apiVersion: v1\nkind: Secret\nmetadata:\n  name: goodsecret"),
 			},
 		},
 	}
@@ -245,15 +249,16 @@ func TestStrictTemplateParsingMapError(t *testing.T) {
 			APIVersion: "v2",
 			Version:    "0.1.0",
 		},
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"mymap": map[string]string{
 				"key1": "val1",
 			},
 		},
 		Templates: []*common.File{
 			{
-				Name: "templates/configmap.yaml",
-				Data: []byte(manifest),
+				Name:    "templates/configmap.yaml",
+				ModTime: time.Now(),
+				Data:    []byte(manifest),
 			},
 		},
 	}
@@ -381,8 +386,9 @@ func TestEmptyWithCommentsManifests(t *testing.T) {
 		},
 		Templates: []*common.File{
 			{
-				Name: "templates/empty-with-comments.yaml",
-				Data: []byte("#@formatter:off\n"),
+				Name:    "templates/empty-with-comments.yaml",
+				ModTime: time.Now(),
+				Data:    []byte("#@formatter:off\n"),
 			},
 		},
 	}

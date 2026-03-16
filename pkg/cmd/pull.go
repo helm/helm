@@ -66,13 +66,13 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
-				client.InsecureSkipTLSverify, client.PlainHTTP, client.Username, client.Password)
+				client.InsecureSkipTLSVerify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
 			}
 			client.SetRegistryClient(registryClient)
 
-			for i := 0; i < len(args); i++ {
+			for i := range args {
 				output, err := client.Run(args[i])
 				if err != nil {
 					return err

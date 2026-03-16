@@ -80,7 +80,7 @@ type ChartDownloader struct {
 
 	// ContentCache is the location where Cache stores its files by default
 	// In previous versions of Helm the charts were put in the RepositoryCache. The
-	// repositories and charts are stored in 2 difference caches.
+	// repositories and charts are stored in 2 different caches.
 	ContentCache string
 
 	// Cache specifies the cache implementation to use.
@@ -104,7 +104,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			return "", nil, errors.New("content cache must be set")
 		}
 		c.Cache = &DiskCache{Root: c.ContentCache}
-		slog.Debug("setup up default downloader cache")
+		slog.Debug("set up default downloader cache")
 	}
 	hash, u, err := c.ResolveChartVersion(ref, version)
 	if err != nil {
@@ -125,10 +125,15 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	var digest32 [32]byte
 	if hash != "" {
 		// if there is a hash, populate the other formats
-		digest, err = hex.DecodeString(hash)
+		// Strip the algorithm prefix (e.g., "sha256:") if present
+		digest, err = hex.DecodeString(stripDigestAlgorithm(hash))
 		if err != nil {
 			return "", nil, err
 		}
+		if len(digest) != 32 {
+			return "", nil, fmt.Errorf("invalid digest length: %d", len(digest))
+		}
+
 		copy(digest32[:], digest)
 		if pth, err := c.Cache.Get(digest32, CacheChart); err == nil {
 			fdata, err := os.ReadFile(pth)
@@ -156,7 +161,11 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 	}
 
 	destfile := filepath.Join(dest, name)
-	if err := fileutil.AtomicWriteFile(destfile, data, 0644); err != nil {
+
+	// Use PlatformAtomicWriteFile to handle platform-specific concurrency concerns
+	// (Windows requires locking to avoid "Access Denied" errors when multiple
+	// processes write the same file)
+	if err := fileutil.PlatformAtomicWriteFile(destfile, data, 0644); err != nil {
 		return destfile, nil, err
 	}
 
@@ -176,7 +185,7 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			}
 		}
 		if !found {
-			body, err = g.Get(u.String() + ".prov")
+			body, err = g.Get(u.String()+".prov", c.Options...)
 			if err != nil {
 				if c.Verify == VerifyAlways {
 					return destfile, ver, fmt.Errorf("failed to fetch provenance %q", u.String()+".prov")
@@ -186,7 +195,9 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 			}
 		}
 		provfile := destfile + ".prov"
-		if err := fileutil.AtomicWriteFile(provfile, body, 0644); err != nil {
+
+		// Use PlatformAtomicWriteFile for the provenance file as well
+		if err := fileutil.PlatformAtomicWriteFile(provfile, body, 0644); err != nil {
 			return destfile, nil, err
 		}
 
@@ -209,7 +220,7 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 			return "", nil, errors.New("content cache must be set")
 		}
 		c.Cache = &DiskCache{Root: c.ContentCache}
-		slog.Debug("setup up default downloader cache")
+		slog.Debug("set up default downloader cache")
 	}
 
 	digestString, u, err := c.ResolveChartVersion(ref, version)
@@ -225,15 +236,16 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 	c.Options = append(c.Options, getter.WithAcceptHeader("application/gzip,application/octet-stream"))
 
 	// Check the cache for the file
-	digest, err := hex.DecodeString(digestString)
-	if err != nil {
-		return "", nil, err
-	}
-	var digest32 [32]byte
-	copy(digest32[:], digest)
+	// Strip the algorithm prefix (e.g., "sha256:") if present
+	digest, err := hex.DecodeString(stripDigestAlgorithm(digestString))
 	if err != nil {
 		return "", nil, fmt.Errorf("unable to decode digest: %w", err)
 	}
+	if digestString != "" && len(digest) != 32 {
+		return "", nil, fmt.Errorf("invalid digest length: %d", len(digest))
+	}
+	var digest32 [32]byte
+	copy(digest32[:], digest)
 
 	var pth string
 	// only fetch from the cache if we have a digest
@@ -383,7 +395,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 		if err != nil {
 			// If there is no special config, return the default HTTP client and
 			// swallow the error.
-			if err == ErrNoOwnerRepo {
+			if errors.Is(err, ErrNoOwnerRepo) {
 				// Make sure to add the ref URL as the URL for the getter
 				c.Options = append(c.Options, getter.WithURL(ref))
 				return "", u, nil
@@ -580,4 +592,13 @@ func loadRepoConfig(file string) (*repo.File, error) {
 		return nil, err
 	}
 	return r, nil
+}
+
+// stripDigestAlgorithm removes the algorithm prefix (e.g., "sha256:") from a digest string.
+// If no prefix is present, the original string is returned unchanged.
+func stripDigestAlgorithm(digest string) string {
+	if _, after, ok := strings.Cut(digest, ":"); ok {
+		return after
+	}
+	return digest
 }

@@ -190,7 +190,7 @@ func (o *searchRepoOptions) buildIndex() (*search.Index, error) {
 		f := filepath.Join(o.repoCacheDir, helmpath.CacheIndexFile(n))
 		ind, err := repo.LoadIndexFile(f)
 		if err != nil {
-			slog.Warn("repo is corrupt or missing", "repo", n, slog.Any("error", err))
+			slog.Warn("repo is corrupt or missing", slog.String("repo", n), slog.Any("error", err))
 			continue
 		}
 
@@ -216,12 +216,12 @@ func (r *repoSearchWriter) WriteTable(out io.Writer) error {
 	if len(r.results) == 0 {
 		// Fail if no results found and --fail-on-no-result is enabled
 		if r.failOnNoResult {
-			return fmt.Errorf("no results found")
+			return errors.New("no results found")
 		}
 
 		_, err := out.Write([]byte("No results found\n"))
 		if err != nil {
-			return fmt.Errorf("unable to write results: %s", err)
+			return fmt.Errorf("unable to write results: %w", err)
 		}
 		return nil
 	}
@@ -245,7 +245,7 @@ func (r *repoSearchWriter) WriteYAML(out io.Writer) error {
 func (r *repoSearchWriter) encodeByFormat(out io.Writer, format output.Format) error {
 	// Fail if no results found and --fail-on-no-result is enabled
 	if len(r.results) == 0 && r.failOnNoResult {
-		return fmt.Errorf("no results found")
+		return errors.New("no results found")
 	}
 
 	// Initialize the array so no results returns an empty array instead of null
@@ -260,11 +260,11 @@ func (r *repoSearchWriter) encodeByFormat(out io.Writer, format output.Format) e
 		return output.EncodeJSON(out, chartList)
 	case output.YAML:
 		return output.EncodeYAML(out, chartList)
+	default:
+		// Because this is a non-exported function and only called internally by
+		// WriteJSON and WriteYAML, we shouldn't get invalid types
+		return nil
 	}
-
-	// Because this is a non-exported function and only called internally by
-	// WriteJSON and WriteYAML, we shouldn't get invalid types
-	return nil
 }
 
 // Provides the list of charts that are part of the specified repo, and that starts with 'prefix'.
@@ -307,7 +307,7 @@ func compListChartsOfRepo(repoName string, prefix string) []string {
 // Provide dynamic auto-completion for commands that operate on charts (e.g., helm show)
 // When true, the includeFiles argument indicates that completion should include local files (e.g., local charts)
 func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.ShellCompDirective) {
-	cobra.CompDebugln(fmt.Sprintf("compListCharts with toComplete %s", toComplete), settings.Debug)
+	cobra.CompDebugln("compListCharts with toComplete "+toComplete, settings.Debug)
 
 	noSpace := false
 	noFile := false
@@ -323,7 +323,7 @@ func compListCharts(toComplete string, includeFiles bool) ([]string, cobra.Shell
 		if len(repoInfo) > 1 {
 			repoDesc = repoInfo[1]
 		}
-		repoWithSlash := fmt.Sprintf("%s/", repo)
+		repoWithSlash := repo + "/"
 		if strings.HasPrefix(toComplete, repoWithSlash) {
 			// Must complete with charts within the specified repo.
 			// Don't filter on toComplete to allow for shell fuzzy matching

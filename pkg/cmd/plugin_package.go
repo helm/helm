@@ -81,7 +81,7 @@ func (o *pluginPackageOptions) run(out io.Writer) error {
 		return err
 	}
 	if !fi.IsDir() {
-		return fmt.Errorf("plugin package only supports directories, not tarballs")
+		return errors.New("plugin package only supports directories, not tarballs")
 	}
 
 	// Load and validate plugin metadata

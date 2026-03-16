@@ -17,7 +17,6 @@ package plugin
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -71,7 +70,7 @@ func TestLoadDir(t *testing.T) {
 		}
 		return Metadata{
 			APIVersion: apiVersion,
-			Name:       fmt.Sprintf("hello-%s", apiVersion),
+			Name:       "hello-" + apiVersion,
 			Version:    "0.1.0",
 			Type:       "cli/v1",
 			Runtime:    "subprocess",
@@ -265,6 +264,99 @@ func TestFindPlugins(t *testing.T) {
 			plugin, err := LoadAll(c.plugdirs)
 			require.NoError(t, err)
 			assert.Len(t, plugin, c.expected, "expected %d plugins, got %d", c.expected, len(plugin))
+		})
+	}
+}
+
+func TestLoadMetadataLegacy(t *testing.T) {
+	testCases := map[string]struct {
+		yaml          string
+		expectError   bool
+		errorContains string
+		expectedName  string
+		logNote       string
+	}{
+		"capital name field": {
+			yaml: `Name: my-plugin
+version: 1.0.0
+usage: test plugin
+description: test description
+command: echo test`,
+			expectError:   true,
+			errorContains: `invalid plugin name "": must contain only a-z, A-Z, 0-9, _ and -`,
+			// Legacy plugins: No strict unmarshalling (backwards compatibility)
+			// YAML decoder silently ignores "Name:", then validation catches empty name
+			logNote: "NOTE: V1 plugins use strict unmarshalling and would get: yaml: field Name not found",
+		},
+		"correct name field": {
+			yaml: `name: my-plugin
+version: 1.0.0
+usage: test plugin
+description: test description
+command: echo test`,
+			expectError:  false,
+			expectedName: "my-plugin",
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			m, err := loadMetadataLegacy([]byte(tc.yaml))
+
+			if tc.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.errorContains)
+				t.Logf("Legacy error (validation catches empty name): %v", err)
+				if tc.logNote != "" {
+					t.Log(tc.logNote)
+				}
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.expectedName, m.Name)
+			}
+		})
+	}
+}
+
+func TestLoadMetadataV1(t *testing.T) {
+	testCases := map[string]struct {
+		yaml          string
+		expectError   bool
+		errorContains string
+		expectedName  string
+	}{
+		"capital name field": {
+			yaml: `apiVersion: v1
+Name: my-plugin
+type: cli/v1
+runtime: subprocess
+`,
+			expectError:   true,
+			errorContains: "field Name not found in type plugin.MetadataV1",
+		},
+		"correct name field": {
+			yaml: `apiVersion: v1
+name: my-plugin
+type: cli/v1
+runtime: subprocess
+`,
+			expectError:  false,
+			expectedName: "my-plugin",
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			m, err := loadMetadataV1([]byte(tc.yaml))
+
+			if tc.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.errorContains)
+				t.Logf("V1 error (strict unmarshalling): %v", err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.expectedName, m.Name)
+			}
 		})
 	}
 }

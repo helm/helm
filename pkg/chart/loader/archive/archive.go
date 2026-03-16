@@ -29,6 +29,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // MaxDecompressedChartSize is the maximum size of a chart archive that will be
@@ -46,8 +47,9 @@ var utf8bom = []byte{0xEF, 0xBB, 0xBF}
 
 // BufferedFile represents an archive file buffered for later processing.
 type BufferedFile struct {
-	Name string
-	Data []byte
+	Name    string
+	ModTime time.Time
+	Data    []byte
 }
 
 // LoadArchiveFiles reads in files out of an archive into memory. This function
@@ -66,7 +68,7 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 	for {
 		b := bytes.NewBuffer(nil)
 		hd, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -148,7 +150,7 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 
 		data := bytes.TrimPrefix(b.Bytes(), utf8bom)
 
-		files = append(files, &BufferedFile{Name: n, Data: data})
+		files = append(files, &BufferedFile{Name: n, ModTime: hd.ModTime, Data: data})
 		b.Reset()
 	}
 
@@ -170,7 +172,7 @@ func EnsureArchive(name string, raw *os.File) error {
 	buffer := make([]byte, 512)
 	_, err := raw.Read(buffer)
 	if err != nil && err != io.EOF {
-		return fmt.Errorf("file '%s' cannot be read: %s", name, err)
+		return fmt.Errorf("file '%s' cannot be read: %w", name, err)
 	}
 
 	// Helm may identify achieve of the application/x-gzip as application/vnd.ms-fontobject.

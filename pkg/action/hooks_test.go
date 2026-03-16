@@ -18,6 +18,8 @@ package action
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -172,7 +174,7 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 	t.Helper()
 	var expectedOutput string
 	if shouldOutput {
-		expectedOutput = fmt.Sprintf("attempted to output logs for namespace: %s", expectedNamespace)
+		expectedOutput = "attempted to output logs for namespace: " + expectedNamespace
 	}
 	is := assert.New(t)
 	instAction := installAction(t)
@@ -180,11 +182,12 @@ func runInstallForHooksWithSuccess(t *testing.T, manifest, expectedNamespace str
 	outBuffer := &bytes.Buffer{}
 	instAction.cfg.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
+	modTime := time.Now()
 	templates := []*common.File{
-		{Name: "templates/hello", Data: []byte("hello: world")},
-		{Name: "templates/hooks", Data: []byte(manifest)},
+		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
+		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifest)},
 	}
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	resi, err := instAction.Run(buildChartWithTemplates(templates), vals)
 	is.NoError(err)
@@ -198,22 +201,23 @@ func runInstallForHooksWithFailure(t *testing.T, manifest, expectedNamespace str
 	t.Helper()
 	var expectedOutput string
 	if shouldOutput {
-		expectedOutput = fmt.Sprintf("attempted to output logs for namespace: %s", expectedNamespace)
+		expectedOutput = "attempted to output logs for namespace: " + expectedNamespace
 	}
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "failed-hooks"
 	failingClient := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failingClient.WatchUntilReadyError = fmt.Errorf("failed watch")
+	failingClient.WatchUntilReadyError = errors.New("failed watch")
 	instAction.cfg.KubeClient = failingClient
 	outBuffer := &bytes.Buffer{}
 	failingClient.PrintingKubeClient = kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
+	modTime := time.Now()
 	templates := []*common.File{
-		{Name: "templates/hello", Data: []byte("hello: world")},
-		{Name: "templates/hooks", Data: []byte(manifest)},
+		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
+		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifest)},
 	}
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	resi, err := instAction.Run(buildChartWithTemplates(templates), vals)
 	is.Error(err)
@@ -276,8 +280,8 @@ func (h *HookFailingKubeClient) Delete(resources kube.ResourceList, deletionProp
 	return h.PrintingKubeClient.Delete(resources, deletionPropagation)
 }
 
-func (h *HookFailingKubeClient) GetWaiter(strategy kube.WaitStrategy) (kube.Waiter, error) {
-	waiter, _ := h.PrintingKubeClient.GetWaiter(strategy)
+func (h *HookFailingKubeClient) GetWaiterWithOptions(strategy kube.WaitStrategy, opts ...kube.WaitOption) (kube.Waiter, error) {
+	waiter, _ := h.PrintingKubeClient.GetWaiterWithOptions(strategy, opts...)
 	return &HookFailingKubeWaiter{
 		PrintingKubeWaiter: waiter.(*kubefake.PrintingKubeWaiter),
 		failOn:             h.failOn,
@@ -392,7 +396,7 @@ data:
 			}
 
 			serverSideApply := true
-			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, 600, serverSideApply)
+			err := configuration.execHook(&tc.inputRelease, hookEvent, kube.StatusWatcherStrategy, nil, 600, serverSideApply)
 
 			if !reflect.DeepEqual(kubeClient.deleteRecord, tc.expectedDeleteRecord) {
 				t.Fatalf("Got unexpected delete record, expected: %#v, but got: %#v", kubeClient.deleteRecord, tc.expectedDeleteRecord)
@@ -407,4 +411,84 @@ data:
 			}
 		})
 	}
+}
+
+func TestConfiguration_hookSetDeletePolicy(t *testing.T) {
+	tests := map[string]struct {
+		policies []release.HookDeletePolicy
+		expected []release.HookDeletePolicy
+	}{
+		"no polices specified result in the default policy": {
+			policies: nil,
+			expected: []release.HookDeletePolicy{
+				release.HookBeforeHookCreation,
+			},
+		},
+		"unknown policy is untouched": {
+			policies: []release.HookDeletePolicy{
+				release.HookDeletePolicy("never"),
+			},
+			expected: []release.HookDeletePolicy{
+				release.HookDeletePolicy("never"),
+			},
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			cfg := &Configuration{}
+			h := &release.Hook{
+				DeletePolicies: tt.policies,
+			}
+			cfg.hookSetDeletePolicy(h)
+			assert.Equal(t, tt.expected, h.DeletePolicies)
+		})
+	}
+}
+
+func TestExecHook_WaitOptionsPassedDownstream(t *testing.T) {
+	is := assert.New(t)
+
+	failer := &kubefake.FailingKubeClient{
+		PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
+	}
+
+	configuration := &Configuration{
+		Releases:     storage.Init(driver.NewMemory()),
+		KubeClient:   failer,
+		Capabilities: common.DefaultCapabilities,
+	}
+
+	rel := &release.Release{
+		Name:      "test-release",
+		Namespace: "test",
+		Hooks: []*release.Hook{
+			{
+				Name: "test-hook",
+				Kind: "ConfigMap",
+				Path: "templates/hook.yaml",
+				Manifest: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-hook
+  namespace: test
+data:
+  foo: bar
+`,
+				Weight: 0,
+				Events: []release.HookEvent{
+					release.HookPreInstall,
+				},
+			},
+		},
+	}
+
+	// Use WithWaitContext as a marker WaitOption that we can track
+	ctx := context.Background()
+	waitOptions := []kube.WaitOption{kube.WithWaitContext(ctx)}
+
+	err := configuration.execHook(rel, release.HookPreInstall, kube.StatusWatcherStrategy, waitOptions, 600, false)
+	is.NoError(err)
+
+	// Verify that WaitOptions were passed to GetWaiter
+	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }

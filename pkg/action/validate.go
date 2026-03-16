@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 
@@ -46,6 +47,11 @@ func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
 			return err
 		}
 
+		isGenerateName, err := validateNameAndGenerateName(info)
+		if isGenerateName || err != nil {
+			return err
+		}
+
 		helper := resource.NewHelper(info.Client, info.Mapping)
 		_, err = helper.Get(info.Namespace, info.Name)
 		if err != nil {
@@ -55,7 +61,8 @@ func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
 			return fmt.Errorf("could not get information about the resource %s: %w", resourceString(info), err)
 		}
 
-		requireUpdate.Append(info)
+		infoCopy := *info
+		requireUpdate.Append(&infoCopy)
 		return nil
 	})
 
@@ -67,6 +74,11 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 
 	err := resources.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
+			return err
+		}
+
+		isGenerateName, err := validateNameAndGenerateName(info)
+		if isGenerateName || err != nil {
 			return err
 		}
 
@@ -84,7 +96,8 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 			return fmt.Errorf("%s exists and cannot be imported into the current release: %s", resourceString(info), err)
 		}
 
-		requireUpdate.Append(info)
+		infoCopy := *info
+		requireUpdate.Append(&infoCopy)
 		return nil
 	})
 
@@ -198,4 +211,24 @@ func mergeStrStrMaps(current, desired map[string]string) map[string]string {
 	maps.Copy(result, current)
 	maps.Copy(result, desired)
 	return result
+}
+
+// validateNameAndGenerateName validates that an object only has either `Name` or `GenerateName` set (and not both)
+// If `GenerateName` is set, true is returned
+// If an invalid combination of `Name` and `GenerateName` are set, an error is returned
+func validateNameAndGenerateName(info *resource.Info) (bool, error) {
+	accessor, err := meta.Accessor(info.Object)
+	if err != nil {
+		return false, err
+	}
+
+	if info.Name == "" && accessor.GetGenerateName() != "" {
+		return true, nil
+	}
+
+	if info.Name != "" && accessor.GetGenerateName() != "" {
+		return true, errors.New("metadata.name and metadata.generateName cannot both be set")
+	}
+
+	return false, nil
 }

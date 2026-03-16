@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
@@ -43,10 +44,14 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
 
+	ci "helm.sh/helm/v4/pkg/chart"
+
 	"helm.sh/helm/v4/internal/test"
 	"helm.sh/helm/v4/pkg/chart/common"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/registry"
 	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -106,6 +111,54 @@ func createDummyResourceList(owned bool) kube.ResourceList {
 	return resourceList
 }
 
+func createDummyCRDList(owned bool) kube.ResourceList {
+	obj := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dummyName",
+			Namespace: "spaced",
+		},
+	}
+
+	if owned {
+		obj.Labels = map[string]string{
+			"app.kubernetes.io/managed-by": "Helm",
+		}
+		obj.Annotations = map[string]string{
+			"meta.helm.sh/release-name":      "test-install-release",
+			"meta.helm.sh/release-namespace": "spaced",
+		}
+	}
+
+	resInfo := resource.Info{
+		Name:      "dummyName",
+		Namespace: "spaced",
+		Mapping: &meta.RESTMapping{
+			Resource:         schema.GroupVersionResource{Group: "test", Version: "v1", Resource: "crd"},
+			GroupVersionKind: schema.GroupVersionKind{Group: "test", Version: "v1", Kind: "crd"},
+			Scope:            meta.RESTScopeNamespace,
+		},
+		Object: obj,
+	}
+	body := io.NopCloser(bytes.NewReader([]byte(kuberuntime.EncodeOrDie(appsv1Codec, obj))))
+
+	resInfo.Client = &fake.RESTClient{
+		GroupVersion:         schema.GroupVersion{Group: "test", Version: "v1"},
+		NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
+		Client: fake.CreateHTTPClient(func(_ *http.Request) (*http.Response, error) {
+			header := http.Header{}
+			header.Set("Content-Type", kuberuntime.ContentTypeJSON)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     header,
+				Body:       body,
+			}, nil
+		}),
+	}
+	var resourceList kube.ResourceList
+	resourceList.Append(&resInfo)
+	return resourceList
+}
+
 func installActionWithConfig(config *Configuration) *Install {
 	instAction := NewInstall(config)
 	instAction.Namespace = "spaced"
@@ -129,7 +182,7 @@ func TestInstallRelease(t *testing.T) {
 	req := require.New(t)
 
 	instAction := installAction(t)
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	ctx, done := context.WithCancel(t.Context())
 	resi, err := instAction.RunWithContext(ctx, buildChart(), vals)
 	if err != nil {
@@ -235,13 +288,13 @@ func TestInstallReleaseWithTakeOwnership_ResourceOwnedNoFlag(t *testing.T) {
 func TestInstallReleaseWithValues(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	userVals := map[string]interface{}{
-		"nestedKey": map[string]interface{}{
+	userVals := map[string]any{
+		"nestedKey": map[string]any{
 			"simpleKey": "simpleValue",
 		},
 	}
-	expectedUserValues := map[string]interface{}{
-		"nestedKey": map[string]interface{}{
+	expectedUserValues := map[string]any{
+		"nestedKey": map[string]any{
 			"simpleKey": "simpleValue",
 		},
 	}
@@ -275,7 +328,7 @@ func TestInstallReleaseWithValues(t *testing.T) {
 func TestInstallRelease_NoName(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = ""
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	_, err := instAction.Run(buildChart(), vals)
 	if err == nil {
 		t.Fatal("expected failure when no name is specified")
@@ -287,7 +340,7 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(withNotes("note here")), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -318,7 +371,7 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(withNotes("got-{{.Release.Name}}")), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -331,7 +384,7 @@ func TestInstallRelease_WithNotesRendered(t *testing.T) {
 	rel, err := releaserToV1Release(r)
 	is.NoError(err)
 
-	expectedNotes := fmt.Sprintf("got-%s", res.Name)
+	expectedNotes := "got-" + res.Name
 	is.Equal(expectedNotes, rel.Info.Notes)
 	is.Equal(rel.Info.Description, "Install complete")
 }
@@ -341,7 +394,7 @@ func TestInstallRelease_WithChartAndDependencyParentNotes(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(withNotes("parent"), withDependency(withNotes("child"))), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -364,7 +417,7 @@ func TestInstallRelease_WithChartAndDependencyAllNotes(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = "with-notes"
 	instAction.SubNotes = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(withNotes("parent"), withDependency(withNotes("child"))), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -390,7 +443,7 @@ func TestInstallRelease_DryRunClient(t *testing.T) {
 		instAction := installAction(t)
 		instAction.DryRunStrategy = dryRunStrategy
 
-		vals := map[string]interface{}{}
+		vals := map[string]any{}
 		resi, err := instAction.Run(buildChart(withSampleTemplates()), vals)
 		if err != nil {
 			t.Fatalf("Failed install: %s", err)
@@ -418,7 +471,7 @@ func TestInstallRelease_DryRunHiddenSecret(t *testing.T) {
 
 	// First perform a normal dry-run with the secret and confirm its presence.
 	instAction.DryRunStrategy = DryRunClient
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -433,7 +486,7 @@ func TestInstallRelease_DryRunHiddenSecret(t *testing.T) {
 
 	// Perform a dry-run where the secret should not be present
 	instAction.HideSecret = true
-	vals = map[string]interface{}{}
+	vals = map[string]any{}
 	res2i, err := instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -449,10 +502,10 @@ func TestInstallRelease_DryRunHiddenSecret(t *testing.T) {
 
 	// Ensure there is an error when HideSecret True but not in a dry-run mode
 	instAction.DryRunStrategy = DryRunNone
-	vals = map[string]interface{}{}
+	vals = map[string]any{}
 	_, err = instAction.Run(buildChart(withSampleSecret(), withSampleTemplates()), vals)
 	if err == nil {
-		t.Fatalf("Did not get expected an error when dry-run false and hide secret is true")
+		t.Fatal("Did not get the expected error when dry-run is false and hide secret is true")
 	}
 }
 
@@ -461,12 +514,13 @@ func TestInstallRelease_DryRun_Lookup(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.DryRunStrategy = DryRunNone
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	mockChart := buildChart(withSampleTemplates())
 	mockChart.Templates = append(mockChart.Templates, &common.File{
-		Name: "templates/lookup",
-		Data: []byte(`goodbye: {{ lookup "v1" "Namespace" "" "___" }}`),
+		Name:    "templates/lookup",
+		ModTime: time.Now(),
+		Data:    []byte(`goodbye: {{ lookup "v1" "Namespace" "" "___" }}`),
 	})
 
 	resi, err := instAction.Run(mockChart, vals)
@@ -483,7 +537,7 @@ func TestInstallReleaseIncorrectTemplate_DryRun(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.DryRunStrategy = DryRunNone
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	_, err := instAction.Run(buildChart(withSampleIncludingIncorrectTemplates()), vals)
 	expectedErr := `hello/templates/incorrect:1:10
   executing "hello/templates/incorrect" at <.Values.bad.doh>:
@@ -499,9 +553,9 @@ func TestInstallRelease_NoHooks(t *testing.T) {
 	instAction := installAction(t)
 	instAction.DisableHooks = true
 	instAction.ReleaseName = "no-hooks"
-	instAction.cfg.Releases.Create(releaseStub())
+	require.NoError(t, instAction.cfg.Releases.Create(releaseStub()))
 
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(), vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
@@ -517,12 +571,12 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = "failed-hooks"
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WatchUntilReadyError = fmt.Errorf("Failed watch")
+	failer.WatchUntilReadyError = errors.New("Failed watch")
 	instAction.cfg.KubeClient = failer
 	outBuffer := &bytes.Buffer{}
 	failer.PrintingKubeClient = kubefake.PrintingKubeClient{Out: io.Discard, LogOutput: outBuffer}
 
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(), vals)
 	is.Error(err)
 	res, err := releaserToV1Release(resi)
@@ -539,10 +593,10 @@ func TestInstallRelease_ReplaceRelease(t *testing.T) {
 
 	rel := releaseStub()
 	rel.Info.Status = rcommon.StatusUninstalled
-	instAction.cfg.Releases.Create(rel)
+	require.NoError(t, instAction.cfg.Releases.Create(rel))
 	instAction.ReleaseName = rel.Name
 
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	resi, err := instAction.Run(buildChart(), vals)
 	is.NoError(err)
 	res, err := releaserToV1Release(resi)
@@ -562,16 +616,16 @@ func TestInstallRelease_ReplaceRelease(t *testing.T) {
 func TestInstallRelease_KubeVersion(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	_, err := instAction.Run(buildChart(withKube(">=0.0.0")), vals)
 	is.NoError(err)
 
 	// This should fail for a few hundred years
 	instAction.ReleaseName = "should-fail"
-	vals = map[string]interface{}{}
+	vals = map[string]any{}
 	_, err = instAction.Run(buildChart(withKube(">=99.0.0")), vals)
 	is.Error(err)
-	is.Contains(err.Error(), "chart requires kubeVersion")
+	is.Contains(err.Error(), "chart requires kubeVersion: >=99.0.0 which is incompatible with Kubernetes v1.20.")
 }
 
 func TestInstallRelease_Wait(t *testing.T) {
@@ -579,10 +633,10 @@ func TestInstallRelease_Wait(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = "come-fail-away"
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("I timed out")
+	failer.WaitError = errors.New("I timed out")
 	instAction.cfg.KubeClient = failer
 	instAction.WaitStrategy = kube.StatusWatcherStrategy
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	goroutines := instAction.getGoroutineCount()
 
@@ -603,7 +657,7 @@ func TestInstallRelease_Wait_Interrupted(t *testing.T) {
 	failer.WaitDuration = 10 * time.Second
 	instAction.cfg.KubeClient = failer
 	instAction.WaitStrategy = kube.StatusWatcherStrategy
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
@@ -623,11 +677,11 @@ func TestInstallRelease_WaitForJobs(t *testing.T) {
 	instAction := installAction(t)
 	instAction.ReleaseName = "come-fail-away"
 	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("I timed out")
+	failer.WaitError = errors.New("I timed out")
 	instAction.cfg.KubeClient = failer
 	instAction.WaitStrategy = kube.StatusWatcherStrategy
 	instAction.WaitForJobs = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	resi, err := instAction.Run(buildChart(), vals)
 	is.Error(err)
@@ -644,13 +698,13 @@ func TestInstallRelease_RollbackOnFailure(t *testing.T) {
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away"
 		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-		failer.WaitError = fmt.Errorf("I timed out")
+		failer.WaitError = errors.New("I timed out")
 		instAction.cfg.KubeClient = failer
 		instAction.RollbackOnFailure = true
 		// disabling hooks to avoid an early fail when
 		// WaitForDelete is called on the pre-delete hook execution
 		instAction.DisableHooks = true
-		vals := map[string]interface{}{}
+		vals := map[string]any{}
 
 		resi, err := instAction.Run(buildChart(), vals)
 		is.Error(err)
@@ -669,11 +723,11 @@ func TestInstallRelease_RollbackOnFailure(t *testing.T) {
 		instAction := installAction(t)
 		instAction.ReleaseName = "come-fail-away-with-me"
 		failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-		failer.WaitError = fmt.Errorf("I timed out")
-		failer.DeleteError = fmt.Errorf("uninstall fail")
+		failer.WaitError = errors.New("I timed out")
+		failer.DeleteError = errors.New("uninstall fail")
 		instAction.cfg.KubeClient = failer
 		instAction.RollbackOnFailure = true
-		vals := map[string]interface{}{}
+		vals := map[string]any{}
 
 		_, err := instAction.Run(buildChart(), vals)
 		is.Error(err)
@@ -691,7 +745,7 @@ func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 	failer.WaitDuration = 10 * time.Second
 	instAction.cfg.KubeClient = failer
 	instAction.RollbackOnFailure = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
@@ -787,7 +841,7 @@ func TestNameTemplate(t *testing.T) {
 func TestInstallReleaseOutputDir(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	dir := t.TempDir()
 
@@ -819,7 +873,7 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	dir := t.TempDir()
 
@@ -1066,4 +1120,180 @@ func TestInstallRun_UnreachableKubeClient(t *testing.T) {
 	done()
 	assert.Nil(t, res)
 	assert.ErrorContains(t, err, "connection refused")
+}
+
+func TestInstallSetRegistryClient(t *testing.T) {
+	config := actionConfigFixture(t)
+	instAction := NewInstall(config)
+
+	registryClient := &registry.Client{}
+	instAction.SetRegistryClient(registryClient)
+
+	assert.Equal(t, registryClient, instAction.GetRegistryClient())
+}
+
+func TestInstallCRDs(t *testing.T) {
+	config := actionConfigFixtureWithDummyResources(t, createDummyCRDList(false))
+	instAction := NewInstall(config)
+
+	mockFile := common.File{
+		Name: "crds/foo.yaml",
+		Data: []byte("hello"),
+	}
+	mockChart := buildChart(withFile(mockFile))
+	crdsToInstall := mockChart.CRDObjects()
+
+	assert.Len(t, crdsToInstall, 1)
+	assert.Equal(t, crdsToInstall[0].File.Data, mockFile.Data)
+	require.NoError(t, instAction.installCRDs(crdsToInstall))
+}
+
+func TestInstallCRDs_AlreadyExist(t *testing.T) {
+	dummyResources := createDummyCRDList(false)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: dummyResources}
+	mockError := &apierrors.StatusError{ErrStatus: metav1.Status{
+		Status: metav1.StatusFailure,
+		Reason: metav1.StatusReasonAlreadyExists,
+	}}
+	failingKubeClient.CreateError = mockError
+
+	config := actionConfigFixtureWithDummyResources(t, dummyResources)
+	config.KubeClient = &failingKubeClient
+	instAction := NewInstall(config)
+
+	mockFile := common.File{
+		Name: "crds/foo.yaml",
+		Data: []byte("hello"),
+	}
+	mockChart := buildChart(withFile(mockFile))
+	crdsToInstall := mockChart.CRDObjects()
+
+	assert.Nil(t, instAction.installCRDs(crdsToInstall))
+}
+
+func TestInstallCRDs_KubeClient_BuildError(t *testing.T) {
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.BuildError = errors.New("build error")
+	config.KubeClient = &failingKubeClient
+	instAction := NewInstall(config)
+
+	mockFile := common.File{
+		Name: "crds/foo.yaml",
+		Data: []byte("hello"),
+	}
+	mockChart := buildChart(withFile(mockFile))
+	crdsToInstall := mockChart.CRDObjects()
+
+	require.Error(t, instAction.installCRDs(crdsToInstall), "failed to install CRD")
+}
+
+func TestInstallCRDs_KubeClient_CreateError(t *testing.T) {
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.CreateError = errors.New("create error")
+	config.KubeClient = &failingKubeClient
+	instAction := NewInstall(config)
+
+	mockFile := common.File{
+		Name: "crds/foo.yaml",
+		Data: []byte("hello"),
+	}
+	mockChart := buildChart(withFile(mockFile))
+	crdsToInstall := mockChart.CRDObjects()
+
+	require.Error(t, instAction.installCRDs(crdsToInstall), "failed to install CRD")
+}
+
+func TestInstallCRDs_WaiterError(t *testing.T) {
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, DummyResources: nil}
+	failingKubeClient.WaitError = errors.New("wait error")
+	failingKubeClient.BuildDummy = true
+	config.KubeClient = &failingKubeClient
+	instAction := NewInstall(config)
+
+	mockFile := common.File{
+		Name: "crds/foo.yaml",
+		Data: []byte("hello"),
+	}
+	mockChart := buildChart(withFile(mockFile))
+	crdsToInstall := mockChart.CRDObjects()
+
+	require.Error(t, instAction.installCRDs(crdsToInstall), "wait error")
+}
+
+func TestCheckDependencies(t *testing.T) {
+	dependency := chart.Dependency{Name: "hello"}
+	mockChart := buildChart(withDependency())
+
+	assert.Nil(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}))
+}
+
+func TestCheckDependencies_MissingDependency(t *testing.T) {
+	dependency := chart.Dependency{Name: "missing"}
+	mockChart := buildChart(withDependency())
+
+	assert.ErrorContains(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}), "missing in charts")
+}
+
+func TestInstallCRDs_CheckNilErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []chart.CRD
+	}{
+		{
+			name: "only one crd with file nil",
+			input: []chart.CRD{
+				{Name: "one", File: nil},
+			},
+		},
+		{
+			name: "only one crd with its file data nil",
+			input: []chart.CRD{
+				{Name: "one", File: &common.File{Name: "crds/foo.yaml", Data: nil}},
+			},
+		},
+		{
+			name: "at least a crd with its file data nil",
+			input: []chart.CRD{
+				{Name: "one", File: &common.File{Name: "crds/foo.yaml", Data: []byte("data")}},
+				{Name: "two", File: &common.File{Name: "crds/foo2.yaml", Data: nil}},
+				{Name: "three", File: &common.File{Name: "crds/foo3.yaml", Data: []byte("data")}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			instAction := installAction(t)
+
+			err := instAction.installCRDs(tt.input)
+			if err == nil {
+				t.Errorf("got nil expected err")
+			}
+		})
+	}
+}
+
+func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
+	is := assert.New(t)
+
+	instAction := installAction(t)
+	instAction.ReleaseName = "wait-options-test"
+	instAction.WaitStrategy = kube.StatusWatcherStrategy
+
+	// Use WithWaitContext as a marker WaitOption that we can track
+	ctx := context.Background()
+	instAction.WaitOptions = []kube.WaitOption{kube.WithWaitContext(ctx)}
+
+	// Access the underlying FailingKubeClient to check recorded options
+	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+
+	vals := map[string]any{}
+	_, err := instAction.Run(buildChart(), vals)
+	is.NoError(err)
+
+	// Verify that WaitOptions were passed to GetWaiter
+	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }

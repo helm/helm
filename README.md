@@ -5,7 +5,7 @@
 [![GoDoc](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue)](https://pkg.go.dev/helm.sh/helm/v4)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3131/badge)](https://bestpractices.coreinfrastructure.org/projects/3131)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/helm/helm/badge)](https://scorecard.dev/viewer/?uri=github.com/helm/helm)
-[![LFX Health Score](https://insights.production.lfx.dev/api/badge/health-score?project=helm)](https://insights.linuxfoundation.org/project/helm)
+[![LFX Health Score](https://insights.linuxfoundation.org/api/badge/health-score?project=helm)](https://insights.linuxfoundation.org/project/helm)
 
 Helm is a tool for managing Charts. Charts are packages of pre-configured Kubernetes resources.
 
@@ -49,6 +49,7 @@ If you want to use a package manager:
 - [Scoop](https://scoop.sh/) users can use `scoop install helm`.
 - [Snapcraft](https://snapcraft.io/) users can use `snap install helm --classic`.
 - [Flox](https://flox.dev) users can use `flox install kubernetes-helm`.
+- [Mise-en-place](https://mise.jdx.dev/) users can use `mise use -g helm@latest`
 
 To rapidly get Helm up and running, start with the [Quick Start Guide](https://helm.sh/docs/intro/quickstart/).
 

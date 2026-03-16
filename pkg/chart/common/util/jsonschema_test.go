@@ -54,7 +54,7 @@ func TestValidateAgainstInvalidSingleSchema(t *testing.T) {
 
 	var errString string
 	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
-		t.Fatalf("Expected an error, but got nil")
+		t.Fatal("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
 	}
@@ -78,7 +78,7 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 
 	var errString string
 	if err := ValidateAgainstSingleSchema(values, schema); err == nil {
-		t.Fatalf("Expected an error, but got nil")
+		t.Fatal("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
 	}
@@ -138,9 +138,9 @@ func TestValidateAgainstSchema(t *testing.T) {
 	}
 	chrt.AddDependency(subchart)
 
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"name": "John",
-		"subchart": map[string]interface{}{
+		"subchart": map[string]any{
 			"age": 25,
 		},
 	}
@@ -165,14 +165,14 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 	}
 	chrt.AddDependency(subchart)
 
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"name":     "John",
-		"subchart": map[string]interface{}{},
+		"subchart": map[string]any{},
 	}
 
 	var errString string
 	if err := ValidateAgainstSchema(chrt, vals); err == nil {
-		t.Fatalf("Expected an error, but got nil")
+		t.Fatal("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
 	}
@@ -200,9 +200,9 @@ func TestValidateAgainstSchema2020(t *testing.T) {
 	}
 	chrt.AddDependency(subchart)
 
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"name": "John",
-		"subchart": map[string]interface{}{
+		"subchart": map[string]any{
 			"data": []any{"hello", 12},
 		},
 	}
@@ -227,16 +227,16 @@ func TestValidateAgainstSchema2020Negative(t *testing.T) {
 	}
 	chrt.AddDependency(subchart)
 
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"name": "John",
-		"subchart": map[string]interface{}{
+		"subchart": map[string]any{
 			"data": []any{12},
 		},
 	}
 
 	var errString string
 	if err := ValidateAgainstSchema(chrt, vals); err == nil {
-		t.Fatalf("Expected an error, but got nil")
+		t.Fatal("Expected an error, but got nil")
 	} else {
 		errString = err.Error()
 	}
@@ -285,6 +285,19 @@ func TestHTTPURLLoader_Load(t *testing.T) {
 			t.Errorf("Expected error message to contain '404', got: %v", err)
 		}
 	})
+}
+
+// Test that an unresolved URN $ref is soft-ignored and validation succeeds.
+// it mimics the behavior of Helm 3.18.4
+func TestValidateAgainstSingleSchema_UnresolvedURN_Ignored(t *testing.T) {
+	schema := []byte(`{
+        "$schema": "https://json-schema.org/draft-07/schema#",
+        "$ref": "urn:example:helm:schemas:v1:helm-schema-validation-conditions:v1/helmSchemaValidation-true"
+    }`)
+	vals := map[string]any{"any": "value"}
+	if err := ValidateAgainstSingleSchema(vals, schema); err != nil {
+		t.Fatalf("expected no error when URN unresolved is ignored, got: %v", err)
+	}
 }
 
 // Non-regression tests for https://github.com/helm/helm/issues/31202
@@ -373,6 +386,6 @@ func TestValidateAgainstSchema_InvalidSubchartValuesType_NoPanic(t *testing.T) {
 
 	// We expect a non-nil error (invalid type), but crucially no panic.
 	if err := ValidateAgainstSchema(chrt, vals); err == nil {
-		t.Fatalf("expected an error when subchart values have invalid type, got nil")
+		t.Fatal("expected an error when subchart values have invalid type, got nil")
 	}
 }

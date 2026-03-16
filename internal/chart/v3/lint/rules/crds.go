@@ -19,7 +19,6 @@ package rules
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -70,7 +69,7 @@ func Crds(linter *support.Linter) {
 			var yamlStruct *k8sYamlStruct
 
 			err := decoder.Decode(&yamlStruct)
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 
@@ -80,8 +79,10 @@ func Crds(linter *support.Linter) {
 				return
 			}
 
-			linter.RunLinterRule(support.ErrorSev, fpath, validateCrdAPIVersion(yamlStruct))
-			linter.RunLinterRule(support.ErrorSev, fpath, validateCrdKind(yamlStruct))
+			if yamlStruct != nil {
+				linter.RunLinterRule(support.ErrorSev, fpath, validateCrdAPIVersion(yamlStruct))
+				linter.RunLinterRule(support.ErrorSev, fpath, validateCrdKind(yamlStruct))
+			}
 		}
 	}
 }
@@ -100,14 +101,14 @@ func validateCrdsDir(crdsPath string) error {
 
 func validateCrdAPIVersion(obj *k8sYamlStruct) error {
 	if !strings.HasPrefix(obj.APIVersion, "apiextensions.k8s.io") {
-		return fmt.Errorf("apiVersion is not in 'apiextensions.k8s.io'")
+		return errors.New("apiVersion is not in 'apiextensions.k8s.io'")
 	}
 	return nil
 }
 
 func validateCrdKind(obj *k8sYamlStruct) error {
 	if obj.Kind != "CustomResourceDefinition" {
-		return fmt.Errorf("object kind is not 'CustomResourceDefinition'")
+		return errors.New("object kind is not 'CustomResourceDefinition'")
 	}
 	return nil
 }

@@ -17,7 +17,6 @@ package chart
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"reflect"
 	"strings"
@@ -56,8 +55,8 @@ func (r *v2Accessor) IsRoot() bool {
 	return r.chrt.IsRoot()
 }
 
-func (r *v2Accessor) MetadataAsMap() map[string]interface{} {
-	var ret map[string]interface{}
+func (r *v2Accessor) MetadataAsMap() map[string]any {
+	var ret map[string]any
 	if r.chrt.Metadata == nil {
 		return ret
 	}
@@ -101,7 +100,7 @@ func (r *v2Accessor) MetaDependencies() []Dependency {
 	return deps
 }
 
-func (r *v2Accessor) Values() map[string]interface{} {
+func (r *v2Accessor) Values() map[string]any {
 	return r.chrt.Values
 }
 
@@ -125,8 +124,8 @@ func (r *v3Accessor) IsRoot() bool {
 	return r.chrt.IsRoot()
 }
 
-func (r *v3Accessor) MetadataAsMap() map[string]interface{} {
-	var ret map[string]interface{}
+func (r *v3Accessor) MetadataAsMap() map[string]any {
+	var ret map[string]any
 	if r.chrt.Metadata == nil {
 		return ret
 	}
@@ -170,7 +169,7 @@ func (r *v3Accessor) MetaDependencies() []Dependency {
 	return deps
 }
 
-func (r *v3Accessor) Values() map[string]interface{} {
+func (r *v3Accessor) Values() map[string]any {
 	return r.chrt.Values
 }
 
@@ -182,20 +181,20 @@ func (r *v3Accessor) Deprecated() bool {
 	return r.chrt.Metadata.Deprecated
 }
 
-func structToMap(obj interface{}) (map[string]interface{}, error) {
+func structToMap(obj any) (map[string]any, error) {
 	objValue := reflect.ValueOf(obj)
 
 	// If the value is a pointer, dereference it
-	if objValue.Kind() == reflect.Ptr {
+	if objValue.Kind() == reflect.Pointer {
 		objValue = objValue.Elem()
 	}
 
 	// Check if the input is a struct
 	if objValue.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("input must be a struct or a pointer to a struct")
+		return nil, errors.New("input must be a struct or a pointer to a struct")
 	}
 
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	objType := objValue.Type()
 
 	for i := 0; i < objValue.NumField(); i++ {
@@ -209,7 +208,7 @@ func structToMap(obj interface{}) (map[string]interface{}, error) {
 				return nil, err
 			}
 			result[field.Name] = nestedMap
-		case reflect.Ptr:
+		case reflect.Pointer:
 			// Recurse for pointers by dereferencing
 			if value.IsNil() {
 				result[field.Name] = nil
@@ -221,10 +220,10 @@ func structToMap(obj interface{}) (map[string]interface{}, error) {
 				result[field.Name] = nestedMap
 			}
 		case reflect.Slice:
-			sliceOfMaps := make([]interface{}, value.Len())
+			sliceOfMaps := make([]any, value.Len())
 			for j := 0; j < value.Len(); j++ {
 				sliceElement := value.Index(j)
-				if sliceElement.Kind() == reflect.Struct || sliceElement.Kind() == reflect.Ptr {
+				if sliceElement.Kind() == reflect.Struct || sliceElement.Kind() == reflect.Pointer {
 					nestedMap, err := structToMap(sliceElement.Interface())
 					if err != nil {
 						return nil, err

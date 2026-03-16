@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 
 	"helm.sh/helm/v4/internal/plugin/schema"
 )
@@ -56,14 +57,14 @@ func (r *SubprocessPluginRuntime) runGetter(input *Input) (*Output, error) {
 		return nil, fmt.Errorf("no downloader found for protocol %q", msg.Protocol)
 	}
 
-	env := parseEnv(os.Environ())
+	env := ParseEnv(os.Environ())
 	maps.Insert(env, maps.All(r.EnvVars))
-	maps.Insert(env, maps.All(parseEnv(input.Env)))
+	maps.Insert(env, maps.All(ParseEnv(input.Env)))
 	env["HELM_PLUGIN_NAME"] = r.metadata.Name
 	env["HELM_PLUGIN_DIR"] = r.pluginDir
 	env["HELM_PLUGIN_USERNAME"] = msg.Options.Username
 	env["HELM_PLUGIN_PASSWORD"] = msg.Options.Password
-	env["HELM_PLUGIN_PASS_CREDENTIALS_ALL"] = fmt.Sprintf("%t", msg.Options.PassCredentialsAll)
+	env["HELM_PLUGIN_PASS_CREDENTIALS_ALL"] = strconv.FormatBool(msg.Options.PassCredentialsAll)
 
 	command, args, err := PrepareCommands(d.PlatformCommand, false, []string{}, env)
 	if err != nil {
@@ -83,7 +84,7 @@ func (r *SubprocessPluginRuntime) runGetter(input *Input) (*Output, error) {
 	cmd := exec.Command(
 		pluginCommand,
 		args...)
-	cmd.Env = formatEnv(env)
+	cmd.Env = FormatEnv(env)
 	cmd.Stdout = &buf
 	cmd.Stderr = os.Stderr
 

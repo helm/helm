@@ -18,6 +18,7 @@ package registry
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -147,15 +148,15 @@ func (c *Client) processPluginPull(genericResult *GenericPullResult, pluginName 
 		}
 	}
 
-	fmt.Fprintf(c.out, "Pulled plugin: %s\n", result.Ref)
-	fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
+	_, _ = fmt.Fprintf(c.out, "Pulled plugin: %s\n", result.Ref)
+	_, _ = fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
 	if result.Prov.Data != nil {
-		fmt.Fprintf(c.out, "Provenance: %s\n", foundProvenanceName)
+		_, _ = fmt.Fprintf(c.out, "Provenance: %s\n", foundProvenanceName)
 	}
 
 	if strings.Contains(result.Ref, "_") {
-		fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
-		fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
+		_, _ = fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
+		_, _ = fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
 	}
 
 	return result, nil
@@ -190,7 +191,7 @@ func GetPluginName(source string) (string, error) {
 	// e.g., "ghcr.io/user/plugin-name:v1.0.0" -> Repository: "user/plugin-name"
 	repository := ref.Repository
 	if repository == "" {
-		return "", fmt.Errorf("invalid OCI reference: missing repository")
+		return "", errors.New("invalid OCI reference: missing repository")
 	}
 
 	// Get the last part of the repository path as the plugin name

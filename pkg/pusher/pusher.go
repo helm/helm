@@ -32,7 +32,7 @@ type options struct {
 	certFile              string
 	keyFile               string
 	caFile                string
-	insecureSkipTLSverify bool
+	insecureSkipTLSVerify bool
 	plainHTTP             bool
 }
 
@@ -59,7 +59,7 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 // WithInsecureSkipTLSVerify determines if a TLS Certificate will be checked
 func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) Option {
 	return func(opts *options) {
-		opts.insecureSkipTLSverify = insecureSkipTLSVerify
+		opts.insecureSkipTLSVerify = insecureSkipTLSVerify
 	}
 }
 

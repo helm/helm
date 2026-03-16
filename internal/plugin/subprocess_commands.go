@@ -16,7 +16,7 @@ limitations under the License.
 package plugin
 
 import (
-	"fmt"
+	"errors"
 	"os"
 	"runtime"
 	"strings"
@@ -80,17 +80,18 @@ func getPlatformCommand(cmds []PlatformCommand) ([]string, []string) {
 func PrepareCommands(cmds []PlatformCommand, expandArgs bool, extraArgs []string, env map[string]string) (string, []string, error) {
 	cmdParts, args := getPlatformCommand(cmds)
 	if len(cmdParts) == 0 || cmdParts[0] == "" {
-		return "", nil, fmt.Errorf("no plugin command is applicable")
+		return "", nil, errors.New("no plugin command is applicable")
+	}
+	envMappingFunc := func(key string) string {
+		return env[key]
 	}
 
-	main := os.Expand(cmdParts[0], func(key string) string {
-		return env[key]
-	})
+	main := os.Expand(cmdParts[0], envMappingFunc)
 	baseArgs := []string{}
 	if len(cmdParts) > 1 {
 		for _, cmdPart := range cmdParts[1:] {
 			if expandArgs {
-				baseArgs = append(baseArgs, os.ExpandEnv(cmdPart))
+				baseArgs = append(baseArgs, os.Expand(cmdPart, envMappingFunc))
 			} else {
 				baseArgs = append(baseArgs, cmdPart)
 			}
@@ -99,7 +100,7 @@ func PrepareCommands(cmds []PlatformCommand, expandArgs bool, extraArgs []string
 
 	for _, arg := range args {
 		if expandArgs {
-			baseArgs = append(baseArgs, os.ExpandEnv(arg))
+			baseArgs = append(baseArgs, os.Expand(arg, envMappingFunc))
 		} else {
 			baseArgs = append(baseArgs, arg)
 		}

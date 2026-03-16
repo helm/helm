@@ -20,7 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -369,7 +369,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 
 	nginx, ok := i.Entries["nginx"]
 	if !ok || len(nginx) != 2 {
-		t.Fatalf("Expected 2 nginx entries")
+		t.Fatal("Expected 2 nginx entries")
 	}
 
 	expects := []*ChartVersion{
@@ -610,7 +610,7 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 			Input: nil,
 		},
 		"generic_error": {
-			Input: fmt.Errorf("foo"),
+			Input: errors.New("foo"),
 		},
 		"non_skipped_validation_error": {
 			Input: chart.ValidationError("chart.metadata.type must be application or library"),
@@ -639,7 +639,7 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 				return
 			}
 
-			if tc.Input != result {
+			if !errors.Is(tc.Input, result) {
 				t.Error("expected the result equal to input")
 			}
 
@@ -708,9 +708,7 @@ func TestLoadIndex_DuplicateChartDeps(t *testing.T) {
 			}
 			cvs := idx.Entries["nginx"]
 			if cvs == nil {
-				if err != nil {
-					t.Error("expected one chart version not to be filtered out")
-				}
+				t.Error("expected one chart version not to be filtered out")
 			}
 			for _, v := range cvs {
 				if v.Name == "alpine" {

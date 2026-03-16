@@ -29,8 +29,8 @@ var updateGolden = flag.Bool("update", false, "update golden files")
 
 // TestingT describes a testing object compatible with the critical functions from the testing.T type
 type TestingT interface {
-	Fatal(...interface{})
-	Fatalf(string, ...interface{})
+	Fatal(...any)
+	Fatalf(string, ...any)
 	HelperT
 }
 

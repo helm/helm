@@ -17,11 +17,13 @@ limitations under the License.
 package action
 
 import (
+	"errors"
 	"os"
 	"path"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 )
@@ -90,10 +92,11 @@ func TestPassphraseFileFetcher_WithStdinAndMultipleFetches(t *testing.T) {
 	passphrase := "secret-from-stdin"
 
 	go func() {
-		w.Write([]byte(passphrase + "\n"))
+		_, err = w.Write([]byte(passphrase + "\n"))
+		require.NoError(t, err)
 	}()
 
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		fetcher, err := testPkg.passphraseFileFetcher("-", stdin)
 		if err != nil {
 			t.Errorf("Expected passphraseFileFetcher to not return an error, but got %v", err)
@@ -144,11 +147,26 @@ func TestValidateVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := validateVersion(tt.args.ver); err != nil {
-				if err != tt.wantErr {
+				if !errors.Is(err, tt.wantErr) {
 					t.Errorf("Expected {%v}, got {%v}", tt.wantErr, err)
 				}
 
 			}
 		})
 	}
+}
+
+func TestRun_ErrorPath(t *testing.T) {
+	client := NewPackage()
+	_, err := client.Run("err-path", nil)
+	require.Error(t, err)
+}
+
+func TestRun(t *testing.T) {
+	chartPath := "testdata/charts/chart-with-schema"
+	client := NewPackage()
+	filename, err := client.Run(chartPath, nil)
+	require.NoError(t, err)
+	require.Equal(t, "empty-0.1.0.tgz", filename)
+	require.NoError(t, os.Remove(filename))
 }

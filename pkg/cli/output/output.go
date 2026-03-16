@@ -18,6 +18,7 @@ package output
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
@@ -50,7 +51,7 @@ func FormatsWithDesc() map[string]string {
 }
 
 // ErrInvalidFormatType is returned when an unsupported format type is used
-var ErrInvalidFormatType = fmt.Errorf("invalid format type")
+var ErrInvalidFormatType = errors.New("invalid format type")
 
 // String returns the string representation of the Format
 func (o Format) String() string {
@@ -102,7 +103,7 @@ type Writer interface {
 
 // EncodeJSON is a helper function to decorate any error message with a bit more
 // context and avoid writing the same code over and over for printers.
-func EncodeJSON(out io.Writer, obj interface{}) error {
+func EncodeJSON(out io.Writer, obj any) error {
 	enc := json.NewEncoder(out)
 	err := enc.Encode(obj)
 	if err != nil {
@@ -113,7 +114,7 @@ func EncodeJSON(out io.Writer, obj interface{}) error {
 
 // EncodeYAML is a helper function to decorate any error message with a bit more
 // context and avoid writing the same code over and over for printers
-func EncodeYAML(out io.Writer, obj interface{}) error {
+func EncodeYAML(out io.Writer, obj any) error {
 	raw, err := yaml.Marshal(obj)
 	if err != nil {
 		return fmt.Errorf("unable to write YAML output: %w", err)

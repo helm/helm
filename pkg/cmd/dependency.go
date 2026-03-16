@@ -130,7 +130,7 @@ func addDependencySubcommandFlags(f *pflag.FlagSet, client *action.Dependency) {
 	f.StringVar(&client.Password, "password", "", "chart repository password where to locate the requested chart")
 	f.StringVar(&client.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&client.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
-	f.BoolVar(&client.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
+	f.BoolVar(&client.InsecureSkipTLSVerify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
 	f.BoolVar(&client.PlainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
 	f.StringVar(&client.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 }

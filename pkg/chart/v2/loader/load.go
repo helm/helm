@@ -76,7 +76,7 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 	// do not rely on assumed ordering of files in the chart and crash
 	// if Chart.yaml was not coming early enough to initialize metadata
 	for _, f := range files {
-		c.Raw = append(c.Raw, &common.File{Name: f.Name, Data: f.Data})
+		c.Raw = append(c.Raw, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
 		if f.Name == "Chart.yaml" {
 			if c.Metadata == nil {
 				c.Metadata = new(chart.Metadata)
@@ -90,6 +90,7 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 			if c.Metadata.APIVersion == "" {
 				c.Metadata.APIVersion = chart.APIVersionV1
 			}
+			c.ModTime = f.ModTime
 		}
 	}
 	for _, f := range files {
@@ -110,6 +111,7 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 			c.Values = values
 		case f.Name == "values.schema.json":
 			c.Schema = f.Data
+			c.SchemaModTime = f.ModTime
 
 		// Deprecated: requirements.yaml is deprecated use Chart.yaml.
 		// We will handle it for you because we are nice people
@@ -124,7 +126,7 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 				return c, fmt.Errorf("cannot load requirements.yaml: %w", err)
 			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
-				c.Files = append(c.Files, &common.File{Name: f.Name, Data: f.Data})
+				c.Files = append(c.Files, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
 			}
 		// Deprecated: requirements.lock is deprecated use Chart.lock.
 		case f.Name == "requirements.lock":
@@ -139,22 +141,22 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 				log.Printf("Warning: Dependency locking is handled in Chart.lock since apiVersion \"v2\". We recommend migrating to Chart.lock.")
 			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
-				c.Files = append(c.Files, &common.File{Name: f.Name, Data: f.Data})
+				c.Files = append(c.Files, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
 			}
 
 		case strings.HasPrefix(f.Name, "templates/"):
-			c.Templates = append(c.Templates, &common.File{Name: f.Name, Data: f.Data})
+			c.Templates = append(c.Templates, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
 		case strings.HasPrefix(f.Name, "charts/"):
 			if filepath.Ext(f.Name) == ".prov" {
-				c.Files = append(c.Files, &common.File{Name: f.Name, Data: f.Data})
+				c.Files = append(c.Files, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
 				continue
 			}
 
 			fname := strings.TrimPrefix(f.Name, "charts/")
 			cname := strings.SplitN(fname, "/", 2)[0]
-			subcharts[cname] = append(subcharts[cname], &archive.BufferedFile{Name: fname, Data: f.Data})
+			subcharts[cname] = append(subcharts[cname], &archive.BufferedFile{Name: fname, ModTime: f.ModTime, Data: f.Data})
 		default:
-			c.Files = append(c.Files, &common.File{Name: f.Name, Data: f.Data})
+			c.Files = append(c.Files, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
 		}
 	}
 
@@ -206,15 +208,15 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 // LoadValues loads values from a reader.
 //
 // The reader is expected to contain one or more YAML documents, the values of which are merged.
-// And the values can be either a chart's default values or a user-supplied values.
-func LoadValues(data io.Reader) (map[string]interface{}, error) {
-	values := map[string]interface{}{}
+// And the values can be either a chart's default values or user-supplied values.
+func LoadValues(data io.Reader) (map[string]any, error) {
+	values := map[string]any{}
 	reader := utilyaml.NewYAMLReader(bufio.NewReader(data))
 	for {
-		currentMap := map[string]interface{}{}
+		currentMap := map[string]any{}
 		raw, err := reader.Read()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, fmt.Errorf("error reading yaml document: %w", err)
@@ -229,13 +231,13 @@ func LoadValues(data io.Reader) (map[string]interface{}, error) {
 
 // MergeMaps merges two maps. If a key exists in both maps, the value from b will be used.
 // If the value is a map, the maps will be merged recursively.
-func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
-	out := make(map[string]interface{}, len(a))
+func MergeMaps(a, b map[string]any) map[string]any {
+	out := make(map[string]any, len(a))
 	maps.Copy(out, a)
 	for k, v := range b {
-		if v, ok := v.(map[string]interface{}); ok {
+		if v, ok := v.(map[string]any); ok {
 			if bv, ok := out[k]; ok {
-				if bv, ok := bv.(map[string]interface{}); ok {
+				if bv, ok := bv.(map[string]any); ok {
 					out[k] = MergeMaps(bv, v)
 					continue
 				}

@@ -123,9 +123,10 @@ type chartOptions struct {
 type chartOption func(*chartOptions)
 
 func buildChart(opts ...chartOption) *chart.Chart {
+	modTime := time.Now()
 	defaultTemplates := []*common.File{
-		{Name: "templates/hello", Data: []byte("hello: world")},
-		{Name: "templates/hooks", Data: []byte(manifestWithHook)},
+		{Name: "templates/hello", ModTime: modTime, Data: []byte("hello: world")},
+		{Name: "templates/hooks", ModTime: modTime, Data: []byte(manifestWithHook)},
 	}
 	return buildChartWithTemplates(defaultTemplates, opts...)
 }
@@ -156,12 +157,12 @@ func withName(name string) chartOption {
 }
 
 func withSampleValues() chartOption {
-	values := map[string]interface{}{
+	values := map[string]any{
 		"someKey": "someValue",
-		"nestedKey": map[string]interface{}{
+		"nestedKey": map[string]any{
 			"simpleKey": "simpleValue",
-			"anotherNestedKey": map[string]interface{}{
-				"yetAnotherNestedKey": map[string]interface{}{
+			"anotherNestedKey": map[string]any{
+				"yetAnotherNestedKey": map[string]any{
 					"youReadyForAnotherNestedKey": "No",
 				},
 			},
@@ -172,7 +173,7 @@ func withSampleValues() chartOption {
 	}
 }
 
-func withValues(values map[string]interface{}) chartOption {
+func withValues(values map[string]any) chartOption {
 	return func(opts *chartOptions) {
 		opts.Values = values
 	}
@@ -181,8 +182,9 @@ func withValues(values map[string]interface{}) chartOption {
 func withNotes(notes string) chartOption {
 	return func(opts *chartOptions) {
 		opts.Templates = append(opts.Templates, &common.File{
-			Name: "templates/NOTES.txt",
-			Data: []byte(notes),
+			Name:    "templates/NOTES.txt",
+			ModTime: time.Now(),
+			Data:    []byte(notes),
 		})
 	}
 }
@@ -199,14 +201,21 @@ func withMetadataDependency(dependency chart.Dependency) chartOption {
 	}
 }
 
+func withFile(file common.File) chartOption {
+	return func(opts *chartOptions) {
+		opts.Files = append(opts.Files, &file)
+	}
+}
+
 func withSampleTemplates() chartOption {
 	return func(opts *chartOptions) {
+		modTime := time.Now()
 		sampleTemplates := []*common.File{
 			// This adds basic templates and partials.
-			{Name: "templates/goodbye", Data: []byte("goodbye: world")},
-			{Name: "templates/empty", Data: []byte("")},
-			{Name: "templates/with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
-			{Name: "templates/partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
+			{Name: "templates/goodbye", ModTime: modTime, Data: []byte("goodbye: world")},
+			{Name: "templates/empty", ModTime: modTime, Data: []byte("")},
+			{Name: "templates/with-partials", ModTime: modTime, Data: []byte(`hello: {{ template "_planet" . }}`)},
+			{Name: "templates/partials/_planet", ModTime: modTime, Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
 	}
@@ -214,20 +223,21 @@ func withSampleTemplates() chartOption {
 
 func withSampleSecret() chartOption {
 	return func(opts *chartOptions) {
-		sampleSecret := &common.File{Name: "templates/secret.yaml", Data: []byte("apiVersion: v1\nkind: Secret\n")}
+		sampleSecret := &common.File{Name: "templates/secret.yaml", ModTime: time.Now(), Data: []byte("apiVersion: v1\nkind: Secret\n")}
 		opts.Templates = append(opts.Templates, sampleSecret)
 	}
 }
 
 func withSampleIncludingIncorrectTemplates() chartOption {
 	return func(opts *chartOptions) {
+		modTime := time.Now()
 		sampleTemplates := []*common.File{
 			// This adds basic templates and partials.
-			{Name: "templates/goodbye", Data: []byte("goodbye: world")},
-			{Name: "templates/empty", Data: []byte("")},
-			{Name: "templates/incorrect", Data: []byte("{{ .Values.bad.doh }}")},
-			{Name: "templates/with-partials", Data: []byte(`hello: {{ template "_planet" . }}`)},
-			{Name: "templates/partials/_planet", Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
+			{Name: "templates/goodbye", ModTime: modTime, Data: []byte("goodbye: world")},
+			{Name: "templates/empty", ModTime: modTime, Data: []byte("")},
+			{Name: "templates/incorrect", ModTime: modTime, Data: []byte("{{ .Values.bad.doh }}")},
+			{Name: "templates/with-partials", ModTime: modTime, Data: []byte(`hello: {{ template "_planet" . }}`)},
+			{Name: "templates/partials/_planet", ModTime: modTime, Data: []byte(`{{define "_planet"}}Earth{{end}}`)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
 	}
@@ -236,7 +246,7 @@ func withSampleIncludingIncorrectTemplates() chartOption {
 func withMultipleManifestTemplate() chartOption {
 	return func(opts *chartOptions) {
 		sampleTemplates := []*common.File{
-			{Name: "templates/rbac", Data: []byte(rbacManifests)},
+			{Name: "templates/rbac", ModTime: time.Now(), Data: []byte(rbacManifests)},
 		}
 		opts.Templates = append(opts.Templates, sampleTemplates...)
 	}
@@ -264,7 +274,7 @@ func namedReleaseStub(name string, status rcommon.Status) *release.Release {
 			Description:   "Named Release Stub",
 		},
 		Chart:   buildChart(withSampleTemplates()),
-		Config:  map[string]interface{}{"name": "value"},
+		Config:  map[string]any{"name": "value"},
 		Version: 1,
 		Hooks: []*release.Hook{
 			{
@@ -294,7 +304,7 @@ func TestConfiguration_Init(t *testing.T) {
 	tests := []struct {
 		name               string
 		helmDriver         string
-		expectedDriverType interface{}
+		expectedDriverType any
 		expectErr          bool
 		errMsg             string
 	}{
@@ -344,7 +354,7 @@ func TestConfiguration_Init(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := &Configuration{}
+			cfg := NewConfiguration()
 
 			actualErr := cfg.Init(nil, "default", tt.helmDriver)
 			if tt.expectErr {
@@ -391,6 +401,96 @@ func (m *mockPostRenderer) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, 
 	}
 
 	return bytes.NewBufferString(content), nil
+}
+
+func TestFixDocSeparators(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "no separator",
+			input:    "apiVersion: v1\nkind: Service\n",
+			expected: "apiVersion: v1\nkind: Service\n",
+		},
+		{
+			name:     "separator on its own line",
+			input:    "---\napiVersion: v1\nkind: Service\n",
+			expected: "---\napiVersion: v1\nkind: Service\n",
+		},
+		{
+			name:     "leading separator glued to content",
+			input:    "---apiVersion: v1\nkind: Service\n",
+			expected: "---\napiVersion: v1\nkind: Service\n",
+		},
+		{
+			name:     "mid-content separator glued to content",
+			input:    "apiVersion: v1\nkind: ConfigMap\n---apiVersion: v1\nkind: Service\n",
+			expected: "apiVersion: v1\nkind: ConfigMap\n---\napiVersion: v1\nkind: Service\n",
+		},
+		{
+			name:     "multiple separators all proper",
+			input:    "---\napiVersion: v1\n---\napiVersion: v1\n",
+			expected: "---\napiVersion: v1\n---\napiVersion: v1\n",
+		},
+		{
+			name:     "multiple separators some glued",
+			input:    "---apiVersion: v1\nkind: ConfigMap\n---apiVersion: v1\nkind: Service\n",
+			expected: "---\napiVersion: v1\nkind: ConfigMap\n---\napiVersion: v1\nkind: Service\n",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "only separator",
+			input:    "---\n",
+			expected: "---\n",
+		},
+		{
+			name:     "triple dash in a value is not a separator",
+			input:    "data:\n  key: ---value\n",
+			expected: "data:\n  key: ---value\n",
+		},
+		{
+			name:     "realistic multi-doc template output",
+			input:    "apiVersion: v1\nkind: Deployment\n---\napiVersion: v1\nkind: Ingress\n---apiVersion: v1\nkind: Service\n",
+			expected: "apiVersion: v1\nkind: Deployment\n---\napiVersion: v1\nkind: Ingress\n---\napiVersion: v1\nkind: Service\n",
+		},
+		{
+			name:     "separator followed by carriage return",
+			input:    "---\r\napiVersion: v1\n",
+			expected: "---\r\napiVersion: v1\n",
+		},
+		{
+			name:     "separator followed by space",
+			input:    "--- \napiVersion: v1\n",
+			expected: "--- \napiVersion: v1\n",
+		},
+		{
+			name:     "separator followed by tab",
+			input:    "---\t\napiVersion: v1\n",
+			expected: "---\t\napiVersion: v1\n",
+		},
+		{
+			name:     "four dashes on its own line",
+			input:    "----\napiVersion: v1\n",
+			expected: "---\n-\napiVersion: v1\n",
+		},
+		{
+			name:     "four dashes followed by text",
+			input:    "----more\napiVersion: v1\n",
+			expected: "---\n-more\napiVersion: v1\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, fixDocSeparators(tt.input))
+		})
+	}
 }
 
 func TestAnnotateAndMerge(t *testing.T) {
@@ -532,6 +632,65 @@ metadata:
   - malformed`,
 			},
 			expectedError: "parsing templates/invalid.yaml",
+		},
+		{
+			name: "leading doc separator glued to content by template whitespace trimming",
+			files: map[string]string{
+				"templates/service.yaml": "---apiVersion: v1\nkind: Service\nmetadata:\n  name: test-svc\n",
+			},
+			expected: `apiVersion: v1
+kind: Service
+metadata:
+  name: test-svc
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/service.yaml'
+`,
+		},
+		{
+			name: "leading doc separator on its own line",
+			files: map[string]string{
+				"templates/service.yaml": "---\napiVersion: v1\nkind: Service\nmetadata:\n  name: test-svc\n",
+			},
+			expected: `apiVersion: v1
+kind: Service
+metadata:
+  name: test-svc
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/service.yaml'
+`,
+		},
+		{
+			name: "multiple leading doc separators",
+			files: map[string]string{
+				"templates/service.yaml": "---\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: test-svc\n",
+			},
+			expected: `apiVersion: v1
+kind: Service
+metadata:
+  name: test-svc
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/service.yaml'
+`,
+		},
+		{
+			name: "mid-content doc separator glued to content by template whitespace trimming",
+			files: map[string]string{
+				"templates/all.yaml": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test-cm\n---apiVersion: v1\nkind: Service\nmetadata:\n  name: test-svc\n",
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/all.yaml'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-svc
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/all.yaml'
+`,
 		},
 	}
 
@@ -785,7 +944,7 @@ func TestRenderResources_PostRenderer_Success(t *testing.T) {
 	}
 
 	ch := buildChart(withSampleTemplates())
-	values := map[string]interface{}{}
+	values := map[string]any{}
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
@@ -828,7 +987,7 @@ func TestRenderResources_PostRenderer_Error(t *testing.T) {
 	}
 
 	ch := buildChart(withSampleTemplates())
-	values := map[string]interface{}{}
+	values := map[string]any{}
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
@@ -853,10 +1012,10 @@ func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
 			Version:    "0.1.0",
 		},
 		Templates: []*common.File{
-			{Name: "templates/invalid", Data: []byte("invalid: yaml: content:")},
+			{Name: "templates/invalid", ModTime: time.Now(), Data: []byte("invalid: yaml: content:")},
 		},
 	}
-	values := map[string]interface{}{}
+	values := map[string]any{}
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
@@ -878,7 +1037,7 @@ func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
 	}
 
 	ch := buildChart(withSampleTemplates())
-	values := map[string]interface{}{}
+	values := map[string]any{}
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
@@ -899,7 +1058,7 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 	}
 
 	ch := buildChart(withSampleTemplates())
-	values := map[string]interface{}{}
+	values := map[string]any{}
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
@@ -935,7 +1094,7 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 	cfg := actionConfigFixture(t)
 
 	ch := buildChart(withSampleTemplates())
-	values := map[string]interface{}{}
+	values := map[string]any{}
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,

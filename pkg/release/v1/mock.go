@@ -17,8 +17,8 @@ limitations under the License.
 package v1
 
 import (
-	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"helm.sh/helm/v4/pkg/chart/common"
@@ -57,7 +57,7 @@ func Mock(opts *MockReleaseOptions) *Release {
 
 	name := opts.Name
 	if name == "" {
-		name = "testrelease-" + fmt.Sprint(rand.Intn(100))
+		name = "testrelease-" + strconv.Itoa(rand.Intn(100))
 	}
 
 	version := 1
@@ -101,7 +101,7 @@ func Mock(opts *MockReleaseOptions) *Release {
 				},
 			},
 			Templates: []*common.File{
-				{Name: "templates/foo.tpl", Data: []byte(MockManifest)},
+				{Name: "templates/foo.tpl", ModTime: time.Now(), Data: []byte(MockManifest)},
 			},
 		}
 	}
@@ -123,7 +123,7 @@ func Mock(opts *MockReleaseOptions) *Release {
 		Name:      name,
 		Info:      info,
 		Chart:     ch,
-		Config:    map[string]interface{}{"name": "value"},
+		Config:    map[string]any{"name": "value"},
 		Version:   version,
 		Namespace: namespace,
 		Hooks: []*Hook{

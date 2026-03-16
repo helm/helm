@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/kio"
 	kyaml "sigs.k8s.io/kustomize/kyaml/yaml"
 
+	"helm.sh/helm/v4/internal/logging"
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
@@ -109,7 +110,32 @@ type Configuration struct {
 	// HookOutputFunc called with container name and returns and expects writer that will receive the log output.
 	HookOutputFunc func(namespace, pod, container string) io.Writer
 
+	// Mutex is an exclusive lock for concurrent access to the action
 	mutex sync.Mutex
+
+	// Embed a LogHolder to provide logger functionality
+	logging.LogHolder
+}
+
+type ConfigurationOption func(c *Configuration)
+
+// Override the default logging handler
+// If unspecified, the default logger will be used
+func ConfigurationSetLogger(h slog.Handler) ConfigurationOption {
+	return func(c *Configuration) {
+		c.SetLogger(h)
+	}
+}
+
+func NewConfiguration(options ...ConfigurationOption) *Configuration {
+	c := &Configuration{}
+	c.SetLogger(slog.Default().Handler())
+
+	for _, o := range options {
+		o(c)
+	}
+
+	return c
 }
 
 const (
@@ -117,6 +143,39 @@ const (
 	// information in manifest annotations for post-rendering reconstruction.
 	filenameAnnotation = "postrenderer.helm.sh/postrender-filename"
 )
+
+// fixDocSeparators ensures YAML document separators ("---") are always
+// followed by a newline in rendered template content. Go template whitespace
+// trimming ({{-) can remove the newline after "---", producing e.g.
+// "---apiVersion: v1" which is not a valid YAML document separator.
+// This function inserts a newline after any "---" at the start of a line
+// that is immediately followed by non-whitespace content.
+func fixDocSeparators(content string) string {
+	var b strings.Builder
+	remaining := content
+	for {
+		// Find "---" at the start of a line (or start of content).
+		idx := strings.Index(remaining, "---")
+		if idx == -1 {
+			b.WriteString(remaining)
+			break
+		}
+		// "---" must be at the start of a line: either idx==0 or preceded by '\n'.
+		if idx > 0 && remaining[idx-1] != '\n' {
+			b.WriteString(remaining[:idx+3])
+			remaining = remaining[idx+3:]
+			continue
+		}
+		b.WriteString(remaining[:idx+3])
+		remaining = remaining[idx+3:]
+		// If "---" is followed by non-whitespace (e.g. "---apiVersion"),
+		// insert a newline to make it a proper document separator.
+		if len(remaining) > 0 && remaining[0] != '\n' && remaining[0] != '\r' && remaining[0] != ' ' && remaining[0] != '\t' {
+			b.WriteByte('\n')
+		}
+	}
+	return b.String()
+}
 
 // annotateAndMerge combines multiple YAML files into a single stream of documents,
 // adding filename annotations to each document for later reconstruction.
@@ -132,6 +191,13 @@ func annotateAndMerge(files map[string]string) (string, error) {
 		if strings.HasPrefix(path.Base(fname), "_") || strings.TrimSpace(content) == "" {
 			continue
 		}
+
+		// Fix document separators where Go template whitespace trimming
+		// ({{-) has removed the newline after "---", producing e.g.
+		// "---apiVersion: v1" which is not a valid YAML document
+		// separator. Insert the missing newline so kio.ParseAll can
+		// parse the content correctly.
+		content = fixDocSeparators(content)
 
 		manifests, err := kio.ParseAll(content)
 		if err != nil {
@@ -204,7 +270,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 
 	if ch.Metadata.KubeVersion != "" {
 		if !chartutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
-			return hs, b, "", fmt.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.String())
+			return hs, b, "", fmt.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.Version)
 		}
 	}
 
@@ -376,8 +442,8 @@ func (cfg *Configuration) getCapabilities() (*common.Capabilities, error) {
 	apiVersions, err := GetVersionSet(dc)
 	if err != nil {
 		if discovery.IsGroupDiscoveryFailedError(err) {
-			slog.Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
-			slog.Warn("to fix this, kubectl delete apiservice <service-name>")
+			cfg.Logger().Warn("the kubernetes server has an orphaned API service", slog.Any("error", err))
+			cfg.Logger().Warn("to fix this, kubectl delete apiservice <service-name>")
 		} else {
 			return nil, fmt.Errorf("could not get apiVersions from Kubernetes: %w", err)
 		}
@@ -440,7 +506,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (common.VersionSet
 		return common.DefaultVersionSet, nil
 	}
 
-	versionMap := make(map[string]interface{})
+	versionMap := make(map[string]any)
 	var versions []string
 
 	// Extract the groups
@@ -476,13 +542,19 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (common.VersionSet
 // recordRelease with an update operation in case reuse has been set.
 func (cfg *Configuration) recordRelease(r *release.Release) {
 	if err := cfg.Releases.Update(r); err != nil {
-		slog.Warn("failed to update release", "name", r.Name, "revision", r.Version, slog.Any("error", err))
+		cfg.Logger().Warn(
+			"failed to update release",
+			slog.String("name", r.Name),
+			slog.Int("revision", r.Version),
+			slog.Any("error", err),
+		)
 	}
 }
 
 // Init initializes the action configuration
 func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namespace, helmDriver string) error {
 	kc := kube.New(getter)
+	kc.SetLogger(cfg.Logger().Handler())
 
 	lazyClient := &lazyClient{
 		namespace: namespace,
@@ -493,9 +565,11 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	switch helmDriver {
 	case "secret", "secrets", "":
 		d := driver.NewSecrets(newSecretClient(lazyClient))
+		d.SetLogger(cfg.Logger().Handler())
 		store = storage.Init(d)
 	case "configmap", "configmaps":
 		d := driver.NewConfigMaps(newConfigMapClient(lazyClient))
+		d.SetLogger(cfg.Logger().Handler())
 		store = storage.Init(d)
 	case "memory":
 		var d *driver.Memory
@@ -510,6 +584,7 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 		if d == nil {
 			d = driver.NewMemory()
 		}
+		d.SetLogger(cfg.Logger().Handler())
 		d.SetNamespace(namespace)
 		store = storage.Init(d)
 	case "sql":
@@ -520,6 +595,7 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 		if err != nil {
 			return fmt.Errorf("unable to instantiate SQL driver: %w", err)
 		}
+		d.SetLogger(cfg.Logger().Handler())
 		store = storage.Init(d)
 	default:
 		return fmt.Errorf("unknown driver %q", helmDriver)

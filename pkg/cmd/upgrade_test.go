@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -148,7 +149,7 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:      "upgrade a release with missing dependencies",
-			cmd:       fmt.Sprintf("upgrade bonkers-bunny %s", missingDepsPath),
+			cmd:       "upgrade bonkers-bunny " + missingDepsPath,
 			golden:    "output/upgrade-with-missing-dependencies.txt",
 			wantError: true,
 		},
@@ -160,7 +161,7 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:   "upgrade a release with resolving missing dependencies",
-			cmd:    fmt.Sprintf("upgrade --dependency-update funny-bunny %s", presentDepsPath),
+			cmd:    "upgrade --dependency-update funny-bunny " + presentDepsPath,
 			golden: "output/upgrade-with-dependency-update.txt",
 			rels:   []*release.Release{relMock("funny-bunny", 2, ch2)},
 		},
@@ -408,7 +409,7 @@ func prepareMockRelease(t *testing.T, releaseName string) (func(n string, v int,
 			Description: "A Helm chart for Kubernetes",
 			Version:     "0.1.0",
 		},
-		Templates: []*common.File{{Name: "templates/configmap.yaml", Data: configmapData}},
+		Templates: []*common.File{{Name: "templates/configmap.yaml", ModTime: time.Now(), Data: configmapData}},
 	}
 	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
 	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
@@ -442,23 +443,23 @@ func TestUpgradeVersionCompletion(t *testing.T) {
 
 	tests := []cmdTestCase{{
 		name:   "completion for upgrade version flag",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag, no filter",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine --version 0.3", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename testing/alpine --version 0.3",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag too few args",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag too many args",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine badarg --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename testing/alpine badarg --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag invalid chart",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename invalid/invalid --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename invalid/invalid --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}}
 	runTestCmd(t, tests)
@@ -513,6 +514,7 @@ func prepareMockReleaseWithSecret(t *testing.T, releaseName string) (func(n stri
 	if err != nil {
 		t.Fatalf("Error loading template yaml %v", err)
 	}
+	modTime := time.Now()
 	cfile := &chart.Chart{
 		Metadata: &chart.Metadata{
 			APIVersion:  chart.APIVersionV1,
@@ -520,7 +522,7 @@ func prepareMockReleaseWithSecret(t *testing.T, releaseName string) (func(n stri
 			Description: "A Helm chart for Kubernetes",
 			Version:     "0.1.0",
 		},
-		Templates: []*common.File{{Name: "templates/configmap.yaml", Data: configmapData}, {Name: "templates/secret.yaml", Data: secretData}},
+		Templates: []*common.File{{Name: "templates/configmap.yaml", ModTime: modTime, Data: configmapData}, {Name: "templates/secret.yaml", ModTime: modTime, Data: secretData}},
 	}
 	chartPath := filepath.Join(tmpChart, cfile.Metadata.Name)
 	if err := chartutil.SaveDir(cfile, tmpChart); err != nil {
@@ -601,5 +603,60 @@ func TestUpgradeWithDryRun(t *testing.T) {
 	_, _, err = executeActionCommandC(store, cmd)
 	if err == nil {
 		t.Error("expected error when --hide-secret used without --dry-run")
+	}
+}
+
+func TestUpgradeInstallServerSideApply(t *testing.T) {
+	_, _, chartPath := prepareMockRelease(t, "ssa-test")
+
+	defer resetEnv()()
+
+	tests := []struct {
+		name                string
+		serverSideFlag      string
+		expectedApplyMethod string
+	}{
+		{
+			name:                "upgrade --install with --server-side=false uses client-side apply",
+			serverSideFlag:      "--server-side=false",
+			expectedApplyMethod: "csa",
+		},
+		{
+			name:                "upgrade --install with --server-side=true uses server-side apply",
+			serverSideFlag:      "--server-side=true",
+			expectedApplyMethod: "ssa",
+		},
+		{
+			name:                "upgrade --install with --server-side=auto uses server-side apply (default for new install)",
+			serverSideFlag:      "--server-side=auto",
+			expectedApplyMethod: "ssa",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := storageFixture()
+			releaseName := "ssa-test-" + tt.expectedApplyMethod
+
+			cmd := fmt.Sprintf("upgrade %s --install %s '%s'", releaseName, tt.serverSideFlag, chartPath)
+			_, _, err := executeActionCommandC(store, cmd)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			rel, err := store.Get(releaseName, 1)
+			if err != nil {
+				t.Fatalf("unexpected error getting release: %v", err)
+			}
+
+			relV1, err := releaserToV1Release(rel)
+			if err != nil {
+				t.Fatalf("unexpected error converting release: %v", err)
+			}
+
+			if relV1.ApplyMethod != tt.expectedApplyMethod {
+				t.Errorf("expected ApplyMethod %q, got %q", tt.expectedApplyMethod, relV1.ApplyMethod)
+			}
+		})
 	}
 }

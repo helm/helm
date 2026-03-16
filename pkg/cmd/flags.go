@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -59,9 +60,8 @@ func AddWaitFlag(cmd *cobra.Command, wait *kube.WaitStrategy) {
 	cmd.Flags().Var(
 		newWaitValue(kube.HookOnlyStrategy, wait),
 		"wait",
-		"if specified, will wait until all resources are in the expected state before marking the operation as successful. It will wait for as long as --timeout. Valid inputs are 'watcher' and 'legacy'",
+		"wait until resources are ready (up to --timeout). Use '--wait' alone for 'watcher' strategy, or specify one of: 'watcher', 'hookOnly', 'legacy'. Default when flag is omitted: 'hookOnly'.",
 	)
-	// Sets the strategy to use the watcher strategy if `--wait` is used without an argument
 	cmd.Flags().Lookup("wait").NoOptDefVal = string(kube.StatusWatcherStrategy)
 }
 
@@ -81,7 +81,7 @@ func (ws *waitValue) String() string {
 
 func (ws *waitValue) Set(s string) error {
 	switch s {
-	case string(kube.StatusWatcherStrategy), string(kube.LegacyStrategy):
+	case string(kube.StatusWatcherStrategy), string(kube.LegacyStrategy), string(kube.HookOnlyStrategy):
 		*ws = waitValue(s)
 		return nil
 	case "true":
@@ -89,11 +89,11 @@ func (ws *waitValue) Set(s string) error {
 		*ws = waitValue(kube.StatusWatcherStrategy)
 		return nil
 	case "false":
-		slog.Warn("--wait=false is deprecated (boolean value) and can be replaced by omitting the --wait flag")
+		slog.Warn("--wait=false is deprecated (boolean value) and can be replaced with --wait=hookOnly")
 		*ws = waitValue(kube.HookOnlyStrategy)
 		return nil
 	default:
-		return fmt.Errorf("invalid wait input %q. Valid inputs are %s, and %s", s, kube.StatusWatcherStrategy, kube.LegacyStrategy)
+		return fmt.Errorf("invalid wait input %q. Valid inputs are %s, %s, and %s", s, kube.StatusWatcherStrategy, kube.HookOnlyStrategy, kube.LegacyStrategy)
 	}
 }
 
@@ -110,7 +110,7 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 	f.StringVar(&c.Password, "password", "", "chart repository password where to locate the requested chart")
 	f.StringVar(&c.CertFile, "cert-file", "", "identify HTTPS client using this SSL certificate file")
 	f.StringVar(&c.KeyFile, "key-file", "", "identify HTTPS client using this SSL key file")
-	f.BoolVar(&c.InsecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
+	f.BoolVar(&c.InsecureSkipTLSVerify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
 	f.BoolVar(&c.PlainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
 	f.StringVar(&c.CaFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 	f.BoolVar(&c.PassCredentialsAll, "pass-credentials", false, "pass credentials to all domains")
@@ -120,7 +120,7 @@ func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {
 // value to the given format pointer
 func bindOutputFlag(cmd *cobra.Command, varRef *output.Format) {
 	cmd.Flags().VarP(newOutputValue(output.Table, varRef), outputFlag, "o",
-		fmt.Sprintf("prints the output in the specified format. Allowed values: %s", strings.Join(output.Formats(), ", ")))
+		"prints the output in the specified format. Allowed values: "+strings.Join(output.Formats(), ", "))
 
 	err := cmd.RegisterFlagCompletionFunc(outputFlag, func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		var formatNames []string
@@ -196,7 +196,7 @@ func (p *postRendererString) Set(val string) error {
 		return nil
 	}
 	if p.options.pluginName != "" {
-		return fmt.Errorf("cannot specify --post-renderer flag more than once")
+		return errors.New("cannot specify --post-renderer flag more than once")
 	}
 	p.options.pluginName = val
 	pr, err := postrenderer.NewPostRendererPlugin(p.options.settings, p.options.pluginName, p.options.args...)

@@ -24,7 +24,6 @@ These dependencies are expressed as interfaces so that alternate implementations
 package cli
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -99,6 +98,7 @@ func New() *EnvSettings {
 	env := &EnvSettings{
 		namespace:                 os.Getenv("HELM_NAMESPACE"),
 		MaxHistory:                envIntOr("HELM_MAX_HISTORY", defaultMaxHistory),
+		KubeConfig:                os.Getenv("KUBECONFIG"),
 		KubeContext:               os.Getenv("HELM_KUBECONTEXT"),
 		KubeToken:                 os.Getenv("HELM_KUBETOKEN"),
 		KubeAsUser:                os.Getenv("HELM_KUBEASUSER"),
@@ -245,7 +245,7 @@ func (s *EnvSettings) EnvVars() map[string]string {
 		"HELM_CACHE_HOME":        helmpath.CachePath(""),
 		"HELM_CONFIG_HOME":       helmpath.ConfigPath(""),
 		"HELM_DATA_HOME":         helmpath.DataPath(""),
-		"HELM_DEBUG":             fmt.Sprint(s.Debug),
+		"HELM_DEBUG":             strconv.FormatBool(s.Debug),
 		"HELM_PLUGINS":           s.PluginsDirectory,
 		"HELM_REGISTRY_CONFIG":   s.RegistryConfig,
 		"HELM_REPOSITORY_CACHE":  s.RepositoryCache,
@@ -274,8 +274,10 @@ func (s *EnvSettings) EnvVars() map[string]string {
 
 // Namespace gets the namespace from the configuration
 func (s *EnvSettings) Namespace() string {
-	if ns, _, err := s.config.ToRawKubeConfigLoader().Namespace(); err == nil {
-		return ns
+	if s.config != nil {
+		if ns, _, err := s.config.ToRawKubeConfigLoader().Namespace(); err == nil {
+			return ns
+		}
 	}
 	if s.namespace != "" {
 		return s.namespace

@@ -43,7 +43,7 @@ func WithSkipSchemaValidation(skipSchemaValidation bool) LinterOption {
 	}
 }
 
-func RunAll(baseDir string, values map[string]interface{}, namespace string, options ...LinterOption) support.Linter {
+func RunAll(baseDir string, values map[string]any, namespace string, options ...LinterOption) support.Linter {
 
 	chartDir, _ := filepath.Abs(baseDir)
 
