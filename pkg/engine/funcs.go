@@ -157,7 +157,7 @@ func toTOML(v any) string {
 	e := toml.NewEncoder(b)
 	err := e.Encode(v)
 	if err != nil {
-		return err.Error()
+		return ""
 	}
 	return b.String()
 }
