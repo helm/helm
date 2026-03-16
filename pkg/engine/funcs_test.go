@@ -135,7 +135,7 @@ keyInElement1 = "valueInElement1"`,
 		assert.Equal(t, tt.expect, b.String(), tt.tpl)
 	}
 
-	nonSerializable := map[string]interface{}{
+	nonSerializable := map[string]any{
 		"foo": struct{ Fn func() }{},
 	}
 

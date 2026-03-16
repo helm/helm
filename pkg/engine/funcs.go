@@ -165,9 +165,9 @@ func toTOML(v any) string {
 // mustToTOML takes an interface, marshals it to toml, and returns a string.
 // It will panic if there is an error.
 //
-// This is designed to be called from a template when need to ensure that the
-// output TOML is valid.
-func mustToTOML(v interface{}) string {
+// This is designed to be called from a template when you need to ensure that
+// the output TOML is valid.
+func mustToTOML(v any) string {
 	b := bytes.NewBuffer(nil)
 	e := toml.NewEncoder(b)
 	if err := e.Encode(v); err != nil {
