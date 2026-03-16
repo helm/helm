@@ -157,6 +157,7 @@ func toTOML(v any) string {
 	b := bytes.NewBuffer(nil)
 	e := toml.NewEncoder(b)
 	if err := e.Encode(v); err != nil {
+		// Errors are intentionally swallowed in templates.
 		return ""
 	}
 	return b.String()
