@@ -123,6 +123,12 @@ keyInElement1 = "valueInElement1"`,
 		expect: `[error unmarshaling JSON: while decoding JSON: json: cannot unmarshal object into Go value of type []interface {}]`,
 		vars:   `hello: world`,
 	}, {
+		// toToml should swallow errors and return "" like toYaml and toJson do.
+		// map[int]string cannot be encoded as TOML (keys must be strings).
+		tpl:    `{{ toToml . }}`,
+		expect: ``,
+		vars:   map[int]string{1: "one"},
+	}, {
 		// This should never result in a network lookup. Regression for #7955
 		tpl:    `{{ lookup "v1" "Namespace" "" "unlikelynamespace99999999" }}`,
 		expect: `map[]`,
