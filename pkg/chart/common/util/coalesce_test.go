@@ -765,3 +765,30 @@ func TestCoalesceValuesEmptyMapWithNils(t *testing.T) {
 	is.True(ok, "Expected data.baz key to be present but it was removed")
 	is.Nil(data["baz"], "Expected data.baz key to be nil but it is not")
 }
+
+
+// TestCoalesceTablesNullNullRegression tests regression #31919: when lower-precedence map has key with nil
+// and override also sets it to null, the key should be removed from coalesced values.
+func TestCoalesceTablesNullNullRegression(t *testing.T) {
+	tests := []struct {
+		name     string
+		dst      map[string]any
+		src      map[string]any
+		expected map[string]any
+	}{
+		{
+			name:     "null values merge regression #31919",
+			dst:      map[string]any{"key": nil},
+			src:      map[string]any{"key": nil},
+			expected: map[string]any{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dst := make(map[string]any)
+			maps.Copy(dst, tt.dst)
+			CoalesceTables(dst, tt.src)
+			assert.Equal(t, tt.expected, dst)
+		})
+	}
+}
