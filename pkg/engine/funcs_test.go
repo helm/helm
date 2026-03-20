@@ -152,11 +152,18 @@ keyInElement1 = "valueInElement1"`,
 		tpl:  `{{ mustToJson . }}`,
 		vars: loopMap,
 	}, {
+		tpl:  `{{ mustToToml . }}`,
+		vars: loopMap,
+	}, {
 		tpl:    `{{ toYaml . }}`,
 		expect: "", // should return empty string and swallow error
 		vars:   loopMap,
 	}, {
 		tpl:    `{{ toJson . }}`,
+		expect: "", // should return empty string and swallow error
+		vars:   loopMap,
+	}, {
+		tpl:    `{{ toToml . }}`,
 		expect: "", // should return empty string and swallow error
 		vars:   loopMap,
 	},
