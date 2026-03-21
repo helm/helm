@@ -135,7 +135,9 @@ func (c *Client) Search(term string) ([]SearchResult, error) {
 
 	result := &searchResponse{}
 
-	json.NewDecoder(res.Body).Decode(result)
+	if err := json.NewDecoder(res.Body).Decode(result); err != nil {
+		return nil, fmt.Errorf("failed to decode response from %s: %w", p.String(), err)
+	}
 
 	return result.Data, nil
 }
