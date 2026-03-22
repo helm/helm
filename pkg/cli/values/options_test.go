@@ -289,7 +289,7 @@ func TestReadFileOriginal(t *testing.T) {
 	filePath := "%a.txt"
 	_, err := readFile(filePath, p)
 	if err == nil {
-		t.Errorf("Expected error when has special strings")
+		t.Error("Expected error when has special strings")
 	}
 }
 

@@ -589,7 +589,7 @@ func TestStorageGetsLoggerFromDriver(t *testing.T) {
 	s := Init(d)
 	_, _ = s.Get("doesnt-matter", 123)
 	if !l.Called {
-		t.Fatalf("Expected storage to use driver's logger, but it did not")
+		t.Fatal("Expected storage to use driver's logger, but it did not")
 	}
 }
 

@@ -77,9 +77,11 @@ linters:
       require-specific: true
 
     revive:
-      max-open-files: 2048
+      enable-all-rules: false
       enable-default-rules: true
+      max-open-files: 2048
       rules:
+        - name: unnecessary-format
         - name: var-naming
           arguments:
             - ["ID"] # AllowList

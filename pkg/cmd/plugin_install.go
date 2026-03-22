@@ -132,7 +132,7 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 	if localInst, ok := i.(*installer.LocalInstaller); ok && !localInst.SupportsVerification() {
 		// Local directory installations are allowed without verification
 		shouldVerify = false
-		fmt.Fprintf(out, "Installing plugin from local directory (development mode)\n")
+		fmt.Fprint(out, "Installing plugin from local directory (development mode)\n")
 	} else if shouldVerify {
 		// For remote installations, check if verification is supported
 		if verifier, ok := i.(installer.Verifier); !ok || !verifier.SupportsVerification() {
@@ -140,7 +140,7 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 		}
 	} else {
 		// User explicitly disabled verification
-		fmt.Fprintf(out, "WARNING: Skipping plugin signature verification\n")
+		fmt.Fprint(out, "WARNING: Skipping plugin signature verification\n")
 	}
 
 	// Set up installation options
@@ -151,7 +151,7 @@ func (o *pluginInstallOptions) run(out io.Writer) error {
 
 	// If verify is requested, show verification output
 	if shouldVerify {
-		fmt.Fprintf(out, "Verifying plugin signature...\n")
+		fmt.Fprint(out, "Verifying plugin signature...\n")
 	}
 
 	// Install the plugin with options

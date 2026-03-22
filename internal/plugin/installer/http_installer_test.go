@@ -53,16 +53,16 @@ var fakePluginB64 = "H4sIAAAAAAAAA+3SQUvDMBgG4Jz7K0LwapdvSxrwJig6mCKC5xHabBaXdDS
 
 func TestStripName(t *testing.T) {
 	if stripPluginName("fake-plugin-0.0.1.tar.gz") != "fake-plugin" {
-		t.Errorf("name does not match expected value")
+		t.Error("name does not match expected value")
 	}
 	if stripPluginName("fake-plugin-0.0.1.tgz") != "fake-plugin" {
-		t.Errorf("name does not match expected value")
+		t.Error("name does not match expected value")
 	}
 	if stripPluginName("fake-plugin.tgz") != "fake-plugin" {
-		t.Errorf("name does not match expected value")
+		t.Error("name does not match expected value")
 	}
 	if stripPluginName("fake-plugin.tar.gz") != "fake-plugin" {
-		t.Errorf("name does not match expected value")
+		t.Error("name does not match expected value")
 	}
 }
 
@@ -345,7 +345,7 @@ func TestMediaTypeToExtension(t *testing.T) {
 			t.Errorf("Media type %q failed test", mt)
 		}
 		if shouldPass && ext == "" {
-			t.Errorf("Expected an extension but got empty string")
+			t.Error("Expected an extension but got empty string")
 		}
 		if !shouldPass && len(ext) != 0 {
 			t.Error("Expected extension to be empty for unrecognized type")

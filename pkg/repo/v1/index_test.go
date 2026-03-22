@@ -130,12 +130,12 @@ func TestIndexFile(t *testing.T) {
 
 	cv, err = i.Get("setter", "0.1.9+alpha")
 	if err != nil || cv.Version != "0.1.9+alpha" {
-		t.Errorf("Expected version: 0.1.9+alpha")
+		t.Error("Expected version: 0.1.9+alpha")
 	}
 
 	cv, err = i.Get("setter", "0.1.8")
 	if err != nil || cv.Version != "0.1.8" {
-		t.Errorf("Expected version: 0.1.8")
+		t.Error("Expected version: 0.1.8")
 	}
 }
 
@@ -174,7 +174,7 @@ func TestLoadIndex(t *testing.T) {
 // TestLoadIndex_Duplicates is a regression to make sure that we don't non-deterministically allow duplicate packages.
 func TestLoadIndex_Duplicates(t *testing.T) {
 	if _, err := loadIndex([]byte(indexWithDuplicates), "indexWithDuplicates"); err == nil {
-		t.Errorf("Expected an error when duplicate entries are present")
+		t.Error("Expected an error when duplicate entries are present")
 	}
 }
 
@@ -186,7 +186,7 @@ func TestLoadIndex_EmptyEntry(t *testing.T) {
 
 func TestLoadIndex_Empty(t *testing.T) {
 	if _, err := loadIndex([]byte(""), "indexWithEmpty"); err == nil {
-		t.Errorf("Expected an error when index.yaml is empty.")
+		t.Error("Expected an error when index.yaml is empty.")
 	}
 }
 
@@ -360,7 +360,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 
 	alpine, ok := i.Entries["alpine"]
 	if !ok {
-		t.Fatalf("'alpine' section not found.")
+		t.Fatal("'alpine' section not found.")
 	}
 
 	if l := len(alpine); l != 1 {
@@ -595,7 +595,7 @@ func TestAddFileIndexEntriesNil(t *testing.T) {
 		{&chart.Metadata{APIVersion: "v2", Name: " ", Version: "8033-5.apinie+s.r"}, "setter-0.1.9+beta.tgz", "http://example.com/charts", "sha256:1234567890abc"},
 	} {
 		if err := i.MustAdd(x.md, x.filename, x.baseURL, x.digest); err == nil {
-			t.Errorf("expected err to be non-nil when entries not initialized")
+			t.Error("expected err to be non-nil when entries not initialized")
 		}
 	}
 }
