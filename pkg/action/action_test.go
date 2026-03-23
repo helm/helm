@@ -728,11 +728,20 @@ data:
 	assert.Contains(t, merged, "value: |")
 	assert.NotContains(t, merged, "value: |-")
 
+	// Original behavior: splitAndDeannotate on the merged stream as produced.
 	reconstructed, err := splitAndDeannotate(merged)
 	require.NoError(t, err)
 	out := reconstructed["templates/cm.yaml"]
 	assert.Contains(t, out, "value: |")
 	assert.NotContains(t, out, "value: |-")
+
+	// New regression coverage: simulate a post-renderer output stream lacking a trailing newline.
+	mergedNoEOF := strings.TrimSuffix(merged, "\n")
+	reconstructedNoEOF, err := splitAndDeannotate(mergedNoEOF)
+	require.NoError(t, err)
+	outNoEOF := reconstructedNoEOF["templates/cm.yaml"]
+	assert.Contains(t, outNoEOF, "value: |")
+	assert.NotContains(t, outNoEOF, "value: |-")
 }
 
 func TestSplitAndDeannotate(t *testing.T) {
