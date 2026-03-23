@@ -118,7 +118,7 @@ func TestInstallWithOptions_VerifyWithValidProvenance(t *testing.T) {
 
 	// Plugin should not be installed due to verification failure
 	if _, err := os.Stat(installer.Path()); !os.IsNotExist(err) {
-		t.Errorf("Plugin should not be installed when verification fails")
+		t.Error("Plugin should not be installed when verification fails")
 	}
 }
 
@@ -150,7 +150,7 @@ func TestInstallWithOptions_VerifyWithInvalidProvenance(t *testing.T) {
 
 	// Should fail with verification error
 	if err == nil {
-		t.Fatalf("Expected installation with invalid .prov file to fail")
+		t.Fatal("Expected installation with invalid .prov file to fail")
 	}
 	if result != nil {
 		t.Errorf("Expected nil verification result when verification fails, got: %+v", result)
@@ -164,7 +164,7 @@ func TestInstallWithOptions_VerifyWithInvalidProvenance(t *testing.T) {
 
 	// Plugin should not be installed
 	if _, err := os.Stat(installer.Path()); !os.IsNotExist(err) {
-		t.Errorf("Plugin should not be installed when verification fails")
+		t.Error("Plugin should not be installed when verification fails")
 	}
 }
 

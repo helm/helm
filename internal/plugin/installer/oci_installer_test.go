@@ -239,7 +239,7 @@ func TestNewOCIInstaller(t *testing.T) {
 
 			if tt.expectError {
 				if err == nil {
-					t.Errorf("expected error but got none")
+					t.Error("expected error but got none")
 				}
 				return
 			}
@@ -416,7 +416,7 @@ func TestOCIInstaller_Install_WithGetterOptions(t *testing.T) {
 			err = Install(installer)
 			if tc.wantErr {
 				if err == nil {
-					t.Errorf("Expected installation to fail, but it succeeded")
+					t.Error("Expected installation to fail, but it succeeded")
 				}
 			} else {
 				if err != nil {
@@ -526,13 +526,13 @@ func TestOCIInstaller_Install_ComponentExtraction(t *testing.T) {
 	// Verify plugin.yaml exists
 	pluginYAMLPath := filepath.Join(tempDir, "plugin.yaml")
 	if _, err := os.Stat(pluginYAMLPath); os.IsNotExist(err) {
-		t.Errorf("plugin.yaml not found after extraction")
+		t.Error("plugin.yaml not found after extraction")
 	}
 
 	// Verify bin directory exists
 	binPath := filepath.Join(tempDir, "bin")
 	if _, err := os.Stat(binPath); os.IsNotExist(err) {
-		t.Errorf("bin directory not found after extraction")
+		t.Error("bin directory not found after extraction")
 	}
 
 	// Verify executable exists and has correct permissions
@@ -540,12 +540,12 @@ func TestOCIInstaller_Install_ComponentExtraction(t *testing.T) {
 	if info, err := os.Stat(execPath); err != nil {
 		t.Errorf("executable not found: %v", err)
 	} else if info.Mode()&0111 == 0 {
-		t.Errorf("file is not executable")
+		t.Error("file is not executable")
 	}
 
 	// Verify this would be recognized as a plugin
 	if !isPlugin(tempDir) {
-		t.Errorf("extracted directory is not a valid plugin")
+		t.Error("extracted directory is not a valid plugin")
 	}
 }
 
@@ -798,7 +798,7 @@ func TestOCIInstaller_Install_ValidationErrors(t *testing.T) {
 					t.Error("expected valid gzip data")
 				}
 				if !strings.Contains(tt.errorMsg, "is not a gzip compressed archive") {
-					t.Errorf("expected error message to contain 'is not a gzip compressed archive'")
+					t.Error("expected error message to contain 'is not a gzip compressed archive'")
 				}
 			}
 		})
