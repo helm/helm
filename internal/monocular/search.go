@@ -100,6 +100,11 @@ type ChartVersion struct {
 
 // Search performs a search against the monocular search API
 func (c *Client) Search(term string) ([]SearchResult, error) {
+	return c.SearchWithContext(context.TODO(), term)
+}
+
+// SearchWithContext performs a search against the monocular search API
+func (c *Client) SearchWithContext(ctx context.Context, term string) ([]SearchResult, error) {
 
 	// Create the URL to the search endpoint
 	// Note, this is currently an internal API for the Hub. This should be
@@ -115,12 +120,7 @@ func (c *Client) Search(term string) ([]SearchResult, error) {
 	p.RawQuery = "q=" + url.QueryEscape(term)
 
 	// Create request
-	req, err := http.NewRequestWithContext(
-		context.Background(),
-		http.MethodGet,
-		p.String(),
-		http.NoBody,
-	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.String(), http.NoBody)
 	if err != nil {
 		return nil, err
 	}
