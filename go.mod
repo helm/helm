@@ -16,7 +16,7 @@ require (
 	github.com/distribution/distribution/v3 v3.0.0
 	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/extism/go-sdk v1.7.1
-	github.com/fatih/color v1.18.0
+	github.com/fatih/color v1.19.0
 	github.com/fluxcd/cli-utils v0.37.2-flux.1
 	github.com/foxcpp/go-mockdns v1.2.0
 	github.com/gobwas/glob v0.2.3
@@ -105,7 +105,7 @@ require (
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/miekg/dns v1.1.57 // indirect
