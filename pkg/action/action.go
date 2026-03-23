@@ -150,6 +150,19 @@ const (
 // "---apiVersion: v1" which is not a valid YAML document separator.
 // This function inserts a newline after any "---" at the start of a line
 // that is immediately followed by non-whitespace content.
+// ensureTrailingNewlineForYAML appends a final newline when the input omits one.
+// kyaml's reader does not add a trailing newline to the last YAML document when
+// splitting streams (see kio.ByteReader.Read); parsing and re-serializing then
+// rewrites literal block scalars from "|" to "|-" (strip chomping). A trailing
+// newline at EOF avoids that round-trip change so post-renderer merge/split
+// matches direct template output. See https://github.com/helm/helm/issues/31948
+func ensureTrailingNewlineForYAML(content string) string {
+	if content == "" || strings.HasSuffix(content, "\n") {
+		return content
+	}
+	return content + "\n"
+}
+
 func fixDocSeparators(content string) string {
 	var b strings.Builder
 	remaining := content
@@ -198,6 +211,7 @@ func annotateAndMerge(files map[string]string) (string, error) {
 		// separator. Insert the missing newline so kio.ParseAll can
 		// parse the content correctly.
 		content = fixDocSeparators(content)
+		content = ensureTrailingNewlineForYAML(content)
 
 		manifests, err := kio.ParseAll(content)
 		if err != nil {
@@ -221,6 +235,7 @@ func annotateAndMerge(files map[string]string) (string, error) {
 // splitAndDeannotate reconstructs individual files from a merged YAML stream,
 // removing filename annotations and grouping documents by their original filenames.
 func splitAndDeannotate(postrendered string) (map[string]string, error) {
+	postrendered = ensureTrailingNewlineForYAML(postrendered)
 	manifests, err := kio.ParseAll(postrendered)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing YAML: %w", err)
