@@ -377,7 +377,7 @@ func TestGetVersionSet(t *testing.T) {
 	}
 
 	if !vs.Has("v1") {
-		t.Errorf("Expected supported versions to at least include v1.")
+		t.Error("Expected supported versions to at least include v1.")
 	}
 	if vs.Has("nosuchversion/v1") {
 		t.Error("Non-existent version is reported found.")

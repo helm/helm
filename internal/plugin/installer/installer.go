@@ -100,7 +100,7 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 		// Check if provenance data exists
 		if len(provData) == 0 {
 			// No .prov file found - emit warning but continue installation
-			fmt.Fprintf(os.Stderr, "WARNING: No provenance file found for plugin. Plugin is not signed and cannot be verified.\n")
+			fmt.Fprint(os.Stderr, "WARNING: No provenance file found for plugin. Plugin is not signed and cannot be verified.\n")
 		} else {
 			// Provenance data exists - verify the plugin
 			verification, err := plugin.VerifyPlugin(archiveData, provData, filename, opts.Keyring)
