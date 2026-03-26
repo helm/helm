@@ -30,9 +30,9 @@ fi
 
 ## validate git tags
 for tag in $RELEASE $PREVIOUS_RELEASE; do
-  OK=$(git tag -l ${tag} | wc -l)
+  OK=$(git tag -l "${tag}" | wc -l)
   if [[ "$OK" == "0" ]]; then
-    echo ${tag} is not a valid release version
+    echo "${tag}" is not a valid release version
     exit 1
   fi
 done
@@ -46,17 +46,17 @@ if [[ ! -e "./_dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256sum" ]]; then
 fi
 
 ## Generate CHANGELOG from git log
-CHANGELOG=$(git log --no-merges --pretty=format:'- %s %H (%aN)' ${PREVIOUS_RELEASE}..${RELEASE})
-if [[ ! $? -eq 0 ]]; then
+CHANGELOG=$(git log --no-merges --pretty=format:'- %s %H (%aN)' "${PREVIOUS_RELEASE}..${RELEASE}")
+if ! git log --no-merges --pretty=format:'- %s %H (%aN)' "${PREVIOUS_RELEASE}..${RELEASE}" > /dev/null 2>&1; then
   echo "Error creating changelog"
   echo "try running \`git log --no-merges --pretty=format:'- %s %H (%aN)' ${PREVIOUS_RELEASE}..${RELEASE}\`"
   exit 1
 fi
 
 ## guess at MAJOR / MINOR / PATCH versions
-MAJOR=$(echo ${RELEASE} | sed 's/^v//' | cut -f1 -d.)
-MINOR=$(echo ${RELEASE} | sed 's/^v//' | cut -f2 -d.)
-PATCH=$(echo ${RELEASE} | sed 's/^v//' | cut -f3 -d.)
+MAJOR=$(echo "${RELEASE}" | sed 's/^v//' | cut -f1 -d.)
+MINOR=$(echo "${RELEASE}" | sed 's/^v//' | cut -f2 -d.)
+PATCH=$(echo "${RELEASE}" | sed 's/^v//' | cut -f3 -d.)
 
 ## Print release notes to stdout
 cat <<EOF
@@ -81,12 +81,12 @@ The community keeps growing, and we'd love to see you there!
 
 Download Helm ${RELEASE}. The common platform binaries are here:
 
-- [MacOS amd64](https://get.helm.sh/helm-${RELEASE}-darwin-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-darwin-amd64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-darwin-amd64.tar.gz.sha256))
-- [MacOS arm64](https://get.helm.sh/helm-${RELEASE}-darwin-arm64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-darwin-arm64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-darwin-arm64.tar.gz.sha256))
-- [Linux amd64](https://get.helm.sh/helm-${RELEASE}-linux-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-amd64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-amd64.tar.gz.sha256))
-- [Linux arm](https://get.helm.sh/helm-${RELEASE}-linux-arm.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-arm.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-arm.tar.gz.sha256))
-- [Linux arm64](https://get.helm.sh/helm-${RELEASE}-linux-arm64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-arm64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-arm64.tar.gz.sha256))
-- [Linux i386](https://get.helm.sh/helm-${RELEASE}-linux-386.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-386.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-386.tar.gz.sha256))
+- [MacOS amd64](https://get.helm.sh/helm-"${RELEASE}"-darwin-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-"${RELEASE}"-darwin-amd64.tar.gz.sha256sum) / $(cat _dist/helm-"${RELEASE}"-darwin-amd64.tar.gz.sha256))
+- [MacOS arm64](https://get.helm.sh/helm-"${RELEASE}"-darwin-arm64.tar.gz) ([checksum](https://get.helm.sh/helm-"${RELEASE}"-darwin-arm64.tar.gz.sha256sum) / $(cat _dist/helm-"${RELEASE}"-darwin-arm64.tar.gz.sha256))
+- [Linux amd64](https://get.helm.sh/helm-"${RELEASE}"-linux-amd64.tar.gz) ([checksum](https://get.helm.sh/helm-"${RELEASE}"-linux-amd64.tar.gz.sha256sum) / $(cat _dist/helm-"${RELEASE}"-linux-amd64.tar.gz.sha256))
+- [Linux arm](https://get.helm.sh/helm-"${RELEASE}"-linux-arm.tar.gz) ([checksum](https://get.helm.sh/helm-"${RELEASE}"-linux-arm.tar.gz.sha256sum) / $(cat _dist/helm-"${RELEASE}"-linux-arm.tar.gz.sha256))
+- [Linux arm64](https://get.helm.sh/helm-"${RELEASE}"-linux-arm64.tar.gz) ([checksum](https://get.helm.sh/helm-"${RELEASE}"-linux-arm64.tar.gz.sha256sum) / $(cat _dist/helm-"${RELEASE}"-linux-arm64.tar.gz.sha256))
+- [Linux i386](https://get.helm.sh/helm-"${RELEASE}"-linux-386.tar.gz) ([checksum](https://get.helm.sh/helm-"${RELEASE}"-linux-386.tar.gz.sha256sum) / $(cat _dist/helm-"${RELEASE}"-linux-386.tar.gz.sha256))
 - [Linux loong64](https://get.helm.sh/helm-${RELEASE}-linux-loong64.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-loong64.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-loong64.tar.gz.sha256))
 - [Linux ppc64le](https://get.helm.sh/helm-${RELEASE}-linux-ppc64le.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-ppc64le.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-ppc64le.tar.gz.sha256))
 - [Linux s390x](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz) ([checksum](https://get.helm.sh/helm-${RELEASE}-linux-s390x.tar.gz.sha256sum) / $(cat _dist/helm-${RELEASE}-linux-s390x.tar.gz.sha256))
