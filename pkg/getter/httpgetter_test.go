@@ -678,3 +678,28 @@ func TestHTTPTransportOption(t *testing.T) {
 		t.Fatal("transport.TLSClientConfig should not be set")
 	}
 }
+
+// 🔥 NEW TEST: Verify helm-session header is added to requests
+func TestHTTPGetterSessionHeader(t *testing.T) {
+	var capturedHeader string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedHeader = r.Header.Get(helmSessionHeader)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	g, err := NewHTTPGetter(WithURL(srv.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = g.Get(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if capturedHeader == "" {
+		t.Fatalf("expected %s header to be set, but it was empty", helmSessionHeader)
+	}
+}

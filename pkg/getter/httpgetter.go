@@ -24,20 +24,25 @@ import (
 	"net/url"
 	"sync"
 
+	"github.com/google/uuid"
+
 	"helm.sh/helm/v4/internal/tlsutil"
 	"helm.sh/helm/v4/internal/version"
 )
+
+// 🔥 Constant for session header
+const helmSessionHeader = "helm-session"
 
 // HTTPGetter is the default HTTP(/S) backend handler
 type HTTPGetter struct {
 	opts      getterOptions
 	transport *http.Transport
 	once      sync.Once
+	sessionID string // 🔥 Stores session ID for request grouping
 }
 
 // Get performs a Get from repo.Getter and returns the body.
 func (g *HTTPGetter) Get(href string, options ...Option) (*bytes.Buffer, error) {
-	// Create a local copy of options to avoid data races when Get is called concurrently
 	opts := g.opts
 	for _, opt := range options {
 		opt(&opts)
@@ -46,11 +51,14 @@ func (g *HTTPGetter) Get(href string, options ...Option) (*bytes.Buffer, error) 
 }
 
 func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error) {
-	// Set a helm specific user agent so that a repo server and metrics can
-	// separate helm calls from other tools interacting with repos.
 	req, err := http.NewRequest(http.MethodGet, href, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	// 🔥 Add Helm session header to group requests from a single command execution
+	if g.sessionID != "" {
+		req.Header.Set(helmSessionHeader, g.sessionID)
 	}
 
 	if opts.acceptHeader != "" {
@@ -62,8 +70,6 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 		req.Header.Set("User-Agent", opts.userAgent)
 	}
 
-	// Before setting the basic auth credentials, make sure the URL associated
-	// with the basic auth is the one being fetched.
 	u1, err := url.Parse(opts.url)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse getter URL: %w", err)
@@ -73,9 +79,6 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 		return nil, fmt.Errorf("unable to parse URL getting from: %w", err)
 	}
 
-	// Host on URL (returned from url.Parse) contains the port if present.
-	// This check ensures credentials are not passed between different
-	// services on different ports.
 	if opts.passCredentialsAll || (u1.Scheme == u2.Scheme && u1.Host == u2.Host) {
 		if opts.username != "" && opts.password != "" {
 			req.SetBasicAuth(opts.username, opts.password)
@@ -92,6 +95,7 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 		return nil, err
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to fetch %s : %s", href, resp.Status)
 	}
@@ -109,6 +113,9 @@ func NewHTTPGetter(options ...Option) (Getter, error) {
 		opt(&client.opts)
 	}
 
+	// 🔥 Generate session ID once per getter instance
+	client.sessionID = uuid.New().String()
+
 	return &client, nil
 }
 
@@ -120,11 +127,9 @@ func (g *HTTPGetter) httpClient(opts getterOptions) (*http.Client, error) {
 		}, nil
 	}
 
-	// Check if we need custom TLS configuration
 	needsCustomTLS := (opts.certFile != "" && opts.keyFile != "") || opts.caFile != "" || opts.insecureSkipVerifyTLS
 
 	if needsCustomTLS {
-		// Create a new transport for custom TLS to avoid race conditions
 		transport := &http.Transport{
 			DisableCompression: true,
 			Proxy:              http.ProxyFromEnvironment,
@@ -147,7 +152,6 @@ func (g *HTTPGetter) httpClient(opts getterOptions) (*http.Client, error) {
 		}, nil
 	}
 
-	// Use shared transport for default case (no custom TLS)
 	g.once.Do(func() {
 		g.transport = &http.Transport{
 			DisableCompression: true,
