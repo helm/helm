@@ -679,12 +679,11 @@ func TestHTTPTransportOption(t *testing.T) {
 	}
 }
 
-// 🔥 NEW TEST: Verify helm-session header is added to requests
 func TestHTTPGetterSessionHeader(t *testing.T) {
-	var capturedHeader string
+	var capturedHeaders []string
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		capturedHeader = r.Header.Get(helmSessionHeader)
+		capturedHeaders = append(capturedHeaders, r.Header.Get(helmSessionHeader))
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -694,12 +693,25 @@ func TestHTTPGetterSessionHeader(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = g.Get(srv.URL)
-	if err != nil {
+	// First request
+	if _, err := g.Get(srv.URL); err != nil {
 		t.Fatal(err)
 	}
 
-	if capturedHeader == "" {
+	// Second request (to verify persistence)
+	if _, err := g.Get(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(capturedHeaders) != 2 {
+		t.Fatalf("expected 2 requests, got %d", len(capturedHeaders))
+	}
+
+	if capturedHeaders[0] == "" {
 		t.Fatalf("expected %s header to be set, but it was empty", helmSessionHeader)
+	}
+
+	if capturedHeaders[0] != capturedHeaders[1] {
+		t.Errorf("expected session ID to be reused, but got %s and %s", capturedHeaders[0], capturedHeaders[1])
 	}
 }
