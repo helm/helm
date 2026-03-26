@@ -366,6 +366,12 @@ func (s *SQL) List(filter func(release.Releaser) bool) ([]release.Releaser, erro
 		return nil, err
 	}
 
+	customLabelsByRelease, err := s.getReleaseCustomLabelsMap(records)
+	if err != nil {
+		s.Logger().Debug("failed to list release custom labels", slog.Any("error", err))
+		return nil, err
+	}
+
 	var releases []release.Releaser
 	for _, record := range records {
 		release, err := decodeRelease(record.Body)
@@ -374,15 +380,7 @@ func (s *SQL) List(filter func(release.Releaser) bool) ([]release.Releaser, erro
 			continue
 		}
 
-		if release.Labels, err = s.getReleaseCustomLabels(record.Key, record.Namespace); err != nil {
-			s.Logger().Debug(
-				"failed to get release custom labels",
-				slog.String("namespace", record.Namespace),
-				slog.String("key", record.Key),
-				slog.Any("error", err),
-			)
-			return nil, err
-		}
+		release.Labels = customLabelsByRelease[record.Namespace][record.Key]
 		maps.Copy(release.Labels, getReleaseSystemLabels(release))
 
 		if filter(release) {
@@ -435,6 +433,12 @@ func (s *SQL) Query(labels map[string]string) ([]release.Releaser, error) {
 		return nil, ErrReleaseNotFound
 	}
 
+	customLabelsByRelease, err := s.getReleaseCustomLabelsMap(records)
+	if err != nil {
+		s.Logger().Debug("failed to list release custom labels", slog.Any("error", err))
+		return nil, err
+	}
+
 	var releases []release.Releaser
 	for _, record := range records {
 		release, err := decodeRelease(record.Body)
@@ -443,15 +447,7 @@ func (s *SQL) Query(labels map[string]string) ([]release.Releaser, error) {
 			continue
 		}
 
-		if release.Labels, err = s.getReleaseCustomLabels(record.Key, record.Namespace); err != nil {
-			s.Logger().Debug(
-				"failed to get release custom labels",
-				slog.String("namespace", record.Namespace),
-				slog.String("key", record.Key),
-				slog.Any("error", err),
-			)
-			return nil, err
-		}
+		release.Labels = customLabelsByRelease[record.Namespace][record.Key]
 
 		releases = append(releases, release)
 	}
@@ -714,6 +710,77 @@ func (s *SQL) getReleaseCustomLabels(key string, _ string) (map[string]string, e
 	}
 
 	return filterSystemLabels(labelsMap), nil
+}
+
+func (s *SQL) getReleaseCustomLabelsMap(records []SQLReleaseWrapper) (map[string]map[string]map[string]string, error) {
+	labelsByNamespaceAndKey := make(map[string]map[string]map[string]string)
+	if len(records) == 0 {
+		return labelsByNamespaceAndKey, nil
+	}
+
+	keys := make([]string, 0, len(records))
+	namespaces := make([]string, 0, len(records))
+	seen := make(map[string]struct{}, len(records))
+	for _, record := range records {
+		id := record.Namespace + "\x00" + record.Key
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		keys = append(keys, record.Key)
+		namespaces = append(namespaces, record.Namespace)
+		if labelsByNamespaceAndKey[record.Namespace] == nil {
+			labelsByNamespaceAndKey[record.Namespace] = make(map[string]map[string]string)
+		}
+		labelsByNamespaceAndKey[record.Namespace][record.Key] = make(map[string]string)
+	}
+
+	query, args, err := s.statementBuilder.
+		Select(
+			sqlCustomLabelsTableReleaseNamespaceColumn,
+			sqlCustomLabelsTableReleaseKeyColumn,
+			sqlCustomLabelsTableKeyColumn,
+			sqlCustomLabelsTableValueColumn,
+		).
+		From(sqlCustomLabelsTableName).
+		Where(sq.Eq{sqlCustomLabelsTableReleaseNamespaceColumn: namespaces}).
+		Where(sq.Eq{sqlCustomLabelsTableReleaseKeyColumn: keys}).
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	type customLabelRecord struct {
+		ReleaseNamespace string `db:"releaseNamespace"`
+		ReleaseKey       string `db:"releaseKey"`
+		Key              string `db:"key"`
+		Value            string `db:"value"`
+	}
+
+	var labelsList []customLabelRecord
+	if err := s.db.Select(&labelsList, query, args...); err != nil {
+		return nil, err
+	}
+
+	for _, item := range labelsList {
+		nsMap, ok := labelsByNamespaceAndKey[item.ReleaseNamespace]
+		if !ok {
+			continue
+		}
+		keyMap, ok := nsMap[item.ReleaseKey]
+		if !ok {
+			continue
+		}
+		keyMap[item.Key] = item.Value
+	}
+
+	for namespace, perKey := range labelsByNamespaceAndKey {
+		for key, labels := range perKey {
+			labelsByNamespaceAndKey[namespace][key] = filterSystemLabels(labels)
+		}
+	}
+
+	return labelsByNamespaceAndKey, nil
 }
 
 // Rebuild system labels from release object

@@ -133,20 +133,20 @@ func TestSQLList(t *testing.T) {
 		)
 
 		rows := mock.NewRows([]string{
+			sqlReleaseTableKeyColumn,
+			sqlReleaseTableNamespaceColumn,
 			sqlReleaseTableBodyColumn,
 		})
 		for _, r := range releases {
 			body, _ := encodeRelease(r)
-			rows.AddRow(body)
+			rows.AddRow("", r.Namespace, body)
 		}
 		mock.
 			ExpectQuery(regexp.QuoteMeta(query)).
 			WithArgs(sqlReleaseDefaultOwner, sqlDriver.namespace).
 			WillReturnRows(rows).RowsWillBeClosed()
 
-		for _, r := range releases {
-			mockGetReleaseCustomLabels(mock, "", r.Namespace, r.Labels)
-		}
+		mockGetReleaseCustomLabelsBatch(mock, releases)
 	}
 
 	// list all deleted releases
@@ -401,6 +401,8 @@ func TestSqlQuery(t *testing.T) {
 		WithArgs("smug-pigeon", sqlReleaseDefaultOwner, "unknown", "default").
 		WillReturnRows(
 			mock.NewRows([]string{
+				sqlReleaseTableKeyColumn,
+				sqlReleaseTableNamespaceColumn,
 				sqlReleaseTableBodyColumn,
 			}),
 		).RowsWillBeClosed()
@@ -410,13 +412,17 @@ func TestSqlQuery(t *testing.T) {
 		WithArgs("smug-pigeon", sqlReleaseDefaultOwner, "deployed", "default").
 		WillReturnRows(
 			mock.NewRows([]string{
+				sqlReleaseTableKeyColumn,
+				sqlReleaseTableNamespaceColumn,
 				sqlReleaseTableBodyColumn,
 			}).AddRow(
+				"",
+				deployedRelease.Namespace,
 				deployedReleaseBody,
 			),
 		).RowsWillBeClosed()
 
-	mockGetReleaseCustomLabels(mock, "", deployedRelease.Namespace, deployedRelease.Labels)
+	mockGetReleaseCustomLabelsBatch(mock, []*rspb.Release{deployedRelease})
 
 	query = fmt.Sprintf(
 		"SELECT %s, %s, %s FROM %s WHERE %s = $1 AND %s = $2 AND %s = $3",
@@ -434,16 +440,21 @@ func TestSqlQuery(t *testing.T) {
 		WithArgs("smug-pigeon", sqlReleaseDefaultOwner, "default").
 		WillReturnRows(
 			mock.NewRows([]string{
+				sqlReleaseTableKeyColumn,
+				sqlReleaseTableNamespaceColumn,
 				sqlReleaseTableBodyColumn,
 			}).AddRow(
+				"",
+				supersededRelease.Namespace,
 				supersededReleaseBody,
 			).AddRow(
+				"",
+				deployedRelease.Namespace,
 				deployedReleaseBody,
 			),
 		).RowsWillBeClosed()
 
-	mockGetReleaseCustomLabels(mock, "", supersededRelease.Namespace, supersededRelease.Labels)
-	mockGetReleaseCustomLabels(mock, "", deployedRelease.Namespace, deployedRelease.Labels)
+	mockGetReleaseCustomLabelsBatch(mock, []*rspb.Release{supersededRelease, deployedRelease})
 
 	_, err := sqlDriver.Query(labelSetUnknown)
 	if err == nil {
@@ -573,6 +584,34 @@ func mockGetReleaseCustomLabels(mock sqlmock.Sqlmock, key string, namespace stri
 	})
 	for k, v := range labels {
 		returnRows.AddRow(k, v)
+	}
+	eq.WillReturnRows(returnRows).RowsWillBeClosed()
+}
+
+func mockGetReleaseCustomLabelsBatch(mock sqlmock.Sqlmock, releases []*rspb.Release) {
+	query := fmt.Sprintf(
+		regexp.QuoteMeta("SELECT %s, %s, %s, %s FROM %s WHERE %s IN (")+".*"+regexp.QuoteMeta(") AND %s IN (")+".*"+regexp.QuoteMeta(")"),
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+		sqlCustomLabelsTableName,
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+		sqlCustomLabelsTableReleaseKeyColumn,
+	)
+
+	eq := mock.ExpectQuery(query)
+
+	returnRows := mock.NewRows([]string{
+		sqlCustomLabelsTableReleaseNamespaceColumn,
+		sqlCustomLabelsTableReleaseKeyColumn,
+		sqlCustomLabelsTableKeyColumn,
+		sqlCustomLabelsTableValueColumn,
+	})
+	for _, rel := range releases {
+		for k, v := range rel.Labels {
+			returnRows.AddRow(rel.Namespace, "", k, v)
+		}
 	}
 	eq.WillReturnRows(returnRows).RowsWillBeClosed()
 }
