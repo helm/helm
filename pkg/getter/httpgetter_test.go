@@ -680,10 +680,10 @@ func TestHTTPTransportOption(t *testing.T) {
 }
 
 func TestHTTPGetterSessionHeader(t *testing.T) {
-	var capturedHeaders []string
+	headerChan := make(chan string, 2)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		capturedHeaders = append(capturedHeaders, r.Header.Get(helmSessionHeader))
+		headerChan <- r.Header.Get(helmSessionHeader)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -703,15 +703,15 @@ func TestHTTPGetterSessionHeader(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(capturedHeaders) != 2 {
-		t.Fatalf("expected 2 requests, got %d", len(capturedHeaders))
+	// Read headers safely
+	h1 := <-headerChan
+	h2 := <-headerChan
+
+	if h1 == "" || h2 == "" {
+		t.Fatalf("expected %s header to be set", helmSessionHeader)
 	}
 
-	if capturedHeaders[0] == "" {
-		t.Fatalf("expected %s header to be set, but it was empty", helmSessionHeader)
-	}
-
-	if capturedHeaders[0] != capturedHeaders[1] {
-		t.Errorf("expected session ID to be reused, but got %s and %s", capturedHeaders[0], capturedHeaders[1])
+	if h1 != h2 {
+		t.Errorf("expected session ID to be reused, but got %s and %s", h1, h2)
 	}
 }
