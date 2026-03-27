@@ -64,6 +64,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 
 	files := []*archive.BufferedFile{}
 	topdir += string(filepath.Separator)
+	remaining := archive.MaxDecompressedChartSize
 
 	walk := func(name string, fi os.FileInfo, err error) error {
 		n := strings.TrimPrefix(name, topdir)
@@ -100,7 +101,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 			return fmt.Errorf("cannot load irregular file %s as it has file mode type bits set", name)
 		}
 
-		data, err := os.ReadFile(name)
+		data, err := archive.ReadFileWithBudget(name, fi.Size(), &remaining)
 		if err != nil {
 			return fmt.Errorf("error reading %s: %w", n, err)
 		}
