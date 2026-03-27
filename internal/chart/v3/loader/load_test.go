@@ -51,6 +51,20 @@ func TestLoadDir(t *testing.T) {
 	verifyDependenciesLock(t, c)
 }
 
+func TestLoadDirExceedsBudget(t *testing.T) {
+	orig := archive.MaxDecompressedChartSize
+	archive.MaxDecompressedChartSize = 1 // 1 byte budget
+	defer func() { archive.MaxDecompressedChartSize = orig }()
+
+	_, err := LoadDir("testdata/frobnitz")
+	if err == nil {
+		t.Fatal("expected error when chart directory exceeds budget")
+	}
+	if !strings.Contains(err.Error(), "chart exceeds maximum decompressed size") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestLoadDirWithDevNull(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("test only works on unix systems with /dev/null present")
