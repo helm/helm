@@ -1,3 +1,18 @@
+/*
+Copyright The Helm Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package getter
 
 import (
@@ -15,6 +30,8 @@ import (
 	"helm.sh/helm/v4/internal/version"
 )
 
+// helmSessionHeader is used to group HTTP requests initiated
+// during a single Helm command execution.
 const helmSessionHeader = "helm-session"
 
 // HTTPGetter is the default HTTP(/S) backend handler
@@ -40,7 +57,9 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 		return nil, err
 	}
 
-	// ✅ Optional session header (correct implementation)
+	// sessionID is generated once per HTTPGetter instance and,
+	// when sessionHeader is enabled, is sent with each request
+	// via the helm-session header for request correlation.
 	if g.sessionID != "" && opts.sessionHeader {
 		req.Header.Set(helmSessionHeader, g.sessionID)
 	}
@@ -62,7 +81,8 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse URL getting from: %w", err)
 	}
-
+	// Ensure credentials are only sent to the same host and scheme
+	// to prevent leaking credentials across different services.
 	if opts.passCredentialsAll || (u1.Scheme == u2.Scheme && u1.Host == u2.Host) {
 		if opts.username != "" && opts.password != "" {
 			req.SetBasicAuth(opts.username, opts.password)
@@ -97,6 +117,8 @@ func NewHTTPGetter(options ...Option) (Getter, error) {
 		opt(&client.opts)
 	}
 
+	// sessionID is generated once per HTTPGetter instance
+	// and reused across all requests when sessionHeader is enabled.
 	client.sessionID = uuid.New().String()
 
 	return &client, nil
