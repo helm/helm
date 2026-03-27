@@ -52,11 +52,7 @@ func TestLoadDir(t *testing.T) {
 }
 
 func TestLoadDirExceedsBudget(t *testing.T) {
-	orig := archive.MaxDecompressedChartSize
-	archive.MaxDecompressedChartSize = 1 // 1 byte budget
-	defer func() { archive.MaxDecompressedChartSize = orig }()
-
-	_, err := LoadDir("testdata/frobnitz")
+	_, err := loadDir("testdata/frobnitz", 1)
 	if err == nil {
 		t.Fatal("expected error when chart directory exceeds budget")
 	}

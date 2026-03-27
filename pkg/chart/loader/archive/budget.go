@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 )
 
@@ -43,7 +44,12 @@ func ReadFileWithBudget(path string, size int64, remaining *int64) ([]byte, erro
 
 	// Read at most *remaining+1 bytes so we can detect over-budget without
 	// allocating unbounded memory if the file grew since stat.
-	data, err := io.ReadAll(io.LimitReader(f, *remaining+1))
+	// Clamp to avoid int64 overflow when *remaining is near math.MaxInt64.
+	limit := *remaining
+	if limit < math.MaxInt64 {
+		limit++
+	}
+	data, err := io.ReadAll(io.LimitReader(f, limit))
 	if err != nil {
 		return nil, err
 	}
