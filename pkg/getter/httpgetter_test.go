@@ -688,22 +688,20 @@ func TestHTTPGetterSessionHeader(t *testing.T) {
 	}))
 	defer srv.Close()
 
+	// Create getter for HTTP session header test
 	g, err := NewHTTPGetter(WithURL(srv.URL))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// First request
 	if _, err := g.Get(srv.URL); err != nil {
 		t.Fatal(err)
 	}
 
-	// Second request (to verify persistence)
 	if _, err := g.Get(srv.URL); err != nil {
 		t.Fatal(err)
 	}
 
-	// Read headers safely
 	h1 := <-headerChan
 	h2 := <-headerChan
 
@@ -712,6 +710,6 @@ func TestHTTPGetterSessionHeader(t *testing.T) {
 	}
 
 	if h1 != h2 {
-		t.Errorf("expected session ID to be reused, but got %s and %s", h1, h2)
+		t.Errorf("expected same session ID, got %s and %s", h1, h2)
 	}
 }

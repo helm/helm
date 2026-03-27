@@ -30,7 +30,7 @@ import (
 	"helm.sh/helm/v4/internal/version"
 )
 
-// 🔥 Constant for session header
+// Add constant (minimal addition)
 const helmSessionHeader = "helm-session"
 
 // HTTPGetter is the default HTTP(/S) backend handler
@@ -38,7 +38,9 @@ type HTTPGetter struct {
 	opts      getterOptions
 	transport *http.Transport
 	once      sync.Once
-	sessionID string // 🔥 Stores session ID for request grouping
+
+	// Add session field (minimal addition)
+	sessionID string
 }
 
 // Get performs a Get from repo.Getter and returns the body.
@@ -56,7 +58,7 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 		return nil, err
 	}
 
-	// 🔥 Add Helm session header to group requests from a single command execution
+	// Set helm session header for traceability
 	if g.sessionID != "" {
 		req.Header.Set(helmSessionHeader, g.sessionID)
 	}
@@ -113,7 +115,7 @@ func NewHTTPGetter(options ...Option) (Getter, error) {
 		opt(&client.opts)
 	}
 
-	// 🔥 Generate session ID once per getter instance
+	// Generate session ID (minimal addition)
 	client.sessionID = uuid.New().String()
 
 	return &client, nil
