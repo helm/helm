@@ -17,23 +17,37 @@ limitations under the License.
 package archive
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 )
 
 // ReadFileWithBudget reads a file and decrements remaining by the bytes read.
 // It returns an error if the total would exceed MaxDecompressedChartSize.
+// The read is capped via io.LimitReader so a file that grows between stat
+// and read cannot cause unbounded memory allocation.
 func ReadFileWithBudget(path string, size int64, remaining *int64) ([]byte, error) {
+	if remaining == nil {
+		return nil, errors.New("remaining budget must not be nil")
+	}
 	if size > *remaining {
 		return nil, fmt.Errorf("chart exceeds maximum decompressed size of %d bytes", MaxDecompressedChartSize)
 	}
 
-	data, err := os.ReadFile(path)
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	// Read at most *remaining+1 bytes so we can detect over-budget without
+	// allocating unbounded memory if the file grew since stat.
+	data, err := io.ReadAll(io.LimitReader(f, *remaining+1))
 	if err != nil {
 		return nil, err
 	}
 
-	// Re-check with actual length: the file may have grown between stat and read.
 	if int64(len(data)) > *remaining {
 		return nil, fmt.Errorf("chart exceeds maximum decompressed size of %d bytes", MaxDecompressedChartSize)
 	}
