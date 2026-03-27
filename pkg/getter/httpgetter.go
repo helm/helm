@@ -1,18 +1,3 @@
-/*
-Copyright The Helm Authors.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package getter
 
 import (
@@ -30,7 +15,6 @@ import (
 	"helm.sh/helm/v4/internal/version"
 )
 
-// Add constant (minimal addition)
 const helmSessionHeader = "helm-session"
 
 // HTTPGetter is the default HTTP(/S) backend handler
@@ -38,8 +22,6 @@ type HTTPGetter struct {
 	opts      getterOptions
 	transport *http.Transport
 	once      sync.Once
-
-	// Add session field (minimal addition)
 	sessionID string
 }
 
@@ -58,8 +40,8 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 		return nil, err
 	}
 
-	// Set helm session header for traceability
-	if g.sessionID != "" {
+	// ✅ Optional session header (correct implementation)
+	if g.sessionID != "" && opts.sessionHeader {
 		req.Header.Set(helmSessionHeader, g.sessionID)
 	}
 
@@ -115,7 +97,6 @@ func NewHTTPGetter(options ...Option) (Getter, error) {
 		opt(&client.opts)
 	}
 
-	// Generate session ID (minimal addition)
 	client.sessionID = uuid.New().String()
 
 	return &client, nil

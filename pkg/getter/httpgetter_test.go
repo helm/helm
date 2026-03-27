@@ -689,7 +689,7 @@ func TestHTTPGetterSessionHeader(t *testing.T) {
 	defer srv.Close()
 
 	// Create getter for HTTP session header test
-	g, err := NewHTTPGetter(WithURL(srv.URL))
+	g, err := NewHTTPGetter(WithURL(srv.URL), WithSessionHeader(true))
 	if err != nil {
 		t.Fatal(err)
 	}
