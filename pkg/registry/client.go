@@ -202,13 +202,15 @@ func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 	}
 }
 
-// ClientOptHTTPClient returns a function that sets the httpClient setting on a client options set
+// ClientOptHTTPClient returns a function that sets the HTTP client for the registry client.
 func ClientOptHTTPClient(httpClient *http.Client) ClientOption {
 	return func(client *Client) {
 		client.httpClient = httpClient
 	}
 }
 
+// ClientOptPlainHTTP returns a function that enables plain HTTP (non-TLS)
+// communication for the registry client.
 func ClientOptPlainHTTP() ClientOption {
 	return func(c *Client) {
 		c.plainHTTP = true
@@ -236,7 +238,7 @@ func warnIfHostHasPath(host string) bool {
 	return false
 }
 
-// Login logs into a registry
+// Login authenticates the client with a remote OCI registry using the provided host and options.
 func (c *Client) Login(host string, options ...LoginOption) error {
 	for _, option := range options {
 		option(&loginOperation{host, c})
@@ -282,7 +284,8 @@ func LoginOptBasicAuth(username string, password string) LoginOption {
 	}
 }
 
-// LoginOptPlainText returns a function that allows plaintext (HTTP) login
+// LoginOptPlainText returns a function that enables plaintext (HTTP) login
+// instead of HTTPS for the registry client.
 func LoginOptPlainText(isPlainText bool) LoginOption {
 	return func(o *loginOperation) {
 		o.client.plainHTTP = isPlainText
