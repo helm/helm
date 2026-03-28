@@ -765,3 +765,121 @@ func TestCoalesceValuesEmptyMapWithNils(t *testing.T) {
 	is.True(ok, "Expected data.baz key to be present but it was removed")
 	is.Nil(data["baz"], "Expected data.baz key to be nil but it is not")
 }
+
+// TestCoalesceValuesSubchartDefaultNilsCleaned tests that nil values in subchart defaults
+// are cleaned up during coalescing when the parent doesn't set those keys.
+// Regression test for issue #31919.
+func TestCoalesceValuesSubchartDefaultNilsCleaned(t *testing.T) {
+	is := assert.New(t)
+
+	// Subchart has a default with nil values (e.g. keyMapping: {password: null})
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Values: map[string]any{
+			"keyMapping": map[string]any{
+				"password": nil,
+			},
+		},
+	}
+
+	parent := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values:   map[string]any{},
+	}, subchart)
+
+	// Parent user values don't mention keyMapping at all
+	vals := map[string]any{}
+
+	v, err := CoalesceValues(parent, vals)
+	is.NoError(err)
+
+	childVals, ok := v["child"].(map[string]any)
+	is.True(ok, "child values should be a map")
+
+	keyMapping, ok := childVals["keyMapping"].(map[string]any)
+	is.True(ok, "keyMapping should be a map")
+
+	// The nil "password" key from chart defaults should be cleaned up
+	_, ok = keyMapping["password"]
+	is.False(ok, "Expected keyMapping.password (nil from chart defaults) to be removed, but it is still present")
+}
+
+// TestCoalesceValuesUserNullErasesSubchartDefault tests that a user-supplied null
+// value erases a subchart's default value during coalescing.
+// Regression test for issue #31919.
+func TestCoalesceValuesUserNullErasesSubchartDefault(t *testing.T) {
+	is := assert.New(t)
+
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Values: map[string]any{
+			"someKey": "default",
+		},
+	}
+
+	parent := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values:   map[string]any{},
+	}, subchart)
+
+	// User explicitly nullifies the subchart key via parent values
+	vals := map[string]any{
+		"child": map[string]any{
+			"someKey": nil,
+		},
+	}
+
+	v, err := CoalesceValues(parent, vals)
+	is.NoError(err)
+
+	childVals, ok := v["child"].(map[string]any)
+	is.True(ok, "child values should be a map")
+
+	// someKey should be erased — user null overrides subchart default
+	_, ok = childVals["someKey"]
+	is.False(ok, "Expected someKey to be removed by user null override, but it is still present")
+}
+
+// TestCoalesceValuesSubchartNilDoesNotShadowGlobal tests that a nil value in
+// subchart defaults doesn't shadow a global value accessible via pluck-like access.
+// Regression test for issue #31971.
+func TestCoalesceValuesSubchartNilDoesNotShadowGlobal(t *testing.T) {
+	is := assert.New(t)
+
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Values: map[string]any{
+			"ingress": map[string]any{
+				"feature": nil, // nil in subchart defaults
+			},
+		},
+	}
+
+	parent := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values:   map[string]any{},
+	}, subchart)
+
+	// Parent sets the global value
+	vals := map[string]any{
+		"global": map[string]any{
+			"ingress": map[string]any{
+				"feature": true,
+			},
+		},
+	}
+
+	v, err := CoalesceValues(parent, vals)
+	is.NoError(err)
+
+	childVals, ok := v["child"].(map[string]any)
+	is.True(ok, "child values should be a map")
+
+	ingress, ok := childVals["ingress"].(map[string]any)
+	is.True(ok, "ingress should be a map")
+
+	// The nil "feature" from subchart defaults should be cleaned up,
+	// so that pluck can fall through to the global value
+	_, ok = ingress["feature"]
+	is.False(ok, "Expected ingress.feature (nil from chart defaults) to be removed so global can be used via pluck, but it is still present")
+}
