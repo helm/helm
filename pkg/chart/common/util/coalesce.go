@@ -251,6 +251,12 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 					// If the key is a child chart, coalesce tables with Merge set to true
 					merge := childChartMergeTrue(c, key, merge)
 
+					// When coalescing, clean nils from chart defaults before merging
+					// so they don't leak into the result.
+					if !merge {
+						cleanNilValues(src)
+					}
+
 					// Because v has higher precedence than nv, dest values override src
 					// values.
 					coalesceTablesFullKey(printf, dest, src, concatPrefix(subPrefix, key), merge)
@@ -258,6 +264,16 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 			}
 		} else {
 			// If the key is not in v, copy it from nv.
+			// When coalescing, skip chart default nils and clean nils from
+			// nested maps so they don't shadow globals or produce %!s(<nil>).
+			if !merge {
+				if val == nil {
+					continue
+				}
+				if sub, ok := val.(map[string]any); ok {
+					cleanNilValues(sub)
+				}
+			}
 			v[key] = val
 		}
 	}
@@ -326,7 +342,6 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]any, prefix strin
 			// But if src also has nil (or key not in src), preserve the nil
 			delete(dst, key)
 		} else if !ok {
-			// key not in user values, preserve src value (including nil)
 			dst[key] = val
 		} else if istable(val) {
 			if istable(dv) {
@@ -339,6 +354,18 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]any, prefix strin
 		}
 	}
 	return dst
+}
+
+// cleanNilValues recursively removes nil entries from a map so that chart
+// default nils don't leak into the coalesced result.
+func cleanNilValues(m map[string]any) {
+	for key, val := range m {
+		if val == nil {
+			delete(m, key)
+		} else if sub, ok := val.(map[string]any); ok {
+			cleanNilValues(sub)
+		}
+	}
 }
 
 // istable is a special-purpose function to see if the present thing matches the definition of a YAML table.
