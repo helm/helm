@@ -883,3 +883,48 @@ func TestCoalesceValuesSubchartNilDoesNotShadowGlobal(t *testing.T) {
 	_, ok = ingress["feature"]
 	is.False(ok, "Expected ingress.feature (nil from chart defaults) to be removed so global can be used via pluck, but it is still present")
 }
+
+// TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides tests that nil
+// values in subchart defaults are cleaned even when the user partially overrides
+// the same map. Regression test for the coalesceTablesFullKey merge path.
+func TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides(t *testing.T) {
+	is := assert.New(t)
+
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Values: map[string]any{
+			"keyMapping": map[string]any{
+				"password": nil,
+				"format":   "bcrypt",
+			},
+		},
+	}
+
+	parent := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values:   map[string]any{},
+	}, subchart)
+
+	// User overrides format but doesn't mention password
+	vals := map[string]any{
+		"child": map[string]any{
+			"keyMapping": map[string]any{
+				"format": "sha256",
+			},
+		},
+	}
+
+	v, err := CoalesceValues(parent, vals)
+	is.NoError(err)
+
+	childVals, ok := v["child"].(map[string]any)
+	is.True(ok, "child values should be a map")
+
+	keyMapping, ok := childVals["keyMapping"].(map[string]any)
+	is.True(ok, "keyMapping should be a map")
+
+	is.Equal("sha256", keyMapping["format"], "User override should be preserved")
+
+	_, ok = keyMapping["password"]
+	is.False(ok, "Expected keyMapping.password (nil from chart defaults) to be removed even when user partially overrides the map")
+}
