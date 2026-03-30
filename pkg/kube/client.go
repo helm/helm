@@ -1241,7 +1241,7 @@ func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts 
 			return fmt.Errorf("conflict occurred while applying object %s/%s %s: %w", target.Namespace, target.Name, target.Mapping.GroupVersionKind.String(), err)
 		}
 
-		return err
+		return fmt.Errorf("server-side apply failed for object %s/%s %s: %w", target.Namespace, target.Name, target.Mapping.GroupVersionKind.String(), err)
 	}
 
 	return target.Refresh(obj, true)
