@@ -346,6 +346,90 @@ func TestUpdateThreeWayMerge(t *testing.T) {
 	testUpdate(t, true)
 }
 
+// TestUpdateRollbackMissingOriginal tests the rollback scenario where:
+//   - Revision 1 had "newpod"
+//   - Revision 2 removed "newpod" but the upgrade failed (original list is empty)
+//   - Cluster still has "newpod" from Revision 1, but with different spec than the rollback target
+//   - Rolling back to Revision 1 (target with "newpod") should succeed using cluster state as baseline
+//     and must issue a real PATCH to reconcile the diff, not silently skip due to an empty patch.
+func TestUpdateRollbackMissingOriginal(t *testing.T) {
+	// target is Revision 1: newpod with port 443 (https).
+	listTarget := newPodList("newpod")
+	listTarget.Items[0].Spec.Containers[0].Ports = []v1.ContainerPort{
+		{Name: "https", ContainerPort: 443},
+	}
+
+	// clusterPod is what the cluster currently has: newpod with port 80 (http).
+	// It deliberately differs from listTarget so that createPatch produces a
+	// non-empty patch and the PATCH request is actually issued.
+	clusterPod := newPod("newpod")
+
+	var actions []string
+	c := newTestClient(t)
+	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			p, m := req.URL.Path, req.Method
+			actions = append(actions, p+":"+m)
+			t.Logf("got request %s %s", p, m)
+			switch {
+			case p == "/namespaces/default/pods/newpod" && m == "GET":
+				// Return the cluster state (port 80), which differs from the
+				// rollback target (port 443), ensuring a non-empty patch.
+				return newResponse(200, &clusterPod)
+			case p == "/namespaces/default/pods/newpod" && m == "PATCH":
+				return newResponse(200, &listTarget.Items[0])
+			default:
+				t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
+				return nil, nil
+			}
+		}),
+	}
+
+	// original is empty (Revision 2 had removed "newpod" but upgrade failed)
+	original, err := c.Build(objBody(&v1.PodList{}), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// target is Revision 1 which had "newpod"
+	target, err := c.Build(objBody(&listTarget), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := c.Update(original, target, false)
+	if err != nil {
+		t.Fatalf("expected no error during rollback, got: %v", err)
+	}
+
+	if len(result.Created) != 0 {
+		t.Errorf("expected 0 resources created, got %d", len(result.Created))
+	}
+	if len(result.Updated) != 1 {
+		t.Errorf("expected 1 resource updated, got %d", len(result.Updated))
+	}
+	if len(result.Deleted) != 0 {
+		t.Errorf("expected 0 resources deleted, got %d", len(result.Deleted))
+	}
+
+	// Assert that the rollback path issued at least one real PATCH (not just
+	// GETs), and that no POST or DELETE was issued.
+	var patchCount int
+	for _, a := range actions {
+		switch {
+		case strings.HasSuffix(a, ":POST"):
+			t.Errorf("unexpected POST during rollback (actions: %v)", actions)
+		case strings.HasSuffix(a, ":DELETE"):
+			t.Errorf("unexpected DELETE during rollback (actions: %v)", actions)
+		case strings.HasSuffix(a, ":PATCH"):
+			patchCount++
+		}
+	}
+	if patchCount == 0 {
+		t.Errorf("expected at least one PATCH request during rollback, got actions: %v", actions)
+	}
+}
+
 func TestBuild(t *testing.T) {
 	tests := []struct {
 		name      string
