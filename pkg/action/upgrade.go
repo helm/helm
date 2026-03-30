@@ -121,6 +121,10 @@ type Upgrade struct {
 	// If this is non-nil, then after templates are rendered, they will be sent to the
 	// post renderer before sending to the Kubernetes API server.
 	PostRenderer postrenderer.PostRenderer
+	// PostRenderStrategy controls how hooks and regular templates are passed
+	// to the configured post-renderer. See PostRenderStrategy for the
+	// available modes. Defaults to PostRenderStrategyCombined.
+	PostRenderStrategy PostRenderStrategy
 	// DisableOpenAPIValidation controls whether OpenAPI validation is enforced.
 	DisableOpenAPIValidation bool
 	// Get missing dependencies
@@ -141,9 +145,10 @@ type resultMessage struct {
 // NewUpgrade creates a new Upgrade object with the given configuration.
 func NewUpgrade(cfg *Configuration) *Upgrade {
 	up := &Upgrade{
-		cfg:             cfg,
-		ServerSideApply: "auto", // Must always match the CLI default.
-		DryRunStrategy:  DryRunNone,
+		cfg:                cfg,
+		ServerSideApply:    "auto", // Must always match the CLI default.
+		DryRunStrategy:     DryRunNone,
+		PostRenderStrategy: PostRenderStrategyCombined,
 	}
 	up.registryClient = cfg.RegistryClient
 
@@ -296,7 +301,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 		return nil, nil, false, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret)
+	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret, u.PostRenderStrategy)
 	if err != nil {
 		return nil, nil, false, err
 	}
