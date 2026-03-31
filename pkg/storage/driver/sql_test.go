@@ -139,7 +139,7 @@ func TestSQLList(t *testing.T) {
 		})
 		for _, r := range releases {
 			body, _ := encodeRelease(r)
-			rows.AddRow("", r.Namespace, body)
+			rows.AddRow(testKey(r.Name, r.Version), r.Namespace, body)
 		}
 		mock.
 			ExpectQuery(regexp.QuoteMeta(query)).
