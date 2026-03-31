@@ -435,7 +435,7 @@ func (s *SQL) Query(labels map[string]string) ([]release.Releaser, error) {
 
 	customLabelsByRelease, err := s.getReleaseCustomLabelsMap(records)
 	if err != nil {
-		s.Logger().Debug("failed to list release custom labels", slog.Any("error", err))
+		s.Logger().Debug("failed to query release custom labels", slog.Any("error", err))
 		return nil, err
 	}
 
