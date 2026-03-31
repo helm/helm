@@ -610,7 +610,8 @@ func mockGetReleaseCustomLabelsBatch(mock sqlmock.Sqlmock, releases []*rspb.Rele
 	})
 	for _, rel := range releases {
 		for k, v := range rel.Labels {
-			returnRows.AddRow(rel.Namespace, "", k, v)
+			releaseKey := fmt.Sprintf("%s.v%d", rel.Name, rel.Version)
+			returnRows.AddRow(rel.Namespace, releaseKey, k, v)
 		}
 	}
 	eq.WillReturnRows(returnRows).RowsWillBeClosed()
