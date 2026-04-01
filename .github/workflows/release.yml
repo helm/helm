@@ -1,13 +1,18 @@
 name: release
+
 on:
-  create:
-    tags:
-      - v*
   push:
+    tags:
+      - 'v*'
     branches:
       - main
 
-permissions: read-all
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 # Note the only differences between release and canary-release jobs are:
 # - only canary passes --overwrite flag
@@ -32,8 +37,10 @@ jobs:
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true
+
       - name: Run unit tests
         run: make test-coverage
+
       - name: Build Helm Binaries
         run: |
           set -eu -o pipefail
@@ -101,6 +108,7 @@ jobs:
 
       - name: Build Helm Binaries
         run: |
+          set -eu -o pipefail
           make build-cross
           make dist checksum VERSION="canary"
 
