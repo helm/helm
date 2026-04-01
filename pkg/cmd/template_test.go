@@ -114,6 +114,12 @@ func TestTemplateCmd(t *testing.T) {
 			repeat: 10,
 		},
 		{
+			name:   "template with show-only globstar",
+			cmd:    fmt.Sprintf("template '%s' --show-only **/service.yaml ", chartPath),
+			golden: "output/template-show-only-globstar.txt",
+			repeat: 10,
+		},
+		{
 			name:   "sorted output of manifests (order of filenames, then order of objects within each YAML file)",
 			cmd:    fmt.Sprintf("template '%s'", "testdata/testcharts/object-order"),
 			golden: "output/object-order.txt",
