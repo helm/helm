@@ -227,6 +227,8 @@ type (
 	}
 )
 
+// hostRegex is a pretty naive regex for validating host urls. The goal of it is not to ultimately validate all possible valid hosts,
+// but to catch common user errors such as including a scheme or path in the host string.
 var hostRegex = regexp.MustCompile(`^(?P<scheme>[a-z]*:\/\/)?(?P<host>[a-zA-Z0-9-\.\:]+)(?P<path>\/.*)?$`)
 
 // validateHost checks that the host matches some required pre-checks e.g. does not contain a scheme or path.
