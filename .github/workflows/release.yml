@@ -1,4 +1,5 @@
 name: release
+
 on:
   create:
     tags:
@@ -7,20 +8,20 @@ on:
     branches:
       - main
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions: read-all
 
-# Note the only differences between release and canary-release jobs are:
-# - only canary passes --overwrite flag
-# - the VERSION make variable passed to 'make dist checksum' is expected to
-#   be "canary" if the job is triggered by a push to "main" branch. If the
-#   job is triggered by a tag push, VERSION should be the tag ref.
 jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'helm/helm'
     runs-on: ubuntu-latest-16-cores
+    timeout-minutes: 30
     steps:
       - name: Checkout source code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0
 
@@ -28,28 +29,29 @@ jobs:
         run: cat ".github/env" >> "$GITHUB_ENV"
 
       - name: Setup Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # pin@6.2.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true
+
       - name: Run unit tests
         run: make test-coverage
+
       - name: Build Helm Binaries
         run: |
-          set -eu -o pipefail
-
+          set -euo pipefail
           make build-cross VERSION="${{ github.ref_name }}"
           make dist checksum VERSION="${{ github.ref_name }}"
 
       - name: Set latest version
         run: |
-          set -eu -o pipefail
+          set -euo pipefail
 
           mkdir -p _dist_versions
 
-          # Push the latest semver tag, excluding prerelease tags
           LATEST_VERSION="$(git tag | sort -r --version-sort | grep '^v[0-9]' | grep -v '-' | head -n1)"
           echo "LATEST_VERSION=${LATEST_VERSION}"
+
           if [[ "${LATEST_VERSION}" != v4.* ]]; then
             echo "Error: Latest version ${LATEST_VERSION} is not a v4 release"
             exit 1
@@ -59,7 +61,7 @@ jobs:
           echo "${LATEST_VERSION}" > _dist_versions/helm4-latest-version
 
       - name: Upload Binaries
-        uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
+        uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50
         env:
           AZURE_STORAGE_CONNECTION_STRING: "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
           AZURE_STORAGE_CONTAINER_NAME: "${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}"
@@ -70,7 +72,7 @@ jobs:
           extra_args: '--pattern helm-*'
 
       - name: Upload Version tag files
-        uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
+        uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50
         env:
           AZURE_STORAGE_CONNECTION_STRING: "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
           AZURE_STORAGE_CONTAINER_NAME: "${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}"
@@ -82,16 +84,17 @@ jobs:
 
   canary-release:
     runs-on: ubuntu-latest-16-cores
+    timeout-minutes: 30
     if: github.ref == 'refs/heads/main' && github.repository == 'helm/helm'
     steps:
       - name: Checkout source code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Add variables to environment file
         run: cat ".github/env" >> "$GITHUB_ENV"
 
       - name: Setup Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # pin@6.2.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true
@@ -101,15 +104,15 @@ jobs:
 
       - name: Build Helm Binaries
         run: |
+          set -euo pipefail
           make build-cross
           make dist checksum VERSION="canary"
 
       - name: Upload Binaries
-        uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50 # pin@3.0.0
+        uses: bacongobbler/azure-blob-storage-upload@50f7d898b7697e864130ea04c303ca38b5751c50
         with:
           source_dir: _dist
           container_name: ${{ secrets.AZURE_STORAGE_CONTAINER_NAME }}
           connection_string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           extra_args: '--pattern helm-*'
-          # WARNING: this will overwrite existing blobs in your blob storage
           overwrite: 'true'
