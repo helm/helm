@@ -169,6 +169,51 @@ func TestValidateHost(t *testing.T) {
 			host:    "oci://ghcr.io",
 			wantErr: true,
 		},
+		{
+			name:    "domain with uppercase scheme",
+			host:    "HTTPS://ghcr.io",
+			wantErr: true,
+		},
+		{
+			name:    "scheme with plus sign",
+			host:    "coap+tcp://ghcr.io",
+			wantErr: true,
+		},
+		{
+			name:    "scheme with dot and hyphen",
+			host:    "my.custom-scheme://ghcr.io",
+			wantErr: true,
+		},
+		{
+			name:    "IPv6 loopback with port",
+			host:    "[::1]:5000",
+			wantErr: false,
+		},
+		{
+			name:    "IPv6 full address with port",
+			host:    "[2001:db8::1]:443",
+			wantErr: false,
+		},
+		{
+			name:    "IPv4 address with port",
+			host:    "192.168.1.1:5000",
+			wantErr: false,
+		},
+		{
+			name:    "host with underscore",
+			host:    "my_registry.local",
+			wantErr: false,
+		},
+		{
+			name:    "scheme with path",
+			host:    "https://ghcr.io/myrepo",
+			wantErr: true,
+		},
+		{
+			name:    "empty string",
+			host:    "",
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
