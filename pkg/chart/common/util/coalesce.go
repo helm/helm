@@ -356,7 +356,7 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]any, prefix strin
 	return dst
 }
 
-// cleanNilValues recursively removes nil entries from a map so that chart
+// cleanNilValues recursively removes nil entries in-place from a map so that chart
 // default nils don't leak into the coalesced result.
 func cleanNilValues(m map[string]any) {
 	for key, val := range m {
