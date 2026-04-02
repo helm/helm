@@ -19,6 +19,7 @@ package fake
 
 import (
 	"io"
+	"sync"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,8 +48,9 @@ type FailingKubeClient struct {
 	WaitForDeleteError     error
 	WatchUntilReadyError   error
 	WaitDuration           time.Duration
-	// RecordedWaitOptions stores the WaitOptions passed to GetWaiter for testing
-	RecordedWaitOptions []kube.WaitOption
+	// recordedWaitOptions stores the WaitOptions passed to GetWaiter for testing
+	recordedWaitOptions []kube.WaitOption
+	mu                  sync.Mutex
 }
 
 var _ kube.Interface = &FailingKubeClient{}
@@ -158,9 +160,19 @@ func (f *FailingKubeClient) GetWaiter(ws kube.WaitStrategy) (kube.Waiter, error)
 	return f.GetWaiterWithOptions(ws)
 }
 
+// GetRecordedWaitOptions returns the recorded WaitOptions in a thread-safe manner.
+func (f *FailingKubeClient) GetRecordedWaitOptions() []kube.WaitOption {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	dst := make([]kube.WaitOption, len(f.recordedWaitOptions))
+	copy(dst, f.recordedWaitOptions)
+	return dst
+}
+
 func (f *FailingKubeClient) GetWaiterWithOptions(ws kube.WaitStrategy, opts ...kube.WaitOption) (kube.Waiter, error) {
-	// Record the WaitOptions for testing
-	f.RecordedWaitOptions = append(f.RecordedWaitOptions, opts...)
+	f.mu.Lock()
+	f.recordedWaitOptions = append(f.recordedWaitOptions, opts...)
+	f.mu.Unlock()
 	waiter, _ := f.PrintingKubeClient.GetWaiterWithOptions(ws, opts...)
 	printingKubeWaiter, _ := waiter.(*PrintingKubeWaiter)
 	return &FailingKubeWaiter{
