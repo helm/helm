@@ -109,6 +109,13 @@ func (p *Package) Run(path string, _ map[string]any) (string, error) {
 		}
 	}
 
+	// Apply SOURCE_DATE_EPOCH for reproducible builds if set.
+	epoch, err := chartutil.ParseSourceDateEpoch()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: %v\n", err)
+	}
+	chartutil.ApplySourceDateEpoch(ch, epoch)
+
 	var dest string
 	if p.Destination == "." {
 		// Save to the current working directory.
