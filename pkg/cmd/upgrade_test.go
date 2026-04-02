@@ -190,6 +190,12 @@ func TestUpgradeCmd(t *testing.T) {
 			golden: "output/upgrade-uninstalled-with-keep-history.txt",
 			rels:   []*release.Release{relWithStatusMock("funny-bunny", 2, ch, rcommon.StatusUninstalled)},
 		},
+		{
+			name:   "upgrade with schema file containing $ref",
+			cmd:    "upgrade reftest testdata/testcharts/chart-with-schema-ref",
+			golden: "output/upgrade-schema-ref.txt",
+			rels:   []*release.Release{relMock("reftest", 1, ch)},
+		},
 	}
 	runTestCmd(t, tests)
 }
