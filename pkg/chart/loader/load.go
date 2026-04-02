@@ -100,7 +100,6 @@ func LoadDir(dir string) (chart.Charter, error) {
 	default:
 		return nil, errors.New("unsupported chart version")
 	}
-
 }
 
 // FileLoader loads a chart from a file
