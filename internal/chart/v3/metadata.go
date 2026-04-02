@@ -81,6 +81,8 @@ type Metadata struct {
 	Dependencies []*Dependency `json:"dependencies,omitempty"`
 	// Specifies the chart type: application or library
 	Type string `json:"type,omitempty"`
+	// Specifies the chart URL that was used to initially install a chart.
+	RepoURL string `json:"repoURL,omitempty"`
 }
 
 // Validate checks the metadata for known issues and sanitizes string
@@ -98,6 +100,7 @@ func (md *Metadata) Validate() error {
 	md.Tags = sanitizeString(md.Tags)
 	md.AppVersion = sanitizeString(md.AppVersion)
 	md.KubeVersion = sanitizeString(md.KubeVersion)
+	md.RepoURL = sanitizeString(md.RepoURL)
 	for i := range md.Sources {
 		md.Sources[i] = sanitizeString(md.Sources[i])
 	}
