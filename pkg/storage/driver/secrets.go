@@ -84,11 +84,51 @@ func (secrets *Secrets) Get(key string) (release.Releaser, error) {
 	return r, nil
 }
 
+// listPages is a common method to list release with pagination
+func (secrets *Secrets) listPages(f func(page []release.Releaser, remaining bool) (end bool), opts metav1.ListOptions, filter func(release.Releaser) bool) (err error) {
+	if opts.Limit == 0 {
+		opts.Limit = DefaultPaginationLimit
+	}
+
+Loop:
+	for {
+		list, err := secrets.impl.List(context.Background(), opts)
+		if nil != err {
+			return err
+		}
+		opts.Continue = list.Continue
+
+		var results []release.Releaser
+
+		// iterate over the secrets object list
+		// and decode each release
+		for _, item := range list.Items {
+			rls, err := decodeRelease(string(item.Data["release"]))
+			if err != nil {
+				secrets.Logger().Debug("list failed to decode release", "key", item.Name, slog.Any("error", err))
+				continue
+			}
+
+			rls.Labels = item.Labels
+
+			if filter(rls) {
+				results = append(results, rls)
+			}
+		}
+
+		if f(results, list.Continue != "") {
+			break Loop
+		}
+	}
+
+	return nil
+}
+
 // List fetches all releases and returns the list releases such
 // that filter(release) == true. An error is returned if the
 // secret fails to retrieve the releases.
 func (secrets *Secrets) List(filter func(release.Releaser) bool) ([]release.Releaser, error) {
-	lsel := kblabels.Set{"owner": "helm"}.AsSelector()
+	lsel := kblabels.Set{"owner": owner}.AsSelector()
 	opts := metav1.ListOptions{LabelSelector: lsel.String()}
 
 	list, err := secrets.impl.List(context.Background(), opts)
@@ -117,6 +157,14 @@ func (secrets *Secrets) List(filter func(release.Releaser) bool) ([]release.Rele
 		}
 	}
 	return results, nil
+}
+
+// ListPages same as List, but with pagination
+func (secrets *Secrets) ListPages(f func(page []release.Releaser, remaining bool) (end bool), limit int64, filter func(release.Releaser) bool) error {
+	lsel := kblabels.Set{"owner": owner}.AsSelector()
+	opts := metav1.ListOptions{Limit: limit, LabelSelector: lsel.String()}
+
+	return secrets.listPages(f, opts, filter)
 }
 
 // Query fetches all releases that match the provided map of labels.
@@ -156,6 +204,21 @@ func (secrets *Secrets) Query(labels map[string]string) ([]release.Releaser, err
 		results = append(results, rls)
 	}
 	return results, nil
+}
+
+// QueryPages same as Query, but with pagination
+func (secrets *Secrets) QueryPages(f func(page []release.Releaser, remaining bool) (end bool), limit int64, labels map[string]string) error {
+	ls := kblabels.Set{}
+	for k, v := range labels {
+		if errs := validation.IsValidLabelValue(v); len(errs) != 0 {
+			return fmt.Errorf("invalid label value: %q: %s", v, strings.Join(errs, "; "))
+		}
+		ls[k] = v
+	}
+
+	opts := metav1.ListOptions{Limit: limit, LabelSelector: ls.AsSelector().String()}
+
+	return secrets.listPages(f, opts, func(release.Releaser) bool { return true })
 }
 
 // Create creates a new Secret holding the release. If the
@@ -244,8 +307,6 @@ func (secrets *Secrets) Delete(key string) (rls release.Releaser, err error) {
 //	"owner"          - owner of the secret, currently "helm".
 //	"name"           - name of the release.
 func newSecretsObject(key string, rls *rspb.Release, lbs labels) (*v1.Secret, error) {
-	const owner = "helm"
-
 	// encode the release
 	s, err := encodeRelease(rls)
 	if err != nil {
