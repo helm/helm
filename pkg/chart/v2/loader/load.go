@@ -120,7 +120,7 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 				c.Metadata = new(chart.Metadata)
 			}
 			if c.Metadata.APIVersion != chart.APIVersionV1 {
-				log.Printf("Warning: Dependencies are handled in Chart.yaml since apiVersion \"v2\". We recommend migrating dependencies to Chart.yaml.")
+				log.Print("Warning: Dependencies are handled in Chart.yaml since apiVersion \"v2\". We recommend migrating dependencies to Chart.yaml.")
 			}
 			if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
 				return c, fmt.Errorf("cannot load requirements.yaml: %w", err)
@@ -138,7 +138,7 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 				c.Metadata = new(chart.Metadata)
 			}
 			if c.Metadata.APIVersion != chart.APIVersionV1 {
-				log.Printf("Warning: Dependency locking is handled in Chart.lock since apiVersion \"v2\". We recommend migrating to Chart.lock.")
+				log.Print("Warning: Dependency locking is handled in Chart.lock since apiVersion \"v2\". We recommend migrating to Chart.lock.")
 			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
 				c.Files = append(c.Files, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})

@@ -60,11 +60,11 @@ func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 	}
 
 	if f.Maintainers[0].Name != "The Helm Team" {
-		t.Errorf("Unexpected maintainer name.")
+		t.Error("Unexpected maintainer name.")
 	}
 
 	if f.Maintainers[1].Email != "nobody@example.com" {
-		t.Errorf("Unexpected maintainer email.")
+		t.Error("Unexpected maintainer email.")
 	}
 
 	if len(f.Sources) != 1 {
@@ -115,7 +115,7 @@ func TestIsChartDir(t *testing.T) {
 	}
 	validChartDir, err = IsChartDir("testdata")
 	if validChartDir || err == nil {
-		t.Errorf("expected error but did not get any")
+		t.Error("expected error but did not get any")
 		return
 	}
 }

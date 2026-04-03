@@ -100,7 +100,7 @@ func TestInvalidYaml(t *testing.T) {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
 	if !strings.Contains(m[0].Err.Error(), "deliberateSyntaxError") {
-		t.Errorf("All didn't have the error for deliberateSyntaxError")
+		t.Error("All didn't have the error for deliberateSyntaxError")
 	}
 }
 
@@ -111,7 +111,7 @@ func TestInvalidChartYaml(t *testing.T) {
 		t.Fatalf("All didn't fail with expected errors, got %#v", m)
 	}
 	if !strings.Contains(m[0].Err.Error(), "failed to strictly parse chart metadata file") {
-		t.Errorf("All didn't have the error for duplicate YAML keys")
+		t.Error("All didn't have the error for duplicate YAML keys")
 	}
 }
 
@@ -241,7 +241,7 @@ func TestMalformedTemplate(t *testing.T) {
 			t.Fatalf("All didn't fail with expected errors, got %#v", m)
 		}
 		if !strings.Contains(m[0].Err.Error(), "invalid character '{'") {
-			t.Errorf("All didn't have the error for invalid character '{'")
+			t.Error("All didn't have the error for invalid character '{'")
 		}
 	}
 }

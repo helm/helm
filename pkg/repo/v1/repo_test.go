@@ -219,9 +219,9 @@ func TestWriteFile(t *testing.T) {
 
 func TestRepoNotExists(t *testing.T) {
 	if _, err := LoadFile("/this/path/does/not/exist.yaml"); err == nil {
-		t.Errorf("expected err to be non-nil when path does not exist")
+		t.Error("expected err to be non-nil when path does not exist")
 	} else if !strings.Contains(err.Error(), "couldn't load repositories file") {
-		t.Errorf("expected prompt `couldn't load repositories file`")
+		t.Error("expected prompt `couldn't load repositories file`")
 	}
 }
 

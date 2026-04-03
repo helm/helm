@@ -159,6 +159,13 @@ keyInElement1 = "valueInElement1"`,
 		tpl:    `{{ toJson . }}`,
 		expect: "", // should return empty string and swallow error
 		vars:   loopMap,
+	}, {
+		tpl:  `{{ mustToToml . }}`,
+		vars: map[int]string{1: "one"}, // non-string key is invalid in TOML
+	}, {
+		tpl:    `{{ mustToToml . }}`,
+		expect: "foo = \"bar\"\n", // should succeed and return TOML string
+		vars:   map[string]string{"foo": "bar"},
 	},
 	}
 
