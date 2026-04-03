@@ -36,6 +36,15 @@ type SimpleHead struct {
 var sep = regexp.MustCompile("(?:^|\\s*\n)---\\s*")
 
 // SplitManifests takes a string of manifest and returns a map contains individual manifests
+//
+// **Note for Chart API v3**: This function (due to the regex above) has allowed _WRONG_
+// Go templates to be defined inside charts across the years. The generated text from Go
+// templates may contain `---apiVersion: v1`, and this function magically splits this back
+// to `---\napiVersion: v1`. This has caused issues recently after Helm 4 introduced
+// kio.ParseAll to inject annotations when post-renderers are used. In Chart API v3,
+// we should kill this regex with fire (or change it) and expose charts doing the wrong
+// thing Go template-wise. Helm should say a big _NO_ to charts doing the wrong thing,
+// with or without post-renderers.
 func SplitManifests(bigFile string) map[string]string {
 	// Basically, we're quickly splitting a stream of YAML documents into an
 	// array of YAML docs. The file name is just a place holder, but should be
