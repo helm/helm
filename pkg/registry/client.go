@@ -24,10 +24,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -227,15 +227,31 @@ type (
 	}
 )
 
-// warnIfHostHasPath checks if the host contains a repository path and logs a warning if it does.
-// Returns true if the host contains a path component (i.e., contains a '/').
-func warnIfHostHasPath(host string) bool {
-	if strings.Contains(host, "/") {
-		registryHost := strings.Split(host, "/")[0]
-		slog.Warn("registry login currently only supports registry hostname, not a repository path", "host", host, "suggested", registryHost)
-		return true
+// hostRegex is a pretty naive regex for validating host urls. The goal of it is not to ultimately validate all possible valid hosts,
+// but to catch common user errors such as including a scheme or path in the host string.
+var hostRegex = regexp.MustCompile(`^(?P<scheme>[a-zA-Z][a-zA-Z0-9+\-.]*:\/\/)?(?P<host>[a-zA-Z0-9\-._:\[\]]+)(?P<path>\/.*)?$`)
+
+// validateHost checks that the host matches some required pre-checks e.g. does not contain a scheme or path.
+// While ORAS will also validate some of these things, the current errors are a bit opaque.
+// By validating these things upfront, we can provide clearer error messages to users when they attempt to login with an invalid host string.
+func validateHost(host string) error {
+	matches := hostRegex.FindStringSubmatch(host)
+	if len(matches) == 0 {
+		return fmt.Errorf("invalid host: %q", host)
 	}
-	return false
+
+	scheme := matches[hostRegex.SubexpIndex("scheme")]
+	path := matches[hostRegex.SubexpIndex("path")]
+
+	if scheme != "" {
+		return fmt.Errorf("host should not contain a scheme (e.g. http://), found %q", scheme)
+	}
+
+	if path != "" {
+		return fmt.Errorf("host should not contain a path, found %q", path)
+	}
+
+	return nil
 }
 
 // Login authenticates the client with a remote OCI registry using the provided host and options.
@@ -244,7 +260,9 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		option(&loginOperation{host, c})
 	}
 
-	warnIfHostHasPath(host)
+	if err := validateHost(host); err != nil {
+		return err
+	}
 
 	reg, err := remote.NewRegistry(host)
 	if err != nil {
