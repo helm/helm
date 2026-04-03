@@ -53,7 +53,7 @@ type ErrRepoNotFound struct {
 
 // Error implements the error interface.
 func (e ErrRepoNotFound) Error() string {
-	return fmt.Sprintf("no repository definition for %s", strings.Join(e.Repos, ", "))
+	return "no repository definition for " + strings.Join(e.Repos, ", ")
 }
 
 // Manager handles the lifecycle of fetching, resolving, and storing dependencies.

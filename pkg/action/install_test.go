@@ -1270,7 +1270,7 @@ func TestInstallCRDs_CheckNilErrors(t *testing.T) {
 
 			err := instAction.installCRDs(tt.input)
 			if err == nil {
-				t.Errorf("got nil expected err")
+				t.Error("got nil expected err")
 			}
 		})
 	}

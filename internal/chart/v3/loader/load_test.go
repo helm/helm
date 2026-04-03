@@ -61,7 +61,7 @@ func TestLoadDirWithDevNull(t *testing.T) {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 	if _, err := l.Load(); err == nil {
-		t.Errorf("packages with an irregular file (/dev/null) should not load")
+		t.Error("packages with an irregular file (/dev/null) should not load")
 	}
 }
 

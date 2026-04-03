@@ -403,11 +403,11 @@ data:
 			}
 
 			if err != nil && !tc.expectError {
-				t.Fatalf("Got an unexpected error.")
+				t.Fatal("Got an unexpected error.")
 			}
 
 			if err == nil && tc.expectError {
-				t.Fatalf("Expected and error but did not get it.")
+				t.Fatal("Expected and error but did not get it.")
 			}
 		})
 	}

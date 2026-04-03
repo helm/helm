@@ -50,6 +50,7 @@ func funcMap() template.FuncMap {
 	// Add some extra functionality
 	extra := template.FuncMap{
 		"toToml":        toTOML,
+		"mustToToml":    mustToTOML,
 		"fromToml":      fromTOML,
 		"toYaml":        toYAML,
 		"mustToYaml":    mustToYAML,
@@ -148,16 +149,32 @@ func fromYAMLArray(str string) []any {
 	return a
 }
 
-// toTOML takes an interface, marshals it to toml, and returns a string. It will
-// always return a string, even on marshal error (empty string).
+// toTOML takes an interface, marshals it to toml, and returns a string.
+// On marshal error it returns the error string.
 //
-// This is designed to be called from a template.
+// This is designed to be called from a template. Use mustToToml if you need
+// the template to fail hard on marshal errors.
 func toTOML(v any) string {
 	b := bytes.NewBuffer(nil)
 	e := toml.NewEncoder(b)
 	err := e.Encode(v)
 	if err != nil {
 		return err.Error()
+	}
+	return b.String()
+}
+
+// mustToTOML takes an interface, marshals it to toml, and returns a string.
+// It will panic if there is an error.
+//
+// This is designed to be called from a template when you need to ensure that the
+// output TOML is valid.
+func mustToTOML(v any) string {
+	b := bytes.NewBuffer(nil)
+	e := toml.NewEncoder(b)
+	err := e.Encode(v)
+	if err != nil {
+		panic(err)
 	}
 	return b.String()
 }

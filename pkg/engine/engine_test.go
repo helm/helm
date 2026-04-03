@@ -1466,7 +1466,7 @@ func TestTraceableError_SimpleForm(t *testing.T) {
 	for _, errString := range testStrings {
 		trace, done := parseTemplateSimpleErrorString(errString)
 		if !done {
-			t.Errorf("Expected parse to pass but did not")
+			t.Error("Expected parse to pass but did not")
 		}
 		if trace.message != "error calling include" {
 			t.Errorf("Expected %q, got %q", errString, trace.message)
@@ -1483,7 +1483,7 @@ func TestTraceableError_ExecutingForm(t *testing.T) {
 		expectedLocation := errTuple[1]
 		trace, done := parseTemplateExecutingAtErrorType(errString)
 		if !done {
-			t.Errorf("Expected parse to pass but did not")
+			t.Error("Expected parse to pass but did not")
 		}
 		if trace.location != expectedLocation {
 			t.Errorf("Expected %q, got %q", expectedLocation, trace.location)
@@ -1498,7 +1498,7 @@ func TestTraceableError_NoTemplateForm(t *testing.T) {
 	for _, errString := range testStrings {
 		trace, done := parseTemplateNoTemplateError(errString, errString)
 		if !done {
-			t.Errorf("Expected parse to pass but did not")
+			t.Error("Expected parse to pass but did not")
 		}
 		if trace.message != errString {
 			t.Errorf("Expected %q, got %q", errString, trace.message)
