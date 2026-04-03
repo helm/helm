@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 // SimpleHead defines what the structure of the head of a manifest file
@@ -35,7 +36,16 @@ type SimpleHead struct {
 
 var sep = regexp.MustCompile("(?:^|\\s*\n)---\\s*")
 
-// SplitManifests takes a string of manifest and returns a map contains individual manifests
+// SplitManifests takes a string of manifest and returns a map that contains individual manifests
+//
+// **Note for Chart API v3**: This function (due to the regex above) has allowed _WRONG_
+// Go templates to be defined inside charts across the years. The generated text from Go
+// templates may contain `---apiVersion: v1`, and this function magically splits this back
+// to `---\napiVersion: v1`. This has caused issues recently after Helm 4 introduced
+// kio.ParseAll to inject annotations when post-renderers are used. In Chart API v3,
+// we should kill this regex with fire (or change it) and expose charts doing the wrong
+// thing Go template-wise. Helm should say a big _NO_ to charts doing the wrong thing,
+// with or without post-renderers.
 func SplitManifests(bigFile string) map[string]string {
 	// Basically, we're quickly splitting a stream of YAML documents into an
 	// array of YAML docs. The file name is just a place holder, but should be
@@ -44,7 +54,7 @@ func SplitManifests(bigFile string) map[string]string {
 	tpl := "manifest-%d"
 	res := map[string]string{}
 	// Making sure that any extra whitespace in YAML stream doesn't interfere in splitting documents correctly.
-	bigFileTmp := strings.TrimSpace(bigFile)
+	bigFileTmp := strings.TrimLeftFunc(bigFile, unicode.IsSpace)
 	docs := sep.Split(bigFileTmp, -1)
 	var count int
 	for _, d := range docs {
@@ -52,7 +62,7 @@ func SplitManifests(bigFile string) map[string]string {
 			continue
 		}
 
-		d = strings.TrimSpace(d)
+		d = strings.TrimLeftFunc(d, unicode.IsSpace)
 		res[fmt.Sprintf(tpl, count)] = d
 		count = count + 1
 	}

@@ -403,96 +403,6 @@ func (m *mockPostRenderer) Run(renderedManifests *bytes.Buffer) (*bytes.Buffer, 
 	return bytes.NewBufferString(content), nil
 }
 
-func TestFixDocSeparators(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "no separator",
-			input:    "apiVersion: v1\nkind: Service\n",
-			expected: "apiVersion: v1\nkind: Service\n",
-		},
-		{
-			name:     "separator on its own line",
-			input:    "---\napiVersion: v1\nkind: Service\n",
-			expected: "---\napiVersion: v1\nkind: Service\n",
-		},
-		{
-			name:     "leading separator glued to content",
-			input:    "---apiVersion: v1\nkind: Service\n",
-			expected: "---\napiVersion: v1\nkind: Service\n",
-		},
-		{
-			name:     "mid-content separator glued to content",
-			input:    "apiVersion: v1\nkind: ConfigMap\n---apiVersion: v1\nkind: Service\n",
-			expected: "apiVersion: v1\nkind: ConfigMap\n---\napiVersion: v1\nkind: Service\n",
-		},
-		{
-			name:     "multiple separators all proper",
-			input:    "---\napiVersion: v1\n---\napiVersion: v1\n",
-			expected: "---\napiVersion: v1\n---\napiVersion: v1\n",
-		},
-		{
-			name:     "multiple separators some glued",
-			input:    "---apiVersion: v1\nkind: ConfigMap\n---apiVersion: v1\nkind: Service\n",
-			expected: "---\napiVersion: v1\nkind: ConfigMap\n---\napiVersion: v1\nkind: Service\n",
-		},
-		{
-			name:     "empty string",
-			input:    "",
-			expected: "",
-		},
-		{
-			name:     "only separator",
-			input:    "---\n",
-			expected: "---\n",
-		},
-		{
-			name:     "triple dash in a value is not a separator",
-			input:    "data:\n  key: ---value\n",
-			expected: "data:\n  key: ---value\n",
-		},
-		{
-			name:     "realistic multi-doc template output",
-			input:    "apiVersion: v1\nkind: Deployment\n---\napiVersion: v1\nkind: Ingress\n---apiVersion: v1\nkind: Service\n",
-			expected: "apiVersion: v1\nkind: Deployment\n---\napiVersion: v1\nkind: Ingress\n---\napiVersion: v1\nkind: Service\n",
-		},
-		{
-			name:     "separator followed by carriage return",
-			input:    "---\r\napiVersion: v1\n",
-			expected: "---\r\napiVersion: v1\n",
-		},
-		{
-			name:     "separator followed by space",
-			input:    "--- \napiVersion: v1\n",
-			expected: "--- \napiVersion: v1\n",
-		},
-		{
-			name:     "separator followed by tab",
-			input:    "---\t\napiVersion: v1\n",
-			expected: "---\t\napiVersion: v1\n",
-		},
-		{
-			name:     "four dashes on its own line",
-			input:    "----\napiVersion: v1\n",
-			expected: "---\n-\napiVersion: v1\n",
-		},
-		{
-			name:     "four dashes followed by text",
-			input:    "----more\napiVersion: v1\n",
-			expected: "---\n-more\napiVersion: v1\n",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, fixDocSeparators(tt.input))
-		})
-	}
-}
-
 func TestAnnotateAndMerge(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -508,7 +418,8 @@ func TestAnnotateAndMerge(t *testing.T) {
 		{
 			name: "single file with single manifest",
 			files: map[string]string{
-				"templates/configmap.yaml": `apiVersion: v1
+				"templates/configmap.yaml": `
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: test-cm
@@ -528,13 +439,15 @@ data:
 		{
 			name: "multiple files with multiple manifests",
 			files: map[string]string{
-				"templates/configmap.yaml": `apiVersion: v1
+				"templates/configmap.yaml": `
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: test-cm
 data:
   key: value`,
-				"templates/secret.yaml": `apiVersion: v1
+				"templates/secret.yaml": `
+apiVersion: v1
 kind: Secret
 metadata:
   name: test-secret
@@ -563,7 +476,8 @@ data:
 		{
 			name: "file with multiple manifests",
 			files: map[string]string{
-				"templates/multi.yaml": `apiVersion: v1
+				"templates/multi.yaml": `
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: test-cm1
@@ -599,7 +513,8 @@ data:
 		{
 			name: "partials and empty files are removed",
 			files: map[string]string{
-				"templates/cm.yaml": `apiVersion: v1
+				"templates/cm.yaml": `
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: test-cm1
@@ -621,14 +536,16 @@ metadata:
 		{
 			name: "empty file",
 			files: map[string]string{
-				"templates/empty.yaml": "",
+				"templates/empty.yaml": `
+`,
 			},
 			expected: ``,
 		},
 		{
 			name: "invalid yaml",
 			files: map[string]string{
-				"templates/invalid.yaml": `invalid: yaml: content:
+				"templates/invalid.yaml": `
+invalid: yaml: content:
   - malformed`,
 			},
 			expectedError: "parsing templates/invalid.yaml",
@@ -636,7 +553,12 @@ metadata:
 		{
 			name: "leading doc separator glued to content by template whitespace trimming",
 			files: map[string]string{
-				"templates/service.yaml": "---apiVersion: v1\nkind: Service\nmetadata:\n  name: test-svc\n",
+				"templates/service.yaml": `
+---apiVersion: v1
+kind: Service
+metadata:
+  name: test-svc
+`,
 			},
 			expected: `apiVersion: v1
 kind: Service
@@ -649,7 +571,13 @@ metadata:
 		{
 			name: "leading doc separator on its own line",
 			files: map[string]string{
-				"templates/service.yaml": "---\napiVersion: v1\nkind: Service\nmetadata:\n  name: test-svc\n",
+				"templates/service.yaml": `
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-svc
+`,
 			},
 			expected: `apiVersion: v1
 kind: Service
@@ -662,7 +590,14 @@ metadata:
 		{
 			name: "multiple leading doc separators",
 			files: map[string]string{
-				"templates/service.yaml": "---\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: test-svc\n",
+				"templates/service.yaml": `
+---
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-svc
+`,
 			},
 			expected: `apiVersion: v1
 kind: Service
@@ -675,7 +610,16 @@ metadata:
 		{
 			name: "mid-content doc separator glued to content by template whitespace trimming",
 			files: map[string]string{
-				"templates/all.yaml": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test-cm\n---apiVersion: v1\nkind: Service\nmetadata:\n  name: test-svc\n",
+				"templates/all.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+---apiVersion: v1
+kind: Service
+metadata:
+  name: test-svc
+`,
 			},
 			expected: `apiVersion: v1
 kind: ConfigMap
@@ -690,6 +634,935 @@ metadata:
   name: test-svc
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/all.yaml'
+`,
+		},
+		{
+			name: "ConfigMap with embedded CA certificate",
+			files: map[string]string{
+				"templates/configmap.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ca-bundle
+data:
+  ca.crt: |
+    ------BEGIN CERTIFICATE------
+    MIICEzCCAXygAwIBAgIQMIMChMLGrR+QvmQvpwAU6zAKBggqhkjOPQQDAzASMRAw
+    DgYDVQQKEwdBY21lIENvMCAXDTcwMDEwMTAwMDAwMFoYDzIwODQwMTI5MTYwMDAw
+    WjASMRAwDgYDVQQKEwdBY21lIENvMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE7Rmm
+    ------END CERTIFICATE------
+    ------BEGIN CERTIFICATE------
+    MIICEzCCAXygAwIBAgIQMIMChMLGrR+QvmQvpwAU6zAKBggqhkjOPQQDAzASMRAw
+    DgYDVQQKEwdBY21lIENvMCAXDTcwMDEwMTAwMDAwMFoYDzIwODQwMTI5MTYwMDAw
+    WjASMRAwDgYDVQQKEwdBY21lIENvMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE7Rmm
+    ------END CERTIFICATE------
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ca-bundle
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/configmap.yaml'
+data:
+  ca.crt: |
+    ------BEGIN CERTIFICATE------
+    MIICEzCCAXygAwIBAgIQMIMChMLGrR+QvmQvpwAU6zAKBggqhkjOPQQDAzASMRAw
+    DgYDVQQKEwdBY21lIENvMCAXDTcwMDEwMTAwMDAwMFoYDzIwODQwMTI5MTYwMDAw
+    WjASMRAwDgYDVQQKEwdBY21lIENvMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE7Rmm
+    ------END CERTIFICATE------
+    ------BEGIN CERTIFICATE------
+    MIICEzCCAXygAwIBAgIQMIMChMLGrR+QvmQvpwAU6zAKBggqhkjOPQQDAzASMRAw
+    DgYDVQQKEwdBY21lIENvMCAXDTcwMDEwMTAwMDAwMFoYDzIwODQwMTI5MTYwMDAw
+    WjASMRAwDgYDVQQKEwdBY21lIENvMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE7Rmm
+    ------END CERTIFICATE------
+`,
+		},
+		{
+			name: "consecutive dashes in YAML value are not treated as document separators",
+			files: map[string]string{
+				"templates/configmap.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+data:
+  config: |
+    # ---------------------------------------------------------------------------
+    [section]
+    key = value
+    # ---------------------------------------------------------------------------
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/configmap.yaml'
+data:
+  config: |
+    # ---------------------------------------------------------------------------
+    [section]
+    key = value
+    # ---------------------------------------------------------------------------
+`,
+		},
+		{
+			name: "JSON with dashes in values is not corrupted",
+			files: map[string]string{
+				"templates/dashboard.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard
+data:
+  dashboard.json: |
+    {"options":{"---------":{"color":"#292929","text":"N/A"}}}
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/dashboard.yaml'
+data:
+  dashboard.json: |
+    {"options":{"---------":{"color":"#292929","text":"N/A"}}}
+`,
+		},
+
+		// **Note for Chart API v3**: This input should return an _ERROR_ in Chart API v3.
+		// See the comment on the releaseutil.SplitManifests function for more details.
+		{
+			name: "multiple glued separators in same file",
+			files: map[string]string{
+				"templates/multi.yaml": `
+---apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm1
+---apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm2
+---apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm3
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm1
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/multi.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/multi.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm3
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/multi.yaml'
+`,
+		},
+
+		// **Note for Chart API v3**: This input should return an _ERROR_ in Chart API v3.
+		// See the comment on the releaseutil.SplitManifests function for more details.
+		{
+			name: "mixed glued and proper separators",
+			files: map[string]string{
+				"templates/mixed.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm2
+---apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm3
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm1
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/mixed.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/mixed.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm3
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/mixed.yaml'
+`,
+		},
+		{
+			name: "12 documents preserve in-file order",
+			files: map[string]string{
+				"templates/many.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-01
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-02
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-03
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-04
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-05
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-06
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-07
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-08
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-09
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-10
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-11
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-12
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-01
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-02
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-03
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-04
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-05
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-06
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-07
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-08
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-09
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-10
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-11
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-12
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/many.yaml'
+`,
+		},
+
+		// Block scalar chomping indicator tests: | (clip), |- (strip), |+ (keep)
+		// combined with 0, 1, and 2 trailing newlines after the block content.
+
+		// | (clip) — clips trailing newlines to exactly one
+		{
+			name: "block scalar clip (|) with 0 trailing newlines",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |
+    hello`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |-
+    hello
+`,
+		},
+		{
+			name: "block scalar clip (|) with 1 trailing newline",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |
+    hello
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |
+    hello
+`,
+		},
+		{
+			name: "block scalar clip (|) with 2 trailing newlines",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |
+    hello
+
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |
+    hello
+`,
+		},
+
+		// |- (strip) — strips all trailing newlines
+		{
+			name: "block scalar strip (|-) with 0 trailing newlines",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |-
+    hello`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |-
+    hello
+`,
+		},
+		{
+			name: "block scalar strip (|-) with 1 trailing newline",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |-
+    hello
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |-
+    hello
+`,
+		},
+		{
+			name: "block scalar strip (|-) with 2 trailing newlines",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |-
+    hello
+
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |-
+    hello
+`,
+		},
+
+		// |+ (keep) — preserves all trailing newlines
+		{
+			name: "block scalar keep (|+) with 0 trailing newlines",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |+
+    hello`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |-
+    hello
+`,
+		},
+		{
+			name: "block scalar keep (|+) with 1 trailing newline",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |+
+    hello
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |
+    hello
+`,
+		},
+		{
+			name: "block scalar keep (|+) with 2 trailing newlines",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |+
+    hello
+
+`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |+
+    hello
+
+`,
+		},
+
+		// Multi-doc tests: block scalar doc is NOT the last document.
+		// SplitManifests' regex consumes \s*\n before ---, so trailing
+		// newlines from non-last docs are always stripped.
+
+		// | (clip) in multi-doc (first doc)
+		{
+			name: "multi-doc block scalar clip (|) with 0 trailing newlines",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |
+    hello
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+data:
+  val: simple`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |-
+    hello
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  val: simple
+`,
+		},
+		{
+			name: "multi-doc block scalar clip (|) with 1 trailing newline",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |
+    hello
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+data:
+  val: simple`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |-
+    hello
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  val: simple
+`,
+		},
+		{
+			name: "multi-doc block scalar clip (|) with 2 trailing newlines",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |
+    hello
+
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+data:
+  val: simple`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |-
+    hello
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  val: simple
+`,
+		},
+
+		// |- (strip) in multi-doc (first doc)
+		{
+			name: "multi-doc block scalar strip (|-) with 0 trailing newlines",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |-
+    hello
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+data:
+  val: simple`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |-
+    hello
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  val: simple
+`,
+		},
+		{
+			name: "multi-doc block scalar strip (|-) with 1 trailing newline",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |-
+    hello
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+data:
+  val: simple`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |-
+    hello
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  val: simple
+`,
+		},
+		{
+			name: "multi-doc block scalar strip (|-) with 2 trailing newlines",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |-
+    hello
+
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+data:
+  val: simple`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |-
+    hello
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  val: simple
+`,
+		},
+
+		// |+ (keep) in multi-doc (first doc)
+		{
+			name: "multi-doc block scalar keep (|+) with 0 trailing newlines",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |+
+    hello
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+data:
+  val: simple`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |-
+    hello
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  val: simple
+`,
+		},
+		{
+			name: "multi-doc block scalar keep (|+) with 1 trailing newline",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |+
+    hello
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+data:
+  val: simple`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |-
+    hello
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  val: simple
+`,
+		},
+		{
+			name: "multi-doc block scalar keep (|+) with 2 trailing newlines",
+			files: map[string]string{
+				"templates/cm.yaml": `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+data:
+  key: |+
+    hello
+
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+data:
+  val: simple`,
+			},
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  key: |-
+    hello
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test2
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/cm.yaml'
+data:
+  val: simple
 `,
 		},
 	}
@@ -958,12 +1831,15 @@ func TestRenderResources_PostRenderer_Success(t *testing.T) {
 	expectedBuf := `---
 # Source: yellow/templates/foodpie
 foodpie: world
+
 ---
 # Source: yellow/templates/with-partials
 yellow: Earth
+
 ---
 # Source: yellow/templates/yellow
 yellow: world
+
 `
 	expectedHook := `kind: ConfigMap
 metadata:
@@ -971,7 +1847,8 @@ metadata:
   annotations:
     "helm.sh/hook": post-install,pre-delete,post-upgrade
 data:
-  name: value`
+  name: value
+`
 
 	assert.Equal(t, expectedBuf, buf.String())
 	assert.Len(t, hooks, 1)
@@ -1076,14 +1953,17 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 # Source: hello/templates/goodbye
 goodbye: world
 color: blue
+
 ---
 # Source: hello/templates/hello
 hello: world
 color: blue
+
 ---
 # Source: hello/templates/with-partials
 hello: Earth
 color: blue
+
 `
 	assert.Contains(t, output, "color: blue")
 	assert.Equal(t, 3, strings.Count(output, "color: blue"))
