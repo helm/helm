@@ -91,7 +91,7 @@ func TestLogin_ResetsForceAttemptOAuth2_OnSuccess(t *testing.T) {
 	}
 
 	if c.authorizer.ForceAttemptOAuth2 {
-		t.Errorf("ForceAttemptOAuth2 should be false after successful Login")
+		t.Error("ForceAttemptOAuth2 should be false after successful Login")
 	}
 }
 
@@ -117,7 +117,7 @@ func TestLogin_ResetsForceAttemptOAuth2_OnFailure(t *testing.T) {
 	_ = c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p"))
 
 	if c.authorizer.ForceAttemptOAuth2 {
-		t.Errorf("ForceAttemptOAuth2 should be false after failed Login")
+		t.Error("ForceAttemptOAuth2 should be false after failed Login")
 	}
 }
 
