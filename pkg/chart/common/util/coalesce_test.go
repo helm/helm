@@ -25,6 +25,7 @@ import (
 	"text/template"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -730,6 +731,81 @@ func TestCoalesceValuesWarnings(t *testing.T) {
 func TestConcatPrefix(t *testing.T) {
 	assert.Equal(t, "b", concatPrefix("", "b"))
 	assert.Equal(t, "a.b", concatPrefix("a", "b"))
+}
+
+// TestCoalesceValuesNullErasureInSubchart tests that a user-supplied null value
+// erases a key defined in the parent chart's values.yaml for a subchart,
+// even when that key has no default in the subchart's own values.yaml.
+// Regression test for https://github.com/helm/helm/issues/31919
+func TestCoalesceValuesNullErasureInSubchart(t *testing.T) {
+	// Parent chart defines "key" for subchart in its own values.yaml.
+	// The subchart itself does NOT define "key" in its values.yaml.
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "mysubchart"},
+		Values: map[string]any{
+			"other": "subchart_default",
+		},
+	}
+	parent := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values: map[string]any{
+			"mysubchart": map[string]any{
+				"key": "parent_defined_value",
+			},
+		},
+	}, subchart)
+
+	// User passes null for mysubchart.key to erase the parent-defined default.
+	vals := map[string]any{
+		"mysubchart": map[string]any{
+			"key": nil,
+		},
+	}
+
+	v, err := CoalesceValues(parent, vals)
+	require.NoError(t, err)
+
+	sub, ok := v["mysubchart"].(map[string]any)
+	require.True(t, ok, "mysubchart is not a map")
+
+	// "other" should still be present (subchart default)
+	assert.Equal(t, "subchart_default", sub["other"])
+
+	// "key" should be removed — user explicitly set it to null to erase the parent default
+	_, present := sub["key"]
+	assert.False(t, present, "Expected mysubchart.key to be erased by user null, but it is still present")
+}
+
+// TestCoalesceValuesNullErasurePreservesUserValues ensures that when a parent chart
+// defines a null for a subchart key, the user's non-nil value is still preserved.
+func TestCoalesceValuesNullErasurePreservesUserValues(t *testing.T) {
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "mysubchart"},
+		Values:   map[string]any{},
+	}
+	parent := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values: map[string]any{
+			"mysubchart": map[string]any{
+				"key": nil, // parent chart defaults this to null
+			},
+		},
+	}, subchart)
+
+	// User provides a real value — should not be erased by the parent's null default
+	vals := map[string]any{
+		"mysubchart": map[string]any{
+			"key": "user_value",
+		},
+	}
+
+	v, err := CoalesceValues(parent, vals)
+	require.NoError(t, err)
+
+	sub, ok := v["mysubchart"].(map[string]any)
+	require.True(t, ok, "mysubchart is not a map")
+
+	assert.Equal(t, "user_value", sub["key"], "user value should not be overwritten by parent null default")
 }
 
 // TestCoalesceValuesEmptyMapWithNils tests the full CoalesceValues scenario

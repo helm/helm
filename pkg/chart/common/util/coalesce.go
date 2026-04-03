@@ -129,6 +129,19 @@ func coalesceDeps(printf printFn, chrt chart.Charter, dest map[string]any, prefi
 			if err != nil {
 				return dest, err
 			}
+			// When coalescing, erase any remaining nil values in the subchart result
+			// that were user-supplied null overrides of parent-chart defaults.
+			// These are not erased at subchart level because the subchart has no
+			// default for the key; without this pass they would persist as nil.
+			if !merge {
+				if subMap, ok := dest[sub.Name()].(map[string]any); ok {
+					if parentVals, ok := ch.Values()[sub.Name()]; ok {
+						if parentValsMap, ok := parentVals.(map[string]any); ok {
+							eraseNullsWithParentDefaults(subMap, parentValsMap)
+						}
+					}
+				}
+			}
 		}
 	}
 	return dest, nil
@@ -187,6 +200,25 @@ func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ 
 		}
 	}
 	dest[common.GlobalKey] = dg
+}
+
+// eraseNullsWithParentDefaults removes nil-valued keys from dst where the
+// corresponding parent chart default was non-nil. This handles the case where
+// a user sets a subchart key to null to erase a parent-defined default, but
+// the subchart itself has no default for that key (so subchart-level null
+// erasure never runs).
+func eraseNullsWithParentDefaults(dst, parentDefs map[string]any) {
+	for key, dv := range dst {
+		pdv, inParent := parentDefs[key]
+		if !inParent {
+			continue
+		}
+		if dv == nil && pdv != nil {
+			delete(dst, key)
+		} else if istable(dv) && istable(pdv) {
+			eraseNullsWithParentDefaults(dv.(map[string]any), pdv.(map[string]any))
+		}
+	}
 }
 
 func copyMap(src map[string]any) map[string]any {
@@ -249,6 +281,8 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 					}
 				} else {
 					// If the key is a child chart, coalesce tables with Merge set to true
+					// to preserve user-supplied null values so they can be erased at the
+					// subchart level (where subchart defaults are processed).
 					merge := childChartMergeTrue(c, key, merge)
 
 					// Because v has higher precedence than nv, dest values override src
