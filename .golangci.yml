@@ -22,6 +22,7 @@ linters:
     - depguard
     - dupl
     - exhaustive
+    - gocritic
     - gomodguard
     - govet
     - ineffassign
@@ -66,6 +67,48 @@ linters:
 
     exhaustive:
       default-signifies-exhaustive: true
+
+    gocritic:
+      disabled-checks:
+        - appendAssign
+        - appendCombine
+        - assignOp
+        - badCall
+        - commentedOutCode
+        - commentFormatting
+        - deferInLoop
+        - elseif
+        - emptyStringTest
+        - exposedSyncMutex
+        - filepathJoin
+        - httpNoBody
+        - hugeParam
+        - ifElseChain
+        - importShadow
+        - nestingReduce
+        - nilValReturn
+        - octalLiteral
+        - paramTypeCombine
+        - preferStringWriter
+        - ptrToRefParam
+        - rangeValCopy
+        - regexpSimplify
+        - singleCaseSwitch
+        - sloppyReassign
+        - sloppyLen
+        - sprintfQuotedString
+        - stringConcatSimplify
+        - stringsCompare
+        - stringXbytes
+        - todoCommentWithoutDetail
+        - tooManyResultsChecker
+        - typeAssertChain
+        - uncheckedInlineErr
+        - unnamedResult
+        - unnecessaryDefer
+        - unslice
+        - whyNoLint
+      enable-all: true
 
     gomodguard:
       blocked:
