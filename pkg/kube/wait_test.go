@@ -299,7 +299,7 @@ func TestLegacyWaiter_waitForPodSuccess(t *testing.T) {
 			done, err := lw.waitForPodSuccess(tt.obj, "foo")
 			if tt.wantErr {
 				if err == nil {
-					t.Errorf("expected error, got none")
+					t.Error("expected error, got none")
 				} else if !strings.Contains(err.Error(), tt.errMessage) {
 					t.Errorf("expected error to contain %q, got %q", tt.errMessage, err.Error())
 				}
@@ -391,7 +391,7 @@ func TestLegacyWaiter_waitForJob(t *testing.T) {
 			done, err := lw.waitForJob(tt.obj, "test-job")
 			if tt.wantErr {
 				if err == nil {
-					t.Errorf("expected error, got none")
+					t.Error("expected error, got none")
 				} else if !strings.Contains(err.Error(), tt.errMessage) {
 					t.Errorf("expected error to contain %q, got %q", tt.errMessage, err.Error())
 				}

@@ -85,7 +85,7 @@ func TestToRenderValues(t *testing.T) {
 		t.Error("Expected upgrade to be false.")
 	}
 	if !relmap["IsInstall"].(bool) {
-		t.Errorf("Expected install to be true.")
+		t.Error("Expected install to be true.")
 	}
 	if !res["Capabilities"].(*common.Capabilities).APIVersions.Has("v1") {
 		t.Error("Expected Capabilities to have v1 as an API")

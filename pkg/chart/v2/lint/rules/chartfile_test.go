@@ -50,26 +50,26 @@ func TestValidateChartYamlNotDirectory(t *testing.T) {
 
 	err := validateChartYamlNotDirectory(nonExistingChartFilePath)
 	if err == nil {
-		t.Errorf("validateChartYamlNotDirectory to return a linter error, got no error")
+		t.Error("validateChartYamlNotDirectory to return a linter error, got no error")
 	}
 }
 
 func TestValidateChartYamlFormat(t *testing.T) {
 	err := validateChartYamlFormat(errors.New("Read error"))
 	if err == nil {
-		t.Errorf("validateChartYamlFormat to return a linter error, got no error")
+		t.Error("validateChartYamlFormat to return a linter error, got no error")
 	}
 
 	err = validateChartYamlFormat(nil)
 	if err != nil {
-		t.Errorf("validateChartYamlFormat to return no error, got a linter error")
+		t.Error("validateChartYamlFormat to return no error, got a linter error")
 	}
 }
 
 func TestValidateChartName(t *testing.T) {
 	err := validateChartName(badChart)
 	if err == nil {
-		t.Errorf("validateChartName to return a linter error, got no error")
+		t.Error("validateChartName to return a linter error, got no error")
 	}
 
 	err = validateChartName(badChartName)
@@ -176,7 +176,7 @@ func TestValidateChartMaintainer(t *testing.T) {
 	badChart.Maintainers = []*chart.Maintainer{nil}
 	err := validateChartMaintainer(badChart)
 	if err == nil {
-		t.Errorf("validateChartMaintainer did not return error for nil maintainer as expected")
+		t.Error("validateChartMaintainer did not return error for nil maintainer as expected")
 	}
 	if err.Error() != "a maintainer entry is empty" {
 		t.Errorf("validateChartMaintainer returned unexpected error for nil maintainer: %s", err.Error())
@@ -212,7 +212,7 @@ func TestValidateChartIconPresence(t *testing.T) {
 		err := validateChartIconPresence(testChart)
 
 		if err == nil {
-			t.Errorf("validateChartIconPresence to return a linter error, got no error")
+			t.Error("validateChartIconPresence to return a linter error, got no error")
 		} else if !strings.Contains(err.Error(), "icon is recommended") {
 			t.Errorf("expected %q, got %q", "icon is recommended", err.Error())
 		}

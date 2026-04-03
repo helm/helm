@@ -17,7 +17,7 @@ package provenance
 
 import (
 	"crypto"
-	"fmt"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -134,7 +134,7 @@ func TestParseMessageBlock(t *testing.T) {
 	}
 
 	if hash, ok := sc.Files["hashtest-1.2.3.tgz"]; !ok {
-		t.Errorf("hashtest file not found in Files")
+		t.Error("hashtest file not found in Files")
 	} else if hash != "sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888" {
 		t.Errorf("Unexpected hash: %q", hash)
 	}
@@ -330,7 +330,7 @@ func (s failSigner) Public() crypto.PublicKey {
 }
 
 func (s failSigner) Sign(_ io.Reader, _ []byte, _ crypto.SignerOpts) ([]byte, error) {
-	return nil, fmt.Errorf("always fails")
+	return nil, errors.New("always fails")
 }
 
 func TestClearSignError(t *testing.T) {

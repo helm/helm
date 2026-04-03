@@ -93,7 +93,7 @@ func TestLintChart(t *testing.T) {
 			case err != nil && !tt.err:
 				t.Errorf("%s", err)
 			case err == nil && tt.err:
-				t.Errorf("Expected a chart parsing error")
+				t.Error("Expected a chart parsing error")
 			}
 		})
 	}
