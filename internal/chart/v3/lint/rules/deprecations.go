@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package rules // import "helm.sh/helm/v4/internal/chart/v3/lint/rules"
+package rules
 
 import (
 	"fmt"
