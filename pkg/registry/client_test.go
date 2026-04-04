@@ -45,7 +45,7 @@ func TestTagManifestTransformsReferences(t *testing.T) {
 	parsedRef, err := newReference(refWithPlus)
 	require.NoError(t, err)
 
-	desc, err := client.tagManifest(ctx, memStore, configDesc, layers, nil, parsedRef)
+	desc, err := client.tagManifest(ctx, memStore, configDesc, layers, nil, parsedRef, nil)
 	require.NoError(t, err)
 
 	transformedDesc, err := memStore.Resolve(ctx, expectedRef)
