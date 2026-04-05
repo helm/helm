@@ -484,6 +484,26 @@ func TestFixDocSeparators(t *testing.T) {
 			input:    "----more\napiVersion: v1\n",
 			expected: "---\n-more\napiVersion: v1\n",
 		},
+		{
+			name:     "long dash sequence mid-line in block scalar should not be split",
+			input:    "command:\n  - /bin/sh\n  - -c\n  - |\n    echo -------------------\n    echo done\n",
+			expected: "command:\n  - /bin/sh\n  - -c\n  - |\n    echo -------------------\n    echo done\n",
+		},
+		{
+			name:     "multiple long dash sequences in block scalar",
+			input:    "command:\n  - -c\n  - |\n    echo -------------------\n    curl http://localhost\n    echo -------------------\n",
+			expected: "command:\n  - -c\n  - |\n    echo -------------------\n    curl http://localhost\n    echo -------------------\n",
+		},
+		{
+			name:     "indented long dash sequence at start of line in block scalar",
+			input:    "data:\n  script: |\n    -------------------\n    echo done\n",
+			expected: "data:\n  script: |\n    -------------------\n    echo done\n",
+		},
+		{
+			name:     "long dash sequence at start of line",
+			input:    "-------------------\napiVersion: v1\n",
+			expected: "---\n---\n---\n---\n---\n---\n-\napiVersion: v1\n",
+		},
 	}
 
 	for _, tt := range tests {
@@ -690,6 +710,33 @@ metadata:
   name: test-svc
   annotations:
     postrenderer.helm.sh/postrender-filename: 'templates/all.yaml'
+`,
+		},
+		{
+			name: "long dash sequence in block scalar should not corrupt YAML",
+			files: map[string]string{
+				"templates/job.yaml": "apiVersion: batch/v1\nkind: Job\nmetadata:\n  name: hook-job\nspec:\n  template:\n    spec:\n      restartPolicy: Never\n      containers:\n        - name: c\n          image: example.com/repro:1.0\n          command:\n            - /bin/sh\n            - -c\n            - |\n              echo -------------------\n              resp=$(curl -o /dev/null -s -w \"%{http_code}\\n\" -k -X POST --url http://localhost:8080/api/metadata/workflow -H 'Content-Type: application/json' -d \"@\"$file)\n              echo -------------------\n",
+			},
+			expected: `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hook-job
+  annotations:
+    postrenderer.helm.sh/postrender-filename: 'templates/job.yaml'
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: c
+        image: example.com/repro:1.0
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo -------------------
+          resp=$(curl -o /dev/null -s -w "%{http_code}\n" -k -X POST --url http://localhost:8080/api/metadata/workflow -H 'Content-Type: application/json' -d "@"$file)
+          echo -------------------
 `,
 		},
 	}

@@ -153,6 +153,7 @@ const (
 func fixDocSeparators(content string) string {
 	var b strings.Builder
 	remaining := content
+	atLineStart := true
 	for {
 		// Find "---" at the start of a line (or start of content).
 		idx := strings.Index(remaining, "---")
@@ -160,10 +161,13 @@ func fixDocSeparators(content string) string {
 			b.WriteString(remaining)
 			break
 		}
-		// "---" must be at the start of a line: either idx==0 or preceded by '\n'.
-		if idx > 0 && remaining[idx-1] != '\n' {
+		// "---" must be at the start of a line: either idx==0 and we are
+		// at a logical line start, or preceded by '\n'.
+		isAtLineStart := (idx == 0 && atLineStart) || (idx > 0 && remaining[idx-1] == '\n')
+		if !isAtLineStart {
 			b.WriteString(remaining[:idx+3])
 			remaining = remaining[idx+3:]
+			atLineStart = false
 			continue
 		}
 		b.WriteString(remaining[:idx+3])
@@ -172,6 +176,9 @@ func fixDocSeparators(content string) string {
 		// insert a newline to make it a proper document separator.
 		if len(remaining) > 0 && remaining[0] != '\n' && remaining[0] != '\r' && remaining[0] != ' ' && remaining[0] != '\t' {
 			b.WriteByte('\n')
+			atLineStart = true
+		} else {
+			atLineStart = false
 		}
 	}
 	return b.String()
