@@ -36,7 +36,6 @@ type Push struct {
 	caFile                string
 	insecureSkipTLSVerify bool
 	plainHTTP             bool
-	out                   io.Writer
 }
 
 // PushOpt is a type of function that sets options for a push action.
@@ -69,13 +68,6 @@ func WithInsecureSkipTLSVerify(insecureSkipTLSVerify bool) PushOpt {
 func WithPlainHTTP(plainHTTP bool) PushOpt {
 	return func(p *Push) {
 		p.plainHTTP = plainHTTP
-	}
-}
-
-// WithPushOptWriter sets the registryOut field on the push configuration object.
-func WithPushOptWriter(out io.Writer) PushOpt {
-	return func(p *Push) {
-		p.out = out
 	}
 }
 
