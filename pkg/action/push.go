@@ -18,7 +18,6 @@ package action
 
 import (
 	"io"
-	"strings"
 
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/pusher"
@@ -90,11 +89,9 @@ func NewPushWithOpts(opts ...PushOpt) *Push {
 }
 
 // Run executes 'helm push' against the given chart archive.
-func (p *Push) Run(chartRef string, remote string) (string, error) {
-	var out strings.Builder
-
+func (p *Push) Run(chartRef string, remote string) (*registry.PushResult, error) {
 	c := uploader.ChartUploader{
-		Out:     &out,
+		Out:     io.Discard,
 		Pushers: pusher.All(p.Settings),
 		Options: []pusher.Option{
 			pusher.WithTLSClientConfig(p.certFile, p.keyFile, p.caFile),
@@ -108,5 +105,5 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 		c.Options = append(c.Options, pusher.WithRegistryClient(p.cfg.RegistryClient))
 	}
 
-	return out.String(), c.UploadTo(chartRef, remote)
+	return c.UploadTo(chartRef, remote)
 }

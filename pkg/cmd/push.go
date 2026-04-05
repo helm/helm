@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
 	"helm.sh/helm/v4/pkg/pusher"
 )
@@ -42,6 +43,34 @@ type registryPushOptions struct {
 	plainHTTP             bool
 	password              string
 	username              string
+	outfmt                output.Format
+}
+
+// pushResult represents the result of a helm push operation
+type pushResult struct {
+	Ref    string `json:"ref"`
+	Digest string `json:"digest"`
+}
+
+// pushWriter implements the output.Writer interface for push results
+type pushWriter struct {
+	result pushResult
+}
+
+// WriteTable is a no-op for push: the registry client already prints
+// "Pushed:" and "Digest:" to stderr, so we avoid duplicating that output.
+func (w *pushWriter) WriteTable(_ io.Writer) error {
+	return nil
+}
+
+// WriteJSON writes the push result in JSON format
+func (w *pushWriter) WriteJSON(out io.Writer) error {
+	return output.EncodeJSON(out, w.result)
+}
+
+// WriteYAML writes the push result in YAML format
+func (w *pushWriter) WriteYAML(out io.Writer) error {
+	return output.EncodeYAML(out, w.result)
 }
 
 func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -83,15 +112,19 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client := action.NewPushWithOpts(action.WithPushConfig(cfg),
 				action.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
 				action.WithInsecureSkipTLSVerify(o.insecureSkipTLSVerify),
-				action.WithPlainHTTP(o.plainHTTP),
-				action.WithPushOptWriter(out))
+				action.WithPlainHTTP(o.plainHTTP))
 			client.Settings = settings
-			output, err := client.Run(chartRef, remote)
+			result, err := client.Run(chartRef, remote)
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(out, output)
-			return nil
+			writer := &pushWriter{
+				result: pushResult{
+					Ref:    result.Ref,
+					Digest: result.Manifest.Digest,
+				},
+			}
+			return o.outfmt.Write(out, writer)
 		},
 	}
 
@@ -103,6 +136,8 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart upload")
 	f.StringVar(&o.username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&o.password, "password", "", "chart repository password where to locate the requested chart")
+
+	bindOutputFlag(cmd, &o.outfmt)
 
 	return cmd
 }
