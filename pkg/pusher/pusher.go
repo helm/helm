@@ -71,8 +71,8 @@ func WithPlainHTTP(plainHTTP bool) Option {
 
 // Pusher is an interface to support upload to the specified URL.
 type Pusher interface {
-	// Push file content by url string
-	Push(chartRef, url string, options ...Option) error
+	// Push file content by url string, returning the push result and any error
+	Push(chartRef, url string, options ...Option) (*registry.PushResult, error)
 }
 
 // Constructor is the function for every pusher which creates a specific instance
