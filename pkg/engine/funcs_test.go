@@ -166,6 +166,10 @@ keyInElement1 = "valueInElement1"`,
 		tpl:    `{{ mustToToml . }}`,
 		expect: "foo = \"bar\"\n", // should succeed and return TOML string
 		vars:   map[string]string{"foo": "bar"},
+	}, {
+		tpl:    `{{ toToml . }}`,
+		expect: "",                       // should return empty string and swallow error (not err.Error())
+		vars:   map[int]string{1: "one"}, // non-string key is invalid in TOML
 	},
 	}
 
