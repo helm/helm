@@ -255,7 +255,7 @@ func (r *SubprocessPluginRuntime) runPostrenderer(input *Input) (*Output, error)
 
 	go func() {
 		defer stdin.Close()
-		io.Copy(stdin, msg.Manifests)
+		io.Copy(stdin, bytes.NewBufferString(msg.Manifests))
 	}()
 
 	postRendered := &bytes.Buffer{}
@@ -272,7 +272,7 @@ func (r *SubprocessPluginRuntime) runPostrenderer(input *Input) (*Output, error)
 
 	return &Output{
 		Message: schema.OutputMessagePostRendererV1{
-			Manifests: postRendered,
+			Manifests: postRendered.String(),
 		},
 	}, nil
 }
