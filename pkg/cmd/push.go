@@ -19,7 +19,6 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -58,14 +57,13 @@ type pushWriter struct {
 	result pushResult
 }
 
-// WriteTable writes a minimal human-readable push result to the provided output.
-// The registry client prints progress to stderr; this writes the structured
-// result (ref + digest) to the command's stdout stream.
+// WriteTable writes the push result in human-readable form, using the same
+// "Pushed:"/"Digest:" labels as the registry client's built-in output so that
+// the default (--output table) experience is consistent and familiar.
 func (w *pushWriter) WriteTable(out io.Writer) error {
-	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(tw, "REF\t%s\n", w.result.Ref)
-	fmt.Fprintf(tw, "DIGEST\t%s\n", w.result.Digest)
-	return tw.Flush()
+	fmt.Fprintf(out, "Pushed: %s\n", w.result.Ref)
+	fmt.Fprintf(out, "Digest: %s\n", w.result.Digest)
+	return nil
 }
 
 // WriteJSON writes the push result in JSON format

@@ -80,7 +80,12 @@ func NewPushWithOpts(opts ...PushOpt) *Push {
 	return p
 }
 
-// Run executes 'helm push' against the given chart archive.
+// Run executes 'helm push' against the given chart archive and returns the
+// structured push result containing the ref and manifest digest.
+//
+// Note: the return type changed from (string, error) to (*registry.PushResult, error)
+// in Helm v4 as an intentional breaking change, enabling structured access to
+// push metadata without text parsing.
 func (p *Push) Run(chartRef string, remote string) (*registry.PushResult, error) {
 	c := uploader.ChartUploader{
 		Out:     io.Discard,
