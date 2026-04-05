@@ -102,8 +102,12 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return noMoreArgsComp()
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
+			// Suppress the registry client's built-in "Pushed:"/"Digest:" lines;
+			// the --output writer (WriteTable/WriteJSON/WriteYAML) is the single
+			// source of structured push output for this command.
 			registryClient, err := newRegistryClient(
 				o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSVerify, o.plainHTTP, o.username, o.password,
+				io.Discard,
 			)
 
 			if err != nil {
