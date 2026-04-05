@@ -55,4 +55,3 @@ func TestNewPushWithPlainHTTP(t *testing.T) {
 	assert.NotNil(t, client)
 	assert.True(t, client.plainHTTP)
 }
-
