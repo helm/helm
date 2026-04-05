@@ -29,8 +29,6 @@ func TestPushFileCompletion(t *testing.T) {
 }
 
 func TestPushWriterTable(t *testing.T) {
-	// WriteTable is intentionally a no-op: the registry client already prints
-	// push details to stderr, so we avoid duplicating that output.
 	w := &pushWriter{result: pushResult{
 		Ref:    "oci://example.com/charts/mychart:1.0.0",
 		Digest: "sha256:abc123",
@@ -39,8 +37,15 @@ func TestPushWriterTable(t *testing.T) {
 	if err := w.WriteTable(&buf); err != nil {
 		t.Fatal(err)
 	}
-	if got := buf.String(); got != "" {
-		t.Errorf("table output should be empty (registry client writes to stderr), got: %q", got)
+	got := buf.String()
+	if !strings.Contains(got, "REF") || !strings.Contains(got, "DIGEST") {
+		t.Errorf("table output missing headers, got: %q", got)
+	}
+	if !strings.Contains(got, "oci://example.com/charts/mychart:1.0.0") {
+		t.Errorf("table output missing Ref value, got: %q", got)
+	}
+	if !strings.Contains(got, "sha256:abc123") {
+		t.Errorf("table output missing Digest value, got: %q", got)
 	}
 }
 
