@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -43,6 +44,22 @@ func TestCreate(t *testing.T) {
 
 	if mychart.Name() != "foo" {
 		t.Errorf("Expected name to be 'foo', got %q", mychart.Name())
+	}
+
+	chartFileData, err := os.ReadFile(filepath.Join(dir, ChartfileName))
+	if err != nil {
+		t.Fatalf("Failed to read generated %s: %s", ChartfileName, err)
+	}
+
+	chartFile := string(chartFileData)
+	for _, expected := range []string{
+		"annotations:",
+		"org.opencontainers.image.revision:",
+		"OCI manifest when the chart is pushed to an OCI registry.",
+	} {
+		if !strings.Contains(chartFile, expected) {
+			t.Errorf("Expected generated %s to contain %q", ChartfileName, expected)
+		}
 	}
 
 	for _, f := range []string{
