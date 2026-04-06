@@ -484,6 +484,11 @@ func TestFixDocSeparators(t *testing.T) {
 			input:    "----more\napiVersion: v1\n",
 			expected: "---\n-more\napiVersion: v1\n",
 		},
+		{
+			name:     "long dashes in block scalar are not separators",
+			input:    "apiVersion: v1\nkind: Job\nspec:\n  containers:\n    - command:\n      - |\n        echo --------------------\n        echo done\n",
+			expected: "apiVersion: v1\nkind: Job\nspec:\n  containers:\n    - command:\n      - |\n        echo --------------------\n        echo done\n",
+		},
 	}
 
 	for _, tt := range tests {
