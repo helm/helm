@@ -19,6 +19,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -55,6 +56,21 @@ type pushResult struct {
 // pushWriter implements the output.Writer interface for push results
 type pushWriter struct {
 	result pushResult
+}
+
+// suppressSummaryWriter forwards all writes to the underlying writer, silently
+// dropping lines that match the registry client's built-in "Pushed:"/"Digest:"
+// summary output. Warnings, errors, and other output are forwarded intact.
+type suppressSummaryWriter struct {
+	w io.Writer
+}
+
+func (s *suppressSummaryWriter) Write(p []byte) (int, error) {
+	line := string(p)
+	if strings.HasPrefix(line, "Pushed: ") || strings.HasPrefix(line, "Digest: ") {
+		return len(p), nil
+	}
+	return s.w.Write(p)
 }
 
 // WriteTable writes the push result in human-readable form, using the same
@@ -101,13 +117,14 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			return noMoreArgsComp()
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
-			// Suppress the registry client's built-in "Pushed:"/"Digest:" lines;
-			// the --output writer (WriteTable/WriteJSON/WriteYAML) is the single
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Suppress the registry client's built-in "Pushed:"/"Digest:" summary
+			// lines while forwarding all other output (warnings, etc.) to stderr.
+			// The --output writer (WriteTable/WriteJSON/WriteYAML) is the single
 			// source of structured push output for this command.
 			registryClient, err := newRegistryClient(
 				o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSVerify, o.plainHTTP, o.username, o.password,
-				io.Discard,
+				&suppressSummaryWriter{w: cmd.ErrOrStderr()},
 			)
 
 			if err != nil {

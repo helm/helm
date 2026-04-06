@@ -410,7 +410,7 @@ func newRegistryClient(
 	w ...io.Writer,
 ) (*registry.Client, error) {
 	out := io.Writer(os.Stderr)
-	if len(w) > 0 {
+	if len(w) > 0 && w[0] != nil {
 		out = w[0]
 	}
 	if certFile != "" && keyFile != "" || caFile != "" || insecureSkipTLSVerify {

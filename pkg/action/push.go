@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"fmt"
 	"io"
 
 	"helm.sh/helm/v4/pkg/cli"
@@ -98,6 +99,9 @@ func (p *Push) Run(chartRef string, remote string) (*registry.PushResult, error)
 	}
 
 	if registry.IsOCI(remote) {
+		if p.cfg == nil {
+			return nil, fmt.Errorf("missing action configuration: use WithPushConfig when constructing Push")
+		}
 		// Don't use the default registry client if tls options are set.
 		c.Options = append(c.Options, pusher.WithRegistryClient(p.cfg.RegistryClient))
 	}
