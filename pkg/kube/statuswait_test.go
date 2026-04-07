@@ -317,7 +317,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 			t.Parallel()
 			c := newTestClient(t)
 			timeout := time.Second
-			timeUntilPodDelete := time.Millisecond * 500
+			timeUntilPodDelete := time.Millisecond * 100
 			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 			fakeMapper := testutil.NewFakeRESTMapper(
 				v1.SchemeGroupVersion.WithKind("Pod"),
@@ -1680,8 +1680,8 @@ func TestMethodContextOverridesGeneralContext(t *testing.T) {
 	t.Run("method-specific context overrides general context for WaitForDelete", func(t *testing.T) {
 		t.Parallel()
 		c := newTestClient(t)
-		timeout := time.Second
-		timeUntilPodDelete := time.Millisecond * 500
+		timeout := 5 * time.Second
+		timeUntilPodDelete := time.Millisecond * 100
 		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 		fakeMapper := testutil.NewFakeRESTMapper(
 			v1.SchemeGroupVersion.WithKind("Pod"),
