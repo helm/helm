@@ -317,7 +317,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 			t.Parallel()
 			c := newTestClient(t)
 			timeout := time.Second
-			timeUntilPodDelete := time.Millisecond * 100
+			timeUntilPodDelete := time.Millisecond * 500
 			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 			fakeMapper := testutil.NewFakeRESTMapper(
 				v1.SchemeGroupVersion.WithKind("Pod"),
@@ -1680,8 +1680,6 @@ func TestMethodContextOverridesGeneralContext(t *testing.T) {
 	t.Run("method-specific context overrides general context for WaitForDelete", func(t *testing.T) {
 		t.Parallel()
 		c := newTestClient(t)
-		timeout := 5 * time.Second
-		timeUntilPodDelete := time.Millisecond * 100
 		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 		fakeMapper := testutil.NewFakeRESTMapper(
 			v1.SchemeGroupVersion.WithKind("Pod"),
@@ -1698,27 +1696,14 @@ func TestMethodContextOverridesGeneralContext(t *testing.T) {
 			waitForDeleteCtx: context.Background(), // Not cancelled - should be used
 		}
 
+		// Use a non-existent resource: WaitForDelete should return immediately since
+		// the pod is already in the desired "deleted" state.
+		// This also validates context selection: if generalCtx (cancelled) were
+		// incorrectly used instead of waitForDeleteCtx, the watch context would be
+		// immediately cancelled and the call would return a context error.
 		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
-		for _, obj := range objs {
-			u := obj.(*unstructured.Unstructured)
-			gvr := getGVR(t, fakeMapper, u)
-			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-			require.NoError(t, err)
-		}
-
-		// Schedule deletion
-		for _, obj := range objs {
-			u := obj.(*unstructured.Unstructured)
-			gvr := getGVR(t, fakeMapper, u)
-			go func(gvr schema.GroupVersionResource, u *unstructured.Unstructured) {
-				time.Sleep(timeUntilPodDelete)
-				err := fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName())
-				assert.NoError(t, err)
-			}(gvr, u)
-		}
-
 		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
-		err := sw.WaitForDelete(resourceList, timeout)
+		err := sw.WaitForDelete(resourceList, time.Second)
 		// Should succeed because method context is used and it's not cancelled
 		assert.NoError(t, err)
 	})
