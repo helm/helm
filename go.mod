@@ -47,7 +47,7 @@ require (
 	k8s.io/client-go v0.35.1
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kubectl v0.35.1
-	oras.land/oras-go/v2 v2.6.0
+	oras.land/oras-go/v2 v2.6.1-0.20251010150221-ba36eb50d8f7
 	sigs.k8s.io/controller-runtime v0.23.3
 	sigs.k8s.io/kustomize/kyaml v0.21.1
 	sigs.k8s.io/yaml v1.6.0

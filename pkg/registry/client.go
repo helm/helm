@@ -252,18 +252,12 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 	}
 	reg.PlainHTTP = c.plainHTTP
 	cred := auth.Credential{Username: c.username, Password: c.password}
-	c.authorizer.ForceAttemptOAuth2 = true
 	reg.Client = c.authorizer
 
 	ctx := context.Background()
 	if err := reg.Ping(ctx); err != nil {
-		c.authorizer.ForceAttemptOAuth2 = false
-		if err := reg.Ping(ctx); err != nil {
-			return fmt.Errorf("authenticating to %q: %w", host, err)
-		}
+		return fmt.Errorf("authenticating to %q: %w", host, err)
 	}
-	// Always restore to false after probing, to avoid forcing POST to token endpoints like GHCR.
-	c.authorizer.ForceAttemptOAuth2 = false
 
 	key := credentials.ServerAddressFromRegistry(host)
 	key = credentials.ServerAddressFromHostname(key)
