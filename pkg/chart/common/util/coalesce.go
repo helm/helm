@@ -19,6 +19,7 @@ package util
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"maps"
 
 	"helm.sh/helm/v4/internal/copystructure"
@@ -73,6 +74,13 @@ func MergeValues(chrt chart.Charter, vals map[string]any) (common.Values, error)
 }
 
 func copyValues(vals map[string]any) (common.Values, error) {
+	// handle case where vals is nil to avoid panics or misuse of an uninitialized values map
+	if vals == nil {
+		slog.Warn("copyValues called with nil vals; returning nil values map")
+		// ensure we always return a non-nil map to callers
+		return make(map[string]any), nil
+	}
+
 	v, err := copystructure.Copy(vals)
 	if err != nil {
 		return vals, err
