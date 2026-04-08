@@ -38,6 +38,7 @@ import (
 	"helm.sh/helm/v4/pkg/cmd/require"
 	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/kube"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
@@ -324,6 +325,8 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		cancel()
 	}()
 
+	printWaitMessage(out, client.WaitStrategy, client.Timeout)
+
 	ri, err := client.RunWithContext(ctx, chartRequested, vals)
 	rel, rerr := releaserToV1Release(ri)
 	if rerr != nil {
@@ -343,6 +346,13 @@ func checkIfInstallable(ch chart.Accessor) error {
 		return nil
 	}
 	return fmt.Errorf("%s charts are not installable", meta["Type"])
+}
+
+func printWaitMessage(out io.Writer, strategy kube.WaitStrategy, timeout time.Duration) {
+	if strategy == kube.HookOnlyStrategy {
+		return
+	}
+	fmt.Fprintf(out, "Waiting for resources to become ready (timeout: %s)\n", timeout)
 }
 
 // Provide dynamic auto-completion for the install and template commands
