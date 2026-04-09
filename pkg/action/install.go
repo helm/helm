@@ -991,6 +991,11 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	if c.resolvedSource == nil && c.RepoURL != "" {
 		c.resolvedSource = &rcommon.ChartSource{RepoURL: c.RepoURL}
 	}
+	// Fallback for direct OCI references (e.g. oci://registry.com/chart:tag)
+	// where RepoURL is empty and the downloader may not have populated it.
+	if c.resolvedSource == nil && registry.IsOCI(name) {
+		c.resolvedSource = &rcommon.ChartSource{RegistryRef: name}
+	}
 
 	lname, err := filepath.Abs(filename)
 	if err != nil {

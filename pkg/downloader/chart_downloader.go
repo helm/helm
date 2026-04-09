@@ -150,6 +150,15 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		}
 	}
 
+	// Populate source provenance for cached OCI charts.
+	// The ref and digest are already known from ResolveChartVersion.
+	if found && u.Scheme == registry.OCIScheme {
+		c.ResolvedSource = &rcommon.ChartSource{
+			RegistryRef: ref,
+			Digest:      hash,
+		}
+	}
+
 	if !found {
 		c.Options = append(c.Options, getter.WithAcceptHeader("application/gzip,application/octet-stream"))
 
@@ -266,6 +275,14 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 		pth, err = c.Cache.Get(digest32, CacheChart)
 		if err == nil {
 			slog.Debug("found chart in cache", "id", digestString)
+
+			// Populate source provenance for cached OCI charts.
+			if u.Scheme == registry.OCIScheme {
+				c.ResolvedSource = &rcommon.ChartSource{
+					RegistryRef: ref,
+					Digest:      digestString,
+				}
+			}
 		}
 	}
 	if len(digest) == 0 || err != nil {
