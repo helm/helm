@@ -46,7 +46,7 @@ func TestCliPluginExitCode(t *testing.T) {
 		// So that the second run is able to run main() and this first run can verify the exit status returned by that.
 		//
 		// This technique originates from https://talks.golang.org/2014/testing.slide#23.
-		cmd := exec.Command(os.Args[0], "-test.run=TestCliPluginExitCode")
+		cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=TestCliPluginExitCode")
 		cmd.Env = append(
 			os.Environ(),
 			"RUN_MAIN_FOR_TESTING=1",

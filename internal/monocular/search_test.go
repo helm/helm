@@ -38,7 +38,7 @@ func TestSearch(t *testing.T) {
 		t.Errorf("unable to create monocular client: %s", err)
 	}
 
-	results, err := c.Search("phpmyadmin")
+	results, err := c.SearchWithContext(t.Context(), "phpmyadmin")
 	if err != nil {
 		t.Errorf("unable to search monocular: %s", err)
 	}
