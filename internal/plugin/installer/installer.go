@@ -98,7 +98,7 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 
 		// Check if provenance data exists
 		if len(provData) == 0 {
-			return nil, fmt.Errorf("plugin verification failed: no provenance file (.prov) found")
+			return nil, errors.New("plugin verification failed: no provenance file (.prov) found")
 		}
 
 		// Provenance data exists - verify the plugin
