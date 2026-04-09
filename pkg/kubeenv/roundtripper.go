@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cli
+// Package kubeenv holds small, cycle-free Kubernetes client helpers shared by
+// higher-level packages (for example pkg/cli and pkg/kube).
+package kubeenv
 
 import (
 	"bytes"
@@ -24,21 +26,21 @@ import (
 	"strings"
 )
 
-// retryingRoundTripper retries selected transient Kubernetes API server failures.
-// Keeping this in pkg/cli avoids importing pkg/kube from EnvSettings.
-type retryingRoundTripper struct {
-	wrapped http.RoundTripper
+// RetryingRoundTripper retries transient Kubernetes API server errors on a
+// wrapped [http.RoundTripper].
+type RetryingRoundTripper struct {
+	Wrapped http.RoundTripper
 }
 
-func (rt *retryingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+func (rt *RetryingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	return rt.roundTrip(req, 1, nil)
 }
 
-func (rt *retryingRoundTripper) roundTrip(req *http.Request, retry int, prevResp *http.Response) (*http.Response, error) {
+func (rt *RetryingRoundTripper) roundTrip(req *http.Request, retry int, prevResp *http.Response) (*http.Response, error) {
 	if retry < 0 {
 		return prevResp, nil
 	}
-	resp, rtErr := rt.wrapped.RoundTrip(req)
+	resp, rtErr := rt.Wrapped.RoundTrip(req)
 	if rtErr != nil {
 		return resp, rtErr
 	}

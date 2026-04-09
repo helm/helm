@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cli
+package kubeenv
 
 import (
 	"encoding/json"
@@ -131,8 +131,8 @@ func TestRetryingRoundTripper_RoundTrip(t *testing.T) {
 				resp: tt.resp,
 				err:  tt.err,
 			}
-			rt := retryingRoundTripper{
-				wrapped: fakeRT,
+			rt := RetryingRoundTripper{
+				Wrapped: fakeRT,
 			}
 			req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
 			resp, err := rt.RoundTrip(req)
