@@ -103,7 +103,6 @@ func TestRepoRemove(t *testing.T) {
 
 		cacheIndex, cacheChart := createCacheFiles(rootDir, repoName)
 		cacheFiles[repoName] = []string{cacheIndex, cacheChart}
-
 	}
 
 	// Create repo remove command

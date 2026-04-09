@@ -37,6 +37,7 @@ linters:
     - unused
     - usestdlibvars
     - usetesting
+    - whitespace
 
   exclusions:
   

@@ -43,14 +43,12 @@ func extractChartMeta(chartData []byte) (*chart.Metadata, error) {
 
 // generateOCIAnnotations will generate OCI annotations to include within the OCI manifest
 func generateOCIAnnotations(meta *chart.Metadata, creationTime string) map[string]string {
-
 	// Get annotations from Chart attributes
 	ociAnnotations := generateChartOCIAnnotations(meta, creationTime)
 
 	// Copy Chart annotations
 annotations:
 	for chartAnnotationKey, chartAnnotationValue := range meta.Annotations {
-
 		// Avoid overriding key properties
 		for _, immutableOciKey := range immutableOciAnnotations {
 			if immutableOciKey == chartAnnotationKey {
@@ -88,7 +86,6 @@ func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[
 		var maintainerSb strings.Builder
 
 		for maintainerIdx, maintainer := range meta.Maintainers {
-
 			if len(maintainer.Name) > 0 {
 				maintainerSb.WriteString(maintainer.Name)
 			}
@@ -102,11 +99,9 @@ func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[
 			if maintainerIdx < len(meta.Maintainers)-1 {
 				maintainerSb.WriteString(", ")
 			}
-
 		}
 
 		chartOCIAnnotations = addToMap(chartOCIAnnotations, ocispec.AnnotationAuthors, maintainerSb.String())
-
 	}
 
 	return chartOCIAnnotations
@@ -114,7 +109,6 @@ func generateChartOCIAnnotations(meta *chart.Metadata, creationTime string) map[
 
 // addToMap takes an existing map and adds an item if the value is not empty
 func addToMap(inputMap map[string]string, newKey string, newValue string) map[string]string {
-
 	// Add item to map if its
 	if len(strings.TrimSpace(newValue)) > 0 {
 		inputMap[newKey] = newValue
