@@ -19,10 +19,12 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/require"
 	"helm.sh/helm/v4/pkg/pusher"
 )
@@ -42,6 +44,52 @@ type registryPushOptions struct {
 	plainHTTP             bool
 	password              string
 	username              string
+	outfmt                output.Format
+}
+
+// pushResult represents the result of a helm push operation
+type pushResult struct {
+	Ref    string `json:"ref"`
+	Digest string `json:"digest"`
+}
+
+// pushWriter implements the output.Writer interface for push results
+type pushWriter struct {
+	result pushResult
+}
+
+// suppressSummaryWriter forwards all writes to the underlying writer, silently
+// dropping lines that match the registry client's built-in "Pushed:"/"Digest:"
+// summary output. Warnings, errors, and other output are forwarded intact.
+type suppressSummaryWriter struct {
+	w io.Writer
+}
+
+func (s *suppressSummaryWriter) Write(p []byte) (int, error) {
+	line := string(p)
+	if strings.HasPrefix(line, "Pushed: ") || strings.HasPrefix(line, "Digest: ") {
+		return len(p), nil
+	}
+	return s.w.Write(p)
+}
+
+// WriteTable writes the push result in human-readable form, using the same
+// "Pushed:"/"Digest:" labels as the registry client's built-in output so that
+// the default (--output table) experience is consistent and familiar.
+func (w *pushWriter) WriteTable(out io.Writer) error {
+	fmt.Fprintf(out, "Pushed: %s\n", w.result.Ref)
+	fmt.Fprintf(out, "Digest: %s\n", w.result.Digest)
+	return nil
+}
+
+// WriteJSON writes the push result in JSON format
+func (w *pushWriter) WriteJSON(out io.Writer) error {
+	return output.EncodeJSON(out, w.result)
+}
+
+// WriteYAML writes the push result in YAML format
+func (w *pushWriter) WriteYAML(out io.Writer) error {
+	return output.EncodeYAML(out, w.result)
 }
 
 func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -69,9 +117,14 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 			return noMoreArgsComp()
 		},
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Suppress the registry client's built-in "Pushed:"/"Digest:" summary
+			// lines while forwarding all other output (warnings, etc.) to stderr.
+			// The --output writer (WriteTable/WriteJSON/WriteYAML) is the single
+			// source of structured push output for this command.
 			registryClient, err := newRegistryClient(
 				o.certFile, o.keyFile, o.caFile, o.insecureSkipTLSVerify, o.plainHTTP, o.username, o.password,
+				&suppressSummaryWriter{w: cmd.ErrOrStderr()},
 			)
 
 			if err != nil {
@@ -83,15 +136,19 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client := action.NewPushWithOpts(action.WithPushConfig(cfg),
 				action.WithTLSClientConfig(o.certFile, o.keyFile, o.caFile),
 				action.WithInsecureSkipTLSVerify(o.insecureSkipTLSVerify),
-				action.WithPlainHTTP(o.plainHTTP),
-				action.WithPushOptWriter(out))
+				action.WithPlainHTTP(o.plainHTTP))
 			client.Settings = settings
-			output, err := client.Run(chartRef, remote)
+			result, err := client.Run(chartRef, remote)
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(out, output)
-			return nil
+			writer := &pushWriter{
+				result: pushResult{
+					Ref:    result.Ref,
+					Digest: result.Manifest.Digest,
+				},
+			}
+			return o.outfmt.Write(out, writer)
 		},
 	}
 
@@ -103,6 +160,8 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart upload")
 	f.StringVar(&o.username, "username", "", "chart repository username where to locate the requested chart")
 	f.StringVar(&o.password, "password", "", "chart repository password where to locate the requested chart")
+
+	bindOutputFlag(cmd, &o.outfmt)
 
 	return cmd
 }
