@@ -31,10 +31,10 @@ type BudgetedReader struct {
 
 // NewBudgetedReader creates a BudgetedReader with the given maximum total size.
 // The remaining budget is initialized to the maximum.
-func NewBudgetedReader(max int64) *BudgetedReader {
+func NewBudgetedReader(limit int64) *BudgetedReader {
 	return &BudgetedReader{
-		max:       max,
-		remaining: max,
+		max:       limit,
+		remaining: limit,
 	}
 }
 

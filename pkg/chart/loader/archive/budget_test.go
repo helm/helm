@@ -48,9 +48,9 @@ func TestReadFileWithBudget(t *testing.T) {
 				if err != nil {
 					t.Fatalf("failed to stat %s: %v", p, err)
 				}
-				max := int64(1000)
+				limit := int64(1000)
 
-				br := NewBudgetedReader(max)
+				br := NewBudgetedReader(limit)
 				data, err := br.ReadFileWithBudget(p, fi.Size())
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
@@ -72,14 +72,14 @@ func TestReadFileWithBudget(t *testing.T) {
 				if err != nil {
 					t.Fatalf("failed to stat %s: %v", p, err)
 				}
-				max := int64(100)
+				limit := int64(100)
 
-				br := NewBudgetedReader(max)
+				br := NewBudgetedReader(limit)
 				_, err = br.ReadFileWithBudget(p, fi.Size())
 				if err == nil {
 					t.Fatal("expected error for file exceeding budget")
 				}
-				expectedErr := fmt.Sprintf("chart exceeds maximum decompressed size of %d bytes", max)
+				expectedErr := fmt.Sprintf("chart exceeds maximum decompressed size of %d bytes", limit)
 				if err.Error() != expectedErr {
 					t.Fatalf("expected %q, got %q", expectedErr, err.Error())
 				}
