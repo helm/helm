@@ -58,7 +58,7 @@ func TestInstallWithOptions_VerifyMissingProvenance(t *testing.T) {
 
 	// Plugin should NOT be installed
 	if _, err := os.Stat(installer.Path()); !os.IsNotExist(err) {
-		t.Errorf("Plugin should not be installed when verification fails due to missing .prov")
+		t.Error("Plugin should not be installed when verification fails due to missing .prov")
 	}
 }
 
