@@ -36,6 +36,7 @@ import (
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/provenance"
 	"helm.sh/helm/v4/pkg/registry"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
 	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
@@ -85,6 +86,10 @@ type ChartDownloader struct {
 
 	// Cache specifies the cache implementation to use.
 	Cache Cache
+
+	// ResolvedSource is populated after a successful download with the chart's
+	// source provenance (OCI ref and digest).
+	ResolvedSource *rcommon.ChartSource
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -151,6 +156,14 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 		data, err = g.Get(u.String(), c.Options...)
 		if err != nil {
 			return "", nil, err
+		}
+
+		// Capture source provenance via duck-typing
+		if u.Scheme == registry.OCIScheme {
+			c.ResolvedSource = &rcommon.ChartSource{RegistryRef: ref}
+			if dg, ok := g.(interface{ Digest() string }); ok {
+				c.ResolvedSource.Digest = dg.Digest()
+			}
 		}
 	}
 
@@ -265,6 +278,14 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 		data, gerr := g.Get(u.String(), c.Options...)
 		if gerr != nil {
 			return "", nil, gerr
+		}
+
+		// Capture source provenance via duck-typing
+		if u.Scheme == registry.OCIScheme {
+			c.ResolvedSource = &rcommon.ChartSource{RegistryRef: ref}
+			if dg, ok := g.(interface{ Digest() string }); ok {
+				c.ResolvedSource.Digest = dg.Digest()
+			}
 		}
 
 		// Generate the digest

@@ -153,6 +153,9 @@ type ChartPathOptions struct {
 	// registryClient provides a registry client but is not added with
 	// options from a flag
 	registryClient *registry.Client
+
+	// resolvedSource is populated by LocateChart with chart provenance info.
+	resolvedSource *rcommon.ChartSource
 }
 
 // NewInstall creates a new Install object with the given configuration.
@@ -669,6 +672,7 @@ func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]any, label
 		Version:     1,
 		Labels:      labels,
 		ApplyMethod: string(determineReleaseSSApplyMethod(i.ServerSideApply)),
+		Source:      i.resolvedSource,
 	}
 
 	return r
@@ -978,6 +982,14 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	filename, _, err := dl.DownloadToCache(name, version)
 	if err != nil {
 		return "", err
+	}
+
+	// Capture source provenance from downloader or fallback context
+	if dl.ResolvedSource != nil {
+		c.resolvedSource = dl.ResolvedSource
+	}
+	if c.resolvedSource == nil && c.RepoURL != "" {
+		c.resolvedSource = &rcommon.ChartSource{RepoURL: c.RepoURL}
 	}
 
 	lname, err := filepath.Abs(filename)
