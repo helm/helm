@@ -17,22 +17,34 @@ limitations under the License.
 package archive
 
 import (
-	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 )
 
-// ReadFileWithBudget reads a file and decrements remaining by the bytes read.
-// It returns an error if the total would exceed MaxDecompressedChartSize.
+// budgetedReader tracks cumulative file reads against a size limit.
+type budgetedReader struct {
+	max       int64
+	remaining int64
+}
+
+// newBudgetedReader creates a new budgetedReader with the given maximum decompressed chart size.
+// The remaining budget is initialized to the maximum size.
+func NewBudgetedReader(max int64) *budgetedReader {
+	return &budgetedReader{
+		max:       max,
+		remaining: max,
+	}
+}
+
+// readFileWithBudget reads a file and decrements remaining by the bytes read.
+// It returns an error if the total would exceed the maximum decompressed chart size.
 // The read is capped via io.LimitReader so a file that grows between stat
 // and read cannot cause unbounded memory allocation.
-func ReadFileWithBudget(path string, size int64, remaining *int64) ([]byte, error) {
-	if remaining == nil {
-		return nil, errors.New("remaining budget must not be nil")
-	}
-	if size > *remaining {
-		return nil, fmt.Errorf("chart exceeds maximum decompressed size of %d bytes", MaxDecompressedChartSize)
+func (r *budgetedReader) ReadFileWithBudget(path string, size int64) ([]byte, error) {
+	if size > r.remaining {
+		return nil, fmt.Errorf("chart exceeds maximum decompressed size of %d bytes", r.max)
 	}
 
 	f, err := os.Open(path)
@@ -41,17 +53,22 @@ func ReadFileWithBudget(path string, size int64, remaining *int64) ([]byte, erro
 	}
 	defer f.Close()
 
-	// Read at most *remaining+1 bytes so we can detect over-budget without
+	// Read at most r.remaining+1 bytes so we can detect over-budget without
 	// allocating unbounded memory if the file grew since stat.
-	data, err := io.ReadAll(io.LimitReader(f, *remaining+1))
+	// Clamp to avoid int64 overflow when r.remaining is near math.MaxInt64.
+	limit := r.remaining
+	if limit < math.MaxInt64 {
+		limit++
+	}
+	data, err := io.ReadAll(io.LimitReader(f, limit))
 	if err != nil {
 		return nil, err
 	}
 
-	if int64(len(data)) > *remaining {
-		return nil, fmt.Errorf("chart exceeds maximum decompressed size of %d bytes", MaxDecompressedChartSize)
+	if int64(len(data)) > r.remaining {
+		return nil, fmt.Errorf("chart exceeds maximum decompressed size of %d bytes", r.max)
 	}
 
-	*remaining -= int64(len(data))
+	r.remaining -= int64(len(data))
 	return data, nil
 }

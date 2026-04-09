@@ -35,8 +35,6 @@ func TestReadFileWithBudget(t *testing.T) {
 		return p
 	}
 
-	expectedErr := fmt.Sprintf("chart exceeds maximum decompressed size of %d bytes", MaxDecompressedChartSize)
-
 	tcs := []struct {
 		name  string
 		check func(t *testing.T)
@@ -50,17 +48,18 @@ func TestReadFileWithBudget(t *testing.T) {
 				if err != nil {
 					t.Fatalf("failed to stat %s: %v", p, err)
 				}
-				remaining := int64(1000)
+				max := int64(1000)
 
-				data, err := ReadFileWithBudget(p, fi.Size(), &remaining)
+				br := NewBudgetedReader(max)
+				data, err := br.ReadFileWithBudget(p, fi.Size())
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
 				}
 				if len(data) != 100 {
 					t.Fatalf("expected 100 bytes, got %d", len(data))
 				}
-				if remaining != 900 {
-					t.Fatalf("expected remaining=900, got %d", remaining)
+				if br.remaining != 900 {
+					t.Fatalf("expected remaining=900, got %d", br.remaining)
 				}
 			},
 		},
@@ -73,17 +72,19 @@ func TestReadFileWithBudget(t *testing.T) {
 				if err != nil {
 					t.Fatalf("failed to stat %s: %v", p, err)
 				}
-				remaining := int64(100)
+				max := int64(100)
 
-				_, err = ReadFileWithBudget(p, fi.Size(), &remaining)
+				br := NewBudgetedReader(max)
+				_, err = br.ReadFileWithBudget(p, fi.Size())
 				if err == nil {
 					t.Fatal("expected error for file exceeding budget")
 				}
+				expectedErr := fmt.Sprintf("chart exceeds maximum decompressed size of %d bytes", max)
 				if err.Error() != expectedErr {
 					t.Fatalf("expected %q, got %q", expectedErr, err.Error())
 				}
-				if remaining != 100 {
-					t.Fatalf("budget should not change on rejection, got %d", remaining)
+				if br.remaining != 100 {
+					t.Fatalf("budget should not change on rejection, got %d", br.remaining)
 				}
 			},
 		},
@@ -93,18 +94,19 @@ func TestReadFileWithBudget(t *testing.T) {
 				t.Helper()
 				remaining := int64(250)
 
+				br := NewBudgetedReader(remaining)
 				for i := range 3 {
 					p := writeFile(t, fmt.Sprintf("f%d.txt", i), 80)
 					fi, err := os.Stat(p)
 					if err != nil {
 						t.Fatalf("failed to stat %s: %v", p, err)
 					}
-					if _, err := ReadFileWithBudget(p, fi.Size(), &remaining); err != nil {
+					if _, err := br.ReadFileWithBudget(p, fi.Size()); err != nil {
 						t.Fatalf("read %d: unexpected error: %v", i, err)
 					}
 				}
-				if remaining != 10 {
-					t.Fatalf("expected remaining=10, got %d", remaining)
+				if br.remaining != 10 {
+					t.Fatalf("expected remaining=10, got %d", br.remaining)
 				}
 
 				p := writeFile(t, "over.txt", 20)
@@ -112,7 +114,7 @@ func TestReadFileWithBudget(t *testing.T) {
 				if err != nil {
 					t.Fatalf("failed to stat %s: %v", p, err)
 				}
-				_, err = ReadFileWithBudget(p, fi.Size(), &remaining)
+				_, err = br.ReadFileWithBudget(p, fi.Size())
 				if err == nil {
 					t.Fatal("expected error when cumulative reads exceed budget")
 				}
