@@ -23,26 +23,26 @@ import (
 	"os"
 )
 
-// budgetedReader tracks cumulative file reads against a size limit.
-type budgetedReader struct {
+// BudgetedReader tracks cumulative file reads against a size limit.
+type BudgetedReader struct {
 	max       int64
 	remaining int64
 }
 
-// newBudgetedReader creates a new budgetedReader with the given maximum decompressed chart size.
-// The remaining budget is initialized to the maximum size.
-func NewBudgetedReader(max int64) *budgetedReader {
-	return &budgetedReader{
+// NewBudgetedReader creates a BudgetedReader with the given maximum total size.
+// The remaining budget is initialized to the maximum.
+func NewBudgetedReader(max int64) *BudgetedReader {
+	return &BudgetedReader{
 		max:       max,
 		remaining: max,
 	}
 }
 
-// readFileWithBudget reads a file and decrements remaining by the bytes read.
-// It returns an error if the total would exceed the maximum decompressed chart size.
+// ReadFileWithBudget reads a file and decrements the remaining budget by the bytes read.
+// It returns an error if the total would exceed the configured maximum.
 // The read is capped via io.LimitReader so a file that grows between stat
 // and read cannot cause unbounded memory allocation.
-func (r *budgetedReader) ReadFileWithBudget(path string, size int64) ([]byte, error) {
+func (r *BudgetedReader) ReadFileWithBudget(path string, size int64) ([]byte, error) {
 	if size > r.remaining {
 		return nil, fmt.Errorf("chart exceeds maximum decompressed size of %d bytes", r.max)
 	}
