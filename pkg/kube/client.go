@@ -32,6 +32,7 @@ import (
 	"sync"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
+	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/engine"
 	v1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -117,6 +118,7 @@ const (
 
 	// HookOnlyStrategy: wait only for hook Pods/Jobs to complete; does not wait for general chart resources.
 	HookOnlyStrategy WaitStrategy = "hookOnly"
+
 )
 
 type FieldValidationDirective string
@@ -166,6 +168,10 @@ func (c *Client) newStatusWatcher(opts ...WaitOption) (*statusWaiter, error) {
 	if waitContext == nil {
 		waitContext = c.WaitContext
 	}
+	readers := append([]engine.StatusReader(nil), o.statusReaders...)
+	if o.enableCustomReadinessStatusReader {
+		readers = append([]engine.StatusReader{newCustomReadinessStatusReader()}, readers...)
+	}
 	sw := &statusWaiter{
 		restMapper:         restMapper,
 		client:             dynamicClient,
@@ -174,7 +180,7 @@ func (c *Client) newStatusWatcher(opts ...WaitOption) (*statusWaiter, error) {
 		waitCtx:            o.waitCtx,
 		waitWithJobsCtx:    o.waitWithJobsCtx,
 		waitForDeleteCtx:   o.waitForDeleteCtx,
-		readers:            o.statusReaders,
+		readers:            readers,
 	}
 	sw.SetLogger(c.Logger().Handler())
 	return sw, nil
