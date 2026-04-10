@@ -87,6 +87,27 @@ func TestInfoMarshalJSON(t *testing.T) {
 			},
 			expected: `{"first_deployed":"2025-10-08T12:00:00Z","last_deployed":"2025-10-08T13:00:00Z","deleted":"2025-10-08T14:00:00Z","description":"Uninstalled release","status":"uninstalled"}`,
 		},
+		{
+			name: "with rollback revision",
+			info: Info{
+				FirstDeployed:    now,
+				LastDeployed:     later,
+				Status:           common.StatusDeployed,
+				RollbackRevision: 2,
+				Description:      "Rollback to 2",
+			},
+			expected: `{"first_deployed":"2025-10-08T12:00:00Z","last_deployed":"2025-10-08T13:00:00Z","status":"deployed","rollback_revision":2,"description":"Rollback to 2"}`,
+		},
+		{
+			name: "zero rollback revision omitted",
+			info: Info{
+				FirstDeployed: now,
+				LastDeployed:  later,
+				Status:        common.StatusDeployed,
+				Description:   "Normal install",
+			},
+			expected: `{"first_deployed":"2025-10-08T12:00:00Z","last_deployed":"2025-10-08T13:00:00Z","status":"deployed","description":"Normal install"}`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -203,6 +224,27 @@ func TestInfoUnmarshalJSON(t *testing.T) {
 				Status: "",
 			},
 		},
+		{
+			name:  "with rollback revision",
+			input: `{"first_deployed":"2025-10-08T12:00:00Z","last_deployed":"2025-10-08T13:00:00Z","status":"deployed","rollback_revision":2,"description":"Rollback to 2"}`,
+			expected: Info{
+				FirstDeployed:    now,
+				LastDeployed:     later,
+				Status:           common.StatusDeployed,
+				RollbackRevision: 2,
+				Description:      "Rollback to 2",
+			},
+		},
+		{
+			name:  "zero rollback revision omitted",
+			input: `{"first_deployed":"2025-10-08T12:00:00Z","last_deployed":"2025-10-08T13:00:00Z","status":"deployed","description":"Normal install"}`,
+			expected: Info{
+				FirstDeployed: now,
+				LastDeployed:  later,
+				Status:        common.StatusDeployed,
+				Description:   "Normal install",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -219,6 +261,7 @@ func TestInfoUnmarshalJSON(t *testing.T) {
 			assert.Equal(t, tt.expected.Deleted.Unix(), info.Deleted.Unix())
 			assert.Equal(t, tt.expected.Description, info.Description)
 			assert.Equal(t, tt.expected.Status, info.Status)
+			assert.Equal(t, tt.expected.RollbackRevision, info.RollbackRevision)
 			assert.Equal(t, tt.expected.Notes, info.Notes)
 			assert.Equal(t, tt.expected.Resources, info.Resources)
 		})
@@ -250,6 +293,61 @@ func TestInfoRoundTrip(t *testing.T) {
 	assert.Equal(t, original.Description, decoded.Description)
 	assert.Equal(t, original.Status, decoded.Status)
 	assert.Equal(t, original.Notes, decoded.Notes)
+}
+
+func TestInfoRollbackRevisionRoundTrip(t *testing.T) {
+	now := time.Date(2025, 10, 8, 12, 0, 0, 0, time.UTC)
+	later := time.Date(2025, 10, 8, 13, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name string
+		info Info
+	}{
+		{
+			name: "with rollback revision",
+			info: Info{
+				FirstDeployed:    now,
+				LastDeployed:     later,
+				Description:      "Rollback to 2",
+				Status:           common.StatusDeployed,
+				RollbackRevision: 2,
+			},
+		},
+		{
+			name: "zero rollback revision",
+			info: Info{
+				FirstDeployed: now,
+				LastDeployed:  later,
+				Description:   "Normal install",
+				Status:        common.StatusDeployed,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(&tt.info)
+			require.NoError(t, err)
+
+			var decoded Info
+			err = json.Unmarshal(data, &decoded)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.info.RollbackRevision, decoded.RollbackRevision)
+			assert.Equal(t, tt.info.FirstDeployed.Unix(), decoded.FirstDeployed.Unix())
+			assert.Equal(t, tt.info.LastDeployed.Unix(), decoded.LastDeployed.Unix())
+			assert.Equal(t, tt.info.Status, decoded.Status)
+			assert.Equal(t, tt.info.Description, decoded.Description)
+
+			// Verify omitempty behavior: zero rollback_revision should not appear in JSON
+			if tt.info.RollbackRevision == 0 {
+				var raw map[string]any
+				err = json.Unmarshal(data, &raw)
+				require.NoError(t, err)
+				assert.NotContains(t, raw, "rollback_revision")
+			}
+		})
+	}
 }
 
 func TestInfoEmptyStringRoundTrip(t *testing.T) {
