@@ -49,18 +49,20 @@ func funcMap() template.FuncMap {
 
 	// Add some extra functionality
 	extra := template.FuncMap{
-		"toToml":        toTOML,
-		"mustToToml":    mustToTOML,
-		"fromToml":      fromTOML,
-		"toYaml":        toYAML,
-		"mustToYaml":    mustToYAML,
-		"toYamlPretty":  toYAMLPretty,
-		"fromYaml":      fromYAML,
-		"fromYamlArray": fromYAMLArray,
-		"toJson":        toJSON,
-		"mustToJson":    mustToJSON,
-		"fromJson":      fromJSON,
-		"fromJsonArray": fromJSONArray,
+		"toToml":           toTOML,
+		"mustToToml":       mustToTOML,
+		"fromToml":         fromTOML,
+		"toYaml":           toYAML,
+		"mustToYaml":       mustToYAML,
+		"toYamlPretty":     toYAMLPretty,
+		"fromYaml":         fromYAML,
+		"fromYamlArray":    fromYAMLArray,
+		"toJson":           toJSON,
+		"mustToJson":       mustToJSON,
+		"toPrettyJson":     toPrettyJSON,
+		"mustToPrettyJson": mustToPrettyJSON,
+		"fromJson":         fromJSON,
+		"fromJsonArray":    fromJSONArray,
 
 		// This is a placeholder for the "include" function, which is
 		// late-bound to a template. By declaring it here, we preserve the
@@ -218,6 +220,48 @@ func mustToJSON(v any) string {
 		panic(err)
 	}
 	return string(data)
+}
+
+// encodePrettyJSON encodes v as indented JSON without HTML-escaping special
+// characters (&, <, >). It uses two-space indentation to match the behavior
+// of Sprig's toPrettyJson.
+func encodePrettyJSON(v any) (string, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
+		return "", err
+	}
+	return strings.TrimSuffix(buf.String(), "\n"), nil
+}
+
+// toPrettyJSON takes an interface, marshals it to indented JSON without
+// HTML-escaping special characters (&, <, >), and returns a string. It will
+// always return a string, even on marshal error (empty string).
+//
+// This is designed to be called from a template.
+func toPrettyJSON(v any) string {
+	s, err := encodePrettyJSON(v)
+	if err != nil {
+		// Swallow errors inside of a template.
+		return ""
+	}
+	return s
+}
+
+// mustToPrettyJSON takes an interface, marshals it to indented JSON without
+// HTML-escaping special characters (&, <, >), and returns a string.
+// It will panic if there is an error.
+//
+// This is designed to be called from a template when you need to ensure that
+// the output JSON is valid.
+func mustToPrettyJSON(v any) string {
+	s, err := encodePrettyJSON(v)
+	if err != nil {
+		panic(err)
+	}
+	return s
 }
 
 // fromJSON converts a JSON document into a map[string]interface{}.
