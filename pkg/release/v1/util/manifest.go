@@ -58,7 +58,7 @@ func SplitManifests(bigFile string) map[string]string {
 	docs := sep.Split(bigFileTmp, -1)
 	var count int
 	for _, d := range docs {
-		if d == "" {
+		if strings.TrimSpace(d) == "" {
 			continue
 		}
 

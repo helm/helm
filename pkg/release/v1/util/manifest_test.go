@@ -70,6 +70,13 @@ spec:
 			expected: map[string]string{},
 		},
 		{
+			name:  "whitespace-only doc after separator is skipped",
+			input: "---\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n---\n  \n",
+			expected: map[string]string{
+				"manifest-0": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1",
+			},
+		},
+		{
 			name: "single doc no separator",
 			input: `
 apiVersion: v1
