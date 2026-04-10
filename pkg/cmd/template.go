@@ -22,7 +22,9 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -32,11 +34,16 @@ import (
 	release "helm.sh/helm/v4/pkg/release/v1"
 
 	"github.com/spf13/cobra"
+	"sigs.k8s.io/yaml"
 
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/common"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/cli/values"
 	"helm.sh/helm/v4/pkg/cmd/require"
+	"helm.sh/helm/v4/pkg/kube"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 )
 
@@ -105,6 +112,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			client.Replace = true // Skip the name check
 			client.APIVersions = common.VersionSet(extraAPIs)
 			client.IncludeCRDs = includeCrds
+			orderedTemplateOutput := client.WaitStrategy == kube.OrderedWaitStrategy && len(showFiles) == 0 && client.OutputDir == ""
 			rel, err := runInstall(args, client, valueOpts, out)
 
 			if err != nil && !settings.Debug {
@@ -117,84 +125,101 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// We ignore a potential error here because, when the --debug flag was specified,
 			// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
 			if rel != nil {
-				var manifests bytes.Buffer
-				fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
-				if !client.DisableHooks {
-					fileWritten := make(map[string]bool)
-					for _, m := range rel.Hooks {
-						if skipTests && isTestHook(m) {
-							continue
-						}
-						if client.OutputDir == "" {
-							fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
-						} else {
-							newDir := client.OutputDir
-							if client.UseReleaseName {
-								newDir = filepath.Join(client.OutputDir, client.ReleaseName)
-							}
-							_, err := os.Stat(filepath.Join(newDir, m.Path))
-							if err == nil {
-								fileWritten[m.Path] = true
-							}
-
-							err = writeToFile(newDir, m.Path, m.Manifest, fileWritten[m.Path])
-							if err != nil {
-								return err
-							}
-						}
-
+				if orderedTemplateOutput {
+					templateChart, err := loadTemplateChart(args, client)
+					if err != nil {
+						return err
 					}
-				}
-
-				// if we have a list of files to render, then check that each of the
-				// provided files exists in the chart.
-				if len(showFiles) > 0 {
-					// This is necessary to ensure consistent manifest ordering when using --show-only
-					// with globs or directory names.
-					splitManifests := releaseutil.SplitManifests(manifests.String())
-					manifestsKeys := make([]string, 0, len(splitManifests))
-					for k := range splitManifests {
-						manifestsKeys = append(manifestsKeys, k)
+					if err := renderOrderedTemplate(templateChart, strings.TrimSpace(rel.Manifest), out); err != nil {
+						return err
 					}
-					sort.Sort(releaseutil.BySplitManifestsOrder(manifestsKeys))
-
-					manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
-					var manifestsToRender []string
-					for _, f := range showFiles {
-						missing := true
-						// Use linux-style filepath separators to unify user's input path
-						f = filepath.ToSlash(f)
-						for _, manifestKey := range manifestsKeys {
-							manifest := splitManifests[manifestKey]
-							submatch := manifestNameRegex.FindStringSubmatch(manifest)
-							if len(submatch) == 0 {
+					if !client.DisableHooks {
+						for _, m := range rel.Hooks {
+							if skipTests && isTestHook(m) {
 								continue
 							}
-							manifestName := submatch[1]
-							// manifest.Name is rendered using linux-style filepath separators on Windows as
-							// well as macOS/linux.
-							manifestPathSplit := strings.Split(manifestName, "/")
-							// manifest.Path is connected using linux-style filepath separators on Windows as
-							// well as macOS/linux
-							manifestPath := strings.Join(manifestPathSplit, "/")
-
-							// if the filepath provided matches a manifest path in the
-							// chart, render that manifest
-							if matched, _ := filepath.Match(f, manifestPath); !matched {
-								continue
-							}
-							manifestsToRender = append(manifestsToRender, manifest)
-							missing = false
+							fmt.Fprintf(out, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
 						}
-						if missing {
-							return fmt.Errorf("could not find template %s in chart", f)
-						}
-					}
-					for _, m := range manifestsToRender {
-						fmt.Fprintf(out, "---\n%s\n", m)
 					}
 				} else {
-					fmt.Fprintf(out, "%s", manifests.String())
+					var manifests bytes.Buffer
+					fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+					if !client.DisableHooks {
+						fileWritten := make(map[string]bool)
+						for _, m := range rel.Hooks {
+							if skipTests && isTestHook(m) {
+								continue
+							}
+							if client.OutputDir == "" {
+								fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+							} else {
+								newDir := client.OutputDir
+								if client.UseReleaseName {
+									newDir = filepath.Join(client.OutputDir, client.ReleaseName)
+								}
+								_, err := os.Stat(filepath.Join(newDir, m.Path))
+								if err == nil {
+									fileWritten[m.Path] = true
+								}
+
+								err = writeToFile(newDir, m.Path, m.Manifest, fileWritten[m.Path])
+								if err != nil {
+									return err
+								}
+							}
+						}
+					}
+
+					// if we have a list of files to render, then check that each of the
+					// provided files exists in the chart.
+					if len(showFiles) > 0 {
+						// This is necessary to ensure consistent manifest ordering when using --show-only
+						// with globs or directory names.
+						splitManifests := releaseutil.SplitManifests(manifests.String())
+						manifestsKeys := make([]string, 0, len(splitManifests))
+						for k := range splitManifests {
+							manifestsKeys = append(manifestsKeys, k)
+						}
+						sort.Sort(releaseutil.BySplitManifestsOrder(manifestsKeys))
+
+						manifestNameRegex := regexp.MustCompile("# Source: [^/]+/(.+)")
+						var manifestsToRender []string
+						for _, f := range showFiles {
+							missing := true
+							// Use linux-style filepath separators to unify user's input path
+							f = filepath.ToSlash(f)
+							for _, manifestKey := range manifestsKeys {
+								manifest := splitManifests[manifestKey]
+								submatch := manifestNameRegex.FindStringSubmatch(manifest)
+								if len(submatch) == 0 {
+									continue
+								}
+								manifestName := submatch[1]
+								// manifest.Name is rendered using linux-style filepath separators on Windows as
+								// well as macOS/linux.
+								manifestPathSplit := strings.Split(manifestName, "/")
+								// manifest.Path is connected using linux-style filepath separators on Windows as
+								// well as macOS/linux
+								manifestPath := strings.Join(manifestPathSplit, "/")
+
+								// if the filepath provided matches a manifest path in the
+								// chart, render that manifest
+								if matched, _ := filepath.Match(f, manifestPath); !matched {
+									continue
+								}
+								manifestsToRender = append(manifestsToRender, manifest)
+								missing = false
+							}
+							if missing {
+								return fmt.Errorf("could not find template %s in chart", f)
+							}
+						}
+						for _, m := range manifestsToRender {
+							fmt.Fprintf(out, "---\n%s\n", m)
+						}
+					} else {
+						fmt.Fprintf(out, "%s", manifests.String())
+					}
 				}
 			}
 
@@ -223,6 +248,244 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	cmd.MarkFlagsMutuallyExclusive("validate", "dry-run")
 
 	return cmd
+}
+
+func loadTemplateChart(args []string, client *action.Install) (*chart.Chart, error) {
+	_, chartRef, err := client.NameAndChart(args)
+	if err != nil {
+		return nil, err
+	}
+
+	chartPath, err := client.LocateChart(chartRef, settings)
+	if err != nil {
+		return nil, err
+	}
+
+	return loader.Load(chartPath)
+}
+
+func renderOrderedTemplate(chrt *chart.Chart, manifest string, out io.Writer) error {
+	if manifest == "" {
+		return nil
+	}
+
+	sortedManifests, err := parseTemplateManifests(manifest)
+	if err != nil {
+		return fmt.Errorf("parsing manifests for ordered output: %w", err)
+	}
+
+	return renderOrderedChartLevel(chrt, sortedManifests, chrt.Name(), out)
+}
+
+func parseTemplateManifests(manifest string) ([]releaseutil.Manifest, error) {
+	rawManifests := releaseutil.SplitManifests(manifest)
+	keys := make([]string, 0, len(rawManifests))
+	for key := range rawManifests {
+		keys = append(keys, key)
+	}
+	sort.Sort(releaseutil.BySplitManifestsOrder(keys))
+
+	manifests := make([]releaseutil.Manifest, 0, len(keys))
+	for _, key := range keys {
+		content := rawManifests[key]
+		name := manifestSourcePath(content)
+		if name == "" {
+			name = key
+		}
+
+		var head releaseutil.SimpleHead
+		if err := yaml.Unmarshal([]byte(content), &head); err != nil {
+			return nil, fmt.Errorf("YAML parse error on %s: %w", name, err)
+		}
+
+		manifests = append(manifests, releaseutil.Manifest{
+			Name:    name,
+			Content: content,
+			Head:    &head,
+		})
+	}
+
+	return manifests, nil
+}
+
+func manifestSourcePath(content string) string {
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "# Source: ") {
+			return strings.TrimPrefix(line, "# Source: ")
+		}
+	}
+
+	return ""
+}
+
+func renderOrderedChartLevel(chrt *chart.Chart, manifests []releaseutil.Manifest, chartPath string, out io.Writer) error {
+	if len(manifests) == 0 {
+		return nil
+	}
+
+	grouped := groupManifestsByChartPath(manifests, chartPath)
+	renderedSubcharts := make(map[string]struct{})
+
+	dag, err := chartutil.BuildSubchartDAG(chrt)
+	if err != nil {
+		return fmt.Errorf("building subchart DAG for %s: %w", chartPath, err)
+	}
+
+	batches, err := dag.GetBatches()
+	if err != nil {
+		return fmt.Errorf("getting subchart batches for %s: %w", chartPath, err)
+	}
+
+	for _, batch := range batches {
+		for _, subchartName := range batch {
+			if err := renderOrderedSubchart(chrt, chartPath, subchartName, grouped[subchartName], out); err != nil {
+				return err
+			}
+			renderedSubcharts[subchartName] = struct{}{}
+		}
+	}
+
+	var remainingSubcharts []string
+	for subchartName := range grouped {
+		if subchartName == "" {
+			continue
+		}
+		if _, ok := renderedSubcharts[subchartName]; ok {
+			continue
+		}
+		remainingSubcharts = append(remainingSubcharts, subchartName)
+	}
+	sort.Strings(remainingSubcharts)
+
+	for _, subchartName := range remainingSubcharts {
+		if err := renderOrderedSubchart(chrt, chartPath, subchartName, grouped[subchartName], out); err != nil {
+			return err
+		}
+	}
+
+	return renderOrderedResourceGroups(grouped[""], chartPath, out)
+}
+
+func renderOrderedSubchart(chrt *chart.Chart, chartPath, subchartName string, manifests []releaseutil.Manifest, out io.Writer) error {
+	if len(manifests) == 0 {
+		return nil
+	}
+
+	subchartPath := path.Join(chartPath, subchartName)
+	subChart := findTemplateSubchart(chrt, subchartName)
+	if subChart == nil {
+		slog.Warn("subchart not found in chart dependencies during template rendering; falling back to flat ordered output", "subchart", subchartName)
+		return renderOrderedResourceGroups(manifests, subchartPath, out)
+	}
+
+	return renderOrderedChartLevel(subChart, manifests, subchartPath, out)
+}
+
+func renderOrderedResourceGroups(manifests []releaseutil.Manifest, chartPath string, out io.Writer) error {
+	if len(manifests) == 0 {
+		return nil
+	}
+
+	result, warnings, err := releaseutil.ParseResourceGroups(manifests)
+	if err != nil {
+		return fmt.Errorf("parsing resource groups for %s: %w", chartPath, err)
+	}
+	for _, warning := range warnings {
+		slog.Warn("resource-group annotation warning during template rendering", "chartPath", chartPath, "warning", warning)
+	}
+
+	if len(result.Groups) > 0 {
+		dag, err := releaseutil.BuildResourceGroupDAG(result)
+		if err != nil {
+			return fmt.Errorf("building resource-group DAG for %s: %w", chartPath, err)
+		}
+		batches, err := dag.GetBatches()
+		if err != nil {
+			return fmt.Errorf("getting resource-group batches for %s: %w", chartPath, err)
+		}
+
+		for _, batch := range batches {
+			for _, groupName := range batch {
+				fmt.Fprintf(out, "## START resource-group: %s %s\n", chartPath, groupName)
+				for _, manifest := range result.Groups[groupName] {
+					fmt.Fprintf(out, "---\n%s\n", manifest.Content)
+				}
+				fmt.Fprintf(out, "## END resource-group: %s %s\n", chartPath, groupName)
+			}
+		}
+	}
+
+	for _, manifest := range result.Unsequenced {
+		fmt.Fprintf(out, "---\n%s\n", manifest.Content)
+	}
+
+	return nil
+}
+
+func groupManifestsByChartPath(manifests []releaseutil.Manifest, chartPath string) map[string][]releaseutil.Manifest {
+	result := make(map[string][]releaseutil.Manifest)
+	chartsPrefix := chartManifestPrefix(chartPath) + "/charts/"
+
+	for _, manifest := range manifests {
+		if !strings.HasPrefix(manifest.Name, chartsPrefix) {
+			result[""] = append(result[""], manifest)
+			continue
+		}
+
+		rest := manifest.Name[len(chartsPrefix):]
+		idx := strings.Index(rest, "/")
+		if idx < 0 {
+			result[""] = append(result[""], manifest)
+			continue
+		}
+
+		subchartName := rest[:idx]
+		result[subchartName] = append(result[subchartName], manifest)
+	}
+
+	return result
+}
+
+func chartManifestPrefix(chartPath string) string {
+	parts := strings.Split(chartPath, "/")
+	if len(parts) == 0 {
+		return chartPath
+	}
+
+	prefix := parts[0]
+	for _, part := range parts[1:] {
+		prefix = path.Join(prefix, "charts", part)
+	}
+
+	return prefix
+}
+
+func findTemplateSubchart(chrt *chart.Chart, nameOrAlias string) *chart.Chart {
+	if chrt == nil || chrt.Metadata == nil {
+		return nil
+	}
+
+	aliases := make(map[string]string, len(chrt.Metadata.Dependencies))
+	for _, dep := range chrt.Metadata.Dependencies {
+		effectiveName := dep.Name
+		if dep.Alias != "" {
+			effectiveName = dep.Alias
+		}
+		aliases[dep.Name] = effectiveName
+	}
+
+	for _, dep := range chrt.Dependencies() {
+		effectiveName := dep.Name()
+		if alias, ok := aliases[dep.Name()]; ok {
+			effectiveName = alias
+		}
+		if effectiveName == nameOrAlias || dep.Name() == nameOrAlias {
+			return dep
+		}
+	}
+
+	return nil
 }
 
 func isTestHook(h *release.Hook) bool {
