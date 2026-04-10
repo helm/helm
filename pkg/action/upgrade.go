@@ -70,6 +70,10 @@ type Upgrade struct {
 	SkipCRDs bool
 	// Timeout is the timeout for this operation
 	Timeout time.Duration
+	// ReadinessTimeout is the per-batch timeout when --wait=ordered is used.
+	// Each ordered batch waits at most this long for resources to become ready.
+	// Must not exceed Timeout. Defaults to 1 minute when zero.
+	ReadinessTimeout time.Duration
 	// WaitStrategy determines what type of waiting should be done
 	WaitStrategy kube.WaitStrategy
 	// WaitOptions are additional options for waiting on resources
@@ -183,12 +187,16 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 		u.WaitStrategy = kube.StatusWatcherStrategy
 	}
 
+	if u.ReadinessTimeout > 0 && u.Timeout > 0 && u.ReadinessTimeout > u.Timeout {
+		return nil, fmt.Errorf("--readiness-timeout (%s) must not exceed --timeout (%s)", u.ReadinessTimeout, u.Timeout)
+	}
+
 	if err := chartutil.ValidateReleaseName(name); err != nil {
 		return nil, fmt.Errorf("release name is invalid: %s", name)
 	}
 
 	u.cfg.Logger().Debug("preparing upgrade", "name", name)
-	currentRelease, upgradedRelease, serverSideApply, err := u.prepareUpgrade(name, chrt, vals)
+	currentRelease, upgradedRelease, serverSideApply, sortedManifests, err := u.prepareUpgrade(name, chrt, vals)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +204,12 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 	u.cfg.Releases.MaxHistory = u.MaxHistory
 
 	u.cfg.Logger().Debug("performing update", "name", name)
-	res, err := u.performUpgrade(ctx, currentRelease, upgradedRelease, serverSideApply)
+	var res *release.Release
+	if u.WaitStrategy == kube.OrderedWaitStrategy {
+		res, err = u.performSequencedUpgrade(ctx, chrt, currentRelease, upgradedRelease, sortedManifests, serverSideApply)
+	} else {
+		res, err = u.performUpgrade(ctx, currentRelease, upgradedRelease, serverSideApply)
+	}
 	if err != nil {
 		return res, err
 	}
@@ -213,14 +226,16 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, ch chart.Char
 }
 
 // prepareUpgrade builds an upgraded release for an upgrade operation.
-func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[string]any) (*release.Release, *release.Release, bool, error) {
+// When WaitStrategy is OrderedWaitStrategy, sortedManifests contains the parsed
+// manifests with annotation data needed for DAG sequencing; otherwise it is nil.
+func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[string]any) (*release.Release, *release.Release, bool, []releaseutil.Manifest, error) {
 	if chart == nil {
-		return nil, nil, false, errMissingChart
+		return nil, nil, false, nil, errMissingChart
 	}
 
 	// HideSecret must be used with dry run. Otherwise, return an error.
 	if !isDryRun(u.DryRunStrategy) && u.HideSecret {
-		return nil, nil, false, errors.New("hiding Kubernetes secrets requires a dry-run mode")
+		return nil, nil, false, nil, errors.New("hiding Kubernetes secrets requires a dry-run mode")
 	}
 
 	// finds the last non-deleted release with the given name
@@ -228,19 +243,19 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 	if err != nil {
 		// to keep existing behavior of returning the "%q has no deployed releases" error when an existing release does not exist
 		if errors.Is(err, driver.ErrReleaseNotFound) {
-			return nil, nil, false, driver.NewErrNoDeployedReleases(name)
+			return nil, nil, false, nil, driver.NewErrNoDeployedReleases(name)
 		}
-		return nil, nil, false, err
+		return nil, nil, false, nil, err
 	}
 
 	lastRelease, err := releaserToV1Release(lastReleasei)
 	if err != nil {
-		return nil, nil, false, err
+		return nil, nil, false, nil, err
 	}
 
 	// Concurrent `helm upgrade`s will either fail here with `errPending` or when creating the release with "already exists". This should act as a pessimistic lock.
 	if lastRelease.Info.Status.IsPending() {
-		return nil, nil, false, errPending
+		return nil, nil, false, nil, errPending
 	}
 
 	var currentRelease *release.Release
@@ -253,14 +268,14 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 		var cerr error
 		currentRelease, cerr = releaserToV1Release(currentReleasei)
 		if cerr != nil {
-			return nil, nil, false, err
+			return nil, nil, false, nil, err
 		}
 		if err != nil {
 			if errors.Is(err, driver.ErrNoDeployedReleases) &&
 				(lastRelease.Info.Status == rcommon.StatusFailed || lastRelease.Info.Status == rcommon.StatusSuperseded) {
 				currentRelease = lastRelease
 			} else {
-				return nil, nil, false, err
+				return nil, nil, false, nil, err
 			}
 		}
 
@@ -269,11 +284,11 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 	// determine if values will be reused
 	vals, err = u.reuseValues(chart, currentRelease, vals)
 	if err != nil {
-		return nil, nil, false, err
+		return nil, nil, false, nil, err
 	}
 
 	if err := chartutil.ProcessDependencies(chart, vals); err != nil {
-		return nil, nil, false, err
+		return nil, nil, false, nil, err
 	}
 
 	// Increment revision count. This is passed to templates, and also stored on
@@ -289,25 +304,33 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 
 	caps, err := u.cfg.getCapabilities()
 	if err != nil {
-		return nil, nil, false, err
+		return nil, nil, false, nil, err
 	}
 	valuesToRender, err := util.ToRenderValuesWithSchemaValidation(chart, vals, options, caps, u.SkipSchemaValidation)
 	if err != nil {
-		return nil, nil, false, err
+		return nil, nil, false, nil, err
 	}
 
-	hooks, manifestDoc, notesTxt, err := u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret)
+	var sortedManifests []releaseutil.Manifest
+	var hooks []*release.Hook
+	var manifestDoc *bytes.Buffer
+	var notesTxt string
+	if u.WaitStrategy == kube.OrderedWaitStrategy {
+		hooks, manifestDoc, notesTxt, sortedManifests, err = u.cfg.renderResourcesWithFiles(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret)
+	} else {
+		hooks, manifestDoc, notesTxt, err = u.cfg.renderResources(chart, valuesToRender, "", "", u.SubNotes, false, false, u.PostRenderer, interactWithServer(u.DryRunStrategy), u.EnableDNS, u.HideSecret)
+	}
 	if err != nil {
-		return nil, nil, false, err
+		return nil, nil, false, nil, err
 	}
 
 	if driver.ContainsSystemLabels(u.Labels) {
-		return nil, nil, false, fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
+		return nil, nil, false, nil, fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
 	}
 
 	serverSideApply, err := getUpgradeServerSideValue(u.ServerSideApply, lastRelease.ApplyMethod)
 	if err != nil {
-		return nil, nil, false, err
+		return nil, nil, false, nil, err
 	}
 
 	u.cfg.Logger().Debug("determined release apply method", slog.Bool("server_side_apply", serverSideApply), slog.String("previous_release_apply_method", lastRelease.ApplyMethod))
@@ -335,7 +358,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 		upgradedRelease.Info.Notes = notesTxt
 	}
 	err = validateManifest(u.cfg.KubeClient, manifestDoc.Bytes(), !u.DisableOpenAPIValidation)
-	return currentRelease, upgradedRelease, serverSideApply, err
+	return currentRelease, upgradedRelease, serverSideApply, sortedManifests, err
 }
 
 func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedRelease *release.Release, serverSideApply bool) (*release.Release, error) {
@@ -462,6 +485,12 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		u.cfg.Logger().Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
 	}
 
+	// Strip Helm-internal sequencing annotations before applying to K8s.
+	if err := stripSequencingAnnotations(target); err != nil {
+		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("stripping sequencing annotations: %w", err))
+		return
+	}
+
 	upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply // Update client-side field manager if transitioning from client-side to server-side apply
 	results, err := u.cfg.KubeClient.Update(
 		current,
@@ -518,6 +547,123 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		upgradedRelease.Info.Description = "Upgrade complete"
 	}
 	u.reportToPerformUpgrade(c, upgradedRelease, nil, nil)
+}
+
+// performSequencedUpgrade deploys chart resources in DAG-ordered batches when
+// --wait=ordered is used. It mirrors releasingUpgrade but uses sequencedDeployment
+// to apply each batch and wait for readiness before proceeding to the next batch.
+func (u *Upgrade) performSequencedUpgrade(ctx context.Context, chrt *chartv2.Chart, currentRelease, upgradedRelease *release.Release, manifests []releaseutil.Manifest, serverSideApply bool) (*release.Release, error) {
+	// Build the full set of current (old) resources for diff matching.
+	current, err := u.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), false)
+	if err != nil {
+		if strings.Contains(err.Error(), "unable to recognize \"\": no matches for kind") {
+			return upgradedRelease, fmt.Errorf("current release manifest contains removed kubernetes api(s) for this "+
+				"kubernetes version and it is therefore unable to build the kubernetes "+
+				"objects for performing the diff. error from kubernetes: %w", err)
+		}
+		return upgradedRelease, fmt.Errorf("unable to build kubernetes objects from current release manifest: %w", err)
+	}
+
+	// Build target to compute the set of resources to delete (those removed in the new release).
+	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest), !u.DisableOpenAPIValidation)
+	if err != nil {
+		return upgradedRelease, fmt.Errorf("unable to build kubernetes objects from new release manifest: %w", err)
+	}
+
+	if isDryRun(u.DryRunStrategy) {
+		u.cfg.Logger().Debug("dry run for release", "name", upgradedRelease.Name)
+		if len(u.Description) > 0 {
+			upgradedRelease.Info.Description = u.Description
+		} else {
+			upgradedRelease.Info.Description = "Dry run complete"
+		}
+		return upgradedRelease, nil
+	}
+
+	u.cfg.Logger().Debug("creating upgraded release", "name", upgradedRelease.Name)
+	if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
+		return nil, err
+	}
+
+	// pre-upgrade hooks
+	if !u.DisableHooks {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
+			return u.failRelease(upgradedRelease, nil, fmt.Errorf("pre-upgrade hooks failed: %s", err))
+		}
+	} else {
+		u.cfg.Logger().Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
+	}
+
+	upgradeCSAFieldManager := isReleaseApplyMethodClientSideApply(currentRelease.ApplyMethod) && serverSideApply
+
+	readinessTimeout := u.ReadinessTimeout
+	if readinessTimeout <= 0 {
+		readinessTimeout = time.Minute
+	}
+
+	sd := &sequencedDeployment{
+		cfg:                    u.cfg,
+		releaseName:            upgradedRelease.Name,
+		releaseNamespace:       upgradedRelease.Namespace,
+		disableOpenAPI:         u.DisableOpenAPIValidation,
+		serverSideApply:        serverSideApply,
+		forceConflicts:         u.ForceConflicts,
+		forceReplace:           u.ForceReplace,
+		waitStrategy:           u.WaitStrategy,
+		waitOptions:            u.WaitOptions,
+		waitForJobs:            u.WaitForJobs,
+		timeout:                u.Timeout,
+		readinessTimeout:       readinessTimeout,
+		deadline:               computeDeadline(u.Timeout),
+		upgradeMode:            true,
+		currentResources:       current,
+		upgradeCSAFieldManager: upgradeCSAFieldManager,
+	}
+
+	// Set SequencingInfo before deployment so that failure recovery can use sequenced order.
+	upgradedRelease.SequencingInfo = &release.SequencingInfo{
+		Enabled:  true,
+		Strategy: string(u.WaitStrategy),
+	}
+
+	if err := sd.deployChartLevel(ctx, chrt, manifests); err != nil {
+		return u.failRelease(upgradedRelease, sd.createdResources, err)
+	}
+
+	// Delete resources that were removed in the new release (in old but not in new).
+	allNewKeys := make(map[string]bool, len(target))
+	for _, r := range target {
+		allNewKeys[objectKey(r)] = true
+	}
+	var toBeDeleted kube.ResourceList
+	for _, r := range current {
+		if !allNewKeys[objectKey(r)] {
+			toBeDeleted = append(toBeDeleted, r)
+		}
+	}
+	if len(toBeDeleted) > 0 {
+		if _, errs := u.cfg.KubeClient.Delete(toBeDeleted, metav1.DeletePropagationBackground); errs != nil {
+			return u.failRelease(upgradedRelease, sd.createdResources, fmt.Errorf("deleting removed resources: %w", joinErrors(errs, ", ")))
+		}
+	}
+
+	// post-upgrade hooks
+	if !u.DisableHooks {
+		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
+			return u.failRelease(upgradedRelease, sd.createdResources, fmt.Errorf("post-upgrade hooks failed: %s", err))
+		}
+	}
+
+	currentRelease.Info.Status = rcommon.StatusSuperseded
+	u.cfg.recordRelease(currentRelease)
+	upgradedRelease.Info.Status = rcommon.StatusDeployed
+	if len(u.Description) > 0 {
+		upgradedRelease.Info.Description = u.Description
+	} else {
+		upgradedRelease.Info.Description = "Upgrade complete"
+	}
+	u.cfg.recordRelease(upgradedRelease)
+	return upgradedRelease, nil
 }
 
 func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, err error) (*release.Release, error) {
