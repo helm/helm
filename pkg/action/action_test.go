@@ -970,10 +970,13 @@ metadata:
 `,
 		},
 
-		// Block scalar chomping indicator tests: | (clip), |- (strip), |+ (keep)
-		// combined with 0, 1, and 2 trailing newlines after the block content.
+		// Block scalar chomping indicator tests using | (clip), |- (strip), and |+ (keep)
+		// inputs with 0, 1, and 2 trailing newlines after the block content.
+		// Note: the emitter may normalize the output chomping indicator when the
+		// trailing newline count makes another indicator equivalent for the result.
 
-		// | (clip) — clips trailing newlines to exactly one
+		// | (clip) input — clips trailing newlines to exactly one, though with
+		// 0 trailing newlines the emitted output may normalize to |-.
 		{
 			name: "block scalar clip (|) with 0 trailing newlines",
 			files: map[string]string{

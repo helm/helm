@@ -36,7 +36,7 @@ type SimpleHead struct {
 
 var sep = regexp.MustCompile("(?:^|\\s*\n)---\\s*")
 
-// SplitManifests takes a string of manifest and returns a map that contains individual manifests
+// SplitManifests takes a manifest string and returns a map containing individual manifests.
 //
 // **Note for Chart API v3**: This function (due to the regex above) has allowed _WRONG_
 // Go templates to be defined inside charts across the years. The generated text from Go
