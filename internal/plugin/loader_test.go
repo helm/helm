@@ -204,16 +204,16 @@ func TestDetectDuplicates(t *testing.T) {
 	}
 }
 
-func TestLoadAll(t *testing.T) {
-	// Verify that empty dir loads:
-	{
-		plugs, err := LoadAll("testdata")
-		require.NoError(t, err)
-		assert.Len(t, plugs, 0)
-	}
+func TestLoadAllDir_Empty(t *testing.T) {
+	emptyDir := t.TempDir()
+	plugs, err := LoadAllDir(emptyDir, func(_ string, err error) error { return err })
+	require.NoError(t, err)
+	assert.Len(t, plugs, 0)
+}
 
+func TestLoadAllPluginsDir(t *testing.T) {
 	basedir := "testdata/plugdir/good"
-	plugs, err := LoadAll(basedir)
+	plugs, err := LoadAllDir(basedir, func(_ string, err error) error { return err })
 	require.NoError(t, err)
 	require.NotEmpty(t, plugs, "expected plugins to be loaded from %s", basedir)
 
@@ -232,7 +232,7 @@ func TestLoadAll(t *testing.T) {
 	assert.Contains(t, plugsMap, "postrenderer-v1")
 }
 
-func TestFindPlugins(t *testing.T) {
+func TestLoadAllPluginsDir_Zero(t *testing.T) {
 	cases := []struct {
 		name     string
 		plugdirs string
@@ -240,28 +240,20 @@ func TestFindPlugins(t *testing.T) {
 	}{
 		{
 			name:     "plugdirs is empty",
-			plugdirs: "",
-			expected: 0,
+			plugdirs: t.TempDir(),
 		},
 		{
 			name:     "plugdirs isn't dir",
 			plugdirs: "./plugin_test.go",
-			expected: 0,
 		},
 		{
 			name:     "plugdirs doesn't have plugin",
 			plugdirs: ".",
-			expected: 0,
-		},
-		{
-			name:     "normal",
-			plugdirs: "./testdata/plugdir/good",
-			expected: 7,
 		},
 	}
 	for _, c := range cases {
 		t.Run(t.Name(), func(t *testing.T) {
-			plugin, err := LoadAll(c.plugdirs)
+			plugin, err := LoadAllDir(c.plugdirs, func(_ string, err error) error { return err })
 			require.NoError(t, err)
 			assert.Len(t, plugin, c.expected, "expected %d plugins, got %d", c.expected, len(plugin))
 		})
@@ -337,6 +329,7 @@ runtime: subprocess
 		"correct name field": {
 			yaml: `apiVersion: v1
 name: my-plugin
+version: 1.0.0
 type: cli/v1
 runtime: subprocess
 `,
