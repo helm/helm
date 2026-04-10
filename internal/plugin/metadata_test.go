@@ -18,6 +18,8 @@ package plugin
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidatePluginData(t *testing.T) {
@@ -69,6 +71,43 @@ func TestValidatePluginData(t *testing.T) {
 		if !item.pass && !strings.Contains(err.Error(), item.errString) {
 			t.Errorf("index [%d]: expected error to contain: %s, but got: %s", i, item.errString, err.Error())
 		}
+	}
+}
+
+func TestMetadataValidateVersion(t *testing.T) {
+	testValid := map[string]struct {
+		version string
+	}{
+		"valid semver":                 {version: "1.0.0"},
+		"valid semver with prerelease": {version: "1.2.3-alpha.1+build.123"},
+		"empty version":                {version: ""},
+	}
+
+	testInvalid := map[string]struct {
+		version string
+	}{
+		"valid semver with v prefix": {version: "v1.0.0"},
+		"path traversal":             {version: "../../../../tmp/evil"},
+		"path traversal in version":  {version: "1.0.0/../../etc"},
+		"not a version":              {version: "not-a-version"},
+	}
+
+	for name, tc := range testValid {
+		t.Run(name, func(t *testing.T) {
+			m := mockSubprocessCLIPlugin(t, "testplugin")
+			m.metadata.Version = tc.version
+			err := m.Metadata().Validate()
+			assert.NoError(t, err)
+		})
+	}
+
+	for name, tc := range testInvalid {
+		t.Run(name, func(t *testing.T) {
+			m := mockSubprocessCLIPlugin(t, "testplugin")
+			m.metadata.Version = tc.version
+			err := m.Metadata().Validate()
+			assert.ErrorContains(t, err, "invalid plugin version")
+		})
 	}
 }
 
