@@ -119,6 +119,9 @@ const (
 	// HookOnlyStrategy: wait only for hook Pods/Jobs to complete; does not wait for general chart resources.
 	HookOnlyStrategy WaitStrategy = "hookOnly"
 
+	// OrderedWaitStrategy: action-layer sequencing uses ordered batches while the kube layer
+	// reuses status watching for per-batch readiness checks.
+	OrderedWaitStrategy WaitStrategy = "ordered"
 )
 
 type FieldValidationDirective string
@@ -206,10 +209,12 @@ func (c *Client) GetWaiterWithOptions(strategy WaitStrategy, opts ...WaitOption)
 			return nil, err
 		}
 		return &hookOnlyWaiter{sw: sw}, nil
+	case OrderedWaitStrategy:
+		return c.newStatusWatcher(opts...)
 	case "":
-		return nil, errors.New("wait strategy not set. Choose one of: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy))
+		return nil, errors.New("wait strategy not set. Choose one of: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy) + ", " + string(OrderedWaitStrategy))
 	default:
-		return nil, errors.New("unknown wait strategy (s" + string(strategy) + "). Valid values are: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy))
+		return nil, errors.New("unknown wait strategy (" + string(strategy) + "). Valid values are: " + string(StatusWatcherStrategy) + ", " + string(HookOnlyStrategy) + ", " + string(LegacyStrategy) + ", " + string(OrderedWaitStrategy))
 	}
 }
 
