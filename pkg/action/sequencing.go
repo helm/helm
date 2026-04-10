@@ -181,6 +181,56 @@ func (s *sequencedDeployment) deployChartLevel(ctx context.Context, chrt *chartv
 	return nil
 }
 
+// warnIfPartialReadinessAnnotations emits a slog.Warn for each resource that has
+// only one of the helm.sh/readiness-success / helm.sh/readiness-failure annotations.
+// Both annotations must be present for custom readiness evaluation to work; a resource
+// with only one will fall back to kstatus.
+func warnIfPartialReadinessAnnotations(manifests []releaseutil.Manifest) {
+	for _, m := range manifests {
+		if m.Head == nil || m.Head.Metadata == nil {
+			continue
+		}
+		ann := m.Head.Metadata.Annotations
+		_, hasSuccess := ann[kube.AnnotationReadinessSuccess]
+		_, hasFailure := ann[kube.AnnotationReadinessFailure]
+		if hasSuccess != hasFailure {
+			slog.Warn("resource has only one readiness annotation; both helm.sh/readiness-success and helm.sh/readiness-failure must be present for custom readiness evaluation; falling back to kstatus",
+				"resource", m.Head.Metadata.Name,
+			)
+		}
+	}
+}
+
+// warnIfIsolatedGroups emits a slog.Warn for each resource-group that has no
+// connections to other groups (no depends-on edges and not depended on by any
+// other group). Isolated groups are valid but may indicate a misconfiguration
+// when multiple groups are present.
+func warnIfIsolatedGroups(result releaseutil.ResourceGroupResult) {
+	if len(result.Groups) <= 1 {
+		return // A single group is not isolated in a meaningful sense
+	}
+	for groupName := range result.Groups {
+		deps := result.GroupDeps[groupName]
+		isDependedOn := false
+		for _, otherDeps := range result.GroupDeps {
+			for _, d := range otherDeps {
+				if d == groupName {
+					isDependedOn = true
+					break
+				}
+			}
+			if isDependedOn {
+				break
+			}
+		}
+		if len(deps) == 0 && !isDependedOn {
+			slog.Warn("resource-group is isolated with no connections to other groups; if sequencing is intended, add helm.sh/depends-on/resource-groups annotation to related groups",
+				"group", groupName,
+			)
+		}
+	}
+}
+
 func batchHasCustomReadiness(manifests []releaseutil.Manifest) bool {
 	for _, manifest := range manifests {
 		if manifest.Head == nil || manifest.Head.Metadata == nil {
@@ -205,13 +255,22 @@ func (s *sequencedDeployment) deployResourceGroupBatches(ctx context.Context, ma
 		return nil
 	}
 
-	result, _, err := releaseutil.ParseResourceGroups(manifests)
+	// Emit warnings for misconfigured annotations before deploying.
+	warnIfPartialReadinessAnnotations(manifests)
+
+	result, warnings, err := releaseutil.ParseResourceGroups(manifests)
 	if err != nil {
 		return fmt.Errorf("parsing resource-group annotations: %w", err)
+	}
+	for _, w := range warnings {
+		slog.Warn("resource-group annotation warning", "warning", w)
 	}
 
 	// If there are sequenced groups, build their DAG and deploy in order
 	if len(result.Groups) > 0 {
+		// Warn about groups that have no connections to other groups.
+		warnIfIsolatedGroups(result)
+
 		dag, err := releaseutil.BuildResourceGroupDAG(result)
 		if err != nil {
 			return fmt.Errorf("building resource-group DAG: %w", err)
