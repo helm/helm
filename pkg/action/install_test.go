@@ -894,6 +894,28 @@ func TestNameAndChartGenerateName(t *testing.T) {
 	}
 }
 
+func TestInstallCRDsWithNilRESTClientGetter(t *testing.T) {
+	config := actionConfigFixture(t)
+	failingKubeClient := kubefake.FailingKubeClient{PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard}, BuildDummy: true}
+	config.KubeClient = &failingKubeClient
+	config.RESTClientGetter = nil
+	instAction := NewInstall(config)
+
+	crds := []chart.CRD{{
+		Name: "test-crd",
+		File: &chart.File{
+			Name: "crds/test-crd.yaml",
+			Data: []byte("kind: CustomResourceDefinition"),
+		},
+	}}
+
+	var err error
+	require.NotPanics(t, func() {
+		err = instAction.installCRDs(crds)
+	})
+	require.NoError(t, err)
+}
+
 func TestInstallWithLabels(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
