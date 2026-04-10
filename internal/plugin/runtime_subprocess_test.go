@@ -42,7 +42,7 @@ func mockSubprocessCLIPluginErrorExit(t *testing.T, pluginName string, exitCode 
 
 	md := Metadata{
 		Name:       pluginName,
-		Version:    "v0.1.2",
+		Version:    "0.1.2",
 		Type:       "cli/v1",
 		APIVersion: "v1",
 		Runtime:    "subprocess",
