@@ -268,7 +268,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 		var cerr error
 		currentRelease, cerr = releaserToV1Release(currentReleasei)
 		if cerr != nil {
-			return nil, nil, false, nil, err
+			return nil, nil, false, nil, cerr
 		}
 		if err != nil {
 			if errors.Is(err, driver.ErrNoDeployedReleases) &&
