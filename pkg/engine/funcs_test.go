@@ -87,6 +87,32 @@ keyInElement1 = "valueInElement1"`,
 		expect: "[mast]\n  sail = \"white\"\n",
 		vars:   map[string]map[string]string{"mast": {"sail": "white"}},
 	}, {
+		// Regression for https://github.com/helm/helm/issues/32035
+		// Helm values round-trip through JSON so YAML integers arrive as
+		// float64. toToml must still emit them as TOML integers, matching
+		// what toJson already does. Fractional floats must be preserved.
+		tpl: `{{ toToml . }}`,
+		expect: "bar = 9\nbaz = 9.5\n\n[[items]]\n  id = 1\n\n" +
+			"[[items]]\n  id = 2\n\n[nested]\n  deep = 42\n",
+		vars: map[string]any{
+			"bar": float64(9),
+			"baz": float64(9.5),
+			"nested": map[string]any{
+				"deep": float64(42),
+			},
+			"items": []any{
+				map[string]any{"id": float64(1)},
+				map[string]any{"id": float64(2)},
+			},
+		},
+	}, {
+		// Regression for https://github.com/helm/helm/issues/32035
+		// Non-finite floats and floats outside the int64 range must stay
+		// floats so that true floats still round-trip as floats.
+		tpl:    `{{ toToml . }}`,
+		expect: "big = 1e+20\n",
+		vars:   map[string]any{"big": float64(1e20)},
+	}, {
 		tpl:    `{{ fromYaml . }}`,
 		expect: "map[Error:error unmarshaling JSON: while decoding JSON: json: cannot unmarshal array into Go value of type map[string]interface {}]",
 		vars:   "- one\n- two\n",
