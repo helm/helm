@@ -58,14 +58,13 @@ func GroupManifestsByDirectSubchart(manifests []releaseutil.Manifest, chartName 
 
 	chartsPrefix := chartName + "/charts/"
 	for _, m := range manifests {
-		idx := strings.Index(m.Name, chartsPrefix)
-		if idx < 0 {
+		if !strings.HasPrefix(m.Name, chartsPrefix) {
 			// Parent chart manifest
 			result[""] = append(result[""], m)
 			continue
 		}
 		// Extract the direct subchart name (first segment after "<chartName>/charts/")
-		rest := m.Name[idx+len(chartsPrefix):]
+		rest := m.Name[len(chartsPrefix):]
 		// rest is like "subchart1/templates/deploy.yaml" or "subchart1/charts/nested/..."
 		slashIdx := strings.Index(rest, "/")
 		if slashIdx < 0 {
