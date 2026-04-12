@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"text/template"
@@ -224,9 +225,24 @@ func TestHtpasswd(t *testing.T) {
 			expect: `invalid username: bad:user`,
 		},
 		{
+			name:        "rejects username with newline",
+			tpl:         "{{ htpasswd \"bad\\nuser\" \"testpassword\" }}",
+			expectError: `must not contain newline characters`,
+		},
+		{
+			name:        "returns bcrypt errors",
+			tpl:         fmt.Sprintf(`{{ htpasswd "testuser" %q }}`, strings.Repeat("x", 73)),
+			expectError: `password length exceeds 72 bytes`,
+		},
+		{
 			name:        "rejects unsupported algorithms",
 			tpl:         `{{ htpasswd "testuser" "testpassword" "md5" }}`,
 			expectError: `unsupported htpasswd hash algorithm "md5"`,
+		},
+		{
+			name:        "rejects too many hash algorithm args",
+			tpl:         `{{ htpasswd "testuser" "testpassword" "sha" "extra" }}`,
+			expectError: `wrong number of args for htpasswd: want 2 or 3 got 4`,
 		},
 	}
 
