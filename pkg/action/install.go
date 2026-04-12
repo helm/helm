@@ -100,6 +100,10 @@ type Install struct {
 	Devel            bool
 	DependencyUpdate bool
 	Timeout          time.Duration
+	// ReadinessTimeout is the per-batch timeout when --wait=ordered is used.
+	// Each ordered batch waits at most this long for resources to become ready.
+	// Must not exceed Timeout. Defaults to 1 minute when zero.
+	ReadinessTimeout time.Duration
 	Namespace        string
 	ReleaseName      string
 	GenerateName     bool
@@ -305,6 +309,10 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		return nil, fmt.Errorf("release name check failed: %w", err)
 	}
 
+	if i.ReadinessTimeout > 0 && i.Timeout > 0 && i.ReadinessTimeout > i.Timeout {
+		return nil, fmt.Errorf("--readiness-timeout (%s) must not exceed --timeout (%s)", i.ReadinessTimeout, i.Timeout)
+	}
+
 	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
 		i.cfg.Logger().Error("chart dependencies processing failed", slog.Any("error", err))
 		return nil, fmt.Errorf("chart dependencies processing failed: %w", err)
@@ -369,8 +377,13 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 
 	rel := i.createRelease(chrt, vals, i.Labels)
 
+	var sortedManifests []releaseutil.Manifest
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret)
+	if i.WaitStrategy == kube.OrderedWaitStrategy {
+		rel.Hooks, manifestDoc, rel.Info.Notes, sortedManifests, err = i.cfg.renderResourcesWithFiles(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret)
+	} else {
+		rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret)
+	}
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
@@ -464,7 +477,11 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		return rel, err
 	}
 
-	rel, err = i.performInstallCtx(ctx, rel, toBeAdopted, resources)
+	if i.WaitStrategy == kube.OrderedWaitStrategy {
+		rel, err = i.performSequencedInstallCtx(ctx, chrt, rel, sortedManifests)
+	} else {
+		rel, err = i.performInstallCtx(ctx, rel, toBeAdopted, resources)
+	}
 	if err != nil {
 		rel, err = i.failRelease(rel, err)
 	}
@@ -493,6 +510,89 @@ func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, t
 	}
 }
 
+// performSequencedInstallCtx runs performSequencedInstall in a goroutine and
+// respects context cancellation, mirroring performInstallCtx.
+func (i *Install) performSequencedInstallCtx(ctx context.Context, chrt *chart.Chart, rel *release.Release, manifests []releaseutil.Manifest) (*release.Release, error) {
+	type Msg struct {
+		r *release.Release
+		e error
+	}
+
+	resultChan := make(chan Msg, 1)
+
+	go func() {
+		i.goroutineCount.Add(1)
+		rel, err := i.performSequencedInstall(ctx, chrt, rel, manifests)
+		resultChan <- Msg{rel, err}
+		i.goroutineCount.Add(-1)
+	}()
+
+	select {
+	case <-ctx.Done():
+		return rel, ctx.Err()
+	case msg := <-resultChan:
+		return msg.r, msg.e
+	}
+}
+
+// performSequencedInstall deploys chart resources in DAG-ordered batches when
+// --wait=ordered is active.
+func (i *Install) performSequencedInstall(ctx context.Context, chrt *chart.Chart, rel *release.Release, manifests []releaseutil.Manifest) (*release.Release, error) {
+	if !i.DisableHooks {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
+			return rel, fmt.Errorf("failed pre-install: %w", err)
+		}
+	}
+
+	readinessTimeout := i.ReadinessTimeout
+	if readinessTimeout <= 0 {
+		readinessTimeout = time.Minute
+	}
+
+	rel.SequencingInfo = &release.SequencingInfo{
+		Enabled:  true,
+		Strategy: string(i.WaitStrategy),
+	}
+
+	sd := &sequencedDeployment{
+		cfg:              i.cfg,
+		releaseName:      rel.Name,
+		releaseNamespace: rel.Namespace,
+		disableOpenAPI:   i.DisableOpenAPIValidation,
+		serverSideApply:  i.ServerSideApply,
+		forceConflicts:   i.ForceConflicts,
+		forceReplace:     i.ForceReplace,
+		waitStrategy:     i.WaitStrategy,
+		waitOptions:      i.WaitOptions,
+		waitForJobs:      i.WaitForJobs,
+		timeout:          i.Timeout,
+		readinessTimeout: readinessTimeout,
+		deadline:         computeDeadline(i.Timeout),
+	}
+
+	if err := sd.deployChartLevel(ctx, chrt, manifests); err != nil {
+		return rel, err
+	}
+
+	if !i.DisableHooks {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
+			return rel, fmt.Errorf("failed post-install: %w", err)
+		}
+	}
+
+	if len(i.Description) > 0 {
+		rel.SetStatus(rcommon.StatusDeployed, i.Description)
+	} else {
+		rel.SetStatus(rcommon.StatusDeployed, "Install complete")
+	}
+
+	if err := i.recordRelease(rel); err != nil {
+		i.cfg.Logger().Error("failed to record the release", slog.Any("error", err))
+	}
+
+	return rel, nil
+}
+
 // getGoroutineCount return the number of running routines
 func (i *Install) getGoroutineCount() int32 {
 	return i.goroutineCount.Load()
@@ -505,6 +605,10 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
 			return rel, fmt.Errorf("failed pre-install: %w", err)
 		}
+	}
+
+	if err := stripSequencingAnnotations(resources); err != nil {
+		return rel, fmt.Errorf("stripping sequencing annotations: %w", err)
 	}
 
 	// At this point, we can do the install. Note that before we were detecting whether to

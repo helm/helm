@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -65,40 +66,93 @@ func AddWaitFlag(cmd *cobra.Command, wait *kube.WaitStrategy) {
 	cmd.Flags().Lookup("wait").NoOptDefVal = string(kube.StatusWatcherStrategy)
 }
 
-type waitValue kube.WaitStrategy
+func AddOrderedWaitFlag(cmd *cobra.Command, wait *kube.WaitStrategy) {
+	cmd.Flags().Var(
+		newOrderedWaitValue(kube.HookOnlyStrategy, wait),
+		"wait",
+		"wait until resources are ready (up to --timeout). Use '--wait' alone for 'watcher' strategy, or specify one of: 'watcher', 'hookOnly', 'legacy', 'ordered'. Default when flag is omitted: 'hookOnly'.",
+	)
+	cmd.Flags().Lookup("wait").NoOptDefVal = string(kube.StatusWatcherStrategy)
+}
+
+type waitValue struct {
+	wait         *kube.WaitStrategy
+	allowOrdered bool
+}
 
 func newWaitValue(defaultValue kube.WaitStrategy, ws *kube.WaitStrategy) *waitValue {
+	return newConfiguredWaitValue(defaultValue, ws, false)
+}
+
+func newOrderedWaitValue(defaultValue kube.WaitStrategy, ws *kube.WaitStrategy) *waitValue {
+	return newConfiguredWaitValue(defaultValue, ws, true)
+}
+
+func newConfiguredWaitValue(defaultValue kube.WaitStrategy, ws *kube.WaitStrategy, allowOrdered bool) *waitValue {
 	*ws = defaultValue
-	return (*waitValue)(ws)
+	return &waitValue{wait: ws, allowOrdered: allowOrdered}
 }
 
 func (ws *waitValue) String() string {
-	if ws == nil {
+	if ws == nil || ws.wait == nil {
 		return ""
 	}
-	return string(*ws)
+	return string(*ws.wait)
 }
 
 func (ws *waitValue) Set(s string) error {
 	switch s {
 	case string(kube.StatusWatcherStrategy), string(kube.LegacyStrategy), string(kube.HookOnlyStrategy):
-		*ws = waitValue(s)
+		*ws.wait = kube.WaitStrategy(s)
+		return nil
+	case string(kube.OrderedWaitStrategy):
+		if !ws.allowOrdered {
+			break
+		}
+		*ws.wait = kube.WaitStrategy(s)
 		return nil
 	case "true":
 		slog.Warn("--wait=true is deprecated (boolean value) and can be replaced with --wait=watcher")
-		*ws = waitValue(kube.StatusWatcherStrategy)
+		*ws.wait = kube.StatusWatcherStrategy
 		return nil
 	case "false":
 		slog.Warn("--wait=false is deprecated (boolean value) and can be replaced with --wait=hookOnly")
-		*ws = waitValue(kube.HookOnlyStrategy)
+		*ws.wait = kube.HookOnlyStrategy
 		return nil
 	default:
-		return fmt.Errorf("invalid wait input %q. Valid inputs are %s, %s, and %s", s, kube.StatusWatcherStrategy, kube.HookOnlyStrategy, kube.LegacyStrategy)
 	}
+
+	return fmt.Errorf("invalid wait input %q. Valid inputs are %s", s, formatWaitInputs(ws.allowOrdered))
 }
 
 func (ws *waitValue) Type() string {
 	return "WaitStrategy"
+}
+
+func addReadinessTimeoutFlag(f *pflag.FlagSet, readinessTimeout *time.Duration) {
+	f.DurationVar(readinessTimeout, "readiness-timeout", time.Minute, "per-batch timeout when --wait=ordered is used; each resource batch must become ready within this duration (must not exceed --timeout)")
+}
+
+func formatWaitInputs(allowOrdered bool) string {
+	valid := []string{
+		string(kube.StatusWatcherStrategy),
+		string(kube.HookOnlyStrategy),
+		string(kube.LegacyStrategy),
+	}
+	if allowOrdered {
+		valid = append(valid, string(kube.OrderedWaitStrategy))
+	}
+
+	switch len(valid) {
+	case 0:
+		return ""
+	case 1:
+		return valid[0]
+	case 2:
+		return fmt.Sprintf("%s and %s", valid[0], valid[1])
+	default:
+		return fmt.Sprintf("%s, and %s", strings.Join(valid[:len(valid)-1], ", "), valid[len(valid)-1])
+	}
 }
 
 func addChartPathOptionsFlags(f *pflag.FlagSet, c *action.ChartPathOptions) {

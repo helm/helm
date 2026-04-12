@@ -173,6 +173,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	addInstallFlags(cmd, f, client, valueOpts)
+	addReadinessTimeoutFlag(f, &client.ReadinessTimeout)
 	// hide-secret is not available in all places the install flags are used so
 	// it is added separately
 	f.BoolVar(&client.HideSecret, "hide-secret", false, "hide Kubernetes Secrets when also using the --dry-run flag")
@@ -212,7 +213,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, install will ignore the check for helm annotations and take ownership of the existing resources")
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
-	AddWaitFlag(cmd, &client.WaitStrategy)
+	AddOrderedWaitFlag(cmd, &client.WaitStrategy)
 	cmd.MarkFlagsMutuallyExclusive("force-replace", "force-conflicts")
 	cmd.MarkFlagsMutuallyExclusive("force", "force-conflicts")
 
