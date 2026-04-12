@@ -92,6 +92,9 @@ func htpasswd(username, password string, hashAlgorithms ...string) (string, erro
 	if strings.Contains(username, ":") {
 		return fmt.Sprintf("invalid username: %s", username), nil
 	}
+	if strings.ContainsAny(username, "\n\r") {
+		return "", fmt.Errorf("invalid username %q: must not contain newline characters", username)
+	}
 
 	if len(hashAlgorithms) > 1 {
 		return "", fmt.Errorf("wrong number of args for htpasswd: want 2 or 3 got %d", len(hashAlgorithms)+2)
@@ -104,7 +107,7 @@ func htpasswd(username, password string, hashAlgorithms ...string) (string, erro
 
 	switch algorithm {
 	case "bcrypt":
-		return fmt.Sprintf("%s:%s", username, sprigBcrypt(password)), nil
+		return bcryptHtpasswd(username, password)
 	case "sha", "sha1":
 		sum := sha1.Sum([]byte(password))
 		return fmt.Sprintf("%s:{SHA}%s", username, base64.StdEncoding.EncodeToString(sum[:])), nil
@@ -113,13 +116,13 @@ func htpasswd(username, password string, hashAlgorithms ...string) (string, erro
 	}
 }
 
-func sprigBcrypt(input string) string {
-	hash, err := bcrypt.GenerateFromPassword([]byte(input), bcrypt.DefaultCost)
+func bcryptHtpasswd(username, password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Sprintf("failed to encrypt string with bcrypt: %s", err)
+		return "", fmt.Errorf("failed to encrypt password with bcrypt: %w", err)
 	}
 
-	return string(hash)
+	return fmt.Sprintf("%s:%s", username, string(hash)), nil
 }
 
 // toYAML takes an interface, marshals it to yaml, and returns a string. It will
