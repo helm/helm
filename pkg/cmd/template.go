@@ -271,7 +271,11 @@ func renderOrderedTemplate(chrt *chart.Chart, manifest string, out io.Writer) er
 
 	sortedManifests, err := parseTemplateManifests(manifest)
 	if err != nil {
-		return fmt.Errorf("parsing manifests for ordered output: %w", err)
+		slog.Warn("Unable to render ordered template output; falling back to flat manifest output", "chart", chrt.Name(), "error", err)
+		if _, writeErr := io.WriteString(out, manifest); writeErr != nil {
+			return fmt.Errorf("writing fallback manifest output: %w", writeErr)
+		}
+		return nil
 	}
 
 	return renderOrderedChartLevel(chrt, sortedManifests, chrt.Name(), out)
