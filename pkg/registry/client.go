@@ -918,12 +918,12 @@ func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 }
 
 // add actions when request a registry authentication token(jwt)
-// example1. when we want to pull 'testrepo/local-subchart' we can send bellow url, and 'pull' is the action
+// example1. when we want to pull 'testrepo/local-subchart' we can send below url, and 'pull' is the action
 // auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull&service=testservice
-// example2. when we want to push 'testrepo/local-subchart' we can send bellow url, and 'pull%2Cpush' are the actions
+// example2. when we want to push 'testrepo/local-subchart' we can send below url, and 'pull%2Cpush' are the actions
 // auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull%2Cpush&service=testservice
-// we can set the actions like bellow
-// example) ctx = WithScopeHint(ctx, repository, auth.ActionPush, auth.ActionPull)
+// we can set the actions like below
+// example) ctx = withScopeHint(ctx, repository, auth.ActionPush, auth.ActionPull)
 func withScopeHint(ctx context.Context, target any, actions ...string) context.Context {
 	if repo, ok := target.(*remote.Repository); ok {
 		return auth.AppendRepositoryScope(ctx, repo.Reference, actions...)
