@@ -130,11 +130,14 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 	suite.Nil(err, "no error finding free port for test registry")
 	defer ln.Close()
 
-	// Change the registry host to another host which is not localhost.
-	// This is required because Docker enforces HTTP if the registry
-	// host is localhost/127.0.0.1.
+	// Use localhost for HTTP tests and helm-test-registry for TLS tests.
+	// TLS tests need a different hostname to match the certificate.
 	port := ln.Addr().(*net.TCPAddr).Port
-	suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
+	if tlsEnabled {
+		suite.DockerRegistryHost = fmt.Sprintf("helm-test-registry:%d", port)
+	} else {
+		suite.DockerRegistryHost = fmt.Sprintf("127.0.0.1:%d", port)
+	}
 
 	config.HTTP.Addr = ln.Addr().String()
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
@@ -143,6 +146,7 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool, auth string) {
 	if auth == "token" {
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		suite.Nil(err, "no error finding free port for test auth server")
+		defer ln.Close()
 
 		//set test auth server host
 		suite.AuthServerHost = ln.Addr().String()
