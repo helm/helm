@@ -45,7 +45,6 @@ func (suite *RegistryScopeTestSuite) TearDownSuite() {
 func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 
 	var requestURL string
-
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestURL = r.URL.String()
 		w.WriteHeader(http.StatusOK)
@@ -70,13 +69,11 @@ func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 
 	//check the url that authentication server received
 	suite.Equal("/auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull%2Cpush&service=testservice", requestURL)
-
 }
 
 func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 
 	var requestURL string
-
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestURL = r.URL.String()
 		w.WriteHeader(http.StatusOK)
