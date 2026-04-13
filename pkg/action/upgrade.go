@@ -329,6 +329,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 		Hooks:       hooks,
 		Labels:      mergeCustomLabels(lastRelease.Labels, u.Labels),
 		ApplyMethod: string(determineReleaseSSApplyMethod(serverSideApply)),
+		Source:      u.resolvedSource,
 	}
 
 	if len(notesTxt) > 0 {
