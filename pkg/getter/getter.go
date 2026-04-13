@@ -49,6 +49,7 @@ type getterOptions struct {
 	timeout               time.Duration
 	transport             *http.Transport
 	artifactType          string
+	sessionHeader         bool
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -104,6 +105,11 @@ func WithTLSClientConfig(certFile, keyFile, caFile string) Option {
 		opts.certFile = certFile
 		opts.keyFile = keyFile
 		opts.caFile = caFile
+	}
+}
+func WithSessionHeader(enabled bool) Option {
+	return func(opts *getterOptions) {
+		opts.sessionHeader = enabled
 	}
 }
 

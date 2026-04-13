@@ -678,3 +678,38 @@ func TestHTTPTransportOption(t *testing.T) {
 		t.Fatal("transport.TLSClientConfig should not be set")
 	}
 }
+
+func TestHTTPGetterSessionHeader(t *testing.T) {
+	headerChan := make(chan string, 2)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		headerChan <- r.Header.Get(helmSessionHeader)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	// Create getter for HTTP session header test
+	g, err := NewHTTPGetter(WithURL(srv.URL), WithSessionHeader(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := g.Get(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := g.Get(srv.URL); err != nil {
+		t.Fatal(err)
+	}
+
+	h1 := <-headerChan
+	h2 := <-headerChan
+
+	if h1 == "" || h2 == "" {
+		t.Fatalf("expected %s header to be set", helmSessionHeader)
+	}
+
+	if h1 != h2 {
+		t.Errorf("expected same session ID, got %s and %s", h1, h2)
+	}
+}
