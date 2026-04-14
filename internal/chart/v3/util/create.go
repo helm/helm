@@ -62,6 +62,8 @@ const (
 	ServiceName = TemplatesDir + sep + "service.yaml"
 	// ServiceAccountName is the name of the example serviceaccount file.
 	ServiceAccountName = TemplatesDir + sep + "serviceaccount.yaml"
+  // ServiceAccountTokenName is the name of the example service account token secret file.
+  ServiceAccountTokenName = TemplatesDir + sep + "serviceaccounttoken.yaml"
 	// HorizontalPodAutoscalerName is the name of the example hpa file.
 	HorizontalPodAutoscalerName = TemplatesDir + sep + "hpa.yaml"
 	// NotesName is the name of the example NOTES.txt file.
@@ -136,6 +138,14 @@ serviceAccount:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
+
+  # Specifies whether a non-expiring token Secret should be created for this ServiceAccount.
+  # Starting from Kubernetes 1.24, ServiceAccount token Secrets are no longer auto-generated.
+  # Use the TokenRequest API (kubectl create token <name>) for short-lived tokens instead,
+  # as long-lived static tokens carry additional risk. Only enable this if your use case
+  # requires a non-expiring token (e.g., external systems that cannot use the TokenRequest API).
+  # See: https://kubernetes.io/docs/concepts/configuration/secret/#service-account-token-secrets
+  createToken: false
 
 # This is for setting Kubernetes Annotations to a Pod.
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
@@ -490,6 +500,19 @@ automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
 {{- end }}
 `
 
+const defaultServiceAccountToken = `{{- if and .Values.serviceAccount.create .Values.serviceAccount.createToken -}}
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/service-account-token
+metadata:
+  name: {{ include "<CHARTNAME>.serviceAccountName" . }}
+  labels:
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
+  annotations:
+    kubernetes.io/service-account.name: {{ include "<CHARTNAME>.serviceAccountName" . }}
+{{- end }}
+`
+
 const defaultHorizontalPodAutoscaler = `{{- if .Values.autoscaling.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -772,6 +795,11 @@ func Create(name, dir string) (string, error) {
 			path:    filepath.Join(cdir, ServiceAccountName),
 			content: transform(defaultServiceAccount, name),
 		},
+    {
+      // serviceaccounttoken.yaml
+      path:    filepath.Join(cdir, ServiceAccountTokenName),
+      content: transform(defaultServiceAccountToken, name),
+    },
 		{
 			// hpa.yaml
 			path:    filepath.Join(cdir, HorizontalPodAutoscalerName),
