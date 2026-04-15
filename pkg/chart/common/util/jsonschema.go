@@ -82,7 +82,7 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]interface{}) erro
 		slog.Debug("chart name", "chart-name", chrt.Name())
 		err := ValidateAgainstSingleSchema(values, chrt.Schema())
 		if err != nil {
-			sb.WriteString(fmt.Sprintf("%s:\n", chrt.Name()))
+			fmt.Fprintf(&sb, "%s:\n", chrt.Name())
 			sb.WriteString(err.Error())
 		}
 	}
