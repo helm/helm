@@ -15,6 +15,7 @@ hash:
   key4: 4
   key5: 5
   key6: 6
+
 ---
 # Source: issue-9027/templates/values.yaml
 global:
