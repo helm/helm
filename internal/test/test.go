@@ -79,7 +79,7 @@ func compare(actual []byte, filename string, templates map[string]string) error 
 	}
 	expected = normalize(expected)
 
-	if templates != nil && len(templates) > 0 {
+	if len(templates) > 0 {
 		expected, err = templateString(expected, templates)
 		if err != nil {
 			return fmt.Errorf("unable to template testdata %s: %w", filename, err)
