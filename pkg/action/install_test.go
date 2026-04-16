@@ -1224,7 +1224,7 @@ func TestInstallCRDs_WaiterError(t *testing.T) {
 }
 
 func TestCheckDependencies(t *testing.T) {
-	dependency := chart.Dependency{Name: "hello"}
+	dependency := chart.Dependency{Name: "hello", Version: "0.1.0"}
 	mockChart := buildChart(withDependency())
 
 	assert.Nil(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}))
