@@ -113,6 +113,17 @@ keyInElement1 = "valueInElement1"`,
 		expect: "big = 1e+20\n",
 		vars:   map[string]any{"big": float64(1e20)},
 	}, {
+		// Regression for https://github.com/helm/helm/issues/32035
+		// Zero and negative whole-number floats must also render as TOML
+		// integers, and negative fractional floats must stay floats.
+		tpl: `{{ toToml . }}`,
+		expect: "neg = -7\nnegFrac = -3.25\nzero = 0\n",
+		vars: map[string]any{
+			"zero":    float64(0),
+			"neg":     float64(-7),
+			"negFrac": float64(-3.25),
+		},
+	}, {
 		tpl:    `{{ fromYaml . }}`,
 		expect: "map[Error:error unmarshaling JSON: while decoding JSON: json: cannot unmarshal array into Go value of type map[string]interface {}]",
 		vars:   "- one\n- two\n",
