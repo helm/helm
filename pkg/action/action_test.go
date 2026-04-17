@@ -2195,6 +2195,77 @@ metadata:
 	assert.Equal(t, 1, calls, "separate strategy should skip the empty hook group and invoke the post-renderer only once")
 }
 
+func TestRenderResources_PostRenderer_NoHooksSkipsHooks(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	modTime := time.Now()
+	ch := buildChartWithTemplates([]*common.File{
+		{Name: "templates/hook.yaml", ModTime: modTime, Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hook-cm
+  annotations:
+    "helm.sh/hook": pre-install`)},
+		{Name: "templates/cm.yaml", ModTime: modTime, Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: template-cm`)},
+	})
+
+	var inputs []string
+	mockPR := &mockPostRenderer{
+		transform: func(content string) string {
+			inputs = append(inputs, content)
+			return content
+		},
+	}
+
+	hooks, manifestDoc, _, err := cfg.renderResources(
+		ch, nil, "test-release", "", false, false, false,
+		mockPR, false, false, false, PostRenderStrategyNoHooks,
+	)
+
+	assert.NoError(t, err)
+	assert.Len(t, inputs, 1, "nohooks strategy should invoke the post-renderer exactly once (for templates only)")
+	assert.NotContains(t, inputs[0], "hook-cm", "hooks must not be sent to the post-renderer")
+	assert.Contains(t, inputs[0], "template-cm", "templates must be sent to the post-renderer")
+
+	// Hooks still round-trip through the release so they can execute.
+	require.Len(t, hooks, 1)
+	assert.Contains(t, hooks[0].Manifest, "hook-cm")
+	assert.Contains(t, manifestDoc.String(), "template-cm")
+}
+
+func TestRenderResources_PostRenderer_NoHooksWithOnlyHooks(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	modTime := time.Now()
+	ch := buildChartWithTemplates([]*common.File{
+		{Name: "templates/hook.yaml", ModTime: modTime, Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hook-cm
+  annotations:
+    "helm.sh/hook": pre-install`)},
+	})
+
+	var calls int
+	mockPR := &mockPostRenderer{
+		transform: func(content string) string {
+			calls++
+			return content
+		},
+	}
+
+	_, _, _, err := cfg.renderResources(
+		ch, nil, "test-release", "", false, false, false,
+		mockPR, false, false, false, PostRenderStrategyNoHooks,
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 0, calls, "nohooks strategy should not invoke the post-renderer when the chart only has hooks")
+}
+
 func TestRenderResources_PostRenderer_UnknownStrategyErrors(t *testing.T) {
 	cfg := actionConfigFixture(t)
 

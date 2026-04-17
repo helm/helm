@@ -105,6 +105,14 @@ const (
 	// in Helm 4; Helm 3 never did so, which is why the issue only surfaces
 	// with the Helm 4 combined default.
 	PostRenderStrategySeparate PostRenderStrategy = "separate"
+
+	// PostRenderStrategyNoHooks sends only regular templates to the
+	// post-renderer and leaves hooks untouched. This matches the Helm 3
+	// behavior and is useful for post-renderers that declare transforms
+	// targeting template-only resources (for example Kustomize patches
+	// against a Deployment that exists in templates but not in hooks),
+	// which would otherwise fail against the hook stream.
+	PostRenderStrategyNoHooks PostRenderStrategy = "nohooks"
 )
 
 // Configuration injects the dependencies that all actions share.
@@ -332,12 +340,14 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 
 	if pr != nil {
 		switch postRenderStrategy {
-		case PostRenderStrategySeparate:
-			// Split hooks from manifests before post-rendering so that hooks and
-			// templates are sent to the post-renderer as separate streams. This
-			// prevents duplicate-resource errors when the same resource appears in
-			// both hooks and templates (e.g. a ServiceAccount used by a pre-install
-			// hook that is also declared in the chart's regular templates).
+		case PostRenderStrategySeparate, PostRenderStrategyNoHooks:
+			// Split hooks from manifests before post-rendering. For "separate",
+			// hooks and templates are sent to the post-renderer as independent
+			// streams to avoid duplicate-resource errors when the same resource
+			// appears in both (e.g. a ServiceAccount used by a pre-install hook
+			// that is also declared in the chart's regular templates). For
+			// "nohooks", hooks skip the post-renderer entirely, matching the
+			// Helm 3 behavior.
 			sortedHooks, sortedManifests, err := releaseutil.SortManifests(files, nil, releaseutil.InstallOrder)
 			if err != nil {
 				for name, content := range files {
@@ -367,17 +377,31 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 				}
 			}
 
-			// Post-render hooks and manifests separately, then merge.
-			files = make(map[string]string)
+			// Decide which groups to post-render. "nohooks" passes hooks
+			// through untouched and only post-renders manifests.
 			groups := []struct {
-				name  string
-				files map[string]string
+				name       string
+				files      map[string]string
+				postRender bool
 			}{
-				{"hooks", hookFiles},
-				{"manifests", manifestFiles},
+				{"hooks", hookFiles, postRenderStrategy == PostRenderStrategySeparate},
+				{"manifests", manifestFiles, true},
 			}
+
+			files = make(map[string]string)
 			for _, group := range groups {
 				if len(group.files) == 0 {
+					continue
+				}
+
+				if !group.postRender {
+					for k, v := range group.files {
+						if existing, ok := files[k]; ok {
+							files[k] = existing + "\n---\n" + v
+						} else {
+							files[k] = v
+						}
+					}
 					continue
 				}
 
