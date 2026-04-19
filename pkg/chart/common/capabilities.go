@@ -20,7 +20,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"testing"
 
 	"github.com/Masterminds/semver/v3"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -146,7 +145,7 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 	// Test builds don't include debug info / module info
 	// (And even if they did, we probably want stable capabilities for tests anyway)
 	// Return a default value for test builds
-	if testing.Testing() {
+	if isTestBuild {
 		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
 	}
 
