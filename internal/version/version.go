@@ -20,9 +20,10 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
-	"testing"
 
 	"github.com/Masterminds/semver/v3"
 )
@@ -47,6 +48,11 @@ var (
 const (
 	kubeClientGoVersionTesting = "v1.20"
 )
+
+func isGoTestBinary(path string) bool {
+	base := filepath.Base(path)
+	return strings.HasSuffix(base, ".test") || strings.HasSuffix(base, ".test.exe")
+}
 
 // BuildInfo describes the compile time information.
 type BuildInfo struct {
@@ -79,10 +85,10 @@ func GetUserAgent() string {
 func Get() BuildInfo {
 
 	makeKubeClientVersionString := func() string {
-		// Test builds don't include debug info / module info
-		// (And even if they did, we probably want a stable version during tests anyway)
-		// Return a default value for test builds
-		if testing.Testing() {
+		// `go test` binaries don't include the module metadata that `K8sIOClientGoModVersion`
+		// relies on, so keep returning the stable test value without importing `testing`
+		// into production dependency graphs.
+		if isGoTestBinary(os.Args[0]) {
 			return kubeClientGoVersionTesting
 		}
 
