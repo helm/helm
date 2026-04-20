@@ -395,12 +395,13 @@ metadata:
 			},
 		},
 
-		// **Note for Chart API v3**: The following tests exercise the lenient
-		// regex that splits `---apiVersion` back into separate documents.
-		// In Chart API v3, these inputs should return an _ERROR_ instead.
-		// See the comment on the SplitManifests function for more details.
+		// Chart API v3 behaviour: separators glued to content (as produced by
+		// `{{-` trimming the newline after `---`) are NOT split apart. The
+		// glued `---` stays on the document body so downstream YAML parsing
+		// can surface the problem instead of Helm silently correcting it.
+		// See helm/helm#32036 and the SplitManifests doc comment.
 		{
-			name: "leading glued separator (---apiVersion)",
+			name: "leading glued separator stays with content",
 			input: `
 ---apiVersion: v1
 kind: ConfigMap
@@ -408,7 +409,7 @@ metadata:
   name: cm1
 `,
 			expected: map[string]string{
-				"manifest-0": `apiVersion: v1
+				"manifest-0": `---apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cm1
@@ -416,7 +417,7 @@ metadata:
 			},
 		},
 		{
-			name: "mid-content glued separator (---apiVersion)",
+			name: "mid-content glued separator stays with first doc",
 			input: `
 apiVersion: v1
 kind: ConfigMap
@@ -431,8 +432,8 @@ metadata:
 				"manifest-0": `apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm1`,
-				"manifest-1": `apiVersion: v1
+  name: cm1
+---apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cm2
@@ -440,7 +441,7 @@ metadata:
 			},
 		},
 		{
-			name: "multiple glued separators",
+			name: "multiple glued separators produce a single doc",
 			input: `
 ---apiVersion: v1
 kind: ConfigMap
@@ -456,15 +457,15 @@ metadata:
   name: cm3
 `,
 			expected: map[string]string{
-				"manifest-0": `apiVersion: v1
+				"manifest-0": `---apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm1`,
-				"manifest-1": `apiVersion: v1
+  name: cm1
+---apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm2`,
-				"manifest-2": `apiVersion: v1
+  name: cm2
+---apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cm3
@@ -472,7 +473,7 @@ metadata:
 			},
 		},
 		{
-			name: "mixed glued and proper separators",
+			name: "proper separators split, glued ones do not",
 			input: `
 apiVersion: v1
 kind: ConfigMap
@@ -496,12 +497,33 @@ metadata:
 				"manifest-1": `apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cm2`,
-				"manifest-2": `apiVersion: v1
+  name: cm2
+---apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cm3
 `,
+			},
+		},
+		{
+			name:  "trailing separator with no newline is still a separator",
+			input: "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n---",
+			expected: map[string]string{
+				"manifest-0": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1",
+			},
+		},
+		{
+			name:  "separator with trailing spaces and tabs is still a separator",
+			input: "---\t \napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n",
+			expected: map[string]string{
+				"manifest-0": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm1\n",
+			},
+		},
+		{
+			name:  "CRLF line endings still split",
+			input: "---\r\napiVersion: v1\r\nkind: ConfigMap\r\nmetadata:\r\n  name: cm1\r\n",
+			expected: map[string]string{
+				"manifest-0": "apiVersion: v1\r\nkind: ConfigMap\r\nmetadata:\r\n  name: cm1\r\n",
 			},
 		},
 	}
