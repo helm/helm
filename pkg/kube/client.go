@@ -1217,6 +1217,19 @@ func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts 
 		WithFieldManager(getManagedFieldsManager()).
 		WithFieldValidation(string(fieldValidationDirective))
 
+	// Deduplicate list-map entries (e.g. env vars) before server-side apply.
+	// Server-side apply rejects manifests with duplicate keys in list-maps, but
+	// Kubernetes client-side apply previously allowed them (last value wins).
+	// We preserve that behavior by deduplicating here, keeping the last occurrence.
+	if u, ok := target.Object.(*unstructured.Unstructured); ok {
+		if deduplicateListMaps(u.Object) {
+			slog.Warn("deduplicated list-map entries in manifest; please remove duplicates from the chart",
+				slog.String("name", target.Name),
+				slog.String("namespace", target.Namespace),
+				slog.String("gvk", target.Mapping.GroupVersionKind.String()))
+		}
+	}
+
 	// Send the full object to be applied on the server side.
 	data, err := runtime.Encode(unstructured.UnstructuredJSONScheme, target.Object)
 	if err != nil {
@@ -1284,6 +1297,86 @@ func copyRequestStreamToWriter(request *rest.Request, podName, containerName str
 		return fmt.Errorf("failed to copy IO from logs for pod: %s, container: %s", podName, containerName)
 	}
 	return nil
+}
+
+// deduplicateListMaps walks an unstructured Kubernetes object and deduplicates
+// any list field where every item is a map containing a "name" key (e.g. env
+// vars, volumes, containers). When duplicates are found the last occurrence
+// wins, matching Kubernetes client-side-apply semantics. Returns true if any
+// deduplication occurred.
+func deduplicateListMaps(obj map[string]interface{}) bool {
+	deduped := false
+	for key, val := range obj {
+		switch v := val.(type) {
+		case map[string]interface{}:
+			if deduplicateListMaps(v) {
+				deduped = true
+			}
+		case []interface{}:
+			newList, changed := processNamedList(v)
+			if changed {
+				obj[key] = newList
+				deduped = true
+			}
+		}
+	}
+	return deduped
+}
+
+// processNamedList recurses into list items and deduplicates the list if every
+// item is a map with a "name" key. The last occurrence of each name is kept and
+// the relative order of surviving items is preserved. Returns the (possibly
+// modified) list and whether any change was made.
+func processNamedList(list []interface{}) ([]interface{}, bool) {
+	changed := false
+
+	// Recurse into each map item first.
+	for i, item := range list {
+		if m, ok := item.(map[string]interface{}); ok {
+			if deduplicateListMaps(m) {
+				list[i] = m
+				changed = true
+			}
+		}
+	}
+
+	if len(list) < 2 {
+		return list, changed
+	}
+
+	// Only deduplicate if every item is a map with a "name" key.
+	for _, item := range list {
+		m, ok := item.(map[string]interface{})
+		if !ok {
+			return list, changed
+		}
+		if _, hasName := m["name"]; !hasName {
+			return list, changed
+		}
+	}
+
+	// Build deduplicated list keeping the last occurrence of each name.
+	seen := make(map[string]bool)
+	result := make([]interface{}, 0, len(list))
+	hasDups := false
+	for i := len(list) - 1; i >= 0; i-- {
+		m := list[i].(map[string]interface{})
+		name, _ := m["name"].(string)
+		if !seen[name] {
+			seen[name] = true
+			result = append(result, list[i])
+		} else {
+			hasDups = true
+		}
+	}
+	if !hasDups {
+		return list, changed
+	}
+	// Reverse to restore the original relative order of surviving items.
+	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
+		result[i], result[j] = result[j], result[i]
+	}
+	return result, true
 }
 
 // scrubValidationError removes kubectl info from the message.

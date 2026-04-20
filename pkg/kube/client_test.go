@@ -1859,6 +1859,96 @@ func TestDetermineFieldValidationDirective(t *testing.T) {
 	assert.Equal(t, FieldValidationDirectiveStrict, determineFieldValidationDirective(true))
 }
 
+func TestDeduplicateListMaps(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    map[string]interface{}
+		expected map[string]interface{}
+		changed  bool
+	}{
+		{
+			name: "no duplicates",
+			input: map[string]interface{}{
+				"env": []interface{}{
+					map[string]interface{}{"name": "FOO", "value": "1"},
+					map[string]interface{}{"name": "BAR", "value": "2"},
+				},
+			},
+			expected: map[string]interface{}{
+				"env": []interface{}{
+					map[string]interface{}{"name": "FOO", "value": "1"},
+					map[string]interface{}{"name": "BAR", "value": "2"},
+				},
+			},
+			changed: false,
+		},
+		{
+			name: "duplicate env var keeps last value",
+			input: map[string]interface{}{
+				"env": []interface{}{
+					map[string]interface{}{"name": "FOO", "value": "first"},
+					map[string]interface{}{"name": "BAR", "value": "2"},
+					map[string]interface{}{"name": "FOO", "value": "last"},
+				},
+			},
+			expected: map[string]interface{}{
+				"env": []interface{}{
+					map[string]interface{}{"name": "BAR", "value": "2"},
+					map[string]interface{}{"name": "FOO", "value": "last"},
+				},
+			},
+			changed: true,
+		},
+		{
+			name: "nested container env dedup",
+			input: map[string]interface{}{
+				"spec": map[string]interface{}{
+					"containers": []interface{}{
+						map[string]interface{}{
+							"name": "app",
+							"env": []interface{}{
+								map[string]interface{}{"name": "X", "value": "a"},
+								map[string]interface{}{"name": "X", "value": "b"},
+							},
+						},
+					},
+				},
+			},
+			expected: map[string]interface{}{
+				"spec": map[string]interface{}{
+					"containers": []interface{}{
+						map[string]interface{}{
+							"name": "app",
+							"env": []interface{}{
+								map[string]interface{}{"name": "X", "value": "b"},
+							},
+						},
+					},
+				},
+			},
+			changed: true,
+		},
+		{
+			name: "non-named list not deduplicated",
+			input: map[string]interface{}{
+				"args": []interface{}{"--flag=a", "--flag=b"},
+			},
+			expected: map[string]interface{}{
+				"args": []interface{}{"--flag=a", "--flag=b"},
+			},
+			changed: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := deduplicateListMaps(tt.input)
+			assert.Equal(t, tt.changed, got)
+			assert.Equal(t, tt.expected, tt.input)
+		})
+	}
+}
+
 func TestClientWaitContextCancellationLegacy(t *testing.T) {
 	podList := newPodList("starfish", "otter")
 
