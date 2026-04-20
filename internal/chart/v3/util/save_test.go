@@ -23,6 +23,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -338,6 +339,60 @@ func TestRepeatableSave(t *testing.T) {
 				t.Errorf("FormatName() result = %v, want %v", result, test.want)
 			}
 		})
+	}
+}
+
+func TestSourceDateEpoch(t *testing.T) {
+	epoch := int64(1630000000)
+	t.Setenv("SOURCE_DATE_EPOCH", fmt.Sprintf("%d", epoch))
+
+	mkChart := func(modTime time.Time) *chart.Chart {
+		return &chart.Chart{
+			Metadata: &chart.Metadata{
+				APIVersion: chart.APIVersionV3,
+				Name:       "ahab",
+				Version:    "1.2.3",
+			},
+			ModTime: modTime,
+			Files: []*common.File{
+				{Name: "scheherazade/shahryar.txt", ModTime: modTime, Data: []byte("1,001 Nights")},
+			},
+		}
+	}
+
+	tmp := t.TempDir()
+
+	where1, err := Save(mkChart(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)), filepath.Join(tmp, "build1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	where2, err := Save(mkChart(time.Date(2023, 6, 15, 12, 0, 0, 0, time.UTC)), filepath.Join(tmp, "build2"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sum1, err := sha256Sum(where1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum2, err := sha256Sum(where2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if sum1 != sum2 {
+		t.Errorf("builds with same SOURCE_DATE_EPOCH should be byte-identical: %s != %s", sum1, sum2)
+	}
+
+	allHeaders, err := retrieveAllHeadersFromTar(where1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedTime := time.Unix(epoch, 0)
+	for _, header := range allHeaders {
+		if !header.ModTime.Equal(expectedTime) {
+			t.Errorf("expected timestamp %v, got %v for %s", expectedTime, header.ModTime, header.Name)
+		}
 	}
 }
 

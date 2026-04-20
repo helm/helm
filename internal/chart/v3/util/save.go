@@ -25,6 +25,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"sigs.k8s.io/yaml"
@@ -234,7 +235,9 @@ func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time) er
 		Size:    int64(len(body)),
 		ModTime: modTime,
 	}
-	if h.ModTime.IsZero() {
+	if epoch, ok := sourceDateEpoch(); ok {
+		h.ModTime = epoch
+	} else if h.ModTime.IsZero() {
 		h.ModTime = time.Now()
 	}
 	if err := out.WriteHeader(h); err != nil {
@@ -242,6 +245,20 @@ func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time) er
 	}
 	_, err := out.Write(body)
 	return err
+}
+
+// sourceDateEpoch returns the time specified by SOURCE_DATE_EPOCH env var, if set.
+// SOURCE_DATE_EPOCH is a Unix timestamp used to ensure reproducible builds.
+func sourceDateEpoch() (time.Time, bool) {
+	s, ok := os.LookupEnv("SOURCE_DATE_EPOCH")
+	if !ok {
+		return time.Time{}, false
+	}
+	secs, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return time.Unix(secs, 0), true
 }
 
 // If the name has directory name has characters which would change the location
