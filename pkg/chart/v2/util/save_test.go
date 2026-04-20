@@ -414,3 +414,19 @@ func sha256Sum(filePath string) (string, error) {
 
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
+
+func TestSourceDateEpochInvalid(t *testing.T) {
+	t.Setenv("SOURCE_DATE_EPOCH", "not-a-number")
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       "ahab",
+			Version:    "1.2.3",
+		},
+	}
+	_, err := Save(c, t.TempDir())
+	if err == nil {
+		t.Fatal("expected error for invalid SOURCE_DATE_EPOCH, got nil")
+	}
+}

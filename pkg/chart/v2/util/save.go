@@ -126,6 +126,15 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 		return "", fmt.Errorf("is not a directory: %s", dir)
 	}
 
+	epoch, hasEpoch, err := sourceDateEpoch()
+	if err != nil {
+		return "", err
+	}
+	var epochPtr *time.Time
+	if hasEpoch {
+		epochPtr = &epoch
+	}
+
 	f, err := os.Create(filename)
 	if err != nil {
 		return "", err
@@ -148,14 +157,14 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 		}
 	}()
 
-	if err := writeTarContents(twriter, c, ""); err != nil {
+	if err := writeTarContents(twriter, c, "", epochPtr); err != nil {
 		rollback = true
 		return filename, err
 	}
 	return filename, nil
 }
 
-func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
+func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string, epoch *time.Time) error {
 	err := validateName(c.Name())
 	if err != nil {
 		return err
@@ -176,7 +185,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	if err != nil {
 		return err
 	}
-	if err := writeToTar(out, filepath.Join(base, ChartfileName), cdata, c.ModTime); err != nil {
+	if err := writeToTar(out, filepath.Join(base, ChartfileName), cdata, c.ModTime, epoch); err != nil {
 		return err
 	}
 
@@ -188,7 +197,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 			if err != nil {
 				return err
 			}
-			if err := writeToTar(out, filepath.Join(base, "Chart.lock"), ldata, c.Lock.Generated); err != nil {
+			if err := writeToTar(out, filepath.Join(base, "Chart.lock"), ldata, c.Lock.Generated, epoch); err != nil {
 				return err
 			}
 		}
@@ -197,7 +206,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	// Save values.yaml
 	for _, f := range c.Raw {
 		if f.Name == ValuesfileName {
-			if err := writeToTar(out, filepath.Join(base, ValuesfileName), f.Data, f.ModTime); err != nil {
+			if err := writeToTar(out, filepath.Join(base, ValuesfileName), f.Data, f.ModTime, epoch); err != nil {
 				return err
 			}
 		}
@@ -208,7 +217,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 		if !json.Valid(c.Schema) {
 			return errors.New("invalid JSON in " + SchemafileName)
 		}
-		if err := writeToTar(out, filepath.Join(base, SchemafileName), c.Schema, c.SchemaModTime); err != nil {
+		if err := writeToTar(out, filepath.Join(base, SchemafileName), c.Schema, c.SchemaModTime, epoch); err != nil {
 			return err
 		}
 	}
@@ -216,7 +225,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	// Save templates
 	for _, f := range c.Templates {
 		n := filepath.Join(base, f.Name)
-		if err := writeToTar(out, n, f.Data, f.ModTime); err != nil {
+		if err := writeToTar(out, n, f.Data, f.ModTime, epoch); err != nil {
 			return err
 		}
 	}
@@ -224,14 +233,14 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	// Save files
 	for _, f := range c.Files {
 		n := filepath.Join(base, f.Name)
-		if err := writeToTar(out, n, f.Data, f.ModTime); err != nil {
+		if err := writeToTar(out, n, f.Data, f.ModTime, epoch); err != nil {
 			return err
 		}
 	}
 
 	// Save dependencies
 	for _, dep := range c.Dependencies() {
-		if err := writeTarContents(out, dep, filepath.Join(base, ChartsDir)); err != nil {
+		if err := writeTarContents(out, dep, filepath.Join(base, ChartsDir), epoch); err != nil {
 			return err
 		}
 	}
@@ -239,7 +248,7 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 }
 
 // writeToTar writes a single file to a tar archive.
-func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time) error {
+func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time, epoch *time.Time) error {
 	// TODO: Do we need to create dummy parent directory names if none exist?
 	h := &tar.Header{
 		Name:    filepath.ToSlash(name),
@@ -247,8 +256,8 @@ func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time) er
 		Size:    int64(len(body)),
 		ModTime: modTime,
 	}
-	if epoch, ok := sourceDateEpoch(); ok {
-		h.ModTime = epoch
+	if epoch != nil {
+		h.ModTime = *epoch
 	} else if h.ModTime.IsZero() {
 		h.ModTime = time.Now()
 	}
@@ -259,18 +268,19 @@ func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time) er
 	return err
 }
 
-// sourceDateEpoch returns the time specified by SOURCE_DATE_EPOCH env var, if set.
+// sourceDateEpoch parses the SOURCE_DATE_EPOCH environment variable.
 // SOURCE_DATE_EPOCH is a Unix timestamp used to ensure reproducible builds.
-func sourceDateEpoch() (time.Time, bool) {
+// It returns an error if the variable is set but cannot be parsed.
+func sourceDateEpoch() (time.Time, bool, error) {
 	s, ok := os.LookupEnv("SOURCE_DATE_EPOCH")
 	if !ok {
-		return time.Time{}, false
+		return time.Time{}, false, nil
 	}
 	secs, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		return time.Time{}, false
+		return time.Time{}, false, fmt.Errorf("invalid SOURCE_DATE_EPOCH %q: %w", s, err)
 	}
-	return time.Unix(secs, 0), true
+	return time.Unix(secs, 0), true, nil
 }
 
 // If the name has directory name has characters which would change the location
