@@ -1938,6 +1938,40 @@ func TestDeduplicateListMaps(t *testing.T) {
 			},
 			changed: false,
 		},
+		{
+			// volumeMounts is keyed by mountPath, not name — same name with
+			// different mountPaths must NOT be collapsed.
+			name: "volumeMounts with duplicate names not deduplicated",
+			input: map[string]interface{}{
+				"volumeMounts": []interface{}{
+					map[string]interface{}{"name": "data", "mountPath": "/data"},
+					map[string]interface{}{"name": "data", "mountPath": "/backup"},
+				},
+			},
+			expected: map[string]interface{}{
+				"volumeMounts": []interface{}{
+					map[string]interface{}{"name": "data", "mountPath": "/data"},
+					map[string]interface{}{"name": "data", "mountPath": "/backup"},
+				},
+			},
+			changed: false,
+		},
+		{
+			name: "list with empty name not deduplicated",
+			input: map[string]interface{}{
+				"env": []interface{}{
+					map[string]interface{}{"name": "", "value": "a"},
+					map[string]interface{}{"name": "", "value": "b"},
+				},
+			},
+			expected: map[string]interface{}{
+				"env": []interface{}{
+					map[string]interface{}{"name": "", "value": "a"},
+					map[string]interface{}{"name": "", "value": "b"},
+				},
+			},
+			changed: false,
+		},
 	}
 
 	for _, tt := range tests {

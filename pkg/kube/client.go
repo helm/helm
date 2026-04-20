@@ -1299,10 +1299,23 @@ func copyRequestStreamToWriter(request *rest.Request, podName, containerName str
 	return nil
 }
 
+// nameKeyedFields is the set of Kubernetes list fields that are keyed by the
+// "name" field under server-side apply merge semantics. Only these fields are
+// candidates for deduplication; other lists that incidentally contain a "name"
+// field (e.g. volumeMounts, which is keyed by mountPath) must not be touched.
+var nameKeyedFields = map[string]bool{
+	"containers":          true,
+	"initContainers":      true,
+	"ephemeralContainers": true,
+	"env":                 true,
+	"volumes":             true,
+	"imagePullSecrets":    true,
+}
+
 // deduplicateListMaps walks an unstructured Kubernetes object and deduplicates
-// any list field where every item is a map containing a "name" key (e.g. env
-// vars, volumes, containers). When duplicates are found the last occurrence
-// wins, matching Kubernetes client-side-apply semantics. Returns true if any
+// list fields that are keyed by "name" under server-side apply merge semantics
+// (see nameKeyedFields). When duplicates are found the last occurrence wins,
+// matching Kubernetes client-side-apply semantics. Returns true if any
 // deduplication occurred.
 func deduplicateListMaps(obj map[string]interface{}) bool {
 	deduped := false
@@ -1313,6 +1326,9 @@ func deduplicateListMaps(obj map[string]interface{}) bool {
 				deduped = true
 			}
 		case []interface{}:
+			if !nameKeyedFields[key] {
+				continue
+			}
 			newList, changed := processNamedList(v)
 			if changed {
 				obj[key] = newList
@@ -1344,13 +1360,14 @@ func processNamedList(list []interface{}) ([]interface{}, bool) {
 		return list, changed
 	}
 
-	// Only deduplicate if every item is a map with a "name" key.
+	// Only deduplicate if every item is a map with a non-empty string "name".
 	for _, item := range list {
 		m, ok := item.(map[string]interface{})
 		if !ok {
 			return list, changed
 		}
-		if _, hasName := m["name"]; !hasName {
+		nameVal, isString := m["name"].(string)
+		if !isString || nameVal == "" {
 			return list, changed
 		}
 	}
