@@ -19,7 +19,6 @@ package registry
 import (
 	"context"
 	"io"
-	"net/http"
 	"slices"
 	"sort"
 	"sync"
@@ -28,24 +27,12 @@ import (
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content"
 	"github.com/oras-project/oras-go/v3/content/memory"
-	"github.com/oras-project/oras-go/v3/registry/remote"
-	"github.com/oras-project/oras-go/v3/registry/remote/auth"
-	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
 )
 
 // GenericClient provides low-level OCI operations without artifact-specific assumptions
 type GenericClient struct {
-	debug              bool
-	enableCache        bool
-	credentialsFile    string
-	username           string
-	password           string
-	out                io.Writer
-	authorizer         *auth.Client
-	registryAuthorizer RemoteClient
-	credentialsStore   credentials.Store
-	httpClient         *http.Client
-	plainHTTP          bool
+	client *Client
+	out    io.Writer
 }
 
 // GenericPullOptions configures a generic pull operation
@@ -69,17 +56,8 @@ type GenericPullResult struct {
 // NewGenericClient creates a new generic OCI client from an existing Client
 func NewGenericClient(client *Client) *GenericClient {
 	return &GenericClient{
-		debug:              client.debug,
-		enableCache:        client.enableCache,
-		credentialsFile:    client.credentialsFile,
-		username:           client.username,
-		password:           client.password,
-		out:                client.out,
-		authorizer:         client.authorizer,
-		registryAuthorizer: client.registryAuthorizer,
-		credentialsStore:   client.credentialsStore,
-		httpClient:         client.httpClient,
-		plainHTTP:          client.plainHTTP,
+		client: client,
+		out:    client.out,
 	}
 }
 
@@ -93,13 +71,10 @@ func (c *GenericClient) PullGeneric(ref string, options GenericPullOptions) (*Ge
 	memoryStore := memory.New()
 	var descriptors []ocispec.Descriptor
 
-	// Set up a repository with authentication and configuration
-	repository, err := remote.NewRepository(parsedRef.String())
+	repository, err := c.client.newRepository(parsedRef.String())
 	if err != nil {
 		return nil, err
 	}
-	repository.Registry.PlainHTTP = c.plainHTTP
-	repository.Registry.Client = c.authorizer
 
 	ctx := context.Background()
 
