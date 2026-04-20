@@ -15,7 +15,7 @@ chance to try to fix the issue before it is exploited in the wild.
 
 Helm v4 development takes place on the `main` branch while Helm v3 is on the `dev-v3` branch.
 
-Helm v3 will continue to receive bug fixes and updates for new Kubernetes releases until July 8th 2026. Security enhancement will still be applied until November 11th 2026. See the blog <https://helm.sh/blog/helm-4-released#helm-v3-support> for more details.
+Helm v3 will continue to receive bug fixes and updates for new Kubernetes releases until July 8th 2026. Security enhancements will still be applied until November 11th 2026. See the blog <https://helm.sh/blog/helm-4-released#helm-v3-support> for more details.
 
 Bugs should first be fixed on Helm v4 and then backported to Helm v3. Helm v3 (and the `dev-v3` branch) is no longer accepting new features.
 
@@ -162,9 +162,9 @@ There are 5 types of issues (each with their own corresponding [label](#labels))
   for future reference. Generally these are questions that are too complex or large to store in the
   Slack channel or have particular interest to the community as a whole. Depending on the
   discussion, these can turn into `feature` or `bug` issues.
-- `proposal`: Used for items (like this one) that propose a new ideas or functionality that require
+- `proposal`: Used for items (like this one) that propose new ideas or functionality that require
   a larger community discussion. This allows for feedback from others in the community before a
-  feature is actually  developed. This is not needed for small additions. Final word on whether
+  feature is actually developed. This is not needed for small additions. Final word on whether
   a feature needs a proposal is up to the core maintainers. All issues that are proposals should
   both have a label and an issue title of "Proposal: [the rest of the title]." A proposal can become
   a `feature` and does not require a milestone.
