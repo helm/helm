@@ -34,13 +34,14 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content/memory"
-	"oras.land/oras-go/v2/registry"
-	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras-go/v2/registry/remote/credentials"
-	"oras.land/oras-go/v2/registry/remote/retry"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content/memory"
+	"github.com/oras-project/oras-go/v3/registry"
+	"github.com/oras-project/oras-go/v3/registry/remote"
+	"github.com/oras-project/oras-go/v3/registry/remote/auth"
+	_ "github.com/oras-project/oras-go/v3/registry/remote/config" // registers config file loader for credentials.NewStore
+	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
+	"github.com/oras-project/oras-go/v3/registry/remote/retry"
 
 	"helm.sh/helm/v4/internal/version"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -102,8 +103,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 
 	storeOptions := credentials.StoreOptions{
-		AllowPlaintextPut:        true,
-		DetectDefaultNativeStore: true,
+		AllowPlaintextPut: true,
 	}
 	store, err := credentials.NewStore(client.credentialsFile, storeOptions)
 	if err != nil {
@@ -125,11 +125,11 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		authorizer.SetUserAgent(version.GetUserAgent())
 
 		if client.username != "" && client.password != "" {
-			authorizer.Credential = func(_ context.Context, _ string) (auth.Credential, error) {
-				return auth.Credential{Username: client.username, Password: client.password}, nil
+			authorizer.CredentialFunc = func(_ context.Context, _ string) (credentials.Credential, error) {
+				return credentials.Credential{Username: client.username, Password: client.password}, nil
 			}
 		} else {
-			authorizer.Credential = credentials.Credential(client.credentialsStore)
+			authorizer.CredentialFunc = remote.NewCredentialFunc(client.credentialsStore)
 		}
 
 		if client.enableCache {
@@ -251,24 +251,12 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		return err
 	}
 	reg.PlainHTTP = c.plainHTTP
-	cred := auth.Credential{Username: c.username, Password: c.password}
-	c.authorizer.ForceAttemptOAuth2 = true
 	reg.Client = c.authorizer
 
+	cred := credentials.Credential{Username: c.username, Password: c.password}
 	ctx := context.Background()
-	if err := reg.Ping(ctx); err != nil {
-		c.authorizer.ForceAttemptOAuth2 = false
-		if err := reg.Ping(ctx); err != nil {
-			return fmt.Errorf("authenticating to %q: %w", host, err)
-		}
-	}
-	// Always restore to false after probing, to avoid forcing POST to token endpoints like GHCR.
-	c.authorizer.ForceAttemptOAuth2 = false
-
-	key := credentials.ServerAddressFromRegistry(host)
-	key = credentials.ServerAddressFromHostname(key)
-	if err := c.credentialsStore.Put(ctx, key, cred); err != nil {
-		return err
+	if err := remote.Login(ctx, c.credentialsStore, reg, cred); err != nil {
+		return fmt.Errorf("authenticating to %q: %w", host, err)
 	}
 
 	_, _ = fmt.Fprintln(c.out, "Login Succeeded")
@@ -280,7 +268,7 @@ func LoginOptBasicAuth(username string, password string) LoginOption {
 	return func(o *loginOperation) {
 		o.client.username = username
 		o.client.password = password
-		o.client.authorizer.Credential = auth.StaticCredential(o.host, auth.Credential{Username: username, Password: password})
+		o.client.authorizer.CredentialFunc = credentials.StaticCredentialFunc(o.host, credentials.Credential{Username: username, Password: password})
 	}
 }
 
@@ -397,7 +385,7 @@ func (c *Client) Logout(host string, opts ...LogoutOption) error {
 		opt(operation)
 	}
 
-	if err := credentials.Logout(context.Background(), c.credentialsStore, host); err != nil {
+	if err := remote.Logout(context.Background(), c.credentialsStore, host); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(c.out, "Removing login credentials for %s\n", host)
@@ -714,8 +702,8 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	if err != nil {
 		return nil, err
 	}
-	repository.PlainHTTP = c.plainHTTP
-	repository.Client = c.authorizer
+	repository.Registry.PlainHTTP = c.plainHTTP
+	repository.Registry.Client = c.authorizer
 
 	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
 	if err != nil {
@@ -789,8 +777,8 @@ func (c *Client) Tags(ref string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	repository.PlainHTTP = c.plainHTTP
-	repository.Client = c.authorizer
+	repository.Registry.PlainHTTP = c.plainHTTP
+	repository.Registry.Client = c.authorizer
 
 	var tagVersions []*semver.Version
 	err = repository.Tags(ctx, "", func(tags []string) error {
@@ -828,8 +816,8 @@ func (c *Client) Resolve(ref string) (desc ocispec.Descriptor, err error) {
 	if err != nil {
 		return desc, err
 	}
-	remoteRepository.PlainHTTP = c.plainHTTP
-	remoteRepository.Client = c.authorizer
+	remoteRepository.Registry.PlainHTTP = c.plainHTTP
+	remoteRepository.Registry.Client = c.authorizer
 
 	parsedReference, err := newReference(ref)
 	if err != nil {

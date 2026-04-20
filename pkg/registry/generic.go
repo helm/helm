@@ -25,12 +25,12 @@ import (
 	"sync"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/content/memory"
-	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras-go/v2/registry/remote/credentials"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content"
+	"github.com/oras-project/oras-go/v3/content/memory"
+	"github.com/oras-project/oras-go/v3/registry/remote"
+	"github.com/oras-project/oras-go/v3/registry/remote/auth"
+	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
 )
 
 // GenericClient provides low-level OCI operations without artifact-specific assumptions
@@ -98,8 +98,8 @@ func (c *GenericClient) PullGeneric(ref string, options GenericPullOptions) (*Ge
 	if err != nil {
 		return nil, err
 	}
-	repository.PlainHTTP = c.plainHTTP
-	repository.Client = c.authorizer
+	repository.Registry.PlainHTTP = c.plainHTTP
+	repository.Registry.Client = c.authorizer
 
 	ctx := context.Background()
 

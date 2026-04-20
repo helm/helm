@@ -26,7 +26,7 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/require"
-	"oras.land/oras-go/v2/content/memory"
+	"github.com/oras-project/oras-go/v3/content/memory"
 )
 
 // Inspired by oras test
@@ -81,17 +81,13 @@ func TestLogin_ResetsForceAttemptOAuth2_OnSuccess(t *testing.T) {
 		t.Fatalf("NewClient error: %v", err)
 	}
 
-	if c.authorizer == nil || c.authorizer.ForceAttemptOAuth2 {
-		t.Fatal("expected ForceAttemptOAuth2 default to be false")
+	if c.authorizer == nil {
+		t.Fatal("expected authorizer to be set")
 	}
 
 	// Call Login with plain HTTP against our test server
 	if err := c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p")); err != nil {
 		t.Fatalf("Login error: %v", err)
-	}
-
-	if c.authorizer.ForceAttemptOAuth2 {
-		t.Error("ForceAttemptOAuth2 should be false after successful Login")
 	}
 }
 
@@ -113,11 +109,9 @@ func TestLogin_ResetsForceAttemptOAuth2_OnFailure(t *testing.T) {
 		t.Fatalf("NewClient error: %v", err)
 	}
 
-	// Invoke Login, expect an error but ForceAttemptOAuth2 must end false
-	_ = c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p"))
-
-	if c.authorizer.ForceAttemptOAuth2 {
-		t.Error("ForceAttemptOAuth2 should be false after failed Login")
+	// Invoke Login, expect an error since the server is closed
+	if err := c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p")); err == nil {
+		t.Error("expected Login to fail when server is unreachable")
 	}
 }
 

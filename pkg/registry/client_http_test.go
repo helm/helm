@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
-	"oras.land/oras-go/v2/content"
+	"github.com/oras-project/oras-go/v3/content"
 )
 
 type HTTPRegistryClientTestSuite struct {
