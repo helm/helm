@@ -120,6 +120,30 @@ func TestAtomicWriteFile_LargeContent(t *testing.T) {
 	}
 }
 
+// TestAtomicWriteFile_CleansUpTempFileOnRenameError verifies that temporary
+// files are removed when the final rename step fails.
+func TestAtomicWriteFile_CleansUpTempFileOnRenameError(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "existing-dir")
+	if err := os.Mkdir(target, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	err := AtomicWriteFile(target, bytes.NewReader([]byte("content")), 0644)
+	if err == nil {
+		t.Fatal("expected rename error, got nil")
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(entries) != 1 || entries[0].Name() != "existing-dir" {
+		t.Fatalf("expected only existing-dir to remain, found %v entries", len(entries))
+	}
+}
+
 // TestPlatformAtomicWriteFile_OverwritesExisting verifies that the platform
 // helper replaces existing files instead of silently skipping them.
 func TestPlatformAtomicWriteFile_OverwritesExisting(t *testing.T) {
