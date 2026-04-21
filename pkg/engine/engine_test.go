@@ -1505,3 +1505,65 @@ func TestTraceableError_NoTemplateForm(t *testing.T) {
 		}
 	}
 }
+
+// TestRenderSubchartDefaultNilNoStringify tests the full pipeline: subchart default
+// nil values should not produce "%!s(<nil>)" in rendered template output.
+// Regression test for the Bitnami common.secrets.key issue.
+func TestRenderSubchartDefaultNilNoStringify(t *testing.T) {
+	modTime := time.Now()
+
+	// Subchart has a default with nil values
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Templates: []*common.File{
+			{
+				Name:    "templates/test.yaml",
+				ModTime: modTime,
+				Data:    []byte(`{{- if hasKey .Values.keyMapping "password" -}}{{- printf "subPath: %s" (index .Values.keyMapping "password") -}}{{- else -}}subPath: fallback{{- end -}}`),
+			},
+		},
+		Values: map[string]any{
+			"keyMapping": map[string]any{
+				"password": nil, // nil in chart defaults
+			},
+		},
+	}
+
+	parent := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values:   map[string]any{},
+	}
+	parent.AddDependency(subchart)
+
+	// Parent user values don't set keyMapping
+	injValues := map[string]any{}
+
+	tmp, err := util.CoalesceValues(parent, injValues)
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+
+	inject := common.Values{
+		"Values": tmp,
+		"Chart":  parent.Metadata,
+		"Release": common.Values{
+			"Name": "test-release",
+		},
+	}
+
+	out, err := Render(parent, inject)
+	if err != nil {
+		t.Fatalf("Failed to render templates: %s", err)
+	}
+
+	rendered := out["parent/charts/child/templates/test.yaml"]
+
+	if strings.Contains(rendered, "%!s(<nil>)") {
+		t.Errorf("Rendered output contains %%!s(<nil>), got: %q", rendered)
+	}
+
+	expected := "subPath: fallback"
+	if rendered != expected {
+		t.Errorf("Expected %q, got %q", expected, rendered)
+	}
+}
