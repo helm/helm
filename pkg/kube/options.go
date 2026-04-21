@@ -72,11 +72,29 @@ func WithKStatusReaders(readers ...engine.StatusReader) WaitOption {
 	}
 }
 
+// WithStatusComputeWorkers sets the number of concurrent goroutines used to
+// compute object status per informer. This prevents the informer notification
+// pipeline from being blocked by slow API calls (e.g., LIST ReplicaSets/Pods
+// for Deployments) when many resources are updated simultaneously.
+//
+// A value of 0 (the default) keeps the underlying cli-utils behavior, where
+// status is computed synchronously on the informer goroutine. SDK consumers
+// (for example helm-controller) inherit this conservative default and can
+// opt in explicitly. The Helm CLI passes a non-zero value so that
+// `helm install/upgrade/rollback` users get the fix for multi-minute waits
+// out of the box. See https://github.com/fluxcd/cli-utils/pull/20.
+func WithStatusComputeWorkers(n int) WaitOption {
+	return func(wo *waitOptions) {
+		wo.statusComputeWorkers = n
+	}
+}
+
 type waitOptions struct {
-	ctx                context.Context
-	watchUntilReadyCtx context.Context
-	waitCtx            context.Context
-	waitWithJobsCtx    context.Context
-	waitForDeleteCtx   context.Context
-	statusReaders      []engine.StatusReader
+	ctx                  context.Context
+	watchUntilReadyCtx   context.Context
+	waitCtx              context.Context
+	waitWithJobsCtx      context.Context
+	waitForDeleteCtx     context.Context
+	statusReaders        []engine.StatusReader
+	statusComputeWorkers int
 }

@@ -84,6 +84,7 @@ which can contain sensitive values. To hide Kubernetes Secrets use the
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewUpgrade(cfg)
+	client.WaitOptions = append(client.WaitOptions, defaultCLIWaitOptions()...)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 	var createNamespace bool
@@ -139,6 +140,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.SkipCRDs = client.SkipCRDs
 					instClient.Timeout = client.Timeout
 					instClient.WaitStrategy = client.WaitStrategy
+					instClient.WaitOptions = client.WaitOptions
 					instClient.WaitForJobs = client.WaitForJobs
 					instClient.Devel = client.Devel
 					instClient.Namespace = client.Namespace

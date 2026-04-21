@@ -43,14 +43,15 @@ import (
 )
 
 type statusWaiter struct {
-	client             dynamic.Interface
-	restMapper         meta.RESTMapper
-	ctx                context.Context
-	watchUntilReadyCtx context.Context
-	waitCtx            context.Context
-	waitWithJobsCtx    context.Context
-	waitForDeleteCtx   context.Context
-	readers            []engine.StatusReader
+	client               dynamic.Interface
+	restMapper           meta.RESTMapper
+	ctx                  context.Context
+	watchUntilReadyCtx   context.Context
+	waitCtx              context.Context
+	waitWithJobsCtx      context.Context
+	waitForDeleteCtx     context.Context
+	readers              []engine.StatusReader
+	statusComputeWorkers int
 	logging.LogHolder
 }
 
@@ -60,14 +61,6 @@ type statusWaiter struct {
 // "context deadline exceeded" errors. SDK callers can rely on this default
 // when they don't set a timeout.
 var DefaultStatusWatcherTimeout = 30 * time.Second
-
-// DefaultStatusComputeWorkers controls the number of concurrent goroutines
-// used to compute object status per informer. This prevents the informer
-// notification pipeline from being blocked by slow API calls (e.g., LIST
-// ReplicaSets/Pods for Deployments) when many resources are updated
-// simultaneously.
-// See https://github.com/fluxcd/cli-utils/pull/20
-var DefaultStatusComputeWorkers = 8
 
 func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
 	return &status.Result{
@@ -84,7 +77,7 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 	defer cancel()
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
-	sw.StatusComputeWorkers = DefaultStatusComputeWorkers
+	sw.StatusComputeWorkers = w.statusComputeWorkers
 	jobSR := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	podSR := helmStatusReaders.NewCustomPodStatusReader(w.restMapper)
 	// We don't want to wait on any other resources as watchUntilReady is only for Helm hooks.
@@ -107,7 +100,7 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 	defer cancel()
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
-	sw.StatusComputeWorkers = DefaultStatusComputeWorkers
+	sw.StatusComputeWorkers = w.statusComputeWorkers
 	sw.StatusReader = statusreaders.NewStatusReader(w.restMapper, w.readers...)
 	return w.wait(ctx, resourceList, sw)
 }
@@ -120,7 +113,7 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	defer cancel()
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
 	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
-	sw.StatusComputeWorkers = DefaultStatusComputeWorkers
+	sw.StatusComputeWorkers = w.statusComputeWorkers
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	readers := append([]engine.StatusReader(nil), w.readers...)
 	readers = append(readers, newCustomJobStatusReader)
