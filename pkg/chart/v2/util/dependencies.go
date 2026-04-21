@@ -18,7 +18,6 @@ package util
 import (
 	"errors"
 	"fmt"
-	"log"
 	"log/slog"
 	"strings"
 
@@ -45,7 +44,7 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, 
 		if util.IsConditionExpression(r.Condition) {
 			enabled, err := util.EvaluateConditionExpression(strings.TrimSpace(r.Condition), cvals, cpath, r.Name)
 			if err != nil {
-				log.Printf("Warning: Failed to parse condition expression '%s' for chart %s: %v", strings.TrimSpace(r.Condition), r.Name, err)
+				slog.Warn("failed to parse condition expression", "expression", strings.TrimSpace(r.Condition), "chart", r.Name, "error", err)
 				continue
 			}
 			r.Enabled = enabled
