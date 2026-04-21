@@ -36,13 +36,14 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3"
 	"github.com/oras-project/oras-go/v3/content/memory"
-	"github.com/oras-project/oras-go/v3/registry"
 	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/oras-project/oras-go/v3/registry/remote/auth"
 	remoteconfig "github.com/oras-project/oras-go/v3/registry/remote/config"
 	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
+	"github.com/oras-project/oras-go/v3/registry/remote/policy"
 	"github.com/oras-project/oras-go/v3/registry/remote/properties"
 	"github.com/oras-project/oras-go/v3/registry/remote/retry"
+	"github.com/oras-project/oras-go/v3/registry/remote/signature"
 
 	"helm.sh/helm/v4/internal/version"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -55,6 +56,14 @@ OCI artifact references (e.g. tags) do not support the plus sign (+). To support
 storing semantic versions, Helm adopts the convention of changing plus (+) to
 an underscore (_) in chart version tags when pushing to a registry and back to
 a plus (+) when pulling from a registry.`
+
+// ConfigOptions specifies override paths for container ecosystem config files.
+type ConfigOptions struct {
+	RegistriesConfigPath string
+	PolicyConfigPath     string
+	CertsDirPaths        []string
+	ContainersAuthPath   string
+}
 
 type (
 	// RemoteClient shadows the ORAS remote.Client interface
@@ -79,13 +88,16 @@ type (
 		httpClient         *http.Client
 		plainHTTP          bool
 		// v3 config-driven fields
-		configs          *remoteconfig.Configs
-		builder          *remote.ClientBuilder
-		insecure         bool
-		certFile         string
-		keyFile          string
-		caFile           string
-		customHTTPClient bool // true when ClientOptHTTPClient or ClientOptAuthorizer was used
+		configs               *remoteconfig.Configs
+		builder               *remote.ClientBuilder
+		policyEvaluator       *policy.Evaluator
+		signatureVerification bool
+		configOptions         ConfigOptions
+		insecure              bool
+		certFile              string
+		keyFile               string
+		caFile                string
+		customHTTPClient      bool // true when ClientOptHTTPClient or ClientOptAuthorizer was used
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -125,11 +137,25 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	// Load the full container ecosystem config stack: Docker config.json,
 	// containers auth.json, registries.conf, policy.json, certs.d, registries.d.
 	// Missing files are silently skipped.
-	configs, err := remoteconfig.LoadConfigs()
+	loaderOpts := remoteconfig.LoadConfigsOptions{
+		RegistriesConfigPath: client.configOptions.RegistriesConfigPath,
+		PolicyConfigPath:     client.configOptions.PolicyConfigPath,
+		CertsDirPaths:        client.configOptions.CertsDirPaths,
+		ContainersAuthPath:   client.configOptions.ContainersAuthPath,
+	}
+	configs, err := remoteconfig.LoadConfigsWithOptions(loaderOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load registry configurations: %w", err)
 	}
 	client.configs = configs
+
+	if configs.PolicyConfig != nil {
+		evaluator, err := configs.PolicyEvaluator()
+		if err != nil {
+			return nil, fmt.Errorf("failed to build policy evaluator: %w", err)
+		}
+		client.policyEvaluator = evaluator
+	}
 
 	// Build the combined credential store for read operations:
 	//   1. Helm's own credentials file (highest priority, stores login results)
@@ -150,6 +176,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	builder.CredentialStore = credStore
 	builder.UserAgent = version.GetUserAgent()
 	builder.Logger = logger
+	builder.PolicyEvaluator = client.policyEvaluator
 	if !client.enableCache {
 		builder.CacheFactory = nil
 	}
@@ -215,6 +242,7 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 		}
 		repo.Registry.PlainHTTP = c.plainHTTP
 		repo.Registry.Client = c.authorizer
+		repo.Registry.Policy = c.policyEvaluator
 		return repo, nil
 	}
 	// Config-driven path: resolve properties from registries.conf, certs.d, etc.
@@ -223,7 +251,24 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 		return nil, err
 	}
 	c.applyOverrides(props)
-	return remote.NewRepositoryWithProperties(props, c.builder)
+	repo, err := remote.NewRepositoryWithProperties(props, c.builder)
+	if err != nil {
+		return nil, err
+	}
+	if c.signatureVerification && c.configs.RegistriesDConfig != nil && c.policyEvaluator != nil {
+		scope := props.Reference.Registry
+		if props.Reference.Repository != "" {
+			scope += "/" + props.Reference.Repository
+		}
+		verifier := signature.NewSignedByVerifierFromConfig(c.configs.RegistriesDConfig, scope)
+		if verifier != nil {
+			scopedEval, err := c.configs.PolicyEvaluator(policy.WithSignedByVerifier(verifier))
+			if err == nil && scopedEval != nil {
+				repo.Registry.Policy = scopedEval
+			}
+		}
+	}
+	return repo, nil
 }
 
 // newRegistry creates a configured remote.Registry for the given host (used by Login).
@@ -337,6 +382,28 @@ func ClientOptPlainHTTP() ClientOption {
 	}
 }
 
+// ClientOptPolicyEvaluator returns a function that sets a custom policy evaluator on the client.
+func ClientOptPolicyEvaluator(e *policy.Evaluator) ClientOption {
+	return func(c *Client) {
+		c.policyEvaluator = e
+	}
+}
+
+// ClientOptSignatureVerification returns a function that enables or disables
+// GPG/simple-signing signature verification via registries.d lookaside storage.
+func ClientOptSignatureVerification(enabled bool) ClientOption {
+	return func(c *Client) {
+		c.signatureVerification = enabled
+	}
+}
+
+// ClientOptConfigOptions returns a function that overrides default config file paths.
+func ClientOptConfigOptions(o ConfigOptions) ClientOption {
+	return func(c *Client) {
+		c.configOptions = o
+	}
+}
+
 type (
 	// LoginOption allows specifying various settings on login
 	LoginOption func(*loginOperation)
@@ -365,6 +432,14 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 	}
 
 	warnIfHostHasPath(host)
+
+	// Apply Location rewrite from registries.conf so credentials are stored
+	// under the canonical registry name rather than an alias.
+	if c.configs != nil && c.configs.RegistriesConfig != nil {
+		if regCfg := c.configs.RegistriesConfig.FindRegistry(host); regCfg != nil && regCfg.Location != "" {
+			host = regCfg.Location
+		}
+	}
 
 	reg, err := c.newRegistry(host)
 	if err != nil {
@@ -858,7 +933,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 	_, _ = fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
 	_, _ = fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
-	if strings.Contains(parsedRef.orasReference.Reference, "_") {
+	if strings.Contains(parsedRef.Tag, "_") {
 		_, _ = fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
 		_, _ = fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
 	}
@@ -889,7 +964,7 @@ func PushOptCreationTime(creationTime string) PushOption {
 
 // Tags provides a sorted list all semver compliant tags for a given repository
 func (c *Client) Tags(ref string) ([]string, error) {
-	parsedReference, err := registry.ParseReference(ref)
+	parsedReference, err := properties.NewReference(ref)
 	if err != nil {
 		return nil, err
 	}

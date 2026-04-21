@@ -25,8 +25,9 @@ import (
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/stretchr/testify/require"
 	"github.com/oras-project/oras-go/v3/content/memory"
+	"github.com/oras-project/oras-go/v3/registry/remote/policy"
+	"github.com/stretchr/testify/require"
 )
 
 // Inspired by oras test
@@ -159,4 +160,61 @@ func TestWarnIfHostHasPath(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewClient_WithDenyAllPolicy(t *testing.T) {
+	t.Parallel()
+
+	denyPolicy := policy.NewRejectAllPolicy()
+	evaluator, err := policy.NewEvaluator(denyPolicy)
+	require.NoError(t, err)
+
+	credFile := filepath.Join(t.TempDir(), "config.json")
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(credFile),
+		ClientOptPolicyEvaluator(evaluator),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, c.policyEvaluator)
+}
+
+func TestNewClient_WithConfigOptions(t *testing.T) {
+	t.Parallel()
+
+	credFile := filepath.Join(t.TempDir(), "config.json")
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(credFile),
+		ClientOptConfigOptions(ConfigOptions{
+			RegistriesConfigPath: "/nonexistent/registries.conf",
+		}),
+	)
+	require.NoError(t, err) // nonexistent paths are silently skipped
+	require.NotNil(t, c)
+}
+
+func TestLogin_LocationRewrite(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	host := strings.TrimPrefix(srv.URL, "http://")
+	credFile := filepath.Join(t.TempDir(), "config.json")
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(credFile),
+	)
+	require.NoError(t, err)
+
+	// Login should succeed even without a registries.conf rewrite
+	err = c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p"))
+	require.NoError(t, err)
 }
