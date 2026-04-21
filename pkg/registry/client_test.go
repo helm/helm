@@ -214,9 +214,9 @@ func TestLogin_LocationRewrite(t *testing.T) {
 
 	// Write a registries.conf that maps the alias to the canonical host.
 	registriesConf := filepath.Join(t.TempDir(), "registries.conf")
-	err := os.WriteFile(registriesConf, []byte(fmt.Sprintf(
+	err := os.WriteFile(registriesConf, fmt.Appendf(nil,
 		"[[registry]]\nprefix = %q\nlocation = %q\n", aliasHost, canonicalHost,
-	)), 0o600)
+	), 0o600)
 	require.NoError(t, err)
 
 	credFile := filepath.Join(t.TempDir(), "config.json")
