@@ -223,7 +223,7 @@ func (c *Client) applyOverrides(props *properties.Registry) {
 	if c.caFile != "" {
 		props.Transport.CACerts = append(props.Transport.CACerts, c.caFile)
 	}
-	if c.username != "" {
+	if c.username != "" && c.password != "" {
 		props.Credential = credentials.Credential{Username: c.username, Password: c.password}
 	}
 }
