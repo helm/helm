@@ -30,7 +30,6 @@ type conditionExpression interface {
 
 type conditionEvalContext struct {
 	values    common.Values
-	condition string
 	chartName string
 	chartPath string
 }
@@ -88,16 +87,16 @@ func (n conditionOr) eval(ctx conditionEvalContext) bool {
 	return n.right.eval(ctx)
 }
 
-type conditionTokenType int
+type conditionTokenType string
 
 const (
-	conditionTokenEOF conditionTokenType = iota
-	conditionTokenLParen
-	conditionTokenRParen
-	conditionTokenAnd
-	conditionTokenOr
-	conditionTokenNot
-	conditionTokenPath
+	conditionTokenEOF    conditionTokenType = "EOF"
+	conditionTokenLParen conditionTokenType = "Left Parenthesis"
+	conditionTokenRParen conditionTokenType = "Right Parenthesis"
+	conditionTokenAnd    conditionTokenType = "And"
+	conditionTokenOr     conditionTokenType = "Or"
+	conditionTokenNot    conditionTokenType = "Not"
+	conditionTokenPath   conditionTokenType = "Path"
 )
 
 type conditionToken struct {
@@ -124,23 +123,23 @@ func (t *conditionTokenizer) next() (conditionToken, error) {
 	switch ch := t.input[t.pos]; ch {
 	case '(':
 		t.pos++
-		return conditionToken{typeID: conditionTokenLParen, pos: t.pos - 1}, nil
+		return conditionToken{typeID: conditionTokenLParen, value: "(", pos: t.pos - 1}, nil
 	case ')':
 		t.pos++
-		return conditionToken{typeID: conditionTokenRParen, pos: t.pos - 1}, nil
+		return conditionToken{typeID: conditionTokenRParen, value: ")", pos: t.pos - 1}, nil
 	case '!':
 		t.pos++
-		return conditionToken{typeID: conditionTokenNot, pos: t.pos - 1}, nil
+		return conditionToken{typeID: conditionTokenNot, value: "!", pos: t.pos - 1}, nil
 	case '&':
 		if t.peek('&') {
 			t.pos += 2
-			return conditionToken{typeID: conditionTokenAnd, pos: t.pos - 2}, nil
+			return conditionToken{typeID: conditionTokenAnd, value: "&&", pos: t.pos - 2}, nil
 		}
 		return conditionToken{}, fmt.Errorf("unexpected token '&' at position %d", t.pos)
 	case '|':
 		if t.peek('|') {
 			t.pos += 2
-			return conditionToken{typeID: conditionTokenOr, pos: t.pos - 2}, nil
+			return conditionToken{typeID: conditionTokenOr, value: "||", pos: t.pos - 2}, nil
 		}
 		return conditionToken{}, fmt.Errorf("unexpected token '|' at position %d", t.pos)
 	default:
@@ -279,7 +278,7 @@ func (p *conditionParser) parsePrimary() (conditionExpression, error) {
 		}
 		return expr, nil
 	default:
-		return nil, fmt.Errorf("unexpected token at position %d", p.current.pos)
+		return nil, fmt.Errorf("unexpected token %q (type %v) at position %d", p.current.value, p.current.typeID, p.current.pos)
 	}
 }
 
@@ -296,7 +295,6 @@ func EvaluateConditionExpression(condition string, cvals common.Values, cpath, c
 
 	ctx := conditionEvalContext{
 		values:    cvals,
-		condition: condition,
 		chartName: chartName,
 		chartPath: cpath,
 	}
