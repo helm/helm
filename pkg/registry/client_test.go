@@ -17,9 +17,12 @@ limitations under the License.
 package registry
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -176,7 +179,7 @@ func TestNewClient_WithDenyAllPolicy(t *testing.T) {
 		ClientOptPolicyEvaluator(evaluator),
 	)
 	require.NoError(t, err)
-	require.NotNil(t, c.policyEvaluator)
+	require.Same(t, evaluator, c.policyEvaluator)
 }
 
 func TestNewClient_WithConfigOptions(t *testing.T) {
@@ -206,15 +209,33 @@ func TestLogin_LocationRewrite(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	host := strings.TrimPrefix(srv.URL, "http://")
+	canonicalHost := strings.TrimPrefix(srv.URL, "http://")
+	aliasHost := "registry.example.test"
+
+	// Write a registries.conf that maps the alias to the canonical host.
+	registriesConf := filepath.Join(t.TempDir(), "registries.conf")
+	err := os.WriteFile(registriesConf, []byte(fmt.Sprintf(
+		"[[registry]]\nprefix = %q\nlocation = %q\n", aliasHost, canonicalHost,
+	)), 0o600)
+	require.NoError(t, err)
+
 	credFile := filepath.Join(t.TempDir(), "config.json")
 	c, err := NewClient(
 		ClientOptWriter(io.Discard),
 		ClientOptCredentialsFile(credFile),
+		ClientOptConfigOptions(ConfigOptions{RegistriesConfigPath: registriesConf}),
 	)
 	require.NoError(t, err)
 
-	// Login should succeed even without a registries.conf rewrite
-	err = c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p"))
+	// Login via alias; the connection goes to the canonical host (plain HTTP).
+	require.NoError(t, c.Login(aliasHost, LoginOptPlainText(true), LoginOptBasicAuth("u", "p")))
+
+	// Credential must be stored under the canonical host, not the alias.
+	cred, err := c.credentialsStore.Get(context.Background(), canonicalHost)
 	require.NoError(t, err)
+	require.Equal(t, "u", cred.Username, "credential should be stored under canonical host")
+
+	aliasCred, err := c.credentialsStore.Get(context.Background(), aliasHost)
+	require.NoError(t, err)
+	require.Empty(t, aliasCred.Username, "credential must not be stored under alias")
 }

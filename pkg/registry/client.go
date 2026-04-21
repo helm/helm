@@ -149,7 +149,8 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	client.configs = configs
 
-	if configs.PolicyConfig != nil {
+	// Only build from configs when not overridden by ClientOptPolicyEvaluator.
+	if configs.PolicyConfig != nil && client.policyEvaluator == nil {
 		evaluator, err := configs.PolicyEvaluator()
 		if err != nil {
 			return nil, fmt.Errorf("failed to build policy evaluator: %w", err)
@@ -433,11 +434,14 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 
 	warnIfHostHasPath(host)
 
-	// Apply Location rewrite from registries.conf so credentials are stored
-	// under the canonical registry name rather than an alias.
+	// Determine canonical host from registries.conf Location rewrite.
+	// We use the original (alias) host for newRegistry so its transport
+	// settings (Insecure, certs.d) are preserved, then redirect the
+	// authentication endpoint and credential key to the canonical host.
+	canonicalHost := host
 	if c.configs != nil && c.configs.RegistriesConfig != nil {
 		if regCfg := c.configs.RegistriesConfig.FindRegistry(host); regCfg != nil && regCfg.Location != "" {
-			host = regCfg.Location
+			canonicalHost = regCfg.Location
 		}
 	}
 
@@ -445,11 +449,12 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 	if err != nil {
 		return err
 	}
+	reg.Reference.Registry = canonicalHost
 
 	cred := credentials.Credential{Username: c.username, Password: c.password}
 	ctx := context.Background()
 	if err := remote.Login(ctx, c.credentialsStore, reg, cred); err != nil {
-		return fmt.Errorf("authenticating to %q: %w", host, err)
+		return fmt.Errorf("authenticating to %q: %w", canonicalHost, err)
 	}
 
 	_, _ = fmt.Fprintln(c.out, "Login Succeeded")
@@ -582,6 +587,13 @@ func (c *Client) Logout(host string, opts ...LogoutOption) error {
 	operation := &logoutOperation{}
 	for _, opt := range opts {
 		opt(operation)
+	}
+
+	// Apply the same Location rewrite used by Login so the correct credential is removed.
+	if c.configs != nil && c.configs.RegistriesConfig != nil {
+		if regCfg := c.configs.RegistriesConfig.FindRegistry(host); regCfg != nil && regCfg.Location != "" {
+			host = regCfg.Location
+		}
 	}
 
 	if err := remote.Logout(context.Background(), c.credentialsStore, host); err != nil {

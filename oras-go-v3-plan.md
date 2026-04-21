@@ -2,8 +2,6 @@
 
 ## Overview
 
-claude --resume 09e86345-a27b-4b2e-ba9a-c1829f3917e8
-
 Migrate `helm.sh/helm/v4/pkg/registry` from `oras.land/oras-go/v2` to
 `github.com/oras-project/oras-go/v3` and leverage the new v3 configuration
 features to support the full container ecosystem config stack.
