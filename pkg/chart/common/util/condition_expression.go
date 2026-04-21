@@ -17,7 +17,7 @@ package util
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"unicode"
 
@@ -25,7 +25,7 @@ import (
 )
 
 type conditionExpression interface {
-	eval(conditionEvalContext) bool
+	eval(conditionEvalContext) (bool, error)
 }
 
 type conditionEvalContext struct {
@@ -38,29 +38,33 @@ type conditionPath struct {
 	path string
 }
 
-func (n conditionPath) eval(ctx conditionEvalContext) bool {
+func (n conditionPath) eval(ctx conditionEvalContext) (bool, error) {
 	v, err := ctx.values.PathValue(ctx.chartPath + n.path)
 	if err != nil {
 		if _, ok := err.(common.ErrNoValue); !ok {
-			log.Printf("Warning: PathValue returned error %v", err)
+			slog.Warn("PathValue returned error", "error", err)
 		}
-		return false
+		return false, err
 	}
 
 	b, ok := v.(bool)
 	if !ok {
-		log.Printf("Warning: Condition path '%s' for chart %s returned non-bool value", n.path, ctx.chartName)
-		return false
+		slog.Warn("condition path returned non-bool value", "path", n.path, "chart", ctx.chartName)
+		return false, fmt.Errorf("condition path returned non-bool value")
 	}
-	return b
+	return b, nil
 }
 
 type conditionNot struct {
 	expr conditionExpression
 }
 
-func (n conditionNot) eval(ctx conditionEvalContext) bool {
-	return !n.expr.eval(ctx)
+func (n conditionNot) eval(ctx conditionEvalContext) (bool, error) {
+	result, err := n.expr.eval(ctx)
+	if err != nil {
+		return false, err
+	}
+	return !result, nil
 }
 
 type conditionAnd struct {
@@ -68,9 +72,13 @@ type conditionAnd struct {
 	right conditionExpression
 }
 
-func (n conditionAnd) eval(ctx conditionEvalContext) bool {
-	if !n.left.eval(ctx) {
-		return false
+func (n conditionAnd) eval(ctx conditionEvalContext) (bool, error) {
+	left, err := n.left.eval(ctx)
+	if err != nil {
+		return false, err
+	}
+	if !left {
+		return false, nil
 	}
 	return n.right.eval(ctx)
 }
@@ -80,9 +88,13 @@ type conditionOr struct {
 	right conditionExpression
 }
 
-func (n conditionOr) eval(ctx conditionEvalContext) bool {
-	if n.left.eval(ctx) {
-		return true
+func (n conditionOr) eval(ctx conditionEvalContext) (bool, error) {
+	left, err := n.left.eval(ctx)
+	if err != nil {
+		return false, err
+	}
+	if left {
+		return true, nil
 	}
 	return n.right.eval(ctx)
 }
@@ -282,11 +294,28 @@ func (p *conditionParser) parsePrimary() (conditionExpression, error) {
 	}
 }
 
+// IsConditionExpression reports whether condition uses the boolean-expression
+// syntax understood by EvaluateConditionExpression.
+//
+// A condition expression must be wrapped in a single outer pair of
+// parentheses after trimming whitespace, for example `(subchart.enabled &&
+// !global.disabled)`. Inside the outer parentheses, operands are value paths
+// made of letters, digits, `_`, `-`, and `.`, and they may be combined with
+// `!`, `&&`, `||`, and nested parentheses.
 func IsConditionExpression(condition string) bool {
 	trimmed := strings.TrimSpace(condition)
 	return strings.HasPrefix(trimmed, "(") && strings.HasSuffix(trimmed, ")")
 }
 
+// EvaluateConditionExpression parses and evaluates a condition expression
+// against the provided values.
+//
+// The condition must follow the syntax recognized by IsConditionExpression:
+// after trimming whitespace, the full expression is expected to be enclosed in
+// outer parentheses, operands are value paths containing only letters,
+// digits, `_`, `-`, and `.`, and operators are limited to `!`, `&&`, `||`,
+// and nested parentheses. Evaluation returns an error if any referenced path
+// is missing or resolves to a non-bool value.
 func EvaluateConditionExpression(condition string, cvals common.Values, cpath, chartName string) (bool, error) {
 	expr, err := parseConditionExpression(condition)
 	if err != nil {
@@ -298,5 +327,5 @@ func EvaluateConditionExpression(condition string, cvals common.Values, cpath, c
 		chartName: chartName,
 		chartPath: cpath,
 	}
-	return expr.eval(ctx), nil
+	return expr.eval(ctx)
 }
