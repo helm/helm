@@ -269,6 +269,12 @@ func TestSaveDir(t *testing.T) {
 }
 
 func TestRepeatableSave(t *testing.T) {
+	// Guard against SOURCE_DATE_EPOCH being set in the test runner environment,
+	// which would override chart modtimes and invalidate the fixed SHA assertions.
+	if orig, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {
+		os.Unsetenv("SOURCE_DATE_EPOCH")
+		t.Cleanup(func() { os.Setenv("SOURCE_DATE_EPOCH", orig) })
+	}
 	tmp := t.TempDir()
 	defer os.RemoveAll(tmp)
 	modTime := time.Date(2021, 9, 1, 20, 34, 58, 651387237, time.UTC)
