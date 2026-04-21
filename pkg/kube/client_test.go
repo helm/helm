@@ -19,6 +19,7 @@ package kube
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -1851,6 +1852,86 @@ func TestPatchResourceServerSide(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestPatchResourceServerSideDedupEnvVars verifies that duplicate env var
+// entries are removed from the PATCH body before server-side apply is sent,
+// matching Kubernetes "last value wins" client-side-apply semantics.
+func TestPatchResourceServerSideDedupEnvVars(t *testing.T) {
+	pod := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "Pod",
+			"metadata": map[string]interface{}{
+				"name":      "whale",
+				"namespace": "default",
+			},
+			"spec": map[string]interface{}{
+				"containers": []interface{}{
+					map[string]interface{}{
+						"name":  "app",
+						"image": "nginx",
+						"env": []interface{}{
+							map[string]interface{}{"name": "FOO", "value": "first"},
+							map[string]interface{}{"name": "BAR", "value": "keep"},
+							map[string]interface{}{"name": "FOO", "value": "last"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	respBody, err := runtime.Encode(unstructured.UnstructuredJSONScheme, pod)
+	require.NoError(t, err)
+
+	var capturedBody []byte
+	restClient := &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			capturedBody, _ = io.ReadAll(req.Body)
+			header := http.Header{}
+			header.Set("Content-Type", runtime.ContentTypeJSON)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(respBody)),
+				Header:     header,
+			}, nil
+		}),
+	}
+
+	info := &resource.Info{
+		Client:    restClient,
+		Namespace: "default",
+		Name:      "whale",
+		Object:    pod,
+		Mapping: &meta.RESTMapping{
+			Resource: schema.GroupVersionResource{
+				Version:  "v1",
+				Resource: "pods",
+			},
+			GroupVersionKind: schema.GroupVersionKind{
+				Version: "v1",
+				Kind:    "Pod",
+			},
+			Scope: meta.RESTScopeNamespace,
+		},
+	}
+
+	require.NoError(t, patchResourceServerSide(info, false, false, FieldValidationDirectiveStrict))
+	require.NotNil(t, capturedBody, "expected a PATCH request to be sent")
+
+	var patchedObj map[string]interface{}
+	require.NoError(t, json.Unmarshal(capturedBody, &patchedObj))
+
+	spec, _ := patchedObj["spec"].(map[string]interface{})
+	containers, _ := spec["containers"].([]interface{})
+	require.Len(t, containers, 1)
+	env, _ := containers[0].(map[string]interface{})["env"].([]interface{})
+	require.Len(t, env, 2, "FOO should be deduplicated to one entry; BAR should remain")
+	assert.Equal(t, "BAR", env[0].(map[string]interface{})["name"])
+	assert.Equal(t, "FOO", env[1].(map[string]interface{})["name"])
+	assert.Equal(t, "last", env[1].(map[string]interface{})["value"], "last occurrence of FOO wins")
 }
 
 func TestDetermineFieldValidationDirective(t *testing.T) {
