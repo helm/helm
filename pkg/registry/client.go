@@ -242,7 +242,11 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 			return nil, err
 		}
 		repo.Registry.PlainHTTP = c.plainHTTP
-		repo.Registry.Client = c.authorizer
+		if c.registryAuthorizer != nil {
+			repo.Registry.Client = c.registryAuthorizer
+		} else {
+			repo.Registry.Client = c.authorizer
+		}
 		repo.Registry.Policy = c.policyEvaluator
 		return repo, nil
 	}
@@ -281,7 +285,11 @@ func (c *Client) newRegistry(host string) (*remote.Registry, error) {
 			return nil, err
 		}
 		reg.PlainHTTP = c.plainHTTP
-		reg.Client = c.authorizer
+		if c.registryAuthorizer != nil {
+			reg.Client = c.registryAuthorizer
+		} else {
+			reg.Client = c.authorizer
+		}
 		return reg, nil
 	}
 	// Config-driven path: construct properties for a host-only reference
