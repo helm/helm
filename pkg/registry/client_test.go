@@ -239,3 +239,52 @@ func TestLogin_LocationRewrite(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, aliasCred.Username, "credential must not be stored under alias")
 }
+
+// mockRemoteClient records whether Do was called, for use in registryAuthorizer tests.
+type mockRemoteClient struct {
+	called bool
+	inner  http.RoundTripper
+}
+
+func (m *mockRemoteClient) Do(req *http.Request) (*http.Response, error) {
+	m.called = true
+	return m.inner.RoundTrip(req)
+}
+
+func TestRegistryAuthorizer_UsedInLegacyPath(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		// Return empty tag list for any tags request.
+		if strings.HasSuffix(r.URL.Path, "/tags/list") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"name":"testchart","tags":[]}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	host := strings.TrimPrefix(srv.URL, "http://")
+	mock := &mockRemoteClient{inner: http.DefaultTransport}
+
+	credFile := filepath.Join(t.TempDir(), "config.json")
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(credFile),
+		ClientOptHTTPClient(&http.Client{}), // triggers customHTTPClient=true (legacy path)
+		ClientOptRegistryAuthorizer(mock),
+		ClientOptPlainHTTP(),
+	)
+	require.NoError(t, err)
+
+	// Tags calls newRepository → legacy path → should use registryAuthorizer.
+	_, err = c.Tags(host + "/testchart")
+	require.NoError(t, err)
+	require.True(t, mock.called, "registryAuthorizer.Do should have been called in legacy path")
+}
