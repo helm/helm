@@ -1802,6 +1802,23 @@ func TestPatchResourceServerSide(t *testing.T) {
 			},
 			ExpectedErrorContains: "the server reported a conflict",
 		},
+		"generic server-side apply error": {
+			Pods:                     newPodList("whale"),
+			DryRun:                   false,
+			ForceConflicts:           false,
+			FieldValidationDirective: FieldValidationDirectiveStrict,
+			Callback: func(t *testing.T, _ testCase, _ []RequestResponseAction, _ *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				return newResponse(http.StatusBadRequest, &metav1.Status{
+					Status:  metav1.StatusFailure,
+					Message: `failed to create typed patch object: .spec.template.spec.containers[name="test"].env: duplicate entries for key [name="SERVER_CONTEXT_PATH"]`,
+					Reason:  metav1.StatusReasonBadRequest,
+					Code:    http.StatusBadRequest,
+				})
+			},
+			ExpectedErrorContains: "server-side apply failed for object default/whale /v1, Kind=Pod: failed to create typed patch object",
+		},
 	}
 
 	for name, tc := range testCases {
