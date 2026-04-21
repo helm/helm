@@ -1299,24 +1299,25 @@ func copyRequestStreamToWriter(request *rest.Request, podName, containerName str
 	return nil
 }
 
-// nameKeyedFields is the set of Kubernetes list fields that are keyed by the
-// "name" field under server-side apply merge semantics. Only these fields are
-// candidates for deduplication; other lists that incidentally contain a "name"
-// field (e.g. volumeMounts, which is keyed by mountPath) must not be touched.
-var nameKeyedFields = map[string]bool{
-	"containers":          true,
-	"initContainers":      true,
-	"ephemeralContainers": true,
-	"env":                 true,
-	"volumes":             true,
-	"imagePullSecrets":    true,
+// dedupFields is the set of Kubernetes list fields that should be deduplicated
+// by "name" under server-side apply merge semantics. Container lists
+// (containers, initContainers, ephemeralContainers) are intentionally excluded:
+// duplicate container names are invalid and must not be silently dropped.
+// Other lists that happen to carry a "name" field (e.g. volumeMounts, keyed by
+// mountPath) are also excluded. All list fields are still traversed so that
+// nested dedupFields (e.g. env inside a container) are processed.
+var dedupFields = map[string]bool{
+	"env":              true,
+	"volumes":          true,
+	"imagePullSecrets": true,
 }
 
 // deduplicateListMaps walks an unstructured Kubernetes object and deduplicates
-// list fields that are keyed by "name" under server-side apply merge semantics
-// (see nameKeyedFields). When duplicates are found the last occurrence wins,
-// matching Kubernetes client-side-apply semantics. Returns true if any
-// deduplication occurred.
+// list fields in dedupFields under server-side apply merge semantics. When
+// duplicates are found the last occurrence wins, matching Kubernetes
+// client-side-apply semantics. All lists are traversed (to reach nested fields)
+// but only lists whose key is in dedupFields are themselves deduplicated.
+// Returns true if any deduplication occurred.
 func deduplicateListMaps(obj map[string]interface{}) bool {
 	deduped := false
 	for key, val := range obj {
@@ -1326,10 +1327,7 @@ func deduplicateListMaps(obj map[string]interface{}) bool {
 				deduped = true
 			}
 		case []interface{}:
-			if !nameKeyedFields[key] {
-				continue
-			}
-			newList, changed := processNamedList(v)
+			newList, changed := processListItems(v, dedupFields[key])
 			if changed {
 				obj[key] = newList
 				deduped = true
@@ -1339,14 +1337,15 @@ func deduplicateListMaps(obj map[string]interface{}) bool {
 	return deduped
 }
 
-// processNamedList recurses into list items and deduplicates the list if every
-// item is a map with a "name" key. The last occurrence of each name is kept and
-// the relative order of surviving items is preserved. Returns the (possibly
-// modified) list and whether any change was made.
-func processNamedList(list []interface{}) ([]interface{}, bool) {
+// processListItems recurses into list items and, when dedup is true,
+// deduplicates the list if every item is a map with a non-empty string "name".
+// The last occurrence of each name is kept and relative order of surviving
+// items is preserved. Returns the (possibly modified) list and whether any
+// change was made.
+func processListItems(list []interface{}, dedup bool) ([]interface{}, bool) {
 	changed := false
 
-	// Recurse into each map item first.
+	// Always recurse into map items to reach nested dedupFields.
 	for i, item := range list {
 		if m, ok := item.(map[string]interface{}); ok {
 			if deduplicateListMaps(m) {
@@ -1356,7 +1355,7 @@ func processNamedList(list []interface{}) ([]interface{}, bool) {
 		}
 	}
 
-	if len(list) < 2 {
+	if !dedup || len(list) < 2 {
 		return list, changed
 	}
 

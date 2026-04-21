@@ -2053,6 +2053,25 @@ func TestDeduplicateListMaps(t *testing.T) {
 			},
 			changed: false,
 		},
+		{
+			// Duplicate container names are an invalid manifest; they must not be
+			// silently dropped. We traverse the list to reach nested env vars but
+			// do not deduplicate the containers list itself.
+			name: "duplicate container names not deduplicated",
+			input: map[string]interface{}{
+				"containers": []interface{}{
+					map[string]interface{}{"name": "app", "image": "nginx:1"},
+					map[string]interface{}{"name": "app", "image": "nginx:2"},
+				},
+			},
+			expected: map[string]interface{}{
+				"containers": []interface{}{
+					map[string]interface{}{"name": "app", "image": "nginx:1"},
+					map[string]interface{}{"name": "app", "image": "nginx:2"},
+				},
+			},
+			changed: false,
+		},
 	}
 
 	for _, tt := range tests {
