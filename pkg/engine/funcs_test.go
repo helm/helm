@@ -225,6 +225,11 @@ func TestHtpasswd(t *testing.T) {
 			expect: `invalid username: bad:user`,
 		},
 		{
+			name:        "rejects username with colon and newline",
+			tpl:         "{{ htpasswd \"bad:user\\ninjected\" \"testpassword\" }}",
+			expectError: `must not contain newline characters`,
+		},
+		{
 			name:        "rejects username with newline",
 			tpl:         "{{ htpasswd \"bad\\nuser\" \"testpassword\" }}",
 			expectError: `must not contain newline characters`,

@@ -89,11 +89,11 @@ func funcMap() template.FuncMap {
 // By default it uses bcrypt, matching Sprig's existing behavior.
 // An optional third argument can explicitly select the hash algorithm.
 func htpasswd(username, password string, hashAlgorithms ...string) (string, error) {
-	if strings.Contains(username, ":") {
-		return fmt.Sprintf("invalid username: %s", username), nil
-	}
 	if strings.ContainsAny(username, "\n\r") {
 		return "", fmt.Errorf("invalid username %q: must not contain newline characters", username)
+	}
+	if strings.Contains(username, ":") {
+		return fmt.Sprintf("invalid username: %s", username), nil
 	}
 
 	if len(hashAlgorithms) > 1 {
