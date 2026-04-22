@@ -128,11 +128,7 @@ func readFile(filePath string, p getter.Providers) ([]byte, error) {
 	// FIXME: maybe someone handle other protocols like ftp.
 	g, err := p.ByScheme(u.Scheme)
 	if err != nil {
-		data, err := os.ReadFile(filePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read file %s: %w", filePath, err)
-		}
-		return data, nil
+		return os.ReadFile(filePath)
 	}
 	data, err := g.Get(filePath, getter.WithURL(filePath))
 	if err != nil {
