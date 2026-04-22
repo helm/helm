@@ -61,7 +61,7 @@ var sep = regexp.MustCompile("(?:^|\\s*\n)---[ \\t]*(?:\\r?\\n|$)")
 // part of the document body and downstream YAML parsing will surface the
 // problem. Chart authors should drop the dash (`{{ include ... }}`) or omit
 // the explicit `---` separator — Helm inserts one between templates on its
-// own. See helm/helm#32036 and the v2 → v3 migration guide.
+// own. See helm/helm#32036.
 func SplitManifests(bigFile string) map[string]string {
 	// Basically, we're quickly splitting a stream of YAML documents into an
 	// array of YAML docs. The file name is just a place holder, but should be
