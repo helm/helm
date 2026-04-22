@@ -78,13 +78,18 @@ func WithKStatusReaders(readers ...engine.StatusReader) WaitOption {
 // for Deployments) when many resources are updated simultaneously.
 //
 // A value of 0 (the default) keeps the underlying cli-utils behavior, where
-// status is computed synchronously on the informer goroutine. SDK consumers
-// (for example helm-controller) inherit this conservative default and can
-// opt in explicitly. The Helm CLI passes a non-zero value so that
-// `helm install/upgrade/rollback` users get the fix for multi-minute waits
-// out of the box. See https://github.com/fluxcd/cli-utils/pull/20.
+// status is computed synchronously on the informer goroutine. Negative values
+// are clamped to 0 so callers cannot propagate invalid counts to the
+// underlying watcher. SDK consumers (for example helm-controller) inherit
+// this conservative default and can opt in explicitly. The Helm CLI passes
+// a non-zero value so that `helm install/upgrade/rollback` users get the
+// fix for multi-minute waits out of the box.
+// See https://github.com/fluxcd/cli-utils/pull/20.
 func WithStatusComputeWorkers(n int) WaitOption {
 	return func(wo *waitOptions) {
+		if n < 0 {
+			n = 0
+		}
 		wo.statusComputeWorkers = n
 	}
 }
