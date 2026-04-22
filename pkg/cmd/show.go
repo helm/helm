@@ -225,7 +225,7 @@ func runShow(args []string, client *action.Show) (string, error) {
 	return client.Run(cp)
 }
 
-func addRegistryClient(_ io.Writer, client *action.Show) error {
+func addRegistryClient(client *action.Show) error {
 	registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
 		client.InsecureSkipTLSVerify, client.PlainHTTP, client.Username, client.Password)
 	if err != nil {

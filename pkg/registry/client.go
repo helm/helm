@@ -268,7 +268,7 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 		verifier := signature.NewSignedByVerifierFromConfig(c.configs.RegistriesDConfig, scope)
 		if verifier != nil {
 			scopedEval, err := c.configs.PolicyEvaluator(policy.WithSignedByVerifier(verifier))
-			if err == nil && scopedEval != nil {
+			if err == nil && scopedEval != nil && repo.Registry.Policy == nil {
 				repo.Registry.Policy = scopedEval
 			}
 		}
@@ -420,6 +420,7 @@ type (
 	loginOperation struct {
 		host   string
 		client *Client
+		err    error
 	}
 )
 
@@ -436,8 +437,12 @@ func warnIfHostHasPath(host string) bool {
 
 // Login authenticates the client with a remote OCI registry using the provided host and options.
 func (c *Client) Login(host string, options ...LoginOption) error {
+	op := &loginOperation{host: host, client: c}
 	for _, option := range options {
-		option(&loginOperation{host, c})
+		option(op)
+	}
+	if op.err != nil {
+		return op.err
 	}
 
 	warnIfHostHasPath(host)
@@ -526,7 +531,8 @@ func LoginOptInsecure(insecure bool) LoginOption {
 		// Also update the authorizer transport for the legacy path (customHTTPClient=true).
 		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
 		if err != nil {
-			panic(err)
+			o.err = err
+			return
 		}
 		tlsConfig.InsecureSkipVerify = insecure
 	}

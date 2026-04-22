@@ -60,8 +60,8 @@ func TestTagManifestTransformsReferences(t *testing.T) {
 	require.Error(t, err, "Should NOT find the reference with the original +")
 }
 
-// Verifies that Login always restores ForceAttemptOAuth2 to false on success.
-func TestLogin_ResetsForceAttemptOAuth2_OnSuccess(t *testing.T) {
+// Verifies that the authorizer is set on a new client and Login succeeds against a reachable registry.
+func TestLogin_AuthorizerSetAndSucceeds(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -95,8 +95,8 @@ func TestLogin_ResetsForceAttemptOAuth2_OnSuccess(t *testing.T) {
 	}
 }
 
-// Verifies that Login restores ForceAttemptOAuth2 to false even when ping fails.
-func TestLogin_ResetsForceAttemptOAuth2_OnFailure(t *testing.T) {
+// Verifies that Login returns an error when the registry is unreachable.
+func TestLogin_FailsWhenUnreachable(t *testing.T) {
 	t.Parallel()
 
 	// Start and immediately close, so connections will fail
