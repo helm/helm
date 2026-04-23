@@ -18,13 +18,21 @@ package util
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"maps"
 
 	"helm.sh/helm/v4/internal/copystructure"
 	chart "helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/chart/common"
 )
+
+// warnf emits a formatted message via slog at warn level. Used instead of
+// log.Printf for the "warning:"-prefixed coalesce messages so they surface
+// at the correct log level instead of as INFO-level lines that contain the
+// word "warning" in the text. See helm/helm#11118.
+func warnf(format string, v ...any) {
+	slog.Warn(fmt.Sprintf(format, v...))
+}
 
 func concatPrefix(a, b string) string {
 	if a == "" {
@@ -47,7 +55,7 @@ func CoalesceValues(chrt chart.Charter, vals map[string]any) (common.Values, err
 	if err != nil {
 		return vals, err
 	}
-	return coalesce(log.Printf, chrt, valsCopy, "", false)
+	return coalesce(warnf, chrt, valsCopy, "", false)
 }
 
 // MergeValues is used to merge the values in a chart and its subcharts. This
@@ -69,7 +77,7 @@ func MergeValues(chrt chart.Charter, vals map[string]any) (common.Values, error)
 	if err != nil {
 		return vals, err
 	}
-	return coalesce(log.Printf, chrt, valsCopy, "", true)
+	return coalesce(warnf, chrt, valsCopy, "", true)
 }
 
 func copyValues(vals map[string]any) (common.Values, error) {
@@ -143,14 +151,14 @@ func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ 
 	if destglob, ok := dest[common.GlobalKey]; !ok {
 		dg = make(map[string]any)
 	} else if dg, ok = destglob.(map[string]any); !ok {
-		printf("warning: skipping globals because destination %s is not a table.", common.GlobalKey)
+		printf("skipping globals because destination %s is not a table.", common.GlobalKey)
 		return
 	}
 
 	if srcglob, ok := src[common.GlobalKey]; !ok {
 		sg = make(map[string]any)
 	} else if sg, ok = srcglob.(map[string]any); !ok {
-		printf("warning: skipping globals because source %s is not a table.", common.GlobalKey)
+		printf("skipping globals because source %s is not a table.", common.GlobalKey)
 		return
 	}
 
@@ -217,7 +225,7 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 		// means there is a problem in the deep copying package or something
 		// wrong with c.Values. In this case we will use c.Values and report
 		// an error.
-		printf("warning: unable to copy values, err: %s", err)
+		printf("unable to copy values, err: %s", err)
 		vc = ch.Values()
 	} else {
 		vc, ok = valuesCopy.(map[string]any)
@@ -225,7 +233,7 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 			// c.Values has a map[string]interface{} structure. If the copy of
 			// it cannot be treated as map[string]interface{} there is something
 			// strangely wrong. Log it and use c.Values
-			printf("warning: unable to convert values copy to values type")
+			printf("unable to convert values copy to values type")
 			vc = ch.Values()
 		}
 	}
@@ -245,7 +253,7 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 					// If the original value is nil, there is nothing to coalesce, so we don't print
 					// the warning
 					if val != nil {
-						printf("warning: skipped value for %s.%s: Not a table.", subPrefix, key)
+						printf("skipped value for %s.%s: Not a table.", subPrefix, key)
 					}
 				} else {
 					// If the key is a child chart, coalesce tables with Merge set to true
@@ -300,11 +308,11 @@ func childChartMergeTrue(chrt chart.Charter, key string, merge bool) bool {
 //
 // dest is considered authoritative.
 func CoalesceTables(dst, src map[string]any) map[string]any {
-	return coalesceTablesFullKey(log.Printf, dst, src, "", false)
+	return coalesceTablesFullKey(warnf, dst, src, "", false)
 }
 
 func MergeTables(dst, src map[string]any) map[string]any {
-	return coalesceTablesFullKey(log.Printf, dst, src, "", true)
+	return coalesceTablesFullKey(warnf, dst, src, "", true)
 }
 
 // coalesceTablesFullKey merges a source map into a destination map.
@@ -347,10 +355,10 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]any, prefix strin
 			if istable(dv) {
 				coalesceTablesFullKey(printf, dv.(map[string]any), val.(map[string]any), fullkey, merge)
 			} else {
-				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
+				printf("cannot overwrite table with non table for %s (%v)", fullkey, val)
 			}
 		} else if istable(dv) && val != nil {
-			printf("warning: destination for %s is a table. Ignoring non-table value (%v)", fullkey, val)
+			printf("destination for %s is a table. Ignoring non-table value (%v)", fullkey, val)
 		}
 	}
 	return dst
