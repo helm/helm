@@ -309,6 +309,28 @@ func ClientCreateOptionFieldValidationDirective(fieldValidationDirective FieldVa
 	}
 }
 
+// ResolvedCreateOptions holds the resolved values from ClientCreateOption functions.
+// This is exported for testing purposes only.
+type ResolvedCreateOptions struct {
+	ServerSideApply bool
+	ForceConflicts  bool
+}
+
+// ResolveCreateOptions applies the given ClientCreateOptions and returns the resolved values.
+// This is exported for testing purposes only.
+func ResolveCreateOptions(opts ...ClientCreateOption) (ResolvedCreateOptions, error) {
+	o := clientCreateOptions{}
+	for _, opt := range opts {
+		if err := opt(&o); err != nil {
+			return ResolvedCreateOptions{}, err
+		}
+	}
+	return ResolvedCreateOptions{
+		ServerSideApply: o.serverSideApply,
+		ForceConflicts:  o.forceConflicts,
+	}, nil
+}
+
 func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun bool, fieldValidationDirective FieldValidationDirective) CreateApplyFunc {
 	if serverSideApply {
 		c.Logger().Debug(
