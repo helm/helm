@@ -347,7 +347,7 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]any, prefix strin
 			if istable(dv) {
 				coalesceTablesFullKey(printf, dv.(map[string]any), val.(map[string]any), fullkey, merge)
 			} else {
-				printf("warning: cannot overwrite map/object with non-map value for %s (%v)", fullkey, val)
+				printf("warning: destination for %s is a non-map value (%v). Ignoring map/object value (%v)", fullkey, dv, val)
 			}
 		} else if istable(dv) && val != nil {
 			printf("warning: destination for %s is a map/object. Ignoring non-map value (%v)", fullkey, val)
