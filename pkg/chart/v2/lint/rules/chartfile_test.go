@@ -29,19 +29,16 @@ import (
 )
 
 const (
-	badChartNameDir    = "testdata/badchartname"
 	badChartDir        = "testdata/badchartfile"
 	anotherBadChartDir = "testdata/anotherbadchartfile"
 )
 
 var (
-	badChartNamePath         = filepath.Join(badChartNameDir, "Chart.yaml")
 	badChartFilePath         = filepath.Join(badChartDir, "Chart.yaml")
 	nonExistingChartFilePath = filepath.Join(os.TempDir(), "Chart.yaml")
 )
 
 var badChart, _ = chartutil.LoadChartfile(badChartFilePath)
-var badChartName, _ = chartutil.LoadChartfile(badChartNamePath)
 
 // Validation functions Test
 func TestValidateChartYamlNotDirectory(t *testing.T) {
@@ -67,14 +64,65 @@ func TestValidateChartYamlFormat(t *testing.T) {
 }
 
 func TestValidateChartName(t *testing.T) {
-	err := validateChartName(badChart)
-	if err == nil {
-		t.Error("validateChartName to return a linter error, got no error")
+	tests := []struct {
+		name    string
+		wantErr string
+	}{
+		{
+			name:    "",
+			wantErr: "name is required",
+		},
+		{
+			name:    "../badchartname",
+			wantErr: `chart name "../badchartname" is invalid`,
+		},
+		{
+			name:    "BadChart",
+			wantErr: `chart name "BadChart" is invalid`,
+		},
+		{
+			name:    "bad.chart",
+			wantErr: `chart name "bad.chart" is invalid`,
+		},
+		{
+			name:    "bad_chart",
+			wantErr: `chart name "bad_chart" is invalid`,
+		},
+		{
+			name:    "-badchart",
+			wantErr: `chart name "-badchart" is invalid`,
+		},
+		{
+			name:    "badchart-",
+			wantErr: `chart name "badchart-" is invalid`,
+		},
+		{
+			name: "badchart",
+		},
+		{
+			name: "bad-chart-1",
+		},
+		{
+			name: "bad--chart",
+		},
 	}
 
-	err = validateChartName(badChartName)
-	if err == nil {
-		t.Error("expected validateChartName to return a linter error for an invalid name, got no error")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateChartName(&chart.Metadata{Name: tt.name})
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("validateChartName(%q) returned unexpected error: %s", tt.name, err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("validateChartName(%q) returned no error, want %q", tt.name, tt.wantErr)
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("validateChartName(%q) returned %q, want to contain %q", tt.name, err, tt.wantErr)
+			}
+		})
 	}
 }
 

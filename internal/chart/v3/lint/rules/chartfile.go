@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/asaskevich/govalidator"
@@ -30,6 +31,10 @@ import (
 	"helm.sh/helm/v4/internal/chart/v3/lint/support"
 	chartutil "helm.sh/helm/v4/internal/chart/v3/util"
 )
+
+const validChartNameMessage = "chart names must contain lowercase letters, numbers, and dashes, and must start and end with a lowercase letter or number"
+
+var validChartName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
 
 // Chartfile runs a set of linter rules related to Chart.yaml file
 func Chartfile(linter *support.Linter) {
@@ -119,6 +124,9 @@ func validateChartName(cf *chart.Metadata) error {
 	name := filepath.Base(cf.Name)
 	if name != cf.Name {
 		return fmt.Errorf("chart name %q is invalid", cf.Name)
+	}
+	if !validChartName.MatchString(cf.Name) {
+		return fmt.Errorf("chart name %q is invalid; %s", cf.Name, validChartNameMessage)
 	}
 	return nil
 }
