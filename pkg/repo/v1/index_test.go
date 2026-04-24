@@ -745,6 +745,10 @@ func TestIsVersionRange(t *testing.T) {
 		{"1.0.0 - 2.0.0", true},
 		{"^1.0.0 || ^2.0.0", true},
 		{">=1.0.0 <2.0.0", true},
+		// Exact versions with 'x'/'X' in prerelease or build metadata
+		{"1.0.0-fix", false},
+		{"2.0.0-next", false},
+		{"1.0.0+exp", false},
 	}
 
 	for _, tt := range tests {

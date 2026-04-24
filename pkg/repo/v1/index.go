@@ -178,7 +178,14 @@ func (i IndexFile) SortEntries() {
 // isVersionRange checks if the version string is a range constraint (e.g., "^1", "~1.10")
 // rather than an exact version (e.g., "1.10.0").
 func isVersionRange(version string) bool {
-	return strings.ContainsAny(version, "^~<>=!*xX") || strings.Contains(version, "||") || strings.Contains(version, " - ")
+	if strings.ContainsAny(version, "^~<>=!*") || strings.Contains(version, "||") || strings.Contains(version, " - ") {
+		return true
+	}
+	core := version
+	if idx := strings.IndexAny(version, "-+"); idx != -1 {
+		core = version[:idx]
+	}
+	return strings.ContainsAny(core, "xX")
 }
 
 // Get returns the ChartVersion for the given name.
