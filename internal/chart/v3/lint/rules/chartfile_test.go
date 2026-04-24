@@ -64,6 +64,8 @@ func TestValidateChartYamlFormat(t *testing.T) {
 }
 
 func TestValidateChartName(t *testing.T) {
+	const chartNameRule = "chart names must contain lowercase letters, numbers, and dashes, and must start and end with a lowercase letter or number"
+
 	tests := []struct {
 		name    string
 		wantErr string
@@ -78,7 +80,7 @@ func TestValidateChartName(t *testing.T) {
 		},
 		{
 			name:    "BadChart",
-			wantErr: `chart name "BadChart" is invalid`,
+			wantErr: `chart name "BadChart" is invalid; ` + chartNameRule,
 		},
 		{
 			name:    "bad.chart",

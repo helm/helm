@@ -17,6 +17,7 @@ limitations under the License.
 package util
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -32,10 +33,9 @@ import (
 )
 
 // chartName is a regular expression for testing the supplied name of a chart.
-// This regular expression is probably stricter than it needs to be. We can relax it
-// somewhat. Newline characters, as well as $, quotes, +, parens, and % are known to be
-// problematic.
-var chartName = regexp.MustCompile("^[a-zA-Z0-9._-]+$")
+var chartName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
+
+const validChartNameMessage = "chart names must contain lowercase letters, numbers, and dashes, and must start and end with a lowercase letter or number"
 
 const (
 	// ChartfileName is the default Chart file name.
@@ -649,6 +649,10 @@ var Stderr io.Writer = os.Stderr
 
 // CreateFrom creates a new chart, but scaffolds it from the src chart.
 func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
+	if err := ValidateChartName(chartfile.Name); err != nil {
+		return err
+	}
+
 	schart, err := loader.Load(src)
 	if err != nil {
 		return fmt.Errorf("could not load %s: %w", src, err)
@@ -703,7 +707,7 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 func Create(name, dir string) (string, error) {
 
 	// Sanity-check the name of a chart so user doesn't create one that causes problems.
-	if err := validateChartName(name); err != nil {
+	if err := ValidateChartName(name); err != nil {
 		return "", err
 	}
 
@@ -822,12 +826,13 @@ func writeFile(name string, content []byte) error {
 	return os.WriteFile(name, content, 0644)
 }
 
-func validateChartName(name string) error {
+// ValidateChartName validates a chart name used by chart creation and linting.
+func ValidateChartName(name string) error {
 	if name == "" || len(name) > maxChartNameLength {
 		return fmt.Errorf("chart name must be between 1 and %d characters", maxChartNameLength)
 	}
 	if !chartName.MatchString(name) {
-		return fmt.Errorf("chart name must match the regular expression %q", chartName.String())
+		return errors.New(validChartNameMessage)
 	}
 	return nil
 }
