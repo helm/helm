@@ -214,6 +214,11 @@ func TestValidateHost(t *testing.T) {
 			host:    "",
 			wantErr: true,
 		},
+		{
+			name:    "url with query parameters",
+			host:    "ghcr.io?param=value",
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
