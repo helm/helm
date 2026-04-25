@@ -227,28 +227,36 @@ type (
 	}
 )
 
-// hostRegex is a pretty naive regex for validating host urls. The goal of it is not to ultimately validate all possible valid hosts,
-// but to catch common user errors such as including a scheme or path in the host string.
-var hostRegex = regexp.MustCompile(`^(?P<scheme>[a-zA-Z][a-zA-Z0-9+\-.]*:\/\/)?(?P<host>[a-zA-Z0-9\-._:\[\]]+)(?P<path>\/.*)?$`)
+// schemeRegex is used to check if a schema is present within the host - we have to do so, to determine if we need
+// to prepend a "dummy://" schema for url.Parse to not accidentally interpret the host as just a path
+var schemeRegex = regexp.MustCompile(`^(?P<scheme>[a-zA-Z][a-zA-Z0-9+\-.]*:\/\/).*$`)
 
-// validateHost checks that the host matches some required pre-checks e.g. does not contain a scheme or path.
+// validateHost checks that the host matches some required pre-checks e.g. does not contain a scheme, query or path.
 // While ORAS will also validate some of these things, the current errors are a bit opaque.
 // By validating these things upfront, we can provide clearer error messages to users when they attempt to login with an invalid host string.
 func validateHost(host string) error {
-	matches := hostRegex.FindStringSubmatch(host)
+	if strings.TrimSpace(host) == "" {
+		return fmt.Errorf("host cannot be empty")
+	}
+
+	matches := schemeRegex.FindStringSubmatch(host)
 	if len(matches) == 0 {
-		return fmt.Errorf("invalid host: %q", host)
+		host = "dummy://" + host
 	}
 
-	scheme := matches[hostRegex.SubexpIndex("scheme")]
-	path := matches[hostRegex.SubexpIndex("path")]
-
-	if scheme != "" {
-		return fmt.Errorf("host should not contain a scheme (e.g. http://), found %q", scheme)
+	url, err := url.Parse(host)
+	if err != nil {
+		return fmt.Errorf("invalid host %q: %w", host, err)
 	}
 
-	if path != "" {
-		return fmt.Errorf("host should not contain a path, found %q", path)
+	// we check that no schema and query is present
+	if url.Scheme != "dummy" || url.RawQuery != "" {
+		return fmt.Errorf("host should not contain a scheme, query or fragement")
+	}
+
+	// currently, paths are also not supported
+	if url.Path != "" && url.Path != "/" {
+		return fmt.Errorf("host should not contain a path, found %q", url.Path)
 	}
 
 	return nil
