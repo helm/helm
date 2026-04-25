@@ -210,6 +210,11 @@ func TestValidateHost(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "trailing slash",
+			host:    "ghcr.io/",
+			wantErr: true,
+		},
+		{
 			name:    "empty string",
 			host:    "",
 			wantErr: true,

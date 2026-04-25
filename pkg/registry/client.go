@@ -229,34 +229,41 @@ type (
 
 // schemeRegex is used to check if a schema is present within the host - we have to do so, to determine if we need
 // to prepend a "dummy://" schema for url.Parse to not accidentally interpret the host as just a path
-var schemeRegex = regexp.MustCompile(`^(?P<scheme>[a-zA-Z][a-zA-Z0-9+\-.]*:\/\/).*$`)
+var schemeRegex = regexp.MustCompile(`^([a-zA-Z][a-zA-Z0-9+\-.]*:\/\/).*$`)
 
 // validateHost checks that the host matches some required pre-checks e.g. does not contain a scheme, query or path.
 // While ORAS will also validate some of these things, the current errors are a bit opaque.
 // By validating these things upfront, we can provide clearer error messages to users when they attempt to login with an invalid host string.
 func validateHost(host string) error {
-	if strings.TrimSpace(host) == "" {
+	host = strings.TrimSpace(host)
+	if host == "" {
 		return fmt.Errorf("host cannot be empty")
 	}
 
+	// we pre-validate the scheme part here to make sure that we can prepend a dummy scheme for url.Parse without accidentally
+	// accepting invalid hosts that would be parsed with the scheme as just a path. By not just blindly prepending the scheme,
+	// we can produce a clearer error message for users who still include a scheme in the host string, which is a common thing.
 	matches := schemeRegex.FindStringSubmatch(host)
-	if len(matches) == 0 {
-		host = "dummy://" + host
+	if len(matches) != 0 {
+		return fmt.Errorf("host should not contain a scheme, found %q", host)
 	}
 
-	url, err := url.Parse(host)
+	// keep the original host for potential error messages
+	originalHost := host
+
+	// we have to prepend the dummy scheme here to make it an absolute url
+	parsed, err := url.Parse("dummy://" + host)
 	if err != nil {
-		return fmt.Errorf("invalid host %q: %w", host, err)
+		return fmt.Errorf("invalid host %q: %w", originalHost, err)
 	}
 
-	// we check that no schema and query is present
-	if url.Scheme != "dummy" || url.RawQuery != "" {
-		return fmt.Errorf("host should not contain a scheme, query or fragement")
+	if parsed.RawQuery != "" || parsed.RawFragment != "" {
+		return fmt.Errorf("host should not contain a query or fragment, found %q", originalHost)
 	}
 
 	// currently, paths are also not supported
-	if url.Path != "" && url.Path != "/" {
-		return fmt.Errorf("host should not contain a path, found %q", url.Path)
+	if parsed.Path != "" {
+		return fmt.Errorf("host should not contain a path, found %q", originalHost)
 	}
 
 	return nil
