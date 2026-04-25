@@ -26,8 +26,8 @@ func verify(t *testing.T, actual reference, registry, repository, tag, digest st
 	if repository != actual.orasReference.Repository {
 		t.Errorf("Oras reference repository expected %v actual %v", repository, actual.Repository)
 	}
-	if tag != actual.orasReference.Reference {
-		t.Errorf("Oras reference reference expected %v actual %v", tag, actual.Tag)
+	if tag != actual.orasReference.Tag {
+		t.Errorf("Oras reference tag expected %v actual %v", tag, actual.Tag)
 	}
 	if registry != actual.Registry {
 		t.Errorf("Registry expected %v actual %v", registry, actual.Registry)

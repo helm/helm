@@ -34,13 +34,16 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content/memory"
-	"oras.land/oras-go/v2/registry"
-	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras-go/v2/registry/remote/credentials"
-	"oras.land/oras-go/v2/registry/remote/retry"
+	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content/memory"
+	"github.com/oras-project/oras-go/v3/registry/remote"
+	"github.com/oras-project/oras-go/v3/registry/remote/auth"
+	remoteconfig "github.com/oras-project/oras-go/v3/registry/remote/config"
+	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
+	"github.com/oras-project/oras-go/v3/registry/remote/policy"
+	"github.com/oras-project/oras-go/v3/registry/remote/properties"
+	"github.com/oras-project/oras-go/v3/registry/remote/retry"
+	"github.com/oras-project/oras-go/v3/registry/remote/signature"
 
 	"helm.sh/helm/v4/internal/version"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -53,6 +56,14 @@ OCI artifact references (e.g. tags) do not support the plus sign (+). To support
 storing semantic versions, Helm adopts the convention of changing plus (+) to
 an underscore (_) in chart version tags when pushing to a registry and back to
 a plus (+) when pulling from a registry.`
+
+// ConfigOptions specifies override paths for container ecosystem config files.
+type ConfigOptions struct {
+	RegistriesConfigPath string
+	PolicyConfigPath     string
+	CertsDirPaths        []string
+	ContainersAuthPath   string
+}
 
 type (
 	// RemoteClient shadows the ORAS remote.Client interface
@@ -76,6 +87,17 @@ type (
 		credentialsStore   credentials.Store
 		httpClient         *http.Client
 		plainHTTP          bool
+		// v3 config-driven fields
+		configs               *remoteconfig.Configs
+		builder               *remote.ClientBuilder
+		policyEvaluator       *policy.Evaluator
+		signatureVerification bool
+		configOptions         ConfigOptions
+		insecure              bool
+		certFile              string
+		keyFile               string
+		caFile                string
+		customHTTPClient      bool // true when ClientOptHTTPClient or ClientOptAuthorizer was used
 	}
 
 	// ClientOption allows specifying various settings configurable by the user for overriding the defaults
@@ -102,22 +124,67 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 
 	storeOptions := credentials.StoreOptions{
-		AllowPlaintextPut:        true,
-		DetectDefaultNativeStore: true,
+		AllowPlaintextPut: true,
 	}
-	store, err := credentials.NewStore(client.credentialsFile, storeOptions)
+
+	// Primary credentials store (Helm's own file) — used for Login/Logout persistence.
+	helmStore, err := credentials.NewStore(client.credentialsFile, storeOptions)
 	if err != nil {
 		return nil, err
 	}
-	dockerStore, err := credentials.NewStoreFromDocker(storeOptions)
+	client.credentialsStore = helmStore
+
+	// Load the full container ecosystem config stack: Docker config.json,
+	// containers auth.json, registries.conf, policy.json, certs.d, registries.d.
+	// Missing files are silently skipped.
+	loaderOpts := remoteconfig.LoadConfigsOptions{
+		RegistriesConfigPath: client.configOptions.RegistriesConfigPath,
+		PolicyConfigPath:     client.configOptions.PolicyConfigPath,
+		CertsDirPaths:        client.configOptions.CertsDirPaths,
+		ContainersAuthPath:   client.configOptions.ContainersAuthPath,
+	}
+	configs, err := remoteconfig.LoadConfigsWithOptions(loaderOpts)
 	if err != nil {
-		// should only fail if user home directory can't be determined
-		client.credentialsStore = store
-	} else {
-		// use Helm credentials with fallback to Docker
-		client.credentialsStore = credentials.NewStoreWithFallbacks(store, dockerStore)
+		return nil, fmt.Errorf("failed to load registry configurations: %w", err)
+	}
+	client.configs = configs
+
+	// Only build from configs when not overridden by ClientOptPolicyEvaluator.
+	if configs.PolicyConfig != nil && client.policyEvaluator == nil {
+		evaluator, err := configs.PolicyEvaluator()
+		if err != nil {
+			return nil, fmt.Errorf("failed to build policy evaluator: %w", err)
+		}
+		client.policyEvaluator = evaluator
 	}
 
+	// Build the combined credential store for read operations:
+	//   1. Helm's own credentials file (highest priority, stores login results)
+	//   2. Docker config.json + containers auth.json from the full config stack
+	var credStore credentials.Store
+	if configStore, err := configs.CredentialStore(storeOptions); err == nil {
+		credStore = credentials.NewStoreWithFallbacks(helmStore, configStore)
+	} else {
+		credStore = helmStore
+	}
+
+	// Build the ClientBuilder used by the config-driven repository creation path.
+	var logger *slog.Logger
+	if client.debug {
+		logger = slog.Default()
+	}
+	builder := remote.NewClientBuilder()
+	builder.CredentialStore = credStore
+	builder.UserAgent = version.GetUserAgent()
+	builder.Logger = logger
+	builder.PolicyEvaluator = client.policyEvaluator
+	if !client.enableCache {
+		builder.CacheFactory = nil
+	}
+	client.builder = builder
+
+	// Build the legacy auth.Client used when a custom HTTP client or authorizer
+	// was provided (customHTTPClient=true path).
 	if client.authorizer == nil {
 		authorizer := auth.Client{
 			Client: client.httpClient,
@@ -125,11 +192,11 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		authorizer.SetUserAgent(version.GetUserAgent())
 
 		if client.username != "" && client.password != "" {
-			authorizer.Credential = func(_ context.Context, _ string) (auth.Credential, error) {
-				return auth.Credential{Username: client.username, Password: client.password}, nil
+			authorizer.CredentialFunc = func(_ context.Context, _ string) (credentials.Credential, error) {
+				return credentials.Credential{Username: client.username, Password: client.password}, nil
 			}
 		} else {
-			authorizer.Credential = credentials.Credential(client.credentialsStore)
+			authorizer.CredentialFunc = remote.NewCredentialFunc(credStore)
 		}
 
 		if client.enableCache {
@@ -139,6 +206,109 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 
 	return client, nil
+}
+
+// applyOverrides applies client-level CLI flag overrides to registry properties.
+func (c *Client) applyOverrides(props *properties.Registry) {
+	if c.plainHTTP {
+		props.Transport.PlainHTTP = true
+	}
+	if c.insecure {
+		props.Transport.Insecure = true
+	}
+	if c.certFile != "" && c.keyFile != "" {
+		props.Transport.Cert = c.certFile
+		props.Transport.Key = c.keyFile
+	}
+	if c.caFile != "" {
+		props.Transport.CACerts = append(props.Transport.CACerts, c.caFile)
+	}
+	if c.username != "" && c.password != "" {
+		props.Credential = credentials.Credential{Username: c.username, Password: c.password}
+	}
+}
+
+// newRepository creates a configured remote.Repository for the given reference.
+//
+// When a custom HTTP client or authorizer was provided, the legacy path is used
+// (direct assignment of c.authorizer). Otherwise, the full config-driven path is
+// used: registry properties are resolved from registries.conf and certs.d, CLI
+// overrides are applied, and the repository is built via NewRepositoryWithProperties.
+func (c *Client) newRepository(ref string) (*remote.Repository, error) {
+	if c.customHTTPClient {
+		// Legacy path: use c.authorizer directly (preserves custom TLS transport).
+		repo, err := remote.NewRepository(ref)
+		if err != nil {
+			return nil, err
+		}
+		repo.Registry.PlainHTTP = c.plainHTTP
+		if c.registryAuthorizer != nil {
+			repo.Registry.Client = c.registryAuthorizer
+		} else {
+			repo.Registry.Client = c.authorizer
+		}
+		repo.Registry.Policy = c.policyEvaluator
+		return repo, nil
+	}
+	// Config-driven path: resolve properties from registries.conf, certs.d, etc.
+	props, err := c.configs.RegistryProperties(ref)
+	if err != nil {
+		return nil, err
+	}
+	c.applyOverrides(props)
+	repo, err := remote.NewRepositoryWithProperties(props, c.builder)
+	if err != nil {
+		return nil, err
+	}
+	if c.signatureVerification && c.configs.RegistriesDConfig != nil && c.policyEvaluator != nil {
+		scope := props.Reference.Registry
+		if props.Reference.Repository != "" {
+			scope += "/" + props.Reference.Repository
+		}
+		verifier := signature.NewSignedByVerifierFromConfig(c.configs.RegistriesDConfig, scope)
+		if verifier != nil {
+			scopedEval, err := c.configs.PolicyEvaluator(policy.WithSignedByVerifier(verifier))
+			if err == nil && scopedEval != nil && repo.Registry.Policy == nil {
+				repo.Registry.Policy = scopedEval
+			}
+		}
+	}
+	return repo, nil
+}
+
+// newRegistry creates a configured remote.Registry for the given host (used by Login).
+func (c *Client) newRegistry(host string) (*remote.Registry, error) {
+	if c.customHTTPClient {
+		// Legacy path: use c.authorizer directly.
+		reg, err := remote.NewRegistry(host)
+		if err != nil {
+			return nil, err
+		}
+		reg.PlainHTTP = c.plainHTTP
+		if c.registryAuthorizer != nil {
+			reg.Client = c.registryAuthorizer
+		} else {
+			reg.Client = c.authorizer
+		}
+		return reg, nil
+	}
+	// Config-driven path: construct properties for a host-only reference
+	// (no repository path) and apply CLI overrides + certs.d.
+	props := properties.NewRegistryFromReference(properties.Reference{Registry: host})
+	// Apply insecure setting from registries.conf if the host is found there.
+	if c.configs.RegistriesConfig != nil {
+		if reg := c.configs.RegistriesConfig.FindRegistry(host); reg != nil && reg.Insecure {
+			props.Transport.Insecure = true
+		}
+	}
+	// Apply per-host TLS certificates from certs.d.
+	if len(c.configs.CertsDirPaths) > 0 {
+		if certs, err := remoteconfig.LoadCertsDirFromPaths(host, c.configs.CertsDirPaths); err == nil && certs != nil {
+			certs.ApplyToTransport(&props.Transport)
+		}
+	}
+	c.applyOverrides(props)
+	return remote.NewRegistryWithProperties(props, c.builder)
 }
 
 // Generic returns a GenericClient for low-level OCI operations
@@ -182,6 +352,7 @@ func ClientOptWriter(out io.Writer) ClientOption {
 func ClientOptAuthorizer(authorizer auth.Client) ClientOption {
 	return func(client *Client) {
 		client.authorizer = &authorizer
+		client.customHTTPClient = true
 	}
 }
 
@@ -203,9 +374,12 @@ func ClientOptCredentialsFile(credentialsFile string) ClientOption {
 }
 
 // ClientOptHTTPClient returns a function that sets the HTTP client for the registry client.
+// When a custom HTTP client is provided, the legacy repository creation path is used so
+// that TLS configuration in the custom transport is preserved.
 func ClientOptHTTPClient(httpClient *http.Client) ClientOption {
 	return func(client *Client) {
 		client.httpClient = httpClient
+		client.customHTTPClient = true
 	}
 }
 
@@ -217,6 +391,28 @@ func ClientOptPlainHTTP() ClientOption {
 	}
 }
 
+// ClientOptPolicyEvaluator returns a function that sets a custom policy evaluator on the client.
+func ClientOptPolicyEvaluator(e *policy.Evaluator) ClientOption {
+	return func(c *Client) {
+		c.policyEvaluator = e
+	}
+}
+
+// ClientOptSignatureVerification returns a function that enables or disables
+// GPG/simple-signing signature verification via registries.d lookaside storage.
+func ClientOptSignatureVerification(enabled bool) ClientOption {
+	return func(c *Client) {
+		c.signatureVerification = enabled
+	}
+}
+
+// ClientOptConfigOptions returns a function that overrides default config file paths.
+func ClientOptConfigOptions(o ConfigOptions) ClientOption {
+	return func(c *Client) {
+		c.configOptions = o
+	}
+}
+
 type (
 	// LoginOption allows specifying various settings on login
 	LoginOption func(*loginOperation)
@@ -224,6 +420,7 @@ type (
 	loginOperation struct {
 		host   string
 		client *Client
+		err    error
 	}
 )
 
@@ -240,35 +437,37 @@ func warnIfHostHasPath(host string) bool {
 
 // Login authenticates the client with a remote OCI registry using the provided host and options.
 func (c *Client) Login(host string, options ...LoginOption) error {
+	op := &loginOperation{host: host, client: c}
 	for _, option := range options {
-		option(&loginOperation{host, c})
+		option(op)
+	}
+	if op.err != nil {
+		return op.err
 	}
 
 	warnIfHostHasPath(host)
 
-	reg, err := remote.NewRegistry(host)
+	// Determine canonical host from registries.conf Location rewrite.
+	// We use the original (alias) host for newRegistry so its transport
+	// settings (Insecure, certs.d) are preserved, then redirect the
+	// authentication endpoint and credential key to the canonical host.
+	canonicalHost := host
+	if c.configs != nil && c.configs.RegistriesConfig != nil {
+		if regCfg := c.configs.RegistriesConfig.FindRegistry(host); regCfg != nil && regCfg.Location != "" {
+			canonicalHost = regCfg.Location
+		}
+	}
+
+	reg, err := c.newRegistry(host)
 	if err != nil {
 		return err
 	}
-	reg.PlainHTTP = c.plainHTTP
-	cred := auth.Credential{Username: c.username, Password: c.password}
-	c.authorizer.ForceAttemptOAuth2 = true
-	reg.Client = c.authorizer
+	reg.Reference.Registry = canonicalHost
 
+	cred := credentials.Credential{Username: c.username, Password: c.password}
 	ctx := context.Background()
-	if err := reg.Ping(ctx); err != nil {
-		c.authorizer.ForceAttemptOAuth2 = false
-		if err := reg.Ping(ctx); err != nil {
-			return fmt.Errorf("authenticating to %q: %w", host, err)
-		}
-	}
-	// Always restore to false after probing, to avoid forcing POST to token endpoints like GHCR.
-	c.authorizer.ForceAttemptOAuth2 = false
-
-	key := credentials.ServerAddressFromRegistry(host)
-	key = credentials.ServerAddressFromHostname(key)
-	if err := c.credentialsStore.Put(ctx, key, cred); err != nil {
-		return err
+	if err := remote.Login(ctx, c.credentialsStore, reg, cred); err != nil {
+		return fmt.Errorf("authenticating to %q: %w", canonicalHost, err)
 	}
 
 	_, _ = fmt.Fprintln(c.out, "Login Succeeded")
@@ -280,7 +479,6 @@ func LoginOptBasicAuth(username string, password string) LoginOption {
 	return func(o *loginOperation) {
 		o.client.username = username
 		o.client.password = password
-		o.client.authorizer.Credential = auth.StaticCredential(o.host, auth.Credential{Username: username, Password: password})
 	}
 }
 
@@ -329,12 +527,13 @@ func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, e
 // LoginOptInsecure returns a function that sets the insecure setting on login
 func LoginOptInsecure(insecure bool) LoginOption {
 	return func(o *loginOperation) {
+		o.client.insecure = insecure
+		// Also update the authorizer transport for the legacy path (customHTTPClient=true).
 		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
-
 		if err != nil {
-			panic(err)
+			o.err = err
+			return
 		}
-
 		tlsConfig.InsecureSkipVerify = insecure
 	}
 }
@@ -345,11 +544,19 @@ func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
 		if (certFile == "" || keyFile == "") && caFile == "" {
 			return
 		}
+		// Set file path fields for the config-driven path.
+		if certFile != "" && keyFile != "" {
+			o.client.certFile = certFile
+			o.client.keyFile = keyFile
+		}
+		if caFile != "" {
+			o.client.caFile = caFile
+		}
+		// Also update the authorizer transport for the legacy path (customHTTPClient=true).
 		tlsConfig, err := ensureTLSConfig(o.client.authorizer, nil)
 		if err != nil {
 			panic(err)
 		}
-
 		if certFile != "" && keyFile != "" {
 			authCert, err := tls.LoadX509KeyPair(certFile, keyFile)
 			if err != nil {
@@ -357,7 +564,6 @@ func LoginOptTLSClientConfig(certFile, keyFile, caFile string) LoginOption {
 			}
 			tlsConfig.Certificates = []tls.Certificate{authCert}
 		}
-
 		if caFile != "" {
 			certPool := x509.NewCertPool()
 			ca, err := os.ReadFile(caFile)
@@ -397,7 +603,14 @@ func (c *Client) Logout(host string, opts ...LogoutOption) error {
 		opt(operation)
 	}
 
-	if err := credentials.Logout(context.Background(), c.credentialsStore, host); err != nil {
+	// Apply the same Location rewrite used by Login so the correct credential is removed.
+	if c.configs != nil && c.configs.RegistriesConfig != nil {
+		if regCfg := c.configs.RegistriesConfig.FindRegistry(host); regCfg != nil && regCfg.Location != "" {
+			host = regCfg.Location
+		}
+	}
+
+	if err := remote.Logout(context.Background(), c.credentialsStore, host); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(c.out, "Removing login credentials for %s\n", host)
@@ -710,12 +923,10 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 
-	repository, err := remote.NewRepository(parsedRef.String())
+	repository, err := c.newRepository(parsedRef.String())
 	if err != nil {
 		return nil, err
 	}
-	repository.PlainHTTP = c.plainHTTP
-	repository.Client = c.authorizer
 
 	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
 	if err != nil {
@@ -748,7 +959,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	}
 	_, _ = fmt.Fprintf(c.out, "Pushed: %s\n", result.Ref)
 	_, _ = fmt.Fprintf(c.out, "Digest: %s\n", result.Manifest.Digest)
-	if strings.Contains(parsedRef.orasReference.Reference, "_") {
+	if strings.Contains(parsedRef.Tag, "_") {
 		_, _ = fmt.Fprintf(c.out, "%s contains an underscore.\n", result.Ref)
 		_, _ = fmt.Fprint(c.out, registryUnderscoreMessage+"\n")
 	}
@@ -779,18 +990,16 @@ func PushOptCreationTime(creationTime string) PushOption {
 
 // Tags provides a sorted list all semver compliant tags for a given repository
 func (c *Client) Tags(ref string) ([]string, error) {
-	parsedReference, err := registry.ParseReference(ref)
+	parsedReference, err := properties.NewReference(ref)
 	if err != nil {
 		return nil, err
 	}
 
 	ctx := context.Background()
-	repository, err := remote.NewRepository(parsedReference.String())
+	repository, err := c.newRepository(parsedReference.String())
 	if err != nil {
 		return nil, err
 	}
-	repository.PlainHTTP = c.plainHTTP
-	repository.Client = c.authorizer
 
 	var tagVersions []*semver.Version
 	err = repository.Tags(ctx, "", func(tags []string) error {
@@ -824,12 +1033,10 @@ func (c *Client) Tags(ref string) ([]string, error) {
 
 // Resolve a reference to a descriptor.
 func (c *Client) Resolve(ref string) (desc ocispec.Descriptor, err error) {
-	remoteRepository, err := remote.NewRepository(ref)
+	remoteRepository, err := c.newRepository(ref)
 	if err != nil {
 		return desc, err
 	}
-	remoteRepository.PlainHTTP = c.plainHTTP
-	remoteRepository.Client = c.authorizer
 
 	parsedReference, err := newReference(ref)
 	if err != nil {
