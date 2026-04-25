@@ -124,8 +124,8 @@ func TestIsRoot(t *testing.T) {
 
 	is := assert.New(t)
 
-	is.Equal(false, chrt1.IsRoot())
-	is.Equal(true, chrt2.IsRoot())
+	is.False(chrt1.IsRoot())
+	is.True(chrt2.IsRoot())
 }
 
 func TestChartPath(t *testing.T) {
