@@ -102,6 +102,18 @@ version: 0.1.0
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
 appVersion: "1.16.0"
+
+# Additional annotations to add to the chart metadata.
+# They are made available to other applications and copied to the
+# OCI manifest when the chart is pushed to an OCI registry.
+annotations:
+  # Artifact Hub annotations:
+  # artifacthub.io/changes: |
+  #   - kind: added
+  #     description: Initial release
+  # OCI annotations:
+  # org.opencontainers.image.source: "https://github.com/example/repo"
+  # org.opencontainers.image.revision: "0123456789abcdef"
 `
 
 const defaultValues = `# Default values for %s.
