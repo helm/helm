@@ -160,7 +160,10 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		errs = append(errs, fmt.Errorf("resource %s/%s/%s still exists. status: %s, message: %s",
 			rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, rs.Status, rs.Message))
 	}
-	if err := ctx.Err(); err != nil {
+	// Only include a deadline error when there are also resource-specific errors.
+	// If all resources are Unknown or NotFound (e.g. deleted before the watch started),
+	// a timeout is not itself an error for WaitForDelete.
+	if err := ctx.Err(); err != nil && len(errs) > 0 {
 		errs = append(errs, err)
 	}
 	if len(errs) > 0 {
@@ -234,6 +237,7 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 	return func(statusCollector *collector.ResourceStatusCollector, _ event.Event) {
 		var rss []*event.ResourceStatus
 		var nonDesiredResources []*event.ResourceStatus
+		var unknownSkipped int
 		for _, rs := range statusCollector.ResourceStatuses {
 			if rs == nil {
 				continue
@@ -241,6 +245,7 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			// If a resource is already deleted before waiting has started, it will show as unknown.
 			// This check ensures we don't wait forever for a resource that is already deleted.
 			if rs.Status == status.UnknownStatus && desired == status.NotFoundStatus {
+				unknownSkipped++
 				continue
 			}
 			// Failed is a terminal state. This check ensures we don't wait forever for a resource
@@ -252,6 +257,14 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			if rs.Status != desired {
 				nonDesiredResources = append(nonDesiredResources, rs)
 			}
+		}
+
+		// During informer initialization there is a brief window where existing resources
+		// appear as Unknown before their real status is delivered. If every resource was
+		// skipped as Unknown, we cannot yet distinguish "all deleted" from "not yet synced",
+		// so hold off on the early-cancel to avoid a spurious success or premature exit.
+		if unknownSkipped > 0 && len(rss) == 0 {
+			return
 		}
 
 		if aggregator.AggregateStatus(rss, desired) == desired {
