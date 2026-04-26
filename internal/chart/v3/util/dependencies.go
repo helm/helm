@@ -41,6 +41,15 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, 
 		return
 	}
 	for _, r := range reqs {
+		if util.IsConditionExpression(r.Condition) {
+			enabled, err := util.EvaluateConditionExpression(strings.TrimSpace(r.Condition), cvals, cpath, r.Name)
+			if err != nil {
+				slog.Warn("failed to parse condition expression", "expression", strings.TrimSpace(r.Condition), "chart", r.Name, "error", err)
+				continue
+			}
+			r.Enabled = enabled
+			continue
+		}
 		for c := range strings.SplitSeq(strings.TrimSpace(r.Condition), ",") {
 			if len(c) > 0 {
 				// retrieve value
