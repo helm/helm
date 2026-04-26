@@ -160,11 +160,16 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		errs = append(errs, fmt.Errorf("resource %s/%s/%s still exists. status: %s, message: %s",
 			rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, rs.Status, rs.Message))
 	}
-	// Only include a deadline error when there are also resource-specific errors.
-	// If all resources are Unknown or NotFound (e.g. deleted before the watch started),
-	// a timeout is not itself an error for WaitForDelete.
-	if err := ctx.Err(); err != nil && len(errs) > 0 {
-		errs = append(errs, err)
+	if err := ctx.Err(); err != nil {
+		// context.Canceled and other non-deadline errors always propagate: they signal an
+		// external interruption regardless of resource state.
+		// context.DeadlineExceeded is only added when there are resource-specific errors;
+		// if all resources are Unknown or NotFound the timeout is not itself a failure for
+		// a delete wait (e.g. resources deleted before the watch started stay Unknown in
+		// the fake client but are effectively gone).
+		if !errors.Is(err, context.DeadlineExceeded) || len(errs) > 0 {
+			errs = append(errs, err)
+		}
 	}
 	if len(errs) > 0 {
 		return errors.Join(errs...)
