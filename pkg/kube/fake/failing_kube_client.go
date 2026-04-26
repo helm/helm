@@ -160,11 +160,14 @@ func (f *FailingKubeClient) GetWaiter(ws kube.WaitStrategy) (kube.Waiter, error)
 	return f.GetWaiterWithOptions(ws)
 }
 
-func (f *FailingKubeClient) GetWaiterWithOptions(ws kube.WaitStrategy, opts ...kube.WaitOption) (kube.Waiter, error) {
-	// Record the WaitOptions for testing
+func (f *FailingKubeClient) appendRecordedWaitOptionsLocked(opts ...kube.WaitOption) {
 	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.RecordedWaitOptions = append(f.RecordedWaitOptions, opts...)
-	f.mu.Unlock()
+}
+
+func (f *FailingKubeClient) GetWaiterWithOptions(ws kube.WaitStrategy, opts ...kube.WaitOption) (kube.Waiter, error) {
+	f.appendRecordedWaitOptionsLocked(opts...)
 	waiter, _ := f.PrintingKubeClient.GetWaiterWithOptions(ws, opts...)
 	printingKubeWaiter, _ := waiter.(*PrintingKubeWaiter)
 	return &FailingKubeWaiter{
