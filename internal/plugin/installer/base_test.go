@@ -44,3 +44,40 @@ func TestPath(t *testing.T) {
 		}
 	}
 }
+
+func TestPluginInstallDir(t *testing.T) {
+	tests := []struct {
+		name        string
+		helmPlugins string
+		want        string
+	}{
+		{
+			name:        "empty string returns empty string",
+			helmPlugins: "",
+			want:        "",
+		},
+		{
+			name:        "single path returned as-is",
+			helmPlugins: "/tmp/plugins",
+			want:        "/tmp/plugins",
+		},
+		{
+			name:        "two paths returns first",
+			helmPlugins: "/tmp/abc:/tmp/xyz",
+			want:        "/tmp/abc",
+		},
+		{
+			name:        "three paths returns first",
+			helmPlugins: "/tmp/a:/tmp/b:/tmp/c",
+			want:        "/tmp/a",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := pluginInstallDir(tt.helmPlugins)
+			if got != tt.want {
+				t.Errorf("pluginInstallDir(%q) = %q, want %q", tt.helmPlugins, got, tt.want)
+			}
+		})
+	}
+}
