@@ -300,5 +300,4 @@ func TestMemoryDelete(t *testing.T) {
 			t.Logf("Name: %s, Version: %d", rac.Name(), rac.Version())
 		}
 	}
-
 }

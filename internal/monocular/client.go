@@ -33,7 +33,6 @@ type Client struct {
 
 // New creates a new client
 func New(u string) (*Client, error) {
-
 	// Validate we have a URL
 	if err := validate(u); err != nil {
 		return nil, err
@@ -46,7 +45,6 @@ func New(u string) (*Client, error) {
 
 // Validate if the base URL for monocular is valid.
 func validate(u string) error {
-
 	// Check if it is parsable
 	p, err := url.Parse(u)
 	if err != nil {

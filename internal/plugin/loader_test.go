@@ -62,7 +62,6 @@ name: "test-plugin"
 }
 
 func TestLoadDir(t *testing.T) {
-
 	makeMetadata := func(apiVersion string) Metadata {
 		usage := "hello [params]..."
 		if apiVersion == "legacy" {

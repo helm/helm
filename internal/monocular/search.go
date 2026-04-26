@@ -99,7 +99,6 @@ type ChartVersion struct {
 
 // Search performs a search against the monocular search API
 func (c *Client) Search(term string) ([]SearchResult, error) {
-
 	// Create the URL to the search endpoint
 	// Note, this is currently an internal API for the Hub. This should be
 	// formatted without showing how monocular operates.

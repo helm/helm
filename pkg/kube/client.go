@@ -521,7 +521,6 @@ func determineFieldValidationDirective(validate bool) FieldValidationDirective {
 }
 
 func buildResourceList(f Factory, namespace string, validationDirective FieldValidationDirective, reader io.Reader, transformRequest resource.RequestTransform) (ResourceList, error) {
-
 	schema, err := f.Validator(string(validationDirective))
 	if err != nil {
 		return nil, err
@@ -859,7 +858,6 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 				slog.String("fieldValidationDirective", string(updateOptions.fieldValidationDirective)),
 				slog.Bool("upgradeClientSideFieldManager", updateOptions.upgradeClientSideFieldManager))
 			return func(original, target *resource.Info) error {
-
 				logger := c.Logger().With(
 					slog.String("namespace", target.Namespace),
 					slog.String("name", target.Name),
@@ -954,7 +952,6 @@ func isIncompatibleServerError(err error) bool {
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.
 // Otherwise, one is calculated based on the name of the binary.
 func getManagedFieldsManager() string {
-
 	// When a manager is explicitly set use it
 	if ManagedFieldsManager != "" {
 		return ManagedFieldsManager
@@ -1102,7 +1099,6 @@ func createPatch(original runtime.Object, target *resource.Info, threeWayMergeFo
 }
 
 func replaceResource(target *resource.Info, fieldValidationDirective FieldValidationDirective) error {
-
 	helper := resource.NewHelper(target.Client, target.Mapping).
 		WithFieldValidation(string(fieldValidationDirective)).
 		WithFieldManager(getManagedFieldsManager())
@@ -1117,11 +1113,9 @@ func replaceResource(target *resource.Info, fieldValidationDirective FieldValida
 	}
 
 	return nil
-
 }
 
 func patchResourceClientSide(original runtime.Object, target *resource.Info, threeWayMergeForUnstructured bool) error {
-
 	patch, patchType, err := createPatch(original, target, threeWayMergeForUnstructured)
 	if err != nil {
 		return fmt.Errorf("failed to create patch: %w", err)
@@ -1155,14 +1149,12 @@ func patchResourceClientSide(original runtime.Object, target *resource.Info, thr
 // that upgrade CSA managed fields to SSA apply
 // see: https://github.com/kubernetes/kubernetes/pull/112905
 func upgradeClientSideFieldManager(info *resource.Info, dryRun bool, fieldValidationDirective FieldValidationDirective) (bool, error) {
-
 	fieldManagerName := getManagedFieldsManager()
 
 	patched := false
 	err := retry.RetryOnConflict(
 		retry.DefaultRetry,
 		func() error {
-
 			if err := info.Get(); err != nil {
 				return fmt.Errorf("failed to get object %s/%s %s: %w", info.Namespace, info.Name, info.Mapping.GroupVersionKind.String(), err)
 			}

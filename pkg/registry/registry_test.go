@@ -380,7 +380,6 @@ func initFakeRegistryTestServer() string {
 }
 
 func testPush(suite *TestRegistry) {
-
 	testingChartCreationTime := "1977-09-02T22:04:05Z"
 
 	// Bad bytes

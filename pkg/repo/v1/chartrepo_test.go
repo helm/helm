@@ -126,7 +126,6 @@ func TestConcurrencyDownloadIndex(t *testing.T) {
 	// 2) read index.yaml via LoadIndexFile (read operation).
 	// This checks for race conditions and ensures correct behavior under concurrent read/write access.
 	for range 150 {
-
 		wg.Go(func() {
 			idx, err := repo.DownloadIndexFile()
 			if err != nil {
@@ -234,7 +233,6 @@ func TestFindChartInRepoURL(t *testing.T) {
 }
 
 func TestErrorFindChartInRepoURL(t *testing.T) {
-
 	g := getter.All(&cli.EnvSettings{
 		RepositoryCache: t.TempDir(),
 	})
