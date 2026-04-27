@@ -716,7 +716,7 @@ func TestGetUpgradeServerSideValue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			serverSideApply, err := getUpgradeServerSideValue(tt.actionServerSideOption, tt.releaseApplyMethod)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedServerSideApply, serverSideApply)
 		})
 	}

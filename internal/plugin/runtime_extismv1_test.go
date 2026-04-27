@@ -79,7 +79,7 @@ func TestRuntimeExtismV1InvokePlugin(t *testing.T) {
 			Name: "Phippy",
 		},
 	})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	msg := output.Message.(schema.OutputMessageTestV1)
 	assert.Equal(t, "Hello, Phippy! (6)", msg.Greeting)
