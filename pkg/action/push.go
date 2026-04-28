@@ -102,7 +102,7 @@ func (p *Push) Run(chartRef string, remote string) (*registry.PushResult, error)
 		if p.cfg == nil {
 			return nil, errors.New("missing action configuration: use WithPushConfig when constructing Push")
 		}
-		// Don't use the default registry client if tls options are set.
+		// Use the configured registry client for OCI remotes.
 		c.Options = append(c.Options, pusher.WithRegistryClient(p.cfg.RegistryClient))
 	}
 
