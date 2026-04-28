@@ -1722,7 +1722,7 @@ metadata:
 data:
   key: value`,
 			expectedFiles: map[string]string{
-				"generated-by-postrender-0.yaml": `apiVersion: v1
+				"generated-by-postrender-test-0.yaml": `apiVersion: v1
 kind: ConfigMap
 metadata:
   name: test-cm
@@ -1735,7 +1735,7 @@ data:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			files, err := splitAndDeannotate(tt.input)
+			files, err := splitAndDeannotate(tt.input, "test")
 
 			if tt.expectedError != "" {
 				assert.Error(t, err)
@@ -1789,7 +1789,7 @@ data:
 	require.NoError(t, err)
 
 	// Split and deannotate
-	reconstructed, err := splitAndDeannotate(merged)
+	reconstructed, err := splitAndDeannotate(merged, "test")
 	require.NoError(t, err)
 
 	// Compare the results
@@ -1824,7 +1824,7 @@ func TestRenderResources_PostRenderer_Success(t *testing.T) {
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
 	assert.NoError(t, err)
@@ -1871,7 +1871,7 @@ func TestRenderResources_PostRenderer_Error(t *testing.T) {
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
 	assert.Error(t, err)
@@ -1899,7 +1899,7 @@ func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
 	assert.Error(t, err)
@@ -1921,7 +1921,7 @@ func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
 
 	_, _, _, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
 	assert.Error(t, err)
@@ -1942,7 +1942,7 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		mockPR, false, false, false,
+		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
 	assert.NoError(t, err)
@@ -1981,13 +1981,312 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 
 	hooks, buf, notes, err := cfg.renderResources(
 		ch, values, "test-release", "", false, false, false,
-		nil, false, false, false,
+		nil, false, false, false, PostRenderStrategyCombined,
 	)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, hooks)
 	assert.NotNil(t, buf)
 	assert.Equal(t, "", notes)
+}
+
+func TestRenderResources_PostRenderer_DuplicateResourceInHookAndTemplate(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	// Simulate a chart where the same ServiceAccount appears both as a
+	// pre-install hook and as a regular template. This is a valid Helm pattern
+	// but previously caused post-renderers like Kustomize to fail with
+	// "may not add resource with an already registered id" because hooks and
+	// templates were merged into a single stream before post-rendering.
+	saHook := `apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-app
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded`
+
+	saTemplate := `apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-app`
+
+	deployment := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  template:
+    spec:
+      serviceAccountName: my-app`
+
+	modTime := time.Now()
+	ch := buildChartWithTemplates([]*common.File{
+		{Name: "templates/sa-hook.yaml", ModTime: modTime, Data: []byte(saHook)},
+		{Name: "templates/sa.yaml", ModTime: modTime, Data: []byte(saTemplate)},
+		{Name: "templates/deployment.yaml", ModTime: modTime, Data: []byte(deployment)},
+	})
+
+	// Use a post-renderer that rejects duplicate resource IDs, similar to
+	// how Kustomize behaves. We verify that no single post-render call
+	// receives the ServiceAccount twice.
+	mockPR := &mockPostRenderer{
+		transform: func(content string) string {
+			count := strings.Count(content, "kind: ServiceAccount")
+			if count > 1 {
+				t.Errorf("post-renderer received %d ServiceAccount resources in a single stream, expected at most 1", count)
+			}
+			return content
+		},
+	}
+
+	hooks, buf, _, err := cfg.renderResources(
+		ch, nil, "test-release", "", false, false, false,
+		mockPR, false, false, false, PostRenderStrategySeparate,
+	)
+
+	assert.NoError(t, err)
+	assert.Len(t, hooks, 1)
+	assert.Equal(t, "my-app", hooks[0].Name)
+	assert.Contains(t, buf.String(), "kind: Deployment")
+	assert.Contains(t, buf.String(), "kind: ServiceAccount")
+}
+
+func TestRenderResources_PostRenderer_CombinedInvokesOnceWithEverything(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	hookManifest := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hook-cm
+  annotations:
+    "helm.sh/hook": pre-install`
+	templateManifest := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: template-cm`
+
+	modTime := time.Now()
+	ch := buildChartWithTemplates([]*common.File{
+		{Name: "templates/hook.yaml", ModTime: modTime, Data: []byte(hookManifest)},
+		{Name: "templates/cm.yaml", ModTime: modTime, Data: []byte(templateManifest)},
+	})
+
+	var calls int
+	var lastInput string
+	mockPR := &mockPostRenderer{
+		transform: func(content string) string {
+			calls++
+			lastInput = content
+			return content
+		},
+	}
+
+	_, _, _, err := cfg.renderResources(
+		ch, nil, "test-release", "", false, false, false,
+		mockPR, false, false, false, PostRenderStrategyCombined,
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, calls, "combined strategy should invoke the post-renderer exactly once")
+	assert.Contains(t, lastInput, "hook-cm")
+	assert.Contains(t, lastInput, "template-cm")
+}
+
+func TestRenderResources_PostRenderer_ZeroValueStrategyActsAsCombined(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	modTime := time.Now()
+	ch := buildChartWithTemplates([]*common.File{
+		{Name: "templates/cm.yaml", ModTime: modTime, Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: template-cm`)},
+		{Name: "templates/hook.yaml", ModTime: modTime, Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hook-cm
+  annotations:
+    "helm.sh/hook": pre-install`)},
+	})
+
+	var calls int
+	mockPR := &mockPostRenderer{
+		transform: func(content string) string {
+			calls++
+			return content
+		},
+	}
+
+	_, _, _, err := cfg.renderResources(
+		ch, nil, "test-release", "", false, false, false,
+		mockPR, false, false, false, PostRenderStrategy(""),
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, calls, "unset strategy must preserve backwards-compatible combined behavior")
+}
+
+func TestRenderResources_PostRenderer_SeparateSplitsHooksAndTemplates(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	modTime := time.Now()
+	ch := buildChartWithTemplates([]*common.File{
+		{Name: "templates/hook.yaml", ModTime: modTime, Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hook-cm
+  annotations:
+    "helm.sh/hook": pre-install`)},
+		{Name: "templates/cm.yaml", ModTime: modTime, Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: template-cm`)},
+	})
+
+	var inputs []string
+	mockPR := &mockPostRenderer{
+		transform: func(content string) string {
+			inputs = append(inputs, content)
+			return content
+		},
+	}
+
+	_, _, _, err := cfg.renderResources(
+		ch, nil, "test-release", "", false, false, false,
+		mockPR, false, false, false, PostRenderStrategySeparate,
+	)
+
+	assert.NoError(t, err)
+	assert.Len(t, inputs, 2, "separate strategy should invoke the post-renderer twice when both hooks and templates exist")
+	for _, in := range inputs {
+		hasHook := strings.Contains(in, "hook-cm")
+		hasTemplate := strings.Contains(in, "template-cm")
+		assert.False(t, hasHook && hasTemplate, "a single post-render invocation must not contain both hook and template resources")
+		assert.True(t, hasHook || hasTemplate, "each post-render invocation must contain either a hook or a template")
+	}
+}
+
+func TestRenderResources_PostRenderer_SeparateWithOnlyTemplates(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	modTime := time.Now()
+	ch := buildChartWithTemplates([]*common.File{
+		{Name: "templates/cm.yaml", ModTime: modTime, Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: template-cm`)},
+	})
+
+	var calls int
+	mockPR := &mockPostRenderer{
+		transform: func(content string) string {
+			calls++
+			return content
+		},
+	}
+
+	_, _, _, err := cfg.renderResources(
+		ch, nil, "test-release", "", false, false, false,
+		mockPR, false, false, false, PostRenderStrategySeparate,
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, calls, "separate strategy should skip the empty hook group and invoke the post-renderer only once")
+}
+
+func TestRenderResources_PostRenderer_NoHooksSkipsHooks(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	modTime := time.Now()
+	ch := buildChartWithTemplates([]*common.File{
+		{Name: "templates/hook.yaml", ModTime: modTime, Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hook-cm
+  annotations:
+    "helm.sh/hook": pre-install`)},
+		{Name: "templates/cm.yaml", ModTime: modTime, Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: template-cm`)},
+	})
+
+	var inputs []string
+	mockPR := &mockPostRenderer{
+		transform: func(content string) string {
+			inputs = append(inputs, content)
+			return content
+		},
+	}
+
+	hooks, manifestDoc, _, err := cfg.renderResources(
+		ch, nil, "test-release", "", false, false, false,
+		mockPR, false, false, false, PostRenderStrategyNoHooks,
+	)
+
+	assert.NoError(t, err)
+	assert.Len(t, inputs, 1, "nohooks strategy should invoke the post-renderer exactly once (for templates only)")
+	assert.NotContains(t, inputs[0], "hook-cm", "hooks must not be sent to the post-renderer")
+	assert.Contains(t, inputs[0], "template-cm", "templates must be sent to the post-renderer")
+
+	// Hooks still round-trip through the release so they can execute.
+	require.Len(t, hooks, 1)
+	assert.Contains(t, hooks[0].Manifest, "hook-cm")
+	assert.Contains(t, manifestDoc.String(), "template-cm")
+}
+
+func TestRenderResources_PostRenderer_NoHooksWithOnlyHooks(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	modTime := time.Now()
+	ch := buildChartWithTemplates([]*common.File{
+		{Name: "templates/hook.yaml", ModTime: modTime, Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hook-cm
+  annotations:
+    "helm.sh/hook": pre-install`)},
+	})
+
+	var calls int
+	mockPR := &mockPostRenderer{
+		transform: func(content string) string {
+			calls++
+			return content
+		},
+	}
+
+	_, _, _, err := cfg.renderResources(
+		ch, nil, "test-release", "", false, false, false,
+		mockPR, false, false, false, PostRenderStrategyNoHooks,
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 0, calls, "nohooks strategy should not invoke the post-renderer when the chart only has hooks")
+}
+
+func TestRenderResources_PostRenderer_UnknownStrategyErrors(t *testing.T) {
+	cfg := actionConfigFixture(t)
+
+	modTime := time.Now()
+	ch := buildChartWithTemplates([]*common.File{
+		{Name: "templates/cm.yaml", ModTime: modTime, Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: template-cm`)},
+	})
+
+	mockPR := &mockPostRenderer{}
+
+	_, _, _, err := cfg.renderResources(
+		ch, nil, "test-release", "", false, false, false,
+		mockPR, false, false, false, PostRenderStrategy("bogus"),
+	)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown post-render strategy")
+	assert.Contains(t, err.Error(), "bogus")
 }
 
 func TestDetermineReleaseSSAApplyMethod(t *testing.T) {
