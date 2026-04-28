@@ -404,7 +404,7 @@ func checkForExpiredRepos(repofile string) {
 
 // newRegistryClient creates a registry client. The optional w parameter
 // overrides where the registry client writes its output (default: os.Stderr).
-// Pass io.Discard to suppress the client's built-in push/pull summary lines.
+// Pass a filtering writer to control registry client output; pass io.Discard to suppress all output.
 func newRegistryClient(
 	certFile, keyFile, caFile string, insecureSkipTLSVerify, plainHTTP bool, username, password string,
 	w ...io.Writer,
