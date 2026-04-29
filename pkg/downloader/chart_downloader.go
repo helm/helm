@@ -84,7 +84,8 @@ type ChartDownloader struct {
 	ContentCache string
 
 	// Cache specifies the cache implementation to use.
-	Cache Cache
+	Cache         Cache
+	RepositoryURL string
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -445,6 +446,9 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 	}
 
 	if r != nil && r.Config != nil {
+		if r.Config.URL != "" {
+			c.RepositoryURL = r.Config.URL
+		}
 		if r.Config.CertFile != "" || r.Config.KeyFile != "" || r.Config.CAFile != "" {
 			c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))
 		}
