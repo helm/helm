@@ -40,6 +40,7 @@ To see revision numbers, run 'helm history RELEASE'.
 
 func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewRollback(cfg)
+	client.WaitOptions = append(client.WaitOptions, defaultCLIWaitOptions()...)
 
 	cmd := &cobra.Command{
 		Use:   "rollback <RELEASE> [REVISION]",

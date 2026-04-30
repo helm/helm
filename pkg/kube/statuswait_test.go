@@ -1293,6 +1293,28 @@ func TestWaitOptionFunctions(t *testing.T) {
 		WithWaitForDeleteMethodContext(ctx)(opts)
 		assert.Equal(t, ctx, opts.waitForDeleteCtx)
 	})
+
+	t.Run("WithStatusComputeWorkers sets statusComputeWorkers", func(t *testing.T) {
+		t.Parallel()
+		opts := &waitOptions{}
+		WithStatusComputeWorkers(8)(opts)
+		assert.Equal(t, 8, opts.statusComputeWorkers)
+	})
+
+	t.Run("WithStatusComputeWorkers clamps negative values to zero", func(t *testing.T) {
+		t.Parallel()
+		opts := &waitOptions{}
+		WithStatusComputeWorkers(-1)(opts)
+		assert.Equal(t, 0, opts.statusComputeWorkers,
+			"negative worker counts must not propagate to the underlying watcher")
+	})
+
+	t.Run("waitOptions.statusComputeWorkers defaults to zero", func(t *testing.T) {
+		t.Parallel()
+		opts := &waitOptions{}
+		assert.Equal(t, 0, opts.statusComputeWorkers,
+			"SDK consumers must opt in to concurrent status computation")
+	})
 }
 
 func TestMethodSpecificContextCancellation(t *testing.T) {
