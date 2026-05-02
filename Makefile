@@ -163,7 +163,6 @@ gen-test-golden: test-unit
 # without a go.mod file when downloading the following dependencies
 
 $(GORELEASER):
-	echo go install github.com/goreleaser/goreleaser/v2@latest
 	(cd /; go install github.com/goreleaser/goreleaser/v2@latest)
 
 $(GOIMPORTS):
@@ -178,7 +177,7 @@ build-cross: $(GORELEASER)
 	LDFLAGS='$(LDFLAGS)' $(GORELEASER) build --snapshot --clean
 
 .PHONY: dist
-dist:
+dist: $(GORELEASER)
 	GORELEASER_CURRENT_TAG='$(VERSION)' LDFLAGS='$(LDFLAGS)' $(GORELEASER) release --snapshot --clean
 
 .PHONY: fetch-dist

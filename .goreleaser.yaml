@@ -2,10 +2,6 @@ version: 2
 
 project_name: helm
 
-before:
-  hooks:
-    - go mod tidy
-
 dist: _dist
 builds:
   - env:
