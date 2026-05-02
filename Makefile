@@ -130,8 +130,7 @@ test-source-headers:
 	@scripts/validate-license.sh
 
 .PHONY: test-acceptance
-test-acceptance: TARGETS = linux/amd64
-test-acceptance: build build-cross
+test-acceptance: build
 	@if [ -d "${ACCEPTANCE_DIR}" ]; then \
 		cd ${ACCEPTANCE_DIR} && \
 			ROBOT_RUN_TESTS=$(ACCEPTANCE_RUN_TESTS) ROBOT_HELM_PATH='$(BINDIR)' make acceptance; \
