@@ -13,7 +13,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.4.1
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/cyphar/filepath-securejoin v0.6.1
-	github.com/distribution/distribution/v3 v3.1.0
+	github.com/distribution/distribution/v3 v3.1.1
 	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/extism/go-sdk v1.7.1
 	github.com/fatih/color v1.19.0
