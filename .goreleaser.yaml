@@ -69,13 +69,17 @@ archives:
       {{- .Arch }}
     formats:
       - tar.gz
-      - zip
+    format_overrides:
+      - goos: windows
+        formats:
+          - tar.gz
+          - zip
     files:
       - LICENSE
       - README.md
 
 checksum:
-  name_template: 'checksums.txt'
+  disable: true
 
 snapshot:
   version_template: "{{ if index .Env \"GORELEASER_CURRENT_TAG\" }}{{ .Env.GORELEASER_CURRENT_TAG }}{{ else }}{{ incpatch .Version }}-next{{ end }}"
