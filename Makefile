@@ -176,6 +176,7 @@ build-cross: $(GORELEASER)
 	LDFLAGS='$(LDFLAGS)' $(GORELEASER) build --snapshot --clean
 
 .PHONY: dist
+dist: LDFLAGS += -extldflags "-static"
 dist: $(GORELEASER)
 	GORELEASER_CURRENT_TAG='$(VERSION)' LDFLAGS='$(LDFLAGS)' $(GORELEASER) build --snapshot --clean
 	@for platform_dir in _dist/*/; do \
