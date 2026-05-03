@@ -9,7 +9,7 @@ GOBIN         = $(shell go env GOBIN)
 ifeq ($(GOBIN),)
 GOBIN         = $(shell go env GOPATH)/bin
 endif
-GOX           = $(GOBIN)/gox
+GORELEASER    = $(GOBIN)/goreleaser
 GOIMPORTS     = $(GOBIN)/goimports
 ARCH          = $(shell go env GOARCH)
 
@@ -130,8 +130,7 @@ test-source-headers:
 	@scripts/validate-license.sh
 
 .PHONY: test-acceptance
-test-acceptance: TARGETS = linux/amd64
-test-acceptance: build build-cross
+test-acceptance: build
 	@if [ -d "${ACCEPTANCE_DIR}" ]; then \
 		cd ${ACCEPTANCE_DIR} && \
 			ROBOT_RUN_TESTS=$(ACCEPTANCE_RUN_TESTS) ROBOT_HELM_PATH='$(BINDIR)' make acceptance; \
@@ -162,8 +161,8 @@ gen-test-golden: test-unit
 # dependencies to the go.mod file. To avoid that we change to a directory
 # without a go.mod file when downloading the following dependencies
 
-$(GOX):
-	(cd /; go install github.com/mitchellh/gox@v1.0.2-0.20220701044238-9f712387e2d2)
+$(GORELEASER):
+	(cd /; go install github.com/goreleaser/goreleaser/v2@latest)
 
 $(GOIMPORTS):
 	(cd /; go install golang.org/x/tools/cmd/goimports@latest)
@@ -173,18 +172,24 @@ $(GOIMPORTS):
 
 .PHONY: build-cross
 build-cross: LDFLAGS += -extldflags "-static"
-build-cross: $(GOX)
-	GOFLAGS="-trimpath" CGO_ENABLED=0 $(GOX) -parallel=3 -output="_dist/{{.OS}}-{{.Arch}}/$(BINNAME)" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' ./cmd/helm
+build-cross: $(GORELEASER)
+	LDFLAGS='$(LDFLAGS)' $(GORELEASER) build --snapshot --clean
 
 .PHONY: dist
-dist:
-	( \
-		cd _dist && \
-		$(DIST_DIRS) cp ../LICENSE {} \; && \
-		$(DIST_DIRS) cp ../README.md {} \; && \
-		$(DIST_DIRS) tar -zcf helm-${VERSION}-{}.tar.gz {} \; && \
-		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
-	)
+dist: LDFLAGS += -extldflags "-static"
+dist: $(GORELEASER)
+	GORELEASER_CURRENT_TAG='$(VERSION)' LDFLAGS='$(LDFLAGS)' $(GORELEASER) build --snapshot --clean
+	@for platform_dir in _dist/*/; do \
+		platform=$$(basename "$$platform_dir"); \
+		{ [ -f "_dist/$$platform/helm" ] || [ -f "_dist/$$platform/helm.exe" ]; } || continue; \
+		cp LICENSE README.md "_dist/$$platform/"; \
+		tar czf "_dist/helm-$(VERSION)-$$platform.tar.gz" -C _dist "$$platform/"; \
+	done
+	@for platform_dir in _dist/windows-*/; do \
+		[ -d "$$platform_dir" ] || continue; \
+		platform=$$(basename "$$platform_dir"); \
+		(cd _dist && zip -r "helm-$(VERSION)-$$platform.zip" "$$platform/"); \
+	done
 
 .PHONY: fetch-dist
 fetch-dist:
