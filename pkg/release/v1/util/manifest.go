@@ -30,6 +30,7 @@ type SimpleHead struct {
 	Kind     string `json:"kind,omitempty"`
 	Metadata *struct {
 		Name        string            `json:"name"`
+		Namespace   string            `json:"namespace,omitempty"`
 		Annotations map[string]string `json:"annotations"`
 	} `json:"metadata,omitempty"`
 }

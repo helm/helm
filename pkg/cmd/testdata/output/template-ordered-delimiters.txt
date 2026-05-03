@@ -1,0 +1,45 @@
+## START resource-group: sequenced-chart/worker bootstrap
+---
+# Source: sequenced-chart/charts/worker/templates/aa-worker-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: worker-bootstrap
+  annotations:
+    helm.sh/resource-group: bootstrap
+data:
+  worker: ready
+## END resource-group: sequenced-chart/worker bootstrap
+## START resource-group: sequenced-chart databases
+---
+# Source: sequenced-chart/templates/aa-databases-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: database-config
+  annotations:
+    helm.sh/resource-group: databases
+data:
+  host: localhost
+## END resource-group: sequenced-chart databases
+## START resource-group: sequenced-chart app
+---
+# Source: sequenced-chart/templates/bb-app-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  annotations:
+    helm.sh/resource-group: app
+    helm.sh/depends-on/resource-groups: '["databases"]'
+data:
+  db_host: localhost
+## END resource-group: sequenced-chart app
+---
+# Source: sequenced-chart/templates/cc-unsequenced-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unsequenced-config
+data:
+  key: value

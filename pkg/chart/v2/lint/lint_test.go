@@ -17,12 +17,15 @@ limitations under the License.
 package lint
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 
+	"helm.sh/helm/v4/pkg/chart/common"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/lint/support"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
@@ -244,4 +247,43 @@ func TestMalformedTemplate(t *testing.T) {
 			t.Error("All didn't have the error for invalid character '{'")
 		}
 	}
+}
+
+func TestRunAll_RegistersSequencingRules(t *testing.T) {
+	dir := t.TempDir()
+
+	testChart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "sequencinglint",
+			Version:    "0.1.0",
+			APIVersion: chart.APIVersionV2,
+		},
+		Templates: []*common.File{
+			{
+				Name: "templates/configmap.yaml",
+				Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: partial-readiness
+  annotations:
+    helm.sh/readiness-success: '["{.status.phase} == \"Ready\""]'
+data:
+  key: value
+`),
+			},
+		},
+	}
+
+	assert.NoError(t, chartutil.SaveDir(testChart, dir))
+
+	messages := RunAll(filepath.Join(dir, testChart.Name()), nil, namespace).Messages
+	assert.Condition(t, func() bool {
+		for _, msg := range messages {
+			if msg.Severity == support.ErrorSev && strings.Contains(msg.Err.Error(), "both must be present or absent together") {
+				return true
+			}
+		}
+
+		return false
+	}, "expected sequencing lint error in %#v", messages)
 }

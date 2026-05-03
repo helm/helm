@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 var chartPath = "testdata/testcharts/subchart"
@@ -166,8 +168,21 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("template '%s' -f %s/extra_values.yaml", chartPath, chartPath),
 			golden: "output/template-subchart-cm-set-file.txt",
 		},
+		{
+			name:   "template with ordered wait strategy shows resource group delimiters",
+			cmd:    "template --wait=ordered 'testdata/testcharts/sequenced-chart'",
+			golden: "output/template-ordered-delimiters.txt",
+		},
 	}
 	runTestCmd(t, tests)
+}
+
+func TestTemplateWithoutOrderedWaitHasNoDelimiters(t *testing.T) {
+	_, out, err := executeActionCommand("template 'testdata/testcharts/sequenced-chart'")
+	require.NoError(t, err)
+	require.NotContains(t, out, "## START resource-group:")
+	require.NotContains(t, out, "## END resource-group:")
+	require.Contains(t, out, "# Source: sequenced-chart/charts/worker/templates/aa-worker-configmap.yaml")
 }
 
 func TestTemplateVersionCompletion(t *testing.T) {
