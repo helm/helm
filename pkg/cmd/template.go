@@ -124,19 +124,26 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			// We ignore a potential error here because, when the --debug flag was specified,
 			// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
 			if rel != nil {
+				orderedRendered := false
 				if orderedTemplateOutput {
-					if err := renderOrderedTemplate(rel.Chart, strings.TrimSpace(rel.Manifest), out); err != nil {
-						return err
-					}
-					if !client.DisableHooks {
-						for _, m := range rel.Hooks {
-							if skipTests && isTestHook(m) {
-								continue
+					if renderErr := renderOrderedTemplate(rel.Chart, strings.TrimSpace(rel.Manifest), out); renderErr != nil {
+						// Honor the --debug contract: always print the manifests, even if
+						// ordered rendering fails (e.g., a document fails YAML structural
+						// parsing). Fall back to the flat path with a stderr warning.
+						fmt.Fprintf(os.Stderr, "WARNING: ordered template rendering failed (%v); falling back to flat output\n", renderErr)
+					} else {
+						orderedRendered = true
+						if !client.DisableHooks {
+							for _, m := range rel.Hooks {
+								if skipTests && isTestHook(m) {
+									continue
+								}
+								fmt.Fprintf(out, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
 							}
-							fmt.Fprintf(out, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
 						}
 					}
-				} else {
+				}
+				if !orderedRendered {
 					var manifests bytes.Buffer
 					fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
 					if !client.DisableHooks {

@@ -223,6 +223,11 @@ func warnIfIsolatedGroups(logger *slog.Logger, result releaseutil.ResourceGroupR
 	}
 }
 
+// batchHasCustomReadiness reports whether at least one resource in the batch has
+// BOTH the success and failure readiness annotations set. Resources with only
+// one annotation are treated as misconfigured (warnIfPartialReadinessAnnotations
+// emits a warning) and fall back to kstatus, so they should not trigger the
+// custom-readiness status reader for the whole batch.
 func batchHasCustomReadiness(manifests []releaseutil.Manifest) bool {
 	for _, manifest := range manifests {
 		if manifest.Head == nil || manifest.Head.Metadata == nil {
@@ -232,7 +237,7 @@ func batchHasCustomReadiness(manifests []releaseutil.Manifest) bool {
 		if annotations == nil {
 			continue
 		}
-		if annotations[kube.AnnotationReadinessSuccess] != "" || annotations[kube.AnnotationReadinessFailure] != "" {
+		if annotations[kube.AnnotationReadinessSuccess] != "" && annotations[kube.AnnotationReadinessFailure] != "" {
 			return true
 		}
 	}
