@@ -82,7 +82,7 @@ func validateNoDeprecations(resource *k8sYamlStruct, kubeVersion *common.KubeVer
 
 func resourceToRuntimeObject(resource *k8sYamlStruct) (runtime.Object, error) {
 	gvk := schema.FromAPIVersionAndKind(resource.APIVersion, resource.Kind)
-	out, err := kube.NativeScheme.New(gvk)
+	out, err := kube.NativeScheme().New(gvk)
 	if err != nil {
 		return nil, err
 	}

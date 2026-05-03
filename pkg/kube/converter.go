@@ -26,27 +26,31 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
-// NativeScheme is a clean *runtime.Scheme with _only_ Kubernetes
-// native resources added to it. This is required to break free of custom resources
-// that may have been added to scheme.Scheme due to Helm being used as a package in
-// combination with e.g. a versioned kube client. If we would not do this, the client
-// may attempt to perform e.g. a 3-way-merge strategy patch for custom resources.
-// DO NOT MUTATE, this is a shared variable.
-var NativeScheme *runtime.Scheme
+var nativeScheme *runtime.Scheme
 
 func init() {
-	NativeScheme = runtime.NewScheme()
-	if err := scheme.AddToScheme(NativeScheme); err != nil {
+	nativeScheme = runtime.NewScheme()
+	if err := scheme.AddToScheme(nativeScheme); err != nil {
 		panic(err)
 	}
 	// API extensions are not in the above scheme set,
 	// and must thus be added separately.
-	if err := apiextensionsv1beta1.AddToScheme(NativeScheme); err != nil {
+	if err := apiextensionsv1beta1.AddToScheme(nativeScheme); err != nil {
 		panic(err)
 	}
-	if err := apiextensionsv1.AddToScheme(NativeScheme); err != nil {
+	if err := apiextensionsv1.AddToScheme(nativeScheme); err != nil {
 		panic(err)
 	}
+}
+
+// NativeScheme returns a clean *runtime.Scheme with _only_ Kubernetes
+// native resources added to it. This is required to break free of custom resources
+// that may have been added to scheme.Scheme due to Helm being used as a package in
+// combination with e.g. a versioned kube client. If we would not do this, the client
+// may attempt to perform e.g. a 3-way-merge strategy patch for custom resources.
+// DO NOT MUTATE the returned object, it is shared.
+func NativeScheme() *runtime.Scheme {
+	return nativeScheme
 }
 
 // AsVersioned converts the given info into a runtime.Object with the correct
@@ -58,11 +62,11 @@ func AsVersioned(info *resource.Info) runtime.Object {
 // convertWithMapper converts the given object with the optional provided
 // RESTMapping. If no mapping is provided, the default schema versioner is used
 func convertWithMapper(obj runtime.Object, mapping *meta.RESTMapping) runtime.Object {
-	var gv = runtime.GroupVersioner(schema.GroupVersions(NativeScheme.PrioritizedVersionsAllGroups()))
+	var gv = runtime.GroupVersioner(schema.GroupVersions(NativeScheme().PrioritizedVersionsAllGroups()))
 	if mapping != nil {
 		gv = mapping.GroupVersionKind.GroupVersion()
 	}
-	if obj, err := NativeScheme.ConvertToVersion(obj, gv); err == nil {
+	if obj, err := NativeScheme().ConvertToVersion(obj, gv); err == nil {
 		return obj
 	}
 	return obj

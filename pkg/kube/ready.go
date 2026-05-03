@@ -143,7 +143,7 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 			return false, err
 		}
 		crd := &apiextv1beta1.CustomResourceDefinition{}
-		if err := NativeScheme.Convert(v.Object, crd, nil); err != nil {
+		if err := NativeScheme().Convert(v.Object, crd, nil); err != nil {
 			return false, err
 		}
 		if !c.crdBetaReady(*crd) {
@@ -154,7 +154,7 @@ func (c *ReadyChecker) IsReady(ctx context.Context, v *resource.Info) (bool, err
 			return false, err
 		}
 		crd := &apiextv1.CustomResourceDefinition{}
-		if err := NativeScheme.Convert(v.Object, crd, nil); err != nil {
+		if err := NativeScheme().Convert(v.Object, crd, nil); err != nil {
 			return false, err
 		}
 		if !c.crdReady(*crd) {

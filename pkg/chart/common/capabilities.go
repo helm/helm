@@ -124,7 +124,7 @@ func (v VersionSet) Has(apiVersion string) bool {
 }
 
 func allKnownVersions() VersionSet {
-	groups := kube.NativeScheme.PrioritizedVersionsAllGroups()
+	groups := kube.NativeScheme().PrioritizedVersionsAllGroups()
 	vs := make(VersionSet, 0, len(groups))
 	for _, gv := range groups {
 		vs = append(vs, gv.String())
