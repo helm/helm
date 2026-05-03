@@ -21,7 +21,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"sync"
 	"testing"
 
@@ -136,7 +135,7 @@ func TestAuthorizer_Do(t *testing.T) {
 			host:                  "registry.example.com",
 			authHeader:            "",
 			serverStatus:          200,
-			expectForceOAuth2:     true,
+			expectForceOAuth2:     false,
 			expectBearerAuthAfter: false,
 		},
 		{
@@ -267,7 +266,10 @@ func TestAuthorizer_ConcurrentAccess(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < numRequests; j++ {
 				req, err := http.NewRequest(http.MethodGet, server.URL, nil)
-				require.NoError(t, err)
+				if err != nil {
+					t.Errorf("failed to create request: %v", err)
+					return
+				}
 				req.Host = "registry.example.com"
 
 				resp, err := authorizer.Do(req)
@@ -298,48 +300,64 @@ func TestAuthorizer_ConcurrentAccess(t *testing.T) {
 	wg.Wait()
 }
 
-func TestAuthorizer_Do_StatusCodeErrorChecking(t *testing.T) {
-	tests := []struct {
-		name        string
-		errorMsg    string
-		shouldRetry bool
-		description string
-	}{
-		{
-			name:        "retry on 401 error",
-			errorMsg:    "response status code 401",
-			shouldRetry: true,
-			description: "401 errors should trigger retry logic",
-		},
-		{
-			name:        "retry on 403 error",
-			errorMsg:    "response status code 403",
-			shouldRetry: true,
-			description: "403 errors should trigger retry logic",
-		},
-		{
-			name:        "no retry on 404 error",
-			errorMsg:    "response status code 404",
-			shouldRetry: false,
-			description: "404 errors should not trigger retry logic",
-		},
-		{
-			name:        "no retry on 500 error",
-			errorMsg:    "response status code 500",
-			shouldRetry: false,
-			description: "500 errors should not trigger retry logic",
-		},
-	}
+// roundTripFunc is an http.RoundTripper backed by a function.
+type roundTripFunc func(*http.Request) (*http.Response, error)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := errors.New(tt.errorMsg)
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
 
-			should401Retry := strings.Contains(err.Error(), "response status code 401")
-			should403Retry := strings.Contains(err.Error(), "response status code 403")
-			actualShouldRetry := should401Retry || should403Retry
+func TestAuthorizer_Do_RetriesOn401(t *testing.T) {
+	var mu sync.Mutex
+	callCount := 0
 
-			assert.Equal(t, tt.shouldRetry, actualShouldRetry, tt.description)
-		})
-	}
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		mu.Lock()
+		n := callCount
+		callCount++
+		mu.Unlock()
+		if n == 0 {
+			// Simulate ORAS auth failure with 401
+			return nil, errors.New("response status code 401")
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       http.NoBody,
+			Header:     make(http.Header),
+		}, nil
+	})
+
+	authorizer := NewAuthorizer(&http.Client{Transport: transport}, &mockCredentialsStore{}, "", "")
+
+	req, err := http.NewRequest(http.MethodGet, "http://registry.example.com/v2/", nil)
+	require.NoError(t, err)
+	req.Host = "registry.example.com"
+
+	resp, err := authorizer.Do(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	assert.Equal(t, 2, callCount, "Authorizer.Do should retry once after 401 error")
+	assert.False(t, authorizer.getForceAttemptOAuth2(), "ForceAttemptOAuth2 must be false after Do()")
+}
+
+func TestAuthorizer_Do_NoRetryOn404(t *testing.T) {
+	var mu sync.Mutex
+	callCount := 0
+
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		mu.Lock()
+		callCount++
+		mu.Unlock()
+		return nil, errors.New("response status code 404")
+	})
+
+	authorizer := NewAuthorizer(&http.Client{Transport: transport}, &mockCredentialsStore{}, "", "")
+
+	req, err := http.NewRequest(http.MethodGet, "http://registry.example.com/v2/", nil)
+	require.NoError(t, err)
+	req.Host = "registry.example.com"
+
+	_, err = authorizer.Do(req)
+	assert.Error(t, err, "404 error should propagate without retry")
+	assert.Equal(t, 1, callCount, "Authorizer.Do must not retry on non-401/403 errors")
+	assert.False(t, authorizer.getForceAttemptOAuth2(), "ForceAttemptOAuth2 must be false after Do()")
 }

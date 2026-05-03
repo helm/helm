@@ -18,6 +18,7 @@ package registry
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -32,6 +33,15 @@ type Authorizer struct {
 	auth.Client
 	lock                        sync.RWMutex
 	attemptBearerAuthentication bool
+}
+
+// isGHCR reports whether host refers to ghcr.io, normalizing port and case.
+func isGHCR(host string) bool {
+	h, _, err := net.SplitHostPort(host)
+	if err != nil {
+		h = host
+	}
+	return strings.EqualFold(h, "ghcr.io")
 }
 
 func NewAuthorizer(httpClient *http.Client, credentialsStore credentials.Store, username, password string) *Authorizer {
@@ -82,15 +92,18 @@ func (a *Authorizer) setForceAttemptOAuth2(value bool) {
 	a.ForceAttemptOAuth2 = value
 }
 
-// Do This method wraps auth.Client.Do in attempt to retry authentication
+// Do wraps auth.Client.Do to retry with fallback authentication on 401/403 errors.
 func (a *Authorizer) Do(originalReq *http.Request) (*http.Response, error) {
 	if a.getAttemptBearerAuthentication() {
 		needsAuthentication := originalReq.Header.Get("Authorization") == ""
 		if needsAuthentication {
-			a.setForceAttemptOAuth2(true)
-			if originalReq.Host == "ghcr.io" {
+			if isGHCR(originalReq.Host) {
 				a.setForceAttemptOAuth2(false)
 				a.setAttemptBearerAuthentication(false)
+			} else {
+				prev := a.getForceAttemptOAuth2()
+				a.setForceAttemptOAuth2(true)
+				defer a.setForceAttemptOAuth2(prev)
 			}
 			resp, err := a.Client.Do(originalReq)
 			if err == nil {
@@ -101,6 +114,8 @@ func (a *Authorizer) Do(originalReq *http.Request) (*http.Response, error) {
 				!strings.Contains(err.Error(), "response status code 403") {
 				return nil, err
 			}
+			// Switch to basic auth fallback before retrying
+			a.setForceAttemptOAuth2(false)
 		}
 	}
 	return a.Client.Do(originalReq)
