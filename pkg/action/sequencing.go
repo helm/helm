@@ -45,32 +45,29 @@ func computeDeadline(timeout time.Duration) time.Time {
 }
 
 // GroupManifestsByDirectSubchart groups manifests by the direct subchart they belong to.
-// The current chart's own manifests are returned under the empty string key "".
-// Subcharts are keyed by their immediate name under the first `<chartName>/charts/<subchart>/`
-// segment found in the manifest source path.
-// Nested subcharts (e.g., `<chartName>/charts/sub/charts/nested/`) are grouped under
-// the direct subchart name ("sub"), since nested sequencing is handled recursively.
-func GroupManifestsByDirectSubchart(manifests []releaseutil.Manifest, chartName string) map[string][]releaseutil.Manifest {
+// chartPath is the full path-prefix for the current chart level — at the top level
+// it is the chart name (e.g. "parent"); at deeper recursion levels it is the joined
+// path through "/charts/" segments (e.g. "parent/charts/sub").
+// The current chart level's own manifests are returned under the empty string key "".
+// Direct subcharts are keyed by their immediate directory name under
+// "<chartPath>/charts/<subchart>/". Nested grandchildren are grouped under their
+// direct subchart parent ("sub"), since nested sequencing is handled recursively.
+func GroupManifestsByDirectSubchart(manifests []releaseutil.Manifest, chartPath string) map[string][]releaseutil.Manifest {
 	result := make(map[string][]releaseutil.Manifest)
-	if chartName == "" {
-		// Fallback: assign everything to parent
+	if chartPath == "" {
 		result[""] = append(result[""], manifests...)
 		return result
 	}
 
-	chartsPrefix := chartName + "/charts/"
+	chartsPrefix := chartPath + "/charts/"
 	for _, m := range manifests {
 		if !strings.HasPrefix(m.Name, chartsPrefix) {
-			// Parent chart manifest
 			result[""] = append(result[""], m)
 			continue
 		}
-		// Extract the direct subchart name (first segment after "<chartName>/charts/")
 		rest := m.Name[len(chartsPrefix):]
-		// rest is like "subchart1/templates/deploy.yaml" or "subchart1/charts/nested/..."
 		subchartName, _, ok := strings.Cut(rest, "/")
 		if !ok {
-			// Unlikely: a file directly under charts/ with no subdirectory
 			result[""] = append(result[""], m)
 			continue
 		}
@@ -126,10 +123,15 @@ type sequencedDeployment struct {
 // It first handles subcharts in dependency order (recursively), then deploys the
 // parent chart's own resource-group batches.
 func (s *sequencedDeployment) deployChartLevel(ctx context.Context, chrt *chartv2.Chart, manifests []releaseutil.Manifest) error {
-	// Group manifests by direct subchart
-	grouped := GroupManifestsByDirectSubchart(manifests, chrt.Name())
+	return s.deployChartLevelAt(ctx, chrt, manifests, chrt.Name())
+}
 
-	// Build subchart DAG and deploy in topological order
+// deployChartLevelAt is the recursive worker. chartPath tracks the manifest
+// path-prefix of the current chart level so nested subcharts route correctly:
+// top-level "parent" → child "parent/charts/sub" → grandchild "parent/charts/sub/charts/nested".
+func (s *sequencedDeployment) deployChartLevelAt(ctx context.Context, chrt *chartv2.Chart, manifests []releaseutil.Manifest, chartPath string) error {
+	grouped := GroupManifestsByDirectSubchart(manifests, chartPath)
+
 	dag, err := chartutil.BuildSubchartDAG(chrt)
 	if err != nil {
 		return fmt.Errorf("building subchart DAG for %s: %w", chrt.Name(), err)
@@ -140,7 +142,6 @@ func (s *sequencedDeployment) deployChartLevel(ctx context.Context, chrt *chartv
 		return fmt.Errorf("getting subchart batches for %s: %w", chrt.Name(), err)
 	}
 
-	// Deploy each subchart batch in order
 	for batchIdx, batch := range batches {
 		for _, subchartName := range batch {
 			subManifests := grouped[subchartName]
@@ -148,11 +149,8 @@ func (s *sequencedDeployment) deployChartLevel(ctx context.Context, chrt *chartv
 				continue
 			}
 
-			// Find the subchart chart object for recursive nested sequencing
 			subChart := findSubchart(chrt, subchartName)
 			if subChart == nil {
-				// Subchart not found in chart object (may have been disabled or aliased differently)
-				// Fall back to flat resource-group deployment for these manifests
 				s.cfg.Logger().Warn("subchart not found in chart dependencies; deploying without subchart sequencing",
 					"subchart", subchartName,
 					"batch", batchIdx,
@@ -163,14 +161,13 @@ func (s *sequencedDeployment) deployChartLevel(ctx context.Context, chrt *chartv
 				continue
 			}
 
-			// Recursively deploy the subchart (handles its own nested subcharts and resource-groups)
-			if err := s.deployChartLevel(ctx, subChart, subManifests); err != nil {
+			subPath := chartPath + "/charts/" + subchartName
+			if err := s.deployChartLevelAt(ctx, subChart, subManifests, subPath); err != nil {
 				return fmt.Errorf("deploying subchart %s: %w", subchartName, err)
 			}
 		}
 	}
 
-	// Deploy parent chart's own resources (after all subchart batches complete)
 	parentManifests := grouped[""]
 	if len(parentManifests) > 0 {
 		if err := s.deployResourceGroupBatches(ctx, parentManifests); err != nil {
@@ -392,7 +389,12 @@ func (s *sequencedDeployment) createAndWait(ctx context.Context, manifests []rel
 
 // updateAndWait applies an upgrade batch using KubeClient.Update() and waits for readiness.
 // It matches current (old) resources by objectKey to compute the per-batch diff.
-func (s *sequencedDeployment) updateAndWait(_ context.Context, manifests []releaseutil.Manifest) error {
+func (s *sequencedDeployment) updateAndWait(ctx context.Context, manifests []releaseutil.Manifest) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
 	if len(manifests) == 0 {
 		return nil
 	}
@@ -414,9 +416,12 @@ func (s *sequencedDeployment) updateAndWait(_ context.Context, manifests []relea
 		return fmt.Errorf("stripping sequencing annotations: %w", err)
 	}
 
-	// Find the subset of current (old) resources that are represented in this batch.
-	// Update() will handle creates (target resources not in matchingCurrent) and
-	// updates (resources in both). Deletions are handled separately after all batches.
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	targetKeys := make(map[string]bool, len(target))
 	for _, r := range target {
 		targetKeys[objectKey(r)] = true
@@ -439,6 +444,12 @@ func (s *sequencedDeployment) updateAndWait(_ context.Context, manifests []relea
 		return fmt.Errorf("updating resource batch: %w", err)
 	}
 	s.createdResources = append(s.createdResources, result.Created...)
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
 
 	return s.waitForResources(target, manifests)
 }

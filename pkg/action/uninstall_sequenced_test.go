@@ -231,11 +231,11 @@ func TestUninstall_Sequenced_WithSubcharts(t *testing.T) {
 	_, err := uninstall.Run(rel.Name)
 	require.NoError(t, err)
 
-	// Nested subcharts within a subchart's subtree are flattened into one delete
-	// batch because GroupManifestsByDirectSubchart receives full-path manifest
-	// names ("parent/charts/bar/charts/nginx/...") that don't match the nested
-	// chart prefix ("bar/charts/"). This is a known limitation.
-	assert.Equal(t, [][]string{{"ConfigMap/parent"}, {"ConfigMap/nginx", "ConfigMap/bar"}}, client.deleteCalls)
+	// Reverse-DAG uninstall: parent first, then bar (its own resources before
+	// recursing into bar's subchart batch), then nginx (innermost). With the
+	// chart-path threading fix, nested subcharts route through their proper
+	// subtree level instead of flattening.
+	assert.Equal(t, [][]string{{"ConfigMap/parent"}, {"ConfigMap/bar"}, {"ConfigMap/nginx"}}, client.deleteCalls)
 	assert.Equal(t, client.deleteCalls, client.deleteWaitCalls)
 }
 

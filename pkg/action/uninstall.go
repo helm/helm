@@ -341,11 +341,11 @@ func (u *Uninstall) sequencedDeleteManifests(chrt *chart.Chart, manifests []rele
 	if chrt == nil {
 		return u.deleteResourceGroupBatchesReverse(manifests, waiter, deadline)
 	}
-	return u.deleteChartLevelReverse(chrt, manifests, waiter, deadline)
+	return u.deleteChartLevelReverseAt(chrt, manifests, waiter, deadline, chrt.Name())
 }
 
-func (u *Uninstall) deleteChartLevelReverse(chrt *chart.Chart, manifests []releaseutil.Manifest, waiter kube.Waiter, deadline time.Time) (kube.ResourceList, []error) {
-	grouped := GroupManifestsByDirectSubchart(manifests, chrt.Name())
+func (u *Uninstall) deleteChartLevelReverseAt(chrt *chart.Chart, manifests []releaseutil.Manifest, waiter kube.Waiter, deadline time.Time, chartPath string) (kube.ResourceList, []error) {
+	grouped := GroupManifestsByDirectSubchart(manifests, chartPath)
 
 	allDeleted, errs := u.deleteResourceGroupBatchesReverse(grouped[""], waiter, deadline)
 	if len(errs) > 0 {
@@ -375,11 +375,12 @@ func (u *Uninstall) deleteChartLevelReverse(chrt *chart.Chart, manifests []relea
 
 			subchart := findSubchart(chrt, subchartName)
 			var deleted kube.ResourceList
+			subPath := chartPath + "/charts/" + subchartName
 			if subchart == nil {
 				u.cfg.Logger().Warn("subchart not found in chart dependencies during sequenced uninstall; falling back to flat resource-group deletion", "subchart", subchartName)
 				deleted, errs = u.deleteResourceGroupBatchesReverse(subchartManifests, waiter, deadline)
 			} else {
-				deleted, errs = u.deleteChartLevelReverse(subchart, subchartManifests, waiter, deadline)
+				deleted, errs = u.deleteChartLevelReverseAt(subchart, subchartManifests, waiter, deadline, subPath)
 			}
 			allDeleted = append(allDeleted, deleted...)
 			if len(errs) > 0 {

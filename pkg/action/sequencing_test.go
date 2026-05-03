@@ -312,6 +312,24 @@ func TestSequencing_GroupManifestsByDirectSubchart(t *testing.T) {
 	require.Len(t, grouped["database"], 2)
 }
 
+// TestSequencing_GroupManifestsByDirectSubchart_Nested verifies that when called
+// with a deeper chartPath (i.e., during recursion into a subchart), nested
+// grandchildren are routed to the correct subchart key instead of being merged
+// into the parent batch.
+func TestSequencing_GroupManifestsByDirectSubchart_Nested(t *testing.T) {
+	manifests := []releaseutil.Manifest{
+		makeTestManifest("db-own", "parent/charts/database/templates/one.yaml", nil),
+		makeTestManifest("cache", "parent/charts/database/charts/cache/templates/one.yaml", nil),
+	}
+
+	grouped := GroupManifestsByDirectSubchart(manifests, "parent/charts/database")
+
+	require.Len(t, grouped[""], 1, "database's own resources should be under the empty key")
+	require.Len(t, grouped["cache"], 1, "nested cache subchart should be routed under its own key")
+	require.Equal(t, "parent/charts/database/templates/one.yaml", grouped[""][0].Name)
+	require.Equal(t, "parent/charts/database/charts/cache/templates/one.yaml", grouped["cache"][0].Name)
+}
+
 func TestSequencing_BuildManifestYAML(t *testing.T) {
 	yaml := buildManifestYAML([]releaseutil.Manifest{
 		makeTestManifest("one", "chart/templates/one.yaml", nil),
