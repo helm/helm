@@ -19,8 +19,16 @@ builds:
       - s390x
       - riscv64
       - loong64
+    goamd64:
+      - v1
     goarm:
       - "7"
+    goarm64:
+      - v8.0
+    go386:
+      - sse2
+    goriscv64:
+      - rva20u64
     ignore:
       - goos: darwin
         goarch: "386"
@@ -54,28 +62,6 @@ builds:
     flags:
       - -trimpath
     dir: .
-
-archives:
-  - id: default
-    # this name template makes the OS and Arch compatible with the results of uname.
-    name_template: >-
-      {{- .ProjectName }}-
-      {{- .Version }}-
-      {{- .Os }}-
-      {{- .Arch }}
-    formats:
-      - tar.gz
-    format_overrides:
-      - goos: windows
-        formats:
-          - tar.gz
-          - zip
-    files:
-      - LICENSE
-      - README.md
-
-checksum:
-  disable: true
 
 snapshot:
   version_template: "{{ if index .Env \"GORELEASER_CURRENT_TAG\" }}{{ .Env.GORELEASER_CURRENT_TAG }}{{ else }}{{ incpatch .Version }}-next{{ end }}"

@@ -177,7 +177,18 @@ build-cross: $(GORELEASER)
 
 .PHONY: dist
 dist: $(GORELEASER)
-	GORELEASER_CURRENT_TAG='$(VERSION)' LDFLAGS='$(LDFLAGS)' $(GORELEASER) release --snapshot --clean
+	GORELEASER_CURRENT_TAG='$(VERSION)' LDFLAGS='$(LDFLAGS)' $(GORELEASER) build --snapshot --clean
+	@for platform_dir in _dist/*/; do \
+		platform=$$(basename "$$platform_dir"); \
+		{ [ -f "_dist/$$platform/helm" ] || [ -f "_dist/$$platform/helm.exe" ]; } || continue; \
+		cp LICENSE README.md "_dist/$$platform/"; \
+		tar czf "_dist/helm-$(VERSION)-$$platform.tar.gz" -C _dist "$$platform/"; \
+	done
+	@for platform_dir in _dist/windows-*/; do \
+		[ -d "$$platform_dir" ] || continue; \
+		platform=$$(basename "$$platform_dir"); \
+		(cd _dist && zip -r "helm-$(VERSION)-$$platform.zip" "$$platform/"); \
+	done
 
 .PHONY: fetch-dist
 fetch-dist:
