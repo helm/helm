@@ -261,10 +261,10 @@ func TestAuthorizer_ConcurrentAccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(numGoroutines * 2)
 
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
-			for j := 0; j < numRequests; j++ {
+			for range numRequests {
 				req, err := http.NewRequest(http.MethodGet, server.URL, nil)
 				if err != nil {
 					t.Errorf("failed to create request: %v", err)
@@ -281,7 +281,7 @@ func TestAuthorizer_ConcurrentAccess(t *testing.T) {
 
 		go func() {
 			defer wg.Done()
-			for j := 0; j < numRequests; j++ {
+			for range numRequests {
 				authorizer.setAttemptBearerAuthentication(true)
 				val := authorizer.getAttemptBearerAuthentication()
 				if val != true {
@@ -309,7 +309,7 @@ func TestAuthorizer_Do_RetriesOn401(t *testing.T) {
 	var mu sync.Mutex
 	callCount := 0
 
-	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+	transport := roundTripFunc(func(_ *http.Request) (*http.Response, error) {
 		mu.Lock()
 		n := callCount
 		callCount++
@@ -343,7 +343,7 @@ func TestAuthorizer_Do_NoRetryOn404(t *testing.T) {
 	var mu sync.Mutex
 	callCount := 0
 
-	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+	transport := roundTripFunc(func(_ *http.Request) (*http.Response, error) {
 		mu.Lock()
 		callCount++
 		mu.Unlock()
