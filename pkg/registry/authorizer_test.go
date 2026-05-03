@@ -361,3 +361,33 @@ func TestAuthorizer_Do_NoRetryOn404(t *testing.T) {
 	assert.Equal(t, 1, callCount, "Authorizer.Do must not retry on non-401/403 errors")
 	assert.False(t, authorizer.getForceAttemptOAuth2(), "ForceAttemptOAuth2 must be false after Do()")
 }
+
+func TestAuthorizer_Do_GHCRSkipsBearerProbe(t *testing.T) {
+	var mu sync.Mutex
+	callCount := 0
+
+	transport := roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+		mu.Lock()
+		callCount++
+		mu.Unlock()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       http.NoBody,
+			Header:     make(http.Header),
+		}, nil
+	})
+
+	authorizer := NewAuthorizer(&http.Client{Transport: transport}, &mockCredentialsStore{}, "", "")
+
+	// URL.Host is "ghcr.io" — simulates how ORAS constructs requests (host in URL, not req.Host)
+	req, err := http.NewRequest(http.MethodGet, "http://ghcr.io/v2/", nil)
+	require.NoError(t, err)
+
+	resp, err := authorizer.Do(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	assert.Equal(t, 1, callCount, "ghcr.io must not trigger a bearer probe + retry")
+	assert.False(t, authorizer.getForceAttemptOAuth2())
+	assert.False(t, authorizer.getAttemptBearerAuthentication())
+}

@@ -29,6 +29,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote/credentials"
 )
 
+// Authorizer wraps auth.Client to retry authentication with bearer-to-basic fallback on 401/403.
 type Authorizer struct {
 	auth.Client
 	lock                        sync.RWMutex
@@ -44,6 +45,15 @@ func isGHCR(host string) bool {
 	return strings.EqualFold(h, "ghcr.io")
 }
 
+// reqHost returns the effective host for an outbound request, preferring URL.Hostname() over req.Host.
+func reqHost(req *http.Request) string {
+	if h := req.URL.Hostname(); h != "" {
+		return h
+	}
+	return req.Host
+}
+
+// NewAuthorizer creates an Authorizer backed by the given HTTP client and credentials store.
 func NewAuthorizer(httpClient *http.Client, credentialsStore credentials.Store, username, password string) *Authorizer {
 	authorizer := Authorizer{
 		Client: auth.Client{
@@ -64,6 +74,7 @@ func NewAuthorizer(httpClient *http.Client, credentialsStore credentials.Store, 
 	return &authorizer
 }
 
+// EnableCache enables per-host token caching on the underlying auth client.
 func (a *Authorizer) EnableCache() {
 	a.Cache = auth.NewCache()
 }
@@ -92,31 +103,43 @@ func (a *Authorizer) setForceAttemptOAuth2(value bool) {
 	a.ForceAttemptOAuth2 = value
 }
 
-// Do wraps auth.Client.Do to retry with fallback authentication on 401/403 errors.
+// Do wraps auth.Client.Do to retry with OAuth2 bearer forced on 401/403 errors.
+// The first attempt uses standard auth; only on 401/403 failure do we retry with
+// ForceAttemptOAuth2=true to fix registries (e.g. Quay) whose token endpoints
+// require OAuth2-style requests.
 func (a *Authorizer) Do(originalReq *http.Request) (*http.Response, error) {
-	if a.getAttemptBearerAuthentication() {
-		needsAuthentication := originalReq.Header.Get("Authorization") == ""
-		if needsAuthentication {
-			if isGHCR(originalReq.Host) {
-				a.setForceAttemptOAuth2(false)
-				a.setAttemptBearerAuthentication(false)
-			} else {
-				prev := a.getForceAttemptOAuth2()
-				a.setForceAttemptOAuth2(true)
-				defer a.setForceAttemptOAuth2(prev)
-			}
-			resp, err := a.Client.Do(originalReq)
-			if err == nil {
-				a.setAttemptBearerAuthentication(false)
-				return resp, nil
-			}
-			if !strings.Contains(err.Error(), "response status code 401") &&
-				!strings.Contains(err.Error(), "response status code 403") {
-				return nil, err
-			}
-			// Switch to basic auth fallback before retrying
-			a.setForceAttemptOAuth2(false)
-		}
+	needsAuthentication := originalReq.Header.Get("Authorization") == ""
+
+	if needsAuthentication && a.getAttemptBearerAuthentication() && isGHCR(reqHost(originalReq)) {
+		a.setForceAttemptOAuth2(false)
+		a.setAttemptBearerAuthentication(false)
 	}
-	return a.Client.Do(originalReq)
+
+	resp, err := a.Client.Do(originalReq)
+	if err == nil {
+		if needsAuthentication {
+			a.setAttemptBearerAuthentication(false)
+		}
+		return resp, nil
+	}
+
+	if !needsAuthentication || !a.getAttemptBearerAuthentication() {
+		return nil, err
+	}
+
+	if !strings.Contains(err.Error(), "response status code 401") &&
+		!strings.Contains(err.Error(), "response status code 403") {
+		return nil, err
+	}
+
+	// Standard auth failed with 401/403; retry forcing OAuth2 bearer flow.
+	prev := a.getForceAttemptOAuth2()
+	a.setForceAttemptOAuth2(true)
+	defer a.setForceAttemptOAuth2(prev)
+
+	resp, err = a.Client.Do(originalReq)
+	if err == nil {
+		a.setAttemptBearerAuthentication(false)
+	}
+	return resp, err
 }
