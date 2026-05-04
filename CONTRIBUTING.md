@@ -301,9 +301,7 @@ go tool pprof -http=":8001" mem.prof
 Each week, a core maintainer acts as the triager, responsible for:
 
 - Reviewing new issues and PRs
-
 - Applying labels and milestones
-
 - Keeping queues manageable
 
 The rotation begins after the weekly public stand-up on Thursday.
