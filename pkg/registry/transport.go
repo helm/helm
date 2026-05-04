@@ -52,22 +52,10 @@ type LoggingTransport struct {
 
 // NewTransport creates and returns a new instance of LoggingTransport
 func NewTransport(debug bool) *retry.Transport {
-	type cloner[T any] interface {
-		Clone() T
-	}
-
-	// try to copy (clone) the http.DefaultTransport so any mutations we
-	// perform on it (e.g. TLS config) are not reflected globally
-	// follow https://github.com/golang/go/issues/39299 for a more elegant
-	// solution in the future
+	// clone http.DefaultTransport so mutations (e.g. TLS config) are not
+	// reflected globally
 	transport := http.DefaultTransport
-	if t, ok := transport.(cloner[*http.Transport]); ok {
-		transport = t.Clone()
-	} else if t, ok := transport.(cloner[http.RoundTripper]); ok {
-		// this branch will not be used with go 1.20, it was added
-		// optimistically to try to clone if the http.DefaultTransport
-		// implementation changes, still the Clone method in that case
-		// might not return http.RoundTripper...
+	if t, ok := transport.(*http.Transport); ok {
 		transport = t.Clone()
 	}
 	if debug {
