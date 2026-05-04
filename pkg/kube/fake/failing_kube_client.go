@@ -49,6 +49,8 @@ type FailingKubeClient struct {
 	WaitDuration           time.Duration
 	// RecordedWaitOptions stores the WaitOptions passed to GetWaiter for testing
 	RecordedWaitOptions []kube.WaitOption
+	// RecordedCreateCalls stores the ClientCreateOptions for each call to Create for testing
+	RecordedCreateCalls [][]kube.ClientCreateOption
 }
 
 var _ kube.Interface = &FailingKubeClient{}
@@ -65,6 +67,7 @@ type FailingKubeWaiter struct {
 
 // Create returns the configured error if set or prints
 func (f *FailingKubeClient) Create(resources kube.ResourceList, options ...kube.ClientCreateOption) (*kube.Result, error) {
+	f.RecordedCreateCalls = append(f.RecordedCreateCalls, options)
 	if f.CreateError != nil {
 		return nil, f.CreateError
 	}
