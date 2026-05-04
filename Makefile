@@ -175,7 +175,6 @@ build-cross: $(GORELEASER)
 	LDFLAGS='$(LDFLAGS)' $(GORELEASER) build --snapshot --clean
 
 .PHONY: dist
-dist: LDFLAGS += -extldflags "-static"
 dist:
 	( \
 		cd _dist && \
