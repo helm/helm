@@ -68,6 +68,8 @@ func newDependencyUpdateCmd(_ *action.Configuration, out io.Writer) *cobra.Comma
 				Out:              out,
 				ChartPath:        chartpath,
 				Keyring:          client.Keyring,
+				Untar:            client.Untar,
+				UntarDir:         client.UntarDir,
 				SkipUpdate:       client.SkipRefresh,
 				Getters:          getter.All(settings),
 				RegistryClient:   registryClient,
@@ -84,7 +86,7 @@ func newDependencyUpdateCmd(_ *action.Configuration, out io.Writer) *cobra.Comma
 	}
 
 	f := cmd.Flags()
-	addDependencySubcommandFlags(f, client)
+	addDependencySubcommandFlags(f, client, true)
 
 	return cmd
 }

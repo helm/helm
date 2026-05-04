@@ -35,6 +35,8 @@ import (
 // It provides the implementation of 'helm dependency' and its respective subcommands.
 type Dependency struct {
 	Verify                bool
+	Untar                 bool
+	UntarDir              string
 	Keyring               string
 	SkipRefresh           bool
 	ColumnWidth           uint
@@ -51,6 +53,7 @@ type Dependency struct {
 func NewDependency() *Dependency {
 	return &Dependency{
 		ColumnWidth: 80,
+		UntarDir:    "charts",
 	}
 }
 
