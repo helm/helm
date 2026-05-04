@@ -932,7 +932,11 @@ func TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides(t *testing.T
 // TestCoalesceValuesSubchartDefaultNilsCleanedWithUnrelatedUserValues tests that
 // nil values in subchart defaults are cleaned even when the parent provides an
 // unrelated user value under that subchart's namespace.
-// Regression test for issue #32093.
+//
+// This simulates the state after processImportValues (merge=true) populates
+// parent.Values with merged child defaults including nils, then CoalesceValues
+// is called with user values that touch the child namespace. The bug in #32093
+// was that childChartMergeTrue shadowed the merge flag, skipping cleanNilValues.
 func TestCoalesceValuesSubchartDefaultNilsCleanedWithUnrelatedUserValues(t *testing.T) {
 	is := assert.New(t)
 
@@ -952,6 +956,12 @@ func TestCoalesceValuesSubchartDefaultNilsCleanedWithUnrelatedUserValues(t *test
 		Metadata: &chart.Metadata{Name: "parent"},
 		Values:   map[string]any{},
 	}, subchart)
+
+	// Simulate the state after processImportValues has populated parent.Values
+	// with merged defaults (including nils from child chart defaults).
+	mergedDefaults, err := MergeValues(parent, nil)
+	is.NoError(err)
+	parent.Values = mergedDefaults
 
 	vals := map[string]any{
 		"child": map[string]any{
@@ -976,11 +986,15 @@ func TestCoalesceValuesSubchartDefaultNilsCleanedWithUnrelatedUserValues(t *test
 	is.False(ok, "Expected ingress.configureCertmanager (nil from chart defaults) to be removed when parent sets unrelated child value")
 }
 
-// TestCoalesceValuesSubchartDefaultNilsCleanedWithPartialOverrideSameMap tests
-// that nil values in subchart defaults are cleaned even when the user overrides
-// a sibling key within the same map.
-// Regression test for issue #32093.
-func TestCoalesceValuesSubchartDefaultNilsCleanedWithPartialOverrideSameMap(t *testing.T) {
+// TestCoalesceValuesSubchartDefaultNilsCleanedWithPartialOverrideSameMapMerged
+// tests that nil values in subchart defaults are cleaned even when the user
+// overrides a sibling key within the same map, after the parent chart's Values
+// have been populated by a prior merge step.
+//
+// Unlike TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides which
+// tests coalescing from scratch, this test seeds parent.Values via MergeValues
+// to exercise the childChartMergeTrue code path described in issue #32093.
+func TestCoalesceValuesSubchartDefaultNilsCleanedWithPartialOverrideSameMapMerged(t *testing.T) {
 	is := assert.New(t)
 
 	subchart := &chart.Chart{
@@ -997,6 +1011,12 @@ func TestCoalesceValuesSubchartDefaultNilsCleanedWithPartialOverrideSameMap(t *t
 		Metadata: &chart.Metadata{Name: "parent"},
 		Values:   map[string]any{},
 	}, subchart)
+
+	// Simulate the state after processImportValues has populated parent.Values
+	// with merged defaults (including nils from child chart defaults).
+	mergedDefaults, err := MergeValues(parent, nil)
+	is.NoError(err)
+	parent.Values = mergedDefaults
 
 	vals := map[string]any{
 		"child": map[string]any{
