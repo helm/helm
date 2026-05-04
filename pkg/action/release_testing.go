@@ -170,6 +170,7 @@ func (r *ReleaseTesting) getContainerLogs(out io.Writer, client kubernetes.Inter
 
 		fmt.Fprintf(out, "POD LOGS: %s (%s)\n", podName, c.Name)
 		_, err = io.Copy(out, logReader)
+		logReader.Close()
 		fmt.Fprintln(out)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("unable to write logs for pod %s, container %s: %w", podName, c.Name, err))

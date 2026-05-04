@@ -22,7 +22,6 @@ import (
 	"errors"
 	"io"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -141,14 +140,10 @@ func TestGetContainerLogs_MultipleContainers(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := rt.getContainerLogs(&buf, client, "test-pod")
-	// The fake client doesn't serve real log streams, so we expect
-	// per-container errors rather than success, but critically it should
-	// NOT fail with "a container name must be specified".
-	if err != nil {
-		assert.NotContains(t, err.Error(), "a container name must be specified")
-		assert.Contains(t, err.Error(), "container main")
-		assert.Contains(t, err.Error(), "container sidecar")
-	}
+	require.NoError(t, err)
+	output := buf.String()
+	assert.Contains(t, output, "POD LOGS: test-pod (main)")
+	assert.Contains(t, output, "POD LOGS: test-pod (sidecar)")
 }
 
 func TestGetContainerLogs_WithInitContainers(t *testing.T) {
@@ -172,11 +167,11 @@ func TestGetContainerLogs_WithInitContainers(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := rt.getContainerLogs(&buf, client, "test-pod")
-	if err != nil {
-		// Both init and regular containers should be attempted
-		assert.Contains(t, err.Error(), "container init-setup")
-		assert.Contains(t, err.Error(), "container main")
-	}
+	require.NoError(t, err)
+	output := buf.String()
+	// Init containers should appear before regular containers
+	assert.Contains(t, output, "POD LOGS: test-pod (init-setup)")
+	assert.Contains(t, output, "POD LOGS: test-pod (main)")
 }
 
 func TestGetContainerLogs_PodNotFound(t *testing.T) {
@@ -189,7 +184,7 @@ func TestGetContainerLogs_PodNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "unable to get pod nonexistent-pod")
 }
 
-func TestGetPodLogs_MultiContainerOutput(t *testing.T) {
+func TestGetContainerLogs_OutputHeaderFormat(t *testing.T) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "multi-test",
@@ -204,17 +199,12 @@ func TestGetPodLogs_MultiContainerOutput(t *testing.T) {
 	}
 
 	client := fakeclientset.NewClientset(pod)
-	rt := &ReleaseTesting{
-		Namespace: "default",
-		Filters:   map[string][]string{},
-	}
+	rt := &ReleaseTesting{Namespace: "default"}
 
-	// Call getContainerLogs directly to test output formatting
 	var buf bytes.Buffer
-	_ = rt.getContainerLogs(&buf, client, "multi-test")
+	err := rt.getContainerLogs(&buf, client, "multi-test")
+	require.NoError(t, err)
 	output := buf.String()
-	// Even if logs fail, check that header formatting uses container names
-	if len(output) > 0 {
-		assert.True(t, strings.Contains(output, "(container-a)") || strings.Contains(output, "(container-b)"))
-	}
+	assert.Contains(t, output, "POD LOGS: multi-test (container-a)")
+	assert.Contains(t, output, "POD LOGS: multi-test (container-b)")
 }
