@@ -1,0 +1,9 @@
+apiVersion: v2
+name: sequenced-chart
+description: A test chart with ordered template output
+type: application
+version: 0.1.0
+dependencies:
+  - name: worker
+    version: 0.1.0
+    repository: file://charts/worker
