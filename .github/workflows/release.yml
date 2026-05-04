@@ -103,7 +103,7 @@ jobs:
 
       - name: Build Helm Binaries
         run: |
-          make build-cross VERSION="${{ github.ref_name }}"
+          make build-cross
           make dist checksum VERSION="canary"
 
       - name: Upload Binaries
