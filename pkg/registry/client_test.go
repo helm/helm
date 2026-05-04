@@ -62,7 +62,6 @@ func TestLogin_ResetsForceAttemptOAuth2_OnSuccess(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v2/" {
-			// Accept either HEAD or GET
 			w.WriteHeader(http.StatusOK)
 			return
 		}
@@ -85,7 +84,6 @@ func TestLogin_ResetsForceAttemptOAuth2_OnSuccess(t *testing.T) {
 		t.Fatal("expected ForceAttemptOAuth2 default to be false")
 	}
 
-	// Call Login with plain HTTP against our test server
 	if err := c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p")); err != nil {
 		t.Fatalf("Login error: %v", err)
 	}

@@ -1,0 +1,393 @@
+/*
+Copyright The Helm Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package registry
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"oras.land/oras-go/v2/registry/remote/auth"
+)
+
+type mockCredentialsStore struct {
+	username string
+	password string
+	err      error
+}
+
+func (m *mockCredentialsStore) Get(_ context.Context, _ string) (auth.Credential, error) {
+	if m.err != nil {
+		return auth.EmptyCredential, m.err
+	}
+	return auth.Credential{
+		Username: m.username,
+		Password: m.password,
+	}, nil
+}
+
+func (m *mockCredentialsStore) Put(_ context.Context, _ string, _ auth.Credential) error {
+	return nil
+}
+
+func (m *mockCredentialsStore) Delete(_ context.Context, _ string) error {
+	return nil
+}
+
+func TestNewAuthorizer(t *testing.T) {
+	tests := []struct {
+		name     string
+		username string
+		password string
+	}{
+		{
+			name:     "with username and password",
+			username: "testuser",
+			password: "testpass",
+		},
+		{
+			name:     "without credentials",
+			username: "",
+			password: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			httpClient := &http.Client{}
+			credStore := &mockCredentialsStore{}
+
+			authorizer := NewAuthorizer(httpClient, credStore, tt.username, tt.password)
+
+			require.NotNil(t, authorizer)
+			assert.Equal(t, httpClient, authorizer.Client.Client)
+			assert.True(t, authorizer.getAttemptBearerAuthentication())
+			assert.NotNil(t, authorizer.Credential)
+
+			if tt.username != "" && tt.password != "" {
+				cred, err := authorizer.Credential(t.Context(), "")
+				require.NoError(t, err)
+				assert.Equal(t, tt.username, cred.Username)
+				assert.Equal(t, tt.password, cred.Password)
+			}
+		})
+	}
+}
+
+func TestNewAuthorizer_WithCredentialsStore(t *testing.T) {
+	httpClient := &http.Client{}
+	credStore := &mockCredentialsStore{
+		username: "storeuser",
+		password: "storepass",
+	}
+
+	authorizer := NewAuthorizer(httpClient, credStore, "", "")
+
+	require.NotNil(t, authorizer)
+
+	cred, err := authorizer.Credential(t.Context(), "test.com")
+	require.NoError(t, err)
+	assert.Equal(t, "storeuser", cred.Username)
+	assert.Equal(t, "storepass", cred.Password)
+}
+
+func TestAuthorizer_EnableCache(t *testing.T) {
+	httpClient := &http.Client{}
+	credStore := &mockCredentialsStore{}
+
+	authorizer := NewAuthorizer(httpClient, credStore, "", "")
+	assert.Nil(t, authorizer.Cache)
+
+	authorizer.EnableCache()
+	assert.NotNil(t, authorizer.Cache)
+}
+
+func TestAuthorizer_Do(t *testing.T) {
+	tests := []struct {
+		name                  string
+		host                  string
+		authHeader            string
+		serverStatus          int
+		expectForceOAuth2     bool
+		expectBearerAuthAfter bool
+	}{
+		{
+			name:                  "successful request without auth header",
+			host:                  "registry.example.com",
+			authHeader:            "",
+			serverStatus:          200,
+			expectForceOAuth2:     false,
+			expectBearerAuthAfter: false,
+		},
+		{
+			name:                  "request with existing auth header",
+			host:                  "registry.example.com",
+			authHeader:            "Bearer token123",
+			serverStatus:          200,
+			expectForceOAuth2:     false,
+			expectBearerAuthAfter: true,
+		},
+		{
+			name:                  "ghcr.io special handling",
+			host:                  "ghcr.io",
+			authHeader:            "",
+			serverStatus:          200,
+			expectForceOAuth2:     false,
+			expectBearerAuthAfter: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tt.serverStatus)
+				w.Write([]byte("success"))
+			}))
+			defer server.Close()
+
+			httpClient := &http.Client{}
+			credStore := &mockCredentialsStore{}
+
+			authorizer := NewAuthorizer(httpClient, credStore, "", "")
+
+			req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+			require.NoError(t, err)
+			req.Host = tt.host
+
+			if tt.authHeader != "" {
+				req.Header.Set("Authorization", tt.authHeader)
+			}
+
+			resp, err := authorizer.Do(req)
+
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			assert.Equal(t, tt.expectBearerAuthAfter, authorizer.getAttemptBearerAuthentication())
+
+			if tt.authHeader == "" {
+				assert.Equal(t, tt.expectForceOAuth2, authorizer.getForceAttemptOAuth2())
+			}
+
+			resp.Body.Close()
+		})
+	}
+}
+
+func TestAuthorizer_Do_WithBearerAttemptDisabled(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("success"))
+	}))
+	defer server.Close()
+
+	httpClient := &http.Client{}
+	credStore := &mockCredentialsStore{}
+
+	authorizer := NewAuthorizer(httpClient, credStore, "", "")
+	authorizer.setAttemptBearerAuthentication(false)
+
+	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+	req.Host = "registry.example.com"
+
+	resp, err := authorizer.Do(req)
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.False(t, authorizer.getAttemptBearerAuthentication())
+
+	resp.Body.Close()
+}
+
+func TestAuthorizer_Do_NonRetryableError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("internal server error"))
+	}))
+	defer server.Close()
+
+	httpClient := &http.Client{}
+	credStore := &mockCredentialsStore{}
+
+	authorizer := NewAuthorizer(httpClient, credStore, "", "")
+
+	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+	req.Host = "registry.example.com"
+
+	resp, err := authorizer.Do(req)
+
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+	resp.Body.Close()
+}
+
+func TestAuthorizer_ConcurrentAccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("success"))
+	}))
+	defer server.Close()
+
+	httpClient := &http.Client{}
+	credStore := &mockCredentialsStore{}
+	authorizer := NewAuthorizer(httpClient, credStore, "", "")
+
+	const numGoroutines = 100
+	const numRequests = 10
+
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines * 2)
+
+	for range numGoroutines {
+		go func() {
+			defer wg.Done()
+			for range numRequests {
+				req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+				if err != nil {
+					t.Errorf("failed to create request: %v", err)
+					return
+				}
+				req.Host = "registry.example.com"
+
+				resp, err := authorizer.Do(req)
+				if err == nil && resp != nil {
+					resp.Body.Close()
+				}
+			}
+		}()
+
+		go func() {
+			defer wg.Done()
+			for range numRequests {
+				authorizer.setAttemptBearerAuthentication(true)
+				val := authorizer.getAttemptBearerAuthentication()
+				if val != true {
+					t.Logf("Warning: Expected true but got %v", val)
+				}
+
+				authorizer.setAttemptBearerAuthentication(false)
+				val = authorizer.getAttemptBearerAuthentication()
+				if val != false {
+					t.Logf("Warning: Expected false but got %v", val)
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+}
+
+// roundTripFunc is an http.RoundTripper backed by a function.
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
+func TestAuthorizer_Do_RetriesOn401(t *testing.T) {
+	var mu sync.Mutex
+	callCount := 0
+
+	transport := roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+		mu.Lock()
+		n := callCount
+		callCount++
+		mu.Unlock()
+		if n == 0 {
+			// Simulate ORAS auth failure with 401
+			return nil, errors.New("response status code 401")
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       http.NoBody,
+			Header:     make(http.Header),
+		}, nil
+	})
+
+	authorizer := NewAuthorizer(&http.Client{Transport: transport}, &mockCredentialsStore{}, "", "")
+
+	req, err := http.NewRequest(http.MethodGet, "http://registry.example.com/v2/", nil)
+	require.NoError(t, err)
+	req.Host = "registry.example.com"
+
+	resp, err := authorizer.Do(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	assert.Equal(t, 2, callCount, "Authorizer.Do should retry once after 401 error")
+	assert.False(t, authorizer.getForceAttemptOAuth2(), "ForceAttemptOAuth2 must be false after Do()")
+}
+
+func TestAuthorizer_Do_NoRetryOn404(t *testing.T) {
+	var mu sync.Mutex
+	callCount := 0
+
+	transport := roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+		mu.Lock()
+		callCount++
+		mu.Unlock()
+		return nil, errors.New("response status code 404")
+	})
+
+	authorizer := NewAuthorizer(&http.Client{Transport: transport}, &mockCredentialsStore{}, "", "")
+
+	req, err := http.NewRequest(http.MethodGet, "http://registry.example.com/v2/", nil)
+	require.NoError(t, err)
+	req.Host = "registry.example.com"
+
+	_, err = authorizer.Do(req)
+	assert.Error(t, err, "404 error should propagate without retry")
+	assert.Equal(t, 1, callCount, "Authorizer.Do must not retry on non-401/403 errors")
+	assert.False(t, authorizer.getForceAttemptOAuth2(), "ForceAttemptOAuth2 must be false after Do()")
+}
+
+func TestAuthorizer_Do_GHCRSkipsBearerProbe(t *testing.T) {
+	var mu sync.Mutex
+	callCount := 0
+
+	transport := roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+		mu.Lock()
+		callCount++
+		mu.Unlock()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       http.NoBody,
+			Header:     make(http.Header),
+		}, nil
+	})
+
+	authorizer := NewAuthorizer(&http.Client{Transport: transport}, &mockCredentialsStore{}, "", "")
+
+	// URL.Host is "ghcr.io" — simulates how ORAS constructs requests (host in URL, not req.Host)
+	req, err := http.NewRequest(http.MethodGet, "http://ghcr.io/v2/", nil)
+	require.NoError(t, err)
+
+	resp, err := authorizer.Do(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	assert.Equal(t, 1, callCount, "ghcr.io must not trigger a bearer probe + retry")
+	assert.False(t, authorizer.getForceAttemptOAuth2())
+	assert.False(t, authorizer.getAttemptBearerAuthentication())
+}
