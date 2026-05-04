@@ -24,10 +24,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -227,15 +227,46 @@ type (
 	}
 )
 
-// warnIfHostHasPath checks if the host contains a repository path and logs a warning if it does.
-// Returns true if the host contains a path component (i.e., contains a '/').
-func warnIfHostHasPath(host string) bool {
-	if strings.Contains(host, "/") {
-		registryHost := strings.Split(host, "/")[0]
-		slog.Warn("registry login currently only supports registry hostname, not a repository path", "host", host, "suggested", registryHost)
-		return true
+// schemeRegex is used to check if a schema is present within the host - we have to do so, to determine if we need
+// to prepend a "dummy://" schema for url.Parse to not accidentally interpret the host as just a path
+var schemeRegex = regexp.MustCompile(`^([a-zA-Z][a-zA-Z0-9+\-.]*:\/\/).*$`)
+
+// validateHost checks that the host matches some required pre-checks e.g. does not contain a scheme, query or path.
+// While ORAS will also validate some of these things, the current errors are a bit opaque.
+// By validating these things upfront, we can provide clearer error messages to users when they attempt to login with an invalid host string.
+func validateHost(host string) error {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return fmt.Errorf("host cannot be empty")
 	}
-	return false
+
+	// we pre-validate the scheme part here to make sure that we can prepend a dummy scheme for url.Parse without accidentally
+	// accepting invalid hosts that would be parsed with the scheme as just a path. By not just blindly prepending the scheme,
+	// we can produce a clearer error message for users who still include a scheme in the host string, which is a common thing.
+	matches := schemeRegex.FindStringSubmatch(host)
+	if len(matches) != 0 {
+		return fmt.Errorf("host should not contain a scheme, found %q", host)
+	}
+
+	// keep the original host for potential error messages
+	originalHost := host
+
+	// we have to prepend the dummy scheme here to make it an absolute url
+	parsed, err := url.Parse("dummy://" + host)
+	if err != nil {
+		return fmt.Errorf("invalid host %q: %w", originalHost, err)
+	}
+
+	if parsed.RawQuery != "" || parsed.RawFragment != "" {
+		return fmt.Errorf("host should not contain a query or fragment, found %q", originalHost)
+	}
+
+	// currently, paths are also not supported
+	if parsed.Path != "" {
+		return fmt.Errorf("host should not contain a path, found %q", originalHost)
+	}
+
+	return nil
 }
 
 // Login authenticates the client with a remote OCI registry using the provided host and options.
@@ -244,7 +275,9 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		option(&loginOperation{host, c})
 	}
 
-	warnIfHostHasPath(host)
+	if err := validateHost(host); err != nil {
+		return err
+	}
 
 	reg, err := remote.NewRegistry(host)
 	if err != nil {
