@@ -143,7 +143,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compInstall(args, toComplete, client)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+			registryClient, err := newRegistryClient(out, client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSVerify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
