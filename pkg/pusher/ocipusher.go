@@ -37,42 +37,42 @@ type OCIPusher struct {
 }
 
 // Push performs a Push from repo.Pusher.
-func (pusher *OCIPusher) Push(chartRef, href string, options ...Option) error {
+func (pusher *OCIPusher) Push(chartRef, href string, options ...Option) (*registry.PushResult, error) {
 	for _, opt := range options {
 		opt(&pusher.opts)
 	}
 	return pusher.push(chartRef, href)
 }
 
-func (pusher *OCIPusher) push(chartRef, href string) error {
+func (pusher *OCIPusher) push(chartRef, href string) (*registry.PushResult, error) {
 	stat, err := os.Stat(chartRef)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("%s: no such file", chartRef)
+			return nil, fmt.Errorf("%s: no such file", chartRef)
 		}
-		return err
+		return nil, err
 	}
 	if stat.IsDir() {
-		return errors.New("cannot push directory, must provide chart archive (.tgz)")
+		return nil, errors.New("cannot push directory, must provide chart archive (.tgz)")
 	}
 
 	meta, err := loader.Load(chartRef)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	client := pusher.opts.registryClient
 	if client == nil {
 		c, err := pusher.newRegistryClient()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		client = c
 	}
 
 	chartBytes, err := os.ReadFile(chartRef)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var pushOpts []registry.PushOption
@@ -80,7 +80,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	if _, err := os.Stat(provRef); err == nil {
 		provBytes, err := os.ReadFile(provRef)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		pushOpts = append(pushOpts, registry.PushOptProvData(provBytes))
 	}
@@ -93,8 +93,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	chartArchiveFileCreatedTime := stat.ModTime()
 	pushOpts = append(pushOpts, registry.PushOptCreationTime(chartArchiveFileCreatedTime.Format(time.RFC3339)))
 
-	_, err = client.Push(chartBytes, ref, pushOpts...)
-	return err
+	return client.Push(chartBytes, ref, pushOpts...)
 }
 
 // NewOCIPusher constructs a valid OCI client as a Pusher

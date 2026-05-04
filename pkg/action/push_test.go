@@ -17,7 +17,6 @@ limitations under the License.
 package action
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -55,12 +54,4 @@ func TestNewPushWithPlainHTTP(t *testing.T) {
 
 	assert.NotNil(t, client)
 	assert.True(t, client.plainHTTP)
-}
-
-func TestNewPushWithPushOptWriter(t *testing.T) {
-	buf := new(bytes.Buffer)
-	client := NewPushWithOpts(WithPushOptWriter(buf))
-
-	assert.NotNil(t, client)
-	assert.Equal(t, buf, client.out)
 }
