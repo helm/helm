@@ -97,7 +97,7 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 		return
 	}
 
-	valuesToRender, err := util.ToRenderValuesWithSchemaValidation(chart, cvals, options, caps, skipSchemaValidation)
+	valuesToRender, err := util.ToRenderValuesWithSchemaValidationAndPath(chart, cvals, options, caps, skipSchemaValidation, linter.ChartDir)
 	if err != nil {
 		linter.RunLinterRule(support.ErrorSev, fpath, err)
 		return
