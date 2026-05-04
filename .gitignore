@@ -15,3 +15,7 @@ vendor/
 cmd/helm/testdata/testcharts/issue-7233/charts/*
 pkg/cmd/testdata/testcharts/issue-7233/charts/*
 .pre-commit-config.yaml
+
+# OpenClaw generated files
+sonar-metrics.json
+sonar-report.json

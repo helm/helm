@@ -30,6 +30,9 @@ jobs:
         run: make test-source-headers
       - name: Check if go modules need to be tidied
         run: go mod tidy -diff
+      - name: Run shellcheck
+        run: make shellcheck
+      - name: Run linters
       - name: Run unit tests
         run: make test-coverage
       - name: Test build

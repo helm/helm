@@ -244,6 +244,11 @@ info:
 	@echo "Git Commit:        ${GIT_COMMIT}"
 	@echo "Git Tree State:    ${GIT_DIRTY}"
 
+.PHONY: shellcheck
+shellcheck:
+	./scripts/shellcheck.sh
+
+
 .PHONY: tidy
 tidy:
 	go mod tidy
