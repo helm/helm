@@ -1,7 +1,6 @@
 BINDIR      := $(CURDIR)/bin
 INSTALL_PATH ?= /usr/local/bin
 DIST_DIRS   := find * -type d -exec
-TARGETS     := darwin/amd64 darwin/arm64 linux/amd64 linux/386 linux/arm linux/arm64 linux/loong64 linux/ppc64le linux/s390x linux/riscv64 windows/amd64 windows/arm64
 TARGET_OBJS ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 darwin-amd64.tar.gz.sha256sum darwin-arm64.tar.gz darwin-arm64.tar.gz.sha256 darwin-arm64.tar.gz.sha256sum linux-amd64.tar.gz linux-amd64.tar.gz.sha256 linux-amd64.tar.gz.sha256sum linux-386.tar.gz linux-386.tar.gz.sha256 linux-386.tar.gz.sha256sum linux-arm.tar.gz linux-arm.tar.gz.sha256 linux-arm.tar.gz.sha256sum linux-arm64.tar.gz linux-arm64.tar.gz.sha256 linux-arm64.tar.gz.sha256sum linux-loong64.tar.gz linux-loong64.tar.gz.sha256 linux-loong64.tar.gz.sha256sum linux-ppc64le.tar.gz linux-ppc64le.tar.gz.sha256 linux-ppc64le.tar.gz.sha256sum linux-s390x.tar.gz linux-s390x.tar.gz.sha256 linux-s390x.tar.gz.sha256sum linux-riscv64.tar.gz linux-riscv64.tar.gz.sha256 linux-riscv64.tar.gz.sha256sum windows-amd64.zip windows-amd64.zip.sha256 windows-amd64.zip.sha256sum windows-arm64.zip windows-arm64.zip.sha256 windows-arm64.zip.sha256sum
 BINNAME     ?= helm
 
@@ -176,20 +175,14 @@ build-cross: $(GORELEASER)
 	LDFLAGS='$(LDFLAGS)' $(GORELEASER) build --snapshot --clean
 
 .PHONY: dist
-dist: LDFLAGS += -extldflags "-static"
-dist: $(GORELEASER)
-	GORELEASER_CURRENT_TAG='$(VERSION)' LDFLAGS='$(LDFLAGS)' $(GORELEASER) build --snapshot --clean
-	@for platform_dir in _dist/*/; do \
-		platform=$$(basename "$$platform_dir"); \
-		{ [ -f "_dist/$$platform/helm" ] || [ -f "_dist/$$platform/helm.exe" ]; } || continue; \
-		cp LICENSE README.md "_dist/$$platform/"; \
-		tar czf "_dist/helm-$(VERSION)-$$platform.tar.gz" -C _dist "$$platform/"; \
-	done
-	@for platform_dir in _dist/windows-*/; do \
-		[ -d "$$platform_dir" ] || continue; \
-		platform=$$(basename "$$platform_dir"); \
-		(cd _dist && zip -r "helm-$(VERSION)-$$platform.zip" "$$platform/"); \
-	done
+dist:
+	( \
+		cd _dist && \
+		$(DIST_DIRS) cp ../LICENSE {} \; && \
+		$(DIST_DIRS) cp ../README.md {} \; && \
+		$(DIST_DIRS) tar -zcf helm-${VERSION}-{}.tar.gz {} \; && \
+		$(DIST_DIRS) zip -r helm-${VERSION}-{}.zip {} \; \
+	)
 
 .PHONY: fetch-dist
 fetch-dist:
