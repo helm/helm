@@ -928,3 +928,114 @@ func TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides(t *testing.T
 	_, ok = keyMapping["password"]
 	is.False(ok, "Expected keyMapping.password (nil from chart defaults) to be removed even when user partially overrides the map")
 }
+
+// TestCoalesceValuesSubchartDefaultNilsCleanedWithUnrelatedUserValues tests that
+// nil values in subchart defaults are cleaned even when the parent provides an
+// unrelated user value under that subchart's namespace.
+//
+// This simulates the state after processImportValues (merge=true) populates
+// parent.Values with merged child defaults including nils, then CoalesceValues
+// is called with user values that touch the child namespace. The bug in #32093
+// was that childChartMergeTrue shadowed the merge flag, skipping cleanNilValues.
+func TestCoalesceValuesSubchartDefaultNilsCleanedWithUnrelatedUserValues(t *testing.T) {
+	is := assert.New(t)
+
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Values: map[string]any{
+			"keyMapping": map[string]any{
+				"password": nil,
+			},
+			"ingress": map[string]any{
+				"configureCertmanager": nil,
+			},
+		},
+	}
+
+	parent := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values:   map[string]any{},
+	}, subchart)
+
+	// Simulate the state after processImportValues has populated parent.Values
+	// with merged defaults (including nils from child chart defaults).
+	mergedDefaults, err := MergeValues(parent, nil)
+	is.NoError(err)
+	parent.Values = mergedDefaults
+
+	vals := map[string]any{
+		"child": map[string]any{
+			"someOtherKey": "value",
+		},
+	}
+
+	v, err := CoalesceValues(parent, vals)
+	is.NoError(err)
+
+	childVals, ok := v["child"].(map[string]any)
+	is.True(ok, "child values should be a map")
+
+	keyMapping, ok := childVals["keyMapping"].(map[string]any)
+	is.True(ok, "keyMapping should be a map")
+	_, ok = keyMapping["password"]
+	is.False(ok, "Expected keyMapping.password (nil from chart defaults) to be removed when parent sets unrelated child value")
+
+	ingress, ok := childVals["ingress"].(map[string]any)
+	is.True(ok, "ingress should be a map")
+	_, ok = ingress["configureCertmanager"]
+	is.False(ok, "Expected ingress.configureCertmanager (nil from chart defaults) to be removed when parent sets unrelated child value")
+}
+
+// TestCoalesceValuesSubchartDefaultNilsCleanedWithPartialOverrideSameMapMerged
+// tests that nil values in subchart defaults are cleaned even when the user
+// overrides a sibling key within the same map, after the parent chart's Values
+// have been populated by a prior merge step.
+//
+// Unlike TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides which
+// tests coalescing from scratch, this test seeds parent.Values via MergeValues
+// to exercise the childChartMergeTrue code path described in issue #32093.
+func TestCoalesceValuesSubchartDefaultNilsCleanedWithPartialOverrideSameMapMerged(t *testing.T) {
+	is := assert.New(t)
+
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Values: map[string]any{
+			"keyMapping": map[string]any{
+				"password": nil,
+				"format":   "bcrypt",
+			},
+		},
+	}
+
+	parent := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values:   map[string]any{},
+	}, subchart)
+
+	// Simulate the state after processImportValues has populated parent.Values
+	// with merged defaults (including nils from child chart defaults).
+	mergedDefaults, err := MergeValues(parent, nil)
+	is.NoError(err)
+	parent.Values = mergedDefaults
+
+	vals := map[string]any{
+		"child": map[string]any{
+			"keyMapping": map[string]any{
+				"format": "sha256",
+			},
+		},
+	}
+
+	v, err := CoalesceValues(parent, vals)
+	is.NoError(err)
+
+	childVals, ok := v["child"].(map[string]any)
+	is.True(ok, "child values should be a map")
+
+	keyMapping, ok := childVals["keyMapping"].(map[string]any)
+	is.True(ok, "keyMapping should be a map")
+
+	is.Equal("sha256", keyMapping["format"], "User override should be preserved")
+	_, ok = keyMapping["password"]
+	is.False(ok, "Expected keyMapping.password (nil from chart defaults) to be removed when user overrides sibling key in same map")
+}
