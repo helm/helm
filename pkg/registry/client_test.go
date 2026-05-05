@@ -224,6 +224,11 @@ func TestValidateHost(t *testing.T) {
 			host:    "ghcr.io?param=value",
 			wantErr: true,
 		},
+		{
+			name:    "url with fragment",
+			host:    "ghcr.io#fragment",
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

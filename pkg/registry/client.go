@@ -235,7 +235,6 @@ var schemeRegex = regexp.MustCompile(`^([a-zA-Z][a-zA-Z0-9+\-.]*:\/\/).*$`)
 // While ORAS will also validate some of these things, the current errors are a bit opaque.
 // By validating these things upfront, we can provide clearer error messages to users when they attempt to login with an invalid host string.
 func validateHost(host string) error {
-	host = strings.TrimSpace(host)
 	if host == "" {
 		return errors.New("host cannot be empty")
 	}
@@ -243,8 +242,7 @@ func validateHost(host string) error {
 	// we pre-validate the scheme part here to make sure that we can prepend a dummy scheme for url.Parse without accidentally
 	// accepting invalid hosts that would be parsed with the scheme as just a path. By not just blindly prepending the scheme,
 	// we can produce a clearer error message for users who still include a scheme in the host string, which is a common thing.
-	matches := schemeRegex.FindStringSubmatch(host)
-	if len(matches) != 0 {
+	if schemeRegex.MatchString(host) {
 		return fmt.Errorf("host should not contain a scheme, found %q", host)
 	}
 
@@ -257,7 +255,7 @@ func validateHost(host string) error {
 		return fmt.Errorf("invalid host %q: %w", originalHost, err)
 	}
 
-	if parsed.RawQuery != "" || parsed.RawFragment != "" {
+	if parsed.RawQuery != "" || parsed.Fragment != "" {
 		return fmt.Errorf("host should not contain a query or fragment, found %q", originalHost)
 	}
 
@@ -275,6 +273,7 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		option(&loginOperation{host, c})
 	}
 
+	host = strings.TrimSpace(host)
 	if err := validateHost(host); err != nil {
 		return err
 	}
