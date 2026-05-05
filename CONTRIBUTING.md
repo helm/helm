@@ -302,9 +302,11 @@ go tool pprof -http=":8001" mem.prof
 
 ## The Triager
 
-Each week, one of the core maintainers will serve as the designated "triager" starting after the
-public stand-up meetings on Thursday. This person will be in charge triaging new PRs and issues
-throughout the work week.
+- Reviewing new issues and PRs
+- Applying labels and milestones
+- Keeping queues manageable
+
+The rotation begins after the weekly public stand-up on Thursday.
 
 ## Labels
 
