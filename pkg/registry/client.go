@@ -237,7 +237,7 @@ var schemeRegex = regexp.MustCompile(`^([a-zA-Z][a-zA-Z0-9+\-.]*:\/\/).*$`)
 func validateHost(host string) error {
 	host = strings.TrimSpace(host)
 	if host == "" {
-		return fmt.Errorf("host cannot be empty")
+		return errors.New("host cannot be empty")
 	}
 
 	// we pre-validate the scheme part here to make sure that we can prepend a dummy scheme for url.Parse without accidentally
