@@ -106,7 +106,7 @@ type releaseInfoJSON struct {
 // It handles empty string time fields by treating them as zero values.
 func (r *releaseInfo) UnmarshalJSON(data []byte) error {
 	// First try to unmarshal into a map to handle empty string time fields
-	var raw map[string]interface{}
+	var raw map[string]any
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
@@ -260,7 +260,7 @@ func compListRevisions(_ string, cfg *action.Configuration, releaseName string) 
 			return nil, cobra.ShellCompDirectiveError
 		}
 		for _, version := range hist {
-			appVersion := fmt.Sprintf("App: %s", version.Chart.Metadata.AppVersion)
+			appVersion := "App: " + version.Chart.Metadata.AppVersion
 			chartDesc := fmt.Sprintf("Chart: %s-%s", version.Chart.Metadata.Name, version.Chart.Metadata.Version)
 			revisions = append(revisions, fmt.Sprintf("%s\t%s, %s", strconv.Itoa(version.Version), appVersion, chartDesc))
 		}

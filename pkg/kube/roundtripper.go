@@ -16,65 +16,9 @@ limitations under the License.
 
 package kube
 
-import (
-	"bytes"
-	"encoding/json"
-	"io"
-	"net/http"
-	"strings"
-)
+import "helm.sh/helm/v4/pkg/kubeenv"
 
-type RetryingRoundTripper struct {
-	Wrapped http.RoundTripper
-}
-
-func (rt *RetryingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	return rt.roundTrip(req, 1, nil)
-}
-
-func (rt *RetryingRoundTripper) roundTrip(req *http.Request, retry int, prevResp *http.Response) (*http.Response, error) {
-	if retry < 0 {
-		return prevResp, nil
-	}
-	resp, rtErr := rt.Wrapped.RoundTrip(req)
-	if rtErr != nil {
-		return resp, rtErr
-	}
-	if resp.StatusCode < 500 {
-		return resp, rtErr
-	}
-	if resp.Header.Get("content-type") != "application/json" {
-		return resp, rtErr
-	}
-	b, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		return resp, err
-	}
-
-	var ke kubernetesError
-	r := bytes.NewReader(b)
-	err = json.NewDecoder(r).Decode(&ke)
-	r.Seek(0, io.SeekStart)
-	resp.Body = io.NopCloser(r)
-	if err != nil {
-		return resp, err
-	}
-	if ke.Code < 500 {
-		return resp, nil
-	}
-	// Matches messages like "etcdserver: leader changed"
-	if strings.HasSuffix(ke.Message, "etcdserver: leader changed") {
-		return rt.roundTrip(req, retry-1, resp)
-	}
-	// Matches messages like "rpc error: code = Unknown desc = raft proposal dropped"
-	if strings.HasSuffix(ke.Message, "raft proposal dropped") {
-		return rt.roundTrip(req, retry-1, resp)
-	}
-	return resp, nil
-}
-
-type kubernetesError struct {
-	Message string `json:"message"`
-	Code    int    `json:"code"`
-}
+// RetryingRoundTripper retries transient Kubernetes API server errors on a
+// wrapped [http.RoundTripper]. The implementation lives in [kubeenv] so
+// consumers can depend on that package without importing all of kube.
+type RetryingRoundTripper = kubeenv.RetryingRoundTripper

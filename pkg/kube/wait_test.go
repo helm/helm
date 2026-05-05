@@ -17,7 +17,7 @@ limitations under the License.
 package kube
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -39,7 +39,7 @@ import (
 func TestSelectorsForObject(t *testing.T) {
 	tests := []struct {
 		name           string
-		object         interface{}
+		object         any
 		expectError    bool
 		errorContains  string
 		expectedLabels map[string]string
@@ -299,7 +299,7 @@ func TestLegacyWaiter_waitForPodSuccess(t *testing.T) {
 			done, err := lw.waitForPodSuccess(tt.obj, "foo")
 			if tt.wantErr {
 				if err == nil {
-					t.Errorf("expected error, got none")
+					t.Error("expected error, got none")
 				} else if !strings.Contains(err.Error(), tt.errMessage) {
 					t.Errorf("expected error to contain %q, got %q", tt.errMessage, err.Error())
 				}
@@ -391,7 +391,7 @@ func TestLegacyWaiter_waitForJob(t *testing.T) {
 			done, err := lw.waitForJob(tt.obj, "test-job")
 			if tt.wantErr {
 				if err == nil {
-					t.Errorf("expected error, got none")
+					t.Error("expected error, got none")
 				} else if !strings.Contains(err.Error(), tt.errMessage) {
 					t.Errorf("expected error to contain %q, got %q", tt.errMessage, err.Error())
 				}
@@ -451,7 +451,7 @@ func TestLegacyWaiter_isRetryableError(t *testing.T) {
 		},
 		{
 			name:      "non-status error",
-			err:       fmt.Errorf("some generic error"),
+			err:       errors.New("some generic error"),
 			wantRetry: true,
 		},
 	}

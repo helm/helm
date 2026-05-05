@@ -168,7 +168,7 @@ func TestSearchHubCmd_FailOnNoResponseTests(t *testing.T) {
 			_, out, err := executeActionCommandC(storage, tt.cmd)
 			if tt.wantErr {
 				if err == nil {
-					t.Errorf("expected error due to no record in response, got nil")
+					t.Error("expected error due to no record in response, got nil")
 				}
 			} else {
 				if err != nil {

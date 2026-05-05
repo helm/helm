@@ -130,7 +130,7 @@ func TestRepoAdd(t *testing.T) {
 	}
 
 	if err := o.run(io.Discard); err != nil {
-		t.Errorf("Duplicate repository name was added")
+		t.Error("Duplicate repository name was added")
 	}
 }
 
@@ -162,7 +162,7 @@ func TestRepoAddCheckLegalName(t *testing.T) {
 			t.Fatalf("Actual error %s, not equal to expected error %s", err, wantErrorMsg)
 		}
 	} else {
-		t.Fatalf("expect reported an error.")
+		t.Fatal("expect reported an error.")
 	}
 }
 

@@ -95,6 +95,7 @@ type Install struct {
 	DisableHooks     bool
 	Replace          bool
 	WaitStrategy     kube.WaitStrategy
+	WaitOptions      []kube.WaitOption
 	WaitForJobs      bool
 	Devel            bool
 	DependencyUpdate bool
@@ -129,6 +130,10 @@ type Install struct {
 	// TakeOwnership will ignore the check for helm annotations and take ownership of the resources.
 	TakeOwnership bool
 	PostRenderer  postrenderer.PostRenderer
+	// PostRenderStrategy controls how hooks and regular templates are passed
+	// to the configured post-renderer. See PostRenderStrategy for the
+	// available modes. Defaults to PostRenderStrategyCombined.
+	PostRenderStrategy PostRenderStrategy
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock           sync.Mutex
 	goroutineCount atomic.Int32
@@ -157,9 +162,10 @@ type ChartPathOptions struct {
 // NewInstall creates a new Install object with the given configuration.
 func NewInstall(cfg *Configuration) *Install {
 	in := &Install{
-		cfg:             cfg,
-		ServerSideApply: true,
-		DryRunStrategy:  DryRunNone,
+		cfg:                cfg,
+		ServerSideApply:    true, // Must always match the CLI default.
+		DryRunStrategy:     DryRunNone,
+		PostRenderStrategy: PostRenderStrategyCombined,
 	}
 	in.registryClient = cfg.RegistryClient
 
@@ -180,10 +186,22 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 	// We do these one file at a time in the order they were read.
 	totalItems := []*resource.Info{}
 	for _, obj := range crds {
+		if obj.File == nil {
+			return fmt.Errorf("failed to install CRD %s: file is empty", obj.Name)
+		}
+
+		if obj.File.Data == nil {
+			return fmt.Errorf("failed to install CRD %s: file data is empty", obj.Name)
+		}
+
 		// Read in the resources
 		res, err := i.cfg.KubeClient.Build(bytes.NewBuffer(obj.File.Data), false)
 		if err != nil {
 			return fmt.Errorf("failed to install CRD %s: %w", obj.Name, err)
+		}
+
+		if len(res) == 0 {
+			return fmt.Errorf("failed to install CRD %s: resources are empty", obj.Name)
 		}
 
 		// Send them to Kube
@@ -201,7 +219,13 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		totalItems = append(totalItems, res...)
 	}
 	if len(totalItems) > 0 {
-		waiter, err := i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+		var waiter kube.Waiter
+		var err error
+		if c, supportsOptions := i.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+			waiter, err = c.GetWaiterWithOptions(i.WaitStrategy, i.WaitOptions...)
+		} else {
+			waiter, err = i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+		}
 		if err != nil {
 			return fmt.Errorf("unable to get waiter: %w", err)
 		}
@@ -215,27 +239,30 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		// the case when an action configuration is reused for multiple actions,
 		// as otherwise it is later loaded by ourselves when getCapabilities
 		// is called later on in the installation process.
-		if i.cfg.Capabilities != nil {
-			discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient()
+		if i.cfg.RESTClientGetter != nil {
+			if i.cfg.Capabilities != nil {
+				discoveryClient, err := i.cfg.RESTClientGetter.ToDiscoveryClient()
+				if err != nil {
+					return err
+				}
+
+				if discoveryClient != nil {
+					i.cfg.Logger().Debug("clearing discovery cache")
+					discoveryClient.Invalidate()
+					_, _ = discoveryClient.ServerGroups()
+				}
+			}
+
+			// Invalidate the REST mapper, since it will not have the new CRDs
+			// present.
+			restMapper, err := i.cfg.RESTClientGetter.ToRESTMapper()
 			if err != nil {
 				return err
 			}
-
-			i.cfg.Logger().Debug("clearing discovery cache")
-			discoveryClient.Invalidate()
-
-			_, _ = discoveryClient.ServerGroups()
-		}
-
-		// Invalidate the REST mapper, since it will not have the new CRDs
-		// present.
-		restMapper, err := i.cfg.RESTClientGetter.ToRESTMapper()
-		if err != nil {
-			return err
-		}
-		if resettable, ok := restMapper.(meta.ResettableRESTMapper); ok {
-			i.cfg.Logger().Debug("clearing REST mapper cache")
-			resettable.Reset()
+			if resettable, ok := restMapper.(meta.ResettableRESTMapper); ok {
+				i.cfg.Logger().Debug("clearing REST mapper cache")
+				resettable.Reset()
+			}
 		}
 	}
 	return nil
@@ -245,7 +272,7 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 //
 // If DryRun is set to true, this will prepare the release, but not install it
 
-func (i *Install) Run(chrt ci.Charter, vals map[string]interface{}) (ri.Releaser, error) {
+func (i *Install) Run(chrt ci.Charter, vals map[string]any) (ri.Releaser, error) {
 	ctx := context.Background()
 	return i.RunWithContext(ctx, chrt, vals)
 }
@@ -254,7 +281,7 @@ func (i *Install) Run(chrt ci.Charter, vals map[string]interface{}) (ri.Releaser
 //
 // When the task is cancelled through ctx, the function returns and the install
 // proceeds in the background.
-func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[string]interface{}) (ri.Releaser, error) {
+func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[string]any) (ri.Releaser, error) {
 	var chrt *chart.Chart
 	switch c := ch.(type) {
 	case *chart.Chart:
@@ -348,14 +375,14 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	rel := i.createRelease(chrt, vals, i.Labels)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret, i.PostRenderStrategy)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
 	}
 	// Check error from render
 	if err != nil {
-		rel.SetStatus(rcommon.StatusFailed, fmt.Sprintf("failed to render resource: %s", err.Error()))
+		rel.SetStatus(rcommon.StatusFailed, "failed to render resource: "+err.Error())
 		// Return a release with partial data so that the client can show debugging information.
 		return rel, err
 	}
@@ -480,8 +507,8 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
-			return rel, fmt.Errorf("failed pre-install: %s", err)
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
+			return rel, fmt.Errorf("failed pre-install: %w", err)
 		}
 	}
 
@@ -506,7 +533,12 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 		return rel, err
 	}
 
-	waiter, err := i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+	var waiter kube.Waiter
+	if c, supportsOptions := i.cfg.KubeClient.(kube.InterfaceWaitOptions); supportsOptions {
+		waiter, err = c.GetWaiterWithOptions(i.WaitStrategy, i.WaitOptions...)
+	} else {
+		waiter, err = i.cfg.KubeClient.GetWaiter(i.WaitStrategy)
+	}
 	if err != nil {
 		return rel, fmt.Errorf("failed to get waiter: %w", err)
 	}
@@ -521,8 +553,8 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	}
 
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.Timeout, i.ServerSideApply); err != nil {
-			return rel, fmt.Errorf("failed post-install: %s", err)
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
+			return rel, fmt.Errorf("failed post-install: %w", err)
 		}
 	}
 
@@ -555,6 +587,7 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 		uninstall.KeepHistory = false
 		uninstall.Timeout = i.Timeout
 		uninstall.WaitStrategy = i.WaitStrategy
+		uninstall.WaitOptions = i.WaitOptions
 		if _, uninstallErr := uninstall.Run(i.ReleaseName); uninstallErr != nil {
 			return rel, fmt.Errorf("an error occurred while uninstalling the release. original install error: %w: %w", err, uninstallErr)
 		}
@@ -625,7 +658,7 @@ func releaseV1ListToReleaserList(ls []*release.Release) ([]ri.Releaser, error) {
 }
 
 // createRelease creates a new release object
-func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{}, labels map[string]string) *release.Release {
+func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]any, labels map[string]string) *release.Release {
 	ts := i.cfg.Now()
 
 	r := &release.Release{

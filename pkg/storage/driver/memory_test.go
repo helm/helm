@@ -280,7 +280,7 @@ func TestMemoryDelete(t *testing.T) {
 		}
 		_, err = ts.Get(tt.key)
 		if err == nil {
-			t.Errorf("Expected an error when asking for a deleted key")
+			t.Error("Expected an error when asking for a deleted key")
 		}
 	}
 

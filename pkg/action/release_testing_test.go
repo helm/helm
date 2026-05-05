@@ -18,6 +18,7 @@ package action
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -27,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -46,7 +48,7 @@ func TestReleaseTestingRun_UnreachableKubeClient(t *testing.T) {
 	config.KubeClient = &failingKubeClient
 
 	client := NewReleaseTesting(config)
-	result, err := client.Run("")
+	result, _, err := client.Run("")
 	assert.Nil(t, result)
 	assert.Error(t, err)
 }
@@ -88,4 +90,30 @@ func TestReleaseTestingGetPodLogs_PodRetrievalError(t *testing.T) {
 	}
 
 	require.ErrorContains(t, client.GetPodLogs(&bytes.Buffer{}, &release.Release{Hooks: hooks}), "unable to get pod logs")
+}
+
+func TestReleaseTesting_WaitOptionsPassedDownstream(t *testing.T) {
+	is := assert.New(t)
+	config := actionConfigFixture(t)
+
+	// Create a release with a test hook
+	rel := releaseStub()
+	rel.Name = "wait-options-test-release"
+	rel.ApplyMethod = "csa"
+	require.NoError(t, config.Releases.Create(rel))
+
+	client := NewReleaseTesting(config)
+
+	// Use WithWaitContext as a marker WaitOption that we can track
+	ctx := context.Background()
+	client.WaitOptions = []kube.WaitOption{kube.WithWaitContext(ctx)}
+
+	// Access the underlying FailingKubeClient to check recorded options
+	failer := config.KubeClient.(*kubefake.FailingKubeClient)
+
+	_, _, err := client.Run(rel.Name)
+	is.NoError(err)
+
+	// Verify that WaitOptions were passed to GetWaiter
+	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }

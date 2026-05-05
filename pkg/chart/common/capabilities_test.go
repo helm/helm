@@ -68,7 +68,7 @@ func TestDefaultCapabilities(t *testing.T) {
 func TestParseKubeVersion(t *testing.T) {
 	kv, err := ParseKubeVersion("v1.16.0")
 	if err != nil {
-		t.Errorf("Expected v1.16.0 to parse successfully")
+		t.Error("Expected v1.16.0 to parse successfully")
 	}
 	if kv.Version != "v1.16.0" {
 		t.Errorf("Expected parsed KubeVersion.Version to be v1.16.0, got %q", kv.String())

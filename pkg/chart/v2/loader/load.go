@@ -120,7 +120,7 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 				c.Metadata = new(chart.Metadata)
 			}
 			if c.Metadata.APIVersion != chart.APIVersionV1 {
-				log.Printf("Warning: Dependencies are handled in Chart.yaml since apiVersion \"v2\". We recommend migrating dependencies to Chart.yaml.")
+				log.Print("Warning: Dependencies are handled in Chart.yaml since apiVersion \"v2\". We recommend migrating dependencies to Chart.yaml.")
 			}
 			if err := yaml.Unmarshal(f.Data, c.Metadata); err != nil {
 				return c, fmt.Errorf("cannot load requirements.yaml: %w", err)
@@ -138,7 +138,7 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 				c.Metadata = new(chart.Metadata)
 			}
 			if c.Metadata.APIVersion != chart.APIVersionV1 {
-				log.Printf("Warning: Dependency locking is handled in Chart.lock since apiVersion \"v2\". We recommend migrating to Chart.lock.")
+				log.Print("Warning: Dependency locking is handled in Chart.lock since apiVersion \"v2\". We recommend migrating to Chart.lock.")
 			}
 			if c.Metadata.APIVersion == chart.APIVersionV1 {
 				c.Files = append(c.Files, &common.File{Name: f.Name, ModTime: f.ModTime, Data: f.Data})
@@ -209,11 +209,11 @@ func LoadFiles(files []*archive.BufferedFile) (*chart.Chart, error) {
 //
 // The reader is expected to contain one or more YAML documents, the values of which are merged.
 // And the values can be either a chart's default values or user-supplied values.
-func LoadValues(data io.Reader) (map[string]interface{}, error) {
-	values := map[string]interface{}{}
+func LoadValues(data io.Reader) (map[string]any, error) {
+	values := map[string]any{}
 	reader := utilyaml.NewYAMLReader(bufio.NewReader(data))
 	for {
-		currentMap := map[string]interface{}{}
+		currentMap := map[string]any{}
 		raw, err := reader.Read()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -231,13 +231,13 @@ func LoadValues(data io.Reader) (map[string]interface{}, error) {
 
 // MergeMaps merges two maps. If a key exists in both maps, the value from b will be used.
 // If the value is a map, the maps will be merged recursively.
-func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
-	out := make(map[string]interface{}, len(a))
+func MergeMaps(a, b map[string]any) map[string]any {
+	out := make(map[string]any, len(a))
 	maps.Copy(out, a)
 	for k, v := range b {
-		if v, ok := v.(map[string]interface{}); ok {
+		if v, ok := v.(map[string]any); ok {
 			if bv, ok := out[k]; ok {
-				if bv, ok := bv.(map[string]interface{}); ok {
+				if bv, ok := bv.(map[string]any); ok {
 					out[k] = MergeMaps(bv, v)
 					continue
 				}

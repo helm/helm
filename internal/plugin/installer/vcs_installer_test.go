@@ -90,14 +90,14 @@ func TestVCSInstaller(t *testing.T) {
 
 	// Install again to test plugin exists error
 	if err := Install(i); err == nil {
-		t.Fatalf("expected error for plugin exists, got none")
+		t.Fatal("expected error for plugin exists, got none")
 	} else if err.Error() != "plugin already exists" {
 		t.Fatalf("expected error for plugin exists, got (%v)", err)
 	}
 
 	// Testing FindSource method, expect error because plugin code is not a cloned repository
 	if _, err := FindSource(i.Path()); err == nil {
-		t.Fatalf("expected error for inability to find plugin source, got none")
+		t.Fatal("expected error for inability to find plugin source, got none")
 	} else if err.Error() != "cannot get information about plugin source" {
 		t.Fatalf("expected error for inability to find plugin source, got (%v)", err)
 	}
@@ -120,7 +120,7 @@ func TestVCSInstallerNonExistentVersion(t *testing.T) {
 	}
 
 	if err := Install(i); err == nil {
-		t.Fatalf("expected error for version does not exists, got none")
+		t.Fatal("expected error for version does not exists, got none")
 	} else if strings.Contains(err.Error(), "Could not resolve host: github.com") {
 		t.Skip("Unable to run test without Internet access")
 	} else if err.Error() != fmt.Sprintf("requested version %q does not exist for plugin %q", version, source) {
@@ -181,7 +181,7 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	}
 	// Testing update for error
 	if err := Update(vcsInstaller); err == nil {
-		t.Fatalf("expected error for plugin modified, got none")
+		t.Fatal("expected error for plugin modified, got none")
 	} else if err.Error() != "plugin repo was modified" {
 		t.Fatalf("expected error for plugin modified, got (%v)", err)
 	}

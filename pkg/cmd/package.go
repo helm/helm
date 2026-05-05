@@ -57,7 +57,7 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 		Long:  packageDesc,
 		RunE: func(_ *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return fmt.Errorf("need at least one argument, the path to the chart")
+				return errors.New("need at least one argument, the path to the chart")
 			}
 			if client.Sign {
 				if client.Key == "" {

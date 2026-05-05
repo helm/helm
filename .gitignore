@@ -3,6 +3,7 @@
 .DS_Store
 .coverage/
 .idea
+.claude
 .vimrc
 .vscode/
 .devcontainer/

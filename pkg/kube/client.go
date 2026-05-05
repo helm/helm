@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube // import "helm.sh/helm/v4/pkg/kube"
+package kube
 
 import (
 	"bytes"
@@ -87,6 +87,8 @@ type Client struct {
 	// WaitContext is an optional context to use for wait operations.
 	// If not set, a context will be created internally using the
 	// timeout provided to the wait functions.
+	//
+	// Deprecated: Use WithWaitContext wait option when getting a Waiter instead.
 	WaitContext context.Context
 
 	Waiter
@@ -139,7 +141,11 @@ func init() {
 	}
 }
 
-func (c *Client) newStatusWatcher() (*statusWaiter, error) {
+func (c *Client) newStatusWatcher(opts ...WaitOption) (*statusWaiter, error) {
+	var o waitOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
 	cfg, err := c.Factory.ToRESTConfig()
 	if err != nil {
 		return nil, err
@@ -156,14 +162,29 @@ func (c *Client) newStatusWatcher() (*statusWaiter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &statusWaiter{
-		restMapper: restMapper,
-		client:     dynamicClient,
-		ctx:        c.WaitContext,
-	}, nil
+	waitContext := o.ctx
+	if waitContext == nil {
+		waitContext = c.WaitContext
+	}
+	sw := &statusWaiter{
+		restMapper:         restMapper,
+		client:             dynamicClient,
+		ctx:                waitContext,
+		watchUntilReadyCtx: o.watchUntilReadyCtx,
+		waitCtx:            o.waitCtx,
+		waitWithJobsCtx:    o.waitWithJobsCtx,
+		waitForDeleteCtx:   o.waitForDeleteCtx,
+		readers:            o.statusReaders,
+	}
+	sw.SetLogger(c.Logger().Handler())
+	return sw, nil
 }
 
-func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
+func (c *Client) GetWaiter(ws WaitStrategy) (Waiter, error) {
+	return c.GetWaiterWithOptions(ws)
+}
+
+func (c *Client) GetWaiterWithOptions(strategy WaitStrategy, opts ...WaitOption) (Waiter, error) {
 	switch strategy {
 	case LegacyStrategy:
 		kc, err := c.Factory.KubernetesClientSet()
@@ -172,9 +193,9 @@ func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
 		}
 		return &legacyWaiter{kubeClient: kc, ctx: c.WaitContext}, nil
 	case StatusWatcherStrategy:
-		return c.newStatusWatcher()
+		return c.newStatusWatcher(opts...)
 	case HookOnlyStrategy:
-		sw, err := c.newStatusWatcher()
+		sw, err := c.newStatusWatcher(opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -187,8 +208,12 @@ func (c *Client) GetWaiter(strategy WaitStrategy) (Waiter, error) {
 }
 
 func (c *Client) SetWaiter(ws WaitStrategy) error {
+	return c.SetWaiterWithOptions(ws)
+}
+
+func (c *Client) SetWaiterWithOptions(ws WaitStrategy, opts ...WaitOption) error {
 	var err error
-	c.Waiter, err = c.GetWaiter(ws)
+	c.Waiter, err = c.GetWaiterWithOptions(ws, opts...)
 	if err != nil {
 		return err
 	}
@@ -247,12 +272,12 @@ type ClientCreateOption func(*clientCreateOptions) error
 // ClientCreateOptionServerSideApply enables performing object apply server-side
 // see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
 //
-// `forceConflicts` forces conflicts to be resolved (may be  when serverSideApply enabled only)
+// `forceConflicts` forces conflicts to be resolved (may be used when serverSideApply enabled only)
 // see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
 func ClientCreateOptionServerSideApply(serverSideApply, forceConflicts bool) ClientCreateOption {
 	return func(o *clientCreateOptions) error {
 		if !serverSideApply && forceConflicts {
-			return fmt.Errorf("forceConflicts enabled when serverSideApply disabled")
+			return errors.New("forceConflicts enabled when serverSideApply disabled")
 		}
 
 		o.serverSideApply = serverSideApply
@@ -575,7 +600,32 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 		original := originals.Get(target)
 		if original == nil {
 			kind := target.Mapping.GroupVersionKind.Kind
-			return fmt.Errorf("original object %s with the name %q not found", kind, target.Name)
+
+			slog.Warn("resource exists on cluster but not in original release, using cluster state as baseline",
+				"namespace", target.Namespace, "name", target.Name, "kind", kind)
+
+			currentObj, err := helper.Get(target.Namespace, target.Name)
+			if err != nil {
+				return fmt.Errorf("original object %s with the name %q not found", kind, target.Name)
+			}
+
+			// Create a temporary Info with the current cluster state to use as "original"
+			currentInfo := &resource.Info{
+				Client:    target.Client,
+				Mapping:   target.Mapping,
+				Namespace: target.Namespace,
+				Name:      target.Name,
+				Object:    currentObj,
+			}
+
+			if err := updateApplyFunc(currentInfo, target); err != nil {
+				updateErrors = append(updateErrors, err)
+			}
+
+			// Because we check for errors later, append the info regardless
+			res.Updated = append(res.Updated, target)
+
+			return nil
 		}
 
 		if err := updateApplyFunc(original, target); err != nil {
@@ -631,7 +681,9 @@ func (c *Client) update(originals, targets ResourceList, createApplyFunc CreateA
 				slog.Any("error", err),
 			)
 			if !apierrors.IsNotFound(err) {
-				updateErrors = append(updateErrors, fmt.Errorf("failed to delete resource %s: %w", info.Name, err))
+				updateErrors = append(updateErrors, fmt.Errorf(
+					"failed to delete resource namespace=%s, name=%s, kind=%s: %w",
+					info.Namespace, info.Name, info.Mapping.GroupVersionKind.Kind, err))
 			}
 			continue
 		}
@@ -675,7 +727,7 @@ func ClientUpdateOptionThreeWayMergeForUnstructured(threeWayMergeForUnstructured
 func ClientUpdateOptionServerSideApply(serverSideApply, forceConflicts bool) ClientUpdateOption {
 	return func(o *clientUpdateOptions) error {
 		if !serverSideApply && forceConflicts {
-			return fmt.Errorf("forceConflicts enabled when serverSideApply disabled")
+			return errors.New("forceConflicts enabled when serverSideApply disabled")
 		}
 
 		o.serverSideApply = serverSideApply
@@ -759,15 +811,15 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 	}
 
 	if updateOptions.threeWayMergeForUnstructured && updateOptions.serverSideApply {
-		return &Result{}, fmt.Errorf("invalid operation: cannot use three-way merge for unstructured and server-side apply together")
+		return &Result{}, errors.New("invalid operation: cannot use three-way merge for unstructured and server-side apply together")
 	}
 
 	if updateOptions.forceConflicts && updateOptions.forceReplace {
-		return &Result{}, fmt.Errorf("invalid operation: cannot use force conflicts and force replace together")
+		return &Result{}, errors.New("invalid operation: cannot use force conflicts and force replace together")
 	}
 
 	if updateOptions.serverSideApply && updateOptions.forceReplace {
-		return &Result{}, fmt.Errorf("invalid operation: cannot use server-side apply and force replace together")
+		return &Result{}, errors.New("invalid operation: cannot use server-side apply and force replace together")
 	}
 
 	createApplyFunc := c.makeCreateApplyFunc(
@@ -1189,7 +1241,7 @@ func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts 
 			return fmt.Errorf("conflict occurred while applying object %s/%s %s: %w", target.Namespace, target.Name, target.Mapping.GroupVersionKind.String(), err)
 		}
 
-		return err
+		return fmt.Errorf("server-side apply failed for object %s/%s %s: %w", target.Namespace, target.Name, target.Mapping.GroupVersionKind.String(), err)
 	}
 
 	return target.Refresh(obj, true)

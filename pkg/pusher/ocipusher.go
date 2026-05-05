@@ -76,7 +76,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	}
 
 	var pushOpts []registry.PushOption
-	provRef := fmt.Sprintf("%s.prov", chartRef)
+	provRef := chartRef + ".prov"
 	if _, err := os.Stat(provRef); err == nil {
 		provBytes, err := os.ReadFile(provRef)
 		if err != nil {
@@ -86,7 +86,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	}
 
 	ref := fmt.Sprintf("%s:%s",
-		path.Join(strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme)), meta.Metadata.Name),
+		path.Join(strings.TrimPrefix(href, registry.OCIScheme+"://"), meta.Metadata.Name),
 		meta.Metadata.Version)
 
 	// The time the chart was "created" is semantically the time the chart archive file was last written(modified)

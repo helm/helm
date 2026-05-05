@@ -56,7 +56,7 @@ type Interface interface {
 	// IsReachable checks whether the client is able to connect to the cluster.
 	IsReachable() error
 
-	// Get Waiter gets the Kube.Waiter
+	// GetWaiter gets the Kube.Waiter.
 	GetWaiter(ws WaitStrategy) (Waiter, error)
 
 	// GetPodList lists all pods that match the specified listOptions
@@ -99,3 +99,14 @@ type Waiter interface {
 	// error.
 	WatchUntilReady(resources ResourceList, timeout time.Duration) error
 }
+
+// InterfaceWaitOptions defines an interface that extends Interface with
+// methods that accept wait options.
+//
+// TODO Helm 5: Remove InterfaceWaitOptions and integrate its method(s) into the Interface.
+type InterfaceWaitOptions interface {
+	// GetWaiter gets the Kube.Waiter with options.
+	GetWaiterWithOptions(ws WaitStrategy, opts ...WaitOption) (Waiter, error)
+}
+
+var _ InterfaceWaitOptions = (*Client)(nil)

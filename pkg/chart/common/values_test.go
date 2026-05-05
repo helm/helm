@@ -113,7 +113,7 @@ chapter:
 	}
 
 	if _, err := d.Table("title"); err == nil {
-		t.Fatalf("Title is not a table.")
+		t.Fatal("Title is not a table.")
 	}
 
 	if _, err := d.Table("chapter"); err != nil {
@@ -131,11 +131,11 @@ chapter:
 	}
 
 	if _, err := d.Table("chapter.OneHundredThirtySix"); err == nil {
-		t.Errorf("I think you mean 'Epilogue'")
+		t.Error("I think you mean 'Epilogue'")
 	}
 }
 
-func matchValues(t *testing.T, data map[string]interface{}) {
+func matchValues(t *testing.T, data map[string]any) {
 	t.Helper()
 	if data["poet"] != "Coleridge" {
 		t.Errorf("Unexpected poet: %s", data["poet"])
@@ -150,17 +150,17 @@ func matchValues(t *testing.T, data map[string]interface{}) {
 	if o, err := ttpl("{{.mariner.shot}}", data); err != nil {
 		t.Errorf(".mariner.shot: %s", err)
 	} else if o != "ALBATROSS" {
-		t.Errorf("Expected that mariner shot ALBATROSS")
+		t.Error("Expected that mariner shot ALBATROSS")
 	}
 
 	if o, err := ttpl("{{.water.water.where}}", data); err != nil {
 		t.Errorf(".water.water.where: %s", err)
 	} else if o != "everywhere" {
-		t.Errorf("Expected water water everywhere")
+		t.Error("Expected water water everywhere")
 	}
 }
 
-func ttpl(tpl string, v map[string]interface{}) (string, error) {
+func ttpl(tpl string, v map[string]any) (string, error) {
 	var b bytes.Buffer
 	tt := template.Must(template.New("t").Parse(tpl))
 	err := tt.Execute(&b, v)
@@ -199,7 +199,7 @@ chapter:
 	}
 	if v, err := d.PathValue("title"); err == nil {
 		if v != "Moby Dick" {
-			t.Errorf("Failed to return values for root key title")
+			t.Error("Failed to return values for root key title")
 		}
 	}
 }

@@ -19,8 +19,16 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Masterminds/semver/v3"
+
 	"helm.sh/helm/v4/internal/plugin/schema"
 )
+
+// isValidSemver checks if the given string is a valid semantic version
+func isValidSemver(v string) bool {
+	_, err := semver.StrictNewVersion(v)
+	return err == nil
+}
 
 // Metadata of a plugin, converted from the "on-disk" legacy or v1 plugin.yaml
 // Specifically, Config and RuntimeConfig are converted to their respective types based on the plugin type and runtime
@@ -57,24 +65,29 @@ func (m Metadata) Validate() error {
 		errs = append(errs, fmt.Errorf("invalid plugin name %q: must contain only a-z, A-Z, 0-9, _ and -", m.Name))
 	}
 
+	// Require version to be valid semver if specified
+	if m.Version != "" && !isValidSemver(m.Version) {
+		errs = append(errs, fmt.Errorf("invalid plugin version %q: must be valid semver", m.Version))
+	}
+
 	if m.APIVersion == "" {
-		errs = append(errs, fmt.Errorf("empty APIVersion"))
+		errs = append(errs, errors.New("empty APIVersion"))
 	}
 
 	if m.Type == "" {
-		errs = append(errs, fmt.Errorf("empty type field"))
+		errs = append(errs, errors.New("empty type field"))
 	}
 
 	if m.Runtime == "" {
-		errs = append(errs, fmt.Errorf("empty runtime field"))
+		errs = append(errs, errors.New("empty runtime field"))
 	}
 
 	if m.Config == nil {
-		errs = append(errs, fmt.Errorf("missing config field"))
+		errs = append(errs, errors.New("missing config field"))
 	}
 
 	if m.RuntimeConfig == nil {
-		errs = append(errs, fmt.Errorf("missing runtimeConfig field"))
+		errs = append(errs, errors.New("missing runtimeConfig field"))
 	}
 
 	// Validate the config itself

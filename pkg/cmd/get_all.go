@@ -53,7 +53,7 @@ func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 			if template != "" {
-				data := map[string]interface{}{
+				data := map[string]any{
 					"Release": res,
 				}
 				return tpl(template, data, out)

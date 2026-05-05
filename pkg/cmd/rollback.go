@@ -61,7 +61,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if len(args) > 1 {
 				ver, err := strconv.Atoi(args[1])
 				if err != nil {
-					return fmt.Errorf("could not convert revision to a number: %v", err)
+					return fmt.Errorf("could not convert revision to a number: %w", err)
 				}
 				client.Version = ver
 			}
@@ -76,7 +76,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintf(out, "Rollback was a success! Happy Helming!\n")
+			fmt.Fprint(out, "Rollback was a success! Happy Helming!\n")
 			return nil
 		},
 	}

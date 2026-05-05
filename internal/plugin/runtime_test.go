@@ -56,7 +56,7 @@ func TestParseEnv(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result := parseEnv(tc.env)
+			result := ParseEnv(tc.env)
 			assert.Equal(t, tc.expected, result)
 		})
 	}
@@ -93,7 +93,7 @@ func TestFormatEnv(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result := formatEnv(tc.env)
+			result := FormatEnv(tc.env)
 			assert.ElementsMatch(t, tc.expected, result)
 		})
 	}

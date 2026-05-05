@@ -17,6 +17,7 @@ package downloader
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -85,5 +86,5 @@ func (c *DiskCache) Put(key [sha256.Size]byte, data io.Reader, cacheType string)
 // fileName generates the filename in a structured manner where the first part is the
 // directory and the full hash is the filename.
 func (c *DiskCache) fileName(id [sha256.Size]byte, cacheType string) string {
-	return filepath.Join(c.Root, fmt.Sprintf("%02x", id[0]), fmt.Sprintf("%x", id)+cacheType)
+	return filepath.Join(c.Root, fmt.Sprintf("%02x", id[0]), hex.EncodeToString(id[:])+cacheType)
 }

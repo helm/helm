@@ -82,7 +82,7 @@ func mockSubprocessCLIPlugin(t *testing.T, pluginName string) *SubprocessPluginR
 	return &SubprocessPluginRuntime{
 		metadata: Metadata{
 			Name:       pluginName,
-			Version:    "v0.1.2",
+			Version:    "0.1.2",
 			Type:       "cli/v1",
 			APIVersion: "v1",
 			Runtime:    "subprocess",

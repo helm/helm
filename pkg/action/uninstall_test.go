@@ -116,7 +116,7 @@ func TestUninstallRelease_Wait(t *testing.T) {
 	}`
 	require.NoError(t, unAction.cfg.Releases.Create(rel))
 	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitForDeleteError = fmt.Errorf("U timed out")
+	failer.WaitForDeleteError = errors.New("U timed out")
 	unAction.cfg.KubeClient = failer
 	resi, err := unAction.Run(rel.Name)
 	is.Error(err)
@@ -153,7 +153,7 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	// Create dummy resources with Mapping but no Client - this skips ownership verification
 	// (nil Client is treated as owned) and goes directly to delete
 	dummyResources := kube.ResourceList{
-		newDeploymentResource("secret", ""),
+		newDeploymentResource("secret", "", ""),
 	}
 
 	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)

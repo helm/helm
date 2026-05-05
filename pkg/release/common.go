@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	v2release "helm.sh/helm/v4/internal/release/v2"
 	"helm.sh/helm/v4/pkg/chart"
 	v1release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -35,6 +36,10 @@ func newDefaultAccessor(rel Releaser) (Accessor, error) {
 		return &v1Accessor{&v}, nil
 	case *v1release.Release:
 		return &v1Accessor{v}, nil
+	case v2release.Release:
+		return &v2Accessor{&v}, nil
+	case *v2release.Release:
+		return &v2Accessor{v}, nil
 	default:
 		return nil, fmt.Errorf("unsupported release type: %T", rel)
 	}
@@ -46,6 +51,10 @@ func newDefaultHookAccessor(hook Hook) (HookAccessor, error) {
 		return &v1HookAccessor{&h}, nil
 	case *v1release.Hook:
 		return &v1HookAccessor{h}, nil
+	case v2release.Hook:
+		return &v2HookAccessor{&h}, nil
+	case *v2release.Hook:
+		return &v2HookAccessor{h}, nil
 	default:
 		return nil, errors.New("unsupported release hook type")
 	}
@@ -112,5 +121,69 @@ func (a *v1HookAccessor) Path() string {
 }
 
 func (a *v1HookAccessor) Manifest() string {
+	return a.hook.Manifest
+}
+
+type v2Accessor struct {
+	rel *v2release.Release
+}
+
+func (a *v2Accessor) Name() string {
+	return a.rel.Name
+}
+
+func (a *v2Accessor) Namespace() string {
+	return a.rel.Namespace
+}
+
+func (a *v2Accessor) Version() int {
+	return a.rel.Version
+}
+
+func (a *v2Accessor) Hooks() []Hook {
+	var hooks = make([]Hook, len(a.rel.Hooks))
+	for i, h := range a.rel.Hooks {
+		hooks[i] = h
+	}
+	return hooks
+}
+
+func (a *v2Accessor) Manifest() string {
+	return a.rel.Manifest
+}
+
+func (a *v2Accessor) Notes() string {
+	return a.rel.Info.Notes
+}
+
+func (a *v2Accessor) Labels() map[string]string {
+	return a.rel.Labels
+}
+
+func (a *v2Accessor) Chart() chart.Charter {
+	return a.rel.Chart
+}
+
+func (a *v2Accessor) Status() string {
+	return a.rel.Info.Status.String()
+}
+
+func (a *v2Accessor) ApplyMethod() string {
+	return a.rel.ApplyMethod
+}
+
+func (a *v2Accessor) DeployedAt() time.Time {
+	return a.rel.Info.LastDeployed
+}
+
+type v2HookAccessor struct {
+	hook *v2release.Hook
+}
+
+func (a *v2HookAccessor) Path() string {
+	return a.hook.Path
+}
+
+func (a *v2HookAccessor) Manifest() string {
 	return a.hook.Manifest
 }

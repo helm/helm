@@ -14,15 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube // import "helm.sh/helm/v3/pkg/kube"
+package kube
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/engine"
+	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/event"
+	"github.com/fluxcd/cli-utils/pkg/kstatus/status"
+	"github.com/fluxcd/cli-utils/pkg/object"
 	"github.com/fluxcd/cli-utils/pkg/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -95,8 +102,25 @@ status:
    succeeded: 1
    active: 0
    conditions:
-    - type: Complete 
+    - type: Complete
       status: "True"
+`
+
+var jobFailedManifest = `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: failed-job
+  namespace: default
+  generation: 1
+status:
+  failed: 1
+  active: 0
+  conditions:
+  - type: Failed
+    status: "True"
+    reason: BackoffLimitExceeded
+    message: "Job has reached the specified backoff limit"
 `
 
 var podCompleteManifest = `
@@ -247,7 +271,7 @@ func getRuntimeObjFromManifests(t *testing.T, manifests []string) []runtime.Obje
 	t.Helper()
 	objects := []runtime.Object{}
 	for _, manifest := range manifests {
-		m := make(map[string]interface{})
+		m := make(map[string]any)
 		err := yaml.Unmarshal([]byte(manifest), &m)
 		assert.NoError(t, err)
 		resource := &unstructured.Unstructured{Object: m}
@@ -273,7 +297,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 		name              string
 		manifestsToCreate []string
 		manifestsToDelete []string
-		expectErrs        []error
+		expectErrs        []string
 	}{
 		{
 			name:              "wait for pod to be deleted",
@@ -285,7 +309,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 			name:              "error when not all objects are deleted",
 			manifestsToCreate: []string{jobCompleteManifest, podCurrentManifest},
 			manifestsToDelete: []string{jobCompleteManifest},
-			expectErrs:        []error{errors.New("resource still exists, name: current-pod, kind: Pod, status: Current"), errors.New("context deadline exceeded")},
+			expectErrs:        []string{"resource Pod/ns/current-pod still exists. status: Current", "context deadline exceeded"},
 		},
 	}
 	for _, tt := range tests {
@@ -303,6 +327,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 				restMapper: fakeMapper,
 				client:     fakeClient,
 			}
+			statusWaiter.SetLogger(slog.Default().Handler())
 			objsToCreate := getRuntimeObjFromManifests(t, tt.manifestsToCreate)
 			for _, objToCreate := range objsToCreate {
 				u := objToCreate.(*unstructured.Unstructured)
@@ -323,7 +348,10 @@ func TestStatusWaitForDelete(t *testing.T) {
 			resourceList := getResourceListFromRuntimeObjs(t, c, objsToCreate)
 			err := statusWaiter.WaitForDelete(resourceList, timeout)
 			if tt.expectErrs != nil {
-				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
 				return
 			}
 			assert.NoError(t, err)
@@ -343,6 +371,7 @@ func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 		restMapper: fakeMapper,
 		client:     fakeClient,
 	}
+	statusWaiter.SetLogger(slog.Default().Handler())
 	// Don't create the object to test that the wait for delete works when the object doesn't exist
 	objManifest := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
 	resourceList := getResourceListFromRuntimeObjs(t, c, objManifest)
@@ -353,37 +382,35 @@ func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 func TestStatusWait(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name         string
-		objManifests []string
-		expectErrs   []error
-		waitForJobs  bool
+		name          string
+		objManifests  []string
+		expectErrStrs []string
+		waitForJobs   bool
 	}{
 		{
-			name:         "Job is not complete",
-			objManifests: []string{jobNoStatusManifest},
-			expectErrs:   []error{errors.New("resource not ready, name: test, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
-			waitForJobs:  true,
+			name:          "Job is not complete",
+			objManifests:  []string{jobNoStatusManifest},
+			expectErrStrs: []string{"resource Job/qual/test not ready. status: InProgress", "context deadline exceeded"},
+			waitForJobs:   true,
 		},
 		{
-			name:         "Job is ready but not complete",
-			objManifests: []string{jobReadyManifest},
-			expectErrs:   nil,
-			waitForJobs:  false,
+			name:          "Job is ready but not complete",
+			objManifests:  []string{jobReadyManifest},
+			expectErrStrs: nil,
+			waitForJobs:   false,
 		},
 		{
 			name:         "Pod is ready",
 			objManifests: []string{podCurrentManifest},
-			expectErrs:   nil,
 		},
 		{
-			name:         "one of the pods never becomes ready",
-			objManifests: []string{podNoStatusManifest, podCurrentManifest},
-			expectErrs:   []error{errors.New("resource not ready, name: in-progress-pod, kind: Pod, status: InProgress"), errors.New("context deadline exceeded")},
+			name:          "one of the pods never becomes ready",
+			objManifests:  []string{podNoStatusManifest, podCurrentManifest},
+			expectErrStrs: []string{"resource Pod/ns/in-progress-pod not ready. status: InProgress", "context deadline exceeded"},
 		},
 		{
 			name:         "paused deployment passes",
 			objManifests: []string{pausedDeploymentManifest},
-			expectErrs:   nil,
 		},
 	}
 
@@ -401,6 +428,7 @@ func TestStatusWait(t *testing.T) {
 				client:     fakeClient,
 				restMapper: fakeMapper,
 			}
+			statusWaiter.SetLogger(slog.Default().Handler())
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
@@ -410,8 +438,11 @@ func TestStatusWait(t *testing.T) {
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.Wait(resourceList, time.Second*3)
-			if tt.expectErrs != nil {
-				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
 				return
 			}
 			assert.NoError(t, err)
@@ -422,23 +453,23 @@ func TestStatusWait(t *testing.T) {
 func TestWaitForJobComplete(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name         string
-		objManifests []string
-		expectErrs   []error
+		name          string
+		objManifests  []string
+		expectErrStrs []string
 	}{
 		{
 			name:         "Job is complete",
 			objManifests: []string{jobCompleteManifest},
 		},
 		{
-			name:         "Job is not ready",
-			objManifests: []string{jobNoStatusManifest},
-			expectErrs:   []error{errors.New("resource not ready, name: test, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
+			name:          "Job is not ready",
+			objManifests:  []string{jobNoStatusManifest},
+			expectErrStrs: []string{"resource Job/qual/test not ready. status: InProgress", "context deadline exceeded"},
 		},
 		{
-			name:         "Job is ready but not complete",
-			objManifests: []string{jobReadyManifest},
-			expectErrs:   []error{errors.New("resource not ready, name: ready-not-complete, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
+			name:          "Job is ready but not complete",
+			objManifests:  []string{jobReadyManifest},
+			expectErrStrs: []string{"resource Job/default/ready-not-complete not ready. status: InProgress", "context deadline exceeded"},
 		},
 	}
 
@@ -454,6 +485,7 @@ func TestWaitForJobComplete(t *testing.T) {
 				client:     fakeClient,
 				restMapper: fakeMapper,
 			}
+			statusWaiter.SetLogger(slog.Default().Handler())
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
@@ -463,8 +495,11 @@ func TestWaitForJobComplete(t *testing.T) {
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WaitWithJobs(resourceList, time.Second*3)
-			if tt.expectErrs != nil {
-				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
 				return
 			}
 			assert.NoError(t, err)
@@ -475,9 +510,9 @@ func TestWaitForJobComplete(t *testing.T) {
 func TestWatchForReady(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name         string
-		objManifests []string
-		expectErrs   []error
+		name          string
+		objManifests  []string
+		expectErrStrs []string
 	}{
 		{
 			name:         "succeeds if pod and job are complete",
@@ -488,14 +523,14 @@ func TestWatchForReady(t *testing.T) {
 			objManifests: []string{notReadyDeploymentManifest},
 		},
 		{
-			name:         "Fails if job is not complete",
-			objManifests: []string{jobReadyManifest},
-			expectErrs:   []error{errors.New("resource not ready, name: ready-not-complete, kind: Job, status: InProgress"), errors.New("context deadline exceeded")},
+			name:          "Fails if job is not complete",
+			objManifests:  []string{jobReadyManifest},
+			expectErrStrs: []string{"resource Job/default/ready-not-complete not ready. status: InProgress", "context deadline exceeded"},
 		},
 		{
-			name:         "Fails if pod is not complete",
-			objManifests: []string{podCurrentManifest},
-			expectErrs:   []error{errors.New("resource not ready, name: current-pod, kind: Pod, status: InProgress"), errors.New("context deadline exceeded")},
+			name:          "Fails if pod is not complete",
+			objManifests:  []string{podCurrentManifest},
+			expectErrStrs: []string{"resource Pod/ns/current-pod not ready. status: InProgress", "context deadline exceeded"},
 		},
 	}
 
@@ -513,6 +548,7 @@ func TestWatchForReady(t *testing.T) {
 				client:     fakeClient,
 				restMapper: fakeMapper,
 			}
+			statusWaiter.SetLogger(slog.Default().Handler())
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
@@ -522,8 +558,11 @@ func TestWatchForReady(t *testing.T) {
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WatchUntilReady(resourceList, time.Second*3)
-			if tt.expectErrs != nil {
-				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
 				return
 			}
 			assert.NoError(t, err)
@@ -534,65 +573,65 @@ func TestWatchForReady(t *testing.T) {
 func TestStatusWaitMultipleNamespaces(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name         string
-		objManifests []string
-		expectErrs   []error
-		testFunc     func(statusWaiter, ResourceList, time.Duration) error
+		name          string
+		objManifests  []string
+		expectErrStrs []string
+		testFunc      func(*statusWaiter, ResourceList, time.Duration) error
 	}{
 		{
 			name:         "pods in multiple namespaces",
 			objManifests: []string{podNamespace1Manifest, podNamespace2Manifest},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
 		{
 			name:         "hooks in multiple namespaces",
 			objManifests: []string{jobNamespace1CompleteManifest, podNamespace2SucceededManifest},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WatchUntilReady(rl, timeout)
 			},
 		},
 		{
-			name:         "error when resource not ready in one namespace",
-			objManifests: []string{podNamespace1NoStatusManifest, podNamespace2Manifest},
-			expectErrs:   []error{errors.New("resource not ready, name: pod-ns1, kind: Pod, status: InProgress"), errors.New("context deadline exceeded")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			name:          "error when resource not ready in one namespace",
+			objManifests:  []string{podNamespace1NoStatusManifest, podNamespace2Manifest},
+			expectErrStrs: []string{"resource Pod/namespace-1/pod-ns1 not ready. status: InProgress", "context deadline exceeded"},
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
 		{
 			name:         "delete resources in multiple namespaces",
 			objManifests: []string{podNamespace1Manifest, podNamespace2Manifest},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WaitForDelete(rl, timeout)
 			},
 		},
 		{
 			name:         "cluster-scoped resources work correctly with unrestricted permissions",
 			objManifests: []string{podNamespace1Manifest, clusterRoleManifest},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
 		{
 			name:         "namespace-scoped and cluster-scoped resources work together",
 			objManifests: []string{podNamespace1Manifest, podNamespace2Manifest, clusterRoleManifest},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
 		{
 			name:         "delete cluster-scoped resources works correctly",
 			objManifests: []string{podNamespace1Manifest, namespaceManifest},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WaitForDelete(rl, timeout)
 			},
 		},
 		{
 			name:         "watch cluster-scoped resources works correctly",
 			objManifests: []string{clusterRoleManifest},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WatchUntilReady(rl, timeout)
 			},
 		},
@@ -613,6 +652,7 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 				client:     fakeClient,
 				restMapper: fakeMapper,
 			}
+			sw.SetLogger(slog.Default().Handler())
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
@@ -635,9 +675,12 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 			}
 
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
-			err := tt.testFunc(sw, resourceList, time.Second*3)
-			if tt.expectErrs != nil {
-				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+			err := tt.testFunc(&sw, resourceList, time.Second*3)
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
 				return
 			}
 			assert.NoError(t, err)
@@ -672,7 +715,7 @@ func setupRestrictedClient(fakeClient *dynamicfake.FakeDynamicClient, allowedNam
 			return true, nil, apierrors.NewForbidden(
 				action.GetResource().GroupResource(),
 				"",
-				fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources"),
+				errors.New("user does not have cluster-wide LIST permissions for cluster-scoped resources"),
 			)
 		}
 		if !config.allowedNamespaces[ns] {
@@ -696,7 +739,7 @@ func setupRestrictedClient(fakeClient *dynamicfake.FakeDynamicClient, allowedNam
 			return true, nil, apierrors.NewForbidden(
 				action.GetResource().GroupResource(),
 				"",
-				fmt.Errorf("user does not have cluster-wide WATCH permissions for cluster-scoped resources"),
+				errors.New("user does not have cluster-wide WATCH permissions for cluster-scoped resources"),
 			)
 		}
 		if !config.allowedNamespaces[ns] {
@@ -720,13 +763,13 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 		objManifests      []string
 		allowedNamespaces []string
 		expectErrs        []error
-		testFunc          func(statusWaiter, ResourceList, time.Duration) error
+		testFunc          func(*statusWaiter, ResourceList, time.Duration) error
 	}{
 		{
 			name:              "pods in multiple namespaces with namespace permissions",
 			objManifests:      []string{podNamespace1Manifest, podNamespace2Manifest},
 			allowedNamespaces: []string{"namespace-1", "namespace-2"},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -734,7 +777,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			name:              "delete pods in multiple namespaces with namespace permissions",
 			objManifests:      []string{podNamespace1Manifest, podNamespace2Manifest},
 			allowedNamespaces: []string{"namespace-1", "namespace-2"},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WaitForDelete(rl, timeout)
 			},
 		},
@@ -742,7 +785,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			name:              "hooks in multiple namespaces with namespace permissions",
 			objManifests:      []string{jobNamespace1CompleteManifest, podNamespace2SucceededManifest},
 			allowedNamespaces: []string{"namespace-1", "namespace-2"},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WatchUntilReady(rl, timeout)
 			},
 		},
@@ -750,8 +793,8 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			name:              "error when cluster-scoped resource included",
 			objManifests:      []string{podNamespace1Manifest, clusterRoleManifest},
 			allowedNamespaces: []string{"namespace-1"},
-			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			expectErrs:        []error{errors.New("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -759,8 +802,8 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			name:              "error when deleting cluster-scoped resource",
 			objManifests:      []string{podNamespace1Manifest, namespaceManifest},
 			allowedNamespaces: []string{"namespace-1"},
-			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			expectErrs:        []error{errors.New("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WaitForDelete(rl, timeout)
 			},
 		},
@@ -769,7 +812,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			objManifests:      []string{podNamespace1Manifest, podNamespace2Manifest},
 			allowedNamespaces: []string{"namespace-1"},
 			expectErrs:        []error{fmt.Errorf("user does not have LIST permissions in namespace %q", "namespace-2")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -791,6 +834,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 				client:     baseFakeClient,
 				restMapper: fakeMapper,
 			}
+			sw.SetLogger(slog.Default().Handler())
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
@@ -813,7 +857,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			}
 
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
-			err := tt.testFunc(sw, resourceList, time.Second*3)
+			err := tt.testFunc(&sw, resourceList, time.Second*3)
 			if tt.expectErrs != nil {
 				require.Error(t, err)
 				for _, expectedErr := range tt.expectErrs {
@@ -834,13 +878,13 @@ func TestStatusWaitMixedResources(t *testing.T) {
 		objManifests      []string
 		allowedNamespaces []string
 		expectErrs        []error
-		testFunc          func(statusWaiter, ResourceList, time.Duration) error
+		testFunc          func(*statusWaiter, ResourceList, time.Duration) error
 	}{
 		{
 			name:              "wait succeeds with namespace-scoped resources only",
 			objManifests:      []string{podNamespace1Manifest, podNamespace2Manifest},
 			allowedNamespaces: []string{"namespace-1", "namespace-2"},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -848,8 +892,8 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			name:              "wait fails when cluster-scoped resource included",
 			objManifests:      []string{podNamespace1Manifest, clusterRoleManifest},
 			allowedNamespaces: []string{"namespace-1"},
-			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			expectErrs:        []error{errors.New("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -857,8 +901,8 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			name:              "waitForDelete fails when cluster-scoped resource included",
 			objManifests:      []string{podNamespace1Manifest, clusterRoleManifest},
 			allowedNamespaces: []string{"namespace-1"},
-			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			expectErrs:        []error{errors.New("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.WaitForDelete(rl, timeout)
 			},
 		},
@@ -866,8 +910,8 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			name:              "wait fails when namespace resource included",
 			objManifests:      []string{podNamespace1Manifest, namespaceManifest},
 			allowedNamespaces: []string{"namespace-1"},
-			expectErrs:        []error{fmt.Errorf("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			expectErrs:        []error{errors.New("user does not have cluster-wide LIST permissions for cluster-scoped resources")},
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -876,7 +920,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			objManifests:      []string{podNamespace1Manifest, podNamespace2Manifest},
 			allowedNamespaces: []string{"namespace-1"},
 			expectErrs:        []error{fmt.Errorf("user does not have LIST permissions in namespace %q", "namespace-2")},
-			testFunc: func(sw statusWaiter, rl ResourceList, timeout time.Duration) error {
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
 				return sw.Wait(rl, timeout)
 			},
 		},
@@ -898,6 +942,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 				client:     baseFakeClient,
 				restMapper: fakeMapper,
 			}
+			sw.SetLogger(slog.Default().Handler())
 			objs := getRuntimeObjFromManifests(t, tt.objManifests)
 			for _, obj := range objs {
 				u := obj.(*unstructured.Unstructured)
@@ -920,7 +965,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			}
 
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
-			err := tt.testFunc(sw, resourceList, time.Second*3)
+			err := tt.testFunc(&sw, resourceList, time.Second*3)
 			if tt.expectErrs != nil {
 				require.Error(t, err)
 				for _, expectedErr := range tt.expectErrs {
@@ -930,6 +975,831 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			}
 			assert.NoError(t, err)
 			assert.False(t, restrictedConfig.clusterScopedListAttempted)
+		})
+	}
+}
+
+// mockStatusReader is a custom status reader for testing that tracks when it's used
+// and returns a configurable status for resources it supports.
+type mockStatusReader struct {
+	supportedGK schema.GroupKind
+	status      status.Status
+	callCount   atomic.Int32
+}
+
+func (m *mockStatusReader) Supports(gk schema.GroupKind) bool {
+	return gk == m.supportedGK
+}
+
+func (m *mockStatusReader) ReadStatus(_ context.Context, _ engine.ClusterReader, id object.ObjMetadata) (*event.ResourceStatus, error) {
+	m.callCount.Add(1)
+	return &event.ResourceStatus{
+		Identifier: id,
+		Status:     m.status,
+		Message:    "mock status reader",
+	}, nil
+}
+
+func (m *mockStatusReader) ReadStatusForObject(_ context.Context, _ engine.ClusterReader, u *unstructured.Unstructured) (*event.ResourceStatus, error) {
+	m.callCount.Add(1)
+	id := object.ObjMetadata{
+		Namespace: u.GetNamespace(),
+		Name:      u.GetName(),
+		GroupKind: u.GroupVersionKind().GroupKind(),
+	}
+	return &event.ResourceStatus{
+		Identifier: id,
+		Status:     m.status,
+		Message:    "mock status reader",
+	}, nil
+}
+
+func TestStatusWaitWithCustomReaders(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		objManifests  []string
+		customReader  *mockStatusReader
+		expectErrStrs []string
+	}{
+		{
+			name:         "custom reader makes pod immediately current",
+			objManifests: []string{podNoStatusManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.CurrentStatus,
+			},
+		},
+		{
+			name:         "custom reader returns in-progress status",
+			objManifests: []string{podCurrentManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.InProgressStatus,
+			},
+			expectErrStrs: []string{"resource Pod/ns/current-pod not ready. status: InProgress", "context deadline exceeded"},
+		},
+		{
+			name:         "custom reader for different resource type is not used",
+			objManifests: []string{podCurrentManifest},
+			customReader: &mockStatusReader{
+				supportedGK: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
+				status:      status.InProgressStatus,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				v1.SchemeGroupVersion.WithKind("Pod"),
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+			)
+			statusWaiter := statusWaiter{
+				client:     fakeClient,
+				restMapper: fakeMapper,
+				readers:    []engine.StatusReader{tt.customReader},
+			}
+			objs := getRuntimeObjFromManifests(t, tt.objManifests)
+			for _, obj := range objs {
+				u := obj.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+				assert.NoError(t, err)
+			}
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+			err := statusWaiter.Wait(resourceList, time.Second*3)
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestStatusWaitWithJobsAndCustomReaders(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		objManifests []string
+		customReader *mockStatusReader
+		expectErrs   []error
+	}{
+		{
+			name:         "custom reader makes job immediately current",
+			objManifests: []string{jobNoStatusManifest},
+			customReader: &mockStatusReader{
+				supportedGK: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
+				status:      status.CurrentStatus,
+			},
+			expectErrs: nil,
+		},
+		{
+			name:         "custom reader for pod works with WaitWithJobs",
+			objManifests: []string{podNoStatusManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.CurrentStatus,
+			},
+			expectErrs: nil,
+		},
+		{
+			name:         "built-in job reader is still appended after custom readers",
+			objManifests: []string{jobCompleteManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.CurrentStatus,
+			},
+			expectErrs: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				v1.SchemeGroupVersion.WithKind("Pod"),
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+			)
+			statusWaiter := statusWaiter{
+				client:     fakeClient,
+				restMapper: fakeMapper,
+				readers:    []engine.StatusReader{tt.customReader},
+			}
+			objs := getRuntimeObjFromManifests(t, tt.objManifests)
+			for _, obj := range objs {
+				u := obj.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+				assert.NoError(t, err)
+			}
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+			err := statusWaiter.WaitWithJobs(resourceList, time.Second*3)
+			if tt.expectErrs != nil {
+				assert.EqualError(t, err, errors.Join(tt.expectErrs...).Error())
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestStatusWaitWithFailedResources(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		objManifests  []string
+		customReader  *mockStatusReader
+		expectErrStrs []string
+		testFunc      func(*statusWaiter, ResourceList, time.Duration) error
+	}{
+		{
+			name:         "Wait returns error when resource has failed",
+			objManifests: []string{podNoStatusManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.FailedStatus,
+			},
+			expectErrStrs: []string{"resource Pod/ns/in-progress-pod not ready. status: Failed, message: mock status reader"},
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.Wait(rl, timeout)
+			},
+		},
+		{
+			name:         "WaitWithJobs returns error when job has failed",
+			objManifests: []string{jobFailedManifest},
+			customReader: nil, // Use the built-in job status reader
+			expectErrStrs: []string{
+				"resource Job/default/failed-job not ready. status: Failed",
+			},
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.WaitWithJobs(rl, timeout)
+			},
+		},
+		{
+			name:         "Wait returns errors when multiple resources fail",
+			objManifests: []string{podNoStatusManifest, podCurrentManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.FailedStatus,
+			},
+			// The mock reader will make both pods return FailedStatus
+			expectErrStrs: []string{
+				"resource Pod/ns/in-progress-pod not ready. status: Failed, message: mock status reader",
+				"resource Pod/ns/current-pod not ready. status: Failed, message: mock status reader",
+			},
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.Wait(rl, timeout)
+			},
+		},
+		{
+			name:         "WatchUntilReady returns error when resource has failed",
+			objManifests: []string{podNoStatusManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.FailedStatus,
+			},
+			// WatchUntilReady also waits for CurrentStatus, so failed resources should return error
+			expectErrStrs: []string{"resource Pod/ns/in-progress-pod not ready. status: Failed, message: mock status reader"},
+			testFunc: func(sw *statusWaiter, rl ResourceList, timeout time.Duration) error {
+				return sw.WatchUntilReady(rl, timeout)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				v1.SchemeGroupVersion.WithKind("Pod"),
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+			)
+			var readers []engine.StatusReader
+			if tt.customReader != nil {
+				readers = []engine.StatusReader{tt.customReader}
+			}
+			sw := statusWaiter{
+				client:     fakeClient,
+				restMapper: fakeMapper,
+				readers:    readers,
+			}
+			objs := getRuntimeObjFromManifests(t, tt.objManifests)
+			for _, obj := range objs {
+				u := obj.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+				assert.NoError(t, err)
+			}
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+			err := tt.testFunc(&sw, resourceList, time.Second*3)
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestWaitOptionFunctions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("WithWatchUntilReadyMethodContext sets watchUntilReadyCtx", func(t *testing.T) {
+		t.Parallel()
+		type contextKey struct{}
+		ctx := context.WithValue(context.Background(), contextKey{}, "test")
+		opts := &waitOptions{}
+		WithWatchUntilReadyMethodContext(ctx)(opts)
+		assert.Equal(t, ctx, opts.watchUntilReadyCtx)
+	})
+
+	t.Run("WithWaitMethodContext sets waitCtx", func(t *testing.T) {
+		t.Parallel()
+		type contextKey struct{}
+		ctx := context.WithValue(context.Background(), contextKey{}, "test")
+		opts := &waitOptions{}
+		WithWaitMethodContext(ctx)(opts)
+		assert.Equal(t, ctx, opts.waitCtx)
+	})
+
+	t.Run("WithWaitWithJobsMethodContext sets waitWithJobsCtx", func(t *testing.T) {
+		t.Parallel()
+		type contextKey struct{}
+		ctx := context.WithValue(context.Background(), contextKey{}, "test")
+		opts := &waitOptions{}
+		WithWaitWithJobsMethodContext(ctx)(opts)
+		assert.Equal(t, ctx, opts.waitWithJobsCtx)
+	})
+
+	t.Run("WithWaitForDeleteMethodContext sets waitForDeleteCtx", func(t *testing.T) {
+		t.Parallel()
+		type contextKey struct{}
+		ctx := context.WithValue(context.Background(), contextKey{}, "test")
+		opts := &waitOptions{}
+		WithWaitForDeleteMethodContext(ctx)(opts)
+		assert.Equal(t, ctx, opts.waitForDeleteCtx)
+	})
+}
+
+func TestMethodSpecificContextCancellation(t *testing.T) {
+	t.Parallel()
+
+	t.Run("WatchUntilReady uses method-specific context", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// Create a cancelled method-specific context
+		methodCtx, methodCancel := context.WithCancel(context.Background())
+		methodCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:             fakeClient,
+			restMapper:         fakeMapper,
+			ctx:                context.Background(), // General context is not cancelled
+			watchUntilReadyCtx: methodCtx,            // Method context is cancelled
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCompleteManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WatchUntilReady(resourceList, time.Second*3)
+		// Should fail due to cancelled method context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+
+	t.Run("Wait uses method-specific context", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// Create a cancelled method-specific context
+		methodCtx, methodCancel := context.WithCancel(context.Background())
+		methodCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:     fakeClient,
+			restMapper: fakeMapper,
+			ctx:        context.Background(), // General context is not cancelled
+			waitCtx:    methodCtx,            // Method context is cancelled
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.Wait(resourceList, time.Second*3)
+		// Should fail due to cancelled method context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+
+	t.Run("WaitWithJobs uses method-specific context", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			batchv1.SchemeGroupVersion.WithKind("Job"),
+		)
+
+		// Create a cancelled method-specific context
+		methodCtx, methodCancel := context.WithCancel(context.Background())
+		methodCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			ctx:             context.Background(), // General context is not cancelled
+			waitWithJobsCtx: methodCtx,            // Method context is cancelled
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{jobCompleteManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WaitWithJobs(resourceList, time.Second*3)
+		// Should fail due to cancelled method context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+
+	t.Run("WaitForDelete uses method-specific context", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// Create a cancelled method-specific context
+		methodCtx, methodCancel := context.WithCancel(context.Background())
+		methodCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:           fakeClient,
+			restMapper:       fakeMapper,
+			ctx:              context.Background(), // General context is not cancelled
+			waitForDeleteCtx: methodCtx,            // Method context is cancelled
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WaitForDelete(resourceList, time.Second*3)
+		// Should fail due to cancelled method context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+}
+
+func TestMethodContextFallbackToGeneralContext(t *testing.T) {
+	t.Parallel()
+
+	t.Run("WatchUntilReady falls back to general context when method context is nil", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// Create a cancelled general context
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:             fakeClient,
+			restMapper:         fakeMapper,
+			ctx:                generalCtx, // General context is cancelled
+			watchUntilReadyCtx: nil,        // Method context is nil, should fall back
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCompleteManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WatchUntilReady(resourceList, time.Second*3)
+		// Should fail due to cancelled general context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+
+	t.Run("Wait falls back to general context when method context is nil", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// Create a cancelled general context
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:     fakeClient,
+			restMapper: fakeMapper,
+			ctx:        generalCtx, // General context is cancelled
+			waitCtx:    nil,        // Method context is nil, should fall back
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.Wait(resourceList, time.Second*3)
+		// Should fail due to cancelled general context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+
+	t.Run("WaitWithJobs falls back to general context when method context is nil", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			batchv1.SchemeGroupVersion.WithKind("Job"),
+		)
+
+		// Create a cancelled general context
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			ctx:             generalCtx, // General context is cancelled
+			waitWithJobsCtx: nil,        // Method context is nil, should fall back
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{jobCompleteManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WaitWithJobs(resourceList, time.Second*3)
+		// Should fail due to cancelled general context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+
+	t.Run("WaitForDelete falls back to general context when method context is nil", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// Create a cancelled general context
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel() // Cancel immediately
+
+		sw := statusWaiter{
+			client:           fakeClient,
+			restMapper:       fakeMapper,
+			ctx:              generalCtx, // General context is cancelled
+			waitForDeleteCtx: nil,        // Method context is nil, should fall back
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WaitForDelete(resourceList, time.Second*3)
+		// Should fail due to cancelled general context
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "context canceled")
+	})
+}
+
+func TestMethodContextOverridesGeneralContext(t *testing.T) {
+	t.Parallel()
+
+	t.Run("method-specific context overrides general context for WatchUntilReady", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// General context is cancelled, but method context is not
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel()
+
+		sw := statusWaiter{
+			client:             fakeClient,
+			restMapper:         fakeMapper,
+			ctx:                generalCtx,           // Cancelled
+			watchUntilReadyCtx: context.Background(), // Not cancelled - should be used
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCompleteManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WatchUntilReady(resourceList, time.Second*3)
+		// Should succeed because method context is used and it's not cancelled
+		assert.NoError(t, err)
+	})
+
+	t.Run("method-specific context overrides general context for Wait", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// General context is cancelled, but method context is not
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel()
+
+		sw := statusWaiter{
+			client:     fakeClient,
+			restMapper: fakeMapper,
+			ctx:        generalCtx,           // Cancelled
+			waitCtx:    context.Background(), // Not cancelled - should be used
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.Wait(resourceList, time.Second*3)
+		// Should succeed because method context is used and it's not cancelled
+		assert.NoError(t, err)
+	})
+
+	t.Run("method-specific context overrides general context for WaitWithJobs", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			batchv1.SchemeGroupVersion.WithKind("Job"),
+		)
+
+		// General context is cancelled, but method context is not
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel()
+
+		sw := statusWaiter{
+			client:          fakeClient,
+			restMapper:      fakeMapper,
+			ctx:             generalCtx,           // Cancelled
+			waitWithJobsCtx: context.Background(), // Not cancelled - should be used
+		}
+
+		objs := getRuntimeObjFromManifests(t, []string{jobCompleteManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+			require.NoError(t, err)
+		}
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+		err := sw.WaitWithJobs(resourceList, time.Second*3)
+		// Should succeed because method context is used and it's not cancelled
+		assert.NoError(t, err)
+	})
+
+	t.Run("method-specific context overrides general context for WaitForDelete", func(t *testing.T) {
+		t.Parallel()
+		c := newTestClient(t)
+		fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+		fakeMapper := testutil.NewFakeRESTMapper(
+			v1.SchemeGroupVersion.WithKind("Pod"),
+		)
+
+		// General context is cancelled, but method context is not
+		generalCtx, generalCancel := context.WithCancel(context.Background())
+		generalCancel()
+
+		sw := statusWaiter{
+			client:           fakeClient,
+			restMapper:       fakeMapper,
+			ctx:              generalCtx,           // Cancelled
+			waitForDeleteCtx: context.Background(), // Not cancelled - should be used
+		}
+
+		// Use a non-existent resource: WaitForDelete should return immediately since
+		// the pod is already in the desired "deleted" state.
+		// This also validates context selection: if generalCtx (cancelled) were
+		// incorrectly used instead of waitForDeleteCtx, the watch context would be
+		// immediately cancelled and the call would return a context error.
+		objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+		resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+		err := sw.WaitForDelete(resourceList, time.Second)
+		// Should succeed because method context is used and it's not cancelled
+		assert.NoError(t, err)
+	})
+}
+
+func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		objManifests  []string
+		customReader  *mockStatusReader
+		expectErrStrs []string
+	}{
+		{
+			name:         "custom reader makes job immediately current for hooks",
+			objManifests: []string{jobNoStatusManifest},
+			customReader: &mockStatusReader{
+				supportedGK: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
+				status:      status.CurrentStatus,
+			},
+		},
+		{
+			name:         "custom reader makes pod immediately current for hooks",
+			objManifests: []string{podCurrentManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.CurrentStatus,
+			},
+		},
+		{
+			name:         "custom reader takes precedence over built-in pod reader",
+			objManifests: []string{podCompleteManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.InProgressStatus,
+			},
+			expectErrStrs: []string{"resource Pod/ns/good-pod not ready. status: InProgress", "context deadline exceeded"},
+		},
+		{
+			name:         "custom reader takes precedence over built-in job reader",
+			objManifests: []string{jobCompleteManifest},
+			customReader: &mockStatusReader{
+				supportedGK: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
+				status:      status.InProgressStatus,
+			},
+			expectErrStrs: []string{"resource Job/qual/test not ready. status: InProgress", "context deadline exceeded"},
+		},
+		{
+			name:         "custom reader for different resource type does not affect pods",
+			objManifests: []string{podCompleteManifest},
+			customReader: &mockStatusReader{
+				supportedGK: batchv1.SchemeGroupVersion.WithKind("Job").GroupKind(),
+				status:      status.InProgressStatus,
+			},
+		},
+		{
+			name:         "built-in readers still work when custom reader does not match",
+			objManifests: []string{jobCompleteManifest},
+			customReader: &mockStatusReader{
+				supportedGK: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				status:      status.InProgressStatus,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := newTestClient(t)
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				v1.SchemeGroupVersion.WithKind("Pod"),
+				batchv1.SchemeGroupVersion.WithKind("Job"),
+			)
+			statusWaiter := statusWaiter{
+				client:     fakeClient,
+				restMapper: fakeMapper,
+				readers:    []engine.StatusReader{tt.customReader},
+			}
+			objs := getRuntimeObjFromManifests(t, tt.objManifests)
+			for _, obj := range objs {
+				u := obj.(*unstructured.Unstructured)
+				gvr := getGVR(t, fakeMapper, u)
+				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+				assert.NoError(t, err)
+			}
+			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+			err := statusWaiter.WatchUntilReady(resourceList, time.Second*3)
+			if tt.expectErrStrs != nil {
+				require.Error(t, err)
+				for _, expectedErrStr := range tt.expectErrStrs {
+					assert.Contains(t, err.Error(), expectedErrStr)
+				}
+				return
+			}
+			assert.NoError(t, err)
 		})
 	}
 }

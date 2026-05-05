@@ -22,6 +22,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"helm.sh/helm/v4/pkg/repo/v1/repotest"
@@ -341,7 +342,7 @@ func runPullTests(t *testing.T, tests []struct {
 func buildOCIURL(registryURL, chartName, version, username, password string) string {
 	baseURL := fmt.Sprintf("oci://%s/u/ocitestuser/%s", registryURL, chartName)
 	if version != "" {
-		baseURL += fmt.Sprintf(" --version %s", version)
+		baseURL += " --version " + version
 	}
 	if username != "" && password != "" {
 		baseURL += fmt.Sprintf(" --username %s --password %s", username, password)
@@ -415,23 +416,23 @@ func TestPullVersionCompletion(t *testing.T) {
 
 	tests := []cmdTestCase{{
 		name:   "completion for pull version flag",
-		cmd:    fmt.Sprintf("%s __complete pull testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete pull testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for pull version flag, no filter",
-		cmd:    fmt.Sprintf("%s __complete pull testing/alpine --version 0.3", repoSetup),
+		cmd:    repoSetup + " __complete pull testing/alpine --version 0.3",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for pull version flag too few args",
-		cmd:    fmt.Sprintf("%s __complete pull --version ''", repoSetup),
+		cmd:    repoSetup + " __complete pull --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for pull version flag too many args",
-		cmd:    fmt.Sprintf("%s __complete pull testing/alpine badarg --version ''", repoSetup),
+		cmd:    repoSetup + " __complete pull testing/alpine badarg --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for pull version flag invalid chart",
-		cmd:    fmt.Sprintf("%s __complete pull invalid/invalid --version ''", repoSetup),
+		cmd:    repoSetup + " __complete pull invalid/invalid --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}}
 	runTestCmd(t, tests)
@@ -505,4 +506,55 @@ func TestPullWithCredentialsCmdOCIRegistry(t *testing.T) {
 func TestPullFileCompletion(t *testing.T) {
 	checkFileCompletion(t, "pull", false)
 	checkFileCompletion(t, "pull repo/chart", false)
+}
+
+// TestPullOCIWithTagAndDigest tests pulling an OCI chart with both tag and digest specified.
+// This is a regression test for https://github.com/helm/helm/issues/31600
+func TestPullOCIWithTagAndDigest(t *testing.T) {
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+	)
+	defer srv.Stop()
+
+	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := ociSrv.RunWithReturn(t)
+
+	contentCache := t.TempDir()
+	outdir := t.TempDir()
+
+	// Test: pull with tag and digest (the fixed bug from issue #31600)
+	// Previously this failed with "encoding/hex: invalid byte: U+0073 's'"
+	ref := fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart:0.1.0@%s",
+		ociSrv.RegistryURL, result.PushedChart.Manifest.Digest)
+
+	cmd := fmt.Sprintf("pull %s -d '%s' --registry-config %s --content-cache %s --plain-http",
+		ref,
+		outdir,
+		filepath.Join(srv.Root(), "config.json"),
+		contentCache,
+	)
+
+	_, _, err = executeActionCommand(cmd)
+	if err != nil {
+		t.Fatalf("pull with tag+digest failed: %v", err)
+	}
+
+	// Verify the file was downloaded
+	// When digest is present, the filename uses the digest format (e.g. chart@sha256-hex.tgz)
+	expectedFile := filepath.Join(outdir, "oci-dependent-chart-0.1.0.tgz")
+	if _, err := os.Stat(expectedFile); err != nil {
+		// Try the digest-based filename; parse algorithm:hex to avoid fixed-offset assumptions
+		algorithm, digestPart, ok := strings.Cut(result.PushedChart.Manifest.Digest, ":")
+		if !ok {
+			t.Fatalf("digest must be in algorithm:hex format, got %q", result.PushedChart.Manifest.Digest)
+		}
+		expectedFile = filepath.Join(outdir, fmt.Sprintf("oci-dependent-chart@%s-%s.tgz", algorithm, digestPart))
+		if _, err := os.Stat(expectedFile); err != nil {
+			t.Errorf("expected chart file not found: %v", err)
+		}
+	}
 }

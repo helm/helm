@@ -114,11 +114,11 @@ func TestRepoFile_Get(t *testing.T) {
 	name := "second"
 
 	entry := repo.Get(name)
-	if entry == nil { //nolint:staticcheck
+	if entry == nil {
 		t.Fatalf("Expected repo entry %q to be found", name)
 	}
 
-	if entry.URL != "https://example.com/second" { //nolint:staticcheck
+	if entry.URL != "https://example.com/second" {
 		t.Errorf("Expected repo URL to be %q but got %q", "https://example.com/second", entry.URL)
 	}
 
@@ -219,9 +219,9 @@ func TestWriteFile(t *testing.T) {
 
 func TestRepoNotExists(t *testing.T) {
 	if _, err := LoadFile("/this/path/does/not/exist.yaml"); err == nil {
-		t.Errorf("expected err to be non-nil when path does not exist")
+		t.Error("expected err to be non-nil when path does not exist")
 	} else if !strings.Contains(err.Error(), "couldn't load repositories file") {
-		t.Errorf("expected prompt `couldn't load repositories file`")
+		t.Error("expected prompt `couldn't load repositories file`")
 	}
 }
 

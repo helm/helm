@@ -89,7 +89,15 @@ func copyValue(original reflect.Value) (any, error) {
 		}
 		copied := reflect.MakeSlice(original.Type(), original.Len(), original.Cap())
 		for i := 0; i < original.Len(); i++ {
-			val, err := copyValue(original.Index(i))
+			elem := original.Index(i)
+
+			// Handle nil values in slices (e.g., interface{} elements that are nil)
+			if elem.Kind() == reflect.Interface && elem.IsNil() {
+				copied.Index(i).Set(elem)
+				continue
+			}
+
+			val, err := copyValue(elem)
 			if err != nil {
 				return nil, err
 			}

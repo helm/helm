@@ -25,6 +25,6 @@ func (v ValidationError) Error() string {
 }
 
 // ValidationErrorf takes a message and formatting options and creates a ValidationError
-func ValidationErrorf(msg string, args ...interface{}) ValidationError {
+func ValidationErrorf(msg string, args ...any) ValidationError {
 	return ValidationError(fmt.Sprintf(msg, args...))
 }

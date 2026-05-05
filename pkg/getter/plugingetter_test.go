@@ -144,3 +144,27 @@ func TestGetterPlugin(t *testing.T) {
 
 	assert.Equal(t, "fake-plugin output", buf.String())
 }
+
+func TestCollectGetterPluginsPassesEnv(t *testing.T) {
+	env := cli.New()
+	env.PluginsDirectory = pluginDir
+	env.Debug = true
+
+	providers, err := collectGetterPlugins(env)
+	require.NoError(t, err)
+	require.NotEmpty(t, providers, "expected at least one plugin provider")
+
+	getter, err := providers.ByScheme("test")
+	require.NoError(t, err)
+
+	gp, ok := getter.(*getterPlugin)
+	require.True(t, ok, "expected getter to be a *getterPlugin")
+
+	require.NotEmpty(t, gp.env, "expected env to be set on getterPlugin")
+	envMap := plugin.ParseEnv(gp.env)
+
+	assert.Contains(t, envMap, "HELM_DEBUG", "expected HELM_DEBUG in env")
+	assert.Equal(t, "true", envMap["HELM_DEBUG"], "expected HELM_DEBUG to be true")
+	assert.Contains(t, envMap, "HELM_PLUGINS", "expected HELM_PLUGINS in env")
+	assert.Equal(t, pluginDir, envMap["HELM_PLUGINS"], "expected HELM_PLUGINS to match pluginsDirectory")
+}

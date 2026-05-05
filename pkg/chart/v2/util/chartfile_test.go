@@ -35,11 +35,11 @@ func TestLoadChartfile(t *testing.T) {
 
 func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 	t.Helper()
-	if f == nil { //nolint:staticcheck
+	if f == nil {
 		t.Fatal("Failed verifyChartfile because f is nil")
 	}
 
-	if f.APIVersion != chart.APIVersionV1 { //nolint:staticcheck
+	if f.APIVersion != chart.APIVersionV1 {
 		t.Errorf("Expected API Version %q, got %q", chart.APIVersionV1, f.APIVersion)
 	}
 
@@ -60,15 +60,15 @@ func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 	}
 
 	if f.Maintainers[0].Name != "The Helm Team" {
-		t.Errorf("Unexpected maintainer name.")
+		t.Error("Unexpected maintainer name.")
 	}
 
 	if f.Maintainers[1].Email != "nobody@example.com" {
-		t.Errorf("Unexpected maintainer email.")
+		t.Error("Unexpected maintainer email.")
 	}
 
 	if len(f.Sources) != 1 {
-		t.Fatalf("Unexpected number of sources")
+		t.Fatal("Unexpected number of sources")
 	}
 
 	if f.Sources[0] != "https://example.com/foo/bar" {
@@ -88,7 +88,7 @@ func verifyChartfile(t *testing.T, f *chart.Metadata, name string) {
 	}
 
 	if len(f.Annotations) != 2 {
-		t.Fatalf("Unexpected annotations")
+		t.Fatal("Unexpected annotations")
 	}
 
 	if want, got := "extravalue", f.Annotations["extrakey"]; want != got {
@@ -115,7 +115,7 @@ func TestIsChartDir(t *testing.T) {
 	}
 	validChartDir, err = IsChartDir("testdata")
 	if validChartDir || err == nil {
-		t.Errorf("expected error but did not get any")
+		t.Error("expected error but did not get any")
 		return
 	}
 }

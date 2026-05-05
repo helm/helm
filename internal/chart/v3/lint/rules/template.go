@@ -28,8 +28,8 @@ import (
 	"slices"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/validate/content"
 	"k8s.io/apimachinery/pkg/api/validation"
-	apipath "k8s.io/apimachinery/pkg/api/validation/path"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
@@ -42,17 +42,17 @@ import (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values map[string]interface{}, namespace string, _ bool) {
+func Templates(linter *support.Linter, values map[string]any, namespace string, _ bool) {
 	TemplatesWithKubeVersion(linter, values, namespace, nil)
 }
 
 // TemplatesWithKubeVersion lints the templates in the Linter, allowing to specify the kubernetes version.
-func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *common.KubeVersion) {
+func TemplatesWithKubeVersion(linter *support.Linter, values map[string]any, namespace string, kubeVersion *common.KubeVersion) {
 	TemplatesWithSkipSchemaValidation(linter, values, namespace, kubeVersion, false)
 }
 
 // TemplatesWithSkipSchemaValidation lints the templates in the Linter, allowing to specify the kubernetes version and if schema validation is enabled or not.
-func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *common.KubeVersion, skipSchemaValidation bool) {
+func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string]any, namespace string, kubeVersion *common.KubeVersion, skipSchemaValidation bool) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
@@ -292,7 +292,7 @@ func validateMetadataNameFunc(obj *k8sYamlStruct) validation.ValidateNameFunc {
 	case "role", "clusterrole", "rolebinding", "clusterrolebinding":
 		// https://github.com/kubernetes/kubernetes/blob/v1.20.0/pkg/apis/rbac/validation/validation.go#L32-L34
 		return func(name string, _ bool) []string {
-			return apipath.IsValidPathSegmentName(name)
+			return content.IsPathSegmentName(name)
 		}
 	default:
 		return validation.NameIsDNSSubdomain

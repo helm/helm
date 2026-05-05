@@ -16,6 +16,7 @@ limitations under the License.
 package v3
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -39,6 +40,16 @@ func TestValidate(t *testing.T) {
 			"chart without name",
 			&Metadata{APIVersion: "v3", Version: "1.0"},
 			ValidationError("chart.metadata.name is required"),
+		},
+		{
+			"chart with dot name",
+			&Metadata{Name: ".", APIVersion: "v3", Version: "1.0"},
+			ValidationError("chart.metadata.name \".\" is not allowed"),
+		},
+		{
+			"chart with dotdot name",
+			&Metadata{Name: "..", APIVersion: "v3", Version: "1.0"},
+			ValidationError("chart.metadata.name \"..\" is not allowed"),
 		},
 		{
 			"chart without name",
@@ -181,7 +192,7 @@ func TestValidate(t *testing.T) {
 
 	for _, tt := range tests {
 		result := tt.md.Validate()
-		if result != tt.err {
+		if !errors.Is(result, tt.err) {
 			t.Errorf("expected %q, got %q in test %q", tt.err, result, tt.name)
 		}
 	}

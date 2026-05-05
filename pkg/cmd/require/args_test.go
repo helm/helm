@@ -16,8 +16,8 @@ limitations under the License.
 package require
 
 import (
-	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -65,7 +65,7 @@ type testCase struct {
 func runTestCases(t *testing.T, testCases []testCase) {
 	t.Helper()
 	for i, tc := range testCases {
-		t.Run(fmt.Sprint(i), func(t *testing.T) {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			cmd := &cobra.Command{
 				Use:  "root",
 				Run:  func(*cobra.Command, []string) {},

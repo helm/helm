@@ -149,7 +149,7 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:      "upgrade a release with missing dependencies",
-			cmd:       fmt.Sprintf("upgrade bonkers-bunny %s", missingDepsPath),
+			cmd:       "upgrade bonkers-bunny " + missingDepsPath,
 			golden:    "output/upgrade-with-missing-dependencies.txt",
 			wantError: true,
 		},
@@ -161,7 +161,7 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:   "upgrade a release with resolving missing dependencies",
-			cmd:    fmt.Sprintf("upgrade --dependency-update funny-bunny %s", presentDepsPath),
+			cmd:    "upgrade --dependency-update funny-bunny " + presentDepsPath,
 			golden: "output/upgrade-with-dependency-update.txt",
 			rels:   []*release.Release{relMock("funny-bunny", 2, ch2)},
 		},
@@ -443,23 +443,23 @@ func TestUpgradeVersionCompletion(t *testing.T) {
 
 	tests := []cmdTestCase{{
 		name:   "completion for upgrade version flag",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag, no filter",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine --version 0.3", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename testing/alpine --version 0.3",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag too few args",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag too many args",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine badarg --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename testing/alpine badarg --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag invalid chart",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename invalid/invalid --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename invalid/invalid --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}}
 	runTestCmd(t, tests)
@@ -636,7 +636,7 @@ func TestUpgradeInstallServerSideApply(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			store := storageFixture()
-			releaseName := fmt.Sprintf("ssa-test-%s", tt.expectedApplyMethod)
+			releaseName := "ssa-test-" + tt.expectedApplyMethod
 
 			cmd := fmt.Sprintf("upgrade %s --install %s '%s'", releaseName, tt.serverSideFlag, chartPath)
 			_, _, err := executeActionCommandC(store, cmd)

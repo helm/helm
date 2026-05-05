@@ -153,6 +153,10 @@ type OCIServerRunConfig struct {
 
 type OCIServerOpt func(config *OCIServerRunConfig)
 
+type OCIServerRunResult struct {
+	PushedChart *ociRegistry.PushResult
+}
+
 func WithDependingChart(c *chart.Chart) OCIServerOpt {
 	return func(config *OCIServerRunConfig) {
 		config.DependingChart = c
@@ -171,21 +175,21 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 	htpasswdPath := filepath.Join(dir, testHtpasswdFileBasename)
 	err = os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0o644)
 	if err != nil {
-		t.Fatalf("error creating test htpasswd file")
+		t.Fatal("error creating test htpasswd file")
 	}
 
 	// Registry config
 	config := &configuration.Configuration{}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		t.Fatalf("error finding free port for test registry")
+		t.Fatalf("error finding free port for test registry: %v", err)
 	}
 	defer ln.Close()
 
 	port := ln.Addr().(*net.TCPAddr).Port
 	config.HTTP.Addr = ln.Addr().String()
 	config.HTTP.DrainTimeout = time.Duration(10) * time.Second
-	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]interface{}{}}
+	config.Storage = map[string]configuration.Parameters{"inmemory": map[string]any{}}
 	config.Auth = configuration.Auth{
 		"htpasswd": configuration.Parameters{
 			"realm": "localhost",
@@ -211,6 +215,11 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 
 func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 	t.Helper()
+	_ = srv.RunWithReturn(t, opts...)
+}
+
+func (srv *OCIServer) RunWithReturn(t *testing.T, opts ...OCIServerOpt) *OCIServerRunResult {
+	t.Helper()
 	cfg := &OCIServerRunConfig{}
 	for _, fn := range opts {
 		fn(cfg)
@@ -228,7 +237,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		ociRegistry.ClientOptCredentialsFile(credentialsFile),
 	)
 	if err != nil {
-		t.Fatalf("error creating registry client")
+		t.Fatalf("error creating registry client: %v", err)
 	}
 
 	err = registryClient.Login(
@@ -240,7 +249,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		t.Fatalf("error logging into registry with good credentials: %v", err)
 	}
 
-	ref := fmt.Sprintf("%s/u/ocitestuser/oci-dependent-chart:0.1.0", srv.RegistryURL)
+	ref := srv.RegistryURL + "/u/ocitestuser/oci-dependent-chart:0.1.0"
 
 	err = chartutil.ExpandFile(srv.Dir, filepath.Join(srv.Dir, "oci-dependent-chart-0.1.0.tgz"))
 	if err != nil {
@@ -284,7 +293,9 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 	srv.Client = registryClient
 	c := cfg.DependingChart
 	if c == nil {
-		return
+		return &OCIServerRunResult{
+			PushedChart: result,
+		}
 	}
 
 	dependingRef := fmt.Sprintf("%s/u/ocitestuser/%s:%s",
@@ -308,6 +319,10 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		result.Manifest.Digest, result.Manifest.Size,
 		result.Config.Digest, result.Config.Size,
 		result.Chart.Digest, result.Chart.Size)
+
+	return &OCIServerRunResult{
+		PushedChart: result,
+	}
 }
 
 // Root gets the docroot for the server.

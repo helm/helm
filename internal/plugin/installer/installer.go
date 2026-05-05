@@ -87,7 +87,7 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 	if opts.Verify {
 		verifier, ok := i.(Verifier)
 		if !ok || !verifier.SupportsVerification() {
-			return nil, fmt.Errorf("--verify is only supported for plugin tarballs (.tgz files)")
+			return nil, errors.New("--verify is only supported for plugin tarballs (.tgz files)")
 		}
 
 		// Get verification data (works for both memory and file-based installers)
@@ -98,24 +98,23 @@ func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) 
 
 		// Check if provenance data exists
 		if len(provData) == 0 {
-			// No .prov file found - emit warning but continue installation
-			fmt.Fprintf(os.Stderr, "WARNING: No provenance file found for plugin. Plugin is not signed and cannot be verified.\n")
-		} else {
-			// Provenance data exists - verify the plugin
-			verification, err := plugin.VerifyPlugin(archiveData, provData, filename, opts.Keyring)
-			if err != nil {
-				return nil, fmt.Errorf("plugin verification failed: %w", err)
-			}
+			return nil, errors.New("plugin verification failed: no provenance file (.prov) found")
+		}
 
-			// Collect verification info
-			result = &VerificationResult{
-				SignedBy:    make([]string, 0),
-				Fingerprint: fmt.Sprintf("%X", verification.SignedBy.PrimaryKey.Fingerprint),
-				FileHash:    verification.FileHash,
-			}
-			for name := range verification.SignedBy.Identities {
-				result.SignedBy = append(result.SignedBy, name)
-			}
+		// Provenance data exists - verify the plugin
+		verification, err := plugin.VerifyPlugin(archiveData, provData, filename, opts.Keyring)
+		if err != nil {
+			return nil, fmt.Errorf("plugin verification failed: %w", err)
+		}
+
+		// Collect verification info
+		result = &VerificationResult{
+			SignedBy:    make([]string, 0),
+			Fingerprint: fmt.Sprintf("%X", verification.SignedBy.PrimaryKey.Fingerprint),
+			FileHash:    verification.FileHash,
+		}
+		for name := range verification.SignedBy.Identities {
+			result.SignedBy = append(result.SignedBy, name)
 		}
 	}
 
@@ -137,7 +136,7 @@ func Update(i Installer) error {
 
 // NewForSource determines the correct Installer for the given source.
 func NewForSource(source, version string) (installer Installer, err error) {
-	if strings.HasPrefix(source, fmt.Sprintf("%s://", registry.OCIScheme)) {
+	if strings.HasPrefix(source, registry.OCIScheme+"://") {
 		// Source is an OCI registry reference
 		installer, err = NewOCIInstaller(source)
 	} else if isLocalReference(source) {
