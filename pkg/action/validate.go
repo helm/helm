@@ -95,7 +95,7 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 		if err := checkOwnership(existing, releaseName, releaseNamespace); err != nil {
 			return fmt.Errorf("%s exists and cannot be imported into the current release: %s", resourceString(info), err)
 		}
-// Resources that are not found are skipped because they are already deleted and do not need deletion.
+		// Resources that are not found are skipped because they are already deleted and do not need deletion.
 		infoCopy := *info
 		requireUpdate.Append(&infoCopy)
 		return nil

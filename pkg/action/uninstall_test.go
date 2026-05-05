@@ -19,7 +19,6 @@ package action
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"testing"
@@ -157,7 +156,7 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 	}
 
 	failer := unAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.DeleteError = fmt.Errorf("Uninstall with cascade failed")
+	failer.DeleteError = errors.New("Uninstall with cascade failed")
 	failer.DummyResources = dummyResources
 	unAction.cfg.KubeClient = failer
 	_, err := unAction.Run(rel.Name)

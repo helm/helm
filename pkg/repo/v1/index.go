@@ -25,6 +25,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -356,21 +357,21 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 	}
 
 	for name, cvs := range i.Entries {
-		for idx := len(cvs) - 1; idx >= 0; idx-- {
-			if cvs[idx] == nil {
+		for idx, v := range slices.Backward(cvs) {
+			if v == nil {
 				slog.Warn(fmt.Sprintf("skipping loading invalid entry for chart %q from %s: empty entry", name, source))
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 				continue
 			}
 			// When metadata section missing, initialize with no data
-			if cvs[idx].Metadata == nil {
-				cvs[idx].Metadata = &chart.Metadata{}
+			if v.Metadata == nil {
+				v.Metadata = &chart.Metadata{}
 			}
-			if cvs[idx].APIVersion == "" {
-				cvs[idx].APIVersion = chart.APIVersionV1
+			if v.APIVersion == "" {
+				v.APIVersion = chart.APIVersionV1
 			}
-			if err := cvs[idx].Validate(); ignoreSkippableChartValidationError(err) != nil {
-				slog.Warn(fmt.Sprintf("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err))
+			if err := v.Validate(); ignoreSkippableChartValidationError(err) != nil {
+				slog.Warn(fmt.Sprintf("skipping loading invalid entry for chart %q %q from %s: %s", name, v.Version, source, err))
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}
 		}
