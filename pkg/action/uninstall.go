@@ -102,7 +102,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 
 			resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
 			if err == nil && len(resources) > 0 {
-				ownedResources, unownedResources, err := verifyOwnershipBeforeDelete(resources, r.Name, r.Namespace)
+				ownedResources, unownedResources, unverifiableResources, err := verifyOwnershipBeforeDelete(resources, r.Name, r.Namespace)
 				if err == nil {
 					if len(unownedResources) > 0 {
 						u.cfg.Logger().Warn("dry-run: resources would be skipped because they are not owned by this release",
@@ -113,6 +113,19 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 								"kind", info.Mapping.GroupVersionKind.Kind,
 								"name", info.Name,
 								"namespace", info.Namespace)
+						}
+					}
+
+					if len(unverifiableResources) > 0 {
+						u.cfg.Logger().Warn("dry-run: resources would be skipped because their ownership could not be verified",
+							"release", r.Name,
+							"count", len(unverifiableResources))
+						for _, ur := range unverifiableResources {
+							u.cfg.Logger().Warn("dry-run: would skip resource (ownership could not be verified)",
+								"kind", ur.Info.Mapping.GroupVersionKind.Kind,
+								"name", ur.Info.Name,
+								"namespace", ur.Info.Namespace,
+								"error", ur.Err)
 						}
 					}
 
@@ -207,9 +220,6 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		return nil, fmt.Errorf("failed to delete release: %s", name)
 	}
 
-	if kept != "" {
-		kept = "These resources were kept due to the resource policy:\n" + kept
-	}
 	res.Info = kept
 
 	if err := waiter.WaitForDelete(deletedResources, u.Timeout); err != nil {
@@ -323,8 +333,11 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 
 	filesToKeep, filesToDelete := filterManifestsToKeep(files)
 	var kept strings.Builder
-	for _, f := range filesToKeep {
-		fmt.Fprintf(&kept, "[%s] %s\n", f.Head.Kind, f.Head.Metadata.Name)
+	if len(filesToKeep) > 0 {
+		kept.WriteString("These resources were kept due to the resource policy:\n")
+		for _, f := range filesToKeep {
+			fmt.Fprintf(&kept, "[%s] %s\n", f.Head.Kind, f.Head.Metadata.Name)
+		}
 	}
 
 	var builder strings.Builder
@@ -339,8 +352,9 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 
 	// Verify ownership before deleting resources
 	var ownedResources, unownedResources kube.ResourceList
+	var unverifiableResources []unverifiableResource
 	if len(resources) > 0 {
-		ownedResources, unownedResources, err = verifyOwnershipBeforeDelete(resources, rel.Name, rel.Namespace)
+		ownedResources, unownedResources, unverifiableResources, err = verifyOwnershipBeforeDelete(resources, rel.Name, rel.Namespace)
 		if err != nil {
 			return nil, "", []error{fmt.Errorf("unable to verify resource ownership: %w", err)}
 		}
@@ -354,9 +368,31 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 					"namespace", info.Namespace,
 					"release", rel.Name)
 			}
-			kept.WriteString(fmt.Sprintf("\n%d resource(s) were not deleted because they are not owned by this release:\n", len(unownedResources)))
+			if kept.Len() > 0 {
+				kept.WriteString("\n")
+			}
+			fmt.Fprintf(&kept, "%d resource(s) were not deleted because they are not owned by this release:\n", len(unownedResources))
 			for _, info := range unownedResources {
 				fmt.Fprintf(&kept, "[%s] %s\n", info.Mapping.GroupVersionKind.Kind, info.Name)
+			}
+		}
+
+		// Log warnings for resources whose ownership could not be verified
+		if len(unverifiableResources) > 0 {
+			for _, ur := range unverifiableResources {
+				u.cfg.Logger().Warn("skipping delete of resource because ownership could not be verified",
+					"kind", ur.Info.Mapping.GroupVersionKind.Kind,
+					"name", ur.Info.Name,
+					"namespace", ur.Info.Namespace,
+					"release", rel.Name,
+					"error", ur.Err)
+			}
+			if kept.Len() > 0 {
+				kept.WriteString("\n")
+			}
+			fmt.Fprintf(&kept, "%d resource(s) were not deleted because their ownership could not be verified:\n", len(unverifiableResources))
+			for _, ur := range unverifiableResources {
+				fmt.Fprintf(&kept, "[%s] %s: %s\n", ur.Info.Mapping.GroupVersionKind.Kind, ur.Info.Name, ur.Err)
 			}
 		}
 

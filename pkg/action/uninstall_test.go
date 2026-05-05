@@ -148,7 +148,7 @@ func TestUninstallRelease_Cascade(t *testing.T) {
 		  "password": "password"
 		}
 	}`
-	unAction.cfg.Releases.Create(rel)
+	require.NoError(t, unAction.cfg.Releases.Create(rel))
 
 	// Create dummy resources with Mapping but no Client - this skips ownership verification
 	// (nil Client is treated as owned) and goes directly to delete
@@ -208,7 +208,7 @@ metadata:
     meta.helm.sh/release-namespace: default
 data:
   key: value`
-	config.Releases.Create(rel)
+	require.NoError(t, config.Releases.Create(rel))
 
 	// Create dummy resources with proper ownership metadata
 	labels := map[string]string{
@@ -281,7 +281,7 @@ metadata:
     meta.helm.sh/release-namespace: default
 data:
   key: value`
-	config.Releases.Create(rel)
+	require.NoError(t, config.Releases.Create(rel))
 
 	// Create dummy resources - one unowned to test logging
 	dummyResources := kube.ResourceList{
@@ -330,7 +330,7 @@ metadata:
     meta.helm.sh/release-namespace: default
 data:
   key: value`
-	config.Releases.Create(rel)
+	require.NoError(t, config.Releases.Create(rel))
 
 	// Create dummy resources - one unowned to test dry-run logging
 	dummyResources := kube.ResourceList{

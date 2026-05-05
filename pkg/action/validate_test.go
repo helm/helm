@@ -234,7 +234,7 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 		owned2 := newDeploymentWithOwner("owned2", "ns-a", labels, annotations)
 		resources := kube.ResourceList{owned1, owned2}
 
-		ownedList, unownedList, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
 		assert.NoError(t, err)
 		assert.Len(t, ownedList, 2)
 		assert.Len(t, unownedList, 0)
@@ -246,7 +246,7 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 		unowned := newDeploymentWithOwner("unowned", "ns-a", labels, wrongAnnotations)
 		resources := kube.ResourceList{owned, unowned}
 
-		ownedList, unownedList, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
 		assert.NoError(t, err)
 		assert.Len(t, ownedList, 1)
 		assert.Len(t, unownedList, 1)
@@ -259,7 +259,7 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 		missing := newMissingDeployment("missing", "ns-a")
 		resources := kube.ResourceList{missing}
 
-		ownedList, unownedList, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
 		assert.NoError(t, err)
 		assert.Len(t, ownedList, 0)
 		assert.Len(t, unownedList, 0)
@@ -270,7 +270,7 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 		noMeta := newDeploymentWithOwner("no-meta", "ns-a", nil, nil)
 		resources := kube.ResourceList{noMeta}
 
-		ownedList, unownedList, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
 		assert.NoError(t, err)
 		assert.Len(t, ownedList, 0)
 		assert.Len(t, unownedList, 1)
@@ -281,7 +281,7 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 		otherRelease := newDeploymentWithOwner("other", "ns-a", labels, wrongAnnotations)
 		resources := kube.ResourceList{otherRelease}
 
-		ownedList, unownedList, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
 		assert.NoError(t, err)
 		assert.Len(t, ownedList, 0)
 		assert.Len(t, unownedList, 1)
@@ -294,7 +294,7 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 		missing := newMissingDeployment("missing", "ns-a")
 		resources := kube.ResourceList{owned, unowned, missing}
 
-		ownedList, unownedList, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
 		assert.NoError(t, err)
 		assert.Len(t, ownedList, 1)
 		assert.Len(t, unownedList, 1)

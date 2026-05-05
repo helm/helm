@@ -104,12 +104,26 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 	return requireUpdate, err
 }
 
+// unverifiableResource pairs a resource with the error encountered while attempting
+// to verify its ownership (for example, RBAC or network failures).
+type unverifiableResource struct {
+	Info *resource.Info
+	Err  error
+}
+
 // verifyOwnershipBeforeDelete checks that resources in the list are owned by the specified release.
-// It returns two lists: owned resources (safe to delete) and unowned resources (should skip).
-// Resources that are not found are considered owned (already deleted, safe to attempt delete).
-func verifyOwnershipBeforeDelete(resources kube.ResourceList, releaseName, releaseNamespace string) (kube.ResourceList, kube.ResourceList, error) {
+// It returns three lists:
+//   - owned: resources confirmed to be owned by the release (safe to delete).
+//   - unowned: resources that exist but are not owned by the release (should be skipped).
+//   - unverifiable: resources whose ownership could not be determined due to a fetch
+//     error (e.g. RBAC or network issues), paired with the underlying error.
+//
+// Resources that are not found on the server are excluded from all returned lists,
+// since they have already been deleted and require no further action.
+func verifyOwnershipBeforeDelete(resources kube.ResourceList, releaseName, releaseNamespace string) (kube.ResourceList, kube.ResourceList, []unverifiableResource, error) {
 	var owned kube.ResourceList
 	var unowned kube.ResourceList
+	var unverifiable []unverifiableResource
 
 	err := resources.Visit(func(info *resource.Info, err error) error {
 		if err != nil {
@@ -127,12 +141,12 @@ func verifyOwnershipBeforeDelete(resources kube.ResourceList, releaseName, relea
 		existing, err := helper.Get(info.Namespace, info.Name)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				// Resource already deleted, skip deletion
+				// Resource already deleted; nothing to do.
 				return nil
 			}
-			// Cannot fetch resource (network/permission issue), cannot verify ownership
+			// Cannot fetch resource (network/permission issue); ownership unverifiable.
 			infoCopy := *info
-			unowned.Append(&infoCopy)
+			unverifiable = append(unverifiable, unverifiableResource{Info: &infoCopy, Err: err})
 			return nil
 		}
 
@@ -150,7 +164,7 @@ func verifyOwnershipBeforeDelete(resources kube.ResourceList, releaseName, relea
 		return nil
 	})
 
-	return owned, unowned, err
+	return owned, unowned, unverifiable, err
 }
 
 func checkOwnership(obj runtime.Object, releaseName, releaseNamespace string) error {
