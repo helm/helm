@@ -60,8 +60,8 @@ func TestDefaultCapabilities(t *testing.T) {
 	}
 
 	hv := caps.HelmVersion
-	if hv.Version != "v4.1" {
-		t.Errorf("Expected default HelmVersion to be v4.1, got %q", hv.Version)
+	if hv.Version != "v4.2" {
+		t.Errorf("Expected default HelmVersion to be v4.2, got %q", hv.Version)
 	}
 }
 
