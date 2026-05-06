@@ -138,14 +138,14 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 								if skipTests && isTestHook(m) {
 									continue
 								}
-								fmt.Fprintf(out, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+								fmt.Fprintf(out, "---\n# Source: %s\n%s\n", m.Path, releaseutil.StripHelmInternalAnnotations(m.Manifest))
 							}
 						}
 					}
 				}
 				if !orderedRendered {
 					var manifests bytes.Buffer
-					fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+					fmt.Fprintln(&manifests, strings.TrimSpace(releaseutil.StripHelmInternalAnnotations(rel.Manifest)))
 					if !client.DisableHooks {
 						fileWritten := make(map[string]bool)
 						for _, m := range rel.Hooks {
@@ -153,7 +153,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 								continue
 							}
 							if client.OutputDir == "" {
-								fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+								fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, releaseutil.StripHelmInternalAnnotations(m.Manifest))
 							} else {
 								newDir := client.OutputDir
 								if client.UseReleaseName {
@@ -401,7 +401,7 @@ func renderOrderedResourceGroups(manifests []releaseutil.Manifest, chartPath str
 			for _, groupName := range batch {
 				fmt.Fprintf(out, "## START resource-group: %s %s\n", chartPath, groupName)
 				for _, manifest := range result.Groups[groupName] {
-					fmt.Fprintf(out, "---\n%s\n", manifest.Content)
+					fmt.Fprintf(out, "---\n%s\n", releaseutil.StripHelmInternalAnnotations(manifest.Content))
 				}
 				fmt.Fprintf(out, "## END resource-group: %s %s\n", chartPath, groupName)
 			}
@@ -409,7 +409,7 @@ func renderOrderedResourceGroups(manifests []releaseutil.Manifest, chartPath str
 	}
 
 	for _, manifest := range result.Unsequenced {
-		fmt.Fprintf(out, "---\n%s\n", manifest.Content)
+		fmt.Fprintf(out, "---\n%s\n", releaseutil.StripHelmInternalAnnotations(manifest.Content))
 	}
 
 	return nil
@@ -529,3 +529,4 @@ func ensureDirectoryForFile(file string) error {
 
 	return os.MkdirAll(baseDir, 0755)
 }
+

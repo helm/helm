@@ -32,6 +32,16 @@ const (
 	AnnotationDependsOnResourceGroups = "helm.sh/depends-on/resource-groups"
 )
 
+// HelmInternalSequencingAnnotations lists annotation keys used by Helm for
+// resource sequencing that are NOT valid Kubernetes annotation keys (their
+// names contain multiple `/` separators). Helm strips these before applying
+// resources to the API server, and before printing manifests via
+// `helm template` so downstream tooling like `kubectl apply` accepts the
+// output unmodified.
+var HelmInternalSequencingAnnotations = []string{
+	AnnotationDependsOnResourceGroups,
+}
+
 // ResourceGroupResult holds the output of ParseResourceGroups.
 type ResourceGroupResult struct {
 	// Groups maps group name to manifests assigned to that group.

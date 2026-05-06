@@ -31,7 +31,6 @@ metadata:
   name: app-config
   annotations:
     helm.sh/resource-group: app
-    helm.sh/depends-on/resource-groups: '["databases"]'
 data:
   db_host: localhost
 ## END resource-group: sequenced-chart app

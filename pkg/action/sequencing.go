@@ -299,14 +299,6 @@ func (s *sequencedDeployment) deployResourceGroupBatches(ctx context.Context, ma
 	return nil
 }
 
-// helmSequencingAnnotations lists annotation keys used internally by Helm for
-// resource sequencing. These are stripped from resources before applying to
-// Kubernetes because some (e.g. helm.sh/depends-on/resource-groups) contain
-// multiple slashes which is invalid per the K8s annotation key format.
-var helmSequencingAnnotations = []string{
-	releaseutil.AnnotationDependsOnResourceGroups,
-}
-
 // stripSequencingAnnotations removes Helm-internal sequencing annotations from
 // resources before they are applied to Kubernetes. This prevents K8s API
 // validation errors for annotation keys that are not valid K8s label keys.
@@ -324,7 +316,7 @@ func stripSequencingAnnotations(resources kube.ResourceList) error {
 			return nil
 		}
 		changed := false
-		for _, key := range helmSequencingAnnotations {
+		for _, key := range releaseutil.HelmInternalSequencingAnnotations {
 			if _, exists := annotations[key]; exists {
 				delete(annotations, key)
 				changed = true
