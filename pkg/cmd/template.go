@@ -164,7 +164,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 									fileWritten[m.Path] = true
 								}
 
-								err = writeToFile(newDir, m.Path, m.Manifest, fileWritten[m.Path])
+								err = writeToFile(newDir, m.Path, releaseutil.StripHelmInternalAnnotations(m.Manifest), fileWritten[m.Path])
 								if err != nil {
 									return err
 								}
