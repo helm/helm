@@ -27,6 +27,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -177,6 +178,67 @@ func installAction(t *testing.T) *Install {
 	return instAction
 }
 
+type installCreateOptionRecorder struct {
+	*kubefake.FailingKubeClient
+	serverSideApply bool
+	forceConflicts  bool
+	sawCreate       bool
+}
+
+func (r *installCreateOptionRecorder) Create(resources kube.ResourceList, options ...kube.ClientCreateOption) (*kube.Result, error) {
+	serverSideApply, forceConflicts, err := parseCreateOptions(options)
+	if err != nil {
+		return nil, err
+	}
+	r.serverSideApply = serverSideApply
+	r.forceConflicts = forceConflicts
+	r.sawCreate = true
+	return r.FailingKubeClient.Create(resources, options...)
+}
+
+func parseCreateOptions(options []kube.ClientCreateOption) (bool, bool, error) {
+	var serverSideApply bool
+	var forceConflicts bool
+	sawServerSideApply := false
+	sawForceConflicts := false
+
+	for _, option := range options {
+		fn := reflect.ValueOf(option)
+		if fn.Kind() != reflect.Func {
+			return false, false, fmt.Errorf("create option is not a function: %T", option)
+		}
+		argType := fn.Type().In(0)
+		if argType.Kind() != reflect.Ptr {
+			return false, false, fmt.Errorf("unexpected create option argument type: %s", argType)
+		}
+		arg := reflect.New(argType.Elem())
+		results := fn.Call([]reflect.Value{arg})
+		if len(results) > 0 && !results[0].IsNil() {
+			return false, false, results[0].Interface().(error)
+		}
+
+		serverSideApplyField := arg.Elem().FieldByName("serverSideApply")
+		if !serverSideApplyField.IsValid() {
+			return false, false, errors.New("client create options missing serverSideApply field")
+		}
+		forceConflictsField := arg.Elem().FieldByName("forceConflicts")
+		if !forceConflictsField.IsValid() {
+			return false, false, errors.New("client create options missing forceConflicts field")
+		}
+
+		serverSideApply = serverSideApplyField.Bool()
+		forceConflicts = forceConflictsField.Bool()
+		sawServerSideApply = true
+		sawForceConflicts = true
+	}
+
+	if !sawServerSideApply || !sawForceConflicts {
+		return false, false, errors.New("expected server-side apply create options were not provided")
+	}
+
+	return serverSideApply, forceConflicts, nil
+}
+
 func TestInstallRelease(t *testing.T) {
 	is := assert.New(t)
 	req := require.New(t)
@@ -218,6 +280,24 @@ func TestInstallRelease(t *testing.T) {
 	lrel, err := releaserToV1Release(lastRelease)
 	is.NoError(err)
 	is.Equal(lrel.Info.Status, rcommon.StatusDeployed)
+}
+
+func TestPerformInstallCreatePathPassesForceConflicts(t *testing.T) {
+	config := actionConfigFixtureWithDummyResources(t, nil)
+	baseClient := config.KubeClient.(*kubefake.FailingKubeClient)
+	recorder := &installCreateOptionRecorder{FailingKubeClient: baseClient}
+	config.KubeClient = recorder
+
+	instAction := installActionWithConfig(config)
+	instAction.DisableHooks = true
+	instAction.ServerSideApply = true
+	instAction.ForceConflicts = true
+
+	_, err := instAction.performInstall(releaseStub(), nil, createDummyResourceList(false))
+	require.NoError(t, err)
+	require.True(t, recorder.sawCreate, "expected performInstall to use the create path")
+	assert.True(t, recorder.serverSideApply)
+	assert.True(t, recorder.forceConflicts)
 }
 
 func TestInstallReleaseWithTakeOwnership_ResourceNotOwned(t *testing.T) {
