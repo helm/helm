@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"maps"
+	"math"
 	"strings"
 	"text/template"
 
@@ -157,7 +158,7 @@ func fromYAMLArray(str string) []any {
 func toTOML(v any) string {
 	b := bytes.NewBuffer(nil)
 	e := toml.NewEncoder(b)
-	err := e.Encode(v)
+	err := e.Encode(normalizeForTOML(v))
 	if err != nil {
 		return err.Error()
 	}
@@ -172,11 +173,54 @@ func toTOML(v any) string {
 func mustToTOML(v any) string {
 	b := bytes.NewBuffer(nil)
 	e := toml.NewEncoder(b)
-	err := e.Encode(v)
+	err := e.Encode(normalizeForTOML(v))
 	if err != nil {
 		panic(err)
 	}
 	return b.String()
+}
+
+// normalizeForTOML walks v and rewrites any float64 that is a whole number
+// (within the int64 range) as an int64. Helm values round-trip through JSON,
+// so every YAML number arrives in the template engine as a float64 regardless
+// of whether the source was written as "9" or "9.0"; the BurntSushi TOML
+// encoder then writes float64(9) as "9.0", which surprises users. This brings
+// toToml in line with encoding/json (which already drops trailing ".0" for
+// whole-number float64). Non-whole floats and values outside the int64 range
+// are left untouched so that true floats still round-trip as floats.
+//
+// This fix is intentionally scoped to the TOML encoding path. #13533 solved
+// the same issue by switching the values loader to json.Decoder.UseNumber,
+// which changed every numeric value to json.Number globally and broke charts
+// relying on typeOf/typeIs returning "float64" (#30880). Normalizing only
+// inside toTOML preserves the in-template type of values so that regression
+// cannot recur.
+func normalizeForTOML(v any) any {
+	switch x := v.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, val := range x {
+			out[k] = normalizeForTOML(val)
+		}
+		return out
+	case []any:
+		out := make([]any, len(x))
+		for i, val := range x {
+			out[i] = normalizeForTOML(val)
+		}
+		return out
+	case float64:
+		// Guard against NaN/Inf and against Go's implementation-defined
+		// behavior for out-of-range float-to-int conversions. 1<<63 is the
+		// first positive float64 strictly greater than math.MaxInt64.
+		if math.IsNaN(x) || math.IsInf(x, 0) || x != math.Trunc(x) ||
+			x >= 1<<63 || x < -(1<<63) {
+			return x
+		}
+		return int64(x)
+	default:
+		return v
+	}
 }
 
 // fromTOML converts a TOML document into a map[string]interface{}.
