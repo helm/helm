@@ -127,6 +127,58 @@ func TestSave(t *testing.T) {
 	}
 }
 
+func TestSavedGzipExtraFieldIsValid(t *testing.T) {
+	tmp := t.TempDir()
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV3,
+			Name:       "ahab",
+			Version:    "1.2.3",
+		},
+	}
+
+	where, err := Save(c, tmp)
+	if err != nil {
+		t.Fatalf("Failed to save: %s", err)
+	}
+
+	f, err := os.Open(where)
+	if err != nil {
+		t.Fatalf("Failed to open saved file: %s", err)
+	}
+	defer f.Close()
+
+	r, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatalf("Failed to create gzip reader: %s", err)
+	}
+	defer r.Close()
+
+	if len(r.Extra) < 4 {
+		t.Fatalf("gzip extra field too short to contain a valid subfield: %d byte(s)", len(r.Extra))
+	}
+
+	dataLen := int(r.Extra[2]) | int(r.Extra[3])<<8
+	if len(r.Extra) != 4+dataLen {
+		t.Fatalf("gzip extra field has malformed subfield: LEN=%d but %d data byte(s) follow the subfield header", dataLen, len(r.Extra)-4)
+	}
+
+	if r.Extra[0] != gzipExtraSubfieldID[0] || r.Extra[1] != gzipExtraSubfieldID[1] {
+		t.Fatalf("gzip extra field has unexpected subfield ID: %q%q", r.Extra[0], r.Extra[1])
+	}
+
+	if !bytes.Equal(r.Extra[4:], headerBytes) {
+		t.Fatalf("gzip extra field payload mismatch")
+	}
+}
+
+func TestGzipExtraFieldWithSubfieldRejectsOversizedPayload(t *testing.T) {
+	_, err := gzipExtraFieldWithSubfield(make([]byte, maxGzipExtraSubfieldPayloadLen+1))
+	if err == nil {
+		t.Fatal("expected oversized gzip extra subfield payload to fail")
+	}
+}
+
 // Creates a copy with a different schema; does not modify anything.
 func withSchema(chart chart.Chart, schema []byte) chart.Chart {
 	chart.Schema = schema
@@ -295,7 +347,7 @@ func TestRepeatableSave(t *testing.T) {
 				Schema:        []byte("{\n  \"title\": \"Values\"\n}"),
 				SchemaModTime: modTime,
 			},
-			want: "5bfea18cc3c8cbc265744bc32bffa9489a4dbe87d6b51b90f4255e4839d35e03",
+			want: "47f62cfbd69445112e92170ce8fc607c868e221045a1ce0696ac0df68841615f",
 		},
 		{
 			name: "Package 2 files",
@@ -317,7 +369,7 @@ func TestRepeatableSave(t *testing.T) {
 				Schema:        []byte("{\n  \"title\": \"Values\"\n}"),
 				SchemaModTime: modTime,
 			},
-			want: "a240365c21e0a2f4a57873132a9b686566a612d08bcb3f20c9446bfff005ccce",
+			want: "58692b29601b75e1a0cc16d39d48ac2b71f45e05812f8d421a2cede39291fe93",
 		},
 	}
 	for _, test := range tests {
