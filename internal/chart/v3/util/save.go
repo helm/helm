@@ -19,6 +19,7 @@ package util
 import (
 	"archive/tar"
 	"compress/gzip"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,6 +35,22 @@ import (
 )
 
 var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
+var gzipExtraSubfieldID = [2]byte{'r', 'r'}
+
+const maxGzipExtraSubfieldPayloadLen = 1<<16 - 1
+
+func gzipExtraFieldWithSubfield(payload []byte) ([]byte, error) {
+	if len(payload) > maxGzipExtraSubfieldPayloadLen {
+		return nil, fmt.Errorf("gzip extra subfield payload too large: %d bytes", len(payload))
+	}
+
+	extra := make([]byte, 4+len(payload))
+	extra[0] = gzipExtraSubfieldID[0]
+	extra[1] = gzipExtraSubfieldID[1]
+	binary.LittleEndian.PutUint16(extra[2:4], uint16(len(payload)))
+	copy(extra[4:], payload)
+	return extra, nil
+}
 
 // SaveDir saves a chart as files in a directory.
 //
@@ -125,6 +142,11 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 		return "", fmt.Errorf("is not a directory: %s", dir)
 	}
 
+	gzipExtra, err := gzipExtraFieldWithSubfield(headerBytes)
+	if err != nil {
+		return "", err
+	}
+
 	f, err := os.Create(filename)
 	if err != nil {
 		return "", err
@@ -132,7 +154,7 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 
 	// Wrap in gzip writer
 	zipper := gzip.NewWriter(f)
-	zipper.Extra = headerBytes
+	zipper.Extra = gzipExtra
 	zipper.Comment = "Helm"
 
 	// Wrap in tar writer
