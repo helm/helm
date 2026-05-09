@@ -37,7 +37,7 @@ func TestNewGetValues(t *testing.T) {
 	assert.NotNil(t, client)
 	assert.Equal(t, cfg, client.cfg)
 	assert.Equal(t, 0, client.Version)
-	assert.Equal(t, false, client.AllValues)
+	assert.False(t, client.AllValues)
 }
 
 func TestGetValues_Run_UserConfigOnly(t *testing.T) {

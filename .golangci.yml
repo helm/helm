@@ -33,6 +33,7 @@ linters:
     - revive
     - sloglint
     - staticcheck
+    - testifylint
     - thelper
     - unused
     - usestdlibvars
@@ -94,6 +95,24 @@ linters:
                 extra-bad-package-names:
                   - helpers
                   - models
+
+    testifylint:
+      disable:
+        - empty
+        - encoded-compare
+        - equal-values
+        - error-is-as
+        - error-nil
+        - expected-actual
+        - float-compare
+        - go-require
+        - len
+        - nil-compare
+        - require-error
+        - suite-dont-use-pkg
+        - suite-extra-assert-call
+      # Intentionally enable all testifylint rules so new checks are adopted automatically.
+      enable-all: true
 
 run:
   timeout: 10m
