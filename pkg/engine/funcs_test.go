@@ -70,6 +70,15 @@ keyInElement1 = "valueInElement1"`,
 		expect: `{"foo":"bar"}`,
 		vars:   map[string]any{"foo": "bar"},
 	}, {
+		// toPrettyJson must not HTML-escape &, <, > and must use 2-space indent
+		tpl:    "{{ toPrettyJson . }}",
+		expect: "{\n  \"url\": \"https://example.com?a=1&b=2<>\"\n}",
+		vars:   map[string]any{"url": "https://example.com?a=1&b=2<>"},
+	}, {
+		tpl:    "{{ toPrettyJson . }}",
+		expect: "{\n  \"foo\": \"bar\"\n}",
+		vars:   map[string]any{"foo": "bar"},
+	}, {
 		tpl:    `{{ fromYaml . }}`,
 		expect: "map[hello:world]",
 		vars:   `hello: world`,
@@ -151,6 +160,17 @@ keyInElement1 = "valueInElement1"`,
 	}, {
 		tpl:  `{{ mustToJson . }}`,
 		vars: loopMap,
+	}, {
+		tpl:  `{{ mustToPrettyJson . }}`,
+		vars: loopMap, // circular reference must panic
+	}, {
+		tpl:    `{{ mustToPrettyJson . }}`,
+		expect: "{\n  \"foo\": \"bar\"\n}",
+		vars:   map[string]any{"foo": "bar"},
+	}, {
+		tpl:    `{{ toPrettyJson . }}`,
+		expect: "", // circular reference must swallow error and return ""
+		vars:   loopMap,
 	}, {
 		tpl:    `{{ toYaml . }}`,
 		expect: "", // should return empty string and swallow error
