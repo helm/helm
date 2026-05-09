@@ -35,7 +35,7 @@ import (
 
 	"helm.sh/helm/v4/internal/version"
 	"helm.sh/helm/v4/pkg/helmpath"
-	"helm.sh/helm/v4/pkg/kube"
+	"helm.sh/helm/v4/pkg/kubeenv"
 )
 
 // defaultMaxHistory sets the maximum number of releases to 0: unlimited
@@ -134,7 +134,7 @@ func New() *EnvSettings {
 			config.Burst = env.BurstLimit
 			config.QPS = env.QPS
 			config.Wrap(func(rt http.RoundTripper) http.RoundTripper {
-				return &kube.RetryingRoundTripper{Wrapped: rt}
+				return &kubeenv.RetryingRoundTripper{Wrapped: rt}
 			})
 			config.UserAgent = version.GetUserAgent()
 			return config

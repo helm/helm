@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"sync"
@@ -87,11 +88,13 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 		return nil, err
 	}
 
+	slog.Debug("fetching", "url", href)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	slog.Debug("fetch complete", "url", href, "status", resp.Status, "content-length", resp.ContentLength)
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to fetch %s : %s", href, resp.Status)
 	}

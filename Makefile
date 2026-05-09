@@ -1,7 +1,6 @@
 BINDIR      := $(CURDIR)/bin
 INSTALL_PATH ?= /usr/local/bin
 DIST_DIRS   := find * -type d -exec
-TARGETS     := darwin/amd64 darwin/arm64 linux/amd64 linux/386 linux/arm linux/arm64 linux/loong64 linux/ppc64le linux/s390x linux/riscv64 windows/amd64 windows/arm64
 TARGET_OBJS ?= darwin-amd64.tar.gz darwin-amd64.tar.gz.sha256 darwin-amd64.tar.gz.sha256sum darwin-arm64.tar.gz darwin-arm64.tar.gz.sha256 darwin-arm64.tar.gz.sha256sum linux-amd64.tar.gz linux-amd64.tar.gz.sha256 linux-amd64.tar.gz.sha256sum linux-386.tar.gz linux-386.tar.gz.sha256 linux-386.tar.gz.sha256sum linux-arm.tar.gz linux-arm.tar.gz.sha256 linux-arm.tar.gz.sha256sum linux-arm64.tar.gz linux-arm64.tar.gz.sha256 linux-arm64.tar.gz.sha256sum linux-loong64.tar.gz linux-loong64.tar.gz.sha256 linux-loong64.tar.gz.sha256sum linux-ppc64le.tar.gz linux-ppc64le.tar.gz.sha256 linux-ppc64le.tar.gz.sha256sum linux-s390x.tar.gz linux-s390x.tar.gz.sha256 linux-s390x.tar.gz.sha256sum linux-riscv64.tar.gz linux-riscv64.tar.gz.sha256 linux-riscv64.tar.gz.sha256sum windows-amd64.zip windows-amd64.zip.sha256 windows-amd64.zip.sha256sum windows-arm64.zip windows-arm64.zip.sha256 windows-arm64.zip.sha256sum
 BINNAME     ?= helm
 
@@ -9,7 +8,7 @@ GOBIN         = $(shell go env GOBIN)
 ifeq ($(GOBIN),)
 GOBIN         = $(shell go env GOPATH)/bin
 endif
-GOX           = $(GOBIN)/gox
+GORELEASER    = $(GOBIN)/goreleaser
 GOIMPORTS     = $(GOBIN)/goimports
 ARCH          = $(shell go env GOARCH)
 
@@ -130,8 +129,7 @@ test-source-headers:
 	@scripts/validate-license.sh
 
 .PHONY: test-acceptance
-test-acceptance: TARGETS = linux/amd64
-test-acceptance: build build-cross
+test-acceptance: build
 	@if [ -d "${ACCEPTANCE_DIR}" ]; then \
 		cd ${ACCEPTANCE_DIR} && \
 			ROBOT_RUN_TESTS=$(ACCEPTANCE_RUN_TESTS) ROBOT_HELM_PATH='$(BINDIR)' make acceptance; \
@@ -162,8 +160,8 @@ gen-test-golden: test-unit
 # dependencies to the go.mod file. To avoid that we change to a directory
 # without a go.mod file when downloading the following dependencies
 
-$(GOX):
-	(cd /; go install github.com/mitchellh/gox@v1.0.2-0.20220701044238-9f712387e2d2)
+$(GORELEASER):
+	(cd /; go install github.com/goreleaser/goreleaser/v2@latest)
 
 $(GOIMPORTS):
 	(cd /; go install golang.org/x/tools/cmd/goimports@latest)
@@ -173,8 +171,8 @@ $(GOIMPORTS):
 
 .PHONY: build-cross
 build-cross: LDFLAGS += -extldflags "-static"
-build-cross: $(GOX)
-	GOFLAGS="-trimpath" CGO_ENABLED=0 $(GOX) -parallel=3 -output="_dist/{{.OS}}-{{.Arch}}/$(BINNAME)" -osarch='$(TARGETS)' $(GOFLAGS) -tags '$(TAGS)' -ldflags '$(LDFLAGS)' ./cmd/helm
+build-cross: $(GORELEASER)
+	LDFLAGS='$(LDFLAGS)' $(GORELEASER) build --snapshot --clean
 
 .PHONY: dist
 dist:
