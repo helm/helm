@@ -130,6 +130,10 @@ type Install struct {
 	// TakeOwnership will ignore the check for helm annotations and take ownership of the resources.
 	TakeOwnership bool
 	PostRenderer  postrenderer.PostRenderer
+	// PostRenderStrategy controls how hooks and regular templates are passed
+	// to the configured post-renderer. See PostRenderStrategy for the
+	// available modes. Defaults to PostRenderStrategyCombined.
+	PostRenderStrategy PostRenderStrategy
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock           sync.Mutex
 	goroutineCount atomic.Int32
@@ -158,9 +162,10 @@ type ChartPathOptions struct {
 // NewInstall creates a new Install object with the given configuration.
 func NewInstall(cfg *Configuration) *Install {
 	in := &Install{
-		cfg:             cfg,
-		ServerSideApply: true, // Must always match the CLI default.
-		DryRunStrategy:  DryRunNone,
+		cfg:                cfg,
+		ServerSideApply:    true, // Must always match the CLI default.
+		DryRunStrategy:     DryRunNone,
+		PostRenderStrategy: PostRenderStrategyCombined,
 	}
 	in.registryClient = cfg.RegistryClient
 
@@ -370,7 +375,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 	rel := i.createRelease(chrt, vals, i.Labels)
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithServer(i.DryRunStrategy), i.EnableDNS, i.HideSecret, i.PostRenderStrategy)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()
