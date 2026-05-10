@@ -17,11 +17,14 @@ limitations under the License.
 package engine
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"text/template"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestFuncs(t *testing.T) {
@@ -178,6 +181,94 @@ keyInElement1 = "valueInElement1"`,
 		} else {
 			assert.Error(t, err)
 		}
+	}
+}
+
+func TestHtpasswd(t *testing.T) {
+	tests := []struct {
+		name        string
+		tpl         string
+		expect      string
+		expectError string
+		validate    func(t *testing.T, rendered string)
+	}{
+		{
+			name: "defaults to bcrypt",
+			tpl:  `{{ htpasswd "testuser" "testpassword" }}`,
+			validate: func(t *testing.T, rendered string) {
+				t.Helper()
+				parts := strings.SplitN(rendered, ":", 2)
+				require.Len(t, parts, 2)
+				assert.Equal(t, "testuser", parts[0])
+				assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(parts[1]), []byte("testpassword")))
+			},
+		},
+		{
+			name: "supports explicit bcrypt algorithm",
+			tpl:  `{{ htpasswd "testuser" "testpassword" "bcrypt" }}`,
+			validate: func(t *testing.T, rendered string) {
+				t.Helper()
+				parts := strings.SplitN(rendered, ":", 2)
+				require.Len(t, parts, 2)
+				assert.Equal(t, "testuser", parts[0])
+				assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(parts[1]), []byte("testpassword")))
+			},
+		},
+		{
+			name:   "supports sha algorithm",
+			tpl:    `{{ htpasswd "testuser" "testpassword" "sha" }}`,
+			expect: `testuser:{SHA}i7YRj4/Wk1rQh2o740pxfTJwj/0=`,
+		},
+		{
+			name:   "preserves invalid username behavior",
+			tpl:    `{{ htpasswd "bad:user" "testpassword" }}`,
+			expect: `invalid username: bad:user`,
+		},
+		{
+			name:        "rejects username with colon and newline",
+			tpl:         "{{ htpasswd \"bad:user\\ninjected\" \"testpassword\" }}",
+			expectError: `must not contain newline characters`,
+		},
+		{
+			name:        "rejects username with newline",
+			tpl:         "{{ htpasswd \"bad\\nuser\" \"testpassword\" }}",
+			expectError: `must not contain newline characters`,
+		},
+		{
+			name:        "returns bcrypt errors",
+			tpl:         fmt.Sprintf(`{{ htpasswd "testuser" %q }}`, strings.Repeat("x", 73)),
+			expectError: `password length exceeds 72 bytes`,
+		},
+		{
+			name:        "rejects unsupported algorithms",
+			tpl:         `{{ htpasswd "testuser" "testpassword" "md5" }}`,
+			expectError: `unsupported htpasswd hash algorithm "md5"`,
+		},
+		{
+			name:        "rejects too many hash algorithm args",
+			tpl:         `{{ htpasswd "testuser" "testpassword" "sha" "extra" }}`,
+			expectError: `wrong number of args for htpasswd: want 2 or 3 got 4`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var b strings.Builder
+			err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, nil)
+			if tt.expectError != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectError)
+				return
+			}
+
+			require.NoError(t, err)
+			if tt.validate != nil {
+				tt.validate(t, b.String())
+				return
+			}
+
+			assert.Equal(t, tt.expect, b.String())
+		})
 	}
 }
 

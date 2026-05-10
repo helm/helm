@@ -18,13 +18,17 @@ package engine
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"maps"
 	"strings"
 	"text/template"
 
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/sprig/v3"
+	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/yaml"
 	goYaml "sigs.k8s.io/yaml/goyaml.v3"
 )
@@ -49,6 +53,7 @@ func funcMap() template.FuncMap {
 
 	// Add some extra functionality
 	extra := template.FuncMap{
+		"htpasswd":      htpasswd,
 		"toToml":        toTOML,
 		"mustToToml":    mustToTOML,
 		"fromToml":      fromTOML,
@@ -78,6 +83,46 @@ func funcMap() template.FuncMap {
 	maps.Copy(f, extra)
 
 	return f
+}
+
+// htpasswd takes a username and password and returns an htpasswd entry.
+// By default it uses bcrypt, matching Sprig's existing behavior.
+// An optional third argument can explicitly select the hash algorithm.
+func htpasswd(username, password string, hashAlgorithms ...string) (string, error) {
+	if strings.ContainsAny(username, "\n\r") {
+		return "", fmt.Errorf("invalid username %q: must not contain newline characters", username)
+	}
+	if strings.Contains(username, ":") {
+		return fmt.Sprintf("invalid username: %s", username), nil
+	}
+
+	if len(hashAlgorithms) > 1 {
+		return "", fmt.Errorf("wrong number of args for htpasswd: want 2 or 3 got %d", len(hashAlgorithms)+2)
+	}
+
+	algorithm := "bcrypt"
+	if len(hashAlgorithms) == 1 && hashAlgorithms[0] != "" {
+		algorithm = strings.ToLower(hashAlgorithms[0])
+	}
+
+	switch algorithm {
+	case "bcrypt":
+		return bcryptHtpasswd(username, password)
+	case "sha", "sha1":
+		sum := sha1.Sum([]byte(password))
+		return fmt.Sprintf("%s:{SHA}%s", username, base64.StdEncoding.EncodeToString(sum[:])), nil
+	default:
+		return "", fmt.Errorf("unsupported htpasswd hash algorithm %q", hashAlgorithms[0])
+	}
+}
+
+func bcryptHtpasswd(username, password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("failed to encrypt password with bcrypt: %w", err)
+	}
+
+	return fmt.Sprintf("%s:%s", username, string(hash)), nil
 }
 
 // toYAML takes an interface, marshals it to yaml, and returns a string. It will
