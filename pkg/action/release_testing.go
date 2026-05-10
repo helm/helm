@@ -25,6 +25,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
@@ -124,9 +125,9 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 		return fmt.Errorf("unable to get kubernetes client to fetch pod logs: %w", err)
 	}
 
-	hooksByWight := append([]*release.Hook{}, rel.Hooks...)
-	sort.Stable(hookByWeight(hooksByWight))
-	for _, h := range hooksByWight {
+	hooksByWeight := append([]*release.Hook{}, rel.Hooks...)
+	sort.Stable(hookByWeight(hooksByWeight))
+	for _, h := range hooksByWeight {
 		for _, e := range h.Events {
 			if e == release.HookTest {
 				if slices.Contains(r.Filters[ExcludeNameFilter], h.Name) {
@@ -135,17 +136,53 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 				if len(r.Filters[IncludeNameFilter]) > 0 && !slices.Contains(r.Filters[IncludeNameFilter], h.Name) {
 					continue
 				}
-				req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
-				logReader, err := req.Stream(context.Background())
+				// Fetch logs per-container for pods with multiple containers to avoid
+				// the "a container name must be specified" error.
+				pod, err := client.CoreV1().Pods(r.Namespace).Get(context.Background(), h.Name, metav1.GetOptions{})
 				if err != nil {
-					return fmt.Errorf("unable to get pod logs for %s: %w", h.Name, err)
+					return fmt.Errorf("unable to get pod %s: %w", h.Name, err)
 				}
 
-				fmt.Fprintf(out, "POD LOGS: %s\n", h.Name)
-				_, err = io.Copy(out, logReader)
-				fmt.Fprintln(out)
-				if err != nil {
-					return fmt.Errorf("unable to write pod logs for %s: %w", h.Name, err)
+				var firstErr error
+				containers := pod.Spec.Containers
+				if len(containers) == 1 {
+					req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, &v1.PodLogOptions{})
+					logReader, err := req.Stream(context.Background())
+					if err != nil {
+						return fmt.Errorf("unable to get pod logs for %s: %w", h.Name, err)
+					}
+
+					fmt.Fprintf(out, "POD LOGS: %s\n", h.Name)
+					_, err = io.Copy(out, logReader)
+					fmt.Fprintln(out)
+					if err != nil {
+						return fmt.Errorf("unable to write pod logs for %s: %w", h.Name, err)
+					}
+				} else {
+					for _, c := range containers {
+						opts := &v1.PodLogOptions{Container: c.Name}
+						req := client.CoreV1().Pods(r.Namespace).GetLogs(h.Name, opts)
+						logReader, err := req.Stream(context.Background())
+						if err != nil {
+							if firstErr == nil {
+								firstErr = fmt.Errorf("unable to get logs for pod %s container %s: %w", h.Name, c.Name, err)
+							}
+							continue
+						}
+
+						fmt.Fprintf(out, "POD LOGS: %s (container: %s)\n", h.Name, c.Name)
+						_, err = io.Copy(out, logReader)
+						fmt.Fprintln(out)
+						if err != nil {
+							if firstErr == nil {
+								firstErr = fmt.Errorf("unable to write logs for pod %s container %s: %w", h.Name, c.Name, err)
+							}
+						}
+					}
+
+					if firstErr != nil {
+						return firstErr
+					}
 				}
 			}
 		}
