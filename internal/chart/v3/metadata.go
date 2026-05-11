@@ -81,7 +81,8 @@ type Metadata struct {
 	Dependencies []*Dependency `json:"dependencies,omitempty"`
 	// Specifies the chart type: application or library
 	Type string `json:"type,omitempty"`
-	// Specifies the chart URL that was used to initially install a chart.
+	// The URL from which the chart was obtained (a Helm repository URL,
+	// an OCI reference, or a direct artifact URL). Used to record provenance.
 	RepoURL string `json:"repoURL,omitempty"`
 }
 

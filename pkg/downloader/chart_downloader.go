@@ -359,6 +359,11 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 //
 // TODO: support OCI hash
 func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url.URL, error) {
+	// Clear any URL recorded by a previous call so RepositoryURL() does not
+	// report stale provenance when the same ChartDownloader instance is
+	// reused for a chart that does not resolve to a configured repo.
+	c.repositoryURL = ""
+
 	u, err := url.Parse(ref)
 	if err != nil {
 		return "", nil, fmt.Errorf("invalid chart URL format: %s", ref)
@@ -399,6 +404,9 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 
 		// If we get here, we don't need to go through the next phase of looking
 		// up the URL. We have it already. So we just set the parameters and return.
+		if rc.URL != "" {
+			c.repositoryURL = rc.URL
+		}
 		c.Options = append(
 			c.Options,
 			getter.WithURL(rc.URL),

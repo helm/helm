@@ -52,7 +52,8 @@ type Metadata struct {
 	Home string `json:"home,omitempty"`
 	// Source is the URL to the source code of this chart
 	Sources []string `json:"sources,omitempty"`
-	// The URL to the chart's repository (provenance information)
+	// The URL from which the chart was obtained (a Helm repository URL,
+	// an OCI reference, or a direct artifact URL). Used to record provenance.
 	RepoURL string `json:"repoURL,omitempty"`
 	// A version string of the chart. Required.
 	Version string `json:"version,omitempty"`
