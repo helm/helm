@@ -18,6 +18,7 @@ package registry
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,6 +30,7 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3/content/memory"
+	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
 	"github.com/oras-project/oras-go/v3/registry/remote/policy"
 	"github.com/stretchr/testify/require"
 )
@@ -119,50 +121,100 @@ func TestLogin_FailsWhenUnreachable(t *testing.T) {
 	}
 }
 
-// TestWarnIfHostHasPath verifies that warnIfHostHasPath correctly detects path components.
-func TestWarnIfHostHasPath(t *testing.T) {
+func TestLogin_NamespacedAuth(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		host     string
-		wantWarn bool
-	}{
-		{
-			name:     "domain only",
-			host:     "ghcr.io",
-			wantWarn: false,
-		},
-		{
-			name:     "domain with port",
-			host:     "localhost:8000",
-			wantWarn: false,
-		},
-		{
-			name:     "domain with repository path",
-			host:     "ghcr.io/terryhowe",
-			wantWarn: true,
-		},
-		{
-			name:     "domain with nested path",
-			host:     "ghcr.io/terryhowe/myrepo",
-			wantWarn: true,
-		},
-		{
-			name:     "localhost with port and path",
-			host:     "localhost:8000/myrepo",
-			wantWarn: true,
-		},
-	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := warnIfHostHasPath(tt.host)
-			if got != tt.wantWarn {
-				t.Errorf("warnIfHostHasPath(%q) = %v, want %v", tt.host, got, tt.wantWarn)
-			}
-		})
+	registryHost := strings.TrimPrefix(srv.URL, "http://")
+	namespacedHost := registryHost + "/myrepo"
+
+	// Pre-create a config.json with a sentinel auths entry so that
+	// IsAuthConfigured() returns true and the credentials package does not
+	// detect a native platform store (e.g., osxkeychain on macOS). This
+	// ensures the credential is written into the plaintext config file
+	// where we can inspect the storage key directly.
+	credFile := filepath.Join(t.TempDir(), "config.json")
+	err := os.WriteFile(credFile, []byte(`{"auths":{"_sentinel_":{}}}`), 0o600)
+	require.NoError(t, err)
+
+	c, err := NewClient(
+		ClientOptWriter(io.Discard),
+		ClientOptCredentialsFile(credFile),
+	)
+	require.NoError(t, err)
+
+	err = c.Login(namespacedHost, LoginOptPlainText(true), LoginOptBasicAuth("u", "p"))
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	// Credential lookup by namespaced key succeeds.
+	cred, err := c.credentialsStore.Get(ctx, namespacedHost)
+	require.NoError(t, err)
+	require.Equal(t, "u", cred.Username)
+
+	// Verify that the credential is stored on disk under the namespaced key,
+	// and NOT under the hostname-only key. We inspect the JSON file directly
+	// because the FileStore's Get() falls back to a hostname-based lookup,
+	// which would mask whether the storage key itself is hostname-only or
+	// namespaced.
+	data, err := os.ReadFile(credFile)
+	require.NoError(t, err)
+	var parsed struct {
+		Auths map[string]any `json:"auths"`
 	}
+	require.NoError(t, json.Unmarshal(data, &parsed))
+	require.Contains(t, parsed.Auths, namespacedHost, "credential should be stored under namespaced key")
+	require.NotContains(t, parsed.Auths, registryHost, "credential should not be stored under hostname-only key")
+}
+
+func TestNamespacedStore_HierarchicalLookup(t *testing.T) {
+	t.Parallel()
+
+	inner := &memCredStore{creds: map[string]credentials.Credential{}}
+	ctx := context.Background()
+
+	// Store a credential under "localhost:5000/org".
+	_ = inner.Put(ctx, "localhost:5000/org", credentials.Credential{Username: "orguser"})
+
+	// Lookup for a deeper path should find it.
+	ns := &namespacedStore{inner: inner, repository: "org/repo"}
+	cred, err := ns.Get(ctx, "localhost:5000")
+	require.NoError(t, err)
+	require.Equal(t, "orguser", cred.Username)
+
+	// Lookup for an unrelated path should NOT find it.
+	ns2 := &namespacedStore{inner: inner, repository: "other/repo"}
+	cred, err = ns2.Get(ctx, "localhost:5000")
+	require.NoError(t, err)
+	require.Equal(t, "", cred.Username)
+}
+
+// memCredStore is a simple in-memory credentials.Store for testing.
+type memCredStore struct {
+	creds map[string]credentials.Credential
+}
+
+func (m *memCredStore) Get(_ context.Context, serverAddress string) (credentials.Credential, error) {
+	return m.creds[serverAddress], nil
+}
+
+func (m *memCredStore) Put(_ context.Context, serverAddress string, cred credentials.Credential) error {
+	m.creds[serverAddress] = cred
+	return nil
+}
+
+func (m *memCredStore) Delete(_ context.Context, serverAddress string) error {
+	delete(m.creds, serverAddress)
+	return nil
 }
 
 func TestNewClient_WithDenyAllPolicy(t *testing.T) {

@@ -256,7 +256,16 @@ func (c *Client) newRepository(ref string) (*remote.Repository, error) {
 		return nil, err
 	}
 	c.applyOverrides(props)
-	repo, err := remote.NewRepositoryWithProperties(props, c.builder)
+	builder := c.builder
+	if props.Reference.Repository != "" && builder.CredentialStore != nil {
+		builderCopy := *builder
+		builderCopy.CredentialStore = &namespacedStore{
+			inner:      builder.CredentialStore,
+			repository: props.Reference.Repository,
+		}
+		builder = &builderCopy
+	}
+	repo, err := remote.NewRepositoryWithProperties(props, builder)
 	if err != nil {
 		return nil, err
 	}
@@ -424,15 +433,42 @@ type (
 	}
 )
 
-// warnIfHostHasPath checks if the host contains a repository path and logs a warning if it does.
-// Returns true if the host contains a path component (i.e., contains a '/').
-func warnIfHostHasPath(host string) bool {
-	if strings.Contains(host, "/") {
-		registryHost := strings.Split(host, "/")[0]
-		slog.Warn("registry login currently only supports registry hostname, not a repository path", "host", host, "suggested", registryHost)
-		return true
+// noopStore is a credentials.Store that performs no persistence. It is used
+// during namespaced login to verify credentials with a registry ping without
+// causing remote.Login to store credentials under the hostname-only key.
+type noopStore struct{}
+
+func (noopStore) Get(_ context.Context, _ string) (credentials.Credential, error) {
+	return credentials.EmptyCredential, nil
+}
+func (noopStore) Put(_ context.Context, _ string, _ credentials.Credential) error { return nil }
+func (noopStore) Delete(_ context.Context, _ string) error                        { return nil }
+
+// namespacedStore wraps a credentials.Store and performs hierarchical
+// credential lookup: it tries "hostname/full/repo", then "hostname/partial",
+// then falls back to "hostname" for each auth challenge.
+type namespacedStore struct {
+	inner      credentials.Store
+	repository string
+}
+
+func (ns *namespacedStore) Get(ctx context.Context, serverAddress string) (credentials.Credential, error) {
+	parts := strings.Split(ns.repository, "/")
+	for i := len(parts); i > 0; i-- {
+		key := serverAddress + "/" + strings.Join(parts[:i], "/")
+		if cred, err := ns.inner.Get(ctx, key); err == nil && cred != credentials.EmptyCredential {
+			return cred, nil
+		}
 	}
-	return false
+	return ns.inner.Get(ctx, serverAddress)
+}
+
+func (ns *namespacedStore) Put(ctx context.Context, serverAddress string, cred credentials.Credential) error {
+	return ns.inner.Put(ctx, serverAddress, cred)
+}
+
+func (ns *namespacedStore) Delete(ctx context.Context, serverAddress string) error {
+	return ns.inner.Delete(ctx, serverAddress)
 }
 
 // Login authenticates the client with a remote OCI registry using the provided host and options.
@@ -445,20 +481,22 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 		return op.err
 	}
 
-	warnIfHostHasPath(host)
+	// Separate the registry hostname from any namespace path.
+	// e.g., "localhost:8000/myrepo" → registryHost="localhost:8000", namespacePath="myrepo"
+	registryHost, namespacePath, hasNamespace := strings.Cut(host, "/")
 
 	// Determine canonical host from registries.conf Location rewrite.
 	// We use the original (alias) host for newRegistry so its transport
 	// settings (Insecure, certs.d) are preserved, then redirect the
 	// authentication endpoint and credential key to the canonical host.
-	canonicalHost := host
+	canonicalHost := registryHost
 	if c.configs != nil && c.configs.RegistriesConfig != nil {
-		if regCfg := c.configs.RegistriesConfig.FindRegistry(host); regCfg != nil && regCfg.Location != "" {
+		if regCfg := c.configs.RegistriesConfig.FindRegistry(registryHost); regCfg != nil && regCfg.Location != "" {
 			canonicalHost = regCfg.Location
 		}
 	}
 
-	reg, err := c.newRegistry(host)
+	reg, err := c.newRegistry(registryHost)
 	if err != nil {
 		return err
 	}
@@ -466,8 +504,22 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 
 	cred := credentials.Credential{Username: c.username, Password: c.password}
 	ctx := context.Background()
-	if err := remote.Login(ctx, c.credentialsStore, reg, cred); err != nil {
-		return fmt.Errorf("authenticating to %q: %w", canonicalHost, err)
+
+	if !hasNamespace {
+		// Standard hostname-only login: verify and store under the hostname.
+		if err := remote.Login(ctx, c.credentialsStore, reg, cred); err != nil {
+			return fmt.Errorf("authenticating to %q: %w", canonicalHost, err)
+		}
+	} else {
+		// Namespaced login: verify the credential against the hostname,
+		// then store under the namespaced key only.
+		if err := remote.Login(ctx, noopStore{}, reg, cred); err != nil {
+			return fmt.Errorf("authenticating to %q: %w", canonicalHost, err)
+		}
+		namespacedKey := canonicalHost + "/" + namespacePath
+		if err := c.credentialsStore.Put(ctx, namespacedKey, cred); err != nil {
+			return fmt.Errorf("storing credentials for %q: %w", namespacedKey, err)
+		}
 	}
 
 	_, _ = fmt.Fprintln(c.out, "Login Succeeded")
@@ -603,11 +655,18 @@ func (c *Client) Logout(host string, opts ...LogoutOption) error {
 		opt(operation)
 	}
 
-	// Apply the same Location rewrite used by Login so the correct credential is removed.
+	// Extract registry hostname for Location rewrite lookup.
+	registryHost, namespacePath, hasNamespace := strings.Cut(host, "/")
+	canonicalHost := registryHost
 	if c.configs != nil && c.configs.RegistriesConfig != nil {
-		if regCfg := c.configs.RegistriesConfig.FindRegistry(host); regCfg != nil && regCfg.Location != "" {
-			host = regCfg.Location
+		if regCfg := c.configs.RegistriesConfig.FindRegistry(registryHost); regCfg != nil && regCfg.Location != "" {
+			canonicalHost = regCfg.Location
 		}
+	}
+	if hasNamespace {
+		host = canonicalHost + "/" + namespacePath
+	} else {
+		host = canonicalHost
 	}
 
 	if err := remote.Logout(context.Background(), c.credentialsStore, host); err != nil {
