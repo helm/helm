@@ -84,8 +84,16 @@ type ChartDownloader struct {
 	ContentCache string
 
 	// Cache specifies the cache implementation to use.
-	Cache         Cache
-	RepositoryURL string
+	Cache Cache
+
+	// repositoryURL is the resolved Helm repository URL, set by
+	// ResolveChartVersion when the chart is looked up via a configured repo.
+	repositoryURL string
+}
+
+// RepositoryURL returns the resolved Helm repository URL, if any.
+func (c *ChartDownloader) RepositoryURL() string {
+	return c.repositoryURL
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -432,7 +440,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 
 	if r != nil && r.Config != nil {
 		if r.Config.URL != "" {
-			c.RepositoryURL = r.Config.URL
+			c.repositoryURL = r.Config.URL
 		}
 		if r.Config.CertFile != "" || r.Config.KeyFile != "" || r.Config.CAFile != "" {
 			c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))

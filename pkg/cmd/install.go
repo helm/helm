@@ -262,12 +262,6 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
-	if client.ChartPathOptions.RepoURL != "" {
-		chartRequested.Metadata.RepoURL = client.ChartPathOptions.RepoURL
-	} else {
-		chartRequested.Metadata.RepoURL = "path"
-	}
-
 	ac, err := chart.NewAccessor(chartRequested)
 	if err != nil {
 		return nil, err

@@ -352,6 +352,16 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		return nil, fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
 	}
 
+	// Stamp provenance information into the chart metadata if available from
+	// the ChartPathOptions. Do not overwrite existing metadata.RepoURL set by
+	// the chart itself. This ensures library consumers who call actions get
+	// provenance filled in when LocateChart or a downloader discovered it.
+	if chrt.Metadata != nil && chrt.Metadata.RepoURL == "" {
+		if i.ChartPathOptions.RepoURL != "" {
+			chrt.Metadata.RepoURL = i.ChartPathOptions.RepoURL
+		}
+	}
+
 	rel := i.createRelease(chrt, vals, i.Labels)
 
 	var manifestDoc *bytes.Buffer
@@ -857,6 +867,20 @@ func urlEqual(u1, u2 *url.URL) bool {
 	return u1.Scheme == u2.Scheme && u1.Hostname() == u2.Hostname() && portOrDefault(u1) == portOrDefault(u2)
 }
 
+// isRemoteChartRef reports whether ref points to a remote chart (an OCI
+// reference or an absolute http(s) URL), as opposed to a local path or a
+// repo-by-name reference.
+func isRemoteChartRef(ref string) bool {
+	if registry.IsOCI(ref) {
+		return true
+	}
+	u, err := url.Parse(ref)
+	if err != nil {
+		return false
+	}
+	return u.IsAbs() && (u.Scheme == "http" || u.Scheme == "https")
+}
+
 // LocateChart looks for a chart directory in known places, and returns either the full path or an error.
 //
 // This does not ensure that the chart is well-formed; only that the requested filename exists.
@@ -964,7 +988,16 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	if err != nil {
 		return "", err
 	}
-	c.RepoURL = dl.RepositoryURL
+
+	// Record provenance information about where the chart was resolved from.
+	// Prefer the URL discovered by the downloader; fall back to the original
+	// reference when it is an OCI ref or an absolute URL. Leave RepoURL empty
+	// for local paths and unresolvable references so callers can distinguish.
+	if u := dl.RepositoryURL(); u != "" {
+		c.RepoURL = u
+	} else if c.RepoURL == "" && isRemoteChartRef(name) {
+		c.RepoURL = name
+	}
 
 	lname, err := filepath.Abs(filename)
 	if err != nil {
