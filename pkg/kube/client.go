@@ -392,7 +392,8 @@ func (c *Client) update(original, target ResourceList, force, threeWayMerge bool
 		}
 
 		helper := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager())
-		if _, err := helper.Get(info.Namespace, info.Name); err != nil {
+		currentObj, err := helper.Get(info.Namespace, info.Name)
+		if err != nil {
 			if !apierrors.IsNotFound(err) {
 				return errors.Wrap(err, "could not get information about the resource")
 			}
@@ -413,7 +414,18 @@ func (c *Client) update(original, target ResourceList, force, threeWayMerge bool
 		originalInfo := original.Get(info)
 		if originalInfo == nil {
 			kind := info.Mapping.GroupVersionKind.Kind
-			return errors.Errorf("no %s with the name %q found", kind, info.Name)
+
+			c.Log("resource %s %q in namespace %q exists on cluster but not in original release, using cluster state as baseline",
+				kind, info.Name, info.Namespace)
+
+			if err := updateResource(c, info, currentObj, force, threeWayMerge); err != nil {
+				c.Log("error updating the resource %q:\n\t %v", info.Name, err)
+				updateErrors = append(updateErrors, err.Error())
+			}
+			// Because we check for errors later, append the info regardless
+			res.Updated = append(res.Updated, info)
+
+			return nil
 		}
 
 		if err := updateResource(c, info, originalInfo.Object, force, threeWayMerge); err != nil {
