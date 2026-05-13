@@ -171,6 +171,53 @@ go test -v ./pkg/registry/... -run TestRegistryAuthorizer
 
 ---
 
+## Step 8 — Namespaced Authentication
+
+Tests that `helm registry login` with a repository path stores credentials under
+the namespaced key (`host/path`) in `~/.config/helm/registry/config.json` rather
+than under the bare hostname, and that push/pull pick up the namespaced credential.
+
+**Note**: `registry:2` does not enforce per-namespace access control — any valid
+user can reach any repository. This step demonstrates the client-side credential
+storage and lookup behaviour. To demonstrate true namespace isolation (different
+users scoped to different namespaces), a registry with project-level auth such as
+Harbor or Zot is required.
+
+```bash
+# Log in with a namespace path — no warning should be printed
+helm registry login localhost:5001/charts --plain-http --username testuser --password testpass
+```
+**Expected**: `Login Succeeded` (no "currently only supports registry hostname" warning).
+
+```bash
+# Confirm the credential is stored under the namespaced key, not the bare host
+cat ~/.config/helm/registry/config.json | python3 -m json.tool
+```
+**Expected**: `auths` contains `"localhost:5001/charts"` but NOT a bare `"localhost:5001"` entry.
+
+```bash
+# Push and pull using the namespaced credential
+helm push /tmp/helm-test-charts/testchart-0.1.0.tgz oci://localhost:5001/charts
+helm pull oci://localhost:5001/charts/testchart --version 0.1.0 --plain-http --destination /tmp/ns-test/
+```
+**Expected**: Push prints a digest; pull downloads `testchart-0.1.0.tgz` to `/tmp/ns-test/`.
+
+```bash
+# Log in to a second namespace with different credentials — stored separately
+helm registry login localhost:5001/other --plain-http --username otheruser --password otherpass
+cat ~/.config/helm/registry/config.json | python3 -m json.tool
+```
+**Expected**: `auths` now contains both `"localhost:5001/charts"` and `"localhost:5001/other"` as distinct entries.
+
+```bash
+# Logout removes only the targeted namespace entry
+helm registry logout localhost:5001/charts
+cat ~/.config/helm/registry/config.json | python3 -m json.tool
+```
+**Expected**: `"localhost:5001/charts"` removed; `"localhost:5001/other"` still present.
+
+---
+
 ## Pass Criteria
 
 | Test | Pass condition |
@@ -182,3 +229,4 @@ go test -v ./pkg/registry/... -run TestRegistryAuthorizer
 | Step 5 Location Rewrite | Credential under canonical host only |
 | Step 6 Policy Enforcement | Deny-all blocks; allow passes |
 | Step 7 registryAuthorizer | Mock client's Do() invoked |
+| Step 8 Namespaced Auth | No warning; namespaced key in config.json; push/pull succeed; logout targets correct key |
