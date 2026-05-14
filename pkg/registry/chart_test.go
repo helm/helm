@@ -199,6 +199,24 @@ func TestGenerateOCIAnnotations(t *testing.T) {
 			},
 		},
 		{
+			"Supports org.opencontainers.image.revision from chart annotations",
+			&chart.Metadata{
+				Name:        "oci",
+				Version:     "0.0.1",
+				Description: "OCI Helm Chart",
+				Annotations: map[string]string{
+					ocispec.AnnotationRevision: "abcdef1234567890",
+				},
+			},
+			map[string]string{
+				"org.opencontainers.image.title":       "oci",
+				"org.opencontainers.image.version":     "0.0.1",
+				"org.opencontainers.image.description": "OCI Helm Chart",
+				"org.opencontainers.image.created":     nowString,
+				"org.opencontainers.image.revision":    "abcdef1234567890",
+			},
+		},
+		{
 			"Verify Chart Name and Version cannot be overridden from annotations",
 			&chart.Metadata{
 				Name:        "oci",
