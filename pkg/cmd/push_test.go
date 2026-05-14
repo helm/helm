@@ -104,3 +104,19 @@ func TestPushWriterYAML(t *testing.T) {
 		t.Errorf("YAML output missing Digest value, got: %q", got)
 	}
 }
+
+func TestSuppressSummaryWriter(t *testing.T) {
+	var buf bytes.Buffer
+	w := &suppressSummaryWriter{w: &buf}
+
+	w.Write([]byte("Pushed: oci://example.com/chart:1.0.0\n"))
+	w.Write([]byte("Digest: sha256:abc123\n"))
+	if buf.Len() != 0 {
+		t.Errorf("expected summary lines to be suppressed, got: %q", buf.String())
+	}
+
+	w.Write([]byte("WARNING: chart name contains underscores\n"))
+	if !strings.Contains(buf.String(), "WARNING:") {
+		t.Errorf("expected non-summary output to be forwarded, got: %q", buf.String())
+	}
+}

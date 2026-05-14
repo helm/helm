@@ -36,7 +36,8 @@ type ChartUploader struct {
 	RegistryClient *registry.Client
 }
 
-// UploadTo uploads a chart. Depending on the settings, it may also upload a provenance file.
+// UploadTo uploads a chart to the remote URL and returns the push result containing
+// the ref and manifest digest. Depending on the settings, it may also upload a provenance file.
 func (c *ChartUploader) UploadTo(ref, remote string) (*registry.PushResult, error) {
 	u, err := url.Parse(remote)
 	if err != nil {
