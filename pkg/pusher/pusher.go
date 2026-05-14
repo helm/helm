@@ -70,10 +70,12 @@ func WithPlainHTTP(plainHTTP bool) Option {
 }
 
 // Pusher is an interface to support upload to the specified URL.
+// Currently only OCI (oci://) registries are supported; the returned
+// *registry.PushResult contains OCI-specific manifest metadata (ref, digest).
 //
 // Note: the Push method signature was updated in Helm v4 to return
 // *registry.PushResult alongside the error, enabling callers to obtain
-// structured push metadata (ref, digest) without parsing text output.
+// structured push metadata without parsing text output.
 // This is an intentional breaking change in the v4 major release.
 type Pusher interface {
 	// Push uploads the chart at chartRef to url and returns the push result.
