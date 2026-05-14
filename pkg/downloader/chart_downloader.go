@@ -85,6 +85,15 @@ type ChartDownloader struct {
 
 	// Cache specifies the cache implementation to use.
 	Cache Cache
+
+	// repositoryURL is the resolved Helm repository URL, set by
+	// ResolveChartVersion when the chart is looked up via a configured repo.
+	repositoryURL string
+}
+
+// RepositoryURL returns the resolved Helm repository URL, if any.
+func (c *ChartDownloader) RepositoryURL() string {
+	return c.repositoryURL
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -365,6 +374,11 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 //
 // TODO: support OCI hash
 func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url.URL, error) {
+	// Clear any URL recorded by a previous call so RepositoryURL() does not
+	// report stale provenance when the same ChartDownloader instance is
+	// reused for a chart that does not resolve to a configured repo.
+	c.repositoryURL = ""
+
 	u, err := url.Parse(ref)
 	if err != nil {
 		return "", nil, fmt.Errorf("invalid chart URL format: %s", ref)
@@ -405,6 +419,9 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 
 		// If we get here, we don't need to go through the next phase of looking
 		// up the URL. We have it already. So we just set the parameters and return.
+		if rc.URL != "" {
+			c.repositoryURL = rc.URL
+		}
 		c.Options = append(
 			c.Options,
 			getter.WithURL(rc.URL),
@@ -445,6 +462,9 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 	}
 
 	if r != nil && r.Config != nil {
+		if r.Config.URL != "" {
+			c.repositoryURL = r.Config.URL
+		}
 		if r.Config.CertFile != "" || r.Config.KeyFile != "" || r.Config.CAFile != "" {
 			c.Options = append(c.Options, getter.WithTLSClientConfig(r.Config.CertFile, r.Config.KeyFile, r.Config.CAFile))
 		}

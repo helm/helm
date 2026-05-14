@@ -157,6 +157,19 @@ type ChartPathOptions struct {
 	// registryClient provides a registry client but is not added with
 	// options from a flag
 	registryClient *registry.Client
+
+	// resolvedRepoURL is the source URL from which the chart was obtained
+	// during the last LocateChart call. It is independent of RepoURL
+	// (the --repo input) and is used to record provenance into chart metadata.
+	resolvedRepoURL string
+}
+
+// ResolvedRepoURL returns the source URL from which the chart was obtained
+// during the last LocateChart call (a Helm repository URL, an OCI reference,
+// or a direct artifact URL). It is empty for local-path installs or when
+// LocateChart has not been called.
+func (c *ChartPathOptions) ResolvedRepoURL() string {
+	return c.resolvedRepoURL
 }
 
 // NewInstall creates a new Install object with the given configuration.
@@ -370,6 +383,18 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 
 	if driver.ContainsSystemLabels(i.Labels) {
 		return nil, fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
+	}
+
+	// Stamp provenance information into the chart metadata. Prefer the URL
+	// discovered by LocateChart (ResolvedRepoURL) and fall back to the --repo
+	// input for library consumers who set it without calling LocateChart.
+	// Do not overwrite a value already set in Chart.yaml.
+	if chrt.Metadata != nil && chrt.Metadata.RepoURL == "" {
+		if u := i.ChartPathOptions.ResolvedRepoURL(); u != "" {
+			chrt.Metadata.RepoURL = u
+		} else if i.ChartPathOptions.RepoURL != "" {
+			chrt.Metadata.RepoURL = i.ChartPathOptions.RepoURL
+		}
 	}
 
 	rel := i.createRelease(chrt, vals, i.Labels)
@@ -877,6 +902,20 @@ func urlEqual(u1, u2 *url.URL) bool {
 	return u1.Scheme == u2.Scheme && u1.Hostname() == u2.Hostname() && portOrDefault(u1) == portOrDefault(u2)
 }
 
+// isRemoteChartRef reports whether ref points to a remote chart (an OCI
+// reference or an absolute http(s) URL), as opposed to a local path or a
+// repo-by-name reference.
+func isRemoteChartRef(ref string) bool {
+	if registry.IsOCI(ref) {
+		return true
+	}
+	u, err := url.Parse(ref)
+	if err != nil {
+		return false
+	}
+	return u.IsAbs() && (u.Scheme == "http" || u.Scheme == "https")
+}
+
 // LocateChart looks for a chart directory in known places, and returns either the full path or an error.
 //
 // This does not ensure that the chart is well-formed; only that the requested filename exists.
@@ -891,6 +930,10 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	if registry.IsOCI(name) && c.registryClient == nil {
 		return "", fmt.Errorf("unable to lookup chart %q, missing registry client", name)
 	}
+
+	// Reset any provenance recorded by a previous call so callers that reuse
+	// this instance do not observe stale values from an earlier chart.
+	c.resolvedRepoURL = ""
 
 	name = strings.TrimSpace(name)
 	version := strings.TrimSpace(c.Version)
@@ -983,6 +1026,22 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 	filename, _, err := dl.DownloadToCache(name, version)
 	if err != nil {
 		return "", err
+	}
+
+	// Record provenance information about where the chart was resolved from.
+	// Prefer the URL discovered by the downloader, then the --repo input,
+	// then the original reference when it is an OCI ref or an absolute URL.
+	// Local paths and unresolvable references leave resolvedRepoURL empty so
+	// callers can distinguish them. We deliberately do not mutate RepoURL,
+	// because it is also the --repo flag input and controls local-path vs
+	// remote resolution on subsequent calls.
+	switch {
+	case dl.RepositoryURL() != "":
+		c.resolvedRepoURL = dl.RepositoryURL()
+	case c.RepoURL != "":
+		c.resolvedRepoURL = c.RepoURL
+	case isRemoteChartRef(name):
+		c.resolvedRepoURL = name
 	}
 
 	lname, err := filepath.Abs(filename)

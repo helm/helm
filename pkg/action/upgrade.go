@@ -317,6 +317,18 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chartv2.Chart, vals map[str
 
 	u.cfg.Logger().Debug("determined release apply method", slog.Bool("server_side_apply", serverSideApply), slog.String("previous_release_apply_method", lastRelease.ApplyMethod))
 
+	// Stamp provenance information into the chart metadata. Prefer the URL
+	// discovered by LocateChart (ResolvedRepoURL) and fall back to the --repo
+	// input for library consumers who set it without calling LocateChart.
+	// Do not overwrite a value already set in Chart.yaml.
+	if chart.Metadata != nil && chart.Metadata.RepoURL == "" {
+		if r := u.ChartPathOptions.ResolvedRepoURL(); r != "" {
+			chart.Metadata.RepoURL = r
+		} else if u.ChartPathOptions.RepoURL != "" {
+			chart.Metadata.RepoURL = u.ChartPathOptions.RepoURL
+		}
+	}
+
 	// Store an upgraded release.
 	upgradedRelease := &release.Release{
 		Name:      name,
