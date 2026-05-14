@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -139,9 +140,12 @@ func ValidateAgainstSchemaWithPath(ch chart.Charter, values map[string]any, char
 
 		var subchartPath string
 		if absChartPath != "" {
-			subchartPath = filepath.Join(absChartPath, "charts", sub.Name())
+			subchartPath = resolveSubchartDir(
+				filepath.Join(absChartPath, "charts"),
+				sub.Name(),
+				sub.Schema(),
+			)
 		}
-		// If absChartPath is empty (archived chart), pass empty string to disable $ref resolution for subcharts too
 		if err := ValidateAgainstSchemaWithPath(subchart, subchartValues, subchartPath); err != nil {
 			sb.WriteString(err.Error())
 		}
@@ -233,6 +237,41 @@ func (l urnLoader) Load(urlStr string) (any, error) {
 		slog.Warn("unresolved URN reference ignored; using permissive schema", "urn", urlStr)
 	}
 	return jsonschema.UnmarshalJSON(strings.NewReader("true"))
+}
+
+// resolveSubchartDir finds the on-disk directory for a subchart under chartsDir.
+// Returns "" when no directory can be found, which disables $ref resolution.
+func resolveSubchartDir(chartsDir, effectiveName string, schema []byte) string {
+	// Direct match; handles the common non-aliased case in one syscall.
+	candidate := filepath.Join(chartsDir, effectiveName)
+	if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+		return candidate
+	}
+
+	// The effective name didn't match a directory likely an alias.
+	// Scan charts/ subdirectories and match by schema content.
+	if len(schema) == 0 {
+		return ""
+	}
+	entries, err := os.ReadDir(chartsDir)
+	if err != nil {
+		return ""
+	}
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(chartsDir, e.Name(), "values.schema.json"))
+		if err != nil {
+			continue
+		}
+		// getAliasDependency shallow-copies the chart, so schema bytes in memory
+		// are identical to the file originally loaded from this directory.
+		if bytes.Equal(data, schema) {
+			return filepath.Join(chartsDir, e.Name())
+		}
+	}
+	return ""
 }
 
 // Note, JSONSchemaValidationError is used to wrap the error from the underlying
