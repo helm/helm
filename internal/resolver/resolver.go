@@ -59,24 +59,45 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 	locked := make([]*chart.Dependency, len(reqs))
 	missing := []string{}
 	for i, d := range reqs {
-		constraint, err := semver.NewConstraint(d.Version)
-		if err != nil {
-			return nil, fmt.Errorf("dependency %q has an invalid version/constraint format: %w", d.Name, err)
+		var constraint *semver.Constraints
+
+		// Validate version early if set, regardless of local or remote
+		if d.Version != "" {
+			var err error
+			constraint, err = semver.NewConstraint(d.Version)
+			if err != nil {
+				return nil, fmt.Errorf("dependency %q has an invalid version/constraint format: %w", d.Name, err)
+			}
 		}
 
+		// Handle local chart dependencies (empty repository)
 		if d.Repository == "" {
-			// Local chart subfolder
-			if _, err := GetLocalPath(filepath.Join("charts", d.Name), r.chartpath); err != nil {
+			chartpath, err := GetLocalPath(filepath.Join("charts", d.Name), r.chartpath)
+			if err != nil {
 				return nil, err
+			}
+
+			version := d.Version
+
+			// Determine version from local chart if not specified
+			if version == "" {
+				ch, err := loader.LoadDir(chartpath)
+				if err != nil {
+					return nil, err
+				}
+
+				version = ch.Metadata.Version
 			}
 
 			locked[i] = &chart.Dependency{
 				Name:       d.Name,
 				Repository: "",
-				Version:    d.Version,
+				Version:    version,
 			}
 			continue
 		}
+
+		// Handle file:// repository dependencies
 		if strings.HasPrefix(d.Repository, "file://") {
 			chartpath, err := GetLocalPath(d.Repository, r.chartpath)
 			if err != nil {
@@ -90,13 +111,19 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 
 			v, err := semver.NewVersion(ch.Metadata.Version)
 			if err != nil {
-				// Not a legit entry.
+				// If no version specified, add to missing list
+				if d.Version == "" {
+					missing = append(missing, fmt.Sprintf("%q (repository %q)", d.Name, d.Repository))
+				}
 				continue
 			}
 
-			if !constraint.Check(v) {
-				missing = append(missing, fmt.Sprintf("%q (repository %q, version %q)", d.Name, d.Repository, d.Version))
-				continue
+			// If version is specified, validate it against the local chart
+			if d.Version != "" {
+				if !constraint.Check(v) {
+					missing = append(missing, fmt.Sprintf("%q (repository %q, version %q)", d.Name, d.Repository, d.Version))
+					continue
+				}
 			}
 
 			locked[i] = &chart.Dependency{
