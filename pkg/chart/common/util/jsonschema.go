@@ -134,7 +134,7 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 	if err != nil {
 		return err
 	}
-	slog.Debug("unmarshalled JSON schema", "schema", schemaJSON)
+	slog.Debug("unmarshalled JSON schema", "schema", string(schemaJSON))
 
 	// Configure compiler with loaders for different URL schemes
 	loader := jsonschema.SchemeURLLoader{
