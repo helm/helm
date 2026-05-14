@@ -249,17 +249,19 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 					}
 				} else {
 					// If the key is a child chart, coalesce tables with Merge set to true
-					merge := childChartMergeTrue(c, key, merge)
+					childMerge := childChartMergeTrue(c, key, merge)
 
 					// When coalescing, clean nils from chart defaults before merging
-					// so they don't leak into the result.
+					// so they don't leak into the result. Use the original merge flag
+					// (not childMerge) because childMerge is always true for child
+					// chart keys, which would skip cleaning subchart-default nils.
 					if !merge {
 						cleanNilValues(src)
 					}
 
 					// Because v has higher precedence than nv, dest values override src
 					// values.
-					coalesceTablesFullKey(printf, dest, src, concatPrefix(subPrefix, key), merge)
+					coalesceTablesFullKey(printf, dest, src, concatPrefix(subPrefix, key), childMerge)
 				}
 			}
 		} else {
