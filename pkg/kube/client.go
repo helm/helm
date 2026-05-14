@@ -1234,7 +1234,7 @@ func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts 
 	)
 	if err != nil {
 		if isIncompatibleServerError(err) {
-			return fmt.Errorf("server-side apply not available on the server: %v", err)
+			return fmt.Errorf("server-side apply not available on the server: %w", err)
 		}
 
 		if apierrors.IsConflict(err) {
@@ -1251,7 +1251,7 @@ func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts 
 func (c *Client) GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error) {
 	podList, err := c.kubeClient.CoreV1().Pods(namespace).List(context.Background(), listOptions)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pod list with options: %+v with error: %v", listOptions, err)
+		return nil, fmt.Errorf("failed to get pod list with options: %+v with error: %w", listOptions, err)
 	}
 	return podList, nil
 }
