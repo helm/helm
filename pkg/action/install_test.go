@@ -923,3 +923,21 @@ func TestInstallWithSystemLabels(t *testing.T) {
 
 	is.Equal(fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels()), err)
 }
+
+func TestInstallCRDs_NilFile(t *testing.T) {
+	instAction := installAction(t)
+
+	err := instAction.installCRDs([]chart.CRD{{Name: "crds/empty.yaml"}})
+	require.ErrorContains(t, err, "file is empty")
+}
+
+func TestInstallCRDs_EmptyResources(t *testing.T) {
+	config := actionConfigFixtureWithDummyResources(t, kube.ResourceList{})
+	instAction := NewInstall(config)
+
+	mockChart := buildChart()
+	mockChart.Files = append(mockChart.Files, &chart.File{Name: "crds/foo.yaml", Data: []byte("apiVersion: v1\nkind: CustomResourceDefinition\n")})
+
+	err := instAction.installCRDs(mockChart.CRDObjects())
+	require.ErrorContains(t, err, "resources are empty")
+}
