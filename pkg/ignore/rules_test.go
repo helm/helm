@@ -112,11 +112,11 @@ func TestIgnore(t *testing.T) {
 		{`cargo/`, "mast/", false},
 		{`helm.txt/`, "helm.txt", false},
 
-		// Negation tests
+		// Negation tests (single pattern - negation alone doesn't ignore non-matches)
 		{`!helm.txt`, "helm.txt", false},
-		{`!helm.txt`, "tiller.txt", true},
-		{`!*.txt`, "cargo", true},
-		{`!cargo/`, "mast/", true},
+		{`!helm.txt`, "tiller.txt", false},
+		{`!*.txt`, "cargo", false},
+		{`!cargo/`, "mast/", false},
 
 		// Absolute path tests
 		{`/a.txt`, "a.txt", true},
@@ -146,6 +146,87 @@ func TestAddDefaults(t *testing.T) {
 
 	if len(r.patterns) != 1 {
 		t.Errorf("Expected 1 default patterns, got %d", len(r.patterns))
+	}
+}
+
+func TestNegationPatterns(t *testing.T) {
+	// Test multi-rule scenarios with negation patterns (gitignore semantics)
+	tests := []struct {
+		name     string
+		rules    string
+		file     string
+		expected bool
+	}{
+		// Basic negation: *.txt ignored, but README.txt is un-ignored
+		{
+			name:     "negation re-includes previously excluded file",
+			rules:    "*.txt\n!helm.txt",
+			file:     "helm.txt",
+			expected: false, // Should NOT be ignored (negation re-includes it)
+		},
+		{
+			name:     "file matching exclusion but not negation is ignored",
+			rules:    "*.txt\n!helm.txt",
+			file:     "tiller.txt",
+			expected: true, // Should be ignored (matches *.txt, doesn't match negation)
+		},
+		{
+			name:     "unrelated file is not affected by negation",
+			rules:    "*.txt\n!helm.txt",
+			file:     "cargo",
+			expected: false, // Should NOT be ignored (doesn't match *.txt)
+		},
+		// Multiple negations
+		{
+			name:     "multiple negations - first negated file",
+			rules:    "*.txt\n!helm.txt\n!tiller.txt",
+			file:     "helm.txt",
+			expected: false,
+		},
+		{
+			name:     "multiple negations - second negated file",
+			rules:    "*.txt\n!helm.txt\n!tiller.txt",
+			file:     "tiller.txt",
+			expected: false,
+		},
+		{
+			name:     "multiple negations - non-negated file still ignored",
+			rules:    "*.txt\n!helm.txt\n!tiller.txt",
+			file:     "rudder.txt",
+			expected: true,
+		},
+		// Negation pattern alone should not ignore anything
+		{
+			name:     "negation alone does not ignore non-matching files",
+			rules:    "!helm.txt",
+			file:     "tiller.txt",
+			expected: false,
+		},
+		{
+			name:     "negation alone explicitly un-ignores matching files",
+			rules:    "!helm.txt",
+			file:     "helm.txt",
+			expected: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			r, err := parseString(test.rules)
+			if err != nil {
+				t.Fatalf("Failed to parse rules: %s", err)
+			}
+			fi, err := os.Stat(filepath.Join(testdata, test.file))
+			if err != nil {
+				t.Fatalf("Fixture missing: %s", err)
+			}
+
+			result := r.Ignore(test.file, fi)
+			if result != test.expected {
+				t.Errorf("Expected Ignore(%q) to be %v for rules %q, got %v",
+					test.file, test.expected, test.rules, result)
+			}
+		})
 	}
 }
 
