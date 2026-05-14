@@ -21,7 +21,11 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/chart/common"
+	commonutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 )
@@ -567,4 +571,110 @@ func TestChartWithDependencyAliasedTwiceAndDoublyReferencedSubDependency(t *test
 		t.Fatal("expected two dependencies after processing aliases")
 	}
 	validateDependencyTree(t, c)
+}
+
+// Metadata.Dependencies must be set so processImportValues doesn't early-exit
+// before contaminating parent.Values with subchart nil defaults.
+func newParentWithNilSubchart() *chart.Chart {
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Values: map[string]any{
+			"keyMapping": map[string]any{
+				"password": nil,
+			},
+			"ingress": map[string]any{
+				"configureCertmanager": nil,
+			},
+		},
+	}
+	parent := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:         "parent",
+			Dependencies: []*chart.Dependency{{Name: "child"}},
+		},
+		Values: map[string]any{},
+	}
+	parent.AddDependency(subchart)
+	return parent
+}
+
+func processAndCoalesce(t *testing.T, parent *chart.Chart, vals common.Values) common.Values {
+	t.Helper()
+	require.NoError(t, ProcessDependencies(parent, vals))
+	coalesced, err := commonutil.CoalesceValues(parent, vals)
+	require.NoError(t, err)
+	return coalesced
+}
+
+// Baseline: with no user subchart values, nil cleanup goes through the
+// !merge else-branch in coalesceValues and works.
+func TestProcessDependenciesNilCleanedNoUserSubchartVals(t *testing.T) {
+	is := assert.New(t)
+	coalesced := processAndCoalesce(t, newParentWithNilSubchart(), common.Values{})
+
+	_, err := common.Values(coalesced).PathValue("child.keyMapping.password")
+	is.ErrorAs(err, &common.ErrNoValue{}, "child.keyMapping.password should be absent")
+
+	_, err = common.Values(coalesced).PathValue("child.ingress.configureCertmanager")
+	is.ErrorAs(err, &common.ErrNoValue{}, "child.ingress.configureCertmanager should be absent")
+}
+
+// Any user value under "child" routes coalescing through merge=true and
+// bypasses cleanNilValues. Covers #31919 and #31971.
+func TestProcessDependenciesNilCleanedWithUnrelatedSubchartVals(t *testing.T) {
+	is := assert.New(t)
+	coalesced := processAndCoalesce(t, newParentWithNilSubchart(), common.Values{
+		"child": map[string]any{
+			"someOtherKey": "someValue",
+		},
+		"global": map[string]any{
+			"ingress": map[string]any{
+				"configureCertmanager": true,
+			},
+		},
+	})
+
+	_, err := common.Values(coalesced).PathValue("child.keyMapping.password")
+	is.ErrorAs(err, &common.ErrNoValue{}, "child.keyMapping.password should be absent")
+
+	_, err = common.Values(coalesced).PathValue("child.ingress.configureCertmanager")
+	is.ErrorAs(err, &common.ErrNoValue{}, "child.ingress.configureCertmanager should be absent so pluck falls through to global")
+}
+
+// Stricter case: user overrides a sibling key in the same map containing the nil.
+func TestProcessDependenciesNilCleanedWithPartialSameMapVals(t *testing.T) {
+	is := assert.New(t)
+
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Values: map[string]any{
+			"keyMapping": map[string]any{
+				"password": nil,
+				"format":   "bcrypt",
+			},
+		},
+	}
+	parent := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:         "parent",
+			Dependencies: []*chart.Dependency{{Name: "child"}},
+		},
+		Values: map[string]any{},
+	}
+	parent.AddDependency(subchart)
+
+	coalesced := processAndCoalesce(t, parent, common.Values{
+		"child": map[string]any{
+			"keyMapping": map[string]any{
+				"format": "sha256",
+			},
+		},
+	})
+
+	v, err := common.Values(coalesced).PathValue("child.keyMapping.format")
+	is.NoError(err)
+	is.Equal("sha256", v)
+
+	_, err = common.Values(coalesced).PathValue("child.keyMapping.password")
+	is.ErrorAs(err, &common.ErrNoValue{}, "child.keyMapping.password should be absent")
 }
