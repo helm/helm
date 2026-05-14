@@ -29,7 +29,6 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/credentials"
 )
 
@@ -41,7 +40,7 @@ type GenericClient struct {
 	username           string
 	password           string
 	out                io.Writer
-	authorizer         *auth.Client
+	authorizer         *Authorizer
 	registryAuthorizer RemoteClient
 	credentialsStore   credentials.Store
 	httpClient         *http.Client
