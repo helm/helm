@@ -55,3 +55,9 @@ func TestNewPushWithPlainHTTP(t *testing.T) {
 	assert.NotNil(t, client)
 	assert.Equal(t, true, client.plainHTTP)
 }
+
+func TestPushRunNilConfigOCI(t *testing.T) {
+	p := NewPushWithOpts()
+	_, err := p.Run("testdata/testcharts/subchart-1.tgz", "oci://localhost:5000/test")
+	assert.EqualError(t, err, "missing action configuration: use WithPushConfig when constructing Push")
+}
