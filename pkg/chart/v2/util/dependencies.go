@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"helm.sh/helm/v4/internal/copystructure"
@@ -242,8 +243,8 @@ func set(path []string, data map[string]any) map[string]any {
 		return nil
 	}
 	cur := data
-	for i := len(path) - 1; i >= 0; i-- {
-		cur = map[string]any{path[i]: cur}
+	for _, v := range slices.Backward(path) {
+		cur = map[string]any{v: cur}
 	}
 	return cur
 }

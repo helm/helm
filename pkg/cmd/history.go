@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"time"
 
@@ -207,8 +208,8 @@ func getHistory(client *action.History, name string) (releaseHistory, error) {
 }
 
 func getReleaseHistory(rls []*release.Release) (history releaseHistory) {
-	for i := len(rls) - 1; i >= 0; i-- {
-		r := rls[i]
+	for _, v := range slices.Backward(rls) {
+		r := v
 		c := formatChartName(r.Chart)
 		s := r.Info.Status.String()
 		v := r.Version

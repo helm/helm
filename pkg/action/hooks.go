@@ -150,8 +150,8 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 	return func() error {
 		// If all hooks are successful, check the annotation of each hook to determine whether the hook should be deleted
 		// or output should be logged under succeeded condition. If so, then clear the corresponding resource object in each hook
-		for i := len(executingHooks) - 1; i >= 0; i-- {
-			h := executingHooks[i]
+		for _, v := range slices.Backward(executingHooks) {
+			h := v
 			if err := cfg.outputLogsByPolicy(h, rl.Namespace, release.HookOutputOnSucceeded); err != nil {
 				// We log here as we still want to attempt hook resource deletion even if output logging fails.
 				log.Printf("error outputting logs for hook failure: %v", err)
