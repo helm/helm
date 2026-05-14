@@ -77,8 +77,12 @@ func (s *suppressSummaryWriter) Write(p []byte) (int, error) {
 // "Pushed:"/"Digest:" labels as the registry client's built-in output so that
 // the default (--output table) experience is consistent and familiar.
 func (w *pushWriter) WriteTable(out io.Writer) error {
-	fmt.Fprintf(out, "Pushed: %s\n", w.result.Ref)
-	fmt.Fprintf(out, "Digest: %s\n", w.result.Digest)
+	if _, err := fmt.Fprintf(out, "Pushed: %s\n", w.result.Ref); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(out, "Digest: %s\n", w.result.Digest); err != nil {
+		return err
+	}
 	return nil
 }
 
