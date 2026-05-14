@@ -187,3 +187,43 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	}
 
 }
+
+func TestVCSInstaller_Path(t *testing.T) {
+	tests := []struct {
+		name           string
+		source         string
+		version        string
+		helmPluginsDir string
+		expectPath     string
+	}{
+		{
+			name:           "default helm plugins dir",
+			source:         "https://github.com/adamreese/helm-env",
+			version:        "0.2.0",
+			helmPluginsDir: "",
+			expectPath:     helmpath.DataPath("plugins", "helm-env"),
+		}, {
+			name:           "custom helm plugins dir",
+			source:         "https://github.com/adamreese/helm-env",
+			version:        "0.2.0",
+			helmPluginsDir: "/foo/bar",
+			expectPath:     "/foo/bar/helm-env",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.helmPluginsDir != "" {
+				t.Setenv("HELM_PLUGINS", tt.helmPluginsDir)
+			}
+			installer, err := NewVCSInstaller(tt.source, tt.version)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			path := installer.Path()
+			if path != tt.expectPath {
+				t.Errorf("expected path %s, got %s", tt.expectPath, path)
+			}
+		})
+	}
+}

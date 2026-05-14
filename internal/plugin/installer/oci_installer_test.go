@@ -35,7 +35,6 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"helm.sh/helm/v4/internal/test/ensure"
-	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
@@ -281,33 +280,33 @@ func TestNewOCIInstaller(t *testing.T) {
 
 func TestOCIInstaller_Path(t *testing.T) {
 	tests := []struct {
-		name       string
-		source     string
-		pluginName string
-		expectPath string
+		name           string
+		source         string
+		helmPluginsDir string
+		expectPath     string
 	}{
 		{
-			name:       "valid plugin name",
-			source:     "oci://ghcr.io/user/plugin-name:v1.0.0",
-			pluginName: "plugin-name",
-			expectPath: helmpath.DataPath("plugins", "plugin-name"),
-		},
-		{
-			name:       "empty source",
-			source:     "",
-			pluginName: "",
-			expectPath: "",
+			name:           "default helm plugins dir",
+			source:         "oci://ghcr.io/user/plugin-name:v1.0.0",
+			helmPluginsDir: "",
+			expectPath:     helmpath.DataPath("plugins", "plugin-name"),
+		}, {
+			name:           "custom helm plugins dir",
+			source:         "oci://ghcr.io/user/plugin-name:v1.0.0",
+			helmPluginsDir: "/foo/bar",
+			expectPath:     "/foo/bar/plugin-name",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			installer := &OCIInstaller{
-				PluginName: tt.pluginName,
-				base:       newBase(tt.source),
-				settings:   cli.New(),
+			if tt.helmPluginsDir != "" {
+				t.Setenv("HELM_PLUGINS", tt.helmPluginsDir)
 			}
-
+			installer, err := NewOCIInstaller(tt.source)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			path := installer.Path()
 			if path != tt.expectPath {
 				t.Errorf("expected path %s, got %s", tt.expectPath, path)
