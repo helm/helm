@@ -145,6 +145,7 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 	}
 
 	compiler := jsonschema.NewCompiler()
+	compiler.AssertFormat()
 	compiler.UseLoader(loader)
 	err = compiler.AddResource("file:///values.schema.json", schema)
 	if err != nil {
