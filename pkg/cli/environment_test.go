@@ -18,6 +18,7 @@ package cli
 
 import (
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -122,7 +123,8 @@ func TestEnvSettings(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer resetEnv()()
+			cleanup := resetEnv()
+			t.Cleanup(cleanup)
 
 			for k, v := range tt.envvars {
 				t.Setenv(k, v)
@@ -243,7 +245,32 @@ func TestEnvOrBool(t *testing.T) {
 }
 
 func TestUserAgentHeaderInK8sRESTClientConfig(t *testing.T) {
-	defer resetEnv()()
+	cleanup := resetEnv()
+	t.Cleanup(cleanup)
+
+	kubeconfigPath := filepath.Join(t.TempDir(), "config")
+	kubeconfig := `apiVersion: v1
+clusters:
+- cluster:
+    server: https://127.0.0.1:6443
+  name: test
+contexts:
+- context:
+    cluster: test
+    user: test-user
+  name: test
+current-context: test
+kind: Config
+preferences: {}
+users:
+- name: test-user
+  user:
+    token: test-token
+`
+	if err := os.WriteFile(kubeconfigPath, []byte(kubeconfig), 0o600); err != nil {
+		t.Fatalf("failed to create test kubeconfig: %v", err)
+	}
+	t.Setenv("KUBECONFIG", kubeconfigPath)
 
 	settings := New()
 	restConfig, err := settings.RESTClientGetter().ToRESTConfig()
