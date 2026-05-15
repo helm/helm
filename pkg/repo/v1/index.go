@@ -154,7 +154,7 @@ func (i IndexFile) MustAdd(md *chart.Metadata, filename, baseURL, digest string)
 // Deprecated: Use index.MustAdd instead.
 func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 	if err := i.MustAdd(md, filename, baseURL, digest); err != nil {
-		slog.Error("skipping loading invalid entry for chart %q %q from %s: %s", md.Name, md.Version, filename, err)
+		slog.Error("skipping loading invalid entry for chart", "name", md.Name, "version", md.Version, "file", filename, "error", err)
 	}
 }
 
@@ -359,7 +359,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 	for name, cvs := range i.Entries {
 		for idx, v := range slices.Backward(cvs) {
 			if v == nil {
-				slog.Warn(fmt.Sprintf("skipping loading invalid entry for chart %q from %s: empty entry", name, source))
+				slog.Warn("skipping loading invalid entry for chart: empty entry", "name", name, "source", source)
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 				continue
 			}
@@ -371,7 +371,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 				v.APIVersion = chart.APIVersionV1
 			}
 			if err := v.Validate(); ignoreSkippableChartValidationError(err) != nil {
-				slog.Warn(fmt.Sprintf("skipping loading invalid entry for chart %q %q from %s: %s", name, v.Version, source, err))
+				slog.Warn("skipping loading invalid entry for chart", "name", name, "version", v.Version, "source", source, "error", err)
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}
 		}
