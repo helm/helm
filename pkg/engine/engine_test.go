@@ -17,8 +17,10 @@ limitations under the License.
 package engine
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"log/slog"
 	"path"
 	"strings"
 	"sync"
@@ -390,6 +392,51 @@ func TestRenderWithClientProvider(t *testing.T) {
 				t.Errorf("Expected %q, got %q", want, out[key])
 			}
 		})
+	}
+}
+
+func TestLookupLogsDebugWhenObjectNotFound(t *testing.T) {
+	provider := &testClientProvider{
+		t: t,
+		scheme: map[string]kindProps{
+			"v1/Namespace": {
+				gvr: schema.GroupVersionResource{
+					Version:  "v1",
+					Resource: "namespaces",
+				},
+			},
+		},
+		objects: []runtime.Object{
+			makeUnstructured("v1", "Namespace", "default", ""),
+		},
+	}
+
+	originalLogger := slog.Default()
+	logBuffer := &bytes.Buffer{}
+	slog.SetDefault(slog.New(slog.NewTextHandler(logBuffer, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() {
+		slog.SetDefault(originalLogger)
+	})
+
+	lookup := newLookupFunction(provider)
+
+	_, err := lookup("v1", "Namespace", "", "absent")
+	if err != nil {
+		t.Fatalf("expected no error when lookup object is missing: %v", err)
+	}
+
+	logOutput := logBuffer.String()
+	if !strings.Contains(logOutput, "lookup returned no object") {
+		t.Fatalf("expected debug log for missing lookup object, got: %q", logOutput)
+	}
+
+	logBuffer.Reset()
+	_, err = lookup("v1", "Namespace", "", "default")
+	if err != nil {
+		t.Fatalf("expected no error when lookup object exists: %v", err)
+	}
+	if strings.Contains(logBuffer.String(), "lookup returned no object") {
+		t.Fatalf("did not expect missing-object debug log for existing lookup object, got: %q", logBuffer.String())
 	}
 }
 

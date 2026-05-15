@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"math"
 	"reflect"
@@ -89,7 +90,8 @@ func funcMap() template.FuncMap {
 		"required": func(string, any) (any, error) { return "not implemented", nil },
 		// Provide a placeholder for the "lookup" function, which requires a kubernetes
 		// connection.
-		"lookup": func(string, string, string, string) (map[string]any, error) {
+		"lookup": func(apiVersion, kind, namespace, name string) (map[string]any, error) {
+			slog.Debug("lookup skipped: no Kubernetes client available", "apiVersion", apiVersion, "kind", kind, "namespace", namespace, "name", name)
 			return map[string]any{}, nil
 		},
 	}
