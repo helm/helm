@@ -83,3 +83,51 @@ func TestRollback_WaitOptionsPassedDownstream(t *testing.T) {
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }
+
+func TestRollbackSetsRollbackRevision(t *testing.T) {
+	config := actionConfigFixture(t)
+
+	rel1 := releaseStub()
+	rel1.Name = "rollback-rev-test"
+	rel1.Version = 1
+	rel1.Info.Status = "superseded"
+	rel1.ApplyMethod = "csa"
+	require.NoError(t, config.Releases.Create(rel1))
+
+	rel2 := releaseStub()
+	rel2.Name = "rollback-rev-test"
+	rel2.Version = 2
+	rel2.Info.Status = "deployed"
+	rel2.ApplyMethod = "csa"
+	require.NoError(t, config.Releases.Create(rel2))
+
+	client := NewRollback(config)
+	client.Version = 1
+	client.ServerSideApply = "auto"
+
+	require.NoError(t, client.Run("rollback-rev-test"))
+
+	reli, err := config.Releases.Get("rollback-rev-test", 3)
+	require.NoError(t, err)
+	rel, err := releaserToV1Release(reli)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, rel.Info.RollbackRevision)
+	assert.Equal(t, "Rollback to 1", rel.Info.Description)
+}
+
+func TestRollbackRevisionZeroForNonRollback(t *testing.T) {
+	config := actionConfigFixture(t)
+
+	rel := releaseStub()
+	rel.Name = "non-rollback"
+	rel.Info.Status = "deployed"
+	require.NoError(t, config.Releases.Create(rel))
+
+	reli, err := config.Releases.Get("non-rollback", 1)
+	require.NoError(t, err)
+	r, err := releaserToV1Release(reli)
+	require.NoError(t, err)
+
+	assert.Equal(t, 0, r.Info.RollbackRevision)
+}

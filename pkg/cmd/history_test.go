@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
@@ -72,6 +73,77 @@ func TestHistoryCmd(t *testing.T) {
 			mk("angry-bird", 3, common.StatusSuperseded),
 		},
 		golden: "output/history.json",
+	}}
+	runTestCmd(t, tests)
+}
+
+func TestHistoryWithRollback(t *testing.T) {
+	date := time.Unix(242085845, 0).UTC()
+	ch := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:       "foo",
+			Version:    "0.1.0-beta.1",
+			AppVersion: "1.0",
+		},
+	}
+
+	rels := []*release.Release{
+		{
+			Name:    "angry-bird",
+			Version: 1,
+			Info: &release.Info{
+				FirstDeployed: date,
+				LastDeployed:  date,
+				Status:        common.StatusSuperseded,
+				Description:   "Install complete",
+			},
+			Chart: ch,
+		},
+		{
+			Name:    "angry-bird",
+			Version: 2,
+			Info: &release.Info{
+				FirstDeployed: date,
+				LastDeployed:  date,
+				Status:        common.StatusSuperseded,
+				Description:   "Upgrade complete",
+			},
+			Chart: ch,
+		},
+		{
+			Name:    "angry-bird",
+			Version: 3,
+			Info: &release.Info{
+				FirstDeployed:    date,
+				LastDeployed:     date,
+				Status:           common.StatusDeployed,
+				RollbackRevision: 1,
+				Description:      "Rollback to 1",
+			},
+			Chart: ch,
+		},
+	}
+
+	tests := []cmdTestCase{{
+		name:   "history with rollback revision (default, no rollback column)",
+		cmd:    "history angry-bird",
+		rels:   rels,
+		golden: "output/history-with-rollback-no-flag.txt",
+	}, {
+		name:   "history with rollback revision and --show-rollback flag",
+		cmd:    "history angry-bird --show-rollback",
+		rels:   rels,
+		golden: "output/history-with-rollback.txt",
+	}, {
+		name:   "history with rollback revision json",
+		cmd:    "history angry-bird --output json",
+		rels:   rels,
+		golden: "output/history-with-rollback.json",
+	}, {
+		name:   "history with rollback revision yaml",
+		cmd:    "history angry-bird --output yaml",
+		rels:   rels,
+		golden: "output/history-with-rollback.yaml",
 	}}
 	runTestCmd(t, tests)
 }
@@ -173,6 +245,31 @@ func TestReleaseInfoMarshalJSON(t *testing.T) {
 			},
 			expected: `{"revision":0,"updated":"2025-10-08T12:00:00Z","status":"failed","chart":"mychart-1.0.0","app_version":"1.0.0","description":"Install failed"}`,
 		},
+		{
+			name: "with rollback revision",
+			info: releaseInfo{
+				Revision:         3,
+				Updated:          updated,
+				Status:           "deployed",
+				Chart:            "mychart-1.0.0",
+				AppVersion:       "1.0.0",
+				RollbackRevision: 1,
+				Description:      "Rollback to 1",
+			},
+			expected: `{"revision":3,"updated":"2025-10-08T12:00:00Z","status":"deployed","chart":"mychart-1.0.0","app_version":"1.0.0","rollback_revision":1,"description":"Rollback to 1"}`,
+		},
+		{
+			name: "without rollback revision",
+			info: releaseInfo{
+				Revision:    1,
+				Updated:     updated,
+				Status:      "deployed",
+				Chart:       "mychart-1.0.0",
+				AppVersion:  "1.0.0",
+				Description: "Initial install",
+			},
+			expected: `{"revision":1,"updated":"2025-10-08T12:00:00Z","status":"deployed","chart":"mychart-1.0.0","app_version":"1.0.0","description":"Initial install"}`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -255,6 +352,31 @@ func TestReleaseInfoUnmarshalJSON(t *testing.T) {
 				Description: "Installing",
 			},
 		},
+		{
+			name:  "with rollback revision",
+			input: `{"revision":3,"updated":"2025-10-08T12:00:00Z","status":"deployed","chart":"mychart-1.0.0","app_version":"1.0.0","rollback_revision":1,"description":"Rollback to 1"}`,
+			expected: releaseInfo{
+				Revision:         3,
+				Updated:          updated,
+				Status:           "deployed",
+				Chart:            "mychart-1.0.0",
+				AppVersion:       "1.0.0",
+				RollbackRevision: 1,
+				Description:      "Rollback to 1",
+			},
+		},
+		{
+			name:  "without rollback revision field",
+			input: `{"revision":1,"updated":"2025-10-08T12:00:00Z","status":"deployed","chart":"mychart-1.0.0","app_version":"1.0.0","description":"Install"}`,
+			expected: releaseInfo{
+				Revision:    1,
+				Updated:     updated,
+				Status:      "deployed",
+				Chart:       "mychart-1.0.0",
+				AppVersion:  "1.0.0",
+				Description: "Install",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -271,6 +393,7 @@ func TestReleaseInfoUnmarshalJSON(t *testing.T) {
 			assert.Equal(t, tt.expected.Status, info.Status)
 			assert.Equal(t, tt.expected.Chart, info.Chart)
 			assert.Equal(t, tt.expected.AppVersion, info.AppVersion)
+			assert.Equal(t, tt.expected.RollbackRevision, info.RollbackRevision)
 			assert.Equal(t, tt.expected.Description, info.Description)
 		})
 	}
@@ -300,6 +423,7 @@ func TestReleaseInfoRoundTrip(t *testing.T) {
 	assert.Equal(t, original.Status, decoded.Status)
 	assert.Equal(t, original.Chart, decoded.Chart)
 	assert.Equal(t, original.AppVersion, decoded.AppVersion)
+	assert.Equal(t, original.RollbackRevision, decoded.RollbackRevision)
 	assert.Equal(t, original.Description, decoded.Description)
 }
 
