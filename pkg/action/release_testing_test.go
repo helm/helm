@@ -65,11 +65,18 @@ func TestReleaseTestingGetPodLogs_FilterEvents(t *testing.T) {
 
 	hooks := []*release.Hook{
 		{
+			Kind:   "Pod",
 			Name:   "event-1",
 			Events: []release.HookEvent{release.HookTest},
 		},
 		{
+			Kind:   "Pod",
 			Name:   "event-2",
+			Events: []release.HookEvent{release.HookTest},
+		},
+		{
+			Kind:   "ConfigMap",
+			Name:   "event-3",
 			Events: []release.HookEvent{release.HookTest},
 		},
 	}
@@ -80,6 +87,25 @@ func TestReleaseTestingGetPodLogs_FilterEvents(t *testing.T) {
 	assert.Empty(t, out.String())
 }
 
+func TestReleaseTestingGetPodLogs_ExcludeFilter_SkipsPodHook(t *testing.T) {
+	config := actionConfigFixture(t)
+	require.NoError(t, config.Init(cli.New().RESTClientGetter(), "", os.Getenv("HELM_DRIVER")))
+	client := NewReleaseTesting(config)
+	client.Filters[ExcludeNameFilter] = []string{"excluded-pod"}
+
+	hooks := []*release.Hook{
+		{
+			Kind:   "Pod",
+			Name:   "excluded-pod",
+			Events: []release.HookEvent{release.HookTest},
+		},
+	}
+
+	out := &bytes.Buffer{}
+	require.NoError(t, client.GetPodLogs(out, &release.Release{Hooks: hooks}))
+	assert.Empty(t, out.String())
+}
+
 func TestReleaseTestingGetPodLogs_PodRetrievalError(t *testing.T) {
 	config := actionConfigFixture(t)
 	require.NoError(t, config.Init(cli.New().RESTClientGetter(), "", os.Getenv("HELM_DRIVER")))
@@ -87,12 +113,36 @@ func TestReleaseTestingGetPodLogs_PodRetrievalError(t *testing.T) {
 
 	hooks := []*release.Hook{
 		{
+			Kind:   "Pod",
 			Name:   "event-1",
 			Events: []release.HookEvent{release.HookTest},
 		},
 	}
 
 	require.ErrorContains(t, client.GetPodLogs(&bytes.Buffer{}, &release.Release{Hooks: hooks}), "unable to get pod")
+}
+
+func TestReleaseTestingGetPodLogs_SkipNonPodHooks(t *testing.T) {
+	config := actionConfigFixture(t)
+	require.NoError(t, config.Init(cli.New().RESTClientGetter(), "", os.Getenv("HELM_DRIVER")))
+	client := NewReleaseTesting(config)
+
+	hooks := []*release.Hook{
+		{
+			Name:   "cm-hook",
+			Kind:   "ConfigMap",
+			Events: []release.HookEvent{release.HookTest},
+		},
+		{
+			Name:   "secret-hook",
+			Kind:   "Secret",
+			Events: []release.HookEvent{release.HookTest},
+		},
+	}
+
+	out := &bytes.Buffer{}
+	require.NoError(t, client.GetPodLogs(out, &release.Release{Hooks: hooks}))
+	assert.Empty(t, out.String())
 }
 
 func TestReleaseTesting_WaitOptionsPassedDownstream(t *testing.T) {

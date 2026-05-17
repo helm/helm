@@ -138,6 +138,10 @@ func (r *ReleaseTesting) GetPodLogs(out io.Writer, rel *release.Release) error {
 				if len(r.Filters[IncludeNameFilter]) > 0 && !slices.Contains(r.Filters[IncludeNameFilter], h.Name) {
 					continue
 				}
+
+				if h.Kind != "Pod" {
+					continue
+				}
 				if err := r.getContainerLogs(out, client, h.Name); err != nil {
 					return err
 				}
