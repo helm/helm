@@ -152,6 +152,7 @@ func New() *EnvSettings {
 func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&s.namespace, "namespace", "n", s.namespace, "namespace scope for this request")
 	fs.StringVar(&s.KubeConfig, "kubeconfig", "", "path to the kubeconfig file")
+	fs.StringVar(&s.KubeContext, "context", "", "name of the kubeconfig context to use (alias for --kube-context)")
 	fs.StringVar(&s.KubeContext, "kube-context", s.KubeContext, "name of the kubeconfig context to use")
 	fs.StringVar(&s.KubeToken, "kube-token", s.KubeToken, "bearer token used for authentication")
 	fs.StringVar(&s.KubeAsUser, "kube-as-user", s.KubeAsUser, "username to impersonate for the operation")
@@ -169,6 +170,8 @@ func (s *EnvSettings) AddFlags(fs *pflag.FlagSet) {
 	fs.Float32Var(&s.QPS, "qps", s.QPS, "queries per second used when communicating with the Kubernetes API, not including bursting")
 	fs.StringVar(&s.ColorMode, "color", s.ColorMode, "use colored output (never, auto, always)")
 	fs.StringVar(&s.ColorMode, "colour", s.ColorMode, "use colored output (never, auto, always)")
+
+	fs.MarkHidden("context")
 }
 
 func envOr(name, def string) string {
