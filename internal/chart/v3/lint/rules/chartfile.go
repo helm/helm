@@ -120,6 +120,9 @@ func validateChartName(cf *chart.Metadata) error {
 	if name != cf.Name {
 		return fmt.Errorf("chart name %q is invalid", cf.Name)
 	}
+	if err := chartutil.ValidateChartName(cf.Name); err != nil {
+		return fmt.Errorf("chart name %q is invalid; %w", cf.Name, err)
+	}
 	return nil
 }
 

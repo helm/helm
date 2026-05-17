@@ -107,6 +107,13 @@ func TestCreateFrom(t *testing.T) {
 			t.Errorf("File %s contains <CHARTNAME>", f)
 		}
 	}
+
+	cf.Name = "Bad.Chart"
+	if err := CreateFrom(cf, t.TempDir(), srcdir); err == nil {
+		t.Fatal("CreateFrom with invalid chart name returned no error")
+	} else if err.Error() != validChartNameMessage {
+		t.Fatalf("CreateFrom returned %q, want %q", err, validChartNameMessage)
+	}
 }
 
 // TestCreate_Overwrite is a regression test for making sure that files are overwritten.
@@ -145,28 +152,89 @@ func TestCreate_Overwrite(t *testing.T) {
 }
 
 func TestValidateChartName(t *testing.T) {
-	for name, shouldPass := range map[string]bool{
-		"":                              false,
-		"abcdefghijklmnopqrstuvwxyz-_.": true,
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZ-_.": true,
-		"$hello":                        false,
-		"Hellô":                         false,
-		"he%%o":                         false,
-		"he\nllo":                       false,
+	tests := []struct {
+		name    string
+		wantErr string
+	}{
+		{
+			name:    "",
+			wantErr: "chart name must be between 1 and 250 characters",
+		},
+		{
+			name: "abcdefghijklmnopqrstuvwxyz",
+		},
+		{
+			name: "bad-chart-1",
+		},
+		{
+			name: "bad--chart",
+		},
+		{
+			name:    "BadChart",
+			wantErr: validChartNameMessage,
+		},
+		{
+			name:    "bad.chart",
+			wantErr: validChartNameMessage,
+		},
+		{
+			name:    "bad_chart",
+			wantErr: validChartNameMessage,
+		},
+		{
+			name:    "-badchart",
+			wantErr: validChartNameMessage,
+		},
+		{
+			name:    "badchart-",
+			wantErr: validChartNameMessage,
+		},
+		{
+			name:    "$hello",
+			wantErr: validChartNameMessage,
+		},
+		{
+			name:    "Hellô",
+			wantErr: validChartNameMessage,
+		},
+		{
+			name:    "he%%o",
+			wantErr: validChartNameMessage,
+		},
+		{
+			name:    "he\nllo",
+			wantErr: validChartNameMessage,
+		},
+		{
+			name: "abcdefghijklmnopqrstuvwxyz-_." +
+				"abcdefghijklmnopqrstuvwxyz-_." +
+				"abcdefghijklmnopqrstuvwxyz-_." +
+				"abcdefghijklmnopqrstuvwxyz-_." +
+				"abcdefghijklmnopqrstuvwxyz-_." +
+				"abcdefghijklmnopqrstuvwxyz-_." +
+				"abcdefghijklmnopqrstuvwxyz-_." +
+				"abcdefghijklmnopqrstuvwxyz-_." +
+				"abcdefghijklmnopqrstuvwxyz-_." +
+				"ABCDEFGHIJKLMNOPQRSTUVWXYZ-_.",
+			wantErr: "chart name must be between 1 and 250 characters",
+		},
+	}
 
-		"abcdefghijklmnopqrstuvwxyz-_." +
-			"abcdefghijklmnopqrstuvwxyz-_." +
-			"abcdefghijklmnopqrstuvwxyz-_." +
-			"abcdefghijklmnopqrstuvwxyz-_." +
-			"abcdefghijklmnopqrstuvwxyz-_." +
-			"abcdefghijklmnopqrstuvwxyz-_." +
-			"abcdefghijklmnopqrstuvwxyz-_." +
-			"abcdefghijklmnopqrstuvwxyz-_." +
-			"abcdefghijklmnopqrstuvwxyz-_." +
-			"ABCDEFGHIJKLMNOPQRSTUVWXYZ-_.": false,
-	} {
-		if err := validateChartName(name); (err != nil) == shouldPass {
-			t.Errorf("test for %q failed", name)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateChartName(tt.name)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("ValidateChartName(%q) returned unexpected error: %s", tt.name, err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("ValidateChartName(%q) returned no error, want %q", tt.name, tt.wantErr)
+			}
+			if err.Error() != tt.wantErr {
+				t.Fatalf("ValidateChartName(%q) returned %q, want %q", tt.name, err, tt.wantErr)
+			}
+		})
 	}
 }
