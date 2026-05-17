@@ -159,6 +159,41 @@ func createDummyCRDList(owned bool) kube.ResourceList {
 	return resourceList
 }
 
+func createNewResourceList() kube.ResourceList {
+	obj := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dummyName",
+			Namespace: "spaced",
+		},
+	}
+
+	resInfo := resource.Info{
+		Name:      "dummyName",
+		Namespace: "spaced",
+		Mapping: &meta.RESTMapping{
+			Resource:         schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployment"},
+			GroupVersionKind: schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
+			Scope:            meta.RESTScopeNamespace,
+		},
+		Object: obj,
+	}
+
+	resInfo.Client = &fake.RESTClient{
+		GroupVersion:         schema.GroupVersion{Group: "apps", Version: "v1"},
+		NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
+		Client: fake.CreateHTTPClient(func(_ *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusNotFound,
+				Header:     http.Header{"Content-Type": []string{kuberuntime.ContentTypeJSON}},
+				Body:       io.NopCloser(bytes.NewReader([]byte(`{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","reason":"NotFound","code":404}`))),
+			}, nil
+		}),
+	}
+	var resourceList kube.ResourceList
+	resourceList.Append(&resInfo)
+	return resourceList
+}
+
 func installActionWithConfig(config *Configuration) *Install {
 	instAction := NewInstall(config)
 	instAction.Namespace = "spaced"
@@ -1296,4 +1331,54 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
+}
+
+func TestInstallRelease_ForceConflictsPassedToCreate(t *testing.T) {
+	is := assert.New(t)
+
+	// Use resources whose REST client returns NotFound so they go through
+	// the Create path (toBeAdopted is empty) in performInstall.
+	config := actionConfigFixtureWithDummyResources(t, createNewResourceList())
+	instAction := installActionWithConfig(config)
+	instAction.ServerSideApply = true
+	instAction.ForceConflicts = true
+
+	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+
+	vals := map[string]any{}
+	_, err := instAction.Run(buildChart(), vals)
+	is.NoError(err)
+
+	is.NotEmpty(failer.RecordedCreateCalls, "Create calls should be recorded")
+	var foundForceConflicts bool
+	for _, call := range failer.RecordedCreateCalls {
+		resolved, err := kube.ResolveCreateOptions(call...)
+		is.NoError(err)
+		if resolved.ForceConflicts {
+			foundForceConflicts = true
+		}
+	}
+	is.True(foundForceConflicts, "ForceConflicts should be passed through on the Create path")
+}
+
+func TestInstallRelease_ForceConflictsFalseByDefault(t *testing.T) {
+	is := assert.New(t)
+
+	config := actionConfigFixtureWithDummyResources(t, createNewResourceList())
+	instAction := installActionWithConfig(config)
+	instAction.ServerSideApply = true
+	instAction.ForceConflicts = false
+
+	failer := instAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
+
+	vals := map[string]any{}
+	_, err := instAction.Run(buildChart(), vals)
+	is.NoError(err)
+
+	is.NotEmpty(failer.RecordedCreateCalls, "Create calls should be recorded")
+	for _, call := range failer.RecordedCreateCalls {
+		resolved, err := kube.ResolveCreateOptions(call...)
+		is.NoError(err)
+		is.False(resolved.ForceConflicts, "ForceConflicts should be false when not set")
+	}
 }
