@@ -191,7 +191,7 @@ func ValidateAgainstSingleSchemaWithPath(values common.Values, schemaJSON []byte
 	compiler := jsonschema.NewCompiler()
 	compiler.UseLoader(loader)
 
-	schemaURL := fmt.Sprintf("file://%s", schemaPath)
+	schemaURL := "file://" + schemaPath
 	err = compiler.AddResource(schemaURL, schema)
 	if err != nil {
 		return err
