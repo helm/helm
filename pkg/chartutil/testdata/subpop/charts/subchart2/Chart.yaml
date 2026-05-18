@@ -17,3 +17,8 @@ dependencies:
     tags:
       - back-end
       - subchartc
+  - name: subchartb
+    alias: subchartbalias
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: subchartbalias.enabled
