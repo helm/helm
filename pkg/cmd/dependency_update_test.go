@@ -310,3 +310,138 @@ func createTestingChart(t *testing.T, dest, name, baseURL string) {
 		t.Fatal(err)
 	}
 }
+
+func TestDependencyUpdateCmd_NestedLocalDependencies(t *testing.T) {
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz"),
+	)
+	defer srv.Stop()
+
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatal(err)
+	}
+
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
+
+	// Create leaf dependency (has remote dependency)
+	leafChart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       "leaf-chart",
+			Version:    "0.1.0",
+			Dependencies: []*chart.Dependency{
+				{Name: "reqtest", Version: "0.1.0", Repository: srv.URL()},
+			},
+		},
+	}
+	if err := chartutil.SaveDir(leafChart, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create middle dependency (has local dependency on leaf)
+	middleChart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       "middle-chart",
+			Version:    "0.1.0",
+			Dependencies: []*chart.Dependency{
+				{Name: "leaf-chart", Version: "0.1.0", Repository: "file://../leaf-chart"},
+			},
+		},
+	}
+	if err := chartutil.SaveDir(middleChart, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	rootChart := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       "root-chart",
+			Version:    "0.1.0",
+			Dependencies: []*chart.Dependency{
+				{Name: "middle-chart", Version: "0.1.0", Repository: "file://../middle-chart"},
+			},
+		},
+	}
+	if err := chartutil.SaveDir(rootChart, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	contentCache := t.TempDir()
+
+	_, out, err := executeActionCommand(
+		fmt.Sprintf("dependency update '%s' --repository-config %s --repository-cache %s --content-cache %s --plain-http",
+			dir("root-chart"), dir("repositories.yaml"), dir(), contentCache),
+	)
+	if err != nil {
+		t.Logf("Output: %s", out)
+		t.Fatal(err)
+	}
+
+	expectMiddle := dir("root-chart", "charts/middle-chart-0.1.0.tgz")
+	if _, err := os.Stat(expectMiddle); err != nil {
+		t.Fatalf("Expected middle-chart dependency: %s", err)
+	}
+
+	expectLeaf := dir("middle-chart", "charts/leaf-chart-0.1.0.tgz")
+	if _, err := os.Stat(expectLeaf); err != nil {
+		t.Fatalf("Expected leaf-chart dependency: %s", err)
+	}
+
+	expectReqtest := dir("leaf-chart", "charts/reqtest-0.1.0.tgz")
+	if _, err := os.Stat(expectReqtest); err != nil {
+		t.Fatalf("Expected reqtest dependency: %s", err)
+	}
+}
+
+func TestDependencyUpdateCmd_CircularDependency(t *testing.T) {
+	srv := repotest.NewTempServer(t)
+	defer srv.Stop()
+
+	dir := func(p ...string) string {
+		return filepath.Join(append([]string{srv.Root()}, p...)...)
+	}
+
+	// Create chart A that depends on B
+	chartA := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       "chart-a",
+			Version:    "1.0.0",
+			Dependencies: []*chart.Dependency{
+				{Name: "chart-b", Version: "1.0.0", Repository: "file://../chart-b"},
+			},
+		},
+	}
+	if err := chartutil.SaveDir(chartA, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create chart B that depends on A (circular)
+	chartB := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       "chart-b",
+			Version:    "1.0.0",
+			Dependencies: []*chart.Dependency{
+				{Name: "chart-a", Version: "1.0.0", Repository: "file://../chart-a"},
+			},
+		},
+	}
+	if err := chartutil.SaveDir(chartB, dir()); err != nil {
+		t.Fatal(err)
+	}
+
+	_, out, err := executeActionCommand(
+		fmt.Sprintf("dependency update '%s'", dir("chart-a")),
+	)
+	if err == nil {
+		t.Fatal("Expected circular dependency error")
+	}
+	if !strings.Contains(out, "circular dependency detected") {
+		t.Fatalf("Expected 'circular dependency detected' in output, got: %s", out)
+	}
+}
