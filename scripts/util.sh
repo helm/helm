@@ -28,7 +28,7 @@ kube::util::trap_add() {
     local new_cmd
 
     # Grab the currently defined trap commands for this trap
-    existing_cmd=`trap -p "${trap_add_name}" |  awk -F"'" '{print $2}'`
+    existing_cmd=$(trap -p "${trap_add_name}" | awk -F"'" '{print $2}')
 
     if [[ -z "${existing_cmd}" ]]; then
       new_cmd="${trap_add_cmd}"
@@ -37,6 +37,7 @@ kube::util::trap_add() {
     fi
 
     # Assign the test
+    # shellcheck disable=SC2064
     trap "${new_cmd}" "${trap_add_name}"
   done
 }
