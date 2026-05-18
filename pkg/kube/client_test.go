@@ -53,6 +53,7 @@ import (
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest/fake"
+	"k8s.io/client-go/util/retry"
 	cmdtesting "k8s.io/kubectl/pkg/cmd/testing"
 )
 
@@ -273,9 +274,13 @@ func TestCreate(t *testing.T) {
 			},
 			ExpectedErrorContains: "Operation cannot be fulfilled on resourcequotas \"quota\": the object has been modified; " +
 				"please apply your changes to the latest version and try again",
-			ExpectedActions: []string{
-				"/namespaces/default/pods/dolphin:PATCH",
-			},
+			ExpectedActions: func() []string { // expect helm to retry on conflict, workaround for: https://github.com/kubernetes/kubernetes/issues/67761
+				actions := make([]string, retry.DefaultRetry.Steps)
+				for i := range actions {
+					actions[i] = "/namespaces/default/pods/dolphin:PATCH"
+				}
+				return actions
+			}(),
 		},
 	}
 
