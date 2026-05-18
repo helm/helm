@@ -916,6 +916,59 @@ func TestInstallCRDsWithNilRESTClientGetter(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestInstallCRDsRejectsInvalidInput(t *testing.T) {
+	tests := []struct {
+		name           string
+		crd            chart.CRD
+		dummyResources kube.ResourceList
+		wantErr        string
+	}{
+		{
+			name: "nil file",
+			crd: chart.CRD{
+				Name: "test-crd",
+			},
+			wantErr: "file is empty",
+		},
+		{
+			name: "nil file data",
+			crd: chart.CRD{
+				Name: "test-crd",
+				File: &chart.File{Name: "crds/test-crd.yaml"},
+			},
+			wantErr: "file data is empty",
+		},
+		{
+			name: "empty resources",
+			crd: chart.CRD{
+				Name: "test-crd",
+				File: &chart.File{
+					Name: "crds/test-crd.yaml",
+					Data: []byte("kind: CustomResourceDefinition"),
+				},
+			},
+			dummyResources: kube.ResourceList{},
+			wantErr:        "resources are empty",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := actionConfigFixture(t)
+			if tt.dummyResources != nil {
+				config.KubeClient = &kubefake.FailingKubeClient{
+					PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
+					DummyResources:     tt.dummyResources,
+				}
+			}
+			instAction := NewInstall(config)
+
+			err := instAction.installCRDs([]chart.CRD{tt.crd})
+			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
 func TestInstallWithLabels(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
