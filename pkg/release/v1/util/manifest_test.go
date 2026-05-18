@@ -18,6 +18,7 @@ package util // import "helm.sh/helm/v4/pkg/release/v1/util"
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -511,6 +512,103 @@ metadata:
 			result := SplitManifests(tt.input)
 			if !reflect.DeepEqual(result, tt.expected) {
 				t.Errorf("SplitManifests() =\n%v\nwant:\n%v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestStripHelmInternalAnnotations(t *testing.T) {
+	tests := []struct {
+		name             string
+		input            string
+		mustNotContain   []string
+		mustContain      []string
+		mustEqualVerbatim bool
+	}{
+		{
+			name: "strips multi-slash key, preserves siblings",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-a
+  annotations:
+    helm.sh/depends-on/resource-groups: '["foo"]'
+    helm.sh/resource-group: app
+    other.example.com/keep: "yes"
+data:
+  k: v
+`,
+			mustNotContain: []string{"helm.sh/depends-on/resource-groups"},
+			mustContain:    []string{"helm.sh/resource-group", "other.example.com/keep", "name: cm-a"},
+		},
+		{
+			name: "leaves dangling empty annotations key when sole annotation stripped",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-b
+  annotations:
+    helm.sh/depends-on/resource-groups: '["foo"]'
+data:
+  k: v
+`,
+			mustNotContain: []string{"helm.sh/depends-on/resource-groups"},
+			mustContain:    []string{"name: cm-b", "data:"},
+		},
+		{
+			name: "no annotations leaves doc unchanged",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-c
+data:
+  k: v
+`,
+			mustEqualVerbatim: true,
+		},
+		{
+			name: "non-internal annotations preserved",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-d
+  annotations:
+    helm.sh/resource-group: app
+data:
+  k: v
+`,
+			mustEqualVerbatim: true,
+		},
+		{
+			name:              "non-kubernetes yaml passes through",
+			input:             "foo: bar\nbaz: 1\n",
+			mustEqualVerbatim: true,
+		},
+		{
+			name:              "invalid yaml passes through",
+			input:             ":\n\tnot valid yaml at all: [",
+			mustEqualVerbatim: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := StripHelmInternalAnnotations(tt.input)
+			if tt.mustEqualVerbatim {
+				if got != tt.input {
+					t.Errorf("expected verbatim passthrough, got:\n%s", got)
+				}
+				return
+			}
+			for _, s := range tt.mustNotContain {
+				if strings.Contains(got, s) {
+					t.Errorf("output unexpectedly contains %q:\n%s", s, got)
+				}
+			}
+			for _, s := range tt.mustContain {
+				if !strings.Contains(got, s) {
+					t.Errorf("output missing expected %q:\n%s", s, got)
+				}
 			}
 		})
 	}

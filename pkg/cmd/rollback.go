@@ -93,7 +93,8 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this rollback when rollback fails")
 	f.IntVar(&client.MaxHistory, "history-max", settings.MaxHistory, "limit the maximum number of revisions saved per release. Use 0 for no limit")
 	addDryRunFlag(cmd)
-	AddWaitFlag(cmd, &client.WaitStrategy)
+	AddOrderedWaitFlag(cmd, &client.WaitStrategy)
+	addReadinessTimeoutFlag(f, &client.ReadinessTimeout)
 	cmd.MarkFlagsMutuallyExclusive("force-replace", "force-conflicts")
 	cmd.MarkFlagsMutuallyExclusive("force", "force-conflicts")
 
