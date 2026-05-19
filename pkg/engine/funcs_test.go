@@ -17,6 +17,8 @@ limitations under the License.
 package engine
 
 import (
+	"bytes"
+	"log/slog"
 	"math"
 	"strings"
 	"testing"
@@ -193,6 +195,26 @@ keyInElement1 = "valueInElement1"`,
 			assert.Error(t, err)
 		}
 	}
+}
+
+func TestLookupPlaceholderLogsDebug(t *testing.T) {
+	originalLogger := slog.Default()
+	logBuffer := &bytes.Buffer{}
+	slog.SetDefault(slog.New(slog.NewTextHandler(logBuffer, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() {
+		slog.SetDefault(originalLogger)
+	})
+
+	var output strings.Builder
+	err := template.Must(template.New("test").Funcs(funcMap()).Parse(`{{ lookup "v1" "Namespace" "" "missing" }}`)).Execute(&output, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "map[]", output.String())
+
+	logOutput := logBuffer.String()
+	assert.Contains(t, logOutput, "lookup skipped: no Kubernetes client available")
+	assert.Contains(t, logOutput, "apiVersion=v1")
+	assert.Contains(t, logOutput, "kind=Namespace")
+	assert.Contains(t, logOutput, "name=missing")
 }
 
 func TestDurationHelpers(t *testing.T) {
