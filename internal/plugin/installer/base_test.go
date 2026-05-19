@@ -14,6 +14,8 @@ limitations under the License.
 package installer // import "helm.sh/helm/v4/internal/plugin/installer"
 
 import (
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -27,10 +29,21 @@ func TestPath(t *testing.T) {
 			source:         "",
 			helmPluginsDir: "/helm/data/plugins",
 			expectPath:     "",
-		}, {
+		},
+		{
 			source:         "https://github.com/jkroepke/helm-secrets",
 			helmPluginsDir: "/helm/data/plugins",
 			expectPath:     "/helm/data/plugins/helm-secrets",
+		},
+		{
+			source:         "https://github.com/jkroepke/helm-secrets",
+			helmPluginsDir: strings.Join([]string{"/helm/data/plugins", "/helm/nfs/plugins"}, string(filepath.ListSeparator)),
+			expectPath:     "/helm/data/plugins/helm-secrets",
+		},
+		{
+			source:         "https://github.com/jkroepke/helm-secrets",
+			helmPluginsDir: strings.Join([]string{"", "/helm/nfs/plugins"}, string(filepath.ListSeparator)),
+			expectPath:     "/helm/nfs/plugins/helm-secrets",
 		},
 	}
 
