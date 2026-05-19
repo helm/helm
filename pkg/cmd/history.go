@@ -50,9 +50,9 @@ The historical release set is printed as a formatted table, e.g:
     3           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0             Rolled back to 2
     4           Mon Oct 3 10:15:13 2016     deployed        alpine-0.1.0      1.0             Upgraded successfully
 
-Use '--show-rollback' to include a column showing the revision that was rolled back to:
+Use '--show-rollback-revision' to include a column showing the revision that was rolled back to:
 
-    $ helm history angry-bird --show-rollback
+    $ helm history angry-bird --show-rollback-revision
     REVISION    UPDATED                     STATUS          CHART             APP VERSION     ROLLBACK     DESCRIPTION
     1           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0                          Initial install
     2           Mon Oct 3 10:15:13 2016     superseded      alpine-0.1.0      1.0                          Upgraded successfully
@@ -92,7 +92,7 @@ func newHistoryCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 	f := cmd.Flags()
 	f.IntVar(&client.Max, "max", 256, "maximum number of revision to include in history")
-	f.BoolVar(&showRollback, "show-rollback", false, "show the rollback revision column in table output")
+	f.BoolVar(&showRollback, "show-rollback-revision", false, "show the rollback revision column in table output")
 	bindOutputFlag(cmd, &outfmt)
 
 	return cmd

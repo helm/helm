@@ -130,8 +130,8 @@ func TestHistoryWithRollback(t *testing.T) {
 		rels:   rels,
 		golden: "output/history-with-rollback-no-flag.txt",
 	}, {
-		name:   "history with rollback revision and --show-rollback flag",
-		cmd:    "history angry-bird --show-rollback",
+		name:   "history with rollback revision and --show-rollback-revision flag",
+		cmd:    "history angry-bird --show-rollback-revision",
 		rels:   rels,
 		golden: "output/history-with-rollback.txt",
 	}, {
