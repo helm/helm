@@ -1295,5 +1295,5 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	is.NoError(err)
 
 	// Verify that WaitOptions were passed to GetWaiter
-	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
+	is.NotEmpty(failer.GetRecordedWaitOptions(), "WaitOptions should be passed to GetWaiter")
 }
