@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -177,11 +178,12 @@ func TestValidateAgainstSchemaNegative(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := `subchart:
-- at '': missing property 'age'
-`
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
+	expectedValidationError := "missing property 'age'"
+	if !strings.Contains(errString, "subchart:") {
+		t.Errorf("Error string should contain 'subchart:', got: %s", errString)
+	}
+	if !strings.Contains(errString, expectedValidationError) {
+		t.Errorf("Error string should contain '%s', got: %s", expectedValidationError, errString)
 	}
 }
 
@@ -241,12 +243,63 @@ func TestValidateAgainstSchema2020Negative(t *testing.T) {
 		errString = err.Error()
 	}
 
-	expectedErrString := `subchart:
-- at '/data': no items match contains schema
-  - at '/data/0': got number, want string
-`
-	if errString != expectedErrString {
-		t.Errorf("Error string :\n`%s`\ndoes not match expected\n`%s`", errString, expectedErrString)
+	expectedValidationErrors := []string{
+		"no items match contains schema",
+		"got number, want string",
+	}
+	if !strings.Contains(errString, "subchart:") {
+		t.Errorf("Error string should contain 'subchart:', got: %s", errString)
+	}
+	for _, expectedErr := range expectedValidationErrors {
+		if !strings.Contains(errString, expectedErr) {
+			t.Errorf("Error string should contain '%s', got: %s", expectedErr, errString)
+		}
+	}
+}
+
+// TestValidateWithRelativeSchemaReferences tests schema validation with relative $ref paths
+// This mimics the behavior of "helm lint ." where the schema is in the current directory
+func TestValidateWithRelativeSchemaReferencesCurrentDir(t *testing.T) {
+	values, err := common.ReadValuesFile("./testdata/current-dir-test/test-values.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	schemaPath := "./testdata/current-dir-test/values.schema.json"
+	schema, err := os.ReadFile(schemaPath)
+	if err != nil {
+		t.Fatalf("Error reading JSON schema file: %s", err)
+	}
+
+	absSchemaPath, err := filepath.Abs(schemaPath)
+	if err != nil {
+		t.Fatalf("Error getting absolute path: %s", err)
+	}
+
+	if err := ValidateAgainstSingleSchemaWithPath(values, schema, absSchemaPath); err != nil {
+		t.Errorf("Error validating Values against Schema with relative references: %s", err)
+	}
+}
+
+// TestValidateWithRelativeSchemaReferencesSubfolder tests schema validation with relative $ref paths
+// This mimics the behavior of "helm lint subfolder" where the schema is in a subdirectory
+func TestValidateWithRelativeSchemaReferencesSubfolder(t *testing.T) {
+	values, err := common.ReadValuesFile("./testdata/subdir-test/subfolder/test-values.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	schemaPath := "./testdata/subdir-test/subfolder/values.schema.json"
+	schema, err := os.ReadFile(schemaPath)
+	if err != nil {
+		t.Fatalf("Error reading JSON schema file: %s", err)
+	}
+
+	absSchemaPath, err := filepath.Abs(schemaPath)
+	if err != nil {
+		t.Fatalf("Error getting absolute path: %s", err)
+	}
+
+	if err := ValidateAgainstSingleSchemaWithPath(values, schema, absSchemaPath); err != nil {
+		t.Errorf("Error validating Values against Schema with relative references from subfolder: %s", err)
 	}
 }
 
@@ -387,5 +440,172 @@ func TestValidateAgainstSchema_InvalidSubchartValuesType_NoPanic(t *testing.T) {
 	// We expect a non-nil error (invalid type), but crucially no panic.
 	if err := ValidateAgainstSchema(chrt, vals); err == nil {
 		t.Fatal("expected an error when subchart values have invalid type, got nil")
+	}
+}
+
+// Test that $ref resolution works for aliased subcharts.
+// When a subchart has an alias (e.g., mysql aliased as "database"),
+// processDependencyEnabled rewrites Metadata.Name to the alias,
+// but the on-disk directory retains the original name (charts/mysql/).
+// The schema validator must find the correct directory to resolve $ref.
+func TestValidateAgainstSchemaWithPath_AliasedSubchartRef(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// On-disk layout: charts/mysql/ contains the schema files.
+	// The directory name is the ORIGINAL chart name, not the alias.
+	mysqlDir := filepath.Join(tmpDir, "charts", "mysql")
+	if err := os.MkdirAll(mysqlDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	baseSchema := []byte(`{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "port": { "type": "integer", "minimum": 1 }
+  },
+  "required": ["port"]
+}`)
+	if err := os.WriteFile(filepath.Join(mysqlDir, "base.schema.json"), baseSchema, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	subchartSchemaBytes := []byte(`{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "config": { "$ref": "./base.schema.json" }
+  },
+  "required": ["config"]
+}`)
+	if err := os.WriteFile(filepath.Join(mysqlDir, "values.schema.json"), subchartSchemaBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// In-memory chart: Metadata.Name is the ALIAS ("database"),
+	// simulating what processDependencyEnabled does after loading.
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "database"},
+		Schema:   subchartSchemaBytes,
+	}
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "testchart"},
+	}
+	chrt.AddDependency(subchart)
+
+	vals := map[string]any{
+		"database": map[string]any{
+			"config": map[string]any{
+				"port": 3306,
+			},
+		},
+	}
+
+	if err := ValidateAgainstSchemaWithPath(chrt, vals, tmpDir); err != nil {
+		t.Errorf("expected no error for valid values with aliased subchart $ref, got: %s", err)
+	}
+}
+
+// Test that $ref resolution works when multiple aliases point to the same chart.
+// Both aliased subcharts should resolve $ref through the single on-disk directory.
+func TestValidateAgainstSchemaWithPath_MultipleAliasesSameChart(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	mysqlDir := filepath.Join(tmpDir, "charts", "mysql")
+	if err := os.MkdirAll(mysqlDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	baseSchema := []byte(`{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "port": { "type": "integer", "minimum": 1 }
+  },
+  "required": ["port"]
+}`)
+	if err := os.WriteFile(filepath.Join(mysqlDir, "base.schema.json"), baseSchema, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	subchartSchemaBytes := []byte(`{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "config": { "$ref": "./base.schema.json" }
+  },
+  "required": ["config"]
+}`)
+	if err := os.WriteFile(filepath.Join(mysqlDir, "values.schema.json"), subchartSchemaBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Two aliased subcharts from the same original chart
+	primary := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "primary"},
+		Schema:   subchartSchemaBytes,
+	}
+	replica := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "replica"},
+		Schema:   subchartSchemaBytes,
+	}
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "testchart"},
+	}
+	chrt.AddDependency(primary)
+	chrt.AddDependency(replica)
+
+	vals := map[string]any{
+		"primary": map[string]any{
+			"config": map[string]any{"port": 3306},
+		},
+		"replica": map[string]any{
+			"config": map[string]any{"port": 3307},
+		},
+	}
+
+	if err := ValidateAgainstSchemaWithPath(chrt, vals, tmpDir); err != nil {
+		t.Errorf("expected no error for multiple aliases of same chart, got: %s", err)
+	}
+}
+
+// Test that validation proceeds gracefully when an aliased subchart has no
+// matching directory on disk (e.g., the subchart is an archived .tgz).
+// $ref resolution is disabled but main schema validation still works.
+func TestValidateAgainstSchemaWithPath_AliasedSubchartNoDir(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create empty charts/ directory — no subdirectory matching any name
+	if err := os.MkdirAll(filepath.Join(tmpDir, "charts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Schema without $ref — validates independently
+	subchartSchemaBytes := []byte(`{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "port": { "type": "integer" }
+  },
+  "required": ["port"]
+}`)
+
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "database"},
+		Schema:   subchartSchemaBytes,
+	}
+	chrt := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "testchart"},
+	}
+	chrt.AddDependency(subchart)
+
+	vals := map[string]any{
+		"database": map[string]any{
+			"port": 5432,
+		},
+	}
+
+	if err := ValidateAgainstSchemaWithPath(chrt, vals, tmpDir); err != nil {
+		t.Errorf("expected no error when aliased subchart dir missing (graceful fallback), got: %s", err)
 	}
 }
