@@ -19,6 +19,7 @@ package kube
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -1854,10 +1855,233 @@ func TestPatchResourceServerSide(t *testing.T) {
 	}
 }
 
+// TestPatchResourceServerSideDedupEnvVars verifies that duplicate env var
+// entries are removed from the PATCH body before server-side apply is sent,
+// matching Kubernetes "last value wins" client-side-apply semantics.
+func TestPatchResourceServerSideDedupEnvVars(t *testing.T) {
+	pod := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "Pod",
+			"metadata": map[string]interface{}{
+				"name":      "whale",
+				"namespace": "default",
+			},
+			"spec": map[string]interface{}{
+				"containers": []interface{}{
+					map[string]interface{}{
+						"name":  "app",
+						"image": "nginx",
+						"env": []interface{}{
+							map[string]interface{}{"name": "FOO", "value": "first"},
+							map[string]interface{}{"name": "BAR", "value": "keep"},
+							map[string]interface{}{"name": "FOO", "value": "last"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	respBody, err := runtime.Encode(unstructured.UnstructuredJSONScheme, pod)
+	require.NoError(t, err)
+
+	var capturedBody []byte
+	restClient := &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			capturedBody, _ = io.ReadAll(req.Body)
+			header := http.Header{}
+			header.Set("Content-Type", runtime.ContentTypeJSON)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(respBody)),
+				Header:     header,
+			}, nil
+		}),
+	}
+
+	info := &resource.Info{
+		Client:    restClient,
+		Namespace: "default",
+		Name:      "whale",
+		Object:    pod,
+		Mapping: &meta.RESTMapping{
+			Resource: schema.GroupVersionResource{
+				Version:  "v1",
+				Resource: "pods",
+			},
+			GroupVersionKind: schema.GroupVersionKind{
+				Version: "v1",
+				Kind:    "Pod",
+			},
+			Scope: meta.RESTScopeNamespace,
+		},
+	}
+
+	require.NoError(t, patchResourceServerSide(info, false, false, FieldValidationDirectiveStrict))
+	require.NotNil(t, capturedBody, "expected a PATCH request to be sent")
+
+	var patchedObj map[string]interface{}
+	require.NoError(t, json.Unmarshal(capturedBody, &patchedObj))
+
+	spec, _ := patchedObj["spec"].(map[string]interface{})
+	containers, _ := spec["containers"].([]interface{})
+	require.Len(t, containers, 1)
+	env, _ := containers[0].(map[string]interface{})["env"].([]interface{})
+	require.Len(t, env, 2, "FOO should be deduplicated to one entry; BAR should remain")
+	assert.Equal(t, "BAR", env[0].(map[string]interface{})["name"])
+	assert.Equal(t, "FOO", env[1].(map[string]interface{})["name"])
+	assert.Equal(t, "last", env[1].(map[string]interface{})["value"], "last occurrence of FOO wins")
+}
+
 func TestDetermineFieldValidationDirective(t *testing.T) {
 
 	assert.Equal(t, FieldValidationDirectiveIgnore, determineFieldValidationDirective(false))
 	assert.Equal(t, FieldValidationDirectiveStrict, determineFieldValidationDirective(true))
+}
+
+func TestDeduplicateListMaps(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    map[string]interface{}
+		expected map[string]interface{}
+		changed  bool
+	}{
+		{
+			name: "no duplicates",
+			input: map[string]interface{}{
+				"env": []interface{}{
+					map[string]interface{}{"name": "FOO", "value": "1"},
+					map[string]interface{}{"name": "BAR", "value": "2"},
+				},
+			},
+			expected: map[string]interface{}{
+				"env": []interface{}{
+					map[string]interface{}{"name": "FOO", "value": "1"},
+					map[string]interface{}{"name": "BAR", "value": "2"},
+				},
+			},
+			changed: false,
+		},
+		{
+			name: "duplicate env var keeps last value",
+			input: map[string]interface{}{
+				"env": []interface{}{
+					map[string]interface{}{"name": "FOO", "value": "first"},
+					map[string]interface{}{"name": "BAR", "value": "2"},
+					map[string]interface{}{"name": "FOO", "value": "last"},
+				},
+			},
+			expected: map[string]interface{}{
+				"env": []interface{}{
+					map[string]interface{}{"name": "BAR", "value": "2"},
+					map[string]interface{}{"name": "FOO", "value": "last"},
+				},
+			},
+			changed: true,
+		},
+		{
+			name: "nested container env dedup",
+			input: map[string]interface{}{
+				"spec": map[string]interface{}{
+					"containers": []interface{}{
+						map[string]interface{}{
+							"name": "app",
+							"env": []interface{}{
+								map[string]interface{}{"name": "X", "value": "a"},
+								map[string]interface{}{"name": "X", "value": "b"},
+							},
+						},
+					},
+				},
+			},
+			expected: map[string]interface{}{
+				"spec": map[string]interface{}{
+					"containers": []interface{}{
+						map[string]interface{}{
+							"name": "app",
+							"env": []interface{}{
+								map[string]interface{}{"name": "X", "value": "b"},
+							},
+						},
+					},
+				},
+			},
+			changed: true,
+		},
+		{
+			name: "non-named list not deduplicated",
+			input: map[string]interface{}{
+				"args": []interface{}{"--flag=a", "--flag=b"},
+			},
+			expected: map[string]interface{}{
+				"args": []interface{}{"--flag=a", "--flag=b"},
+			},
+			changed: false,
+		},
+		{
+			// volumeMounts is keyed by mountPath, not name — same name with
+			// different mountPaths must NOT be collapsed.
+			name: "volumeMounts with duplicate names not deduplicated",
+			input: map[string]interface{}{
+				"volumeMounts": []interface{}{
+					map[string]interface{}{"name": "data", "mountPath": "/data"},
+					map[string]interface{}{"name": "data", "mountPath": "/backup"},
+				},
+			},
+			expected: map[string]interface{}{
+				"volumeMounts": []interface{}{
+					map[string]interface{}{"name": "data", "mountPath": "/data"},
+					map[string]interface{}{"name": "data", "mountPath": "/backup"},
+				},
+			},
+			changed: false,
+		},
+		{
+			name: "list with empty name not deduplicated",
+			input: map[string]interface{}{
+				"env": []interface{}{
+					map[string]interface{}{"name": "", "value": "a"},
+					map[string]interface{}{"name": "", "value": "b"},
+				},
+			},
+			expected: map[string]interface{}{
+				"env": []interface{}{
+					map[string]interface{}{"name": "", "value": "a"},
+					map[string]interface{}{"name": "", "value": "b"},
+				},
+			},
+			changed: false,
+		},
+		{
+			// Duplicate container names are an invalid manifest; they must not be
+			// silently dropped. We traverse the list to reach nested env vars but
+			// do not deduplicate the containers list itself.
+			name: "duplicate container names not deduplicated",
+			input: map[string]interface{}{
+				"containers": []interface{}{
+					map[string]interface{}{"name": "app", "image": "nginx:1"},
+					map[string]interface{}{"name": "app", "image": "nginx:2"},
+				},
+			},
+			expected: map[string]interface{}{
+				"containers": []interface{}{
+					map[string]interface{}{"name": "app", "image": "nginx:1"},
+					map[string]interface{}{"name": "app", "image": "nginx:2"},
+				},
+			},
+			changed: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := deduplicateListMaps(tt.input)
+			assert.Equal(t, tt.changed, got)
+			assert.Equal(t, tt.expected, tt.input)
+		})
+	}
 }
 
 func TestClientWaitContextCancellationLegacy(t *testing.T) {

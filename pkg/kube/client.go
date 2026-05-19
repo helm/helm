@@ -1217,6 +1217,19 @@ func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts 
 		WithFieldManager(getManagedFieldsManager()).
 		WithFieldValidation(string(fieldValidationDirective))
 
+	// Deduplicate list-map entries (e.g. env vars) before server-side apply.
+	// Server-side apply rejects manifests with duplicate keys in list-maps, but
+	// Kubernetes client-side apply previously allowed them (last value wins).
+	// We preserve that behavior by deduplicating here, keeping the last occurrence.
+	if u, ok := target.Object.(*unstructured.Unstructured); ok {
+		if deduplicateListMaps(u.Object) {
+			slog.Warn("deduplicated list-map entries in manifest; please remove duplicates from the chart",
+				slog.String("name", target.Name),
+				slog.String("namespace", target.Namespace),
+				slog.String("gvk", target.Mapping.GroupVersionKind.String()))
+		}
+	}
+
 	// Send the full object to be applied on the server side.
 	data, err := runtime.Encode(unstructured.UnstructuredJSONScheme, target.Object)
 	if err != nil {
@@ -1284,6 +1297,102 @@ func copyRequestStreamToWriter(request *rest.Request, podName, containerName str
 		return fmt.Errorf("failed to copy IO from logs for pod: %s, container: %s", podName, containerName)
 	}
 	return nil
+}
+
+// dedupFields is the set of Kubernetes list fields that should be deduplicated
+// by "name" under server-side apply merge semantics. Container lists
+// (containers, initContainers, ephemeralContainers) are intentionally excluded:
+// duplicate container names are invalid and must not be silently dropped.
+// Other lists that happen to carry a "name" field (e.g. volumeMounts, keyed by
+// mountPath) are also excluded. All list fields are still traversed so that
+// nested dedupFields (e.g. env inside a container) are processed.
+var dedupFields = map[string]bool{
+	"env":              true,
+	"volumes":          true,
+	"imagePullSecrets": true,
+}
+
+// deduplicateListMaps walks an unstructured Kubernetes object and deduplicates
+// list fields in dedupFields under server-side apply merge semantics. When
+// duplicates are found the last occurrence wins, matching Kubernetes
+// client-side-apply semantics. All lists are traversed (to reach nested fields)
+// but only lists whose key is in dedupFields are themselves deduplicated.
+// Returns true if any deduplication occurred.
+func deduplicateListMaps(obj map[string]interface{}) bool {
+	deduped := false
+	for key, val := range obj {
+		switch v := val.(type) {
+		case map[string]interface{}:
+			if deduplicateListMaps(v) {
+				deduped = true
+			}
+		case []interface{}:
+			newList, changed := processListItems(v, dedupFields[key])
+			if changed {
+				obj[key] = newList
+				deduped = true
+			}
+		}
+	}
+	return deduped
+}
+
+// processListItems recurses into list items and, when dedup is true,
+// deduplicates the list if every item is a map with a non-empty string "name".
+// The last occurrence of each name is kept and relative order of surviving
+// items is preserved. Returns the (possibly modified) list and whether any
+// change was made.
+func processListItems(list []interface{}, dedup bool) ([]interface{}, bool) {
+	changed := false
+
+	// Always recurse into map items to reach nested dedupFields.
+	for i, item := range list {
+		if m, ok := item.(map[string]interface{}); ok {
+			if deduplicateListMaps(m) {
+				list[i] = m
+				changed = true
+			}
+		}
+	}
+
+	if !dedup || len(list) < 2 {
+		return list, changed
+	}
+
+	// Only deduplicate if every item is a map with a non-empty string "name".
+	for _, item := range list {
+		m, ok := item.(map[string]interface{})
+		if !ok {
+			return list, changed
+		}
+		nameVal, isString := m["name"].(string)
+		if !isString || nameVal == "" {
+			return list, changed
+		}
+	}
+
+	// Build deduplicated list keeping the last occurrence of each name.
+	seen := make(map[string]bool)
+	result := make([]interface{}, 0, len(list))
+	hasDups := false
+	for i := len(list) - 1; i >= 0; i-- {
+		m := list[i].(map[string]interface{})
+		name, _ := m["name"].(string)
+		if !seen[name] {
+			seen[name] = true
+			result = append(result, list[i])
+		} else {
+			hasDups = true
+		}
+	}
+	if !hasDups {
+		return list, changed
+	}
+	// Reverse to restore the original relative order of surviving items.
+	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
+		result[i], result[j] = result[j], result[i]
+	}
+	return result, true
 }
 
 // scrubValidationError removes kubectl info from the message.
