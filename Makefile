@@ -128,6 +128,10 @@ test-style:
 test-source-headers:
 	@scripts/validate-license.sh
 
+.PHONY: test-source-unicode
+test-source-unicode:
+	@scripts/check-invisible-unicode.sh
+
 .PHONY: test-acceptance
 test-acceptance: build
 	@if [ -d "${ACCEPTANCE_DIR}" ]; then \

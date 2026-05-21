@@ -28,6 +28,8 @@ jobs:
           check-latest: true
       - name: Test source headers are present
         run: make test-source-headers
+      - name: Test source for invisible Unicode
+        run: make test-source-unicode
       - name: Check if go modules need to be tidied
         run: go mod tidy -diff
       - name: Run unit tests
