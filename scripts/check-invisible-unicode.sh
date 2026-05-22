@@ -24,7 +24,7 @@ find_files() {
       -o -wholename '*third_party*' \
     \) -prune \
   \) \
-  \( -name '*.go' -o -name '*.sh' \)
+  -type f \( -name '*.go' -o -name '*.sh' \) -print0
 }
 
 # Disallow invisible or bidi Unicode codepoints in source files. These are
@@ -35,7 +35,7 @@ find_files() {
 #   U+FEFF         byte order mark / zero-width no-break space
 #   U+202A-U+202E  bidi explicit formatting
 #   U+2066-U+2069  bidi isolates
-matches=$(find_files | xargs perl -CSD -ne '
+matches=$(find_files | xargs -0 perl -CSD -ne '
   if (/[\x{200B}-\x{200D}\x{FEFF}\x{202A}-\x{202E}\x{2066}-\x{2069}]/) {
     chomp;
     print "$ARGV:$.: $_\n";
