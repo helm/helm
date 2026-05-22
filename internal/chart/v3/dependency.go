@@ -36,6 +36,8 @@ type Dependency struct {
 	// Appending `index.yaml` to this string should result in a URL that can be
 	// used to fetch the repository index.
 	Repository string `json:"repository" yaml:"repository"`
+	// Digest
+	Digest string `json: "digest,omitempty" yaml: "digest,omitempty"`
 	// A yaml path that resolves to a boolean, used for enabling/disabling charts (e.g. subchart1.enabled )
 	Condition string `json:"condition,omitempty" yaml:"condition,omitempty"`
 	// Tags can be used to group charts for enabling/disabling together
@@ -59,6 +61,7 @@ func (d *Dependency) Validate() error {
 	d.Name = sanitizeString(d.Name)
 	d.Version = sanitizeString(d.Version)
 	d.Repository = sanitizeString(d.Repository)
+	d.Digest = sanitizeString(d.Digest)
 	d.Condition = sanitizeString(d.Condition)
 	for i := range d.Tags {
 		d.Tags[i] = sanitizeString(d.Tags[i])
