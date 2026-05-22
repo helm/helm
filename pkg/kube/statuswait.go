@@ -243,10 +243,12 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			if rs.Status == status.UnknownStatus && desired == status.NotFoundStatus {
 				continue
 			}
-			// Failed is a terminal state. This check ensures we don't wait forever for a resource
-			// that has already failed, as intervention is required to resolve the failure.
+			// Failed is a terminal state that cannot recover. Cancel the watch immediately
+			// so the error is returned without waiting for the context timeout to expire.
 			if rs.Status == status.FailedStatus && desired == status.CurrentStatus {
-				continue
+				logger.Debug("resource failed, cancelling wait", "namespace", rs.Identifier.Namespace, "name", rs.Identifier.Name, "kind", rs.Identifier.GroupKind.Kind)
+				cancel()
+				return
 			}
 			rss = append(rss, rs)
 			if rs.Status != desired {

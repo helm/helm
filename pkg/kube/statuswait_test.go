@@ -1709,6 +1709,46 @@ func TestMethodContextOverridesGeneralContext(t *testing.T) {
 	})
 }
 
+func TestWatchUntilReadyFailsImmediatelyOnHookJobFailure(t *testing.T) {
+	t.Parallel()
+	// Regression test for https://github.com/helm/helm/issues/31690
+	// When a pre/post hook job fails, WatchUntilReady must return immediately
+	// with a clear error and must NOT wait for the full timeout to expire.
+	// In v3 the upgrade failed instantly with "BackoffLimitExceeded"; in v4 it
+	// incorrectly waited until context deadline exceeded before surfacing the error.
+	c := newTestClient(t)
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		batchv1.SchemeGroupVersion.WithKind("Job"),
+	)
+	sw := statusWaiter{
+		client:     fakeClient,
+		restMapper: fakeMapper,
+	}
+	sw.SetLogger(slog.Default().Handler())
+
+	objs := getRuntimeObjFromManifests(t, []string{jobFailedManifest})
+	for _, obj := range objs {
+		u := obj.(*unstructured.Unstructured)
+		gvr := getGVR(t, fakeMapper, u)
+		err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+		require.NoError(t, err)
+	}
+	resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+
+	timeout := 30 * time.Second
+	start := time.Now()
+	err := sw.WatchUntilReady(resourceList, timeout)
+	elapsed := time.Since(start)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "resource Job/default/failed-job not ready. status: Failed")
+	assert.NotContains(t, err.Error(), "context deadline exceeded",
+		"WatchUntilReady should return immediately on hook failure, not wait for timeout")
+	assert.Less(t, elapsed, 5*time.Second,
+		"WatchUntilReady should return quickly on hook failure, not after the full %s timeout", timeout)
+}
+
 func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
