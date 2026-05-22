@@ -37,7 +37,7 @@ type Dependency struct {
 	// used to fetch the repository index.
 	Repository string `json:"repository" yaml:"repository"`
 	// Digest
-	Digest string `json: "digest,omitempty" yaml: "digest,omitempty"`
+	Digest string `json:"digest,omitempty" yaml:"digest,omitempty"`
 	// A yaml path that resolves to a boolean, used for enabling/disabling charts (e.g. subchart1.enabled )
 	Condition string `json:"condition,omitempty" yaml:"condition,omitempty"`
 	// Tags can be used to group charts for enabling/disabling together
