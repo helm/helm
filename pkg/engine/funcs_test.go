@@ -38,6 +38,10 @@ func TestFuncs(t *testing.T) {
 		expect: "baz:\n  - 1\n  - 2\n  - 3",
 		vars:   map[string]interface{}{"baz": []int{1, 2, 3}},
 	}, {
+		tpl:    `{{ toYamlPretty (fromYaml .) }}`,
+		expect: "foo: 1000000",
+		vars:   "foo: !!int 1000000",
+	}, {
 		tpl:    `{{ toToml . }}`,
 		expect: "foo = \"bar\"\n",
 		vars:   map[string]interface{}{"foo": "bar"},

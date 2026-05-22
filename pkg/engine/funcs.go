@@ -95,13 +95,44 @@ func toYAMLPretty(v interface{}) string {
 	var data bytes.Buffer
 	encoder := goYaml.NewEncoder(&data)
 	encoder.SetIndent(2)
-	err := encoder.Encode(v)
+	err := encoder.Encode(normalizeYAMLScalars(v))
 
 	if err != nil {
 		// Swallow errors inside of a template.
 		return ""
 	}
 	return strings.TrimSuffix(data.String(), "\n")
+}
+
+func normalizeYAMLScalars(v any) any {
+	switch typedValue := v.(type) {
+	case map[string]any:
+		normalized := make(map[string]any, len(typedValue))
+		for key, value := range typedValue {
+			normalized[key] = normalizeYAMLScalars(value)
+		}
+		return normalized
+	case map[any]any:
+		normalized := make(map[any]any, len(typedValue))
+		for key, value := range typedValue {
+			normalized[key] = normalizeYAMLScalars(value)
+		}
+		return normalized
+	case []any:
+		normalized := make([]any, len(typedValue))
+		for index, value := range typedValue {
+			normalized[index] = normalizeYAMLScalars(value)
+		}
+		return normalized
+	case float64:
+		// sigs.k8s.io/yaml may unmarshal integer YAML values as float64.
+		if typedValue == math.Trunc(typedValue) &&
+			typedValue > float64(math.MinInt64) &&
+			typedValue < float64(math.MaxInt64) {
+			return int64(typedValue)
+		}
+	}
+	return v
 }
 
 // fromYAML converts a YAML document into a map[string]interface{}.
