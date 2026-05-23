@@ -143,6 +143,7 @@ keyInElement1 = "valueInElement1"`,
 }
 
 func TestNormalizeYAMLScalars(t *testing.T) {
+	firstUnsafeInteger := float64(maxSafeYAMLInteger + 1)
 	aboveSafeInteger := math.Nextafter(maxSafeYAMLInteger, math.Inf(1))
 
 	tests := []struct {
@@ -164,6 +165,11 @@ func TestNormalizeYAMLScalars(t *testing.T) {
 			name:   "max safe integer float becomes integer",
 			input:  map[string]any{"value": float64(maxSafeYAMLInteger)},
 			expect: map[string]any{"value": int64(maxSafeYAMLInteger)},
+		},
+		{
+			name:   "first unsafe integer float stays float",
+			input:  map[string]any{"value": firstUnsafeInteger},
+			expect: map[string]any{"value": firstUnsafeInteger},
 		},
 		{
 			name:   "unsafe integer floats stay floats",

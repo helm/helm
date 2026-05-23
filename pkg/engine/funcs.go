@@ -160,9 +160,6 @@ func normalizeYAMLMapKey(key any) any {
 	if reflect.TypeOf(normalized).Comparable() {
 		return normalized
 	}
-	if reflect.TypeOf(key).Comparable() {
-		return key
-	}
 	return fmt.Sprint(normalized)
 }
 
