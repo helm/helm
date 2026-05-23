@@ -32,6 +32,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
@@ -128,6 +130,148 @@ func TestSave(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expected error saving chart with invalid name")
 	}
+}
+
+func TestSaveDependencyArchiveNames(t *testing.T) {
+	tests := []struct {
+		name           string
+		requirements   []*chart.Dependency
+		dependencies   []*chart.Chart
+		wantHeaders    []string
+		notWantHeaders []string
+		wantLoadedDeps int
+		wantVersions   []string
+	}{
+		{
+			name: "duplicate chart names use matching aliases",
+			requirements: []*chart.Dependency{
+				{Name: "worker", Version: "1.0.0", Alias: "blue"},
+				{Name: "worker", Version: "2.0.0", Alias: "green"},
+			},
+			dependencies: []*chart.Chart{
+				newSaveTestChart("worker", "1.0.0"),
+				newSaveTestChart("worker", "2.0.0"),
+			},
+			wantHeaders: []string{
+				"parent/charts/blue/Chart.yaml",
+				"parent/charts/green/Chart.yaml",
+			},
+			notWantHeaders: []string{
+				"parent/charts/worker/Chart.yaml",
+			},
+			wantLoadedDeps: 2,
+			wantVersions:   []string{"1.0.0", "2.0.0"},
+		},
+		{
+			name: "single shared chart keeps original name",
+			requirements: []*chart.Dependency{
+				{Name: "worker", Version: "1.0.0", Alias: "blue"},
+				{Name: "worker", Version: "1.0.0", Alias: "green"},
+			},
+			dependencies: []*chart.Chart{
+				newSaveTestChart("worker", "1.0.0"),
+			},
+			wantHeaders: []string{
+				"parent/charts/worker/Chart.yaml",
+			},
+			notWantHeaders: []string{
+				"parent/charts/blue/Chart.yaml",
+				"parent/charts/green/Chart.yaml",
+			},
+			wantLoadedDeps: 1,
+			wantVersions:   []string{"1.0.0"},
+		},
+		{
+			name: "duplicate chart names without matching aliases use versions",
+			requirements: []*chart.Dependency{
+				{Name: "worker", Version: "3.0.0", Alias: "canary"},
+			},
+			dependencies: []*chart.Chart{
+				newSaveTestChart("worker", "1.0.0"),
+				newSaveTestChart("worker", "2.0.0"),
+			},
+			wantHeaders: []string{
+				"parent/charts/worker-1.0.0/Chart.yaml",
+				"parent/charts/worker-2.0.0/Chart.yaml",
+			},
+			notWantHeaders: []string{
+				"parent/charts/canary/Chart.yaml",
+				"parent/charts/worker/Chart.yaml",
+			},
+			wantLoadedDeps: 2,
+			wantVersions:   []string{"1.0.0", "2.0.0"},
+		},
+		{
+			name: "duplicate archive names get unique suffixes",
+			dependencies: []*chart.Chart{
+				newSaveTestChart("worker", "1.0.0"),
+				newSaveTestChart("worker", "1.0.0"),
+			},
+			wantHeaders: []string{
+				"parent/charts/worker-1.0.0/Chart.yaml",
+				"parent/charts/worker-1.0.0-2/Chart.yaml",
+			},
+			notWantHeaders: []string{
+				"parent/charts/worker/Chart.yaml",
+			},
+			wantLoadedDeps: 2,
+			wantVersions:   []string{"1.0.0", "1.0.0"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parent := newSaveTestChart("parent", "0.1.0")
+			parent.Metadata.Dependencies = tt.requirements
+			parent.SetDependencies(tt.dependencies...)
+
+			archivePath, err := Save(parent, t.TempDir())
+			require.NoError(t, err)
+
+			headerNames := retrieveHeaderNames(t, archivePath)
+			for _, want := range tt.wantHeaders {
+				require.True(t, headerNames[want], "expected archive to contain %s", want)
+			}
+			for _, notWant := range tt.notWantHeaders {
+				require.False(t, headerNames[notWant], "expected archive not to contain %s", notWant)
+			}
+
+			loaded, err := loader.LoadFile(archivePath)
+			require.NoError(t, err)
+			require.Len(t, loaded.Dependencies(), tt.wantLoadedDeps)
+			require.ElementsMatch(t, tt.wantVersions, dependencyVersions(loaded.Dependencies()))
+		})
+	}
+}
+
+func newSaveTestChart(name, version string) *chart.Chart {
+	return &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       name,
+			Version:    version,
+		},
+	}
+}
+
+func retrieveHeaderNames(t *testing.T, archivePath string) map[string]bool {
+	t.Helper()
+	headers, err := retrieveAllHeadersFromTar(archivePath)
+	require.NoError(t, err)
+
+	headerNames := map[string]bool{}
+	for _, header := range headers {
+		headerNames[header.Name] = true
+	}
+	return headerNames
+}
+
+func dependencyVersions(deps []*chart.Chart) []string {
+	versions := make([]string, len(deps))
+	for i, dep := range deps {
+		versions[i] = dep.Metadata.Version
+	}
+	return versions
 }
 
 // Creates a copy with a different schema; does not modify anything.
