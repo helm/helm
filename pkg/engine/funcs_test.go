@@ -161,9 +161,24 @@ func TestNormalizeYAMLScalars(t *testing.T) {
 			expect: map[string]any{"value": int64(1)},
 		},
 		{
+			name:   "max safe integer float becomes integer",
+			input:  map[string]any{"value": float64(maxSafeYAMLInteger)},
+			expect: map[string]any{"value": int64(maxSafeYAMLInteger)},
+		},
+		{
 			name:   "unsafe integer floats stay floats",
 			input:  map[string]any{"value": aboveSafeInteger},
 			expect: map[string]any{"value": aboveSafeInteger},
+		},
+		{
+			name:   "safe negative integer floats become integers",
+			input:  map[string]any{"value": -float64(maxSafeYAMLInteger)},
+			expect: map[string]any{"value": -int64(maxSafeYAMLInteger)},
+		},
+		{
+			name:   "unsafe negative integer floats stay floats",
+			input:  map[string]any{"value": -aboveSafeInteger},
+			expect: map[string]any{"value": -aboveSafeInteger},
 		},
 		{
 			name: "map keys and nested values are normalized",
@@ -187,6 +202,11 @@ func TestNormalizeYAMLScalars(t *testing.T) {
 			assert.Equal(t, tt.expect, normalizeYAMLScalars(tt.input))
 		})
 	}
+}
+
+func TestNormalizeYAMLMapKey(t *testing.T) {
+	assert.Equal(t, int64(1), normalizeYAMLMapKey(float64(1)))
+	assert.Equal(t, "[1 key]", normalizeYAMLMapKey([]any{float64(1), "key"}))
 }
 
 // This test to check a function provided by sprig is due to a change in a

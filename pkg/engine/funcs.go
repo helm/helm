@@ -19,6 +19,7 @@ package engine
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"math"
 	"reflect"
 	"strings"
@@ -30,7 +31,7 @@ import (
 	goYaml "sigs.k8s.io/yaml/goyaml.v3"
 )
 
-const maxSafeYAMLInteger = 1 << 53
+const maxSafeYAMLInteger = (1 << 53) - 1
 
 // funcMap returns a mapping of all of the functions that Engine has.
 //
@@ -99,12 +100,23 @@ func toYAMLPretty(v interface{}) string {
 	var data bytes.Buffer
 	encoder := goYaml.NewEncoder(&data)
 	encoder.SetIndent(2)
+	closeEncoder := func() error {
+		if encoder == nil {
+			return nil
+		}
+		err := encoder.Close()
+		encoder = nil
+		return err
+	}
+	defer func() {
+		_ = closeEncoder()
+	}()
 
 	if err := encoder.Encode(normalizeYAMLScalars(v)); err != nil {
 		// Swallow errors inside of a template.
 		return ""
 	}
-	if err := encoder.Close(); err != nil {
+	if err := closeEncoder(); err != nil {
 		// Swallow errors inside of a template.
 		return ""
 	}
@@ -148,7 +160,10 @@ func normalizeYAMLMapKey(key any) any {
 	if reflect.TypeOf(normalized).Comparable() {
 		return normalized
 	}
-	return key
+	if reflect.TypeOf(key).Comparable() {
+		return key
+	}
+	return fmt.Sprint(normalized)
 }
 
 // fromYAML converts a YAML document into a map[string]interface{}.
