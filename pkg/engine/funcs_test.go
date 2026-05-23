@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"math"
 	"strings"
 	"testing"
 	"text/template"
@@ -138,6 +139,53 @@ keyInElement1 = "valueInElement1"`,
 		err := template.Must(template.New("test").Funcs(funcMap()).Parse(tt.tpl)).Execute(&b, tt.vars)
 		assert.NoError(t, err)
 		assert.Equal(t, tt.expect, b.String(), tt.tpl)
+	}
+}
+
+func TestNormalizeYAMLScalars(t *testing.T) {
+	aboveSafeInteger := math.Nextafter(maxSafeYAMLInteger, math.Inf(1))
+
+	tests := []struct {
+		name   string
+		input  any
+		expect any
+	}{
+		{
+			name:   "non-integer floats stay floats",
+			input:  map[string]any{"value": 1.5},
+			expect: map[string]any{"value": 1.5},
+		},
+		{
+			name:   "safe integer floats become integers",
+			input:  map[string]any{"value": 1.0},
+			expect: map[string]any{"value": int64(1)},
+		},
+		{
+			name:   "unsafe integer floats stay floats",
+			input:  map[string]any{"value": aboveSafeInteger},
+			expect: map[string]any{"value": aboveSafeInteger},
+		},
+		{
+			name: "map keys and nested values are normalized",
+			input: map[any]any{
+				float64(2): float64(3),
+				"nested": map[any]any{
+					float64(4): []any{float64(5)},
+				},
+			},
+			expect: map[any]any{
+				int64(2): int64(3),
+				"nested": map[any]any{
+					int64(4): []any{int64(5)},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expect, normalizeYAMLScalars(tt.input))
+		})
 	}
 }
 

@@ -19,6 +19,8 @@ package engine
 import (
 	"bytes"
 	"encoding/json"
+	"math"
+	"reflect"
 	"strings"
 	"text/template"
 
@@ -27,6 +29,8 @@ import (
 	"sigs.k8s.io/yaml"
 	goYaml "sigs.k8s.io/yaml/goyaml.v3"
 )
+
+const maxSafeYAMLInteger = 1 << 53
 
 // funcMap returns a mapping of all of the functions that Engine has.
 //
@@ -95,9 +99,12 @@ func toYAMLPretty(v interface{}) string {
 	var data bytes.Buffer
 	encoder := goYaml.NewEncoder(&data)
 	encoder.SetIndent(2)
-	err := encoder.Encode(normalizeYAMLScalars(v))
 
-	if err != nil {
+	if err := encoder.Encode(normalizeYAMLScalars(v)); err != nil {
+		// Swallow errors inside of a template.
+		return ""
+	}
+	if err := encoder.Close(); err != nil {
 		// Swallow errors inside of a template.
 		return ""
 	}
@@ -115,7 +122,7 @@ func normalizeYAMLScalars(v any) any {
 	case map[any]any:
 		normalized := make(map[any]any, len(typedValue))
 		for key, value := range typedValue {
-			normalized[key] = normalizeYAMLScalars(value)
+			normalized[normalizeYAMLMapKey(key)] = normalizeYAMLScalars(value)
 		}
 		return normalized
 	case []any:
@@ -126,13 +133,22 @@ func normalizeYAMLScalars(v any) any {
 		return normalized
 	case float64:
 		// sigs.k8s.io/yaml may unmarshal integer YAML values as float64.
-		if typedValue == math.Trunc(typedValue) &&
-			typedValue > float64(math.MinInt64) &&
-			typedValue < float64(math.MaxInt64) {
+		if typedValue == math.Trunc(typedValue) && math.Abs(typedValue) <= maxSafeYAMLInteger {
 			return int64(typedValue)
 		}
 	}
 	return v
+}
+
+func normalizeYAMLMapKey(key any) any {
+	normalized := normalizeYAMLScalars(key)
+	if normalized == nil {
+		return normalized
+	}
+	if reflect.TypeOf(normalized).Comparable() {
+		return normalized
+	}
+	return key
 }
 
 // fromYAML converts a YAML document into a map[string]interface{}.
