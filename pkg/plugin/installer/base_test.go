@@ -14,6 +14,7 @@ limitations under the License.
 package installer // import "helm.sh/helm/v3/pkg/plugin/installer"
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
