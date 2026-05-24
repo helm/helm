@@ -99,7 +99,7 @@ func (i IndexFile) log() *slog.Logger {
 	if i.Logger != nil {
 		return i.Logger
 	}
-	return slog.Default()
+	return slog.New(slog.DiscardHandler)
 }
 
 // NewIndexFile initializes an index.

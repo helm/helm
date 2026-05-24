@@ -177,7 +177,6 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	flags.Parse(args)
 
 	logger := logSetup(settings.Debug)
-	slog.SetDefault(logger)
 	actionConfig.SetLogger(logger.Handler())
 
 	// Validate color mode setting

@@ -62,7 +62,7 @@ func loadCLIPlugins(baseCmd *cobra.Command, out io.Writer, logger *slog.Logger) 
 	descriptor := plugin.Descriptor{
 		Type: "cli/v1",
 	}
-	found, err := plugin.FindPlugins(dirs, descriptor)
+	found, err := plugin.FindPluginsWithErrorFilter(dirs, descriptor, plugin.NewLogIgnorePluginLoadErrorFilterFunc(logger))
 	if err != nil {
 		logger.Error("failed to load plugins", slog.String("error", err.Error()))
 		return

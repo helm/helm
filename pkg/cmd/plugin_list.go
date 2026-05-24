@@ -42,7 +42,7 @@ func newPluginListCmd(out io.Writer, logger *slog.Logger) *cobra.Command {
 			descriptor := plugin.Descriptor{
 				Type: pluginType,
 			}
-			plugins, err := plugin.FindPlugins(dirs, descriptor)
+			plugins, err := plugin.FindPluginsWithErrorFilter(dirs, descriptor, plugin.NewLogIgnorePluginLoadErrorFilterFunc(logger))
 			if err != nil {
 				return err
 			}

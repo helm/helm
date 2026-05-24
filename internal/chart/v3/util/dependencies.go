@@ -30,7 +30,7 @@ import (
 
 // ProcessDependencies checks through this chart's dependencies, processing accordingly.
 func ProcessDependencies(c *chart.Chart, v common.Values) error {
-	logger := slog.Default()
+	logger := slog.New(slog.DiscardHandler)
 	if err := processDependencyEnabled(c, v, "", logger); err != nil {
 		return err
 	}

@@ -74,7 +74,7 @@ func newHTTPURLLoader() *HTTPURLLoader {
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
 func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
-	logger := slog.Default()
+	logger := slog.New(slog.DiscardHandler)
 	chrt, err := chart.NewAccessor(ch)
 	if err != nil {
 		return err
@@ -123,7 +123,7 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 
 // ValidateAgainstSingleSchema checks that values does not violate the structure laid out in this schema
 func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reterr error) {
-	logger := slog.Default()
+	logger := slog.New(slog.DiscardHandler)
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to validate schema: %s", r)
