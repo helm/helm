@@ -347,7 +347,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 			// that is also declared in the chart's regular templates). For
 			// "nohooks", hooks skip the post-renderer entirely, matching the
 			// Helm 3 behavior.
-			sortedHooks, sortedManifests, err := releaseutil.SortManifests(files, nil, releaseutil.InstallOrder)
+			sortedHooks, sortedManifests, err := releaseutil.SortManifests(files, nil, releaseutil.InstallOrder, cfg.Logger())
 			if err != nil {
 				for name, content := range files {
 					if strings.TrimSpace(content) == "" {

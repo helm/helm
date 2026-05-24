@@ -235,13 +235,8 @@ func TestValidateAgainstSchema2020Negative(t *testing.T) {
 	}
 
 	var errString string
-<<<<<<< HEAD
 	if err := ValidateAgainstSchema(chrt, vals); err == nil {
 		t.Fatal("Expected an error, but got nil")
-=======
-	if err := ValidateAgainstSchema(chrt, vals, nil); err == nil {
-		t.Fatalf("Expected an error, but got nil")
->>>>>>> 6f8673662 (fix(logging): replace global slog usage with dependency-injected loggers)
 	} else {
 		errString = err.Error()
 	}
@@ -300,7 +295,7 @@ func TestValidateAgainstSingleSchema_UnresolvedURN_Ignored(t *testing.T) {
         "$ref": "urn:example:helm:schemas:v1:helm-schema-validation-conditions:v1/helmSchemaValidation-true"
     }`)
 	vals := map[string]any{"any": "value"}
-	if err := ValidateAgainstSingleSchema(vals, schema, nil); err != nil {
+	if err := ValidateAgainstSingleSchema(vals, schema); err != nil {
 		t.Fatalf("expected no error when URN unresolved is ignored, got: %v", err)
 	}
 }
@@ -333,7 +328,7 @@ func TestValidateAgainstSchema_MissingSubchartValues_NoPanic(t *testing.T) {
 		}
 	}()
 
-	if err := ValidateAgainstSchema(chrt, vals, nil); err != nil {
+	if err := ValidateAgainstSchema(chrt, vals); err != nil {
 		t.Fatalf("expected no error when subchart values are missing, got: %v", err)
 	}
 }
@@ -361,7 +356,7 @@ func TestValidateAgainstSchema_SubchartNil_NoPanic(t *testing.T) {
 		}
 	}()
 
-	if err := ValidateAgainstSchema(chrt, vals, nil); err != nil {
+	if err := ValidateAgainstSchema(chrt, vals); err != nil {
 		t.Fatalf("expected no error when subchart values are nil, got: %v", err)
 	}
 }
@@ -390,12 +385,7 @@ func TestValidateAgainstSchema_InvalidSubchartValuesType_NoPanic(t *testing.T) {
 	}()
 
 	// We expect a non-nil error (invalid type), but crucially no panic.
-<<<<<<< HEAD
 	if err := ValidateAgainstSchema(chrt, vals); err == nil {
 		t.Fatal("expected an error when subchart values have invalid type, got nil")
-=======
-	if err := ValidateAgainstSchema(chrt, vals, nil); err == nil {
-		t.Fatalf("expected an error when subchart values have invalid type, got nil")
->>>>>>> 6f8673662 (fix(logging): replace global slog usage with dependency-injected loggers)
 	}
 }

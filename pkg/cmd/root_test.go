@@ -149,9 +149,9 @@ func TestRootCmdLogger(t *testing.T) {
 		t.Error("expected actionConfig logger to be set, got discard handler")
 	}
 
-	// The actionConfig logger should NOT be the global default (we no longer set slog.SetDefault)
-	if l.Handler() == slog.Default().Handler() {
-		t.Error("expected actionConfig logger to NOT be the slog default logger")
+	// slog.SetDefault is called so the global default should use the same handler
+	if l.Handler() != slog.Default().Handler() {
+		t.Error("expected actionConfig logger to match the global slog default logger")
 	}
 }
 

@@ -78,7 +78,7 @@ func validateValuesFile(valuesPath string, overrides map[string]any, skipSchemaV
 	}
 
 	if !skipSchemaValidation {
-		return util.ValidateAgainstSingleSchema(coalescedValues, schema, nil)
+		return util.ValidateAgainstSingleSchema(coalescedValues, schema)
 	}
 
 	return nil

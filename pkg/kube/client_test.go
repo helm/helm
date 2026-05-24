@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -1664,7 +1665,7 @@ func TestPatchResourceClientSide(t *testing.T) {
 			original := resourceListOriginal[0]
 			target := resourceListTarget[0]
 
-			err = patchResourceClientSide(original.Object, target, tc.ThreeWayMergeForUnstructured)
+			err = patchResourceClientSide(original.Object, target, tc.ThreeWayMergeForUnstructured, slog.Default())
 			if tc.ExpectedErrorContains != "" {
 				require.ErrorContains(t, err, tc.ExpectedErrorContains)
 			} else {
