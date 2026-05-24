@@ -162,6 +162,9 @@ func LoadDir(dirname string) (Plugin, error) {
 // NewLogIgnorePluginLoadErrorFilterFunc returns an ErrorFilterFunc that logs
 // plugin load errors using the provided logger and ignores them.
 func NewLogIgnorePluginLoadErrorFilterFunc(logger *slog.Logger) ErrorFilterFunc {
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
+	}
 	return func(pluginYAML string, err error) error {
 		logger.Warn("failed to load plugin (ignoring)", slog.String("plugin_yaml", pluginYAML), slog.Any("error", err))
 		return nil

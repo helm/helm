@@ -157,6 +157,7 @@ func ConfigurationSetLogger(h slog.Handler) ConfigurationOption {
 
 func NewConfiguration(options ...ConfigurationOption) *Configuration {
 	c := &Configuration{}
+	c.SetLogger(slog.NewTextHandler(io.Discard, nil))
 
 	for _, o := range options {
 		o(c)

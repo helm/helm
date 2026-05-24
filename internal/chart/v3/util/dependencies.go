@@ -55,8 +55,8 @@ func processDependencyConditions(reqs []*chart.Dependency, cvals common.Values, 
 						break
 					}
 					logger.Warn("returned non-bool value", "path", c, "chart", r.Name)
-				} else if errors.As(err, &errNoValue) {
-					// this is a real error
+				} else if !errors.As(err, &errNoValue) {
+					// ErrNoValue means the condition key is absent, which is normal; warn on real errors only
 					logger.Warn("the method PathValue returned error", slog.Any("error", err))
 				}
 			}

@@ -72,6 +72,9 @@ type waitValue struct {
 
 func newWaitValue(defaultValue kube.WaitStrategy, ws *kube.WaitStrategy, logger *slog.Logger) *waitValue {
 	*ws = defaultValue
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
+	}
 	return &waitValue{ws: ws, logger: logger}
 }
 
