@@ -924,9 +924,6 @@ func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 // auth?scope=repository%3Atestrepo%2Flocal-subchart%3Apull%2Cpush&service=testservice
 // we can set the actions like below
 // example) ctx = withScopeHint(ctx, repository, auth.ActionPush, auth.ActionPull)
-func withScopeHint(ctx context.Context, target any, actions ...string) context.Context {
-	if repo, ok := target.(*remote.Repository); ok {
-		return auth.AppendRepositoryScope(ctx, repo.Reference, actions...)
-	}
-	return ctx
+func withScopeHint(ctx context.Context, repo *remote.Repository, actions ...string) context.Context {
+	return auth.AppendRepositoryScope(ctx, repo.Reference, actions...)
 }
