@@ -26,7 +26,7 @@ import (
 
 func K8sIOClientGoModVersion() (string, error) {
 	info, ok := debug.ReadBuildInfo()
-	if !ok {
+	if !ok || info == nil {
 		return "", errors.New("failed to read build info")
 	}
 
