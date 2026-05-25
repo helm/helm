@@ -717,6 +717,11 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	repository.PlainHTTP = c.plainHTTP
 	repository.Client = c.authorizer
 
+	ctx = auth.AppendRepositoryScope(ctx, registry.Reference{
+		Registry:   parsedRef.orasReference.Registry,
+		Repository: parsedRef.orasReference.Repository,
+	}, auth.ActionPull, auth.ActionPush)
+
 	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
 	if err != nil {
 		return nil, err
