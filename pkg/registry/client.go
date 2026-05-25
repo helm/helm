@@ -987,6 +987,8 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return nil, err
 	}
 
+	ctx = withScopeHint(ctx, repository, auth.ActionPull, auth.ActionPush)
+
 	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
 	if err != nil {
 		return nil, err
@@ -1194,4 +1196,13 @@ func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 
 	return oras.TagBytes(ctx, memoryStore, ocispec.MediaTypeImageManifest,
 		manifestData, parsedRef.String())
+}
+
+// withScopeHint hints the auth client to request a token covering all the given
+// actions in a single request. Without this, pushing to a token-auth registry
+// first requests a [pull] scope (which fails for a not-yet-existing repository
+// path), making it hard to mint a valid token. Hinting [pull,push] up front
+// produces a single correct token request.
+func withScopeHint(ctx context.Context, repo *remote.Repository, actions ...string) context.Context {
+	return auth.AppendRepositoryScope(ctx, repo.Reference(), actions...)
 }
