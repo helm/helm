@@ -17,6 +17,7 @@ package common
 
 import (
 	"fmt"
+	"log/slog"
 	"slices"
 	"strconv"
 	"strings"
@@ -152,7 +153,10 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 
 	vstr, err := helmversion.K8sIOClientGoModVersion()
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve k8s.io/client-go version: %w", err)
+		// Build info may be unavailable when compiled with toolchains other
+		// than "go build" (e.g. Bazel). Fall back to a safe default.
+		slog.Warn("failed to retrieve k8s.io/client-go version, falling back to default Kubernetes version", slog.Any("error", err))
+		return newCapabilities(1, 20)
 	}
 
 	v, err := semver.NewVersion(vstr)
