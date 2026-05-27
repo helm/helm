@@ -28,10 +28,12 @@ set -euo pipefail
 IFS=$'\n\t'
 
 find_go_files() {
-  # Prune common vendored/generated directories by *directory name* to avoid
-  # accidentally excluding files that merely contain the substring.
+  # Prune repository metadata and vendored/generated directories by *directory
+  # name* to avoid accidentally excluding files that merely contain the
+  # substring. Keep testdata in scope because Go fixtures can still be embedded
+  # or parsed.
   find . \
-    \( -type d \( -name .git -o -name testdata -o -name third_party -o -name vendor \) -prune \) \
+    \( -type d \( -name .git -o -name third_party -o -name vendor \) -prune \) -false \
     -o \( -type f -name '*.go' -print0 \)
 }
 
@@ -45,8 +47,9 @@ if ! find_go_files >"$FILELIST" 2>"$FINDERR"; then
   exit 2
 fi
 
-# Fail loudly on any traversal errors (permission issues, broken symlinks, etc.)
-# rather than silently passing with an incomplete file list.
+# Treat any find stderr output as fatal. Permission errors and other traversal
+# diagnostics may still leave find with a zero exit status on some platforms,
+# and a partial file list must not be reported as a clean scan.
 if [[ -s "$FINDERR" ]]; then
   echo "ERROR: errors occurred while enumerating Go source files:" >&2
   cat "$FINDERR" >&2 || true
