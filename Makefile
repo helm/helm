@@ -128,6 +128,15 @@ test-style:
 test-source-headers:
 	@scripts/validate-license.sh
 
+# test-unicode-invisible fails if any Go source file contains invisible Unicode
+# codepoints that are invisible to reviewers but cause tooling noise or security
+# issues: zero-width spaces (U+200B–U+200D) and byte-order marks (U+FEFF).
+# Bidirectional/trojan-source characters (U+202A–U+202E, U+2066–U+2069) are
+# covered by the bidichk golangci-lint linter (see .golangci.yml).
+.PHONY: test-unicode-invisible
+test-unicode-invisible:
+	@scripts/check-unicode-invisible.sh
+
 .PHONY: test-acceptance
 test-acceptance: build
 	@if [ -d "${ACCEPTANCE_DIR}" ]; then \
