@@ -296,6 +296,11 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		slog.Warn("this chart is deprecated")
 	}
 
+	sourceDateEpoch, err := sourceDateEpochFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	if req := ac.MetaDependencies(); len(req) > 0 {
 		// If CheckDependencies returns an error, we have unfulfilled dependencies.
 		// As of Helm 2.4.0, this is treated as a stopping condition:
@@ -313,6 +318,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					ContentCache:     settings.ContentCache,
 					Debug:            settings.Debug,
 					RegistryClient:   client.GetRegistryClient(),
+					SourceDateEpoch:  sourceDateEpoch,
 				}
 				if err := man.Update(); err != nil {
 					return nil, err

@@ -58,6 +58,10 @@ func newDependencyUpdateCmd(_ *action.Configuration, out io.Writer) *cobra.Comma
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
+			sourceDateEpoch, err := sourceDateEpochFromEnv()
+			if err != nil {
+				return err
+			}
 			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSVerify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
@@ -75,6 +79,7 @@ func newDependencyUpdateCmd(_ *action.Configuration, out io.Writer) *cobra.Comma
 				RepositoryCache:  settings.RepositoryCache,
 				ContentCache:     settings.ContentCache,
 				Debug:            settings.Debug,
+				SourceDateEpoch:  sourceDateEpoch,
 			}
 			if client.Verify {
 				man.Verify = downloader.VerifyAlways

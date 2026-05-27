@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"golang.org/x/term"
@@ -58,6 +59,8 @@ type Package struct {
 	KeyFile               string
 	CaFile                string
 	InsecureSkipTLSVerify bool
+	// SourceDateEpoch, when set, normalizes chart timestamps for reproducible archives.
+	SourceDateEpoch *time.Time
 }
 
 const (
@@ -101,6 +104,10 @@ func (p *Package) Run(path string, _ map[string]any) (string, error) {
 
 	if p.AppVersion != "" {
 		ch.Metadata.AppVersion = p.AppVersion
+	}
+
+	if p.SourceDateEpoch != nil {
+		chartutil.ApplySourceDateEpoch(ch, *p.SourceDateEpoch)
 	}
 
 	if reqs := ac.MetaDependencies(); len(reqs) > 0 {
