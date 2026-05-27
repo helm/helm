@@ -29,6 +29,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"sigs.k8s.io/yaml"
@@ -78,6 +79,8 @@ type Manager struct {
 
 	// ContentCache is a location where a cache of charts can be stored
 	ContentCache string
+	// SourceDateEpoch, when set, normalizes chart timestamps for reproducible archives.
+	SourceDateEpoch *time.Time
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -303,7 +306,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			if m.Debug {
 				fmt.Fprintf(m.Out, "Archiving %s from repo %s\n", dep.Name, dep.Repository)
 			}
-			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version, tmpPath)
+			ver, err := tarFromLocalDir(m.ChartPath, dep.Name, dep.Repository, dep.Version, tmpPath, m.SourceDateEpoch)
 			if err != nil {
 				saveError = err
 				break
@@ -867,7 +870,7 @@ func writeLock(chartpath string, lock *chart.Lock, legacyLockfile bool) error {
 }
 
 // archive a dep chart from local directory and save it into destPath
-func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, error) {
+func tarFromLocalDir(chartpath, name, repo, version, destPath string, sourceDateEpoch *time.Time) (string, error) {
 	if !strings.HasPrefix(repo, "file://") {
 		return "", fmt.Errorf("wrong format: chart %s repository %s", name, repo)
 	}
@@ -880,6 +883,10 @@ func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, e
 	ch, err := loader.LoadDir(origPath)
 	if err != nil {
 		return "", err
+	}
+
+	if sourceDateEpoch != nil {
+		ch.StampModTimes(*sourceDateEpoch)
 	}
 
 	constraint, err := semver.NewConstraint(version)
