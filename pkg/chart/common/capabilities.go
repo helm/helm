@@ -156,7 +156,7 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 		// Build info may be unavailable when compiled with toolchains other
 		// than "go build" (e.g. Bazel). Fall back to a safe default.
 		slog.Warn("failed to retrieve k8s.io/client-go version, falling back to default Kubernetes version", slog.Any("error", err))
-		return newCapabilities(1, 20)
+		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
 	}
 
 	v, err := semver.NewVersion(vstr)
