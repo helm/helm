@@ -290,14 +290,14 @@ func TestCmdGetDryRunFlagStrategy(t *testing.T) {
 			if tc.ExpectedError {
 				assert.Error(t, err)
 			} else {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 				assert.Equal(t, tc.ExpectedStrategy, dryRunStrategy)
 			}
 
 			if tc.ExpectedLog != nil {
 				logResult := map[string]string{}
 				err = json.Unmarshal(logBuf.Bytes(), &logResult)
-				require.Nil(t, err)
+				require.NoError(t, err)
 
 				assert.Equal(t, tc.ExpectedLog.Level, logResult["level"])
 				assert.Equal(t, tc.ExpectedLog.Msg, logResult["msg"])

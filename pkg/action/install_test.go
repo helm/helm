@@ -867,7 +867,7 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 	test.AssertGoldenFile(t, filepath.Join(dir, "hello/templates/rbac"), "rbac.txt")
 
 	_, err = os.Stat(filepath.Join(dir, "hello/templates/empty"))
-	is.True(errors.Is(err, fs.ErrNotExist))
+	is.ErrorIs(err, fs.ErrNotExist)
 }
 
 func TestInstallOutputDirWithReleaseName(t *testing.T) {
@@ -903,7 +903,7 @@ func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	test.AssertGoldenFile(t, filepath.Join(newDir, "hello/templates/rbac"), "rbac.txt")
 
 	_, err = os.Stat(filepath.Join(newDir, "hello/templates/empty"))
-	is.True(errors.Is(err, fs.ErrNotExist))
+	is.ErrorIs(err, fs.ErrNotExist)
 }
 
 func TestNameAndChart(t *testing.T) {
@@ -1168,7 +1168,7 @@ func TestInstallCRDs_AlreadyExist(t *testing.T) {
 	mockChart := buildChart(withFile(mockFile))
 	crdsToInstall := mockChart.CRDObjects()
 
-	assert.Nil(t, instAction.installCRDs(crdsToInstall))
+	assert.NoError(t, instAction.installCRDs(crdsToInstall))
 }
 
 func TestInstallCRDs_KubeClient_BuildError(t *testing.T) {
@@ -1227,7 +1227,7 @@ func TestCheckDependencies(t *testing.T) {
 	dependency := chart.Dependency{Name: "hello"}
 	mockChart := buildChart(withDependency())
 
-	assert.Nil(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}))
+	assert.NoError(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}))
 }
 
 func TestCheckDependencies_MissingDependency(t *testing.T) {
