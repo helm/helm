@@ -599,8 +599,10 @@ func TestAllTemplates(t *testing.T) {
 	}
 }
 
+type unsupportedChart struct{}
+
 func TestRenderInvalidChartType(t *testing.T) {
-	_, err := Render(struct{}{}, common.Values{})
+	_, err := Render(unsupportedChart{}, common.Values{})
 	if err == nil {
 		t.Error("Expected error when rendering invalid chart type, got nil")
 	} else if !strings.Contains(err.Error(), "unsupported chart type") {

@@ -79,7 +79,7 @@ func New(config *rest.Config) Engine {
 func (e Engine) Render(chrt ci.Charter, values common.Values) (map[string]string, error) {
 	tmap, err := allTemplates(chrt, values)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("collecting templates: %w", err)
 	}
 	return e.render(tmap)
 }
@@ -570,7 +570,7 @@ func recAllTpls(c ci.Charter, templates map[string]renderable, values common.Val
 		}
 		subTpls, err := recAllTpls(child, templates, next)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error rendering dependency chart %q at %q: %w", sub.Name(), sub.ChartFullPath(), err)
 		}
 		subCharts[sub.Name()] = subTpls
 	}
