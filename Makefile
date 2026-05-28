@@ -155,7 +155,7 @@ format: $(GOIMPORTS)
 .PHONY: gen-test-golden
 gen-test-golden:
 gen-test-golden: PKG = ./pkg/cmd ./pkg/action
-gen-test-golden: TESTFLAGS = -update
+gen-test-golden: TESTFLAGS += -update
 gen-test-golden: test-unit
 
 # ------------------------------------------------------------------------------
