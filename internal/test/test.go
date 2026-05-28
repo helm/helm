@@ -27,15 +27,6 @@ import (
 // UpdateGolden writes out the golden files with the latest values, rather than failing the test.
 var updateGolden = flag.Bool("update", false, "update golden files")
 
-// IsTestMode reports whether the binary was built with -tags helmtest.
-// General-purpose signal that the binary was built for tests; consult it
-// from production code paths that need to behave differently under test.
-// Backed by a compile-time const (see test_mode_on.go / test_mode_off.go)
-// so branches gated on it dead-code-eliminate in release builds.
-func IsTestMode() bool {
-	return testMode
-}
-
 // TestingT describes a testing object compatible with the critical functions from the testing.T type
 type TestingT interface {
 	Fatal(...any)

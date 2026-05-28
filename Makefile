@@ -89,12 +89,14 @@ endif
 test: test-style
 test: test-unit
 
-# The `helmtest` build tag activates internal/version/version_helmtest.go,
-# which seeds testing-version sentinels so test binaries don't panic reading
-# missing module info. Applied to all test invocations.
-TESTFLAGS += -tags helmtest
-
 .PHONY: test-unit
+# The `helmtest` build tag selects internal/testmode/mode_on.go, flipping
+# testmode.IsTestMode() to true so production code paths in internal/version
+# and pkg/chart/common substitute stable values instead of reading missing
+# module info. Attached to test-unit (not the file-level TESTFLAGS) so the
+# tag is guaranteed regardless of any target-specific TESTFLAGS overrides
+# in upstream targets (e.g. gen-test-golden).
+test-unit: TESTFLAGS += -tags helmtest
 test-unit:
 	@echo
 	@echo "==> Running unit tests <=="

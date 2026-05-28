@@ -24,7 +24,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 
-	"helm.sh/helm/v4/internal/test"
+	"helm.sh/helm/v4/internal/testmode"
 )
 
 var (
@@ -88,7 +88,7 @@ func Get() BuildInfo {
 		// Test builds don't include debug info / module info
 		// (And even if they did, we probably want a stable version during tests anyway)
 		// Return a default value for test builds
-		if test.IsTestMode() {
+		if testmode.IsTestMode() {
 			return fmt.Sprintf("v%d.%d", KubeVersionMajorTesting, KubeVersionMinorTesting)
 		}
 
@@ -119,7 +119,7 @@ func Get() BuildInfo {
 	}
 
 	// HACK(bacongobbler): strip out GoVersion during a test run for consistent test output
-	if test.IsTestMode() {
+	if testmode.IsTestMode() {
 		v.GoVersion = ""
 	}
 	return v
