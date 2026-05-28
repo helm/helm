@@ -23,6 +23,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+
+	"helm.sh/helm/v4/internal/test"
 )
 
 var (
@@ -42,9 +44,14 @@ var (
 	gitTreeState = ""
 )
 
-var (
-	KubeVersionMajorTesting uint64
-	KubeVersionMinorTesting uint64
+// Stub Kubernetes version values for use by any test path that needs a
+// stable kube major/minor — for example, substituting into capabilities or
+// client-go version strings so test output doesn't drift with the
+// k8s.io/client-go version pinned in go.mod. Callers decide when to use
+// them; they are not tied to any particular build tag or gating mechanism.
+const (
+	KubeVersionMajorTesting uint64 = 1
+	KubeVersionMinorTesting uint64 = 20
 )
 
 // BuildInfo describes the compile time information.
@@ -81,7 +88,7 @@ func Get() BuildInfo {
 		// Test builds don't include debug info / module info
 		// (And even if they did, we probably want a stable version during tests anyway)
 		// Return a default value for test builds
-		if KubeVersionMajorTesting != 0 && KubeVersionMinorTesting != 0 {
+		if test.IsTestMode() {
 			return fmt.Sprintf("v%d.%d", KubeVersionMajorTesting, KubeVersionMinorTesting)
 		}
 
@@ -112,7 +119,7 @@ func Get() BuildInfo {
 	}
 
 	// HACK(bacongobbler): strip out GoVersion during a test run for consistent test output
-	if KubeVersionMajorTesting != 0 && KubeVersionMinorTesting != 0 {
+	if test.IsTestMode() {
 		v.GoVersion = ""
 	}
 	return v

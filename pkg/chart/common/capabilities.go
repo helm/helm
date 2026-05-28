@@ -28,6 +28,7 @@ import (
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8sversion "k8s.io/apimachinery/pkg/util/version"
 
+	"helm.sh/helm/v4/internal/test"
 	helmversion "helm.sh/helm/v4/internal/version"
 )
 
@@ -140,7 +141,7 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 	// Test builds don't include debug info / module info
 	// (And even if they did, we probably want stable capabilities for tests anyway)
 	// Return a default value for test builds
-	if helmversion.KubeVersionMajorTesting != 0 && helmversion.KubeVersionMinorTesting != 0 {
+	if test.IsTestMode() {
 		return newCapabilities(helmversion.KubeVersionMajorTesting, helmversion.KubeVersionMinorTesting)
 	}
 
