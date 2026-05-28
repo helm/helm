@@ -236,15 +236,17 @@ docs](https://helm.sh/docs/developers/).
 
 Use the Makefile targets (`make test`, `make test-unit`, `make test-coverage`)
 rather than invoking `go test ./...` directly. The Makefile passes the
-`helmtest` build tag, which is required: it activates
-`internal/version/version_helmtest.go` to seed testing-version sentinels. Test
-binaries have no module info, so without this tag the production code path
-attempts to read `k8s.io/client-go`'s version from build info and panics during
-package init.
+`helmtest` build tag, which is required: it selects
+`internal/test/test_mode_on.go` (setting `const testMode = true`), enabling
+`test.IsTestMode()` so production code paths in `internal/version` and
+`pkg/chart/common` substitute stable values instead of reading build info.
+Test binaries have no module info, so without this tag those code paths
+panic during package init.
 
 If you run tests outside the Makefile (IDE test runners, `go test` directly,
 custom CI), pass `-tags helmtest`. The tag is omitted from release builds so
-the `testing` package and its dependencies stay out of shipped binaries.
+the `testing` package and its dependencies stay out of shipped binaries, and
+branches gated on `test.IsTestMode()` are dead-code-eliminated by the compiler.
 
 ## Pull Requests
 
