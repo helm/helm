@@ -590,9 +590,21 @@ func TestAllTemplates(t *testing.T) {
 	}
 	dep1.AddDependency(dep2)
 
-	tpls := allTemplates(ch1, common.Values{})
+	tpls, err := allTemplates(ch1, common.Values{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
 	if len(tpls) != 5 {
 		t.Errorf("Expected 5 charts, got %d", len(tpls))
+	}
+}
+
+func TestRenderInvalidChartType(t *testing.T) {
+	_, err := Render(struct{}{}, common.Values{})
+	if err == nil {
+		t.Error("Expected error when rendering invalid chart type, got nil")
+	} else if !strings.Contains(err.Error(), "unsupported chart type") {
+		t.Errorf("Expected error to contain 'unsupported chart type', got: %v", err)
 	}
 }
 
