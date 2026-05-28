@@ -232,6 +232,20 @@ guide](https://helm.sh/docs/community/developers/) to get started.
 Coding conventions and standards are explained in the [official developer
 docs](https://helm.sh/docs/developers/).
 
+### Running tests
+
+Use the Makefile targets (`make test`, `make test-unit`, `make test-coverage`)
+rather than invoking `go test ./...` directly. The Makefile passes the
+`helmtest` build tag, which is required: it activates
+`internal/version/version_helmtest.go` to seed testing-version sentinels. Test
+binaries have no module info, so without this tag the production code path
+attempts to read `k8s.io/client-go`'s version from build info and panics during
+package init.
+
+If you run tests outside the Makefile (IDE test runners, `go test` directly,
+custom CI), pass `-tags helmtest`. The tag is omitted from release builds so
+the `testing` package and its dependencies stay out of shipped binaries.
+
 ## Pull Requests
 
 Like any good open source project, we use Pull Requests (PRs) to track code changes.

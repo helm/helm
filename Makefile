@@ -89,6 +89,11 @@ endif
 test: test-style
 test: test-unit
 
+# The `helmtest` build tag activates internal/version/version_helmtest.go,
+# which seeds testing-version sentinels so test binaries don't panic reading
+# missing module info. Applied to all test invocations.
+TESTFLAGS += -tags helmtest
+
 .PHONY: test-unit
 test-unit:
 	@echo

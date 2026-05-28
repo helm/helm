@@ -17,12 +17,10 @@ limitations under the License.
 package version
 
 import (
-	"flag"
 	"fmt"
 	"log/slog"
 	"runtime"
 	"strings"
-	"testing"
 
 	"github.com/Masterminds/semver/v3"
 )
@@ -44,8 +42,9 @@ var (
 	gitTreeState = ""
 )
 
-const (
-	kubeClientGoVersionTesting = "v1.20"
+var (
+	KubeVersionMajorTesting uint64
+	KubeVersionMinorTesting uint64
 )
 
 // BuildInfo describes the compile time information.
@@ -82,8 +81,8 @@ func Get() BuildInfo {
 		// Test builds don't include debug info / module info
 		// (And even if they did, we probably want a stable version during tests anyway)
 		// Return a default value for test builds
-		if testing.Testing() {
-			return kubeClientGoVersionTesting
+		if KubeVersionMajorTesting != 0 && KubeVersionMinorTesting != 0 {
+			return fmt.Sprintf("v%d.%d", KubeVersionMajorTesting, KubeVersionMinorTesting)
 		}
 
 		vstr, err := K8sIOClientGoModVersion()
@@ -113,7 +112,7 @@ func Get() BuildInfo {
 	}
 
 	// HACK(bacongobbler): strip out GoVersion during a test run for consistent test output
-	if flag.Lookup("test.v") != nil {
+	if KubeVersionMajorTesting != 0 && KubeVersionMinorTesting != 0 {
 		v.GoVersion = ""
 	}
 	return v

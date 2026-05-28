@@ -37,7 +37,7 @@ generate_cover_data() {
   for d in $(go list "$target"); do
     (
       local output="${coverdir}/${d//\//-}.cover"
-      go test -coverprofile="${output}" -covermode="$covermode" "$d"
+      go test -tags helmtest -coverprofile="${output}" -covermode="$covermode" "$d"
     )
   done
 

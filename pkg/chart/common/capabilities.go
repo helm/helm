@@ -20,7 +20,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"testing"
 
 	"github.com/Masterminds/semver/v3"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -30,11 +29,6 @@ import (
 	k8sversion "k8s.io/apimachinery/pkg/util/version"
 
 	helmversion "helm.sh/helm/v4/internal/version"
-)
-
-const (
-	kubeVersionMajorTesting = 1
-	kubeVersionMinorTesting = 20
 )
 
 var (
@@ -146,8 +140,8 @@ func makeDefaultCapabilities() (*Capabilities, error) {
 	// Test builds don't include debug info / module info
 	// (And even if they did, we probably want stable capabilities for tests anyway)
 	// Return a default value for test builds
-	if testing.Testing() {
-		return newCapabilities(kubeVersionMajorTesting, kubeVersionMinorTesting)
+	if helmversion.KubeVersionMajorTesting != 0 && helmversion.KubeVersionMinorTesting != 0 {
+		return newCapabilities(helmversion.KubeVersionMajorTesting, helmversion.KubeVersionMinorTesting)
 	}
 
 	vstr, err := helmversion.K8sIOClientGoModVersion()
