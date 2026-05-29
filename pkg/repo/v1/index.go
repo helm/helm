@@ -115,6 +115,41 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 	return i, nil
 }
 
+
+// LoadIndexFileForEntries loads an index file but only validates and retains
+// entries matching the provided chart names. Unmatched entries are discarded
+// after unmarshal without validation, reducing memory and CPU overhead.
+// If entries is nil, all entries are loaded (equivalent to LoadIndexFile).
+func LoadIndexFileForEntries(path string, entries map[string]struct{}) (*IndexFile, error) {
+	i := &IndexFile{}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return i, err
+	}
+	if err := yaml.Unmarshal(b, i); err != nil {
+		return i, err
+	}
+	if entries != nil {
+		for name := range i.Entries {
+			if _, ok := entries[name]; !ok {
+				delete(i.Entries, name)
+			}
+		}
+	}
+	for _, cvs := range i.Entries {
+		for _, cv := range cvs {
+			if cv.APIVersion == "" {
+				cv.APIVersion = chart.APIVersionV1
+			}
+			if err := cv.Validate(); err != nil {
+				return i, err
+			}
+		}
+	}
+	i.SortEntries()
+	return i, nil
+}
+
 // MustAdd adds a file to the index
 // This can leave the index in an unsorted state
 func (i IndexFile) MustAdd(md *chart.Metadata, filename, baseURL, digest string) error {
