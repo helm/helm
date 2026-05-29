@@ -718,3 +718,59 @@ func TestLoadIndex_DuplicateChartDeps(t *testing.T) {
 		})
 	}
 }
+
+
+func TestLoadIndexFileForEntries(t *testing.T) {
+	// nil names loads all entries
+	t.Run("nil names loads all", func(t *testing.T) {
+		i, err := LoadIndexFileForEntries("testdata/local-index.yaml", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(i.Entries) == 0 {
+			t.Fatal("expected entries, got none")
+		}
+	})
+
+	// filter to a specific chart
+	t.Run("filter to one entry", func(t *testing.T) {
+		i, err := LoadIndexFileForEntries("testdata/local-index.yaml", []string{"alpine"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(i.Entries) != 1 {
+			t.Fatalf("expected 1 entry, got %d", len(i.Entries))
+		}
+		if _, ok := i.Entries["alpine"]; !ok {
+			t.Fatal("expected 'alpine' entry")
+		}
+	})
+
+	// no matches returns empty entries
+	t.Run("no matches returns empty", func(t *testing.T) {
+		i, err := LoadIndexFileForEntries("testdata/local-index.yaml", []string{"nonexistent-chart"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(i.Entries) != 0 {
+			t.Fatalf("expected 0 entries, got %d", len(i.Entries))
+		}
+	})
+
+	// partial match retains only matched entries
+	t.Run("partial match", func(t *testing.T) {
+		full, _ := LoadIndexFile("testdata/local-index.yaml")
+		var firstName string
+		for k := range full.Entries {
+			firstName = k
+			break
+		}
+		i, err := LoadIndexFileForEntries("testdata/local-index.yaml", []string{firstName, "nonexistent-chart"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(i.Entries) != 1 {
+			t.Fatalf("expected 1 entry, got %d", len(i.Entries))
+		}
+	})
+}
