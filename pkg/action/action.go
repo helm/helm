@@ -157,7 +157,7 @@ func ConfigurationSetLogger(h slog.Handler) ConfigurationOption {
 
 func NewConfiguration(options ...ConfigurationOption) *Configuration {
 	c := &Configuration{}
-	c.SetLogger(slog.Default().Handler())
+	c.SetLogger(slog.NewTextHandler(io.Discard, nil))
 
 	for _, o := range options {
 		o(c)
@@ -348,7 +348,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 			// that is also declared in the chart's regular templates). For
 			// "nohooks", hooks skip the post-renderer entirely, matching the
 			// Helm 3 behavior.
-			sortedHooks, sortedManifests, err := releaseutil.SortManifests(files, nil, releaseutil.InstallOrder)
+			sortedHooks, sortedManifests, err := releaseutil.SortManifests(files, nil, releaseutil.InstallOrder, cfg.Logger())
 			if err != nil {
 				for name, content := range files {
 					if strings.TrimSpace(content) == "" {
@@ -461,7 +461,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 	// Sort hooks, manifests, and partials. Only hooks and manifests are returned,
 	// as partials are not used after renderer.Render. Empty manifests are also
 	// removed here.
-	hs, manifests, err := releaseutil.SortManifests(files, nil, releaseutil.InstallOrder)
+	hs, manifests, err := releaseutil.SortManifests(files, nil, releaseutil.InstallOrder, nil)
 	if err != nil {
 		// By catching parse errors here, we can prevent bogus releases from going
 		// to Kubernetes.

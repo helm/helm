@@ -83,14 +83,14 @@ func (o *versionOptions) run(out io.Writer) error {
 		if err != nil {
 			return err
 		}
-		return tt.Execute(out, version.Get())
+		return tt.Execute(out, version.Get(nil))
 	}
 	fmt.Fprintln(out, formatVersion(o.short))
 	return nil
 }
 
 func formatVersion(short bool) string {
-	v := version.Get()
+	v := version.Get(nil)
 	if short {
 		if len(v.GitCommit) >= 7 {
 			return fmt.Sprintf("%s+g%s", v.Version, v.GitCommit[:7])

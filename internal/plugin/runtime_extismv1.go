@@ -126,6 +126,14 @@ type ExtismV1PluginRuntime struct {
 	dir      string
 	rc       *RuntimeConfigExtismV1
 	r        *RuntimeExtismV1
+	logger   *slog.Logger
+}
+
+func (p *ExtismV1PluginRuntime) log() *slog.Logger {
+	if p.logger != nil {
+		return p.logger
+	}
+	return slog.New(slog.DiscardHandler)
 }
 
 var _ Plugin = (*ExtismV1PluginRuntime)(nil)
@@ -143,13 +151,13 @@ func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Outp
 	var tmpDir string
 	if p.rc.FileSystem.CreateTempDir {
 		tmpDirInner, err := os.MkdirTemp(os.TempDir(), "helm-plugin-*")
-		slog.Debug("created plugin temp dir", slog.String("dir", tmpDirInner), slog.String("plugin", p.metadata.Name))
+		p.log().Debug("created plugin temp dir", slog.String("dir", tmpDirInner), slog.String("plugin", p.metadata.Name))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create temp dir for extism compilation cache: %w", err)
 		}
 		defer func() {
 			if err := os.RemoveAll(tmpDir); err != nil {
-				slog.Warn("failed to remove plugin temp dir", slog.String("dir", tmpDir), slog.String("plugin", p.metadata.Name), slog.String("error", err.Error()))
+				p.log().Warn("failed to remove plugin temp dir", slog.String("dir", tmpDir), slog.String("plugin", p.metadata.Name), slog.String("error", err.Error()))
 			}
 		}()
 
@@ -174,7 +182,7 @@ func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Outp
 	}
 
 	pe.SetLogger(func(logLevel extism.LogLevel, s string) {
-		slog.Debug(s, slog.String("level", logLevel.String()), slog.String("plugin", p.metadata.Name))
+		p.log().Debug(s, slog.String("level", logLevel.String()), slog.String("plugin", p.metadata.Name))
 	})
 
 	inputData, err := json.Marshal(input.Message)
@@ -182,7 +190,7 @@ func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Outp
 		return nil, fmt.Errorf("failed to json marshal plugin input message: %T: %w", input.Message, err)
 	}
 
-	slog.Debug("plugin input", slog.String("plugin", p.metadata.Name), slog.String("inputData", string(inputData)))
+	p.log().Debug("plugin input", slog.String("plugin", p.metadata.Name), slog.String("inputData", string(inputData)))
 
 	entryFuncName := p.rc.EntryFuncName
 	if entryFuncName == "" {
@@ -200,7 +208,7 @@ func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Outp
 		}
 	}
 
-	slog.Debug("plugin output", slog.String("plugin", p.metadata.Name), slog.Int("exitCode", int(exitCode)), slog.String("outputData", string(outputData)))
+	p.log().Debug("plugin output", slog.String("plugin", p.metadata.Name), slog.Int("exitCode", int(exitCode)), slog.String("outputData", string(outputData)))
 
 	outputMessage := reflect.New(pluginTypesIndex[p.metadata.Type].outputType)
 	if err := json.Unmarshal(outputData, outputMessage.Interface()); err != nil {

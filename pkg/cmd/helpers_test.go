@@ -286,7 +286,7 @@ func TestCmdGetDryRunFlagStrategy(t *testing.T) {
 		cmd.Flags().Parse([]string{"helm", tc.DryRunFlagArg})
 
 		t.Run(name, func(t *testing.T) {
-			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, tc.IsTemplate)
+			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, tc.IsTemplate, logger)
 			if tc.ExpectedError {
 				assert.Error(t, err)
 			} else {

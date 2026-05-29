@@ -159,9 +159,22 @@ func LoadDir(dirname string) (Plugin, error) {
 	return pm.CreatePlugin(dirname, m)
 }
 
+// NewLogIgnorePluginLoadErrorFilterFunc returns an ErrorFilterFunc that logs
+// plugin load errors using the provided logger and ignores them.
+func NewLogIgnorePluginLoadErrorFilterFunc(logger *slog.Logger) ErrorFilterFunc {
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
+	}
+	return func(pluginYAML string, err error) error {
+		logger.Warn("failed to load plugin (ignoring)", slog.String("plugin_yaml", pluginYAML), slog.Any("error", err))
+		return nil
+	}
+}
+
+// LogIgnorePluginLoadErrorFilterFunc logs plugin load errors and ignores them.
+// Deprecated: Use NewLogIgnorePluginLoadErrorFilterFunc to inject a logger.
 func LogIgnorePluginLoadErrorFilterFunc(pluginYAML string, err error) error {
-	slog.Warn("failed to load plugin (ignoring)", slog.String("plugin_yaml", pluginYAML), slog.Any("error", err))
-	return nil
+	return NewLogIgnorePluginLoadErrorFilterFunc(slog.New(slog.DiscardHandler))(pluginYAML, err)
 }
 
 // errorFilterFunc is a function that can filter errors during plugin loading
@@ -205,13 +218,20 @@ type findFunc func(pluginsDir string) ([]Plugin, error)
 // filterFunc is a function that filters plugins
 type filterFunc func(Plugin) bool
 
-// FindPlugins returns a list of plugins that match the descriptor
-// Errors loading a plugin are ignored with a warning
-func FindPlugins(pluginsDirs []string, descriptor Descriptor) ([]Plugin, error) {
-	loadAllIgnoreErrors := func(pluginsDir string) ([]Plugin, error) {
-		return LoadAllDir(pluginsDir, LogIgnorePluginLoadErrorFilterFunc)
+// FindPluginsWithErrorFilter returns a list of plugins that match the descriptor,
+// using the provided error filter to handle individual plugin load errors.
+func FindPluginsWithErrorFilter(pluginsDirs []string, descriptor Descriptor, errFilter ErrorFilterFunc) ([]Plugin, error) {
+	loadAll := func(pluginsDir string) ([]Plugin, error) {
+		return LoadAllDir(pluginsDir, errFilter)
 	}
-	return findPlugins(pluginsDirs, loadAllIgnoreErrors, makeDescriptorFilter(descriptor))
+	return findPlugins(pluginsDirs, loadAll, makeDescriptorFilter(descriptor))
+}
+
+// FindPlugins returns a list of plugins that match the descriptor.
+// Errors loading a plugin are silently ignored.
+// Deprecated: Use FindPluginsWithErrorFilter to handle load errors explicitly.
+func FindPlugins(pluginsDirs []string, descriptor Descriptor) ([]Plugin, error) {
+	return FindPluginsWithErrorFilter(pluginsDirs, descriptor, LogIgnorePluginLoadErrorFilterFunc)
 }
 
 // findPlugins is the internal implementation that uses the find and filter functions

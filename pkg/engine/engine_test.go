@@ -19,6 +19,7 @@ package engine
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"path"
 	"strings"
 	"sync"
@@ -591,7 +592,7 @@ func TestAllTemplates(t *testing.T) {
 	}
 	dep1.AddDependency(dep2)
 
-	tpls := allTemplates(ch1, common.Values{})
+	tpls := allTemplates(ch1, common.Values{}, slog.New(slog.DiscardHandler))
 	if len(tpls) != 5 {
 		t.Errorf("Expected 5 charts, got %d", len(tpls))
 	}

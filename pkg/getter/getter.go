@@ -19,6 +19,7 @@ package getter
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"slices"
 	"time"
@@ -49,6 +50,7 @@ type getterOptions struct {
 	timeout               time.Duration
 	transport             *http.Transport
 	artifactType          string
+	logger                *slog.Logger
 }
 
 // Option allows specifying various settings configurable by the user for overriding the defaults
@@ -149,6 +151,13 @@ func WithTransport(transport *http.Transport) Option {
 func WithArtifactType(artifactType string) Option {
 	return func(opts *getterOptions) {
 		opts.artifactType = artifactType
+	}
+}
+
+// WithLogger sets the logger for the getter.
+func WithLogger(logger *slog.Logger) Option {
+	return func(opts *getterOptions) {
+		opts.logger = logger
 	}
 }
 

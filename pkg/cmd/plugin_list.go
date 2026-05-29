@@ -29,7 +29,7 @@ import (
 	"helm.sh/helm/v4/internal/plugin/schema"
 )
 
-func newPluginListCmd(out io.Writer) *cobra.Command {
+func newPluginListCmd(out io.Writer, logger *slog.Logger) *cobra.Command {
 	var pluginType string
 	cmd := &cobra.Command{
 		Use:               "list",
@@ -37,12 +37,12 @@ func newPluginListCmd(out io.Writer) *cobra.Command {
 		Short:             "list installed Helm plugins",
 		ValidArgsFunction: noMoreArgsCompFunc,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			slog.Debug("pluginDirs", "directory", settings.PluginsDirectory)
+			logger.Debug("pluginDirs", "directory", settings.PluginsDirectory)
 			dirs := filepath.SplitList(settings.PluginsDirectory)
 			descriptor := plugin.Descriptor{
 				Type: pluginType,
 			}
-			plugins, err := plugin.FindPlugins(dirs, descriptor)
+			plugins, err := plugin.FindPluginsWithErrorFilter(dirs, descriptor, plugin.NewLogIgnorePluginLoadErrorFilterFunc(logger))
 			if err != nil {
 				return err
 			}

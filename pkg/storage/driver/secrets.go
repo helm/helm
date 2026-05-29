@@ -52,11 +52,9 @@ type Secrets struct {
 // NewSecrets initializes a new Secrets wrapping an implementation of
 // the kubernetes SecretsInterface.
 func NewSecrets(impl corev1.SecretInterface) *Secrets {
-	s := &Secrets{
+	return &Secrets{
 		impl: impl,
 	}
-	s.SetLogger(slog.Default().Handler())
-	return s
 }
 
 // Name returns the name of the driver.

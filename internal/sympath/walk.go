@@ -33,12 +33,15 @@ import (
 // are filtered by walkFn. The files are walked in lexical order, which makes the
 // output deterministic but means that for very large directories Walk can be
 // inefficient. Walk follows symbolic links.
-func Walk(root string, walkFn filepath.WalkFunc) error {
+func Walk(root string, walkFn filepath.WalkFunc, logger *slog.Logger) error {
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
+	}
 	info, err := os.Lstat(root)
 	if err != nil {
 		err = walkFn(root, nil, err)
 	} else {
-		err = symwalk(root, info, walkFn)
+		err = symwalk(root, info, walkFn, logger)
 	}
 	if err == filepath.SkipDir {
 		return nil
@@ -63,7 +66,7 @@ func readDirNames(dirname string) ([]string, error) {
 }
 
 // symwalk recursively descends path, calling walkFn.
-func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
+func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc, logger *slog.Logger) error {
 	// Recursively walk symlinked directories.
 	if IsSymlink(info) {
 		resolved, err := filepath.EvalSymlinks(path)
@@ -71,11 +74,11 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 			return fmt.Errorf("error evaluating symlink %s: %w", path, err)
 		}
 		// This log message is to highlight a symlink that is being used within a chart, symlinks can be used for nefarious reasons.
-		slog.Info("found symbolic link in path. Contents of linked file included and used", "path", path, "resolved", resolved)
+		logger.Info("found symbolic link in path. Contents of linked file included and used", "path", path, "resolved", resolved)
 		if info, err = os.Lstat(resolved); err != nil {
 			return err
 		}
-		if err := symwalk(path, info, walkFn); err != nil && err != filepath.SkipDir {
+		if err := symwalk(path, info, walkFn, logger); err != nil && err != filepath.SkipDir {
 			return err
 		}
 		return nil
@@ -102,7 +105,7 @@ func symwalk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 				return err
 			}
 		} else {
-			err = symwalk(filename, fileInfo, walkFn)
+			err = symwalk(filename, fileInfo, walkFn, logger)
 			if err != nil {
 				if (!fileInfo.IsDir() && !IsSymlink(fileInfo)) || err != filepath.SkipDir {
 					return err

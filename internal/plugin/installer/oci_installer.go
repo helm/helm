@@ -48,6 +48,14 @@ type OCIInstaller struct {
 	// Cached data to avoid duplicate downloads
 	pluginData []byte
 	provData   []byte
+	logger     *slog.Logger
+}
+
+func (i *OCIInstaller) log() *slog.Logger {
+	if i.logger != nil {
+		return i.logger
+	}
+	return slog.New(slog.DiscardHandler)
 }
 
 // NewOCIInstaller creates a new OCIInstaller with optional getter options
@@ -85,7 +93,7 @@ func NewOCIInstaller(source string, options ...getter.Option) (*OCIInstaller, er
 // Install downloads and installs a plugin from OCI registry
 // Implements Installer.
 func (i *OCIInstaller) Install() error {
-	slog.Debug("pulling OCI plugin", "source", i.Source)
+	i.log().Debug("pulling OCI plugin", "source", i.Source)
 
 	// Ensure plugin data is cached
 	if i.pluginData == nil {
@@ -124,7 +132,7 @@ func (i *OCIInstaller) Install() error {
 	if i.provData != nil {
 		provPath := tarballPath + ".prov"
 		if err := os.WriteFile(provPath, i.provData, 0644); err != nil {
-			slog.Debug("failed to save provenance file", "error", err)
+			i.log().Debug("failed to save provenance file", "error", err)
 		}
 	}
 
@@ -177,7 +185,7 @@ func (i *OCIInstaller) Install() error {
 		return err
 	}
 
-	slog.Debug("copying", "source", src, "path", i.Path())
+	i.log().Debug("copying", "source", src, "path", i.Path())
 	return fs.CopyDir(src, i.Path())
 }
 
@@ -264,7 +272,7 @@ func (i *OCIInstaller) SupportsVerification() bool {
 
 // GetVerificationData downloads and caches plugin and provenance data from OCI registry for verification
 func (i *OCIInstaller) GetVerificationData() (archiveData, provData []byte, filename string, err error) {
-	slog.Debug("getting verification data for OCI plugin", "source", i.Source)
+	i.log().Debug("getting verification data for OCI plugin", "source", i.Source)
 
 	// Download plugin data once and cache it
 	if i.pluginData == nil {
@@ -297,6 +305,6 @@ func (i *OCIInstaller) GetVerificationData() (archiveData, provData []byte, file
 	}
 	filename = fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
 
-	slog.Debug("got verification data for OCI plugin", "filename", filename)
+	i.log().Debug("got verification data for OCI plugin", "filename", filename)
 	return i.pluginData, i.provData, filename, nil
 }

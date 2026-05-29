@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"log/slog"
 
 	"github.com/spf13/cobra"
 
@@ -61,7 +60,7 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			client.Settings = settings
 			if client.Version == "" && client.Devel {
-				slog.Debug("setting version to >0.0.0-0")
+				cfg.Logger().Debug("setting version to >0.0.0-0")
 				client.Version = ">0.0.0-0"
 			}
 
