@@ -18,15 +18,30 @@ package version
 
 import (
 	"errors"
+	"fmt"
 	"runtime/debug"
 	"slices"
 
 	_ "k8s.io/client-go/kubernetes" // Force k8s.io/client-go to be included in the build
 )
 
+var (
+	// kubeClientVersionMajorOverride and kubeClientVersionMinorOverride can be
+	// set via -X ldflags to specify the k8s.io/client-go version in non-standard
+	// builds (e.g., Bazel) where debug.ReadBuildInfo() is not available.
+	// Example: -X helm.sh/helm/v4/internal/version.kubeClientVersionMajorOverride=0
+	//          -X helm.sh/helm/v4/internal/version.kubeClientVersionMinorOverride=30
+	kubeClientVersionMajorOverride = ""
+	kubeClientVersionMinorOverride = ""
+)
+
 func K8sIOClientGoModVersion() (string, error) {
+	if kubeClientVersionMajorOverride != "" && kubeClientVersionMinorOverride != "" {
+		return fmt.Sprintf("v%s.%s.0", kubeClientVersionMajorOverride, kubeClientVersionMinorOverride), nil
+	}
+
 	info, ok := debug.ReadBuildInfo()
-	if !ok || info == nil {
+	if !ok {
 		return "", errors.New("failed to read build info")
 	}
 
