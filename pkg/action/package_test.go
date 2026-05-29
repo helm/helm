@@ -197,8 +197,9 @@ func TestRunWithSourceDateEpoch(t *testing.T) {
 	require.True(t, gr.ModTime.IsZero(), "gzip header ModTime should be zero")
 	defer gr.Close()
 
-	// All tar entry ModTimes must represent the same instant as epoch.
-	// tar.Reader returns ModTime in local timezone, so use Equal() not require.Equal.
+	// Use Equal() rather than require.Equal so that timezone differences between
+	// the stored epoch (UTC) and the value tar.Reader reconstructs do not cause
+	// a false failure on non-UTC machines.
 	tr := tar.NewReader(gr)
 	for {
 		hdr, err := tr.Next()
