@@ -194,7 +194,7 @@ func TestRunWithSourceDateEpoch(t *testing.T) {
 	// Check gzip header ModTime: helm leaves it at zero (deterministic by design).
 	gr, err := gzip.NewReader(f)
 	require.NoError(t, err)
-	require.True(t, gr.Header.ModTime.IsZero(), "gzip header ModTime should be zero")
+	require.True(t, gr.ModTime.IsZero(), "gzip header ModTime should be zero")
 	defer gr.Close()
 
 	// All tar entry ModTimes must represent the same instant as epoch.
