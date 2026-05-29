@@ -177,7 +177,8 @@ func TestRun(t *testing.T) {
 
 func TestRunWithSourceDateEpoch(t *testing.T) {
 	chartPath := "testdata/charts/chart-with-schema"
-	epoch := time.Unix(1700000000, 0)
+	// Use UTC so the comparison with tar header ModTime (always UTC) is straightforward.
+	epoch := time.Unix(1700000000, 0).UTC()
 
 	client := NewPackage()
 	client.SourceDateEpoch = &epoch
@@ -186,15 +187,18 @@ func TestRunWithSourceDateEpoch(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { os.Remove(filename) })
 
-	// All tar entry ModTimes must equal the epoch.
 	f, err := os.Open(filename)
 	require.NoError(t, err)
 	defer f.Close()
 
+	// Check gzip header ModTime: helm leaves it at zero (deterministic by design).
 	gr, err := gzip.NewReader(f)
 	require.NoError(t, err)
+	require.True(t, gr.Header.ModTime.IsZero(), "gzip header ModTime should be zero")
 	defer gr.Close()
 
+	// All tar entry ModTimes must represent the same instant as epoch.
+	// tar.Reader returns ModTime in local timezone, so use Equal() not require.Equal.
 	tr := tar.NewReader(gr)
 	for {
 		hdr, err := tr.Next()
@@ -202,7 +206,7 @@ func TestRunWithSourceDateEpoch(t *testing.T) {
 			break
 		}
 		require.NoError(t, err)
-		require.Equal(t, epoch, hdr.ModTime, "expected epoch ModTime for entry %s", hdr.Name)
+		require.True(t, epoch.Equal(hdr.ModTime), "entry %s: got ModTime %v, want %v", hdr.Name, hdr.ModTime, epoch)
 	}
 }
 

@@ -267,8 +267,11 @@ func openPassphraseFile(passphraseFile string, stdin *os.File) (*os.File, error)
 }
 
 // stampModTimes recursively sets all file modification times in a chart to t.
+// t is normalized to UTC and truncated to whole seconds before use because tar
+// headers have second-level granularity and timezone-independent storage.
 // This is used to produce reproducible archives when SourceDateEpoch is set.
 func stampModTimes(c *chart.Chart, t time.Time) {
+	t = t.UTC().Truncate(time.Second)
 	c.ModTime = t
 	c.SchemaModTime = t
 	for _, f := range c.Raw {
