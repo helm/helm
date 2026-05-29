@@ -328,7 +328,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		is.NoError(err)
 
 		is.Equal(common.StatusDeployed, updatedRes.Info.Status)
-		is.Equal(0, len(updatedRes.Chart.Dependencies()), "expected 0 dependencies")
+		is.Empty(updatedRes.Chart.Dependencies(), "expected 0 dependencies")
 
 		expectedValues := map[string]any{
 			"subchart": map[string]any{

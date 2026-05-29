@@ -550,9 +550,9 @@ func TestUpdate(t *testing.T) {
 
 			// Special handling for the rollback test case
 			if name == "rollback after failed upgrade with removed resource" {
-				assert.Len(t, result.Created, 0, "expected 0 resource created, got %d", len(result.Created))
+				assert.Empty(t, result.Created, "expected 0 resource created, got %d", len(result.Created))
 				assert.Len(t, result.Updated, 1, "expected 1 resource updated, got %d", len(result.Updated))
-				assert.Len(t, result.Deleted, 0, "expected 0 resource deleted, got %d", len(result.Deleted))
+				assert.Empty(t, result.Deleted, "expected 0 resource deleted, got %d", len(result.Deleted))
 			} else {
 				assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
 				assert.Len(t, result.Updated, 2, "expected 2 resource updated, got %d", len(result.Updated))

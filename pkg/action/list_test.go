@@ -65,7 +65,7 @@ func TestList_Empty(t *testing.T) {
 	lister := NewList(actionConfigFixture(t))
 	list, err := lister.Run()
 	assert.NoError(t, err)
-	assert.Len(t, list, 0)
+	assert.Empty(t, list)
 }
 
 func newListFixture(t *testing.T) *List {
@@ -166,7 +166,7 @@ func TestList_LimitOffsetOutOfBounds(t *testing.T) {
 	makeMeSomeReleases(t, lister.cfg.Releases)
 	list, err := lister.Run()
 	is.NoError(err)
-	is.Len(list, 0)
+	is.Empty(list)
 
 	lister.Limit = 10
 	lister.Offset = 1
