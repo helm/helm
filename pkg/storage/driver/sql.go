@@ -134,7 +134,6 @@ func (s *SQL) checkAlreadyApplied(migrations []*migrate.Migration) bool {
 }
 
 func (s *SQL) ensureDBSetup() error {
-
 	migrations := &migrate.MemoryMigrationSource{
 		Migrations: []*migrate.Migration{
 			{
