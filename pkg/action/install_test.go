@@ -1299,7 +1299,6 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 }
 
 func TestWriteToFileNoTrailingNewline(t *testing.T) {
-	is := assert.New(t)
 	instAction := installAction(t)
 	vals := map[string]any{}
 
@@ -1311,7 +1310,7 @@ func TestWriteToFileNoTrailingNewline(t *testing.T) {
 		t.Fatalf("Failed install: %s", err)
 	}
 
-	// Each output file should end with exactly one newline, not two.
+	// Each output file should end with exactly one newline (no double newline).
 	for _, name := range []string{
 		"hello/templates/hello",
 		"hello/templates/goodbye",
@@ -1321,10 +1320,12 @@ func TestWriteToFileNoTrailingNewline(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to read %s: %s", path, err)
 		}
-		is.True(len(data) > 0, "file should not be empty: %s", name)
-		is.Equal(byte('\n'), data[len(data)-1], "file should end with exactly one newline: %s", name)
-		if len(data) >= 2 {
-			is.NotEqual(byte('\n'), data[len(data)-2], "file should not end with two newlines: %s", name)
+		content := string(data)
+		if strings.HasSuffix(content, "\n\n") {
+			t.Errorf("file %s ends with double newline, expected single newline", name)
+		}
+		if !strings.HasSuffix(content, "\n") {
+			t.Errorf("file %s does not end with a newline", name)
 		}
 	}
 }
