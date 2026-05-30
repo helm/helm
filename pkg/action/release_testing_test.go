@@ -26,6 +26,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/kube"
@@ -89,7 +92,7 @@ func TestReleaseTestingGetPodLogs_PodRetrievalError(t *testing.T) {
 		},
 	}
 
-	require.ErrorContains(t, client.GetPodLogs(&bytes.Buffer{}, &release.Release{Hooks: hooks}), "unable to get pod logs")
+	require.ErrorContains(t, client.GetPodLogs(&bytes.Buffer{}, &release.Release{Hooks: hooks}), "unable to get pod")
 }
 
 func TestReleaseTesting_WaitOptionsPassedDownstream(t *testing.T) {
@@ -116,4 +119,92 @@ func TestReleaseTesting_WaitOptionsPassedDownstream(t *testing.T) {
 
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
+}
+
+func TestGetContainerLogs_MultipleContainers(t *testing.T) {
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod",
+			Namespace: "default",
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{Name: "main"},
+				{Name: "sidecar"},
+			},
+		},
+	}
+
+	client := fakeclientset.NewClientset(pod)
+	rt := &ReleaseTesting{Namespace: "default"}
+
+	var buf bytes.Buffer
+	err := rt.getContainerLogs(&buf, client, "test-pod")
+	require.NoError(t, err)
+	output := buf.String()
+	assert.Contains(t, output, "POD LOGS: test-pod (main)")
+	assert.Contains(t, output, "POD LOGS: test-pod (sidecar)")
+}
+
+func TestGetContainerLogs_WithInitContainers(t *testing.T) {
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod",
+			Namespace: "default",
+		},
+		Spec: v1.PodSpec{
+			InitContainers: []v1.Container{
+				{Name: "init-setup"},
+			},
+			Containers: []v1.Container{
+				{Name: "main"},
+			},
+		},
+	}
+
+	client := fakeclientset.NewClientset(pod)
+	rt := &ReleaseTesting{Namespace: "default"}
+
+	var buf bytes.Buffer
+	err := rt.getContainerLogs(&buf, client, "test-pod")
+	require.NoError(t, err)
+	output := buf.String()
+	// Init containers should appear before regular containers
+	assert.Contains(t, output, "POD LOGS: test-pod (init-setup)")
+	assert.Contains(t, output, "POD LOGS: test-pod (main)")
+}
+
+func TestGetContainerLogs_PodNotFound(t *testing.T) {
+	client := fakeclientset.NewClientset()
+	rt := &ReleaseTesting{Namespace: "default"}
+
+	var buf bytes.Buffer
+	err := rt.getContainerLogs(&buf, client, "nonexistent-pod")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unable to get pod nonexistent-pod")
+}
+
+func TestGetContainerLogs_OutputHeaderFormat(t *testing.T) {
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "multi-test",
+			Namespace: "default",
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{Name: "container-a"},
+				{Name: "container-b"},
+			},
+		},
+	}
+
+	client := fakeclientset.NewClientset(pod)
+	rt := &ReleaseTesting{Namespace: "default"}
+
+	var buf bytes.Buffer
+	err := rt.getContainerLogs(&buf, client, "multi-test")
+	require.NoError(t, err)
+	output := buf.String()
+	assert.Contains(t, output, "POD LOGS: multi-test (container-a)")
+	assert.Contains(t, output, "POD LOGS: multi-test (container-b)")
 }

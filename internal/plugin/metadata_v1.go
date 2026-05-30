@@ -52,6 +52,13 @@ func (m *MetadataV1) Validate() error {
 		return errors.New("invalid plugin `name`")
 	}
 
+	if m.Version == "" {
+		return errors.New("plugin `version` is required")
+	}
+	if !isValidSemver(m.Version) {
+		return fmt.Errorf("invalid plugin `version` %q: must be valid semver", m.Version)
+	}
+
 	if m.APIVersion != "v1" {
 		return fmt.Errorf("invalid `apiVersion`: %q", m.APIVersion)
 	}

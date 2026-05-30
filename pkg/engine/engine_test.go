@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -657,7 +658,6 @@ func TestRenderDependency(t *testing.T) {
 	if out["outerchart/templates/outer"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["outer"])
 	}
-
 }
 
 func TestRenderNestedValues(t *testing.T) {
@@ -813,7 +813,6 @@ func TestRenderBuiltinValues(t *testing.T) {
 			t.Errorf("Expected %q, got %q", expect, out[file])
 		}
 	}
-
 }
 
 func TestAlterFuncMap_include(t *testing.T) {
@@ -1009,7 +1008,6 @@ func TestAlterFuncMap_tplinclude(t *testing.T) {
 	if got := out["TplFunction/templates/base"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
-
 }
 
 func TestRenderRecursionLimit(t *testing.T) {
@@ -1068,7 +1066,6 @@ func TestRenderRecursionLimit(t *testing.T) {
 	if got := out["overlook/templates/quote"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
-
 }
 
 func TestRenderLoadTemplateForTplFromFile(t *testing.T) {
@@ -1319,7 +1316,6 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 	if !strings.Contains(errTxt, "noSuchKey") {
 		t.Errorf("Expected error to contain 'noSuchKey', got %s", errTxt)
 	}
-
 }
 
 func TestNestedHelpersProducesMultilineStacktrace(t *testing.T) {
@@ -1357,7 +1353,7 @@ NestedHelperFunctions/charts/common/templates/_helpers_2.tpl:1:49
 	}
 	_, err := Render(c, vals)
 
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, expectedErrorMessage, err.Error())
 }
 
@@ -1391,7 +1387,7 @@ template: no template "nested_helper.name" associated with template "gotpl"`
 	}
 	_, err := Render(c, vals)
 
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, expectedErrorMessage, err.Error())
 }
 
@@ -1503,5 +1499,67 @@ func TestTraceableError_NoTemplateForm(t *testing.T) {
 		if trace.message != errString {
 			t.Errorf("Expected %q, got %q", errString, trace.message)
 		}
+	}
+}
+
+// TestRenderSubchartDefaultNilNoStringify tests the full pipeline: subchart default
+// nil values should not produce "%!s(<nil>)" in rendered template output.
+// Regression test for the Bitnami common.secrets.key issue.
+func TestRenderSubchartDefaultNilNoStringify(t *testing.T) {
+	modTime := time.Now()
+
+	// Subchart has a default with nil values
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Templates: []*common.File{
+			{
+				Name:    "templates/test.yaml",
+				ModTime: modTime,
+				Data:    []byte(`{{- if hasKey .Values.keyMapping "password" -}}{{- printf "subPath: %s" (index .Values.keyMapping "password") -}}{{- else -}}subPath: fallback{{- end -}}`),
+			},
+		},
+		Values: map[string]any{
+			"keyMapping": map[string]any{
+				"password": nil, // nil in chart defaults
+			},
+		},
+	}
+
+	parent := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values:   map[string]any{},
+	}
+	parent.AddDependency(subchart)
+
+	// Parent user values don't set keyMapping
+	injValues := map[string]any{}
+
+	tmp, err := util.CoalesceValues(parent, injValues)
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+
+	inject := common.Values{
+		"Values": tmp,
+		"Chart":  parent.Metadata,
+		"Release": common.Values{
+			"Name": "test-release",
+		},
+	}
+
+	out, err := Render(parent, inject)
+	if err != nil {
+		t.Fatalf("Failed to render templates: %s", err)
+	}
+
+	rendered := out["parent/charts/child/templates/test.yaml"]
+
+	if strings.Contains(rendered, "%!s(<nil>)") {
+		t.Errorf("Rendered output contains %%!s(<nil>), got: %q", rendered)
+	}
+
+	expected := "subPath: fallback"
+	if rendered != expected {
+		t.Errorf("Expected %q, got %q", expected, rendered)
 	}
 }

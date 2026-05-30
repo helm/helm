@@ -282,7 +282,6 @@ func TestCreate(t *testing.T) {
 	c := newTestClient(t)
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-
 			client := NewRequestResponseLogClient(t, func(previous []RequestResponseAction, req *http.Request) (*http.Response, error) {
 				return tc.Callback(t, tc, previous, req)
 			})
@@ -317,7 +316,6 @@ func TestCreate(t *testing.T) {
 			}
 
 			assert.Equal(t, tc.ExpectedActions, actions)
-
 		})
 	}
 }
@@ -444,7 +442,6 @@ func TestUpdate(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-
 			listOriginal := tc.OriginalPods
 			listTarget := tc.TargetPods
 
@@ -972,6 +969,7 @@ func TestGetPodList(t *testing.T) {
 	podList, err := c.GetPodList(namespace, metav1.ListOptions{})
 	clientAssertions := assert.New(t)
 	clientAssertions.NoError(err)
+	podList.ResourceVersion = ""
 	clientAssertions.Equal(&responsePodList, podList)
 }
 
@@ -1409,7 +1407,6 @@ func TestIsReachable(t *testing.T) {
 				if !strings.Contains(err.Error(), tt.errorContains) {
 					t.Errorf("expected error message to contain '%s', got: %v", tt.errorContains, err)
 				}
-
 			} else {
 				if err != nil {
 					t.Errorf("expected no error but got: %v", err)
@@ -1487,7 +1484,6 @@ func TestReplaceResource(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-
 			testFactory := cmdtesting.NewTestFactory()
 			t.Cleanup(testFactory.Cleanup)
 
@@ -1610,7 +1606,6 @@ func TestPatchResourceClientSide(t *testing.T) {
 
 				t.Fail()
 				return nil, nil
-
 			},
 			ExpectedErrorContains: "cannot patch \"whale\" with kind Pod: the server reported a conflict",
 		},
@@ -1632,14 +1627,12 @@ func TestPatchResourceClientSide(t *testing.T) {
 
 				t.Fail()
 				return nil, nil // newResponse(http.StatusOK, &tc.TargetPods.Items[0])
-
 			},
 		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-
 			testFactory := cmdtesting.NewTestFactory()
 			t.Cleanup(testFactory.Cleanup)
 
@@ -1802,11 +1795,27 @@ func TestPatchResourceServerSide(t *testing.T) {
 			},
 			ExpectedErrorContains: "the server reported a conflict",
 		},
+		"generic server-side apply error": {
+			Pods:                     newPodList("whale"),
+			DryRun:                   false,
+			ForceConflicts:           false,
+			FieldValidationDirective: FieldValidationDirectiveStrict,
+			Callback: func(t *testing.T, _ testCase, _ []RequestResponseAction, _ *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				return newResponse(http.StatusBadRequest, &metav1.Status{
+					Status:  metav1.StatusFailure,
+					Message: `failed to create typed patch object: .spec.template.spec.containers[name="test"].env: duplicate entries for key [name="SERVER_CONTEXT_PATH"]`,
+					Reason:  metav1.StatusReasonBadRequest,
+					Code:    http.StatusBadRequest,
+				})
+			},
+			ExpectedErrorContains: "server-side apply failed for object default/whale /v1, Kind=Pod: failed to create typed patch object",
+		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-
 			testFactory := cmdtesting.NewTestFactory()
 			t.Cleanup(testFactory.Cleanup)
 
@@ -1837,7 +1846,6 @@ func TestPatchResourceServerSide(t *testing.T) {
 }
 
 func TestDetermineFieldValidationDirective(t *testing.T) {
-
 	assert.Equal(t, FieldValidationDirectiveIgnore, determineFieldValidationDirective(false))
 	assert.Equal(t, FieldValidationDirectiveStrict, determineFieldValidationDirective(true))
 }

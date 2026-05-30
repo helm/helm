@@ -79,7 +79,6 @@ func ValidateReleaseName(name string) error {
 	// This case is preserved for backwards compatibility
 	if name == "" {
 		return errMissingName
-
 	}
 	if len(name) > maxReleaseNameLen || !validName.MatchString(name) {
 		return errInvalidName

@@ -51,11 +51,11 @@ const pluginInstallDesc = `
 This command allows you to install a plugin from a url to a VCS repo or a local path.
 
 By default, plugin signatures are verified before installation when installing from
-tarballs (.tgz or .tar.gz). This requires a corresponding .prov file to be available
-alongside the tarball.
+tarballs (.tgz or .tar.gz). A corresponding .prov file must be available alongside
+the tarball; installation will fail if it is missing or invalid.
 For local development, plugins installed from local directories are automatically
 treated as "local dev" and do not require signatures.
-Use --verify=false to skip signature verification for remote plugins.
+Use --verify=false to explicitly skip signature verification (NOT recommended).
 `
 
 func newPluginInstallCmd(out io.Writer) *cobra.Command {

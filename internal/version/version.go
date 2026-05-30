@@ -34,7 +34,7 @@ var (
 	//
 	// Increment major number for new feature additions and behavioral changes.
 	// Increment minor number for bug fixes and performance enhancements.
-	version = "v4.1"
+	version = "v4.2"
 
 	// metadata is extra build time data
 	metadata = ""
@@ -77,7 +77,6 @@ func GetUserAgent() string {
 
 // Get returns build info
 func Get() BuildInfo {
-
 	makeKubeClientVersionString := func() string {
 		// Test builds don't include debug info / module info
 		// (And even if they did, we probably want a stable version during tests anyway)

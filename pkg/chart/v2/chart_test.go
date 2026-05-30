@@ -104,7 +104,7 @@ func TestMetadata(t *testing.T) {
 
 	is.Equal("foo.yaml", chrt.Name())
 	is.Equal("1.0.0", chrt.AppVersion())
-	is.Equal(nil, chrt.Validate())
+	is.NoError(chrt.Validate())
 }
 
 func TestIsRoot(t *testing.T) {
@@ -124,8 +124,8 @@ func TestIsRoot(t *testing.T) {
 
 	is := assert.New(t)
 
-	is.Equal(false, chrt1.IsRoot())
-	is.Equal(true, chrt2.IsRoot())
+	is.False(chrt1.IsRoot())
+	is.True(chrt2.IsRoot())
 }
 
 func TestChartPath(t *testing.T) {

@@ -17,11 +17,11 @@ jobs:
       - name: Add variables to environment file
         run: cat ".github/env" >> "$GITHUB_ENV"
       - name: Setup Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # pin@6.2.0
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # pin@6.4.0
         with:
           go-version: '${{ env.GOLANG_VERSION }}'
           check-latest: true
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 #pin@9.2.0
+        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee #pin@9.2.1
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}

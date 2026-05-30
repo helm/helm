@@ -60,7 +60,6 @@ func TestLintCmdWithQuietFlag(t *testing.T) {
 		wantError: true,
 	}}
 	runTestCmd(t, tests)
-
 }
 
 func TestLintCmdWithKubeVersionFlag(t *testing.T) {
@@ -84,7 +83,7 @@ func TestLintCmdWithKubeVersionFlag(t *testing.T) {
 		wantError: false,
 	}, {
 		name:      "lint chart with deprecated api version with older kube version",
-		cmd:       "lint --kube-version 1.21.0 --strict " + testChart,
+		cmd:       "lint --kube-version 1.20.0 --strict " + testChart,
 		golden:    "output/lint-chart-with-deprecated-api-old-k8s.txt",
 		wantError: false,
 	}}

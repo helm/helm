@@ -127,7 +127,7 @@ func (m *Manager) Build() error {
 				return errors.New("the lock file (requirements.lock) is out of sync with the dependencies file (requirements.yaml). Please update the dependencies")
 			}
 		} else {
-			return errors.New("the lock file (Chart.lock) is out of sync with the dependencies file (Chart.yaml). Please update the dependencies")
+			return errors.New("the lock file (Chart.lock) is out of sync with the dependencies file (Chart.yaml). Please update the dependencies with 'helm dependency update'")
 		}
 	}
 
@@ -502,11 +502,9 @@ Loop:
 // in a known repo and attempt to ensure the data is present for steps like
 // version resolution.
 func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.Dependency) (map[string]string, error) {
-
 	var ru []*repo.Entry
 
 	for _, dd := range deps {
-
 		// If the chart is in the local charts directory no repository needs
 		// to be specified.
 		if dd.Repository == "" {
@@ -679,7 +677,6 @@ func dedupeRepos(repos []*repo.Entry) []*repo.Entry {
 }
 
 func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
-
 	var wg sync.WaitGroup
 
 	localRepos := dedupeRepos(repos)
