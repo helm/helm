@@ -1298,7 +1298,6 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }
 
-
 func TestWriteToFileNoTrailingNewline(t *testing.T) {
 	is := assert.New(t)
 	instAction := installAction(t)
