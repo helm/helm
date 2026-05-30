@@ -1297,3 +1297,35 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	// Verify that WaitOptions were passed to GetWaiter
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }
+
+
+func TestWriteToFileNoTrailingNewline(t *testing.T) {
+	is := assert.New(t)
+	instAction := installAction(t)
+	vals := map[string]any{}
+
+	dir := t.TempDir()
+	instAction.OutputDir = dir
+
+	_, err := instAction.Run(buildChart(withSampleTemplates()), vals)
+	if err != nil {
+		t.Fatalf("Failed install: %s", err)
+	}
+
+	// Each output file should end with exactly one newline, not two.
+	for _, name := range []string{
+		"hello/templates/hello",
+		"hello/templates/goodbye",
+	} {
+		path := filepath.Join(dir, name)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("Failed to read %s: %s", path, err)
+		}
+		is.True(len(data) > 0, "file should not be empty: %s", name)
+		is.Equal(byte('\n'), data[len(data)-1], "file should end with exactly one newline: %s", name)
+		if len(data) >= 2 {
+			is.NotEqual(byte('\n'), data[len(data)-2], "file should not end with two newlines: %s", name)
+		}
+	}
+}
