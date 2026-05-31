@@ -1312,8 +1312,8 @@ func TestWriteToFileNoTrailingNewline(t *testing.T) {
 
 	// Each output file should end with exactly one newline (no double newline).
 	for _, name := range []string{
-		"hello/templates/hello",
 		"hello/templates/goodbye",
+		"hello/templates/with-partials",
 	} {
 		path := filepath.Join(dir, name)
 		data, err := os.ReadFile(path)
