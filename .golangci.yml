@@ -19,6 +19,7 @@ linters:
 
   # Keep sorted alphabetically
   enable:
+    - bidichk
     - depguard
     - dupl
     - exhaustive
@@ -38,6 +39,7 @@ linters:
     - unused
     - usestdlibvars
     - usetesting
+    - whitespace
 
   exclusions:
   
@@ -101,8 +103,6 @@ linters:
         - empty
         - encoded-compare
         - equal-values
-        - error-is-as
-        - error-nil
         - expected-actual
         - float-compare
         - go-require
