@@ -446,7 +446,6 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 }
 
 func TestUpgradeRelease_Interrupted_RollbackOnFailure(t *testing.T) {
-
 	is := assert.New(t)
 	req := require.New(t)
 
@@ -765,7 +764,7 @@ func TestGetUpgradeServerSideValue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			serverSideApply, err := getUpgradeServerSideValue(tt.actionServerSideOption, tt.releaseApplyMethod)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedServerSideApply, serverSideApply)
 		})
 	}
@@ -790,7 +789,6 @@ func TestGetUpgradeServerSideValue(t *testing.T) {
 			assert.ErrorContains(t, err, tt.expectedErrorMsg)
 		})
 	}
-
 }
 
 func TestUpgradeRun_UnreachableKubeClient(t *testing.T) {
