@@ -702,7 +702,6 @@ func CreateFrom(chartfile *chart.Metadata, dest, src string) error {
 // error. In such a case, this will attempt to clean up by removing the
 // new chart directory.
 func Create(name, dir string) (string, error) {
-
 	// Sanity-check the name of a chart so user doesn't create one that causes problems.
 	if err := validateChartName(name); err != nil {
 		return "", err

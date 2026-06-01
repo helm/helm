@@ -330,7 +330,6 @@ func (t *parser) keyIndex() (int, error) {
 	}
 	// v should be the index
 	return strconv.Atoi(string(v))
-
 }
 
 func (t *parser) listItem(list []any, i, nestedNameLevel int) ([]any, error) {
