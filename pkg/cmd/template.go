@@ -142,7 +142,6 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 								return err
 							}
 						}
-
 					}
 				}
 
