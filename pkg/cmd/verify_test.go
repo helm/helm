@@ -22,7 +22,6 @@ import (
 )
 
 func TestVerifyCmd(t *testing.T) {
-
 	statExe := "stat"
 	statPathMsg := "no such file or directory"
 	statFileMsg := statPathMsg
