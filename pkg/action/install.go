@@ -172,6 +172,10 @@ func (i *Install) installCRDs(crds []chart.CRD) error {
 		if _, err := i.cfg.KubeClient.Create(res); err != nil {
 			// If the error is CRD already exists, continue.
 			if apierrors.IsAlreadyExists(err) {
+				if len(res) == 0 {
+					i.cfg.Log("CRD %s is already present. Skipping.", obj.Name)
+					continue
+				}
 				crdName := res[0].Name
 				i.cfg.Log("CRD %s is already present. Skipping.", crdName)
 				continue
