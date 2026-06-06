@@ -113,7 +113,8 @@ func (m *Manager) Build() error {
 		}
 	}
 
-	if _, err := m.resolveRepoNames(req); err != nil {
+	repoNames, err := m.resolveRepoNames(req)
+	if err != nil {
 		return err
 	}
 
@@ -144,7 +145,7 @@ func (m *Manager) Build() error {
 	}
 
 	// Now we need to fetch every package here into charts/
-	return m.downloadAll(lock.Dependencies)
+	return m.downloadAll(lock.Dependencies, repoNames)
 }
 
 // Update updates a local charts directory.
@@ -200,7 +201,7 @@ func (m *Manager) Update() error {
 	}
 
 	// Now we need to fetch every package here into charts/
-	if err := m.downloadAll(lock.Dependencies); err != nil {
+	if err := m.downloadAll(lock.Dependencies, repoNames); err != nil {
 		return err
 	}
 
@@ -242,7 +243,7 @@ func (m *Manager) resolve(req []*chart.Dependency, repoNames map[string]string) 
 //
 // It will delete versions of the chart that exist on disk and might cause
 // a conflict.
-func (m *Manager) downloadAll(deps []*chart.Dependency) error {
+func (m *Manager) downloadAll(deps []*chart.Dependency, repoNames map[string]string) error {
 	repos, err := m.loadChartRepositories()
 	if err != nil {
 		return err
@@ -315,7 +316,8 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
-		churl, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		repoName := repoNames[dep.Name]
+		churl, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repoName, repos)
 		if err != nil {
 			saveError = fmt.Errorf("could not find %s: %w", churl, err)
 			break
@@ -343,6 +345,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				getter.WithInsecureSkipVerifyTLS(insecureSkipTLSVerify),
 				getter.WithTLSClientConfig(certFile, keyFile, caFile),
 			},
+			CredentialsResolved: true,
 		}
 
 		version := ""
@@ -719,14 +722,45 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 // 'name' is the name of the chart. Version is an exact semver, or an empty string. If empty, the
 // newest version will be returned.
 //
-// repoURL is the repository to search
+// repoURL is the repository to search.
+//
+// repoName is the name (alias) of the repository as configured in repositories.yaml.
+// When provided, the repository is looked up by name rather than by URL, ensuring that
+// the correct credentials are used when multiple repositories share the same URL.
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, insecureSkipTLSVerify, passCredentialsAll bool, caFile, certFile, keyFile string, err error) {
+func (m *Manager) findChartURL(name, version, repoURL, repoName string, repos map[string]*repo.ChartRepository) (url, username, password string, insecureSkipTLSVerify, passCredentialsAll bool, caFile, certFile, keyFile string, err error) {
 	if registry.IsOCI(repoURL) {
 		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", false, false, "", "", "", nil
 	}
 
+	// First, try to look up the repository by name. This ensures correct
+	// credentials are used when multiple repositories share the same URL.
+	if repoName != "" {
+		if cr, ok := repos[repoName]; ok {
+			var entry repo.ChartVersions
+			entry, err = findEntryByName(name, cr)
+			if err == nil {
+				var ve *repo.ChartVersion
+				ve, err = findVersionedEntry(version, entry)
+				if err == nil {
+					url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
+					if err == nil {
+						username = cr.Config.Username
+						password = cr.Config.Password
+						passCredentialsAll = cr.Config.PassCredentialsAll
+						insecureSkipTLSVerify = cr.Config.InsecureSkipTLSVerify
+						caFile = cr.Config.CAFile
+						certFile = cr.Config.CertFile
+						keyFile = cr.Config.KeyFile
+						return
+					}
+				}
+			}
+		}
+	}
+
+	// Fall back to scanning repos by URL for backward compatibility.
 	for _, cr := range repos {
 		if urlutil.Equal(repoURL, cr.Config.URL) {
 			var entry repo.ChartVersions

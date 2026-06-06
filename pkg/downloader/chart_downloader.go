@@ -85,6 +85,13 @@ type ChartDownloader struct {
 
 	// Cache specifies the cache implementation to use.
 	Cache Cache
+
+	// CredentialsResolved indicates that credentials (username/password) have
+	// already been set in Options and should not be overridden by repository
+	// scanning in ResolveChartVersion. This prevents incorrect credential
+	// selection when multiple repositories share the same URL with different
+	// authentication details.
+	CredentialsResolved bool
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -410,7 +417,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 		if rc.CertFile != "" || rc.KeyFile != "" || rc.CAFile != "" {
 			c.Options = append(c.Options, getter.WithTLSClientConfig(rc.CertFile, rc.KeyFile, rc.CAFile))
 		}
-		if rc.Username != "" && rc.Password != "" {
+		if rc.Username != "" && rc.Password != "" && !c.CredentialsResolved {
 			c.Options = append(
 				c.Options,
 				getter.WithBasicAuth(rc.Username, rc.Password),

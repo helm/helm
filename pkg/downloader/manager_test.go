@@ -71,7 +71,7 @@ func TestFindChartURL(t *testing.T) {
 	version := "0.1.0"
 	repoURL := "http://example.com/charts"
 
-	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err := m.findChartURL(name, version, repoURL, repos)
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err := m.findChartURL(name, version, repoURL, "", repos)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestFindChartURL(t *testing.T) {
 	version = "1.2.3"
 	repoURL = "https://example-https-insecureskiptlsverify.com"
 
-	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos)
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, "", repos)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestFindChartURL(t *testing.T) {
 	version = "1.2.3"
 	repoURL = "http://example.com/helm"
 
-	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, repos)
+	churl, username, password, insecureSkipTLSVerify, passcredentialsall, _, _, _, err = m.findChartURL(name, version, repoURL, "", repos)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,6 +140,123 @@ func TestFindChartURL(t *testing.T) {
 	}
 	if insecureSkipTLSVerify {
 		t.Errorf("Unexpected insecureSkipTLSVerify %t", insecureSkipTLSVerify)
+	}
+}
+
+// TestFindChartURL_DuplicateRepoURL tests that when two repositories share the same
+// URL but have different aliases and credentials, findChartURL correctly returns the
+// credentials for the specified repo alias (name) rather than picking a random
+// matching entry by URL.
+func TestFindChartURL_DuplicateRepoURL(t *testing.T) {
+	dir := t.TempDir()
+
+	// Create a repositories.yaml with two entries sharing the same URL
+	reposConfig := `apiVersion: v1
+repositories:
+  - name: repo-alias-1
+    url: "http://example.com/charts"
+    username: "user1"
+    password: "pass1"
+    pass_credentials_all: true
+  - name: repo-alias-2
+    url: "http://example.com/charts"
+    username: "user2"
+    password: "pass2"
+`
+	repoConfigFile := filepath.Join(dir, "repositories.yaml")
+	if err := os.WriteFile(repoConfigFile, []byte(reposConfig), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create an index file for each repo alias (same content since they share the same URL)
+	index := repo.NewIndexFile()
+	index.Entries["alpine"] = repo.ChartVersions{
+		{
+			Metadata: &chart.Metadata{
+				Name:    "alpine",
+				Version: "0.1.0",
+			},
+			URLs: []string{
+				"https://charts.helm.sh/stable/alpine-0.1.0.tgz",
+			},
+		},
+	}
+
+	// Write index files with the naming pattern expected by loadChartRepositories:
+	// <cache>/<repo-name>-index.yaml
+	for _, name := range []string{"repo-alias-1", "repo-alias-2"} {
+		idxPath := filepath.Join(dir, name+"-index.yaml")
+		if err := index.WriteFile(idxPath, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	m := &Manager{
+		Out:              new(bytes.Buffer),
+		RepositoryConfig: repoConfigFile,
+		RepositoryCache:  dir,
+	}
+
+	repos, err := m.loadChartRepositories()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	name := "alpine"
+	version := "0.1.0"
+	repoURL := "http://example.com/charts"
+
+	// Look up by repo-alias-1 name -> should get user1/pass1
+	churl, username, password, _, passCredentialsAll, _, _, _, err := m.findChartURL(name, version, repoURL, "repo-alias-1", repos)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if churl != "https://charts.helm.sh/stable/alpine-0.1.0.tgz" {
+		t.Errorf("Unexpected URL %q", churl)
+	}
+	if username != "user1" {
+		t.Errorf("Expected username 'user1', got %q", username)
+	}
+	if password != "pass1" {
+		t.Errorf("Expected password 'pass1', got %q", password)
+	}
+	if !passCredentialsAll {
+		t.Errorf("Expected passCredentialsAll true, got %t", passCredentialsAll)
+	}
+
+	// Look up by repo-alias-2 name -> should get user2/pass2
+	churl, username, password, _, passCredentialsAll, _, _, _, err = m.findChartURL(name, version, repoURL, "repo-alias-2", repos)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if churl != "https://charts.helm.sh/stable/alpine-0.1.0.tgz" {
+		t.Errorf("Unexpected URL %q", churl)
+	}
+	if username != "user2" {
+		t.Errorf("Expected username 'user2', got %q", username)
+	}
+	if password != "pass2" {
+		t.Errorf("Expected password 'pass2', got %q", password)
+	}
+	// passCredentialsAll should be false for repo-alias-2 (not set in config)
+	if passCredentialsAll {
+		t.Errorf("Expected passCredentialsAll false, got %t", passCredentialsAll)
+	}
+
+	// Without a repo name (empty string), falls back to URL-based scan.
+	// This is backward-compatible behavior.
+	churl, username, password, _, _, _, _, _, err = m.findChartURL(name, version, repoURL, "", repos)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if churl != "https://charts.helm.sh/stable/alpine-0.1.0.tgz" {
+		t.Errorf("Unexpected URL %q", churl)
+	}
+	// Without a repo name, it falls back to URL-based matching.
+	// Either repo's credentials could be returned since map iteration is nondeterministic.
+	// We just verify that some credentials were returned.
+	if username == "" {
+		t.Error("Expected non-empty username from URL-based fallback")
 	}
 }
 
@@ -267,7 +384,7 @@ func TestDownloadAll(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(chartPath, "tmpcharts"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.downloadAll([]*chart.Dependency{signDep, localDep}); err != nil {
+	if err := m.downloadAll([]*chart.Dependency{signDep, localDep}, nil); err != nil {
 		t.Error(err)
 	}
 
@@ -296,7 +413,7 @@ version: 0.1.0`
 		Version:    "0.1.0",
 	}
 
-	err = m.downloadAll([]*chart.Dependency{badLocalDep})
+	err = m.downloadAll([]*chart.Dependency{badLocalDep}, nil)
 	if err == nil {
 		t.Fatal("Expected error for bad dependency name")
 	}
