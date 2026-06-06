@@ -390,6 +390,14 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 	}
 
 	if u.IsAbs() && len(u.Host) > 0 && len(u.Path) > 0 {
+		// If credentials (including TLS config) have already been resolved
+		// by the caller, skip scanning repos to avoid picking up the wrong
+		// repo's settings when multiple repositories share the same URL.
+		if c.CredentialsResolved {
+			c.Options = append(c.Options, getter.WithURL(ref))
+			return "", u, nil
+		}
+
 		// In this case, we have to find the parent repo that contains this chart
 		// URL. And this is an unfortunate problem, as it requires actually going
 		// through each repo cache file and finding a matching URL. But basically
@@ -417,7 +425,7 @@ func (c *ChartDownloader) ResolveChartVersion(ref, version string) (string, *url
 		if rc.CertFile != "" || rc.KeyFile != "" || rc.CAFile != "" {
 			c.Options = append(c.Options, getter.WithTLSClientConfig(rc.CertFile, rc.KeyFile, rc.CAFile))
 		}
-		if rc.Username != "" && rc.Password != "" && !c.CredentialsResolved {
+		if rc.Username != "" && rc.Password != "" {
 			c.Options = append(
 				c.Options,
 				getter.WithBasicAuth(rc.Username, rc.Password),
