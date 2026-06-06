@@ -744,7 +744,7 @@ func (m *Manager) findChartURL(name, version, repoURL, repoName string, repos ma
 				var ve *repo.ChartVersion
 				ve, err = findVersionedEntry(version, entry)
 				if err == nil {
-					url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
+					url, err = repo.ResolveReferenceURL(cr.Config.URL, ve.URLs[0])
 					if err == nil {
 						username = cr.Config.Username
 						password = cr.Config.Password

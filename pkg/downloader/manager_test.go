@@ -202,9 +202,12 @@ repositories:
 		t.Fatal(err)
 	}
 
+	// Find with repo-alias-1 and a repoURL that differs from cr.Config.URL
+	// (no trailing slash vs with trailing slash). Should still resolve correctly
+	// because it uses cr.Config.URL as the base for relative chart URLs.
+	repoURL := "http://example.com/charts"
 	name := "alpine"
 	version := "0.1.0"
-	repoURL := "http://example.com/charts"
 
 	// Look up by repo-alias-1 name -> should get user1/pass1
 	churl, username, password, _, passCredentialsAll, _, _, _, err := m.findChartURL(name, version, repoURL, "repo-alias-1", repos)
