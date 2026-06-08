@@ -69,7 +69,7 @@ func runTestCmd(t *testing.T, tests []cmdTestCase) {
 					t.Errorf("expected no error, got: '%v'", err)
 				}
 				if tt.golden != "" {
-					test.AssertGoldenString(t, out, tt.golden)
+					test.AssertGoldenString(t, out, tt.golden, tt.goldenArgs)
 				}
 			})
 		}
@@ -129,10 +129,11 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 
 // cmdTestCase describes a test case that works with releases.
 type cmdTestCase struct {
-	name      string
-	cmd       string
-	golden    string
-	wantError bool
+	name       string
+	cmd        string
+	golden     string
+	goldenArgs map[string]string
+	wantError  bool
 	// Rels are the available releases at the start of the test.
 	rels []*release.Release
 	// Number of repeats (in case a feature was previously flaky and the test checks

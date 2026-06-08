@@ -59,7 +59,7 @@ func TestList(t *testing.T) {
 		if err := NewDependency().List(tcase.chart, &buf); err != nil {
 			t.Fatal(err)
 		}
-		test.AssertGoldenString(t, buf.String(), tcase.golden)
+		test.AssertGoldenString(t, buf.String(), tcase.golden, map[string]string{})
 	}
 }
 
