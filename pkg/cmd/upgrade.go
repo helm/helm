@@ -80,6 +80,19 @@ or '--set' flags. Priority is given to new values.
 The --dry-run flag will output all generated chart manifests, including Secrets
 which can contain sensitive values. To hide Kubernetes Secrets use the
 --hide-secret flag. Please carefully consider how and when these flags are used.
+
+RESOURCE OWNERSHIP
+
+Helm tracks ownership of Kubernetes resources using the following metadata:
+
+  - Label:      app.kubernetes.io/managed-by=Helm
+  - Annotation: meta.helm.sh/release-name=<release-name>
+  - Annotation: meta.helm.sh/release-namespace=<release-namespace>
+
+During an upgrade, if a resource exists in the cluster without these annotations
+(or with annotations pointing to a different release), Helm will return an error.
+To take ownership of such resources and have Helm manage them going forward, use
+'--take-ownership'.
 `
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {

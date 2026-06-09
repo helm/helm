@@ -127,6 +127,20 @@ supply a version number with the '--version' flag.
 
 To see the list of chart repositories, use 'helm repo list'. To search for
 charts in a repository, use 'helm search'.
+
+RESOURCE OWNERSHIP
+
+When Helm installs a chart, it adds the following metadata to every Kubernetes
+resource it creates:
+
+  - Label:      app.kubernetes.io/managed-by=Helm
+  - Annotation: meta.helm.sh/release-name=<release-name>
+  - Annotation: meta.helm.sh/release-namespace=<release-namespace>
+
+These are used to track ownership. If a resource already exists in the cluster
+without these annotations, Helm will refuse to install and return an error. To
+adopt pre-existing resources into the release, use '--take-ownership'. Helm will
+then add the ownership metadata and manage those resources going forward.
 `
 
 func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
