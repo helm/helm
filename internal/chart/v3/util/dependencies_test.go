@@ -615,8 +615,9 @@ func TestProcessDependencyEnabledNoSpuriousWarnings(t *testing.T) {
 
 	// Capture standard log output to detect spurious warnings from CoalesceValues.
 	var buf bytes.Buffer
+	oldOutput := log.Writer()
 	log.SetOutput(&buf)
-	defer log.SetOutput(os.Stderr)
+	defer log.SetOutput(oldOutput)
 
 	if err := processDependencyEnabled(parent, parent.Values, ""); err != nil {
 		t.Fatalf("unexpected error: %v", err)
