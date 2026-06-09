@@ -89,10 +89,10 @@ Helm tracks ownership of Kubernetes resources using the following metadata:
   - Annotation: meta.helm.sh/release-name=<release-name>
   - Annotation: meta.helm.sh/release-namespace=<release-namespace>
 
-During an upgrade, if a resource exists in the cluster without these annotations
-(or with annotations pointing to a different release), Helm will return an error.
-To take ownership of such resources and have Helm manage them going forward, use
-'--take-ownership'.
+During an upgrade, if a resource exists in the cluster without this metadata
+(or with metadata pointing to a different release or namespace), Helm will
+return an error. To take ownership of such resources and have Helm manage them
+going forward, use '--take-ownership'.
 `
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
