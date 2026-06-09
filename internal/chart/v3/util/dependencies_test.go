@@ -15,10 +15,13 @@ limitations under the License.
 package util
 
 import (
+	"bytes"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 
 	chart "helm.sh/helm/v4/internal/chart/v3"
@@ -567,4 +570,60 @@ func TestChartWithDependencyAliasedTwiceAndDoublyReferencedSubDependency(t *test
 		t.Fatal("expected two dependencies after processing aliases")
 	}
 	validateDependencyTree(t, c)
+}
+
+// TestProcessDependencyEnabledNoSpuriousWarnings verifies that processing a
+// sub-chart that itself has a sub-chart does not produce spurious type-mismatch
+// warnings when a parent-level key has a different type than the sub-chart's
+// default for the same key name. The parent's top-level "tolerations:{}" should
+// not be compared against the sub-chart's default "tolerations:[]".
+// Regression test for https://github.com/helm/helm/issues/11251
+func TestProcessDependencyEnabledNoSpuriousWarnings(t *testing.T) {
+	subSub := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "subsubchart", Version: "1.0.0"},
+	}
+
+	sub := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "subchart",
+			Version: "1.0.0",
+			Dependencies: []*chart.Dependency{
+				{Name: "subsubchart", Version: "1.0.0"},
+			},
+		},
+		Values: map[string]any{
+			// subchart defines tolerations as an array
+			"tolerations": []any{"entry1"},
+		},
+	}
+	sub.AddDependency(subSub)
+
+	parent := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "parent",
+			Version: "1.0.0",
+			Dependencies: []*chart.Dependency{
+				{Name: "subchart", Version: "1.0.0"},
+			},
+		},
+		Values: map[string]any{
+			// parent defines tolerations as a map at the top level
+			"tolerations": map[string]any{"key": "value"},
+		},
+	}
+	parent.AddDependency(sub)
+
+	// Capture standard log output to detect spurious warnings from CoalesceValues.
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(os.Stderr)
+
+	if err := processDependencyEnabled(parent, parent.Values, ""); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := buf.String()
+	if strings.Contains(output, "Not a table") {
+		t.Errorf("spurious type-mismatch warning from parent-level key leaking into sub-chart scope: %s", output)
+	}
 }

@@ -181,9 +181,23 @@ Loop:
 	for _, lr := range c.Metadata.Dependencies {
 		lr.Enabled = true
 	}
-	cvals, err := util.CoalesceValues(c, v)
-	if err != nil {
-		return err
+	// For the top-level chart (path == ""), v is user-provided values that need
+	// coalescing with chart defaults before evaluating conditions and tags.
+	// For recursive calls (path != ""), v is the parent's fully coalesced values
+	// which already contains sub-chart defaults via coalesceDeps. Calling
+	// CoalesceValues again with the full parent values would produce spurious
+	// type-mismatch warnings when parent-level keys conflict with sub-chart
+	// defaults in type (e.g., parent has tolerations:{} and sub-chart default
+	// is tolerations:[]).
+	var cvals common.Values
+	if path == "" {
+		var err error
+		cvals, err = util.CoalesceValues(c, v)
+		if err != nil {
+			return err
+		}
+	} else {
+		cvals = v
 	}
 	// flag dependencies as enabled/disabled
 	processDependencyTags(c.Metadata.Dependencies, cvals)
