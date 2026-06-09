@@ -21,7 +21,6 @@ import (
 	"io"
 	"log"
 	"log/slog"
-	"path"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -222,11 +221,11 @@ func runShow(args []string, client *action.Show) (string, error) {
 	}
 
 	if registry.IsOCI(args[0]) {
-		ref := strings.TrimPrefix(args[0], registry.OCIScheme+"://")
-		if client.Version != "" && !strings.Contains(path.Base(ref), ":") {
-			ref = fmt.Sprintf("%s:%s", ref, client.Version)
-		}
-		client.OCIRef = ref
+		// Store the bare OCI reference (without the oci:// scheme). The concrete
+		// tag is resolved from the downloaded chart version in Show.Run, because
+		// client.Version may be a range (for example ">0.0.0-0" with --devel)
+		// rather than an exact tag.
+		client.OCIRef = strings.TrimPrefix(args[0], registry.OCIScheme+"://")
 	}
 
 	cp, err := client.LocateChart(args[0], settings)

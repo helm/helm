@@ -254,3 +254,60 @@ func TestShowOCIAnnotationsNoRegistry(t *testing.T) {
 	// No annotations section, no "---" separator
 	assert.NotContains(t, output, "---")
 }
+
+func TestShowOCIAnnotationsResolvesVersion(t *testing.T) {
+	const manifestJSON = `{
+		"schemaVersion": 2,
+		"mediaType": "application/vnd.oci.image.manifest.v1+json",
+		"config": {
+			"mediaType": "application/vnd.cncf.helm.config.v1+json",
+			"digest": "sha256:abc123",
+			"size": 100
+		},
+		"layers": [],
+		"annotations": {
+			"org.opencontainers.image.created": "2025-04-11T20:12:25Z"
+		}
+	}`
+
+	var requestedManifest string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if strings.Contains(r.URL.Path, "/manifests/") {
+			requestedManifest = r.URL.Path
+			w.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(manifestJSON))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	host := strings.TrimPrefix(srv.URL, "http://")
+
+	registryClient, err := registry.NewClient(
+		registry.ClientOptWriter(io.Discard),
+		registry.ClientOptPlainHTTP(),
+	)
+	require.NoError(t, err)
+
+	config := actionConfigFixture(t)
+	client := NewShow(ShowChart, config)
+	client.SetRegistryClient(registryClient)
+	// OCIRef has no explicit tag; the concrete tag is taken from the chart version.
+	client.OCIRef = host + "/test/chart"
+	client.chart = &chart.Chart{
+		Metadata: &chart.Metadata{Name: "test-chart", Version: "1.0.0"},
+	}
+
+	output, err := client.Run("")
+	require.NoError(t, err)
+
+	assert.Contains(t, output, "org.opencontainers.image.created")
+	assert.Contains(t, output, "2025-04-11T20:12:25Z")
+	assert.Contains(t, requestedManifest, "/manifests/1.0.0")
+}

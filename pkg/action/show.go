@@ -19,6 +19,7 @@ package action
 import (
 	"bytes"
 	"fmt"
+	"path"
 	"strings"
 
 	"k8s.io/cli-runtime/pkg/printers"
@@ -100,7 +101,16 @@ func (s *Show) Run(chartpath string) (string, error) {
 	if s.OutputFormat == ShowChart || s.OutputFormat == ShowAll {
 		fmt.Fprintf(&out, "%s\n", cf)
 		if s.OCIRef != "" && s.registryClient != nil {
-			annotations, err := s.registryClient.GetManifestAnnotations(s.OCIRef)
+			ref := s.OCIRef
+			// When the reference has no explicit tag or digest, fall back to the
+			// resolved chart version. Helm stores an OCI chart under a tag that
+			// matches its version, and s.chart.Metadata.Version is the concrete
+			// version actually downloaded (the requested version may be a range).
+			if s.chart.Metadata != nil && s.chart.Metadata.Version != "" &&
+				!strings.Contains(path.Base(ref), ":") && !strings.Contains(ref, "@") {
+				ref = fmt.Sprintf("%s:%s", ref, s.chart.Metadata.Version)
+			}
+			annotations, err := s.registryClient.GetManifestAnnotations(ref)
 			if err == nil && len(annotations) > 0 {
 				annotationsYAML, marshalErr := yaml.Marshal(annotations)
 				if marshalErr == nil {
