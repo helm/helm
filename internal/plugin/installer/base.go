@@ -30,9 +30,12 @@ type base struct {
 
 func newBase(source string) base {
 	settings := cli.New()
+	// When HELM_PLUGINS contains a list of paths, use only the first one for
+	// installation so the plugin ends up in a directory that is actually searched.
+	pluginsDir := filepath.SplitList(settings.PluginsDirectory)[0]
 	return base{
 		Source:           source,
-		PluginsDirectory: settings.PluginsDirectory,
+		PluginsDirectory: pluginsDir,
 	}
 }
 

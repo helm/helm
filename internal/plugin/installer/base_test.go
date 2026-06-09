@@ -14,6 +14,7 @@ limitations under the License.
 package installer // import "helm.sh/helm/v4/internal/plugin/installer"
 
 import (
+	"path/filepath"
 	"testing"
 )
 
@@ -42,5 +43,20 @@ func TestPath(t *testing.T) {
 		if baseInsPath != tt.expectPath {
 			t.Errorf("expected name %s, got %s", tt.expectPath, baseInsPath)
 		}
+	}
+}
+
+func TestPathMultiplePluginDirs(t *testing.T) {
+	// When HELM_PLUGINS contains a list of paths, install into the first one.
+	first := filepath.FromSlash("/helm/data/plugins")
+	second := filepath.FromSlash("/helm/extra/plugins")
+	multiPath := first + string(filepath.ListSeparator) + second
+
+	t.Setenv("HELM_PLUGINS", multiPath)
+	b := newBase("https://github.com/jkroepke/helm-secrets")
+	got := b.Path()
+	expected := filepath.Join(first, "helm-secrets")
+	if got != expected {
+		t.Errorf("expected path %s, got %s", expected, got)
 	}
 }
