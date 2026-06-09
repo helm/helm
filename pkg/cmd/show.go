@@ -21,11 +21,14 @@ import (
 	"io"
 	"log"
 	"log/slog"
+	"path"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cmd/require"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 const showDesc = `
@@ -216,6 +219,14 @@ func runShow(args []string, client *action.Show) (string, error) {
 	if client.Version == "" && client.Devel {
 		slog.Debug("setting version to >0.0.0-0")
 		client.Version = ">0.0.0-0"
+	}
+
+	if registry.IsOCI(args[0]) {
+		ref := strings.TrimPrefix(args[0], registry.OCIScheme+"://")
+		if client.Version != "" && !strings.Contains(path.Base(ref), ":") {
+			ref = fmt.Sprintf("%s:%s", ref, client.Version)
+		}
+		client.OCIRef = ref
 	}
 
 	cp, err := client.LocateChart(args[0], settings)

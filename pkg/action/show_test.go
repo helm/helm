@@ -17,10 +17,15 @@ limitations under the License.
 package action
 
 import (
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -179,4 +184,73 @@ func TestShowSetRegistryClient(t *testing.T) {
 	registryClient := &registry.Client{}
 	client.SetRegistryClient(registryClient)
 	assert.Equal(t, registryClient, client.registryClient)
+}
+
+func TestShowOCIAnnotations(t *testing.T) {
+	const manifestJSON = `{
+		"schemaVersion": 2,
+		"mediaType": "application/vnd.oci.image.manifest.v1+json",
+		"config": {
+			"mediaType": "application/vnd.cncf.helm.config.v1+json",
+			"digest": "sha256:abc123",
+			"size": 100
+		},
+		"layers": [],
+		"annotations": {
+			"org.opencontainers.image.created": "2025-04-11T20:12:25Z"
+		}
+	}`
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if strings.Contains(r.URL.Path, "/manifests/") {
+			w.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(manifestJSON))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	host := strings.TrimPrefix(srv.URL, "http://")
+
+	registryClient, err := registry.NewClient(
+		registry.ClientOptWriter(io.Discard),
+		registry.ClientOptPlainHTTP(),
+	)
+	require.NoError(t, err)
+
+	config := actionConfigFixture(t)
+	client := NewShow(ShowChart, config)
+	client.SetRegistryClient(registryClient)
+	client.OCIRef = host + "/test/chart:1.0.0"
+	client.chart = &chart.Chart{
+		Metadata: &chart.Metadata{Name: "test-chart", Version: "1.0.0"},
+	}
+
+	output, err := client.Run("")
+	require.NoError(t, err)
+
+	assert.Contains(t, output, "---")
+	assert.Contains(t, output, "org.opencontainers.image.created")
+	assert.Contains(t, output, "2025-04-11T20:12:25Z")
+}
+
+func TestShowOCIAnnotationsNoRegistry(t *testing.T) {
+	config := actionConfigFixture(t)
+	client := NewShow(ShowChart, config)
+	// OCIRef set but no registry client - should not fail, just omit annotations
+	client.OCIRef = "host/test/chart:1.0.0"
+	client.chart = &chart.Chart{
+		Metadata: &chart.Metadata{Name: "test-chart", Version: "1.0.0"},
+	}
+
+	output, err := client.Run("")
+	require.NoError(t, err)
+	// No annotations section, no "---" separator
+	assert.NotContains(t, output, "---")
 }

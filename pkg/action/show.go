@@ -61,7 +61,10 @@ type Show struct {
 	Devel            bool
 	OutputFormat     ShowOutputFormat
 	JSONPathTemplate string
-	chart            *chart.Chart // for testing
+	// OCIRef is the original OCI reference (without oci:// scheme) used to fetch
+	// manifest annotations when showing an OCI chart. Leave empty for non-OCI charts.
+	OCIRef string
+	chart  *chart.Chart // for testing
 }
 
 // NewShow creates a new Show object with the given configuration.
@@ -96,6 +99,16 @@ func (s *Show) Run(chartpath string) (string, error) {
 	var out strings.Builder
 	if s.OutputFormat == ShowChart || s.OutputFormat == ShowAll {
 		fmt.Fprintf(&out, "%s\n", cf)
+		if s.OCIRef != "" && s.registryClient != nil {
+			annotations, err := s.registryClient.GetManifestAnnotations(s.OCIRef)
+			if err == nil && len(annotations) > 0 {
+				annotationsYAML, marshalErr := yaml.Marshal(annotations)
+				if marshalErr == nil {
+					fmt.Fprintln(&out, "---")
+					fmt.Fprintf(&out, "%s\n", annotationsYAML)
+				}
+			}
+		}
 	}
 
 	if (s.OutputFormat == ShowValues || s.OutputFormat == ShowAll) && s.chart.Values != nil {
