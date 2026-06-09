@@ -926,3 +926,49 @@ func TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides(t *testing.T
 	_, ok = keyMapping["password"]
 	is.False(ok, "Expected keyMapping.password (nil from chart defaults) to be removed even when user partially overrides the map")
 }
+
+// TestCoalesceValuesParentSubchartNullOverrideWithoutUserValues tests that a
+// null in a parent's values.yaml under a subchart scope erases the subchart's
+// default even when no user-provided values target that subchart.
+// Regression test for issue #32132.
+func TestCoalesceValuesParentSubchartNullOverrideWithoutUserValues(t *testing.T) {
+	is := assert.New(t)
+
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Values: map[string]any{
+			"securityContext": map[string]any{
+				"runAsGroup":   65534,
+				"runAsNonRoot": true,
+				"runAsUser":    65534,
+			},
+		},
+	}
+
+	parent := withDeps(&chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values: map[string]any{
+			"child": map[string]any{
+				"securityContext": map[string]any{
+					"runAsGroup": nil,
+					"runAsUser":  nil,
+				},
+			},
+		},
+	}, subchart)
+
+	v, err := CoalesceValues(parent, map[string]any{})
+	is.NoError(err)
+
+	childVals, ok := v["child"].(map[string]any)
+	is.True(ok, "child values should be a map")
+
+	securityContext, ok := childVals["securityContext"].(map[string]any)
+	is.True(ok, "securityContext should be a map")
+
+	_, ok = securityContext["runAsGroup"]
+	is.False(ok, "Expected parent null override to erase subchart runAsGroup default")
+	_, ok = securityContext["runAsUser"]
+	is.False(ok, "Expected parent null override to erase subchart runAsUser default")
+	is.Equal(true, securityContext["runAsNonRoot"], "Subchart default not nulled by the parent should be preserved")
+}
