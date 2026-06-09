@@ -193,6 +193,11 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return err
 			}
 
+			sourceDateEpoch, err := sourceDateEpochFromEnv()
+			if err != nil {
+				return err
+			}
+
 			// Check chart dependencies to make sure all are present in /charts
 			ch, err := loader.Load(chartPath)
 			if err != nil {
@@ -217,6 +222,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							RepositoryCache:  settings.RepositoryCache,
 							ContentCache:     settings.ContentCache,
 							Debug:            settings.Debug,
+							SourceDateEpoch:  sourceDateEpoch,
 						}
 						if err := man.Update(); err != nil {
 							return err

@@ -182,6 +182,55 @@ func TestSavePreservesTimestamps(t *testing.T) {
 	}
 }
 
+func TestSaveWithSourceDateEpoch(t *testing.T) {
+	epoch, err := ParseSourceDateEpochValue("1609459200")
+	if err != nil {
+		t.Fatalf("ParseSourceDateEpochValue() error: %v", err)
+	}
+
+	tmp := t.TempDir()
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV3,
+			Name:       "ahab",
+			Version:    "1.2.3",
+		},
+		Files: []*common.File{
+			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
+		},
+		Schema: []byte("{\n  \"title\": \"Values\"\n}"),
+	}
+
+	ApplySourceDateEpoch(c, epoch)
+	where, err := Save(c, tmp)
+	if err != nil {
+		t.Fatalf("Failed to save: %s", err)
+	}
+
+	allHeaders, err := retrieveAllHeadersFromTar(where)
+	if err != nil {
+		t.Fatalf("Failed to parse tar: %v", err)
+	}
+
+	expected := epoch.Round(time.Second)
+	for _, header := range allHeaders {
+		if !header.ModTime.Equal(expected) {
+			t.Fatalf("Expected SOURCE_DATE_EPOCH timestamp %v, got %v for %q", expected, header.ModTime, header.Name)
+		}
+	}
+}
+
+func findHeader(t *testing.T, headers []*tar.Header, name string) *tar.Header {
+	t.Helper()
+	for _, h := range headers {
+		if h.Name == name {
+			return h
+		}
+	}
+	t.Fatalf("Could not find tar header %q", name)
+	return nil
+}
+
 // We could refactor `load.go` to use this `retrieveAllHeadersFromTar` function
 // as well, so we are not duplicating components of the code which iterate
 // through the tar.
