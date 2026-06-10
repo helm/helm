@@ -85,10 +85,17 @@ func TestBuildPushRef(t *testing.T) {
 			version:  "1.0.0",
 			want:     "my-registry.io/namespace/my-repo:1.0.0",
 		},
+		{
+			name:     "tagged href with mismatched chart name should error",
+			registry: "oci://my-registry.io/repo/other:1.2.3",
+			chart:    "mychart",
+			version:  "1.2.3",
+			want:     "",
+			wantErr:  true,
+		},
 	}
 
 	for _, tt := range tests {
-
 		if tt.wantErr {
 			t.Run(tt.name, func(t *testing.T) {
 				_, err := BuildPushRef(tt.registry, tt.chart, tt.version)

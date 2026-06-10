@@ -51,6 +51,9 @@ func BuildPushRef(href, chartName, chartVersion string) (string, error) {
 			last = finalRepo
 		}
 		if last != chartName {
+			if ref.Tag != "" {
+				return "", fmt.Errorf("repository %q does not match chart name %q; the tagged reference %q indicates an explicit push target", finalRepo, chartName, href)
+			}
 			finalRepo = path.Join(finalRepo, chartName)
 		}
 	}

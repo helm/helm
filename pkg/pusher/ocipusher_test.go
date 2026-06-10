@@ -443,7 +443,7 @@ func TestOCIPusher_Push_InvalidChartVersion(t *testing.T) {
 	err = pusher.Push(chartPath, "oci://localhost:5000/test:0.2.0")
 
 	if err == nil {
-		t.Fatal("Expected error when pushing without a valid registry")
+		t.Fatal("Expected error due to tag/chart version mismatch")
 	}
 	if !strings.Contains(err.Error(), "does not match provided chart version") {
 		t.Error("Expected error to mention tag mismatch")
@@ -469,7 +469,7 @@ func TestOCIPusher_Push_ExpectedVersionMismatch(t *testing.T) {
 	)
 
 	if err == nil {
-		t.Fatal("Expected error when --version does not match chart version")
+		t.Fatal("Expected error when --ensure-version does not match chart version")
 	}
 
 	if !strings.Contains(err.Error(), "specified --ensure-version") {
