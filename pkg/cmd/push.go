@@ -34,10 +34,12 @@ If the chart has an associated provenance file, it will also be uploaded.
 
 Remote target formats:
 - oci://REGISTRY/REPO
+- oci://REGISTRY/REPO:VERSION
 - oci://REGISTRY/REPO/CHART
 - oci://REGISTRY/REPO/CHART:VERSION
 
-When CHART is omitted, the chart name is derived from the package. When VERSION is omitted,
+When CHART is omitted, the chart name is derived from the package (and must match the
+repo basename when using oci://REGISTRY/REPO:VERSION). When VERSION is omitted,
 it comes from Chart.yaml. Use --ensure-version as an optional verification. If set, it
 must match Chart.yaml or the command fails.
 
