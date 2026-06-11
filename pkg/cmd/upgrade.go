@@ -305,7 +305,8 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer, settings)
-	AddWaitFlag(cmd, &client.WaitStrategy)
+	AddOrderedWaitFlag(cmd, &client.WaitStrategy)
+	addReadinessTimeoutFlag(f, &client.ReadinessTimeout)
 	cmd.MarkFlagsMutuallyExclusive("force-replace", "force-conflicts")
 	cmd.MarkFlagsMutuallyExclusive("force", "force-conflicts")
 

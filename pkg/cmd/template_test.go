@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 var chartPath = "testdata/testcharts/subchart"
@@ -166,8 +168,46 @@ func TestTemplateCmd(t *testing.T) {
 			cmd:    fmt.Sprintf("template '%s' -f %s/extra_values.yaml", chartPath, chartPath),
 			golden: "output/template-subchart-cm-set-file.txt",
 		},
+		{
+			name:   "template with ordered wait strategy shows resource group delimiters",
+			cmd:    "template --wait=ordered 'testdata/testcharts/sequenced-chart'",
+			golden: "output/template-ordered-delimiters.txt",
+		},
 	}
 	runTestCmd(t, tests)
+}
+
+func TestTemplateWithoutOrderedWaitHasNoDelimiters(t *testing.T) {
+	_, out, err := executeActionCommand("template 'testdata/testcharts/sequenced-chart'")
+	require.NoError(t, err)
+	require.NotContains(t, out, "## START resource-group:")
+	require.NotContains(t, out, "## END resource-group:")
+	require.Contains(t, out, "# Source: sequenced-chart/charts/worker/templates/aa-worker-configmap.yaml")
+}
+
+// TestTemplateStripsHelmInternalAnnotations asserts that `helm template` output
+// never contains the multi-slash internal annotation key
+// `helm.sh/depends-on/resource-groups` — its presence in the K8s API would
+// fail annotation-key validation and break `helm template | kubectl apply -f -`.
+// Valid sibling keys (single-slash) like `helm.sh/resource-group` must survive.
+func TestTemplateStripsHelmInternalAnnotations(t *testing.T) {
+	const internalKey = "helm.sh/depends-on/resource-groups"
+	const siblingKey = "helm.sh/resource-group"
+
+	t.Run("flat path", func(t *testing.T) {
+		_, out, err := executeActionCommand("template 'testdata/testcharts/sequenced-chart'")
+		require.NoError(t, err)
+		require.NotContains(t, out, internalKey, "internal annotation must be stripped from flat template output")
+		require.Contains(t, out, siblingKey, "valid-key sibling annotation must be preserved")
+	})
+
+	t.Run("ordered path", func(t *testing.T) {
+		_, out, err := executeActionCommand("template --wait=ordered 'testdata/testcharts/sequenced-chart'")
+		require.NoError(t, err)
+		require.NotContains(t, out, internalKey, "internal annotation must be stripped from ordered template output")
+		require.Contains(t, out, siblingKey, "valid-key sibling annotation must be preserved")
+		require.Contains(t, out, "## START resource-group:", "ordered output must still emit group delimiters")
+	})
 }
 
 func TestTemplateVersionCompletion(t *testing.T) {
