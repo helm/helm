@@ -26,7 +26,7 @@ package testmode
 // from production code paths that need to behave differently under test.
 // Backed by a compile-time const (see mode_on.go / mode_off.go) so branches
 // gated on it dead-code-eliminate in release builds.
-// Remove this function in Helm v5. Any functionality needing it should be revised
+// Remove this function in Helm v5. Any functionality needing it should be revised.
 func IsTestMode() bool {
 	return testMode
 }
