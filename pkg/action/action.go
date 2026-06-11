@@ -33,6 +33,7 @@ import (
 	"text/template"
 	"time"
 
+	"go.yaml.in/yaml/v3"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
@@ -203,6 +204,12 @@ func annotateAndMerge(files map[string]string) (string, error) {
 			if strings.TrimSpace(doc) == "" {
 				continue
 			}
+			// kio.ParseAll flattens `kind: List` into one document per item; resolve aliases
+			// first so an anchor and its alias aren't split across documents (anchors are
+			// document-scoped), which would leave the alias dangling.
+			if resolved, rerr := resolveYAMLAliases(doc); rerr == nil {
+				doc = resolved
+			}
 			manifests, err := kio.ParseAll(doc)
 			if err != nil {
 				return "", fmt.Errorf("parsing %s: %w", fname, err)
@@ -221,6 +228,64 @@ func annotateAndMerge(files map[string]string) (string, error) {
 		return "", fmt.Errorf("writing merged docs: %w", err)
 	}
 	return merged, nil
+}
+
+// resolveYAMLAliases materializes YAML aliases within a single document, leaving
+// documents that contain none unchanged.
+func resolveYAMLAliases(doc string) (string, error) {
+	var node yaml.Node
+	if err := yaml.Unmarshal([]byte(doc), &node); err != nil {
+		return "", err
+	}
+	if !resolveAliasNodes(&node) {
+		return doc, nil
+	}
+	stripAnchors(&node)
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(&node); err != nil {
+		return "", err
+	}
+	_ = enc.Close()
+	return buf.String(), nil
+}
+
+// resolveAliasNodes replaces alias nodes with a deep copy of their anchor target,
+// returning true if any replacement was made.
+func resolveAliasNodes(n *yaml.Node) bool {
+	changed := false
+	for i, c := range n.Content {
+		if c.Kind == yaml.AliasNode && c.Alias != nil {
+			n.Content[i] = deepCopyClearAnchor(c.Alias)
+			changed = true
+			continue
+		}
+		if resolveAliasNodes(c) {
+			changed = true
+		}
+	}
+	return changed
+}
+
+// deepCopyClearAnchor returns a deep copy of n with anchors removed.
+func deepCopyClearAnchor(n *yaml.Node) *yaml.Node {
+	cp := *n
+	cp.Anchor = ""
+	cp.Alias = nil
+	cp.Content = make([]*yaml.Node, len(n.Content))
+	for i, c := range n.Content {
+		cp.Content[i] = deepCopyClearAnchor(c)
+	}
+	return &cp
+}
+
+// stripAnchors clears any remaining anchor names in the tree.
+func stripAnchors(n *yaml.Node) {
+	n.Anchor = ""
+	for _, c := range n.Content {
+		stripAnchors(c)
+	}
 }
 
 // splitAndDeannotate reconstructs individual files from a merged YAML stream,
