@@ -16,9 +16,11 @@ limitations under the License.
 package plugin
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -83,4 +85,31 @@ func TestSubprocessPluginRuntime(t *testing.T) {
 	assert.Equal(t, 56, ieerr.ExitCode)
 
 	assert.Nil(t, output)
+}
+
+func TestExecuteCmdCapturesStderr(t *testing.T) {
+	cmd := exec.Command("sh", "-c", `echo "plugin error" >&2; exit 1`)
+	err := executeCmd(cmd, "test-plugin")
+
+	require.Error(t, err)
+	var ieerr *InvokeExecError
+	require.ErrorAs(t, err, &ieerr)
+	assert.Equal(t, 1, ieerr.ExitCode)
+	assert.Equal(t, []byte("plugin error"), ieerr.Stderr)
+	assert.Equal(t, `plugin "test-plugin" exited with error: "plugin error"`, ieerr.Error())
+}
+
+func TestExecuteCmdTeesStderr(t *testing.T) {
+	var existing bytes.Buffer
+	cmd := exec.Command("sh", "-c", `echo "plugin error" >&2; exit 1`)
+	cmd.Stderr = &existing
+
+	err := executeCmd(cmd, "test-plugin")
+
+	require.Error(t, err)
+	var ieerr *InvokeExecError
+	require.ErrorAs(t, err, &ieerr)
+	assert.Equal(t, 1, ieerr.ExitCode)
+	assert.Equal(t, []byte("plugin error"), ieerr.Stderr)
+	assert.Equal(t, "plugin error\n", existing.String())
 }
