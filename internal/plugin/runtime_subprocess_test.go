@@ -87,8 +87,23 @@ func TestSubprocessPluginRuntime(t *testing.T) {
 	assert.Nil(t, output)
 }
 
+func TestHelperProcess(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	fmt.Fprint(os.Stderr, "plugin error\n")
+	os.Exit(1)
+}
+
+func helperStderrCmd(t *testing.T) *exec.Cmd {
+	t.Helper()
+	cmd := exec.Command(os.Args[0], "-test.run=TestHelperProcess", "--")
+	cmd.Env = append(os.Environ(), "GO_WANT_HELPER_PROCESS=1")
+	return cmd
+}
+
 func TestExecuteCmdCapturesStderr(t *testing.T) {
-	cmd := exec.Command("sh", "-c", `echo "plugin error" >&2; exit 1`)
+	cmd := helperStderrCmd(t)
 	err := executeCmd(cmd, "test-plugin")
 
 	require.Error(t, err)
@@ -101,7 +116,7 @@ func TestExecuteCmdCapturesStderr(t *testing.T) {
 
 func TestExecuteCmdTeesStderr(t *testing.T) {
 	var existing bytes.Buffer
-	cmd := exec.Command("sh", "-c", `echo "plugin error" >&2; exit 1`)
+	cmd := helperStderrCmd(t)
 	cmd.Stderr = &existing
 
 	err := executeCmd(cmd, "test-plugin")
