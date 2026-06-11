@@ -38,6 +38,14 @@ func newTransport(debug bool) *fallbackTransport {
 	}
 }
 
+// forcedHTTP reports whether the transport has fallen back to plain HTTP after
+// a failed HTTPS attempt. Once this is true, the registry is known to be plain
+// HTTP and callers should set PlainHTTP so requests are built as http from the
+// start (see Client.Login).
+func (t *fallbackTransport) forcedHTTP() bool {
+	return t.forceHTTP.Load()
+}
+
 // RoundTrip wraps base round trip with conditional insecure retry.
 func (t *fallbackTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if ok := t.forceHTTP.Load(); ok {
