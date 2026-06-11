@@ -207,8 +207,9 @@ func annotateAndMerge(files map[string]string) (string, error) {
 			// kio.ParseAll flattens `kind: List` into one document per item; resolve aliases
 			// first so an anchor and its alias aren't split across documents (anchors are
 			// document-scoped), which would leave the alias dangling.
-			if resolved, rerr := resolveYAMLAliases(doc); rerr == nil {
-				doc = resolved
+			doc, err := resolveYAMLAliases(doc)
+			if err != nil {
+				return "", fmt.Errorf("resolving aliases in %s: %w", fname, err)
 			}
 			manifests, err := kio.ParseAll(doc)
 			if err != nil {
@@ -235,7 +236,9 @@ func annotateAndMerge(files map[string]string) (string, error) {
 func resolveYAMLAliases(doc string) (string, error) {
 	var node yaml.Node
 	if err := yaml.Unmarshal([]byte(doc), &node); err != nil {
-		return "", err
+		// Preserve the surrounding code's leniency for badly-formed docs;
+		// kio.ParseAll reports them downstream.
+		return doc, nil
 	}
 	if !resolveAliasNodes(&node) {
 		return doc, nil
@@ -247,7 +250,9 @@ func resolveYAMLAliases(doc string) (string, error) {
 	if err := enc.Encode(&node); err != nil {
 		return "", err
 	}
-	_ = enc.Close()
+	if err := enc.Close(); err != nil {
+		return "", err
+	}
 	return buf.String(), nil
 }
 
