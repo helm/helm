@@ -244,9 +244,9 @@ Test binaries have no module info, so without this tag those code paths
 panic during package init.
 
 If you run tests outside the Makefile (IDE test runners, `go test` directly,
-custom CI), pass `-tags helmtest`. The tag is omitted from release builds so
-the `testing` package and its dependencies stay out of shipped binaries, and
-branches gated on `testmode.IsTestMode()` are dead-code-eliminated by the compiler.
+custom CI), pass `-tags helmtest`. Release builds omit this tag; production
+code no longer imports `testing`, and branches gated on `testmode.IsTestMode()`
+are dead-code-eliminated by the compiler.
 
 ## Pull Requests
 
