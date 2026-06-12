@@ -1320,7 +1320,7 @@ func fakeNamespaceResourceList(name string, statusCode int) kube.ResourceList {
 	restClient := &fake.RESTClient{
 		GroupVersion:         schema.GroupVersion{Version: "v1"},
 		NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
-		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+		Client: fake.CreateHTTPClient(func(_ *http.Request) (*http.Response, error) {
 			return newNamespaceResponse(statusCode, body), nil
 		}),
 	}
@@ -1369,7 +1369,7 @@ type namespaceInstallKubeClient struct {
 	namespaceCreateCalled bool
 }
 
-func (c *namespaceInstallKubeClient) Build(reader io.Reader, validate bool) (kube.ResourceList, error) {
+func (c *namespaceInstallKubeClient) Build(reader io.Reader, _ bool) (kube.ResourceList, error) {
 	b, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
@@ -1382,7 +1382,7 @@ func (c *namespaceInstallKubeClient) Build(reader io.Reader, validate bool) (kub
 	return kube.ResourceList{}, nil
 }
 
-func (c *namespaceInstallKubeClient) Create(resources kube.ResourceList, options ...kube.ClientCreateOption) (*kube.Result, error) {
+func (c *namespaceInstallKubeClient) Create(resources kube.ResourceList, _ ...kube.ClientCreateOption) (*kube.Result, error) {
 	for _, info := range resources {
 		if info.Name == "spaced" && info.Mapping != nil && info.Mapping.GroupVersionKind.Kind == "Namespace" {
 			c.namespaceCreateCalled = true

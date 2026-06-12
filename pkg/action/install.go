@@ -459,7 +459,6 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 				return nil, err
 			}
 		}
-
 	}
 
 	// If Replace is true, we need to supersede the last release.
