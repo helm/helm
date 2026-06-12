@@ -163,22 +163,45 @@ func printChartLevel(chrt *chart.Chart, manifests []releaseutil.Manifest, chartP
 		return fmt.Errorf("resource-group sequencing for %s: %w", chartPath, err)
 	}
 
+	declared := make(map[string]bool)
 	for _, batch := range batches {
 		for _, subName := range batch {
-			subManifests := grouped[subName]
-			sub := dagFindSubchart(chrt, subName)
-			if sub == nil {
-				fmt.Fprintf(out, "%s    (subchart %q not found in chart dependencies)\n", indent, subName)
-				continue
-			}
-			subPath := chartPath + "/charts/" + subName
-			if err := printChartLevel(sub, subManifests, subPath, depth+1, out); err != nil {
+			declared[subName] = true
+			if err := printSubchartLevel(chrt, subName, grouped[subName], chartPath, depth, indent, out); err != nil {
 				return err
 			}
 		}
 	}
 
+	// Rendered subcharts not declared in Chart.yaml dependencies (e.g. vendored
+	// into charts/) are absent from the DAG but are still deployed unsequenced,
+	// so the DAG view must show them too rather than silently omitting them.
+	undeclared := make([]string, 0, len(grouped))
+	for subName := range grouped {
+		if subName == "" || declared[subName] {
+			continue
+		}
+		undeclared = append(undeclared, subName)
+	}
+	sort.Strings(undeclared)
+	for _, subName := range undeclared {
+		fmt.Fprintf(out, "%s    Undeclared subchart %q (deployed unsequenced):\n", indent, subName)
+		if err := printSubchartLevel(chrt, subName, grouped[subName], chartPath, depth, indent, out); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+func printSubchartLevel(chrt *chart.Chart, subName string, subManifests []releaseutil.Manifest, chartPath string, depth int, indent string, out io.Writer) error {
+	sub := dagFindSubchart(chrt, subName)
+	if sub == nil {
+		fmt.Fprintf(out, "%s    (subchart %q not found in chart dependencies)\n", indent, subName)
+		return nil
+	}
+	subPath := chartPath + "/charts/" + subName
+	return printChartLevel(sub, subManifests, subPath, depth+1, out)
 }
 
 func printResourceGroupBatches(manifests []releaseutil.Manifest, indent string, out io.Writer) error {
