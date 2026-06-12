@@ -87,7 +87,7 @@ func (t *templateLinter) Lint() {
 	templatesDir := "templates/"
 	templatesPath := filepath.Join(t.linter.ChartDir, templatesDir)
 
-	templatesDirExists := t.linter.RunLinterRule(support.WarningSev, templatesDir, templatesDirExists(templatesPath))
+	templatesDirExists := t.linter.RunLinterRule(support.InfoSev, templatesDir, templatesDirExists(templatesPath))
 	if !templatesDirExists {
 		return
 	}
