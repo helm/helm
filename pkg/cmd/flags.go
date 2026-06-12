@@ -131,7 +131,11 @@ func (ws *waitValue) Type() string {
 }
 
 func addReadinessTimeoutFlag(f *pflag.FlagSet, readinessTimeout *time.Duration) {
-	f.DurationVar(readinessTimeout, "readiness-timeout", time.Minute, "per-batch timeout when --wait=ordered is used; each resource batch must become ready within this duration (must not exceed --timeout). \"Ready\" is determined by kstatus signals for the resource kind (Deployment/StatefulSet/Pod/etc.) or by helm.sh/readiness-success and helm.sh/readiness-failure annotations when set; vanilla Jobs require --wait-for-jobs for the per-batch readiness gate to apply")
+	// Default 0 means "unset": the per-batch default of 1m is applied at the
+	// point of use on the ordered path (install/upgrade/rollback). Defaulting
+	// the flag itself to 1m would make the readiness-timeout<=timeout check
+	// reject any plain run with --timeout < 1m, even without --wait=ordered.
+	f.DurationVar(readinessTimeout, "readiness-timeout", 0, "per-batch timeout when --wait=ordered is used; each resource batch must become ready within this duration (defaults to 1m when unset, and must not exceed --timeout). \"Ready\" is determined by kstatus signals for the resource kind (Deployment/StatefulSet/Pod/etc.) or by helm.sh/readiness-success and helm.sh/readiness-failure annotations when set; vanilla Jobs require --wait-for-jobs for the per-batch readiness gate to apply")
 }
 
 func formatWaitInputs(allowOrdered bool) string {

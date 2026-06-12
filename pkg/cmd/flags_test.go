@@ -133,20 +133,20 @@ func TestWaitFlag(t *testing.T) {
 }
 
 func TestReadinessTimeout(t *testing.T) {
-	t.Run("install registers readiness-timeout with one minute default", func(t *testing.T) {
+	t.Run("install registers readiness-timeout unset by default", func(t *testing.T) {
 		cmd := newInstallCmd(&action.Configuration{}, io.Discard)
 		flag := cmd.Flags().Lookup("readiness-timeout")
 		require.NotNil(t, flag)
-		require.Equal(t, "1m0s", flag.DefValue)
+		require.Equal(t, "0s", flag.DefValue)
 		require.NoError(t, cmd.ParseFlags([]string{"--readiness-timeout=30s"}))
 		require.Equal(t, "30s", flag.Value.String())
 	})
 
-	t.Run("upgrade registers readiness-timeout with one minute default", func(t *testing.T) {
+	t.Run("upgrade registers readiness-timeout unset by default", func(t *testing.T) {
 		cmd := newUpgradeCmd(&action.Configuration{}, io.Discard)
 		flag := cmd.Flags().Lookup("readiness-timeout")
 		require.NotNil(t, flag)
-		require.Equal(t, "1m0s", flag.DefValue)
+		require.Equal(t, "0s", flag.DefValue)
 		require.NoError(t, cmd.ParseFlags([]string{"--readiness-timeout=30s"}))
 		require.Equal(t, "30s", flag.Value.String())
 	})
@@ -156,11 +156,11 @@ func TestReadinessTimeout(t *testing.T) {
 		require.Nil(t, newUninstallCmd(&action.Configuration{}, io.Discard).Flags().Lookup("readiness-timeout"))
 	})
 
-	t.Run("rollback registers readiness-timeout with one minute default", func(t *testing.T) {
+	t.Run("rollback registers readiness-timeout unset by default", func(t *testing.T) {
 		cmd := newRollbackCmd(&action.Configuration{}, io.Discard)
 		flag := cmd.Flags().Lookup("readiness-timeout")
 		require.NotNil(t, flag)
-		require.Equal(t, "1m0s", flag.DefValue)
+		require.Equal(t, "0s", flag.DefValue)
 		require.NoError(t, cmd.ParseFlags([]string{"--readiness-timeout=30s"}))
 		require.Equal(t, "30s", flag.Value.String())
 	})
@@ -184,6 +184,14 @@ func TestReadinessTimeout(t *testing.T) {
 
 	t.Run("readiness-timeout is ignored without ordered wait", func(t *testing.T) {
 		_, _, err := executeActionCommand("install plain-install testdata/testcharts/empty --readiness-timeout 30s")
+		require.NoError(t, err)
+	})
+
+	// Regression for hip-0025: a plain install with --timeout below the old
+	// 1m readiness-timeout default and no --readiness-timeout / --wait=ordered
+	// must not be rejected by the readiness-timeout<=timeout guard.
+	t.Run("plain install with sub-minute timeout and no readiness flag succeeds", func(t *testing.T) {
+		_, _, err := executeActionCommand("install short-timeout testdata/testcharts/empty --timeout 30s")
 		require.NoError(t, err)
 	})
 }
