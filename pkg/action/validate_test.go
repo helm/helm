@@ -167,6 +167,18 @@ func TestExistingResourceConflict(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// Regression for PR #32038 review (validate.go nil-client thread): a missing
+// REST client must fail fast rather than silently skipping the conflict and
+// adoption checks.
+func TestExistingResourceConflictNilClientFailsFast(t *testing.T) {
+	info := newMissingDeployment("clientless", "ns-a")
+	info.Client = nil
+
+	_, err := existingResourceConflict(kube.ResourceList{info}, "rel-name", "rel-namespace")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no REST client available")
+}
+
 func TestCheckOwnership(t *testing.T) {
 	deployFoo := newDeploymentResource("foo", "ns-a", "")
 

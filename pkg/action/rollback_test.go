@@ -27,6 +27,9 @@ import (
 
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	rcommon "helm.sh/helm/v4/pkg/release/common"
+	release "helm.sh/helm/v4/pkg/release/v1"
+	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 )
 
 func TestNewRollback(t *testing.T) {
@@ -131,4 +134,86 @@ func TestRollbackRevisionZeroForNonRollback(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, 0, r.Info.RollbackRevision)
+}
+
+// TestRollback_StripsSequencingAnnotationsOnPlainPath locks the fix for cap-21
+// (hip-0025-r5y). Scenario: a release was installed plain at rev-1, upgraded
+// with sequencing at rev-2 (manifest stored in the secret retains the raw
+// helm.sh/depends-on/resource-groups annotation), then rolled back to rev-1.
+// Because targetRelease.SequencingInfo is unset, performRollback falls through
+// to the plain (non-sequenced) UPDATE path. Without stripping, SSA on the
+// rollback rejects the multi-slash annotation key as invalid. This test
+// verifies that BOTH current (rev-2 manifest) and target (rev-1 manifest) are
+// passed through stripSequencingAnnotations before KubeClient.Update is called.
+func TestRollback_StripsSequencingAnnotationsOnPlainPath(t *testing.T) {
+	const annotation = releaseutil.AnnotationDependsOnResourceGroups
+
+	// rev-2's manifest carries the helm-internal annotation because the
+	// rendered template kept it; the live K8s objects had it stripped by the
+	// sequenced upgrade path, but the secret-stored Manifest still has it.
+	sequencedManifest := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cap21-cm
+  namespace: spaced
+  annotations:
+    "` + annotation + `": "[other-group]"
+data:
+  k: v
+`
+
+	// rev-1's manifest is plain.
+	plainManifest := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cap21-cm
+  namespace: spaced
+data:
+  k: v
+`
+
+	rev1 := releaseStub()
+	rev1.Name = "cap21"
+	rev1.Version = 1
+	rev1.Info.Status = rcommon.StatusSuperseded
+	rev1.Manifest = plainManifest
+	rev1.SequencingInfo = nil // plain install
+
+	rev2 := releaseStub()
+	rev2.Name = "cap21"
+	rev2.Version = 2
+	rev2.Info.Status = rcommon.StatusDeployed
+	rev2.Manifest = sequencedManifest
+	rev2.SequencingInfo = &release.SequencingInfo{Enabled: true, Strategy: "ordered"}
+
+	cfg := actionConfigFixture(t)
+	require.NoError(t, cfg.Releases.Create(rev1))
+	require.NoError(t, cfg.Releases.Create(rev2))
+
+	recorder := newRecordingKubeClient()
+	cfg.KubeClient = recorder
+
+	client := NewRollback(cfg)
+	client.Version = 1
+	client.DisableHooks = true
+	require.NoError(t, client.Run("cap21"))
+
+	require.Len(t, recorder.updateCalls, 1, "exactly one KubeClient.Update call expected on plain rollback path")
+	call := recorder.updateCalls[0]
+
+	assertNoSequencingAnnotation(t, "current", call.currentResources, annotation)
+	assertNoSequencingAnnotation(t, "target", call.targetResources, annotation)
+}
+
+func assertNoSequencingAnnotation(t *testing.T, label string, resources kube.ResourceList, key string) {
+	t.Helper()
+	for _, info := range resources {
+		acc := info.Object.(interface {
+			GetAnnotations() map[string]string
+		})
+		anns := acc.GetAnnotations()
+		if _, present := anns[key]; present {
+			t.Fatalf("%s resource %q still carries stripped annotation %q after rollback", label, info.Name, key)
+		}
+	}
 }

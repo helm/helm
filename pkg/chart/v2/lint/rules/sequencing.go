@@ -17,6 +17,7 @@ limitations under the License.
 package rules // import "helm.sh/helm/v4/pkg/chart/v2/lint/rules"
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"strings"
@@ -102,7 +103,7 @@ func validateRenderedSequencingAnnotations(linter *support.Linter, c *chart.Char
 	var renderEngine engine.Engine
 	renderEngine.LintMode = true
 
-	renderedContentMap, err := renderEngine.Render(c, valuesToRender)
+	renderedContentMap, err := renderEngine.RenderWithContext(context.Background(), c, valuesToRender)
 	if err != nil {
 		// Template rendering errors are already reported by the Templates lint rule.
 		return
