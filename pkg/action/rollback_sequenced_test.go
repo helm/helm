@@ -496,3 +496,43 @@ func TestRollback_Sequenced_DryRun(t *testing.T) {
 	assert.Empty(t, client.deleteCalls)
 	assert.Equal(t, 2, latestRollbackRelease(t, rollback, "rollback-dry-run").Version)
 }
+
+// TestRollback_Sequenced_StorageDecodedChart_Subcharts guards the rollback
+// leg of bead xmn: the target revision's chart comes from release storage,
+// which drops the loaded dependency tree, so the forward plan must be
+// rebuilt from the stored metadata and manifest paths: subchart resources
+// first, then the parent's own.
+func TestRollback_Sequenced_StorageDecodedChart_Subcharts(t *testing.T) {
+	client := newRecordingKubeClient()
+	rollback := newRollbackAction(t, client)
+
+	parent := buildChartWithTemplates([]*common.File{
+		makeConfigMapTemplate("templates/parent.yaml", "parent", nil),
+	}, withName("parent"))
+	bar := buildChartWithTemplates([]*common.File{
+		makeConfigMapTemplate("templates/bar.yaml", "bar", nil),
+	}, withName("bar"))
+	parent.AddDependency(bar)
+	parent.Metadata.Dependencies = []*chart.Dependency{{Name: "bar", Enabled: true}}
+	parent.Metadata.Annotations = map[string]string{"helm.sh/depends-on/subcharts": `["bar"]`}
+
+	seedRollbackRelease(t, rollback, "decoded-rollback", 1, rcommon.StatusSuperseded, storageDecodedChart(t, parent), joinManifestDocs(
+		sourcedManifest("parent/charts/bar/templates/bar.yaml", configMapManifest("bar", nil)),
+		sourcedManifest("parent/templates/parent.yaml", configMapManifest("parent", nil)),
+	), &release.SequencingInfo{Enabled: true, Strategy: string(kube.OrderedWaitStrategy)})
+
+	currentChart := buildChartWithTemplates([]*common.File{
+		makeConfigMapTemplate("templates/parent.yaml", "parent", nil),
+	}, withName("parent"))
+	seedRollbackRelease(t, rollback, "decoded-rollback", 2, rcommon.StatusDeployed, currentChart, joinManifestDocs(
+		configMapManifest("parent", nil),
+		configMapManifest("bar", nil),
+	), &release.SequencingInfo{Enabled: true, Strategy: string(kube.OrderedWaitStrategy)})
+
+	rollback.Version = 1
+	require.NoError(t, rollback.Run("decoded-rollback"))
+
+	// Forward deployment order: the subchart's batch first, then the parent's.
+	assert.Equal(t, [][]string{{"ConfigMap/bar"}, {"ConfigMap/parent"}}, updateTargets(client.updateCalls))
+	assert.Equal(t, [][]string{{"ConfigMap/bar"}, {"ConfigMap/parent"}}, client.waitCalls)
+}

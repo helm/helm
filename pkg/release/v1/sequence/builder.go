@@ -101,8 +101,13 @@ func FindSubchart(chrt *chart.Chart, nameOrAlias string) *chart.Chart {
 //
 // Preconditions: manifests are hook-free (SortManifests output or a stored
 // rel.Manifest — hooks are stored separately) and chrt has been through
-// ProcessDependencies (true for both freshly-loaded and storage-decoded
-// charts, per BuildSubchartDAG's contract). Build does not re-filter hooks.
+// ProcessDependencies. Storage-decoded charts satisfy this in metadata only:
+// the release codec drops the loaded dependency tree (Chart.dependencies is
+// unexported), so only the root chart object and its pruned, alias-rewritten
+// Metadata.Dependencies survive. Build handles that shape: the root subchart
+// DAG is built from the trusted metadata (see BuildSubchartDAG) and nested
+// levels are walked structurally from manifest "# Source:" paths
+// (buildStructuralLevel). Build does not re-filter hooks.
 // chrt == nil yields a flat single-level plan at ChartPath "".
 //
 // Errors (fatal — the caller must not proceed):
@@ -117,7 +122,8 @@ func FindSubchart(chrt *chart.Chart, nameOrAlias string) *chart.Chart {
 //   - isolated group among ≥2 groups → demoted to unsequenced
 //   - resource with only one of the two readiness annotations (falls back to kstatus)
 //   - rendered subchart not declared in Chart.yaml (deployed after declared subcharts)
-//   - rendered subchart not resolvable to a chart object (flat fallback at its path)
+//   - rendered subchart not resolvable to a chart object and with ≥2 nested
+//     sibling subcharts (structural walk cannot recover sibling ordering)
 //
 // Postcondition: every input manifest appears in exactly one batch;
 // len(manifests) == Σ len(batch.Manifests()). Unit-enforced.
@@ -139,8 +145,9 @@ func Build(chrt *chart.Chart, manifests []releaseutil.Manifest) (*Plan, error) {
 	return b.plan, nil
 }
 
-func (b *builder) warnf(chartPath, format string, args ...any) {
+func (b *builder) warnf(kind WarningKind, chartPath, format string, args ...any) {
 	b.plan.Warnings = append(b.plan.Warnings, Warning{
+		Kind:      kind,
 		ChartPath: chartPath,
 		Message:   fmt.Sprintf(format, args...),
 	})
@@ -159,7 +166,7 @@ func (b *builder) buildLevel(c *chart.Chart, manifests []releaseutil.Manifest, c
 
 	batches, err := dag.GetBatches()
 	if err != nil {
-		return fmt.Errorf("getting subchart batches for %s: %w", chartPath, err)
+		return fmt.Errorf("subchart circular dependency detected in %s: %w", chartPath, err)
 	}
 	b.plan.Levels[levelIdx].SubchartBatches = batches
 
@@ -178,7 +185,7 @@ func (b *builder) buildLevel(c *chart.Chart, manifests []releaseutil.Manifest, c
 			continue
 		}
 		b.plan.Levels[levelIdx].Undeclared = append(b.plan.Levels[levelIdx].Undeclared, name)
-		b.warnf(chartPath, "rendered subchart %q is not declared in Chart.yaml dependencies; sequencing it after declared subcharts", name)
+		b.warnf(WarningKindUndeclaredSubchart, chartPath, "rendered subchart %q is not declared in Chart.yaml dependencies; sequencing it after declared subcharts", name)
 		if err := b.buildSubchart(c, chartPath, name, grouped[name], depth, levelIdx); err != nil {
 			return err
 		}
@@ -197,11 +204,42 @@ func (b *builder) buildSubchart(parent *chart.Chart, chartPath, name string, man
 	sub := FindSubchart(parent, name)
 	if sub == nil {
 		b.plan.Levels[parentLevelIdx].Unresolved = append(b.plan.Levels[parentLevelIdx].Unresolved, name)
-		b.warnf(chartPath, "subchart %q not found in chart dependencies; deploying its manifests without subchart sequencing", name)
-		return b.appendResourceGroupBatches(subPath, depth+1, manifests)
+		return b.buildStructuralLevel(subPath, depth+1, manifests)
 	}
 
 	return b.buildLevel(sub, manifests, subPath, depth+1)
+}
+
+// buildStructuralLevel sequences a subtree whose chart object is unavailable.
+// Charts decoded from release storage lose their loaded dependency tree (the
+// release codec serializes only exported fields, and Chart.dependencies is
+// not one), so at uninstall/rollback time nested subchart levels have
+// manifests but no chart. The tree structure is recovered from the manifests'
+// "# Source:" path prefixes and walked exactly like buildLevel — subchart
+// subtrees first, then the level's own resource-group batches (the group
+// annotations live on the manifests and fully survive storage). The only
+// ordering information lost with the chart is depends-on edges BETWEEN
+// sibling subcharts: siblings are walked in name order, and a warning is
+// recorded when a level has two or more.
+func (b *builder) buildStructuralLevel(chartPath string, depth int, manifests []releaseutil.Manifest) error {
+	levelIdx := len(b.plan.Levels)
+	b.plan.Levels = append(b.plan.Levels, ChartLevel{Path: chartPath, Depth: depth})
+
+	grouped := GroupManifestsByDirectSubchart(manifests, chartPath)
+	subcharts := slices.DeleteFunc(slices.Sorted(maps.Keys(grouped)), func(name string) bool { return name == "" })
+
+	if len(subcharts) > 0 {
+		b.plan.Levels[levelIdx].SubchartBatches = [][]string{subcharts}
+	}
+	if len(subcharts) >= 2 {
+		b.warnf(WarningKindUnresolvedSubchart, chartPath, "chart metadata for %s is unavailable; sequencing its subcharts %v in name order (depends-on between them, if any, is not recoverable)", chartPath, subcharts)
+	}
+	for _, name := range subcharts {
+		if err := b.buildStructuralLevel(chartPath+"/charts/"+name, depth+1, grouped[name]); err != nil {
+			return err
+		}
+	}
+	return b.appendResourceGroupBatches(chartPath, depth, grouped[""])
 }
 
 func (b *builder) appendResourceGroupBatches(chartPath string, depth int, manifests []releaseutil.Manifest) error {
@@ -217,7 +255,7 @@ func (b *builder) appendResourceGroupBatches(chartPath string, depth int, manife
 		_, hasSuccess := annotations[releaseutil.AnnotationReadinessSuccess]
 		_, hasFailure := annotations[releaseutil.AnnotationReadinessFailure]
 		if hasSuccess != hasFailure {
-			b.warnf(chartPath, "resource %q has only one of %s and %s; falling back to kstatus readiness", manifest.Head.Metadata.Name, releaseutil.AnnotationReadinessSuccess, releaseutil.AnnotationReadinessFailure)
+			b.warnf(WarningKindPartialReadiness, chartPath, "resource %q has only one of %s and %s; falling back to kstatus readiness", manifest.Head.Metadata.Name, releaseutil.AnnotationReadinessSuccess, releaseutil.AnnotationReadinessFailure)
 		}
 	}
 
@@ -227,6 +265,7 @@ func (b *builder) appendResourceGroupBatches(chartPath string, depth int, manife
 	}
 	for _, warning := range warnings {
 		b.plan.Warnings = append(b.plan.Warnings, Warning{
+			Kind:      WarningKindResourceGroupDemotion,
 			ChartPath: chartPath,
 			Message:   warning,
 		})
@@ -239,7 +278,7 @@ func (b *builder) appendResourceGroupBatches(chartPath string, depth int, manife
 			if len(result.GroupDeps[groupName]) != 0 || dependents[groupName] {
 				continue
 			}
-			b.warnf(chartPath, "resource-group %q is isolated (no depends-on edges and no dependents); deploying it in the unsequenced batch after sequenced groups", groupName)
+			b.warnf(WarningKindIsolatedGroup, chartPath, "resource-group %q is isolated (no depends-on edges and no dependents); deploying it in the unsequenced batch after sequenced groups", groupName)
 			unsequenced = append(unsequenced, result.Groups[groupName]...)
 			delete(result.Groups, groupName)
 			delete(result.GroupDeps, groupName)
@@ -254,7 +293,7 @@ func (b *builder) appendResourceGroupBatches(chartPath string, depth int, manife
 
 		groupBatches, err := dag.GetBatches()
 		if err != nil {
-			return fmt.Errorf("getting resource-group batches for %s: %w", chartPath, err)
+			return fmt.Errorf("resource-group circular dependency detected in %s: %w", chartPath, err)
 		}
 
 		dependents := resourceGroupDependents(result.GroupDeps)

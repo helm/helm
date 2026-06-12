@@ -18,6 +18,7 @@ package action
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -640,9 +641,158 @@ func TestUninstall_Sequenced_SkipsUnownedResources(t *testing.T) {
 	}
 
 	_, err := uninstall.Run(rel.Name)
-	is.NoError(err)
+	require.NoError(t, err)
 
 	logOutput := logBuffer.String()
 	is.Contains(logOutput, "skipping delete of resource not owned by this release")
 	is.Contains(logOutput, "unowned-deploy")
+}
+
+// storageDecodedChart encodes and decodes a chart the way the release storage
+// codec does (json.Marshal in pkg/storage/driver). The memory driver used by
+// actionConfigFixture shares release pointers, so without this helper action
+// tests never see the shape real (secrets/configmaps/sql) storage produces:
+// a chart whose loaded dependency tree is gone.
+func storageDecodedChart(t *testing.T, c *chart.Chart) *chart.Chart {
+	t.Helper()
+
+	encoded, err := json.Marshal(c)
+	require.NoError(t, err)
+	decoded := &chart.Chart{}
+	require.NoError(t, json.Unmarshal(encoded, decoded))
+	require.Empty(t, decoded.Dependencies(), "release codec is expected to drop the loaded dependency tree")
+	return decoded
+}
+
+// TestUninstall_Sequenced_StorageDecodedChart_NestedSubcharts reproduces the
+// live bead-xmn failure: `helm uninstall` of a sequenced nested-subchart
+// release read from REAL storage (which drops the chart's loaded dependency
+// tree) must still delete in exact reverse deployment order instead of
+// failing to build the subchart DAG and stranding the release in
+// status=uninstalling.
+func TestUninstall_Sequenced_StorageDecodedChart_NestedSubcharts(t *testing.T) {
+	client := newRecordingKubeClient().withoutBuildClients()
+	uninstall := newSequencedUninstallAction(t, client)
+
+	parent := buildChartWithTemplates([]*common.File{
+		makeConfigMapTemplate("templates/parent.yaml", "parent", nil),
+	}, withName("parent"))
+	bar := buildChartWithTemplates([]*common.File{
+		makeConfigMapTemplate("templates/bar.yaml", "bar", nil),
+	}, withName("bar"))
+	nginx := buildChartWithTemplates([]*common.File{
+		makeConfigMapTemplate("templates/nginx.yaml", "nginx", nil),
+	}, withName("nginx"))
+
+	// Post-ProcessDependencies shape, as install stores it: enabled entries
+	// only, and the parent-resources annotation that made the live uninstall
+	// fail with `references unknown or disabled subchart "bar"`.
+	bar.AddDependency(nginx)
+	bar.Metadata.Dependencies = []*chart.Dependency{{Name: "nginx", Enabled: true}}
+	parent.AddDependency(bar)
+	parent.Metadata.Dependencies = []*chart.Dependency{{Name: "bar", Enabled: true}}
+	parent.Metadata.Annotations = map[string]string{"helm.sh/depends-on/subcharts": `["bar"]`}
+
+	rel := newUninstallRelease(
+		"decoded-nested-uninstall",
+		storageDecodedChart(t, parent),
+		joinManifestDocs(
+			sourcedManifest("parent/charts/bar/charts/nginx/templates/nginx.yaml", configMapManifest("nginx", nil)),
+			sourcedManifest("parent/charts/bar/templates/bar.yaml", configMapManifest("bar", nil)),
+			sourcedManifest("parent/templates/parent.yaml", configMapManifest("parent", nil)),
+		),
+		&release.SequencingInfo{Enabled: true, Strategy: string(kube.OrderedWaitStrategy)},
+	)
+	seedUninstallRelease(t, uninstall, rel)
+
+	_, err := uninstall.Run(rel.Name)
+	require.NoError(t, err)
+
+	assert.Equal(t, [][]string{{"ConfigMap/parent"}, {"ConfigMap/bar"}, {"ConfigMap/nginx"}}, client.deleteCalls)
+	assert.Equal(t, client.deleteCalls, client.deleteWaitCalls)
+}
+
+// TestUninstall_Sequenced_StorageDecodedChart_VendoredSubchart extends the
+// bead-i42 guard across the storage round-trip: a vendored-but-undeclared
+// subchart of a storage-decoded chart is still deleted, after the parent's
+// own resources and before declared subcharts.
+func TestUninstall_Sequenced_StorageDecodedChart_VendoredSubchart(t *testing.T) {
+	client := newRecordingKubeClient().withoutBuildClients()
+	uninstall := newSequencedUninstallAction(t, client)
+
+	parent := buildChartWithTemplates([]*common.File{
+		makeConfigMapTemplate("templates/parent.yaml", "parent", nil),
+	}, withName("parent"))
+	parent.Metadata.Dependencies = []*chart.Dependency{{Name: "database", Enabled: true}}
+	parent.Metadata.Annotations = map[string]string{"helm.sh/depends-on/subcharts": `["database"]`}
+
+	rel := newUninstallRelease(
+		"decoded-vendored-uninstall",
+		storageDecodedChart(t, parent),
+		joinManifestDocs(
+			sourcedManifest("parent/charts/database/templates/database.yaml", configMapManifest("database", nil)),
+			sourcedManifest("parent/charts/vendored/templates/vendored.yaml", configMapManifest("vendored", nil)),
+			sourcedManifest("parent/templates/parent.yaml", configMapManifest("parent", nil)),
+		),
+		&release.SequencingInfo{Enabled: true, Strategy: string(kube.OrderedWaitStrategy)},
+	)
+	seedUninstallRelease(t, uninstall, rel)
+
+	_, err := uninstall.Run(rel.Name)
+	require.NoError(t, err)
+
+	assert.Equal(t, [][]string{{"ConfigMap/parent"}, {"ConfigMap/vendored"}, {"ConfigMap/database"}}, client.deleteCalls)
+	assert.Equal(t, client.deleteCalls, client.deleteWaitCalls)
+}
+
+// TestUninstall_Sequenced_PlanFailure_FallsBackUnsequenced locks the
+// stuck-release fix: when the ordered plan cannot be rebuilt from the stored
+// release (here: a resource-group cycle, which Build treats as fatal), the
+// uninstall must warn and degrade to the standard unsequenced deletion so the
+// release reaches status=uninstalled instead of stranding in uninstalling.
+func TestUninstall_Sequenced_PlanFailure_FallsBackUnsequenced(t *testing.T) {
+	client := newRecordingKubeClient().withoutBuildClients()
+	logBuffer := &bytes.Buffer{}
+
+	cfg := actionConfigFixture(t)
+	cfg.SetLogger(slog.NewTextHandler(logBuffer, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	cfg.KubeClient = client
+
+	uninstall := NewUninstall(cfg)
+	uninstall.DisableHooks = true
+	uninstall.KeepHistory = true
+	uninstall.Timeout = 5 * time.Minute
+	uninstall.WaitStrategy = kube.OrderedWaitStrategy
+
+	manifest := joinManifestDocs(
+		configMapManifest("alpha", map[string]string{
+			releaseutil.AnnotationResourceGroup:           "a",
+			releaseutil.AnnotationDependsOnResourceGroups: `["b"]`,
+		}),
+		configMapManifest("beta", map[string]string{
+			releaseutil.AnnotationResourceGroup:           "b",
+			releaseutil.AnnotationDependsOnResourceGroups: `["a"]`,
+		}),
+	)
+	rel := newUninstallRelease(
+		"cyclic-uninstall",
+		buildChartWithTemplates(nil, withName("cyclic-uninstall")),
+		manifest,
+		nil,
+	)
+	rel.Sequenced = true
+	seedUninstallRelease(t, uninstall, rel)
+
+	_, err := uninstall.Run(rel.Name)
+	require.NoError(t, err)
+
+	assert.Contains(t, logBuffer.String(), "deleting resources without sequencing")
+	require.Len(t, client.deleteCalls, 1)
+	assert.ElementsMatch(t, []string{"ConfigMap/alpha", "ConfigMap/beta"}, client.deleteCalls[0])
+
+	reli, err := uninstall.cfg.Releases.Get(rel.Name, rel.Version)
+	require.NoError(t, err)
+	stored, err := releaserToV1Release(reli)
+	require.NoError(t, err)
+	assert.Equal(t, rcommon.StatusUninstalled, stored.Info.Status)
 }

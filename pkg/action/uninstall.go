@@ -332,7 +332,16 @@ func (e *joinedErrors) Unwrap() []error {
 // deleteRelease deletes the release and returns list of delete resources and manifests that were kept in the deletion process.
 func (u *Uninstall) deleteRelease(rel *release.Release, waiter kube.Waiter) (kube.ResourceList, string, []error) {
 	if rel.IsSequenced() {
-		return u.deleteReleaseSequenced(rel, waiter)
+		resources, kept, errs, planned := u.deleteReleaseSequenced(rel, waiter)
+		if planned {
+			return resources, kept, errs
+		}
+		// The ordered plan could not be rebuilt from the stored release (e.g.
+		// a corrupted record). Never leave the release stuck in uninstalling
+		// over ordering: deletion completeness is what matters, so degrade to
+		// the standard unsequenced deletion below with a warning, exactly as
+		// upgrade does for removed-resource deletion (deleteRemovedFromOldRelease).
+		u.cfg.Logger().Warn("unable to rebuild the ordered uninstall plan from the stored release; deleting resources without sequencing", slog.Any("error", joinErrors(errs, "; ")))
 	}
 
 	var errs []error
@@ -386,10 +395,15 @@ func (u *Uninstall) deleteRelease(rel *release.Release, waiter kube.Waiter) (kub
 // dependencies, which the DAG-walking deleter used to leak (bead i42).
 // Keep-policy filtering applies to the parsed stream before the plan is built,
 // so kept resources are never part of the plan.
-func (u *Uninstall) deleteReleaseSequenced(rel *release.Release, waiter kube.Waiter) (kube.ResourceList, string, []error) {
+//
+// The final return value reports whether a plan was built and ordered deletion
+// ran (regardless of deletion errors). false means planning failed before any
+// deletion was attempted; the caller falls back to unsequenced deletion so a
+// planning failure can never leave the release stuck in uninstalling.
+func (u *Uninstall) deleteReleaseSequenced(rel *release.Release, waiter kube.Waiter) (kube.ResourceList, string, []error, bool) {
 	manifests, err := sequence.ParseStoredManifests(rel.Manifest)
 	if err != nil {
-		return nil, rel.Manifest, []error{fmt.Errorf("corrupted release record. You must manually delete the resources: %w", err)}
+		return nil, "", []error{fmt.Errorf("parsing stored release manifest: %w", err)}, false
 	}
 
 	filesToKeep, filesToDelete := filterManifestsToKeep(manifests)
@@ -403,7 +417,7 @@ func (u *Uninstall) deleteReleaseSequenced(rel *release.Release, waiter kube.Wai
 
 	plan, err := sequence.Build(rel.Chart, filesToDelete)
 	if err != nil {
-		return nil, kept.String(), []error{fmt.Errorf("building sequencing plan for uninstall: %w", err)}
+		return nil, "", []error{fmt.Errorf("building sequencing plan for uninstall: %w", err)}, false
 	}
 	logPlanWarnings(u.cfg.Logger(), plan)
 
@@ -413,10 +427,10 @@ func (u *Uninstall) deleteReleaseSequenced(rel *release.Release, waiter kube.Wai
 		deleted, errs := u.deleteManifestBatch(batch.Manifests(), waiter, deadline, rel.Name, rel.Namespace)
 		allDeleted = append(allDeleted, deleted...)
 		if len(errs) > 0 {
-			return allDeleted, kept.String(), errs
+			return allDeleted, kept.String(), errs, true
 		}
 	}
-	return allDeleted, kept.String(), nil
+	return allDeleted, kept.String(), nil, true
 }
 
 // verifyOwnedForDelete verifies which of the built resources are owned by the
