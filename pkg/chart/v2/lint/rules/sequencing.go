@@ -18,8 +18,10 @@ package rules // import "helm.sh/helm/v4/pkg/chart/v2/lint/rules"
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"path"
+	"maps"
+	"slices"
 	"strings"
 
 	"sigs.k8s.io/yaml"
@@ -33,6 +35,7 @@ import (
 	"helm.sh/helm/v4/pkg/engine"
 	"helm.sh/helm/v4/pkg/kube"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/release/v1/sequence"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 )
 
@@ -40,50 +43,46 @@ import (
 func Sequencing(linter *support.Linter, namespace string, values map[string]any) {
 	c, err := loader.LoadDir(linter.ChartDir)
 	if err != nil {
-		// Chart load errors are already reported by other lint rules.
-		return
+		return // chart load errors are reported by other lint rules
 	}
-
-	// ProcessDependencies must run before validateSubchartSequencing:
-	// it prunes disabled subcharts from c.Dependencies() and applies
-	// alias renames, which BuildSubchartDAG relies on.
 	if err := chartutil.ProcessDependencies(c, values); err != nil {
-		// ProcessDependencies rejects invalid depends-on references (e.g.
-		// ambiguous alias references); surface that instead of silently
-		// skipping sequencing validation.
 		linter.RunLinterRule(support.ErrorSev, linter.ChartDir, err)
 		return
 	}
 
-	linter.RunLinterRule(support.ErrorSev, linter.ChartDir, validateSubchartSequencing(c))
-	validateRenderedSequencingAnnotations(linter, c, namespace, values)
-}
+	// Render failures are reported by the Templates rule; manifests stays nil
+	// so Build still validates the top-level subchart DAG (preserving the old
+	// pre-render validateSubchartSequencing coverage for broken-template charts).
+	manifests := collectRenderedManifests(linter, c, namespace, values)
 
-func validateSubchartSequencing(c *chart.Chart) error {
-	// Note: we must NOT early-return on len(Dependencies) == 0. A chart with
-	// zero dependencies can still carry a helm.sh/depends-on/subcharts
-	// annotation that references a non-existent subchart — the orphan case
-	// BuildSubchartDAG's validateParentSubchartDependencies is meant to catch.
-	if c.Metadata == nil {
-		return nil
-	}
-
-	dag, err := chartutil.BuildSubchartDAG(c)
+	plan, err := sequence.Build(c, manifests)
 	if err != nil {
-		return err
-	}
-	if _, err := dag.GetBatches(); err != nil {
-		return fmt.Errorf("subchart circular dependency detected: %w", err)
-	}
-
-	return nil
-}
-
-func validateRenderedSequencingAnnotations(linter *support.Linter, c *chart.Chart, namespace string, values map[string]any) {
-	if err := chartutil.ProcessDependencies(c, values); err != nil {
+		// Build's fatal classes are exactly what fails at install time:
+		// subchart/resource-group cycles, unknown depends-on refs, malformed
+		// helm.sh/depends-on/subcharts, multi-group assignment.
+		linter.RunLinterRule(support.ErrorSev, linter.ChartDir, err)
 		return
 	}
 
+	for _, w := range plan.Warnings {
+		path := w.ChartPath
+		if path == "" {
+			path = linter.ChartDir
+		}
+		switch w.Kind {
+		case sequence.WarningKindResourceGroupDemotion:
+			// Runtime recovers by demoting; the chart author must fix these.
+			linter.RunLinterRule(support.ErrorSev, path, errors.New(w.Message))
+		case sequence.WarningKindPartialReadiness:
+			// Already reported per-template (with better context) by
+			// validateReadinessAnnotations during collection.
+		default: // isolated group, undeclared/unresolved subchart
+			linter.RunLinterRule(support.WarningSev, path, errors.New(w.Message))
+		}
+	}
+}
+
+func collectRenderedManifests(linter *support.Linter, c *chart.Chart, namespace string, values map[string]any) []releaseutil.Manifest {
 	options := common.ReleaseOptions{
 		Name:      "test-release",
 		Namespace: namespace,
@@ -92,12 +91,12 @@ func validateRenderedSequencingAnnotations(linter *support.Linter, c *chart.Char
 
 	coalescedValues, err := commonutil.CoalesceValues(c, values)
 	if err != nil {
-		return
+		return nil
 	}
 
 	valuesToRender, err := commonutil.ToRenderValues(c, coalescedValues, options, caps)
 	if err != nil {
-		return
+		return nil
 	}
 
 	var renderEngine engine.Engine
@@ -106,17 +105,17 @@ func validateRenderedSequencingAnnotations(linter *support.Linter, c *chart.Char
 	renderedContentMap, err := renderEngine.RenderWithContext(context.Background(), c, valuesToRender)
 	if err != nil {
 		// Template rendering errors are already reported by the Templates lint rule.
-		return
+		return nil
 	}
 
-	manifestsByChart := make(map[string][]releaseutil.Manifest)
-	for templatePath, content := range renderedContentMap {
+	var manifests []releaseutil.Manifest
+	for _, templatePath := range slices.Sorted(maps.Keys(renderedContentMap)) {
+		content := renderedContentMap[templatePath]
 		if strings.TrimSpace(content) == "" {
 			continue
 		}
 
-		chartPath := renderedTemplateChartPath(templatePath)
-		for _, manifest := range parseRenderedManifests(content) {
+		for _, manifest := range parseRenderedManifests(templatePath, content) {
 			// HIP-0025 explicitly excludes hooks from sequencing: at install
 			// time SortManifests routes hook resources out before resource-group
 			// parsing runs, so their sequencing annotations are ignored. Mirror
@@ -127,13 +126,11 @@ func validateRenderedSequencingAnnotations(linter *support.Linter, c *chart.Char
 				continue
 			}
 			validateReadinessAnnotations(linter, templatePath, manifest)
-			manifestsByChart[chartPath] = append(manifestsByChart[chartPath], manifest)
+			manifests = append(manifests, manifest)
 		}
 	}
 
-	for chartPath, manifests := range manifestsByChart {
-		validateResourceGroupAnnotations(linter, chartPath, manifests)
-	}
+	return manifests
 }
 
 // isHookManifest reports whether a rendered manifest is a Helm hook. Hooks
@@ -147,19 +144,12 @@ func isHookManifest(manifest releaseutil.Manifest) bool {
 	return strings.TrimSpace(manifest.Head.Metadata.Annotations[release.HookAnnotation]) != ""
 }
 
-func renderedTemplateChartPath(templatePath string) string {
-	if chartPath, _, ok := strings.Cut(templatePath, "/templates/"); ok {
-		return chartPath
-	}
-
-	return path.Dir(templatePath)
-}
-
-func parseRenderedManifests(content string) []releaseutil.Manifest {
+func parseRenderedManifests(templatePath, content string) []releaseutil.Manifest {
 	rawManifests := releaseutil.SplitManifests(content)
 	manifests := make([]releaseutil.Manifest, 0, len(rawManifests))
 
-	for manifestName, raw := range rawManifests {
+	for _, manifestName := range slices.Sorted(maps.Keys(rawManifests)) {
+		raw := rawManifests[manifestName]
 		if strings.TrimSpace(raw) == "" {
 			continue
 		}
@@ -169,12 +159,8 @@ func parseRenderedManifests(content string) []releaseutil.Manifest {
 			continue
 		}
 
-		if head.Metadata != nil && head.Metadata.Name != "" {
-			manifestName = head.Metadata.Name
-		}
-
 		manifests = append(manifests, releaseutil.Manifest{
-			Name:    manifestName,
+			Name:    templatePath,
 			Content: raw,
 			Head:    &head,
 		})
@@ -217,30 +203,6 @@ func validateReadinessAnnotations(linter *support.Linter, templatePath string, m
 				resourceDisplayName(manifest), key, err,
 			))
 		}
-	}
-}
-
-func validateResourceGroupAnnotations(linter *support.Linter, chartPath string, manifests []releaseutil.Manifest) {
-	result, warnings, err := releaseutil.ParseResourceGroups(manifests)
-	// HIP-0025: lint must fail on orphan resource-group dependencies and
-	// malformed annotation JSON. Runtime falls back to the unsequenced batch
-	// for graceful recovery, but the chart author should fix these at lint time.
-	for _, warning := range warnings {
-		linter.RunLinterRule(support.ErrorSev, chartPath, fmt.Errorf("%s", warning))
-	}
-	if err != nil {
-		linter.RunLinterRule(support.ErrorSev, chartPath, err)
-		return
-	}
-
-	dag, err := releaseutil.BuildResourceGroupDAG(result)
-	if err != nil {
-		linter.RunLinterRule(support.ErrorSev, chartPath, err)
-		return
-	}
-
-	if _, err := dag.GetBatches(); err != nil {
-		linter.RunLinterRule(support.ErrorSev, chartPath, fmt.Errorf("resource-group circular dependency detected: %w", err))
 	}
 }
 

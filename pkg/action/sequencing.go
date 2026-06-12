@@ -44,38 +44,6 @@ func computeDeadline(timeout time.Duration) time.Time {
 	return time.Now().Add(timeout)
 }
 
-// GroupManifestsByDirectSubchart groups manifests by the direct subchart they belong to.
-// chartPath is the full path-prefix for the current chart level — at the top level
-// it is the chart name (e.g. "parent"); at deeper recursion levels it is the joined
-// path through "/charts/" segments (e.g. "parent/charts/sub").
-// The current chart level's own manifests are returned under the empty string key "".
-// Direct subcharts are keyed by their immediate directory name under
-// "<chartPath>/charts/<subchart>/". Nested grandchildren are grouped under their
-// direct subchart parent ("sub"), since nested sequencing is handled recursively.
-func GroupManifestsByDirectSubchart(manifests []releaseutil.Manifest, chartPath string) map[string][]releaseutil.Manifest {
-	result := make(map[string][]releaseutil.Manifest)
-	if chartPath == "" {
-		result[""] = append(result[""], manifests...)
-		return result
-	}
-
-	chartsPrefix := chartPath + "/charts/"
-	for _, m := range manifests {
-		if !strings.HasPrefix(m.Name, chartsPrefix) {
-			result[""] = append(result[""], m)
-			continue
-		}
-		rest := m.Name[len(chartsPrefix):]
-		subchartName, _, ok := strings.Cut(rest, "/")
-		if !ok {
-			result[""] = append(result[""], m)
-			continue
-		}
-		result[subchartName] = append(result[subchartName], m)
-	}
-	return result
-}
-
 // buildManifestYAML concatenates the Content fields of the given manifests into a single
 // YAML stream suitable for passing to KubeClient.Build().
 func buildManifestYAML(manifests []releaseutil.Manifest) string {

@@ -114,6 +114,107 @@ func TestSequencing_SubchartAnnotationOrphanWithNoDependencies(t *testing.T) {
 	requireMessage(t, messages, support.ErrorSev, "unknown or disabled subchart")
 }
 
+func TestSequencing_NestedSubchartCircularDependency(t *testing.T) {
+	t.Parallel()
+
+	// The CHILD's Chart.yaml declares a depends-on cycle between its two
+	// grandchildren. HEAD's lint only validates the ROOT's subchart DAG, so
+	// this chart lints clean but fails fatally at install (bead lkx).
+	child := newChart("child", map[string]string{
+		"templates/cm.yaml": manifestYAML("ConfigMap", "child-cm", nil),
+	})
+	child.Metadata.Dependencies = []*chart.Dependency{
+		{Name: "grandchild-a", Version: "0.1.0", Repository: "file://charts/grandchild-a", DependsOn: []string{"grandchild-b"}},
+		{Name: "grandchild-b", Version: "0.1.0", Repository: "file://charts/grandchild-b", DependsOn: []string{"grandchild-a"}},
+	}
+	child.SetDependencies(newChart("grandchild-a", nil), newChart("grandchild-b", nil))
+
+	root := newChart("testchart", nil)
+	root.Metadata.Dependencies = []*chart.Dependency{
+		{Name: "child", Version: "0.1.0", Repository: "file://charts/child"},
+	}
+	root.SetDependencies(child)
+
+	messages := runSequencingLint(t, root)
+	requireMessage(t, messages, support.ErrorSev, "subchart circular dependency detected")
+	requireMessage(t, messages, support.ErrorSev, "testchart/charts/child")
+}
+
+func TestSequencing_NestedSubchartUnknownDependsOnRef(t *testing.T) {
+	t.Parallel()
+
+	child := newChart("child", map[string]string{
+		"templates/cm.yaml": manifestYAML("ConfigMap", "child-cm", nil),
+	})
+	child.Metadata.Dependencies = []*chart.Dependency{
+		{Name: "grandchild-a", Version: "0.1.0", Repository: "file://charts/grandchild-a", DependsOn: []string{"missing"}},
+	}
+	child.SetDependencies(newChart("grandchild-a", nil))
+
+	root := newChart("testchart", nil)
+	root.Metadata.Dependencies = []*chart.Dependency{
+		{Name: "child", Version: "0.1.0", Repository: "file://charts/child"},
+	}
+	root.SetDependencies(child)
+
+	messages := runSequencingLint(t, root)
+	requireMessage(t, messages, support.ErrorSev, `depends-on unknown or disabled subchart "missing"`)
+	requireMessage(t, messages, support.ErrorSev, "testchart/charts/child")
+}
+
+func TestSequencing_NestedResourceGroupCircularDependency(t *testing.T) {
+	t.Parallel()
+
+	child := newChart("child", map[string]string{
+		"templates/a.yaml": manifestYAML("ConfigMap", "group-a", map[string]string{
+			releaseutil.AnnotationResourceGroup:           "a",
+			releaseutil.AnnotationDependsOnResourceGroups: `'["b"]'`,
+		}),
+		"templates/b.yaml": manifestYAML("ConfigMap", "group-b", map[string]string{
+			releaseutil.AnnotationResourceGroup:           "b",
+			releaseutil.AnnotationDependsOnResourceGroups: `'["a"]'`,
+		}),
+	})
+	root := newChart("testchart", nil)
+	root.Metadata.Dependencies = []*chart.Dependency{
+		{Name: "child", Version: "0.1.0", Repository: "file://charts/child"},
+	}
+	root.SetDependencies(child)
+
+	messages := runSequencingLint(t, root)
+	requireMessage(t, messages, support.ErrorSev, "resource-group circular dependency detected")
+	requireMessage(t, messages, support.ErrorSev, "testchart/charts/child")
+}
+
+func TestSequencing_IsolatedGroupWarns(t *testing.T) {
+	t.Parallel()
+
+	// Two groups, no depends-on edges between them: runtime demotes both to
+	// the unsequenced batch with a warning. Lint surfaces that demotion as a
+	// WARNING (not an error — the chart still deploys).
+	messages := runSequencingLint(t, newChart("testchart", map[string]string{
+		"templates/a.yaml": manifestYAML("ConfigMap", "cm-a", map[string]string{releaseutil.AnnotationResourceGroup: "a"}),
+		"templates/b.yaml": manifestYAML("ConfigMap", "cm-b", map[string]string{releaseutil.AnnotationResourceGroup: "b"}),
+	}))
+	requireMessage(t, messages, support.WarningSev, "isolated")
+}
+
+func TestSequencing_UndeclaredSubchartWarns(t *testing.T) {
+	t.Parallel()
+
+	// Vendored subchart present in charts/ but absent from Chart.yaml
+	// dependencies: runtime deploys it after declared subcharts with a
+	// warning. Lint mirrors that as a WARNING.
+	sub := newChart("vendored", map[string]string{
+		"templates/cm.yaml": manifestYAML("ConfigMap", "vendored-cm", nil),
+	})
+	root := newChart("testchart", nil)
+	root.SetDependencies(sub) // deliberately NOT in root.Metadata.Dependencies
+
+	messages := runSequencingLint(t, root)
+	requireMessage(t, messages, support.WarningSev, "not declared in Chart.yaml")
+}
+
 func TestSequencing_RenderedAnnotationRules(t *testing.T) {
 	t.Parallel()
 

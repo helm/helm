@@ -230,25 +230,52 @@ func TestBuildSubchartDAG_NestedSubcharts(t *testing.T) {
 	assertBatches(t, nested, [][]string{{"cache"}, {"worker"}})
 }
 
-// TestBuildSubchartDAG_MetadataOnlyNoLoadedDeps locks in the post-rewrite
-// contract: when c.Metadata.Dependencies is non-empty but c.Dependencies()
-// is empty (e.g., chart loaded but ProcessDependencies disabled everything),
-// the DAG should have no nodes and produce no error.
-func TestBuildSubchartDAG_MetadataOnlyNoLoadedDeps(t *testing.T) {
+// TestBuildSubchartDAG_StorageDecodedMetadataTrusted: a chart decoded from
+// release storage has Metadata.Dependencies (pruned to the enabled set and
+// alias-rewritten by ProcessDependencies before it was stored, Enabled=true)
+// but an EMPTY loaded-dependency tree — the release codec drops the
+// unexported Chart.dependencies field. Those metadata entries must be
+// trusted, or uninstall/rollback of any sequenced release fails (bead xmn).
+func TestBuildSubchartDAG_StorageDecodedMetadataTrusted(t *testing.T) {
 	t.Parallel()
 
 	c := &chart.Chart{
 		Metadata: &chart.Metadata{
 			Name: "parent",
 			Dependencies: []*chart.Dependency{
-				{Name: "ghost", Enabled: true},
+				{Name: "db", Enabled: true},
+				{Name: "app", Enabled: true, DependsOn: []string{"db"}},
+			},
+			Annotations: map[string]string{
+				AnnotationDependsOnSubcharts: `["app"]`,
 			},
 		},
 	}
-	// Note: no AddDependency call — c.Dependencies() is empty.
+	// Note: no AddDependency call — c.Dependencies() is empty, as after a
+	// storage round-trip.
+
+	assertBatches(t, c, [][]string{{"db"}, {"app"}})
+}
+
+// TestBuildSubchartDAG_MetadataOnlyNotEnabled_Ignored: freshly parsed
+// Chart.yaml entries default to Enabled=false — only ProcessDependencies sets
+// it true. Without loaded dependencies (e.g. lint before `helm dependency
+// build`) such entries stay excluded, preserving the pre-existing contract
+// for unprocessed charts.
+func TestBuildSubchartDAG_MetadataOnlyNotEnabled_Ignored(t *testing.T) {
+	t.Parallel()
+
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name: "parent",
+			Dependencies: []*chart.Dependency{
+				{Name: "ghost"},
+			},
+		},
+	}
 
 	batches := batchesForChart(t, c)
-	assert.Empty(t, batches, "no loaded deps should yield empty DAG")
+	assert.Empty(t, batches, "unprocessed metadata-only deps should yield empty DAG")
 }
 
 // TestBuildSubchartDAG_AnnotationReferencesUnloadedDep verifies that an
@@ -498,7 +525,7 @@ func TestProcessDependencies_PlainAndAliasedSameChart(t *testing.T) {
 	)
 	err := ProcessDependencies(ambiguous, map[string]any{})
 	require.Error(t, err)
-	assert.ErrorContains(t, err, `ambiguous subchart reference "svc"`)
+	require.ErrorContains(t, err, `ambiguous subchart reference "svc"`)
 
 	byAlias := pipelineChart(
 		pipelineDependency("svc", ""),

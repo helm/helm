@@ -82,9 +82,33 @@ func (b Batch) Manifests() []releaseutil.Manifest {
 	return manifests
 }
 
+// WarningKind classifies a Warning so consumers can map runtime demotion
+// classes to severities without string-matching messages.
+type WarningKind uint8
+
+const (
+	// WarningKindResourceGroupDemotion: a resource or group demoted to the
+	// unsequenced batch by ParseResourceGroups (malformed depends-on JSON,
+	// reference to a non-existent group). Lint treats these as errors.
+	WarningKindResourceGroupDemotion WarningKind = iota
+	// WarningKindIsolatedGroup: a group with no edges demoted to unsequenced.
+	WarningKindIsolatedGroup
+	// WarningKindPartialReadiness: only one of the two readiness annotations
+	// present; the resource falls back to kstatus.
+	WarningKindPartialReadiness
+	// WarningKindUndeclaredSubchart: rendered subchart absent from Chart.yaml.
+	WarningKindUndeclaredSubchart
+	// WarningKindUnresolvedSubchart: rendered subchart dir with no resolvable
+	// chart object (typical for nested levels of storage-decoded charts) whose
+	// structural walk found ≥2 sibling subcharts, so their depends-on order,
+	// if any was declared, could not be recovered.
+	WarningKindUnresolvedSubchart
+)
+
 // Warning is a non-fatal misconfiguration surfaced during Build.
-// Drivers log them; lint promotes them to errors.
+// Drivers log them; lint maps them to rule severities.
 type Warning struct {
+	Kind      WarningKind
 	ChartPath string // "" for chart-independent warnings
 	Message   string
 }

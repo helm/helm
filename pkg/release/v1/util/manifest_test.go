@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sigs.k8s.io/yaml"
 )
 
 func TestSplitManifests(t *testing.T) {
@@ -530,9 +531,11 @@ func TestStripHelmInternalAnnotations(t *testing.T) {
 	tests := []struct {
 		name              string
 		input             string
+		expected          string
 		mustNotContain    []string
 		mustContain       []string
 		mustEqualVerbatim bool
+		mustParseOutput   bool
 	}{
 		{
 			name: "strips multi-slash key, preserves siblings",
@@ -598,11 +601,264 @@ data:
 			input:             ":\n\tnot valid yaml at all: [",
 			mustEqualVerbatim: true,
 		},
+		{
+			name: "data block scalar look-alike survives",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-rules
+data:
+  rules.txt: |
+    helm.sh/depends-on/resource-groups: ["a"]
+    second line
+`,
+			mustEqualVerbatim: true,
+		},
+		{
+			name: "annotation in metadata AND look-alike in data",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-mixed
+  annotations:
+    helm.sh/depends-on/resource-groups: '["db"]'
+    helm.sh/resource-group: app
+data:
+  rules.txt: |
+    helm.sh/depends-on/resource-groups: '["db"]'
+    second line
+`,
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-mixed
+  annotations:
+    helm.sh/resource-group: app
+data:
+  rules.txt: |
+    helm.sh/depends-on/resource-groups: '["db"]'
+    second line
+`,
+		},
+		{
+			name: "multi-line annotation value stripped whole",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-multiline
+  annotations:
+    helm.sh/depends-on/resource-groups: >-
+      ["databases",
+      "cache"]
+    keep.example.com/x: "y"
+data:
+  k: v
+`,
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-multiline
+  annotations:
+    keep.example.com/x: "y"
+data:
+  k: v
+`,
+		},
+		{
+			name: "folded annotation value with internal blank line stripped whole",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-blank
+  annotations:
+    helm.sh/depends-on/resource-groups: >-
+      ["a",
+
+      "b"]
+    keep.example.com/x: "y"
+data:
+  k: v
+`,
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-blank
+  annotations:
+    keep.example.com/x: "y"
+data:
+  k: v
+`,
+			mustParseOutput: true,
+		},
+		{
+			name: "literal annotation value with internal blank line stripped whole",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-literal-blank
+  annotations:
+    helm.sh/depends-on/resource-groups: |
+      ["a",
+
+      "b"]
+    keep.example.com/x: "y"
+data:
+  script: |
+    preserve
+
+    me
+`,
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-literal-blank
+  annotations:
+    keep.example.com/x: "y"
+data:
+  script: |
+    preserve
+
+    me
+`,
+			mustParseOutput: true,
+		},
+		{
+			name: "value containing '#' handled",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-hash
+  annotations:
+    helm.sh/depends-on/resource-groups: '["a#b"]'
+    keep.example.com/x: "y"
+data:
+  k: v
+`,
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-hash
+  annotations:
+    keep.example.com/x: "y"
+data:
+  k: v
+`,
+		},
+		{
+			name: "multi-doc stream: only affected doc changes",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-clean
+data:
+  k: v
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-annotated
+  annotations:
+    helm.sh/depends-on/resource-groups: '["db"]'
+    keep.example.com/x: "y"
+data:
+  k: v
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-data
+data:
+  rules.txt: |
+    helm.sh/depends-on/resource-groups: ["db"]
+    keep
+`,
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-clean
+data:
+  k: v
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-annotated
+  annotations:
+    keep.example.com/x: "y"
+data:
+  k: v
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-data
+data:
+  rules.txt: |
+    helm.sh/depends-on/resource-groups: ["db"]
+    keep
+`,
+		},
+		{
+			name:              "byte-identity fast path odd formatting",
+			input:             "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm-fast  \n  # comment about annotations\n\ndata:\n  k: v  ",
+			mustEqualVerbatim: true,
+		},
+		{
+			name:              "byte-identity fast path CRLF",
+			input:             "apiVersion: v1\r\nkind: ConfigMap\r\nmetadata:\r\n  name: cm-crlf\r\ndata:\r\n  k: v\r\n",
+			mustEqualVerbatim: true,
+		},
+		{
+			name: "quoted key form stripped",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-quoted
+  annotations:
+    "helm.sh/depends-on/resource-groups": '["a"]'
+    keep.example.com/x: "y"
+data:
+  k: v
+`,
+			expected: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-quoted
+  annotations:
+    keep.example.com/x: "y"
+data:
+  k: v
+`,
+		},
+		{
+			name: "separator inside block scalar does not corrupt",
+			input: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-separator
+data:
+  script: |
+---
+    still byte-identical
+`,
+			mustEqualVerbatim: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := StripHelmInternalAnnotations(tt.input)
+			if tt.mustParseOutput {
+				if err := yaml.Unmarshal([]byte(got), map[string]any{}); err != nil {
+					t.Errorf("expected output to parse as yaml, got error: %v\n%s", err, got)
+				}
+			}
+			if tt.expected != "" {
+				if got != tt.expected {
+					t.Errorf("expected exact output:\n%s\ngot:\n%s", tt.expected, got)
+				}
+				return
+			}
 			if tt.mustEqualVerbatim {
 				if got != tt.input {
 					t.Errorf("expected verbatim passthrough, got:\n%s", got)
