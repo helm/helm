@@ -25,6 +25,15 @@ type ApplyMethod string
 const ApplyMethodClientSideApply ApplyMethod = "csa"
 const ApplyMethodServerSideApply ApplyMethod = "ssa"
 
+// SequencingInfo is the legacy ordered-sequencing record stored by earlier
+// builds of this fork. It is retained so those releases keep decoding; new
+// code reads Release.IsSequenced and writers are migrating to the Sequenced
+// field.
+type SequencingInfo struct {
+	Enabled  bool   `json:"enabled,omitempty"`
+	Strategy string `json:"strategy,omitempty"`
+}
+
 // Release describes a deployment of a chart, together with the chart
 // and the variables used to deploy that chart.
 type Release struct {
@@ -51,10 +60,25 @@ type Release struct {
 	// ApplyMethod stores whether server-side or client-side apply was used for the release
 	// Unset (empty string) should be treated as the default of client-side apply
 	ApplyMethod string `json:"apply_method,omitempty"` // "ssa" | "csa"
+	// Sequenced records that this revision was deployed with ordered sequencing
+	// (--wait=ordered / WaitStrategy=ordered). It is set before the release record
+	// is first persisted so that any failure-cleanup path sees it.
+	Sequenced bool `json:"sequenced,omitempty"`
+	// SequencingInfo is read for releases stored by earlier builds of this fork.
+	// Legacy, decode-only: writers are migrating to Sequenced; read via IsSequenced.
+	SequencingInfo *SequencingInfo `json:"sequencing_info,omitempty"`
 }
 
 // SetStatus is a helper for setting the status on a release.
 func (r *Release) SetStatus(status common.Status, msg string) {
 	r.Info.Status = status
 	r.Info.Description = msg
+}
+
+// IsSequenced reports whether this release revision was deployed with ordered
+// sequencing. It reads both the current Sequenced field and the legacy
+// SequencingInfo shape stored by earlier builds, so pre-existing sequenced
+// releases keep sequencing through uninstall and rollback.
+func (r *Release) IsSequenced() bool {
+	return r.Sequenced || (r.SequencingInfo != nil && r.SequencingInfo.Enabled)
 }
