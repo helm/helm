@@ -17,6 +17,7 @@ limitations under the License.
 package action
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -25,10 +26,13 @@ import (
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	chartcommon "helm.sh/helm/v4/pkg/chart/common"
+	renderutil "helm.sh/helm/v4/pkg/chart/common/util"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
 	releasei "helm.sh/helm/v4/pkg/release"
-	"helm.sh/helm/v4/pkg/release/common"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -88,73 +92,6 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		if err != nil {
 			return nil, err
 		}
-
-		// Verify ownership in dry-run mode to show what would actually be deleted
-		manifests := releaseutil.SplitManifests(r.Manifest)
-		_, files, err := releaseutil.SortManifests(manifests, nil, releaseutil.UninstallOrder)
-		if err == nil {
-			filesToKeep, filesToDelete := filterManifestsToKeep(files)
-
-			var builder strings.Builder
-			for _, file := range filesToDelete {
-				builder.WriteString("\n---\n" + file.Content)
-			}
-
-			resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
-			if err == nil && len(resources) > 0 {
-				ownedResources, unownedResources, unverifiableResources, err := verifyOwnershipBeforeDelete(resources, r.Name, r.Namespace)
-				if err == nil {
-					if len(unownedResources) > 0 {
-						u.cfg.Logger().Warn("dry-run: resources would be skipped because they are not owned by this release",
-							"release", r.Name,
-							"count", len(unownedResources))
-						for _, info := range unownedResources {
-							u.cfg.Logger().Warn("dry-run: would skip resource",
-								"kind", info.Mapping.GroupVersionKind.Kind,
-								"name", info.Name,
-								"namespace", info.Namespace)
-						}
-					}
-
-					if len(unverifiableResources) > 0 {
-						u.cfg.Logger().Warn("dry-run: resources would be skipped because their ownership could not be verified",
-							"release", r.Name,
-							"count", len(unverifiableResources))
-						for _, ur := range unverifiableResources {
-							u.cfg.Logger().Warn("dry-run: would skip resource (ownership could not be verified)",
-								"kind", ur.Info.Mapping.GroupVersionKind.Kind,
-								"name", ur.Info.Name,
-								"namespace", ur.Info.Namespace,
-								"error", ur.Err)
-						}
-					}
-
-					if len(ownedResources) > 0 {
-						u.cfg.Logger().Debug("dry-run: resources would be deleted",
-							"release", r.Name,
-							"count", len(ownedResources))
-						for _, info := range ownedResources {
-							u.cfg.Logger().Debug("dry-run: would delete resource",
-								"kind", info.Mapping.GroupVersionKind.Kind,
-								"name", info.Name,
-								"namespace", info.Namespace)
-						}
-					}
-				}
-			}
-
-			// Include kept resources in dry-run info
-			if len(filesToKeep) > 0 {
-				var kept strings.Builder
-				kept.WriteString("These resources were kept due to the resource policy:\n")
-				for _, f := range filesToKeep {
-					fmt.Fprintf(&kept, "[%s] %s\n", f.Head.Kind, f.Head.Metadata.Name)
-				}
-				res := &releasei.UninstallReleaseResponse{Release: r, Info: kept.String()}
-				return res, nil
-			}
-		}
-
 		return &releasei.UninstallReleaseResponse{Release: r}, nil
 	}
 
@@ -183,7 +120,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 
 	// TODO: Are there any cases where we want to force a delete even if it's
 	// already marked deleted?
-	if rel.Info.Status == common.StatusUninstalled {
+	if rel.Info.Status == releasecommon.StatusUninstalled {
 		if !u.KeepHistory {
 			if err := u.purgeReleases(rels...); err != nil {
 				return nil, fmt.Errorf("uninstall: Failed to purge the release: %w", err)
@@ -194,7 +131,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 	}
 
 	u.cfg.Logger().Debug("uninstall: deleting release", "name", name)
-	rel.Info.Status = common.StatusUninstalling
+	rel.Info.Status = releasecommon.StatusUninstalling
 	rel.Info.Deleted = time.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
 	res := &releasei.UninstallReleaseResponse{Release: rel}
@@ -214,16 +151,21 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		u.cfg.Logger().Debug("uninstall: Failed to store updated release", slog.Any("error", err))
 	}
 
-	deletedResources, kept, errs := u.deleteRelease(rel)
+	deletedResources, kept, errs := u.deleteRelease(rel, waiter)
 	if errs != nil {
 		u.cfg.Logger().Debug("uninstall: Failed to delete release", slog.Any("error", errs))
 		return nil, fmt.Errorf("failed to delete release: %s", name)
 	}
 
+	if kept != "" {
+		kept = "These resources were kept due to the resource policy:\n" + kept
+	}
 	res.Info = kept
 
-	if err := waiter.WaitForDelete(deletedResources, u.Timeout); err != nil {
-		errs = append(errs, err)
+	if !isSequencedRelease(rel) {
+		if err := waiter.WaitForDelete(deletedResources, u.Timeout); err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	if !u.DisableHooks {
@@ -233,7 +175,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		}
 	}
 
-	rel.Info.Status = common.StatusUninstalled
+	rel.Info.Status = releasecommon.StatusUninstalled
 	if len(u.Description) > 0 {
 		rel.Info.Description = u.Description
 	} else {
@@ -272,7 +214,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		}
 
 		u.cfg.Logger().Debug("superseding previous deployment", "version", rel.Version)
-		rel.Info.Status = common.StatusSuperseded
+		rel.Info.Status = releasecommon.StatusSuperseded
 		if err := u.cfg.Releases.Update(rel); err != nil {
 			u.cfg.Logger().Debug("uninstall: Failed to store updated release", slog.Any("error", err))
 		}
@@ -282,6 +224,10 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		return res, fmt.Errorf("uninstallation completed with %d error(s): %w", len(errs), joinErrors(errs, "; "))
 	}
 	return res, nil
+}
+
+func isSequencedRelease(rel *release.Release) bool {
+	return rel.SequencingInfo != nil && rel.SequencingInfo.Enabled
 }
 
 func (u *Uninstall) purgeReleases(rels ...*release.Release) error {
@@ -317,8 +263,8 @@ func (e *joinedErrors) Unwrap() []error {
 	return e.errs
 }
 
-// deleteRelease deletes the release and returns list of delete resources and manifests that were kept in the deletion process
-func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, string, []error) {
+// deleteRelease deletes the release and returns list of delete resources and manifests that were kept in the deletion process.
+func (u *Uninstall) deleteRelease(rel *release.Release, waiter kube.Waiter) (kube.ResourceList, string, []error) {
 	var errs []error
 
 	manifests := releaseutil.SplitManifests(rel.Manifest)
@@ -340,14 +286,15 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		}
 	}
 
-	var builder strings.Builder
-	for _, file := range filesToDelete {
-		builder.WriteString("\n---\n" + file.Content)
+	if isSequencedRelease(rel) {
+		filesToDelete = u.recoverManifestPathsForSequencedUninstall(rel, filesToDelete)
+		deleted, errs := u.sequencedDeleteManifests(rel.Chart, filesToDelete, waiter)
+		return deleted, kept.String(), errs
 	}
 
-	resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
+	resources, err := u.buildDeleteResources(filesToDelete)
 	if err != nil {
-		return nil, "", []error{fmt.Errorf("unable to build kubernetes objects for delete: %w", err)}
+		return nil, "", []error{err}
 	}
 
 	// Verify ownership before deleting resources
@@ -409,6 +356,259 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		}
 	}
 	return ownedResources, kept.String(), errs
+}
+
+func (u *Uninstall) buildDeleteResources(manifests []releaseutil.Manifest) (kube.ResourceList, error) {
+	var builder strings.Builder
+	for _, file := range manifests {
+		builder.WriteString("\n---\n" + file.Content)
+	}
+
+	resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
+	if err != nil {
+		return nil, fmt.Errorf("unable to build kubernetes objects for delete: %w", err)
+	}
+	return resources, nil
+}
+
+func (u *Uninstall) deleteManifestBatch(manifests []releaseutil.Manifest, waiter kube.Waiter, deadline time.Time) (kube.ResourceList, []error) {
+	resources, err := u.buildDeleteResources(manifests)
+	if err != nil || len(resources) == 0 {
+		if err != nil {
+			return nil, []error{err}
+		}
+		return nil, nil
+	}
+
+	_, errs := u.cfg.KubeClient.Delete(resources, parseCascadingFlag(u.DeletionPropagation, u.cfg.Logger()))
+	if len(errs) > 0 {
+		return resources, errs
+	}
+
+	timeout := u.Timeout
+	if !deadline.IsZero() {
+		if remaining := time.Until(deadline); remaining < timeout {
+			timeout = remaining
+		}
+	}
+	if err := waiter.WaitForDelete(resources, timeout); err != nil {
+		errs = append(errs, err)
+	}
+	return resources, errs
+}
+
+func (u *Uninstall) sequencedDeleteManifests(chrt *chart.Chart, manifests []releaseutil.Manifest, waiter kube.Waiter) (kube.ResourceList, []error) {
+	deadline := computeDeadline(u.Timeout)
+	if chrt == nil {
+		return u.deleteResourceGroupBatchesReverse(manifests, waiter, deadline)
+	}
+	return u.deleteChartLevelReverseAt(chrt, manifests, waiter, deadline, chrt.Name())
+}
+
+func (u *Uninstall) deleteChartLevelReverseAt(chrt *chart.Chart, manifests []releaseutil.Manifest, waiter kube.Waiter, deadline time.Time, chartPath string) (kube.ResourceList, []error) {
+	grouped := GroupManifestsByDirectSubchart(manifests, chartPath)
+
+	allDeleted, errs := u.deleteResourceGroupBatchesReverse(grouped[""], waiter, deadline)
+	if len(errs) > 0 {
+		return allDeleted, errs
+	}
+
+	dag, err := chartutil.BuildSubchartDAG(chrt)
+	if err != nil {
+		return allDeleted, []error{fmt.Errorf("building subchart DAG for sequenced uninstall: %w", err)}
+	}
+
+	batches, err := dag.GetBatches()
+	if err != nil {
+		return allDeleted, []error{fmt.Errorf("getting subchart batches for sequenced uninstall: %w", err)}
+	}
+
+	for i, j := 0, len(batches)-1; i < j; i, j = i+1, j-1 {
+		batches[i], batches[j] = batches[j], batches[i]
+	}
+
+	for _, batch := range batches {
+		for _, subchartName := range batch {
+			subchartManifests := grouped[subchartName]
+			if len(subchartManifests) == 0 {
+				continue
+			}
+
+			subchart := findSubchart(chrt, subchartName)
+			var deleted kube.ResourceList
+			subPath := chartPath + "/charts/" + subchartName
+			if subchart == nil {
+				u.cfg.Logger().Warn("subchart not found in chart dependencies during sequenced uninstall; falling back to flat resource-group deletion", "subchart", subchartName)
+				deleted, errs = u.deleteResourceGroupBatchesReverse(subchartManifests, waiter, deadline)
+			} else {
+				deleted, errs = u.deleteChartLevelReverseAt(subchart, subchartManifests, waiter, deadline, subPath)
+			}
+			allDeleted = append(allDeleted, deleted...)
+			if len(errs) > 0 {
+				return allDeleted, errs
+			}
+		}
+	}
+
+	return allDeleted, nil
+}
+
+func (u *Uninstall) deleteResourceGroupBatchesReverse(manifests []releaseutil.Manifest, waiter kube.Waiter, deadline time.Time) (kube.ResourceList, []error) {
+	result, warnings, err := releaseutil.ParseResourceGroups(manifests)
+	if err != nil {
+		return nil, []error{fmt.Errorf("parsing resource-group annotations for sequenced uninstall: %w", err)}
+	}
+	for _, warning := range warnings {
+		u.cfg.Logger().Warn("resource-group annotation warning during uninstall", "warning", warning)
+	}
+
+	var allDeleted kube.ResourceList
+
+	if len(result.Unsequenced) > 0 {
+		deleted, errs := u.deleteManifestBatch(result.Unsequenced, waiter, deadline)
+		allDeleted = append(allDeleted, deleted...)
+		if len(errs) > 0 {
+			return allDeleted, errs
+		}
+	}
+
+	if len(result.Groups) == 0 {
+		return allDeleted, nil
+	}
+
+	dag, err := releaseutil.BuildResourceGroupDAG(result)
+	if err != nil {
+		return allDeleted, []error{fmt.Errorf("building resource-group DAG for sequenced uninstall: %w", err)}
+	}
+	batches, err := dag.GetBatches()
+	if err != nil {
+		return allDeleted, []error{fmt.Errorf("getting resource-group batches for sequenced uninstall: %w", err)}
+	}
+
+	for i, j := 0, len(batches)-1; i < j; i, j = i+1, j-1 {
+		batches[i], batches[j] = batches[j], batches[i]
+	}
+
+	for _, batch := range batches {
+		var batchManifests []releaseutil.Manifest
+		for _, groupName := range batch {
+			batchManifests = append(batchManifests, result.Groups[groupName]...)
+		}
+		deleted, errs := u.deleteManifestBatch(batchManifests, waiter, deadline)
+		allDeleted = append(allDeleted, deleted...)
+		if len(errs) > 0 {
+			return allDeleted, errs
+		}
+	}
+
+	return allDeleted, nil
+}
+
+func (u *Uninstall) recoverManifestPathsForSequencedUninstall(rel *release.Release, manifests []releaseutil.Manifest) []releaseutil.Manifest {
+	rendered, err := renderReleaseManifestsWithPaths(u.cfg, rel)
+	if err != nil {
+		u.cfg.Logger().Warn("unable to recover rendered chart paths for sequenced uninstall; falling back to stored manifest order", slog.Any("error", err))
+		return manifests
+	}
+	return applyRenderedManifestPaths(manifests, rendered)
+}
+
+// renderReleaseManifestsWithPaths re-renders the release chart+config to produce
+// manifests keyed by source template paths (e.g., "mychart/templates/deploy.yaml").
+func renderReleaseManifestsWithPaths(cfg *Configuration, rel *release.Release) ([]releaseutil.Manifest, error) {
+	if rel.Chart == nil {
+		return nil, errors.New("release chart is missing")
+	}
+	if err := chartutil.ProcessDependencies(rel.Chart, rel.Config); err != nil {
+		return nil, fmt.Errorf("processing chart dependencies: %w", err)
+	}
+
+	caps, err := cfg.getCapabilities()
+	if err != nil {
+		return nil, fmt.Errorf("getting capabilities: %w", err)
+	}
+
+	valuesToRender, err := renderutil.ToRenderValuesWithSchemaValidation(
+		rel.Chart,
+		rel.Config,
+		chartcommon.ReleaseOptions{
+			Name:      rel.Name,
+			Namespace: rel.Namespace,
+			Revision:  rel.Version,
+			IsInstall: rel.Version <= 1,
+			IsUpgrade: rel.Version > 1,
+		},
+		caps,
+		true,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("building render values: %w", err)
+	}
+
+	_, _, _, manifests, err := cfg.renderResourcesWithFiles(context.Background(), rel.Chart, valuesToRender, rel.Name, "", false, false, false, nil, false, false, false, PostRenderStrategyCombined)
+	if err != nil {
+		return nil, fmt.Errorf("rendering chart manifests: %w", err)
+	}
+	return manifests, nil
+}
+
+func applyRenderedManifestPaths(stored, rendered []releaseutil.Manifest) []releaseutil.Manifest {
+	byContent := make(map[string][]string, len(rendered))
+	byIdentity := make(map[string][]string, len(rendered))
+	for _, manifest := range rendered {
+		contentKey := normalizedManifestContent(manifest.Content)
+		byContent[contentKey] = append(byContent[contentKey], manifest.Name)
+
+		identityKey := manifestIdentity(manifest)
+		byIdentity[identityKey] = append(byIdentity[identityKey], manifest.Name)
+	}
+
+	out := make([]releaseutil.Manifest, len(stored))
+	copy(out, stored)
+
+	for i, manifest := range out {
+		contentKey := normalizedManifestContent(manifest.Content)
+		if names := byContent[contentKey]; len(names) > 0 {
+			out[i].Name = names[0]
+			byContent[contentKey] = names[1:]
+			continue
+		}
+
+		identityKey := manifestIdentity(manifest)
+		if names := byIdentity[identityKey]; len(names) > 0 {
+			out[i].Name = names[0]
+			byIdentity[identityKey] = names[1:]
+		}
+	}
+
+	return out
+}
+
+func manifestIdentity(manifest releaseutil.Manifest) string {
+	if manifest.Head == nil || manifest.Head.Metadata == nil {
+		return normalizedManifestContent(manifest.Content)
+	}
+	return fmt.Sprintf("%s/%s/%s/%s", manifest.Head.Version, manifest.Head.Kind, manifest.Head.Metadata.Namespace, manifest.Head.Metadata.Name)
+}
+
+func normalizedManifestContent(content string) string {
+	trimmed := strings.TrimSpace(content)
+	if trimmed == "" {
+		return ""
+	}
+
+	lines := strings.Split(trimmed, "\n")
+	start := 0
+	for start < len(lines) {
+		line := strings.TrimSpace(lines[start])
+		if line == "" || strings.HasPrefix(line, "#") {
+			start++
+			continue
+		}
+		break
+	}
+
+	return strings.TrimSpace(strings.Join(lines[start:], "\n"))
 }
 
 func parseCascadingFlag(cascadingFlag string, logger *slog.Logger) v1.DeletionPropagation {
