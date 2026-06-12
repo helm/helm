@@ -149,29 +149,32 @@ func (s *sequencedDeployment) deployChartLevelAt(ctx context.Context, chrt *char
 		return fmt.Errorf("getting subchart batches for %s: %w", chrt.Name(), err)
 	}
 
-	for batchIdx, batch := range batches {
+	deployedSubcharts := make(map[string]bool)
+	for _, batch := range batches {
 		for _, subchartName := range batch {
-			subManifests := grouped[subchartName]
-			if len(subManifests) == 0 {
-				continue
+			deployedSubcharts[subchartName] = true
+			if err := s.deploySubchart(ctx, chrt, chartPath, subchartName, grouped[subchartName]); err != nil {
+				return err
 			}
+		}
+	}
 
-			subChart := findSubchart(chrt, subchartName)
-			if subChart == nil {
-				s.cfg.Logger().Warn("subchart not found in chart dependencies; deploying without subchart sequencing",
-					"subchart", subchartName,
-					"batch", batchIdx,
-				)
-				if err := s.deployResourceGroupBatches(ctx, subManifests); err != nil {
-					return fmt.Errorf("deploying subchart %s resources: %w", subchartName, err)
-				}
-				continue
-			}
-
-			subPath := chartPath + "/charts/" + subchartName
-			if err := s.deployChartLevelAt(ctx, subChart, subManifests, subPath); err != nil {
-				return fmt.Errorf("deploying subchart %s: %w", subchartName, err)
-			}
+	// Deploy rendered subcharts that are not declared in Chart.yaml dependencies
+	// (e.g. charts vendored directly into charts/). They are absent from the
+	// subchart DAG, so treat them as unsequenced: deploy them after the declared
+	// subchart batches but before the parent's own resources. Without this they
+	// would be rendered yet silently never applied. Sorted for determinism.
+	undeclared := make([]string, 0, len(grouped))
+	for subchartName := range grouped {
+		if subchartName == "" || deployedSubcharts[subchartName] {
+			continue
+		}
+		undeclared = append(undeclared, subchartName)
+	}
+	slices.Sort(undeclared)
+	for _, subchartName := range undeclared {
+		if err := s.deploySubchart(ctx, chrt, chartPath, subchartName, grouped[subchartName]); err != nil {
+			return err
 		}
 	}
 
@@ -182,6 +185,33 @@ func (s *sequencedDeployment) deployChartLevelAt(ctx context.Context, chrt *char
 		}
 	}
 
+	return nil
+}
+
+// deploySubchart deploys one direct subchart's manifests. A resolvable subchart
+// recurses through deployChartLevelAt (honoring its own resource-group and
+// nested-subchart sequencing); manifests whose subchart cannot be resolved fall
+// back to a flat resource-group deployment with a warning.
+func (s *sequencedDeployment) deploySubchart(ctx context.Context, chrt *chartv2.Chart, chartPath, subchartName string, subManifests []releaseutil.Manifest) error {
+	if len(subManifests) == 0 {
+		return nil
+	}
+
+	subChart := findSubchart(chrt, subchartName)
+	if subChart == nil {
+		s.cfg.Logger().Warn("subchart not found in chart dependencies; deploying without subchart sequencing",
+			"subchart", subchartName,
+		)
+		if err := s.deployResourceGroupBatches(ctx, subManifests); err != nil {
+			return fmt.Errorf("deploying subchart %s resources: %w", subchartName, err)
+		}
+		return nil
+	}
+
+	subPath := chartPath + "/charts/" + subchartName
+	if err := s.deployChartLevelAt(ctx, subChart, subManifests, subPath); err != nil {
+		return fmt.Errorf("deploying subchart %s: %w", subchartName, err)
+	}
 	return nil
 }
 

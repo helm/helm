@@ -394,6 +394,39 @@ func TestInstall_Sequenced_SubchartOrdering(t *testing.T) {
 	assert.Equal(t, client.createCalls, client.waitCalls)
 }
 
+// TestInstall_Sequenced_UndeclaredVendoredSubchartDeployed is a regression for
+// hip-0025: a subchart vendored into charts/ but absent from Chart.yaml
+// dependencies is rendered, so under --wait=ordered its manifests must still be
+// applied. Previously they were grouped by subchart yet never matched a DAG
+// batch (the DAG is built from Chart.yaml dependencies only), so they were
+// silently dropped. Undeclared subcharts are unsequenced: they deploy after the
+// declared subchart batches and before the parent's own resources.
+func TestInstall_Sequenced_UndeclaredVendoredSubchartDeployed(t *testing.T) {
+	client := newRecordingKubeClient()
+	install := newSequencedInstallAction(t, client)
+
+	parent := buildChartWithTemplates([]*common.File{
+		makeConfigMapTemplate("templates/parent.yaml", "parent", nil),
+	}, withName("parent"))
+	declared := buildChartWithTemplates([]*common.File{
+		makeConfigMapTemplate("templates/database.yaml", "database", nil),
+	}, withName("database"))
+	vendored := buildChartWithTemplates([]*common.File{
+		makeConfigMapTemplate("templates/vendored.yaml", "vendored", nil),
+	}, withName("vendored"))
+
+	parent.AddDependency(declared, vendored)
+	// Only "database" is declared in Chart.yaml dependencies; "vendored" sits in
+	// charts/ but is undeclared.
+	parent.Metadata.Dependencies = []*chart.Dependency{
+		{Name: "database"},
+	}
+
+	mustRunInstall(t, install, parent)
+
+	assert.Equal(t, [][]string{{"ConfigMap/database"}, {"ConfigMap/vendored"}, {"ConfigMap/parent"}}, client.createCalls)
+}
+
 // TestInstall_Sequenced_LeafReadinessIgnored locks cap-31 (hip-0025-4ce).
 // Per HIP-0025 §Readiness, a resource whose group has no dependents in the
 // sequencing DAG must be applied but its readiness must NOT be waited on,
