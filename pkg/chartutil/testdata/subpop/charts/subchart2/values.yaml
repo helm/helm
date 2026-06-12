@@ -19,3 +19,5 @@ resources:
     cpu: 100m
     memory: 128Mi
 
+subchartbalias:
+  enabled: false

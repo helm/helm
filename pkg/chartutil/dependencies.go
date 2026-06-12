@@ -187,7 +187,7 @@ Loop:
 	copy(cd, c.Dependencies()[:0])
 	for _, n := range c.Dependencies() {
 		if _, ok := rm[n.Metadata.Name]; !ok {
-			cd = append(cd, n)
+			cd = append(cd, deepCopyMetadataDependencies(n))
 		}
 	}
 	// don't keep disabled charts in metadata
@@ -212,6 +212,25 @@ Loop:
 	c.SetDependencies(cd...)
 
 	return nil
+}
+
+func deepCopyMetadataDependencies(c *chart.Chart) *chart.Chart {
+	if c == nil || c.Metadata == nil {
+		return c
+	}
+	cCopy := *c
+	metadataCopy := *c.Metadata
+	metadataCopy.Dependencies = nil
+	for _, d := range c.Metadata.Dependencies {
+		if d == nil {
+			metadataCopy.Dependencies = append(metadataCopy.Dependencies, d)
+		} else {
+			depCopy := *d
+			metadataCopy.Dependencies = append(metadataCopy.Dependencies, &depCopy)
+		}
+	}
+	cCopy.Metadata = &metadataCopy
+	return &cCopy
 }
 
 // pathToMap creates a nested map given a YAML path in dot notation.
