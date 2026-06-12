@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"testing"
 	"time"
 
@@ -97,6 +98,136 @@ func outputFlagCompletionTest(t *testing.T, cmdName string) {
 		}),
 	}}
 	runTestCmd(t, tests)
+}
+
+func TestWaitFlag(t *testing.T) {
+	t.Run("install accepts ordered wait", func(t *testing.T) {
+		cmd := newInstallCmd(&action.Configuration{}, io.Discard)
+		require.NoError(t, cmd.ParseFlags([]string{"--wait=ordered"}))
+		require.Equal(t, "ordered", cmd.Flags().Lookup("wait").Value.String())
+	})
+
+	t.Run("upgrade accepts ordered wait", func(t *testing.T) {
+		cmd := newUpgradeCmd(&action.Configuration{}, io.Discard)
+		require.NoError(t, cmd.ParseFlags([]string{"--wait=ordered"}))
+		require.Equal(t, "ordered", cmd.Flags().Lookup("wait").Value.String())
+	})
+
+	t.Run("template accepts ordered wait", func(t *testing.T) {
+		cmd := newTemplateCmd(&action.Configuration{}, io.Discard)
+		require.NoError(t, cmd.ParseFlags([]string{"--wait=ordered"}))
+		require.Equal(t, "ordered", cmd.Flags().Lookup("wait").Value.String())
+	})
+
+	t.Run("rollback accepts ordered wait", func(t *testing.T) {
+		cmd := newRollbackCmd(&action.Configuration{}, io.Discard)
+		require.NoError(t, cmd.ParseFlags([]string{"--wait=ordered"}))
+		require.Equal(t, "ordered", cmd.Flags().Lookup("wait").Value.String())
+	})
+
+	t.Run("uninstall accepts ordered wait", func(t *testing.T) {
+		cmd := newUninstallCmd(&action.Configuration{}, io.Discard)
+		require.NoError(t, cmd.ParseFlags([]string{"--wait=ordered"}))
+		require.Equal(t, "ordered", cmd.Flags().Lookup("wait").Value.String())
+	})
+}
+
+func TestReadinessTimeout(t *testing.T) {
+	t.Run("install registers readiness-timeout with one minute default", func(t *testing.T) {
+		cmd := newInstallCmd(&action.Configuration{}, io.Discard)
+		flag := cmd.Flags().Lookup("readiness-timeout")
+		require.NotNil(t, flag)
+		require.Equal(t, "1m0s", flag.DefValue)
+		require.NoError(t, cmd.ParseFlags([]string{"--readiness-timeout=30s"}))
+		require.Equal(t, "30s", flag.Value.String())
+	})
+
+	t.Run("upgrade registers readiness-timeout with one minute default", func(t *testing.T) {
+		cmd := newUpgradeCmd(&action.Configuration{}, io.Discard)
+		flag := cmd.Flags().Lookup("readiness-timeout")
+		require.NotNil(t, flag)
+		require.Equal(t, "1m0s", flag.DefValue)
+		require.NoError(t, cmd.ParseFlags([]string{"--readiness-timeout=30s"}))
+		require.Equal(t, "30s", flag.Value.String())
+	})
+
+	t.Run("template and non-applicable commands do not register readiness-timeout", func(t *testing.T) {
+		require.Nil(t, newTemplateCmd(&action.Configuration{}, io.Discard).Flags().Lookup("readiness-timeout"))
+		require.Nil(t, newUninstallCmd(&action.Configuration{}, io.Discard).Flags().Lookup("readiness-timeout"))
+	})
+
+	t.Run("rollback registers readiness-timeout with one minute default", func(t *testing.T) {
+		cmd := newRollbackCmd(&action.Configuration{}, io.Discard)
+		flag := cmd.Flags().Lookup("readiness-timeout")
+		require.NotNil(t, flag)
+		require.Equal(t, "1m0s", flag.DefValue)
+		require.NoError(t, cmd.ParseFlags([]string{"--readiness-timeout=30s"}))
+		require.Equal(t, "30s", flag.Value.String())
+	})
+
+	t.Run("install rejects readiness-timeout longer than timeout", func(t *testing.T) {
+		_, _, err := executeActionCommand("install timed-install testdata/testcharts/empty --wait=ordered --timeout 30s --readiness-timeout 60s")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "--readiness-timeout (1m0s) must not exceed --timeout (30s)")
+	})
+
+	t.Run("upgrade rejects readiness-timeout longer than timeout", func(t *testing.T) {
+		releaseName := "timed-upgrade"
+		relMock, ch, chartPath := prepareMockRelease(t, releaseName)
+		store := storageFixture()
+		require.NoError(t, store.Create(relMock(releaseName, 1, ch)))
+
+		_, _, err := executeActionCommandC(store, fmt.Sprintf("upgrade %s '%s' --wait=ordered --timeout 30s --readiness-timeout 60s", releaseName, chartPath))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "--readiness-timeout (1m0s) must not exceed --timeout (30s)")
+	})
+
+	t.Run("readiness-timeout is ignored without ordered wait", func(t *testing.T) {
+		_, _, err := executeActionCommand("install plain-install testdata/testcharts/empty --readiness-timeout 30s")
+		require.NoError(t, err)
+	})
+}
+
+// TestPostRenderStrategyFlag locks cap-19 (hip-0025-8qo): the
+// --post-render-strategy CLI flag is wired through to action.Install and
+// action.Upgrade, validated against the three known strategies, and rejects
+// unknown values with a clear error.
+func TestPostRenderStrategyFlag(t *testing.T) {
+	t.Run("accepts combined", func(t *testing.T) {
+		got := action.PostRenderStrategyCombined
+		v := &postRenderStrategyValue{target: &got}
+		require.NoError(t, v.Set("combined"))
+		require.Equal(t, action.PostRenderStrategyCombined, got)
+	})
+	t.Run("accepts separate", func(t *testing.T) {
+		var got action.PostRenderStrategy
+		v := &postRenderStrategyValue{target: &got}
+		require.NoError(t, v.Set("separate"))
+		require.Equal(t, action.PostRenderStrategySeparate, got)
+	})
+	t.Run("accepts nohooks", func(t *testing.T) {
+		var got action.PostRenderStrategy
+		v := &postRenderStrategyValue{target: &got}
+		require.NoError(t, v.Set("nohooks"))
+		require.Equal(t, action.PostRenderStrategyNoHooks, got)
+	})
+	t.Run("rejects unknown value", func(t *testing.T) {
+		var got action.PostRenderStrategy
+		v := &postRenderStrategyValue{target: &got}
+		err := v.Set("garbage")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "combined")
+		require.Contains(t, err.Error(), "separate")
+		require.Contains(t, err.Error(), "nohooks")
+	})
+	t.Run("install command exposes the flag", func(t *testing.T) {
+		cmd := newInstallCmd(&action.Configuration{}, io.Discard)
+		require.NotNil(t, cmd.Flag(postRenderStrategyFlag), "install should expose --post-render-strategy")
+	})
+	t.Run("upgrade command exposes the flag", func(t *testing.T) {
+		cmd := newUpgradeCmd(&action.Configuration{}, io.Discard)
+		require.NotNil(t, cmd.Flag(postRenderStrategyFlag), "upgrade should expose --post-render-strategy")
+	})
 }
 
 func TestPostRendererFlagSetOnce(t *testing.T) {

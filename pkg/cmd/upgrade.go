@@ -144,6 +144,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Namespace = client.Namespace
 					instClient.RollbackOnFailure = client.RollbackOnFailure
 					instClient.PostRenderer = client.PostRenderer
+					instClient.PostRenderStrategy = client.PostRenderStrategy
 					instClient.DisableOpenAPIValidation = client.DisableOpenAPIValidation
 					instClient.SubNotes = client.SubNotes
 					instClient.HideNotes = client.HideNotes
@@ -305,7 +306,9 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer, settings)
-	AddWaitFlag(cmd, &client.WaitStrategy)
+	bindPostRenderStrategyFlag(cmd, &client.PostRenderStrategy)
+	AddOrderedWaitFlag(cmd, &client.WaitStrategy)
+	addReadinessTimeoutFlag(f, &client.ReadinessTimeout)
 	cmd.MarkFlagsMutuallyExclusive("force-replace", "force-conflicts")
 	cmd.MarkFlagsMutuallyExclusive("force", "force-conflicts")
 
