@@ -447,15 +447,12 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 			return nil, err
 		}
 
-		namespaceExist := false
-		_, err = i.cfg.KubeClient.Get(resourceList, false)
-		if err == nil {
-			namespaceExist = true
-		} else if !apierrors.IsNotFound(err) {
+		exists, err := namespaceExists(resourceList)
+		if err != nil {
 			return nil, err
 		}
 
-		if !namespaceExist {
+		if !exists {
 			if _, err := i.cfg.KubeClient.Create(
 				resourceList,
 				kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {
@@ -485,6 +482,29 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		rel, err = i.failRelease(rel, err)
 	}
 	return rel, err
+}
+
+func namespaceExists(resourceList kube.ResourceList) (bool, error) {
+	exists := false
+
+	err := resourceList.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+
+		_, err = resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name)
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		exists = true
+		return nil
+	})
+
+	return exists, err
 }
 
 func (i *Install) performInstallCtx(ctx context.Context, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) (*release.Release, error) {

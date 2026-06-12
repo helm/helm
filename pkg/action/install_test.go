@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1295,34 +1296,118 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	is.NotEmpty(failer.RecordedWaitOptions, "WaitOptions should be passed to GetWaiter")
 }
 
-func TestInstall_CreateNamespaceAlreadyExists(t *testing.T) {
-	is := assert.New(t)
+func fakeNamespaceResourceList(name string, statusCode int) kube.ResourceList {
+	body := kuberuntime.Object(&v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"custom-label": "keep-me",
+			},
+			Annotations: map[string]string{
+				"custom-annotation": "keep-me",
+			},
+		},
+	})
 
-	// Namespace already exists in cluster
-	config := actionConfigFixtureWithDummyResources(t, createDummyResourceList(true))
+	if statusCode == http.StatusNotFound {
+		body = &metav1.Status{
+			Status: metav1.StatusFailure,
+			Reason: metav1.StatusReasonNotFound,
+			Code:   http.StatusNotFound,
+		}
+	}
 
-	instAction := installActionWithConfig(config)
-	instAction.CreateNamespace = true
-	instAction.Namespace = "spaced"
+	restClient := &fake.RESTClient{
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
+		NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
+		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
+			return newNamespaceResponse(statusCode, body), nil
+		}),
+	}
 
-	resi, err := instAction.Run(buildChart(), nil)
-	is.NoError(err)
-
-	res, err := releaserToV1Release(resi)
-	is.NoError(err)
-	is.Equal("spaced", res.Namespace)
-	is.Equal("Install complete", res.Info.Description)
+	return kube.ResourceList{
+		&resource.Info{
+			Client: restClient,
+			Mapping: &meta.RESTMapping{
+				Resource: schema.GroupVersionResource{
+					Version:  "v1",
+					Resource: "namespaces",
+				},
+				GroupVersionKind: schema.GroupVersionKind{
+					Version: "v1",
+					Kind:    "Namespace",
+				},
+				Scope: meta.RESTScopeRoot,
+			},
+			Name: name,
+			Object: &v1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{Name: name},
+			},
+		},
+	}
 }
 
-func TestInstall_CreateNamespaceNotExists(t *testing.T) {
+func newNamespaceResponse(code int, obj kuberuntime.Object) *http.Response {
+	body := kuberuntime.EncodeOrDie(
+		scheme.Codecs.LegacyCodec(schema.GroupVersion{Version: "v1"}),
+		obj,
+	)
+
+	return &http.Response{
+		StatusCode: code,
+		Header: map[string][]string{
+			"Content-Type": {"application/json"},
+		},
+		Body: io.NopCloser(strings.NewReader(body)),
+	}
+}
+
+type namespaceInstallKubeClient struct {
+	*kubefake.FailingKubeClient
+
+	namespaceStatusCode   int
+	namespaceCreateCalled bool
+}
+
+func (c *namespaceInstallKubeClient) Build(reader io.Reader, validate bool) (kube.ResourceList, error) {
+	b, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	if strings.Contains(string(b), "kind: Namespace") {
+		return fakeNamespaceResourceList("spaced", c.namespaceStatusCode), nil
+	}
+
+	return kube.ResourceList{}, nil
+}
+
+func (c *namespaceInstallKubeClient) Create(resources kube.ResourceList, options ...kube.ClientCreateOption) (*kube.Result, error) {
+	for _, info := range resources {
+		if info.Name == "spaced" && info.Mapping != nil && info.Mapping.GroupVersionKind.Kind == "Namespace" {
+			c.namespaceCreateCalled = true
+		}
+	}
+
+	return &kube.Result{}, nil
+}
+
+func TestInstall_CreateNamespaceAlreadyExistsSkipsCreate(t *testing.T) {
 	is := assert.New(t)
 
-	// Empty cluster state, thats mean namespace not present
 	config := actionConfigFixture(t)
+	client := &namespaceInstallKubeClient{
+		FailingKubeClient: &kubefake.FailingKubeClient{
+			PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
+		},
+		namespaceStatusCode: http.StatusOK,
+	}
+	config.KubeClient = client
 
 	instAction := installActionWithConfig(config)
 	instAction.CreateNamespace = true
 	instAction.Namespace = "spaced"
+	instAction.ServerSideApply = true
 
 	resi, err := instAction.Run(buildChart(), nil)
 	is.NoError(err)
@@ -1331,4 +1416,34 @@ func TestInstall_CreateNamespaceNotExists(t *testing.T) {
 	is.NoError(err)
 	is.Equal("spaced", res.Namespace)
 	is.Equal("Install complete", res.Info.Description)
+
+	is.False(client.namespaceCreateCalled, "existing namespace should not be created/applied again")
+}
+
+func TestInstall_CreateNamespaceNotExistsCreatesNamespace(t *testing.T) {
+	is := assert.New(t)
+
+	config := actionConfigFixture(t)
+	client := &namespaceInstallKubeClient{
+		FailingKubeClient: &kubefake.FailingKubeClient{
+			PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
+		},
+		namespaceStatusCode: http.StatusNotFound,
+	}
+	config.KubeClient = client
+
+	instAction := installActionWithConfig(config)
+	instAction.CreateNamespace = true
+	instAction.Namespace = "spaced"
+	instAction.ServerSideApply = true
+
+	resi, err := instAction.Run(buildChart(), nil)
+	is.NoError(err)
+
+	res, err := releaserToV1Release(resi)
+	is.NoError(err)
+	is.Equal("spaced", res.Namespace)
+	is.Equal("Install complete", res.Info.Description)
+
+	is.True(client.namespaceCreateCalled, "missing namespace should be created")
 }
