@@ -30,6 +30,7 @@ type SimpleHead struct {
 	Kind     string `json:"kind,omitempty"`
 	Metadata *struct {
 		Name        string            `json:"name"`
+		Namespace   string            `json:"namespace,omitempty"`
 		Annotations map[string]string `json:"annotations"`
 	} `json:"metadata,omitempty"`
 }
@@ -80,3 +81,34 @@ func (a BySplitManifestsOrder) Less(i, j int) bool {
 	return anum < bnum
 }
 func (a BySplitManifestsOrder) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+
+// helmInternalAnnotationLineRE matches a single YAML line whose key is one of
+// HelmInternalSequencingAnnotations. The pattern is intentionally line-based:
+// Helm always emits these annotations as single-line JSON-encoded values, so a
+// surgical line strip preserves the surrounding manifest byte-for-byte and
+// keeps `helm template | diff` workflows stable. The regex is compiled lazily
+// from HelmInternalSequencingAnnotations so that adding a new helm-internal
+// key only requires updating the slice.
+var helmInternalAnnotationLineRE = func() *regexp.Regexp {
+	keys := make([]string, len(HelmInternalSequencingAnnotations))
+	for i, k := range HelmInternalSequencingAnnotations {
+		keys[i] = regexp.QuoteMeta(k)
+	}
+	return regexp.MustCompile(`(?m)^[ \t]+(?:` + strings.Join(keys, "|") + `):[^\n]*\r?\n?`)
+}()
+
+// StripHelmInternalAnnotations returns the manifest content with any
+// HelmInternalSequencingAnnotations removed. The strip is line-based and
+// preserves the surrounding byte order of the input document. Empty content
+// passes through unchanged.
+//
+// This exists so that `helm template` output remains directly apply-able via
+// `kubectl apply -f -`, even when charts use HIP-0025 sequencing annotations
+// whose keys contain multiple `/` separators (which fail Kubernetes
+// annotation-key validation).
+func StripHelmInternalAnnotations(content string) string {
+	if strings.TrimSpace(content) == "" {
+		return content
+	}
+	return helmInternalAnnotationLineRE.ReplaceAllString(content, "")
+}
