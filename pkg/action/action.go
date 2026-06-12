@@ -277,17 +277,24 @@ func splitAndDeannotate(postrendered, fallbackPrefix string) (map[string]string,
 //
 //	This code has to do with writing files to disk.
 func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, values common.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS, hideSecret bool, postRenderStrategy PostRenderStrategy) ([]*release.Hook, *bytes.Buffer, string, error) {
+	hs, b, notes, _, err := cfg.renderResourcesWithFiles(ctx, ch, values, releaseName, outputDir, subNotes, useReleaseName, includeCrds, pr, interactWithRemote, enableDNS, hideSecret, postRenderStrategy)
+	return hs, b, notes, err
+}
+
+// renderResourcesWithFiles is the canonical render implementation, also returning the
+// sorted manifest slice for sequencing-aware actions.
+func (cfg *Configuration) renderResourcesWithFiles(ctx context.Context, ch *chart.Chart, values common.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS, hideSecret bool, postRenderStrategy PostRenderStrategy) ([]*release.Hook, *bytes.Buffer, string, []releaseutil.Manifest, error) {
 	var hs []*release.Hook
 	b := bytes.NewBuffer(nil)
 
 	caps, err := cfg.getCapabilities()
 	if err != nil {
-		return hs, b, "", err
+		return hs, b, "", nil, err
 	}
 
 	if ch.Metadata.KubeVersion != "" {
 		if !chartutil.IsCompatibleRange(ch.Metadata.KubeVersion, caps.KubeVersion.String()) {
-			return hs, b, "", fmt.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.Version)
+			return hs, b, "", nil, fmt.Errorf("chart requires kubeVersion: %s which is incompatible with Kubernetes %s", ch.Metadata.KubeVersion, caps.KubeVersion.Version)
 		}
 	}
 
@@ -300,7 +307,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 	if interactWithRemote && cfg.RESTClientGetter != nil {
 		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
 		if err != nil {
-			return hs, b, "", err
+			return hs, b, "", nil, err
 		}
 		e := engine.New(restConfig)
 		e.EnableDNS = enableDNS
@@ -316,7 +323,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 	}
 
 	if err2 != nil {
-		return hs, b, "", err2
+		return hs, b, "", nil, err2
 	}
 
 	// NOTES.txt gets rendered like all the other files, but because it's not a hook nor a resource,
@@ -357,7 +364,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 					}
 					fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
 				}
-				return hs, b, "", err
+				return hs, b, "", nil, err
 			}
 
 			// Build separate files maps for hooks and manifests.
@@ -408,17 +415,17 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 
 				merged, err := annotateAndMerge(group.files)
 				if err != nil {
-					return hs, b, notes, fmt.Errorf("error merging %s: %w", group.name, err)
+					return hs, b, notes, nil, fmt.Errorf("error merging %s: %w", group.name, err)
 				}
 
 				postRendered, err := pr.Run(bytes.NewBufferString(merged))
 				if err != nil {
-					return hs, b, notes, fmt.Errorf("error while running post render on %s: %w", group.name, err)
+					return hs, b, notes, nil, fmt.Errorf("error while running post render on %s: %w", group.name, err)
 				}
 
 				rendered, err := splitAndDeannotate(postRendered.String(), group.name)
 				if err != nil {
-					return hs, b, notes, fmt.Errorf("error while parsing post rendered output for %s: %w", group.name, err)
+					return hs, b, notes, nil, fmt.Errorf("error while parsing post rendered output for %s: %w", group.name, err)
 				}
 
 				for k, v := range rendered {
@@ -440,22 +447,22 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 			// Merge files as stream of documents for sending to post renderer
 			merged, err := annotateAndMerge(files)
 			if err != nil {
-				return hs, b, notes, fmt.Errorf("error merging manifests: %w", err)
+				return hs, b, notes, nil, fmt.Errorf("error merging manifests: %w", err)
 			}
 
 			// Run the post renderer
 			postRendered, err := pr.Run(bytes.NewBufferString(merged))
 			if err != nil {
-				return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
+				return hs, b, notes, nil, fmt.Errorf("error while running post render on files: %w", err)
 			}
 
 			// Use the file list and contents received from the post renderer
 			files, err = splitAndDeannotate(postRendered.String(), "")
 			if err != nil {
-				return hs, b, notes, fmt.Errorf("error while parsing post rendered output: %w", err)
+				return hs, b, notes, nil, fmt.Errorf("error while parsing post rendered output: %w", err)
 			}
 		default:
-			return hs, b, notes, fmt.Errorf("unknown post-render strategy: '%s'", postRenderStrategy)
+			return hs, b, notes, nil, fmt.Errorf("unknown post-render strategy: '%s'", postRenderStrategy)
 		}
 	}
 
@@ -475,7 +482,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 			}
 			fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
 		}
-		return hs, b, "", err
+		return hs, b, "", nil, err
 	}
 
 	// Aggregate all valid manifests into one big doc.
@@ -488,7 +495,7 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 			} else {
 				err = writeToFile(outputDir, crd.Filename, string(crd.File.Data), fileWritten[crd.Filename])
 				if err != nil {
-					return hs, b, "", err
+					return hs, b, "", nil, err
 				}
 				fileWritten[crd.Filename] = true
 			}
@@ -513,13 +520,13 @@ func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, 
 			// used by install or upgrade
 			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
 			if err != nil {
-				return hs, b, "", err
+				return hs, b, "", nil, err
 			}
 			fileWritten[m.Name] = true
 		}
 	}
 
-	return hs, b, notes, nil
+	return hs, b, notes, manifests, nil
 }
 
 // RESTClientGetter gets the rest client

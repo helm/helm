@@ -82,6 +82,13 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 			return err
 		}
 
+		if info.Client == nil {
+			// Fail fast: without a REST client we cannot verify whether the
+			// resource already exists or is owned by another release, and
+			// assuming "no conflict" would skip adoption/ownership checks.
+			return fmt.Errorf("unable to verify whether resource %s already exists: no REST client available", resourceString(info))
+		}
+
 		helper := resource.NewHelper(info.Client, info.Mapping)
 		existing, err := helper.Get(info.Namespace, info.Name)
 		if err != nil {
@@ -130,7 +137,8 @@ func verifyOwnershipBeforeDelete(resources kube.ResourceList, releaseName, relea
 			return err
 		}
 
-		// If client is not available, skip verification (test scenario or build failure)
+		// If client is not available, skip verification (test scenario or build failure).
+		// Deliberately unchanged by HIP-0025 Stage C: shared with the non-sequenced path; tightening it is tracked separately.
 		if info.Client == nil {
 			infoCopy := *info
 			owned.Append(&infoCopy)

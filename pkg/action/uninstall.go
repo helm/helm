@@ -28,8 +28,9 @@ import (
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/kube"
 	releasei "helm.sh/helm/v4/pkg/release"
-	"helm.sh/helm/v4/pkg/release/common"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/release/v1/sequence"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
@@ -183,7 +184,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 
 	// TODO: Are there any cases where we want to force a delete even if it's
 	// already marked deleted?
-	if rel.Info.Status == common.StatusUninstalled {
+	if rel.Info.Status == releasecommon.StatusUninstalled {
 		if !u.KeepHistory {
 			if err := u.purgeReleases(rels...); err != nil {
 				return nil, fmt.Errorf("uninstall: Failed to purge the release: %w", err)
@@ -193,8 +194,17 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		return nil, fmt.Errorf("the release named %q is already deleted", name)
 	}
 
+	gatingWaiter := waiter
+	if rel.IsSequenced() && u.WaitStrategy == kube.HookOnlyStrategy {
+		u.cfg.Logger().Info("release was installed with ordered sequencing; using the status watcher to gate deletion batches (hooks keep the hook-only strategy)", "release", rel.Name)
+		gatingWaiter, err = getWaiterFor(u.cfg.KubeClient, kube.StatusWatcherStrategy, u.WaitOptions...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	u.cfg.Logger().Debug("uninstall: deleting release", "name", name)
-	rel.Info.Status = common.StatusUninstalling
+	rel.Info.Status = releasecommon.StatusUninstalling
 	rel.Info.Deleted = time.Now()
 	rel.Info.Description = "Deletion in progress (or silently failed)"
 	res := &releasei.UninstallReleaseResponse{Release: rel}
@@ -214,7 +224,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		u.cfg.Logger().Debug("uninstall: Failed to store updated release", slog.Any("error", err))
 	}
 
-	deletedResources, kept, errs := u.deleteRelease(rel)
+	deletedResources, kept, errs := u.deleteRelease(rel, gatingWaiter)
 	if errs != nil {
 		u.cfg.Logger().Debug("uninstall: Failed to delete release", slog.Any("error", errs))
 		return nil, fmt.Errorf("failed to delete release: %s", name)
@@ -222,8 +232,10 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 
 	res.Info = kept
 
-	if err := waiter.WaitForDelete(deletedResources, u.Timeout); err != nil {
-		errs = append(errs, err)
+	if !rel.IsSequenced() {
+		if err := waiter.WaitForDelete(deletedResources, u.Timeout); err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	if !u.DisableHooks {
@@ -233,7 +245,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		}
 	}
 
-	rel.Info.Status = common.StatusUninstalled
+	rel.Info.Status = releasecommon.StatusUninstalled
 	if u.Description != "" {
 		rel.Info.Description = u.Description
 	} else {
@@ -272,7 +284,7 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		}
 
 		u.cfg.Logger().Debug("superseding previous deployment", "version", rel.Version)
-		rel.Info.Status = common.StatusSuperseded
+		rel.Info.Status = releasecommon.StatusSuperseded
 		if err := u.cfg.Releases.Update(rel); err != nil {
 			u.cfg.Logger().Debug("uninstall: Failed to store updated release", slog.Any("error", err))
 		}
@@ -317,8 +329,12 @@ func (e *joinedErrors) Unwrap() []error {
 	return e.errs
 }
 
-// deleteRelease deletes the release and returns list of delete resources and manifests that were kept in the deletion process
-func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, string, []error) {
+// deleteRelease deletes the release and returns list of delete resources and manifests that were kept in the deletion process.
+func (u *Uninstall) deleteRelease(rel *release.Release, waiter kube.Waiter) (kube.ResourceList, string, []error) {
+	if rel.IsSequenced() {
+		return u.deleteReleaseSequenced(rel, waiter)
+	}
+
 	var errs []error
 
 	manifests := releaseutil.SplitManifests(rel.Manifest)
@@ -340,75 +356,180 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		}
 	}
 
+	resources, err := u.buildDeleteResources(filesToDelete)
+	if err != nil {
+		return nil, "", []error{err}
+	}
+
+	ownedResources, skipped, err := u.verifyOwnedForDelete(resources, rel.Name, rel.Namespace)
+	if err != nil {
+		return nil, "", []error{err}
+	}
+	if skipped != "" {
+		if kept.Len() > 0 {
+			kept.WriteString("\n")
+		}
+		kept.WriteString(skipped)
+	}
+
+	// Delete only owned resources
+	if len(ownedResources) > 0 {
+		_, errs = u.cfg.KubeClient.Delete(ownedResources, parseCascadingFlag(u.DeletionPropagation, u.cfg.Logger()))
+	}
+	return ownedResources, kept.String(), errs
+}
+
+// deleteReleaseSequenced deletes a sequenced release's resources in exact
+// reverse deployment order. The forward plan is rebuilt from the STORED
+// manifest via its "# Source:" comments (no chart re-render), so it covers
+// every stored resource, including vendored subcharts absent from Chart.yaml
+// dependencies, which the DAG-walking deleter used to leak (bead i42).
+// Keep-policy filtering applies to the parsed stream before the plan is built,
+// so kept resources are never part of the plan.
+func (u *Uninstall) deleteReleaseSequenced(rel *release.Release, waiter kube.Waiter) (kube.ResourceList, string, []error) {
+	manifests, err := sequence.ParseStoredManifests(rel.Manifest)
+	if err != nil {
+		return nil, rel.Manifest, []error{fmt.Errorf("corrupted release record. You must manually delete the resources: %w", err)}
+	}
+
+	filesToKeep, filesToDelete := filterManifestsToKeep(manifests)
+	var kept strings.Builder
+	if len(filesToKeep) > 0 {
+		kept.WriteString("These resources were kept due to the resource policy:\n")
+		for _, f := range filesToKeep {
+			fmt.Fprintf(&kept, "[%s] %s\n", f.Head.Kind, f.Head.Metadata.Name)
+		}
+	}
+
+	plan, err := sequence.Build(rel.Chart, filesToDelete)
+	if err != nil {
+		return nil, kept.String(), []error{fmt.Errorf("building sequencing plan for uninstall: %w", err)}
+	}
+	logPlanWarnings(u.cfg.Logger(), plan)
+
+	deadline := computeDeadline(u.Timeout)
+	var allDeleted kube.ResourceList
+	for _, batch := range plan.Reverse().Batches {
+		deleted, errs := u.deleteManifestBatch(batch.Manifests(), waiter, deadline, rel.Name, rel.Namespace)
+		allDeleted = append(allDeleted, deleted...)
+		if len(errs) > 0 {
+			return allDeleted, kept.String(), errs
+		}
+	}
+	return allDeleted, kept.String(), nil
+}
+
+// verifyOwnedForDelete verifies which of the built resources are owned by the
+// release. It logs (and thereby skips) resources that are not owned by the
+// release or whose ownership cannot be verified, and returns the owned subset
+// together with a human-readable summary of what was skipped (empty when nothing
+// was skipped). It performs no deletion; callers delete the returned owned
+// resources. Both the sequenced and non-sequenced uninstall paths route through
+// it so neither deletes resources that do not belong to the release.
+func (u *Uninstall) verifyOwnedForDelete(resources kube.ResourceList, releaseName, releaseNamespace string) (kube.ResourceList, string, error) {
+	if len(resources) == 0 {
+		return nil, "", nil
+	}
+
+	ownedResources, unownedResources, unverifiableResources, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+	if err != nil {
+		return nil, "", fmt.Errorf("unable to verify resource ownership: %w", err)
+	}
+
+	var skipped strings.Builder
+
+	// Log and report resources that are not owned by this release.
+	if len(unownedResources) > 0 {
+		for _, info := range unownedResources {
+			u.cfg.Logger().Warn("skipping delete of resource not owned by this release",
+				"kind", info.Mapping.GroupVersionKind.Kind,
+				"name", info.Name,
+				"namespace", info.Namespace,
+				"release", releaseName)
+		}
+		fmt.Fprintf(&skipped, "%d resource(s) were not deleted because they are not owned by this release:\n", len(unownedResources))
+		for _, info := range unownedResources {
+			fmt.Fprintf(&skipped, "[%s] %s\n", info.Mapping.GroupVersionKind.Kind, info.Name)
+		}
+	}
+
+	// Log and report resources whose ownership could not be verified.
+	if len(unverifiableResources) > 0 {
+		for _, ur := range unverifiableResources {
+			u.cfg.Logger().Warn("skipping delete of resource because ownership could not be verified",
+				"kind", ur.Info.Mapping.GroupVersionKind.Kind,
+				"name", ur.Info.Name,
+				"namespace", ur.Info.Namespace,
+				"release", releaseName,
+				"error", ur.Err)
+		}
+		if skipped.Len() > 0 {
+			skipped.WriteString("\n")
+		}
+		fmt.Fprintf(&skipped, "%d resource(s) were not deleted because their ownership could not be verified:\n", len(unverifiableResources))
+		for _, ur := range unverifiableResources {
+			fmt.Fprintf(&skipped, "[%s] %s: %s\n", ur.Info.Mapping.GroupVersionKind.Kind, ur.Info.Name, ur.Err)
+		}
+	}
+
+	for _, info := range ownedResources {
+		u.cfg.Logger().Debug("deleting resource owned by this release",
+			"kind", info.Mapping.GroupVersionKind.Kind,
+			"name", info.Name,
+			"namespace", info.Namespace,
+			"release", releaseName)
+	}
+
+	return ownedResources, skipped.String(), nil
+}
+
+func (u *Uninstall) buildDeleteResources(manifests []releaseutil.Manifest) (kube.ResourceList, error) {
 	var builder strings.Builder
-	for _, file := range filesToDelete {
+	for _, file := range manifests {
 		builder.WriteString("\n---\n" + file.Content)
 	}
 
 	resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
 	if err != nil {
-		return nil, "", []error{fmt.Errorf("unable to build kubernetes objects for delete: %w", err)}
+		return nil, fmt.Errorf("unable to build kubernetes objects for delete: %w", err)
 	}
+	return resources, nil
+}
 
-	// Verify ownership before deleting resources
-	var ownedResources, unownedResources kube.ResourceList
-	var unverifiableResources []unverifiableResource
-	if len(resources) > 0 {
-		ownedResources, unownedResources, unverifiableResources, err = verifyOwnershipBeforeDelete(resources, rel.Name, rel.Namespace)
+func (u *Uninstall) deleteManifestBatch(manifests []releaseutil.Manifest, waiter kube.Waiter, deadline time.Time, releaseName, releaseNamespace string) (kube.ResourceList, []error) {
+	resources, err := u.buildDeleteResources(manifests)
+	if err != nil || len(resources) == 0 {
 		if err != nil {
-			return nil, "", []error{fmt.Errorf("unable to verify resource ownership: %w", err)}
+			return nil, []error{err}
 		}
+		return nil, nil
+	}
 
-		// Log warnings for unowned resources
-		if len(unownedResources) > 0 {
-			for _, info := range unownedResources {
-				u.cfg.Logger().Warn("skipping delete of resource not owned by this release",
-					"kind", info.Mapping.GroupVersionKind.Kind,
-					"name", info.Name,
-					"namespace", info.Namespace,
-					"release", rel.Name)
-			}
-			if kept.Len() > 0 {
-				kept.WriteString("\n")
-			}
-			fmt.Fprintf(&kept, "%d resource(s) were not deleted because they are not owned by this release:\n", len(unownedResources))
-			for _, info := range unownedResources {
-				fmt.Fprintf(&kept, "[%s] %s\n", info.Mapping.GroupVersionKind.Kind, info.Name)
-			}
-		}
+	// Verify ownership before deleting so a sequenced uninstall, like the
+	// non-sequenced path, never deletes resources it does not own.
+	ownedResources, _, err := u.verifyOwnedForDelete(resources, releaseName, releaseNamespace)
+	if err != nil {
+		return nil, []error{err}
+	}
+	if len(ownedResources) == 0 {
+		return nil, nil
+	}
 
-		// Log warnings for resources whose ownership could not be verified
-		if len(unverifiableResources) > 0 {
-			for _, ur := range unverifiableResources {
-				u.cfg.Logger().Warn("skipping delete of resource because ownership could not be verified",
-					"kind", ur.Info.Mapping.GroupVersionKind.Kind,
-					"name", ur.Info.Name,
-					"namespace", ur.Info.Namespace,
-					"release", rel.Name,
-					"error", ur.Err)
-			}
-			if kept.Len() > 0 {
-				kept.WriteString("\n")
-			}
-			fmt.Fprintf(&kept, "%d resource(s) were not deleted because their ownership could not be verified:\n", len(unverifiableResources))
-			for _, ur := range unverifiableResources {
-				fmt.Fprintf(&kept, "[%s] %s: %s\n", ur.Info.Mapping.GroupVersionKind.Kind, ur.Info.Name, ur.Err)
-			}
-		}
+	_, errs := u.cfg.KubeClient.Delete(ownedResources, parseCascadingFlag(u.DeletionPropagation, u.cfg.Logger()))
+	if len(errs) > 0 {
+		return ownedResources, errs
+	}
 
-		// Delete only owned resources
-		if len(ownedResources) > 0 {
-			for _, info := range ownedResources {
-				u.cfg.Logger().Debug("deleting resource owned by this release",
-					"kind", info.Mapping.GroupVersionKind.Kind,
-					"name", info.Name,
-					"namespace", info.Namespace,
-					"release", rel.Name)
-			}
-			_, errs = u.cfg.KubeClient.Delete(ownedResources, parseCascadingFlag(u.DeletionPropagation, u.cfg.Logger()))
+	timeout := u.Timeout
+	if !deadline.IsZero() {
+		if remaining := time.Until(deadline); remaining < timeout {
+			timeout = remaining
 		}
 	}
-	return ownedResources, kept.String(), errs
+	if err := waiter.WaitForDelete(ownedResources, timeout); err != nil {
+		errs = append(errs, err)
+	}
+	return ownedResources, errs
 }
 
 func parseCascadingFlag(cascadingFlag string, logger *slog.Logger) v1.DeletionPropagation {

@@ -84,6 +84,15 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 			return shutdownNoOp, fmt.Errorf("unable to build kubernetes object for %s hook %s: %w", hook, h.Path, err)
 		}
 
+		// HIP-0025 sequencing annotations are ignored on hooks (spec: "Annotations
+		// added to resources in hooks will be ignored"). Strip them before apply so
+		// the multi-slash keys (e.g. helm.sh/depends-on/resource-groups), which are
+		// not valid Kubernetes annotation keys, do not cause the API server to reject
+		// the hook.
+		if err := stripSequencingAnnotations(resources); err != nil {
+			return shutdownNoOp, fmt.Errorf("unable to strip sequencing annotations from %s hook %s: %w", hook, h.Path, err)
+		}
+
 		// Record the time at which the hook was applied to the cluster
 		h.LastRun = release.HookExecution{
 			StartedAt: time.Now(),

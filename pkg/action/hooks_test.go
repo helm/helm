@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"reflect"
 	"strings"
 	"testing"
@@ -30,7 +31,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/resource"
 
@@ -445,6 +448,97 @@ func TestConfiguration_hookSetDeletePolicy(t *testing.T) {
 			cfg.hookSetDeletePolicy(h)
 			assert.Equal(t, tt.expected, h.DeletePolicies)
 		})
+	}
+}
+
+// annotationRecordingKubeClient captures the annotations present on each
+// resource at Create time, so a test can assert what actually reached the API.
+type annotationRecordingKubeClient struct {
+	kubefake.PrintingKubeClient
+	createdAnnotations []map[string]string
+}
+
+func (c *annotationRecordingKubeClient) Build(reader io.Reader, _ bool) (kube.ResourceList, error) {
+	u := &unstructured.Unstructured{}
+	if err := yaml.NewYAMLOrJSONDecoder(reader, 4096).Decode(u); err != nil {
+		return kube.ResourceList{}, err
+	}
+	return kube.ResourceList{{
+		Name:      u.GetName(),
+		Namespace: u.GetNamespace(),
+		Object:    u,
+	}}, nil
+}
+
+func (c *annotationRecordingKubeClient) Create(resources kube.ResourceList, _ ...kube.ClientCreateOption) (*kube.Result, error) {
+	for _, info := range resources {
+		acc, err := meta.Accessor(info.Object)
+		if err != nil {
+			continue
+		}
+		anns := maps.Clone(acc.GetAnnotations())
+		if anns == nil {
+			anns = map[string]string{}
+		}
+		c.createdAnnotations = append(c.createdAnnotations, anns)
+	}
+	return &kube.Result{Created: resources}, nil
+}
+
+// TestExecHook_StripsSequencingAnnotations verifies HIP-0025 sequencing
+// annotations are removed from hook resources before apply (spec: annotations
+// on hooks are ignored). The multi-slash keys are not valid K8s annotation
+// keys, so leaving them would make the API server reject the hook.
+func TestExecHook_StripsSequencingAnnotations(t *testing.T) {
+	is := assert.New(t)
+
+	client := &annotationRecordingKubeClient{
+		PrintingKubeClient: kubefake.PrintingKubeClient{Out: io.Discard},
+	}
+	configuration := &Configuration{
+		Releases:     storage.Init(driver.NewMemory()),
+		KubeClient:   client,
+		Capabilities: common.DefaultCapabilities,
+	}
+
+	rel := &release.Release{
+		Name:      "test-release",
+		Namespace: "test",
+		Hooks: []*release.Hook{
+			{
+				Name: "test-hook",
+				Kind: "ConfigMap",
+				Path: "templates/hook.yaml",
+				Manifest: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-hook
+  namespace: test
+  annotations:
+    helm.sh/resource-group: "grp"
+    helm.sh/depends-on/resource-groups: '["other"]'
+    keep-me: "yes"
+data:
+  foo: bar
+`,
+				Weight: 0,
+				Events: []release.HookEvent{release.HookPreInstall},
+			},
+		},
+	}
+
+	err := configuration.execHook(rel, release.HookPreInstall, kube.StatusWatcherStrategy, nil, 600, false)
+	require.NoError(t, err)
+
+	if is.Len(client.createdAnnotations, 1) {
+		anns := client.createdAnnotations[0]
+		// The multi-slash key is not a valid K8s annotation key and would be
+		// rejected at apply — it must be stripped from hooks (this is the bug).
+		is.NotContains(anns, "helm.sh/depends-on/resource-groups", "multi-slash sequencing annotation must be stripped from hooks")
+		// helm.sh/resource-group is a valid single-slash key; like the
+		// install/upgrade paths, it is left in place (harmlessly ignored on hooks).
+		is.Contains(anns, "helm.sh/resource-group", "valid single-slash annotation is retained, matching install/upgrade")
+		is.Equal("yes", anns["keep-me"], "non-sequencing annotations must survive")
 	}
 }
 
