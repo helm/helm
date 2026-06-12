@@ -236,7 +236,7 @@ func TestCustomReadinessStatusReaderWarnsOnceForIncomparableExpression(t *testin
 	})
 	require.NoError(t, unstructured.SetNestedField(u.Object, "Running", "status", "phase"))
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		result, err := reader.ReadStatusForObject(context.Background(), nil, u)
 		require.NoError(t, err)
 		assert.Equal(t, status.InProgressStatus, result.Status)

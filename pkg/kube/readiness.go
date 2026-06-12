@@ -106,8 +106,9 @@ func EvaluateCustomReadiness(obj *unstructured.Unstructured, successExprs, failu
 
 	if !hasSuccess || !hasFailure {
 		// Partial annotations: fall back to kstatus. The warning for this
-		// case is emitted once per batch by warnIfPartialReadinessAnnotations
-		// in the sequencing layer, not here (which runs on every poll tick).
+		// case is emitted once at plan-build time by the sequence plan
+		// builder (pkg/release/v1/sequence), not here (which runs on every
+		// poll tick).
 		return ReadinessPending, true, nil, nil
 	}
 

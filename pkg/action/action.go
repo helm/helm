@@ -518,7 +518,9 @@ func (cfg *Configuration) renderResourcesWithFiles(ctx context.Context, ch *char
 			// output dir is only used by `helm template`. In the next major
 			// release, we should move this logic to template only as it is not
 			// used by install or upgrade
-			err = writeToFile(newDir, m.Name, m.Content, fileWritten[m.Name])
+			// Strip helm-internal sequencing annotations so files written to
+			// --output-dir stay apply-able, matching the stdout path.
+			err = writeToFile(newDir, m.Name, releaseutil.StripHelmInternalAnnotations(m.Content), fileWritten[m.Name])
 			if err != nil {
 				return hs, b, "", nil, err
 			}

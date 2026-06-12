@@ -61,6 +61,16 @@ func BuildSubchartDAG(c *chart.Chart) (*DAG, error) {
 		loaded[sub.Name()] = true
 	}
 
+	// Charts decoded from release storage have no loaded dependency tree:
+	// Chart.dependencies is unexported, so the release codec (json.Marshal in
+	// pkg/storage/driver) drops it. Metadata.Dependencies survives, and per
+	// the ProcessDependencies precondition above it was already pruned to the
+	// enabled set with aliases and depends-on references rewritten. Enabled
+	// is only ever set true by ProcessDependencies, so it marks entries that
+	// were deployable at install time; freshly parsed Chart.yaml entries
+	// default to Enabled=false and stay excluded here.
+	trustMetadata := len(c.Dependencies()) == 0
+
 	// Each loaded subchart becomes a DAG node keyed by its effective name.
 	nodes := make(map[string]bool, len(c.Metadata.Dependencies))
 	for _, dep := range c.Metadata.Dependencies {
@@ -68,7 +78,8 @@ func BuildSubchartDAG(c *chart.Chart) (*DAG, error) {
 			continue
 		}
 		eff := effectiveDependencyName(dep)
-		if !loaded[eff] || nodes[eff] {
+		trustedFromMetadata := trustMetadata && dep.Enabled
+		if (!loaded[eff] && !trustedFromMetadata) || nodes[eff] {
 			continue
 		}
 		nodes[eff] = true
