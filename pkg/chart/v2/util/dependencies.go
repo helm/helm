@@ -148,6 +148,13 @@ func processDependencyEnabled(c *chart.Chart, v map[string]any, path string) err
 		return nil
 	}
 
+	// Resolve depends-on references while dependency entries still carry
+	// their original chart names; the alias rewrite below (req.Name =
+	// req.Alias) makes those names unrecoverable afterwards.
+	if err := resolveDependsOnReferences(c); err != nil {
+		return err
+	}
+
 	var chartDependencies []*chart.Chart
 	// If any dependency is not a part of Chart.yaml
 	// then this should be added to chartDependencies.
