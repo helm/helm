@@ -147,19 +147,21 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 		}
 	}()
 
-	if err := writeTarContents(twriter, c, ""); err != nil {
+	if err := writeTarContents(twriter, c, "", c.Name()); err != nil {
 		rollback = true
 		return filename, err
 	}
 	return filename, nil
 }
 
-func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
-	err := validateName(c.Name())
-	if err != nil {
+func writeTarContents(out *tar.Writer, c *chart.Chart, prefix, baseName string) error {
+	if err := validateName(c.Name()); err != nil {
 		return err
 	}
-	base := filepath.Join(prefix, c.Name())
+	if err := validateName(baseName); err != nil {
+		return err
+	}
+	base := filepath.Join(prefix, baseName)
 
 	// Pull out the dependencies of a v1 Chart, since there's no way
 	// to tell the serializer to skip a field for just this use case
@@ -229,12 +231,80 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 	}
 
 	// Save dependencies
-	for _, dep := range c.Dependencies() {
-		if err := writeTarContents(out, dep, filepath.Join(base, ChartsDir)); err != nil {
+	deps := c.Dependencies()
+	archiveNames := dependencyArchiveNames(c, deps)
+	for i, dep := range deps {
+		if err := writeTarContents(out, dep, filepath.Join(base, ChartsDir), archiveNames[i]); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func dependencyArchiveNames(c *chart.Chart, deps []*chart.Chart) []string {
+	names := make([]string, len(deps))
+	chartNameCounts := map[string]int{}
+	for _, dep := range deps {
+		chartNameCounts[dep.Name()]++
+	}
+
+	used := map[string]bool{}
+	for i, dep := range deps {
+		name := dep.Name()
+		if chartNameCounts[dep.Name()] > 1 {
+			if alias := dependencyAlias(c, dep, used); alias != "" {
+				name = alias
+			} else {
+				name = dependencyVersionedName(dep)
+			}
+		}
+		if used[name] {
+			name = uniqueDependencyArchiveName(dep, used)
+		}
+		used[name] = true
+		names[i] = name
+	}
+	return names
+}
+
+// Use Chart.yaml aliases to avoid clobbering sibling dependencies with the same chart name.
+func dependencyAlias(c *chart.Chart, dep *chart.Chart, used map[string]bool) string {
+	if c.Metadata == nil {
+		return ""
+	}
+	for _, req := range c.Metadata.Dependencies {
+		if req == nil || req.Alias == "" || used[req.Alias] {
+			continue
+		}
+		if dependencyMatches(dep, req) {
+			return req.Alias
+		}
+	}
+	return ""
+}
+
+func dependencyMatches(dep *chart.Chart, req *chart.Dependency) bool {
+	// Dependency processing may rename the loaded chart to its alias.
+	if req.Name != dep.Name() && req.Alias != dep.Name() {
+		return false
+	}
+	return dep.Metadata == nil || req.Version == "" || IsCompatibleRange(req.Version, dep.Metadata.Version)
+}
+
+func dependencyVersionedName(dep *chart.Chart) string {
+	if dep.Metadata == nil || dep.Metadata.Version == "" {
+		return dep.Name()
+	}
+	return fmt.Sprintf("%s-%s", dep.Name(), dep.Metadata.Version)
+}
+
+func uniqueDependencyArchiveName(dep *chart.Chart, used map[string]bool) string {
+	base := dependencyVersionedName(dep)
+	name := base
+	for i := 2; used[name]; i++ {
+		name = fmt.Sprintf("%s-%d", base, i)
+	}
+	return name
 }
 
 // writeToTar writes a single file to a tar archive.
