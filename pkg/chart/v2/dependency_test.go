@@ -42,3 +42,22 @@ func TestValidateDependency(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateDependency_SanitizesDependsOn(t *testing.T) {
+	dep := &Dependency{
+		Name:      "example",
+		DependsOn: []string{"data\abase", "cache\rqueue"},
+	}
+	if err := dep.Validate(); err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	// Sanitized like Name/Tags/Condition: non-printable runes are dropped and
+	// whitespace runes are normalized to spaces, so stray characters don't break
+	// subchart depends-on lookups.
+	if dep.DependsOn[0] != "database" {
+		t.Errorf("DependsOn[0] not sanitized: got %q, want %q", dep.DependsOn[0], "database")
+	}
+	if dep.DependsOn[1] != "cache queue" {
+		t.Errorf("DependsOn[1] not sanitized: got %q, want %q", dep.DependsOn[1], "cache queue")
+	}
+}
