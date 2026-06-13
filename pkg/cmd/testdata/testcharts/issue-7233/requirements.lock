@@ -1,0 +1,6 @@
+dependencies:
+- name: alpine
+  repository: file://../alpine
+  version: 0.1.0
+digest: sha256:7b380b1a826e7be1eecb089f66209d6d3df54be4bf879d4a8e6f8a9e871710e5
+generated: "2020-01-31T11:30:21.911547651Z"

@@ -1,0 +1,12 @@
+name: echo
+version: 0.1.0
+type: cli/v1
+apiVersion: v1
+runtime: subprocess
+config:
+  shortHelp: "echo stuff"
+  longHelp: "This echos stuff"
+  ignoreFlags: false
+runtimeConfig:
+  platformCommand:
+  - command: "echo hello"

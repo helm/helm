@@ -1,0 +1,4 @@
+apiVersion: v1
+description: A Helm chart for Kubernetes
+name: reqsubchart2
+version: 0.2.0

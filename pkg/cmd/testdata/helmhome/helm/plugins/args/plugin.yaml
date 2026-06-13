@@ -1,0 +1,12 @@
+name: args
+version: 0.1.0
+type: cli/v1
+apiVersion: v1
+runtime: subprocess
+config:
+  shortHelp: "echo args"
+  longHelp: "This echos args"
+  ignoreFlags: false
+runtimeConfig:
+  platformCommand:
+  - command: "$HELM_PLUGIN_DIR/args.sh"

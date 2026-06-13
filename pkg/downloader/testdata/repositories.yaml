@@ -1,0 +1,28 @@
+apiVersion: v1
+repositories:
+  - name: testing
+    url: "http://example.com"
+  - name: testing-https
+    url: "https://example.com"
+  - name: testing-basicauth
+    url: "http://username:password@example.com"
+  - name: kubernetes-charts
+    url: "http://example.com/charts"
+  - name: malformed
+    url: "http://dl.example.com"
+  - name: testing-querystring
+    url: "http://example.com?key=value"
+  - name: testing-relative
+    url: "http://example.com/helm"
+  - name: testing-relative-trailing-slash
+    url: "http://example.com/helm/"
+  - name: testing-ca-file
+    url: "https://example.com"
+    certFile: "cert"
+    keyFile: "key"
+    caFile: "ca"
+  - name: testing-https-insecureskip-tls-verify
+    url: "https://example-https-insecureskiptlsverify.com"
+    insecure_skip_tls_verify: true
+  - name: encoded-url
+    url: "http://example.com/with%2Fslash"

@@ -1,0 +1,17 @@
+# Default values for subchart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+# subchartA
+service:
+  name: apache
+  type: ClusterIP
+  externalPort: 80
+  internalPort: 80
+SCAdata:
+  SCAbool: false
+  SCAfloat: 3.1
+  SCAint: 55
+  SCAstring: "jabba"
+  SCAnested1:
+    SCAnested2: true
+

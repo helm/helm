@@ -1,0 +1,3 @@
+Error: "helm get values" requires 1 argument
+
+Usage:  helm get values RELEASE_NAME [flags]

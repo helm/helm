@@ -1,0 +1,4 @@
+# Default values for decompressedchart.
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+ name: my-decompressed-chart

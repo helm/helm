@@ -1,0 +1,21 @@
+==> Linting testdata/testcharts/chart-with-bad-subcharts
+[INFO] Chart.yaml: icon is recommended
+[WARNING] templates/: directory does not exist
+[ERROR] : unable to load chart
+	error unpacking subchart bad-subchart in chart-with-bad-subcharts: validation: chart.metadata.name is required
+
+==> Linting testdata/testcharts/chart-with-bad-subcharts/charts/bad-subchart
+[ERROR] Chart.yaml: name is required
+[ERROR] Chart.yaml: apiVersion is required. The value must be either "v1" or "v2"
+[ERROR] Chart.yaml: version is required
+[INFO] Chart.yaml: icon is recommended
+[WARNING] Chart.yaml: version '' is not a valid SemVerV2
+[WARNING] templates/: directory does not exist
+[ERROR] : unable to load chart
+	validation: chart.metadata.name is required
+
+==> Linting testdata/testcharts/chart-with-bad-subcharts/charts/good-subchart
+[INFO] Chart.yaml: icon is recommended
+[WARNING] templates/: directory does not exist
+
+Error: 3 chart(s) linted, 2 chart(s) failed

@@ -1,0 +1,2 @@
+NAME 	NAMESPACE	REVISION	UPDATED                      	STATUS     	CHART          	APP VERSION
+groot	default  	1       	2016-01-16 00:00:01 +0000 UTC	uninstalled	chickadee-1.0.0	0.0.1      

@@ -1,0 +1,43 @@
+# This file can be used as input to create test releases:
+# HELM_MEMORY_DRIVER_DATA=./testdata/releases.yaml HELM_DRIVER=memory helm list --all-namespaces
+- name: athos
+  version: 1
+  namespace: default
+  info:
+    status: deployed
+  chart:
+    metadata:
+      name: athos-chart
+      version: 1.0.0
+      appversion: 1.1.0
+- name: porthos
+  version: 2
+  namespace: default
+  info:
+    status: deployed
+  chart:
+    metadata:
+      name: porthos-chart
+      version: 0.2.0
+      appversion: 0.2.2
+- name: aramis
+  version: 3
+  namespace: default
+  info:
+    status: deployed
+  chart:
+    metadata:
+      name: aramis-chart
+      version: 0.0.3
+      appversion: 3.0.3
+- name: dartagnan
+  version: 4
+  namespace: gascony
+  info:
+    status: deployed
+  chart:
+    metadata:
+      name: dartagnan-chart
+      version: 0.4.4
+      appversion: 4.4.4
+

@@ -1,0 +1,5 @@
+apiVersion: v1
+name: chart-with-no-templates-dir
+description: an example chart
+version: 199.44.12345-Alpha.1+cafe009
+icon: http://riverrun.io

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "master.fullname" . }}-init-scripts
+  labels:
+    app: {{ template "mariadb.name" . }}
+    component: "master"
+    chart: {{ template "mariadb.chart" . }}
+    release: {{ .Release.Name | quote }}
+    heritage: {{ .Release.Service | quote }}
+data:
+{{ (.Files.Glob "files/docker-entrypoint-initdb.d/*").AsConfig | indent 2 }}

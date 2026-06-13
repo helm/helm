@@ -1,0 +1,31 @@
+{{- if .Values.replication.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "slave.fullname" . }}
+  labels:
+    app: "{{ template "mariadb.name" . }}"
+    chart: {{ template "mariadb.chart" . }}
+    component: "slave"
+    release: {{ .Release.Name | quote }}
+    heritage: {{ .Release.Service | quote }}
+{{- if .Values.metrics.enabled }}
+  annotations:
+{{ toYaml .Values.metrics.annotations | indent 4 }}
+{{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+  - name: mysql
+    port: {{ .Values.service.port }}
+    targetPort: mysql
+{{- if .Values.metrics.enabled }}
+  - name: metrics
+    port: 9104
+    targetPort: metrics
+{{- end }}
+  selector:
+    app: "{{ template "mariadb.name" . }}"
+    component: "slave"
+    release: "{{ .Release.Name }}"
+{{- end }}

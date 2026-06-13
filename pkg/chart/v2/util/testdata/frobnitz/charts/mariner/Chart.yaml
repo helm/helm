@@ -1,0 +1,9 @@
+apiVersion: v1
+name: mariner
+description: A Helm chart for Kubernetes
+version: 4.3.2
+home: ""
+dependencies:
+  - name: albatross
+    repository: https://example.com/mariner/charts
+    version: "0.1.0"

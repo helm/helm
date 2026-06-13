@@ -1,0 +1,6 @@
+dependencies:
+- name: mariadb
+  repository: https://charts.helm.sh/stable/
+  version: 4.3.1
+digest: sha256:82a0e5374376169d2ecf7d452c18a2ed93507f5d17c3393a1457f9ffad7e9b26
+generated: 2018-08-02T22:07:51.905271776Z

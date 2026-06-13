@@ -1,0 +1,6 @@
+8	App: 1.0, Chart: foo-0.1.0-beta.1
+9	App: 1.0, Chart: foo-0.1.0-beta.1
+10	App: 1.0, Chart: foo-0.1.0-beta.1
+11	App: 1.0, Chart: foo-0.1.0-beta.1
+:4
+Completion ended with directive: ShellCompDirectiveNoFileComp

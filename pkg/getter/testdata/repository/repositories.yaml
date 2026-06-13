@@ -1,0 +1,15 @@
+apiVersion: v1
+generated: 2017-04-28T12:34:38.551693035-06:00
+repositories:
+- caFile: ""
+  cache: repository/cache/stable-index.yaml
+  certFile: ""
+  keyFile: ""
+  name: stable
+  url: https://charts.helm.sh/stable
+- caFile: ""
+  cache: repository/cache/local-index.yaml
+  certFile: ""
+  keyFile: ""
+  name: local
+  url: http://127.0.0.1:8879/charts

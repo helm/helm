@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: signtest
+spec:
+  restartPolicy: Never
+  containers:
+  - name: waiter
+    image: "alpine:3.3"
+    command: ["/bin/sleep","9000"]

@@ -1,0 +1,14 @@
+apiVersion: v1
+entries:
+  tlsfoo:
+    - name: tlsfoo
+      description: TLS FOO Chart
+      home: https://helm.sh/helm
+      keywords: []
+      maintainers: []
+      sources:
+        - https://github.com/helm/charts
+      urls:
+        - https://example.com/tlsfoo-1.2.3.tgz
+      version: 1.2.3
+      checksum: 0e6661f193211d7a5206918d42f5c2a9470b7373

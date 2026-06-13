@@ -1,0 +1,83 @@
+/*
+Copyright The Helm Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package registry
+
+import (
+	"os"
+	"testing"
+
+	"github.com/stretchr/testify/suite"
+	"oras.land/oras-go/v2/content"
+)
+
+type HTTPRegistryClientTestSuite struct {
+	TestRegistry
+}
+
+func (suite *HTTPRegistryClientTestSuite) SetupSuite() {
+	// init test client
+	setup(&suite.TestRegistry, false, false)
+}
+
+func (suite *HTTPRegistryClientTestSuite) TearDownSuite() {
+	teardown(&suite.TestRegistry)
+	_ = os.RemoveAll(suite.WorkspaceDir)
+}
+
+func (suite *HTTPRegistryClientTestSuite) Test_0_Login() {
+	err := suite.RegistryClient.Login(suite.DockerRegistryHost,
+		LoginOptBasicAuth("badverybad", "ohsobad"),
+		LoginOptPlainText(true))
+	suite.Require().Error(err, "error logging into registry with bad credentials")
+
+	err = suite.RegistryClient.Login(suite.DockerRegistryHost,
+		LoginOptBasicAuth(testUsername, testPassword),
+		LoginOptPlainText(true))
+	suite.Require().NoError(err, "no error logging into registry with good credentials")
+}
+
+func (suite *HTTPRegistryClientTestSuite) Test_1_Push() {
+	testPush(&suite.TestRegistry)
+}
+
+func (suite *HTTPRegistryClientTestSuite) Test_2_Pull() {
+	testPull(&suite.TestRegistry)
+}
+
+func (suite *HTTPRegistryClientTestSuite) Test_3_Tags() {
+	testTags(&suite.TestRegistry)
+}
+
+func (suite *HTTPRegistryClientTestSuite) Test_4_ManInTheMiddle() {
+	ref := suite.CompromisedRegistryHost + "/testrepo/supposedlysafechart:9.9.9"
+
+	// returns content that does not match the expected digest
+	_, err := suite.RegistryClient.Pull(ref)
+	suite.Require().Error(err)
+	suite.ErrorIs(err, content.ErrMismatchedDigest)
+}
+
+func (suite *HTTPRegistryClientTestSuite) Test_5_ImageIndex() {
+	ref := suite.FakeRegistryHost + "/testrepo/image-index:0.1.0"
+
+	_, err := suite.RegistryClient.Pull(ref)
+	suite.Require().NoError(err)
+}
+
+func TestHTTPRegistryClientTestSuite(t *testing.T) {
+	suite.Run(t, new(HTTPRegistryClientTestSuite))
+}

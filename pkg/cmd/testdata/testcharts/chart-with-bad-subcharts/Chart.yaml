@@ -1,0 +1,4 @@
+apiVersion: v1
+description: Chart with bad subcharts
+name: chart-with-bad-subcharts
+version: 0.0.1

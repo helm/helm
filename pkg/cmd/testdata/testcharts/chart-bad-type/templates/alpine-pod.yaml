@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{.Release.Name}}-{{.Values.Name}}"
+  labels:
+    # The "app.kubernetes.io/managed-by" label is used to track which tool
+    # deployed a given chart. It is useful for admins who want to see what
+    # releases a particular tool is responsible for.
+    app.kubernetes.io/managed-by: {{.Release.Service | quote }}
+    # The "release" convention makes it easy to tie a release to all of the
+    # Kubernetes resources that were created as part of that release.
+    app.kubernetes.io/instance: {{.Release.Name | quote }}
+    # This makes it easy to audit chart usage.
+    helm.sh/chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+    values: {{.Values.test.Name}}
+spec:
+  # This shows how to use a simple value. This will look for a passed-in value
+  # called restartPolicy. If it is not found, it will use the default value.
+  # {{default "Never" .restartPolicy}} is a slightly optimized version of the
+  # more conventional syntax: {{.restartPolicy | default "Never"}}
+  restartPolicy: {{default "Never" .Values.restartPolicy}}
+  containers:
+  - name: waiter
+    image: "alpine:3.9"
+    command: ["/bin/sleep","9000"]

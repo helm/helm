@@ -1,0 +1,4 @@
+apiVersion: v1
+description: Test chart versioning
+name: hashtest
+version: 1.2.3

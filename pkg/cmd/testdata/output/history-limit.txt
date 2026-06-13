@@ -1,0 +1,3 @@
+REVISION	UPDATED                 	STATUS    	CHART           	APP VERSION	DESCRIPTION 
+3       	Fri Sep  2 22:04:05 1977	superseded	foo-0.1.0-beta.1	1.0        	Release mock
+4       	Fri Sep  2 22:04:05 1977	deployed  	foo-0.1.0-beta.1	1.0        	Release mock

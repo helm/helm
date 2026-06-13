@@ -1,0 +1,36 @@
+name: build-test
+on:
+  push:
+    branches:
+      - "main"
+      - "dev-v3"
+      - "release-**"
+  pull_request:
+    branches:
+      - "main"
+      - "dev-v3"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - name: Add variables to environment file
+        run: cat ".github/env" >> "$GITHUB_ENV"
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # pin@6.4.0
+        with:
+          go-version: '${{ env.GOLANG_VERSION }}'
+          check-latest: true
+      - name: Test source headers are present
+        run: make test-source-headers
+      - name: Check if go modules need to be tidied
+        run: go mod tidy -diff
+      - name: Run unit tests
+        run: make test-coverage
+      - name: Test build
+        run: make build

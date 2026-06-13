@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: test
+      image: "alpine:latest"
+      envFrom:
+        - configMapRef:
+            name: "{{ .Release.Name }}-testconfig"
+      command:
+        - echo
+        - "$message"
+  restartPolicy: Never

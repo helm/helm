@@ -1,0 +1,10 @@
+# Default values for parent-chart.
+nameOverride: parent-chart
+tags:
+  dev: false
+  prod: true
+resources:
+  autoscaler:
+    minReplicas: 0
+    maxReplicas: 0
+    targetCPUUtilizationPercentage: 99

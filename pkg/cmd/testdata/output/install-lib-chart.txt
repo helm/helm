@@ -1,0 +1,1 @@
+Error: INSTALLATION FAILED: validation: chart.metadata.type must be application or library

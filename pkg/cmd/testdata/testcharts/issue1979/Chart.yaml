@@ -1,0 +1,7 @@
+apiVersion: v1
+description: Deploy a basic Alpine Linux pod
+home: https://helm.sh/helm
+name: alpine
+sources:
+  - https://github.com/helm/helm
+version: 0.1.0

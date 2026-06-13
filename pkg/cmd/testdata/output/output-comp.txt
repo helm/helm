@@ -1,0 +1,5 @@
+json	Output result in JSON format
+table	Output result in human-readable format
+yaml	Output result in YAML format
+:4
+Completion ended with directive: ShellCompDirectiveNoFileComp

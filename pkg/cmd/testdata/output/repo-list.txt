@@ -1,0 +1,4 @@
+NAME         	URL                          
+charts       	https://charts.helm.sh/stable
+firstexample 	http://firstexample.com      
+secondexample	http://secondexample.com     

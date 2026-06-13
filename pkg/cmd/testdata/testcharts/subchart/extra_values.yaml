@@ -1,0 +1,5 @@
+# This file is used to test values passed by file at the command line
+
+configmap:
+  enabled: true
+  value: "qux"

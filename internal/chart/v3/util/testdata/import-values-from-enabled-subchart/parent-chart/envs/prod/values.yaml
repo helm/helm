@@ -1,0 +1,9 @@
+# Prod values parent-chart
+nameOverride: parent-chart-prod
+exports:
+  data:
+    resources:
+      autoscaler:
+        minReplicas: 2
+        maxReplicas: 5
+        targetCPUUtilizationPercentage: 90
