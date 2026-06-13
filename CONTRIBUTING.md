@@ -116,15 +116,16 @@ that we're already aware of. It is also worth asking on the Slack channels.
 
 ## Milestones
 
+## Milestones
+
 We use milestones to track progress of specific planned releases.
 
-For example, if the latest currently-released version is `3.2.1`, an issue/PR which pertains to a
-specific upcoming bugfix or feature release could fall into one of two different active milestones:
-`3.2.2` or `3.3.0`.
+For example, if the latest currently-released version is `1.2.3`, an issue/PR which pertains to a specific upcoming bugfix or feature release could fall into one of two different active milestones: `1.2.4` (next patch) or `1.3.0` (next minor).
 
-Issues and PRs which are deemed backwards-incompatible may be added to the discussion items for
-Helm 4 with [label:v4.x](https://github.com/helm/helm/labels/v4.x). An issue or PR that we are not
-sure if we will be addressing will not be added to any milestone.
+Issues and PRs which are deemed backwards-incompatible may be added to the next major version
+discussion using the relevant version label (e.g. [label:v4.x](https://github.com/helm/helm/labels/v4.x)).
+
+An issue or PR that we are not sure if we will be addressing will not be added to any milestone.
 
 A milestone (and hence release) can be closed when all outstanding issues/PRs have been closed
 or moved to another milestone and the associated release has been published.
