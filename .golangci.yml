@@ -22,6 +22,7 @@ linters:
     - bidichk
     - depguard
     - dupl
+    - errorlint
     - exhaustive
     - gocritic
     - gomodguard
@@ -67,6 +68,12 @@ linters:
 
     dupl:
       threshold: 400
+
+    errorlint:
+      # Check for plain type assertions and type switches.
+      asserts: false
+      # Check for plain error comparisons.
+      comparison: false
 
     exhaustive:
       default-signifies-exhaustive: true

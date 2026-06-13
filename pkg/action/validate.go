@@ -93,7 +93,7 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 
 		// Allow adoption of the resource if it is managed by Helm and is annotated with correct release name and namespace.
 		if err := checkOwnership(existing, releaseName, releaseNamespace); err != nil {
-			return fmt.Errorf("%s exists and cannot be imported into the current release: %s", resourceString(info), err)
+			return fmt.Errorf("%s exists and cannot be imported into the current release: %w", resourceString(info), err)
 		}
 		// Resources that are not found are skipped because they are already deleted and do not need deletion.
 		infoCopy := *info
@@ -179,13 +179,13 @@ func checkOwnership(obj runtime.Object, releaseName, releaseNamespace string) er
 
 	var errs []error
 	if err := requireValue(lbls, appManagedByLabel, appManagedByHelm); err != nil {
-		errs = append(errs, fmt.Errorf("label validation error: %s", err))
+		errs = append(errs, fmt.Errorf("label validation error: %w", err))
 	}
 	if err := requireValue(annos, helmReleaseNameAnnotation, releaseName); err != nil {
-		errs = append(errs, fmt.Errorf("annotation validation error: %s", err))
+		errs = append(errs, fmt.Errorf("annotation validation error: %w", err))
 	}
 	if err := requireValue(annos, helmReleaseNamespaceAnnotation, releaseNamespace); err != nil {
-		errs = append(errs, fmt.Errorf("annotation validation error: %s", err))
+		errs = append(errs, fmt.Errorf("annotation validation error: %w", err))
 	}
 
 	if len(errs) > 0 {
@@ -217,7 +217,7 @@ func setMetadataVisitor(releaseName, releaseNamespace string, forceOwnership boo
 
 		if !forceOwnership {
 			if err := checkOwnership(info.Object, releaseName, releaseNamespace); err != nil {
-				return fmt.Errorf("%s cannot be owned: %s", resourceString(info), err)
+				return fmt.Errorf("%s cannot be owned: %w", resourceString(info), err)
 			}
 		}
 
@@ -225,7 +225,7 @@ func setMetadataVisitor(releaseName, releaseNamespace string, forceOwnership boo
 			appManagedByLabel: appManagedByHelm,
 		}); err != nil {
 			return fmt.Errorf(
-				"%s labels could not be updated: %s",
+				"%s labels could not be updated: %w",
 				resourceString(info), err,
 			)
 		}
@@ -235,7 +235,7 @@ func setMetadataVisitor(releaseName, releaseNamespace string, forceOwnership boo
 			helmReleaseNamespaceAnnotation: releaseNamespace,
 		}); err != nil {
 			return fmt.Errorf(
-				"%s annotations could not be updated: %s",
+				"%s annotations could not be updated: %w",
 				resourceString(info), err,
 			)
 		}
