@@ -235,12 +235,15 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 
 // getKubeClient get or create a new KubernetesClientSet
 func (c *Client) getKubeClient() (kubernetes.Interface, error) {
-	var err error
-	if c.kubeClient == nil {
-		c.kubeClient, err = c.Factory.KubernetesClientSet()
+	if c.kubeClient != nil {
+		return c.kubeClient, nil
 	}
-
-	return c.kubeClient, err
+	kc, err := c.Factory.KubernetesClientSet()
+	if err != nil {
+		return nil, err
+	}
+	c.kubeClient = kc
+	return c.kubeClient, nil
 }
 
 // IsReachable tests connectivity to the cluster.
