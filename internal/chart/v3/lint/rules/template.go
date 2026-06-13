@@ -57,7 +57,7 @@ func TemplatesWithSkipSchemaValidation(linter *support.Linter, values map[string
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
 	// Templates directory is optional for now
-	templatesDirExists := linter.RunLinterRule(support.WarningSev, fpath, templatesDirExists(templatesPath))
+	templatesDirExists := linter.RunLinterRule(support.InfoSev, fpath, templatesDirExists(templatesPath))
 	if !templatesDirExists {
 		return
 	}
