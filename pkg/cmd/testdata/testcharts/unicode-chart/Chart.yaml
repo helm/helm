@@ -1,0 +1,4 @@
+apiVersion: v1
+description: Test chart with unicode Kröpke 日本語 中文 한글
+name: unicode-chart
+version: 0.1.0

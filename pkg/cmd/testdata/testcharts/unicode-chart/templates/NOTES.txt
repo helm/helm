@@ -1,0 +1,3 @@
+Thank you for installing {{ .Chart.Name }}.
+
+This chart includes unicode: Kröpke 日本語 中文 한글
