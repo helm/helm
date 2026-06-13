@@ -1,0 +1,6 @@
+plugin.complete was called
+Namespace: default
+Num args received: 1
+Args received:
+:4
+Completion ended with directive: ShellCompDirectiveNoFileComp

@@ -1,0 +1,35 @@
+name: govulncheck
+on:
+  push:
+    paths:
+      - go.sum
+      - .github/workflows/govulncheck.yml
+  pull_request:
+    paths:
+      - go.sum
+      - .github/workflows/govulncheck.yml
+  schedule:
+    - cron: "0 0 * * *"
+
+permissions: read-all
+
+jobs:
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+        with:
+          persist-credentials: false
+      - name: Add variables to environment file
+        run: cat ".github/env" >> "$GITHUB_ENV"
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # pin@6.4.0
+        with:
+          go-version: '${{ env.GOLANG_VERSION }}'
+          check-latest: true
+      - name: govulncheck
+        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # pin@1.0.4
+        with:
+          go-package: ./...

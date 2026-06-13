@@ -1,0 +1,3 @@
+NAME    	NAMESPACE	REVISION	UPDATED                      	STATUS    	CHART          	APP VERSION
+gamora  	default  	1       	2016-01-16 00:00:01 +0000 UTC	superseded	chickadee-1.0.0	0.0.1      
+starlord	default  	1       	2016-01-16 00:00:01 +0000 UTC	superseded	chickadee-1.0.0	0.0.1      

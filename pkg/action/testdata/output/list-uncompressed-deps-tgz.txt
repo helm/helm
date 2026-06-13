@@ -1,0 +1,3 @@
+NAME   	VERSION	REPOSITORY                                       	STATUS  
+mariadb	4.x.x  	https://kubernetes-charts.storage.googleapis.com/	unpacked
+

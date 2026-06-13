@@ -1,0 +1,3 @@
+Error: "helm get notes" requires 1 argument
+
+Usage:  helm get notes RELEASE_NAME [flags]

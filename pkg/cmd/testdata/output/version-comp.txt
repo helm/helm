@@ -1,0 +1,5 @@
+0.3.0-rc.1	App: 3.0.0, Created: November 12, 2020
+0.2.0	App: 2.3.4, Created: July 9, 2018
+0.1.0	App: 1.2.3, Created: June 27, 2018 (deprecated)
+:4
+Completion ended with directive: ShellCompDirectiveNoFileComp

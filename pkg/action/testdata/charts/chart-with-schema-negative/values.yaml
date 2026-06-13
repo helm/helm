@@ -1,0 +1,14 @@
+firstname: John
+lastname: Doe
+age: -5
+likesCoffee: true
+addresses:
+  - city: Springfield
+    street: Main
+    number: 12345
+  - city: New York
+    street: Broadway
+    number: 67890
+phoneNumbers:
+  - "(888) 888-8888"
+  - "(555) 555-5555"

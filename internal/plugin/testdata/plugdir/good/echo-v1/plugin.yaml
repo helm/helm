@@ -1,0 +1,15 @@
+---
+name: "echo-v1"
+version: "1.2.3"
+type: cli/v1
+apiVersion: v1
+runtime: subprocess
+config:
+  shortHelp: "echo something"
+  longHelp: |-
+    This is a testing fixture.
+  ignoreFlags: false
+runtimeConfig:
+  command: "echo Hello"
+  hooks:
+    install: "echo Installing"

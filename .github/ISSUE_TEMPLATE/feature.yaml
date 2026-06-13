@@ -1,0 +1,21 @@
+name: Enhancement/feature
+description: Provide supporting details for a feature in development
+labels: kind/feature
+body:
+  - type: textarea
+    id: feature
+    attributes:
+      label: What would you like to be added?
+      description: |
+        Feature requests are unlikely to make progress as issues.
+        Initial discussion and ideas can happen on an issue.
+        But significant changes or features must be proposed as a [Helm Improvement Proposal](https://github.com/helm/community/blob/main/hips/hip-0001.md) (HIP)
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Why is this needed?
+    validations:
+      required: true

@@ -1,0 +1,70 @@
+name: Bug Report
+description: Report a bug encountered in Helm
+labels: kind/bug
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: |
+        Please provide as much info as possible. Not doing so may result in your bug not being addressed in a timely manner.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How can we reproduce it (as minimally and precisely as possible)?
+      description: |
+        Please list steps someone can follow to trigger the issue.
+        
+        For example:
+        1. Run `helm install mychart ./path-to-chart -f values.yaml --debug`
+        2. Observe the following error: ...
+
+        You can include:
+        - a sample `values.yaml` block
+        - a link to a chart
+        - specific `helm` commands used
+
+        This helps others reproduce and debug your issue more effectively.
+    validations:
+      required: true
+
+  - type: textarea
+    id: helmVersion
+    attributes:
+      label: Helm version
+      value: |
+        <details>
+        
+        ```console
+        $ helm version
+        # paste output here
+        ```
+        </details>
+    validations:
+      required: true
+
+  - type: textarea
+    id: kubeVersion
+    attributes:
+      label: Kubernetes version
+      value: |
+        <details>
+
+        ```console
+        $ kubectl version
+        # paste output here
+        ```
+
+        </details>
+    validations:
+      required: true

@@ -1,0 +1,13 @@
+name: "testgetter"
+version: "0.1.0"
+type: getter/v1
+apiVersion: v1
+runtime: subprocess
+config:
+  protocols:
+    - "test"
+runtimeConfig:
+  protocolCommands:
+    - command: "echo"
+      protocols:
+        - "test"

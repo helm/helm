@@ -1,0 +1,16 @@
+apiVersion: v1
+entries:
+  alpine:
+    - name: alpine
+      urls:
+        - alpine-1.2.3.tgz
+      checksum: 0e6661f193211d7a5206918d42f5c2a9470b737d
+      home: https://helm.sh/helm
+      sources:
+        - https://github.com/helm/helm
+      version: 1.2.3
+      description: Deploy a basic Alpine Linux pod
+      keywords: []
+      maintainers: []
+      icon: ""
+      apiVersion: v2

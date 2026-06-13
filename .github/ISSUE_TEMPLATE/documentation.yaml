@@ -1,0 +1,27 @@
+name: Documentation
+description: Report any mistakes or missing information from the documentation or the examples
+labels: kind/documentation
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ **Note**: Most documentation lives in [helm/helm-www](https://github.com/helm/helm-www).
+        If your issue is about Helm website documentation or examples, please [open an issue there](https://github.com/helm/helm-www/issues/new/choose).
+
+  - type: textarea
+    id: feature
+    attributes:
+      label: What would you like to be added?
+      description: |
+        Link to the issue (please include a link to the specific documentation or example).
+        Link to the issue raised in [Helm Documentation Improvement Proposal](https://github.com/helm/helm-www)
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Why is this needed?
+    validations:
+      required: true
+

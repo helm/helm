@@ -1,0 +1,7 @@
+apiVersion: v2
+description: Chart with subchart notes
+name: chart-with-subchart-notes
+version: 0.0.1
+dependencies:
+  - name: subchart-with-notes
+    version: 0.0.1

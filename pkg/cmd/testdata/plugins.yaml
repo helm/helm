@@ -1,0 +1,3 @@
+plugins:
+- name: testplugin
+  url: testdata/testplugin

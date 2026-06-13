@@ -1,0 +1,12 @@
+poet: "Coleridge"
+title: "Rime of the Ancient Mariner"
+stanza: ["at", "length", "did", "cross", "an", "Albatross"]
+
+mariner:
+  with: "crossbow"
+  shot: "ALBATROSS"
+
+water:
+  water:
+    where: "everywhere"
+    nor: "any drop to drink"

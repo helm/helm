@@ -1,0 +1,9 @@
+---
+apiVersion: v1
+type: test/v1
+name: extismv1-test
+version: 0.1.0
+runtime: extism/v1
+runtimeConfig:
+  fileSystem:
+    createTempDir: true

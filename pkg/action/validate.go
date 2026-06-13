@@ -1,0 +1,297 @@
+/*
+Copyright The Helm Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package action
+
+import (
+	"errors"
+	"fmt"
+	"maps"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/cli-runtime/pkg/resource"
+
+	"helm.sh/helm/v4/pkg/kube"
+)
+
+var accessor = meta.NewAccessor()
+
+const (
+	appManagedByLabel              = "app.kubernetes.io/managed-by"
+	appManagedByHelm               = "Helm"
+	helmReleaseNameAnnotation      = "meta.helm.sh/release-name"
+	helmReleaseNamespaceAnnotation = "meta.helm.sh/release-namespace"
+)
+
+// requireAdoption returns the subset of resources that already exist in the cluster.
+func requireAdoption(resources kube.ResourceList) (kube.ResourceList, error) {
+	var requireUpdate kube.ResourceList
+
+	err := resources.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+
+		isGenerateName, err := validateNameAndGenerateName(info)
+		if isGenerateName || err != nil {
+			return err
+		}
+
+		helper := resource.NewHelper(info.Client, info.Mapping)
+		_, err = helper.Get(info.Namespace, info.Name)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return fmt.Errorf("could not get information about the resource %s: %w", resourceString(info), err)
+		}
+
+		infoCopy := *info
+		requireUpdate.Append(&infoCopy)
+		return nil
+	})
+
+	return requireUpdate, err
+}
+
+func existingResourceConflict(resources kube.ResourceList, releaseName, releaseNamespace string) (kube.ResourceList, error) {
+	var requireUpdate kube.ResourceList
+
+	err := resources.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+
+		isGenerateName, err := validateNameAndGenerateName(info)
+		if isGenerateName || err != nil {
+			return err
+		}
+
+		helper := resource.NewHelper(info.Client, info.Mapping)
+		existing, err := helper.Get(info.Namespace, info.Name)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return fmt.Errorf("could not get information about the resource %s: %w", resourceString(info), err)
+		}
+
+		// Allow adoption of the resource if it is managed by Helm and is annotated with correct release name and namespace.
+		if err := checkOwnership(existing, releaseName, releaseNamespace); err != nil {
+			return fmt.Errorf("%s exists and cannot be imported into the current release: %w", resourceString(info), err)
+		}
+		// Resources that are not found are skipped because they are already deleted and do not need deletion.
+		infoCopy := *info
+		requireUpdate.Append(&infoCopy)
+		return nil
+	})
+
+	return requireUpdate, err
+}
+
+// unverifiableResource pairs a resource with the error encountered while attempting
+// to verify its ownership (for example, RBAC or network failures).
+type unverifiableResource struct {
+	Info *resource.Info
+	Err  error
+}
+
+// verifyOwnershipBeforeDelete checks that resources in the list are owned by the specified release.
+// It returns three lists:
+//   - owned: resources confirmed to be owned by the release (safe to delete).
+//   - unowned: resources that exist but are not owned by the release (should be skipped).
+//   - unverifiable: resources whose ownership could not be determined due to a fetch
+//     error (e.g. RBAC or network issues), paired with the underlying error.
+//
+// Resources that are not found on the server are excluded from all returned lists,
+// since they have already been deleted and require no further action.
+func verifyOwnershipBeforeDelete(resources kube.ResourceList, releaseName, releaseNamespace string) (kube.ResourceList, kube.ResourceList, []unverifiableResource, error) {
+	var owned kube.ResourceList
+	var unowned kube.ResourceList
+	var unverifiable []unverifiableResource
+
+	err := resources.Visit(func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// If client is not available, skip verification (test scenario or build failure)
+		if info.Client == nil {
+			infoCopy := *info
+			owned.Append(&infoCopy)
+			return nil
+		}
+
+		helper := resource.NewHelper(info.Client, info.Mapping)
+		existing, err := helper.Get(info.Namespace, info.Name)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				// Resource already deleted; nothing to do.
+				return nil
+			}
+			// Cannot fetch resource (network/permission issue); ownership unverifiable.
+			infoCopy := *info
+			unverifiable = append(unverifiable, unverifiableResource{Info: &infoCopy, Err: err})
+			return nil
+		}
+
+		// Verify ownership of the existing resource
+		if err := checkOwnership(existing, releaseName, releaseNamespace); err != nil {
+			// Resource not owned by this release, cannot delete
+			infoCopy := *info
+			unowned.Append(&infoCopy)
+			return nil
+		}
+
+		// Resource is owned by this release, can delete
+		infoCopy := *info
+		owned.Append(&infoCopy)
+		return nil
+	})
+
+	return owned, unowned, unverifiable, err
+}
+
+func checkOwnership(obj runtime.Object, releaseName, releaseNamespace string) error {
+	lbls, err := accessor.Labels(obj)
+	if err != nil {
+		return err
+	}
+	annos, err := accessor.Annotations(obj)
+	if err != nil {
+		return err
+	}
+
+	var errs []error
+	if err := requireValue(lbls, appManagedByLabel, appManagedByHelm); err != nil {
+		errs = append(errs, fmt.Errorf("label validation error: %w", err))
+	}
+	if err := requireValue(annos, helmReleaseNameAnnotation, releaseName); err != nil {
+		errs = append(errs, fmt.Errorf("annotation validation error: %w", err))
+	}
+	if err := requireValue(annos, helmReleaseNamespaceAnnotation, releaseNamespace); err != nil {
+		errs = append(errs, fmt.Errorf("annotation validation error: %w", err))
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("invalid ownership metadata; %w", joinErrors(errs, "; "))
+	}
+
+	return nil
+}
+
+func requireValue(meta map[string]string, k, v string) error {
+	actual, ok := meta[k]
+	if !ok {
+		return fmt.Errorf("missing key %q: must be set to %q", k, v)
+	}
+	if actual != v {
+		return fmt.Errorf("key %q must equal %q: current value is %q", k, v, actual)
+	}
+	return nil
+}
+
+// setMetadataVisitor adds release tracking metadata to all resources. If forceOwnership is enabled, existing
+// ownership metadata will be overwritten. Otherwise an error will be returned if any resource has an
+// existing and conflicting value for the managed by label or Helm release/namespace annotations.
+func setMetadataVisitor(releaseName, releaseNamespace string, forceOwnership bool) resource.VisitorFunc {
+	return func(info *resource.Info, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !forceOwnership {
+			if err := checkOwnership(info.Object, releaseName, releaseNamespace); err != nil {
+				return fmt.Errorf("%s cannot be owned: %w", resourceString(info), err)
+			}
+		}
+
+		if err := mergeLabels(info.Object, map[string]string{
+			appManagedByLabel: appManagedByHelm,
+		}); err != nil {
+			return fmt.Errorf(
+				"%s labels could not be updated: %w",
+				resourceString(info), err,
+			)
+		}
+
+		if err := mergeAnnotations(info.Object, map[string]string{
+			helmReleaseNameAnnotation:      releaseName,
+			helmReleaseNamespaceAnnotation: releaseNamespace,
+		}); err != nil {
+			return fmt.Errorf(
+				"%s annotations could not be updated: %w",
+				resourceString(info), err,
+			)
+		}
+
+		return nil
+	}
+}
+
+func resourceString(info *resource.Info) string {
+	_, k := info.Mapping.GroupVersionKind.ToAPIVersionAndKind()
+	return fmt.Sprintf(
+		"%s %q in namespace %q",
+		k, info.Name, info.Namespace,
+	)
+}
+
+func mergeLabels(obj runtime.Object, labels map[string]string) error {
+	current, err := accessor.Labels(obj)
+	if err != nil {
+		return err
+	}
+	return accessor.SetLabels(obj, mergeStrStrMaps(current, labels))
+}
+
+func mergeAnnotations(obj runtime.Object, annotations map[string]string) error {
+	current, err := accessor.Annotations(obj)
+	if err != nil {
+		return err
+	}
+	return accessor.SetAnnotations(obj, mergeStrStrMaps(current, annotations))
+}
+
+// merge two maps, always taking the value on the right
+func mergeStrStrMaps(current, desired map[string]string) map[string]string {
+	result := make(map[string]string)
+	maps.Copy(result, current)
+	maps.Copy(result, desired)
+	return result
+}
+
+// validateNameAndGenerateName validates that an object only has either `Name` or `GenerateName` set (and not both)
+// If `GenerateName` is set, true is returned
+// If an invalid combination of `Name` and `GenerateName` are set, an error is returned
+func validateNameAndGenerateName(info *resource.Info) (bool, error) {
+	accessor, err := meta.Accessor(info.Object)
+	if err != nil {
+		return false, err
+	}
+
+	if info.Name == "" && accessor.GetGenerateName() != "" {
+		return true, nil
+	}
+
+	if info.Name != "" && accessor.GetGenerateName() != "" {
+		return true, errors.New("metadata.name and metadata.generateName cannot both be set")
+	}
+
+	return false, nil
+}

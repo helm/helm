@@ -1,0 +1,19 @@
+apiVersion: v1
+description: A Helm chart for Kubernetes
+name: subchart2
+version: 0.1.0
+dependencies:
+  - name: subchartb
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: subchartb.enabled
+    tags:
+      - back-end
+      - subchartb
+  - name: subchartc
+    repository: http://localhost:10191
+    version: 0.1.0
+    condition: subchartc.enabled
+    tags:
+      - back-end
+      - subchartc

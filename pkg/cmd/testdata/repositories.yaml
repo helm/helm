@@ -1,0 +1,9 @@
+apiVersion: v1
+repositories:
+  - name: charts
+    url: "https://charts.helm.sh/stable"
+  - name: firstexample
+    url: "http://firstexample.com"
+  - name: secondexample
+    url: "http://secondexample.com"
+

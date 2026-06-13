@@ -1,0 +1,21 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+apiVersion: v1
+description: Test chart versioning
+name: hashtest
+version: 1.2.3
+
+...
+files:
+  hashtest-1.2.3.tgz: sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888
+-----BEGIN PGP SIGNATURE-----
+
+wsBcBAEBCgAQBQJcon2ICRCEO7+YH8GHYgAASEAIAHD4Rad+LF47qNydI+k7x3aC
+/qkdsqxE9kCUHtTJkZObE/Zmj2w3Opq0gcQftz4aJ2G9raqPDvwOzxnTxOkGfUdK
+qIye48gFHzr2a7HnMTWr+HLQc4Gg+9kysIwkW4TM8wYV10osysYjBrhcafrHzFSK
+791dBHhXP/aOrJQbFRob0GRFQ4pXdaSww1+kVaZLiKSPkkMKt9uk9Po1ggJYSIDX
+uzXNcr78jTWACqkAtwx8+CJ8yzcGeuXSVNABDgbmAgpY0YT+Bz/UOWq4Q7tyuWnS
+x9BKrvcb+Gc/6S0oK0Ffp8K4iSWYp79uH1bZ2oBS1yajA0c5h5i7qI3N4cabREw=
+=YgnR
+-----END PGP SIGNATURE-----

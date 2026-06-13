@@ -1,0 +1,57 @@
+# 1
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: first
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+    - Ingress
+
+---
+
+# 2
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: second
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+    - Ingress
+
+---
+
+# 3
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: third
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+    - Ingress
+
+---
+
+# 4 (Deployment should come after all NetworkPolicy manifests, since 'helm template' outputs in install order)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fourth
+spec:
+  selector:
+    matchLabels:
+      pod: fourth
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        pod: fourth
+    spec:
+      containers:
+        - name: hello-world
+          image: gcr.io/google-samples/node-hello:1.0

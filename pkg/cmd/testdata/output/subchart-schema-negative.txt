@@ -1,0 +1,6 @@
+Error: INSTALLATION FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
+chart-without-schema:
+- at '': missing property 'lastname'
+subchart-with-schema:
+- at '': missing property 'age'
+

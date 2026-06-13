@@ -1,0 +1,8 @@
+apiVersion: v1
+description: A Helm chart for Kubernetes
+name: chart-missing-deps
+version: 0.1.0
+dependencies:
+  - name: reqsubchart
+  version: 0.1.0
+  repository: "https://example.com/charts"

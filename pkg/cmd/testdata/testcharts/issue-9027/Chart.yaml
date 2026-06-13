@@ -1,0 +1,6 @@
+apiVersion: v2
+name: issue-9027
+version: 0.1.0
+dependencies:
+  - name: subchart
+    version: 0.1.0

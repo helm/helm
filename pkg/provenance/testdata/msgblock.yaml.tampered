@@ -1,0 +1,21 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+description: Test chart versioning
+name: hashtest
+version: 1.2.3+tampered
+
+...
+files:
+  hashtest-1.2.3.tgz: sha256:8e90e879e2a04b1900570e1c198755e46e4706d70b0e79f5edabfac7900e4e75
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - https://gpgtools.org
+
+iQEcBAEBCgAGBQJXlp8KAAoJEIQ7v5gfwYdiE7sIAJYDiza+asekeooSXLvQiK+G
+PKnveqQpx49EZ6L7Y7UlW25SyH8EjXXHeJysDywCXF3w4luxN9n56ffU0KEW11IY
+F+JSjmgIWLS6ti7ZAGEi6JInQ/30rOAIpTEBRBL2IueW3m63mezrGK6XkBlGqpor
+C9WKeqLi+DWlMoBtsEy3Uk0XP6pn/qBFICYAbLQQU0sCCUT8CBA8f8aidxi7aw9t
+i404yYF+Dvc6i4JlSG77SV0ZJBWllUvsWoCd9Jli0NAuaMqmE7mzcEt/dE+Fm2Ql
+Bx3tr1WS4xTRiFQdcOttOl93H+OaHTh+Y0qqLTzzpCvqmttG0HfI6lMeCs7LeyA=
+=vEK+
+-----END PGP SIGNATURE-----

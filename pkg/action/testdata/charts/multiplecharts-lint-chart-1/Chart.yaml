@@ -1,0 +1,4 @@
+apiVersion: v1
+name: multiplecharts-lint-chart-1
+version: "1"
+icon: ""

@@ -1,0 +1,20 @@
+appVersion: 4.9.8
+description: Web publishing platform for building blogs and websites.
+engine: gotpl
+home: http://www.wordpress.com/
+icon: https://bitnami.com/assets/stacks/wordpress/img/wordpress-stack-220x234.png
+keywords:
+- wordpress
+- cms
+- blog
+- http
+- web
+- application
+- php
+maintainers:
+- email: containers@bitnami.com
+  name: bitnami-bot
+name: chart-with-uncompressed-dependencies
+sources:
+- https://github.com/bitnami/bitnami-docker-wordpress
+version: 2.1.8

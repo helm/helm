@@ -1,0 +1,8 @@
+apiVersion: v1
+repositories:
+  - name: stable
+    url: https://example.com/stable/charts
+    cache: stable-index.yaml
+  - name: incubator
+    url: https://example.com/incubator
+    cache: incubator-index.yaml

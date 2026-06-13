@@ -1,0 +1,4 @@
+apiVersion: v2
+description: Subchart with notes
+name: subchart-with-notes
+version: 0.0.1
