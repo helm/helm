@@ -318,20 +318,23 @@ func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun boo
 			slog.String("fieldValidationDirective", string(fieldValidationDirective)))
 
 		return func(target *resource.Info) error {
-			err := patchResourceServerSide(target, dryRun, forceConflicts, fieldValidationDirective)
-
 			logger := c.Logger().With(
 				slog.String("namespace", target.Namespace),
 				slog.String("name", target.Name),
 				slog.String("gvk", target.Mapping.GroupVersionKind.String()))
-			if err != nil {
-				logger.Debug("Error creating resource via patch", slog.Any("error", err))
-				return err
-			}
 
-			logger.Debug("Created resource via patch")
+			return retry.RetryOnConflict(
+				retry.DefaultRetry,
+				func() error {
+					err := patchResourceServerSide(target, dryRun, forceConflicts, fieldValidationDirective)
+					if err != nil {
+						logger.Debug("Error creating resource via patch", slog.Any("error", err))
+						return err
+					}
 
-			return nil
+					logger.Debug("Created resource via patch")
+					return nil
+				})
 		}
 	}
 
