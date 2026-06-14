@@ -758,7 +758,6 @@ func TestIsVersionRange(t *testing.T) {
 	}
 }
 
-
 func TestLoadIndexFileForEntries(t *testing.T) {
 	// nil names loads all entries
 	t.Run("nil names loads all", func(t *testing.T) {
@@ -798,16 +797,7 @@ func TestLoadIndexFileForEntries(t *testing.T) {
 
 	// partial match retains only matched entries
 	t.Run("partial match", func(t *testing.T) {
-		full, err := LoadIndexFile("testdata/local-index.yaml")
-		if err != nil {
-			t.Fatal(err)
-		}
-		var firstName string
-		for k := range full.Entries {
-			firstName = k
-			break
-		}
-		i, err := LoadIndexFileForEntries("testdata/local-index.yaml", []string{firstName, "nonexistent-chart"})
+		i, err := LoadIndexFileForEntries("testdata/local-index.yaml", []string{"nginx", "nonexistent-chart"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -816,4 +806,3 @@ func TestLoadIndexFileForEntries(t *testing.T) {
 		}
 	})
 }
-

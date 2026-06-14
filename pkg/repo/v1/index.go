@@ -130,11 +130,13 @@ func LoadIndexFileForEntries(path string, names []string) (*IndexFile, error) {
 		return nil, fmt.Errorf("error loading %s: %w", path, err)
 	}
 	if entries != nil {
-		for name := range i.Entries {
-			if _, ok := entries[name]; !ok {
-				delete(i.Entries, name)
+		filtered := make(map[string]ChartVersions, len(entries))
+		for name, cvs := range i.Entries {
+			if _, ok := entries[name]; ok {
+				filtered[name] = cvs
 			}
 		}
+		i.Entries = filtered
 	}
 	i.SortEntries()
 	return i, nil
