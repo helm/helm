@@ -117,9 +117,11 @@ type renderable struct {
 	basePath string
 }
 
-const warnStartDelim = "HELM_ERR_START"
-const warnEndDelim = "HELM_ERR_END"
-const recursionMaxNums = 1000
+const (
+	warnStartDelim   = "HELM_ERR_START"
+	warnEndDelim     = "HELM_ERR_END"
+	recursionMaxNums = 1000
+)
 
 var warnRegex = regexp.MustCompile(warnStartDelim + `((?s).*)` + warnEndDelim)
 
@@ -410,7 +412,9 @@ func parseTemplateSimpleErrorString(remainder string) (TraceableError, bool) {
 // Executing form: "<templateName>: executing \"<funcName>\" at <<location>>: <errMsg>[ template:...]"
 // Matches https://cs.opensource.google/go/go/+/refs/tags/go1.23.6:src/text/template/exec.go;l=141
 func parseTemplateExecutingAtErrorType(remainder string) (TraceableError, bool) {
-	if templateName, after, found := strings.Cut(remainder, ": executing "); found {
+	if idx := strings.Index(remainder, ": executing "); idx != -1 {
+		templateName := remainder[:idx]
+		after := remainder[idx+len(": executing "):]
 		if len(after) == 0 || after[0] != '"' {
 			return TraceableError{}, false
 		}
@@ -429,10 +433,12 @@ func parseTemplateExecutingAtErrorType(remainder string) (TraceableError, bool) 
 			return TraceableError{}, false
 		}
 		afterAt := afterFunc[len(atPrefix):]
-		locationName, errMsg, found := strings.Cut(afterAt, ">: ")
-		if !found {
+		endLoc := strings.Index(afterAt, ">: ")
+		if endLoc == -1 {
 			return TraceableError{}, false
 		}
+		locationName := afterAt[:endLoc]
+		errMsg := afterAt[endLoc+len(">: "):]
 
 		// trim chained next error starting with space + "template:" if present
 		if cut := strings.Index(errMsg, " template:"); cut != -1 {
