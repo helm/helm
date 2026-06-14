@@ -17,10 +17,14 @@ limitations under the License.
 package action
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"errors"
+	"io"
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/stretchr/testify/require"
@@ -168,4 +172,62 @@ func TestRun(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "empty-0.1.0.tgz", filename)
 	require.NoError(t, os.Remove(filename))
+}
+
+func TestRunWithSourceDateEpoch(t *testing.T) {
+	chartPath := "testdata/charts/chart-with-schema"
+	// Use UTC so the comparison with tar header ModTime (always UTC) is straightforward.
+	epoch := time.Unix(1700000000, 0).UTC()
+
+	client := NewPackage()
+	client.SourceDateEpoch = &epoch
+
+	filename, err := client.Run(chartPath, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Remove(filename) })
+
+	f, err := os.Open(filename)
+	require.NoError(t, err)
+	defer f.Close()
+
+	// Check gzip header ModTime: helm leaves it at zero (deterministic by design).
+	gr, err := gzip.NewReader(f)
+	require.NoError(t, err)
+	require.True(t, gr.ModTime.IsZero(), "gzip header ModTime should be zero")
+	defer gr.Close()
+
+	// Use Equal() rather than require.Equal so that timezone differences between
+	// the stored epoch (UTC) and the value tar.Reader reconstructs do not cause
+	// a false failure on non-UTC machines.
+	tr := tar.NewReader(gr)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		require.True(t, epoch.Equal(hdr.ModTime), "entry %s: got ModTime %v, want %v", hdr.Name, hdr.ModTime, epoch)
+	}
+}
+
+func TestRunWithSourceDateEpochReproducible(t *testing.T) {
+	chartPath := "testdata/charts/chart-with-schema"
+	epoch := time.Unix(1700000000, 0)
+
+	build := func() []byte {
+		t.Helper()
+		dir := t.TempDir()
+		client := NewPackage()
+		client.SourceDateEpoch = &epoch
+		client.Destination = dir
+		filename, err := client.Run(chartPath, nil)
+		require.NoError(t, err)
+		data, err := os.ReadFile(filename)
+		require.NoError(t, err)
+		return data
+	}
+
+	first := build()
+	second := build()
+	require.Equal(t, first, second, "two builds with the same SOURCE_DATE_EPOCH must be byte-identical")
 }
