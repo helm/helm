@@ -18,10 +18,12 @@ package downloader
 import (
 	"bytes"
 	"errors"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
@@ -267,7 +269,7 @@ func TestDownloadAll(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(chartPath, "tmpcharts"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.downloadAll([]*chart.Dependency{signDep, localDep}); err != nil {
+	if err := m.downloadAll([]*chart.Dependency{signDep, localDep}, []*chart.Dependency{signDep, localDep}); err != nil {
 		t.Error(err)
 	}
 
@@ -296,10 +298,71 @@ version: 0.1.0`
 		Version:    "0.1.0",
 	}
 
-	err = m.downloadAll([]*chart.Dependency{badLocalDep})
+	err = m.downloadAll([]*chart.Dependency{badLocalDep}, []*chart.Dependency{badLocalDep})
 	if err == nil {
 		t.Fatal("Expected error for bad dependency name")
 	}
+}
+
+func TestDownloadAll_UntarCleansArchivesAndUsesAliases(t *testing.T) {
+	chartPath := t.TempDir()
+	m := &Manager{
+		Out:              new(bytes.Buffer),
+		RepositoryConfig: repoConfig,
+		RepositoryCache:  repoCache,
+		ChartPath:        chartPath,
+		Untar:            true,
+		UntarDir:         "charts",
+	}
+
+	signtest, err := loader.LoadDir(filepath.Join("testdata", "signtest"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := chartutil.SaveDir(signtest, filepath.Join(chartPath, "testdata")); err != nil {
+		t.Fatal(err)
+	}
+
+	local, err := loader.LoadDir(filepath.Join("testdata", "local-subchart"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := chartutil.SaveDir(local, filepath.Join(chartPath, "charts")); err != nil {
+		t.Fatal(err)
+	}
+
+	remoteDep := &chart.Dependency{
+		Name:       signtest.Name(),
+		Repository: "file://./testdata/signtest",
+		Version:    signtest.Metadata.Version,
+	}
+	remoteAliasDep := &chart.Dependency{
+		Name:       signtest.Name(),
+		Alias:      "cache-a",
+		Repository: "file://./testdata/signtest",
+		Version:    signtest.Metadata.Version,
+	}
+	localDep := &chart.Dependency{
+		Name:       local.Name(),
+		Repository: "",
+		Version:    local.Metadata.Version,
+	}
+
+	if err := m.downloadAll(
+		[]*chart.Dependency{remoteDep, remoteAliasDep, localDep},
+		[]*chart.Dependency{remoteDep, remoteAliasDep, localDep},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = os.Stat(filepath.Join(chartPath, "charts", "signtest"))
+	assert.NoError(t, err)
+	_, err = os.Stat(filepath.Join(chartPath, "charts", "cache-a"))
+	assert.NoError(t, err)
+	_, err = os.Stat(filepath.Join(chartPath, "charts", "signtest-0.1.0.tgz"))
+	assert.True(t, errors.Is(err, fs.ErrNotExist))
+	_, err = os.Stat(filepath.Join(chartPath, "charts", "local-subchart"))
+	assert.NoError(t, err)
 }
 
 func TestUpdateBeforeBuild(t *testing.T) {
@@ -766,4 +829,330 @@ func TestWriteLock(t *testing.T) {
 		err = writeLock(filePath, lock, false)
 		assert.Error(t, err)
 	})
+}
+
+func TestBuildExtractionTargets_ConflictingTargetNames(t *testing.T) {
+	chartPath := t.TempDir()
+	sourcePath := filepath.Join(chartPath, "charts")
+	assert.NoError(t, os.MkdirAll(sourcePath, 0755))
+	createDependencyArchive(t, sourcePath, "reqtest", "0.1.0")
+	createDependencyArchive(t, sourcePath, "compressedchart", "0.1.0")
+
+	deps := []*chart.Dependency{
+		{Name: "reqtest", Alias: "shared", Version: "0.1.0", Repository: "https://example.com/charts"},
+		{Name: "compressedchart", Alias: "shared", Version: "0.1.0", Repository: "https://example.com/charts"},
+	}
+	m := &Manager{}
+
+	_, err := m.buildExtractionTargets(deps, deps, sourcePath)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "resolve to the same target directory")
+}
+
+func TestUntarDeps_AliasAndCleanup(t *testing.T) {
+	chartPath := t.TempDir()
+	sourcePath := filepath.Join(chartPath, "charts")
+	assert.NoError(t, os.MkdirAll(sourcePath, 0755))
+	createDependencyArchive(t, sourcePath, "reqtest", "0.1.0")
+	createDependencyDir(t, sourcePath, "oldchart", "0.1.0")
+
+	deps := []*chart.Dependency{
+		{Name: "reqtest", Alias: "cache-a", Version: "0.1.0", Repository: "https://example.com/charts"},
+	}
+	m := &Manager{
+		Out:       io.Discard,
+		ChartPath: chartPath,
+		Untar:     true,
+		UntarDir:  "charts",
+	}
+
+	err := m.untarDeps(deps, deps, sourcePath)
+	assert.NoError(t, err)
+
+	_, err = os.Stat(filepath.Join(sourcePath, "cache-a"))
+	assert.NoError(t, err)
+	_, err = os.Stat(filepath.Join(sourcePath, "reqtest-0.1.0.tgz"))
+	assert.True(t, errors.Is(err, fs.ErrNotExist))
+	_, err = os.Stat(filepath.Join(sourcePath, "oldchart"))
+	assert.True(t, errors.Is(err, fs.ErrNotExist))
+}
+
+func TestUntarDeps_MixedAliasAndNonAliasSameChart(t *testing.T) {
+	chartPath := t.TempDir()
+	sourcePath := filepath.Join(chartPath, "charts")
+	assert.NoError(t, os.MkdirAll(sourcePath, 0755))
+	createDependencyArchive(t, sourcePath, "reqtest", "0.1.0")
+
+	extractionDeps := []*chart.Dependency{
+		{Name: "reqtest", Version: "0.1.0", Repository: "https://example.com/charts"},
+		{Name: "reqtest", Alias: "cache-a", Version: "0.1.0", Repository: "https://example.com/charts"},
+	}
+	resolvedDeps := []*chart.Dependency{
+		{Name: "reqtest", Version: "0.1.0", Repository: "https://example.com/charts"},
+		{Name: "reqtest", Version: "0.1.0", Repository: "https://example.com/charts"},
+	}
+	m := &Manager{
+		Out:       io.Discard,
+		ChartPath: chartPath,
+		Untar:     true,
+		UntarDir:  "charts",
+	}
+
+	err := m.untarDeps(extractionDeps, resolvedDeps, sourcePath)
+	assert.NoError(t, err)
+
+	_, err = os.Stat(filepath.Join(sourcePath, "reqtest"))
+	assert.NoError(t, err)
+	_, err = os.Stat(filepath.Join(sourcePath, "cache-a"))
+	assert.NoError(t, err)
+}
+
+func TestUntarDeps_Idempotent(t *testing.T) {
+	chartPath := t.TempDir()
+	sourcePath := filepath.Join(chartPath, "charts")
+	assert.NoError(t, os.MkdirAll(sourcePath, 0755))
+	createDependencyArchive(t, sourcePath, "reqtest", "0.1.0")
+
+	deps := []*chart.Dependency{
+		{Name: "reqtest", Version: "0.1.0", Repository: "https://example.com/charts"},
+	}
+	m := &Manager{
+		Out:       io.Discard,
+		ChartPath: chartPath,
+		Untar:     true,
+		UntarDir:  "charts",
+	}
+
+	assert.NoError(t, m.untarDeps(deps, deps, sourcePath))
+	createDependencyArchive(t, sourcePath, "reqtest", "0.1.0")
+	assert.NoError(t, m.untarDeps(deps, deps, sourcePath))
+}
+
+func TestUntarDeps_NumericAlias(t *testing.T) {
+	chartPath := t.TempDir()
+	sourcePath := filepath.Join(chartPath, "charts")
+	assert.NoError(t, os.MkdirAll(sourcePath, 0755))
+	createDependencyArchive(t, sourcePath, "reqtest", "0.1.0")
+
+	deps := []*chart.Dependency{
+		{Name: "reqtest", Alias: "0", Version: "0.1.0", Repository: "https://example.com/charts"},
+	}
+	m := &Manager{
+		Out:       io.Discard,
+		ChartPath: chartPath,
+		Untar:     true,
+		UntarDir:  "charts",
+	}
+
+	assert.NoError(t, m.untarDeps(deps, deps, sourcePath))
+	_, err := os.Stat(filepath.Join(sourcePath, "0"))
+	assert.NoError(t, err)
+}
+
+func TestUntarDeps_CustomUntarDirDoesNotCleanupOutdated(t *testing.T) {
+	chartPath := t.TempDir()
+	sourcePath := filepath.Join(chartPath, "charts")
+	customUntarRoot := filepath.Join(chartPath, "vendor", "charts")
+	assert.NoError(t, os.MkdirAll(sourcePath, 0755))
+	assert.NoError(t, os.MkdirAll(customUntarRoot, 0755))
+
+	createDependencyArchive(t, sourcePath, "reqtest", "0.1.0")
+	createDependencyDir(t, customUntarRoot, "oldchart", "0.1.0")
+
+	deps := []*chart.Dependency{
+		{Name: "reqtest", Alias: "cache-a", Version: "0.1.0", Repository: "https://example.com/charts"},
+	}
+	m := &Manager{
+		Out:       io.Discard,
+		ChartPath: chartPath,
+		Untar:     true,
+		UntarDir:  "vendor/charts",
+	}
+
+	err := m.untarDeps(deps, deps, sourcePath)
+	assert.NoError(t, err)
+
+	_, err = os.Stat(filepath.Join(customUntarRoot, "cache-a"))
+	assert.NoError(t, err)
+	_, err = os.Stat(filepath.Join(customUntarRoot, "oldchart"))
+	assert.NoError(t, err)
+	_, err = os.Stat(filepath.Join(sourcePath, "reqtest-0.1.0.tgz"))
+	assert.NoError(t, err)
+}
+
+func TestUntarDeps_DefaultUntarRootPreservesLocalDependencies(t *testing.T) {
+	chartPath := t.TempDir()
+	sourcePath := filepath.Join(chartPath, "charts")
+	assert.NoError(t, os.MkdirAll(sourcePath, 0755))
+
+	createDependencyArchive(t, sourcePath, "reqtest", "0.1.0")
+	createDependencyDir(t, sourcePath, "local-subchart", "0.1.0")
+	createDependencyDir(t, sourcePath, "oldchart", "0.1.0")
+
+	extractionDeps := []*chart.Dependency{
+		{Name: "reqtest", Version: "0.1.0", Repository: "https://example.com/charts"},
+		{Name: "local-subchart", Version: "0.1.0", Repository: ""},
+	}
+	m := &Manager{
+		Out:       io.Discard,
+		ChartPath: chartPath,
+		Untar:     true,
+		UntarDir:  "charts",
+	}
+
+	err := m.untarDeps(extractionDeps, extractionDeps, sourcePath)
+	assert.NoError(t, err)
+
+	_, err = os.Stat(filepath.Join(sourcePath, "reqtest"))
+	assert.NoError(t, err)
+	_, err = os.Stat(filepath.Join(sourcePath, "local-subchart"))
+	assert.NoError(t, err)
+	_, err = os.Stat(filepath.Join(sourcePath, "oldchart"))
+	assert.True(t, errors.Is(err, fs.ErrNotExist))
+}
+
+func TestResolveUntarRoot(t *testing.T) {
+	chartPath := t.TempDir()
+
+	t.Run("default charts dir", func(t *testing.T) {
+		m := &Manager{ChartPath: chartPath}
+		untarRoot, err := m.resolveUntarRoot()
+		assert.NoError(t, err)
+		resolvedChartPath, err := filepath.EvalSymlinks(chartPath)
+		assert.NoError(t, err)
+		assert.Equal(t, filepath.Join(resolvedChartPath, "charts"), untarRoot)
+	})
+
+	t.Run("relative path under chart root", func(t *testing.T) {
+		m := &Manager{ChartPath: chartPath, UntarDir: "vendor/charts"}
+		untarRoot, err := m.resolveUntarRoot()
+		assert.NoError(t, err)
+		resolvedChartPath, err := filepath.EvalSymlinks(chartPath)
+		assert.NoError(t, err)
+		assert.Equal(t, filepath.Join(resolvedChartPath, "vendor", "charts"), untarRoot)
+	})
+
+	t.Run("path traversal escapes chart root", func(t *testing.T) {
+		m := &Manager{ChartPath: chartPath, UntarDir: "../outside"}
+		_, err := m.resolveUntarRoot()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "must stay within the chart root")
+	})
+
+	t.Run("absolute untardir is rejected", func(t *testing.T) {
+		m := &Manager{ChartPath: chartPath, UntarDir: filepath.Join(os.TempDir(), "helm-outside")}
+		_, err := m.resolveUntarRoot()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "must be relative to the chart root")
+	})
+
+	t.Run("symlink escape is rejected", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("symlink permissions are not portable on windows test environments")
+		}
+
+		outside := filepath.Join(t.TempDir(), "outside")
+		assert.NoError(t, os.MkdirAll(outside, 0755))
+		assert.NoError(t, os.Symlink(outside, filepath.Join(chartPath, "vendor")))
+
+		m := &Manager{ChartPath: chartPath, UntarDir: "vendor/charts"}
+		_, err := m.resolveUntarRoot()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "must stay within the chart root")
+	})
+}
+
+func TestShouldCleanupUntarRoot(t *testing.T) {
+	cwd, err := os.Getwd()
+	assert.NoError(t, err)
+
+	t.Run("relative chart path default untar root", func(t *testing.T) {
+		m := &Manager{ChartPath: "."}
+		assert.True(t, m.shouldCleanupUntarRoot(filepath.Join(cwd, "charts")))
+	})
+
+	t.Run("relative chart path custom untar root", func(t *testing.T) {
+		m := &Manager{ChartPath: "."}
+		assert.False(t, m.shouldCleanupUntarRoot(filepath.Join(cwd, "vendor", "charts")))
+	})
+}
+
+func TestFindResolvedDependency_PicksMatchingVersion(t *testing.T) {
+	dep := &chart.Dependency{
+		Name:       "reqtest",
+		Version:    "0.3.0",
+		Repository: "https://example.com/charts",
+	}
+	resolved, err := findResolvedDependency(dep, []*chart.Dependency{
+		{Name: "reqtest", Version: "0.1.0", Repository: "https://example.com/charts"},
+		{Name: "reqtest", Version: "0.3.0", Repository: "https://example.com/charts"},
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, resolved)
+	assert.Equal(t, "0.3.0", resolved.Version)
+}
+
+func TestFindResolvedDependency_ReturnsErrorOnAmbiguousMatch(t *testing.T) {
+	dep := &chart.Dependency{
+		Name:       "reqtest",
+		Version:    ">=0.1.0",
+		Repository: "https://example.com/charts",
+	}
+	resolved, err := findResolvedDependency(dep, []*chart.Dependency{
+		{Name: "reqtest", Version: "0.1.0", Repository: "https://example.com/charts"},
+		{Name: "reqtest", Version: "0.3.0", Repository: "https://example.com/charts"},
+	})
+	assert.Error(t, err)
+	assert.Nil(t, resolved)
+	assert.Contains(t, err.Error(), "found multiple resolved versions")
+}
+
+func TestBuildExtractionTargets_PrefersResolvedDependencyByIndex(t *testing.T) {
+	chartPath := t.TempDir()
+	sourcePath := filepath.Join(chartPath, "charts")
+	assert.NoError(t, os.MkdirAll(sourcePath, 0755))
+	createDependencyArchive(t, sourcePath, "reqtest", "0.1.0")
+	createDependencyArchive(t, sourcePath, "reqtest", "0.3.0")
+
+	extractionDeps := []*chart.Dependency{
+		{Name: "reqtest", Alias: "cache-a", Version: ">=0.1.0", Repository: "https://example.com/charts"},
+		{Name: "reqtest", Alias: "cache-b", Version: ">=0.1.0", Repository: "https://example.com/charts"},
+	}
+	resolvedDeps := []*chart.Dependency{
+		{Name: "reqtest", Version: "0.1.0", Repository: "https://example.com/charts"},
+		{Name: "reqtest", Version: "0.3.0", Repository: "https://example.com/charts"},
+	}
+	m := &Manager{}
+
+	targets, err := m.buildExtractionTargets(extractionDeps, resolvedDeps, sourcePath)
+	assert.NoError(t, err)
+	assert.Len(t, targets, 2)
+	assert.Contains(t, targets[0].archive, "reqtest-0.1.0.tgz")
+	assert.Contains(t, targets[1].archive, "reqtest-0.3.0.tgz")
+}
+
+func createDependencyArchive(t *testing.T, dest, name, version string) {
+	t.Helper()
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       name,
+			Version:    version,
+		},
+	}
+	_, err := chartutil.Save(c, dest)
+	assert.NoError(t, err)
+}
+
+func createDependencyDir(t *testing.T, dest, name, version string) {
+	t.Helper()
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       name,
+			Version:    version,
+		},
+	}
+	err := chartutil.SaveDir(c, dest)
+	assert.NoError(t, err)
 }
