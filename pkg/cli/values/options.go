@@ -26,18 +26,20 @@ import (
 	"strings"
 
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/engine"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/strvals"
 )
 
 // Options captures the different ways to specify values
 type Options struct {
-	ValueFiles    []string // -f/--values
-	StringValues  []string // --set-string
-	Values        []string // --set
-	FileValues    []string // --set-file
-	JSONValues    []string // --set-json
-	LiteralValues []string // --set-literal
+	ValueFiles     []string // -f/--values
+	ValueTemplates []string // --values-tpl
+	StringValues   []string // --set-string
+	Values         []string // --set
+	FileValues     []string // --set-file
+	JSONValues     []string // --set-json
+	LiteralValues  []string // --set-literal
 }
 
 // MergeValues merges values from files specified via -f/--values and directly
@@ -112,6 +114,19 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]any, error) {
 		}
 	}
 
+	// User specified a values template via --values-tpl
+	for _, filePath := range opts.ValueTemplates {
+		raw, err := readFile(filePath, p)
+		if err != nil {
+			return nil, err
+		}
+		rendered, err := LoadValuesTpl(filePath, string(raw), base)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render values template %s: %w", filePath, err)
+		}
+		base = loader.MergeMaps(base, rendered)
+	}
+
 	return base, nil
 }
 
@@ -135,4 +150,32 @@ func readFile(filePath string, p getter.Providers) ([]byte, error) {
 		return nil, err
 	}
 	return data.Bytes(), nil
+}
+
+// LoadValuesTpl renders a values file as a Go template with .Values context
+func LoadValuesTpl(
+	templatePath string,
+	templateData string,
+	currentValues map[string]interface{},
+) (map[string]interface{}, error) {
+	// Create template context with .Values
+	context := map[string]interface{}{
+		"Values": currentValues,
+	}
+
+	// Render using the engine
+	eng := engine.Engine{}
+	rendered, err := eng.RenderString(templatePath, templateData, context)
+	if err != nil {
+		return nil, fmt.Errorf("failed to render template %s: %w", templatePath, err)
+	}
+
+	// Parse the rendered YAML output
+	buf := bytes.NewBufferString(rendered)
+	result, err := loader.LoadValues(buf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse rendered template %s as YAML: %w", templatePath, err)
+	}
+
+	return result, nil
 }

@@ -107,6 +107,22 @@ func RenderWithClientProvider(chrt ci.Charter, values common.Values, clientProvi
 	}.Render(chrt, values)
 }
 
+// RenderString renders a single template string with the given values.
+// This is useful for rendering standalone templates without a full chart context.
+// The template will have access to all standard Helm template functions.
+//
+// Context-dependent functions (include, tpl, lookup, required) are available but
+// will return placeholder values or errors if called, since there is no chart context.
+func (e Engine) RenderString(templateName string, templateContent string, values interface{}) (string, error) {
+	t := e.initTemplate()
+
+	if _, err := t.New(templateName).Parse(templateContent); err != nil {
+		return "", err
+	}
+
+	return e.executeTemplate(t, templateName, values)
+}
+
 // renderable is an object that can be rendered.
 type renderable struct {
 	// tpl is the current template.
@@ -194,6 +210,38 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 	}
 }
 
+// initTemplate creates and initializes a new template with standard options and function map.
+// This ensures consistent behavior across all template rendering paths.
+func (e Engine) initTemplate() *template.Template {
+	t := template.New("gotpl")
+
+	// Set missing key behavior based on Strict mode
+	if e.Strict {
+		t.Option("missingkey=error")
+	} else {
+		// Not that zero will attempt to add default values for types it knows,
+		// but will still emit <no value> for others. We mitigate that later.
+		t.Option("missingkey=zero")
+	}
+
+	e.initFunMap(t)
+	return t
+}
+
+// executeTemplate executes a template and returns the rendered output.
+// It handles the workaround for Go emitting "<no value>" when missingkey=zero is set.
+func (e Engine) executeTemplate(t *template.Template, name string, data interface{}) (string, error) {
+	var buf strings.Builder
+	if err := t.ExecuteTemplate(&buf, name, data); err != nil {
+		return "", err
+	}
+
+	// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
+	// is set. Since missing=error will never get here, we do not need to handle
+	// the Strict case.
+	return strings.ReplaceAll(buf.String(), "<no value>", ""), nil
+}
+
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
 func (e Engine) initFunMap(t *template.Template) {
 	funcMap := funcMap()
@@ -269,16 +317,7 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 			err = fmt.Errorf("rendering template failed: %v", r)
 		}
 	}()
-	t := template.New("gotpl")
-	if e.Strict {
-		t.Option("missingkey=error")
-	} else {
-		// Not that zero will attempt to add default values for types it knows,
-		// but will still emit <no value> for others. We mitigate that later.
-		t.Option("missingkey=zero")
-	}
-
-	e.initFunMap(t)
+	t := e.initTemplate()
 
 	// We want to parse the templates in a predictable order. The order favors
 	// higher-level (in file system) templates over deeply nested templates.
@@ -301,15 +340,12 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 		// At render time, add information about the template that is being rendered.
 		vals := tpls[filename].vals
 		vals["Template"] = common.Values{"Name": filename, "BasePath": tpls[filename].basePath}
-		var buf strings.Builder
-		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
+
+		result, err := e.executeTemplate(t, filename, vals)
+		if err != nil {
 			return map[string]string{}, reformatExecErrorMsg(filename, err)
 		}
-
-		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
-		// is set. Since missing=error will never get here, we do not need to handle
-		// the Strict case.
-		rendered[filename] = strings.ReplaceAll(buf.String(), "<no value>", "")
+		rendered[filename] = result
 	}
 
 	return rendered, nil
