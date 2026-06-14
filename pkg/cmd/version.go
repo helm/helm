@@ -19,6 +19,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"text/tabwriter"
 	"text/template"
 
 	"github.com/spf13/cobra"
@@ -41,6 +42,11 @@ version.BuildInfo{Version:"v3.2.1", GitCommit:"fe51cd1e31e6a202cba7dead9552a6d41
   built, and "dirty" if the binary was built from locally modified code.
 - GoVersion is the version of Go that was used to compile Helm.
 
+The --output flag allows you to change the representation with the following options:
+
+- "go": Prints the version in a raw Go struct.
+- "human": Prints the version in a human-readable format.
+
 When using the --template flag the following properties are available to use in
 the template:
 
@@ -55,6 +61,7 @@ For example, --template='Version: {{.Version}}' outputs 'Version: v3.2.1'.
 type versionOptions struct {
 	short    bool
 	template string
+	output   string
 }
 
 func newVersionCmd(out io.Writer) *cobra.Command {
@@ -73,6 +80,7 @@ func newVersionCmd(out io.Writer) *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&o.short, "short", false, "print the version number")
 	f.StringVar(&o.template, "template", "", "template for version string format")
+	f.StringVarP(&o.output, "output", "o", "", "output format (options: \"go\", \"human\")")
 
 	return cmd
 }
@@ -85,7 +93,18 @@ func (o *versionOptions) run(out io.Writer) error {
 		}
 		return tt.Execute(out, version.Get())
 	}
-	fmt.Fprintln(out, formatVersion(o.short))
+
+	switch o.output {
+	case "human":
+		return printVersionHuman(out)
+	case "go":
+		fmt.Fprintln(out, formatVersion(false))
+	case "":
+		fmt.Fprintln(out, formatVersion(o.short))
+		return nil
+	default:
+		return fmt.Errorf("invalid output format: %q (valid formats: \"go\", \"human\")", o.output)
+	}
 	return nil
 }
 
@@ -98,4 +117,18 @@ func formatVersion(short bool) string {
 		return version.GetVersion()
 	}
 	return fmt.Sprintf("%#v", v)
+}
+
+func printVersionHuman(out io.Writer) error {
+	v := version.Get()
+
+	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+
+	fmt.Fprintf(w, "Version:\t%s\n", v.Version)
+	fmt.Fprintf(w, "Git Commit:\t%s\n", v.GitCommit)
+	fmt.Fprintf(w, "Git Tree State:\t%s\n", v.GitTreeState)
+	fmt.Fprintf(w, "Go Version:\t%s\n", v.GoVersion)
+	fmt.Fprintf(w, "KubeClient Version:\t%s\n", v.KubeClientVersion)
+
+	return w.Flush()
 }
