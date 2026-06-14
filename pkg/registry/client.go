@@ -266,7 +266,6 @@ func (c *Client) Login(host string, options ...LoginOption) error {
 	c.authorizer.ForceAttemptOAuth2 = false
 
 	key := credentials.ServerAddressFromRegistry(host)
-	key = credentials.ServerAddressFromHostname(key)
 	if err := c.credentialsStore.Put(ctx, key, cred); err != nil {
 		return err
 	}
