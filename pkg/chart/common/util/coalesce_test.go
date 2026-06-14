@@ -926,3 +926,34 @@ func TestCoalesceValuesSubchartNilCleanedWhenUserPartiallyOverrides(t *testing.T
 	_, ok = keyMapping["password"]
 	is.False(ok, "Expected keyMapping.password (nil from chart defaults) to be removed even when user partially overrides the map")
 }
+func TestCoalesceValuesEmptyMapNoWarning(t *testing.T) {
+	warnings := make([]string, 0)
+	printf := func(format string, v ...any) {
+		t.Logf(format, v...)
+		warnings = append(warnings, fmt.Sprintf(format, v...))
+	}
+
+	// Chart default has a map key "data"
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "test"},
+		Values: map[string]any{
+			"data": map[string]any{
+				"existing": "value",
+			},
+		},
+	}
+
+	// User supplies an empty map for "data" – should NOT trigger a warning
+	vals := map[string]any{
+		"data": map[string]any{},
+	}
+
+	_, err := coalesce(printf, c, vals, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(warnings) > 0 {
+		t.Errorf("expected no warnings, but got: %v", warnings)
+	}
+}
