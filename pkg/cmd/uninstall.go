@@ -59,7 +59,6 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				return validationErr
 			}
 			for i := range args {
-
 				res, err := client.Run(args[i])
 				if err != nil {
 					return err
