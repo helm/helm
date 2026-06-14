@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -74,14 +76,42 @@ func newHTTPURLLoader() *HTTPURLLoader {
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema
 func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
+	return ValidateAgainstSchemaWithPath(ch, values, "")
+}
+
+func ValidateAgainstSchemaWithPath(ch chart.Charter, values map[string]any, chartDir string) error {
 	chrt, err := chart.NewAccessor(ch)
 	if err != nil {
 		return err
 	}
+
+	// Convert chartDir to absolute path for $ref resolution.
+	// If chartDir is empty (e.g., chart loaded from .tgz archive), absChartPath
+	// remains empty and a synthetic path will be used instead.
+	var absChartPath string
+	if chartDir != "" {
+		var err error
+		absChartPath, err = filepath.Abs(chartDir)
+		if err != nil {
+			return err
+		}
+	}
+
 	var sb strings.Builder
 	if chrt.Schema() != nil {
 		slog.Debug("chart name", "chart-name", chrt.Name())
-		err := ValidateAgainstSingleSchema(values, chrt.Schema())
+
+		var schemaPath string
+		if absChartPath != "" {
+			// Use the chart directory for $ref resolution
+			schemaPath = filepath.Join(absChartPath, "values.schema.json")
+		} else {
+			// No chart directory (e.g., chart loaded from .tgz archive).
+			// Use a synthetic path - $ref resolution will not work, but main schema validation will.
+			schemaPath = "/values.schema.json"
+		}
+
+		err := ValidateAgainstSingleSchemaWithPath(values, chrt.Schema(), schemaPath)
 		if err != nil {
 			fmt.Fprintf(&sb, "%s:\n", chrt.Name())
 			sb.WriteString(err.Error())
@@ -108,7 +138,15 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 			continue
 		}
 
-		if err := ValidateAgainstSchema(subchart, subchartValues); err != nil {
+		var subchartPath string
+		if absChartPath != "" {
+			subchartPath = resolveSubchartDir(
+				filepath.Join(absChartPath, "charts"),
+				sub.Name(),
+				sub.Schema(),
+			)
+		}
+		if err := ValidateAgainstSchemaWithPath(subchart, subchartValues, subchartPath); err != nil {
 			sb.WriteString(err.Error())
 		}
 	}
@@ -122,6 +160,12 @@ func ValidateAgainstSchema(ch chart.Charter, values map[string]any) error {
 
 // ValidateAgainstSingleSchema checks that values does not violate the structure laid out in this schema
 func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reterr error) {
+	return ValidateAgainstSingleSchemaWithPath(values, schemaJSON, "/values.schema.json")
+}
+
+// ValidateAgainstSingleSchemaWithPath checks that values does not violate the structure laid out in this schema.
+// schemaPath is the absolute path to the schema file, used to resolve relative $ref references.
+func ValidateAgainstSingleSchemaWithPath(values common.Values, schemaJSON []byte, schemaPath string) (reterr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			reterr = fmt.Errorf("unable to validate schema: %s", r)
@@ -146,12 +190,14 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 
 	compiler := jsonschema.NewCompiler()
 	compiler.UseLoader(loader)
-	err = compiler.AddResource("file:///values.schema.json", schema)
+
+	schemaURL := "file://" + schemaPath
+	err = compiler.AddResource(schemaURL, schema)
 	if err != nil {
 		return err
 	}
 
-	validator, err := compiler.Compile("file:///values.schema.json")
+	validator, err := compiler.Compile(schemaURL)
 	if err != nil {
 		return err
 	}
@@ -193,6 +239,41 @@ func (l urnLoader) Load(urlStr string) (any, error) {
 	return jsonschema.UnmarshalJSON(strings.NewReader("true"))
 }
 
+// resolveSubchartDir finds the on-disk directory for a subchart under chartsDir.
+// Returns "" when no directory can be found, which disables $ref resolution.
+func resolveSubchartDir(chartsDir, effectiveName string, schema []byte) string {
+	// Direct match; handles the common non-aliased case in one syscall.
+	candidate := filepath.Join(chartsDir, effectiveName)
+	if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+		return candidate
+	}
+
+	// The effective name didn't match a directory likely an alias.
+	// Scan charts/ subdirectories and match by schema content.
+	if len(schema) == 0 {
+		return ""
+	}
+	entries, err := os.ReadDir(chartsDir)
+	if err != nil {
+		return ""
+	}
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(chartsDir, e.Name(), "values.schema.json"))
+		if err != nil {
+			continue
+		}
+		// getAliasDependency shallow-copies the chart, so schema bytes in memory
+		// are identical to the file originally loaded from this directory.
+		if bytes.Equal(data, schema) {
+			return filepath.Join(chartsDir, e.Name())
+		}
+	}
+	return ""
+}
+
 // Note, JSONSchemaValidationError is used to wrap the error from the underlying
 // validation package so that Helm has a clean interface and the validation package
 // could be replaced without changing the Helm SDK API.
@@ -209,7 +290,12 @@ func (e JSONSchemaValidationError) Error() string {
 
 	// This string prefixes all of our error details. Further up the stack of helm error message
 	// building more detail is provided to users. This is removed.
-	errStr = strings.TrimPrefix(errStr, "jsonschema validation failed with 'file:///values.schema.json#'\n")
+	// Remove the "jsonschema validation failed with 'file://...#'" line regardless of the path
+	if strings.HasPrefix(errStr, "jsonschema validation failed with 'file://") {
+		if idx := strings.Index(errStr, "#'\n"); idx != -1 {
+			errStr = errStr[idx+3:] // Skip past "#'\n"
+		}
+	}
 
 	// The extra new line is needed for when there are sub-charts.
 	return errStr + "\n"
