@@ -18,8 +18,11 @@ package repo // import "helm.sh/helm/v4/pkg/repo/v1"
 
 import (
 	"fmt"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"sigs.k8s.io/yaml"
@@ -88,6 +91,45 @@ func (r *File) Has(name string) bool {
 func (r *File) Get(name string) *Entry {
 	for _, entry := range r.Repositories {
 		if entry.Name == name {
+			return entry
+		}
+	}
+	return nil
+}
+
+// compareURLs returns true if url1 and url2 can each be parsed, have the exact
+// same scheme and host and the same cleaned path.
+func compareURLs(url1, url2 string) bool {
+	parsed1, err := url.Parse(url1)
+	if err != nil {
+		return false
+	}
+	parsed2, err := url.Parse(url2)
+	if err != nil {
+		return false
+	}
+	if !strings.EqualFold(parsed1.Scheme, parsed2.Scheme) {
+		return false
+	}
+	if !strings.EqualFold(parsed1.Host, parsed2.Host) {
+		return false
+	}
+	return path.Clean(normalizePath(parsed1.Path)) == path.Clean(normalizePath(parsed2.Path))
+}
+
+func normalizePath(path string) string {
+	if path == "" {
+		return "/"
+	}
+	return path
+}
+
+// GetByURL returns the first entry with the given URL if one exists, otherwise
+// returns nil. For comparison, GetByURL tries to sanitize/standardize the URLs
+// as much as possible.
+func (r *File) GetByURL(url string) *Entry {
+	for _, entry := range r.Repositories {
+		if compareURLs(entry.URL, url) {
 			return entry
 		}
 	}

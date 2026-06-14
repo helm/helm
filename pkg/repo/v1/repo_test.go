@@ -128,6 +128,49 @@ func TestRepoFile_Get(t *testing.T) {
 	}
 }
 
+func TestRepoFileGetByURL(t *testing.T) {
+	repo := NewFile()
+	repo.Add(
+		&Entry{
+			Name: "first",
+			URL:  "https://example.com/first",
+		},
+		&Entry{
+			Name: "second1",
+			URL:  "https://example.comm/second",
+		},
+		&Entry{
+			Name: "second2",
+			URL:  "http://example.com/second",
+		},
+		&Entry{
+			Name: "second3",
+			URL:  "https://example.com/second/////////",
+		},
+		&Entry{
+			Name: "third",
+			URL:  "https://example.com/third",
+		},
+	)
+
+	url := "https://example.com/second"
+
+	entry := repo.GetByURL(url)
+	if entry == nil {
+		t.Fatalf("Expected repo entry %q to be found", url)
+	}
+
+	expected := "second3"
+	if entry.Name != expected {
+		t.Errorf("Expected repo Name to be %q but got %q", expected, entry.Name)
+	}
+
+	entry = repo.GetByURL("http://nonexistent.example.com/nonexistent")
+	if entry != nil {
+		t.Errorf("Got unexpected entry %+v", entry)
+	}
+}
+
 func TestRemoveRepository(t *testing.T) {
 	sampleRepository := NewFile()
 	sampleRepository.Add(
