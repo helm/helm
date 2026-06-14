@@ -134,6 +134,77 @@ func TestDependencyEnabled(t *testing.T) {
 	}
 }
 
+func TestProcessDependencyConditionsExpressions(t *testing.T) {
+	type M = map[string]any
+
+	t.Run("expression with nesting", func(t *testing.T) {
+		reqs := []*chart.Dependency{{
+			Name:      "subchart1",
+			Condition: "(subchart1.enabled && (!subchart2.enabled || global.flag))",
+			Enabled:   false,
+		}}
+
+		vals := common.Values(M{
+			"subchart1": M{"enabled": true},
+			"subchart2": M{"enabled": false},
+			"global":    M{"flag": false},
+		})
+
+		processDependencyConditions(reqs, vals, "")
+		if !reqs[0].Enabled {
+			t.Fatal("expected expression condition to enable dependency")
+		}
+	})
+
+	t.Run("expression respects chart path prefix", func(t *testing.T) {
+		reqs := []*chart.Dependency{{
+			Name:      "child",
+			Condition: "(child.enabled && !other.enabled)",
+			Enabled:   false,
+		}}
+
+		vals := common.Values(M{
+			"parent": M{
+				"child": M{"enabled": true},
+				"other": M{"enabled": false},
+			},
+		})
+
+		processDependencyConditions(reqs, vals, "parent.")
+		if !reqs[0].Enabled {
+			t.Fatal("expected expression condition to evaluate against prefixed path")
+		}
+	})
+
+	t.Run("expression parse error keeps current state", func(t *testing.T) {
+		reqs := []*chart.Dependency{{
+			Name:      "subchart1",
+			Condition: "(subchart1.enabled &&)",
+			Enabled:   true,
+		}}
+
+		vals := common.Values(M{"subchart1": M{"enabled": false}})
+		processDependencyConditions(reqs, vals, "")
+		if !reqs[0].Enabled {
+			t.Fatal("expected parse failure to leave enabled state unchanged")
+		}
+	})
+
+	t.Run("legacy comma syntax remains unchanged", func(t *testing.T) {
+		reqs := []*chart.Dependency{{
+			Name:      "subchart1",
+			Condition: "subchart1.missing,subchart1.enabled",
+			Enabled:   false,
+		}}
+
+		vals := common.Values(M{"subchart1": M{"enabled": true}})
+		processDependencyConditions(reqs, vals, "")
+		if !reqs[0].Enabled {
+			t.Fatal("expected legacy fallback condition path to be used")
+		}
+	})
+}
+
 // extractChartNames recursively searches chart dependencies returning all charts found
 func extractChartNames(c *chart.Chart) []string {
 	var out []string
