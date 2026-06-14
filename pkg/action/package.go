@@ -26,7 +26,6 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"golang.org/x/term"
-	"sigs.k8s.io/yaml"
 
 	ci "helm.sh/helm/v4/pkg/chart"
 	"helm.sh/helm/v4/pkg/chart/loader"
@@ -176,8 +175,9 @@ func (p *Package) Clearsign(filename string) error {
 		return errors.New("invalid chart apiVersion")
 	}
 
-	// Marshal chart metadata to YAML bytes
-	metadataBytes, err := yaml.Marshal(ch.Metadata)
+	// Marshal chart metadata to YAML bytes suitable for provenance files.
+	// Uses flow style for sequences to avoid PGP dash-escaping of YAML list items.
+	metadataBytes, err := provenance.MarshalMetadata(ch.Metadata)
 	if err != nil {
 		return fmt.Errorf("failed to marshal chart metadata: %w", err)
 	}
