@@ -107,13 +107,15 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 	return LoadIndexFileForEntries(path, nil)
 }
 
-// LoadIndexFileForEntries loads an index file but only validates and retains
-// entries matching the provided chart names. Unmatched entries are discarded
-// after unmarshal without validation, reducing memory and CPU overhead.
-// If names is nil, all entries are loaded (equivalent to LoadIndexFile).
+// LoadIndexFileForEntries loads an index file but only retains entries
+// matching the provided chart names. All entries are still validated and
+// normalized (via loadIndex) before unmatched entries are discarded,
+// reducing the retained heap for large repositories when filtering to a
+// small subset of charts.
+// If names is nil or empty, all entries are loaded (equivalent to LoadIndexFile).
 func LoadIndexFileForEntries(path string, names []string) (*IndexFile, error) {
 	var entries map[string]struct{}
-	if names != nil {
+	if len(names) > 0 {
 		entries = make(map[string]struct{}, len(names))
 		for _, n := range names {
 			entries[n] = struct{}{}
@@ -131,41 +133,6 @@ func LoadIndexFileForEntries(path string, names []string) (*IndexFile, error) {
 		for name := range i.Entries {
 			if _, ok := entries[name]; !ok {
 				delete(i.Entries, name)
-			}
-		}
-	}
-	i.SortEntries()
-	return i, nil
-}
-
-
-// LoadIndexFileForEntries loads an index file but only validates and retains
-// entries matching the provided chart names. Unmatched entries are discarded
-// after unmarshal without validation, reducing memory and CPU overhead.
-// If entries is nil, all entries are loaded (equivalent to LoadIndexFile).
-func LoadIndexFileForEntries(path string, entries map[string]struct{}) (*IndexFile, error) {
-	i := &IndexFile{}
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return i, err
-	}
-	if err := yaml.Unmarshal(b, i); err != nil {
-		return i, err
-	}
-	if entries != nil {
-		for name := range i.Entries {
-			if _, ok := entries[name]; !ok {
-				delete(i.Entries, name)
-			}
-		}
-	}
-	for _, cvs := range i.Entries {
-		for _, cv := range cvs {
-			if cv.APIVersion == "" {
-				cv.APIVersion = chart.APIVersionV1
-			}
-			if err := cv.Validate(); err != nil {
-				return i, err
 			}
 		}
 	}

@@ -798,7 +798,10 @@ func TestLoadIndexFileForEntries(t *testing.T) {
 
 	// partial match retains only matched entries
 	t.Run("partial match", func(t *testing.T) {
-		full, _ := LoadIndexFile("testdata/local-index.yaml")
+		full, err := LoadIndexFile("testdata/local-index.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
 		var firstName string
 		for k := range full.Entries {
 			firstName = k
