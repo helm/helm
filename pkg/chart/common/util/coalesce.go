@@ -143,14 +143,14 @@ func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ 
 	if destglob, ok := dest[common.GlobalKey]; !ok {
 		dg = make(map[string]any)
 	} else if dg, ok = destglob.(map[string]any); !ok {
-		printf("warning: skipping globals because destination %s is not a table.", common.GlobalKey)
+		printf("warning: skipping globals because destination %s is not a mapping.", common.GlobalKey)
 		return
 	}
 
 	if srcglob, ok := src[common.GlobalKey]; !ok {
 		sg = make(map[string]any)
 	} else if sg, ok = srcglob.(map[string]any); !ok {
-		printf("warning: skipping globals because source %s is not a table.", common.GlobalKey)
+		printf("warning: skipping globals because source %s is not a mapping.", common.GlobalKey)
 		return
 	}
 
@@ -180,7 +180,7 @@ func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ 
 			}
 		} else if dv, ok := dg[key]; ok && istable(dv) {
 			// It's not clear if this condition can actually ever trigger.
-			printf("key %s is table. Skipping", key)
+			printf("key %s is a mapping. Skipping", key)
 		} else {
 			// TODO: Do we need to do any additional checking on the value?
 			dg[key] = val
@@ -245,7 +245,7 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 					// If the original value is nil, there is nothing to coalesce, so we don't print
 					// the warning
 					if val != nil {
-						printf("warning: skipped value for %s.%s: Not a table.", subPrefix, key)
+						printf("warning: skipped value for %s.%s: destination is a mapping, but the provided value is not. Use a YAML map (key:value pairs) for this key.", subPrefix, key)
 					}
 				} else {
 					// If the key is a child chart, coalesce tables with Merge set to true
@@ -347,10 +347,10 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]any, prefix strin
 			if istable(dv) {
 				coalesceTablesFullKey(printf, dv.(map[string]any), val.(map[string]any), fullkey, merge)
 			} else {
-				printf("warning: cannot overwrite table with non table for %s (%v)", fullkey, val)
+				printf("warning: cannot overwrite mapping with non-mapping value for %s (%v)", fullkey, val)
 			}
 		} else if istable(dv) && val != nil {
-			printf("warning: destination for %s is a table. Ignoring non-table value (%v)", fullkey, val)
+			printf("warning: destination for %s is a mapping. Ignoring non-mapping value (%v)", fullkey, val)
 		}
 	}
 	return dst
