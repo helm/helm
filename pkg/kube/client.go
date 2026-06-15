@@ -323,8 +323,9 @@ func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun boo
 				slog.String("name", target.Name),
 				slog.String("gvk", target.Mapping.GroupVersionKind.String()))
 
-			return retry.RetryOnConflict(
+			return retry.OnError(
 				retry.DefaultRetry,
+				isQuotaConflict,
 				func() error {
 					err := patchResourceServerSide(target, dryRun, forceConflicts, fieldValidationDirective)
 					if err != nil {
@@ -952,6 +953,26 @@ func isIncompatibleServerError(err error) bool {
 		return false
 	}
 	return err.(*apierrors.StatusError).Status().Code == http.StatusUnsupportedMediaType
+}
+
+// isQuotaConflict checks if the error is a conflict error specifically caused by
+// a ResourceQuota. This is used to determine if a retry should be attempted,
+// since quota conflicts are typically transient and can be resolved by retrying.
+func isQuotaConflict(err error) bool {
+	if !apierrors.IsConflict(err) {
+		return false
+	}
+
+	// Check the error message for the specific ResourceQuota conflict pattern.
+	// The error message from the ResourceQuota admission controller contains:
+	// "Operation cannot be fulfilled on resourcequotas" and "the object has been modified"
+	errMsg := err.Error()
+	if strings.Contains(errMsg, "Operation cannot be fulfilled on resourcequotas") &&
+		strings.Contains(errMsg, "the object has been modified") {
+		return true
+	}
+
+	return false
 }
 
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.

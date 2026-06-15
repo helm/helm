@@ -282,6 +282,24 @@ func TestCreate(t *testing.T) {
 				return actions
 			}(),
 		},
+		"Create fail: managed fields conflict (server-side apply)": {
+			Pods:            newPodList("seal"),
+			ServerSideApply: true,
+			Callback: func(t *testing.T, _ testCase, _ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+				t.Helper()
+
+				// Return a generic 409 conflict (not quota-related)
+				// This simulates a managed fields conflict
+				return &http.Response{
+					StatusCode: http.StatusConflict,
+					Request:    req,
+				}, nil
+			},
+			ExpectedErrorContains: "the server reported a conflict",
+			ExpectedActions: []string{
+				"/namespaces/default/pods/seal:PATCH",
+			},
+		},
 	}
 
 	c := newTestClient(t)
