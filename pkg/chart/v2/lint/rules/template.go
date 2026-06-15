@@ -62,6 +62,7 @@ func TemplateLinterSkipSchemaValidation(skipSchemaValidation bool) TemplateLinte
 }
 
 func newTemplateLinter(linter *support.Linter, namespace string, values map[string]any, options ...TemplateLinterOption) templateLinter {
+
 	result := templateLinter{
 		linter:    linter,
 		values:    values,

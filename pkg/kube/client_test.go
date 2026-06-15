@@ -282,6 +282,7 @@ func TestCreate(t *testing.T) {
 	c := newTestClient(t)
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
+
 			client := NewRequestResponseLogClient(t, func(previous []RequestResponseAction, req *http.Request) (*http.Response, error) {
 				return tc.Callback(t, tc, previous, req)
 			})
@@ -316,6 +317,7 @@ func TestCreate(t *testing.T) {
 			}
 
 			assert.Equal(t, tc.ExpectedActions, actions)
+
 		})
 	}
 }
@@ -442,6 +444,7 @@ func TestUpdate(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
+
 			listOriginal := tc.OriginalPods
 			listTarget := tc.TargetPods
 
@@ -1407,6 +1410,7 @@ func TestIsReachable(t *testing.T) {
 				if !strings.Contains(err.Error(), tt.errorContains) {
 					t.Errorf("expected error message to contain '%s', got: %v", tt.errorContains, err)
 				}
+
 			} else {
 				if err != nil {
 					t.Errorf("expected no error but got: %v", err)
@@ -1484,6 +1488,7 @@ func TestReplaceResource(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
+
 			testFactory := cmdtesting.NewTestFactory()
 			t.Cleanup(testFactory.Cleanup)
 
@@ -1606,6 +1611,7 @@ func TestPatchResourceClientSide(t *testing.T) {
 
 				t.Fail()
 				return nil, nil
+
 			},
 			ExpectedErrorContains: "cannot patch \"whale\" with kind Pod: the server reported a conflict",
 		},
@@ -1627,12 +1633,14 @@ func TestPatchResourceClientSide(t *testing.T) {
 
 				t.Fail()
 				return nil, nil // newResponse(http.StatusOK, &tc.TargetPods.Items[0])
+
 			},
 		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
+
 			testFactory := cmdtesting.NewTestFactory()
 			t.Cleanup(testFactory.Cleanup)
 
@@ -1816,6 +1824,7 @@ func TestPatchResourceServerSide(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
+
 			testFactory := cmdtesting.NewTestFactory()
 			t.Cleanup(testFactory.Cleanup)
 
@@ -1846,6 +1855,7 @@ func TestPatchResourceServerSide(t *testing.T) {
 }
 
 func TestDetermineFieldValidationDirective(t *testing.T) {
+
 	assert.Equal(t, FieldValidationDirectiveIgnore, determineFieldValidationDirective(false))
 	assert.Equal(t, FieldValidationDirectiveStrict, determineFieldValidationDirective(true))
 }

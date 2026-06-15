@@ -72,6 +72,7 @@ type VerificationResult struct {
 
 // InstallWithOptions installs a plugin with options.
 func InstallWithOptions(i Installer, opts Options) (*VerificationResult, error) {
+
 	if err := os.MkdirAll(filepath.Dir(i.Path()), 0755); err != nil {
 		return nil, err
 	}

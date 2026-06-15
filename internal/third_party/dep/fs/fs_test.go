@@ -238,6 +238,7 @@ func TestCopyDirFail_SrcIsNotDir(t *testing.T) {
 	if !errors.Is(err, errSrcNotDir) {
 		t.Fatalf("expected %v error for CopyDir(%s, %s), got %s", errSrcNotDir, srcdir, dstdir, err)
 	}
+
 }
 
 func TestCopyDirFail_DstExists(t *testing.T) {
@@ -490,6 +491,7 @@ func setupInaccessibleDir(t *testing.T, op func(dir string) error) func() {
 }
 
 func TestIsDir(t *testing.T) {
+
 	var currentUID = os.Getuid()
 
 	if currentUID == 0 {
@@ -542,6 +544,7 @@ func TestIsDir(t *testing.T) {
 }
 
 func TestIsSymlink(t *testing.T) {
+
 	var currentUID = os.Getuid()
 
 	if currentUID == 0 {

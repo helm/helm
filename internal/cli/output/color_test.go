@@ -24,6 +24,7 @@ import (
 )
 
 func TestColorizeStatus(t *testing.T) {
+
 	tests := []struct {
 		name       string
 		status     common.Status
@@ -106,6 +107,7 @@ func TestColorizeStatus(t *testing.T) {
 }
 
 func TestColorizeHeader(t *testing.T) {
+
 	tests := []struct {
 		name       string
 		header     string
@@ -147,6 +149,7 @@ func TestColorizeHeader(t *testing.T) {
 }
 
 func TestColorizeNamespace(t *testing.T) {
+
 	tests := []struct {
 		name       string
 		namespace  string

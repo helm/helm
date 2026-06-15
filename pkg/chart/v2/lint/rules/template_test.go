@@ -257,6 +257,7 @@ data:
 //
 // See https://github.com/helm/helm/issues/7483
 func TestStrictTemplateParsingMapError(t *testing.T) {
+
 	ch := chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:       "regression7483",
@@ -389,6 +390,7 @@ func TestValidateTopIndentLevel(t *testing.T) {
 			t.Errorf("Expected %t for %q", shouldFail, doc)
 		}
 	}
+
 }
 
 // TestEmptyWithCommentsManifests checks the lint is not failing against empty manifests that contains only comments
@@ -484,4 +486,5 @@ func TestIsYamlFileExtension(t *testing.T) {
 			t.Errorf("isYamlFileExtension(%s) = %v; want %v", test.filename, result, test.expected)
 		}
 	}
+
 }

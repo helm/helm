@@ -28,6 +28,7 @@ import (
 )
 
 func TestRepoIndexCmd(t *testing.T) {
+
 	dir := t.TempDir()
 
 	comp := filepath.Join(dir, "compressedchart-0.1.0.tgz")

@@ -23,6 +23,7 @@ import (
 )
 
 func TestValidatePluginData(t *testing.T) {
+
 	// A mock plugin with no commands
 	mockNoCommand := mockSubprocessCLIPlugin(t, "foo")
 	mockNoCommand.metadata.RuntimeConfig = &RuntimeConfigSubprocess{

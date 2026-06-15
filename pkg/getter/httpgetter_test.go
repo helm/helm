@@ -510,6 +510,7 @@ func TestDownloadInsecureSkipTLSVerify(t *testing.T) {
 	if _, err = g.Get(u.String()); err != nil {
 		t.Error(err)
 	}
+
 }
 
 func TestHTTPGetterTarDownload(t *testing.T) {

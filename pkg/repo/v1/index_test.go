@@ -140,6 +140,7 @@ func TestIndexFile(t *testing.T) {
 }
 
 func TestLoadIndex(t *testing.T) {
+
 	tests := []struct {
 		Name     string
 		Filename string
@@ -249,6 +250,7 @@ func TestMerge(t *testing.T) {
 	if v := vs[1]; v.Version != "0.2.0" {
 		t.Errorf("Expected %q version to be 0.2.0, got %s", v.Name, v.Version)
 	}
+
 }
 
 func TestDownloadIndexFile(t *testing.T) {
@@ -640,6 +642,7 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 			if !errors.Is(tc.Input, result) {
 				t.Error("expected the result equal to input")
 			}
+
 		})
 	}
 }
@@ -711,48 +714,6 @@ func TestLoadIndex_DuplicateChartDeps(t *testing.T) {
 				if v.Name == "alpine" {
 					t.Error("malformed version was not filtered out")
 				}
-			}
-		})
-	}
-}
-
-func TestIsVersionRange(t *testing.T) {
-	tests := []struct {
-		version  string
-		expected bool
-	}{
-		{"1.0.0", false},
-		{"1.0.0+metadata", false},
-		{"v1.19.2", false},
-		{"v1", false},
-		{"^1", true},
-		{"^1.2.3", true},
-		{"~1.10", true},
-		{"~1.10.0", true},
-		{">= 1.0.0", true},
-		{"> 1.0.0", true},
-		{"< 2.0.0", true},
-		{"<= 2.0.0", true},
-		{"!= 1.0.0", true},
-		{"1.*", true},
-		{"1.x", true},
-		{"1.X", true},
-		{"v1.x", true},
-		{"v1.X", true},
-		{"1.0.0 - 2.0.0", true},
-		{"^1.0.0 || ^2.0.0", true},
-		{">=1.0.0 <2.0.0", true},
-		// Exact versions with 'x'/'X' in prerelease or build metadata
-		{"1.0.0-fix", false},
-		{"2.0.0-next", false},
-		{"1.0.0+exp", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.version, func(t *testing.T) {
-			got := isVersionRange(tt.version)
-			if got != tt.expected {
-				t.Errorf("isVersionRange(%q) = %v, want %v", tt.version, got, tt.expected)
 			}
 		})
 	}

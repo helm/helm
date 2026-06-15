@@ -34,6 +34,7 @@ import (
 )
 
 func TestUpgradeCmd(t *testing.T) {
+
 	tmpChart := t.TempDir()
 	cfile := &chart.Chart{
 		Metadata: &chart.Metadata{
@@ -221,6 +222,7 @@ func TestUpgradeWithValue(t *testing.T) {
 	if !strings.Contains(updatedRel.Manifest, "drink: tea") {
 		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
 	}
+
 }
 
 func TestUpgradeWithStringValue(t *testing.T) {
@@ -251,9 +253,11 @@ func TestUpgradeWithStringValue(t *testing.T) {
 	if !strings.Contains(updatedRel.Manifest, "drink: coffee") {
 		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
 	}
+
 }
 
 func TestUpgradeInstallWithSubchartNotes(t *testing.T) {
+
 	releaseName := "wacky-bunny-v1"
 	relMock, ch, _ := prepareMockRelease(t, releaseName)
 
@@ -285,9 +289,11 @@ func TestUpgradeInstallWithSubchartNotes(t *testing.T) {
 	if !strings.Contains(upgradedRel.Info.Notes, "SUBCHART NOTES") {
 		t.Errorf("The subchart notes are not set correctly. NOTES: %s", upgradedRel.Info.Notes)
 	}
+
 }
 
 func TestUpgradeWithValuesFile(t *testing.T) {
+
 	releaseName := "funny-bunny-v4"
 	relMock, ch, chartPath := prepareMockRelease(t, releaseName)
 
@@ -315,9 +321,11 @@ func TestUpgradeWithValuesFile(t *testing.T) {
 	if !strings.Contains(updatedRel.Manifest, "drink: beer") {
 		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
 	}
+
 }
 
 func TestUpgradeWithValuesFromStdin(t *testing.T) {
+
 	releaseName := "funny-bunny-v5"
 	relMock, ch, chartPath := prepareMockRelease(t, releaseName)
 
@@ -353,6 +361,7 @@ func TestUpgradeWithValuesFromStdin(t *testing.T) {
 }
 
 func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
+
 	releaseName := "funny-bunny-v6"
 	_, _, chartPath := prepareMockRelease(t, releaseName)
 
@@ -383,6 +392,7 @@ func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
 	if !strings.Contains(updatedRel.Manifest, "drink: beer") {
 		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
 	}
+
 }
 
 func prepareMockRelease(t *testing.T, releaseName string) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {

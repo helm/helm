@@ -134,6 +134,7 @@ func (s *SQL) checkAlreadyApplied(migrations []*migrate.Migration) bool {
 }
 
 func (s *SQL) ensureDBSetup() error {
+
 	migrations := &migrate.MemoryMigrationSource{
 		Migrations: []*migrate.Migration{
 			{
@@ -484,7 +485,7 @@ func (s *SQL) Create(key string, rel release.Releaser) error {
 	transaction, err := s.db.Beginx()
 	if err != nil {
 		s.Logger().Debug("failed to start SQL transaction", slog.Any("error", err))
-		return fmt.Errorf("error beginning transaction: %w", err)
+		return fmt.Errorf("error beginning transaction: %v", err)
 	}
 
 	insertQuery, args, err := s.statementBuilder.
@@ -622,7 +623,7 @@ func (s *SQL) Delete(key string) (release.Releaser, error) {
 	transaction, err := s.db.Beginx()
 	if err != nil {
 		s.Logger().Debug("failed to start SQL transaction", slog.Any("error", err))
-		return nil, fmt.Errorf("error beginning transaction: %w", err)
+		return nil, fmt.Errorf("error beginning transaction: %v", err)
 	}
 
 	selectQuery, args, err := s.statementBuilder.

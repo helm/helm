@@ -630,6 +630,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (common.VersionSet
 	var ok bool
 	for _, r := range resources {
 		for _, rl := range r.APIResources {
+
 			// A Kind at a GroupVersion can show up more than once. We only want
 			// it displayed once in the final output.
 			id = path.Join(r.GroupVersion, rl.Kind)

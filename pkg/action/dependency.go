@@ -120,6 +120,7 @@ func (d *Dependency) dependencyStatus(chartpath string, dep *chart.Dependency, p
 		if r := statArchiveForStatus(archive, dep); r != "" {
 			return r
 		}
+
 	}
 	// End unnecessary code.
 

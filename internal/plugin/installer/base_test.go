@@ -35,6 +35,7 @@ func TestPath(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+
 		t.Setenv("HELM_PLUGINS", tt.helmPluginsDir)
 		baseIns := newBase(tt.source)
 		baseInsPath := baseIns.Path()

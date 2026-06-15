@@ -119,6 +119,7 @@ func (m *Metadata) FormattedDepNames() string {
 			continue
 		}
 		depsNames = append(depsNames, ac.Name())
+
 	}
 	sort.StringSlice(depsNames).Sort()
 

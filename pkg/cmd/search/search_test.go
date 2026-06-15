@@ -149,6 +149,7 @@ func TestAddRepo_Sort(t *testing.T) {
 }
 
 func TestSearchByName(t *testing.T) {
+
 	tests := []struct {
 		name    string
 		query   string
@@ -244,6 +245,7 @@ func TestSearchByName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			charts, err := i.Search(tt.query, 100, tt.regexp)
 			if err != nil {
 				if tt.fail {
@@ -272,6 +274,7 @@ func TestSearchByName(t *testing.T) {
 					t.Errorf("[%d]: Expected name %q, got %q", i, ex.Name, got.Name)
 				}
 			}
+
 		})
 	}
 }

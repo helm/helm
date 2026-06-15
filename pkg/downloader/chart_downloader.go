@@ -282,6 +282,7 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 	// If provenance is requested, verify it.
 	ver := &provenance.Verification{}
 	if c.Verify > VerifyNever {
+
 		ppth, err := c.Cache.Get(digest32, CacheProv)
 		if err == nil {
 			slog.Debug("found provenance in cache", "id", digestString)
@@ -307,6 +308,7 @@ func (c *ChartDownloader) DownloadToCache(ref, version string) (string, *provena
 		}
 
 		if c.Verify != VerifyLater {
+
 			// provenance files pin to a specific name so this needs to be accounted for
 			// when verifying.
 			// Note, this does make an assumption that the name/version is unique to a

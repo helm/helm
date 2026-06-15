@@ -44,6 +44,7 @@ func WithSkipSchemaValidation(skipSchemaValidation bool) LinterOption {
 }
 
 func RunAll(baseDir string, values map[string]any, namespace string, options ...LinterOption) support.Linter {
+
 	chartDir, _ := filepath.Abs(baseDir)
 
 	lo := linterOptions{}
