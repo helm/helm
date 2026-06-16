@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/util/homedir"
 
 	"helm.sh/helm/v4/pkg/helmpath/xdg"
@@ -36,17 +37,13 @@ func TestDataPath(t *testing.T) {
 
 	expected := filepath.Join(homedir.HomeDir(), "Library", appName, testFile)
 
-	if lazy.dataPath(testFile) != expected {
-		t.Errorf("expected '%s', got '%s'", expected, lazy.dataPath(testFile))
-	}
+	assert.Equal(t, expected, lazy.dataPath(testFile))
 
 	t.Setenv(xdg.DataHomeEnvVar, "/tmp")
 
 	expected = filepath.Join("/tmp", appName, testFile)
 
-	if lazy.dataPath(testFile) != expected {
-		t.Errorf("expected '%s', got '%s'", expected, lazy.dataPath(testFile))
-	}
+	assert.Equal(t, expected, lazy.dataPath(testFile))
 }
 
 func TestConfigPath(t *testing.T) {
@@ -54,17 +51,13 @@ func TestConfigPath(t *testing.T) {
 
 	expected := filepath.Join(homedir.HomeDir(), "Library", "Preferences", appName, testFile)
 
-	if lazy.configPath(testFile) != expected {
-		t.Errorf("expected '%s', got '%s'", expected, lazy.configPath(testFile))
-	}
+	assert.Equal(t, expected, lazy.configPath(testFile))
 
 	t.Setenv(xdg.ConfigHomeEnvVar, "/tmp")
 
 	expected = filepath.Join("/tmp", appName, testFile)
 
-	if lazy.configPath(testFile) != expected {
-		t.Errorf("expected '%s', got '%s'", expected, lazy.configPath(testFile))
-	}
+	assert.Equal(t, expected, lazy.configPath(testFile))
 }
 
 func TestCachePath(t *testing.T) {
@@ -72,15 +65,11 @@ func TestCachePath(t *testing.T) {
 
 	expected := filepath.Join(homedir.HomeDir(), "Library", "Caches", appName, testFile)
 
-	if lazy.cachePath(testFile) != expected {
-		t.Errorf("expected '%s', got '%s'", expected, lazy.cachePath(testFile))
-	}
+	assert.Equal(t, expected, lazy.cachePath(testFile))
 
 	t.Setenv(xdg.CacheHomeEnvVar, "/tmp")
 
 	expected = filepath.Join("/tmp", appName, testFile)
 
-	if lazy.cachePath(testFile) != expected {
-		t.Errorf("expected '%s', got '%s'", expected, lazy.cachePath(testFile))
-	}
+	assert.Equal(t, expected, lazy.cachePath(testFile))
 }
