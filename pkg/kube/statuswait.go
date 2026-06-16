@@ -33,7 +33,9 @@ import (
 	"github.com/fluxcd/cli-utils/pkg/kstatus/watcher"
 	"github.com/fluxcd/cli-utils/pkg/object"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
@@ -61,6 +63,10 @@ type statusWaiter struct {
 // "context deadline exceeded" errors. SDK callers can rely on this default
 // when they don't set a timeout.
 var DefaultStatusWatcherTimeout = 30 * time.Second
+
+// deleteVerificationTimeout bounds the live GETs used to confirm deletions that
+// the status watcher did not observe before WaitForDelete gave up.
+const deleteVerificationTimeout = 10 * time.Second
 
 func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
 	return &status.Result{
@@ -162,21 +168,70 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 	}
 
 	errs := []error{}
+	// A cancelled caller context signals an external interruption, so only
+	// fall back to live GETs when the watcher stopped on its own or timed out.
+	verifyWithGet := !errors.Is(ctx.Err(), context.Canceled)
+	// ctx has usually expired by now, so keep its values but not its deadline,
+	// and bound all fallback GETs together by a single grace period.
+	getCtx, cancelGet := context.WithTimeout(context.WithoutCancel(ctx), deleteVerificationTimeout)
+	defer cancelGet()
+	unknown, confirmedGone := 0, 0
 	for _, id := range resources {
 		rs := statusCollector.ResourceStatuses[id]
-		if rs.Status == status.NotFoundStatus || rs.Status == status.UnknownStatus {
+		if rs.Status == status.NotFoundStatus {
 			continue
+		}
+		if rs.Status == status.UnknownStatus {
+			unknown++
+			continue
+		}
+		// The watcher may have missed the deletion event (e.g. due to a
+		// connection drop or informer lag). Verify with a live GET before
+		// reporting the resource as still existing.
+		if verifyWithGet {
+			gone, err := w.isResourceGone(getCtx, id)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("resource %s/%s/%s may still exist. status: %s, message: %s: unable to verify deletion: %w",
+					rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, rs.Status, rs.Message, err))
+				continue
+			}
+			if gone {
+				w.Logger().Debug("watcher reported resource as existing but live GET confirms deletion",
+					"kind", id.GroupKind.Kind, "namespace", id.Namespace, "name", id.Name)
+				confirmedGone++
+				continue
+			}
 		}
 		errs = append(errs, fmt.Errorf("resource %s/%s/%s still exists. status: %s, message: %s",
 			rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, rs.Status, rs.Message))
 	}
 	if err := ctx.Err(); err != nil {
-		errs = append(errs, err)
+		// The watcher timing out is not a failure when every resource it did not
+		// see deleted was confirmed gone by a live GET.
+		missedDeletesOnly := errors.Is(err, context.DeadlineExceeded) && confirmedGone > 0 && unknown == 0 && len(errs) == 0
+		if !missedDeletesOnly {
+			errs = append(errs, err)
+		}
 	}
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
 	return nil
+}
+
+// isResourceGone reports whether a live GET returns NotFound for the resource.
+// Any other GET error is returned so that callers do not mistake an inability to
+// verify deletion for the resource still existing.
+func (w *statusWaiter) isResourceGone(ctx context.Context, id object.ObjMetadata) (bool, error) {
+	mapping, err := w.restMapper.RESTMapping(id.GroupKind)
+	if err != nil {
+		return false, err
+	}
+	_, err = w.client.Resource(mapping.Resource).Namespace(id.Namespace).Get(ctx, id.Name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return true, nil
+	}
+	return false, err
 }
 
 func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw watcher.StatusWatcher) error {

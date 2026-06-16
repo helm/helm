@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -373,6 +374,158 @@ func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 	objManifest := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
 	resourceList := getResourceListFromRuntimeObjs(t, c, objManifest)
 	assert.NoError(t, statusWaiter.WaitForDelete(resourceList, timeout))
+}
+
+func TestWaitForDeleteWithMissedWatchEvent(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		v1.SchemeGroupVersion.WithKind("Pod"),
+	)
+	// Return a watcher with no events to simulate a missed deletion notification.
+	// The watch starts after the initial list, so signal that the watcher has
+	// seen the resource before deleting it.
+	watchStarted := make(chan struct{})
+	var once sync.Once
+	fakeClient.PrependWatchReactor("pods", func(_ clienttesting.Action) (bool, watch.Interface, error) {
+		once.Do(func() { close(watchStarted) })
+		return true, watch.NewFake(), nil
+	})
+	sw := statusWaiter{
+		restMapper: fakeMapper,
+		client:     fakeClient,
+	}
+	sw.SetLogger(slog.Default().Handler())
+	objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+	gvrs := make([]schema.GroupVersionResource, 0, len(objs))
+	for _, obj := range objs {
+		u := obj.(*unstructured.Unstructured)
+		gvr := getGVR(t, fakeMapper, u)
+		err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+		require.NoError(t, err)
+		gvrs = append(gvrs, gvr)
+	}
+	// Delete the resource once the watch has started. The watcher will miss
+	// this deletion because watch events are suppressed, but a live GET should
+	// confirm the resource is gone.
+	deleteErrs := make(chan error, 1)
+	go func() {
+		<-watchStarted
+		var errs []error
+		for i, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			errs = append(errs, fakeClient.Tracker().Delete(gvrs[i], u.GetNamespace(), u.GetName()))
+		}
+		deleteErrs <- errors.Join(errs...)
+	}()
+	resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+	err := sw.WaitForDelete(resourceList, 500*time.Millisecond)
+	require.NoError(t, <-deleteErrs)
+	assert.NoError(t, err)
+}
+
+func TestWaitForDeleteWithMissedWatchEventGetError(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		v1.SchemeGroupVersion.WithKind("Pod"),
+	)
+	fakeClient.PrependWatchReactor("pods", func(_ clienttesting.Action) (bool, watch.Interface, error) {
+		return true, watch.NewFake(), nil
+	})
+	// The live GET cannot verify the deletion, so the resource must not be
+	// reported as simply still existing, nor as deleted.
+	fakeClient.PrependReactor("get", "pods", func(_ clienttesting.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewForbidden(schema.GroupResource{Resource: "pods"}, "current-pod", errors.New("get not allowed"))
+	})
+	sw := statusWaiter{
+		restMapper: fakeMapper,
+		client:     fakeClient,
+	}
+	sw.SetLogger(slog.Default().Handler())
+	objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+	for _, obj := range objs {
+		u := obj.(*unstructured.Unstructured)
+		gvr := getGVR(t, fakeMapper, u)
+		err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+		require.NoError(t, err)
+	}
+	resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+	err := sw.WaitForDelete(resourceList, 500*time.Millisecond)
+	require.Error(t, err)
+	assert.True(t, apierrors.IsForbidden(err), "expected the GET error to be wrapped, got: %v", err)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Contains(t, err.Error(), "resource Pod/ns/current-pod may still exist. status: Current")
+	assert.Contains(t, err.Error(), "unable to verify deletion")
+}
+
+func TestIsResourceGone(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		getErr    error
+		exists    bool
+		expected  bool
+		expectErr func(error) bool
+	}{
+		{
+			name:     "not found",
+			expected: true,
+		},
+		{
+			name:   "still exists",
+			exists: true,
+		},
+		{
+			name:      "forbidden",
+			getErr:    apierrors.NewForbidden(schema.GroupResource{Resource: "pods"}, "current-pod", errors.New("get not allowed")),
+			expectErr: apierrors.IsForbidden,
+		},
+		{
+			name:      "timeout",
+			getErr:    context.DeadlineExceeded,
+			expectErr: func(err error) bool { return errors.Is(err, context.DeadlineExceeded) },
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			fakeMapper := testutil.NewFakeRESTMapper(
+				v1.SchemeGroupVersion.WithKind("Pod"),
+			)
+			if tt.getErr != nil {
+				fakeClient.PrependReactor("get", "pods", func(_ clienttesting.Action) (bool, runtime.Object, error) {
+					return true, nil, tt.getErr
+				})
+			}
+			sw := statusWaiter{
+				restMapper: fakeMapper,
+				client:     fakeClient,
+			}
+			sw.SetLogger(slog.Default().Handler())
+			if tt.exists {
+				u := getRuntimeObjFromManifests(t, []string{podCurrentManifest})[0].(*unstructured.Unstructured)
+				err := fakeClient.Tracker().Create(getGVR(t, fakeMapper, u), u, u.GetNamespace())
+				require.NoError(t, err)
+			}
+			id := object.ObjMetadata{
+				GroupKind: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+				Namespace: "ns",
+				Name:      "current-pod",
+			}
+			gone, err := sw.isResourceGone(t.Context(), id)
+			if tt.expectErr != nil {
+				require.Error(t, err)
+				assert.True(t, tt.expectErr(err), "unexpected error: %v", err)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tt.expected, gone)
+		})
+	}
 }
 
 func TestStatusWait(t *testing.T) {
