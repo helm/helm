@@ -209,7 +209,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.StringToStringVarP(&client.Labels, "labels", "l", nil, "Labels that would be added to release metadata. Should be divided by comma.")
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
 	f.BoolVar(&client.HideNotes, "hide-notes", false, "if set, do not show notes in install output. Does not affect presence in chart metadata")
-	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, install will ignore the check for helm annotations and take ownership of the existing resources")
+	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, install will ignore the check for Helm ownership annotations (such as meta.helm.sh/release-name and meta.helm.sh/release-namespace) and take ownership of the existing resources")
 
 	// For `helm template`, these notes flags are legacy, unused, and should not show in help, but
 	// must remain accepted for backwards compatibility in Helm 4. Deprecate and hide them for now
