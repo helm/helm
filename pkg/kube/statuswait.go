@@ -33,7 +33,9 @@ import (
 	"github.com/fluxcd/cli-utils/pkg/kstatus/watcher"
 	"github.com/fluxcd/cli-utils/pkg/object"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
@@ -163,6 +165,14 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		if rs.Status == status.NotFoundStatus || rs.Status == status.UnknownStatus {
 			continue
 		}
+		// The watcher may have missed the deletion event (e.g. due to a
+		// connection drop or informer lag). Verify with a live GET before
+		// reporting the resource as still existing.
+		if w.isResourceGone(id) {
+			w.Logger().Debug("watcher reported resource as existing but live GET confirms deletion",
+				"kind", id.GroupKind.Kind, "namespace", id.Namespace, "name", id.Name)
+			continue
+		}
 		errs = append(errs, fmt.Errorf("resource %s/%s/%s still exists. status: %s, message: %s",
 			rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, rs.Status, rs.Message))
 	}
@@ -181,6 +191,17 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		return errors.Join(errs...)
 	}
 	return nil
+}
+
+func (w *statusWaiter) isResourceGone(id object.ObjMetadata) bool {
+	mapping, err := w.restMapper.RESTMapping(id.GroupKind)
+	if err != nil {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_, err = w.client.Resource(mapping.Resource).Namespace(id.Namespace).Get(ctx, id.Name, metav1.GetOptions{})
+	return apierrors.IsNotFound(err)
 }
 
 func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw watcher.StatusWatcher) error {

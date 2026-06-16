@@ -379,6 +379,68 @@ func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestWaitForDeleteWithMissedWatchEvent(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		v1.SchemeGroupVersion.WithKind("Pod"),
+	)
+	// Return a watcher with no events to simulate a missed deletion notification.
+	fakeClient.PrependWatchReactor("pods", func(action clienttesting.Action) (bool, watch.Interface, error) {
+		return true, watch.NewFake(), nil
+	})
+	sw := statusWaiter{
+		restMapper: fakeMapper,
+		client:     fakeClient,
+	}
+	sw.SetLogger(slog.Default().Handler())
+	objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+	for _, obj := range objs {
+		u := obj.(*unstructured.Unstructured)
+		gvr := getGVR(t, fakeMapper, u)
+		err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
+		require.NoError(t, err)
+	}
+	// Delete the resource after a brief delay. The watcher will miss this
+	// deletion because watch events are suppressed, but a live GET should
+	// confirm the resource is gone.
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			err := fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName())
+			assert.NoError(t, err)
+		}
+	}()
+	resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+	err := sw.WaitForDelete(resourceList, 500*time.Millisecond)
+	assert.NoError(t, err)
+}
+
+func TestIsResourceGoneTimeoutError(t *testing.T) {
+	t.Parallel()
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		v1.SchemeGroupVersion.WithKind("Pod"),
+	)
+	fakeClient.PrependReactor("get", "pods", func(action clienttesting.Action) (bool, runtime.Object, error) {
+		return true, nil, context.DeadlineExceeded
+	})
+	sw := statusWaiter{
+		restMapper: fakeMapper,
+		client:     fakeClient,
+	}
+	sw.SetLogger(slog.Default().Handler())
+	id := object.ObjMetadata{
+		GroupKind: v1.SchemeGroupVersion.WithKind("Pod").GroupKind(),
+		Namespace: "ns",
+		Name:      "timeout-pod",
+	}
+	assert.False(t, sw.isResourceGone(id))
+}
+
 func TestStatusWait(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
