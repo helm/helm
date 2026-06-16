@@ -78,7 +78,7 @@ func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) err
 
 		err := ValidateAgainstSingleSchema(values, chrt.Schema)
 		if err != nil {
-			sb.WriteString(fmt.Sprintf("%s:\n", chrt.Name()))
+			fmt.Fprintf(&sb, "%s:\n", chrt.Name())
 			sb.WriteString(err.Error())
 		}
 	}
@@ -92,10 +92,10 @@ func ValidateAgainstSchema(chrt *chart.Chart, values map[string]interface{}) err
 
 		subchartValues, ok := raw.(map[string]any)
 		if !ok {
-			sb.WriteString(fmt.Sprintf(
+			fmt.Fprintf(&sb,
 				"%s:\ninvalid type for values: expected object (map), got %T\n",
 				subchart.Name(), raw,
-			))
+			)
 			continue
 		}
 		if err := ValidateAgainstSchema(subchart, subchartValues); err != nil {
