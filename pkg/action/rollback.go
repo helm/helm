@@ -212,7 +212,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	// pre-rollback hooks
 
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply, r.ForceConflicts); err != nil {
 			return targetRelease, err
 		}
 	} else {
@@ -280,7 +280,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	// post-rollback hooks
 	if !r.DisableHooks {
-		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply); err != nil {
+		if err := r.cfg.execHook(targetRelease, release.HookPostRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply, r.ForceConflicts); err != nil {
 			return targetRelease, err
 		}
 	}
