@@ -41,7 +41,7 @@ one/more
 	r, err := parseString(rules)
 	require.NoError(t, err, "Error parsing rules")
 
-	assert.Len(t, r.patterns, 4)
+	require.Len(t, r.patterns, 4)
 
 	expects := []string{"foo", "bar/*", "baz/bar/foo.txt", "one/more"}
 	for i, p := range r.patterns {
