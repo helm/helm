@@ -19,6 +19,8 @@ package util // import "helm.sh/helm/v4/pkg/release/v1/util"
 import (
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSplitManifests(t *testing.T) {
@@ -509,9 +511,7 @@ metadata:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := SplitManifests(tt.input)
-			if !reflect.DeepEqual(result, tt.expected) {
-				t.Errorf("SplitManifests() =\n%v\nwant:\n%v", result, tt.expected)
-			}
+			assert.True(t, reflect.DeepEqual(result, tt.expected), "SplitManifests() =\n%v\nwant:\n%v", result, tt.expected)
 		})
 	}
 }
