@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release/common"
+	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func uninstallAction(t *testing.T) *Uninstall {
@@ -351,4 +352,112 @@ data:
 	is.Contains(logOutput, "dry-run: would skip resource")
 	is.Contains(logOutput, "dryrun-unowned-deploy")
 	is.Contains(logOutput, "Deployment")
+}
+
+func TestUninstall_ServerSideApplyDefault(t *testing.T) {
+	unAction := uninstallAction(t)
+	is := assert.New(t)
+	is.Equal("auto", unAction.ServerSideApply, "default ServerSideApply should be 'auto'")
+}
+
+func TestGetServerSideApplyValue_WithUninstallScenarios(t *testing.T) {
+	tests := []struct {
+		name                   string
+		serverSideOption       string
+		releaseApplyMethod     string
+		expectedServerSideApply bool
+		expectError            bool
+		errorContains          string
+		description            string
+	}{
+		{
+			name:                    "auto with CSA release (Helm v3 migration)",
+			serverSideOption:        "auto",
+			releaseApplyMethod:      "csa",
+			expectedServerSideApply: false,
+			description:             "Helm v3 releases using CSA should get client-side apply for pre-delete hooks",
+		},
+		{
+			name:                    "auto with SSA release (Helm v4)",
+			serverSideOption:        "auto",
+			releaseApplyMethod:      "ssa",
+			expectedServerSideApply: true,
+			description:             "Helm v4 releases using SSA should keep server-side apply for pre-delete hooks",
+		},
+		{
+			name:                    "auto with empty apply method",
+			serverSideOption:        "auto",
+			releaseApplyMethod:      "",
+			expectedServerSideApply: false,
+			description:             "empty apply method should default to client-side apply",
+		},
+		{
+			name:                    "explicit true overrides CSA release",
+			serverSideOption:        "true",
+			releaseApplyMethod:      "csa",
+			expectedServerSideApply: true,
+			description:             "user can force SSA even for CSA releases",
+		},
+		{
+			name:                    "explicit false overrides SSA release",
+			serverSideOption:        "false",
+			releaseApplyMethod:      "ssa",
+			expectedServerSideApply: false,
+			description:             "user can force CSA even for SSA releases",
+		},
+		{
+			name:            "invalid option",
+			serverSideOption: "invalid",
+			expectError:     true,
+			errorContains:   "invalid/unknown release server-side apply method",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := getServerSideApplyValue(tt.serverSideOption, tt.releaseApplyMethod)
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorContains)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedServerSideApply, result, tt.description)
+			}
+		})
+	}
+}
+
+// TestUninstall_ServerSideApply_NoHooks verifies that the ServerSideApply option
+// is not consulted when hooks are disabled, avoiding unnecessary errors from
+// invalid ServerSideApply values when hooks won't run anyway.
+func TestUninstall_ServerSideApply_NoHooks_InvalidOption(t *testing.T) {
+	unAction := uninstallAction(t)
+	unAction.DisableHooks = true
+	unAction.ServerSideApply = "invalid-option-should-not-matter"
+
+	rel := releaseStub()
+	rel.Name = "no-hooks-test"
+	rel.ApplyMethod = string(release.ApplyMethodClientSideApply)
+	require.NoError(t, unAction.cfg.Releases.Create(rel))
+
+	// Should succeed because hooks are disabled and SSA option is never evaluated
+	_, err := unAction.Run(rel.Name)
+	assert.NoError(t, err)
+}
+
+// TestUninstall_ServerSideApply_InvalidOption_WithHooks verifies that an invalid
+// ServerSideApply value causes an error when hooks are enabled.
+func TestUninstall_ServerSideApply_InvalidOption_WithHooks(t *testing.T) {
+	unAction := uninstallAction(t)
+	unAction.DisableHooks = false
+	unAction.ServerSideApply = "invalid-option"
+
+	rel := releaseStub()
+	rel.Name = "invalid-ssa-option"
+	rel.ApplyMethod = string(release.ApplyMethodClientSideApply)
+	require.NoError(t, unAction.cfg.Releases.Create(rel))
+
+	_, err := unAction.Run(rel.Name)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid/unknown release server-side apply method")
 }

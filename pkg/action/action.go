@@ -729,6 +729,22 @@ func determineReleaseSSApplyMethod(serverSideApply bool) release.ApplyMethod {
 	return release.ApplyMethodClientSideApply
 }
 
+// getServerSideApplyValue resolves the server-side apply option string ("auto", "true", "false")
+// against the release's stored apply method. When "auto", it respects the release's previous
+// apply method; otherwise the explicit "true"/"false" value is used.
+func getServerSideApplyValue(serverSideOption string, releaseApplyMethod string) (bool, error) {
+	switch serverSideOption {
+	case "auto":
+		return releaseApplyMethod == "ssa", nil
+	case "false":
+		return false, nil
+	case "true":
+		return true, nil
+	default:
+		return false, fmt.Errorf("invalid/unknown release server-side apply method: %s", serverSideOption)
+	}
+}
+
 // isDryRun returns true if the strategy is set to run as a DryRun
 func isDryRun(strategy DryRunStrategy) bool {
 	return strategy == DryRunClient || strategy == DryRunServer

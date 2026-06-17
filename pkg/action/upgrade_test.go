@@ -637,7 +637,7 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	req.Error(err)
 }
 
-func TestGetUpgradeServerSideValue(t *testing.T) {
+func TestGetServerSideApplyValue(t *testing.T) {
 	tests := []struct {
 		name                    string
 		actionServerSideOption  string
@@ -714,7 +714,7 @@ func TestGetUpgradeServerSideValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			serverSideApply, err := getUpgradeServerSideValue(tt.actionServerSideOption, tt.releaseApplyMethod)
+			serverSideApply, err := getServerSideApplyValue(tt.actionServerSideOption, tt.releaseApplyMethod)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedServerSideApply, serverSideApply)
 		})
@@ -736,7 +736,7 @@ func TestGetUpgradeServerSideValue(t *testing.T) {
 
 	for _, tt := range testsError {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := getUpgradeServerSideValue(tt.actionServerSideOption, tt.releaseApplyMethod)
+			_, err := getServerSideApplyValue(tt.actionServerSideOption, tt.releaseApplyMethod)
 			assert.ErrorContains(t, err, tt.expectedErrorMsg)
 		})
 	}

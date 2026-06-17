@@ -164,7 +164,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		return nil, nil, false, err
 	}
 
-	serverSideApply, err := getUpgradeServerSideValue(r.ServerSideApply, previousRelease.ApplyMethod)
+	serverSideApply, err := getServerSideApplyValue(r.ServerSideApply, previousRelease.ApplyMethod)
 	if err != nil {
 		return nil, nil, false, err
 	}
