@@ -46,9 +46,12 @@ func encodeRelease(rls *rspb.Release) (string, error) {
 		return "", err
 	}
 	if _, err = w.Write(b); err != nil {
+		w.Close()
 		return "", err
 	}
-	w.Close()
+	if err = w.Close(); err != nil {
+		return "", err
+	}
 
 	return b64.EncodeToString(buf.Bytes()), nil
 }
