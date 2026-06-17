@@ -17,7 +17,6 @@ limitations under the License.
 package util
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -169,7 +168,7 @@ metadata:
 				assert.True(t, kindFound, "Got unexpected kind %s", out.Kind)
 
 				expectedHooks := expect.hooks[out.Name]
-				assert.True(t, reflect.DeepEqual(expectedHooks, out.Events), "expected events: %v but got: %v", expectedHooks, out.Events)
+				assert.Equal(t, expectedHooks, out.Events, "expected events: %v but got: %v", expectedHooks, out.Events)
 			}
 		}
 		assert.True(t, found, "Result not found: %v", out)
@@ -204,6 +203,6 @@ metadata:
 
 	sorted = sortManifestsByKind(sorted, InstallOrder)
 	for i, m := range generic {
-		assert.Equal(t, sorted[i].Content, m.Content)
+		assert.Equal(t, m.Content, sorted[i].Content)
 	}
 }

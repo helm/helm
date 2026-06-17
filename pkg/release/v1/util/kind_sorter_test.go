@@ -196,7 +196,7 @@ func TestKindSorter(t *testing.T) {
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
-			require.Equal(t, len(manifests), len(test.expected), "Expected %d names in order", len(manifests))
+			require.Len(t, manifests, len(test.expected), "Expected %d names in order", len(manifests))
 			defer buf.Reset()
 			orig := manifests
 			for _, r := range sortManifestsByKind(manifests, test.order) {
@@ -319,7 +319,7 @@ func TestKindSorterForHooks(t *testing.T) {
 	} {
 		var buf bytes.Buffer
 		t.Run(test.description, func(t *testing.T) {
-			require.Equal(t, len(hooks), len(test.expected), "Expected %d names in order", len(hooks))
+			require.Len(t, hooks, len(test.expected), "Expected %d names in order", len(hooks))
 			defer buf.Reset()
 			orig := hooks
 			for _, r := range sortHooksByKind(hooks, test.order) {

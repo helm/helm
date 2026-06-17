@@ -17,7 +17,6 @@ limitations under the License.
 package util // import "helm.sh/helm/v4/pkg/release/v1/util"
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -511,7 +510,7 @@ metadata:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := SplitManifests(tt.input)
-			assert.True(t, reflect.DeepEqual(result, tt.expected), "SplitManifests() =\n%v\nwant:\n%v", result, tt.expected)
+			assert.Equal(t, tt.expected, result, "SplitManifests() =\n%v\nwant:\n%v", result, tt.expected)
 		})
 	}
 }
