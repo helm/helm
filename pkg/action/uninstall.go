@@ -49,10 +49,10 @@ type Uninstall struct {
 	DeletionPropagation string
 	Timeout             time.Duration
 	Description         string
-	// ServerSideApply enables changes to be applied via Kubernetes server-side apply
-	// Can be the string: "true", "false" or "auto"
-	// When "auto", server-side usage will be based upon the release's previous usage
-	// see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
+	// ServerSideApply controls whether pre-delete and post-delete hooks are applied
+	// via Kubernetes server-side apply. Can be the string: "true", "false" or "auto".
+	// When "auto", server-side usage will be based upon the release's previous usage.
+	// See: https://kubernetes.io/docs/reference/using-api/server-side-apply/
 	ServerSideApply string
 }
 
@@ -236,11 +236,9 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 	}
 
 	if !u.DisableHooks {
-		serverSideApply, err := getServerSideApplyValue(u.ServerSideApply, rel.ApplyMethod)
-		if err != nil {
+		if serverSideApply, err := getServerSideApplyValue(u.ServerSideApply, rel.ApplyMethod); err != nil {
 			errs = append(errs, err)
-		}
-		if err := u.cfg.execHook(rel, release.HookPostDelete, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
+		} else if err := u.cfg.execHook(rel, release.HookPostDelete, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
 			errs = append(errs, err)
 		}
 	}
