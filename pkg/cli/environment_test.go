@@ -23,6 +23,8 @@ import (
 	"testing"
 
 	"github.com/spf13/pflag"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/version"
 )
@@ -30,14 +32,10 @@ import (
 func TestSetNamespace(t *testing.T) {
 	settings := New()
 
-	if settings.namespace != "" {
-		t.Errorf("Expected empty namespace, got %s", settings.namespace)
-	}
+	assert.Empty(t, settings.namespace)
 
 	settings.SetNamespace("testns")
-	if settings.namespace != "testns" {
-		t.Errorf("Expected namespace testns, got %s", settings.namespace)
-	}
+	assert.Equal(t, "testns", settings.namespace)
 }
 
 func TestEnvSettings(t *testing.T) {
@@ -134,36 +132,16 @@ func TestEnvSettings(t *testing.T) {
 			settings.AddFlags(flags)
 			flags.Parse(strings.Split(tt.args, " "))
 
-			if settings.Debug != tt.debug {
-				t.Errorf("expected debug %t, got %t", tt.debug, settings.Debug)
-			}
-			if settings.Namespace() != tt.ns {
-				t.Errorf("expected namespace %q, got %q", tt.ns, settings.Namespace())
-			}
-			if settings.KubeContext != tt.kcontext {
-				t.Errorf("expected kube-context %q, got %q", tt.kcontext, settings.KubeContext)
-			}
-			if settings.MaxHistory != tt.maxhistory {
-				t.Errorf("expected maxHistory %d, got %d", tt.maxhistory, settings.MaxHistory)
-			}
-			if tt.kubeAsUser != settings.KubeAsUser {
-				t.Errorf("expected kAsUser %q, got %q", tt.kubeAsUser, settings.KubeAsUser)
-			}
-			if !reflect.DeepEqual(tt.kubeAsGroups, settings.KubeAsGroups) {
-				t.Errorf("expected kAsGroups %+v, got %+v", len(tt.kubeAsGroups), len(settings.KubeAsGroups))
-			}
-			if tt.kubeCaFile != settings.KubeCaFile {
-				t.Errorf("expected kCaFile %q, got %q", tt.kubeCaFile, settings.KubeCaFile)
-			}
-			if tt.burstLimit != settings.BurstLimit {
-				t.Errorf("expected BurstLimit %d, got %d", tt.burstLimit, settings.BurstLimit)
-			}
-			if tt.kubeInsecure != settings.KubeInsecureSkipTLSVerify {
-				t.Errorf("expected kubeInsecure %t, got %t", tt.kubeInsecure, settings.KubeInsecureSkipTLSVerify)
-			}
-			if tt.kubeTLSServer != settings.KubeTLSServerName {
-				t.Errorf("expected kubeTLSServer %q, got %q", tt.kubeTLSServer, settings.KubeTLSServerName)
-			}
+			assert.Equal(t, tt.debug, settings.Debug, "debug")
+			assert.Equal(t, tt.ns, settings.Namespace(), "namespace")
+			assert.Equal(t, tt.kcontext, settings.KubeContext, "kube-context")
+			assert.Equal(t, tt.maxhistory, settings.MaxHistory, "maxHistory")
+			assert.Equal(t, tt.kubeAsUser, settings.KubeAsUser, "kubeAsUser")
+			assert.True(t, reflect.DeepEqual(tt.kubeAsGroups, settings.KubeAsGroups), "kubeAsGroups")
+			assert.Equal(t, tt.kubeCaFile, settings.KubeCaFile, "kubeCaFile")
+			assert.Equal(t, tt.burstLimit, settings.BurstLimit, "burstLimit")
+			assert.Equal(t, tt.kubeInsecure, settings.KubeInsecureSkipTLSVerify, "kubeInsecure")
+			assert.Equal(t, tt.kubeTLSServer, settings.KubeTLSServerName, "kubeTLSServer")
 		})
 	}
 }
@@ -235,9 +213,7 @@ func TestEnvOrBool(t *testing.T) {
 				t.Setenv(tt.env, tt.val)
 			}
 			actual := envBoolOr(tt.env, tt.def)
-			if actual != tt.expected {
-				t.Errorf("expected result %t, got %t", tt.expected, actual)
-			}
+			assert.Equal(t, tt.expected, actual)
 		})
 	}
 }
@@ -247,14 +223,10 @@ func TestUserAgentHeaderInK8sRESTClientConfig(t *testing.T) {
 
 	settings := New()
 	restConfig, err := settings.RESTClientGetter().ToRESTConfig()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expectedUserAgent := version.GetUserAgent()
-	if restConfig.UserAgent != expectedUserAgent {
-		t.Errorf("expected User-Agent header %q in K8s REST client config, got %q", expectedUserAgent, restConfig.UserAgent)
-	}
+	assert.Equal(t, expectedUserAgent, restConfig.UserAgent)
 }
 
 func resetEnv() func() {
