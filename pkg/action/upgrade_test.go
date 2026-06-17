@@ -730,7 +730,7 @@ func TestGetServerSideApplyValue(t *testing.T) {
 			name:                   "action invalid option",
 			actionServerSideOption: "invalid",
 			releaseApplyMethod:     "ssa",
-			expectedErrorMsg:       "invalid/unknown release server-side apply method: invalid",
+			expectedErrorMsg:       "invalid server-side apply option \"invalid\" (must be one of: auto, true, false)",
 		},
 	}
 

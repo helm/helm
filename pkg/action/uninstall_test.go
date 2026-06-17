@@ -409,7 +409,7 @@ func TestGetServerSideApplyValue_WithUninstallScenarios(t *testing.T) {
 			name:            "invalid option",
 			serverSideOption: "invalid",
 			expectError:     true,
-			errorContains:   "invalid/unknown release server-side apply method",
+			errorContains:   "invalid server-side apply option",
 		},
 	}
 
@@ -459,5 +459,5 @@ func TestUninstall_ServerSideApply_InvalidOption_WithHooks(t *testing.T) {
 
 	_, err := unAction.Run(rel.Name)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid/unknown release server-side apply method")
+	assert.Contains(t, err.Error(), "invalid server-side apply option")
 }

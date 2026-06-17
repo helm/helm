@@ -735,13 +735,13 @@ func determineReleaseSSApplyMethod(serverSideApply bool) release.ApplyMethod {
 func getServerSideApplyValue(serverSideOption string, releaseApplyMethod string) (bool, error) {
 	switch serverSideOption {
 	case "auto":
-		return releaseApplyMethod == "ssa", nil
+		return releaseApplyMethod == string(release.ApplyMethodServerSideApply), nil
 	case "false":
 		return false, nil
 	case "true":
 		return true, nil
 	default:
-		return false, fmt.Errorf("invalid/unknown release server-side apply method: %s", serverSideOption)
+		return false, fmt.Errorf("invalid server-side apply option %q (must be one of: auto, true, false)", serverSideOption)
 	}
 }
 
