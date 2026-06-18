@@ -31,6 +31,10 @@ func TestPath(t *testing.T) {
 			source:         "https://github.com/jkroepke/helm-secrets",
 			helmPluginsDir: "/helm/data/plugins",
 			expectPath:     "/helm/data/plugins/helm-secrets",
+		}, {
+			source:         "https://github.com/jkroepke/helm-secrets",
+			helmPluginsDir: "/helm/data/plugins:/helm/system/plugins",
+			expectPath:     "/helm/data/plugins/helm-secrets",
 		},
 	}
 
