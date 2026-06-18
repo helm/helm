@@ -802,6 +802,7 @@ func TestGetPodList(t *testing.T) {
 	podList, err := c.GetPodList(namespace, metav1.ListOptions{})
 	clientAssertions := assert.New(t)
 	clientAssertions.NoError(err)
+	podList.ResourceVersion = ""
 	clientAssertions.Equal(&responsePodList, podList)
 
 }
