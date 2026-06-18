@@ -31,7 +31,7 @@ import (
 	"helm.sh/helm/v4/pkg/helmpath"
 )
 
-// VCSInstaller installs plugins from remote a repository.
+// VCSInstaller installs plugins from a remote repository.
 type VCSInstaller struct {
 	Repo    vcs.Repo
 	Version string
@@ -166,7 +166,7 @@ func (i *VCSInstaller) sync(repo vcs.Repo) error {
 	return repo.Update()
 }
 
-// Filter a list of versions to only included semantic versions. The response
+// Filter a list of versions to only include semantic versions. The response
 // is a mapping of the original version to the semantic version.
 func getSemVers(refs []string) []*semver.Version {
 	var sv []*semver.Version
