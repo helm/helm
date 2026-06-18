@@ -1416,6 +1416,26 @@ func TestIsReachable(t *testing.T) {
 	}
 }
 
+func TestIsReachableTwiceAfterClientCreationFailure(t *testing.T) {
+	refusedErr := errors.New("connection refused")
+	client := newTestClient(t)
+	client.Factory = &errorFactory{err: refusedErr}
+
+	assertReachableErr := func(label string, err error) {
+		t.Helper()
+		if err == nil {
+			t.Fatalf("%s: expected error, got nil", label)
+		}
+		if !errors.Is(err, refusedErr) {
+			t.Fatalf("%s: expected error wrapping %v, got %v", label, refusedErr, err)
+		}
+	}
+
+	assertReachableErr("first call", client.IsReachable())
+	// Second call must return the same underlying error, not panic.
+	assertReachableErr("second call", client.IsReachable())
+}
+
 func TestIsIncompatibleServerError(t *testing.T) {
 	testCases := map[string]struct {
 		Err  error
