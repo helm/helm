@@ -204,8 +204,8 @@ func TestInstallRelease(t *testing.T) {
 	is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
 	is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
 
-	is.NotEqual(len(res.Manifest), 0)
-	is.NotEqual(len(rel.Manifest), 0)
+	is.NotEmpty(res.Manifest)
+	is.NotEmpty(rel.Manifest)
 	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
 	is.Equal(rel.Info.Description, "Install complete")
 
@@ -318,8 +318,8 @@ func TestInstallReleaseWithValues(t *testing.T) {
 	is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
 	is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
 
-	is.NotEqual(len(res.Manifest), 0)
-	is.NotEqual(len(rel.Manifest), 0)
+	is.NotEmpty(res.Manifest)
+	is.NotEmpty(rel.Manifest)
 	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
 	is.Equal("Install complete", rel.Info.Description)
 	is.Equal(expectedUserValues, rel.Config)
@@ -359,8 +359,8 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 	is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
 	is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
 	is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
-	is.NotEqual(len(res.Manifest), 0)
-	is.NotEqual(len(rel.Manifest), 0)
+	is.NotEmpty(res.Manifest)
+	is.NotEmpty(rel.Manifest)
 	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
 	is.Equal(rel.Info.Description, "Install complete")
 
@@ -582,7 +582,7 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	res, err := releaserToV1Release(resi)
 	is.NoError(err)
 	is.Contains(res.Info.Description, "failed post-install")
-	is.Equal("", outBuffer.String())
+	is.Empty(outBuffer.String())
 	is.Equal(rcommon.StatusFailed, res.Info.Status)
 }
 

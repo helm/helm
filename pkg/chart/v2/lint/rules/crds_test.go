@@ -62,5 +62,5 @@ metadata:
 	linter := support.Linter{ChartDir: chartDir}
 	Crds(&linter)
 
-	assert.Len(t, linter.Messages, 0)
+	assert.Empty(t, linter.Messages)
 }

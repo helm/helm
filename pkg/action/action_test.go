@@ -1742,7 +1742,7 @@ data:
 				assert.Contains(t, err.Error(), tt.expectedError)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, len(tt.expectedFiles), len(files))
+				assert.Len(t, files, len(tt.expectedFiles))
 
 				for expectedFile, expectedContent := range tt.expectedFiles {
 					actualContent, exists := files[expectedFile]
@@ -1793,7 +1793,7 @@ data:
 	require.NoError(t, err)
 
 	// Compare the results
-	assert.Equal(t, len(originalFiles), len(reconstructed))
+	assert.Len(t, reconstructed, len(originalFiles))
 	for filename, originalContent := range originalFiles {
 		reconstructedContent, exists := reconstructed[filename]
 		assert.True(t, exists, "File %s should exist in reconstructed files", filename)
@@ -1830,7 +1830,7 @@ func TestRenderResources_PostRenderer_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, hooks)
 	assert.NotNil(t, buf)
-	assert.Equal(t, "", notes)
+	assert.Empty(t, notes)
 	expectedBuf := `---
 # Source: yellow/templates/foodpie
 foodpie: world
@@ -1948,7 +1948,7 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, hooks)
 	assert.NotNil(t, buf)
-	assert.Equal(t, "", notes) // Notes should be empty for this test
+	assert.Empty(t, notes) // Notes should be empty for this test
 
 	// Verify that the post-renderer modifications are present in the output
 	output := buf.String()
@@ -1987,7 +1987,7 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, hooks)
 	assert.NotNil(t, buf)
-	assert.Equal(t, "", notes)
+	assert.Empty(t, notes)
 }
 
 func TestRenderResources_PostRenderer_DuplicateResourceInHookAndTemplate(t *testing.T) {

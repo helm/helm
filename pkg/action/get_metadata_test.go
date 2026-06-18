@@ -279,9 +279,9 @@ func TestGetMetadata_Run_WithMixedDependencies(t *testing.T) {
 
 	// Verify dependencies without aliases
 	assert.Equal(t, "nginx", dep1.Name())
-	assert.Equal(t, "", dep1.Alias())
+	assert.Empty(t, dep1.Alias())
 	assert.Equal(t, "postgresql", dep3.Name())
-	assert.Equal(t, "", dep3.Alias())
+	assert.Empty(t, dep3.Alias())
 }
 
 func TestGetMetadata_Run_WithAnnotations(t *testing.T) {
@@ -485,7 +485,7 @@ func TestGetMetadata_Run_EmptyAppVersion(t *testing.T) {
 	result, err := client.Run(releaseName)
 	require.NoError(t, err)
 
-	assert.Equal(t, "", result.AppVersion)
+	assert.Empty(t, result.AppVersion)
 }
 
 func TestMetadata_FormattedDepNames(t *testing.T) {

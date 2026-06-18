@@ -555,5 +555,5 @@ func testTags(suite *TestRegistry) {
 	// Query for tags and validate length
 	tags, err := suite.RegistryClient.Tags(ref)
 	suite.Require().NoError(err, "no error retrieving tags")
-	suite.Equal(1, len(tags))
+	suite.Len(tags, 1)
 }
