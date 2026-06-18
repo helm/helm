@@ -260,6 +260,7 @@ func TestPullCmd(t *testing.T) {
 				if out != outString {
 					t.Errorf("%q: expected verification output %q, got %q", tt.name, outString, out)
 				}
+
 			}
 
 			ef := filepath.Join(outdir, tt.expectFile)

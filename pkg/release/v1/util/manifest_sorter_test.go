@@ -26,6 +26,7 @@ import (
 )
 
 func TestSortManifests(t *testing.T) {
+
 	data := []struct {
 		name     []string
 		path     string
@@ -182,6 +183,7 @@ metadata:
 				if !reflect.DeepEqual(expectedHooks, out.Events) {
 					t.Errorf("expected events: %v but got: %v", expectedHooks, out.Events)
 				}
+
 			}
 		}
 		if !found {

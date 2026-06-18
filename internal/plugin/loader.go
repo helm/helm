@@ -45,6 +45,7 @@ func peekAPIVersion(r io.Reader) (string, error) {
 }
 
 func loadMetadataLegacy(metadataData []byte) (*Metadata, error) {
+
 	var ml MetadataLegacy
 	d := yaml.NewDecoder(bytes.NewReader(metadataData))
 	// NOTE: No strict unmarshalling for legacy plugins - maintain backwards compatibility
@@ -64,6 +65,7 @@ func loadMetadataLegacy(metadataData []byte) (*Metadata, error) {
 }
 
 func loadMetadataV1(metadataData []byte) (*Metadata, error) {
+
 	var mv1 MetadataV1
 	d := yaml.NewDecoder(bytes.NewReader(metadataData))
 	d.KnownFields(true)
@@ -107,6 +109,7 @@ type prototypePluginManager struct {
 }
 
 func newPrototypePluginManager() (*prototypePluginManager, error) {
+
 	cc, err := wazero.NewCompilationCacheWithDir(helmpath.CachePath("wazero-build"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create wazero compilation cache: %w", err)
@@ -226,6 +229,7 @@ func findPlugins(pluginsDirs []string, findFn findFunc, filterFn filterFunc) ([]
 				found = append(found, p)
 			}
 		}
+
 	}
 
 	return found, nil
@@ -238,6 +242,7 @@ func makeDescriptorFilter(descriptor Descriptor) filterFunc {
 		// If name is specified, it must match
 		if descriptor.Name != "" && p.Metadata().Name != descriptor.Name {
 			return false
+
 		}
 		// If type is specified, it must match
 		if descriptor.Type != "" && p.Metadata().Type != descriptor.Type {

@@ -104,7 +104,7 @@ func TestMetadata(t *testing.T) {
 
 	is.Equal("foo.yaml", chrt.Name())
 	is.Equal("1.0.0", chrt.AppVersion())
-	is.NoError(chrt.Validate())
+	is.Equal(nil, chrt.Validate())
 }
 
 func TestIsRoot(t *testing.T) {

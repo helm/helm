@@ -54,6 +54,7 @@ func New(chartpath, cachepath string, registryClient *registry.Client) *Resolver
 
 // Resolve resolves dependencies and returns a lock file with the resolution.
 func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string) (*chart.Lock, error) {
+
 	// Now we clone the dependencies, locking as we go.
 	locked := make([]*chart.Dependency, len(reqs))
 	missing := []string{}
@@ -145,6 +146,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 						Version: version,
 					},
 				}}
+
 			} else {
 				// Retrieve list of tags for repository
 				ref := fmt.Sprintf("%s/%s", strings.TrimPrefix(d.Repository, registry.OCIScheme+"://"), d.Name)

@@ -41,6 +41,7 @@ func collectGetterPlugins(settings *cli.EnvSettings) (Providers, error) {
 	env := plugin.FormatEnv(settings.EnvVars())
 	pluginConstructorBuilder := func(plg plugin.Plugin) Constructor {
 		return func(option ...Option) (Getter, error) {
+
 			return &getterPlugin{
 				options: append([]Option{}, option...),
 				plg:     plg,

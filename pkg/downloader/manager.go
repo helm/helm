@@ -261,7 +261,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			return err
 		}
 	} else {
-		return fmt.Errorf("unable to retrieve file info for '%s': %w", destPath, err)
+		return fmt.Errorf("unable to retrieve file info for '%s': %v", destPath, err)
 	}
 
 	// Prepare tmpPath
@@ -281,17 +281,17 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			chartPath := filepath.Join(destPath, dep.Name)
 			ch, err := loader.LoadDir(chartPath)
 			if err != nil {
-				return fmt.Errorf("unable to load chart '%s': %w", chartPath, err)
+				return fmt.Errorf("unable to load chart '%s': %v", chartPath, err)
 			}
 
 			constraint, err := semver.NewConstraint(dep.Version)
 			if err != nil {
-				return fmt.Errorf("dependency %s has an invalid version/constraint format: %w", dep.Name, err)
+				return fmt.Errorf("dependency %s has an invalid version/constraint format: %s", dep.Name, err)
 			}
 
 			v, err := semver.NewVersion(ch.Metadata.Version)
 			if err != nil {
-				return fmt.Errorf("invalid version %s for dependency %s: %w", dep.Version, dep.Name, err)
+				return fmt.Errorf("invalid version %s for dependency %s: %s", dep.Version, dep.Name, err)
 			}
 
 			if !constraint.Check(v) {
@@ -502,9 +502,11 @@ Loop:
 // in a known repo and attempt to ensure the data is present for steps like
 // version resolution.
 func (m *Manager) ensureMissingRepos(repoNames map[string]string, deps []*chart.Dependency) (map[string]string, error) {
+
 	var ru []*repo.Entry
 
 	for _, dd := range deps {
+
 		// If the chart is in the local charts directory no repository needs
 		// to be specified.
 		if dd.Repository == "" {
@@ -677,6 +679,7 @@ func dedupeRepos(repos []*repo.Entry) []*repo.Entry {
 }
 
 func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
+
 	var wg sync.WaitGroup
 
 	localRepos := dedupeRepos(repos)

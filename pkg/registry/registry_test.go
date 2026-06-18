@@ -107,26 +107,26 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
 				TLSClientConfig: tlsConf,
 			},
 		}
-		suite.Require().NoError(err, "no error loading tls config")
+		suite.Nil(err, "no error loading tls config")
 		opts = append(opts, ClientOptHTTPClient(httpClient))
 	} else {
 		opts = append(opts, ClientOptPlainHTTP())
 	}
 
 	suite.RegistryClient, err = NewClient(opts...)
-	suite.Require().NoError(err, "no error creating registry client")
+	suite.Nil(err, "no error creating registry client")
 
 	// create htpasswd file (w BCrypt, which is required)
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
-	suite.Require().NoError(err, "no error generating bcrypt password for test htpasswd file")
+	suite.Nil(err, "no error generating bcrypt password for test htpasswd file")
 	htpasswdPath := filepath.Join(suite.WorkspaceDir, testHtpasswdFileBasename)
 	err = os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0644)
-	suite.Require().NoError(err, "no error creating test htpasswd file")
+	suite.Nil(err, "no error creating test htpasswd file")
 
 	// Registry config
 	config := &configuration.Configuration{}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	suite.Require().NoError(err, "no error finding free port for test registry")
+	suite.Nil(err, "no error finding free port for test registry")
 	defer func() { _ = ln.Close() }()
 
 	// Change the registry host to another host which is not localhost.
@@ -159,7 +159,7 @@ func setup(suite *TestRegistry, tlsEnabled, insecure bool) {
 		}
 	}
 	suite.dockerRegistry, err = registry.NewRegistry(context.Background(), config)
-	suite.Require().NoError(err, "no error creating test registry")
+	suite.Nil(err, "no error creating test registry")
 
 	suite.FakeRegistryHost = initFakeRegistryTestServer()
 	suite.CompromisedRegistryHost = initCompromisedRegistryTestServer()
@@ -380,66 +380,67 @@ func initFakeRegistryTestServer() string {
 }
 
 func testPush(suite *TestRegistry) {
+
 	testingChartCreationTime := "1977-09-02T22:04:05Z"
 
 	// Bad bytes
 	ref := suite.DockerRegistryHost + "/testrepo/testchart:1.2.3"
 	_, err := suite.RegistryClient.Push([]byte("hello"), ref, PushOptCreationTime(testingChartCreationTime))
-	suite.Require().Error(err, "error pushing non-chart bytes")
+	suite.NotNil(err, "error pushing non-chart bytes")
 
 	// Load a test chart
 	chartData, err := os.ReadFile("../repo/v1/repotest/testdata/examplechart-0.1.0.tgz")
-	suite.Require().NoError(err, "no error loading test chart")
+	suite.Nil(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
-	suite.Require().NoError(err, "no error extracting chart meta")
+	suite.Nil(err, "no error extracting chart meta")
 
 	// non-strict ref (chart name)
 	ref = fmt.Sprintf("%s/testrepo/boop:%s", suite.DockerRegistryHost, meta.Version)
 	_, err = suite.RegistryClient.Push(chartData, ref, PushOptCreationTime(testingChartCreationTime))
-	suite.Require().Error(err, "error pushing non-strict ref (bad basename)")
+	suite.NotNil(err, "error pushing non-strict ref (bad basename)")
 
 	// non-strict ref (chart name), with strict mode disabled
 	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false), PushOptCreationTime(testingChartCreationTime))
-	suite.Require().NoError(err, "no error pushing non-strict ref (bad basename), with strict mode disabled")
+	suite.Nil(err, "no error pushing non-strict ref (bad basename), with strict mode disabled")
 
 	// non-strict ref (chart version)
 	ref = fmt.Sprintf("%s/testrepo/%s:latest", suite.DockerRegistryHost, meta.Name)
 	_, err = suite.RegistryClient.Push(chartData, ref, PushOptCreationTime(testingChartCreationTime))
-	suite.Require().Error(err, "error pushing non-strict ref (bad tag)")
+	suite.NotNil(err, "error pushing non-strict ref (bad tag)")
 
 	// non-strict ref (chart version), with strict mode disabled
 	_, err = suite.RegistryClient.Push(chartData, ref, PushOptStrictMode(false), PushOptCreationTime(testingChartCreationTime))
-	suite.Require().NoError(err, "no error pushing non-strict ref (bad tag), with strict mode disabled")
+	suite.Nil(err, "no error pushing non-strict ref (bad tag), with strict mode disabled")
 
 	// basic push, good ref
 	chartData, err = os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
-	suite.Require().NoError(err, "no error loading test chart")
+	suite.Nil(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
-	suite.Require().NoError(err, "no error extracting chart meta")
+	suite.Nil(err, "no error extracting chart meta")
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 	_, err = suite.RegistryClient.Push(chartData, ref, PushOptCreationTime(testingChartCreationTime))
-	suite.Require().NoError(err, "no error pushing good ref")
+	suite.Nil(err, "no error pushing good ref")
 
 	_, err = suite.RegistryClient.Pull(ref)
-	suite.Require().NoError(err, "no error pulling a simple chart")
+	suite.Nil(err, "no error pulling a simple chart")
 
 	// Load another test chart
 	chartData, err = os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
-	suite.Require().NoError(err, "no error loading test chart")
+	suite.Nil(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
-	suite.Require().NoError(err, "no error extracting chart meta")
+	suite.Nil(err, "no error extracting chart meta")
 
 	// Load prov file
 	provData, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
-	suite.Require().NoError(err, "no error loading test prov")
+	suite.Nil(err, "no error loading test prov")
 
 	// push with prov
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 	result, err := suite.RegistryClient.Push(chartData, ref, PushOptProvData(provData), PushOptCreationTime(testingChartCreationTime))
-	suite.Require().NoError(err, "no error pushing good ref with prov")
+	suite.Nil(err, "no error pushing good ref with prov")
 
 	_, err = suite.RegistryClient.Pull(ref, PullOptWithProv(true))
-	suite.Require().NoError(err, "no error pulling a simple chart")
+	suite.Nil(err, "no error pulling a simple chart")
 
 	// Validate the output
 	// Note: these digests/sizes etc may change if the test chart/prov files are modified,
@@ -469,50 +470,50 @@ func testPull(suite *TestRegistry) {
 	// bad/missing ref
 	ref := suite.DockerRegistryHost + "/testrepo/no-existy:1.2.3"
 	_, err := suite.RegistryClient.Pull(ref)
-	suite.Require().Error(err, "error on bad/missing ref")
+	suite.NotNil(err, "error on bad/missing ref")
 
 	// Load test chart (to build ref pushed in previous test)
 	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
-	suite.Require().NoError(err, "no error loading test chart")
+	suite.Nil(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
-	suite.Require().NoError(err, "no error extracting chart meta")
+	suite.Nil(err, "no error extracting chart meta")
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 
 	// Simple pull, chart only
 	_, err = suite.RegistryClient.Pull(ref)
-	suite.Require().NoError(err, "no error pulling a simple chart")
+	suite.Nil(err, "no error pulling a simple chart")
 
 	// Simple pull with prov (no prov uploaded)
 	_, err = suite.RegistryClient.Pull(ref, PullOptWithProv(true))
-	suite.Require().Error(err, "error pulling a chart with prov when no prov exists")
+	suite.NotNil(err, "error pulling a chart with prov when no prov exists")
 
 	// Simple pull with prov, ignoring missing prov
 	_, err = suite.RegistryClient.Pull(ref,
 		PullOptWithProv(true),
 		PullOptIgnoreMissingProv(true))
-	suite.Require().NoError(err,
+	suite.Nil(err,
 		"no error pulling a chart with prov when no prov exists, ignoring missing")
 
 	// Load test chart (to build ref pushed in previous test)
 	chartData, err = os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz")
-	suite.Require().NoError(err, "no error loading test chart")
+	suite.Nil(err, "no error loading test chart")
 	meta, err = extractChartMeta(chartData)
-	suite.Require().NoError(err, "no error extracting chart meta")
+	suite.Nil(err, "no error extracting chart meta")
 	ref = fmt.Sprintf("%s/testrepo/%s:%s", suite.DockerRegistryHost, meta.Name, meta.Version)
 
 	// Load prov file
 	provData, err := os.ReadFile("../downloader/testdata/signtest-0.1.0.tgz.prov")
-	suite.Require().NoError(err, "no error loading test prov")
+	suite.Nil(err, "no error loading test prov")
 
 	// no chart and no prov causes error
 	_, err = suite.RegistryClient.Pull(ref,
 		PullOptWithChart(false),
 		PullOptWithProv(false))
-	suite.Require().Error(err, "error on both no chart and no prov")
+	suite.NotNil(err, "error on both no chart and no prov")
 
 	// full pull with chart and prov
 	result, err := suite.RegistryClient.Pull(ref, PullOptWithProv(true))
-	suite.Require().NoError(err, "no error pulling a chart with prov")
+	suite.Require().Nil(err, "no error pulling a chart with prov")
 
 	// Validate the output
 	// Note: these digests/sizes etc may change if the test chart/prov files are modified,
@@ -547,13 +548,13 @@ func testPull(suite *TestRegistry) {
 func testTags(suite *TestRegistry) {
 	// Load test chart (to build ref pushed in previous test)
 	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
-	suite.Require().NoError(err, "no error loading test chart")
+	suite.Nil(err, "no error loading test chart")
 	meta, err := extractChartMeta(chartData)
-	suite.Require().NoError(err, "no error extracting chart meta")
+	suite.Nil(err, "no error extracting chart meta")
 	ref := fmt.Sprintf("%s/testrepo/%s", suite.DockerRegistryHost, meta.Name)
 
 	// Query for tags and validate length
 	tags, err := suite.RegistryClient.Tags(ref)
-	suite.Require().NoError(err, "no error retrieving tags")
+	suite.Nil(err, "no error retrieving tags")
 	suite.Equal(1, len(tags))
 }

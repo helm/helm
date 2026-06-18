@@ -48,6 +48,7 @@ func TestPrepareCommand(t *testing.T) {
 }
 
 func TestPrepareCommandExtraArgs(t *testing.T) {
+
 	cmdMain := "sh"
 	cmdArgs := []string{"-c", "echo \"test\""}
 	platformCommand := []PlatformCommand{

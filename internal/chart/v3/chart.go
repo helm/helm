@@ -140,7 +140,6 @@ func (ch *Chart) AppVersion() string {
 }
 
 // CRDs returns a list of File objects in the 'crds/' directory of a Helm chart.
-//
 // Deprecated: use CRDObjects()
 func (ch *Chart) CRDs() []*common.File {
 	files := []*common.File{}

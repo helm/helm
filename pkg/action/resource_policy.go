@@ -40,6 +40,7 @@ func filterManifestsToKeep(manifests []releaseutil.Manifest) (keep, remaining []
 		if resourcePolicyType == kube.KeepPolicy {
 			keep = append(keep, m)
 		}
+
 	}
 	return keep, remaining
 }

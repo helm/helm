@@ -143,6 +143,7 @@ func TestNewTempServer(t *testing.T) {
 				if res.StatusCode != http.StatusOK {
 					t.Errorf("Expected 200, got %d", res.StatusCode)
 				}
+
 			}
 
 			{
@@ -202,6 +203,7 @@ func TestNewTempServer(t *testing.T) {
 			}
 		})
 	}
+
 }
 
 func TestNewTempServer_TLS(t *testing.T) {

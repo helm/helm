@@ -73,12 +73,6 @@ func newLookupFunction(clientProvider ClientProvider) lookupFunc {
 				if apierrors.IsNotFound(err) {
 					// Just return an empty interface when the object was not found.
 					// That way, users can use `if not (lookup ...)` in their templates.
-					slog.Debug("lookup: resource not found",
-						slog.String("apiVersion", apiversion),
-						slog.String("kind", kind),
-						slog.String("namespace", namespace),
-						slog.String("name", name),
-					)
 					return map[string]any{}, nil
 				}
 				return map[string]any{}, err
@@ -91,11 +85,6 @@ func newLookupFunction(clientProvider ClientProvider) lookupFunc {
 			if apierrors.IsNotFound(err) {
 				// Just return an empty interface when the object was not found.
 				// That way, users can use `if not (lookup ...)` in their templates.
-				slog.Debug("lookup: resource list not found",
-					slog.String("apiVersion", apiversion),
-					slog.String("kind", kind),
-					slog.String("namespace", namespace),
-				)
 				return map[string]any{}, nil
 			}
 			return map[string]any{}, err

@@ -459,6 +459,7 @@ func TestDependentChartAliases(t *testing.T) {
 	if aliasChart := getAliasDependency(c.Dependencies(), req[2]); aliasChart != nil {
 		t.Fatalf("expected no chart but got %s", aliasChart.Name())
 	}
+
 }
 
 func TestDependentChartWithSubChartsAbsentInDependency(t *testing.T) {

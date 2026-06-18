@@ -124,6 +124,7 @@ func TestHTTPInstaller(t *testing.T) {
 	} else if err.Error() != "plugin already exists" {
 		t.Fatalf("expected error for plugin exists, got (%v)", err)
 	}
+
 }
 
 func TestHTTPInstallerNonExistentVersion(t *testing.T) {
@@ -156,6 +157,7 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 	if err := Install(i); err == nil {
 		t.Fatal("expected error from http client")
 	}
+
 }
 
 func TestHTTPInstallerUpdate(t *testing.T) {
@@ -295,6 +297,7 @@ func TestExtract(t *testing.T) {
 		t.Fatalf("Expected %s to have %o mode but has %o (umask: %o)",
 			readmeFullPath, expectedReadmePerm, info.Mode().Perm(), currentUmask)
 	}
+
 }
 
 func TestCleanJoin(t *testing.T) {
@@ -324,9 +327,11 @@ func TestCleanJoin(t *testing.T) {
 			t.Errorf("Test %d: Expected %q but got %q", i, fixture.expect, out)
 		}
 	}
+
 }
 
 func TestMediaTypeToExtension(t *testing.T) {
+
 	for mt, shouldPass := range map[string]bool{
 		"":                   false,
 		"application/gzip":   true,
