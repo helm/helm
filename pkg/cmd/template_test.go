@@ -19,7 +19,12 @@ package cmd
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"helm.sh/helm/v4/pkg/repo/v1/repotest"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 var chartPath = "testdata/testcharts/subchart"
@@ -174,6 +179,40 @@ func TestTemplateCmd(t *testing.T) {
 		},
 	}
 	runTestCmd(t, tests)
+}
+
+// TestTemplateOCIRegistryOutputNotInManifest verifies that registry client
+// diagnostic messages (e.g. "Pulled:" / "Digest:") emitted while fetching an OCI
+// chart do not leak into the rendered manifest stream on stdout. See helm/helm#32215.
+func TestTemplateOCIRegistryOutputNotInManifest(t *testing.T) {
+	srv := repotest.NewTempServer(
+		t,
+		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
+	)
+	defer srv.Stop()
+
+	ociSrv, err := repotest.NewOCIServer(t, srv.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ociSrv.Run(t)
+
+	store := storage.Init(driver.NewMemory())
+	ref := fmt.Sprintf("oci://%s/u/ocitestuser/oci-dependent-chart", ociSrv.RegistryURL)
+	cmd := fmt.Sprintf("template release-name %s --version 0.1.0 --plain-http", ref)
+
+	_, stdout, stderr, err := executeActionCommandStdoutStderrC(store, cmd)
+	if err != nil {
+		t.Fatalf("unexpected error: %v\nstdout:\n%s\nstderr:\n%s", err, stdout, stderr)
+	}
+
+	// The registry client emits "Pulled:" and "Digest:" lines while fetching the
+	// chart. These are diagnostics and must not appear in the manifest stdout.
+	for _, leaked := range []string{"Pulled:", "Digest:"} {
+		if strings.Contains(stdout, leaked) {
+			t.Errorf("registry diagnostic %q leaked into manifest stdout:\n%s", leaked, stdout)
+		}
+	}
 }
 
 func TestTemplateVersionCompletion(t *testing.T) {

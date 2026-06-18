@@ -127,6 +127,41 @@ func executeActionCommandStdinC(store *storage.Storage, in *os.File, cmd string)
 	return c, result, err
 }
 
+// executeActionCommandStdoutStderrC runs cmd and returns stdout and stderr captured
+// into separate buffers, so tests can assert that diagnostic output does not leak
+// into the primary (stdout) output stream.
+func executeActionCommandStdoutStderrC(store *storage.Storage, cmd string) (*cobra.Command, string, string, error) {
+	args, err := shellwords.Parse(cmd)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	outBuf := new(bytes.Buffer)
+	errBuf := new(bytes.Buffer)
+
+	actionConfig := &action.Configuration{
+		Releases:     store,
+		KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
+		Capabilities: common.DefaultCapabilities,
+	}
+
+	root, err := newRootCmdWithConfig(actionConfig, outBuf, args, SetupLogging)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	root.SetOut(outBuf)
+	root.SetErr(errBuf)
+	root.SetArgs(args)
+
+	if mem, ok := store.Driver.(*driver.Memory); ok {
+		mem.SetNamespace(settings.Namespace())
+	}
+	c, err := root.ExecuteC()
+
+	return c, outBuf.String(), errBuf.String(), err
+}
+
 // cmdTestCase describes a test case that works with releases.
 type cmdTestCase struct {
 	name      string
