@@ -14,10 +14,16 @@ limitations under the License.
 package installer // import "helm.sh/helm/v4/internal/plugin/installer"
 
 import (
+	"fmt"
+	"path/filepath"
 	"testing"
 )
 
 func TestPath(t *testing.T) {
+	pluginsDir := filepath.Join(string(filepath.Separator), "helm", "data", "plugins")
+	systemPluginsDir := filepath.Join(string(filepath.Separator), "helm", "system", "plugins")
+	pluginSource := "https://github.com/jkroepke/helm-secrets"
+
 	tests := []struct {
 		source         string
 		helmPluginsDir string
@@ -25,16 +31,16 @@ func TestPath(t *testing.T) {
 	}{
 		{
 			source:         "",
-			helmPluginsDir: "/helm/data/plugins",
+			helmPluginsDir: pluginsDir,
 			expectPath:     "",
 		}, {
-			source:         "https://github.com/jkroepke/helm-secrets",
-			helmPluginsDir: "/helm/data/plugins",
-			expectPath:     "/helm/data/plugins/helm-secrets",
+			source:         pluginSource,
+			helmPluginsDir: pluginsDir,
+			expectPath:     filepath.Join(pluginsDir, filepath.Base(pluginSource)),
 		}, {
-			source:         "https://github.com/jkroepke/helm-secrets",
-			helmPluginsDir: "/helm/data/plugins:/helm/system/plugins",
-			expectPath:     "/helm/data/plugins/helm-secrets",
+			source:         pluginSource,
+			helmPluginsDir: fmt.Sprintf("%s%c%s", pluginsDir, filepath.ListSeparator, systemPluginsDir),
+			expectPath:     filepath.Join(pluginsDir, filepath.Base(pluginSource)),
 		},
 	}
 
