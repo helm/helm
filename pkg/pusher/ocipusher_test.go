@@ -102,7 +102,8 @@ func TestOCIPusher_Push_ErrorHandling(t *testing.T) {
 			if tt.setupFunc != nil {
 				chartRef = tt.setupFunc()
 			}
-			assert.ErrorContains(t, pusher.Push(chartRef, "oci://localhost:5000/test"), tt.expectedError)
+			_, err = pusher.Push(chartRef, "oci://localhost:5000/test")
+			assert.ErrorContains(t, err, tt.expectedError)
 		})
 	}
 }
@@ -310,7 +311,7 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 			pusher, err := NewOCIPusher(tt.options...)
 			require.NoError(t, err)
 
-			err = pusher.Push(chartRef, tt.href)
+			_, err = pusher.Push(chartRef, tt.href)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -337,10 +338,11 @@ func TestOCIPusher_Push_MultipleOptions(t *testing.T) {
 
 	// Test that multiple options are applied correctly
 	// We expect an error since we're not actually pushing to a registry
-	require.Error(t, pusher.Push(chartPath, "oci://localhost:5000/test",
+	_, err = pusher.Push(chartPath, "oci://localhost:5000/test",
 		WithPlainHTTP(true),
 		WithInsecureSkipTLSVerify(true),
-	), "Expected error when pushing without a valid registry")
+	)
+	require.Error(t, err, "Expected error when pushing without a valid registry")
 
 	// Verify options were applied
 	op := pusher.(*OCIPusher)
