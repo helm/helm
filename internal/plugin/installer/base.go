@@ -32,7 +32,10 @@ func newBase(source string) base {
 	settings := cli.New()
 	// When HELM_PLUGINS contains a list of paths, use only the first one for
 	// installation so the plugin ends up in a directory that is actually searched.
-	pluginsDir := filepath.SplitList(settings.PluginsDirectory)[0]
+	pluginsDir := settings.PluginsDirectory
+	if dirs := filepath.SplitList(pluginsDir); len(dirs) > 0 {
+		pluginsDir = dirs[0]
+	}
 	return base{
 		Source:           source,
 		PluginsDirectory: pluginsDir,

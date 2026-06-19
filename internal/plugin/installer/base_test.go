@@ -19,6 +19,7 @@ import (
 )
 
 func TestPath(t *testing.T) {
+	pluginsDir := filepath.FromSlash("/helm/data/plugins")
 	tests := []struct {
 		source         string
 		helmPluginsDir string
@@ -26,12 +27,12 @@ func TestPath(t *testing.T) {
 	}{
 		{
 			source:         "",
-			helmPluginsDir: "/helm/data/plugins",
+			helmPluginsDir: pluginsDir,
 			expectPath:     "",
 		}, {
 			source:         "https://github.com/jkroepke/helm-secrets",
-			helmPluginsDir: "/helm/data/plugins",
-			expectPath:     "/helm/data/plugins/helm-secrets",
+			helmPluginsDir: pluginsDir,
+			expectPath:     filepath.Join(pluginsDir, "helm-secrets"),
 		},
 	}
 
@@ -59,4 +60,12 @@ func TestPathMultiplePluginDirs(t *testing.T) {
 	if got != expected {
 		t.Errorf("expected path %s, got %s", expected, got)
 	}
+}
+
+func TestPathEmptyPluginDir(t *testing.T) {
+	// When HELM_PLUGINS is explicitly empty, newBase must not panic.
+	t.Setenv("HELM_PLUGINS", "")
+	b := newBase("https://github.com/jkroepke/helm-secrets")
+	// Path() returns "" when source is "" or PluginsDirectory is ""; just verify no panic.
+	_ = b.Path()
 }

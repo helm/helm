@@ -29,7 +29,6 @@ import (
 	"helm.sh/helm/v4/internal/plugin"
 	"helm.sh/helm/v4/internal/plugin/cache"
 	"helm.sh/helm/v4/internal/third_party/dep/fs"
-	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/registry"
@@ -43,8 +42,7 @@ type OCIInstaller struct {
 	CacheDir   string
 	PluginName string
 	base
-	settings *cli.EnvSettings
-	getter   getter.Getter
+	getter getter.Getter
 	// Cached data to avoid duplicate downloads
 	pluginData []byte
 	provData   []byte
@@ -63,8 +61,6 @@ func NewOCIInstaller(source string, options ...getter.Option) (*OCIInstaller, er
 		return nil, err
 	}
 
-	settings := cli.New()
-
 	// Always add plugin artifact type and any provided options
 	pluginOptions := append([]getter.Option{getter.WithArtifactType("plugin")}, options...)
 	getterProvider, err := getter.NewOCIGetter(pluginOptions...)
@@ -76,7 +72,6 @@ func NewOCIInstaller(source string, options ...getter.Option) (*OCIInstaller, er
 		CacheDir:   helmpath.CachePath("plugins", key),
 		PluginName: pluginName,
 		base:       newBase(source),
-		settings:   settings,
 		getter:     getterProvider,
 	}
 	return i, nil

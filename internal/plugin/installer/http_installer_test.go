@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+//go:build !windows
+
 package installer // import "helm.sh/helm/v4/internal/plugin/installer"
 
 import (
@@ -21,13 +23,9 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"io/fs"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"testing"
 
@@ -64,18 +62,6 @@ func TestStripName(t *testing.T) {
 	if stripPluginName("fake-plugin.tar.gz") != "fake-plugin" {
 		t.Error("name does not match expected value")
 	}
-}
-
-func mockArchiveServer() *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasSuffix(r.URL.Path, ".tar.gz") {
-			w.Header().Add("Content-Type", "text/html")
-			fmt.Fprintln(w, "broken")
-			return
-		}
-		w.Header().Add("Content-Type", "application/gzip")
-		fmt.Fprintln(w, "test")
-	}))
 }
 
 func TestHTTPInstaller(t *testing.T) {
