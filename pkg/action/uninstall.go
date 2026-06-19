@@ -287,7 +287,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release, waiter kube.Waiter) (kub
 	}
 
 	if isSequencedRelease(rel) {
-		filesToDelete = u.recoverManifestPathsForSequencedUninstall(rel, filesToDelete)
+		filesToDelete = recoverManifestPaths(u.cfg, rel, filesToDelete, "sequenced uninstall")
 		deleted, errs := u.sequencedDeleteManifests(rel.Chart, filesToDelete, waiter)
 		return deleted, kept.String(), errs
 	}
@@ -504,10 +504,13 @@ func (u *Uninstall) deleteResourceGroupBatchesReverse(manifests []releaseutil.Ma
 	return allDeleted, nil
 }
 
-func (u *Uninstall) recoverManifestPathsForSequencedUninstall(rel *release.Release, manifests []releaseutil.Manifest) []releaseutil.Manifest {
-	rendered, err := renderReleaseManifestsWithPaths(u.cfg, rel)
+// recoverManifestPaths re-renders rel to recover source-template path
+// annotations on its manifests, falling back to the stored manifest order
+// (logging a warning that names opName) if re-rendering fails.
+func recoverManifestPaths(cfg *Configuration, rel *release.Release, manifests []releaseutil.Manifest, opName string) []releaseutil.Manifest {
+	rendered, err := renderReleaseManifestsWithPaths(cfg, rel)
 	if err != nil {
-		u.cfg.Logger().Warn("unable to recover rendered chart paths for sequenced uninstall; falling back to stored manifest order", slog.Any("error", err))
+		cfg.Logger().Warn("unable to recover rendered chart paths for "+opName+"; falling back to stored manifest order", slog.Any("error", err))
 		return manifests
 	}
 	return applyRenderedManifestPaths(manifests, rendered)

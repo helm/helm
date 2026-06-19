@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -381,7 +380,7 @@ func (r *Rollback) performSequencedRollback(ctx context.Context, currentRelease,
 		return fail(nil, fmt.Errorf("parsing target release manifest for sequenced rollback: %w", err))
 	}
 
-	sortedManifests = r.recoverManifestPathsForSequencedRollback(targetRelease, sortedManifests)
+	sortedManifests = recoverManifestPaths(r.cfg, targetRelease, sortedManifests, "sequenced rollback")
 
 	if !r.DisableHooks {
 		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply); err != nil {
@@ -460,13 +459,4 @@ func (r *Rollback) performSequencedRollback(ctx context.Context, currentRelease,
 	targetRelease.Info.Status = common.StatusDeployed
 
 	return targetRelease, nil
-}
-
-func (r *Rollback) recoverManifestPathsForSequencedRollback(rel *release.Release, manifests []releaseutil.Manifest) []releaseutil.Manifest {
-	rendered, err := renderReleaseManifestsWithPaths(r.cfg, rel)
-	if err != nil {
-		r.cfg.Logger().Warn("unable to recover rendered chart paths for sequenced rollback; falling back to stored manifest order", slog.Any("error", err))
-		return manifests
-	}
-	return applyRenderedManifestPaths(manifests, rendered)
 }
