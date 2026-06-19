@@ -383,10 +383,8 @@ func (s *sequencedDeployment) createAndWait(ctx context.Context, manifests []rel
 		return s.updateAndWait(ctx, manifests)
 	}
 
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	if len(manifests) == 0 {
 		return nil
@@ -409,10 +407,8 @@ func (s *sequencedDeployment) createAndWait(ctx context.Context, manifests []rel
 		return fmt.Errorf("stripping sequencing annotations: %w", err)
 	}
 
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 
 	result, err := s.cfg.KubeClient.Create(resources, kube.ClientCreateOptionServerSideApply(s.serverSideApply, false))
@@ -421,10 +417,8 @@ func (s *sequencedDeployment) createAndWait(ctx context.Context, manifests []rel
 	}
 	s.createdResources = append(s.createdResources, result.Created...)
 
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 
 	return s.waitForResources(resources, manifests)
@@ -433,10 +427,8 @@ func (s *sequencedDeployment) createAndWait(ctx context.Context, manifests []rel
 // updateAndWait applies an upgrade batch using KubeClient.Update() and waits for readiness.
 // It matches current (old) resources by objectKey to compute the per-batch diff.
 func (s *sequencedDeployment) updateAndWait(ctx context.Context, manifests []releaseutil.Manifest) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	if len(manifests) == 0 {
 		return nil
@@ -459,10 +451,8 @@ func (s *sequencedDeployment) updateAndWait(ctx context.Context, manifests []rel
 		return fmt.Errorf("stripping sequencing annotations: %w", err)
 	}
 
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 
 	targetKeys := make(map[string]bool, len(target))
@@ -488,10 +478,8 @@ func (s *sequencedDeployment) updateAndWait(ctx context.Context, manifests []rel
 	}
 	s.createdResources = append(s.createdResources, result.Created...)
 
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 
 	return s.waitForResources(target, manifests)
