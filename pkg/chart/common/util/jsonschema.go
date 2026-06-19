@@ -136,11 +136,14 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 	}
 	slog.Debug("unmarshalled JSON schema", "schema", schemaJSON)
 
-	// Configure compiler with loaders for different URL schemes
+	// Refuse external schema references (http(s):// and file://) instead of
+	// fetching them; see denyURLLoader. The urn scheme stays resolvable via the
+	// pluggable URNResolver for back-compatibility.
+	deny := denyURLLoader{}
 	loader := jsonschema.SchemeURLLoader{
-		"file":  jsonschema.FileLoader{},
-		"http":  newHTTPURLLoader(),
-		"https": newHTTPURLLoader(),
+		"file":  deny,
+		"http":  deny,
+		"https": deny,
 		"urn":   urnLoader{},
 	}
 
@@ -162,6 +165,28 @@ func ValidateAgainstSingleSchema(values common.Values, schemaJSON []byte) (reter
 	}
 
 	return nil
+}
+
+// denyURLLoader is a [jsonschema.URLLoader] that refuses to resolve any
+// external schema reference.
+//
+// A chart's values.schema.json is untrusted input (loaded verbatim from a chart
+// archive that may originate from a remote repository or OCI registry). If the
+// JSON Schema compiler is allowed to follow external "$ref"/"$id"/"$schema"
+// references, a malicious chart can drive Helm into fetching attacker-chosen
+// URLs while validating values: "http(s)://" references become a server-side
+// request forgery primitive (e.g. against cloud-metadata endpoints) and
+// "file://" references read arbitrary local files into the schema graph - the
+// JSON Schema analogue of an XXE attack.
+//
+// Standard meta-schemas (the json-schema.org drafts named by "$schema") are
+// served by the compiler from an embedded copy and never reach a loader, so
+// failing closed here keeps schema validation a purely local, in-archive
+// operation without breaking legitimate charts.
+type denyURLLoader struct{}
+
+func (denyURLLoader) Load(url string) (any, error) {
+	return nil, fmt.Errorf("loading external schema reference %q is not allowed", url)
 }
 
 // URNResolverFunc allows SDK to plug a URN resolver. It must return a

@@ -17,10 +17,13 @@ limitations under the License.
 package util
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"helm.sh/helm/v4/pkg/chart/common"
@@ -298,6 +301,46 @@ func TestValidateAgainstSingleSchema_UnresolvedURN_Ignored(t *testing.T) {
 	if err := ValidateAgainstSingleSchema(vals, schema); err != nil {
 		t.Fatalf("expected no error when URN unresolved is ignored, got: %v", err)
 	}
+}
+
+// TestValidateAgainstSingleSchema_ExternalRefDenied ensures that external schema
+// references in an (untrusted) chart schema are refused rather than resolved,
+// closing the SSRF / arbitrary-local-file-read vector. See denyURLLoader.
+func TestValidateAgainstSingleSchema_ExternalRefDenied(t *testing.T) {
+	// An http:// $ref must fail closed and must not trigger an outbound request.
+	t.Run("http ref is not fetched (SSRF)", func(t *testing.T) {
+		var hits int32
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			atomic.AddInt32(&hits, 1)
+			w.Write([]byte(`{"type": "object"}`))
+		}))
+		defer server.Close()
+
+		schema := []byte(fmt.Sprintf(`{"$ref": %q}`, server.URL+"/evil.json"))
+		err := ValidateAgainstSingleSchema(common.Values{"any": "value"}, schema)
+		if err == nil {
+			t.Fatal("expected validation to fail closed on an external http $ref")
+		}
+		if got := atomic.LoadInt32(&hits); got != 0 {
+			t.Fatalf("external $ref was fetched: server was contacted %d time(s)", got)
+		}
+	})
+
+	// A file:// $ref must fail closed and must not read local file contents.
+	t.Run("file ref is not read", func(t *testing.T) {
+		secret := filepath.Join(t.TempDir(), "secret.txt")
+		if err := os.WriteFile(secret, []byte("TOP-SECRET"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		schema := []byte(fmt.Sprintf(`{"$ref": %q}`, "file:///"+filepath.ToSlash(secret)))
+		err := ValidateAgainstSingleSchema(common.Values{"any": "value"}, schema)
+		if err == nil {
+			t.Fatal("expected validation to fail closed on an external file $ref")
+		}
+		if strings.Contains(err.Error(), "TOP-SECRET") {
+			t.Fatalf("local file content leaked through schema validation: %v", err)
+		}
+	})
 }
 
 // Non-regression tests for https://github.com/helm/helm/issues/31202
