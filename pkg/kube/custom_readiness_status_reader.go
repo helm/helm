@@ -79,26 +79,18 @@ func (r *customReadinessStatusReader) readStatus(identifier object.ObjMetadata, 
 		return computeKstatusStatus(identifier, resource)
 	}
 
+	st, message := status.InProgressStatus, "waiting for custom readiness conditions"
 	switch result {
 	case ReadinessReady:
-		return &event.ResourceStatus{
-			Identifier: identifier,
-			Status:     status.CurrentStatus,
-			Message:    "custom readiness conditions met",
-		}, nil
+		st, message = status.CurrentStatus, "custom readiness conditions met"
 	case ReadinessFailed:
-		return &event.ResourceStatus{
-			Identifier: identifier,
-			Status:     status.FailedStatus,
-			Message:    "custom readiness failure condition met",
-		}, nil
-	default:
-		return &event.ResourceStatus{
-			Identifier: identifier,
-			Status:     status.InProgressStatus,
-			Message:    "waiting for custom readiness conditions",
-		}, nil
+		st, message = status.FailedStatus, "custom readiness failure condition met"
 	}
+	return &event.ResourceStatus{
+		Identifier: identifier,
+		Status:     st,
+		Message:    message,
+	}, nil
 }
 
 func computeKstatusStatus(identifier object.ObjMetadata, resource *unstructured.Unstructured) (*event.ResourceStatus, error) {
