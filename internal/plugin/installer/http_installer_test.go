@@ -270,9 +270,11 @@ func TestExtract(t *testing.T) {
 		t.Fatalf("Did not expect error but got error: %v", err)
 	}
 
-	// Calculate expected permissions after umask is applied
+	// Calculate expected permissions after umask is applied. README.md ships as
+	// 0777 in the archive but is sanitized to 0755 on extraction (group/other
+	// write stripped) before the umask is applied; see sanitizeArchiveMode.
 	expectedPluginYAMLPerm := os.FileMode(0600 &^ currentUmask)
-	expectedReadmePerm := os.FileMode(0777 &^ currentUmask)
+	expectedReadmePerm := os.FileMode(0755 &^ currentUmask)
 
 	pluginYAMLFullPath := filepath.Join(tempDir, "plugin.yaml")
 	if info, err := os.Stat(pluginYAMLFullPath); err != nil {
@@ -294,6 +296,61 @@ func TestExtract(t *testing.T) {
 	} else if info.Mode().Perm() != expectedReadmePerm {
 		t.Fatalf("Expected %s to have %o mode but has %o (umask: %o)",
 			readmeFullPath, expectedReadmePerm, info.Mode().Perm(), currentUmask)
+	}
+}
+
+// TestExtractSanitizesFileMode verifies that setuid/setgid/sticky and
+// group/other write bits from an untrusted plugin archive are dropped on
+// extraction (independent of umask), while the owner execute bit is preserved.
+func TestExtractSanitizesFileMode(t *testing.T) {
+	defer syscall.Umask(syscall.Umask(0)) // umask 0: exercise the sanitizer, not the umask
+
+	modes := map[string]int64{
+		"setuid-binary":  0o6755, // setuid + setgid + rwxr-xr-x
+		"sticky-file":    0o1777, // sticky + rwxrwxrwx
+		"world-writable": 0o666,  // rw-rw-rw-
+	}
+
+	var tarbuf bytes.Buffer
+	tw := tar.NewWriter(&tarbuf)
+	for name, mode := range modes {
+		body := []byte("content")
+		if err := tw.WriteHeader(&tar.Header{Name: name, Typeflag: tar.TypeReg, Mode: mode, Size: int64(len(body))}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write(body); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var gzbuf bytes.Buffer
+	gz := gzip.NewWriter(&gzbuf)
+	if _, err := gz.Write(tarbuf.Bytes()); err != nil {
+		t.Fatal(err)
+	}
+	gz.Close()
+
+	dir := t.TempDir()
+	if err := (&TarGzExtractor{}).Extract(&gzbuf, dir); err != nil {
+		t.Fatalf("Extract returned error: %v", err)
+	}
+
+	for name := range modes {
+		info, err := os.Stat(filepath.Join(dir, name))
+		if err != nil {
+			t.Fatalf("stat %s: %v", name, err)
+		}
+		if info.Mode()&(os.ModeSetuid|os.ModeSetgid|os.ModeSticky) != 0 {
+			t.Errorf("%s: special bits not stripped: %v", name, info.Mode())
+		}
+		if info.Mode().Perm()&0o022 != 0 {
+			t.Errorf("%s: group/other write not stripped: %#o", name, info.Mode().Perm())
+		}
+	}
+	if info, _ := os.Stat(filepath.Join(dir, "setuid-binary")); info.Mode().Perm()&0o100 == 0 {
+		t.Errorf("owner execute bit not preserved: %#o", info.Mode().Perm())
 	}
 }
 
