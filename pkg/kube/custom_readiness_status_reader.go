@@ -85,6 +85,8 @@ func (r *customReadinessStatusReader) readStatus(identifier object.ObjMetadata, 
 		st, message = status.CurrentStatus, "custom readiness conditions met"
 	case ReadinessFailed:
 		st, message = status.FailedStatus, "custom readiness failure condition met"
+	default:
+		// ReadinessPending (and any future status) keep the in-progress defaults
 	}
 	return &event.ResourceStatus{
 		Identifier: identifier,
