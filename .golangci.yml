@@ -20,10 +20,12 @@ linters:
   # Keep sorted alphabetically
   enable:
     - bidichk
+    - contextcheck
     - depguard
     - dupl
     - errorlint
     - exhaustive
+    - fatcontext
     - gocritic
     - gomodguard
     - govet
@@ -31,6 +33,7 @@ linters:
     - misspell
     - modernize
     - nakedret
+    - noctx
     - nolintlint
     - perfsprint
     - revive

@@ -1823,7 +1823,7 @@ func TestRenderResources_PostRenderer_Success(t *testing.T) {
 	values := map[string]any{}
 
 	hooks, buf, notes, err := cfg.renderResources(
-		ch, values, "test-release", "", false, false, false,
+		t.Context(), ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
@@ -1870,7 +1870,7 @@ func TestRenderResources_PostRenderer_Error(t *testing.T) {
 	values := map[string]any{}
 
 	_, _, _, err := cfg.renderResources(
-		ch, values, "test-release", "", false, false, false,
+		t.Context(), ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
@@ -1898,7 +1898,7 @@ func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
 	values := map[string]any{}
 
 	_, _, _, err := cfg.renderResources(
-		ch, values, "test-release", "", false, false, false,
+		t.Context(), ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
@@ -1920,7 +1920,7 @@ func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
 	values := map[string]any{}
 
 	_, _, _, err := cfg.renderResources(
-		ch, values, "test-release", "", false, false, false,
+		t.Context(), ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
@@ -1941,7 +1941,7 @@ func TestRenderResources_PostRenderer_Integration(t *testing.T) {
 	values := map[string]any{}
 
 	hooks, buf, notes, err := cfg.renderResources(
-		ch, values, "test-release", "", false, false, false,
+		t.Context(), ch, values, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
@@ -1980,7 +1980,7 @@ func TestRenderResources_NoPostRenderer(t *testing.T) {
 	values := map[string]any{}
 
 	hooks, buf, notes, err := cfg.renderResources(
-		ch, values, "test-release", "", false, false, false,
+		t.Context(), ch, values, "test-release", "", false, false, false,
 		nil, false, false, false, PostRenderStrategyCombined,
 	)
 
@@ -2041,7 +2041,7 @@ spec:
 	}
 
 	hooks, buf, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategySeparate,
 	)
 
@@ -2083,7 +2083,7 @@ metadata:
 	}
 
 	_, _, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
@@ -2119,7 +2119,7 @@ metadata:
 	}
 
 	_, _, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategy(""),
 	)
 
@@ -2153,7 +2153,7 @@ metadata:
 	}
 
 	_, _, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategySeparate,
 	)
 
@@ -2187,7 +2187,7 @@ metadata:
 	}
 
 	_, _, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategySeparate,
 	)
 
@@ -2221,7 +2221,7 @@ metadata:
 	}
 
 	hooks, manifestDoc, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyNoHooks,
 	)
 
@@ -2258,7 +2258,7 @@ metadata:
 	}
 
 	_, _, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategyNoHooks,
 	)
 
@@ -2280,7 +2280,7 @@ metadata:
 	mockPR := &mockPostRenderer{}
 
 	_, _, _, err := cfg.renderResources(
-		ch, nil, "test-release", "", false, false, false,
+		t.Context(), ch, nil, "test-release", "", false, false, false,
 		mockPR, false, false, false, PostRenderStrategy("bogus"),
 	)
 
