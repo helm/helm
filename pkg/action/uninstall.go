@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -423,9 +424,7 @@ func (u *Uninstall) deleteChartLevelReverseAt(chrt *chart.Chart, manifests []rel
 		return allDeleted, []error{fmt.Errorf("getting subchart batches for sequenced uninstall: %w", err)}
 	}
 
-	for i, j := 0, len(batches)-1; i < j; i, j = i+1, j-1 {
-		batches[i], batches[j] = batches[j], batches[i]
-	}
+	slices.Reverse(batches)
 
 	for _, batch := range batches {
 		for _, subchartName := range batch {
@@ -485,9 +484,7 @@ func (u *Uninstall) deleteResourceGroupBatchesReverse(manifests []releaseutil.Ma
 		return allDeleted, []error{fmt.Errorf("getting resource-group batches for sequenced uninstall: %w", err)}
 	}
 
-	for i, j := 0, len(batches)-1; i < j; i, j = i+1, j-1 {
-		batches[i], batches[j] = batches[j], batches[i]
-	}
+	slices.Reverse(batches)
 
 	for _, batch := range batches {
 		var batchManifests []releaseutil.Manifest
