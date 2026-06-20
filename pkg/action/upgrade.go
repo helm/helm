@@ -592,7 +592,7 @@ func (u *Upgrade) performSequencedUpgrade(ctx context.Context, chrt *chartv2.Cha
 	// pre-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
-			return u.failRelease(upgradedRelease, nil, fmt.Errorf("pre-upgrade hooks failed: %s", err))
+			return u.failRelease(upgradedRelease, nil, fmt.Errorf("pre-upgrade hooks failed: %w", err))
 		}
 	} else {
 		u.cfg.Logger().Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
@@ -654,7 +654,7 @@ func (u *Upgrade) performSequencedUpgrade(ctx context.Context, chrt *chartv2.Cha
 	// post-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
-			return u.failRelease(upgradedRelease, sd.createdResources, fmt.Errorf("post-upgrade hooks failed: %s", err))
+			return u.failRelease(upgradedRelease, sd.createdResources, fmt.Errorf("post-upgrade hooks failed: %w", err))
 		}
 	}
 

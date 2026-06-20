@@ -346,7 +346,7 @@ func (r *Rollback) failRollback(currentRelease, targetRelease *release.Release, 
 		_, errs := r.cfg.KubeClient.Delete(created, metav1.DeletePropagationBackground)
 		if errs != nil {
 			return targetRelease, fmt.Errorf(
-				"an error occurred while cleaning up resources after rollback failure: %v: %w",
+				"an error occurred while cleaning up resources after rollback failure: %w: %w",
 				err,
 				joinErrors(errs, ", "),
 			)
