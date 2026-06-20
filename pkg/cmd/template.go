@@ -264,11 +264,13 @@ func renderOrderedTemplate(chrt *chart.Chart, manifest string, out io.Writer) er
 
 	sortedManifests, err := parseTemplateManifests(manifest)
 	if err != nil {
-		slog.Warn("Unable to render ordered template output; falling back to flat manifest output", "chart", chrt.Name(), "error", err)
-		if _, writeErr := io.WriteString(out, manifest); writeErr != nil {
-			return fmt.Errorf("writing fallback manifest output: %w", writeErr)
-		}
-		return nil
+		// Return the parse error so the caller falls back to the flat-output
+		// path, which strips Helm-internal annotations before emitting. Writing
+		// the raw manifest here would re-emit stripped sequencing annotations
+		// (e.g. helm.sh/depends-on/resource-groups) and break the invariant that
+		// `helm template` output stays directly apply-able. No output has been
+		// written to `out` yet at this point, so the fallback cannot duplicate.
+		return err
 	}
 
 	// Render into a buffer so we can normalize trailing whitespace to match
