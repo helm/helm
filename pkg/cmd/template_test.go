@@ -185,6 +185,8 @@ func TestTemplateCmd(t *testing.T) {
 // diagnostic messages (e.g. "Pulled:" / "Digest:") emitted while fetching an OCI
 // chart do not leak into the rendered manifest stream on stdout. See helm/helm#32215.
 func TestTemplateOCIRegistryOutputNotInManifest(t *testing.T) {
+	defer resetEnv()()
+
 	srv := repotest.NewTempServer(
 		t,
 		repotest.WithChartSourceGlob("testdata/testcharts/*.tgz*"),
