@@ -93,6 +93,73 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		if err != nil {
 			return nil, err
 		}
+
+		// Verify ownership in dry-run mode to show what would actually be deleted
+		manifests := releaseutil.SplitManifests(r.Manifest)
+		_, files, err := releaseutil.SortManifests(manifests, nil, releaseutil.UninstallOrder)
+		if err == nil {
+			filesToKeep, filesToDelete := filterManifestsToKeep(files)
+
+			var builder strings.Builder
+			for _, file := range filesToDelete {
+				builder.WriteString("\n---\n" + file.Content)
+			}
+
+			resources, err := u.cfg.KubeClient.Build(strings.NewReader(builder.String()), false)
+			if err == nil && len(resources) > 0 {
+				ownedResources, unownedResources, unverifiableResources, err := verifyOwnershipBeforeDelete(resources, r.Name, r.Namespace)
+				if err == nil {
+					if len(unownedResources) > 0 {
+						u.cfg.Logger().Warn("dry-run: resources would be skipped because they are not owned by this release",
+							"release", r.Name,
+							"count", len(unownedResources))
+						for _, info := range unownedResources {
+							u.cfg.Logger().Warn("dry-run: would skip resource",
+								"kind", info.Mapping.GroupVersionKind.Kind,
+								"name", info.Name,
+								"namespace", info.Namespace)
+						}
+					}
+
+					if len(unverifiableResources) > 0 {
+						u.cfg.Logger().Warn("dry-run: resources would be skipped because their ownership could not be verified",
+							"release", r.Name,
+							"count", len(unverifiableResources))
+						for _, ur := range unverifiableResources {
+							u.cfg.Logger().Warn("dry-run: would skip resource (ownership could not be verified)",
+								"kind", ur.Info.Mapping.GroupVersionKind.Kind,
+								"name", ur.Info.Name,
+								"namespace", ur.Info.Namespace,
+								"error", ur.Err)
+						}
+					}
+
+					if len(ownedResources) > 0 {
+						u.cfg.Logger().Debug("dry-run: resources would be deleted",
+							"release", r.Name,
+							"count", len(ownedResources))
+						for _, info := range ownedResources {
+							u.cfg.Logger().Debug("dry-run: would delete resource",
+								"kind", info.Mapping.GroupVersionKind.Kind,
+								"name", info.Name,
+								"namespace", info.Namespace)
+						}
+					}
+				}
+			}
+
+			// Include kept resources in dry-run info
+			if len(filesToKeep) > 0 {
+				var kept strings.Builder
+				kept.WriteString("These resources were kept due to the resource policy:\n")
+				for _, f := range filesToKeep {
+					fmt.Fprintf(&kept, "[%s] %s\n", f.Head.Kind, f.Head.Metadata.Name)
+				}
+				res := &releasei.UninstallReleaseResponse{Release: r, Info: kept.String()}
+				return res, nil
+			}
+		}
+
 		return &releasei.UninstallReleaseResponse{Release: r}, nil
 	}
 
@@ -158,9 +225,6 @@ func (u *Uninstall) Run(name string) (*releasei.UninstallReleaseResponse, error)
 		return nil, fmt.Errorf("failed to delete release: %s", name)
 	}
 
-	if kept != "" {
-		kept = "These resources were kept due to the resource policy:\n" + kept
-	}
 	res.Info = kept
 
 	if !isSequencedRelease(rel) {

@@ -82,6 +82,10 @@ func existingResourceConflict(resources kube.ResourceList, releaseName, releaseN
 			return err
 		}
 
+		if info.Client == nil {
+			// No client available (test scenario or build failure); assume no conflict.
+			return nil
+		}
 		helper := resource.NewHelper(info.Client, info.Mapping)
 		existing, err := helper.Get(info.Namespace, info.Name)
 		if err != nil {

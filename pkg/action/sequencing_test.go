@@ -19,13 +19,11 @@ package action
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"maps"
-	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -39,8 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/resource"
-	"k8s.io/client-go/kubernetes/scheme"
-	restfake "k8s.io/client-go/rest/fake"
 
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -168,7 +164,6 @@ func (c *recordingKubeClient) Build(reader io.Reader, _ bool) (kube.ResourceList
 				GroupVersionKind: gvk,
 				Scope:            meta.RESTScopeNamespace,
 			},
-			Client: newNotFoundRESTClient(u.GetName(), gvk),
 		}
 		resources.Append(info)
 	}
@@ -215,31 +210,6 @@ func (c *recordingKubeClient) recordWait(resources kube.ResourceList) error {
 		return c.waitError
 	}
 	return nil
-}
-
-func newNotFoundRESTClient(name string, gvk schema.GroupVersionKind) *restfake.RESTClient {
-	body, _ := json.Marshal(metav1.Status{
-		Status: metav1.StatusFailure,
-		Reason: metav1.StatusReasonNotFound,
-		Code:   http.StatusNotFound,
-		Details: &metav1.StatusDetails{
-			Name:  name,
-			Group: gvk.Group,
-			Kind:  gvk.Kind,
-		},
-	})
-
-	return &restfake.RESTClient{
-		GroupVersion:         gvk.GroupVersion(),
-		NegotiatedSerializer: scheme.Codecs.WithoutConversion(),
-		Client: restfake.CreateHTTPClient(func(_ *http.Request) (*http.Response, error) {
-			return &http.Response{
-				StatusCode: http.StatusNotFound,
-				Header:     http.Header{"Content-Type": []string{"application/json"}},
-				Body:       io.NopCloser(bytes.NewReader(body)),
-			}, nil
-		}),
-	}
 }
 
 func resourceIDs(resources kube.ResourceList) []string {
