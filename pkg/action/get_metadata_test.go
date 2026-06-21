@@ -328,6 +328,71 @@ func TestGetMetadata_Run_WithAnnotations(t *testing.T) {
 	assert.Equal(t, "test-value", result.Annotations["custom.annotation"])
 }
 
+func TestGetMetadata_Run_WithSource(t *testing.T) {
+	cfg := actionConfigFixture(t)
+	client := NewGetMetadata(cfg)
+
+	releaseName := "test-release"
+	deployedTime := time.Now()
+
+	rel := &release.Release{
+		Name: releaseName,
+		Info: &release.Info{
+			Status:       common.StatusDeployed,
+			LastDeployed: deployedTime,
+		},
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:       "test-chart",
+				Version:    "1.0.0",
+				AppVersion: "v1.2.3",
+				Annotations: map[string]string{
+					ReleaseSourceAnnotation: "https://charts.example.com",
+				},
+			},
+		},
+		Version:   1,
+		Namespace: "default",
+	}
+
+	require.NoError(t, cfg.Releases.Create(rel))
+
+	result, err := client.Run(releaseName)
+	require.NoError(t, err)
+
+	assert.Equal(t, "https://charts.example.com", result.Source)
+}
+
+func TestGetMetadata_Run_SourceEmptyWhenAnnotationAbsent(t *testing.T) {
+	cfg := actionConfigFixture(t)
+	client := NewGetMetadata(cfg)
+
+	releaseName := "test-release"
+	rel := &release.Release{
+		Name: releaseName,
+		Info: &release.Info{
+			Status:       common.StatusDeployed,
+			LastDeployed: time.Now(),
+		},
+		Chart: &chart.Chart{
+			Metadata: &chart.Metadata{
+				Name:       "test-chart",
+				Version:    "1.0.0",
+				AppVersion: "v1.2.3",
+			},
+		},
+		Version:   1,
+		Namespace: "default",
+	}
+
+	require.NoError(t, cfg.Releases.Create(rel))
+
+	result, err := client.Run(releaseName)
+	require.NoError(t, err)
+
+	assert.Empty(t, result.Source)
+}
+
 func TestGetMetadata_Run_SpecificVersion(t *testing.T) {
 	cfg := actionConfigFixture(t)
 	client := NewGetMetadata(cfg)

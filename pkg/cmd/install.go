@@ -344,6 +344,11 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		cancel()
 	}()
 
+	// Record where the chart was installed from so 'helm list --show-source' can
+	// surface it later. This is done after any dependency-update reload above so
+	// the annotation survives the chart being reloaded from disk.
+	setReleaseSource(chartRequested, chartRef, client.RepoURL)
+
 	ri, err := client.RunWithContext(ctx, chartRequested, vals)
 	rel, rerr := releaserToV1Release(ri)
 	if rerr != nil {

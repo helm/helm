@@ -28,6 +28,11 @@ import (
 	"helm.sh/helm/v4/pkg/release"
 )
 
+// ReleaseSourceAnnotation is the chart metadata annotation under which Helm
+// records the location a release's chart was installed or upgraded from, so it
+// can be surfaced by 'helm list --show-source' and 'helm get metadata'.
+const ReleaseSourceAnnotation = "meta.helm.sh/release-source"
+
 // GetMetadata is the action for checking a given release's metadata.
 //
 // It provides the implementation of 'helm get metadata'.
@@ -42,6 +47,10 @@ type Metadata struct {
 	Chart      string `json:"chart" yaml:"chart"`
 	Version    string `json:"version" yaml:"version"`
 	AppVersion string `json:"appVersion" yaml:"appVersion"`
+	// Source is where the chart was installed or upgraded from (a repository URL
+	// or chart reference), recorded via the meta.helm.sh/release-source
+	// annotation. Empty for releases created before this was recorded.
+	Source string `json:"source,omitempty" yaml:"source,omitempty"`
 	// Annotations are fetched from the Chart.yaml file
 	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	// Labels of the release which are stored in driver metadata fields storage
@@ -98,6 +107,7 @@ func (g *GetMetadata) Run(name string) (*Metadata, error) {
 		Chart:        chrt.Metadata.Name,
 		Version:      chrt.Metadata.Version,
 		AppVersion:   chrt.Metadata.AppVersion,
+		Source:       chrt.Metadata.Annotations[ReleaseSourceAnnotation],
 		Dependencies: ac.MetaDependencies(),
 		Annotations:  chrt.Metadata.Annotations,
 		Labels:       rac.Labels(),

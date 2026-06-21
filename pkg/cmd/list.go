@@ -65,6 +65,7 @@ flag with the '--offset' flag allows you to page through results.
 func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	client := action.NewList(cfg)
 	var outfmt output.Format
+	var showSource bool
 
 	cmd := &cobra.Command{
 		Use:               "list",
@@ -113,7 +114,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 			}
 
-			return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat, client.NoHeaders, settings.ShouldDisableColor()))
+			return outfmt.Write(out, newReleaseListWriter(results, client.TimeFormat, client.NoHeaders, settings.ShouldDisableColor(), showSource))
 		},
 	}
 
@@ -134,6 +135,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.IntVar(&client.Offset, "offset", 0, "next release index in the list, used to offset from start value")
 	f.StringVarP(&client.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
 	f.StringVarP(&client.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2). Works only for secret(default) and configmap storage backends.")
+	f.BoolVar(&showSource, "show-source", false, "add a SOURCE column to the table output showing where each release's chart was installed from (chart reference or repository URL); JSON/YAML output always includes the 'source' field")
 	bindOutputFlag(cmd, &outfmt)
 
 	return cmd
@@ -147,18 +149,24 @@ type releaseElement struct {
 	Status     string `json:"status"`
 	Chart      string `json:"chart"`
 	AppVersion string `json:"app_version"`
+	Source     string `json:"source,omitempty"`
 }
 
 type releaseListWriter struct {
-	releases  []releaseElement
-	noHeaders bool
-	noColor   bool
+	releases   []releaseElement
+	noHeaders  bool
+	noColor    bool
+	showSource bool
 }
 
-func newReleaseListWriter(releases []*release.Release, timeFormat string, noHeaders bool, noColor bool) *releaseListWriter {
+func newReleaseListWriter(releases []*release.Release, timeFormat string, noHeaders bool, noColor bool, showSource bool) *releaseListWriter {
 	// Initialize the array so no results returns an empty array instead of null
 	elements := make([]releaseElement, 0, len(releases))
 	for _, r := range releases {
+		source := ""
+		if r.Chart != nil && r.Chart.Metadata != nil && r.Chart.Metadata.Annotations != nil {
+			source = r.Chart.Metadata.Annotations[action.ReleaseSourceAnnotation]
+		}
 		element := releaseElement{
 			Name:       r.Name,
 			Namespace:  r.Namespace,
@@ -166,6 +174,7 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string, noHead
 			Status:     r.Info.Status.String(),
 			Chart:      formatChartName(r.Chart),
 			AppVersion: formatAppVersion(r.Chart),
+			Source:     source,
 		}
 
 		t := "-"
@@ -180,13 +189,13 @@ func newReleaseListWriter(releases []*release.Release, timeFormat string, noHead
 
 		elements = append(elements, element)
 	}
-	return &releaseListWriter{elements, noHeaders, noColor}
+	return &releaseListWriter{elements, noHeaders, noColor, showSource}
 }
 
 func (w *releaseListWriter) WriteTable(out io.Writer) error {
 	table := uitable.New()
 	if !w.noHeaders {
-		table.AddRow(
+		headers := []interface{}{
 			coloroutput.ColorizeHeader("NAME", w.noColor),
 			coloroutput.ColorizeHeader("NAMESPACE", w.noColor),
 			coloroutput.ColorizeHeader("REVISION", w.noColor),
@@ -194,7 +203,11 @@ func (w *releaseListWriter) WriteTable(out io.Writer) error {
 			coloroutput.ColorizeHeader("STATUS", w.noColor),
 			coloroutput.ColorizeHeader("CHART", w.noColor),
 			coloroutput.ColorizeHeader("APP VERSION", w.noColor),
-		)
+		}
+		if w.showSource {
+			headers = append(headers, coloroutput.ColorizeHeader("SOURCE", w.noColor))
+		}
+		table.AddRow(headers...)
 	}
 	for _, r := range w.releases {
 		// Parse the status string back to a release.Status to use color
@@ -221,7 +234,11 @@ func (w *releaseListWriter) WriteTable(out io.Writer) error {
 		default:
 			status = common.Status(r.Status)
 		}
-		table.AddRow(r.Name, coloroutput.ColorizeNamespace(r.Namespace, w.noColor), r.Revision, r.Updated, coloroutput.ColorizeStatus(status, w.noColor), r.Chart, r.AppVersion)
+		row := []interface{}{r.Name, coloroutput.ColorizeNamespace(r.Namespace, w.noColor), r.Revision, r.Updated, coloroutput.ColorizeStatus(status, w.noColor), r.Chart, r.AppVersion}
+		if w.showSource {
+			row = append(row, r.Source)
+		}
+		table.AddRow(row...)
 	}
 	return output.EncodeTable(out, table)
 }
