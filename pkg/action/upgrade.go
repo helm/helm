@@ -52,6 +52,13 @@ type Upgrade struct {
 
 	ChartPathOptions
 
+	// ChartSource records where the chart was obtained from (a repository URL or
+	// a local chart reference). When non-empty it is persisted on the upgraded
+	// release's chart metadata under ReleaseSourceAnnotation after rendering, so
+	// it is surfaced by 'helm list --show-source' and 'helm get metadata'
+	// without ever being exposed to templates via .Chart.Annotations.
+	ChartSource string
+
 	// Install is a purely informative flag that indicates whether this upgrade was done in "install" mode.
 	//
 	// Applications may use this to determine whether this Upgrade operation was done as part of a
@@ -304,6 +311,13 @@ func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv
 	if err != nil {
 		return nil, nil, false, err
 	}
+
+	// Record the chart source on the persisted release. This is done after
+	// rendering so the annotation is not visible to templates via
+	// .Chart.Annotations, while still being stored on the upgraded release's
+	// chart (which shares the same chart pointer) for 'helm list'/'helm get
+	// metadata'.
+	setChartSourceAnnotation(chart, u.ChartSource)
 
 	if driver.ContainsSystemLabels(u.Labels) {
 		return nil, nil, false, fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())

@@ -18,46 +18,20 @@ package cmd
 
 import (
 	"net/url"
-
-	v3chart "helm.sh/helm/v4/internal/chart/v3"
-	"helm.sh/helm/v4/pkg/action"
-	"helm.sh/helm/v4/pkg/chart"
-	v2chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
-// setReleaseSource records, on the chart's metadata, the location the chart was
-// installed or upgraded from so it can be surfaced by 'helm list --show-source'.
-// A repository URL (when supplied) is preferred over the local chart reference,
-// and any embedded credentials are stripped before the value is persisted.
-//
-// It accepts the loader's chart.Charter (which may be either a v2 or v3 chart)
-// and is a no-op for any unrecognized chart type, so callers never need to
-// reason about the concrete chart version.
-func setReleaseSource(chrt chart.Charter, chartRef, repoURL string) {
+// chartSource resolves the location a chart was installed or upgraded from, for
+// persistence under action.ReleaseSourceAnnotation. A repository URL (when
+// supplied) is preferred over the local chart reference, and any embedded
+// credentials are stripped before the value is returned. The result is handed
+// to the install/upgrade action, which records it on the release after
+// rendering so it is never exposed to templates via .Chart.Annotations.
+func chartSource(chartRef, repoURL string) string {
 	source := chartRef
 	if repoURL != "" {
 		source = repoURL
 	}
-	source = sanitizeChartSource(source)
-
-	switch c := chrt.(type) {
-	case *v2chart.Chart:
-		if c.Metadata == nil {
-			c.Metadata = &v2chart.Metadata{}
-		}
-		if c.Metadata.Annotations == nil {
-			c.Metadata.Annotations = make(map[string]string)
-		}
-		c.Metadata.Annotations[action.ReleaseSourceAnnotation] = source
-	case *v3chart.Chart:
-		if c.Metadata == nil {
-			c.Metadata = &v3chart.Metadata{}
-		}
-		if c.Metadata.Annotations == nil {
-			c.Metadata.Annotations = make(map[string]string)
-		}
-		c.Metadata.Annotations[action.ReleaseSourceAnnotation] = source
-	}
+	return sanitizeChartSource(source)
 }
 
 // sanitizeChartSource strips any user credentials and other potentially

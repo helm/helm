@@ -33,6 +33,24 @@ import (
 // can be surfaced by 'helm list --show-source' and 'helm get metadata'.
 const ReleaseSourceAnnotation = "meta.helm.sh/release-source"
 
+// setChartSourceAnnotation records source on the chart's metadata under
+// ReleaseSourceAnnotation. It is a no-op when source is empty. Callers must
+// invoke it only after render values have been computed/rendered, so the
+// annotation is persisted on the stored release without leaking into the
+// template render context via .Chart.Annotations.
+func setChartSourceAnnotation(chrt *chart.Chart, source string) {
+	if source == "" {
+		return
+	}
+	if chrt.Metadata == nil {
+		chrt.Metadata = &chart.Metadata{}
+	}
+	if chrt.Metadata.Annotations == nil {
+		chrt.Metadata.Annotations = make(map[string]string)
+	}
+	chrt.Metadata.Annotations[ReleaseSourceAnnotation] = source
+}
+
 // GetMetadata is the action for checking a given release's metadata.
 //
 // It provides the implementation of 'helm get metadata'.
