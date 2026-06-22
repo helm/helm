@@ -75,6 +75,14 @@ func NewRollback(cfg *Configuration) *Rollback {
 
 // Run executes 'helm rollback' against the given release.
 func (r *Rollback) Run(name string) error {
+	return r.RunWithContext(context.Background(), name)
+}
+
+// RunWithContext executes 'helm rollback' against the given release, propagating
+// ctx to the sequenced-wait path. It mirrors the Run/RunWithContext split used by
+// Install and Upgrade so callers that already hold a context (e.g. upgrade's
+// rollback-on-failure) can thread it through instead of starting a fresh one.
+func (r *Rollback) RunWithContext(ctx context.Context, name string) error {
 	if err := r.cfg.KubeClient.IsReachable(); err != nil {
 		return err
 	}
@@ -99,7 +107,7 @@ func (r *Rollback) Run(name string) error {
 	}
 
 	r.cfg.Logger().Debug("performing rollback", "name", name)
-	if _, err := r.performRollback(context.Background(), currentRelease, targetRelease, serverSideApply); err != nil {
+	if _, err := r.performRollback(ctx, currentRelease, targetRelease, serverSideApply); err != nil {
 		return err
 	}
 
@@ -380,7 +388,7 @@ func (r *Rollback) performSequencedRollback(ctx context.Context, currentRelease,
 		return fail(nil, fmt.Errorf("parsing target release manifest for sequenced rollback: %w", err))
 	}
 
-	sortedManifests = recoverManifestPaths(r.cfg, targetRelease, sortedManifests, "sequenced rollback")
+	sortedManifests = recoverManifestPaths(ctx, r.cfg, targetRelease, sortedManifests, "sequenced rollback")
 
 	if !r.DisableHooks {
 		if err := r.cfg.execHook(targetRelease, release.HookPreRollback, r.WaitStrategy, r.WaitOptions, r.Timeout, serverSideApply); err != nil {

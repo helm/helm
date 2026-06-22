@@ -488,7 +488,10 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 		rel, err = i.performInstallCtx(ctx, rel, toBeAdopted, resources)
 	}
 	if err != nil {
-		rel, err = i.failRelease(rel, err)
+		// failRelease cleans up a failed install via the context-free Uninstall.Run
+		// public API (upstream keeps Uninstall context-free); threading ctx through the
+		// whole uninstall subsystem is out of scope for this best-effort recovery path.
+		rel, err = i.failRelease(rel, err) //nolint:contextcheck
 	}
 	return rel, err
 }

@@ -437,7 +437,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	ctxChan := make(chan resultMessage)
 	doneChan := make(chan any)
 	defer close(doneChan)
-	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease, serverSideApply)
+	go u.releasingUpgrade(ctx, rChan, upgradedRelease, current, target, originalRelease, serverSideApply)
 	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
 
 	select {
@@ -451,10 +451,10 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 // Function used to lock the Mutex, this is important for the case when RollbackOnFailure is set.
 // In that case the upgrade will finish before the rollback is finished so it is necessary to wait for the rollback to finish.
 // The rollback will be trigger by the function failRelease
-func (u *Upgrade) reportToPerformUpgrade(c chan<- resultMessage, rel *release.Release, created kube.ResourceList, err error) {
+func (u *Upgrade) reportToPerformUpgrade(ctx context.Context, c chan<- resultMessage, rel *release.Release, created kube.ResourceList, err error) {
 	u.Lock.Lock()
 	if err != nil {
-		rel, err = u.failRelease(rel, created, err)
+		rel, err = u.failRelease(ctx, rel, created, err)
 	}
 	c <- resultMessage{r: rel, e: err}
 	u.Lock.Unlock()
@@ -467,7 +467,7 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan any, c chan<- res
 		err := ctx.Err()
 
 		// when RollbackOnFailure is set, the ongoing release finish first and doesn't give time for the rollback happens.
-		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, err)
+		u.reportToPerformUpgrade(ctx, c, upgradedRelease, kube.ResourceList{}, err)
 	case <-done:
 		return
 	}
@@ -477,12 +477,12 @@ func isReleaseApplyMethodClientSideApply(applyMethod string) bool {
 	return applyMethod == "" || applyMethod == string(release.ApplyMethodClientSideApply)
 }
 
-func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release, serverSideApply bool) {
+func (u *Upgrade) releasingUpgrade(ctx context.Context, c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release, serverSideApply bool) {
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
-			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %w", err))
+			u.reportToPerformUpgrade(ctx, c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %w", err))
 			return
 		}
 	} else {
@@ -491,7 +491,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 
 	// Strip Helm-internal sequencing annotations before applying to K8s.
 	if err := stripSequencingAnnotations(target); err != nil {
-		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("stripping sequencing annotations: %w", err))
+		u.reportToPerformUpgrade(ctx, c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("stripping sequencing annotations: %w", err))
 		return
 	}
 
@@ -504,7 +504,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager))
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
-		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+		u.reportToPerformUpgrade(ctx, c, upgradedRelease, results.Created, err)
 		return
 	}
 
@@ -516,19 +516,19 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	}
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
-		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+		u.reportToPerformUpgrade(ctx, c, upgradedRelease, results.Created, err)
 		return
 	}
 	if u.WaitForJobs {
 		if err := waiter.WaitWithJobs(target, u.Timeout); err != nil {
 			u.cfg.recordRelease(originalRelease)
-			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+			u.reportToPerformUpgrade(ctx, c, upgradedRelease, results.Created, err)
 			return
 		}
 	} else {
 		if err := waiter.Wait(target, u.Timeout); err != nil {
 			u.cfg.recordRelease(originalRelease)
-			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+			u.reportToPerformUpgrade(ctx, c, upgradedRelease, results.Created, err)
 			return
 		}
 	}
@@ -536,7 +536,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	// post-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
-			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %w", err))
+			u.reportToPerformUpgrade(ctx, c, upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %w", err))
 			return
 		}
 	}
@@ -550,7 +550,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	} else {
 		upgradedRelease.Info.Description = "Upgrade complete"
 	}
-	u.reportToPerformUpgrade(c, upgradedRelease, nil, nil)
+	u.reportToPerformUpgrade(ctx, c, upgradedRelease, nil, nil)
 }
 
 // performSequencedUpgrade deploys chart resources in DAG-ordered batches when
@@ -592,7 +592,7 @@ func (u *Upgrade) performSequencedUpgrade(ctx context.Context, chrt *chartv2.Cha
 	// pre-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
-			return u.failRelease(upgradedRelease, nil, fmt.Errorf("pre-upgrade hooks failed: %w", err))
+			return u.failRelease(ctx, upgradedRelease, nil, fmt.Errorf("pre-upgrade hooks failed: %w", err))
 		}
 	} else {
 		u.cfg.Logger().Debug("upgrade hooks disabled", "name", upgradedRelease.Name)
@@ -631,7 +631,7 @@ func (u *Upgrade) performSequencedUpgrade(ctx context.Context, chrt *chartv2.Cha
 	}
 
 	if err := sd.deployChartLevel(ctx, chrt, manifests); err != nil {
-		return u.failRelease(upgradedRelease, sd.createdResources, err)
+		return u.failRelease(ctx, upgradedRelease, sd.createdResources, err)
 	}
 
 	// Delete resources that were removed in the new release (in old but not in new).
@@ -647,14 +647,14 @@ func (u *Upgrade) performSequencedUpgrade(ctx context.Context, chrt *chartv2.Cha
 	}
 	if len(toBeDeleted) > 0 {
 		if _, errs := u.cfg.KubeClient.Delete(toBeDeleted, metav1.DeletePropagationBackground); errs != nil {
-			return u.failRelease(upgradedRelease, sd.createdResources, fmt.Errorf("deleting removed resources: %w", joinErrors(errs, ", ")))
+			return u.failRelease(ctx, upgradedRelease, sd.createdResources, fmt.Errorf("deleting removed resources: %w", joinErrors(errs, ", ")))
 		}
 	}
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.WaitStrategy, u.WaitOptions, u.Timeout, serverSideApply); err != nil {
-			return u.failRelease(upgradedRelease, sd.createdResources, fmt.Errorf("post-upgrade hooks failed: %w", err))
+			return u.failRelease(ctx, upgradedRelease, sd.createdResources, fmt.Errorf("post-upgrade hooks failed: %w", err))
 		}
 	}
 
@@ -670,7 +670,7 @@ func (u *Upgrade) performSequencedUpgrade(ctx context.Context, chrt *chartv2.Cha
 	return upgradedRelease, nil
 }
 
-func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, err error) (*release.Release, error) {
+func (u *Upgrade) failRelease(ctx context.Context, rel *release.Release, created kube.ResourceList, err error) (*release.Release, error) {
 	msg := fmt.Sprintf("Upgrade %q failed: %s", rel.Name, err)
 	u.cfg.Logger().Warn(
 		"upgrade failed",
@@ -734,7 +734,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		rollin.ForceConflicts = u.ForceConflicts
 		rollin.ServerSideApply = u.ServerSideApply
 		rollin.Timeout = u.Timeout
-		if rollErr := rollin.Run(rel.Name); rollErr != nil {
+		if rollErr := rollin.RunWithContext(ctx, rel.Name); rollErr != nil {
 			return rel, fmt.Errorf("an error occurred while rolling back the release. original upgrade error: %w: %w", err, rollErr)
 		}
 		return rel, fmt.Errorf("release %s failed, and has been rolled back due to rollback-on-failure being set: %w", rel.Name, err)

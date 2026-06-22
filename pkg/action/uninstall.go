@@ -352,7 +352,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release, waiter kube.Waiter) (kub
 	}
 
 	if isSequencedRelease(rel) {
-		filesToDelete = recoverManifestPaths(u.cfg, rel, filesToDelete, "sequenced uninstall")
+		filesToDelete = recoverManifestPaths(context.Background(), u.cfg, rel, filesToDelete, "sequenced uninstall")
 		deleted, errs := u.sequencedDeleteManifests(rel.Chart, filesToDelete, waiter)
 		return deleted, kept.String(), errs
 	}
@@ -568,8 +568,8 @@ func (u *Uninstall) deleteResourceGroupBatchesReverse(manifests []releaseutil.Ma
 // recoverManifestPaths re-renders rel to recover source-template path
 // annotations on its manifests, falling back to the stored manifest order
 // (logging a warning that names opName) if re-rendering fails.
-func recoverManifestPaths(cfg *Configuration, rel *release.Release, manifests []releaseutil.Manifest, opName string) []releaseutil.Manifest {
-	rendered, err := renderReleaseManifestsWithPaths(cfg, rel)
+func recoverManifestPaths(ctx context.Context, cfg *Configuration, rel *release.Release, manifests []releaseutil.Manifest, opName string) []releaseutil.Manifest {
+	rendered, err := renderReleaseManifestsWithPaths(ctx, cfg, rel)
 	if err != nil {
 		cfg.Logger().Warn("unable to recover rendered chart paths for "+opName+"; falling back to stored manifest order", slog.Any("error", err))
 		return manifests
@@ -579,7 +579,7 @@ func recoverManifestPaths(cfg *Configuration, rel *release.Release, manifests []
 
 // renderReleaseManifestsWithPaths re-renders the release chart+config to produce
 // manifests keyed by source template paths (e.g., "mychart/templates/deploy.yaml").
-func renderReleaseManifestsWithPaths(cfg *Configuration, rel *release.Release) ([]releaseutil.Manifest, error) {
+func renderReleaseManifestsWithPaths(ctx context.Context, cfg *Configuration, rel *release.Release) ([]releaseutil.Manifest, error) {
 	if rel.Chart == nil {
 		return nil, errors.New("release chart is missing")
 	}
@@ -609,7 +609,7 @@ func renderReleaseManifestsWithPaths(cfg *Configuration, rel *release.Release) (
 		return nil, fmt.Errorf("building render values: %w", err)
 	}
 
-	_, _, _, manifests, err := cfg.renderResourcesWithFiles(context.Background(), rel.Chart, valuesToRender, rel.Name, "", false, false, false, nil, false, false, false, PostRenderStrategyCombined)
+	_, _, _, manifests, err := cfg.renderResourcesWithFiles(ctx, rel.Chart, valuesToRender, rel.Name, "", false, false, false, nil, false, false, false, PostRenderStrategyCombined)
 	if err != nil {
 		return nil, fmt.Errorf("rendering chart manifests: %w", err)
 	}
