@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -35,6 +36,8 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSave(t *testing.T) {
@@ -130,6 +133,7 @@ func TestSave(t *testing.T) {
 	}
 }
 
+// https://github.com/helm/helm/issues/31844
 func TestSavedGzipExtraFieldIsValid(t *testing.T) {
 	tmp := t.TempDir()
 	c := &chart.Chart{
@@ -161,18 +165,14 @@ func TestSavedGzipExtraFieldIsValid(t *testing.T) {
 	// Each subfield consists of SI1, SI2 (1 byte each),
 	// a 2-byte little-endian LEN, and LEN bytes of data.
 	// https://www.rfc-editor.org/rfc/rfc1952.html#page-8
-	// https://github.com/helm/helm/issues/31844
 	extra := r.Extra
-	if len(extra) > 0 {
-		if len(extra) < 4 {
-			t.Fatalf("gzip extra field too short to contain a valid subfield: %d byte(s)", len(extra))
-		}
-		dataLen := int(extra[2]) | int(extra[3])<<8
-		// Assume a single subfield
-		if len(extra) != 4+dataLen {
-			t.Errorf("gzip extra field has malformed subfield: LEN=%d but %d data byte(s) follow the subfield header", dataLen, len(extra)-4)
-		}
-	}
+
+	require.NotEmpty(t, extra)
+	require.GreaterOrEqual(t, len(extra), 4)
+
+	dataLen := int(binary.LittleEndian.Uint16(extra[2:4]))
+	// Assume a single subfield.
+	require.Lenf(t, extra, 4+dataLen, "gzip extra field has malformed subfield: LEN=%d but %d data byte(s) follow the subfield header", dataLen, len(extra)-4)
 }
 
 // Creates a copy with a different schema; does not modify anything.
