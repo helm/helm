@@ -467,12 +467,14 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	}
 
 	upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply // Update client-side field manager if transitioning from client-side to server-side apply
+
 	results, err := u.cfg.KubeClient.Update(
 		current,
 		target,
 		kube.ClientUpdateOptionForceReplace(u.ForceReplace),
 		kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
-		kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager))
+		kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager),
+		kube.ClientUpdateOptionOwnership(upgradedRelease.Name, upgradedRelease.Namespace))
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
