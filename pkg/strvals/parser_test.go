@@ -20,6 +20,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"sigs.k8s.io/yaml"
 )
 
@@ -78,24 +81,24 @@ func TestSetIndex(t *testing.T) {
 		got, err := setIndex(tt.initial, tt.add, tt.val)
 
 		if err != nil && tt.err == false {
-			t.Fatalf("%s: Expected no error but error returned", tt.name)
+			require.Fail(t, "Expected no error but error returned", tt.name)
 		} else if err == nil && tt.err == true {
-			t.Fatalf("%s: Expected error but no error returned", tt.name)
+			require.Fail(t, "Expected error but no error returned", tt.name)
 		}
 
 		if len(got) != len(tt.expect) {
-			t.Fatalf("%s: Expected length %d, got %d", tt.name, len(tt.expect), len(got))
+			require.Len(t, got, len(tt.expect), tt.name)
 		}
 
 		if !tt.err {
 			if gg := got[tt.add].(int); gg != tt.val {
-				t.Errorf("%s, Expected value %d, got %d", tt.name, tt.val, gg)
+				assert.Equal(t, tt.val, gg, tt.name)
 			}
 		}
 
 		for k, v := range got {
 			if v != tt.expect[k] {
-				t.Errorf("%s, Expected value %d, got %d", tt.name, tt.expect[k], v)
+				assert.Equal(t, tt.expect[k], v, tt.name)
 			}
 		}
 	}
@@ -384,23 +387,21 @@ func TestParseSet(t *testing.T) {
 			if tt.err {
 				continue
 			}
-			t.Fatalf("%s: %s", tt.str, err)
+			require.NoError(t, err, tt.str)
 		}
 		if tt.err {
-			t.Errorf("%s: Expected error. Got nil", tt.str)
+			assert.Fail(t, "Expected error. Got nil", tt.str)
 		}
 
 		y1, err := yaml.Marshal(tt.expect)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		y2, err := yaml.Marshal(got)
 		if err != nil {
-			t.Fatalf("Error serializing parsed value: %s", err)
+			require.NoError(t, err, "Error serializing parsed value")
 		}
 
 		if string(y1) != string(y2) {
-			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.str, y1, y2)
+			assert.Equal(t, string(y1), string(y2), tt.str)
 		}
 	}
 	for _, tt := range testsString {
@@ -409,23 +410,21 @@ func TestParseSet(t *testing.T) {
 			if tt.err {
 				continue
 			}
-			t.Fatalf("%s: %s", tt.str, err)
+			require.NoError(t, err, tt.str)
 		}
 		if tt.err {
-			t.Errorf("%s: Expected error. Got nil", tt.str)
+			assert.Fail(t, "Expected error. Got nil", tt.str)
 		}
 
 		y1, err := yaml.Marshal(tt.expect)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		y2, err := yaml.Marshal(got)
 		if err != nil {
-			t.Fatalf("Error serializing parsed value: %s", err)
+			require.NoError(t, err, "Error serializing parsed value")
 		}
 
 		if string(y1) != string(y2) {
-			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.str, y1, y2)
+			assert.Equal(t, string(y1), string(y2), tt.str)
 		}
 	}
 }
@@ -513,32 +512,30 @@ func TestParseInto(t *testing.T) {
 	}
 	for _, tt := range tests {
 		if err := ParseInto(tt.input, tt.got); err != nil {
-			t.Fatal(err)
+			require.NoError(t, err)
 		}
 		if tt.err {
-			t.Errorf("%s: Expected error. Got nil", tt.input)
+			assert.Fail(t, "Expected error. Got nil", tt.input)
 		}
 
 		if tt.input2 != "" {
 			if err := ParseInto(tt.input2, tt.got); err != nil {
-				t.Fatal(err)
+				require.NoError(t, err)
 			}
 			if tt.err {
-				t.Errorf("%s: Expected error. Got nil", tt.input2)
+				assert.Fail(t, "Expected error. Got nil", tt.input2)
 			}
 		}
 
 		y1, err := yaml.Marshal(tt.expect)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		y2, err := yaml.Marshal(tt.got)
 		if err != nil {
-			t.Fatalf("Error serializing parsed value: %s", err)
+			require.NoError(t, err, "Error serializing parsed value")
 		}
 
 		if string(y1) != string(y2) {
-			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.input, y1, y2)
+			assert.Equal(t, string(y1), string(y2), tt.input)
 		}
 	}
 }
@@ -560,20 +557,18 @@ func TestParseIntoString(t *testing.T) {
 	}
 
 	if err := ParseIntoString(input, got); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 
 	y1, err := yaml.Marshal(expect)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	y2, err := yaml.Marshal(got)
 	if err != nil {
-		t.Fatalf("Error serializing parsed value: %s", err)
+		require.NoError(t, err, "Error serializing parsed value")
 	}
 
 	if string(y1) != string(y2) {
-		t.Errorf("%s: Expected:\n%s\nGot:\n%s", input, y1, y2)
+		assert.Equal(t, string(y1), string(y2), input)
 	}
 }
 
@@ -658,22 +653,22 @@ func TestParseJSON(t *testing.T) {
 			if tt.err {
 				continue
 			}
-			t.Fatalf("%s: %s", tt.input, err)
+			require.NoError(t, err, tt.input)
 		}
 		if tt.err {
-			t.Fatalf("%s: Expected error. Got nil", tt.input)
+			require.Fail(t, "Expected error. Got nil", tt.input)
 		}
 		y1, err := yaml.Marshal(tt.expect)
 		if err != nil {
-			t.Fatalf("Error serializing expected value: %s", err)
+			require.NoError(t, err, "Error serializing expected value")
 		}
 		y2, err := yaml.Marshal(tt.got)
 		if err != nil {
-			t.Fatalf("Error serializing parsed value: %s", err)
+			require.NoError(t, err, "Error serializing parsed value")
 		}
 
 		if string(y1) != string(y2) {
-			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.input, y1, y2)
+			assert.Equal(t, string(y1), string(y2), tt.input)
 		}
 	}
 }
@@ -686,28 +681,24 @@ func TestParseFile(t *testing.T) {
 	rs2v := func(rs []rune) (any, error) {
 		v := string(rs)
 		if v != "path1" {
-			t.Errorf("%s: runesToVal: Expected value path1, got %s", input, v)
+			assert.Equal(t, "path1", v, "%s: runesToVal", input)
 			return "", nil
 		}
 		return "value1", nil
 	}
 
 	got, err := ParseFile(input, rs2v)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	y1, err := yaml.Marshal(expect)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	y2, err := yaml.Marshal(got)
 	if err != nil {
-		t.Fatalf("Error serializing parsed value: %s", err)
+		require.NoError(t, err, "Error serializing parsed value")
 	}
 
 	if string(y1) != string(y2) {
-		t.Errorf("%s: Expected:\n%s\nGot:\n%s", input, y1, y2)
+		assert.Equal(t, string(y1), string(y2), input)
 	}
 }
 
@@ -720,27 +711,25 @@ func TestParseIntoFile(t *testing.T) {
 	rs2v := func(rs []rune) (any, error) {
 		v := string(rs)
 		if v != "path1" {
-			t.Errorf("%s: runesToVal: Expected value path1, got %s", input, v)
+			assert.Equal(t, "path1", v, "%s: runesToVal", input)
 			return "", nil
 		}
 		return "value1", nil
 	}
 
 	if err := ParseIntoFile(input, got, rs2v); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 
 	y1, err := yaml.Marshal(expect)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	y2, err := yaml.Marshal(got)
 	if err != nil {
-		t.Fatalf("Error serializing parsed value: %s", err)
+		require.NoError(t, err, "Error serializing parsed value")
 	}
 
 	if string(y1) != string(y2) {
-		t.Errorf("%s: Expected:\n%s\nGot:\n%s", input, y1, y2)
+		assert.Equal(t, string(y1), string(y2), input)
 	}
 }
 
@@ -748,12 +737,10 @@ func TestToYAML(t *testing.T) {
 	// The TestParse does the hard part. We just verify that YAML formatting is
 	// happening.
 	o, err := ToYAML("name=value")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	expect := "name: value"
 	if o != expect {
-		t.Errorf("Expected %q, got %q", expect, o)
+		assert.Equal(t, expect, o)
 	}
 }
 
@@ -792,28 +779,26 @@ func TestParseSetNestedLevels(t *testing.T) {
 			if tt.err {
 				if tt.errStr != "" {
 					if err.Error() != tt.errStr {
-						t.Errorf("Expected error: %s. Got error: %s", tt.errStr, err.Error())
+						assert.Equal(t, tt.errStr, err.Error())
 					}
 				}
 				continue
 			}
-			t.Fatalf("%s: %s", tt.str, err)
+			require.NoError(t, err, tt.str)
 		}
 		if tt.err {
-			t.Errorf("%s: Expected error. Got nil", tt.str)
+			assert.Fail(t, "Expected error. Got nil", tt.str)
 		}
 
 		y1, err := yaml.Marshal(tt.expect)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		y2, err := yaml.Marshal(got)
 		if err != nil {
-			t.Fatalf("Error serializing parsed value: %s", err)
+			require.NoError(t, err, "Error serializing parsed value")
 		}
 
 		if string(y1) != string(y2) {
-			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.str, y1, y2)
+			assert.Equal(t, string(y1), string(y2), tt.str)
 		}
 	}
 }
