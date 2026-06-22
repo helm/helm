@@ -400,12 +400,17 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		u.cfg.Logger().Debug("dry run for release", "name", upgradedRelease.Name)
 		// For server-side dry-run, validate resources against the API server
 		if u.DryRunStrategy == DryRunServer {
-			upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && serverSideApply
+			// Ensure this validation request is strictly non-mutating by always using
+			// server-side apply and disabling force-replace, regardless of the user's
+			// normal upgrade options.
+			dryRunServerSideApply := true
+			dryRunForceReplace := false
+			upgradeClientSideFieldManager := isReleaseApplyMethodClientSideApply(originalRelease.ApplyMethod) && dryRunServerSideApply
 			_, err := u.cfg.KubeClient.Update(
 				current,
 				target,
-				kube.ClientUpdateOptionForceReplace(u.ForceReplace),
-				kube.ClientUpdateOptionServerSideApply(serverSideApply, u.ForceConflicts),
+				kube.ClientUpdateOptionForceReplace(dryRunForceReplace),
+				kube.ClientUpdateOptionServerSideApply(dryRunServerSideApply, u.ForceConflicts),
 				kube.ClientUpdateOptionDryRun(true),
 				kube.ClientUpdateOptionUpgradeClientSideFieldManager(upgradeClientSideFieldManager),
 			)
