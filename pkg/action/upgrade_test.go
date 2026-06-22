@@ -655,7 +655,7 @@ func TestUpgradeRelease_DryRunServerValidation(t *testing.T) {
 	config.KubeClient.(*kubefake.FailingKubeClient).UpdateError = expectedErr
 	upAction.DryRunStrategy = DryRunServer
 
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	ctx, done := context.WithCancel(t.Context())
 	_, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
 	done()
