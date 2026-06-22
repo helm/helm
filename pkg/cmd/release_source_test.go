@@ -65,6 +65,21 @@ func TestSanitizeChartSource(t *testing.T) {
 			want:   "./charts/mychart",
 		},
 		{
+			name:   "leaves absolute unix path unchanged",
+			source: "/var/charts/mychart",
+			want:   "/var/charts/mychart",
+		},
+		{
+			name:   "leaves windows absolute path unchanged",
+			source: `C:\charts\mychart`,
+			want:   `C:\charts\mychart`,
+		},
+		{
+			name:   "leaves windows forward-slash path unchanged",
+			source: "C:/charts/mychart",
+			want:   "C:/charts/mychart",
+		},
+		{
 			name:   "leaves bare chart name unchanged",
 			source: "mychart",
 			want:   "mychart",

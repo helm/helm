@@ -65,9 +65,14 @@ func setReleaseSource(chrt chart.Charter, chartRef, repoURL string) {
 // it is persisted into the release record, so secrets embedded in a repo URL
 // (e.g. https://user:pass@host) are not leaked into cluster metadata. Sources
 // that are not URLs (local paths or chart references) are returned unchanged.
+//
+// Only sources with a host component (i.e. scheme://host/...) are treated as
+// URLs. This deliberately excludes local filesystem paths, including Windows
+// absolute paths such as C:\charts\mychart, which url.Parse would otherwise
+// interpret as a "c" scheme and re-encode (e.g. c:%5Ccharts%5Cmychart).
 func sanitizeChartSource(source string) string {
 	u, err := url.Parse(source)
-	if err != nil || u.Scheme == "" {
+	if err != nil || u.Scheme == "" || u.Host == "" {
 		return source
 	}
 	u.User = nil
