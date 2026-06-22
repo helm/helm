@@ -362,7 +362,7 @@ func stripSequencingAnnotations(resources kube.ResourceList) error {
 			return nil
 		}
 		changed := false
-		for _, key := range releaseutil.HelmInternalSequencingAnnotations {
+		for _, key := range releaseutil.HelmInternalSequencingAnnotations() {
 			if _, exists := annotations[key]; exists {
 				delete(annotations, key)
 				changed = true

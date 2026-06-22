@@ -19,6 +19,7 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 )
@@ -32,14 +33,27 @@ const (
 	AnnotationDependsOnResourceGroups = "helm.sh/depends-on/resource-groups"
 )
 
-// HelmInternalSequencingAnnotations lists annotation keys used by Helm for
+// helmInternalSequencingAnnotations lists annotation keys used by Helm for
 // resource sequencing that are NOT valid Kubernetes annotation keys (their
 // names contain multiple `/` separators). Helm strips these before applying
 // resources to the API server, and before printing manifests via
 // `helm template` so downstream tooling like `kubectl apply` accepts the
 // output unmodified.
-var HelmInternalSequencingAnnotations = []string{
+//
+// It is unexported, and the regex in manifest.go is compiled from it once at
+// init. External callers read it through the HelmInternalSequencingAnnotations
+// accessor (which returns a copy) so the canonical list — and the regex derived
+// from it — cannot be mutated, avoiding the silent-no-op and data-race footguns
+// of an exported mutable slice.
+var helmInternalSequencingAnnotations = []string{
 	AnnotationDependsOnResourceGroups,
+}
+
+// HelmInternalSequencingAnnotations returns a copy of the helm-internal
+// sequencing annotation keys that Helm strips from rendered output. A copy is
+// returned so callers cannot mutate the canonical list.
+func HelmInternalSequencingAnnotations() []string {
+	return slices.Clone(helmInternalSequencingAnnotations)
 }
 
 // ResourceGroupResult holds the output of ParseResourceGroups.

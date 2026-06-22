@@ -1023,7 +1023,7 @@ func TestStripSequencingAnnotations(t *testing.T) {
 		// Lock the invariant: the function must remove EVERY key in the
 		// HelmInternalSequencingAnnotations list, not just depends-on.
 		ann := map[string]string{"keep": "yes"}
-		for _, k := range releaseutil.HelmInternalSequencingAnnotations {
+		for _, k := range releaseutil.HelmInternalSequencingAnnotations() {
 			ann[k] = "internal"
 		}
 		info := makeInfo("cm", ann)
@@ -1031,7 +1031,7 @@ func TestStripSequencingAnnotations(t *testing.T) {
 		require.NoError(t, stripSequencingAnnotations(kube.ResourceList{info}))
 
 		got := annotationsOf(info)
-		for _, k := range releaseutil.HelmInternalSequencingAnnotations {
+		for _, k := range releaseutil.HelmInternalSequencingAnnotations() {
 			assert.NotContains(t, got, k, "internal key %q must be stripped", k)
 		}
 		assert.Equal(t, "yes", got["keep"])

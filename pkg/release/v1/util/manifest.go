@@ -83,15 +83,15 @@ func (a BySplitManifestsOrder) Less(i, j int) bool {
 func (a BySplitManifestsOrder) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 
 // helmInternalAnnotationLineRE matches a single YAML line whose key is one of
-// HelmInternalSequencingAnnotations. The pattern is intentionally line-based:
+// helmInternalSequencingAnnotations. The pattern is intentionally line-based:
 // Helm always emits these annotations as single-line JSON-encoded values, so a
 // surgical line strip preserves the surrounding manifest byte-for-byte and
-// keeps `helm template | diff` workflows stable. The regex is compiled lazily
-// from HelmInternalSequencingAnnotations so that adding a new helm-internal
+// keeps `helm template | diff` workflows stable. The regex is compiled once at
+// init from helmInternalSequencingAnnotations so that adding a new helm-internal
 // key only requires updating the slice.
 var helmInternalAnnotationLineRE = func() *regexp.Regexp {
-	keys := make([]string, len(HelmInternalSequencingAnnotations))
-	for i, k := range HelmInternalSequencingAnnotations {
+	keys := make([]string, len(helmInternalSequencingAnnotations))
+	for i, k := range helmInternalSequencingAnnotations {
 		keys[i] = regexp.QuoteMeta(k)
 	}
 	return regexp.MustCompile(`(?m)^[ \t]+(?:` + strings.Join(keys, "|") + `):[^\n]*\r?\n?`)
