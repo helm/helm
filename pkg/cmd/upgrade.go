@@ -250,6 +250,10 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				cancel()
 			}()
 
+			if outfmt == output.Table {
+				printWaitMessage(out, client.WaitStrategy, client.Timeout)
+			}
+
 			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
 			if err != nil {
 				return fmt.Errorf("UPGRADE FAILED: %w", err)
