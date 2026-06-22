@@ -484,7 +484,7 @@ func TestInstallRelease_DryRunServerValidation(t *testing.T) {
 	config.KubeClient.(*kubefake.FailingKubeClient).CreateError = expectedErr
 	instAction.DryRunStrategy = DryRunServer
 
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	_, err := instAction.Run(buildChart(withSampleTemplates()), vals)
 
 	is.Error(err)
