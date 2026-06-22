@@ -135,7 +135,7 @@ func newListCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.IntVar(&client.Offset, "offset", 0, "next release index in the list, used to offset from start value")
 	f.StringVarP(&client.Filter, "filter", "f", "", "a regular expression (Perl compatible). Any releases that match the expression will be included in the results")
 	f.StringVarP(&client.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2). Works only for secret(default) and configmap storage backends.")
-	f.BoolVar(&showSource, "show-source", false, "add a SOURCE column to the table output showing where each release's chart was installed from (chart reference or repository URL); JSON/YAML output always includes the 'source' field")
+	f.BoolVar(&showSource, "show-source", false, "add a SOURCE column to the table output showing where each release's chart was installed from (chart reference or repository URL); this flag affects only table output, while JSON/YAML output includes the 'source' field whenever a release has a recorded source")
 	bindOutputFlag(cmd, &outfmt)
 
 	return cmd

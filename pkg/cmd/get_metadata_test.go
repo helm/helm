@@ -19,8 +19,18 @@ package cmd
 import (
 	"testing"
 
+	"helm.sh/helm/v4/pkg/action"
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
+
+// mockReleaseWithSource returns a mock release whose chart records a
+// meta.helm.sh/release-source annotation, so the 'get metadata' output for the
+// new SOURCE field can be exercised.
+func mockReleaseWithSource(name string) *release.Release {
+	rel := release.Mock(&release.MockReleaseOptions{Name: name, Labels: map[string]string{"key1": "value1"}})
+	rel.Chart.Metadata.Annotations[action.ReleaseSourceAnnotation] = "https://charts.example.com"
+	return rel
+}
 
 func TestGetMetadataCmd(t *testing.T) {
 	tests := []cmdTestCase{{
@@ -28,6 +38,21 @@ func TestGetMetadataCmd(t *testing.T) {
 		cmd:    "get metadata thomas-guide",
 		golden: "output/get-metadata.txt",
 		rels:   []*release.Release{release.Mock(&release.MockReleaseOptions{Name: "thomas-guide", Labels: map[string]string{"key1": "value1"}})},
+	}, {
+		name:   "get metadata with a recorded source",
+		cmd:    "get metadata thomas-guide",
+		golden: "output/get-metadata-source.txt",
+		rels:   []*release.Release{mockReleaseWithSource("thomas-guide")},
+	}, {
+		name:   "get metadata with a recorded source to json",
+		cmd:    "get metadata thomas-guide --output json",
+		golden: "output/get-metadata-source.json",
+		rels:   []*release.Release{mockReleaseWithSource("thomas-guide")},
+	}, {
+		name:   "get metadata with a recorded source to yaml",
+		cmd:    "get metadata thomas-guide --output yaml",
+		golden: "output/get-metadata-source.yaml",
+		rels:   []*release.Release{mockReleaseWithSource("thomas-guide")},
 	}, {
 		name:      "get metadata requires release name arg",
 		cmd:       "get metadata",
