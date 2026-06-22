@@ -17,7 +17,9 @@ limitations under the License.
 package action
 
 import (
+	"bytes"
 	"fmt"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -27,6 +29,7 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/kube"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	rcommon "helm.sh/helm/v4/pkg/release/common"
 	release "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
@@ -410,4 +413,49 @@ func TestUninstall_Sequenced_Hooks(t *testing.T) {
 	require.NotEqual(t, -1, postHookCreate)
 	assert.Less(t, preHookCreate, appDelete)
 	assert.Greater(t, postHookCreate, databaseWaitDelete)
+}
+
+// TestUninstall_Sequenced_SkipsUnownedResources locks the fix for the sequenced
+// uninstall ownership gap: the sequenced delete path must verify ownership and
+// skip resources it does not own, matching the non-sequenced path, rather than
+// deleting them.
+func TestUninstall_Sequenced_SkipsUnownedResources(t *testing.T) {
+	is := assert.New(t)
+
+	logBuffer := &bytes.Buffer{}
+	config := actionConfigFixture(t)
+	config.SetLogger(slog.NewTextHandler(logBuffer, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	uninstall := NewUninstall(config)
+	uninstall.DisableHooks = true
+	uninstall.KeepHistory = true
+	uninstall.WaitStrategy = kube.OrderedWaitStrategy
+
+	ch := buildChartWithTemplates([]*common.File{
+		makeConfigMapTemplate("templates/app.yaml", "app", map[string]string{
+			releaseutil.AnnotationResourceGroup: "app",
+		}),
+	}, withName("sequenced-ownership"))
+
+	rel := newUninstallRelease(
+		"sequenced-ownership",
+		ch,
+		configMapManifest("app", map[string]string{releaseutil.AnnotationResourceGroup: "app"}),
+		&release.SequencingInfo{Enabled: true, Strategy: string(kube.OrderedWaitStrategy)},
+	)
+	seedUninstallRelease(t, uninstall, rel)
+
+	// Build resolves every manifest to a resource that is NOT owned by this
+	// release (no Helm ownership metadata). The sequenced path must skip it.
+	failer := config.KubeClient.(*kubefake.FailingKubeClient)
+	failer.DummyResources = kube.ResourceList{
+		newDeploymentWithOwner("unowned-deploy", rel.Namespace, nil, nil),
+	}
+
+	_, err := uninstall.Run(rel.Name)
+	is.NoError(err)
+
+	logOutput := logBuffer.String()
+	is.Contains(logOutput, "skipping delete of resource not owned by this release")
+	is.Contains(logOutput, "unowned-deploy")
 }

@@ -353,7 +353,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release, waiter kube.Waiter) (kub
 
 	if isSequencedRelease(rel) {
 		filesToDelete = recoverManifestPaths(context.Background(), u.cfg, rel, filesToDelete, "sequenced uninstall")
-		deleted, errs := u.sequencedDeleteManifests(rel.Chart, filesToDelete, waiter)
+		deleted, errs := u.sequencedDeleteManifests(rel.Chart, filesToDelete, waiter, rel.Name, rel.Namespace)
 		return deleted, kept.String(), errs
 	}
 
@@ -362,65 +362,86 @@ func (u *Uninstall) deleteRelease(rel *release.Release, waiter kube.Waiter) (kub
 		return nil, "", []error{err}
 	}
 
-	// Verify ownership before deleting resources
-	var ownedResources, unownedResources kube.ResourceList
-	var unverifiableResources []unverifiableResource
-	if len(resources) > 0 {
-		ownedResources, unownedResources, unverifiableResources, err = verifyOwnershipBeforeDelete(resources, rel.Name, rel.Namespace)
-		if err != nil {
-			return nil, "", []error{fmt.Errorf("unable to verify resource ownership: %w", err)}
+	ownedResources, skipped, err := u.verifyOwnedForDelete(resources, rel.Name, rel.Namespace)
+	if err != nil {
+		return nil, "", []error{err}
+	}
+	if skipped != "" {
+		if kept.Len() > 0 {
+			kept.WriteString("\n")
 		}
+		kept.WriteString(skipped)
+	}
 
-		// Log warnings for unowned resources
-		if len(unownedResources) > 0 {
-			for _, info := range unownedResources {
-				u.cfg.Logger().Warn("skipping delete of resource not owned by this release",
-					"kind", info.Mapping.GroupVersionKind.Kind,
-					"name", info.Name,
-					"namespace", info.Namespace,
-					"release", rel.Name)
-			}
-			if kept.Len() > 0 {
-				kept.WriteString("\n")
-			}
-			fmt.Fprintf(&kept, "%d resource(s) were not deleted because they are not owned by this release:\n", len(unownedResources))
-			for _, info := range unownedResources {
-				fmt.Fprintf(&kept, "[%s] %s\n", info.Mapping.GroupVersionKind.Kind, info.Name)
-			}
-		}
-
-		// Log warnings for resources whose ownership could not be verified
-		if len(unverifiableResources) > 0 {
-			for _, ur := range unverifiableResources {
-				u.cfg.Logger().Warn("skipping delete of resource because ownership could not be verified",
-					"kind", ur.Info.Mapping.GroupVersionKind.Kind,
-					"name", ur.Info.Name,
-					"namespace", ur.Info.Namespace,
-					"release", rel.Name,
-					"error", ur.Err)
-			}
-			if kept.Len() > 0 {
-				kept.WriteString("\n")
-			}
-			fmt.Fprintf(&kept, "%d resource(s) were not deleted because their ownership could not be verified:\n", len(unverifiableResources))
-			for _, ur := range unverifiableResources {
-				fmt.Fprintf(&kept, "[%s] %s: %s\n", ur.Info.Mapping.GroupVersionKind.Kind, ur.Info.Name, ur.Err)
-			}
-		}
-
-		// Delete only owned resources
-		if len(ownedResources) > 0 {
-			for _, info := range ownedResources {
-				u.cfg.Logger().Debug("deleting resource owned by this release",
-					"kind", info.Mapping.GroupVersionKind.Kind,
-					"name", info.Name,
-					"namespace", info.Namespace,
-					"release", rel.Name)
-			}
-			_, errs = u.cfg.KubeClient.Delete(ownedResources, parseCascadingFlag(u.DeletionPropagation, u.cfg.Logger()))
-		}
+	// Delete only owned resources
+	if len(ownedResources) > 0 {
+		_, errs = u.cfg.KubeClient.Delete(ownedResources, parseCascadingFlag(u.DeletionPropagation, u.cfg.Logger()))
 	}
 	return ownedResources, kept.String(), errs
+}
+
+// verifyOwnedForDelete verifies which of the built resources are owned by the
+// release. It logs (and thereby skips) resources that are not owned by the
+// release or whose ownership cannot be verified, and returns the owned subset
+// together with a human-readable summary of what was skipped (empty when nothing
+// was skipped). It performs no deletion; callers delete the returned owned
+// resources. Both the sequenced and non-sequenced uninstall paths route through
+// it so neither deletes resources that do not belong to the release.
+func (u *Uninstall) verifyOwnedForDelete(resources kube.ResourceList, releaseName, releaseNamespace string) (kube.ResourceList, string, error) {
+	if len(resources) == 0 {
+		return nil, "", nil
+	}
+
+	ownedResources, unownedResources, unverifiableResources, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+	if err != nil {
+		return nil, "", fmt.Errorf("unable to verify resource ownership: %w", err)
+	}
+
+	var skipped strings.Builder
+
+	// Log and report resources that are not owned by this release.
+	if len(unownedResources) > 0 {
+		for _, info := range unownedResources {
+			u.cfg.Logger().Warn("skipping delete of resource not owned by this release",
+				"kind", info.Mapping.GroupVersionKind.Kind,
+				"name", info.Name,
+				"namespace", info.Namespace,
+				"release", releaseName)
+		}
+		fmt.Fprintf(&skipped, "%d resource(s) were not deleted because they are not owned by this release:\n", len(unownedResources))
+		for _, info := range unownedResources {
+			fmt.Fprintf(&skipped, "[%s] %s\n", info.Mapping.GroupVersionKind.Kind, info.Name)
+		}
+	}
+
+	// Log and report resources whose ownership could not be verified.
+	if len(unverifiableResources) > 0 {
+		for _, ur := range unverifiableResources {
+			u.cfg.Logger().Warn("skipping delete of resource because ownership could not be verified",
+				"kind", ur.Info.Mapping.GroupVersionKind.Kind,
+				"name", ur.Info.Name,
+				"namespace", ur.Info.Namespace,
+				"release", releaseName,
+				"error", ur.Err)
+		}
+		if skipped.Len() > 0 {
+			skipped.WriteString("\n")
+		}
+		fmt.Fprintf(&skipped, "%d resource(s) were not deleted because their ownership could not be verified:\n", len(unverifiableResources))
+		for _, ur := range unverifiableResources {
+			fmt.Fprintf(&skipped, "[%s] %s: %s\n", ur.Info.Mapping.GroupVersionKind.Kind, ur.Info.Name, ur.Err)
+		}
+	}
+
+	for _, info := range ownedResources {
+		u.cfg.Logger().Debug("deleting resource owned by this release",
+			"kind", info.Mapping.GroupVersionKind.Kind,
+			"name", info.Name,
+			"namespace", info.Namespace,
+			"release", releaseName)
+	}
+
+	return ownedResources, skipped.String(), nil
 }
 
 func (u *Uninstall) buildDeleteResources(manifests []releaseutil.Manifest) (kube.ResourceList, error) {
@@ -436,7 +457,7 @@ func (u *Uninstall) buildDeleteResources(manifests []releaseutil.Manifest) (kube
 	return resources, nil
 }
 
-func (u *Uninstall) deleteManifestBatch(manifests []releaseutil.Manifest, waiter kube.Waiter, deadline time.Time) (kube.ResourceList, []error) {
+func (u *Uninstall) deleteManifestBatch(manifests []releaseutil.Manifest, waiter kube.Waiter, deadline time.Time, releaseName, releaseNamespace string) (kube.ResourceList, []error) {
 	resources, err := u.buildDeleteResources(manifests)
 	if err != nil || len(resources) == 0 {
 		if err != nil {
@@ -445,9 +466,19 @@ func (u *Uninstall) deleteManifestBatch(manifests []releaseutil.Manifest, waiter
 		return nil, nil
 	}
 
-	_, errs := u.cfg.KubeClient.Delete(resources, parseCascadingFlag(u.DeletionPropagation, u.cfg.Logger()))
+	// Verify ownership before deleting so a sequenced uninstall, like the
+	// non-sequenced path, never deletes resources it does not own.
+	ownedResources, _, err := u.verifyOwnedForDelete(resources, releaseName, releaseNamespace)
+	if err != nil {
+		return nil, []error{err}
+	}
+	if len(ownedResources) == 0 {
+		return nil, nil
+	}
+
+	_, errs := u.cfg.KubeClient.Delete(ownedResources, parseCascadingFlag(u.DeletionPropagation, u.cfg.Logger()))
 	if len(errs) > 0 {
-		return resources, errs
+		return ownedResources, errs
 	}
 
 	timeout := u.Timeout
@@ -456,24 +487,24 @@ func (u *Uninstall) deleteManifestBatch(manifests []releaseutil.Manifest, waiter
 			timeout = remaining
 		}
 	}
-	if err := waiter.WaitForDelete(resources, timeout); err != nil {
+	if err := waiter.WaitForDelete(ownedResources, timeout); err != nil {
 		errs = append(errs, err)
 	}
-	return resources, errs
+	return ownedResources, errs
 }
 
-func (u *Uninstall) sequencedDeleteManifests(chrt *chart.Chart, manifests []releaseutil.Manifest, waiter kube.Waiter) (kube.ResourceList, []error) {
+func (u *Uninstall) sequencedDeleteManifests(chrt *chart.Chart, manifests []releaseutil.Manifest, waiter kube.Waiter, releaseName, releaseNamespace string) (kube.ResourceList, []error) {
 	deadline := computeDeadline(u.Timeout)
 	if chrt == nil {
-		return u.deleteResourceGroupBatchesReverse(manifests, waiter, deadline)
+		return u.deleteResourceGroupBatchesReverse(manifests, waiter, deadline, releaseName, releaseNamespace)
 	}
-	return u.deleteChartLevelReverseAt(chrt, manifests, waiter, deadline, chrt.Name())
+	return u.deleteChartLevelReverseAt(chrt, manifests, waiter, deadline, chrt.Name(), releaseName, releaseNamespace)
 }
 
-func (u *Uninstall) deleteChartLevelReverseAt(chrt *chart.Chart, manifests []releaseutil.Manifest, waiter kube.Waiter, deadline time.Time, chartPath string) (kube.ResourceList, []error) {
+func (u *Uninstall) deleteChartLevelReverseAt(chrt *chart.Chart, manifests []releaseutil.Manifest, waiter kube.Waiter, deadline time.Time, chartPath string, releaseName, releaseNamespace string) (kube.ResourceList, []error) {
 	grouped := GroupManifestsByDirectSubchart(manifests, chartPath)
 
-	allDeleted, errs := u.deleteResourceGroupBatchesReverse(grouped[""], waiter, deadline)
+	allDeleted, errs := u.deleteResourceGroupBatchesReverse(grouped[""], waiter, deadline, releaseName, releaseNamespace)
 	if len(errs) > 0 {
 		return allDeleted, errs
 	}
@@ -502,9 +533,9 @@ func (u *Uninstall) deleteChartLevelReverseAt(chrt *chart.Chart, manifests []rel
 			subPath := chartPath + "/charts/" + subchartName
 			if subchart == nil {
 				u.cfg.Logger().Warn("subchart not found in chart dependencies during sequenced uninstall; falling back to flat resource-group deletion", "subchart", subchartName)
-				deleted, errs = u.deleteResourceGroupBatchesReverse(subchartManifests, waiter, deadline)
+				deleted, errs = u.deleteResourceGroupBatchesReverse(subchartManifests, waiter, deadline, releaseName, releaseNamespace)
 			} else {
-				deleted, errs = u.deleteChartLevelReverseAt(subchart, subchartManifests, waiter, deadline, subPath)
+				deleted, errs = u.deleteChartLevelReverseAt(subchart, subchartManifests, waiter, deadline, subPath, releaseName, releaseNamespace)
 			}
 			allDeleted = append(allDeleted, deleted...)
 			if len(errs) > 0 {
@@ -516,7 +547,7 @@ func (u *Uninstall) deleteChartLevelReverseAt(chrt *chart.Chart, manifests []rel
 	return allDeleted, nil
 }
 
-func (u *Uninstall) deleteResourceGroupBatchesReverse(manifests []releaseutil.Manifest, waiter kube.Waiter, deadline time.Time) (kube.ResourceList, []error) {
+func (u *Uninstall) deleteResourceGroupBatchesReverse(manifests []releaseutil.Manifest, waiter kube.Waiter, deadline time.Time, releaseName, releaseNamespace string) (kube.ResourceList, []error) {
 	result, warnings, err := releaseutil.ParseResourceGroups(manifests)
 	if err != nil {
 		return nil, []error{fmt.Errorf("parsing resource-group annotations for sequenced uninstall: %w", err)}
@@ -528,7 +559,7 @@ func (u *Uninstall) deleteResourceGroupBatchesReverse(manifests []releaseutil.Ma
 	var allDeleted kube.ResourceList
 
 	if len(result.Unsequenced) > 0 {
-		deleted, errs := u.deleteManifestBatch(result.Unsequenced, waiter, deadline)
+		deleted, errs := u.deleteManifestBatch(result.Unsequenced, waiter, deadline, releaseName, releaseNamespace)
 		allDeleted = append(allDeleted, deleted...)
 		if len(errs) > 0 {
 			return allDeleted, errs
@@ -555,7 +586,7 @@ func (u *Uninstall) deleteResourceGroupBatchesReverse(manifests []releaseutil.Ma
 		for _, groupName := range batch {
 			batchManifests = append(batchManifests, result.Groups[groupName]...)
 		}
-		deleted, errs := u.deleteManifestBatch(batchManifests, waiter, deadline)
+		deleted, errs := u.deleteManifestBatch(batchManifests, waiter, deadline, releaseName, releaseNamespace)
 		allDeleted = append(allDeleted, deleted...)
 		if len(errs) > 0 {
 			return allDeleted, errs
