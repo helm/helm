@@ -33,7 +33,11 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 )
 
-var headerBytes = []byte("rr(\x00aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
+// RFC 1952 subfield header:
+// +---+---+---+---+==================================+
+// |SI1|SI2|  LEN  |... LEN bytes of subfield data ...|
+// +---+---+---+---+==================================+
+var headerBytes = []byte("rr\x28\x00aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
 
 // SaveDir saves a chart as files in a directory.
 //
