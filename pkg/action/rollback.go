@@ -32,6 +32,8 @@ import (
 	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
+// MaxDescriptionLength is the maximum length allowed for a rollback description,
+// including values provided via the --description flag and Rollback.Description.
 const MaxDescriptionLength = 256
 
 // Rollback is the action for rolling back to a given release.
