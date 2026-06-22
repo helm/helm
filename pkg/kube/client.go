@@ -325,7 +325,7 @@ func (c *Client) makeCreateApplyFunc(serverSideApply, forceConflicts, dryRun boo
 
 			return retry.OnError(
 				retry.DefaultRetry,
-				isQuotaConflict,
+				isServerSideRetryable,
 				func() error {
 					err := patchResourceServerSide(target, dryRun, forceConflicts, fieldValidationDirective)
 					if err != nil {
@@ -955,10 +955,16 @@ func isIncompatibleServerError(err error) bool {
 	return err.(*apierrors.StatusError).Status().Code == http.StatusUnsupportedMediaType
 }
 
-// isQuotaConflict checks if the error is a conflict error specifically caused by
+// isServerSideRetryable checks if an error encountered during server-side apply
+// should be retried. Currently, only ResourceQuota conflicts are considered retryable.
+func isServerSideRetryable(err error) bool {
+	return isResourceQuotaConflict(err)
+}
+
+// isResourceQuotaConflict checks if the error is a conflict error specifically caused by
 // a ResourceQuota. This is used to determine if a retry should be attempted,
 // since quota conflicts are typically transient and can be resolved by retrying.
-func isQuotaConflict(err error) bool {
+func isResourceQuotaConflict(err error) bool {
 	if !apierrors.IsConflict(err) {
 		return false
 	}
