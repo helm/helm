@@ -232,3 +232,40 @@ func TestRunWithSourceDateEpochReproducible(t *testing.T) {
 	second := build()
 	require.Equal(t, first, second, "two builds with the same SOURCE_DATE_EPOCH must be byte-identical")
 }
+
+func TestRunWithSourceDateEpochStampsLockGenerated(t *testing.T) {
+	chartPath := "testdata/charts/chart-with-lock"
+	epoch := time.Unix(1700000000, 0).UTC()
+
+	client := NewPackage()
+	client.SourceDateEpoch = &epoch
+
+	filename, err := client.Run(chartPath, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Remove(filename) })
+
+	f, err := os.Open(filename)
+	require.NoError(t, err)
+	defer f.Close()
+
+	gr, err := gzip.NewReader(f)
+	require.NoError(t, err)
+	defer gr.Close()
+
+	found := false
+	tr := tar.NewReader(gr)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		if path.Base(hdr.Name) == "Chart.lock" {
+			found = true
+			// Without stamping Lock.Generated, this entry would keep the
+			// fixture's original 2016 timestamp instead of the epoch.
+			require.True(t, epoch.Equal(hdr.ModTime), "Chart.lock entry: got ModTime %v, want %v", hdr.ModTime, epoch)
+		}
+	}
+	require.True(t, found, "expected archive to contain a Chart.lock entry")
+}

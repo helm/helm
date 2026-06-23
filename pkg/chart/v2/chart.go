@@ -105,6 +105,32 @@ func (ch *Chart) Root() *Chart {
 // Dependencies are the charts that this chart depends on.
 func (ch *Chart) Dependencies() []*Chart { return ch.dependencies }
 
+// StampModTimes recursively sets all file modification times in the chart and
+// its dependencies to t. t is normalized to UTC and truncated to whole seconds
+// because tar headers have second-level granularity and timezone-independent
+// storage. This is used to produce reproducible archives when a build process
+// supplies a fixed timestamp (e.g. via SOURCE_DATE_EPOCH).
+func (ch *Chart) StampModTimes(t time.Time) {
+	t = t.UTC().Truncate(time.Second)
+	ch.ModTime = t
+	ch.SchemaModTime = t
+	if ch.Lock != nil {
+		ch.Lock.Generated = t
+	}
+	for _, f := range ch.Raw {
+		f.ModTime = t
+	}
+	for _, f := range ch.Templates {
+		f.ModTime = t
+	}
+	for _, f := range ch.Files {
+		f.ModTime = t
+	}
+	for _, dep := range ch.dependencies {
+		dep.StampModTimes(t)
+	}
+}
+
 // IsRoot determines if the chart is the root chart.
 func (ch *Chart) IsRoot() bool { return ch.parent == nil }
 
