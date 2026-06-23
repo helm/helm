@@ -18,7 +18,6 @@ package cli
 
 import (
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -137,7 +136,7 @@ func TestEnvSettings(t *testing.T) {
 			assert.Equal(t, tt.kcontext, settings.KubeContext, "kube-context")
 			assert.Equal(t, tt.maxhistory, settings.MaxHistory, "maxHistory")
 			assert.Equal(t, tt.kubeAsUser, settings.KubeAsUser, "kubeAsUser")
-			assert.True(t, reflect.DeepEqual(tt.kubeAsGroups, settings.KubeAsGroups), "kubeAsGroups")
+			assert.Equal(t, tt.kubeAsGroups, settings.KubeAsGroups, "kubeAsGroups")
 			assert.Equal(t, tt.kubeCaFile, settings.KubeCaFile, "kubeCaFile")
 			assert.Equal(t, tt.burstLimit, settings.BurstLimit, "burstLimit")
 			assert.Equal(t, tt.kubeInsecure, settings.KubeInsecureSkipTLSVerify, "kubeInsecure")

@@ -21,7 +21,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -214,7 +213,7 @@ func TestReadFile(t *testing.T) {
 
 				// Test the function
 				got, err := readFile(actualFilePath, tt.providers)
-				assert.NoError(t, err, "readFile() expected no error for stdin")
+				require.NoError(t, err, "readFile() expected no error for stdin")
 				assert.Equal(t, testData, got)
 				return
 			}
@@ -360,8 +359,8 @@ func TestMergeValuesCLI(t *testing.T) {
 				assert.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
-			assert.True(t, reflect.DeepEqual(got, tt.expected), "MergeValues() = %v, want %v", got, tt.expected)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, got)
 		})
 	}
 }
