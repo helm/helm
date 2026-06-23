@@ -21,7 +21,6 @@ import (
 	"io"
 	"strconv"
 	"time"
-	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 
