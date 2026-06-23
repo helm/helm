@@ -91,6 +91,44 @@ func TestValidateAgainstSingleSchemaNegative(t *testing.T) {
 	}
 }
 
+func TestValidateAgainstSingleSchemaFormat(t *testing.T) {
+	values, err := common.ReadValuesFile("./testdata/test-values-format.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	schema, err := os.ReadFile("./testdata/test-values-format.schema.json")
+	if err != nil {
+		t.Fatalf("Error reading JSON file: %s", err)
+	}
+
+	if err := ValidateAgainstSingleSchema(values, schema); err != nil {
+		t.Errorf("Error validating Values against Schema: %s", err)
+	}
+}
+
+func TestValidateAgainstSingleSchemaFormatNegative(t *testing.T) {
+	values, err := common.ReadValuesFile("./testdata/test-values-format-negative.yaml")
+	if err != nil {
+		t.Fatalf("Error reading YAML file: %s", err)
+	}
+	schema, err := os.ReadFile("./testdata/test-values-format.schema.json")
+	if err != nil {
+		t.Fatalf("Error reading JSON file: %s", err)
+	}
+
+	err = ValidateAgainstSingleSchema(values, schema)
+	if err == nil {
+		t.Fatal("Expected an error for invalid format values, but got nil")
+	}
+
+	errString := err.Error()
+	for _, expected := range []string{"ipv4", "ipv6", "email"} {
+		if !strings.Contains(errString, expected) {
+			t.Errorf("Expected error to mention %q, got:\n%s", expected, errString)
+		}
+	}
+}
+
 const subchartSchema = `{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Values",
