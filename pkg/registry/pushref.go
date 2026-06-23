@@ -32,7 +32,7 @@ func BuildPushRef(href, chartName, chartVersion string) (string, error) {
 		return "", fmt.Errorf("cannot push to a reference with a digest: %q. Only tags are allowed", href)
 	}
 
-	// Normalize chart version for tag comparison/build (registry tags cannot contain '+')
+	// Normalize for comparison only; the registry client converts '+' to '_' for the actual tag
 	normalizedVersion := strings.ReplaceAll(chartVersion, "+", "_")
 	// if href tag present, it must match normalized chart version
 	if ref.Tag != "" && ref.Tag != normalizedVersion {
