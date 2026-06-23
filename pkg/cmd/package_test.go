@@ -16,12 +16,16 @@ limitations under the License.
 package cmd
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"helm.sh/helm/v4/internal/test/ensure"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -190,6 +194,68 @@ func TestSetAppVersion(t *testing.T) {
 	if ch.Metadata.AppVersion != expectedAppVersion {
 		t.Errorf("expected app-version %q, found %q", expectedAppVersion, ch.Metadata.AppVersion)
 	}
+}
+
+func TestPackageSourceDateEpoch(t *testing.T) {
+	chartToPackage := "testdata/testcharts/alpine"
+
+	for _, tt := range []struct {
+		name   string
+		envVal string
+		err    string
+	}{
+		{name: "non-numeric value", envVal: "not-a-number", err: "invalid SOURCE_DATE_EPOCH"},
+		{name: "negative value", envVal: "-1", err: "invalid SOURCE_DATE_EPOCH"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Setenv("SOURCE_DATE_EPOCH", tt.envVal)
+			cmd := fmt.Sprintf("package %s --destination=%s", chartToPackage, dir)
+			_, _, err := executeActionCommand(cmd)
+			if err == nil || !strings.Contains(err.Error(), tt.err) {
+				t.Fatalf("expected error containing %q, got %v", tt.err, err)
+			}
+		})
+	}
+
+	t.Run("valid value stamps archive entries", func(t *testing.T) {
+		dir := t.TempDir()
+		t.Setenv("SOURCE_DATE_EPOCH", "1700000000")
+		cmd := fmt.Sprintf("package %s --destination=%s", chartToPackage, dir)
+		_, output, err := executeActionCommand(cmd)
+		if err != nil {
+			t.Logf("Output: %s", output)
+			t.Fatal(err)
+		}
+
+		chartPath := filepath.Join(dir, "alpine-0.1.0.tgz")
+		f, err := os.Open(chartPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+
+		gr, err := gzip.NewReader(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer gr.Close()
+
+		epoch := time.Unix(1700000000, 0).UTC()
+		tr := tar.NewReader(gr)
+		for {
+			hdr, err := tr.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !epoch.Equal(hdr.ModTime) {
+				t.Errorf("entry %s: got ModTime %v, want %v", hdr.Name, hdr.ModTime, epoch)
+			}
+		}
+	})
 }
 
 func TestPackageFileCompletion(t *testing.T) {
