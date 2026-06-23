@@ -20,6 +20,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"sigs.k8s.io/yaml"
 )
 
@@ -278,27 +281,25 @@ func TestParseLiteral(t *testing.T) {
 		got, err := ParseLiteral(tt.str)
 		if err != nil {
 			if !tt.err {
-				t.Fatalf("%s: %s", tt.str, err)
+				require.NoError(t, err, tt.str)
 			}
 			continue
 		}
 
 		if tt.err {
-			t.Errorf("%s: Expected error. Got nil", tt.str)
+			assert.Fail(t, "Expected error. Got nil", tt.str)
 		}
 
 		y1, err := yaml.Marshal(tt.expect)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		y2, err := yaml.Marshal(got)
 		if err != nil {
-			t.Fatalf("Error serializing parsed value: %s", err)
+			require.NoError(t, err, "Error serializing parsed value")
 		}
 
 		if string(y1) != string(y2) {
-			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.str, y1, y2)
+			assert.Equal(t, string(y1), string(y2), tt.str)
 		}
 	}
 }
@@ -385,33 +386,31 @@ func TestParseLiteralInto(t *testing.T) {
 
 	for _, tt := range tests {
 		if err := ParseLiteralInto(tt.input, tt.got); err != nil {
-			t.Fatal(err)
+			require.NoError(t, err)
 		}
 		if tt.err {
-			t.Errorf("%s: Expected error. Got nil", tt.input)
+			assert.Fail(t, "Expected error. Got nil", tt.input)
 		}
 
 		if tt.input2 != "" {
 			if err := ParseLiteralInto(tt.input2, tt.got); err != nil {
-				t.Fatal(err)
+				require.NoError(t, err)
 			}
 			if tt.err {
-				t.Errorf("%s: Expected error. Got nil", tt.input2)
+				assert.Fail(t, "Expected error. Got nil", tt.input2)
 			}
 		}
 
 		y1, err := yaml.Marshal(tt.expect)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		y2, err := yaml.Marshal(tt.got)
 		if err != nil {
-			t.Fatalf("Error serializing parsed value: %s", err)
+			require.NoError(t, err, "Error serializing parsed value")
 		}
 
 		if string(y1) != string(y2) {
-			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.input, y1, y2)
+			assert.Equal(t, string(y1), string(y2), tt.input)
 		}
 	}
 }
@@ -452,30 +451,28 @@ func TestParseLiteralNestedLevels(t *testing.T) {
 			if tt.err {
 				if tt.errStr != "" {
 					if err.Error() != tt.errStr {
-						t.Errorf("Expected error: %s. Got error: %s", tt.errStr, err.Error())
+						assert.Equal(t, tt.errStr, err.Error())
 					}
 				}
 				continue
 			}
-			t.Fatalf("%s: %s", tt.str, err)
+			require.NoError(t, err, tt.str)
 		}
 
 		if tt.err {
-			t.Errorf("%s: Expected error. Got nil", tt.str)
+			assert.Fail(t, "Expected error. Got nil", tt.str)
 		}
 
 		y1, err := yaml.Marshal(tt.expect)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		y2, err := yaml.Marshal(got)
 		if err != nil {
-			t.Fatalf("Error serializing parsed value: %s", err)
+			require.NoError(t, err, "Error serializing parsed value")
 		}
 
 		if string(y1) != string(y2) {
-			t.Errorf("%s: Expected:\n%s\nGot:\n%s", tt.str, y1, y2)
+			assert.Equal(t, string(y1), string(y2), tt.str)
 		}
 	}
 }

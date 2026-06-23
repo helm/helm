@@ -21,6 +21,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // A search response for phpmyadmin containing 2 results
@@ -33,16 +36,10 @@ func TestSearch(t *testing.T) {
 	defer ts.Close()
 
 	c, err := New(ts.URL)
-	if err != nil {
-		t.Errorf("unable to create monocular client: %s", err)
-	}
+	require.NoError(t, err, "unable to create monocular client")
 
 	results, err := c.SearchWithContext(t.Context(), "phpmyadmin")
-	if err != nil {
-		t.Errorf("unable to search monocular: %s", err)
-	}
+	require.NoError(t, err, "unable to search monocular")
 
-	if len(results) != 2 {
-		t.Error("Did not receive the expected number of results")
-	}
+	assert.Len(t, results, 2)
 }
