@@ -485,3 +485,55 @@ func TestIsYamlFileExtension(t *testing.T) {
 		}
 	}
 }
+
+// TestMissingTemplatesDirIsInfo verifies that a chart without a templates
+// directory only produces an InfoSev message, not WarningSev.
+// This is a regression test for https://github.com/helm/helm/issues/8033
+// and ensures the fix from https://github.com/helm/helm/pull/11586 is not
+// reverted (as happened in https://github.com/helm/helm/pull/31019).
+func TestMissingTemplatesDirIsInfo(t *testing.T) {
+	mychart := chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: "v2",
+			Name:       "umbrella-chart",
+			Version:    "0.1.0",
+			Icon:       "satisfy-the-linting-gods.gif",
+		},
+		// No templates - this is valid for umbrella charts
+	}
+	tmpdir := t.TempDir()
+
+	if err := chartutil.SaveDir(&mychart, tmpdir); err != nil {
+		t.Fatal(err)
+	}
+
+	chartDir := filepath.Join(tmpdir, mychart.Name())
+
+	// Remove the templates directory to simulate an umbrella chart
+	os.RemoveAll(filepath.Join(chartDir, "templates"))
+
+	linter := support.Linter{ChartDir: chartDir}
+	Templates(
+		&linter,
+		namespace,
+		values,
+		TemplateLinterSkipSchemaValidation(false))
+
+	// Should have exactly one message about the missing templates dir
+	if len(linter.Messages) != 1 {
+		t.Fatalf("Expected 1 message, got %d: %v", len(linter.Messages), linter.Messages)
+	}
+
+	msg := linter.Messages[0]
+	if msg.Severity != support.InfoSev {
+		t.Errorf("Expected InfoSev (%d) for missing templates dir, got severity %d: %s",
+			support.InfoSev, msg.Severity, msg)
+	}
+
+	// HighestSeverity should be InfoSev, not WarningSev - this is what
+	// ensures helm lint --strict does not fail for umbrella charts.
+	if linter.HighestSeverity != support.InfoSev {
+		t.Errorf("Expected HighestSeverity to be InfoSev (%d), got %d",
+			support.InfoSev, linter.HighestSeverity)
+	}
+}
