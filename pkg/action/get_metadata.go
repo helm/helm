@@ -69,7 +69,10 @@ type Metadata struct {
 	// or chart reference), recorded via the meta.helm.sh/release-source
 	// annotation. Empty for releases created before this was recorded.
 	Source string `json:"source,omitempty" yaml:"source,omitempty"`
-	// Annotations are fetched from the Chart.yaml file
+	// Annotations are the chart metadata annotations from Chart.yaml. For a
+	// release installed or upgraded with a recorded source, this map also
+	// includes the meta.helm.sh/release-source annotation Helm adds at
+	// install/upgrade time (also surfaced separately via Source above).
 	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 	// Labels of the release which are stored in driver metadata fields storage
 	Labels       map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
