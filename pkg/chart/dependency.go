@@ -62,3 +62,12 @@ func (r *v3DependencyAccessor) Name() string {
 func (r *v3DependencyAccessor) Alias() string {
 	return r.dep.Alias
 }
+
+func (r v2DependencyAccessor) Digest() string {
+	// helm v2 doesn't use digest, return empty sting
+	return ""
+}
+
+func (r v3DependencyAccessor) Digest() string {
+	return r.dep.Digest
+}
