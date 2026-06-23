@@ -55,18 +55,20 @@ func funcMap() template.FuncMap {
 
 	// Add some extra functionality
 	extra := template.FuncMap{
-		"toToml":        toTOML,
-		"mustToToml":    mustToTOML,
-		"fromToml":      fromTOML,
-		"toYaml":        toYAML,
-		"mustToYaml":    mustToYAML,
-		"toYamlPretty":  toYAMLPretty,
-		"fromYaml":      fromYAML,
-		"fromYamlArray": fromYAMLArray,
-		"toJson":        toJSON,
-		"mustToJson":    mustToJSON,
-		"fromJson":      fromJSON,
-		"fromJsonArray": fromJSONArray,
+		"toToml":           toTOML,
+		"mustToToml":       mustToTOML,
+		"fromToml":         fromTOML,
+		"toYaml":           toYAML,
+		"mustToYaml":       mustToYAML,
+		"toYamlPretty":     toYAMLPretty,
+		"fromYaml":         fromYAML,
+		"fromYamlArray":    fromYAMLArray,
+		"toJson":              toJSON,
+		"mustToJson":          mustToJSON,
+		"toPrettyRawJson":     toPrettyRawJSON,
+		"mustToPrettyRawJson": mustToPrettyRawJSON,
+		"fromJson":            fromJSON,
+		"fromJsonArray":       fromJSONArray,
 
 		// Duration helpers
 		"mustToDuration":       mustToDuration,
@@ -237,6 +239,56 @@ func mustToJSON(v any) string {
 		panic(err)
 	}
 	return string(data)
+}
+
+// encodePrettyRawJSON encodes v as indented JSON without HTML-escaping special
+// characters (&, <, >). It uses two-space indentation to match the indentation
+// of Sprig's toPrettyJson, while leaving HTML characters unescaped like Sprig's
+// toRawJson.
+func encodePrettyRawJSON(v any) (string, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
+		return "", err
+	}
+	return strings.TrimSuffix(buf.String(), "\n"), nil
+}
+
+// toPrettyRawJSON takes an interface, marshals it to indented JSON without
+// HTML-escaping special characters (&, <, >), and returns a string. It will
+// always return a string, even on marshal error (empty string).
+//
+// Unlike Sprig's toPrettyJson, HTML characters are not escaped. This is the
+// indented counterpart to Sprig's toRawJson. The escaping behavior of
+// toPrettyJson is intentionally left unchanged for backwards compatibility.
+//
+// This is designed to be called from a template.
+func toPrettyRawJSON(v any) string {
+	s, err := encodePrettyRawJSON(v)
+	if err != nil {
+		// Swallow errors inside of a template.
+		return ""
+	}
+	return s
+}
+
+// mustToPrettyRawJSON takes an interface, marshals it to indented JSON without
+// HTML-escaping special characters (&, <, >), and returns a string.
+// It will panic if there is an error.
+//
+// Unlike Sprig's mustToPrettyJson, HTML characters are not escaped. This is the
+// indented counterpart to Sprig's mustToRawJson.
+//
+// This is designed to be called from a template when you need to ensure that
+// the output JSON is valid.
+func mustToPrettyRawJSON(v any) string {
+	s, err := encodePrettyRawJSON(v)
+	if err != nil {
+		panic(err)
+	}
+	return s
 }
 
 // fromJSON converts a JSON document into a map[string]interface{}.
