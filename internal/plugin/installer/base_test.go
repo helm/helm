@@ -74,13 +74,13 @@ func TestPathEmptyPluginDir(t *testing.T) {
 func TestPathSkipsEmptyPluginDirs(t *testing.T) {
 	// A leading empty segment (e.g. ":/real/path") must be skipped so the plugin is
 	// installed into the first real directory rather than a relative path.
-	real := filepath.FromSlash("/helm/data/plugins")
-	multiPath := string(filepath.ListSeparator) + real
+	realDir := filepath.FromSlash("/helm/data/plugins")
+	multiPath := string(filepath.ListSeparator) + realDir
 
 	t.Setenv("HELM_PLUGINS", multiPath)
 	b := newBase("https://github.com/jkroepke/helm-secrets")
 	got := b.Path()
-	expected := filepath.Join(real, "helm-secrets")
+	expected := filepath.Join(realDir, "helm-secrets")
 	if got != expected {
 		t.Errorf("expected path %s, got %s", expected, got)
 	}
