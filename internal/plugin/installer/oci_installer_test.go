@@ -27,6 +27,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -35,7 +36,6 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"helm.sh/helm/v4/internal/test/ensure"
-	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
 )
@@ -266,10 +266,6 @@ func TestNewOCIInstaller(t *testing.T) {
 				t.Errorf("expected cache directory to contain 'plugins', got %s", installer.CacheDir)
 			}
 
-			if installer.settings == nil {
-				t.Error("expected settings to be initialized")
-			}
-
 			// Check that Path() method works
 			expectedPath := helmpath.DataPath("plugins", tt.expectName)
 			if installer.Path() != expectedPath {
@@ -305,7 +301,6 @@ func TestOCIInstaller_Path(t *testing.T) {
 			installer := &OCIInstaller{
 				PluginName: tt.pluginName,
 				base:       newBase(tt.source),
-				settings:   cli.New(),
 			}
 
 			path := installer.Path()
@@ -539,7 +534,7 @@ func TestOCIInstaller_Install_ComponentExtraction(t *testing.T) {
 	execPath := filepath.Join(tempDir, "bin", pluginName)
 	if info, err := os.Stat(execPath); err != nil {
 		t.Errorf("executable not found: %v", err)
-	} else if info.Mode()&0111 == 0 {
+	} else if runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
 		t.Error("file is not executable")
 	}
 
