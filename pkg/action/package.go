@@ -51,9 +51,12 @@ type Package struct {
 	DependencyUpdate bool
 
 	// SourceDateEpoch, when non-nil, overrides all tar entry modification times
-	// in the produced chart archive. Set by callers that want reproducible builds.
-	// The environment variable SOURCE_DATE_EPOCH is the conventional way to supply
-	// this value from the CLI; reading that variable is the CLI's responsibility.
+	// in the produced chart archive, and also overwrites the "generated"
+	// timestamp in Chart.lock (if present) since that value is both the lock
+	// file's own tar entry modtime and part of its marshaled YAML content.
+	// Set by callers that want reproducible builds. The environment variable
+	// SOURCE_DATE_EPOCH is the conventional way to supply this value from the
+	// CLI; reading that variable is the CLI's responsibility.
 	SourceDateEpoch *time.Time
 
 	RepositoryConfig      string

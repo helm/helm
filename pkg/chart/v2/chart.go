@@ -110,6 +110,11 @@ func (ch *Chart) Dependencies() []*Chart { return ch.dependencies }
 // because tar headers have second-level granularity and timezone-independent
 // storage. This is used to produce reproducible archives when a build process
 // supplies a fixed timestamp (e.g. via SOURCE_DATE_EPOCH).
+//
+// If Lock is set, its Generated field is also overwritten with t. This is not
+// just a tar header change: Generated is marshaled into Chart.lock's own YAML
+// content, so this stamping is visible to anyone who reads the lock file out
+// of the produced archive.
 func (ch *Chart) StampModTimes(t time.Time) {
 	t = t.UTC().Truncate(time.Second)
 	ch.ModTime = t
