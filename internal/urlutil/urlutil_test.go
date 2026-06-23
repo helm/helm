@@ -16,7 +16,11 @@ limitations under the License.
 
 package urlutil
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestURLJoin(t *testing.T) {
 	tests := []struct {
@@ -31,11 +35,9 @@ func TestURLJoin(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got, err := URLJoin(tt.url, tt.paths...); err != nil {
-			t.Errorf("%s: error %q", tt.name, err)
-		} else if got != tt.expect {
-			t.Errorf("%s: expected %q, got %q", tt.name, tt.expect, got)
-		}
+		got, err := URLJoin(tt.url, tt.paths...)
+		assert.NoError(t, err, tt.name)
+		assert.Equal(t, tt.expect, got, tt.name)
 	}
 }
 
@@ -60,9 +62,7 @@ func TestEqual(t *testing.T) {
 		{"%/1234", "%/123", false},
 		{"/1234", "%/1234", false},
 	} {
-		if tt.match != Equal(tt.a, tt.b) {
-			t.Errorf("Expected %q==%q to be %t", tt.a, tt.b, tt.match)
-		}
+		assert.Equal(t, tt.match, Equal(tt.a, tt.b), "Expected %q==%q to be %t", tt.a, tt.b, tt.match)
 	}
 }
 
@@ -74,8 +74,7 @@ func TestExtractHostname(t *testing.T) {
 		"https://example.com:31337/not/with/a/bang/but/a/whimper": "example.com",
 	}
 	for start, expect := range tests {
-		if got, _ := ExtractHostname(start); got != expect {
-			t.Errorf("Got %q, expected %q", got, expect)
-		}
+		got, _ := ExtractHostname(start)
+		assert.Equal(t, expect, got)
 	}
 }

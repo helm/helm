@@ -16,31 +16,21 @@ limitations under the License.
 
 package registry
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func verify(t *testing.T, actual reference, registry, repository, tag, digest string) {
 	t.Helper()
-	if registry != actual.orasReference.Registry {
-		t.Errorf("Oras reference registry expected %v actual %v", registry, actual.Registry)
-	}
-	if repository != actual.orasReference.Repository {
-		t.Errorf("Oras reference repository expected %v actual %v", repository, actual.Repository)
-	}
-	if tag != actual.orasReference.Reference {
-		t.Errorf("Oras reference reference expected %v actual %v", tag, actual.Tag)
-	}
-	if registry != actual.Registry {
-		t.Errorf("Registry expected %v actual %v", registry, actual.Registry)
-	}
-	if repository != actual.Repository {
-		t.Errorf("Repository expected %v actual %v", repository, actual.Repository)
-	}
-	if tag != actual.Tag {
-		t.Errorf("Tag expected %v actual %v", tag, actual.Tag)
-	}
-	if digest != actual.Digest {
-		t.Errorf("Digest expected %v actual %v", digest, actual.Digest)
-	}
+	assert.Equal(t, registry, actual.orasReference.Registry, "Oras reference registry")
+	assert.Equal(t, repository, actual.orasReference.Repository, "Oras reference repository")
+	assert.Equal(t, tag, actual.orasReference.Reference, "Oras reference reference")
+	assert.Equal(t, registry, actual.Registry, "Registry")
+	assert.Equal(t, repository, actual.Repository, "Repository")
+	assert.Equal(t, tag, actual.Tag, "Tag")
+	assert.Equal(t, digest, actual.Digest, "Digest")
 	expectedString := registry
 	if repository != "" {
 		expectedString = expectedString + "/" + repository
@@ -50,51 +40,35 @@ func verify(t *testing.T, actual reference, registry, repository, tag, digest st
 	} else {
 		expectedString = expectedString + "@" + digest
 	}
-	if actual.String() != expectedString {
-		t.Errorf("String expected %s actual %s", expectedString, actual.String())
-	}
+	assert.Equal(t, expectedString, actual.String(), "String")
 }
 
 func TestNewReference(t *testing.T) {
 	actual, err := newReference("registry.example.com/repository:1.0@sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
-	if err != nil {
-		t.Errorf("Unexpected error %v", err)
-	}
+	assert.NoError(t, err)
 	verify(t, actual, "registry.example.com", "repository", "1.0", "sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
 
 	actual, err = newReference("oci://registry.example.com/repository:1.0@sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
-	if err != nil {
-		t.Errorf("Unexpected error %v", err)
-	}
+	assert.NoError(t, err)
 	verify(t, actual, "registry.example.com", "repository", "1.0", "sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
 
 	actual, err = newReference("a/b:1@c")
-	if err != nil {
-		t.Errorf("Unexpected error %v", err)
-	}
+	assert.NoError(t, err)
 	verify(t, actual, "a", "b", "1", "c")
 
 	actual, err = newReference("a/b:@")
-	if err != nil {
-		t.Errorf("Unexpected error %v", err)
-	}
+	assert.NoError(t, err)
 	verify(t, actual, "a", "b", "", "")
 
 	actual, err = newReference("registry.example.com/repository:1.0+001")
-	if err != nil {
-		t.Errorf("Unexpected error %v", err)
-	}
+	assert.NoError(t, err)
 	verify(t, actual, "registry.example.com", "repository", "1.0_001", "")
 
 	actual, err = newReference("thing:1.0")
-	if err == nil {
-		t.Errorf("Expect error error %v", err)
-	}
+	assert.Error(t, err)
 	verify(t, actual, "", "", "", "")
 
 	actual, err = newReference("registry.example.com/the/repository@sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
-	if err != nil {
-		t.Errorf("Unexpected error %v", err)
-	}
+	assert.NoError(t, err)
 	verify(t, actual, "registry.example.com", "the/repository", "", "sha256:c6841b3a895f1444a6738b5d04564a57e860ce42f8519c3be807fb6d9bee7888")
 }

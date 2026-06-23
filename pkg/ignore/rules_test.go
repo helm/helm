@@ -21,6 +21,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var testdata = "./testdata"
@@ -36,22 +39,14 @@ baz/bar/foo.txt
 one/more
 `
 	r, err := parseString(rules)
-	if err != nil {
-		t.Fatalf("Error parsing rules: %s", err)
-	}
+	require.NoError(t, err, "Error parsing rules")
 
-	if len(r.patterns) != 4 {
-		t.Errorf("Expected 4 rules, got %d", len(r.patterns))
-	}
+	require.Len(t, r.patterns, 4)
 
 	expects := []string{"foo", "bar/*", "baz/bar/foo.txt", "one/more"}
 	for i, p := range r.patterns {
-		if p.raw != expects[i] {
-			t.Errorf("Expected %q, got %q", expects[i], p.raw)
-		}
-		if p.match == nil {
-			t.Errorf("Expected %s to have a matcher function.", p.raw)
-		}
+		assert.Equal(t, expects[i], p.raw)
+		assert.NotNil(t, p.match, "Expected %s to have a matcher function.", p.raw)
 	}
 }
 
@@ -59,26 +54,19 @@ func TestParseFail(t *testing.T) {
 	shouldFail := []string{"foo/**/bar", "[z-"}
 	for _, fail := range shouldFail {
 		_, err := parseString(fail)
-		if err == nil {
-			t.Errorf("Rule %q should have failed", fail)
-		}
+		assert.Error(t, err, "Rule %q should have failed", fail)
 	}
 }
 
 func TestParseFile(t *testing.T) {
 	f := filepath.Join(testdata, HelmIgnore)
-	if _, err := os.Stat(f); err != nil {
-		t.Fatalf("Fixture %s missing: %s", f, err)
-	}
+	_, err := os.Stat(f)
+	require.NoError(t, err, "Fixture %s missing", f)
 
 	r, err := ParseFile(f)
-	if err != nil {
-		t.Fatalf("Failed to parse rules file: %s", err)
-	}
+	require.NoError(t, err, "Failed to parse rules file")
 
-	if len(r.patterns) != 3 {
-		t.Errorf("Expected 3 patterns, got %d", len(r.patterns))
-	}
+	assert.Len(t, r.patterns, 3)
 }
 
 func TestIgnore(t *testing.T) {
@@ -126,17 +114,11 @@ func TestIgnore(t *testing.T) {
 
 	for _, test := range tests {
 		r, err := parseString(test.pattern)
-		if err != nil {
-			t.Fatalf("Failed to parse: %s", err)
-		}
+		require.NoError(t, err, "Failed to parse: %s", test.pattern)
 		fi, err := os.Stat(filepath.Join(testdata, test.name))
-		if err != nil {
-			t.Fatalf("Fixture missing: %s", err)
-		}
+		require.NoError(t, err, "Fixture missing: %s", test.name)
 
-		if r.Ignore(test.name, fi) != test.expect {
-			t.Errorf("Expected %q to be %v for pattern %q", test.name, test.expect, test.pattern)
-		}
+		assert.Equal(t, test.expect, r.Ignore(test.name, fi), "Expected %q to be %v for pattern %q", test.name, test.expect, test.pattern)
 	}
 }
 
@@ -144,9 +126,7 @@ func TestAddDefaults(t *testing.T) {
 	r := Rules{}
 	r.AddDefaults()
 
-	if len(r.patterns) != 1 {
-		t.Errorf("Expected 1 default patterns, got %d", len(r.patterns))
-	}
+	assert.Len(t, r.patterns, 1)
 }
 
 func parseString(str string) (*Rules, error) {
