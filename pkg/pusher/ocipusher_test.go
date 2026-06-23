@@ -134,7 +134,7 @@ func TestOCIPusher_Push_ErrorHandling(t *testing.T) {
 				chartRef = tt.setupFunc()
 			}
 
-			err = pusher.Push(chartRef, "oci://localhost:5000/test")
+			_, err = pusher.Push(chartRef, "oci://localhost:5000/test")
 			if err == nil {
 				t.Fatal("Expected error but got none")
 			}
@@ -375,7 +375,7 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			err = pusher.Push(chartRef, tt.href)
+			_, err = pusher.Push(chartRef, tt.href)
 
 			if tt.expectError {
 				if err == nil {
@@ -407,7 +407,7 @@ func TestOCIPusher_Push_MultipleOptions(t *testing.T) {
 	}
 
 	// Test that multiple options are applied correctly
-	err = pusher.Push(chartPath, "oci://localhost:5000/test",
+	_, err = pusher.Push(chartPath, "oci://localhost:5000/test",
 		WithPlainHTTP(true),
 		WithInsecureSkipTLSVerify(true),
 	)
