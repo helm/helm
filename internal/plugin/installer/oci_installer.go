@@ -190,7 +190,7 @@ func (i OCIInstaller) Path() string {
 	if i.Source == "" {
 		return ""
 	}
-	return filepath.Join(i.base.PluginsDirectory, i.PluginName)
+	return filepath.Join(i.PluginsDirectory, i.PluginName)
 }
 
 // extractTarGz extracts a gzipped tar archive to a directory

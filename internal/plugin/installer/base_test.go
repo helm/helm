@@ -66,6 +66,22 @@ func TestPathEmptyPluginDir(t *testing.T) {
 	// When HELM_PLUGINS is explicitly empty, newBase must not panic.
 	t.Setenv("HELM_PLUGINS", "")
 	b := newBase("https://github.com/jkroepke/helm-secrets")
-	// Path() returns "" when source is "" or PluginsDirectory is ""; just verify no panic.
+	// Path() only returns "" when Source is ""; with an empty PluginsDirectory it
+	// returns a relative path. Just verify no panic.
 	_ = b.Path()
+}
+
+func TestPathSkipsEmptyPluginDirs(t *testing.T) {
+	// A leading empty segment (e.g. ":/real/path") must be skipped so the plugin is
+	// installed into the first real directory rather than a relative path.
+	real := filepath.FromSlash("/helm/data/plugins")
+	multiPath := string(filepath.ListSeparator) + real
+
+	t.Setenv("HELM_PLUGINS", multiPath)
+	b := newBase("https://github.com/jkroepke/helm-secrets")
+	got := b.Path()
+	expected := filepath.Join(real, "helm-secrets")
+	if got != expected {
+		t.Errorf("expected path %s, got %s", expected, got)
+	}
 }
