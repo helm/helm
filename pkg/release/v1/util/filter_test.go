@@ -19,23 +19,19 @@ package util // import "helm.sh/helm/v4/pkg/release/v1/util"
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"helm.sh/helm/v4/pkg/release/common"
 	rspb "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func TestFilterAny(t *testing.T) {
 	ls := Any(StatusFilter(common.StatusUninstalled)).Filter(releases)
-	if len(ls) != 2 {
-		t.Fatalf("expected 2 results, got '%d'", len(ls))
-	}
+	require.Len(t, ls, 2)
 
 	r0, r1 := ls[0], ls[1]
-	switch {
-	case r0.Info.Status != common.StatusUninstalled:
-		t.Fatalf("expected UNINSTALLED result, got '%s'", r1.Info.Status.String())
-	case r1.Info.Status != common.StatusUninstalled:
-		t.Fatalf("expected UNINSTALLED result, got '%s'", r1.Info.Status.String())
-	}
+	require.Equal(t, common.StatusUninstalled, r0.Info.Status)
+	require.Equal(t, common.StatusUninstalled, r1.Info.Status)
 }
 
 func TestFilterAll(t *testing.T) {
@@ -47,14 +43,9 @@ func TestFilterAll(t *testing.T) {
 	})
 
 	ls := All(fn).Filter(releases)
-	if len(ls) != 1 {
-		t.Fatalf("expected 1 result, got '%d'", len(ls))
-	}
+	require.Len(t, ls, 1)
 
-	switch r0 := ls[0]; {
-	case r0.Version == 4:
-		t.Fatal("got release with status revision 4")
-	case r0.Info.Status == common.StatusUninstalled:
-		t.Fatal("got release with status UNINSTALLED")
-	}
+	r0 := ls[0]
+	require.NotEqual(t, 4, r0.Version, "got release with status revision 4")
+	require.NotEqual(t, common.StatusUninstalled, r0.Info.Status, "got release with status UNINSTALLED")
 }

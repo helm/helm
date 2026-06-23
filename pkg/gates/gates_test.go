@@ -18,6 +18,8 @@ package gates
 import (
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const name string = "HELM_EXPERIMENTAL_FEATURE"
@@ -25,31 +27,23 @@ const name string = "HELM_EXPERIMENTAL_FEATURE"
 func TestIsEnabled(t *testing.T) {
 	g := Gate(name)
 
-	if g.IsEnabled() {
-		t.Errorf("feature gate shows as available, but the environment variable %s was not set", name)
-	}
+	assert.False(t, g.IsEnabled(), "feature gate shows as available, but the environment variable %s was not set", name)
 
 	t.Setenv(name, "1")
 
-	if !g.IsEnabled() {
-		t.Errorf("feature gate shows as disabled, but the environment variable %s was set", name)
-	}
+	assert.True(t, g.IsEnabled(), "feature gate shows as disabled, but the environment variable %s was set", name)
 }
 
 func TestError(t *testing.T) {
 	os.Unsetenv(name)
 	g := Gate(name)
 
-	if g.Error().Error() != "this feature has been marked as experimental and is not enabled by default. Please set HELM_EXPERIMENTAL_FEATURE=1 in your environment to use this feature" {
-		t.Errorf("incorrect error message. Received %s", g.Error().Error())
-	}
+	assert.Equal(t, "this feature has been marked as experimental and is not enabled by default. Please set HELM_EXPERIMENTAL_FEATURE=1 in your environment to use this feature", g.Error().Error())
 }
 
 func TestString(t *testing.T) {
 	os.Unsetenv(name)
 	g := Gate(name)
 
-	if g.String() != "HELM_EXPERIMENTAL_FEATURE" {
-		t.Errorf("incorrect string representation. Received %s", g.String())
-	}
+	assert.Equal(t, "HELM_EXPERIMENTAL_FEATURE", g.String())
 }

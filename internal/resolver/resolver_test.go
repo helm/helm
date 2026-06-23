@@ -19,6 +19,9 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/registry"
 )
@@ -149,34 +152,24 @@ func TestResolve(t *testing.T) {
 				if tt.err {
 					return
 				}
-				t.Fatal(err)
+				require.NoError(t, err)
 			}
 
 			if tt.err {
-				t.Fatalf("Expected error in test %q", tt.name)
+				require.Failf(t, "Expected error in test %q", tt.name)
 			}
 
-			if h, err := HashReq(tt.req, tt.expect.Dependencies); err != nil {
-				t.Fatal(err)
-			} else if h != l.Digest {
-				t.Errorf("%q: hashes don't match.", tt.name)
-			}
+			h, err := HashReq(tt.req, tt.expect.Dependencies)
+			require.NoError(t, err)
+			assert.Equal(t, l.Digest, h, "%q: hashes don't match.", tt.name)
 
 			// Check fields.
-			if len(l.Dependencies) != len(tt.req) {
-				t.Errorf("%s: wrong number of dependencies in lock", tt.name)
-			}
+			assert.Len(t, l.Dependencies, len(tt.req), "%s: wrong number of dependencies in lock", tt.name)
 			d0 := l.Dependencies[0]
 			e0 := tt.expect.Dependencies[0]
-			if d0.Name != e0.Name {
-				t.Errorf("%s: expected name %s, got %s", tt.name, e0.Name, d0.Name)
-			}
-			if d0.Repository != e0.Repository {
-				t.Errorf("%s: expected repo %s, got %s", tt.name, e0.Repository, d0.Repository)
-			}
-			if d0.Version != e0.Version {
-				t.Errorf("%s: expected version %s, got %s", tt.name, e0.Version, d0.Version)
-			}
+			assert.Equal(t, e0.Name, d0.Name, tt.name)
+			assert.Equal(t, e0.Repository, d0.Repository, tt.name)
+			assert.Equal(t, e0.Version, d0.Version, tt.name)
 		})
 	}
 }
@@ -231,13 +224,11 @@ func TestHashReq(t *testing.T) {
 				{Name: "alpine", Version: tt.lockVersion, Repository: "http://localhost:8879/charts"},
 			}
 			h, err := HashReq(req, lock)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !tt.wantError && expect != h {
-				t.Errorf("Expected %q, got %q", expect, h)
-			} else if tt.wantError && expect == h {
-				t.Errorf("Expected not %q, but same", expect)
+			require.NoError(t, err)
+			if !tt.wantError {
+				assert.Equal(t, expect, h)
+			} else {
+				assert.NotEqual(t, expect, h, "Expected not %q, but same", expect)
 			}
 		})
 	}
@@ -293,18 +284,16 @@ func TestGetLocalPath(t *testing.T) {
 				if tt.err {
 					return
 				}
-				t.Fatal(err)
+				require.NoError(t, err)
 			}
 			if tt.err {
-				t.Fatalf("Expected error in test %q", tt.name)
+				require.Failf(t, "Expected error in test %q", tt.name)
 			}
 			expect := tt.expect
 			if runtime.GOOS == "windows" {
 				expect = tt.winExpect
 			}
-			if p != expect {
-				t.Errorf("%q: expected %q, got %q", tt.name, expect, p)
-			}
+			assert.Equal(t, expect, p, tt.name)
 		})
 	}
 }

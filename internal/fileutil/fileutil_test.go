@@ -22,6 +22,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestAtomicWriteFile tests the happy path of AtomicWriteFile function.
@@ -35,28 +38,17 @@ func TestAtomicWriteFile(t *testing.T) {
 	mode := os.FileMode(0644)
 
 	err := AtomicWriteFile(testpath, reader, mode)
-	if err != nil {
-		t.Errorf("AtomicWriteFile error: %s", err)
-	}
+	assert.NoError(t, err)
 
 	got, err := os.ReadFile(testpath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if stringContent != string(got) {
-		t.Fatalf("expected: %s, got: %s", stringContent, string(got))
-	}
+	require.Equal(t, stringContent, string(got))
 
 	gotinfo, err := os.Stat(testpath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if mode != gotinfo.Mode() {
-		t.Fatalf("expected %s: to be the same mode as %s",
-			mode, gotinfo.Mode())
-	}
+	require.Equal(t, mode, gotinfo.Mode())
 }
 
 // TestAtomicWriteFile_CreateTempError tests the error path when os.CreateTemp fails
@@ -67,9 +59,7 @@ func TestAtomicWriteFile_CreateTempError(t *testing.T) {
 	mode := os.FileMode(0644)
 
 	err := AtomicWriteFile(invalidPath, reader, mode)
-	if err == nil {
-		t.Error("Expected error when CreateTemp fails, but got nil")
-	}
+	assert.Error(t, err, "Expected error when CreateTemp fails")
 }
 
 // TestAtomicWriteFile_EmptyContent tests with empty content
@@ -81,18 +71,12 @@ func TestAtomicWriteFile_EmptyContent(t *testing.T) {
 	mode := os.FileMode(0644)
 
 	err := AtomicWriteFile(testpath, reader, mode)
-	if err != nil {
-		t.Errorf("AtomicWriteFile error with empty content: %s", err)
-	}
+	assert.NoError(t, err, "AtomicWriteFile error with empty content")
 
 	got, err := os.ReadFile(testpath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if len(got) != 0 {
-		t.Fatalf("expected empty content, got: %s", string(got))
-	}
+	require.Empty(t, got)
 }
 
 // TestAtomicWriteFile_LargeContent tests with large content
@@ -106,18 +90,12 @@ func TestAtomicWriteFile_LargeContent(t *testing.T) {
 	mode := os.FileMode(0644)
 
 	err := AtomicWriteFile(testpath, reader, mode)
-	if err != nil {
-		t.Errorf("AtomicWriteFile error with large content: %s", err)
-	}
+	assert.NoError(t, err, "AtomicWriteFile error with large content")
 
 	got, err := os.ReadFile(testpath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if largeContent != string(got) {
-		t.Fatalf("expected large content to match, got different length: %d vs %d", len(largeContent), len(got))
-	}
+	require.Equal(t, largeContent, string(got))
 }
 
 // TestPlatformAtomicWriteFile_OverwritesExisting verifies that the platform
@@ -127,21 +105,13 @@ func TestPlatformAtomicWriteFile_OverwritesExisting(t *testing.T) {
 	path := filepath.Join(dir, "overwrite_test")
 
 	first := bytes.NewReader([]byte("first"))
-	if err := PlatformAtomicWriteFile(path, first, 0644); err != nil {
-		t.Fatalf("first write failed: %v", err)
-	}
+	require.NoError(t, PlatformAtomicWriteFile(path, first, 0644), "first write failed")
 
 	second := bytes.NewReader([]byte("second"))
-	if err := PlatformAtomicWriteFile(path, second, 0644); err != nil {
-		t.Fatalf("second write failed: %v", err)
-	}
+	require.NoError(t, PlatformAtomicWriteFile(path, second, 0644), "second write failed")
 
 	contents, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("failed reading result: %v", err)
-	}
+	require.NoError(t, err, "failed reading result")
 
-	if string(contents) != "second" {
-		t.Fatalf("expected file to be overwritten, got %q", string(contents))
-	}
+	require.Equal(t, "second", string(contents))
 }
