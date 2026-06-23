@@ -47,6 +47,11 @@ type Dependency struct {
 	ImportValues []any `json:"import-values,omitempty" yaml:"import-values,omitempty"`
 	// Alias usable alias to be used for the chart
 	Alias string `json:"alias,omitempty" yaml:"alias,omitempty"`
+	// Digest is the SHA256 hash of the dependency chart archive (sha256:...).
+	//
+	// This field is populated in Chart.lock to record the exact tarball bytes
+	// that were downloaded. It is omitted from Chart.yaml dependency entries.
+	Digest string `json:"digest,omitempty" yaml:"digest,omitempty"`
 }
 
 // Validate checks for common problems with the dependency datastructure in
@@ -75,7 +80,10 @@ func (d *Dependency) Validate() error {
 type Lock struct {
 	// Generated is the date the lock file was last generated.
 	Generated time.Time `json:"generated"`
-	// Digest is a hash of the dependencies in Chart.yaml.
+	// Digest is a hash of Chart.yaml dependency constraints and the resolved
+	// lock metadata (name, version, repository). It detects drift between
+	// Chart.yaml and Chart.lock. Per-dependency tarball content is tracked
+	// separately via Dependency.Digest.
 	Digest string `json:"digest"`
 	// Dependencies is the list of dependencies that this lock file has locked.
 	Dependencies []*Dependency `json:"dependencies"`
