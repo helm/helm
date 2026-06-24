@@ -33,6 +33,7 @@ import (
 	"github.com/fluxcd/cli-utils/pkg/kstatus/watcher"
 	"github.com/fluxcd/cli-utils/pkg/object"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
@@ -140,6 +141,14 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 	defer cancel()
 	resources := []object.ObjMetadata{}
 	for _, resource := range resourceList {
+		if err := resource.Get(); err != nil {
+			if apierrors.IsNotFound(err) {
+				w.Logger().Debug("waitForDelete: resource was already deleted", "namespace", resource.Namespace, "name", resource.Name)
+				continue
+			} else {
+				return err
+			}
+		}
 		obj, err := object.RuntimeToObjMeta(resource.Object)
 		if err != nil {
 			return err
