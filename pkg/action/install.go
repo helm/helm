@@ -449,7 +449,7 @@ func (i *Install) RunWithContext(ctx context.Context, ch ci.Charter, vals map[st
 
 		if _, err := i.cfg.KubeClient.Create(
 			resourceList,
-			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false)); err != nil && !apierrors.IsAlreadyExists(err) {
+			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts)); err != nil && !apierrors.IsAlreadyExists(err) {
 			return nil, err
 		}
 	}
@@ -507,7 +507,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	var err error
 	// pre-install hooks
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPreInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply, i.ForceConflicts); err != nil {
 			return rel, fmt.Errorf("failed pre-install: %w", err)
 		}
 	}
@@ -518,7 +518,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	if len(toBeAdopted) == 0 && len(resources) > 0 {
 		_, err = i.cfg.KubeClient.Create(
 			resources,
-			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, false))
+			kube.ClientCreateOptionServerSideApply(i.ServerSideApply, i.ForceConflicts))
 	} else if len(resources) > 0 {
 		updateThreeWayMergeForUnstructured := i.TakeOwnership && !i.ServerSideApply // Use three-way merge when taking ownership (and not using server-side apply)
 		_, err = i.cfg.KubeClient.Update(
@@ -553,7 +553,7 @@ func (i *Install) performInstall(rel *release.Release, toBeAdopted kube.Resource
 	}
 
 	if !i.DisableHooks {
-		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply); err != nil {
+		if err := i.cfg.execHook(rel, release.HookPostInstall, i.WaitStrategy, i.WaitOptions, i.Timeout, i.ServerSideApply, i.ForceConflicts); err != nil {
 			return rel, fmt.Errorf("failed post-install: %w", err)
 		}
 	}

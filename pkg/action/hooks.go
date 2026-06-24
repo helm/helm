@@ -34,8 +34,8 @@ import (
 // execHook executes all of the hooks for the given hook event.
 func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent,
 	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption,
-	timeout time.Duration, serverSideApply bool) error {
-	shutdown, err := cfg.execHookWithDelayedShutdown(rl, hook, waitStrategy, waitOptions, timeout, serverSideApply)
+	timeout time.Duration, serverSideApply bool, forceConflicts bool) error {
+	shutdown, err := cfg.execHookWithDelayedShutdown(rl, hook, waitStrategy, waitOptions, timeout, serverSideApply, forceConflicts)
 	if shutdown == nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func shutdownNoOp() error {
 // execHookWithDelayedShutdown executes all of the hooks for the given hook event and returns a shutdownHook function to trigger deletions after doing other things like e.g. retrieving logs.
 func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook release.HookEvent,
 	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption, timeout time.Duration,
-	serverSideApply bool) (ExecuteShutdownFunc, error) {
+	serverSideApply bool, forceConflicts bool) (ExecuteShutdownFunc, error) {
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
@@ -99,7 +99,7 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 		// Create hook resources
 		if _, err := cfg.KubeClient.Create(
 			resources,
-			kube.ClientCreateOptionServerSideApply(serverSideApply, false)); err != nil {
+			kube.ClientCreateOptionServerSideApply(serverSideApply, forceConflicts)); err != nil {
 			h.LastRun.CompletedAt = time.Now()
 			h.LastRun.Phase = release.HookPhaseFailed
 			return shutdownNoOp, fmt.Errorf("warning: Hook %s %s failed: %w", hook, h.Path, err)
