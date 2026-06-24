@@ -167,11 +167,36 @@ func processParent(cmd *cobra.Command, args []string) ([]string, error) {
 // manuallyProcessArgs processes an arg array, removing special args.
 //
 // Returns two sets of args: known and unknown (in that order)
+// Known args are flags that are consumed by the root `helm` command
+// Unknown args are any args that will not be consumed by helm, and that may be
+// processed by the plugin
+// The single exception is -h or --help, which is passed to the plugin regardless
 func manuallyProcessArgs(args []string) ([]string, []string) {
 	known := []string{}
 	unknown := []string{}
-	kvargs := []string{"--kube-context", "--namespace", "-n", "--kubeconfig", "--kube-apiserver", "--kube-token", "--kube-as-user", "--kube-as-group", "--kube-ca-file", "--registry-config", "--repository-cache", "--repository-config", "--kube-insecure-skip-tls-verify", "--kube-tls-server-name"}
-	knownArg := func(a string) bool {
+	boolArgs := []string{
+		"--debug",
+		"--kube-insecure-skip-tls-verify",
+	}
+	kvargs := []string{
+		"--burst-limit",
+		"--kube-apiserver",
+		"--kube-as-group",
+		"--kube-as-user",
+		"--kube-ca-file",
+		"--kube-context",
+		"--kube-tls-server-name",
+		"--kube-token",
+		"--kubeconfig",
+		"--namespace", "-n",
+		"--qps",
+		"--registry-config",
+		"--repository-cache",
+		"--repository-config"}
+	kvargs = append(kvargs, boolArgs...) // boolean args can also be kv i.e. `--debug=true`
+
+	// detects args with 'arg=val' syntax
+	isKnownKvWithEquals := func(a string) bool {
 		for _, pre := range kvargs {
 			if strings.HasPrefix(a, pre+"=") {
 				return true
@@ -179,29 +204,50 @@ func manuallyProcessArgs(args []string) ([]string, []string) {
 		}
 		return false
 	}
-
-	isKnown := func(v string) string {
-		if slices.Contains(kvargs, v) {
-			return v
+	// detects standalone boolean flags
+	isKnownBoolean := func(v string) bool {
+		return slices.Contains(boolArgs, v)
+	}
+	// detects boolean flags where the next arg can be parsed to boolean
+	isKnownBooleanWithNextValue := func(args []string, i int) bool {
+		if len(args)-i < 2 { // must be at least 2 args remaining
+			return false
 		}
-		return ""
+		a := args[i]
+		for _, known := range boolArgs {
+			if known == a {
+				possibleBool := args[i+1] // safe - checked that at least 2 args left in slice
+				_, err := strconv.ParseBool(possibleBool)
+				if err == nil {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	isKnownKv := func(v string) bool {
+		return slices.Contains(kvargs, v)
 	}
 
 	for i := 0; i < len(args); i++ {
-		switch a := args[i]; a {
-		case "--debug":
+		a := args[i]
+		if isKnownKvWithEquals(a) { // is it an argument using `arg=val` syntax?
 			known = append(known, a)
-		case isKnown(a):
+		} else if isKnownBooleanWithNextValue(args, i) { // is it a boolean flag using `--boolFlag true` syntax?
 			known = append(known, a)
 			i++
 			if i < len(args) {
 				known = append(known, args[i])
 			}
-		default:
-			if knownArg(a) {
-				known = append(known, a)
-				continue
+		} else if isKnownBoolean(a) { // is it a known boolean flag by itself? i.e. `--boolFlag`
+			known = append(known, a)
+		} else if isKnownKv(a) {
+			known = append(known, a) // is it a known kv flag?
+			i++
+			if i < len(args) {
+				known = append(known, args[i])
 			}
+		} else {
 			unknown = append(unknown, a)
 		}
 	}
