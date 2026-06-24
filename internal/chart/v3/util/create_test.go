@@ -52,6 +52,7 @@ func TestCreate(t *testing.T) {
 		IgnorefileName,
 		NotesName,
 		ServiceAccountName,
+		ServiceAccountTokenName,
 		ServiceName,
 		TemplatesDir,
 		TemplatesTestsDir,
