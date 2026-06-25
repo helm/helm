@@ -90,6 +90,56 @@ func TestLoadDirWithSymlink(t *testing.T) {
 	verifyDependenciesLock(t, c)
 }
 
+func TestLoadDirWithBrokenSymlinkInHelmignore(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink tests require unix")
+	}
+
+	tmpDir := t.TempDir()
+
+	// Create minimal chart structure
+	chartYAML := `apiVersion: v2
+name: test
+version: 0.1.0
+`
+	valuesYAML := `{}
+`
+	tpl := `config: {}
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "Chart.yaml"), []byte(chartYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "values.yaml"), []byte(valuesYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmpDir, "templates"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "templates", "config.yaml"), []byte(tpl), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a broken symlink in templates/
+	brokenLink := filepath.Join(tmpDir, "templates", "broken")
+	if err := os.Symlink("nonexistent", brokenLink); err != nil {
+		t.Fatal(err)
+	}
+
+	// Add the broken symlink to .helmignore
+	if err := os.WriteFile(filepath.Join(tmpDir, ".helmignore"), []byte("templates/broken\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Loading should succeed despite the broken symlink
+	l, err := Loader(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := l.Load(); err != nil {
+		t.Fatalf("loading chart with broken symlink in .helmignore should not fail: %s", err)
+	}
+}
+
 func TestBomTestData(t *testing.T) {
 	testFiles := []string{"frobnitz_with_bom/.helmignore", "frobnitz_with_bom/templates/template.tpl", "frobnitz_with_bom/Chart.yaml"}
 	for _, file := range testFiles {
