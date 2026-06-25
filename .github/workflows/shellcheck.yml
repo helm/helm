@@ -1,0 +1,37 @@
+name: ShellCheck
+
+on:
+  push:
+    branches:
+      - "main"
+      - "dev-v3"
+      - "release-**"
+  pull_request:
+    branches:
+      - "main"
+      - "dev-v3"
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+
+      - name: Run shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          find . -type f -name "*.sh" \
+            ! -path "./internal/chart/v3/loader/testdata/*" \
+            ! -path "./internal/chart/v2/loader/testdata/*" \
+            ! -path "./pkg/chart/v2/loader/testdata/*" \
+            ! -path "./pkg/cmd/testdata/*" \
+            ! -path "./pkg/postrenderer/testdata/*" \
+            ! -path "./.git/*" \
+            ! -path "./node_modules/*" \
+            -exec shellcheck {} +
