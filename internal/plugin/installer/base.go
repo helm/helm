@@ -41,5 +41,11 @@ func (b *base) Path() string {
 	if b.Source == "" {
 		return ""
 	}
-	return filepath.Join(b.PluginsDirectory, filepath.Base(b.Source))
+
+	pluginsDirectory := b.PluginsDirectory
+	if pluginsDirectories := filepath.SplitList(b.PluginsDirectory); len(pluginsDirectories) > 0 {
+		pluginsDirectory = pluginsDirectories[0]
+	}
+
+	return filepath.Join(pluginsDirectory, filepath.Base(b.Source))
 }
