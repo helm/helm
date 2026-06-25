@@ -46,7 +46,7 @@ type Release struct {
 	// Namespace is the kubernetes namespace of the release.
 	Namespace string `json:"namespace,omitempty"`
 	// Labels of the release.
-	// Disabled encoding into Json cause labels are stored in storage driver metadata field.
+	// Disabled encoding into JSON because labels are stored in storage driver metadata field.
 	Labels map[string]string `json:"-"`
 	// ApplyMethod stores whether server-side or client-side apply was used for the release
 	// Unset (empty string) should be treated as the default of client-side apply

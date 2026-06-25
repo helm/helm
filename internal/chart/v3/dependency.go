@@ -24,7 +24,7 @@ import "time"
 type Dependency struct {
 	// Name is the name of the dependency.
 	//
-	// This must mach the name in the dependency's Chart.yaml.
+	// This must match the name in the dependency's Chart.yaml.
 	Name string `json:"name" yaml:"name"`
 	// Version is the version (range) of this chart.
 	//
