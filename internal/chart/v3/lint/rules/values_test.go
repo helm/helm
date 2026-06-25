@@ -66,8 +66,7 @@ func TestValidateValuesFileWellFormed(t *testing.T) {
 	not:well[]{}formed
 	`
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(badYaml))
-	valfile := filepath.Join(tmpdir, "values.yaml")
-	if err := validateValuesFile(valfile, map[string]any{}, false); err == nil {
+	if err := validateValuesFile(tmpdir, map[string]any{}, false); err == nil {
 		t.Fatal("expected values file to fail parsing")
 	}
 }
@@ -77,8 +76,7 @@ func TestValidateValuesFileSchema(t *testing.T) {
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
 	createTestingSchema(t, tmpdir)
 
-	valfile := filepath.Join(tmpdir, "values.yaml")
-	if err := validateValuesFile(valfile, map[string]any{}, false); err != nil {
+	if err := validateValuesFile(tmpdir, map[string]any{}, false); err != nil {
 		t.Fatalf("Failed validation with %s", err)
 	}
 }
@@ -89,9 +87,7 @@ func TestValidateValuesFileSchemaFailure(t *testing.T) {
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
 	createTestingSchema(t, tmpdir)
 
-	valfile := filepath.Join(tmpdir, "values.yaml")
-
-	err := validateValuesFile(valfile, map[string]any{}, false)
+	err := validateValuesFile(tmpdir, map[string]any{}, false)
 	if err == nil {
 		t.Fatal("expected values file to fail parsing")
 	}
@@ -105,9 +101,7 @@ func TestValidateValuesFileSchemaFailureButWithSkipSchemaValidation(t *testing.T
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
 	createTestingSchema(t, tmpdir)
 
-	valfile := filepath.Join(tmpdir, "values.yaml")
-
-	err := validateValuesFile(valfile, map[string]any{}, true)
+	err := validateValuesFile(tmpdir, map[string]any{}, true)
 	if err != nil {
 		t.Fatal("expected values file to pass parsing because of skipSchemaValidation")
 	}
@@ -121,8 +115,7 @@ func TestValidateValuesFileSchemaOverrides(t *testing.T) {
 	tmpdir := ensure.TempFile(t, "values.yaml", []byte(yaml))
 	createTestingSchema(t, tmpdir)
 
-	valfile := filepath.Join(tmpdir, "values.yaml")
-	if err := validateValuesFile(valfile, overrides, false); err != nil {
+	if err := validateValuesFile(tmpdir, overrides, false); err != nil {
 		t.Fatalf("Failed validation with %s", err)
 	}
 }
@@ -157,9 +150,7 @@ func TestValidateValuesFile(t *testing.T) {
 			tmpdir := ensure.TempFile(t, "values.yaml", []byte(tt.yaml))
 			createTestingSchema(t, tmpdir)
 
-			valfile := filepath.Join(tmpdir, "values.yaml")
-
-			err := validateValuesFile(valfile, tt.overrides, false)
+			err := validateValuesFile(tmpdir, tt.overrides, false)
 
 			switch {
 			case err != nil && tt.errorMessage == "":

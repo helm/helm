@@ -42,7 +42,7 @@ func ValuesWithOverrides(linter *support.Linter, valueOverrides map[string]any, 
 		return
 	}
 
-	linter.RunLinterRule(support.ErrorSev, file, validateValuesFile(vf, valueOverrides, skipSchemaValidation))
+	linter.RunLinterRule(support.ErrorSev, file, validateValuesFile(linter.ChartDir, valueOverrides, skipSchemaValidation))
 }
 
 func validateValuesFileExistence(valuesPath string) error {
@@ -53,7 +53,10 @@ func validateValuesFileExistence(valuesPath string) error {
 	return nil
 }
 
-func validateValuesFile(valuesPath string, overrides map[string]any, skipSchemaValidation bool) error {
+func validateValuesFile(chartDir string, overrides map[string]any, skipSchemaValidation bool) error {
+	valuesPath := filepath.Join(chartDir, "values.yaml")
+	schemaPath := filepath.Join(chartDir, "values.schema.json")
+
 	values, err := common.ReadValuesFile(valuesPath)
 	if err != nil {
 		return fmt.Errorf("unable to parse YAML: %w", err)
@@ -67,8 +70,6 @@ func validateValuesFile(valuesPath string, overrides map[string]any, skipSchemaV
 	coalescedValues := util.CoalesceTables(make(map[string]any, len(overrides)), overrides)
 	coalescedValues = util.CoalesceTables(coalescedValues, values)
 
-	ext := filepath.Ext(valuesPath)
-	schemaPath := valuesPath[:len(valuesPath)-len(ext)] + ".schema.json"
 	schema, err := os.ReadFile(schemaPath)
 	if len(schema) == 0 {
 		return nil
@@ -78,7 +79,7 @@ func validateValuesFile(valuesPath string, overrides map[string]any, skipSchemaV
 	}
 
 	if !skipSchemaValidation {
-		return util.ValidateAgainstSingleSchema(coalescedValues, schema)
+		return util.ValidateAgainstSingleSchemaWithPath(coalescedValues, schema, schemaPath)
 	}
 
 	return nil

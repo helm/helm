@@ -1,0 +1,3 @@
+appConfig:
+  config: "production"
+replicas: 3
