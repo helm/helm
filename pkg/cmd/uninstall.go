@@ -81,6 +81,7 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.DeletionPropagation, "cascade", "background", "Must be \"background\", \"orphan\", or \"foreground\". Selects the deletion cascading strategy for the dependents. Defaults to background. Use \"foreground\" with --wait to ensure resources with finalizers are fully deleted before returning.")
 	f.DurationVar(&client.Timeout, "timeout", 300*time.Second, "time to wait for any individual Kubernetes operation (like Jobs for hooks)")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
+	f.StringVar(&client.ServerSideApply, "server-side", "auto", "must be \"true\", \"false\" or \"auto\". If \"auto\", hooks will use the same server-side apply method as the release was installed with. Set to \"false\" to force client-side apply for pre-delete and post-delete hooks.")
 	AddWaitFlag(cmd, &client.WaitStrategy)
 
 	return cmd
