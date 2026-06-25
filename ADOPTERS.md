@@ -8,6 +8,7 @@
 - [IBM](https://www.ibm.com)  
 - [InfoCert](https://www.infocert.it/)  
 - [Intercept](https://Intercept.cloud)  
+- [Jefferyq](https://jefferyq.com)  
 - [Microsoft](https://microsoft.com)  
 - [New Relic](https://www.newrelic.com)  
 - [Octopus Deploy](https://octopus.com/)  
