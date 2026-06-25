@@ -98,7 +98,7 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 	f.StringVar(&o.version, "version", "", "search using semantic versioning constraints on repositories you have added")
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
 	f.BoolVar(&o.failOnNoResult, "fail-on-no-result", false, "search fails if no results are found")
-	f.BoolVar(&o.withTimeStamps, "with-timestamps", false, "print created timestamps on output table")
+	f.BoolVar(&o.withCreatedTimeStamp, "with-created-timestamp", false, "print created timestamp on output table")
 
 	bindOutputFlag(cmd, &o.outputFormat)
 
