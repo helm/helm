@@ -33,7 +33,9 @@ import (
 	"github.com/fluxcd/cli-utils/pkg/kstatus/watcher"
 	"github.com/fluxcd/cli-utils/pkg/object"
 	appsv1 "k8s.io/api/apps/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
 	watchtools "k8s.io/client-go/tools/watch"
@@ -144,7 +146,14 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		if err != nil {
 			return err
 		}
+		if w.isResourceGone(ctx, obj) {
+			w.Logger().Debug("resource already deleted", "kind", obj.GroupKind.Kind, "namespace", obj.Namespace, "name", obj.Name)
+			continue
+		}
 		resources = append(resources, obj)
+	}
+	if len(resources) == 0 {
+		return nil
 	}
 	eventCh := sw.Watch(cancelCtx, resources, watcher.Options{
 		RESTScopeStrategy: watcher.RESTScopeNamespace,
@@ -173,6 +182,21 @@ func (w *statusWaiter) waitForDelete(ctx context.Context, resourceList ResourceL
 		return errors.Join(errs...)
 	}
 	return nil
+}
+
+// isResourceGone reports whether the resource is already absent from the cluster.
+// The watcher only reports NotFound from an observed delete event, so an
+// already-deleted resource would otherwise be waited on until the timeout.
+func (w *statusWaiter) isResourceGone(ctx context.Context, id object.ObjMetadata) bool {
+	mapping, err := w.restMapper.RESTMapping(id.GroupKind)
+	if err != nil {
+		return false
+	}
+	_, err = w.client.Resource(mapping.Resource).Namespace(id.Namespace).Get(ctx, id.Name, metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		w.Logger().Debug("could not check whether resource is deleted, will wait on it", "kind", id.GroupKind.Kind, "namespace", id.Namespace, "name", id.Name, "error", err)
+	}
+	return apierrors.IsNotFound(err)
 }
 
 func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw watcher.StatusWatcher) error {
@@ -242,11 +266,6 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 		var nonDesiredResources []*event.ResourceStatus
 		for _, rs := range statusCollector.ResourceStatuses {
 			if rs == nil {
-				continue
-			}
-			// If a resource is already deleted before waiting has started, it will show as unknown.
-			// This check ensures we don't wait forever for a resource that is already deleted.
-			if rs.Status == status.UnknownStatus && desired == status.NotFoundStatus {
 				continue
 			}
 			// Failed is a terminal state. This check ensures we don't wait forever for a resource
