@@ -238,7 +238,7 @@ func extractTar(r io.Reader, targetDir string) error {
 				return err
 			}
 
-			outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			outFile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, sanitizeArchiveMode(header.Mode))
 			if err != nil {
 				return err
 			}
