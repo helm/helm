@@ -171,7 +171,7 @@ func EnsureArchive(name string, raw *os.File) error {
 	// Check the file format to give us a chance to provide the user with more actionable feedback.
 	buffer := make([]byte, 512)
 	_, err := raw.Read(buffer)
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Errorf("file '%s' cannot be read: %w", name, err)
 	}
 
