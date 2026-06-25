@@ -16,9 +16,11 @@ limitations under the License.
 package plugin
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -83,4 +85,46 @@ func TestSubprocessPluginRuntime(t *testing.T) {
 	assert.Equal(t, 56, ieerr.ExitCode)
 
 	assert.Nil(t, output)
+}
+
+func TestHelperProcess(t *testing.T) {
+	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+		return
+	}
+	fmt.Fprint(os.Stderr, "plugin error\n")
+	os.Exit(1)
+}
+
+func helperStderrCmd(t *testing.T) *exec.Cmd {
+	t.Helper()
+	cmd := exec.Command(os.Args[0], "-test.run=TestHelperProcess", "--")
+	cmd.Env = append(os.Environ(), "GO_WANT_HELPER_PROCESS=1")
+	return cmd
+}
+
+func TestExecuteCmdCapturesStderr(t *testing.T) {
+	cmd := helperStderrCmd(t)
+	err := executeCmd(cmd, "test-plugin")
+
+	require.Error(t, err)
+	var ieerr *InvokeExecError
+	require.ErrorAs(t, err, &ieerr)
+	assert.Equal(t, 1, ieerr.ExitCode)
+	assert.Equal(t, []byte("plugin error"), ieerr.Stderr)
+	assert.Equal(t, `plugin "test-plugin" exited with error: "plugin error"`, ieerr.Error())
+}
+
+func TestExecuteCmdTeesStderr(t *testing.T) {
+	var existing bytes.Buffer
+	cmd := helperStderrCmd(t)
+	cmd.Stderr = &existing
+
+	err := executeCmd(cmd, "test-plugin")
+
+	require.Error(t, err)
+	var ieerr *InvokeExecError
+	require.ErrorAs(t, err, &ieerr)
+	assert.Equal(t, 1, ieerr.ExitCode)
+	assert.Equal(t, []byte("plugin error"), ieerr.Stderr)
+	assert.Equal(t, "plugin error\n", existing.String())
 }
