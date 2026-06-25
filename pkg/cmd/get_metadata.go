@@ -94,6 +94,9 @@ func (w metadataWriter) WriteTable(out io.Writer) error {
 	_, _ = fmt.Fprintf(out, "CHART: %v\n", w.metadata.Chart)
 	_, _ = fmt.Fprintf(out, "VERSION: %v\n", w.metadata.Version)
 	_, _ = fmt.Fprintf(out, "APP_VERSION: %v\n", w.metadata.AppVersion)
+	if w.metadata.Source != "" {
+		_, _ = fmt.Fprintf(out, "SOURCE: %v\n", w.metadata.Source)
+	}
 	_, _ = fmt.Fprintf(out, "ANNOTATIONS: %v\n", k8sLabels.Set(w.metadata.Annotations).String())
 	_, _ = fmt.Fprintf(out, "LABELS: %v\n", k8sLabels.Set(w.metadata.Labels).String())
 	_, _ = fmt.Fprintf(out, "DEPENDENCIES: %v\n", w.metadata.FormattedDepNames())
