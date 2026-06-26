@@ -66,6 +66,9 @@ func (d *Dependency) Validate() error {
 	for i := range d.Tags {
 		d.Tags[i] = sanitizeString(d.Tags[i])
 	}
+	for i := range d.DependsOn {
+		d.DependsOn[i] = sanitizeString(d.DependsOn[i])
+	}
 	if d.Alias != "" && !aliasNameFormat.MatchString(d.Alias) {
 		return ValidationErrorf("dependency %q has disallowed characters in the alias", d.Name)
 	}
