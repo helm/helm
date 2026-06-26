@@ -267,6 +267,7 @@ func newRootCmdWithConfig(actionConfig *action.Configuration, out io.Writer, arg
 	cmd.AddCommand(
 		// chart commands
 		newCreateCmd(out),
+		newDagCmd(actionConfig, out),
 		newDependencyCmd(actionConfig, out),
 		newPullCmd(actionConfig, out),
 		newShowCmd(actionConfig, out),
