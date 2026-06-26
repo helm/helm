@@ -207,11 +207,15 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 	errs := []error{}
 	for _, id := range resources {
 		rs := statusCollector.ResourceStatuses[id]
-		if rs.Status == status.CurrentStatus {
+		reportedStatus := rs.Status
+		if reportedStatus == status.CurrentStatus && customResourceStatusPending(rs.Resource) {
+			reportedStatus = status.InProgressStatus
+		}
+		if reportedStatus == status.CurrentStatus {
 			continue
 		}
 		errs = append(errs, fmt.Errorf("resource %s/%s/%s not ready. status: %s, message: %s",
-			rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, rs.Status, rs.Message))
+			rs.Identifier.GroupKind.Kind, rs.Identifier.Namespace, rs.Identifier.Name, reportedStatus, rs.Message))
 	}
 	if err := ctx.Err(); err != nil {
 		errs = append(errs, err)
@@ -254,6 +258,15 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			if rs.Status == status.FailedStatus && desired == status.CurrentStatus {
 				continue
 			}
+			// A freshly created custom resource whose controller has not yet observed
+			// it has an empty status, which kstatus reports as Current. Treat such a
+			// resource as still in progress so we keep waiting until its controller has
+			// reconciled it. See https://github.com/helm/helm/issues/32066.
+			if desired == status.CurrentStatus && rs.Status == status.CurrentStatus && customResourceStatusPending(rs.Resource) {
+				rsCopy := *rs
+				rsCopy.Status = status.InProgressStatus
+				rs = &rsCopy
+			}
 			rss = append(rss, rs)
 			if rs.Status != desired {
 				nonDesiredResources = append(nonDesiredResources, rs)
@@ -275,6 +288,44 @@ func statusObserver(cancel context.CancelFunc, desired status.Status, logger *sl
 			logger.Debug("waiting for resource", "namespace", first.Identifier.Namespace, "name", first.Identifier.Name, "kind", first.Identifier.GroupKind.Kind, "expectedStatus", desired, "actualStatus", first.Status)
 		}
 	}
+}
+
+// customResourceStatusPending reports whether u is a freshly created custom
+// resource whose controller has not yet written any status. kstatus reports
+// such a resource as Current because its .status is still empty, which can
+// cause Helm to stop waiting before the controller has reconciled the resource
+// (helm/helm#32066). We only return true when there is positive evidence that a
+// controller is expected to populate status:
+//   - The resource is not one of the built-in types kstatus already understands.
+//   - metadata.generation is non-zero (the API server tracks the spec
+//     generation for the object).
+//   - The .status object is still effectively empty (the controller has not
+//     written anything to it yet).
+//
+// As soon as the controller writes any status we defer to the normal kstatus
+// computation, so a resource is never blocked forever on account of this
+// heuristic.
+func customResourceStatusPending(u *unstructured.Unstructured) bool {
+	if u == nil {
+		return false
+	}
+	if status.GetLegacyConditionsFn(u) != nil {
+		return false
+	}
+	generation, found, err := unstructured.NestedInt64(u.Object, "metadata", "generation")
+	if err != nil || !found || generation == 0 {
+		return false
+	}
+	// If the controller has written anything to .status, defer to the normal
+	// kstatus computation rather than overriding its result.
+	statusMap, found, err := unstructured.NestedMap(u.Object, "status")
+	if err != nil {
+		return false
+	}
+	if found && len(statusMap) > 0 {
+		return false
+	}
+	return true
 }
 
 type hookOnlyWaiter struct {
