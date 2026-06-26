@@ -21,6 +21,7 @@ import (
 	"io"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 
@@ -66,6 +67,11 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.Version = ver
 			}
 
+			// Validate description length
+			if descLen := utf8.RuneCountInString(client.Description); descLen > action.MaxDescriptionLength {
+				return fmt.Errorf("description must be %d characters or less, got %d", action.MaxDescriptionLength, descLen)
+			}
+
 			dryRunStrategy, err := cmdGetDryRunFlagStrategy(cmd, false)
 			if err != nil {
 				return err
@@ -82,6 +88,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	}
 
 	f := cmd.Flags()
+	f.StringVar(&client.Description, "description", "", fmt.Sprintf("add a custom description for the rollback (max %d characters)", action.MaxDescriptionLength))
 	f.BoolVar(&client.ForceReplace, "force-replace", false, "force resource updates by replacement")
 	f.BoolVar(&client.ForceReplace, "force", false, "deprecated")
 	f.MarkDeprecated("force", "use --force-replace instead")
