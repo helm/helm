@@ -574,6 +574,95 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+func TestUpdateOwnershipCheck(t *testing.T) {
+	// Verify that resources owned by a different release are skipped during deletion.
+	// "keep" is in originals but not in targets; it is annotated as owned by "other-release".
+	// "squid" is in originals but not in targets, and has no ownership annotations — it must be deleted.
+	const (
+		currentRelease   = "my-release"
+		currentNamespace = "my-ns"
+		differentRelease = "other-release"
+		differentNS      = "other-ns"
+	)
+
+	keepPod := v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "keep",
+			Namespace: v1.NamespaceDefault,
+			SelfLink:  "/api/v1/namespaces/default/pods/keep",
+			Annotations: map[string]string{
+				ReleaseNameAnnotation:      differentRelease,
+				ReleaseNamespaceAnnotation: differentNS,
+			},
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{{
+				Name:  "app:v4",
+				Image: "abc/app:v4",
+				Ports: []v1.ContainerPort{{Name: "http", ContainerPort: 80}},
+			}},
+		},
+	}
+
+	originalPods := newPodList("starfish", "squid")
+	originalPods.Items = append(originalPods.Items, keepPod)
+	targetPods := newPodList("starfish")
+
+	cb := func(_ []RequestResponseAction, req *http.Request) (*http.Response, error) {
+		p, m := req.URL.Path, req.Method
+		switch {
+		case p == "/namespaces/default/pods/starfish" && m == http.MethodGet:
+			return newResponse(http.StatusOK, &originalPods.Items[0])
+		case p == "/namespaces/default/pods/starfish" && m == http.MethodPatch:
+			return newResponse(http.StatusOK, &targetPods.Items[0])
+		case p == "/namespaces/default/pods/squid" && m == http.MethodGet:
+			return newResponse(http.StatusOK, &originalPods.Items[1])
+		case p == "/namespaces/default/pods/squid" && m == http.MethodDelete:
+			return newResponse(http.StatusOK, &originalPods.Items[1])
+		case p == "/namespaces/default/pods/keep" && m == http.MethodGet:
+			return newResponse(http.StatusOK, &keepPod)
+		case p == "/namespaces/default/pods/keep" && m == http.MethodDelete:
+			t.Errorf("DELETE called on resource owned by different release")
+			return newResponse(http.StatusOK, &keepPod)
+		}
+		t.Logf("Unhandled request: %s %s", m, p)
+		t.FailNow()
+		return nil, nil
+	}
+
+	c := newTestClient(t)
+	client := NewRequestResponseLogClient(t, cb)
+	c.Factory.(*cmdtesting.TestFactory).UnstructuredClient = &fake.RESTClient{
+		NegotiatedSerializer: unstructuredSerializer,
+		Client:               fake.CreateHTTPClient(client.Do),
+	}
+
+	originals, err := c.Build(objBody(&originalPods), false)
+	require.NoError(t, err)
+
+	targets, err := c.Build(objBody(&targetPods), false)
+	require.NoError(t, err)
+
+	result, err := c.Update(
+		originals,
+		targets,
+		ClientUpdateOptionServerSideApply(true, false),
+		ClientUpdateOptionOwnership(currentRelease, currentNamespace),
+	)
+	require.NoError(t, err)
+
+	// "squid" should be deleted; "keep" (owned by other-release) should not
+	assert.Len(t, result.Deleted, 1, "expected 1 resource deleted (squid), got %d", len(result.Deleted))
+	assert.Equal(t, "squid", result.Deleted[0].Name)
+
+	// Verify DELETE was never called for "keep"
+	for _, action := range client.Actions {
+		if action.Request.URL.Path == "/namespaces/default/pods/keep" {
+			assert.NotEqual(t, http.MethodDelete, action.Request.Method, "DELETE should not be called for resource owned by a different release")
+		}
+	}
+}
+
 func TestBuild(t *testing.T) {
 	tests := []struct {
 		name      string
