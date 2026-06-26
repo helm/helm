@@ -34,6 +34,7 @@ import (
 	"helm.sh/helm/v4/pkg/cli/output"
 	"helm.sh/helm/v4/pkg/cmd/search"
 	"helm.sh/helm/v4/pkg/helmpath"
+	"helm.sh/helm/v4/pkg/registry"
 	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
@@ -42,9 +43,16 @@ Search reads through all of the repositories configured on the system, and
 looks for matches. Search of these repositories uses the metadata stored on
 the system.
 
+Repositories are managed with 'helm repo' commands.
+
 It will display the latest stable versions of the charts found. If you
 specify the --devel flag, the output will include pre-release versions.
 If you want to search using a version constraint, use --version.
+
+OCI registries are also supported. You can search for chart versions in an
+OCI registry by providing an oci:// reference:
+
+    $ helm search repo oci://registry/repo/chart --versions
 
 Examples:
 
@@ -57,7 +65,11 @@ Examples:
     # Search for the latest stable release for nginx-ingress with a major version of 1
     $ helm search repo nginx-ingress --version ^1.0.0
 
-Repositories are managed with 'helm repo' commands.
+    # List all available versions of a chart in an OCI registry
+    $ helm search repo oci://ghcr.io/org/charts/mychart --versions
+
+    # Search for the latest stable release of an OCI chart
+    $ helm search repo oci://ghcr.io/org/charts/mychart
 `
 
 // searchMaxScore suggests that any score higher than this is not considered a match.
@@ -73,6 +85,15 @@ type searchRepoOptions struct {
 	repoCacheDir   string
 	outputFormat   output.Format
 	failOnNoResult bool
+
+	// OCI-related options
+	certFile              string
+	keyFile               string
+	caFile                string
+	insecureSkipTLSverify bool
+	plainHTTP             bool
+	username              string
+	password              string
 }
 
 func newSearchRepoCmd(out io.Writer) *cobra.Command {
@@ -97,6 +118,15 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 	f.UintVar(&o.maxColWidth, "max-col-width", 50, "maximum column width for output table")
 	f.BoolVar(&o.failOnNoResult, "fail-on-no-result", false, "search fails if no results are found")
 
+	// OCI-related flags
+	f.StringVar(&o.certFile, "cert-file", "", "identify registry client using this SSL certificate file")
+	f.StringVar(&o.keyFile, "key-file", "", "identify registry client using this SSL key file")
+	f.StringVar(&o.caFile, "ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	f.BoolVar(&o.insecureSkipTLSverify, "insecure-skip-tls-verify", false, "skip tls certificate checks for the chart download")
+	f.BoolVar(&o.plainHTTP, "plain-http", false, "use insecure HTTP connections for the chart download")
+	f.StringVar(&o.username, "username", "", "chart repository username")
+	f.StringVar(&o.password, "password", "", "chart repository password")
+
 	bindOutputFlag(cmd, &o.outputFormat)
 
 	return cmd
@@ -104,6 +134,11 @@ func newSearchRepoCmd(out io.Writer) *cobra.Command {
 
 func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 	o.setupSearchedVersion()
+
+	// Check if any argument is an OCI reference
+	if len(args) > 0 && registry.IsOCI(args[0]) {
+		return o.runOCI(out, args[0])
+	}
 
 	index, err := o.buildIndex()
 	if err != nil {
@@ -128,6 +163,34 @@ func (o *searchRepoOptions) run(out io.Writer, args []string) error {
 	}
 
 	return o.outputFormat.Write(out, &repoSearchWriter{data, o.maxColWidth, o.failOnNoResult})
+}
+
+// runOCI handles searching for chart versions in an OCI registry.
+func (o *searchRepoOptions) runOCI(out io.Writer, ociRef string) error {
+	registryClient, err := newRegistryClient(
+		o.certFile, o.keyFile, o.caFile,
+		o.insecureSkipTLSverify, o.plainHTTP,
+		o.username, o.password,
+	)
+	if err != nil {
+		return fmt.Errorf("missing registry client: %w", err)
+	}
+
+	// Strip the oci:// prefix for the registry client
+	ref := strings.TrimPrefix(ociRef, fmt.Sprintf("%s://", registry.OCIScheme))
+
+	var searchOpts []registry.SearchOption
+	searchOpts = append(searchOpts,
+		registry.SearchOptVersion(o.version),
+		registry.SearchOptVersions(o.versions),
+	)
+
+	searchResult, err := registryClient.Search(ref, searchOpts...)
+	if err != nil {
+		return err
+	}
+
+	return o.outputFormat.Write(out, &ociSearchWriter{searchResult.Charts, o.maxColWidth, o.failOnNoResult})
 }
 
 func (o *searchRepoOptions) setupSearchedVersion() {
@@ -263,6 +326,63 @@ func (r *repoSearchWriter) encodeByFormat(out io.Writer, format output.Format) e
 	default:
 		// Because this is a non-exported function and only called internally by
 		// WriteJSON and WriteYAML, we shouldn't get invalid types
+		return nil
+	}
+}
+
+// ociSearchWriter handles output for OCI registry search results
+type ociSearchWriter struct {
+	results        []*registry.SearchResultChart
+	columnWidth    uint
+	failOnNoResult bool
+}
+
+func (r *ociSearchWriter) WriteTable(out io.Writer) error {
+	if len(r.results) == 0 {
+		if r.failOnNoResult {
+			return fmt.Errorf("no results found")
+		}
+
+		_, err := out.Write([]byte("No results found\n"))
+		if err != nil {
+			return fmt.Errorf("unable to write results: %s", err)
+		}
+		return nil
+	}
+	table := uitable.New()
+	table.MaxColWidth = r.columnWidth
+	table.AddRow("NAME", "CHART VERSION", "APP VERSION", "DESCRIPTION")
+	for _, r := range r.results {
+		table.AddRow(r.Reference, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description)
+	}
+	return output.EncodeTable(out, table)
+}
+
+func (r *ociSearchWriter) WriteJSON(out io.Writer) error {
+	return r.encodeByFormat(out, output.JSON)
+}
+
+func (r *ociSearchWriter) WriteYAML(out io.Writer) error {
+	return r.encodeByFormat(out, output.YAML)
+}
+
+func (r *ociSearchWriter) encodeByFormat(out io.Writer, format output.Format) error {
+	if len(r.results) == 0 && r.failOnNoResult {
+		return fmt.Errorf("no results found")
+	}
+
+	chartList := make([]repoChartElement, 0, len(r.results))
+
+	for _, r := range r.results {
+		chartList = append(chartList, repoChartElement{r.Reference, r.Chart.Version, r.Chart.AppVersion, r.Chart.Description})
+	}
+
+	switch format {
+	case output.JSON:
+		return output.EncodeJSON(out, chartList)
+	case output.YAML:
+		return output.EncodeYAML(out, chartList)
+	default:
 		return nil
 	}
 }
