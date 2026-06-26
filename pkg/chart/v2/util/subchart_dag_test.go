@@ -67,6 +67,36 @@ func TestBuildSubchartDAG_AliasResolution(t *testing.T) {
 	assertBatches(t, c, [][]string{{"primary-db"}, {"app"}})
 }
 
+func TestBuildSubchartDAG_AliasResolutionByOriginalName(t *testing.T) {
+	t.Parallel()
+
+	// postgres is aliased to primary-db, but app references it by its original
+	// name. Per the depends-on contract ("names or aliases"), this resolves to
+	// the aliased subchart node.
+	c := newChart("parent",
+		aliasedDependency("postgres", "primary-db"),
+		enabledDependency("app", "postgres"),
+	)
+
+	assertBatches(t, c, [][]string{{"primary-db"}, {"app"}})
+}
+
+func TestBuildSubchartDAG_AmbiguousReferenceRejected(t *testing.T) {
+	t.Parallel()
+
+	// The same chart aliased twice makes its original name ambiguous; referencing
+	// it by that name must be rejected rather than silently resolved to one node.
+	c := newChart("parent",
+		aliasedDependency("postgres", "db1"),
+		aliasedDependency("postgres", "db2"),
+		enabledDependency("app", "postgres"),
+	)
+
+	_, err := BuildSubchartDAG(c)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, `ambiguous subchart reference "postgres"`)
+}
+
 func TestBuildSubchartDAG_DisabledSubchart(t *testing.T) {
 	t.Parallel()
 

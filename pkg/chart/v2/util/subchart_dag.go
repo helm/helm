@@ -39,10 +39,12 @@ const (
 // validated as the parent chart's dependencies on subcharts; parent resources
 // are deployed after subchart batches by the action layer.
 //
-// Subcharts are keyed by their effective name (alias if set, otherwise name).
-// ProcessDependencies must have been called on the chart first so that
-// c.Dependencies() reflects the post-processed state (disabled subcharts
-// pruned, aliases applied).
+// Subcharts are keyed by their effective name (alias if set, otherwise name). A
+// depends-on reference may use that effective name or the subchart's original
+// name when an alias is set; a reference that matches more than one subchart is
+// rejected as ambiguous. ProcessDependencies must have been called on the chart
+// first so that c.Dependencies() reflects the post-processed state (disabled
+// subcharts pruned, aliases applied).
 func BuildSubchartDAG(c *chart.Chart) (*DAG, error) {
 	dag := NewDAG()
 
@@ -56,42 +58,95 @@ func BuildSubchartDAG(c *chart.Chart) (*DAG, error) {
 		loaded[sub.Name()] = true
 	}
 
-	byName := make(map[string]bool, len(c.Metadata.Dependencies))
+	// Resolve depends-on references by effective name or, when an alias is set,
+	// by the subchart's original name. Each loaded subchart becomes a DAG node
+	// keyed by its effective name.
+	refs := newSubchartRefs()
 	for _, dep := range c.Metadata.Dependencies {
 		if dep == nil {
 			continue
 		}
-		name := effectiveDependencyName(dep)
-		if loaded[name] {
-			byName[name] = true
-			dag.AddNode(name)
+		eff := effectiveDependencyName(dep)
+		if !loaded[eff] {
+			continue
 		}
+		if !refs.has(eff) {
+			dag.AddNode(eff)
+		}
+		refs.register(eff, eff)
+		refs.register(dep.Name, eff)
 	}
 
 	for _, dep := range c.Metadata.Dependencies {
 		if dep == nil {
 			continue
 		}
-		name := effectiveDependencyName(dep)
-		if !byName[name] {
+		eff := effectiveDependencyName(dep)
+		if !loaded[eff] {
 			continue
 		}
 
 		for _, prerequisite := range dep.DependsOn {
-			if err := addSubchartEdge(dag, byName, name, prerequisite); err != nil {
+			if err := addSubchartEdge(dag, refs, eff, prerequisite); err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	if err := validateParentSubchartDependencies(c.Metadata.Annotations[AnnotationDependsOnSubcharts], byName); err != nil {
+	if err := validateParentSubchartDependencies(c.Metadata.Annotations[AnnotationDependsOnSubcharts], refs); err != nil {
 		return nil, err
 	}
 
 	return dag, nil
 }
 
-func validateParentSubchartDependencies(annotation string, byName map[string]bool) error {
+// subchartRefs resolves depends-on references to effective subchart node names.
+// A reference may be a subchart's effective name (alias if set, otherwise name)
+// or its original name when an alias is set. A reference that maps to more than
+// one subchart is recorded as ambiguous and rejected on use, rather than being
+// silently resolved to one of them.
+type subchartRefs struct {
+	byRef     map[string]string
+	ambiguous map[string]bool
+}
+
+func newSubchartRefs() *subchartRefs {
+	return &subchartRefs{
+		byRef:     make(map[string]string),
+		ambiguous: make(map[string]bool),
+	}
+}
+
+// register maps ref to the effective subchart name eff. If ref already resolves
+// to a different subchart, it is flagged ambiguous.
+func (s *subchartRefs) register(ref, eff string) {
+	if ref == "" {
+		return
+	}
+	if existing, ok := s.byRef[ref]; ok && existing != eff {
+		s.ambiguous[ref] = true
+		return
+	}
+	s.byRef[ref] = eff
+}
+
+// resolve returns the effective subchart name for ref. found is false for an
+// unknown reference; isAmbiguous is true when ref maps to multiple subcharts.
+func (s *subchartRefs) resolve(ref string) (eff string, found, isAmbiguous bool) {
+	if s.ambiguous[ref] {
+		return "", false, true
+	}
+	eff, found = s.byRef[ref]
+	return eff, found, false
+}
+
+// has reports whether ref resolves to a known, unambiguous subchart.
+func (s *subchartRefs) has(ref string) bool {
+	_, found, _ := s.resolve(ref)
+	return found
+}
+
+func validateParentSubchartDependencies(annotation string, refs *subchartRefs) error {
 	annotation = strings.TrimSpace(annotation)
 	if annotation == "" {
 		return nil
@@ -103,7 +158,11 @@ func validateParentSubchartDependencies(annotation string, byName map[string]boo
 	}
 
 	for _, prerequisite := range prerequisites {
-		if !byName[prerequisite] {
+		_, found, isAmbiguous := refs.resolve(prerequisite)
+		if isAmbiguous {
+			return fmt.Errorf("annotation %s references ambiguous subchart %q; reference it by alias to disambiguate", AnnotationDependsOnSubcharts, prerequisite)
+		}
+		if !found {
 			return fmt.Errorf("annotation %s references unknown or disabled subchart %q", AnnotationDependsOnSubcharts, prerequisite)
 		}
 	}
@@ -111,12 +170,16 @@ func validateParentSubchartDependencies(annotation string, byName map[string]boo
 	return nil
 }
 
-func addSubchartEdge(dag *DAG, byName map[string]bool, subchartName, prerequisite string) error {
-	if !byName[prerequisite] {
+func addSubchartEdge(dag *DAG, refs *subchartRefs, subchartName, prerequisite string) error {
+	eff, found, isAmbiguous := refs.resolve(prerequisite)
+	if isAmbiguous {
+		return fmt.Errorf("subchart %q depends-on ambiguous subchart reference %q; reference it by alias to disambiguate", subchartName, prerequisite)
+	}
+	if !found {
 		return fmt.Errorf("subchart %q depends-on unknown or disabled subchart %q", subchartName, prerequisite)
 	}
-	if err := dag.AddEdge(prerequisite, subchartName); err != nil {
-		return fmt.Errorf("adding sequencing edge %s→%s: %w", prerequisite, subchartName, err)
+	if err := dag.AddEdge(eff, subchartName); err != nil {
+		return fmt.Errorf("adding sequencing edge %s→%s: %w", eff, subchartName, err)
 	}
 	return nil
 }
