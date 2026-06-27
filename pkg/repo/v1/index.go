@@ -104,6 +104,22 @@ func NewIndexFile() *IndexFile {
 
 // LoadIndexFile takes a file at the given path and returns an IndexFile object
 func LoadIndexFile(path string) (*IndexFile, error) {
+	return LoadIndexFileForEntries(path, nil)
+}
+
+// LoadIndexFileForEntries loads an index file but only retains entries
+// matching the provided chart names. Entries are validated and normalized
+// via loadIndex, then unmatched entries are discarded to reduce retained
+// heap for large repositories when filtering to a small subset of charts.
+// If names is nil or empty, all entries are loaded (equivalent to LoadIndexFile).
+func LoadIndexFileForEntries(path string, names []string) (*IndexFile, error) {
+	var entries map[string]struct{}
+	if len(names) > 0 {
+		entries = make(map[string]struct{}, len(names))
+		for _, n := range names {
+			entries[n] = struct{}{}
+		}
+	}
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -111,6 +127,15 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 	i, err := loadIndex(b, path)
 	if err != nil {
 		return nil, fmt.Errorf("error loading %s: %w", path, err)
+	}
+	if entries != nil {
+		filtered := make(map[string]ChartVersions, len(entries))
+		for name := range entries {
+			if cvs, ok := i.Entries[name]; ok {
+				filtered[name] = cvs
+			}
+		}
+		i.Entries = filtered
 	}
 	return i, nil
 }
