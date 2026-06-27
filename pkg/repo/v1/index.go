@@ -108,10 +108,9 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 }
 
 // LoadIndexFileForEntries loads an index file but only retains entries
-// matching the provided chart names. All entries are still validated and
-// normalized (via loadIndex) before unmatched entries are discarded,
-// reducing the retained heap for large repositories when filtering to a
-// small subset of charts.
+// matching the provided chart names. Entries are validated and normalized
+// via loadIndex, then unmatched entries are discarded to reduce retained
+// heap for large repositories when filtering to a small subset of charts.
 // If names is nil or empty, all entries are loaded (equivalent to LoadIndexFile).
 func LoadIndexFileForEntries(path string, names []string) (*IndexFile, error) {
 	var entries map[string]struct{}
@@ -138,7 +137,6 @@ func LoadIndexFileForEntries(path string, names []string) (*IndexFile, error) {
 		}
 		i.Entries = filtered
 	}
-	i.SortEntries()
 	return i, nil
 }
 
