@@ -186,6 +186,40 @@ func TestSavePreservesTimestamps(t *testing.T) {
 	}
 }
 
+func TestSaveWithSourceDateEpoch(t *testing.T) {
+	epoch := time.Unix(1609459200, 0).UTC()
+	tmp := t.TempDir()
+	c := &chart.Chart{
+		Metadata: &chart.Metadata{
+			APIVersion: chart.APIVersionV2,
+			Name:       "ahab",
+			Version:    "1.2.3",
+		},
+		Files: []*common.File{
+			{Name: "scheherazade/shahryar.txt", Data: []byte("1,001 Nights")},
+		},
+		Schema: []byte("{\n  \"title\": \"Values\"\n}"),
+	}
+
+	c.StampModTimes(epoch)
+	where, err := Save(c, tmp)
+	if err != nil {
+		t.Fatalf("Failed to save: %s", err)
+	}
+
+	allHeaders, err := retrieveAllHeadersFromTar(where)
+	if err != nil {
+		t.Fatalf("Failed to parse tar: %v", err)
+	}
+
+	expected := epoch.Round(time.Second)
+	for _, header := range allHeaders {
+		if !header.ModTime.Equal(expected) {
+			t.Fatalf("Expected SOURCE_DATE_EPOCH timestamp %v, got %v for %q", expected, header.ModTime, header.Name)
+		}
+	}
+}
+
 // We could refactor `load.go` to use this `retrieveAllHeadersFromTar` function
 // as well, so we are not duplicating components of the code which iterate
 // through the tar.
