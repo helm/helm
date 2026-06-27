@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"sort"
 	"strings"
 
@@ -577,10 +578,30 @@ func (c *Client) Pull(ref string, options ...PullOption) (*PullResult, error) {
 		allowedMediaTypes = append(allowedMediaTypes, ProvLayerMediaType)
 	}
 
+	// Disambiguate multi-chart Image Indexes by the requested chart name (the
+	// last path segment of the reference), matched against the chart manifest's
+	// org.opencontainers.image.title annotation. An index resolving to a single
+	// chart needs no selector and is unaffected.
+	var selectors map[string]string
+	if parsed, perr := newReference(ref); perr == nil {
+		if name := path.Base(parsed.Repository); name != "" && name != "." && name != "/" {
+			selectors = map[string]string{ocispec.AnnotationTitle: name}
+			// Version is a tie-breaker when several charts share the name. The tag
+			// stores "+" as "_" (see newReference); undo it to match the chart's
+			// own version annotation.
+			if parsed.Tag != "" {
+				selectors[ocispec.AnnotationVersion] = strings.ReplaceAll(parsed.Tag, "_", "+")
+			}
+		}
+	}
+
 	// Use generic client for the pull operation
+	// Pass ChartArtifactType to enable selection from OCI Image Index
 	genericClient := c.Generic()
 	genericResult, err := genericClient.PullGeneric(ref, GenericPullOptions{
 		AllowedMediaTypes: allowedMediaTypes,
+		ArtifactType:      ChartArtifactType,
+		Selectors:         selectors,
 	})
 	if err != nil {
 		return nil, err
@@ -638,6 +659,7 @@ type (
 		provData     []byte
 		strictMode   bool
 		creationTime string
+		subject      *ocispec.Descriptor
 	}
 )
 
@@ -699,14 +721,6 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 		return layers[i].Digest < layers[j].Digest
 	})
 
-	ociAnnotations := generateOCIAnnotations(meta, operation.creationTime)
-
-	manifestDescriptor, err := c.tagManifest(ctx, memoryStore, configDescriptor,
-		layers, ociAnnotations, parsedRef)
-	if err != nil {
-		return nil, err
-	}
-
 	repository, err := remote.NewRepository(parsedRef.String())
 	if err != nil {
 		return nil, err
@@ -715,6 +729,25 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	repository.Client = c.authorizer
 
 	ctx = withScopeHint(ctx, repository, auth.ActionPull, auth.ActionPush)
+
+	// Resolve the subject to a full descriptor (mediaType + size) against the
+	// target repository. A subject carrying only a digest is not a spec-valid
+	// descriptor and a Referrers-aware registry can reject the manifest.
+	if operation.subject != nil {
+		resolved, err := repository.Resolve(ctx, operation.subject.Digest.String())
+		if err != nil {
+			return nil, fmt.Errorf("unable to resolve subject %s: %w", operation.subject.Digest, err)
+		}
+		operation.subject = &resolved
+	}
+
+	ociAnnotations := generateOCIAnnotations(meta, operation.creationTime)
+
+	manifestDescriptor, err := c.tagManifest(ctx, memoryStore, configDescriptor,
+		layers, ociAnnotations, parsedRef, operation.subject)
+	if err != nil {
+		return nil, err
+	}
 
 	manifestDescriptor, err = oras.ExtendedCopy(ctx, memoryStore, parsedRef.String(), repository, parsedRef.String(), oras.DefaultExtendedCopyOptions)
 	if err != nil {
@@ -773,6 +806,13 @@ func PushOptStrictMode(strictMode bool) PushOption {
 func PushOptCreationTime(creationTime string) PushOption {
 	return func(operation *pushOperation) {
 		operation.creationTime = creationTime
+	}
+}
+
+// PushOptSubject returns a function that sets the subject for Referrers API
+func PushOptSubject(subject *ocispec.Descriptor) PushOption {
+	return func(operation *pushOperation) {
+		operation.subject = subject
 	}
 }
 
@@ -909,12 +949,15 @@ func (c *Client) ValidateReference(ref, version string, u *url.URL) (string, *ur
 func (c *Client) tagManifest(ctx context.Context, memoryStore *memory.Store,
 	configDescriptor ocispec.Descriptor, layers []ocispec.Descriptor,
 	ociAnnotations map[string]string, parsedRef reference,
+	subject *ocispec.Descriptor,
 ) (ocispec.Descriptor, error) {
 	manifest := ocispec.Manifest{
-		Versioned:   specs.Versioned{SchemaVersion: 2},
-		Config:      configDescriptor,
-		Layers:      layers,
-		Annotations: ociAnnotations,
+		Versioned:    specs.Versioned{SchemaVersion: 2},
+		ArtifactType: ConfigMediaType,
+		Config:       configDescriptor,
+		Layers:       layers,
+		Annotations:  ociAnnotations,
+		Subject:      subject,
 	}
 
 	manifestData, err := json.Marshal(manifest)
