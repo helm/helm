@@ -130,8 +130,8 @@ func LoadIndexFileForEntries(path string, names []string) (*IndexFile, error) {
 	}
 	if entries != nil {
 		filtered := make(map[string]ChartVersions, len(entries))
-		for name, cvs := range i.Entries {
-			if _, ok := entries[name]; ok {
+		for name := range entries {
+			if cvs, ok := i.Entries[name]; ok {
 				filtered[name] = cvs
 			}
 		}

@@ -770,6 +770,16 @@ func TestLoadIndexFileForEntries(t *testing.T) {
 		}
 	})
 
+	t.Run("empty names loads all", func(t *testing.T) {
+		i, err := LoadIndexFileForEntries("testdata/local-index.yaml", []string{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(i.Entries) == 0 {
+			t.Fatal("expected entries, got none")
+		}
+	})
+
 	// filter to a specific chart
 	t.Run("filter to one entry", func(t *testing.T) {
 		i, err := LoadIndexFileForEntries("testdata/local-index.yaml", []string{"alpine"})
