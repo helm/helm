@@ -237,7 +237,7 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
 		assert.NoError(t, err)
 		assert.Len(t, ownedList, 2)
-		assert.Len(t, unownedList, 0)
+		assert.Empty(t, unownedList)
 	})
 
 	// Test mix of owned and unowned resources
@@ -261,8 +261,8 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 
 		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
 		assert.NoError(t, err)
-		assert.Len(t, ownedList, 0)
-		assert.Len(t, unownedList, 0)
+		assert.Empty(t, ownedList)
+		assert.Empty(t, unownedList)
 	})
 
 	// Test resource with no ownership metadata
@@ -272,7 +272,7 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 
 		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
 		assert.NoError(t, err)
-		assert.Len(t, ownedList, 0)
+		assert.Empty(t, ownedList)
 		assert.Len(t, unownedList, 1)
 	})
 
@@ -283,7 +283,7 @@ func TestVerifyOwnershipBeforeDelete(t *testing.T) {
 
 		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
 		assert.NoError(t, err)
-		assert.Len(t, ownedList, 0)
+		assert.Empty(t, ownedList)
 		assert.Len(t, unownedList, 1)
 	})
 
