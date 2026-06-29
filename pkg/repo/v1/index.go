@@ -129,10 +129,10 @@ func LoadIndexFileForEntries(path string, names []string) (*IndexFile, error) {
 	}
 	i := &IndexFile{}
 	if len(b) == 0 {
-		return i, ErrEmptyIndexYaml
+		return nil, ErrEmptyIndexYaml
 	}
 	if err := jsonOrYamlUnmarshal(b, i); err != nil {
-		return i, err
+		return nil, err
 	}
 	// Build a new map containing only the requested entries to reduce heap usage.
 	retained := make(map[string]ChartVersions, len(names))
@@ -165,7 +165,7 @@ func LoadIndexFileForEntries(path string, names []string) (*IndexFile, error) {
 	}
 	i.SortEntries()
 	if i.APIVersion == "" {
-		return i, ErrNoAPIVersion
+		return nil, ErrNoAPIVersion
 	}
 	return i, nil
 }
@@ -450,7 +450,7 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 	}
 	i.SortEntries()
 	if i.APIVersion == "" {
-		return i, ErrNoAPIVersion
+		return nil, ErrNoAPIVersion
 	}
 	return i, nil
 }
