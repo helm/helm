@@ -43,6 +43,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/cli-runtime/pkg/resource"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/kubectl/pkg/scheme"
@@ -59,6 +60,29 @@ status:
   - type: Ready
     status: "True"
   phase: Running
+`
+
+var customResourceNoStatusManifest = `
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: hello-knative
+  namespace: ns
+  generation: 1
+`
+
+var customResourceReadyManifest = `
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: hello-knative
+  namespace: ns
+  generation: 1
+status:
+  observedGeneration: 1
+  conditions:
+  - type: Ready
+    status: "True"
 `
 
 var podNoStatusManifest = `
@@ -448,6 +472,86 @@ func TestStatusWait(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
+}
+
+func TestStatusWaitCustomResourcePending(t *testing.T) {
+	t.Parallel()
+	customResourceGVK := schema.GroupVersionKind{Group: "serving.knative.dev", Version: "v1", Kind: "Service"}
+	customResourceGVR := schema.GroupVersionResource{Group: "serving.knative.dev", Version: "v1", Resource: "services"}
+	customListKinds := map[schema.GroupVersionResource]string{customResourceGVR: "ServiceList"}
+
+	resourceListFor := func(objs []runtime.Object) ResourceList {
+		rl := ResourceList{}
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			rl = append(rl, &resource.Info{
+				Object:    u,
+				Name:      u.GetName(),
+				Namespace: u.GetNamespace(),
+			})
+		}
+		return rl
+	}
+
+	t.Run("freshly created custom resource is not reported ready before its controller reconciles it", func(t *testing.T) {
+		t.Parallel()
+		// Use a scheme local to this subtest. NewSimpleDynamicClientWithCustomListKinds
+		// registers the custom list kind into the scheme it is given, so sharing the
+		// global scheme.Scheme across parallel tests would be a data race.
+		fakeClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), customListKinds)
+		fakeMapper := testutil.NewFakeRESTMapper(customResourceGVK)
+		statusWaiter := statusWaiter{
+			client:     fakeClient,
+			restMapper: fakeMapper,
+		}
+		statusWaiter.SetLogger(slog.Default().Handler())
+		objs := getRuntimeObjFromManifests(t, []string{customResourceNoStatusManifest})
+		for _, obj := range objs {
+			u := obj.(*unstructured.Unstructured)
+			gvr := getGVR(t, fakeMapper, u)
+			require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+		}
+		err := statusWaiter.Wait(resourceListFor(objs), time.Second*2)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "resource Service/ns/hello-knative not ready. status: InProgress")
+		assert.Contains(t, err.Error(), "context deadline exceeded")
+	})
+
+	t.Run("custom resource is reported ready once its controller has reconciled it", func(t *testing.T) {
+		t.Parallel()
+		// Use a scheme local to this subtest (see note above) to avoid racing on
+		// the global scheme.Scheme with the other parallel subtest.
+		fakeClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), customListKinds)
+		fakeMapper := testutil.NewFakeRESTMapper(customResourceGVK)
+		statusWaiter := statusWaiter{
+			client:     fakeClient,
+			restMapper: fakeMapper,
+		}
+		statusWaiter.SetLogger(slog.Default().Handler())
+		objs := getRuntimeObjFromManifests(t, []string{customResourceNoStatusManifest})
+		u := objs[0].(*unstructured.Unstructured)
+		gvr := getGVR(t, fakeMapper, u)
+		require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+
+		// Build the "reconciled" object on the test goroutine; only the tracker
+		// update runs in the background goroutine, and its error is reported back
+		// over a channel so we never touch t or testify from another goroutine.
+		ready := getRuntimeObjFromManifests(t, []string{customResourceReadyManifest})[0].(*unstructured.Unstructured)
+		const reconcileDelay = 500 * time.Millisecond
+		updateErrCh := make(chan error, 1)
+		go func() {
+			time.Sleep(reconcileDelay)
+			updateErrCh <- fakeClient.Tracker().Update(gvr, ready, ready.GetNamespace())
+		}()
+
+		start := time.Now()
+		err := statusWaiter.Wait(resourceListFor(objs), time.Second*10)
+		require.NoError(t, err)
+		require.NoError(t, <-updateErrCh)
+		// Wait must not succeed before the controller reconciled the resource;
+		// otherwise it would be reporting success prematurely (the bug in #32066).
+		require.GreaterOrEqual(t, time.Since(start), reconcileDelay)
+	})
 }
 
 func TestWaitForJobComplete(t *testing.T) {
