@@ -211,9 +211,8 @@ func (m *Manager) Update() error {
 	}
 	lock.Digest = newDigest
 
-	// If the lock file hasn't changed, don't write a new one.
-	oldLock := c.Lock
-	if oldLock != nil && oldLock.Digest == lock.Digest {
+	// Rewrite the lock when metadata or per-dependency content digests changed.
+	if !lockNeedsWrite(c.Lock, lock) {
 		return nil
 	}
 
@@ -273,6 +272,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 	fmt.Fprintf(m.Out, "Saving %d charts\n", len(deps))
 	var saveError error
 	churls := make(map[string]struct{})
+	churlFiles := make(map[string]string)
 	for _, dep := range deps {
 		// No repository means the chart is in charts directory
 		if dep.Repository == "" {
@@ -310,12 +310,17 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				break
 			}
 			dep.Version = ver
+			tgzPath := filepath.Join(tmpPath, fmt.Sprintf("%s-%s.tgz", dep.Name, ver))
+			if err := recordDependencyDigest(dep, tgzPath); err != nil {
+				saveError = err
+				break
+			}
 			continue
 		}
 
 		// Any failure to resolve/download a chart should fail:
 		// https://github.com/helm/helm/issues/1439
-		churl, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
+		churl, username, password, insecureSkipTLSVerify, passCredentialsAll, caFile, certFile, keyFile, indexDigest, err := m.findChartURL(dep.Name, dep.Version, dep.Repository, repos)
 		if err != nil {
 			saveError = fmt.Errorf("could not find %s: %w", churl, err)
 			break
@@ -323,6 +328,12 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 
 		if _, ok := churls[churl]; ok {
 			fmt.Fprintf(m.Out, "Already downloaded %s from repo %s\n", dep.Name, dep.Repository)
+			if tgzPath, ok := churlFiles[churl]; ok {
+				if err := recordDependencyDigest(dep, tgzPath); err != nil {
+					saveError = err
+					break
+				}
+			}
 			continue
 		}
 
@@ -343,6 +354,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				getter.WithInsecureSkipVerifyTLS(insecureSkipTLSVerify),
 				getter.WithTLSClientConfig(certFile, keyFile, caFile),
 			},
+			ExpectedDigest: indexDigest,
 		}
 
 		version := ""
@@ -356,12 +368,19 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 				getter.WithTagName(version))
 		}
 
-		if _, _, err = dl.DownloadTo(churl, version, tmpPath); err != nil {
+		destfile, _, err := dl.DownloadTo(churl, version, tmpPath)
+		if err != nil {
 			saveError = fmt.Errorf("could not download %s: %w", churl, err)
 			break
 		}
 
+		if err := recordDependencyDigest(dep, destfile); err != nil {
+			saveError = err
+			break
+		}
+
 		churls[churl] = struct{}{}
+		churlFiles[churl] = destfile
 	}
 
 	// TODO: this should probably be refactored to be a []error, so we can capture and provide more information rather than "last error wins".
@@ -722,9 +741,9 @@ func (m *Manager) parallelRepoUpdate(repos []*repo.Entry) error {
 // repoURL is the repository to search
 //
 // If it finds a URL that is "relative", it will prepend the repoURL.
-func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, insecureSkipTLSVerify, passCredentialsAll bool, caFile, certFile, keyFile string, err error) {
+func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*repo.ChartRepository) (url, username, password string, insecureSkipTLSVerify, passCredentialsAll bool, caFile, certFile, keyFile, indexDigest string, err error) {
 	if registry.IsOCI(repoURL) {
-		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", false, false, "", "", "", nil
+		return fmt.Sprintf("%s/%s:%s", repoURL, name, version), "", "", false, false, "", "", "", "", nil
 	}
 
 	for _, cr := range repos {
@@ -744,6 +763,7 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 				//nolint:nakedret
 				return
 			}
+			indexDigest = ve.Digest
 			url, err = repo.ResolveReferenceURL(repoURL, ve.URLs[0])
 			if err != nil {
 				//nolint:nakedret
@@ -762,10 +782,10 @@ func (m *Manager) findChartURL(name, version, repoURL string, repos map[string]*
 	}
 	url, err = repo.FindChartInRepoURL(repoURL, name, m.Getters, repo.WithChartVersion(version), repo.WithClientTLS(certFile, keyFile, caFile))
 	if err == nil {
-		return url, username, password, false, false, "", "", "", err
+		return url, username, password, false, false, "", "", "", "", err
 	}
 	err = fmt.Errorf("chart %s not found in %s: %w", name, repoURL, err)
-	return url, username, password, false, false, "", "", "", err
+	return url, username, password, false, false, "", "", "", "", err
 }
 
 // findEntryByName finds an entry in the chart repository whose name matches the given name.
