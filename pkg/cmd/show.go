@@ -21,11 +21,13 @@ import (
 	"io"
 	"log"
 	"log/slog"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/cmd/require"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 const showDesc = `
@@ -216,6 +218,14 @@ func runShow(args []string, client *action.Show) (string, error) {
 	if client.Version == "" && client.Devel {
 		slog.Debug("setting version to >0.0.0-0")
 		client.Version = ">0.0.0-0"
+	}
+
+	if registry.IsOCI(args[0]) {
+		// Store the bare OCI reference (without the oci:// scheme). The concrete
+		// tag is resolved from the downloaded chart version in Show.Run, because
+		// client.Version may be a range (for example ">0.0.0-0" with --devel)
+		// rather than an exact tag.
+		client.OCIRef = strings.TrimPrefix(args[0], registry.OCIScheme+"://")
 	}
 
 	cp, err := client.LocateChart(args[0], settings)
