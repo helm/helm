@@ -67,14 +67,36 @@ func TestValidateChartYamlFormat(t *testing.T) {
 }
 
 func TestValidateChartName(t *testing.T) {
+	// empty name (badChart has name: "")
 	err := validateChartName(badChart)
 	if err == nil {
-		t.Error("validateChartName to return a linter error, got no error")
+		t.Error("validateChartName to return a linter error for empty name, got no error")
 	}
 
-	err = validateChartName(badChartName)
-	if err == nil {
-		t.Error("expected validateChartName to return a linter error for an invalid name, got no error")
+	invalidNames := []struct {
+		name   string
+		reason string
+	}{
+		{"../badchartname", "path traversal"},
+		{"MyInvalidChart", "uppercase letters"},
+		{"my_chart", "underscore"},
+		{"-my-chart", "leading hyphen"},
+		{"my-chart-", "trailing hyphen"},
+		{"my chart", "space"},
+	}
+	for _, tc := range invalidNames {
+		meta := &chart.Metadata{Name: tc.name}
+		if err := validateChartName(meta); err == nil {
+			t.Errorf("expected validateChartName to return error for %q (%s), got nil", tc.name, tc.reason)
+		}
+	}
+
+	validNames := []string{"my-chart", "my.chart", "mychart", "my-chart-v2", "1-chart"}
+	for _, name := range validNames {
+		meta := &chart.Metadata{Name: name}
+		if err := validateChartName(meta); err != nil {
+			t.Errorf("expected validateChartName to return no error for %q, got: %v", name, err)
+		}
 	}
 }
 
