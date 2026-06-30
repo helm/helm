@@ -290,7 +290,7 @@ func TestSqlCreateAlreadyExists(t *testing.T) {
 	mock.
 		ExpectExec(regexp.QuoteMeta(insertQuery)).
 		WithArgs(key, sqlReleaseDefaultType, body, rel.Name, rel.Namespace, int(rel.Version), rel.Info.Status.String(), sqlReleaseDefaultOwner, recentUnixTimestamp()).
-		WillReturnError(fmt.Errorf("dialect dependent SQL error"))
+		WillReturnError(errors.New("dialect dependent SQL error"))
 
 	selectQuery := fmt.Sprintf(
 		regexp.QuoteMeta("SELECT %s FROM %s WHERE %s = $1 AND %s = $2"),

@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"oras.land/oras-go/v2/content/memory"
 )
@@ -77,22 +78,15 @@ func TestLogin_ResetsForceAttemptOAuth2_OnSuccess(t *testing.T) {
 		ClientOptWriter(io.Discard),
 		ClientOptCredentialsFile(credFile),
 	)
-	if err != nil {
-		t.Fatalf("NewClient error: %v", err)
-	}
+	require.NoError(t, err, "NewClient error")
 
-	if c.authorizer == nil || c.authorizer.ForceAttemptOAuth2 {
-		t.Fatalf("expected ForceAttemptOAuth2 default to be false")
-	}
+	require.NotNil(t, c.authorizer)
+	require.False(t, c.authorizer.ForceAttemptOAuth2, "expected ForceAttemptOAuth2 default to be false")
 
 	// Call Login with plain HTTP against our test server
-	if err := c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p")); err != nil {
-		t.Fatalf("Login error: %v", err)
-	}
+	require.NoError(t, c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p")), "Login error")
 
-	if c.authorizer.ForceAttemptOAuth2 {
-		t.Errorf("ForceAttemptOAuth2 should be false after successful Login")
-	}
+	assert.False(t, c.authorizer.ForceAttemptOAuth2, "ForceAttemptOAuth2 should be false after successful Login")
 }
 
 // Verifies that Login restores ForceAttemptOAuth2 to false even when ping fails.
@@ -109,16 +103,12 @@ func TestLogin_ResetsForceAttemptOAuth2_OnFailure(t *testing.T) {
 		ClientOptWriter(io.Discard),
 		ClientOptCredentialsFile(credFile),
 	)
-	if err != nil {
-		t.Fatalf("NewClient error: %v", err)
-	}
+	require.NoError(t, err, "NewClient error")
 
 	// Invoke Login, expect an error but ForceAttemptOAuth2 must end false
 	_ = c.Login(host, LoginOptPlainText(true), LoginOptBasicAuth("u", "p"))
 
-	if c.authorizer.ForceAttemptOAuth2 {
-		t.Errorf("ForceAttemptOAuth2 should be false after failed Login")
-	}
+	assert.False(t, c.authorizer.ForceAttemptOAuth2, "ForceAttemptOAuth2 should be false after failed Login")
 }
 
 // TestWarnIfHostHasPath verifies that warnIfHostHasPath correctly detects path components.
@@ -159,10 +149,7 @@ func TestWarnIfHostHasPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := warnIfHostHasPath(tt.host)
-			if got != tt.wantWarn {
-				t.Errorf("warnIfHostHasPath(%q) = %v, want %v", tt.host, got, tt.wantWarn)
-			}
+			assert.Equal(t, tt.wantWarn, warnIfHostHasPath(tt.host))
 		})
 	}
 }

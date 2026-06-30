@@ -19,12 +19,12 @@ package values
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/getter"
 )
@@ -91,10 +91,7 @@ func TestReadFile(t *testing.T) {
 				tmpDir := t.TempDir()
 				filePath := filepath.Join(tmpDir, "test.txt")
 				content := []byte("local file content")
-				err := os.WriteFile(filePath, content, 0644)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, os.WriteFile(filePath, content, 0644))
 				return filePath, func() {} // cleanup handled by t.TempDir()
 			},
 			expectError:  false,
@@ -155,10 +152,7 @@ func TestReadFile(t *testing.T) {
 				fileName := "ftp_file.txt" // Valid filename for filesystem
 				filePath := filepath.Join(tmpDir, fileName)
 				content := []byte("local fallback content")
-				err := os.WriteFile(filePath, content, 0644)
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, os.WriteFile(filePath, content, 0644))
 				return filePath, func() {}
 			},
 			expectError:  false,
@@ -203,9 +197,7 @@ func TestReadFile(t *testing.T) {
 
 				// Create a pipe for stdin
 				r, w, err := os.Pipe()
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 				defer r.Close()
 				defer w.Close()
 
@@ -221,28 +213,21 @@ func TestReadFile(t *testing.T) {
 
 				// Test the function
 				got, err := readFile(actualFilePath, tt.providers)
-				if err != nil {
-					t.Errorf("readFile() error = %v, expected no error for stdin", err)
-					return
-				}
-
-				if !bytes.Equal(got, testData) {
-					t.Errorf("readFile() = %v, want %v", got, testData)
-				}
+				require.NoError(t, err, "readFile() expected no error for stdin")
+				assert.Equal(t, testData, got)
 				return
 			}
 
 			// Regular test cases
 			got, err := readFile(actualFilePath, tt.providers)
-			if (err != nil) != tt.expectError {
-				t.Errorf("readFile() error = %v, expectError %v", err, tt.expectError)
+			if tt.expectError {
+				assert.Error(t, err)
 				return
 			}
+			assert.NoError(t, err)
 
-			if !tt.expectError && tt.expectedData != nil {
-				if !bytes.Equal(got, tt.expectedData) {
-					t.Errorf("readFile() = %v, want %v", got, tt.expectedData)
-				}
+			if tt.expectedData != nil {
+				assert.Equal(t, tt.expectedData, got)
 			}
 		})
 	}
@@ -265,7 +250,7 @@ func TestReadFileErrorMessages(t *testing.T) {
 		{
 			name:      "getter error with message",
 			filePath:  "http://example.com/file",
-			providers: getter.Providers{mockProvider([]string{"http"}, nil, fmt.Errorf("connection refused"))},
+			providers: getter.Providers{mockProvider([]string{"http"}, nil, errors.New("connection refused"))},
 			wantErr:   "connection refused",
 		},
 	}
@@ -273,13 +258,8 @@ func TestReadFileErrorMessages(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := readFile(tt.filePath, tt.providers)
-			if err == nil {
-				t.Errorf("readFile() expected error containing %q, got nil", tt.wantErr)
-				return
-			}
-			if !strings.Contains(err.Error(), tt.wantErr) {
-				t.Errorf("readFile() error = %v, want error containing %q", err, tt.wantErr)
-			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
 		})
 	}
 }
@@ -289,16 +269,14 @@ func TestReadFileOriginal(t *testing.T) {
 	var p getter.Providers
 	filePath := "%a.txt"
 	_, err := readFile(filePath, p)
-	if err == nil {
-		t.Errorf("Expected error when has special strings")
-	}
+	assert.Error(t, err, "Expected error when has special strings")
 }
 
 func TestMergeValuesCLI(t *testing.T) {
 	tests := []struct {
 		name     string
 		opts     Options
-		expected map[string]interface{}
+		expected map[string]any
 		wantErr  bool
 	}{
 		{
@@ -306,8 +284,8 @@ func TestMergeValuesCLI(t *testing.T) {
 			opts: Options{
 				JSONValues: []string{`{"foo": {"bar": "baz"}}`},
 			},
-			expected: map[string]interface{}{
-				"foo": map[string]interface{}{
+			expected: map[string]any{
+				"foo": map[string]any{
 					"bar": "baz",
 				},
 			},
@@ -317,9 +295,9 @@ func TestMergeValuesCLI(t *testing.T) {
 			opts: Options{
 				JSONValues: []string{"foo.bar=[1,2,3]"},
 			},
-			expected: map[string]interface{}{
-				"foo": map[string]interface{}{
-					"bar": []interface{}{1.0, 2.0, 3.0},
+			expected: map[string]any{
+				"foo": map[string]any{
+					"bar": []any{1.0, 2.0, 3.0},
 				},
 			},
 		},
@@ -328,7 +306,7 @@ func TestMergeValuesCLI(t *testing.T) {
 			opts: Options{
 				Values: []string{"foo=bar"},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"foo": "bar",
 			},
 		},
@@ -337,7 +315,7 @@ func TestMergeValuesCLI(t *testing.T) {
 			opts: Options{
 				StringValues: []string{"foo=123"},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"foo": "123",
 			},
 		},
@@ -346,7 +324,7 @@ func TestMergeValuesCLI(t *testing.T) {
 			opts: Options{
 				LiteralValues: []string{"foo=true"},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"foo": "true",
 			},
 		},
@@ -358,7 +336,7 @@ func TestMergeValuesCLI(t *testing.T) {
 				JSONValues:    []string{`{"c": "foo1"}`},
 				LiteralValues: []string{"d=bar1"},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"a": "foo",
 				"b": "bar",
 				"c": "foo1",
@@ -377,13 +355,12 @@ func TestMergeValuesCLI(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.opts.MergeValues(getter.Providers{})
-			if (err != nil) != tt.wantErr {
-				t.Errorf("MergeValues() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				assert.Error(t, err)
 				return
 			}
-			if !tt.wantErr && !reflect.DeepEqual(got, tt.expected) {
-				t.Errorf("MergeValues() = %v, want %v", got, tt.expected)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, got)
 		})
 	}
 }

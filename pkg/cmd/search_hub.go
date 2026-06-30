@@ -17,6 +17,8 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -64,8 +66,8 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 		Use:   "hub [KEYWORD]",
 		Short: "search for charts in the Artifact Hub or your own hub instance",
 		Long:  searchHubDesc,
-		RunE: func(_ *cobra.Command, args []string) error {
-			return o.run(out, args)
+		RunE: func(c *cobra.Command, args []string) error {
+			return o.run(c.Context(), out, args)
 		},
 	}
 
@@ -80,14 +82,14 @@ func newSearchHubCmd(out io.Writer) *cobra.Command {
 	return cmd
 }
 
-func (o *searchHubOptions) run(out io.Writer, args []string) error {
+func (o *searchHubOptions) run(ctx context.Context, out io.Writer, args []string) error {
 	c, err := monocular.New(o.searchEndpoint)
 	if err != nil {
 		return fmt.Errorf("unable to create connection to %q: %w", o.searchEndpoint, err)
 	}
 
 	q := strings.Join(args, " ")
-	results, err := c.Search(q)
+	results, err := c.SearchWithContext(ctx, q)
 	if err != nil {
 		slog.Debug("search failed", slog.Any("error", err))
 		return fmt.Errorf("unable to perform search against %q", o.searchEndpoint)
@@ -136,7 +138,7 @@ func (h *hubSearchWriter) WriteTable(out io.Writer) error {
 	if len(h.elements) == 0 {
 		// Fail if no results found and --fail-on-no-result is enabled
 		if h.failOnNoResult {
-			return fmt.Errorf("no results found")
+			return errors.New("no results found")
 		}
 
 		_, err := out.Write([]byte("No results found\n"))
@@ -175,7 +177,7 @@ func (h *hubSearchWriter) WriteYAML(out io.Writer) error {
 func (h *hubSearchWriter) encodeByFormat(out io.Writer, format output.Format) error {
 	// Fail if no results found and --fail-on-no-result is enabled
 	if len(h.elements) == 0 && h.failOnNoResult {
-		return fmt.Errorf("no results found")
+		return errors.New("no results found")
 	}
 
 	// Initialize the array so no results returns an empty array instead of null
@@ -195,5 +197,4 @@ func (h *hubSearchWriter) encodeByFormat(out io.Writer, format output.Format) er
 		// WriteJSON and WriteYAML, we shouldn't get invalid types
 		return nil
 	}
-
 }

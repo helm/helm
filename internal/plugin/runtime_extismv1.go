@@ -99,7 +99,6 @@ type RuntimeExtismV1 struct {
 var _ Runtime = (*RuntimeExtismV1)(nil)
 
 func (r *RuntimeExtismV1) CreatePlugin(pluginDir string, metadata *Metadata) (Plugin, error) {
-
 	rc, ok := metadata.RuntimeConfig.(*RuntimeConfigExtismV1)
 	if !ok {
 		return nil, fmt.Errorf("invalid extism/v1 plugin runtime config type: %T", metadata.RuntimeConfig)
@@ -139,7 +138,6 @@ func (p *ExtismV1PluginRuntime) Dir() string {
 }
 
 func (p *ExtismV1PluginRuntime) Invoke(ctx context.Context, input *Input) (*Output, error) {
-
 	var tmpDir string
 	if p.rc.FileSystem.CreateTempDir {
 		tmpDirInner, err := os.MkdirTemp(os.TempDir(), "helm-plugin-*")

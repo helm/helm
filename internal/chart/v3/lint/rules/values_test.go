@@ -57,7 +57,7 @@ func TestValidateValuesYamlNotDirectory(t *testing.T) {
 
 	err := validateValuesFileExistence(nonExistingValuesFilePath)
 	if err == nil {
-		t.Errorf("validateValuesFileExistence to return a linter error, got no error")
+		t.Error("validateValuesFileExistence to return a linter error, got no error")
 	}
 }
 

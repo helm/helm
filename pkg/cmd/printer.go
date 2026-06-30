@@ -21,7 +21,7 @@ import (
 	"text/template"
 )
 
-func tpl(t string, vals map[string]interface{}, out io.Writer) error {
+func tpl(t string, vals map[string]any, out io.Writer) error {
 	tt, err := template.New("_").Parse(t)
 	if err != nil {
 		return err

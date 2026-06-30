@@ -17,7 +17,7 @@ limitations under the License.
 package version
 
 import (
-	"fmt"
+	"errors"
 	"runtime/debug"
 	"slices"
 
@@ -27,7 +27,7 @@ import (
 func K8sIOClientGoModVersion() (string, error) {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
-		return "", fmt.Errorf("failed to read build info")
+		return "", errors.New("failed to read build info")
 	}
 
 	idx := slices.IndexFunc(info.Deps, func(m *debug.Module) bool {
@@ -35,7 +35,7 @@ func K8sIOClientGoModVersion() (string, error) {
 	})
 
 	if idx == -1 {
-		return "", fmt.Errorf("k8s.io/client-go not found in build info")
+		return "", errors.New("k8s.io/client-go not found in build info")
 	}
 
 	m := info.Deps[idx]

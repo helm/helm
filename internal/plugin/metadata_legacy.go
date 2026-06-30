@@ -16,6 +16,7 @@ limitations under the License.
 package plugin
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"unicode"
@@ -49,7 +50,8 @@ type MetadataLegacy struct {
 	PlatformCommand []PlatformCommand `yaml:"platformCommand"`
 
 	// Command is the plugin command, as a single string.
-	// DEPRECATED: Use PlatformCommand instead. Removed in subprocess/v1 plugins.
+	//
+	// Deprecated: Use PlatformCommand instead. Removed in subprocess/v1 plugins.
 	Command string `yaml:"command"`
 
 	// IgnoreFlags ignores any flags passed in from Helm
@@ -59,7 +61,8 @@ type MetadataLegacy struct {
 	PlatformHooks PlatformHooks `yaml:"platformHooks"`
 
 	// Hooks are commands that will run on plugin events, as a single string.
-	// DEPRECATED: Use PlatformHooks instead. Removed in subprocess/v1 plugins.
+	//
+	// Deprecated: Use PlatformHooks instead. Removed in subprocess/v1 plugins.
 	Hooks Hooks `yaml:"hooks"`
 
 	// Downloaders field is used if the plugin supply downloader mechanism
@@ -71,14 +74,19 @@ func (m *MetadataLegacy) Validate() error {
 	if !validPluginName.MatchString(m.Name) {
 		return fmt.Errorf("invalid plugin name %q: must contain only a-z, A-Z, 0-9, _ and -", m.Name)
 	}
+
+	if m.Version != "" && !isValidSemver(m.Version) {
+		return fmt.Errorf("invalid plugin version %q: must be valid semver", m.Version)
+	}
+
 	m.Usage = sanitizeString(m.Usage)
 
 	if len(m.PlatformCommand) > 0 && len(m.Command) > 0 {
-		return fmt.Errorf("both platformCommand and command are set")
+		return errors.New("both platformCommand and command are set")
 	}
 
 	if len(m.PlatformHooks) > 0 && len(m.Hooks) > 0 {
-		return fmt.Errorf("both platformHooks and hooks are set")
+		return errors.New("both platformHooks and hooks are set")
 	}
 
 	// Validate downloader plugins

@@ -17,6 +17,7 @@ limitations under the License.
 package rules
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -47,7 +48,7 @@ func ValuesWithOverrides(linter *support.Linter, valueOverrides map[string]any, 
 func validateValuesFileExistence(valuesPath string) error {
 	_, err := os.Stat(valuesPath)
 	if err != nil {
-		return fmt.Errorf("file does not exist")
+		return errors.New("file does not exist")
 	}
 	return nil
 }

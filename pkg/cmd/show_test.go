@@ -99,35 +99,35 @@ func TestShowVersionCompletion(t *testing.T) {
 
 	tests := []cmdTestCase{{
 		name:   "completion for show version flag",
-		cmd:    fmt.Sprintf("%s __complete show chart testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete show chart testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for show version flag, no filter",
-		cmd:    fmt.Sprintf("%s __complete show chart testing/alpine --version 0.3", repoSetup),
+		cmd:    repoSetup + " __complete show chart testing/alpine --version 0.3",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for show version flag too few args",
-		cmd:    fmt.Sprintf("%s __complete show chart --version ''", repoSetup),
+		cmd:    repoSetup + " __complete show chart --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for show version flag too many args",
-		cmd:    fmt.Sprintf("%s __complete show chart testing/alpine badarg --version ''", repoSetup),
+		cmd:    repoSetup + " __complete show chart testing/alpine badarg --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for show version flag invalid chart",
-		cmd:    fmt.Sprintf("%s __complete show chart invalid/invalid --version ''", repoSetup),
+		cmd:    repoSetup + " __complete show chart invalid/invalid --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for show version flag with all",
-		cmd:    fmt.Sprintf("%s __complete show all testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete show all testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for show version flag with readme",
-		cmd:    fmt.Sprintf("%s __complete show readme testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete show readme testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for show version flag with values",
-		cmd:    fmt.Sprintf("%s __complete show values testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete show values testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}}
 	runTestCmd(t, tests)

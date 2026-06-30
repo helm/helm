@@ -43,7 +43,7 @@ func TestShow(t *testing.T) {
 		Raw: []*common.File{
 			{Name: "values.yaml", ModTime: modTime, Data: []byte("VALUES\n")},
 		},
-		Values: map[string]interface{}{},
+		Values: map[string]any{},
 	}
 
 	output, err := client.Run("")

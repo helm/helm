@@ -77,5 +77,5 @@ type Output struct {
 
 // validPluginName is a regular expression that validates plugin names.
 //
-// Plugin names can only contain the ASCII characters a-z, A-Z, 0-9, ​_​ and ​-.
+// Plugin names can only contain the ASCII characters a-z, A-Z, 0-9, _ and -.
 var validPluginName = regexp.MustCompile("^[A-Za-z0-9_-]+$")

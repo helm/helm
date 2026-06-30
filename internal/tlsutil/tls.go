@@ -112,7 +112,7 @@ func NewTLSConfig(options ...TLSConfigOption) (*tls.Config, error) {
 	if len(to.caPEMBlock) > 0 {
 		cp := x509.NewCertPool()
 		if !cp.AppendCertsFromPEM(to.caPEMBlock) {
-			return nil, fmt.Errorf("failed to append certificates from pem block")
+			return nil, errors.New("failed to append certificates from pem block")
 		}
 
 		config.RootCAs = cp

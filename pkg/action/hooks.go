@@ -35,7 +35,6 @@ import (
 func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent,
 	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption,
 	timeout time.Duration, serverSideApply bool) error {
-
 	shutdown, err := cfg.execHookWithDelayedShutdown(rl, hook, waitStrategy, waitOptions, timeout, serverSideApply)
 	if shutdown == nil {
 		return err
@@ -59,7 +58,6 @@ func shutdownNoOp() error {
 func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook release.HookEvent,
 	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption, timeout time.Duration,
 	serverSideApply bool) (ExecuteShutdownFunc, error) {
-
 	executingHooks := []*release.Hook{}
 
 	for _, h := range rl.Hooks {
@@ -150,8 +148,8 @@ func (cfg *Configuration) execHookWithDelayedShutdown(rl *release.Release, hook 
 	return func() error {
 		// If all hooks are successful, check the annotation of each hook to determine whether the hook should be deleted
 		// or output should be logged under succeeded condition. If so, then clear the corresponding resource object in each hook
-		for i := len(executingHooks) - 1; i >= 0; i-- {
-			h := executingHooks[i]
+		for _, v := range slices.Backward(executingHooks) {
+			h := v
 			if err := cfg.outputLogsByPolicy(h, rl.Namespace, release.HookOutputOnSucceeded); err != nil {
 				// We log here as we still want to attempt hook resource deletion even if output logging fails.
 				log.Printf("error outputting logs for hook failure: %v", err)
@@ -179,7 +177,6 @@ func (x hookByWeight) Less(i, j int) bool {
 // deleteHookByPolicy deletes a hook if the hook policy instructs it to
 func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.HookDeletePolicy,
 	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption, timeout time.Duration) error {
-
 	// Never delete CustomResourceDefinitions; this could cause lots of
 	// cascading garbage collection.
 	if h.Kind == "CustomResourceDefinition" {
@@ -214,7 +211,6 @@ func (cfg *Configuration) deleteHookByPolicy(h *release.Hook, policy release.Hoo
 // deleteHooksByPolicy deletes all hooks if the hook policy instructs it to
 func (cfg *Configuration) deleteHooksByPolicy(hooks []*release.Hook, policy release.HookDeletePolicy,
 	waitStrategy kube.WaitStrategy, waitOptions []kube.WaitOption, timeout time.Duration) error {
-
 	for _, h := range hooks {
 		if err := cfg.deleteHookByPolicy(h, policy, waitStrategy, waitOptions, timeout); err != nil {
 			return err
@@ -257,9 +253,9 @@ func (cfg *Configuration) outputLogsByPolicy(h *release.Hook, releaseNamespace s
 	}
 	switch h.Kind {
 	case "Job":
-		return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{LabelSelector: fmt.Sprintf("job-name=%s", h.Name)})
+		return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{LabelSelector: "job-name=" + h.Name})
 	case "Pod":
-		return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", h.Name)})
+		return cfg.outputContainerLogsForListOptions(namespace, metav1.ListOptions{FieldSelector: "metadata.name=" + h.Name})
 	default:
 		return nil
 	}

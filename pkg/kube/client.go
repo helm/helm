@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kube // import "helm.sh/helm/v4/pkg/kube"
+package kube
 
 import (
 	"bytes"
@@ -235,12 +235,15 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 
 // getKubeClient get or create a new KubernetesClientSet
 func (c *Client) getKubeClient() (kubernetes.Interface, error) {
-	var err error
-	if c.kubeClient == nil {
-		c.kubeClient, err = c.Factory.KubernetesClientSet()
+	if c.kubeClient != nil {
+		return c.kubeClient, nil
 	}
-
-	return c.kubeClient, err
+	kc, err := c.Factory.KubernetesClientSet()
+	if err != nil {
+		return nil, err
+	}
+	c.kubeClient = kc
+	return c.kubeClient, nil
 }
 
 // IsReachable tests connectivity to the cluster.
@@ -272,12 +275,12 @@ type ClientCreateOption func(*clientCreateOptions) error
 // ClientCreateOptionServerSideApply enables performing object apply server-side
 // see: https://kubernetes.io/docs/reference/using-api/server-side-apply/
 //
-// `forceConflicts` forces conflicts to be resolved (may be  when serverSideApply enabled only)
+// `forceConflicts` forces conflicts to be resolved (may be used when serverSideApply enabled only)
 // see: https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts
 func ClientCreateOptionServerSideApply(serverSideApply, forceConflicts bool) ClientCreateOption {
 	return func(o *clientCreateOptions) error {
 		if !serverSideApply && forceConflicts {
-			return fmt.Errorf("forceConflicts enabled when serverSideApply disabled")
+			return errors.New("forceConflicts enabled when serverSideApply disabled")
 		}
 
 		o.serverSideApply = serverSideApply
@@ -521,7 +524,6 @@ func determineFieldValidationDirective(validate bool) FieldValidationDirective {
 }
 
 func buildResourceList(f Factory, namespace string, validationDirective FieldValidationDirective, reader io.Reader, transformRequest resource.RequestTransform) (ResourceList, error) {
-
 	schema, err := f.Validator(string(validationDirective))
 	if err != nil {
 		return nil, err
@@ -727,7 +729,7 @@ func ClientUpdateOptionThreeWayMergeForUnstructured(threeWayMergeForUnstructured
 func ClientUpdateOptionServerSideApply(serverSideApply, forceConflicts bool) ClientUpdateOption {
 	return func(o *clientUpdateOptions) error {
 		if !serverSideApply && forceConflicts {
-			return fmt.Errorf("forceConflicts enabled when serverSideApply disabled")
+			return errors.New("forceConflicts enabled when serverSideApply disabled")
 		}
 
 		o.serverSideApply = serverSideApply
@@ -811,15 +813,15 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 	}
 
 	if updateOptions.threeWayMergeForUnstructured && updateOptions.serverSideApply {
-		return &Result{}, fmt.Errorf("invalid operation: cannot use three-way merge for unstructured and server-side apply together")
+		return &Result{}, errors.New("invalid operation: cannot use three-way merge for unstructured and server-side apply together")
 	}
 
 	if updateOptions.forceConflicts && updateOptions.forceReplace {
-		return &Result{}, fmt.Errorf("invalid operation: cannot use force conflicts and force replace together")
+		return &Result{}, errors.New("invalid operation: cannot use force conflicts and force replace together")
 	}
 
 	if updateOptions.serverSideApply && updateOptions.forceReplace {
-		return &Result{}, fmt.Errorf("invalid operation: cannot use server-side apply and force replace together")
+		return &Result{}, errors.New("invalid operation: cannot use server-side apply and force replace together")
 	}
 
 	createApplyFunc := c.makeCreateApplyFunc(
@@ -859,7 +861,6 @@ func (c *Client) Update(originals, targets ResourceList, options ...ClientUpdate
 				slog.String("fieldValidationDirective", string(updateOptions.fieldValidationDirective)),
 				slog.Bool("upgradeClientSideFieldManager", updateOptions.upgradeClientSideFieldManager))
 			return func(original, target *resource.Info) error {
-
 				logger := c.Logger().With(
 					slog.String("namespace", target.Namespace),
 					slog.String("name", target.Name),
@@ -954,7 +955,6 @@ func isIncompatibleServerError(err error) bool {
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.
 // Otherwise, one is calculated based on the name of the binary.
 func getManagedFieldsManager() string {
-
 	// When a manager is explicitly set use it
 	if ManagedFieldsManager != "" {
 		return ManagedFieldsManager
@@ -1102,7 +1102,6 @@ func createPatch(original runtime.Object, target *resource.Info, threeWayMergeFo
 }
 
 func replaceResource(target *resource.Info, fieldValidationDirective FieldValidationDirective) error {
-
 	helper := resource.NewHelper(target.Client, target.Mapping).
 		WithFieldValidation(string(fieldValidationDirective)).
 		WithFieldManager(getManagedFieldsManager())
@@ -1117,11 +1116,9 @@ func replaceResource(target *resource.Info, fieldValidationDirective FieldValida
 	}
 
 	return nil
-
 }
 
 func patchResourceClientSide(original runtime.Object, target *resource.Info, threeWayMergeForUnstructured bool) error {
-
 	patch, patchType, err := createPatch(original, target, threeWayMergeForUnstructured)
 	if err != nil {
 		return fmt.Errorf("failed to create patch: %w", err)
@@ -1155,14 +1152,12 @@ func patchResourceClientSide(original runtime.Object, target *resource.Info, thr
 // that upgrade CSA managed fields to SSA apply
 // see: https://github.com/kubernetes/kubernetes/pull/112905
 func upgradeClientSideFieldManager(info *resource.Info, dryRun bool, fieldValidationDirective FieldValidationDirective) (bool, error) {
-
 	fieldManagerName := getManagedFieldsManager()
 
 	patched := false
 	err := retry.RetryOnConflict(
 		retry.DefaultRetry,
 		func() error {
-
 			if err := info.Get(); err != nil {
 				return fmt.Errorf("failed to get object %s/%s %s: %w", info.Namespace, info.Name, info.Mapping.GroupVersionKind.String(), err)
 			}
@@ -1234,14 +1229,14 @@ func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts 
 	)
 	if err != nil {
 		if isIncompatibleServerError(err) {
-			return fmt.Errorf("server-side apply not available on the server: %v", err)
+			return fmt.Errorf("server-side apply not available on the server: %w", err)
 		}
 
 		if apierrors.IsConflict(err) {
 			return fmt.Errorf("conflict occurred while applying object %s/%s %s: %w", target.Namespace, target.Name, target.Mapping.GroupVersionKind.String(), err)
 		}
 
-		return err
+		return fmt.Errorf("server-side apply failed for object %s/%s %s: %w", target.Namespace, target.Name, target.Mapping.GroupVersionKind.String(), err)
 	}
 
 	return target.Refresh(obj, true)
@@ -1251,7 +1246,7 @@ func patchResourceServerSide(target *resource.Info, dryRun bool, forceConflicts 
 func (c *Client) GetPodList(namespace string, listOptions metav1.ListOptions) (*v1.PodList, error) {
 	podList, err := c.kubeClient.CoreV1().Pods(namespace).List(context.Background(), listOptions)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pod list with options: %+v with error: %v", listOptions, err)
+		return nil, fmt.Errorf("failed to get pod list with options: %+v with error: %w", listOptions, err)
 	}
 	return podList, nil
 }

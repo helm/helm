@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"path"
 	"strings"
@@ -26,6 +27,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -104,14 +106,14 @@ func TestRender(t *testing.T) {
 			{Name: "templates/test4", ModTime: modTime, Data: []byte("{{toJson .Values}}")},
 			{Name: "templates/test5", ModTime: modTime, Data: []byte("{{getHostByName \"helm.sh\"}}")},
 		},
-		Values: map[string]interface{}{"outer": "DEFAULT", "inner": "DEFAULT"},
+		Values: map[string]any{"outer": "DEFAULT", "inner": "DEFAULT"},
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{
+	vals := map[string]any{
+		"Values": map[string]any{
 			"outer": "spouter",
 			"inner": "inn",
-			"global": map[string]interface{}{
+			"global": map[string]any{
 				"callme": "Ishmael",
 			},
 		},
@@ -195,7 +197,7 @@ func TestRenderInternals(t *testing.T) {
 		"three": {tpl: `{{template "two" dict "Value" "three"}}`, vals: vals},
 	}
 
-	out, err := new(Engine).render(tpls)
+	out, err := new(Engine).render(t.Context(), tpls)
 	if err != nil {
 		t.Fatalf("Failed template rendering: %s", err)
 	}
@@ -226,11 +228,11 @@ func TestRenderWithDNS(t *testing.T) {
 		Templates: []*common.File{
 			{Name: "templates/test1", ModTime: time.Now(), Data: []byte("{{getHostByName \"helm.sh\"}}")},
 		},
-		Values: map[string]interface{}{},
+		Values: map[string]any{},
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{},
+	vals := map[string]any{
+		"Values": map[string]any{},
 	}
 
 	v, err := util.CoalesceValues(c, vals)
@@ -277,15 +279,15 @@ var _ ClientProvider = &testClientProvider{}
 
 // makeUnstructured is a convenience function for single-line creation of Unstructured objects.
 func makeUnstructured(apiVersion, kind, name, namespace string) *unstructured.Unstructured {
-	ret := &unstructured.Unstructured{Object: map[string]interface{}{
+	ret := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": apiVersion,
 		"kind":       kind,
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name": name,
 		},
 	}}
 	if namespace != "" {
-		ret.Object["metadata"].(map[string]interface{})["namespace"] = namespace
+		ret.Object["metadata"].(map[string]any)["namespace"] = namespace
 	}
 	return ret
 }
@@ -356,7 +358,7 @@ func TestRenderWithClientProvider(t *testing.T) {
 			Name:    "moby",
 			Version: "1.2.3",
 		},
-		Values: map[string]interface{}{},
+		Values: map[string]any{},
 	}
 
 	modTime := time.Now()
@@ -368,8 +370,8 @@ func TestRenderWithClientProvider(t *testing.T) {
 		})
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{},
+	vals := map[string]any{
+		"Values": map[string]any{},
 	}
 
 	v, err := util.CoalesceValues(c, vals)
@@ -401,11 +403,11 @@ func TestRenderWithClientProvider_error(t *testing.T) {
 		Templates: []*common.File{
 			{Name: "templates/error", ModTime: time.Now(), Data: []byte(`{{ lookup "v1" "Error" "" "" }}`)},
 		},
-		Values: map[string]interface{}{},
+		Values: map[string]any{},
 	}
 
-	vals := map[string]interface{}{
-		"Values": map[string]interface{}{},
+	vals := map[string]any{
+		"Values": map[string]any{},
 	}
 
 	v, err := util.CoalesceValues(c, vals)
@@ -417,7 +419,7 @@ func TestRenderWithClientProvider_error(t *testing.T) {
 		t: t,
 		scheme: map[string]kindProps{
 			"v1/Error": {
-				shouldErr: fmt.Errorf("kaboom"),
+				shouldErr: errors.New("kaboom"),
 			},
 		},
 	}
@@ -438,10 +440,10 @@ func TestParallelRenderInternals(t *testing.T) {
 			tpls := map[string]renderable{
 				"t": {
 					tpl:  `{{.val}}`,
-					vals: map[string]interface{}{"val": tt},
+					vals: map[string]any{"val": tt},
 				},
 			}
-			out, err := e.render(tpls)
+			out, err := e.render(t.Context(), tpls)
 			if err != nil {
 				t.Errorf("Failed to render %s: %s", tt, err)
 			}
@@ -455,12 +457,12 @@ func TestParallelRenderInternals(t *testing.T) {
 }
 
 func TestParseErrors(t *testing.T) {
-	vals := common.Values{"Values": map[string]interface{}{}}
+	vals := common.Values{"Values": map[string]any{}}
 
 	tplsUndefinedFunction := map[string]renderable{
 		"undefined_function": {tpl: `{{foo}}`, vals: vals},
 	}
-	_, err := new(Engine).render(tplsUndefinedFunction)
+	_, err := new(Engine).render(t.Context(), tplsUndefinedFunction)
 	if err == nil {
 		t.Fatalf("Expected failures while rendering: %s", err)
 	}
@@ -471,7 +473,7 @@ func TestParseErrors(t *testing.T) {
 }
 
 func TestExecErrors(t *testing.T) {
-	vals := common.Values{"Values": map[string]interface{}{}}
+	vals := common.Values{"Values": map[string]any{}}
 	cases := []struct {
 		name     string
 		tpls     map[string]renderable
@@ -523,7 +525,7 @@ linebreak`,
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := new(Engine).render(tt.tpls)
+			_, err := new(Engine).render(t.Context(), tt.tpls)
 			if err == nil {
 				t.Fatalf("Expected failures while rendering: %s", err)
 			}
@@ -535,13 +537,13 @@ linebreak`,
 }
 
 func TestFailErrors(t *testing.T) {
-	vals := common.Values{"Values": map[string]interface{}{}}
+	vals := common.Values{"Values": map[string]any{}}
 
 	failtpl := `All your base are belong to us{{ fail "This is an error" }}`
 	tplsFailed := map[string]renderable{
 		"failtpl": {tpl: failtpl, vals: vals},
 	}
-	_, err := new(Engine).render(tplsFailed)
+	_, err := new(Engine).render(t.Context(), tplsFailed)
 	if err == nil {
 		t.Fatalf("Expected failures while rendering: %s", err)
 	}
@@ -552,7 +554,7 @@ func TestFailErrors(t *testing.T) {
 
 	var e Engine
 	e.LintMode = true
-	out, err := e.render(tplsFailed)
+	out, err := e.render(t.Context(), tplsFailed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -643,7 +645,7 @@ func TestRenderDependency(t *testing.T) {
 		},
 	})
 
-	out, err := Render(ch, map[string]interface{}{})
+	out, err := Render(ch, map[string]any{})
 	if err != nil {
 		t.Fatalf("failed to render chart: %s", err)
 	}
@@ -656,7 +658,6 @@ func TestRenderDependency(t *testing.T) {
 	if out["outerchart/templates/outer"] != expect {
 		t.Errorf("Expected %q, got %q", expect, out["outer"])
 	}
-
 }
 
 func TestRenderNestedValues(t *testing.T) {
@@ -675,7 +676,7 @@ func TestRenderNestedValues(t *testing.T) {
 			{Name: deepestpath, ModTime: modTime, Data: []byte(`And this same {{.Values.what}} that smiles {{.Values.global.when}}`)},
 			{Name: checkrelease, ModTime: modTime, Data: []byte(`Tomorrow will be {{default "happy" .Release.Name }}`)},
 		},
-		Values: map[string]interface{}{"what": "milkshake", "where": "here"},
+		Values: map[string]any{"what": "milkshake", "where": "here"},
 	}
 
 	inner := &chart.Chart{
@@ -683,7 +684,7 @@ func TestRenderNestedValues(t *testing.T) {
 		Templates: []*common.File{
 			{Name: innerpath, ModTime: modTime, Data: []byte(`Old {{.Values.who}} is still a-flyin'`)},
 		},
-		Values: map[string]interface{}{"who": "Robert", "what": "glasses"},
+		Values: map[string]any{"who": "Robert", "what": "glasses"},
 	}
 	inner.AddDependency(deepest)
 
@@ -693,10 +694,10 @@ func TestRenderNestedValues(t *testing.T) {
 			{Name: outerpath, ModTime: modTime, Data: []byte(`Gather ye {{.Values.what}} while ye may`)},
 			{Name: subchartspath, ModTime: modTime, Data: []byte(`The glorious Lamp of {{.Subcharts.herrick.Subcharts.deepest.Values.where}}, the {{.Subcharts.herrick.Values.what}}`)},
 		},
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"what": "stinkweed",
 			"who":  "me",
-			"herrick": map[string]interface{}{
+			"herrick": map[string]any{
 				"who":  "time",
 				"what": "Sun",
 			},
@@ -704,15 +705,15 @@ func TestRenderNestedValues(t *testing.T) {
 	}
 	outer.AddDependency(inner)
 
-	injValues := map[string]interface{}{
+	injValues := map[string]any{
 		"what": "rosebuds",
-		"herrick": map[string]interface{}{
-			"deepest": map[string]interface{}{
+		"herrick": map[string]any{
+			"deepest": map[string]any{
 				"what":  "flower",
 				"where": "Heaven",
 			},
 		},
-		"global": map[string]interface{}{
+		"global": map[string]any{
 			"when": "to-day",
 		},
 	}
@@ -812,7 +813,6 @@ func TestRenderBuiltinValues(t *testing.T) {
 			t.Errorf("Expected %q, got %q", expect, out[file])
 		}
 	}
-
 }
 
 func TestAlterFuncMap_include(t *testing.T) {
@@ -1008,7 +1008,6 @@ func TestAlterFuncMap_tplinclude(t *testing.T) {
 	if got := out["TplFunction/templates/base"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
-
 }
 
 func TestRenderRecursionLimit(t *testing.T) {
@@ -1059,13 +1058,14 @@ func TestRenderRecursionLimit(t *testing.T) {
 	}
 
 	var expect string
+	var expectSb1062 strings.Builder
 	for range times {
-		expect += phrase + "\n"
+		expectSb1062.WriteString(phrase + "\n")
 	}
+	expect += expectSb1062.String()
 	if got := out["overlook/templates/quote"]; got != expect {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
-
 }
 
 func TestRenderLoadTemplateForTplFromFile(t *testing.T) {
@@ -1316,7 +1316,6 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 	if !strings.Contains(errTxt, "noSuchKey") {
 		t.Errorf("Expected error to contain 'noSuchKey', got %s", errTxt)
 	}
-
 }
 
 func TestNestedHelpersProducesMultilineStacktrace(t *testing.T) {
@@ -1349,12 +1348,12 @@ NestedHelperFunctions/charts/common/templates/_helpers_2.tpl:1:49
 	v := common.Values{}
 
 	val, _ := util.CoalesceValues(c, v)
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"Values": val.AsMap(),
 	}
 	_, err := Render(c, vals)
 
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, expectedErrorMessage, err.Error())
 }
 
@@ -1383,12 +1382,12 @@ template: no template "nested_helper.name" associated with template "gotpl"`
 	v := common.Values{}
 
 	val, _ := util.CoalesceValues(c, v)
-	vals := map[string]interface{}{
+	vals := map[string]any{
 		"Values": val.AsMap(),
 	}
 	_, err := Render(c, vals)
 
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, expectedErrorMessage, err.Error())
 }
 
@@ -1463,7 +1462,7 @@ func TestTraceableError_SimpleForm(t *testing.T) {
 	for _, errString := range testStrings {
 		trace, done := parseTemplateSimpleErrorString(errString)
 		if !done {
-			t.Errorf("Expected parse to pass but did not")
+			t.Error("Expected parse to pass but did not")
 		}
 		if trace.message != "error calling include" {
 			t.Errorf("Expected %q, got %q", errString, trace.message)
@@ -1480,7 +1479,7 @@ func TestTraceableError_ExecutingForm(t *testing.T) {
 		expectedLocation := errTuple[1]
 		trace, done := parseTemplateExecutingAtErrorType(errString)
 		if !done {
-			t.Errorf("Expected parse to pass but did not")
+			t.Error("Expected parse to pass but did not")
 		}
 		if trace.location != expectedLocation {
 			t.Errorf("Expected %q, got %q", expectedLocation, trace.location)
@@ -1495,10 +1494,72 @@ func TestTraceableError_NoTemplateForm(t *testing.T) {
 	for _, errString := range testStrings {
 		trace, done := parseTemplateNoTemplateError(errString, errString)
 		if !done {
-			t.Errorf("Expected parse to pass but did not")
+			t.Error("Expected parse to pass but did not")
 		}
 		if trace.message != errString {
 			t.Errorf("Expected %q, got %q", errString, trace.message)
 		}
+	}
+}
+
+// TestRenderSubchartDefaultNilNoStringify tests the full pipeline: subchart default
+// nil values should not produce "%!s(<nil>)" in rendered template output.
+// Regression test for the Bitnami common.secrets.key issue.
+func TestRenderSubchartDefaultNilNoStringify(t *testing.T) {
+	modTime := time.Now()
+
+	// Subchart has a default with nil values
+	subchart := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "child"},
+		Templates: []*common.File{
+			{
+				Name:    "templates/test.yaml",
+				ModTime: modTime,
+				Data:    []byte(`{{- if hasKey .Values.keyMapping "password" -}}{{- printf "subPath: %s" (index .Values.keyMapping "password") -}}{{- else -}}subPath: fallback{{- end -}}`),
+			},
+		},
+		Values: map[string]any{
+			"keyMapping": map[string]any{
+				"password": nil, // nil in chart defaults
+			},
+		},
+	}
+
+	parent := &chart.Chart{
+		Metadata: &chart.Metadata{Name: "parent"},
+		Values:   map[string]any{},
+	}
+	parent.AddDependency(subchart)
+
+	// Parent user values don't set keyMapping
+	injValues := map[string]any{}
+
+	tmp, err := util.CoalesceValues(parent, injValues)
+	if err != nil {
+		t.Fatalf("Failed to coalesce values: %s", err)
+	}
+
+	inject := common.Values{
+		"Values": tmp,
+		"Chart":  parent.Metadata,
+		"Release": common.Values{
+			"Name": "test-release",
+		},
+	}
+
+	out, err := Render(parent, inject)
+	if err != nil {
+		t.Fatalf("Failed to render templates: %s", err)
+	}
+
+	rendered := out["parent/charts/child/templates/test.yaml"]
+
+	if strings.Contains(rendered, "%!s(<nil>)") {
+		t.Errorf("Rendered output contains %%!s(<nil>), got: %q", rendered)
+	}
+
+	expected := "subPath: fallback"
+	if rendered != expected {
+		t.Errorf("Expected %q, got %q", expected, rendered)
 	}
 }

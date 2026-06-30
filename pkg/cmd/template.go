@@ -85,7 +85,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.KubeVersion = parsedKubeVersion
 			}
 
-			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+			registryClient, err := newRegistryClient(out, client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSVerify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
@@ -113,6 +113,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 				return err
 			}
+			installErr := err
 
 			// We ignore a potential error here because, when the --debug flag was specified,
 			// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
@@ -142,7 +143,6 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 								return err
 							}
 						}
-
 					}
 				}
 
@@ -187,6 +187,10 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 							missing = false
 						}
 						if missing {
+							if installErr != nil && settings.Debug {
+								// assume the manifest itself is too malformed to be rendered
+								return installErr
+							}
 							return fmt.Errorf("could not find template %s in chart", f)
 						}
 					}
@@ -198,7 +202,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				}
 			}
 
-			return err
+			return installErr
 		},
 	}
 

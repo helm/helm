@@ -143,7 +143,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compInstall(args, toComplete, client)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			registryClient, err := newRegistryClient(client.CertFile, client.KeyFile, client.CaFile,
+			registryClient, err := newRegistryClient(out, client.CertFile, client.KeyFile, client.CaFile,
 				client.InsecureSkipTLSVerify, client.PlainHTTP, client.Username, client.Password)
 			if err != nil {
 				return fmt.Errorf("missing registry client: %w", err)
@@ -201,6 +201,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	f.BoolVar(&client.DisableOpenAPIValidation, "disable-openapi-validation", false, "if set, the installation process will not validate rendered templates against the Kubernetes OpenAPI Schema")
 	f.BoolVar(&client.RollbackOnFailure, "rollback-on-failure", false, "if set, Helm will rollback (uninstall) the installation upon failure. The --wait flag will be default to \"watcher\" if --rollback-on-failure is set")
+	f.BoolVar(&client.RollbackOnFailure, "atomic", false, "deprecated")
 	f.MarkDeprecated("atomic", "use --rollback-on-failure instead")
 	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed. By default, CRDs are installed if not already present")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
@@ -209,6 +210,26 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
 	f.BoolVar(&client.HideNotes, "hide-notes", false, "if set, do not show notes in install output. Does not affect presence in chart metadata")
 	f.BoolVar(&client.TakeOwnership, "take-ownership", false, "if set, install will ignore the check for helm annotations and take ownership of the existing resources")
+
+	// For `helm template`, these notes flags are legacy, unused, and should not show in help, but
+	// must remain accepted for backwards compatibility in Helm 4. Deprecate and hide them for now
+	// TODO remove these from template command in Helm 5
+	if cmd.Name() == "template" {
+		if err := cmd.Flags().MarkDeprecated("hide-notes", "this flag has no effect for 'helm template' and will be removed in Helm 5"); err != nil {
+			log.Fatal(err)
+		}
+		if err := cmd.Flags().MarkHidden("hide-notes"); err != nil {
+			log.Fatal(err)
+		}
+
+		if err := cmd.Flags().MarkDeprecated("render-subchart-notes", "this flag has no effect for 'helm template' and will be removed in Helm 5"); err != nil {
+			log.Fatal(err)
+		}
+		if err := cmd.Flags().MarkHidden("render-subchart-notes"); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	AddWaitFlag(cmd, &client.WaitStrategy)
@@ -301,7 +322,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					return nil, fmt.Errorf("failed reloading chart after repo update: %w", err)
 				}
 			} else {
-				return nil, fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run `helm dependency build` to fetch missing dependencies: %w", err)
+				return nil, fmt.Errorf("an error occurred while checking for chart dependencies. You may need to run 'helm dependency build' to fetch missing dependencies: %w", err)
 			}
 		}
 	}

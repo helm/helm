@@ -103,7 +103,6 @@ func TestRepoRemove(t *testing.T) {
 
 		cacheIndex, cacheChart := createCacheFiles(rootDir, repoName)
 		cacheFiles[repoName] = []string{cacheIndex, cacheChart}
-
 	}
 
 	// Create repo remove command
@@ -196,15 +195,15 @@ func TestRepoRemoveCompletion(t *testing.T) {
 	// and that port changes each time we run the test.
 	tests := []cmdTestCase{{
 		name:   "completion for repo remove",
-		cmd:    fmt.Sprintf("%s __completeNoDesc repo remove ''", repoSetup),
+		cmd:    repoSetup + " __completeNoDesc repo remove ''",
 		golden: "output/repo_list_comp.txt",
 	}, {
 		name:   "completion for repo remove, no filter",
-		cmd:    fmt.Sprintf("%s __completeNoDesc repo remove fo", repoSetup),
+		cmd:    repoSetup + " __completeNoDesc repo remove fo",
 		golden: "output/repo_list_comp.txt",
 	}, {
 		name:   "completion for repo remove repetition",
-		cmd:    fmt.Sprintf("%s __completeNoDesc repo remove foo ''", repoSetup),
+		cmd:    repoSetup + " __completeNoDesc repo remove foo ''",
 		golden: "output/repo_repeat_comp.txt",
 	}}
 	for _, test := range tests {

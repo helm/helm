@@ -32,8 +32,8 @@ Think of it like apt/yum/homebrew for Kubernetes.
 
 ## Helm Development and Stable Versions
 
-Helm v4 is currently under development on the `main` branch. This is unstable and the APIs within the Go SDK and at the command line are changing.
-Helm v3 (current stable) is maintained on the `dev-v3` branch. APIs there follow semantic versioning.
+Helm v4 is the current stable release, developed on the `main` branch.
+Helm v3 is in support mode on the `dev-v3` branch: bug fixes until July 8th 2026, security fixes until November 11th 2026.
 
 ## Install
 
@@ -64,7 +64,7 @@ Get started with the [Quick Start guide](https://helm.sh/docs/intro/quickstart/)
 
 The [Helm roadmap uses GitHub milestones](https://github.com/helm/helm/milestones) to track the progress of the project.
 
-The development of Helm v4 is currently happening on the `main` branch while the development of Helm v3, the stable branch, is happening on the `dev-v3` branch. Changes should be made to the `main` branch prior to being added to the `dev-v3` branch so that all changes are carried along to Helm v4.
+Helm v4 development happens on the `main` branch. Helm v3 is in support mode on the `dev-v3` branch and receives only bug and security fixes.
 
 ## Community, discussion, contribution, and support
 

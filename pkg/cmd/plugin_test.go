@@ -100,7 +100,7 @@ func TestLoadCLIPlugins(t *testing.T) {
 		"HELM_PLUGINS=testdata/helmhome/helm/plugins",
 		"HELM_REPOSITORY_CONFIG=testdata/helmhome/helm/repositories.yaml",
 		"HELM_REPOSITORY_CACHE=testdata/helmhome/helm/repository",
-		fmt.Sprintf("HELM_BIN=%s", os.Args[0]),
+		"HELM_BIN=" + os.Args[0],
 	}, "\n") + "\n"
 
 	// Test that the YAML file was correctly converted to a command.
@@ -117,6 +117,7 @@ func TestLoadCLIPlugins(t *testing.T) {
 		{"exitwith", "exitwith code", "This exits with the specified exit code", "", []string{"2"}, 2},
 		{"fullenv", "show env vars", "show all env vars", fullEnvOutput, []string{}, 0},
 		{"shortenv", "env stuff", "show the env", "HELM_PLUGIN_NAME=shortenv\n", []string{}, 0},
+		// "noversion": plugin is invalid, and should not be loaded
 	}
 
 	pluginCmds := cmd.Commands()

@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -131,17 +130,16 @@ func TestIndexFile(t *testing.T) {
 
 	cv, err = i.Get("setter", "0.1.9+alpha")
 	if err != nil || cv.Version != "0.1.9+alpha" {
-		t.Errorf("Expected version: 0.1.9+alpha")
+		t.Error("Expected version: 0.1.9+alpha")
 	}
 
 	cv, err = i.Get("setter", "0.1.8")
 	if err != nil || cv.Version != "0.1.8" {
-		t.Errorf("Expected version: 0.1.8")
+		t.Error("Expected version: 0.1.8")
 	}
 }
 
 func TestLoadIndex(t *testing.T) {
-
 	tests := []struct {
 		Name     string
 		Filename string
@@ -175,7 +173,7 @@ func TestLoadIndex(t *testing.T) {
 // TestLoadIndex_Duplicates is a regression to make sure that we don't non-deterministically allow duplicate packages.
 func TestLoadIndex_Duplicates(t *testing.T) {
 	if _, err := loadIndex([]byte(indexWithDuplicates), "indexWithDuplicates"); err == nil {
-		t.Errorf("Expected an error when duplicate entries are present")
+		t.Error("Expected an error when duplicate entries are present")
 	}
 }
 
@@ -187,7 +185,7 @@ func TestLoadIndex_EmptyEntry(t *testing.T) {
 
 func TestLoadIndex_Empty(t *testing.T) {
 	if _, err := loadIndex([]byte(""), "indexWithEmpty"); err == nil {
-		t.Errorf("Expected an error when index.yaml is empty.")
+		t.Error("Expected an error when index.yaml is empty.")
 	}
 }
 
@@ -251,7 +249,6 @@ func TestMerge(t *testing.T) {
 	if v := vs[1]; v.Version != "0.2.0" {
 		t.Errorf("Expected %q version to be 0.2.0, got %s", v.Name, v.Version)
 	}
-
 }
 
 func TestDownloadIndexFile(t *testing.T) {
@@ -361,7 +358,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 
 	alpine, ok := i.Entries["alpine"]
 	if !ok {
-		t.Fatalf("'alpine' section not found.")
+		t.Fatal("'alpine' section not found.")
 	}
 
 	if l := len(alpine); l != 1 {
@@ -370,7 +367,7 @@ func verifyLocalIndex(t *testing.T, i *IndexFile) {
 
 	nginx, ok := i.Entries["nginx"]
 	if !ok || len(nginx) != 2 {
-		t.Fatalf("Expected 2 nginx entries")
+		t.Fatal("Expected 2 nginx entries")
 	}
 
 	expects := []*ChartVersion{
@@ -596,7 +593,7 @@ func TestAddFileIndexEntriesNil(t *testing.T) {
 		{&chart.Metadata{APIVersion: "v2", Name: " ", Version: "8033-5.apinie+s.r"}, "setter-0.1.9+beta.tgz", "http://example.com/charts", "sha256:1234567890abc"},
 	} {
 		if err := i.MustAdd(x.md, x.filename, x.baseURL, x.digest); err == nil {
-			t.Errorf("expected err to be non-nil when entries not initialized")
+			t.Error("expected err to be non-nil when entries not initialized")
 		}
 	}
 }
@@ -611,7 +608,7 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 			Input: nil,
 		},
 		"generic_error": {
-			Input: fmt.Errorf("foo"),
+			Input: errors.New("foo"),
 		},
 		"non_skipped_validation_error": {
 			Input: chart.ValidationError("chart.metadata.type must be application or library"),
@@ -643,7 +640,6 @@ func TestIgnoreSkippableChartValidationError(t *testing.T) {
 			if !errors.Is(tc.Input, result) {
 				t.Error("expected the result equal to input")
 			}
-
 		})
 	}
 }
@@ -715,6 +711,48 @@ func TestLoadIndex_DuplicateChartDeps(t *testing.T) {
 				if v.Name == "alpine" {
 					t.Error("malformed version was not filtered out")
 				}
+			}
+		})
+	}
+}
+
+func TestIsVersionRange(t *testing.T) {
+	tests := []struct {
+		version  string
+		expected bool
+	}{
+		{"1.0.0", false},
+		{"1.0.0+metadata", false},
+		{"v1.19.2", false},
+		{"v1", false},
+		{"^1", true},
+		{"^1.2.3", true},
+		{"~1.10", true},
+		{"~1.10.0", true},
+		{">= 1.0.0", true},
+		{"> 1.0.0", true},
+		{"< 2.0.0", true},
+		{"<= 2.0.0", true},
+		{"!= 1.0.0", true},
+		{"1.*", true},
+		{"1.x", true},
+		{"1.X", true},
+		{"v1.x", true},
+		{"v1.X", true},
+		{"1.0.0 - 2.0.0", true},
+		{"^1.0.0 || ^2.0.0", true},
+		{">=1.0.0 <2.0.0", true},
+		// Exact versions with 'x'/'X' in prerelease or build metadata
+		{"1.0.0-fix", false},
+		{"2.0.0-next", false},
+		{"1.0.0+exp", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.version, func(t *testing.T) {
+			got := isVersionRange(tt.version)
+			if got != tt.expected {
+				t.Errorf("isVersionRange(%q) = %v, want %v", tt.version, got, tt.expected)
 			}
 		})
 	}

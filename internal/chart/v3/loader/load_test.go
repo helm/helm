@@ -61,7 +61,7 @@ func TestLoadDirWithDevNull(t *testing.T) {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 	if _, err := l.Load(); err == nil {
-		t.Errorf("packages with an irregular file (/dev/null) should not load")
+		t.Error("packages with an irregular file (/dev/null) should not load")
 	}
 }
 
@@ -337,7 +337,6 @@ icon: https://example.com/64x64.png
 	if text.String() != "" {
 		t.Errorf("Expected no message to Stderr, got %s", text.String())
 	}
-
 }
 
 // Packaging the chart on a Windows machine will produce an
@@ -607,7 +606,6 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 			t.Errorf("Expected %s version %s, got %s", dep.Name(), exp["version"], dep.Metadata.Version)
 		}
 	}
-
 }
 
 func verifyDependencies(t *testing.T, c *chart.Chart) {

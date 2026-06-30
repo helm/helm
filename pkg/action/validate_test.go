@@ -36,7 +36,7 @@ import (
 	"k8s.io/client-go/rest/fake"
 )
 
-func newDeploymentResource(name, namespace string) *resource.Info {
+func newDeploymentResource(name, namespace, generateName string) *resource.Info {
 	return &resource.Info{
 		Name: name,
 		Mapping: &meta.RESTMapping{
@@ -45,8 +45,9 @@ func newDeploymentResource(name, namespace string) *resource.Info {
 		},
 		Object: &appsv1.Deployment{
 			ObjectMeta: v1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
+				Name:         name,
+				Namespace:    namespace,
+				GenerateName: generateName,
 			},
 		},
 	}
@@ -166,7 +167,7 @@ func TestExistingResourceConflict(t *testing.T) {
 }
 
 func TestCheckOwnership(t *testing.T) {
-	deployFoo := newDeploymentResource("foo", "ns-a")
+	deployFoo := newDeploymentResource("foo", "ns-a", "")
 
 	// Verify that a resource that lacks labels/annotations is not owned
 	err := checkOwnership(deployFoo.Object, "rel-a", "ns-a")
@@ -210,11 +211,103 @@ func TestCheckOwnership(t *testing.T) {
 	assert.EqualError(t, err, `invalid ownership metadata; label validation error: key "app.kubernetes.io/managed-by" must equal "Helm": current value is "helm"`)
 }
 
+func TestVerifyOwnershipBeforeDelete(t *testing.T) {
+	var (
+		releaseName      = "rel-a"
+		releaseNamespace = "ns-a"
+		labels           = map[string]string{
+			appManagedByLabel: appManagedByHelm,
+		}
+		annotations = map[string]string{
+			helmReleaseNameAnnotation:      releaseName,
+			helmReleaseNamespaceAnnotation: releaseNamespace,
+		}
+		wrongAnnotations = map[string]string{
+			helmReleaseNameAnnotation:      "rel-b",
+			helmReleaseNamespaceAnnotation: releaseNamespace,
+		}
+	)
+
+	// Test all resources properly owned
+	t.Run("all resources owned", func(t *testing.T) {
+		owned1 := newDeploymentWithOwner("owned1", "ns-a", labels, annotations)
+		owned2 := newDeploymentWithOwner("owned2", "ns-a", labels, annotations)
+		resources := kube.ResourceList{owned1, owned2}
+
+		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		assert.NoError(t, err)
+		assert.Len(t, ownedList, 2)
+		assert.Empty(t, unownedList)
+	})
+
+	// Test mix of owned and unowned resources
+	t.Run("mixed ownership", func(t *testing.T) {
+		owned := newDeploymentWithOwner("owned", "ns-a", labels, annotations)
+		unowned := newDeploymentWithOwner("unowned", "ns-a", labels, wrongAnnotations)
+		resources := kube.ResourceList{owned, unowned}
+
+		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		assert.NoError(t, err)
+		assert.Len(t, ownedList, 1)
+		assert.Len(t, unownedList, 1)
+		assert.Equal(t, "owned", ownedList[0].Name)
+		assert.Equal(t, "unowned", unownedList[0].Name)
+	})
+
+	// Test resource not found (should be skipped - not in either list)
+	t.Run("resource not found", func(t *testing.T) {
+		missing := newMissingDeployment("missing", "ns-a")
+		resources := kube.ResourceList{missing}
+
+		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		assert.NoError(t, err)
+		assert.Empty(t, ownedList)
+		assert.Empty(t, unownedList)
+	})
+
+	// Test resource with no ownership metadata
+	t.Run("no ownership metadata", func(t *testing.T) {
+		noMeta := newDeploymentWithOwner("no-meta", "ns-a", nil, nil)
+		resources := kube.ResourceList{noMeta}
+
+		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		assert.NoError(t, err)
+		assert.Empty(t, ownedList)
+		assert.Len(t, unownedList, 1)
+	})
+
+	// Test resource owned by different release
+	t.Run("owned by different release", func(t *testing.T) {
+		otherRelease := newDeploymentWithOwner("other", "ns-a", labels, wrongAnnotations)
+		resources := kube.ResourceList{otherRelease}
+
+		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		assert.NoError(t, err)
+		assert.Empty(t, ownedList)
+		assert.Len(t, unownedList, 1)
+	})
+
+	// Test mixed scenario: owned, unowned, and missing resources
+	t.Run("mixed with missing resources", func(t *testing.T) {
+		owned := newDeploymentWithOwner("owned", "ns-a", labels, annotations)
+		unowned := newDeploymentWithOwner("unowned", "ns-a", labels, wrongAnnotations)
+		missing := newMissingDeployment("missing", "ns-a")
+		resources := kube.ResourceList{owned, unowned, missing}
+
+		ownedList, unownedList, _, err := verifyOwnershipBeforeDelete(resources, releaseName, releaseNamespace)
+		assert.NoError(t, err)
+		assert.Len(t, ownedList, 1)
+		assert.Len(t, unownedList, 1)
+		assert.Equal(t, "owned", ownedList[0].Name)
+		assert.Equal(t, "unowned", unownedList[0].Name)
+	})
+}
+
 func TestSetMetadataVisitor(t *testing.T) {
 	var (
 		err       error
-		deployFoo = newDeploymentResource("foo", "ns-a")
-		deployBar = newDeploymentResource("bar", "ns-a-system")
+		deployFoo = newDeploymentResource("foo", "ns-a", "")
+		deployBar = newDeploymentResource("bar", "ns-a-system", "")
 		resources = kube.ResourceList{deployFoo, deployBar}
 	)
 
@@ -235,8 +328,53 @@ func TestSetMetadataVisitor(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Add a new resource that is missing ownership metadata and verify error
-	resources.Append(newDeploymentResource("baz", "default"))
+	resources.Append(newDeploymentResource("baz", "default", ""))
 	err = resources.Visit(setMetadataVisitor("rel-b", "ns-a", false))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `Deployment "baz" in namespace "" cannot be owned`)
+}
+
+func TestValidateNameAndGenerateName(t *testing.T) {
+	tests := []struct {
+		name        string
+		info        *resource.Info
+		wantSkip    bool
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:        "both name and generateName present",
+			info:        newDeploymentResource("job-a", "foo", "job-a-"),
+			wantSkip:    true,
+			wantErr:     true,
+			errContains: "metadata.name and metadata.generateName cannot both be set",
+		},
+		{
+			name:     "only generateName present",
+			info:     newDeploymentResource("", "foo", "job-a-"),
+			wantSkip: true,
+			wantErr:  false,
+		},
+		{
+			name:     "only name present",
+			info:     newDeploymentResource("job-a", "foo", ""),
+			wantSkip: false,
+			wantErr:  false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			skip, err := validateNameAndGenerateName(tc.info)
+
+			if tc.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.errContains)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.Equal(t, tc.wantSkip, skip)
+		})
+	}
 }

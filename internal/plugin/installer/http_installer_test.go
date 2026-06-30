@@ -53,16 +53,16 @@ var fakePluginB64 = "H4sIAAAAAAAAA+3SQUvDMBgG4Jz7K0LwapdvSxrwJig6mCKC5xHabBaXdDS
 
 func TestStripName(t *testing.T) {
 	if stripPluginName("fake-plugin-0.0.1.tar.gz") != "fake-plugin" {
-		t.Errorf("name does not match expected value")
+		t.Error("name does not match expected value")
 	}
 	if stripPluginName("fake-plugin-0.0.1.tgz") != "fake-plugin" {
-		t.Errorf("name does not match expected value")
+		t.Error("name does not match expected value")
 	}
 	if stripPluginName("fake-plugin.tgz") != "fake-plugin" {
-		t.Errorf("name does not match expected value")
+		t.Error("name does not match expected value")
 	}
 	if stripPluginName("fake-plugin.tar.gz") != "fake-plugin" {
-		t.Errorf("name does not match expected value")
+		t.Error("name does not match expected value")
 	}
 }
 
@@ -124,7 +124,6 @@ func TestHTTPInstaller(t *testing.T) {
 	} else if err.Error() != "plugin already exists" {
 		t.Fatalf("expected error for plugin exists, got (%v)", err)
 	}
-
 }
 
 func TestHTTPInstallerNonExistentVersion(t *testing.T) {
@@ -150,14 +149,13 @@ func TestHTTPInstallerNonExistentVersion(t *testing.T) {
 
 	// inject fake http client responding with error
 	httpInstaller.getter = &TestHTTPGetter{
-		MockError: fmt.Errorf("failed to download plugin for some reason"),
+		MockError: errors.New("failed to download plugin for some reason"),
 	}
 
 	// attempt to install the plugin
 	if err := Install(i); err == nil {
 		t.Fatal("expected error from http client")
 	}
-
 }
 
 func TestHTTPInstallerUpdate(t *testing.T) {
@@ -297,7 +295,6 @@ func TestExtract(t *testing.T) {
 		t.Fatalf("Expected %s to have %o mode but has %o (umask: %o)",
 			readmeFullPath, expectedReadmePerm, info.Mode().Perm(), currentUmask)
 	}
-
 }
 
 func TestCleanJoin(t *testing.T) {
@@ -327,11 +324,9 @@ func TestCleanJoin(t *testing.T) {
 			t.Errorf("Test %d: Expected %q but got %q", i, fixture.expect, out)
 		}
 	}
-
 }
 
 func TestMediaTypeToExtension(t *testing.T) {
-
 	for mt, shouldPass := range map[string]bool{
 		"":                   false,
 		"application/gzip":   true,
@@ -345,7 +340,7 @@ func TestMediaTypeToExtension(t *testing.T) {
 			t.Errorf("Media type %q failed test", mt)
 		}
 		if shouldPass && ext == "" {
-			t.Errorf("Expected an extension but got empty string")
+			t.Error("Expected an extension but got empty string")
 		}
 		if !shouldPass && len(ext) != 0 {
 			t.Error("Expected extension to be empty for unrecognized type")

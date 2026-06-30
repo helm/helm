@@ -17,6 +17,7 @@ package plugin
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -24,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 
 	"helm.sh/helm/v4/internal/plugin/schema"
 )
@@ -39,7 +41,7 @@ func getProtocolCommand(commands []SubprocessProtocolCommand, protocol string) *
 }
 
 // TODO can we replace a lot of this func with RuntimeSubprocess.invokeWithEnv?
-func (r *SubprocessPluginRuntime) runGetter(input *Input) (*Output, error) {
+func (r *SubprocessPluginRuntime) runGetter(ctx context.Context, input *Input) (*Output, error) {
 	msg, ok := (input.Message).(schema.InputMessageGetterV1)
 	if !ok {
 		return nil, fmt.Errorf("expected input type schema.InputMessageGetterV1, got %T", input)
@@ -63,7 +65,7 @@ func (r *SubprocessPluginRuntime) runGetter(input *Input) (*Output, error) {
 	env["HELM_PLUGIN_DIR"] = r.pluginDir
 	env["HELM_PLUGIN_USERNAME"] = msg.Options.Username
 	env["HELM_PLUGIN_PASSWORD"] = msg.Options.Password
-	env["HELM_PLUGIN_PASS_CREDENTIALS_ALL"] = fmt.Sprintf("%t", msg.Options.PassCredentialsAll)
+	env["HELM_PLUGIN_PASS_CREDENTIALS_ALL"] = strconv.FormatBool(msg.Options.PassCredentialsAll)
 
 	command, args, err := PrepareCommands(d.PlatformCommand, false, []string{}, env)
 	if err != nil {
@@ -80,7 +82,8 @@ func (r *SubprocessPluginRuntime) runGetter(input *Input) (*Output, error) {
 	buf := bytes.Buffer{} // subprocess getters are expected to write content to stdout
 
 	pluginCommand := filepath.Join(r.pluginDir, command)
-	cmd := exec.Command(
+	cmd := exec.CommandContext(
+		ctx,
 		pluginCommand,
 		args...)
 	cmd.Env = FormatEnv(env)

@@ -61,7 +61,7 @@ func TestLoadDirWithDevNull(t *testing.T) {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 	if _, err := l.Load(); err == nil {
-		t.Errorf("packages with an irregular file (/dev/null) should not load")
+		t.Error("packages with an irregular file (/dev/null) should not load")
 	}
 }
 
@@ -390,7 +390,6 @@ icon: https://example.com/64x64.png
 	if text.String() != "" {
 		t.Errorf("Expected no message to Stderr, got %s", text.String())
 	}
-
 }
 
 // Packaging the chart on a Windows machine will produce an
@@ -508,7 +507,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 func TestLoadValues(t *testing.T) {
 	testCases := map[string]struct {
 		data          []byte
-		expctedValues map[string]interface{}
+		expctedValues map[string]any
 	}{
 		"It should load values correctly": {
 			data: []byte(`
@@ -517,11 +516,11 @@ foo:
 bar:
   version: v2
 `),
-			expctedValues: map[string]interface{}{
-				"foo": map[string]interface{}{
+			expctedValues: map[string]any{
+				"foo": map[string]any{
 					"image": "foo:v1",
 				},
-				"bar": map[string]interface{}{
+				"bar": map[string]any{
 					"version": "v2",
 				},
 			},
@@ -536,11 +535,11 @@ bar:
 foo:
   image: foo:v2
 `),
-			expctedValues: map[string]interface{}{
-				"foo": map[string]interface{}{
+			expctedValues: map[string]any{
+				"foo": map[string]any{
 					"image": "foo:v2",
 				},
-				"bar": map[string]interface{}{
+				"bar": map[string]any{
 					"version": "v2",
 				},
 			},
@@ -560,24 +559,24 @@ foo:
 }
 
 func TestMergeValuesV2(t *testing.T) {
-	nestedMap := map[string]interface{}{
+	nestedMap := map[string]any{
 		"foo": "bar",
 		"baz": map[string]string{
 			"cool": "stuff",
 		},
 	}
-	anotherNestedMap := map[string]interface{}{
+	anotherNestedMap := map[string]any{
 		"foo": "bar",
 		"baz": map[string]string{
 			"cool":    "things",
 			"awesome": "stuff",
 		},
 	}
-	flatMap := map[string]interface{}{
+	flatMap := map[string]any{
 		"foo": "bar",
 		"baz": "stuff",
 	}
-	anotherFlatMap := map[string]interface{}{
+	anotherFlatMap := map[string]any{
 		"testing": "fun",
 	}
 
@@ -600,7 +599,7 @@ func TestMergeValuesV2(t *testing.T) {
 	}
 
 	testMap = MergeMaps(anotherFlatMap, anotherNestedMap)
-	expectedMap := map[string]interface{}{
+	expectedMap := map[string]any{
 		"testing": "fun",
 		"foo":     "bar",
 		"baz": map[string]string{
@@ -660,7 +659,6 @@ func verifyChart(t *testing.T, c *chart.Chart) {
 			t.Errorf("Expected %s version %s, got %s", dep.Name(), exp["version"], dep.Metadata.Version)
 		}
 	}
-
 }
 
 func verifyDependencies(t *testing.T, c *chart.Chart) {

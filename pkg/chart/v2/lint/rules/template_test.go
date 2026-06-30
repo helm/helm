@@ -49,7 +49,7 @@ func TestValidateAllowedExtension(t *testing.T) {
 	}
 }
 
-var values = map[string]interface{}{"nameOverride": "", "httpPort": 80}
+var values = map[string]any{"nameOverride": "", "httpPort": 80}
 
 const namespace = "testNamespace"
 
@@ -257,14 +257,13 @@ data:
 //
 // See https://github.com/helm/helm/issues/7483
 func TestStrictTemplateParsingMapError(t *testing.T) {
-
 	ch := chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:       "regression7483",
 			APIVersion: "v2",
 			Version:    "0.1.0",
 		},
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"mymap": map[string]string{
 				"key1": "val1",
 			},
@@ -390,7 +389,6 @@ func TestValidateTopIndentLevel(t *testing.T) {
 			t.Errorf("Expected %t for %q", shouldFail, doc)
 		}
 	}
-
 }
 
 // TestEmptyWithCommentsManifests checks the lint is not failing against empty manifests that contains only comments
@@ -486,5 +484,4 @@ func TestIsYamlFileExtension(t *testing.T) {
 			t.Errorf("isYamlFileExtension(%s) = %v; want %v", test.filename, result, test.expected)
 		}
 	}
-
 }

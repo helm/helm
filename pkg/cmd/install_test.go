@@ -291,27 +291,27 @@ func TestInstallVersionCompletion(t *testing.T) {
 
 	tests := []cmdTestCase{{
 		name:   "completion for install version flag with release name",
-		cmd:    fmt.Sprintf("%s __complete install releasename testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete install releasename testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for install version flag with generate-name",
-		cmd:    fmt.Sprintf("%s __complete install --generate-name testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete install --generate-name testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for install version flag, no filter",
-		cmd:    fmt.Sprintf("%s __complete install releasename testing/alpine --version 0.3", repoSetup),
+		cmd:    repoSetup + " __complete install releasename testing/alpine --version 0.3",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for install version flag too few args",
-		cmd:    fmt.Sprintf("%s __complete install testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete install testing/alpine --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for install version flag too many args",
-		cmd:    fmt.Sprintf("%s __complete install releasename testing/alpine badarg --version ''", repoSetup),
+		cmd:    repoSetup + " __complete install releasename testing/alpine badarg --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for install version flag invalid chart",
-		cmd:    fmt.Sprintf("%s __complete install releasename invalid/invalid --version ''", repoSetup),
+		cmd:    repoSetup + " __complete install releasename invalid/invalid --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}}
 	runTestCmd(t, tests)

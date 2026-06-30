@@ -17,6 +17,7 @@ package downloader
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -58,14 +59,16 @@ func (c *DiskCache) Get(key [sha256.Size]byte, cacheType string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	// Empty files treated as not exist because there is no content.
-	if fi.Size() == 0 {
-		return p, os.ErrNotExist
-	}
 	// directories should never happen unless something outside helm is operating
 	// on this content.
 	if fi.IsDir() {
 		return p, errors.New("is a directory")
+	}
+	// Empty files are treated as non-existent because there is no content.
+	// IsDir must be checked first: some filesystems (e.g. overlayfs) report
+	// directory size as 0.
+	if fi.Size() == 0 {
+		return p, os.ErrNotExist
 	}
 	return p, nil
 }
@@ -85,5 +88,5 @@ func (c *DiskCache) Put(key [sha256.Size]byte, data io.Reader, cacheType string)
 // fileName generates the filename in a structured manner where the first part is the
 // directory and the full hash is the filename.
 func (c *DiskCache) fileName(id [sha256.Size]byte, cacheType string) string {
-	return filepath.Join(c.Root, fmt.Sprintf("%02x", id[0]), fmt.Sprintf("%x", id)+cacheType)
+	return filepath.Join(c.Root, fmt.Sprintf("%02x", id[0]), hex.EncodeToString(id[:])+cacheType)
 }

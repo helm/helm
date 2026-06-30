@@ -36,6 +36,6 @@ func TestValidateNoDeprecations(t *testing.T) {
 		APIVersion: "v1",
 		Kind:       "Pod",
 	}, nil); err != nil {
-		t.Errorf("Expected a v1 Pod to not be deprecated")
+		t.Error("Expected a v1 Pod to not be deprecated")
 	}
 }

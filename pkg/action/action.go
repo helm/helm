@@ -18,6 +18,7 @@ package action
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -27,6 +28,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"text/template"
@@ -85,6 +87,33 @@ const (
 	// DryRunServer, or server-side dry-run, indicates the client will send
 	// calls to the APIServer with the dry-run parameter to prevent persisting changes
 	DryRunServer DryRunStrategy = "server"
+)
+
+// PostRenderStrategy determines how hooks and regular templates are passed
+// to the configured post-renderer.
+type PostRenderStrategy string
+
+const (
+	// PostRenderStrategyCombined sends hooks and regular templates together
+	// as a single stream to the post-renderer. This is the default in Helm 4.
+	PostRenderStrategyCombined PostRenderStrategy = "combined"
+
+	// PostRenderStrategySeparate sends hooks and regular templates to the
+	// post-renderer in independent invocations. This avoids duplicate-resource
+	// errors from post-renderers that de-duplicate by resource identity
+	// (for example Kustomize) when the same resource appears in both a hook
+	// and a regular template. Passing hooks to post-renderers was introduced
+	// in Helm 4; Helm 3 never did so, which is why the issue only surfaces
+	// with the Helm 4 combined default.
+	PostRenderStrategySeparate PostRenderStrategy = "separate"
+
+	// PostRenderStrategyNoHooks sends only regular templates to the
+	// post-renderer and leaves hooks untouched. This matches the Helm 3
+	// behavior and is useful for post-renderers that declare transforms
+	// targeting template-only resources (for example Kustomize patches
+	// against a Deployment that exists in templates but not in hooks),
+	// which would otherwise fail against the hook stream.
+	PostRenderStrategyNoHooks PostRenderStrategy = "nohooks"
 )
 
 // Configuration injects the dependencies that all actions share.
@@ -159,15 +188,32 @@ func annotateAndMerge(files map[string]string) (string, error) {
 			continue
 		}
 
-		manifests, err := kio.ParseAll(content)
-		if err != nil {
-			return "", fmt.Errorf("parsing %s: %w", fname, err)
+		// For consistency with the non-post-renderers code path, we need
+		// to use releaseutil.SplitManifests here to split the file into
+		// individual documents before feeding them to kio.ParseAll. In
+		// Chart API before v3 this function had leniency for badly-written
+		// Go templates, so this must be preserved for older charts.
+		splitDocs := releaseutil.SplitManifests(content)
+		keys := make([]string, 0, len(splitDocs))
+		for k := range splitDocs {
+			keys = append(keys, k)
 		}
-		for _, manifest := range manifests {
-			if err := manifest.PipeE(kyaml.SetAnnotation(filenameAnnotation, fname)); err != nil {
-				return "", fmt.Errorf("annotating %s: %w", fname, err)
+		sort.Sort(releaseutil.BySplitManifestsOrder(keys))
+		for _, key := range keys {
+			doc := splitDocs[key]
+			if strings.TrimSpace(doc) == "" {
+				continue
 			}
-			combinedManifests = append(combinedManifests, manifest)
+			manifests, err := kio.ParseAll(doc)
+			if err != nil {
+				return "", fmt.Errorf("parsing %s: %w", fname, err)
+			}
+			for _, manifest := range manifests {
+				if err := manifest.PipeE(kyaml.SetAnnotation(filenameAnnotation, fname)); err != nil {
+					return "", fmt.Errorf("annotating %s: %w", fname, err)
+				}
+				combinedManifests = append(combinedManifests, manifest)
+			}
 		}
 	}
 
@@ -180,7 +226,14 @@ func annotateAndMerge(files map[string]string) (string, error) {
 
 // splitAndDeannotate reconstructs individual files from a merged YAML stream,
 // removing filename annotations and grouping documents by their original filenames.
-func splitAndDeannotate(postrendered string) (map[string]string, error) {
+// Documents without a filename annotation are assigned a synthesized name of the
+// form "generated-by-postrender-<fallbackPrefix>-<i>.yaml" (or
+// "generated-by-postrender-<i>.yaml" when fallbackPrefix is empty). The prefix
+// disambiguates fallback filenames across multiple post-render invocations (for
+// example when PostRenderStrategySeparate runs the post-renderer once per
+// group), so that merging results from different invocations does not collide
+// on the same synthetic key.
+func splitAndDeannotate(postrendered, fallbackPrefix string) (map[string]string, error) {
 	manifests, err := kio.ParseAll(postrendered)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing YAML: %w", err)
@@ -194,7 +247,11 @@ func splitAndDeannotate(postrendered string) (map[string]string, error) {
 		}
 		fname := meta.Annotations[filenameAnnotation]
 		if fname == "" {
-			fname = fmt.Sprintf("generated-by-postrender-%d.yaml", i)
+			if fallbackPrefix == "" {
+				fname = fmt.Sprintf("generated-by-postrender-%d.yaml", i)
+			} else {
+				fname = fmt.Sprintf("generated-by-postrender-%s-%d.yaml", fallbackPrefix, i)
+			}
 		}
 		if err := manifest.PipeE(kyaml.ClearAnnotation(filenameAnnotation)); err != nil {
 			return nil, fmt.Errorf("clearing filename annotation: %w", err)
@@ -219,7 +276,7 @@ func splitAndDeannotate(postrendered string) (map[string]string, error) {
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //
 //	This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS, hideSecret bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ctx context.Context, ch *chart.Chart, values common.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrenderer.PostRenderer, interactWithRemote, enableDNS, hideSecret bool, postRenderStrategy PostRenderStrategy) ([]*release.Hook, *bytes.Buffer, string, error) {
 	var hs []*release.Hook
 	b := bytes.NewBuffer(nil)
 
@@ -249,13 +306,13 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 		e.EnableDNS = enableDNS
 		e.CustomTemplateFuncs = cfg.CustomTemplateFuncs
 
-		files, err2 = e.Render(ch, values)
+		files, err2 = e.RenderWithContext(ctx, ch, values)
 	} else {
 		var e engine.Engine
 		e.EnableDNS = enableDNS
 		e.CustomTemplateFuncs = cfg.CustomTemplateFuncs
 
-		files, err2 = e.Render(ch, values)
+		files, err2 = e.RenderWithContext(ctx, ch, values)
 	}
 
 	if err2 != nil {
@@ -283,29 +340,122 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values common.Values,
 	notes := notesBuffer.String()
 
 	if pr != nil {
-		// We need to send files to the post-renderer before sorting and splitting
-		// hooks from manifests. The post-renderer interface expects a stream of
-		// manifests (similar to what tools like Kustomize and kubectl expect), whereas
-		// the sorter uses filenames.
-		// Here, we merge the documents into a stream, post-render them, and then split
-		// them back into a map of filename -> content.
+		switch postRenderStrategy {
+		case PostRenderStrategySeparate, PostRenderStrategyNoHooks:
+			// Split hooks from manifests before post-rendering. For "separate",
+			// hooks and templates are sent to the post-renderer as independent
+			// streams to avoid duplicate-resource errors when the same resource
+			// appears in both (e.g. a ServiceAccount used by a pre-install hook
+			// that is also declared in the chart's regular templates). For
+			// "nohooks", hooks skip the post-renderer entirely, matching the
+			// Helm 3 behavior.
+			sortedHooks, sortedManifests, err := releaseutil.SortManifests(files, nil, releaseutil.InstallOrder)
+			if err != nil {
+				for name, content := range files {
+					if strings.TrimSpace(content) == "" {
+						continue
+					}
+					fmt.Fprintf(b, "---\n# Source: %s\n%s\n", name, content)
+				}
+				return hs, b, "", err
+			}
 
-		// Merge files as stream of documents for sending to post renderer
-		merged, err := annotateAndMerge(files)
-		if err != nil {
-			return hs, b, notes, fmt.Errorf("error merging manifests: %w", err)
-		}
+			// Build separate files maps for hooks and manifests.
+			hookFiles := make(map[string]string)
+			for _, h := range sortedHooks {
+				if existing, ok := hookFiles[h.Path]; ok {
+					hookFiles[h.Path] = existing + "\n---\n" + h.Manifest
+				} else {
+					hookFiles[h.Path] = h.Manifest
+				}
+			}
+			manifestFiles := make(map[string]string)
+			for _, m := range sortedManifests {
+				if existing, ok := manifestFiles[m.Name]; ok {
+					manifestFiles[m.Name] = existing + "\n---\n" + m.Content
+				} else {
+					manifestFiles[m.Name] = m.Content
+				}
+			}
 
-		// Run the post renderer
-		postRendered, err := pr.Run(bytes.NewBufferString(merged))
-		if err != nil {
-			return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
-		}
+			// Decide which groups to post-render. "nohooks" passes hooks
+			// through untouched and only post-renders manifests.
+			groups := []struct {
+				name       string
+				files      map[string]string
+				postRender bool
+			}{
+				{"hooks", hookFiles, postRenderStrategy == PostRenderStrategySeparate},
+				{"manifests", manifestFiles, true},
+			}
 
-		// Use the file list and contents received from the post renderer
-		files, err = splitAndDeannotate(postRendered.String())
-		if err != nil {
-			return hs, b, notes, fmt.Errorf("error while parsing post rendered output: %w", err)
+			files = make(map[string]string)
+			for _, group := range groups {
+				if len(group.files) == 0 {
+					continue
+				}
+
+				if !group.postRender {
+					for k, v := range group.files {
+						if existing, ok := files[k]; ok {
+							files[k] = existing + "\n---\n" + v
+						} else {
+							files[k] = v
+						}
+					}
+					continue
+				}
+
+				merged, err := annotateAndMerge(group.files)
+				if err != nil {
+					return hs, b, notes, fmt.Errorf("error merging %s: %w", group.name, err)
+				}
+
+				postRendered, err := pr.Run(bytes.NewBufferString(merged))
+				if err != nil {
+					return hs, b, notes, fmt.Errorf("error while running post render on %s: %w", group.name, err)
+				}
+
+				rendered, err := splitAndDeannotate(postRendered.String(), group.name)
+				if err != nil {
+					return hs, b, notes, fmt.Errorf("error while parsing post rendered output for %s: %w", group.name, err)
+				}
+
+				for k, v := range rendered {
+					if existing, ok := files[k]; ok {
+						files[k] = existing + "\n---\n" + v
+					} else {
+						files[k] = v
+					}
+				}
+			}
+		case PostRenderStrategyCombined, "":
+			// We need to send files to the post-renderer before sorting and splitting
+			// hooks from manifests. The post-renderer interface expects a stream of
+			// manifests (similar to what tools like Kustomize and kubectl expect), whereas
+			// the sorter uses filenames.
+			// Here, we merge the documents into a stream, post-render them, and then split
+			// them back into a map of filename -> content.
+
+			// Merge files as stream of documents for sending to post renderer
+			merged, err := annotateAndMerge(files)
+			if err != nil {
+				return hs, b, notes, fmt.Errorf("error merging manifests: %w", err)
+			}
+
+			// Run the post renderer
+			postRendered, err := pr.Run(bytes.NewBufferString(merged))
+			if err != nil {
+				return hs, b, notes, fmt.Errorf("error while running post render on files: %w", err)
+			}
+
+			// Use the file list and contents received from the post renderer
+			files, err = splitAndDeannotate(postRendered.String(), "")
+			if err != nil {
+				return hs, b, notes, fmt.Errorf("error while parsing post rendered output: %w", err)
+			}
+		default:
+			return hs, b, notes, fmt.Errorf("unknown post-render strategy: '%s'", postRenderStrategy)
 		}
 	}
 
@@ -466,7 +616,7 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (common.VersionSet
 		return common.DefaultVersionSet, nil
 	}
 
-	versionMap := make(map[string]interface{})
+	versionMap := make(map[string]any)
 	var versions []string
 
 	// Extract the groups
@@ -481,7 +631,6 @@ func GetVersionSet(client discovery.ServerResourcesInterface) (common.VersionSet
 	var ok bool
 	for _, r := range resources {
 		for _, rl := range r.APIResources {
-
 			// A Kind at a GroupVersion can show up more than once. We only want
 			// it displayed once in the final output.
 			id = path.Join(r.GroupVersion, rl.Kind)

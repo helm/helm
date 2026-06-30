@@ -70,7 +70,7 @@ func NewPackage() *Package {
 }
 
 // Run executes 'helm package' against the given chart and returns the path to the packaged chart.
-func (p *Package) Run(path string, _ map[string]interface{}) (string, error) {
+func (p *Package) Run(path string, _ map[string]any) (string, error) {
 	chrt, err := loader.LoadDir(path)
 	if err != nil {
 		return "", err

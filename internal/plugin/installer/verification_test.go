@@ -16,10 +16,8 @@ limitations under the License.
 package installer
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,33 +42,49 @@ func TestInstallWithOptions_VerifyMissingProvenance(t *testing.T) {
 	}
 	defer os.RemoveAll(installer.Path())
 
-	// Capture stderr to check warning message
-	oldStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
-
-	// Install with verification enabled (should warn but succeed)
+	// Install with verification enabled should fail when .prov is missing
 	result, err := InstallWithOptions(installer, Options{Verify: true, Keyring: "dummy"})
 
-	// Restore stderr and read captured output
-	w.Close()
-	os.Stderr = oldStderr
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
-	output := buf.String()
-
-	// Should succeed with nil result (no verification performed)
-	if err != nil {
-		t.Fatalf("Expected installation to succeed despite missing .prov file, got error: %v", err)
+	// Should fail with a missing provenance error
+	if err == nil {
+		t.Fatal("Expected installation to fail when .prov file is missing and verification is enabled")
+	}
+	if !strings.Contains(err.Error(), "no provenance file") {
+		t.Errorf("Expected 'no provenance file' in error message, got: %v", err)
 	}
 	if result != nil {
 		t.Errorf("Expected nil verification result when .prov file is missing, got: %+v", result)
 	}
 
-	// Should contain warning message
-	expectedWarning := "WARNING: No provenance file found for plugin"
-	if !strings.Contains(output, expectedWarning) {
-		t.Errorf("Expected warning message '%s' in output, got: %s", expectedWarning, output)
+	// Plugin should NOT be installed
+	if _, err := os.Stat(installer.Path()); !os.IsNotExist(err) {
+		t.Error("Plugin should not be installed when verification fails due to missing .prov")
+	}
+}
+
+func TestInstallWithOptions_NoVerifyMissingProvenance(t *testing.T) {
+	ensure.HelmHome(t)
+
+	// Create a temporary plugin tarball without .prov file
+	pluginDir := createTestPluginDir(t)
+	pluginTgz := createTarballFromPluginDir(t, pluginDir)
+	defer os.Remove(pluginTgz)
+
+	// Create local installer
+	installer, err := NewLocalInstaller(pluginTgz)
+	if err != nil {
+		t.Fatalf("Failed to create installer: %v", err)
+	}
+	defer os.RemoveAll(installer.Path())
+
+	// Install with verification explicitly disabled should succeed without .prov
+	result, err := InstallWithOptions(installer, Options{Verify: false})
+
+	if err != nil {
+		t.Fatalf("Expected installation to succeed with --verify=false, got error: %v", err)
+	}
+	if result != nil {
+		t.Errorf("Expected nil verification result when verification is disabled, got: %+v", result)
 	}
 
 	// Plugin should be installed
@@ -107,7 +121,7 @@ func TestInstallWithOptions_VerifyWithValidProvenance(t *testing.T) {
 
 	// Should fail due to invalid signature (empty keyring) but we test that it gets past the hash check
 	if err == nil {
-		t.Fatalf("Expected installation to fail with empty keyring")
+		t.Fatal("Expected installation to fail with empty keyring")
 	}
 	if !strings.Contains(err.Error(), "plugin verification failed") {
 		t.Errorf("Expected plugin verification failed error, got: %v", err)
@@ -118,7 +132,7 @@ func TestInstallWithOptions_VerifyWithValidProvenance(t *testing.T) {
 
 	// Plugin should not be installed due to verification failure
 	if _, err := os.Stat(installer.Path()); !os.IsNotExist(err) {
-		t.Errorf("Plugin should not be installed when verification fails")
+		t.Error("Plugin should not be installed when verification fails")
 	}
 }
 
@@ -150,7 +164,7 @@ func TestInstallWithOptions_VerifyWithInvalidProvenance(t *testing.T) {
 
 	// Should fail with verification error
 	if err == nil {
-		t.Fatalf("Expected installation with invalid .prov file to fail")
+		t.Fatal("Expected installation with invalid .prov file to fail")
 	}
 	if result != nil {
 		t.Errorf("Expected nil verification result when verification fails, got: %+v", result)
@@ -164,7 +178,7 @@ func TestInstallWithOptions_VerifyWithInvalidProvenance(t *testing.T) {
 
 	// Plugin should not be installed
 	if _, err := os.Stat(installer.Path()); !os.IsNotExist(err) {
-		t.Errorf("Plugin should not be installed when verification fails")
+		t.Error("Plugin should not be installed when verification fails")
 	}
 }
 
@@ -218,7 +232,7 @@ func TestInstallWithOptions_VerifyDirectoryNotSupported(t *testing.T) {
 
 	// Should fail with verification not supported error
 	if err == nil {
-		t.Fatalf("Expected installation to fail with verification not supported error")
+		t.Fatal("Expected installation to fail with verification not supported error")
 	}
 	if !strings.Contains(err.Error(), "--verify is only supported for plugin tarballs") {
 		t.Errorf("Expected verification not supported error, got: %v", err)
@@ -257,7 +271,7 @@ func TestInstallWithOptions_VerifyMismatchedProvenance(t *testing.T) {
 
 	// Should fail with verification error
 	if err == nil {
-		t.Fatalf("Expected installation to fail with hash mismatch")
+		t.Fatal("Expected installation to fail with hash mismatch")
 	}
 	if !strings.Contains(err.Error(), "plugin verification failed") {
 		t.Errorf("Expected plugin verification failed error, got: %v", err)
@@ -298,7 +312,7 @@ func TestInstallWithOptions_VerifyProvenanceAccessError(t *testing.T) {
 
 	// Should fail with access error (either at stat level or during verification)
 	if err == nil {
-		t.Fatalf("Expected installation to fail with provenance file access error")
+		t.Fatal("Expected installation to fail with provenance file access error")
 	}
 	// The error could be either "failed to access provenance file" or "plugin verification failed"
 	// depending on when the permission error occurs

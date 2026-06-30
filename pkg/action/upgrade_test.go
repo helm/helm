@@ -60,7 +60,7 @@ func TestUpgradeRelease_Success(t *testing.T) {
 	req.NoError(upAction.cfg.Releases.Create(rel))
 
 	upAction.WaitStrategy = kube.StatusWatcherStrategy
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	ctx, done := context.WithCancel(t.Context())
 	resi, err := upAction.RunWithContext(ctx, rel.Name, buildChart(), vals)
@@ -91,10 +91,10 @@ func TestUpgradeRelease_Wait(t *testing.T) {
 	require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("I timed out")
+	failer.WaitError = errors.New("I timed out")
 	upAction.cfg.KubeClient = failer
 	upAction.WaitStrategy = kube.StatusWatcherStrategy
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	resi, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Error(err)
@@ -115,11 +115,11 @@ func TestUpgradeRelease_WaitForJobs(t *testing.T) {
 	require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("I timed out")
+	failer.WaitError = errors.New("I timed out")
 	upAction.cfg.KubeClient = failer
 	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	upAction.WaitForJobs = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	resi, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Error(err)
@@ -140,12 +140,12 @@ func TestUpgradeRelease_CleanupOnFail(t *testing.T) {
 	require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-	failer.WaitError = fmt.Errorf("I timed out")
-	failer.DeleteError = fmt.Errorf("I tried to delete nil")
+	failer.WaitError = errors.New("I timed out")
+	failer.DeleteError = errors.New("I tried to delete nil")
 	upAction.cfg.KubeClient = failer
 	upAction.WaitStrategy = kube.StatusWatcherStrategy
 	upAction.CleanupOnFail = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	resi, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Error(err)
@@ -170,10 +170,10 @@ func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
 
 		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 		// We can't make Update error because then the rollback won't work
-		failer.WatchUntilReadyError = fmt.Errorf("arming key removed")
+		failer.WatchUntilReadyError = errors.New("arming key removed")
 		upAction.cfg.KubeClient = failer
 		upAction.RollbackOnFailure = true
-		vals := map[string]interface{}{}
+		vals := map[string]any{}
 
 		resi, err := upAction.Run(rel.Name, buildChart(), vals)
 		req.Error(err)
@@ -199,10 +199,10 @@ func TestUpgradeRelease_RollbackOnFailure(t *testing.T) {
 		require.NoError(t, upAction.cfg.Releases.Create(rel))
 
 		failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
-		failer.UpdateError = fmt.Errorf("update fail")
+		failer.UpdateError = errors.New("update fail")
 		upAction.cfg.KubeClient = failer
 		upAction.RollbackOnFailure = true
-		vals := map[string]interface{}{}
+		vals := map[string]any{}
 
 		_, err := upAction.Run(rel.Name, buildChart(), vals)
 		req.Error(err)
@@ -217,17 +217,17 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 	t.Run("reuse values should work with values", func(t *testing.T) {
 		upAction := upgradeAction(t)
 
-		existingValues := map[string]interface{}{
+		existingValues := map[string]any{
 			"name":        "value",
 			"maxHeapSize": "128m",
 			"replicas":    2,
 		}
-		newValues := map[string]interface{}{
+		newValues := map[string]any{
 			"name":        "newValue",
 			"maxHeapSize": "512m",
 			"cpu":         "12m",
 		}
-		expectedValues := map[string]interface{}{
+		expectedValues := map[string]any{
 			"name":        "newValue",
 			"maxHeapSize": "512m",
 			"cpu":         "12m",
@@ -266,8 +266,8 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 
 	t.Run("reuse values should not install disabled charts", func(t *testing.T) {
 		upAction := upgradeAction(t)
-		chartDefaultValues := map[string]interface{}{
-			"subchart": map[string]interface{}{
+		chartDefaultValues := map[string]any{
+			"subchart": map[string]any{
 				"enabled": true,
 			},
 		}
@@ -283,8 +283,8 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			withMetadataDependency(dependency),
 		)
 		now := time.Now()
-		existingValues := map[string]interface{}{
-			"subchart": map[string]interface{}{
+		existingValues := map[string]any{
+			"subchart": map[string]any{
 				"enabled": false,
 			},
 		}
@@ -311,7 +311,7 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 			withMetadataDependency(dependency),
 		)
 		// reusing values and upgrading
-		resi, err := upAction.Run(rel.Name, sampleChartWithSubChart, map[string]interface{}{})
+		resi, err := upAction.Run(rel.Name, sampleChartWithSubChart, map[string]any{})
 		is.NoError(err)
 		res, err := releaserToV1Release(resi)
 		is.NoError(err)
@@ -328,10 +328,10 @@ func TestUpgradeRelease_ReuseValues(t *testing.T) {
 		is.NoError(err)
 
 		is.Equal(common.StatusDeployed, updatedRes.Info.Status)
-		is.Equal(0, len(updatedRes.Chart.Dependencies()), "expected 0 dependencies")
+		is.Empty(updatedRes.Chart.Dependencies(), "expected 0 dependencies")
 
-		expectedValues := map[string]interface{}{
-			"subchart": map[string]interface{}{
+		expectedValues := map[string]any{
+			"subchart": map[string]any{
 				"enabled": false,
 			},
 		}
@@ -345,20 +345,20 @@ func TestUpgradeRelease_ResetThenReuseValues(t *testing.T) {
 	t.Run("reset then reuse values should work with values", func(t *testing.T) {
 		upAction := upgradeAction(t)
 
-		existingValues := map[string]interface{}{
+		existingValues := map[string]any{
 			"name":        "value",
 			"maxHeapSize": "128m",
 			"replicas":    2,
 		}
-		newValues := map[string]interface{}{
+		newValues := map[string]any{
 			"name":        "newValue",
 			"maxHeapSize": "512m",
 			"cpu":         "12m",
 		}
-		newChartValues := map[string]interface{}{
+		newChartValues := map[string]any{
 			"memory": "256m",
 		}
-		expectedValues := map[string]interface{}{
+		expectedValues := map[string]any{
 			"name":        "newValue",
 			"maxHeapSize": "512m",
 			"cpu":         "12m",
@@ -411,7 +411,7 @@ func TestUpgradeRelease_Pending(t *testing.T) {
 	rel2.Version = 2
 	require.NoError(t, upAction.cfg.Releases.Create(rel2))
 
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	_, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.Contains(err.Error(), "progress", err)
@@ -431,7 +431,7 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 	failer.WaitDuration = 10 * time.Second
 	upAction.cfg.KubeClient = failer
 	upAction.WaitStrategy = kube.StatusWatcherStrategy
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
@@ -446,7 +446,6 @@ func TestUpgradeRelease_Interrupted_Wait(t *testing.T) {
 }
 
 func TestUpgradeRelease_Interrupted_RollbackOnFailure(t *testing.T) {
-
 	is := assert.New(t)
 	req := require.New(t)
 
@@ -460,7 +459,7 @@ func TestUpgradeRelease_Interrupted_RollbackOnFailure(t *testing.T) {
 	failer.WaitDuration = 5 * time.Second
 	upAction.cfg.KubeClient = failer
 	upAction.RollbackOnFailure = true
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	ctx, cancel := context.WithCancel(t.Context())
 	time.AfterFunc(time.Second, cancel)
@@ -590,7 +589,7 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 	req.NoError(upAction.cfg.Releases.Create(rel))
 
 	upAction.DryRunStrategy = DryRunClient
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 
 	ctx, done := context.WithCancel(t.Context())
 	resi, err := upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
@@ -610,7 +609,7 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 
 	// Test the case for hiding the secret to ensure it is not displayed
 	upAction.HideSecret = true
-	vals = map[string]interface{}{}
+	vals = map[string]any{}
 
 	ctx, done = context.WithCancel(t.Context())
 	resi, err = upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
@@ -630,7 +629,7 @@ func TestUpgradeRelease_DryRun(t *testing.T) {
 
 	// Ensure in a dry run mode when using HideSecret
 	upAction.DryRunStrategy = DryRunNone
-	vals = map[string]interface{}{}
+	vals = map[string]any{}
 
 	ctx, done = context.WithCancel(t.Context())
 	_, err = upAction.RunWithContext(ctx, rel.Name, buildChart(withSampleSecret()), vals)
@@ -716,7 +715,7 @@ func TestGetUpgradeServerSideValue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			serverSideApply, err := getUpgradeServerSideValue(tt.actionServerSideOption, tt.releaseApplyMethod)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedServerSideApply, serverSideApply)
 		})
 	}
@@ -741,7 +740,6 @@ func TestGetUpgradeServerSideValue(t *testing.T) {
 			assert.ErrorContains(t, err, tt.expectedErrorMsg)
 		})
 	}
-
 }
 
 func TestUpgradeRun_UnreachableKubeClient(t *testing.T) {
@@ -752,7 +750,7 @@ func TestUpgradeRun_UnreachableKubeClient(t *testing.T) {
 	config.KubeClient = &failingKubeClient
 
 	client := NewUpgrade(config)
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	result, err := client.Run("", buildChart(), vals)
 
 	assert.Nil(t, result)
@@ -795,7 +793,7 @@ func TestUpgradeRelease_WaitOptionsPassedDownstream(t *testing.T) {
 	// Access the underlying FailingKubeClient to check recorded options
 	failer := upAction.cfg.KubeClient.(*kubefake.FailingKubeClient)
 
-	vals := map[string]interface{}{}
+	vals := map[string]any{}
 	_, err := upAction.Run(rel.Name, buildChart(), vals)
 	req.NoError(err)
 

@@ -17,6 +17,7 @@ package installer // import "helm.sh/helm/v4/internal/plugin/installer"
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -143,7 +144,7 @@ func (i *HTTPInstaller) Install() error {
 // Update updates a local repository
 // Not implemented for now since tarball most likely will be packaged by version
 func (i *HTTPInstaller) Update() error {
-	return fmt.Errorf("method Update() not implemented for HttpInstaller")
+	return errors.New("method Update() not implemented for HttpInstaller")
 }
 
 // Path is overridden because we want to join on the plugin name not the file name
@@ -163,7 +164,7 @@ func (i *HTTPInstaller) SupportsVerification() bool {
 // GetVerificationData returns cached plugin and provenance data for verification
 func (i *HTTPInstaller) GetVerificationData() (archiveData, provData []byte, filename string, err error) {
 	if !i.SupportsVerification() {
-		return nil, nil, "", fmt.Errorf("verification not supported for this source")
+		return nil, nil, "", errors.New("verification not supported for this source")
 	}
 
 	// Download plugin data once and cache it

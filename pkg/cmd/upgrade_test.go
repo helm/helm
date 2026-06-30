@@ -34,7 +34,6 @@ import (
 )
 
 func TestUpgradeCmd(t *testing.T) {
-
 	tmpChart := t.TempDir()
 	cfile := &chart.Chart{
 		Metadata: &chart.Metadata{
@@ -149,7 +148,7 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:      "upgrade a release with missing dependencies",
-			cmd:       fmt.Sprintf("upgrade bonkers-bunny %s", missingDepsPath),
+			cmd:       "upgrade bonkers-bunny " + missingDepsPath,
 			golden:    "output/upgrade-with-missing-dependencies.txt",
 			wantError: true,
 		},
@@ -161,7 +160,7 @@ func TestUpgradeCmd(t *testing.T) {
 		},
 		{
 			name:   "upgrade a release with resolving missing dependencies",
-			cmd:    fmt.Sprintf("upgrade --dependency-update funny-bunny %s", presentDepsPath),
+			cmd:    "upgrade --dependency-update funny-bunny " + presentDepsPath,
 			golden: "output/upgrade-with-dependency-update.txt",
 			rels:   []*release.Release{relMock("funny-bunny", 2, ch2)},
 		},
@@ -222,7 +221,6 @@ func TestUpgradeWithValue(t *testing.T) {
 	if !strings.Contains(updatedRel.Manifest, "drink: tea") {
 		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
 	}
-
 }
 
 func TestUpgradeWithStringValue(t *testing.T) {
@@ -253,11 +251,9 @@ func TestUpgradeWithStringValue(t *testing.T) {
 	if !strings.Contains(updatedRel.Manifest, "drink: coffee") {
 		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
 	}
-
 }
 
 func TestUpgradeInstallWithSubchartNotes(t *testing.T) {
-
 	releaseName := "wacky-bunny-v1"
 	relMock, ch, _ := prepareMockRelease(t, releaseName)
 
@@ -289,11 +285,9 @@ func TestUpgradeInstallWithSubchartNotes(t *testing.T) {
 	if !strings.Contains(upgradedRel.Info.Notes, "SUBCHART NOTES") {
 		t.Errorf("The subchart notes are not set correctly. NOTES: %s", upgradedRel.Info.Notes)
 	}
-
 }
 
 func TestUpgradeWithValuesFile(t *testing.T) {
-
 	releaseName := "funny-bunny-v4"
 	relMock, ch, chartPath := prepareMockRelease(t, releaseName)
 
@@ -321,11 +315,9 @@ func TestUpgradeWithValuesFile(t *testing.T) {
 	if !strings.Contains(updatedRel.Manifest, "drink: beer") {
 		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
 	}
-
 }
 
 func TestUpgradeWithValuesFromStdin(t *testing.T) {
-
 	releaseName := "funny-bunny-v5"
 	relMock, ch, chartPath := prepareMockRelease(t, releaseName)
 
@@ -361,7 +353,6 @@ func TestUpgradeWithValuesFromStdin(t *testing.T) {
 }
 
 func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
-
 	releaseName := "funny-bunny-v6"
 	_, _, chartPath := prepareMockRelease(t, releaseName)
 
@@ -392,7 +383,6 @@ func TestUpgradeInstallWithValuesFromStdin(t *testing.T) {
 	if !strings.Contains(updatedRel.Manifest, "drink: beer") {
 		t.Errorf("The value is not set correctly. manifest: %s", updatedRel.Manifest)
 	}
-
 }
 
 func prepareMockRelease(t *testing.T, releaseName string) (func(n string, v int, ch *chart.Chart) *release.Release, *chart.Chart, string) {
@@ -443,23 +433,23 @@ func TestUpgradeVersionCompletion(t *testing.T) {
 
 	tests := []cmdTestCase{{
 		name:   "completion for upgrade version flag",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename testing/alpine --version ''",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag, no filter",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine --version 0.3", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename testing/alpine --version 0.3",
 		golden: "output/version-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag too few args",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag too many args",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename testing/alpine badarg --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename testing/alpine badarg --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}, {
 		name:   "completion for upgrade version flag invalid chart",
-		cmd:    fmt.Sprintf("%s __complete upgrade releasename invalid/invalid --version ''", repoSetup),
+		cmd:    repoSetup + " __complete upgrade releasename invalid/invalid --version ''",
 		golden: "output/version-invalid-comp.txt",
 	}}
 	runTestCmd(t, tests)
@@ -636,7 +626,7 @@ func TestUpgradeInstallServerSideApply(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			store := storageFixture()
-			releaseName := fmt.Sprintf("ssa-test-%s", tt.expectedApplyMethod)
+			releaseName := "ssa-test-" + tt.expectedApplyMethod
 
 			cmd := fmt.Sprintf("upgrade %s --install %s '%s'", releaseName, tt.serverSideFlag, chartPath)
 			_, _, err := executeActionCommandC(store, cmd)
