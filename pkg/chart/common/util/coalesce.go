@@ -180,7 +180,7 @@ func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ 
 			}
 		} else if dv, ok := dg[key]; ok && istable(dv) {
 			// It's not clear if this condition can actually ever trigger.
-			printf("key %s is a mapping. Skipping", key)
+			printf("warning: key %s is a mapping. Skipping.", key)
 		} else {
 			// TODO: Do we need to do any additional checking on the value?
 			dg[key] = val
@@ -245,7 +245,7 @@ func coalesceValues(printf printFn, c chart.Charter, v map[string]any, prefix st
 					// If the original value is nil, there is nothing to coalesce, so we don't print
 					// the warning
 					if val != nil {
-						printf("warning: skipped value for %s.%s: destination is a mapping, but the provided value is not. Use a YAML map (key:value pairs) for this key.", subPrefix, key)
+						printf("warning: skipped value for %s.%s: destination is a mapping, but the provided value is not.", subPrefix, key)
 					}
 				} else {
 					// If the key is a child chart, coalesce tables with Merge set to true
