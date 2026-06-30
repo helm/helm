@@ -351,6 +351,14 @@ func TestOCIPusher_Push_ChartOperations(t *testing.T) {
 			expectError:   true, // Will fail at the registry push step
 			errorContains: "",   // Error depends on registry client behavior
 		},
+		{
+			name:          "invalid subject digest",
+			chartRef:      chartPath,
+			href:          "oci://localhost:5000/test",
+			options:       []Option{WithSubject("not-a-digest")},
+			expectError:   true,
+			errorContains: "invalid --subject",
+		},
 	}
 
 	for _, tt := range tests {

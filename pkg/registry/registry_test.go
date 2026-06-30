@@ -19,6 +19,7 @@ package registry
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -34,10 +35,13 @@ import (
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory"
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
+	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry/remote"
 
 	"helm.sh/helm/v4/internal/tlsutil"
 )
@@ -447,12 +451,12 @@ func testPush(suite *TestRegistry) {
 	suite.Equal(ref, result.Ref)
 	suite.Equal(meta.Name, result.Chart.Meta.Name)
 	suite.Equal(meta.Version, result.Chart.Meta.Version)
-	suite.Equal(int64(742), result.Manifest.Size)
+	suite.Equal(int64(800), result.Manifest.Size)
 	suite.Equal(int64(99), result.Config.Size)
 	suite.Equal(int64(973), result.Chart.Size)
 	suite.Equal(int64(695), result.Prov.Size)
 	suite.Equal(
-		"sha256:fbbade96da6050f68f94f122881e3b80051a18f13ab5f4081868dd494538f5c2",
+		"sha256:bc20397d31b1236b50d506e960b7ea81137712a88d084d3bddeb18a386797af9",
 		result.Manifest.Digest)
 	suite.Equal(
 		"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580",
@@ -463,6 +467,56 @@ func testPush(suite *TestRegistry) {
 	suite.Equal(
 		"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256",
 		result.Prov.Digest)
+}
+
+func testPushWithSubject(suite *TestRegistry) {
+	creationTime := "1977-09-02T22:04:05Z"
+
+	chartData, err := os.ReadFile("../downloader/testdata/local-subchart-0.1.0.tgz")
+	suite.Require().NoError(err, "no error loading chart")
+	meta, err := extractChartMeta(chartData)
+	suite.Require().NoError(err)
+
+	// Referrers are per-repository, so the subject must already exist in the same
+	// repository. Push the chart once to create that manifest, then reference it.
+	repoRef := fmt.Sprintf("%s/testrepo/%s", suite.DockerRegistryHost, meta.Name)
+	subjectResult, err := suite.RegistryClient.Push(chartData, repoRef+":"+meta.Version, PushOptCreationTime(creationTime))
+	suite.Require().NoError(err, "no error pushing subject chart")
+	subjectDigest := subjectResult.Manifest.Digest
+
+	// Push again to a different tag, this time referring to the subject by digest.
+	ref := repoRef + ":withsubject"
+	_, err = suite.RegistryClient.Push(chartData, ref,
+		PushOptStrictMode(false),
+		PushOptCreationTime(creationTime),
+		PushOptSubject(&ocispec.Descriptor{Digest: digest.Digest(subjectDigest)}))
+	suite.Require().NoError(err, "no error pushing chart with subject")
+
+	// Fetch the pushed manifest and confirm the subject is a full descriptor
+	// (digest + mediaType + size), not the digest-only stub it used to be.
+	repo, err := remote.NewRepository(ref)
+	suite.Require().NoError(err)
+	repo.PlainHTTP = suite.RegistryClient.plainHTTP
+	repo.Client = suite.RegistryClient.authorizer
+	desc, rc, err := repo.FetchReference(suite.T().Context(), ref)
+	suite.Require().NoError(err)
+	defer rc.Close()
+	manifestBytes, err := content.ReadAll(rc, desc)
+	suite.Require().NoError(err)
+	var manifest ocispec.Manifest
+	suite.Require().NoError(json.Unmarshal(manifestBytes, &manifest))
+	suite.Require().NotNil(manifest.Subject, "pushed manifest must carry a subject")
+	suite.Equal(subjectDigest, manifest.Subject.Digest.String())
+	suite.NotEmpty(manifest.Subject.MediaType, "subject descriptor must carry a mediaType")
+	suite.Positive(manifest.Subject.Size, "subject descriptor must carry a size")
+
+	// A subject digest that does not exist in the repository is rejected.
+	_, err = suite.RegistryClient.Push(chartData, ref,
+		PushOptStrictMode(false),
+		PushOptCreationTime(creationTime),
+		PushOptSubject(&ocispec.Descriptor{Digest: digest.Digest("sha256:" + strings.Repeat("0", 64))}))
+	suite.Require().Error(err, "missing subject must error")
+	suite.Contains(err.Error(), "resolve subject")
 }
 
 func testPull(suite *TestRegistry) {
@@ -520,12 +574,12 @@ func testPull(suite *TestRegistry) {
 	suite.Equal(ref, result.Ref)
 	suite.Equal(meta.Name, result.Chart.Meta.Name)
 	suite.Equal(meta.Version, result.Chart.Meta.Version)
-	suite.Equal(int64(742), result.Manifest.Size)
+	suite.Equal(int64(800), result.Manifest.Size)
 	suite.Equal(int64(99), result.Config.Size)
 	suite.Equal(int64(973), result.Chart.Size)
 	suite.Equal(int64(695), result.Prov.Size)
 	suite.Equal(
-		"sha256:fbbade96da6050f68f94f122881e3b80051a18f13ab5f4081868dd494538f5c2",
+		"sha256:bc20397d31b1236b50d506e960b7ea81137712a88d084d3bddeb18a386797af9",
 		result.Manifest.Digest)
 	suite.Equal(
 		"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580",
@@ -536,7 +590,7 @@ func testPull(suite *TestRegistry) {
 	suite.Equal(
 		"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256",
 		result.Prov.Digest)
-	suite.Equal("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}],\"annotations\":{\"org.opencontainers.image.created\":\"1977-09-02T22:04:05Z\",\"org.opencontainers.image.description\":\"A Helm chart for Kubernetes\",\"org.opencontainers.image.title\":\"signtest\",\"org.opencontainers.image.version\":\"0.1.0\"}}",
+	suite.Equal("{\"schemaVersion\":2,\"artifactType\":\"application/vnd.cncf.helm.config.v1+json\",\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}],\"annotations\":{\"org.opencontainers.image.created\":\"1977-09-02T22:04:05Z\",\"org.opencontainers.image.description\":\"A Helm chart for Kubernetes\",\"org.opencontainers.image.title\":\"signtest\",\"org.opencontainers.image.version\":\"0.1.0\"}}",
 		string(result.Manifest.Data))
 	suite.Equal("{\"name\":\"signtest\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\",\"apiVersion\":\"v1\"}",
 		string(result.Config.Data))

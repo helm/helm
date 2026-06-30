@@ -38,6 +38,7 @@ type Push struct {
 	insecureSkipTLSVerify bool
 	plainHTTP             bool
 	out                   io.Writer
+	subject               string
 }
 
 // PushOpt is a type of function that sets options for a push action.
@@ -80,6 +81,14 @@ func WithPushOptWriter(out io.Writer) PushOpt {
 	}
 }
 
+// WithSubject sets the subject digest for OCI Referrers API.
+// When set, the pushed chart will be associated with the specified image digest.
+func WithSubject(subject string) PushOpt {
+	return func(p *Push) {
+		p.subject = subject
+	}
+}
+
 // NewPushWithOpts creates a new push, with configuration options.
 func NewPushWithOpts(opts ...PushOpt) *Push {
 	p := &Push{}
@@ -100,6 +109,7 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 			pusher.WithTLSClientConfig(p.certFile, p.keyFile, p.caFile),
 			pusher.WithInsecureSkipTLSVerify(p.insecureSkipTLSVerify),
 			pusher.WithPlainHTTP(p.plainHTTP),
+			pusher.WithSubject(p.subject),
 		},
 	}
 
