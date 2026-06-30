@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/collector"
 	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/engine"
 	"github.com/fluxcd/cli-utils/pkg/kstatus/polling/event"
 	"github.com/fluxcd/cli-utils/pkg/kstatus/status"
@@ -362,7 +363,8 @@ func TestStatusWaitForDelete(t *testing.T) {
 func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 	t.Parallel()
 	c := newTestClient(t)
-	timeout := time.Second
+	// Generous timeout so the "returns promptly" assertion below has wide headroom.
+	timeout := 2 * time.Second
 	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
 	fakeMapper := testutil.NewFakeRESTMapper(
 		v1.SchemeGroupVersion.WithKind("Pod"),
@@ -372,11 +374,108 @@ func TestStatusWaitForDeleteNonExistentObject(t *testing.T) {
 		client:     fakeClient,
 	}
 	statusWaiter.SetLogger(slog.Default().Handler())
-	// Don't create the object to test that the wait for delete works when the object doesn't exist
+	// Regression guard for #32214: a never-created resource must return promptly,
+	// not wait the full timeout.
 	objManifest := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
 	resourceList := getResourceListFromRuntimeObjs(t, c, objManifest)
+	start := time.Now()
 	err := statusWaiter.WaitForDelete(resourceList, timeout)
 	assert.NoError(t, err)
+	assert.Less(t, time.Since(start), timeout/2, "a never-created resource should return promptly, not wait the full timeout")
+}
+
+func TestStatusObserverDoesNotCancelOnUnknown(t *testing.T) {
+	t.Parallel()
+	// While the informer is still syncing, resources briefly show as Unknown. A delete
+	// wait must not read that transient state as "already deleted" and cancel the watch
+	// before any real status arrives. See https://github.com/helm/helm/issues/32261.
+	ids := object.ObjMetadataSet{
+		{GroupKind: schema.GroupKind{Kind: "Pod"}, Namespace: "ns", Name: "first"},
+		{GroupKind: schema.GroupKind{Kind: "Pod"}, Namespace: "ns", Name: "second"},
+	}
+	statusCollector := collector.NewResourceStatusCollector(ids)
+	var cancelled atomic.Bool
+	observer := statusObserver(func() { cancelled.Store(true) }, status.NotFoundStatus, slog.Default())
+	observer.Notify(statusCollector, event.Event{})
+	assert.False(t, cancelled.Load(), "watch was cancelled while resources were still Unknown")
+}
+
+func TestStatusWaitForDeleteAlreadyDeleted(t *testing.T) {
+	t.Parallel()
+	c := newTestClient(t)
+	timeout := 2 * time.Second
+	fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+	fakeMapper := testutil.NewFakeRESTMapper(
+		v1.SchemeGroupVersion.WithKind("Pod"),
+	)
+	statusWaiter := statusWaiter{
+		restMapper: fakeMapper,
+		client:     fakeClient,
+	}
+	statusWaiter.SetLogger(slog.Default().Handler())
+	// A before-hook-creation hook is deleted by Helm and only then waited on, so it is
+	// already gone here; it must return promptly rather than hang (#32214).
+	objs := getRuntimeObjFromManifests(t, []string{podCurrentManifest})
+	for _, obj := range objs {
+		u := obj.(*unstructured.Unstructured)
+		gvr := getGVR(t, fakeMapper, u)
+		require.NoError(t, fakeClient.Tracker().Create(gvr, u, u.GetNamespace()))
+		require.NoError(t, fakeClient.Tracker().Delete(gvr, u.GetNamespace(), u.GetName()))
+	}
+	resourceList := getResourceListFromRuntimeObjs(t, c, objs)
+	start := time.Now()
+	err := statusWaiter.WaitForDelete(resourceList, timeout)
+	assert.NoError(t, err)
+	assert.Less(t, time.Since(start), timeout/2, "an already-deleted resource should not be waited on")
+}
+
+func TestIsResourceGone(t *testing.T) {
+	t.Parallel()
+	podGVK := v1.SchemeGroupVersion.WithKind("Pod")
+	id := object.ObjMetadata{GroupKind: podGVK.GroupKind(), Namespace: "ns", Name: "current-pod"}
+	tests := []struct {
+		name     string
+		setup    func(*dynamicfake.FakeDynamicClient)
+		wantGone bool
+	}{
+		{
+			name:     "missing object is gone",
+			setup:    func(*dynamicfake.FakeDynamicClient) {},
+			wantGone: true,
+		},
+		{
+			name: "existing object is not gone",
+			setup: func(c *dynamicfake.FakeDynamicClient) {
+				pod := getRuntimeObjFromManifests(t, []string{podCurrentManifest})[0].(*unstructured.Unstructured)
+				require.NoError(t, c.Tracker().Create(v1.SchemeGroupVersion.WithResource("pods"), pod, "ns"))
+			},
+			wantGone: false,
+		},
+		{
+			// A GET that fails for any reason other than NotFound must not be read as gone,
+			// otherwise a transient API error would skip a resource that still exists.
+			name: "get error is not treated as gone",
+			setup: func(c *dynamicfake.FakeDynamicClient) {
+				c.PrependReactor("get", "pods", func(clienttesting.Action) (bool, runtime.Object, error) {
+					return true, nil, errors.New("connection refused")
+				})
+			},
+			wantGone: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			fakeClient := dynamicfake.NewSimpleDynamicClient(scheme.Scheme)
+			tt.setup(fakeClient)
+			sw := statusWaiter{
+				restMapper: testutil.NewFakeRESTMapper(podGVK),
+				client:     fakeClient,
+			}
+			sw.SetLogger(slog.Default().Handler())
+			assert.Equal(t, tt.wantGone, sw.isResourceGone(context.Background(), id))
+		})
+	}
 }
 
 func TestStatusWait(t *testing.T) {
