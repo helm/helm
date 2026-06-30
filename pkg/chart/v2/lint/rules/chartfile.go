@@ -121,6 +121,12 @@ func validateChartName(cf *chart.Metadata) error {
 	if name != cf.Name {
 		return fmt.Errorf("chart name %q is invalid", cf.Name)
 	}
+	// Chart names must also be valid Kubernetes metadata names so they can be
+	// used safely as resource name prefixes (lowercase, alphanumeric, hyphens
+	// and dots only; must start and end with an alphanumeric character).
+	if err := chartutil.ValidateMetadataName(cf.Name); err != nil {
+		return fmt.Errorf("chart name %q is not a valid Kubernetes name: use lowercase letters, digits, hyphens, and dots only (e.g. my-chart, my.chart)", cf.Name)
+	}
 	return nil
 }
 
