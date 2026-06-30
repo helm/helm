@@ -125,7 +125,11 @@ func LoadIndexFileForEntries(path string, names []string) (*IndexFile, error) {
 		return nil, err
 	}
 	if len(names) == 0 {
-		return loadIndex(b, path)
+		i, err := loadIndex(b, path)
+		if err != nil {
+			return nil, err
+		}
+		return i, nil
 	}
 	i := &IndexFile{}
 	if len(b) == 0 {
