@@ -175,12 +175,12 @@ func TestDependencyEnabledAliasNestedConditionEnabled(t *testing.T) {
 	// User-provided values override util.enabled=true via the full alias path.
 	// Expected: util IS included in the output.
 	c := loadChart(t, "testdata/alias-condition-nested")
-	vals := map[string]interface{}{
-		"midchart": map[string]interface{}{
+	vals := map[string]any{
+		"midchart": map[string]any{
 			"enabled": true,
-			"leafchart": map[string]interface{}{
+			"leafchart": map[string]any{
 				"enabled": true,
-				"util": map[string]interface{}{
+				"util": map[string]any{
 					"enabled": true,
 				},
 			},

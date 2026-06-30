@@ -228,6 +228,9 @@ Loop:
 						slog.Warn("skipping nested path update: value is not a table", "path", path+t.Metadata.Name)
 					} else {
 						nested, _ := v.(map[string]any)
+						if nested == nil {
+							nested = map[string]any{}
+						}
 						pt[t.Metadata.Name] = util.CoalesceTables(nested, top)
 					}
 				}
