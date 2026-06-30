@@ -250,6 +250,12 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				cancel()
 			}()
 
+			// Record where the chart was upgraded from so 'helm list --show-source'
+			// can surface it later. The action applies this after rendering, so it
+			// is never exposed to templates via .Chart.Annotations. Resolved after
+			// any dependency-update reload above so it reflects the actual chart.
+			client.ChartSource = chartSource(args[1], client.RepoURL)
+
 			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
 			if err != nil {
 				return fmt.Errorf("UPGRADE FAILED: %w", err)
