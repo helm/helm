@@ -44,7 +44,7 @@ type HTTPInstaller struct {
 	provData   []byte
 }
 
-// NewHTTPInstaller creates a new HttpInstaller.
+// NewHTTPInstaller creates a new HTTPInstaller.
 func NewHTTPInstaller(source string) (*HTTPInstaller, error) {
 	key, err := cache.Key(source)
 	if err != nil {

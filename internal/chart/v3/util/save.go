@@ -244,7 +244,7 @@ func writeToTar(out *tar.Writer, name string, body []byte, modTime time.Time) er
 	return err
 }
 
-// If the name has directory name has characters which would change the location
+// If the directory name has characters which would change the location
 // they need to be removed.
 func validateName(name string) error {
 	nname := filepath.Base(name)
