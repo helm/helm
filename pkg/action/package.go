@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"golang.org/x/term"
@@ -48,6 +49,15 @@ type Package struct {
 	AppVersion       string
 	Destination      string
 	DependencyUpdate bool
+
+	// SourceDateEpoch, when non-nil, overrides all tar entry modification times
+	// in the produced chart archive, and also overwrites the "generated"
+	// timestamp in Chart.lock (if present) since that value is both the lock
+	// file's own tar entry modtime and part of its marshaled YAML content.
+	// Set by callers that want reproducible builds. The environment variable
+	// SOURCE_DATE_EPOCH is the conventional way to supply this value from the
+	// CLI; reading that variable is the CLI's responsibility.
+	SourceDateEpoch *time.Time
 
 	RepositoryConfig      string
 	RepositoryCache       string
@@ -119,6 +129,10 @@ func (p *Package) Run(path string, _ map[string]any) (string, error) {
 	} else {
 		// Otherwise save to set destination
 		dest = p.Destination
+	}
+
+	if p.SourceDateEpoch != nil {
+		ch.StampModTimes(*p.SourceDateEpoch)
 	}
 
 	name, err := chartutil.Save(ch, dest)

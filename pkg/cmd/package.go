@@ -22,6 +22,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -58,6 +60,14 @@ func newPackageCmd(out io.Writer) *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errors.New("need at least one argument, the path to the chart")
+			}
+			if epochStr, ok := os.LookupEnv("SOURCE_DATE_EPOCH"); ok {
+				sec, err := strconv.ParseInt(epochStr, 10, 64)
+				if err != nil || sec < 0 {
+					return fmt.Errorf("invalid SOURCE_DATE_EPOCH %q: must be a non-negative Unix timestamp", epochStr)
+				}
+				t := time.Unix(sec, 0)
+				client.SourceDateEpoch = &t
 			}
 			if client.Sign {
 				if client.Key == "" {
