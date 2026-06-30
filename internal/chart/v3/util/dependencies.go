@@ -215,6 +215,27 @@ Loop:
 
 	// recursively call self to process sub dependencies
 	for _, t := range cd {
+		// When a dependency uses an alias, cvals[path][alias] may be missing keys
+		// that were instead placed in cvals[t.Metadata.Name] at the current values root by
+		// earlier CoalesceValues calls (which coalesce against the full values tree, not the
+		// path-scoped subtable). Backfill any missing keys into the path-scoped entry so
+		// condition checks see chart defaults; path-scoped values remain authoritative and
+		// win on conflicts.
+		if path != "" {
+			if pt, err := cvals.Table(strings.TrimSuffix(path, ".")); err == nil {
+				if top, ok := cvals[t.Metadata.Name].(map[string]any); ok {
+					if v, ok := pt[t.Metadata.Name]; ok && !istable(v) {
+						slog.Warn("skipping nested path update: value is not a table", "path", path+t.Metadata.Name)
+					} else {
+						nested, _ := v.(map[string]any)
+						if nested == nil {
+							nested = map[string]any{}
+						}
+						pt[t.Metadata.Name] = util.CoalesceTables(nested, top)
+					}
+				}
+			}
+		}
 		subpath := path + t.Metadata.Name + "."
 		if err := processDependencyEnabled(t, cvals, subpath); err != nil {
 			return err
