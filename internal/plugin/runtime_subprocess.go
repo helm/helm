@@ -169,17 +169,26 @@ func (r *SubprocessPluginRuntime) InvokeHook(event string) error {
 // right now we implement status and error return in 3 slightly different ways in this file
 // then replace the other three with a call to this func
 func executeCmd(prog *exec.Cmd, pluginName string) error {
+	var stderrBuf bytes.Buffer
+	if prog.Stderr != nil {
+		prog.Stderr = io.MultiWriter(prog.Stderr, &stderrBuf)
+	} else {
+		prog.Stderr = &stderrBuf
+	}
 	if err := prog.Run(); err != nil {
 		if eerr, ok := err.(*exec.ExitError); ok {
+			stderr := bytes.TrimSpace(stderrBuf.Bytes())
 			slog.Debug(
 				"plugin execution failed",
 				slog.String("pluginName", pluginName),
 				slog.String("error", err.Error()),
 				slog.Int("exitCode", eerr.ExitCode()),
-				slog.String("stderr", string(bytes.TrimSpace(eerr.Stderr))))
+				slog.String("stderr", string(stderr)),
+			)
 			return &InvokeExecError{
 				Err:      fmt.Errorf("plugin %q exited with error", pluginName),
 				ExitCode: eerr.ExitCode(),
+				Stderr:   stderr,
 			}
 		}
 
