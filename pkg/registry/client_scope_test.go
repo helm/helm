@@ -46,7 +46,6 @@ func (suite *RegistryScopeTestSuite) TearDownSuite() {
 }
 
 func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
-
 	requestURL := make(chan string, 1)
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Capture only the first auth request; never block the handler if the
@@ -58,7 +57,8 @@ func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 		}
 		w.WriteHeader(http.StatusOK)
 	})
-	listener, err := net.Listen("tcp", suite.AuthServerHost)
+	lnCfg := net.ListenConfig{}
+	listener, err := lnCfg.Listen(suite.T().Context(), "tcp", suite.AuthServerHost)
 	suite.NoError(err, "no error creating server listener")
 
 	ts := httptest.NewUnstartedServer(handler)
@@ -92,7 +92,6 @@ func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 }
 
 func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
-
 	requestURL := make(chan string, 1)
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Capture only the first auth request; never block the handler if the
@@ -104,7 +103,8 @@ func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 		}
 		w.WriteHeader(http.StatusOK)
 	})
-	listener, err := net.Listen("tcp", suite.AuthServerHost)
+	lnCfg := net.ListenConfig{}
+	listener, err := lnCfg.Listen(suite.T().Context(), "tcp", suite.AuthServerHost)
 	suite.NoError(err, "no error creating server listener")
 
 	ts := httptest.NewUnstartedServer(handler)
