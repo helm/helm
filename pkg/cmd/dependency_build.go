@@ -92,9 +92,23 @@ func newDependencyBuildCmd(out io.Writer) *cobra.Command {
 }
 
 // defaultKeyring returns the expanded path to the default keyring.
+//
+// The legacy pubring.gpg file is preferred when present. If it is absent and
+// the keybox file maintained by modern GnuPG (2.1+) exists, that is used
+// instead. When neither exists, the legacy path is returned so that error
+// messages keep pointing at the traditional default.
 func defaultKeyring() string {
+	gnupgHome := filepath.Join(homedir.HomeDir(), ".gnupg")
 	if v, ok := os.LookupEnv("GNUPGHOME"); ok {
-		return filepath.Join(v, "pubring.gpg")
+		gnupgHome = v
 	}
-	return filepath.Join(homedir.HomeDir(), ".gnupg", "pubring.gpg")
+	legacy := filepath.Join(gnupgHome, "pubring.gpg")
+	if _, err := os.Stat(legacy); err == nil {
+		return legacy
+	}
+	keybox := filepath.Join(gnupgHome, "pubring.kbx")
+	if _, err := os.Stat(keybox); err == nil {
+		return keybox
+	}
+	return legacy
 }

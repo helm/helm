@@ -162,3 +162,56 @@ func TestDependencyBuildCmdWithHelmV2Hash(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestDefaultKeyring(t *testing.T) {
+	touch := func(t *testing.T, path string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte("test"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	tests := []struct {
+		name  string
+		files []string
+		want  string
+	}{
+		{"legacy keyring only", []string{"pubring.gpg"}, "pubring.gpg"},
+		{"keybox only", []string{"pubring.kbx"}, "pubring.kbx"},
+		{"legacy keyring preferred over keybox", []string{"pubring.gpg", "pubring.kbx"}, "pubring.gpg"},
+		{"neither present falls back to legacy path", nil, "pubring.gpg"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Setenv("GNUPGHOME", dir)
+			for _, f := range tt.files {
+				touch(t, filepath.Join(dir, f))
+			}
+			if got, want := defaultKeyring(), filepath.Join(dir, tt.want); got != want {
+				t.Errorf("expected %q, got %q", want, got)
+			}
+		})
+	}
+
+	t.Run("no GNUPGHOME falls back to the home directory", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		t.Setenv("GNUPGHOME", home) // register restoration before unsetting
+		os.Unsetenv("GNUPGHOME")
+
+		gnupgDir := filepath.Join(home, ".gnupg")
+		if err := os.MkdirAll(gnupgDir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+
+		if got, want := defaultKeyring(), filepath.Join(gnupgDir, "pubring.gpg"); got != want {
+			t.Errorf("expected %q, got %q", want, got)
+		}
+
+		touch(t, filepath.Join(gnupgDir, "pubring.kbx"))
+		if got, want := defaultKeyring(), filepath.Join(gnupgDir, "pubring.kbx"); got != want {
+			t.Errorf("expected %q, got %q", want, got)
+		}
+	})
+}

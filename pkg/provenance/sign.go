@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
 	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"sigs.k8s.io/yaml"
@@ -358,13 +359,65 @@ func loadKey(keypath string) (*openpgp.Entity, error) {
 	return openpgp.ReadEntity(pr)
 }
 
+// loadKeyRing loads a keyring from ringpath, auto-detecting its storage
+// format. Three formats are supported:
+//
+//   - the legacy binary OpenPGP packet stream (GnuPG's pubring.gpg)
+//   - a GnuPG keybox (pubring.kbx), the default public-key store since
+//     GnuPG 2.1
+//   - an ASCII-armored keyring, as produced by `gpg --export --armor`
 func loadKeyRing(ringpath string) (openpgp.EntityList, error) {
-	f, err := os.Open(ringpath)
+	data, err := os.ReadFile(ringpath)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	return openpgp.ReadKeyRing(f)
+	switch {
+	case isKeybox(data):
+		keys, err := keyboxPublicKeys(data)
+		if err != nil {
+			return nil, fmt.Errorf("reading keybox %s: %w", ringpath, err)
+		}
+		return openpgp.ReadKeyRing(bytes.NewReader(keys))
+	case isArmored(data):
+		ring, err := loadArmoredKeyRing(data)
+		if err != nil {
+			return nil, fmt.Errorf("reading armored keyring %s: %w", ringpath, err)
+		}
+		return ring, nil
+	default:
+		return openpgp.ReadKeyRing(bytes.NewReader(data))
+	}
+}
+
+// loadArmoredKeyRing reads every armored block in data and merges the keys
+// into a single keyring. Unlike openpgp.ReadArmoredKeyRing, which silently
+// ignores everything after the first block, this handles keyrings assembled
+// by concatenating exports (cat key1.asc key2.asc > keyring.asc), the same
+// way GnuPG imports them.
+func loadArmoredKeyRing(data []byte) (openpgp.EntityList, error) {
+	var ring openpgp.EntityList
+	r := bytes.NewReader(data)
+	for {
+		block, err := armor.Decode(r)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if block.Type != openpgp.PublicKeyType && block.Type != openpgp.PrivateKeyType {
+			return nil, fmt.Errorf("expected a public or private key block, got %q", block.Type)
+		}
+		entities, err := openpgp.ReadKeyRing(block.Body)
+		if err != nil {
+			return nil, err
+		}
+		ring = append(ring, entities...)
+	}
+	if len(ring) == 0 {
+		return nil, errors.New("no keys found")
+	}
+	return ring, nil
 }
 
 // DigestFile calculates a SHA256 hash (like Docker) for a given file.
