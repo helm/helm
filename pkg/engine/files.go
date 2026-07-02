@@ -154,12 +154,10 @@ func (f files) AsSecrets() string {
 // {{ range .Files.Lines "foo/bar.html" }}
 // {{ . }}{{ end }}
 func (f files) Lines(path string) []string {
-	if f == nil || f[path] == nil {
+	if f == nil || len(f[path]) == 0 {
 		return []string{}
 	}
 	s := string(f[path])
-	if s[len(s)-1] == '\n' {
-		s = s[:len(s)-1]
-	}
+	s = strings.TrimSuffix(s, "\n")
 	return strings.Split(s, "\n")
 }

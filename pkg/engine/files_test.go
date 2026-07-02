@@ -30,6 +30,7 @@ var cases = []struct {
 	{"story/author.txt", "Joseph Conrad"},
 	{"multiline/test.txt", "bar\nfoo\n"},
 	{"multiline/test_with_blank_lines.txt", "bar\nfoo\n\n\n"},
+	{"multiline/empty.txt", ""},
 }
 
 func getTestFiles() files {
@@ -94,8 +95,13 @@ func TestLines(t *testing.T) {
 
 	out := f.Lines("multiline/test.txt")
 	as.Len(out, 2)
-
 	as.Equal("bar", out[0])
+
+	outEmpty := f.Lines("multiline/empty.txt")
+	as.Len(outEmpty, 0)
+
+	outNonExistent := f.Lines("nonexistent.txt")
+	as.Len(outNonExistent, 0)
 }
 
 func TestBlankLines(t *testing.T) {
