@@ -30,17 +30,18 @@ import (
 )
 
 type RegistryScopeTestSuite struct {
-	TestSuite
+	TestRegistry
 }
 
 func (suite *RegistryScopeTestSuite) SetupSuite() {
-	// set registry use token auth
-	dockerRegistry := setup(&suite.TestSuite, true, true, "token")
-	// Start Docker registry
-	go dockerRegistry.ListenAndServe()
+	// Set up a plain-HTTP registry that uses token auth. The token realm is
+	// served over http (see setup), so the registry must be contacted over
+	// http as well: oras refuses to send credentials to an http token realm
+	// when the registry itself was reached over https.
+	setup(&suite.TestRegistry, false, false, "token")
 }
 func (suite *RegistryScopeTestSuite) TearDownSuite() {
-	teardown(&suite.TestSuite)
+	teardown(&suite.TestRegistry)
 	os.RemoveAll(suite.WorkspaceDir)
 }
 
@@ -48,7 +49,13 @@ func (suite *RegistryScopeTestSuite) Test_1_Check_Push_Request_Scope() {
 
 	requestURL := make(chan string, 1)
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestURL <- r.URL.String()
+		// Capture only the first auth request; never block the handler if the
+		// client happens to retry, so the auth server always responds and the
+		// push/pull flow can't deadlock waiting on us.
+		select {
+		case requestURL <- r.URL.String():
+		default:
+		}
 		w.WriteHeader(http.StatusOK)
 	})
 	listener, err := net.Listen("tcp", suite.AuthServerHost)
@@ -88,7 +95,13 @@ func (suite *RegistryScopeTestSuite) Test_2_Check_Pull_Request_Scope() {
 
 	requestURL := make(chan string, 1)
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestURL <- r.URL.String()
+		// Capture only the first auth request; never block the handler if the
+		// client happens to retry, so the auth server always responds and the
+		// push/pull flow can't deadlock waiting on us.
+		select {
+		case requestURL <- r.URL.String():
+		default:
+		}
 		w.WriteHeader(http.StatusOK)
 	})
 	listener, err := net.Listen("tcp", suite.AuthServerHost)
