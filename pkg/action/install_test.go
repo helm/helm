@@ -1299,33 +1299,30 @@ func TestInstallRelease_WaitOptionsPassedDownstream(t *testing.T) {
 }
 
 func TestWriteToFileNoTrailingNewline(t *testing.T) {
+	// Use a template whose output already ends with \n to expose the regression.
+	// Without the fix, writeToFile appends another \n producing double newline at EOF.
+	templates := []*common.File{
+		{Name: "templates/test.yaml", Data: []byte("key: value\n")},
+	}
+	chart := buildChartWithTemplates(templates)
 	instAction := installAction(t)
 	vals := map[string]any{}
-
 	dir := t.TempDir()
 	instAction.OutputDir = dir
-
-	_, err := instAction.Run(buildChart(withSampleTemplates()), vals)
+	_, err := instAction.Run(chart, vals)
 	if err != nil {
 		t.Fatalf("Failed install: %s", err)
 	}
-
-	// Each output file should end with exactly one newline (no double newline).
-	for _, name := range []string{
-		"hello/templates/goodbye",
-		"hello/templates/with-partials",
-	} {
-		path := filepath.Join(dir, name)
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("Failed to read %s: %s", path, err)
-		}
-		content := string(data)
-		if strings.HasSuffix(content, "\n\n") {
-			t.Errorf("file %s ends with double newline, expected single newline", name)
-		}
-		if !strings.HasSuffix(content, "\n") {
-			t.Errorf("file %s does not end with a newline", name)
-		}
+	path := filepath.Join(dir, "hello/templates/test.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Failed to read output file: %s", err)
+	}
+	c := string(data)
+	if strings.HasSuffix(c, "\n\n") {
+		t.Errorf("output file ends with double newline (regression): got %q", c)
+	}
+	if !strings.HasSuffix(c, "\n") {
+		t.Errorf("output file does not end with newline: got %q", c)
 	}
 }
