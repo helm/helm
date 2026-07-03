@@ -50,7 +50,8 @@ type MetadataLegacy struct {
 	PlatformCommand []PlatformCommand `yaml:"platformCommand"`
 
 	// Command is the plugin command, as a single string.
-	// DEPRECATED: Use PlatformCommand instead. Removed in subprocess/v1 plugins.
+	//
+	// Deprecated: Use PlatformCommand instead. Removed in subprocess/v1 plugins.
 	Command string `yaml:"command"`
 
 	// IgnoreFlags ignores any flags passed in from Helm
@@ -60,7 +61,8 @@ type MetadataLegacy struct {
 	PlatformHooks PlatformHooks `yaml:"platformHooks"`
 
 	// Hooks are commands that will run on plugin events, as a single string.
-	// DEPRECATED: Use PlatformHooks instead. Removed in subprocess/v1 plugins.
+	//
+	// Deprecated: Use PlatformHooks instead. Removed in subprocess/v1 plugins.
 	Hooks Hooks `yaml:"hooks"`
 
 	// Downloaders field is used if the plugin supply downloader mechanism

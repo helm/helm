@@ -24,6 +24,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type Node struct {
@@ -80,21 +83,14 @@ func makeTree(t *testing.T) {
 	walkTree(tree, tree.name, func(path string, n *Node) {
 		if n.entries == nil {
 			if n.symLinkedTo != "" {
-				if err := os.Symlink(n.symLinkedTo, path); err != nil {
-					t.Fatalf("makeTree: %v", err)
-				}
+				require.NoError(t, os.Symlink(n.symLinkedTo, path), "makeTree")
 			} else {
 				fd, err := os.Create(path)
-				if err != nil {
-					t.Fatalf("makeTree: %v", err)
-					return
-				}
+				require.NoError(t, err, "makeTree")
 				fd.Close()
 			}
 		} else {
-			if err := os.Mkdir(path, 0770); err != nil {
-				t.Fatalf("makeTree: %v", err)
-			}
+			require.NoError(t, os.Mkdir(path, 0770), "makeTree")
 		}
 	})
 }
@@ -102,8 +98,8 @@ func makeTree(t *testing.T) {
 func checkMarks(t *testing.T, report bool) {
 	t.Helper()
 	walkTree(tree, tree.name, func(path string, n *Node) {
-		if n.marks != n.expectedMarks && report {
-			t.Errorf("node %s mark = %d; expected %d", path, n.marks, n.expectedMarks)
+		if report {
+			assert.Equal(t, n.expectedMarks, n.marks, "node %s", path)
 		}
 		n.marks = 0
 	})
@@ -137,16 +133,10 @@ func TestWalk(t *testing.T) {
 	}
 	// Expect no errors.
 	err := Walk(tree.name, markFn)
-	if err != nil {
-		t.Fatalf("no error expected, found: %s", err)
-	}
-	if len(errors) != 0 {
-		t.Fatalf("unexpected errors: %s", errors)
-	}
+	require.NoError(t, err)
+	require.Empty(t, errors, "unexpected errors")
 	checkMarks(t, true)
 
 	// cleanup
-	if err := os.RemoveAll(tree.name); err != nil {
-		t.Errorf("removeTree: %v", err)
-	}
+	assert.NoError(t, os.RemoveAll(tree.name), "removeTree")
 }

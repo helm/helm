@@ -185,5 +185,4 @@ func TestVCSInstallerUpdate(t *testing.T) {
 	} else if err.Error() != "plugin repo was modified" {
 		t.Fatalf("expected error for plugin modified, got (%v)", err)
 	}
-
 }

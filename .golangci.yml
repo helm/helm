@@ -19,24 +19,32 @@ linters:
 
   # Keep sorted alphabetically
   enable:
+    - bidichk
+    - contextcheck
     - depguard
     - dupl
+    - errorlint
     - exhaustive
+    - fatcontext
+    - gocritic
     - gomodguard
     - govet
     - ineffassign
     - misspell
     - modernize
     - nakedret
+    - noctx
     - nolintlint
     - perfsprint
     - revive
     - sloglint
     - staticcheck
+    - testifylint
     - thelper
     - unused
     - usestdlibvars
     - usetesting
+    - whitespace
 
   exclusions:
   
@@ -64,8 +72,56 @@ linters:
     dupl:
       threshold: 400
 
+    errorlint:
+      # Check for plain type assertions and type switches.
+      asserts: false
+      # Check for plain error comparisons.
+      comparison: false
+
     exhaustive:
       default-signifies-exhaustive: true
+
+    gocritic:
+      disabled-checks:
+        - appendAssign
+        - appendCombine
+        - assignOp
+        - badCall
+        - commentedOutCode
+        - commentFormatting
+        - deferInLoop
+        - elseif
+        - emptyStringTest
+        - exposedSyncMutex
+        - filepathJoin
+        - httpNoBody
+        - hugeParam
+        - ifElseChain
+        - importShadow
+        - nestingReduce
+        - nilValReturn
+        - octalLiteral
+        - paramTypeCombine
+        - preferStringWriter
+        - ptrToRefParam
+        - rangeValCopy
+        - regexpSimplify
+        - singleCaseSwitch
+        - sloppyReassign
+        - sloppyLen
+        - sprintfQuotedString
+        - stringConcatSimplify
+        - stringsCompare
+        - stringXbytes
+        - todoCommentWithoutDetail
+        - tooManyResultsChecker
+        - typeAssertChain
+        - uncheckedInlineErr
+        - unnamedResult
+        - unnecessaryDefer
+        - unslice
+        - whyNoLint
+      enable-all: true
 
     gomodguard:
       blocked:
@@ -94,6 +150,20 @@ linters:
                 extra-bad-package-names:
                   - helpers
                   - models
+
+    testifylint:
+      disable:
+        - encoded-compare
+        - equal-values
+        - expected-actual
+        - float-compare
+        - go-require
+        - nil-compare
+        - require-error
+        - suite-dont-use-pkg
+        - suite-extra-assert-call
+      # Intentionally enable all testifylint rules so new checks are adopted automatically.
+      enable-all: true
 
 run:
   timeout: 10m

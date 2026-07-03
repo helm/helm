@@ -176,10 +176,11 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		Chart:     previousRelease.Chart,
 		Config:    previousRelease.Config,
 		Info: &release.Info{
-			FirstDeployed: currentRelease.Info.FirstDeployed,
-			LastDeployed:  time.Now(),
-			Status:        common.StatusPendingRollback,
-			Notes:         previousRelease.Info.Notes,
+			FirstDeployed:    currentRelease.Info.FirstDeployed,
+			LastDeployed:     time.Now(),
+			Status:           common.StatusPendingRollback,
+			Notes:            previousRelease.Info.Notes,
+			RollbackRevision: previousVersion,
 			// Because we lose the reference to previous version elsewhere, we set the
 			// message here, and only override it later if we experience failure.
 			Description: fmt.Sprintf("Rollback to %d", previousVersion),

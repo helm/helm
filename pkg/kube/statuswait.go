@@ -69,6 +69,12 @@ func alwaysReady(_ *unstructured.Unstructured) (*status.Result, error) {
 	}, nil
 }
 
+func getStatusWatcher(dynamicClient dynamic.Interface, mapper meta.RESTMapper) *watcher.DefaultStatusWatcher {
+	sw := watcher.NewDefaultStatusWatcher(dynamicClient, mapper)
+	sw.ResyncPeriod = 3 * time.Minute
+	return sw
+}
+
 func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.Duration) error {
 	if timeout == 0 {
 		timeout = DefaultStatusWatcherTimeout
@@ -76,7 +82,7 @@ func (w *statusWaiter) WatchUntilReady(resourceList ResourceList, timeout time.D
 	ctx, cancel := w.contextWithTimeout(w.watchUntilReadyCtx, timeout)
 	defer cancel()
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
-	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
+	sw := getStatusWatcher(w.client, w.restMapper)
 	sw.StatusComputeWorkers = w.statusComputeWorkers
 	jobSR := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	podSR := helmStatusReaders.NewCustomPodStatusReader(w.restMapper)
@@ -99,7 +105,7 @@ func (w *statusWaiter) Wait(resourceList ResourceList, timeout time.Duration) er
 	ctx, cancel := w.contextWithTimeout(w.waitCtx, timeout)
 	defer cancel()
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
-	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
+	sw := getStatusWatcher(w.client, w.restMapper)
 	sw.StatusComputeWorkers = w.statusComputeWorkers
 	sw.StatusReader = statusreaders.NewStatusReader(w.restMapper, w.readers...)
 	return w.wait(ctx, resourceList, sw)
@@ -112,7 +118,7 @@ func (w *statusWaiter) WaitWithJobs(resourceList ResourceList, timeout time.Dura
 	ctx, cancel := w.contextWithTimeout(w.waitWithJobsCtx, timeout)
 	defer cancel()
 	w.Logger().Debug("waiting for resources", "count", len(resourceList), "timeout", timeout)
-	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
+	sw := getStatusWatcher(w.client, w.restMapper)
 	sw.StatusComputeWorkers = w.statusComputeWorkers
 	newCustomJobStatusReader := helmStatusReaders.NewCustomJobStatusReader(w.restMapper)
 	readers := append([]engine.StatusReader(nil), w.readers...)
@@ -129,7 +135,7 @@ func (w *statusWaiter) WaitForDelete(resourceList ResourceList, timeout time.Dur
 	ctx, cancel := w.contextWithTimeout(w.waitForDeleteCtx, timeout)
 	defer cancel()
 	w.Logger().Debug("waiting for resources to be deleted", "count", len(resourceList), "timeout", timeout)
-	sw := watcher.NewDefaultStatusWatcher(w.client, w.restMapper)
+	sw := getStatusWatcher(w.client, w.restMapper)
 	return w.waitForDelete(ctx, resourceList, sw)
 }
 

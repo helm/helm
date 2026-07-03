@@ -62,7 +62,6 @@ name: "test-plugin"
 }
 
 func TestLoadDir(t *testing.T) {
-
 	makeMetadata := func(apiVersion string) Metadata {
 		usage := "hello [params]..."
 		if apiVersion == "legacy" {
@@ -208,7 +207,7 @@ func TestLoadAllDir_Empty(t *testing.T) {
 	emptyDir := t.TempDir()
 	plugs, err := LoadAllDir(emptyDir, func(_ string, err error) error { return err })
 	require.NoError(t, err)
-	assert.Len(t, plugs, 0)
+	assert.Empty(t, plugs)
 }
 
 func TestLoadAllPluginsDir(t *testing.T) {

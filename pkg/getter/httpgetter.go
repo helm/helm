@@ -17,9 +17,11 @@ package getter
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"sync"
@@ -48,7 +50,7 @@ func (g *HTTPGetter) Get(href string, options ...Option) (*bytes.Buffer, error) 
 func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error) {
 	// Set a helm specific user agent so that a repo server and metrics can
 	// separate helm calls from other tools interacting with repos.
-	req, err := http.NewRequest(http.MethodGet, href, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, href, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -87,11 +89,13 @@ func (g *HTTPGetter) get(href string, opts getterOptions) (*bytes.Buffer, error)
 		return nil, err
 	}
 
+	slog.Debug("fetching", "url", href)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	slog.Debug("fetch complete", "url", href, "status", resp.Status, "content-length", resp.ContentLength)
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to fetch %s : %s", href, resp.Status)
 	}

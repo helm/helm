@@ -30,6 +30,8 @@ import (
 	"github.com/distribution/distribution/v3/registry"
 	_ "github.com/distribution/distribution/v3/registry/auth/htpasswd"           // used for docker test registry
 	_ "github.com/distribution/distribution/v3/registry/storage/driver/inmemory" // used for docker test registry
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 	"sigs.k8s.io/yaml"
 
@@ -44,9 +46,8 @@ func BasicAuthMiddleware(t *testing.T) http.HandlerFunc {
 	t.Helper()
 	return http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
-		if !ok || username != "username" || password != "password" {
-			t.Errorf("Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
-		}
+		assert.True(t, ok && username == "username" && password == "password",
+			"Expected request to use basic auth and for username == 'username' and password == 'password', got '%v', '%s', '%s'", ok, username, password)
 	})
 }
 
@@ -97,9 +98,8 @@ func NewTempServer(t *testing.T, options ...ServerOption) *Server {
 	t.Cleanup(func() { os.RemoveAll(srv.docroot) })
 
 	if srv.chartSourceGlob != "" {
-		if _, err := srv.CopyCharts(srv.chartSourceGlob); err != nil {
-			t.Fatal(err)
-		}
+		_, err := srv.CopyCharts(srv.chartSourceGlob)
+		require.NoError(t, err)
 	}
 
 	return srv
@@ -109,9 +109,7 @@ func NewTempServer(t *testing.T, options ...ServerOption) *Server {
 func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 	t.Helper()
 	absdocroot, err := filepath.Abs(docroot)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	s := &Server{
 		docroot: absdocroot,
@@ -131,9 +129,7 @@ func newServer(t *testing.T, docroot string, options ...ServerOption) *Server {
 	s.start()
 
 	// Add the testing repository as the only repo. Server must be started for the server's URL to be valid
-	if err := setTestingRepository(s.URL(), filepath.Join(s.docroot, "repositories.yaml")); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, setTestingRepository(s.URL(), filepath.Join(s.docroot, "repositories.yaml")))
 
 	return s
 }
@@ -169,21 +165,16 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 	testUsername, testPassword := "username", "password"
 
 	pwBytes, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
-	if err != nil {
-		t.Fatal("error generating bcrypt password for test htpasswd file")
-	}
+	require.NoError(t, err, "error generating bcrypt password for test htpasswd file")
 	htpasswdPath := filepath.Join(dir, testHtpasswdFileBasename)
 	err = os.WriteFile(htpasswdPath, fmt.Appendf(nil, "%s:%s\n", testUsername, string(pwBytes)), 0o644)
-	if err != nil {
-		t.Fatal("error creating test htpasswd file")
-	}
+	require.NoError(t, err, "error creating test htpasswd file")
 
 	// Registry config
 	config := &configuration.Configuration{}
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("error finding free port for test registry: %v", err)
-	}
+	lnCfg := net.ListenConfig{}
+	ln, err := lnCfg.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err, "error finding free port for test registry")
 	defer ln.Close()
 
 	port := ln.Addr().(*net.TCPAddr).Port
@@ -200,9 +191,7 @@ func NewOCIServer(t *testing.T, dir string) (*OCIServer, error) {
 	registryURL := fmt.Sprintf("localhost:%d", port)
 
 	r, err := registry.NewRegistry(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return &OCIServer{
 		Registry:     r,
@@ -236,53 +225,37 @@ func (srv *OCIServer) RunWithReturn(t *testing.T, opts ...OCIServerOpt) *OCIServ
 		ociRegistry.ClientOptWriter(os.Stdout),
 		ociRegistry.ClientOptCredentialsFile(credentialsFile),
 	)
-	if err != nil {
-		t.Fatalf("error creating registry client: %v", err)
-	}
+	require.NoError(t, err, "error creating registry client")
 
 	err = registryClient.Login(
 		srv.RegistryURL,
 		ociRegistry.LoginOptBasicAuth(srv.TestUsername, srv.TestPassword),
 		ociRegistry.LoginOptInsecure(true),
 		ociRegistry.LoginOptPlainText(true))
-	if err != nil {
-		t.Fatalf("error logging into registry with good credentials: %v", err)
-	}
+	require.NoError(t, err, "error logging into registry with good credentials")
 
 	ref := srv.RegistryURL + "/u/ocitestuser/oci-dependent-chart:0.1.0"
 
 	err = chartutil.ExpandFile(srv.Dir, filepath.Join(srv.Dir, "oci-dependent-chart-0.1.0.tgz"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// valid chart
 	ch, err := loader.LoadDir(filepath.Join(srv.Dir, "oci-dependent-chart"))
-	if err != nil {
-		t.Fatal("error loading chart")
-	}
+	require.NoError(t, err, "error loading chart")
 
 	err = os.RemoveAll(filepath.Join(srv.Dir, "oci-dependent-chart"))
-	if err != nil {
-		t.Fatal("error removing chart before push")
-	}
+	require.NoError(t, err, "error removing chart before push")
 
 	// save it back to disk..
 	absPath, err := chartutil.Save(ch, srv.Dir)
-	if err != nil {
-		t.Fatal("could not create chart archive")
-	}
+	require.NoError(t, err, "could not create chart archive")
 
 	// load it into memory...
 	contentBytes, err := os.ReadFile(absPath)
-	if err != nil {
-		t.Fatal("could not load chart into memory")
-	}
+	require.NoError(t, err, "could not load chart into memory")
 
 	result, err := registryClient.Push(contentBytes, ref)
-	if err != nil {
-		t.Fatalf("error pushing dependent chart: %s", err)
-	}
+	require.NoError(t, err, "error pushing dependent chart")
 	t.Logf("Manifest.Digest: %s, Manifest.Size: %d, "+
 		"Config.Digest: %s, Config.Size: %d, "+
 		"Chart.Digest: %s, Chart.Size: %d",
@@ -305,14 +278,10 @@ func (srv *OCIServer) RunWithReturn(t *testing.T, opts ...OCIServerOpt) *OCIServ
 	absPath = filepath.Join(srv.Dir,
 		fmt.Sprintf("%s-%s.tgz", c.Metadata.Name, c.Metadata.Version))
 	contentBytes, err = os.ReadFile(absPath)
-	if err != nil {
-		t.Fatal("could not load chart into memory")
-	}
+	require.NoError(t, err, "could not load chart into memory")
 
 	result, err = registryClient.Push(contentBytes, dependingRef)
-	if err != nil {
-		t.Fatalf("error pushing depending chart: %s", err)
-	}
+	require.NoError(t, err, "error pushing depending chart")
 	t.Logf("Manifest.Digest: %s, Manifest.Size: %d, "+
 		"Config.Digest: %s, Config.Size: %d, "+
 		"Chart.Digest: %s, Chart.Size: %d",

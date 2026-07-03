@@ -25,6 +25,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -153,7 +154,7 @@ func (i IndexFile) MustAdd(md *chart.Metadata, filename, baseURL, digest string)
 // Deprecated: Use index.MustAdd instead.
 func (i IndexFile) Add(md *chart.Metadata, filename, baseURL, digest string) {
 	if err := i.MustAdd(md, filename, baseURL, digest); err != nil {
-		slog.Error("skipping loading invalid entry for chart %q %q from %s: %s", md.Name, md.Version, filename, err)
+		slog.Error("skipping loading invalid entry for chart", "name", md.Name, "version", md.Version, "file", filename, "error", err)
 	}
 }
 
@@ -173,6 +174,19 @@ func (i IndexFile) SortEntries() {
 	for _, versions := range i.Entries {
 		sort.Sort(sort.Reverse(versions))
 	}
+}
+
+// isVersionRange checks if the version string is a range constraint (e.g., "^1", "~1.10")
+// rather than an exact version (e.g., "1.10.0").
+func isVersionRange(version string) bool {
+	if strings.ContainsAny(version, "^~<>=!*") || strings.Contains(version, "||") || strings.Contains(version, " - ") {
+		return true
+	}
+	core := version
+	if idx := strings.IndexAny(version, "-+"); idx != -1 {
+		core = version[:idx]
+	}
+	return strings.ContainsAny(core, "xX")
 }
 
 // Get returns the ChartVersion for the given name.
@@ -215,8 +229,10 @@ func (i IndexFile) Get(name, version string) (*ChartVersion, error) {
 		}
 
 		if constraint.Check(test) {
-			if len(version) != 0 {
+			if len(version) != 0 && !isVersionRange(version) {
 				slog.Warn("unable to find exact version requested; falling back to closest available version", "chart", name, "requested", version, "selected", ver.Version)
+			} else if len(version) != 0 && isVersionRange(version) {
+				slog.Debug("selected version matching constraint", "chart", name, "constraint", version, "selected", ver.Version)
 			}
 			return ver, nil
 		}
@@ -356,21 +372,21 @@ func loadIndex(data []byte, source string) (*IndexFile, error) {
 	}
 
 	for name, cvs := range i.Entries {
-		for idx := len(cvs) - 1; idx >= 0; idx-- {
-			if cvs[idx] == nil {
-				slog.Warn(fmt.Sprintf("skipping loading invalid entry for chart %q from %s: empty entry", name, source))
+		for idx, v := range slices.Backward(cvs) {
+			if v == nil {
+				slog.Warn("skipping loading invalid entry for chart: empty entry", "name", name, "source", source)
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 				continue
 			}
 			// When metadata section missing, initialize with no data
-			if cvs[idx].Metadata == nil {
-				cvs[idx].Metadata = &chart.Metadata{}
+			if v.Metadata == nil {
+				v.Metadata = &chart.Metadata{}
 			}
-			if cvs[idx].APIVersion == "" {
-				cvs[idx].APIVersion = chart.APIVersionV1
+			if v.APIVersion == "" {
+				v.APIVersion = chart.APIVersionV1
 			}
-			if err := cvs[idx].Validate(); ignoreSkippableChartValidationError(err) != nil {
-				slog.Warn(fmt.Sprintf("skipping loading invalid entry for chart %q %q from %s: %s", name, cvs[idx].Version, source, err))
+			if err := v.Validate(); ignoreSkippableChartValidationError(err) != nil {
+				slog.Warn("skipping loading invalid entry for chart", "name", name, "version", v.Version, "source", source, "error", err)
 				cvs = append(cvs[:idx], cvs[idx+1:]...)
 			}
 		}

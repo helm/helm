@@ -17,16 +17,16 @@ limitations under the License.
 package util
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
 	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 func TestSortManifests(t *testing.T) {
-
 	data := []struct {
 		name     []string
 		path     string
@@ -139,56 +139,39 @@ metadata:
 	}
 
 	hs, generic, err := SortManifests(manifests, nil, InstallOrder)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
+	require.NoError(t, err)
 
 	// This test will fail if 'six' or 'seven' was added.
-	if len(generic) != 2 {
-		t.Errorf("Expected 2 generic manifests, got %d", len(generic))
-	}
+	assert.Len(t, generic, 2)
 
-	if len(hs) != 4 {
-		t.Errorf("Expected 4 hooks, got %d", len(hs))
-	}
+	assert.Len(t, hs, 4)
 
 	for _, out := range hs {
 		found := false
 		for _, expect := range data {
 			if out.Path == expect.path {
 				found = true
-				if out.Path != expect.path {
-					t.Errorf("Expected path %s, got %s", expect.path, out.Path)
-				}
+				assert.Equal(t, expect.path, out.Path)
 				nameFound := false
 				for _, expectedName := range expect.name {
 					if out.Name == expectedName {
 						nameFound = true
 					}
 				}
-				if !nameFound {
-					t.Errorf("Got unexpected name %s", out.Name)
-				}
+				assert.True(t, nameFound, "Got unexpected name %s", out.Name)
 				kindFound := false
 				for _, expectedKind := range expect.kind {
 					if out.Kind == expectedKind {
 						kindFound = true
 					}
 				}
-				if !kindFound {
-					t.Errorf("Got unexpected kind %s", out.Kind)
-				}
+				assert.True(t, kindFound, "Got unexpected kind %s", out.Kind)
 
 				expectedHooks := expect.hooks[out.Name]
-				if !reflect.DeepEqual(expectedHooks, out.Events) {
-					t.Errorf("expected events: %v but got: %v", expectedHooks, out.Events)
-				}
-
+				assert.Equal(t, expectedHooks, out.Events, "expected events: %v but got: %v", expectedHooks, out.Events)
 			}
 		}
-		if !found {
-			t.Errorf("Result not found: %v", out)
-		}
+		assert.True(t, found, "Result not found: %v", out)
 	}
 
 	// Verify the sort order
@@ -220,8 +203,6 @@ metadata:
 
 	sorted = sortManifestsByKind(sorted, InstallOrder)
 	for i, m := range generic {
-		if m.Content != sorted[i].Content {
-			t.Errorf("Expected %q, got %q", m.Content, sorted[i].Content)
-		}
+		assert.Equal(t, m.Content, sorted[i].Content)
 	}
 }

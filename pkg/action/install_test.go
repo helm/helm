@@ -204,8 +204,8 @@ func TestInstallRelease(t *testing.T) {
 	is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
 	is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
 
-	is.NotEqual(len(res.Manifest), 0)
-	is.NotEqual(len(rel.Manifest), 0)
+	is.NotEmpty(res.Manifest)
+	is.NotEmpty(rel.Manifest)
 	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
 	is.Equal(rel.Info.Description, "Install complete")
 
@@ -318,8 +318,8 @@ func TestInstallReleaseWithValues(t *testing.T) {
 	is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
 	is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
 
-	is.NotEqual(len(res.Manifest), 0)
-	is.NotEqual(len(rel.Manifest), 0)
+	is.NotEmpty(res.Manifest)
+	is.NotEmpty(rel.Manifest)
 	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
 	is.Equal("Install complete", rel.Info.Description)
 	is.Equal(expectedUserValues, rel.Config)
@@ -359,8 +359,8 @@ func TestInstallRelease_WithNotes(t *testing.T) {
 	is.Equal(rel.Hooks[0].Manifest, manifestWithHook)
 	is.Equal(rel.Hooks[0].Events[0], release.HookPostInstall)
 	is.Equal(rel.Hooks[0].Events[1], release.HookPreDelete, "Expected event 0 is pre-delete")
-	is.NotEqual(len(res.Manifest), 0)
-	is.NotEqual(len(rel.Manifest), 0)
+	is.NotEmpty(res.Manifest)
+	is.NotEmpty(rel.Manifest)
 	is.Contains(rel.Manifest, "---\n# Source: hello/templates/hello\nhello: world")
 	is.Equal(rel.Info.Description, "Install complete")
 
@@ -582,7 +582,7 @@ func TestInstallRelease_FailedHooks(t *testing.T) {
 	res, err := releaserToV1Release(resi)
 	is.NoError(err)
 	is.Contains(res.Info.Description, "failed post-install")
-	is.Equal("", outBuffer.String())
+	is.Empty(outBuffer.String())
 	is.Equal(rcommon.StatusFailed, res.Info.Status)
 }
 
@@ -737,7 +737,6 @@ func TestInstallRelease_RollbackOnFailure(t *testing.T) {
 	})
 }
 func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
-
 	is := assert.New(t)
 	instAction := installAction(t)
 	instAction.ReleaseName = "interrupted-release"
@@ -767,7 +766,6 @@ func TestInstallRelease_RollbackOnFailure_Interrupted(t *testing.T) {
 	is.Equal(goroutines+1, instAction.getGoroutineCount()) // installation goroutine still is in background
 	time.Sleep(10 * time.Second)                           // wait for goroutine to finish
 	is.Equal(goroutines, instAction.getGoroutineCount())
-
 }
 func TestNameTemplate(t *testing.T) {
 	testCases := []nameTemplateTestCase{
@@ -804,7 +802,6 @@ func TestNameTemplate(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-
 		n, err := TemplateName(tc.tpl)
 		if err != nil {
 			if tc.expectedErrorStr == "" {
@@ -867,7 +864,7 @@ func TestInstallReleaseOutputDir(t *testing.T) {
 	test.AssertGoldenFile(t, filepath.Join(dir, "hello/templates/rbac"), "rbac.txt")
 
 	_, err = os.Stat(filepath.Join(dir, "hello/templates/empty"))
-	is.True(errors.Is(err, fs.ErrNotExist))
+	is.ErrorIs(err, fs.ErrNotExist)
 }
 
 func TestInstallOutputDirWithReleaseName(t *testing.T) {
@@ -903,7 +900,7 @@ func TestInstallOutputDirWithReleaseName(t *testing.T) {
 	test.AssertGoldenFile(t, filepath.Join(newDir, "hello/templates/rbac"), "rbac.txt")
 
 	_, err = os.Stat(filepath.Join(newDir, "hello/templates/empty"))
-	is.True(errors.Is(err, fs.ErrNotExist))
+	is.ErrorIs(err, fs.ErrNotExist)
 }
 
 func TestNameAndChart(t *testing.T) {
@@ -1168,7 +1165,7 @@ func TestInstallCRDs_AlreadyExist(t *testing.T) {
 	mockChart := buildChart(withFile(mockFile))
 	crdsToInstall := mockChart.CRDObjects()
 
-	assert.Nil(t, instAction.installCRDs(crdsToInstall))
+	assert.NoError(t, instAction.installCRDs(crdsToInstall))
 }
 
 func TestInstallCRDs_KubeClient_BuildError(t *testing.T) {
@@ -1227,7 +1224,7 @@ func TestCheckDependencies(t *testing.T) {
 	dependency := chart.Dependency{Name: "hello"}
 	mockChart := buildChart(withDependency())
 
-	assert.Nil(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}))
+	assert.NoError(t, CheckDependencies(mockChart, []ci.Dependency{&dependency}))
 }
 
 func TestCheckDependencies_MissingDependency(t *testing.T) {
