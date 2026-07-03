@@ -37,3 +37,10 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      # Group all GitHub Actions updates into a single PR so multi-path
+      # actions (e.g. github/codeql-action init/autobuild/analyze) bump
+      # together and don't fail CI on a version mismatch.
+      actions:
+        patterns:
+          - "*"
