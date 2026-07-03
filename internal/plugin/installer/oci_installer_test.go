@@ -421,11 +421,9 @@ func TestOCIInstaller_Install_WithGetterOptions(t *testing.T) {
 			} else {
 				if err != nil {
 					t.Errorf("Expected installation to succeed, got error: %v", err)
-				} else {
 					// Verify plugin was installed to the actual path
-					if !isPlugin(actualPath) {
-						t.Errorf("Expected plugin directory %s to contain plugin.yaml", actualPath)
-					}
+				} else if !isPlugin(actualPath) {
+					t.Errorf("Expected plugin directory %s to contain plugin.yaml", actualPath)
 				}
 			}
 		})

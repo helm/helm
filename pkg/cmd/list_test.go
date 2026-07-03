@@ -350,10 +350,8 @@ func TestReleaseListWriter(t *testing.T) {
 
 			if writer == nil {
 				t.Error("Expected writer to be non-nil")
-			} else {
-				if len(writer.releases) != len(tt.releases) {
-					t.Errorf("Expected %d releases, got %d", len(tt.releases), len(writer.releases))
-				}
+			} else if len(writer.releases) != len(tt.releases) {
+				t.Errorf("Expected %d releases, got %d", len(tt.releases), len(writer.releases))
 			}
 		})
 	}
