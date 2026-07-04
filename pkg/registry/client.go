@@ -30,6 +30,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/opencontainers/image-spec/specs-go"
@@ -97,6 +98,8 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	}
 	if client.httpClient == nil {
 		client.httpClient = &http.Client{
+			// Bound registry operations so an unresponsive registry cannot hang forever.
+			Timeout:   30 * time.Second,
 			Transport: NewTransport(client.debug),
 		}
 	}
