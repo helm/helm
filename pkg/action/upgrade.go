@@ -309,7 +309,7 @@ func (u *Upgrade) prepareUpgrade(ctx context.Context, name string, chart *chartv
 		return nil, nil, false, fmt.Errorf("user supplied labels contains system reserved label name. System labels: %+v", driver.GetSystemLabels())
 	}
 
-	serverSideApply, err := getUpgradeServerSideValue(u.ServerSideApply, lastRelease.ApplyMethod)
+	serverSideApply, err := getServerSideApplyValue(u.ServerSideApply, lastRelease.ApplyMethod)
 	if err != nil {
 		return nil, nil, false, err
 	}
@@ -665,15 +665,3 @@ func mergeCustomLabels(current, desired map[string]string) map[string]string {
 	return labels
 }
 
-func getUpgradeServerSideValue(serverSideOption string, releaseApplyMethod string) (bool, error) {
-	switch serverSideOption {
-	case "auto":
-		return releaseApplyMethod == "ssa", nil
-	case "false":
-		return false, nil
-	case "true":
-		return true, nil
-	default:
-		return false, fmt.Errorf("invalid/unknown release server-side apply method: %s", serverSideOption)
-	}
-}
