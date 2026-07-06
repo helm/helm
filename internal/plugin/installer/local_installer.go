@@ -117,10 +117,10 @@ func (i *LocalInstaller) installFromArchive() error {
 	}
 	filename := fmt.Sprintf("%s-%s.tgz", metadata.Name, metadata.Version)
 	tarballPath := helmpath.DataPath("plugins", filename)
-	if err := os.MkdirAll(filepath.Dir(tarballPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(tarballPath), 0o755); err != nil {
 		return fmt.Errorf("failed to create plugins directory: %w", err)
 	}
-	if err := os.WriteFile(tarballPath, data, 0644); err != nil {
+	if err := os.WriteFile(tarballPath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to save tarball: %w", err)
 	}
 
@@ -128,7 +128,7 @@ func (i *LocalInstaller) installFromArchive() error {
 	provSource := i.Source + ".prov"
 	if provData, err := os.ReadFile(provSource); err == nil {
 		provPath := tarballPath + ".prov"
-		if err := os.WriteFile(provPath, provData, 0644); err != nil {
+		if err := os.WriteFile(provPath, provData, 0o644); err != nil {
 			slog.Debug("failed to save provenance file", "error", err)
 		}
 	}

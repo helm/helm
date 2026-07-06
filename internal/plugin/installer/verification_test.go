@@ -291,7 +291,7 @@ func TestInstallWithOptions_VerifyProvenanceAccessError(t *testing.T) {
 
 	// Create a .prov file but make it inaccessible (simulate permission error)
 	provFile := pluginTgz + ".prov"
-	if err := os.WriteFile(provFile, []byte("test"), 0000); err != nil {
+	if err := os.WriteFile(provFile, []byte("test"), 0o000); err != nil {
 		t.Fatalf("Failed to create inaccessible provenance file: %v", err)
 	}
 	defer os.Remove(provFile)
@@ -333,7 +333,7 @@ func createTestPluginDir(t *testing.T) string {
 	// Create temporary directory with plugin structure
 	tmpDir := t.TempDir()
 	pluginDir := filepath.Join(tmpDir, "test-plugin")
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
+	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
 		t.Fatalf("Failed to create plugin directory: %v", err)
 	}
 
@@ -346,7 +346,7 @@ version: 1.0.0
 runtimeConfig:
   platformCommand:
     - command: echo`
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(pluginYaml), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(pluginYaml), 0o644); err != nil {
 		t.Fatalf("Failed to create plugin.yaml: %v", err)
 	}
 
@@ -404,7 +404,7 @@ Version: GnuPG v1
 iQEcBAEBCAAGBQJktest...
 -----END PGP SIGNATURE-----
 `, hashStr)
-	if err := os.WriteFile(provFile, []byte(provContent), 0644); err != nil {
+	if err := os.WriteFile(provFile, []byte(provContent), 0o644); err != nil {
 		t.Fatalf("Failed to create provenance file: %v", err)
 	}
 }
@@ -414,7 +414,7 @@ func createProvFileInvalidFormat(t *testing.T, provFile string) {
 
 	// Create an invalid provenance file (not PGP signed format)
 	invalidProv := "This is not a valid PGP signed message"
-	if err := os.WriteFile(provFile, []byte(invalidProv), 0644); err != nil {
+	if err := os.WriteFile(provFile, []byte(invalidProv), 0o644); err != nil {
 		t.Fatalf("Failed to create invalid provenance file: %v", err)
 	}
 }
@@ -427,7 +427,7 @@ func createTestKeyring(t *testing.T) string {
 	keyringPath := filepath.Join(tmpDir, "pubring.gpg")
 
 	// Create empty keyring for testing
-	if err := os.WriteFile(keyringPath, []byte{}, 0644); err != nil {
+	if err := os.WriteFile(keyringPath, []byte{}, 0o644); err != nil {
 		t.Fatalf("Failed to create test keyring: %v", err)
 	}
 

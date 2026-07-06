@@ -548,7 +548,7 @@ func TestIndexWrite(t *testing.T) {
 	}
 	dir := t.TempDir()
 	testpath := filepath.Join(dir, "test")
-	i.WriteFile(testpath, 0600)
+	i.WriteFile(testpath, 0o600)
 
 	got, err := os.ReadFile(testpath)
 	if err != nil {
@@ -566,7 +566,7 @@ func TestIndexJSONWrite(t *testing.T) {
 	}
 	dir := t.TempDir()
 	testpath := filepath.Join(dir, "test")
-	i.WriteJSONFile(testpath, 0600)
+	i.WriteJSONFile(testpath, 0o600)
 
 	got, err := os.ReadFile(testpath)
 	if err != nil {

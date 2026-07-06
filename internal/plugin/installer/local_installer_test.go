@@ -34,7 +34,7 @@ func TestLocalInstaller(t *testing.T) {
 	ensure.HelmHome(t)
 	// Make a temp dir
 	tdir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tdir, "plugin.yaml"), []byte{}, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tdir, "plugin.yaml"), []byte{}, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -51,7 +51,7 @@ func TestLocalInstaller(t *testing.T) {
 	if i.Path() != helmpath.DataPath("plugins", "echo-v1") {
 		t.Fatalf("expected path '$XDG_CONFIG_HOME/helm/plugins/helm-env', got %q", i.Path())
 	}
-	defer os.RemoveAll(filepath.Dir(helmpath.DataPath())) // helmpath.DataPath is like /tmp/helm013130971/helm
+	os.RemoveAll(filepath.Dir(helmpath.DataPath())) // helmpath.DataPath is like /tmp/helm013130971/helm
 }
 
 func TestLocalInstallerNotAFolder(t *testing.T) {
@@ -87,8 +87,8 @@ func TestLocalInstallerTarball(t *testing.T) {
 		Body string
 		Mode int64
 	}{
-		{"test-plugin/plugin.yaml", "name: test-plugin\napiVersion: v1\ntype: cli/v1\nruntime: subprocess\nversion: 1.0.0\nconfig:\n  shortHelp: test\n  longHelp: test\nruntimeConfig:\n  platformCommand:\n  - command: echo", 0644},
-		{"test-plugin/bin/test-plugin", "#!/usr/bin/env sh\necho test", 0755},
+		{"test-plugin/plugin.yaml", "name: test-plugin\napiVersion: v1\ntype: cli/v1\nruntime: subprocess\nversion: 1.0.0\nconfig:\n  shortHelp: test\n  longHelp: test\nruntimeConfig:\n  platformCommand:\n  - command: echo", 0o644},
+		{"test-plugin/bin/test-plugin", "#!/usr/bin/env sh\necho test", 0o755},
 	}
 
 	for _, file := range files {
@@ -113,7 +113,7 @@ func TestLocalInstallerTarball(t *testing.T) {
 	}
 
 	// Write tarball to file
-	if err := os.WriteFile(tarballPath, buf.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(tarballPath, buf.Bytes(), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

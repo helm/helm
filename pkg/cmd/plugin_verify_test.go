@@ -102,7 +102,7 @@ func TestPluginVerifyCmd_InvalidProvenance(t *testing.T) {
 
 	// Create invalid .prov file
 	provFile := pluginTgz + ".prov"
-	if err := os.WriteFile(provFile, []byte("invalid provenance"), 0644); err != nil {
+	if err := os.WriteFile(provFile, []byte("invalid provenance"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	defer os.Remove(provFile)
@@ -178,12 +178,12 @@ func createTestPluginDir(t *testing.T) string {
 	// Create temporary directory with plugin structure
 	tmpDir := t.TempDir()
 	pluginDir := filepath.Join(tmpDir, "test-plugin")
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
+	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
 		t.Fatalf("Failed to create plugin directory: %v", err)
 	}
 
 	// Use the same plugin YAML as other cmd tests
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(testPluginYAML), 0o644); err != nil {
 		t.Fatalf("Failed to create plugin.yaml: %v", err)
 	}
 
@@ -243,7 +243,7 @@ Version: GnuPG v1
 iQEcBAEBCAAGBQJktest...
 -----END PGP SIGNATURE-----
 `, hashStr)
-	if err := os.WriteFile(provFile, []byte(provContent), 0644); err != nil {
+	if err := os.WriteFile(provFile, []byte(provContent), 0o644); err != nil {
 		t.Fatalf("Failed to create provenance file: %v", err)
 	}
 }
@@ -256,7 +256,7 @@ func createTestKeyring(t *testing.T) string {
 	keyringPath := filepath.Join(tmpDir, "pubring.gpg")
 
 	// Create empty keyring for testing
-	if err := os.WriteFile(keyringPath, []byte{}, 0644); err != nil {
+	if err := os.WriteFile(keyringPath, []byte{}, 0o644); err != nil {
 		t.Fatalf("Failed to create test keyring: %v", err)
 	}
 

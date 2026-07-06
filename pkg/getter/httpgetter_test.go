@@ -569,7 +569,7 @@ func TestHttpClientInsecureSkipVerify(t *testing.T) {
 	g.opts.keyFile = "testdata/client.key"
 	g.opts.insecureSkipVerifyTLS = true
 	transport := verifyInsecureSkipVerify(t, &g, "HTTPGetter with 2 way ssl", true)
-	if len(transport.TLSClientConfig.Certificates) <= 0 {
+	if len(transport.TLSClientConfig.Certificates) == 0 {
 		t.Fatal("transport.TLSClientConfig.Certificates is not present")
 	}
 }

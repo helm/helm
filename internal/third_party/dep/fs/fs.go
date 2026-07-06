@@ -193,7 +193,7 @@ func CopyFile(src, dst string) (err error) {
 	}
 
 	// Check for write errors on Close
-	if err = out.Close(); err != nil {
+	if err := out.Close(); err != nil {
 		return err
 	}
 

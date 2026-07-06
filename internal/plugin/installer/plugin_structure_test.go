@@ -31,7 +31,7 @@ func TestDetectPluginRoot(t *testing.T) {
 		{
 			name: "plugin.yaml at root",
 			setup: func(dir string) error {
-				return os.WriteFile(filepath.Join(dir, "plugin.yaml"), []byte("name: test"), 0644)
+				return os.WriteFile(filepath.Join(dir, "plugin.yaml"), []byte("name: test"), 0o644)
 			},
 			expectRoot:  ".",
 			expectError: false,
@@ -40,10 +40,10 @@ func TestDetectPluginRoot(t *testing.T) {
 			name: "plugin.yaml in subdirectory",
 			setup: func(dir string) error {
 				subdir := filepath.Join(dir, "my-plugin")
-				if err := os.MkdirAll(subdir, 0755); err != nil {
+				if err := os.MkdirAll(subdir, 0o755); err != nil {
 					return err
 				}
-				return os.WriteFile(filepath.Join(subdir, "plugin.yaml"), []byte("name: test"), 0644)
+				return os.WriteFile(filepath.Join(subdir, "plugin.yaml"), []byte("name: test"), 0o644)
 			},
 			expectRoot:  "my-plugin",
 			expectError: false,
@@ -51,7 +51,7 @@ func TestDetectPluginRoot(t *testing.T) {
 		{
 			name: "no plugin.yaml",
 			setup: func(dir string) error {
-				return os.WriteFile(filepath.Join(dir, "README.md"), []byte("test"), 0644)
+				return os.WriteFile(filepath.Join(dir, "README.md"), []byte("test"), 0o644)
 			},
 			expectRoot:  "",
 			expectError: true,
@@ -60,10 +60,10 @@ func TestDetectPluginRoot(t *testing.T) {
 			name: "plugin.yaml in nested subdirectory (should not find)",
 			setup: func(dir string) error {
 				subdir := filepath.Join(dir, "outer", "inner")
-				if err := os.MkdirAll(subdir, 0755); err != nil {
+				if err := os.MkdirAll(subdir, 0o755); err != nil {
 					return err
 				}
-				return os.WriteFile(filepath.Join(subdir, "plugin.yaml"), []byte("name: test"), 0644)
+				return os.WriteFile(filepath.Join(subdir, "plugin.yaml"), []byte("name: test"), 0o644)
 			},
 			expectRoot:  "",
 			expectError: true,
@@ -110,14 +110,14 @@ func TestValidatePluginName(t *testing.T) {
 			name: "matching directory and plugin name",
 			setup: func(dir string) error {
 				subdir := filepath.Join(dir, "my-plugin")
-				if err := os.MkdirAll(subdir, 0755); err != nil {
+				if err := os.MkdirAll(subdir, 0o755); err != nil {
 					return err
 				}
 				yaml := `name: my-plugin
 version: 1.0.0
 usage: test
 description: test`
-				return os.WriteFile(filepath.Join(subdir, "plugin.yaml"), []byte(yaml), 0644)
+				return os.WriteFile(filepath.Join(subdir, "plugin.yaml"), []byte(yaml), 0o644)
 			},
 			pluginRoot:   "my-plugin",
 			expectedName: "my-plugin",
@@ -127,14 +127,14 @@ description: test`
 			name: "different directory and plugin name",
 			setup: func(dir string) error {
 				subdir := filepath.Join(dir, "wrong-name")
-				if err := os.MkdirAll(subdir, 0755); err != nil {
+				if err := os.MkdirAll(subdir, 0o755); err != nil {
 					return err
 				}
 				yaml := `name: my-plugin
 version: 1.0.0
 usage: test
 description: test`
-				return os.WriteFile(filepath.Join(subdir, "plugin.yaml"), []byte(yaml), 0644)
+				return os.WriteFile(filepath.Join(subdir, "plugin.yaml"), []byte(yaml), 0o644)
 			},
 			pluginRoot:   "wrong-name",
 			expectedName: "wrong-name",

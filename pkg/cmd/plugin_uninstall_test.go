@@ -39,7 +39,7 @@ func TestPluginUninstallCleansUpVersionedFiles(t *testing.T) {
 
 	// Create plugin directory
 	pluginDir := filepath.Join(pluginsDir, pluginName)
-	if err := os.MkdirAll(pluginDir, 0755); err != nil {
+	if err := os.MkdirAll(pluginDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -49,7 +49,7 @@ version: 1.2.3
 description: Test plugin
 command: $HELM_PLUGIN_DIR/test-plugin
 `
-	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(pluginYAML), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(pluginYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -58,14 +58,14 @@ command: $HELM_PLUGIN_DIR/test-plugin
 	provFile := filepath.Join(pluginsDir, "test-plugin-1.2.3.tgz.prov")
 	otherVersionTarball := filepath.Join(pluginsDir, "test-plugin-2.0.0.tgz")
 
-	if err := os.WriteFile(tarballFile, []byte("fake tarball"), 0644); err != nil {
+	if err := os.WriteFile(tarballFile, []byte("fake tarball"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(provFile, []byte("fake provenance"), 0644); err != nil {
+	if err := os.WriteFile(provFile, []byte("fake provenance"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	// Create another version that should NOT be removed
-	if err := os.WriteFile(otherVersionTarball, []byte("other version"), 0644); err != nil {
+	if err := os.WriteFile(otherVersionTarball, []byte("other version"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
