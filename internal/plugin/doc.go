@@ -49,7 +49,7 @@ for _, plg := range plgs {
 
 Package `plugin` provides the implementation of the Helm plugin system.
 
-Helm plugins are exposed to uses as the "Plugin" type, the basic interface that primarily support the "Invoke" method.
+Helm plugins are exposed to users as the "Plugin" type, the basic interface that primarily supports the "Invoke" method.
 
 # Plugin Runtimes
 Internally, plugins must be implemented by a "runtime" that is responsible for creating the plugin instance, and dispatching the plugin's invocation to the plugin's implementation.
@@ -81,9 +81,9 @@ For legacy plugins, the type is inferred by which fields are set on the plugin: 
 For v1 plugins, the metadata includes explicit apiVersion and type fields. It will also contain type-specific Config, and RuntimeConfig fields.
 
 # Runtime and type cardinality
-From a cardinality perspective, this means there a "few" runtimes, and "many" plugins types. It is also expected that the subprocess runtime will not be extended to support extra plugin types, and deprecated in a future version of Helm.
+From a cardinality perspective, this means there are a "few" runtimes, and "many" plugin types. It is also expected that the subprocess runtime will not be extended to support extra plugin types, and deprecated in a future version of Helm.
 
-Future ideas that are intended to be implemented include extending the plugin system to support future Wasm standards. Or allowing Helm SDK user's to inject "plugins" that are actually implemented as native go modules. Or even moving Helm's internal functionality e.g. yaml rendering engine to be used as an "in-built" plugin, along side other plugins that may implement other (non-go template) rendering engines.
+Future ideas that are intended to be implemented include extending the plugin system to support future Wasm standards. Or allowing Helm SDK users to inject "plugins" that are actually implemented as native go modules. Or even moving Helm's internal functionality e.g. yaml rendering engine to be used as an "in-built" plugin, alongside other plugins that may implement other (non-go template) rendering engines.
 */
 
 package plugin

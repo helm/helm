@@ -16,7 +16,7 @@ limitations under the License.
 /*
 This file contains a "registry" of supported plugin types.
 
-It enables "dyanmic" operations on the go type associated with a given plugin type (see: `helm.sh/helm/v4/internal/plugin/schema` package)
+It enables "dynamic" operations on the go type associated with a given plugin type (see: `helm.sh/helm/v4/internal/plugin/schema` package)
 
 Examples:
 

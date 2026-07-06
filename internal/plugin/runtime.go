@@ -22,7 +22,7 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-// Runtime represents a plugin runtime (subprocess, extism, etc) ie. how a plugin should be executed
+// Runtime represents a plugin runtime (subprocess, extism, etc) i.e. how a plugin should be executed
 // Runtime is responsible for instantiating plugins that implement the runtime
 // TODO: could call this something more like "PluginRuntimeCreator"?
 type Runtime interface {
@@ -34,7 +34,7 @@ type Runtime interface {
 }
 
 // RuntimeConfig represents the assertable type for a plugin's runtime configuration.
-// It is expected to type assert (cast) the a RuntimeConfig to its expected type
+// It is expected to type assert (cast) a RuntimeConfig to its expected type
 type RuntimeConfig interface {
 	Validate() error
 }
