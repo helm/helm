@@ -297,3 +297,21 @@ func TestGetLocalPath(t *testing.T) {
 		})
 	}
 }
+
+func TestHashReqIgnoresContentDigest(t *testing.T) {
+	req := []*chart.Dependency{
+		{Name: "alpine", Version: "0.1.0", Repository: "http://localhost:8879/charts"},
+	}
+	lockWithout := []*chart.Dependency{
+		{Name: "alpine", Version: "0.1.0", Repository: "http://localhost:8879/charts"},
+	}
+	lockWith := []*chart.Dependency{
+		{Name: "alpine", Version: "0.1.0", Repository: "http://localhost:8879/charts", Digest: "sha256:abc123"},
+	}
+
+	h1, err := HashReq(req, lockWithout)
+	require.NoError(t, err)
+	h2, err := HashReq(req, lockWith)
+	require.NoError(t, err)
+	assert.Equal(t, h1, h2)
+}

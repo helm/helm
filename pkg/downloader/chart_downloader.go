@@ -85,6 +85,10 @@ type ChartDownloader struct {
 
 	// Cache specifies the cache implementation to use.
 	Cache Cache
+
+	// ExpectedDigest is the digest from the repository index or OCI reference.
+	// When set, downloaded content is compared and a warning is emitted on mismatch.
+	ExpectedDigest string
 }
 
 // DownloadTo retrieves a chart. Depending on the settings, it may also download a provenance file.
@@ -150,6 +154,10 @@ func (c *ChartDownloader) DownloadTo(ref, version, dest string) (string, *proven
 
 		data, err = g.Get(u.String(), c.Options...)
 		if err != nil {
+			return "", nil, err
+		}
+
+		if err := verifyDownloadedDigest(c.Out, ref, c.ExpectedDigest, hash, data); err != nil {
 			return "", nil, err
 		}
 	}
@@ -590,6 +598,27 @@ func loadRepoConfig(file string) (*repo.File, error) {
 		return nil, err
 	}
 	return r, nil
+}
+
+// verifyDownloadedDigest compares downloaded chart bytes against the digest from
+// the repository index or OCI reference. A mismatch emits a warning to out.
+func verifyDownloadedDigest(out io.Writer, ref, expectedDigest, resolvedDigest string, data *bytes.Buffer) error {
+	digest := expectedDigest
+	if digest == "" {
+		digest = resolvedDigest
+	}
+	if digest == "" || data == nil {
+		return nil
+	}
+	computed, err := provenance.Digest(bytes.NewReader(data.Bytes()))
+	if err != nil {
+		return err
+	}
+	if !digestEqual(digest, computed) {
+		fmt.Fprintf(out, "WARNING: digest mismatch for %s: repository index has sha256:%s, downloaded content has sha256:%s\n",
+			ref, stripDigestAlgorithm(digest), computed)
+	}
+	return nil
 }
 
 // stripDigestAlgorithm removes the algorithm prefix (e.g., "sha256:") from a digest string.
