@@ -33,8 +33,6 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common"
 )
 
-var headerBytes = []byte("+aHR0cHM6Ly95b3V0dS5iZS96OVV6MWljandyTQo=")
-
 // SaveDir saves a chart as files in a directory.
 //
 // This takes the chart name, and creates a new subdirectory inside of the given dest
@@ -132,7 +130,6 @@ func Save(c *chart.Chart, outDir string) (string, error) {
 
 	// Wrap in gzip writer
 	zipper := gzip.NewWriter(f)
-	zipper.Extra = headerBytes
 	zipper.Comment = "Helm"
 
 	// Wrap in tar writer

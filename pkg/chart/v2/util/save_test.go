@@ -299,7 +299,7 @@ func TestRepeatableSave(t *testing.T) {
 				Schema:        []byte("{\n  \"title\": \"Values\"\n}"),
 				SchemaModTime: modTime,
 			},
-			want: "fea2662522317b65c2788ff9e5fc446a9264830038dac618d4449493d99b3257",
+			want: "a16e5fddf319dd0397b2618e57a36ffc10d62711d7c7dba4ebac7b2e2b48d16f",
 		},
 		{
 			name: "Package 2 files",
@@ -321,7 +321,7 @@ func TestRepeatableSave(t *testing.T) {
 				Schema:        []byte("{\n  \"title\": \"Values\"\n}"),
 				SchemaModTime: modTime,
 			},
-			want: "7ae92b2f274bb51ea3f1969e4187d78cc52b5f6f663b44b8fb3b40bcb8ee46f3",
+			want: "f84379ab087642fca492f22143a6e2c13c99c18e68b0c7c041bd65bdbac3ab77",
 		},
 	}
 	for _, test := range tests {
