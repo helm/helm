@@ -231,8 +231,7 @@ func TestGetContainerLogs_PodNotFound(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := rt.getContainerLogs(&buf, client, "nonexistent-pod")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unable to get pod nonexistent-pod")
+	assert.ErrorContains(t, err, "unable to get pod nonexistent-pod")
 }
 
 func TestGetContainerLogs_OutputHeaderFormat(t *testing.T) {

@@ -295,8 +295,7 @@ command: echo test`,
 			m, err := loadMetadataLegacy([]byte(tc.yaml))
 
 			if tc.expectError {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.errorContains)
+				require.ErrorContains(t, err, tc.errorContains)
 				t.Logf("Legacy error (validation catches empty name): %v", err)
 				if tc.logNote != "" {
 					t.Log(tc.logNote)
@@ -342,8 +341,7 @@ runtime: subprocess
 			m, err := loadMetadataV1([]byte(tc.yaml))
 
 			if tc.expectError {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.errorContains)
+				require.ErrorContains(t, err, tc.errorContains)
 				t.Logf("V1 error (strict unmarshalling): %v", err)
 			} else {
 				require.NoError(t, err)

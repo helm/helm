@@ -331,8 +331,7 @@ func TestSetMetadataVisitor(t *testing.T) {
 	// Add a new resource that is missing ownership metadata and verify error
 	resources.Append(newDeploymentResource("baz", "default", ""))
 	err = resources.Visit(setMetadataVisitor("rel-b", "ns-a", false))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `Deployment "baz" in namespace "" cannot be owned`)
+	assert.ErrorContains(t, err, `Deployment "baz" in namespace "" cannot be owned`)
 }
 
 func TestValidateNameAndGenerateName(t *testing.T) {
@@ -369,8 +368,7 @@ func TestValidateNameAndGenerateName(t *testing.T) {
 			skip, err := validateNameAndGenerateName(tc.info)
 
 			if tc.wantErr {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.errContains)
+				require.ErrorContains(t, err, tc.errContains)
 			} else {
 				require.NoError(t, err)
 			}

@@ -228,8 +228,7 @@ func TestSelectorsForObject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			selector, err := SelectorsForObject(tt.object.(runtime.Object))
 			if tt.expectError {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errorContains)
+				require.ErrorContains(t, err, tt.errorContains)
 			} else {
 				require.NoError(t, err)
 				expected := labels.Set(tt.expectedLabels)

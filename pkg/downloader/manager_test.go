@@ -755,8 +755,7 @@ func TestWriteLock(t *testing.T) {
 		require.NoError(t, os.Symlink(dummyFile, lockfilePath))
 
 		err = writeLock(dir, lock, false)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "the Chart.lock file is a symlink to")
+		assert.ErrorContains(t, err, "the Chart.lock file is a symlink to")
 	})
 
 	t.Run("chart path is not a directory", func(t *testing.T) {

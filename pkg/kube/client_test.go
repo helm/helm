@@ -539,8 +539,7 @@ func TestUpdate(t *testing.T) {
 				ClientUpdateOptionUpgradeClientSideFieldManager(true))
 
 			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
+				require.ErrorContains(t, err, tc.ExpectedError)
 			} else {
 				require.NoError(t, err)
 			}
@@ -558,7 +557,7 @@ func TestUpdate(t *testing.T) {
 
 			if tc.ExpectedError != "" {
 				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
+				require.ErrorContains(t, err, tc.ExpectedError)
 			} else {
 				require.NoError(t, err)
 			}
@@ -1939,7 +1938,7 @@ func TestClientWaitContextCancellationLegacy(t *testing.T) {
 
 	err = c.Wait(resources, time.Second*30)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+	assert.ErrorContains(t, err, "context canceled", "expected context canceled error, got: %v", err)
 }
 
 func TestClientWaitWithJobsContextCancellationLegacy(t *testing.T) {
@@ -1993,8 +1992,7 @@ func TestClientWaitWithJobsContextCancellationLegacy(t *testing.T) {
 	assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
 
 	err = c.WaitWithJobs(resources, time.Second*30)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+	assert.ErrorContains(t, err, "context canceled", "expected context canceled error, got: %v", err)
 }
 
 func TestClientWaitForDeleteContextCancellationLegacy(t *testing.T) {
@@ -2058,8 +2056,7 @@ func TestClientWaitForDeleteContextCancellationLegacy(t *testing.T) {
 	}
 
 	err = c.WaitForDelete(resources, time.Second*30)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+	assert.ErrorContains(t, err, "context canceled", "expected context canceled error, got: %v", err)
 }
 
 func TestClientWaitContextNilDoesNotPanic(t *testing.T) {
@@ -2166,8 +2163,7 @@ func TestClientWaitContextPreCancelledLegacy(t *testing.T) {
 	assert.Len(t, result.Created, 1, "expected 1 resource created, got %d", len(result.Created))
 
 	err = c.Wait(resources, time.Second*30)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+	assert.ErrorContains(t, err, "context canceled", "expected context canceled error, got: %v", err)
 }
 
 func TestClientWaitContextCancellationStatusWatcher(t *testing.T) {
@@ -2193,8 +2189,7 @@ metadata:
 	cancel()
 
 	err = c.Wait(resources, time.Second*30)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+	assert.ErrorContains(t, err, "context canceled", "expected context canceled error, got: %v", err)
 }
 
 func TestClientWaitWithJobsContextCancellationStatusWatcher(t *testing.T) {
@@ -2220,8 +2215,7 @@ metadata:
 	cancel()
 
 	err = c.WaitWithJobs(resources, time.Second*30)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+	assert.ErrorContains(t, err, "context canceled", "expected context canceled error, got: %v", err)
 }
 
 func TestClientWaitForDeleteContextCancellationStatusWatcher(t *testing.T) {
@@ -2252,8 +2246,7 @@ status:
 	cancel()
 
 	err = c.WaitForDelete(resources, time.Second*30)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "context canceled", "expected context canceled error, got: %v", err)
+	assert.ErrorContains(t, err, "context canceled", "expected context canceled error, got: %v", err)
 }
 
 // testStatusReader is a custom status reader for testing that returns a configurable status.

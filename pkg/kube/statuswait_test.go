@@ -350,7 +350,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 			if tt.expectErrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}
@@ -441,7 +441,7 @@ func TestStatusWait(t *testing.T) {
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}
@@ -498,7 +498,7 @@ func TestWaitForJobComplete(t *testing.T) {
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}
@@ -561,7 +561,7 @@ func TestWatchForReady(t *testing.T) {
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}
@@ -679,7 +679,7 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}
@@ -861,7 +861,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 			if tt.expectErrs != nil {
 				require.Error(t, err)
 				for _, expectedErr := range tt.expectErrs {
-					assert.Contains(t, err.Error(), expectedErr.Error())
+					require.ErrorContains(t, err, expectedErr.Error())
 				}
 				return
 			}
@@ -969,7 +969,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 			if tt.expectErrs != nil {
 				require.Error(t, err)
 				for _, expectedErr := range tt.expectErrs {
-					assert.Contains(t, err.Error(), expectedErr.Error())
+					require.ErrorContains(t, err, expectedErr.Error())
 				}
 				return
 			}
@@ -1075,7 +1075,7 @@ func TestStatusWaitWithCustomReaders(t *testing.T) {
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}
@@ -1246,7 +1246,7 @@ func TestStatusWaitWithFailedResources(t *testing.T) {
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}
@@ -1328,8 +1328,7 @@ func TestMethodSpecificContextCancellation(t *testing.T) {
 
 		err := sw.WatchUntilReady(resourceList, time.Second*3)
 		// Should fail due to cancelled method context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 
 	t.Run("Wait uses method-specific context", func(t *testing.T) {
@@ -1362,8 +1361,7 @@ func TestMethodSpecificContextCancellation(t *testing.T) {
 
 		err := sw.Wait(resourceList, time.Second*3)
 		// Should fail due to cancelled method context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 
 	t.Run("WaitWithJobs uses method-specific context", func(t *testing.T) {
@@ -1396,8 +1394,7 @@ func TestMethodSpecificContextCancellation(t *testing.T) {
 
 		err := sw.WaitWithJobs(resourceList, time.Second*3)
 		// Should fail due to cancelled method context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 
 	t.Run("WaitForDelete uses method-specific context", func(t *testing.T) {
@@ -1430,8 +1427,7 @@ func TestMethodSpecificContextCancellation(t *testing.T) {
 
 		err := sw.WaitForDelete(resourceList, time.Second*3)
 		// Should fail due to cancelled method context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 }
 
@@ -1468,8 +1464,7 @@ func TestMethodContextFallbackToGeneralContext(t *testing.T) {
 
 		err := sw.WatchUntilReady(resourceList, time.Second*3)
 		// Should fail due to cancelled general context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 
 	t.Run("Wait falls back to general context when method context is nil", func(t *testing.T) {
@@ -1502,8 +1497,7 @@ func TestMethodContextFallbackToGeneralContext(t *testing.T) {
 
 		err := sw.Wait(resourceList, time.Second*3)
 		// Should fail due to cancelled general context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 
 	t.Run("WaitWithJobs falls back to general context when method context is nil", func(t *testing.T) {
@@ -1536,8 +1530,7 @@ func TestMethodContextFallbackToGeneralContext(t *testing.T) {
 
 		err := sw.WaitWithJobs(resourceList, time.Second*3)
 		// Should fail due to cancelled general context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 
 	t.Run("WaitForDelete falls back to general context when method context is nil", func(t *testing.T) {
@@ -1570,8 +1563,7 @@ func TestMethodContextFallbackToGeneralContext(t *testing.T) {
 
 		err := sw.WaitForDelete(resourceList, time.Second*3)
 		// Should fail due to cancelled general context
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
+		assert.ErrorContains(t, err, "context canceled")
 	})
 }
 
@@ -1795,7 +1787,7 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 			if tt.expectErrStrs != nil {
 				require.Error(t, err)
 				for _, expectedErrStr := range tt.expectErrStrs {
-					assert.Contains(t, err.Error(), expectedErrStr)
+					require.ErrorContains(t, err, expectedErrStr)
 				}
 				return
 			}

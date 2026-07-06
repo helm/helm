@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMetadataV1ValidateVersion(t *testing.T) {
@@ -79,8 +78,7 @@ func TestMetadataV1ValidateVersion(t *testing.T) {
 			m := base()
 			m.Version = tc.version
 			err := m.Validate()
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tc.errMsg)
+			assert.ErrorContains(t, err, tc.errMsg)
 		})
 	}
 }

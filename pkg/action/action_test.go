@@ -358,8 +358,7 @@ func TestConfiguration_Init(t *testing.T) {
 
 			actualErr := cfg.Init(nil, "default", tt.helmDriver)
 			if tt.expectErr {
-				require.Error(t, actualErr)
-				assert.Contains(t, actualErr.Error(), tt.errMsg)
+				require.ErrorContains(t, actualErr, tt.errMsg)
 			} else {
 				require.NoError(t, actualErr)
 				assert.IsType(t, tt.expectedDriverType, cfg.Releases.Driver)
@@ -1575,8 +1574,7 @@ data:
 			merged, err := annotateAndMerge(tt.files)
 
 			if tt.expectedError != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.ErrorContains(t, err, tt.expectedError)
 			} else {
 				require.NoError(t, err)
 				assert.NotNil(t, merged)
@@ -1738,8 +1736,7 @@ data:
 			files, err := splitAndDeannotate(tt.input, "test")
 
 			if tt.expectedError != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedError)
+				require.ErrorContains(t, err, tt.expectedError)
 			} else {
 				require.NoError(t, err)
 				assert.Len(t, files, len(tt.expectedFiles))
@@ -1874,8 +1871,7 @@ func TestRenderResources_PostRenderer_Error(t *testing.T) {
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "error while running post render on files")
+	assert.ErrorContains(t, err, "error while running post render on files")
 }
 
 func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
@@ -1903,7 +1899,7 @@ func TestRenderResources_PostRenderer_MergeError(t *testing.T) {
 	)
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "error merging manifests")
+	assert.ErrorContains(t, err, "error merging manifests")
 }
 
 func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
@@ -1924,8 +1920,7 @@ func TestRenderResources_PostRenderer_SplitError(t *testing.T) {
 		mockPR, false, false, false, PostRenderStrategyCombined,
 	)
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "error while parsing post rendered output: error parsing YAML: MalformedYAMLError:")
+	assert.ErrorContains(t, err, "error while parsing post rendered output: error parsing YAML: MalformedYAMLError:")
 }
 
 func TestRenderResources_PostRenderer_Integration(t *testing.T) {
@@ -2284,9 +2279,8 @@ metadata:
 		mockPR, false, false, false, PostRenderStrategy("bogus"),
 	)
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown post-render strategy")
-	assert.Contains(t, err.Error(), "bogus")
+	require.ErrorContains(t, err, "unknown post-render strategy")
+	assert.ErrorContains(t, err, "bogus")
 }
 
 func TestDetermineReleaseSSAApplyMethod(t *testing.T) {

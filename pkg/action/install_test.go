@@ -334,10 +334,7 @@ func TestInstallRelease_NoName(t *testing.T) {
 	instAction.ReleaseName = ""
 	vals := map[string]any{}
 	_, err := instAction.Run(buildChart(), vals)
-	if err == nil {
-		t.Fatal("expected failure when no name is specified")
-	}
-	assert.Contains(t, err.Error(), "no name provided")
+	assert.ErrorContains(t, err, "no name provided")
 }
 
 func TestInstallRelease_WithNotes(t *testing.T) {
