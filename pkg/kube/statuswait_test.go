@@ -273,7 +273,7 @@ func getRuntimeObjFromManifests(t *testing.T, manifests []string) []runtime.Obje
 	for _, manifest := range manifests {
 		m := make(map[string]any)
 		err := yaml.Unmarshal([]byte(manifest), &m)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		resource := &unstructured.Unstructured{Object: m}
 		objects = append(objects, resource)
 	}
@@ -285,7 +285,7 @@ func getResourceListFromRuntimeObjs(t *testing.T, c *Client, objs []runtime.Obje
 	resourceList := ResourceList{}
 	for _, obj := range objs {
 		list, err := c.Build(objBody(obj), false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		resourceList = append(resourceList, list...)
 	}
 	return resourceList
@@ -333,7 +333,7 @@ func TestStatusWaitForDelete(t *testing.T) {
 				u := objToCreate.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			objsToDelete := getRuntimeObjFromManifests(t, tt.manifestsToDelete)
 			for _, objToDelete := range objsToDelete {
@@ -434,7 +434,7 @@ func TestStatusWait(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.Wait(resourceList, time.Second*3)
@@ -491,7 +491,7 @@ func TestWaitForJobComplete(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WaitWithJobs(resourceList, time.Second*3)
@@ -554,7 +554,7 @@ func TestWatchForReady(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WatchUntilReady(resourceList, time.Second*3)
@@ -658,7 +658,7 @@ func TestStatusWaitMultipleNamespaces(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			if strings.Contains(tt.name, "delete") {
@@ -840,7 +840,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := baseFakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			if strings.Contains(tt.name, "delet") {
@@ -865,7 +865,7 @@ func TestStatusWaitRestrictedRBAC(t *testing.T) {
 				}
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.False(t, restrictedConfig.clusterScopedListAttempted)
 		})
 	}
@@ -948,7 +948,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := baseFakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			if strings.Contains(tt.name, "delet") {
@@ -973,7 +973,7 @@ func TestStatusWaitMixedResources(t *testing.T) {
 				}
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.False(t, restrictedConfig.clusterScopedListAttempted)
 		})
 	}
@@ -1068,7 +1068,7 @@ func TestStatusWaitWithCustomReaders(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.Wait(resourceList, time.Second*3)
@@ -1140,7 +1140,7 @@ func TestStatusWaitWithJobsAndCustomReaders(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WaitWithJobs(resourceList, time.Second*3)
@@ -1239,7 +1239,7 @@ func TestStatusWaitWithFailedResources(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := tt.testFunc(&sw, resourceList, time.Second*3)
@@ -1788,7 +1788,7 @@ func TestWatchUntilReadyWithCustomReaders(t *testing.T) {
 				u := obj.(*unstructured.Unstructured)
 				gvr := getGVR(t, fakeMapper, u)
 				err := fakeClient.Tracker().Create(gvr, u, u.GetNamespace())
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			resourceList := getResourceListFromRuntimeObjs(t, c, objs)
 			err := statusWaiter.WatchUntilReady(resourceList, time.Second*3)

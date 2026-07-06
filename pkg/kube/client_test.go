@@ -968,7 +968,8 @@ func TestGetPodList(t *testing.T) {
 
 	podList, err := c.GetPodList(namespace, metav1.ListOptions{})
 	clientAssertions := assert.New(t)
-	clientAssertions.NoError(err)
+	req := require.New(t)
+	req.NoError(err)
 	podList.ResourceVersion = ""
 	clientAssertions.Equal(&responsePodList, podList)
 }
@@ -983,7 +984,8 @@ func TestOutputContainerLogsForPodList(t *testing.T) {
 	outBufferFunc := func(_, _, _ string) io.Writer { return outBuffer }
 	err := c.OutputContainerLogsForPodList(&somePodList, namespace, outBufferFunc)
 	clientAssertions := assert.New(t)
-	clientAssertions.NoError(err)
+	req := require.New(t)
+	req.NoError(err)
 	clientAssertions.Equal("fake logsfake logsfake logs", outBuffer.String())
 }
 

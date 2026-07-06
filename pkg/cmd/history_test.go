@@ -451,7 +451,7 @@ func TestReleaseInfoEmptyStringRoundTrip(t *testing.T) {
 
 	// Zero time value should be omitted
 	assert.NotContains(t, result, "updated")
-	assert.Equal(t, float64(1), result["revision"])
+	assert.InDelta(t, float64(1), result["revision"], 0.0001)
 	assert.Equal(t, "deployed", result["status"])
 	assert.Equal(t, "mychart-1.0.0", result["chart"])
 }

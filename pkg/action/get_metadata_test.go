@@ -443,7 +443,7 @@ func TestGetMetadata_Run_UnreachableKubeClient(t *testing.T) {
 	client := NewGetMetadata(cfg)
 
 	_, err := client.Run("test-release")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "connection refused")
 }
 
@@ -452,7 +452,7 @@ func TestGetMetadata_Run_ReleaseNotFound(t *testing.T) {
 	client := NewGetMetadata(cfg)
 
 	_, err := client.Run("non-existent-release")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
 }
 
@@ -648,10 +648,10 @@ func TestGetMetadata_Labels(t *testing.T) {
 
 	metaGetter := NewGetMetadata(actionConfigFixture(t))
 	err := metaGetter.cfg.Releases.Create(rel)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	metadata, err := metaGetter.Run(rel.Name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, metadata.Name, rel.Name)
 	assert.Equal(t, metadata.Labels, customLabels)

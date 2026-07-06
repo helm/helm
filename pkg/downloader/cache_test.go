@@ -94,7 +94,7 @@ func TestDiskCache_PutAndGet(t *testing.T) {
 
 		// Get should return ErrNotExist for empty files
 		_, err = cache.Get(emptyKey, CacheChart)
-		assert.ErrorIs(t, err, os.ErrNotExist, "Get for an empty file should return os.ErrNotExist")
+		require.ErrorIs(t, err, os.ErrNotExist, "Get for an empty file should return os.ErrNotExist")
 
 		// But the file should exist
 		_, err = os.Stat(path)

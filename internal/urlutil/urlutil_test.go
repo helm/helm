@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestURLJoin(t *testing.T) {
@@ -36,7 +37,7 @@ func TestURLJoin(t *testing.T) {
 
 	for _, tt := range tests {
 		got, err := URLJoin(tt.url, tt.paths...)
-		assert.NoError(t, err, tt.name)
+		require.NoError(t, err, tt.name)
 		assert.Equal(t, tt.expect, got, tt.name)
 	}
 }

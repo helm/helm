@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	ri "helm.sh/helm/v4/pkg/release"
@@ -64,7 +65,7 @@ func TestListStates(t *testing.T) {
 func TestList_Empty(t *testing.T) {
 	lister := NewList(actionConfigFixture(t))
 	list, err := lister.Run()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, list)
 }
 
@@ -75,33 +76,36 @@ func newListFixture(t *testing.T) *List {
 
 func TestList_OneNamespace(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	lister := newListFixture(t)
 	makeMeSomeReleases(t, lister.cfg.Releases)
 	list, err := lister.Run()
-	is.NoError(err)
+	req.NoError(err)
 	is.Len(list, 3)
 }
 
 func TestList_AllNamespaces(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	lister := newListFixture(t)
 	makeMeSomeReleases(t, lister.cfg.Releases)
 	lister.AllNamespaces = true
 	lister.SetStateMask()
 	list, err := lister.Run()
-	is.NoError(err)
+	req.NoError(err)
 	is.Len(list, 3)
 }
 
 func TestList_Sort(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	lister := newListFixture(t)
 	lister.Sort = ByNameDesc // Other sorts are tested elsewhere
 	makeMeSomeReleases(t, lister.cfg.Releases)
 	l, err := lister.Run()
-	is.NoError(err)
+	req.NoError(err)
 	list, err := releaseListToV1List(l)
-	is.NoError(err)
+	req.NoError(err)
 
 	is.Len(list, 3)
 	is.Equal("two", list[0].Name)
@@ -111,13 +115,14 @@ func TestList_Sort(t *testing.T) {
 
 func TestList_Limit(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	lister := newListFixture(t)
 	lister.Limit = 2
 	makeMeSomeReleases(t, lister.cfg.Releases)
 	l, err := lister.Run()
-	is.NoError(err)
+	req.NoError(err)
 	list, err := releaseListToV1List(l)
-	is.NoError(err)
+	req.NoError(err)
 	is.Len(list, 2)
 	// Lex order means one, three, two
 	is.Equal("one", list[0].Name)
@@ -126,13 +131,14 @@ func TestList_Limit(t *testing.T) {
 
 func TestList_BigLimit(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	lister := newListFixture(t)
 	lister.Limit = 20
 	makeMeSomeReleases(t, lister.cfg.Releases)
 	l, err := lister.Run()
-	is.NoError(err)
+	req.NoError(err)
 	list, err := releaseListToV1List(l)
-	is.NoError(err)
+	req.NoError(err)
 	is.Len(list, 3)
 
 	// Lex order means one, three, two
@@ -143,14 +149,15 @@ func TestList_BigLimit(t *testing.T) {
 
 func TestList_LimitOffset(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	lister := newListFixture(t)
 	lister.Limit = 2
 	lister.Offset = 1
 	makeMeSomeReleases(t, lister.cfg.Releases)
 	l, err := lister.Run()
-	is.NoError(err)
+	req.NoError(err)
 	list, err := releaseListToV1List(l)
-	is.NoError(err)
+	req.NoError(err)
 	is.Len(list, 2)
 
 	// Lex order means one, three, two
@@ -160,27 +167,29 @@ func TestList_LimitOffset(t *testing.T) {
 
 func TestList_LimitOffsetOutOfBounds(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	lister := newListFixture(t)
 	lister.Limit = 2
 	lister.Offset = 3 // Last item is index 2
 	makeMeSomeReleases(t, lister.cfg.Releases)
 	list, err := lister.Run()
-	is.NoError(err)
+	req.NoError(err)
 	is.Empty(list)
 
 	lister.Limit = 10
 	lister.Offset = 1
 	list, err = lister.Run()
-	is.NoError(err)
+	req.NoError(err)
 	is.Len(list, 2)
 }
 
 func TestList_StateMask(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	lister := newListFixture(t)
 	makeMeSomeReleases(t, lister.cfg.Releases)
 	oner, err := lister.cfg.Releases.Get("one", 1)
-	is.NoError(err)
+	req.NoError(err)
 
 	var one release.Release
 	switch v := oner.(type) {
@@ -194,18 +203,18 @@ func TestList_StateMask(t *testing.T) {
 
 	one.SetStatus(common.StatusUninstalled, "uninstalled")
 	err = lister.cfg.Releases.Update(one)
-	is.NoError(err)
+	req.NoError(err)
 
 	res, err := lister.Run()
-	is.NoError(err)
+	req.NoError(err)
 	is.Len(res, 3)
 
 	ac0, err := ri.NewAccessor(res[0])
-	is.NoError(err)
+	req.NoError(err)
 	ac1, err := ri.NewAccessor(res[1])
-	is.NoError(err)
+	req.NoError(err)
 	ac2, err := ri.NewAccessor(res[2])
-	is.NoError(err)
+	req.NoError(err)
 
 	is.Equal("one", ac0.Name())
 	is.Equal("three", ac1.Name())
@@ -213,20 +222,21 @@ func TestList_StateMask(t *testing.T) {
 
 	lister.StateMask = ListUninstalled
 	res, err = lister.Run()
-	is.NoError(err)
+	req.NoError(err)
 	is.Len(res, 1)
 	ac0, err = ri.NewAccessor(res[0])
-	is.NoError(err)
+	req.NoError(err)
 	is.Equal("one", ac0.Name())
 
 	lister.StateMask |= ListDeployed
 	res, err = lister.Run()
-	is.NoError(err)
+	req.NoError(err)
 	is.Len(res, 3)
 }
 
 func TestList_StateMaskWithStaleRevisions(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	lister := newListFixture(t)
 	lister.StateMask = ListFailed
 
@@ -234,13 +244,13 @@ func TestList_StateMaskWithStaleRevisions(t *testing.T) {
 
 	res, err := lister.Run()
 
-	is.NoError(err)
+	req.NoError(err)
 	is.Len(res, 1)
 
 	// "dirty" release should _not_ be present as most recent
 	// release is deployed despite failed release in past
 	ac0, err := ri.NewAccessor(res[0])
-	is.NoError(err)
+	req.NoError(err)
 	is.Equal("failed", ac0.Name())
 }
 
@@ -273,21 +283,22 @@ func makeMeSomeReleasesWithStaleFailure(t *testing.T, store *storage.Storage) {
 	}
 
 	all, err := store.ListReleases()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, all, 5, "sanity test: five items added")
 }
 
 func TestList_Filter(t *testing.T) {
 	is := assert.New(t)
+	req := require.New(t)
 	lister := newListFixture(t)
 	lister.Filter = "th."
 	makeMeSomeReleases(t, lister.cfg.Releases)
 
 	res, err := lister.Run()
-	is.NoError(err)
+	req.NoError(err)
 	is.Len(res, 1)
 	ac0, err := ri.NewAccessor(res[0])
-	is.NoError(err)
+	req.NoError(err)
 	is.Equal("three", ac0.Name())
 }
 
@@ -323,7 +334,7 @@ func makeMeSomeReleases(t *testing.T, store *storage.Storage) {
 	}
 
 	all, err := store.ListReleases()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, all, 3, "sanity test: three items added")
 }
 

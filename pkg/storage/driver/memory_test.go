@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/release/common"
@@ -296,7 +296,7 @@ func TestMemoryDelete(t *testing.T) {
 		t.Errorf("expected end to be %d instead of %d", startLen-2, endLen)
 		for _, ee := range end {
 			rac, err := release.NewAccessor(ee)
-			assert.NoError(t, err, "unable to get release accessor")
+			require.NoError(t, err, "unable to get release accessor")
 			t.Logf("Name: %s, Version: %d", rac.Name(), rac.Version())
 		}
 	}

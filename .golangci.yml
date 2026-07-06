@@ -139,16 +139,6 @@ linters:
                   - models
 
     testifylint:
-      disable:
-        - encoded-compare
-        - equal-values
-        - expected-actual
-        - float-compare
-        - go-require
-        - nil-compare
-        - require-error
-        - suite-dont-use-pkg
-        - suite-extra-assert-call
       # Intentionally enable all testifylint rules so new checks are adopted automatically.
       enable-all: true
 

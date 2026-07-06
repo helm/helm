@@ -118,7 +118,7 @@ func TestLoadDir(t *testing.T) {
 			require.NoError(t, err, "error loading plugin from %s", tc.dirname)
 
 			assert.Equal(t, tc.dirname, plug.Dir())
-			assert.EqualValues(t, tc.expect, plug.Metadata())
+			assert.Equal(t, tc.expect, plug.Metadata())
 		})
 	}
 }

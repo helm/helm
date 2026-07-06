@@ -224,7 +224,7 @@ func TestReadFile(t *testing.T) {
 				assert.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			if tt.expectedData != nil {
 				assert.Equal(t, tt.expectedData, got)

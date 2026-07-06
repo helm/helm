@@ -560,9 +560,9 @@ func testPull(suite *TestRegistry) {
 	suite.Equal(
 		"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256",
 		result.Prov.Digest)
-	suite.Equal("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}],\"annotations\":{\"org.opencontainers.image.created\":\"1977-09-02T22:04:05Z\",\"org.opencontainers.image.description\":\"A Helm chart for Kubernetes\",\"org.opencontainers.image.title\":\"signtest\",\"org.opencontainers.image.version\":\"0.1.0\"}}",
+	suite.JSONEq("{\"schemaVersion\":2,\"config\":{\"mediaType\":\"application/vnd.cncf.helm.config.v1+json\",\"digest\":\"sha256:8d17cb6bf6ccd8c29aace9a658495cbd5e2e87fc267876e86117c7db681c9580\",\"size\":99},\"layers\":[{\"mediaType\":\"application/vnd.cncf.helm.chart.provenance.v1.prov\",\"digest\":\"sha256:b0a02b7412f78ae93324d48df8fcc316d8482e5ad7827b5b238657a29a22f256\",\"size\":695},{\"mediaType\":\"application/vnd.cncf.helm.chart.content.v1.tar+gzip\",\"digest\":\"sha256:e5ef611620fb97704d8751c16bab17fedb68883bfb0edc76f78a70e9173f9b55\",\"size\":973}],\"annotations\":{\"org.opencontainers.image.created\":\"1977-09-02T22:04:05Z\",\"org.opencontainers.image.description\":\"A Helm chart for Kubernetes\",\"org.opencontainers.image.title\":\"signtest\",\"org.opencontainers.image.version\":\"0.1.0\"}}",
 		string(result.Manifest.Data))
-	suite.Equal("{\"name\":\"signtest\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\",\"apiVersion\":\"v1\"}",
+	suite.JSONEq("{\"name\":\"signtest\",\"version\":\"0.1.0\",\"description\":\"A Helm chart for Kubernetes\",\"apiVersion\":\"v1\"}",
 		string(result.Config.Data))
 	suite.Equal(chartData, result.Chart.Data)
 	suite.Equal(provData, result.Prov.Data)

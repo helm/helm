@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"helm.sh/helm/v4/internal/test/ensure"
@@ -92,8 +93,8 @@ func TestPassphraseFileFetcher_WithStdinAndMultipleFetches(t *testing.T) {
 	passphrase := "secret-from-stdin"
 
 	go func() {
-		_, err = w.WriteString(passphrase + "\n")
-		require.NoError(t, err)
+		_, err := w.WriteString(passphrase + "\n")
+		assert.NoError(t, err)
 	}()
 
 	for range 4 {
