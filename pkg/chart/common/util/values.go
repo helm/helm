@@ -34,6 +34,12 @@ func ToRenderValues(chrt chart.Charter, chrtVals map[string]any, options common.
 //
 // This takes both ReleaseOptions and Capabilities to merge into the render values.
 func ToRenderValuesWithSchemaValidation(chrt chart.Charter, chrtVals map[string]any, options common.ReleaseOptions, caps *common.Capabilities, skipSchemaValidation bool) (common.Values, error) {
+	return ToRenderValuesWithSchemaValidationAndPath(chrt, chrtVals, options, caps, skipSchemaValidation, "")
+}
+
+// ToRenderValuesWithSchemaValidationAndPath is like ToRenderValuesWithSchemaValidation but accepts chartDir
+// for resolving relative $ref in JSON schemas.
+func ToRenderValuesWithSchemaValidationAndPath(chrt chart.Charter, chrtVals map[string]any, options common.ReleaseOptions, caps *common.Capabilities, skipSchemaValidation bool, chartDir string) (common.Values, error) {
 	if caps == nil {
 		caps = common.DefaultCapabilities
 	}
@@ -60,7 +66,7 @@ func ToRenderValuesWithSchemaValidation(chrt chart.Charter, chrtVals map[string]
 	}
 
 	if !skipSchemaValidation {
-		if err := ValidateAgainstSchema(chrt, vals); err != nil {
+		if err := ValidateAgainstSchemaWithPath(chrt, vals, chartDir); err != nil {
 			return top, fmt.Errorf("values don't meet the specifications of the schema(s) in the following chart(s):\n%w", err)
 		}
 	}
