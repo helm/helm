@@ -149,27 +149,28 @@ metadata:
 	for _, out := range hs {
 		found := false
 		for _, expect := range data {
-			if out.Path == expect.path {
-				found = true
-				assert.Equal(t, expect.path, out.Path)
-				nameFound := false
-				for _, expectedName := range expect.name {
-					if out.Name == expectedName {
-						nameFound = true
-					}
-				}
-				assert.True(t, nameFound, "Got unexpected name %s", out.Name)
-				kindFound := false
-				for _, expectedKind := range expect.kind {
-					if out.Kind == expectedKind {
-						kindFound = true
-					}
-				}
-				assert.True(t, kindFound, "Got unexpected kind %s", out.Kind)
-
-				expectedHooks := expect.hooks[out.Name]
-				assert.Equal(t, expectedHooks, out.Events, "expected events: %v but got: %v", expectedHooks, out.Events)
+			if out.Path != expect.path {
+				continue
 			}
+			found = true
+			assert.Equal(t, expect.path, out.Path)
+			nameFound := false
+			for _, expectedName := range expect.name {
+				if out.Name == expectedName {
+					nameFound = true
+				}
+			}
+			assert.True(t, nameFound, "Got unexpected name %s", out.Name)
+			kindFound := false
+			for _, expectedKind := range expect.kind {
+				if out.Kind == expectedKind {
+					kindFound = true
+				}
+			}
+			assert.True(t, kindFound, "Got unexpected kind %s", out.Kind)
+
+			expectedHooks := expect.hooks[out.Name]
+			assert.Equal(t, expectedHooks, out.Events, "expected events: %v but got: %v", expectedHooks, out.Events)
 		}
 		assert.True(t, found, "Result not found: %v", out)
 	}

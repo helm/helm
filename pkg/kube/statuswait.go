@@ -180,11 +180,8 @@ func (w *statusWaiter) wait(ctx context.Context, resourceList ResourceList, sw w
 	defer cancel()
 	resources := []object.ObjMetadata{}
 	for _, resource := range resourceList {
-		switch value := AsVersioned(resource).(type) {
-		case *appsv1.Deployment:
-			if value.Spec.Paused {
-				continue
-			}
+		if value, ok := AsVersioned(resource).(*appsv1.Deployment); ok && value.Spec.Paused {
+			continue
 		}
 		obj, err := object.RuntimeToObjMeta(resource.Object)
 		if err != nil {

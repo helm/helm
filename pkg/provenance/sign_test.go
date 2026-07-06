@@ -380,7 +380,7 @@ func TestVerify(t *testing.T) {
 
 	if ver, err := signer.Verify(archiveData, sigData, filepath.Base(testChartfile)); err != nil {
 		t.Errorf("Failed to pass verify. Err: %s", err)
-	} else if len(ver.FileHash) == 0 {
+	} else if ver.FileHash == "" {
 		t.Error("Verification is missing hash.")
 	} else if ver.SignedBy == nil {
 		t.Error("No SignedBy field")

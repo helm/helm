@@ -342,7 +342,7 @@ func TestMediaTypeToExtension(t *testing.T) {
 		if shouldPass && ext == "" {
 			t.Error("Expected an extension but got empty string")
 		}
-		if !shouldPass && len(ext) != 0 {
+		if !shouldPass && ext != "" {
 			t.Error("Expected extension to be empty for unrecognized type")
 		}
 	}

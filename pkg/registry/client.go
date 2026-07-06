@@ -303,8 +303,7 @@ func ensureTLSConfig(client *auth.Client, setConfig *tls.Config) (*tls.Config, e
 		case *http.Transport:
 			transport = t
 		case *LoggingTransport:
-			switch t := t.RoundTripper.(type) {
-			case *http.Transport:
+			if t, ok := t.RoundTripper.(*http.Transport); ok {
 				transport = t
 			}
 		}
